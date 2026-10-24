@@ -1,0 +1,55 @@
+name: Build · Windows Store package (MSIX)
+
+# By hand only (gh workflow run msix-store.yml -f version=0.9.270): builds the unsigned .msix the owner uploads to Partner Center.
+# Why (owner, 25 Oct 2026: "Let's start this", Microsoft Store listing for Jobadabra): the Store re-signs the package with Microsoft's own
+# certificate, so installs from it never show SmartScreen. The identity values are the owner's Partner Center product identity (public, not secrets).
+# The spike (msix-spike.yml, run 40140735592) proved this package type installs and starts; the logos are in desktop/build/appx/.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version for the package, three numbers (the Store wants each submission higher than the last)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  msix:
+    name: Build the Store package
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # stage.mjs counts the extension's commits and refuses a shallow clone
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: Compile · bundle Python
+        working-directory: desktop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHON_ARCH: x86_64-pc-windows-msvc
+        run: node scripts/stage.mjs --app && scripts/python.sh
+      - name: Compile · build the MSIX with the Store identity
+        working-directory: desktop
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
+          npx electron-builder --win appx --publish never \
+            -c.appx.identityName=IgorMardari.Jobadabra -c.appx.publisher=CN=0D77B925-8A8E-4E89-A698-35A1E48A4789 \
+            "-c.appx.publisherDisplayName=Igor Mardari" -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
+          ls -la dist/*.appx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jobadabra-store-package
+          path: desktop/dist/*.appx
+          if-no-files-found: error

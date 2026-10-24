@@ -25,6 +25,8 @@ import {openSetting, settingsPage, showServicesNow} from './settings.js';
 import {exportState} from './jobs-export.js';
 import {ENGINE_CHOICES} from '../ai-engine-view.js';
 import {openWaitlist} from './plan-waitlist.js';
+import {openPromoDialog} from './plan-promo.js';
+import {reloadPlan} from './plan.js';
 import {showsProWaitlist} from '../plan-line.js';
 import {loadStrategy} from './strategy.js';
 import {openCard} from './strategy-cards.js';
@@ -162,6 +164,7 @@ export function paletteCommands() {
     } else {
       add('Settings', 'Get Pro', PROMISE, 'pro upgrade plan price buy pay unlimited license', goPlan);
       add('Settings', 'Get Pro + AI', `${PROMISE}, ${creditWords((shared.plan.offers || []).find(o => o.id === 'pro-ai')) || 'AI credit'} included`, 'pro ai upgrade plan price buy pay credit unlimited license', goPlan);
+      add('Settings', 'Redeem a promo code', 'Get Pro with a code you were given', 'promo code redeem pro voucher coupon gift free', () => openPromoDialog(reloadPlan));
       if (SHOW_I_HAVE_PRO) add('Settings', 'I have Pro', 'Add this computer with a code sent by e-mail', 'pro sign in signin code add device computer have', () => { goPlan(); setTimeout(() => $('plan-have-pro')?.click(), 300); });
     }
   }

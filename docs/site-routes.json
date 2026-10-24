@@ -106,6 +106,10 @@
    "kind": "app"
   },
   {
+   "path": "/api/pro/redeem",
+   "kind": "app"
+  },
+  {
    "path": "/api/pro/signin/start",
    "kind": "app"
   },

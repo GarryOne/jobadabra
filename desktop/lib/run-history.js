@@ -191,7 +191,7 @@ function noticeText(run) {
   if (!run.kind || run.kind === 'search') {
     const fresh = run.new;
     return {title: `${run.trigger === 'schedule' ? 'Scheduled job search' : 'Find jobs'} ${verdict}${where}`,
-      body: (fresh ? `${fresh} new job${fresh === 1 ? '' : 's'} found.` : 'No new jobs this time.') + look};
+      body: (fresh ? `${fresh} job${fresh === 1 ? '' : 's'} added to your list.` : 'No jobs added this time.') + look};   // one number, the run's own record (owner, 24 Oct 2026)
   }
   return {title: `${name} ${verdict}${where}`, body: String(run.result || run.summary || run.message || 'Done.').split('\n')[0].slice(0, 180) + look};
 }

@@ -147,7 +147,7 @@ test('every place showing a run\'s new count reads the run\'s own number', async
   assert.match(card, /stat\(fresh, `job\$\{fresh === 1 \? '' : 's'\} added to your list`\)/);
   assert.match(card, /'Top new since your last digest'/, 'the list is the digest\'s new section: named for what it lists, not "this run"');
   const {notice} = await import('../lib/run-history.js'), {freshOf} = await import('../lib/few-jobs.js');
-  assert.match(notice({kind: 'search', ok: true, new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}).body, /^7 new jobs found/, 'the notification');
+  assert.match(notice({kind: 'search', ok: true, new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}).body, /^7 jobs added to your list/, 'the notification');
   assert.equal(freshOf({new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}), 7, 'the few-new-jobs nudge');
 });
 

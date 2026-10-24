@@ -37,7 +37,11 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
 3. **Count local jobs, never "in places"** (it includes worldwide remote): the press row has `local_jobs` and `local_by_source` (metrics.py).
 4. **`--quick` misses what happens after "First jobs"**: the title-budget and ladder-retry fixes (#1826, #1827) show at 129-371 s in the full board pass; they need the full run (fc, 24 Oct 2026).
 5. **Variance is mostly which boards the AI proposes** (Chisinau: 22/14/7/12/18 local jobs on the same code): compare per-board counts (`local_by_source`) and run 2-3 times. The persona CV says "remote from <country>". The primary checkout auto-pulls every ~2 min, so a check started later runs newer code.
-6. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
+6. **Name the unit.** `local_jobs` counts JOBS whose place text names the user's city or country. Session 36's per-country scout line counts EMPLOYERS with a role placed there
+   (scout_cells.totals), and its board measure counts jobs resolved through pool_tags.countries (AI labels); same rule (local only, never worldwide remote), different unit and resolver.
+7. **Thin country: check first that board facts were served for it.** Board seeding is inert until a central scout run has printed `Board pass: <country>: N boards proposed, M with 3+ local jobs`
+   (stored as site facts `central-scout-<cc>`). Say in the report whether they were served and from which run; if not, "no boards" is the cause, not the search. Scout-side checks: skill `check-central-scout-locally`.
+8. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
 
 ## Also on CI (only when the owner asks, and asks first)
 `gh workflow run random-draw.yml` runs one Random draw on CI (~$0.85 on the Random-draws API key, a different candidate each seed). Say the cost and wait for a yes before starting it;

@@ -1,9 +1,9 @@
 ---
 name: ui-look-and-feel
-description: How Job Pilotto's desktop app looks and feels, with reference screenshots of every screen. Read it before building or changing any page, section, card, list, dialog or loading state in desktop/renderer, and check your result against it (render it in demo mode) before saying it's done.
+description: How Jobadabra's desktop app looks and feels, with reference screenshots of every screen. Read it before building or changing any page, section, card, list, dialog or loading state in desktop/renderer, and check your result against it (render it in demo mode) before saying it's done.
 ---
 
-# Job Pilotto: look and feel
+# Jobadabra: look and feel
 
 The owner designs by mockup and judges by screenshot. A screen is done when it looks like the rest of the app
 *and* like the mockup, not when the code works. Before you say a UI change is finished, render it (below) and
@@ -179,4 +179,4 @@ env -u ELECTRON_RUN_AS_NODE JOB_PILOTTO_DEMO=1 JOB_PILOTTO_USER_DATA="$D" \
   (tests in `desktop/test/app.test.js` guard the known ones).
 - New grid children of `.app` need their row/column (`grid-column: 2`), or they push the activity bar aside.
 - A new IPC call needs the handler in `main.js` *and* the preload entry; a window newer than the running app
-  shows "Job Pilotto was updated: restart".
+  shows "Jobadabra was updated: restart".

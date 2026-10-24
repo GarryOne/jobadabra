@@ -1,6 +1,6 @@
 ---
 name: report-sessions-roundup
-description: Coordinator's round-up of every running Job Pilotto session - one table (Session, Work, Status, Waiting on, Progress %, ETA), closed sessions left out, an overall % and the one thing everyone waits on, then what the owner should merge or decide. Use when the owner says "round-up", "roundup", "where do the sessions stand", "update the table", "what is blocking", or "/report-sessions-roundup".
+description: Coordinator's round-up of every running Jobadabra session - one table (Session, Work, Status, Waiting on, Progress %, ETA), closed sessions left out, an overall % and the one thing everyone waits on, then what the owner should merge or decide. Use when the owner says "round-up", "roundup", "where do the sessions stand", "update the table", "what is blocking", or "/report-sessions-roundup".
 ---
 
 # Sessions round-up (coordinator)

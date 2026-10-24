@@ -1,4 +1,4 @@
-# Job Pilotto — notes for Claude
+# Jobadabra — notes for Claude
 
 Personal job-search automation: crawls job boards and employer feeds, filters and scores jobs with Claude, sends a Telegram digest, tracks
 applications (SQLite or Notion, behind one store interface).

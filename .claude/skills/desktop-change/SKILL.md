@@ -1,6 +1,6 @@
 ---
 name: desktop-change
-description: The fast, safe loop for any change to Job Pilotto's desktop app (desktop/: main process, window pages, IPC) and the traps that caused real bugs. Use before editing desktop/ code, and when a UI change "doesn't show up", a state is stale, or a run/secret works on the owner's Mac only.
+description: The fast, safe loop for any change to Jobadabra's desktop app (desktop/: main process, window pages, IPC) and the traps that caused real bugs. Use before editing desktop/ code, and when a UI change "doesn't show up", a state is stale, or a run/secret works on the owner's Mac only.
 ---
 
 # Desktop change: the loop and the traps

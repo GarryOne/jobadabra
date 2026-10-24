@@ -1,9 +1,9 @@
 ---
 name: notion-copy
-description: Move or copy a Job Pilotto job search from one Notion workspace (or set of databases) into another, e.g. real data into a fresh Desktop App workspace, or a copy for tests. Use whenever the owner asks to migrate, move, copy, clone or switch Job Pilotto Notion data between workspaces, or to point the app/terminal/Telegram bot at another workspace.
+description: Move or copy a Jobadabra job search from one Notion workspace (or set of databases) into another, e.g. real data into a fresh Desktop App workspace, or a copy for tests. Use whenever the owner asks to migrate, move, copy, clone or switch Jobadabra Notion data between workspaces, or to point the app/terminal/Telegram bot at another workspace.
 ---
 
-# Copy a Job Pilotto workspace (tools/notion_copy.py)
+# Copy a Jobadabra workspace (tools/notion_copy.py)
 
 Copies every database row (all fields, the page body such as kits and cover letters, the links between
 databases) plus the Profile, Standard answers and Form knowledge pages; writes ⚙️ Search settings from a
@@ -14,7 +14,7 @@ uploaded to Notion (expiring links), views.
 ## Before you start
 - **Which workspace is which:** see the owner's map (memory `reference-notion-workspaces`); never write to the
   real job-search data unless that's the target the owner named.
-- **One connection per Job Pilotto page.** A Notion connection sees only the pages shared with it, and the app
+- **One connection per Jobadabra page.** A Notion connection sees only the pages shared with it, and the app
   and this tool find databases *by title*. A workspace can hold several copies with the same titles (the real
   databases, the public template's source, a new copy), so the target's connection must see only the target
   page, and the source is named explicitly with `--from-ids <.env>` when it isn't alone.
@@ -26,7 +26,7 @@ uploaded to Notion (expiring links), views.
 1. **Fresh app profile:** quit the app; rename `~/Library/Application Support/Job Pilotto` to
    `Job Pilotto (<old workspace>)` (kept: start it again with `JOB_PILOTTO_USER_DATA=<that folder> npm start`).
 2. **Setup wizard from scratch** (owner, in the app): Notion step → duplicate the template into the target
-   Notion → new connection that can see only the new **Job Pilotto** page → paste its token. The app adds any
+   Notion → new connection that can see only the new **Jobadabra** page → paste its token. The app adds any
    missing columns/pages from `config/notion_schema.json`. Finish the wizard (a first search may run; its rows
    are replaced below).
 3. Owner gives you that same token → Keychain `job-pilotto.notion-app.token`.

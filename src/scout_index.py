@@ -356,12 +356,13 @@ def dead_ends(db, shared=(), days=30):
     return sorted(out.values(), key=lambda item: item['last'], reverse=True)[:MAX_DEAD_ENDS]   # past the cap the oldest drop out, not the newest
 
 
-def publish_index(feeds, url, key, send=None, stats=None, nofeed=None, boards=None):
+def publish_index(feeds, url, key, send=None, stats=None, nofeed=None, boards=None, board_facts=None):
     """Upload the index to the website worker (PUT, Bearer key), with the scout's own numbers. Raises when the service refuses it."""
     if not feeds:
         raise ValueError('nothing to publish: no feed answered')
     body = json.dumps({'feeds': feeds, 'generated': now().isoformat(timespec='seconds'), **({'stats': stats} if stats else {}),
-                       **({'nofeed': nofeed} if nofeed else {}), **({'boards': boards} if boards else {})}).encode()
+                       **({'nofeed': nofeed} if nofeed else {}), **({'boards': boards} if boards else {}),
+                       **({'board_facts': board_facts} if board_facts else {})}).encode()
 
     def put(request):
         with urllib.request.urlopen(request, timeout=60) as response:

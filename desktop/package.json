@@ -126,12 +126,14 @@
           ]
         }
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "executableName": "Jobadabra"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "shortcutName": "Job Pilotto"
+      "shortcutName": "Jobadabra",
+      "uninstallDisplayName": "Jobadabra"
     },
     "artifactName": "Job-Pilotto-${version}-${arch}.${ext}",
     "afterPack": "scripts/sign.cjs",

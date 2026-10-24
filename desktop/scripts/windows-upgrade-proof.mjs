@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {LEGACY_NAME} from '../lib/app-identity.js';
 import {WINDOWS_INSTALLER_ARGS, asset} from '../lib/updater.js';
 
 const [oldInstaller, newInstaller] = process.argv.slice(2);
@@ -23,7 +24,7 @@ const state = () => ({
 });
 
 execFileSync(path.resolve(oldInstaller), ['/S'], {stdio: 'inherit', timeout: 5 * 60 * 1000});
-const dataFolder = path.join(process.env.APPDATA, 'Job Pilotto');   // lib/app-identity.js keeps the data folder under the legacy name
+const dataFolder = path.join(process.env.APPDATA, LEGACY_NAME);   // lib/app-identity.js keeps the data folder under the legacy name
 fs.mkdirSync(dataFolder, {recursive: true});
 const sentinel = path.join(dataFolder, 'upgrade-proof.txt');
 fs.writeFileSync(sentinel, 'kept');

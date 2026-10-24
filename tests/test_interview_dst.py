@@ -82,6 +82,18 @@ class PastedMessageTests(unittest.TestCase):
         self.assertEqual(inbox_reading.read(client, 'm', 'hi', None, [])['interview_at'], '2026-10-27T10:00:00+01:00')
 
 
+class FocusMovedTests(unittest.TestCase):
+    def test_a_time_picked_in_focus_is_the_owners_clock_with_its_dates_offset(self):
+        from src.ai import interviews
+        self.assertEqual(interviews._moment('2026-10-27T10:00'), datetime(2026, 10, 27, 9, 0, tzinfo=timezone.utc))  # not UTC
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder, True)
+        store = sqlite.open_store({'JOB_PILOTTO_DATA_DIR': str(folder)})
+        row = store.applications.create({'url': 'https://example.test/j/2', 'company': 'Northwind Health', 'title': 'Platform Engineer'}, 'Applied')
+        interviews.moved(store, row['id'], '2026-10-27T10:00')  # a datetime-local input has no offset
+        self.assertEqual(store.applications.get('https://example.test/j/2')['next_interview'], '2026-10-27T10:00:00+01:00')
+
+
 class SqliteDedupeTests(unittest.TestCase):
     def test_the_same_interview_from_mail_and_calendar_is_one_event_on_the_sqlite_store(self):
         folder = Path(tempfile.mkdtemp())

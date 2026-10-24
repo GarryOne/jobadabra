@@ -21,9 +21,10 @@ test('every /extension address the extension calls answers the preflight from th
   const running = server.start(storage, error => assert.fail(error));
   await new Promise(resolve => setTimeout(resolve, 100));
   assert.ok(called.length > 20 && called.includes('/extension/site-password'), `found ${called.length} addresses`);
-  const origin = `chrome-extension://${server.EXTENSION_ID}`, missing = [];
+  const missing = [];
   try {
-    for (const url of called) {
+    for (const id of server.EXTENSION_IDS) for (const url of called) {
+      const origin = `chrome-extension://${id}`;   // every ID we trust (the folder's and the Web Store's), not only the primary
       const answer = await fetch(`http://127.0.0.1:${server.PORT}${url}`, {method: 'OPTIONS', headers: {Origin: origin,
         'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,content-type'}});
       const allowed = answer.headers.get('access-control-allow-origin');

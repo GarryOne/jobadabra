@@ -13,6 +13,7 @@ TESTS, PAGES = 'CI · Tests', 'CI · Page cases (all cases, real extension, Linu
 
 # Every workflow of .github/workflows, counted for red main or ignored with the reason (a new workflow fails the last test until it is put here: a conscious choice).
 CLASSIFIED = {
+    'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
     'CI · Tests': 'counted',
     'Proof · LibreOffice add-on on Mac and Windows': 'ignored: pull requests that edit the add-on, and by hand; downloads LibreOffice for real on Mac and Windows runners, never on a push to main',
     'Proof · Which org the e2e AI keys belong to': 'ignored: pull requests that edit it, and by hand; a $0 check of the e2e keys, never on a push to main',

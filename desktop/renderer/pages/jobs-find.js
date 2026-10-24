@@ -1,7 +1,7 @@
 // Jobs page, the "Find jobs" card on top (owner, 16 Oct 2026; centered magic card + moving searching card 24 Oct 2026): a big card on an empty first run, then the live progress of the search (steps, last
 // lines, counts) with the list growing below it, then a one-line result; a failure says what to do. Built from the shared header, number strip, pills and
 // rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/find-card.test.js.
-import {cardHead, el, liveRows, numberStrip, pill, setCount, tile} from '../components.js';
+import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {wire} from '../magic.js';
 import {jobCounts} from '../jobs-view.js';
@@ -9,23 +9,23 @@ import {findCard, readProgressModel} from '../find-card-model.js';
 import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
 
-let signature = '', wasSearching = false, finishedHere = false, shown = {};
+let signature = '', wasSearching = false, finishedHere = false;
 let start = () => {};
+let liveOpen = true;
 export const wireFindCard = startSearch => { start = startSearch; };
 
 const button = (text, handler, className = 'primary') => Object.assign(el('button', className, text), {type: 'button', onclick: handler});
 
-// This search's three numbers (find-card-model.js runCounts): possible matches (rising as each employer is read), scored, good fits 70+. While searching they flash when they go up, like the counters below
-// (components.js setCount): the card is drawn again at every change, so each new number starts from the one shown before.
-function runNumbers(model, live = true) {
-  const cells = [['Found', 'matches'], ['Scored', 'scored'], ['Strong matches (70+)', 'good'], ['Waiting for a score', 'waiting']];
-  const strip = numberStrip(cells.map(([label, key]) => ({label, value: String(model[key])})), {valueFirst: true});
-  strip.querySelectorAll('.insight-number-value').forEach((node, i) => {
-    const key = cells[i][1], before = shown[key];
-    if (live && before !== undefined && before !== model[key]) { node.textContent = before; node.dataset.counted = '1'; setCount(node, model[key]); }
-    if (live) shown[key] = model[key];
-  });
-  return strip;
+// This search's one number (find-card-model.js addedSoFar): the jobs it added to your list, a green "+9 added" beside the title (owner, 24 Oct 2026: scoring and its
+// queue are internal, never shown). A search that added nothing yet shows no pill while it runs, and a quiet "No jobs added" when it is done.
+const addedPill = (model, done) => (model.added ? pill(`+${model.added.toLocaleString('en-US')} added`, 'good') : done ? pill('No jobs added', 'neutral') : null);
+function findHead(title, model, lead, {done = false, spinner = false} = {}) {
+  const row = el('div', 'find-head'), pillNode = addedPill(model, done);
+  if (spinner) row.append(Object.assign(el('span', 'spinner'), {ariaHidden: 'true'}));
+  row.append(el('h3', 'find-title', title), ...(pillNode ? [pillNode] : []), el('span', 'muted find-scope', 'This search'));
+  const box = el('div', 'find-head-box');
+  box.append(row, el('p', 'muted find-lead', lead));
+  return box;
 }
 
 // Employers read as progress (bar + "1,953 of 2,251"); before the first count the bar slides, so the card never looks still. The raw count of
@@ -35,7 +35,7 @@ function readProgress(model) {
   const head = el('div', 'progress-head'), bar = el('div', progress.kind === 'count' ? 'bar' : 'bar is-sliding'), fill = el('span');
   if (progress.kind === 'count') fill.style.width = `${progress.percent}%`;
   bar.append(fill);
-  head.append(el('span', '', 'Employers read'), el('span', 'muted', progress.kind === 'count' ? `${n(progress.done)} / ${n(progress.total)}` : 'Starting…'));
+  head.append(el('span', '', 'Employers checked'), el('span', 'muted', progress.kind === 'count' ? `${n(progress.done)} / ${n(progress.total)}` : 'Starting…'));
   box.append(head, bar);
   return box;
 }
@@ -57,21 +57,27 @@ function draw(model) {
   if (model.state === 'empty') {
     drawEmpty(card);
   } else if (model.state === 'searching') {
-    const chips = el('div', 'chip-row');
+    const chips = el('div', 'chip-row find-steps');
     chips.append(...model.chips.map(chip => {
       const node = pill(chip.label, chip.state === 'active' ? 'signal' : chip.state === 'done' ? 'good' : 'neutral', {dot: chip.state === 'active'});
-      node.classList.add('find-step', `is-${chip.state}`);   // the active step pulses, a finished one shows a tick (find-card.css)
+      node.classList.add('find-step', `is-${chip.state}`);   // the active step pulses, a finished one shows a tick, a waiting one a clock (find-card.css)
+      if (chip.state === 'pending') node.prepend(icon('clock'));
       return node;
     }));
     const lines = el('ul', 'run-card-rows');
     lines.append(...liveRows(model.lines));
-    const head = cardHead('Searching', model.matches ? `${model.matches.toLocaleString('en-US')} possible jobs found so far` : 'Looking for your first jobs…', {subtitles: ['The numbers are this search only. You can keep using Jobadabra; the list below fills as jobs are found; a job gets its score once it is checked.']});
-    head.prepend(Object.assign(el('span', 'spinner'), {ariaHidden: 'true'}));
-    card.replaceChildren(head, runNumbers(model), readProgress(model), chips, lines);
+    lines.hidden = !liveOpen;
+    // The live updates fold (owner, 24 Oct 2026): open by default, and the choice survives the card's redraws.
+    const toggle = Object.assign(el('button', 'link find-activity', 'Live updates '), {type: 'button'});
+    toggle.append(icon('chevron'));
+    toggle.setAttribute('aria-expanded', String(liveOpen));
+    toggle.classList.toggle('is-open', liveOpen);
+    toggle.addEventListener('click', () => { liveOpen = !liveOpen; lines.hidden = !liveOpen; toggle.setAttribute('aria-expanded', String(liveOpen)); toggle.classList.toggle('is-open', liveOpen); });
+    const steps = el('div', 'find-steps-row');
+    steps.append(chips, toggle);
+    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps, lines);
   } else if (model.state === 'done') {
-    const ran = model.looked || model.matches || model.scored;   // an older run has no counts line: the list's count, as before
-    card.replaceChildren(cardHead('Search done', ran ? `${model.scored} scored` : `${model.listed} match${model.listed === 1 ? '' : 'es'} on your list`, {subtitles: [model.waiting ? `${model.waiting.toLocaleString('en-US')} more possible job${model.waiting === 1 ? ' is' : 's are'} still waiting. Run Find jobs again to check ${model.waiting === 1 ? 'it' : 'them'}.` : 'The best matches are first. Find jobs again any time.']}),
-      ...(ran ? [runNumbers(model, false)] : []));
+    card.replaceChildren(findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true}));
   } else if (model.state === 'failed') {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button('Try again', () => start()));
@@ -86,7 +92,6 @@ export function renderFindCard(runsNow) {
   const searching = !!runsNow.running && (runsNow.running.kind || 'search') === 'search';
   if (wasSearching && !searching) finishedHere = true;
   if (searching) finishedHere = false;
-  if (searching && !wasSearching) shown = {};   // a new search starts from 0
   wasSearching = searching;
   const counts = jobCounts(jobsState.lastJobsData);   // the same numbers as the counters below (jobs-view.js)
   const model = findCard({running: runsNow.running, last: (runsNow.runs || []).find(run => (run.kind || 'search') === 'search') || null,

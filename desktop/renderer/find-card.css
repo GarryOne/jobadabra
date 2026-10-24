@@ -17,3 +17,17 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 @keyframes find-ping { from { box-shadow: 0 0 0 0 rgb(var(--signal-rgb) / .55); } to { box-shadow: 0 0 0 7px transparent; } }
 @keyframes find-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .find-card .bar span::after, .find-card .bar.is-sliding span, .find-card .find-step::before, .find-card .run-card-row { animation: none; } .find-card .bar.is-sliding span { position: static; width: 35%; } }
+/* The run card's closed "Details": every count but the one that leads (owner, 24 Oct 2026). */
+.run-card-details { padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--line); color: var(--muted); }
+.run-card-details > summary { cursor: pointer; font-size: var(--fs-xs); }
+.run-card-details .run-card-stats { padding: var(--sp-2) 0 0; background: none; border-bottom: 0; }
+/* The Find jobs card head (owner, 24 Oct 2026): spinner, title, a green "+N added" pill, "This search" at the right; steps and "View activity" on one row. */
+.find-head { display: flex; align-items: center; gap: var(--sp-3); }
+.find-title { margin: 0; font-size: var(--fs-card-title, 1.125rem); }
+.find-scope { margin-left: auto; }
+.find-lead { margin: var(--sp-1) 0 var(--sp-3); }
+.find-steps-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); }
+.find-steps-row .find-activity { margin-left: auto; }
+.find-step .icon { width: 1em; height: 1em; margin-right: var(--sp-1); }
+.find-activity .icon { width: 1em; height: 1em; vertical-align: -.15em; transition: transform .15s; }
+.find-activity.is-open .icon { transform: rotate(90deg); }

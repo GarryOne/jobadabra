@@ -21,11 +21,11 @@ test('the pulse lives once, in components.css, and stops for reduced motion', ()
   for (const file of ['ready-card.css', 'style.css', 'pages/jobs-find.js']) assert.doesNotMatch(read(file), /ready-pulse/, file);
 });
 
-test('the Find card names the numbers: Scored and Waiting for a score, never "On your list"', () => {
+test('the Find card and the run card show one number, jobs added to the list; no scoring words (owner, 24 Oct 2026)', () => {
   for (const file of ['pages/jobs-find.js', 'pages/activity-run-card.js']) {
     const text = read(file);
     assert.doesNotMatch(text, /'On your list'|new on your list|'on your list'|joins your list/, file);
-    assert.match(text, /[Ss]cored|'scored'/, file);
-    assert.match(text, /[Ww]aiting for a score/, file);
+    assert.doesNotMatch(text, /Strong matches|[Ww]aiting for a score|'Scored'/, file);
+    assert.match(text, /added/, file);
   }
 });

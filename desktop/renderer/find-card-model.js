@@ -1,5 +1,5 @@
 // The "Find jobs" card on top of Jobs, as data (pure): which of its five states shows (empty first run, searching, done, failed, none), the step chips
-// with the one that is running, the last lines in words, and the counts. Drawn by pages/jobs-find.js. Guarded by: test/find-card.test.js.
+// with the one that is running, the last lines in words, and the one number (jobs added). Drawn by pages/jobs-find.js. Guarded by: test/find-card.test.js.
 // Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md
 import {readableLog} from './human-log.js';
 
@@ -34,13 +34,12 @@ export function runCounts(log = []) {
   return {looked: 0, matches: 0, scored: 0, good: 0};
 }
 
-// One definition of a search run's numbers, read by the Find jobs card and the Recent activity run card (owner, 19 Oct 2026): found = the possible jobs
-// for you, scored, good fits (70+), and waiting = found but not scored yet. Null when the run has no counts line (an older run): nothing is invented.
-export function searchNumbers(log = []) {
-  if (!(log || []).some(line => COUNTS.test(String(line)))) return null;
-  const {matches, scored, good} = runCounts(log);
-  return {found: matches, scored, good, waiting: Math.max(0, matches - scored)};
+// The one number a run result shows (owner, 24 Oct 2026: "jobs added to the list", scoring and its queue are internal): the jobs this run added to the
+// user's list. A finished run has its own record (run.new); a running one adds up the engine's "Added N new job(s)" lines (src/daily_search.py).
+export function addedSoFar(log = []) {
+  return (log || []).reduce((sum, line) => sum + Number((/^Added (\d+) new job/.exec(String(line)) || [])[1] || 0), 0);
 }
+export const addedWords = n => (n ? `${n.toLocaleString('en-US')} job${n === 1 ? '' : 's'} added to your list` : 'No jobs added to your list');
 
 // The employer read as progress: the latest "Reading employer job sites: 1953 of 2251" ticker line (src/progress.py), or null before it starts.
 export function employersRead(log = []) {
@@ -62,10 +61,10 @@ export function findCard({running = null, last = null, lastSearchAt = '', listed
   if (searching) {
     const log = running.log || [];
     const lines = readableLog(log.slice(-60)).filter(line => !/^⏳ Still running/.test(line)).slice(-3);
-    return {state: 'searching', chips: stepChips(log), lines, ...runCounts(log), waiting: searchNumbers(log)?.waiting ?? 0, employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
+    return {state: 'searching', chips: stepChips(log), lines, ...runCounts(log), added: addedSoFar(log), employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
   }
   if (last && last.ok === false && (finishedHere || !listed)) return {state: 'failed', problem: last.problem || last.result || '', listed};
-  if (finishedHere && last) return {state: 'done', listed, found: last.new ?? null, ...runCounts(last.log), waiting: Math.max(0, runCounts(last.log).matches - runCounts(last.log).scored)};
+  if (finishedHere && last) return {state: 'done', listed, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log)};
   if (!lastSearchAt && !listed) return {state: 'empty'};
   return {state: 'none'};
 }

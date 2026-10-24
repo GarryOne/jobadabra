@@ -21,6 +21,7 @@ import {scoreBucket} from '../intel.js';
 import {askWhy} from './dismiss-reason.js';
 import {openMatchCheck} from './match-check.js';
 import {jobsState, MORE, pageKey, fullKey} from './jobs-state.js';
+import {renderExport} from './jobs-export.js';
 import {byStore, storeName} from '../store-words.js';
 import {fitDetail} from './jobs-fit.js';
 import {openJobPanel, panelUrl} from './job-panel.js';
@@ -105,6 +106,8 @@ export function renderJobs() {
     .filter(job => (anyStatus && !counted) || (counted ? inFiltersLoose(job, filters, now) : inFilters(job, filters, now)))
     .filter(job => matches(job, text)),
   filter === 'inbound' && !counted && by === 'best' ? 'activity' : by);
+  jobsState.visible = rows;   // pages/jobs-export.js saves these
+  renderExport();
   renderTalking(!!counted || filters.includes('inbound') || filters.includes('everything') || hasViewOption(filters) || !!text);
   // Jobs found but never scored: the AI step did not run (it is not answering, a limit, no engine). Say so, once, above the list: the
   // rows show "Not scored" and a friend took that for a bug (2 Oct 2026, a search whose AI calls had stalled).

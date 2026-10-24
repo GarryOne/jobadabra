@@ -696,7 +696,6 @@ button.with-icon .icon { width: 15px; height: 15px; }
 .iv-editor textarea { font-size: var(--fs-sm); }
 .iv-editor button { font-size: var(--fs-sm); padding: 7px 12px; }
 .list-left { display: flex; align-items: baseline; gap: 14px; }
-#applied-open { font-size: var(--fs-sm); }
 #applied-dialog label { font-size: var(--fs-sm); }
 #applied-dialog input { font-size: var(--fs-md); }
 

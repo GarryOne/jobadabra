@@ -361,6 +361,10 @@
         <label class="sort-box"><i data-icon="sort"></i><select id="sort-by" aria-label="Sort by">
           <option value="best">Best match</option><option value="newest">Newest</option><option value="company">Company A–Z</option>
         </select></label>
+        <button type="button" class="secondary" id="import-open" title="A job that is not in Jobadabra yet. Paste its link and it is scored like one the search found"><i data-icon="plus"></i> Add a job…</button>
+        <button type="button" class="secondary" id="applied-open" title="Applied to a job outside Jobadabra? Track it with the rest"><i data-icon="plus"></i> Applied elsewhere…</button>
+        <button type="button" class="secondary" id="lead-open" title="A recruiter's pitch, a reply, a rejection… paste the text or a screenshot"><i data-icon="plus"></i> Log job activity…</button>
+        <button type="button" class="secondary" id="jobs-export" aria-label="Export job list" hidden><i data-icon="external"></i> Export</button>
       </div>
       <div class="stuck-banner" id="jobs-stuck" hidden>
         <i data-icon="alert"></i><span id="jobs-stuck-text"></span>
@@ -370,10 +374,7 @@
         <div class="list-left"><span id="jobs-count"></span>
           <button class="link" id="jobs-more" hidden title="The list shows your best matches first; load the next ones">Show more</button>
           <span class="filter-chip" id="jobs-filter" hidden><span id="jobs-filter-text"></span><button class="filter-chip-x" id="jobs-filter-clear" title="Show all jobs" aria-label="Clear the filter"><i data-icon="close"></i></button></span>
-          <button class="link" id="jobs-filter-back" hidden>← Back to Focus</button>
-          <button class="link" id="import-open" title="A job that is not in Jobadabra yet. Paste its link and it is scored like one the search found">+ Add a job…</button>
-          <button class="link" id="applied-open" title="Applied to a job outside Jobadabra? Track it with the rest">+ Applied elsewhere…</button>
-          <button class="link" id="lead-open" title="A recruiter's pitch, a reply, a rejection… paste the text or a screenshot">+ Log job activity…</button></div>
+          <button class="link" id="jobs-filter-back" hidden>← Back to Focus</button></div>
         <div class="list-right"><div class="density" id="jobs-mode" role="group" aria-label="Show as">
           <button data-mode="list" aria-pressed="true">List</button><button data-mode="board" aria-pressed="false">Board</button>
         </div>

@@ -137,6 +137,21 @@ class WiredTests(unittest.TestCase):
             careers.READER = None
         self.assertEqual((len(jobs), state, entry['search_url']), (3, 'ok', HOME + 'it'))
 
+    def test_a_list_with_few_relevant_jobs_gives_way_to_a_section_with_more(self):
+        board = {'name': 'Example', 'host': 'jobs.example', 'search_url': HOME + 'q?w={role}'}
+        search = {'jobs_board_search_queries': 'software engineer'}
+        before = ([{'title': 'a'}], 'ok', [{'title': 'a'}])
+        careers.READER = 'auto'
+        try:
+            with mock.patch.object(board_pages, 'allowed', return_value=True), mock.patch('src.ai.decide.decide', decider({'Tech și programare': 'best'})):
+                entry = {}
+                got = found_boards._fuller_section(board, entry, board['search_url'], search, fetcher({HOME: NAV, HOME + 'it': SECTION}), lambda found: found, before)
+                none = found_boards._fuller_section(board, {}, board['search_url'], search, fetcher({HOME: NAV}), lambda found: found, before)
+        finally:
+            careers.READER = None
+        self.assertEqual((len(got[0]), got[1], entry['search_url'], entry['few_for']), (3, 'ok', HOME + 'it', board['search_url'] + '|' + str(found_boards.LADDER)))
+        self.assertEqual(none, before, 'a section that gives no more keeps the list the board gave')
+
 
 class OwnCountryTests(unittest.TestCase):
     def test_a_general_board_proposed_for_one_country_places_the_jobs_that_name_no_place(self):

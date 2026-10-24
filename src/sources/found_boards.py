@@ -28,6 +28,7 @@ IDLE_STOP = 2         # the full read stops a board after this many queries in a
 MAX_PLACES = 2        # and places
 BROWSER_RETRY_DAYS = 30   # a board marked 'browser' is looked at again after this long (its page or routes may have changed)
 LADDER = 2   # the version of the other ways below: a board that went up an older ladder without a relevant job goes up this one once (24 Oct 2026: sections, scripts)
+FEW_RELEVANT = 5   # a general board's list giving fewer relevant jobs than this also gets its own section tried, once (24 Oct 2026: a list gave 1-2, its section 5)
 BOARD_WORKERS = 4         # boards read at once (each its own site, its own pages one after another): the slice ends with its slowest board, not their sum
 EARLY_MINUTES = 60        # a board read in the first-jobs slice hands its jobs to the same search's full read for this long
 REPLACED = {'browser': 'refuses automated reading', 'gone': "can't be reached", 'one employer': "is one employer's own site",
@@ -210,6 +211,20 @@ def _went_up(entry, proposed):
     return entry.get('form_for') == proposed and entry.get('ladder') == LADDER
 
 
+def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=None):
+    """(jobs, state, relevant): the board's own section for the user's kind of work when it gives more relevant jobs than the list that gave few
+    (`before`), else `before`; asked once per proposed link and version of the ladder."""
+    entry['few_for'] = f'{proposed}|{LADDER}'
+    listed, section, scripted = _section(board, board_forms.home(board, fetch), search, fetch, judge, show)
+    more = judge(listed) if listed else []
+    if len(more) <= len(before[2]):
+        return before
+    entry['search_url'] = section
+    entry['rendered'] = scripted or entry.get('rendered', False)
+    print(f"Job boards found: {board['name']} read from its own section ({len(more)} relevant against {len(before[2])})", flush=True)
+    return listed, 'ok', more
+
+
 def _another_way(board, entry, proposed, search, fetch, judge, before, show=None):
     """(jobs, state, relevant) for a board whose proposed link gave no relevant job: when its rules read something (a menu, a news search),
     the AI page reader reads its search page (_read_by_ai); else through the search form on its home page
@@ -389,6 +404,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         if not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
             found, state, relevant = _another_way(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
             _retry_when_unjudged(entry, relevant)
+        elif (0 < len(relevant) < FEW_RELEVANT and not (early or route) and state != 'browser' and (board.get('source_kind') or 'general') == 'general'
+              and entry.get('few_for') != f'{proposed}|{LADDER}'):   # a list with few relevant jobs: its own section may hold more
+            found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general'})
         board_yield.record(entry, len(found), len(relevant), state)

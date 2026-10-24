@@ -1,0 +1,4 @@
+/* The Recent activity drawer (owner, 24 Oct 2026: "hard to distinguish what's the drawer, what's the original content"): a slightly different surface and a stronger
+   shadow that lifts it off the page, in both themes. Loaded after style.css, so it wins over the panel's earlier rules. Guard: test/activity-drawer.test.js. */
+.activity-panel { background: var(--surface-2); border-color: var(--line-strong);
+  box-shadow: 0 -16px 48px rgb(var(--shadow-rgb) / .45), 0 24px 60px rgb(var(--shadow-rgb) / .35), 0 4px 14px rgb(var(--shadow-rgb) / .2); }

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {adviceEvent} from '../renderer/coverage-actions.js';
+import {keySources} from '../renderer/key-sources.js';
+keySources.offered = true;   // these tests are about the source rows themselves; they are hidden by default (key-sources.js)
 import {activitySource} from './activity-source.js';
 
 test('fixed kinds only, shown once per place a session, never the role word or place', () => {

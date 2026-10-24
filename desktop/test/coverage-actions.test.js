@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {coverageActions, runAction} from '../renderer/coverage-actions.js';
+import {keySources} from '../renderer/key-sources.js';
+keySources.offered = true;   // these tests are about the source rows themselves; they are hidden by default (key-sources.js)
 
 const verdict = {at: 'x', narrow: true, share: 0.01, in_places: 6477, matched: 2,
   excluded: [{fragment: 'stage', count: 4}], languages: [{language: 'english', count: 9}],

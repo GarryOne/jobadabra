@@ -4,7 +4,7 @@ import {el} from '../components.js';
 import {$, message, show} from './core.js';
 import {shared} from './shared.js';
 import {toastMessage} from './startup.js';
-import {NOTES, TOPUP_NOTE, planView, warnNow} from '../plan-view.js';
+import {NOTES, SHOW_I_HAVE_PRO, TOPUP_NOTE, planView, warnNow} from '../plan-view.js';
 import {signinPart} from './plan-signin.js';
 import {BADGE} from '../pro-promise.js';
 
@@ -32,7 +32,8 @@ function render(view) {
       card.querySelector('ul').append(...pack.included.map(text => el('li', '', text)));
       cards.append(card);
     }
-    body.append(cards, signinPart(() => load()));
+    body.append(cards);
+    if (SHOW_I_HAVE_PRO) body.append(signinPart(() => load()));
     return;
   }
   if (view.hasCredit) {

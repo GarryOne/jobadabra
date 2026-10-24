@@ -10,6 +10,7 @@ import urllib.request
 
 LAB = 'GarryOne/jobadabra-lab'
 CONTEXT = 'lab-ci'
+DESCRIPTION = 'pr-description'   # the lab's own Actions cannot run until 1 Nov 2026: the description check runs here and reports on the lab PR
 API = 'https://api.github.com'
 SAFE_ENV = ('PATH', 'HOME', 'LANG', 'TMPDIR', 'JOB_PILOTTO_PUBLIC')   # the tests see no token, no workflow secret; JOB_PILOTTO_PUBLIC = this checkout (the lab's discovery tests read the engine)
 
@@ -39,6 +40,28 @@ def api(token, method, path, body=None):
 
 def post_status(token, sha, state, text):
     api(token, 'POST', f'/repos/{LAB}/statuses/{sha}', {'state': state, 'context': CONTEXT, 'description': text})
+
+
+def description_gap(title, body):
+    """The same check the public and site PRs get in CI (tools/pr-body-check.py): -> '' when laid out, else what is missing."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('pr_body_check', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pr-body-check.py'))
+    check = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(check)
+    gap = check.title_gap(title.strip()) or '; '.join(check.missing(body))
+    return gap
+
+
+def post_description(token, label, sha):
+    """Posts the `pr-description` status on a lab PR's head; never raises into the tests' result. -> True when laid out."""
+    m = re.match(r'PR #(\d+)$', label)
+    if not m:
+        return True
+    pr = api(token, 'GET', f'/repos/{LAB}/pulls/{m.group(1)}')
+    gap = description_gap(pr.get('title') or '', pr.get('body') or '')
+    api(token, 'POST', f'/repos/{LAB}/statuses/{sha}', {'state': 'failure' if gap else 'success', 'context': DESCRIPTION,
+                                                         'description': (gap or 'laid out (headings and separators)')[:140]})
+    return not gap
 
 
 def targets(token, event, pr):
@@ -87,6 +110,12 @@ def main():
         post_status(token, sha, state, text)
         print(f'{label} {sha[:7]}: ran {ran}, failed {len(names)}, {state}')   # the whole public log: counts, no names
         bad += state != 'success'
+        try:
+            laid_out = post_description(token, label, sha)
+            print(f'{label} description: {"laid out" if laid_out else "missing parts"}')
+            bad += not laid_out
+        except Exception as e:
+            print(f'{DESCRIPTION}: could not check {label} ({getattr(e, "code", "error")})')
     return 1 if bad else 0
 
 

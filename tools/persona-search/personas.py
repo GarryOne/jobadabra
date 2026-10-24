@@ -78,7 +78,7 @@ PERSONAS = {
                  '  - PHP (Laravel) and Vue.js projects for local and EU clients; MySQL; REST integrations.', '',
                  'EDUCATION', 'BSc Software Engineering, Technical University of Moldova, Chisinau, 2019', '',
                  'LANGUAGES', 'Romanian native, Russian fluent, English upper-intermediate (B2)', '',
-                 'WORK RIGHTS', 'Moldovan citizen (also holds Romanian citizenship, EU). Lives in Chisinau; on-site, hybrid or remote.'],
+                 'WORK RIGHTS', 'Moldovan citizen (also holds Romanian citizenship, EU). Lives in Chisinau; on-site, hybrid or remote from Moldova.'],
 }
 
 

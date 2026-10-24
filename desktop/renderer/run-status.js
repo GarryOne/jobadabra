@@ -61,7 +61,7 @@ export function aiLimitHead(run, name = 'The run') {
 }
 // A run the app's watchdog stopped (lib/pipeline.js stoppedReason): what happened, the step it was on in plain words, and the way
 // out, with the log folded since the box says it (the owner's targeted fix #4, 6 Oct 2026: 110 log lines hid the reason).
-const STOPPED = /Stopped by (?:Jobadabra|Jobadabra): (no output for (\d+) (min|s)|still running after (\d+) min)\b.*?(?:The last thing it did: (.+))?$/;
+const STOPPED = /Stopped by (?:Jobadabra|Job Pilotto): (no output for (\d+) (min|s)|still running after (\d+) min)\b.*?(?:The last thing it did: (.+))?$/;
 const DOING = [[/^Descriptions:/, 'fetching job descriptions'], [/^Scor(?:ed|ing) /, 'scoring new jobs'], [/^Enriched /, 'reading new jobs'],
   [/^(?:Checking employer career pages|Checked: )/, 'checking employer career pages'], [/^(?:Searching job boards|Job boards:)/, 'searching the job boards']];
 const unit = (n, word) => `${n} ${word}${n === '1' ? '' : 's'}`;

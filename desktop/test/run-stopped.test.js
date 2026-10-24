@@ -91,3 +91,12 @@ test('closeLost closes the Mac\'s Running rows that began with the lost run, and
   assert.equal(closed.length, 1);
   assert.deepEqual(calls.filter(call => call[0] === 'PATCH').map(call => call[1].slice(-32)), ['a'.repeat(32)]);
 });
+
+// 24 Oct 2026 rename: runs stopped before it were stored as "Stopped by Job Pilotto: ..."; the activity card still reads them.
+test('a stopped run is recognised under the old and the new product name', async () => {
+  const {stoppedHead} = await import('../renderer/run-status.js');
+  for (const name of ['Jobadabra', 'Job Pilotto']) {
+    const head = stoppedHead({ok: false, summary: `Stopped by ${name}: no output for 15 min. The run went quiet, so it was stopped.`});
+    assert.ok(head, `${name}: the stopped run is read`);
+  }
+});

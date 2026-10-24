@@ -333,7 +333,7 @@ export async function retiredWorkflows(api, repo, files) {
   for (const entry of Array.isArray(listed) ? listed : []) {   // a folder lists; anything else has nothing to retire
     if (entry.type !== 'file' || !/\.ya?ml$/.test(entry.name) || files[entry.path]) continue;
     const current = await api('GET', `/repos/${repo}/contents/${entry.path}`);
-    if (Buffer.from(current.content || '', 'base64').toString().match(/^# (Jobadabra|Jobadabra)/)) retired.push({path: entry.path, sha: current.sha});
+    if (Buffer.from(current.content || '', 'base64').toString().match(/^# (Job Pilotto|Jobadabra)/)) retired.push({path: entry.path, sha: current.sha});
   }
   return retired;
 }

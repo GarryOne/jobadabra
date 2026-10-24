@@ -21,7 +21,7 @@ KEPT = re.compile('|'.join([
     r"'Job Pilotto app'|\"Job Pilotto app\"|Job Pilotto app'",                    # the event source stored in users' rows
     r"manifest\??\.app|app: 'Job Pilotto'|\[NAME, 'Job Pilotto'\]|!== 'Job Pilotto'|=== 'Job Pilotto'|missing: \['Job Pilotto'\]|LEGACY_NAME",  # old installs recognised
     r"^\s*name: Job Pilotto\s*$|# Job Pilotto'|GitHub App|job-pilotto|before the rename|extension installed and the person",
-    r"^\s*\"why\": |Job Pilotto (Tests|Sentry|Sign-in|Self-heal|E2E|2\b)|missing Job Pilotto|connection \"Job Pilotto\"|integrations → Job Pilotto",  # external accounts' own names
+    r"^\s*\"why\": |\(Job Pilotto\|Jobadabra\)|\(\?:Jobadabra\|Job Pilotto\)|\.app, \'Job Pilotto\'\)|path\.join\(real, \'Job Pilotto\'|of \['Jobadabra', 'Job Pilotto'\]|before it were stored as|# Job Pilotto — (retired|a check)|exports made before say \"Job Pilotto\"|an old \"Job Pilotto\" export|Job Pilotto (Tests|Sentry|Sign-in|Self-heal|E2E|2\b)|missing Job Pilotto|connection \"Job Pilotto\"|integrations → Job Pilotto",  # external accounts' own names
 ]))
 
 

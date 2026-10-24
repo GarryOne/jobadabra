@@ -23,6 +23,7 @@ import {wireLead} from './jobs-lead.js';
 import {loadQuestions} from './jobs-questions.js';
 import {wireViews} from './jobs-views.js';
 import {setFilters, wireFilterMenu} from './jobs-filter-menu.js';
+import {wireExport} from './jobs-export.js';
 import {soleFilter} from '../jobs-filters.js';
 import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
@@ -236,6 +237,7 @@ export async function init() {
   }));
   // Add a job: one link, then the find path (read, score, Job Matches). It shows under New matches.
   $('jobs-more').addEventListener('click', showMore);
+  wireExport();
   $('import-open').addEventListener('click', () => {
     message('import-message', '');
     $('import-go').disabled = false;

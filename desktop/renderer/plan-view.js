@@ -5,7 +5,7 @@
 export const SHOW_I_HAVE_PRO = false;
 export const OWN_KEY = 'Your own key is unlimited and saves your AI credit.';
 export const NO_CREDIT = 'Your own AI key is unlimited. Add AI credit to use our AI.';
-const EVERYTHING = ['Unlimited applications, no time limit', 'Your own AI key: unlimited, nothing counted', 'Add AI credit anytime with a one-time top-up', '14-day refund, any reason'];
+const EVERYTHING = ['Unlimited applications, no time limit', 'Export your job list as CSV or JSON', 'Your own AI key: unlimited, nothing counted', 'Add AI credit anytime with a one-time top-up', '14-day refund, any reason'];
 export const ALWAYS_ON = 'Always on: new matches every morning, even when your Mac is off';
 // What each package says it includes (the prices come from the site's offers, never from here).
 export const PACKAGE_INCLUDES = {pro: [...EVERYTHING, ALWAYS_ON], 'pro-ai': ['Everything in Pro', 'AI credit for a whole job search, no setup', ALWAYS_ON]};

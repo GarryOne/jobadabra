@@ -88,6 +88,7 @@ import * as interviews from './lib/interviews.js';
 import {registerJobActionsHandlers} from './lib/job-actions-handlers.js';
 import {registerCloudHandlers} from './lib/cloud-handlers.js';
 import {registerJobsHandlers} from './lib/jobs-handlers.js';
+import {registerJobsExportHandlers} from './lib/jobs-export-handlers.js';
 import {registerStrategyDraftHandlers} from './lib/strategy-draft-handlers.js';
 import {registerDraftEditHandlers} from './lib/draft-edit-handlers.js';
 import {registerSetupHandlers} from './lib/setup-handlers.js';
@@ -270,6 +271,7 @@ function handlers() {
   registerReportsHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/reports-handlers.js: Reports → insights
   registerEmployersHandlers({ipcMain, storage, DEMO, here, log: appLog, scoutFromPage: file => pipeline.scout(storage, log, 'you', null, {paste: file})});   // lib/employers-handlers.js: the Employers page
   registerFormFillsHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/form-fills-handlers.js: Reports → Form fills
+  registerJobsExportHandlers({DEMO, app, dialog, getWindow: () => window, ipcMain, licenseState, storage});   // lib/jobs-export-handlers.js
   registerJobsHandlers({DEMO, JOBS_PAGE, activity, allowanceBlock, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track});   // lib/jobs-handlers.js
   registerCloudHandlers({DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, restartTelegram, shell, storage, toWindow, getWindow: () => window});   // lib/cloud-handlers.js
   registerJobActionsHandlers({DEMO, allowanceBlock, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter: () => recipeReporterRef, storage});   // lib/job-actions-handlers.js

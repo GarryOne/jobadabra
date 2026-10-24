@@ -22,6 +22,7 @@ import {loadSettings, profileTab} from './profile.js';
 import {openSession, renderSessionPage} from './session-log.js';
 import {bestSession, renderDock, sessionList} from './sessions.js';
 import {openSetting, settingsPage, showServicesNow} from './settings.js';
+import {exportState} from './jobs-export.js';
 import {ENGINE_CHOICES} from '../ai-engine-view.js';
 import {openWaitlist} from './plan-waitlist.js';
 import {showsProWaitlist} from '../plan-line.js';
@@ -139,6 +140,10 @@ export function paletteCommands() {
   // Jobs → List | Board and every filter of the Show menu (jobs-filters.js), so a new filter is listed by itself.
   document.querySelectorAll('[data-mode]').forEach(node => add('Jobs', `Show jobs as a ${labelOf(node).toLowerCase()}`, node.dataset.mode === 'board'
     ? 'Your applications in columns by stage; drag a card to change its stage' : 'One row per job', 'pipeline kanban board columns stages list', () => { openView('jobs'); node.click(); }));
+  // Export job list (Pro, pages/jobs-export.js): the Jobs button opens its menu; a free user is taken to the Plan card once Pro is on at the site.
+  const exporting = exportState(shared.licenseState || {});
+  if (exporting !== 'hidden') add('Jobs', 'Export job list', exporting === 'open' ? 'Save your jobs as a spreadsheet (CSV) or JSON file' : 'Part of Pro: save your jobs as a spreadsheet', 'export download save csv json excel spreadsheet jobs list pro',
+    () => { if (exporting === 'locked') return openSetting('plan'); openView('jobs'); setTimeout(() => $('jobs-export').click(), 150); }, exporting === 'locked' ? {badge: ['Pro']} : {});
   FILTER_OPTIONS.forEach(option => add('Jobs', `Jobs filter: ${option.label}`, option.title,
     'show menu filter saved views applications active applying in progress kit ready rejected this week', () => { openView('jobs'); setFilters([option.id]); document.dispatchEvent(new CustomEvent('jobs-rerender')); }));
   // Each Reports tab (pages/reports.js), by what it holds.

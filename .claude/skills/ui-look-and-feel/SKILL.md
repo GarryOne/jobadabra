@@ -98,7 +98,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
 
 ## 3. Cards and rows
 
-- **A run result shows one number: the jobs added to the list** (owner, 24 Oct 2026); other counts fold into a closed Details; never scoring words or the scoring queue (docs/rules/desktop-ui.md).
+- **A run result shows one number: the jobs added to the list** (owner, 24 Oct 2026); no other count, no Details, never scoring words or the scoring queue (docs/rules/desktop-ui.md).
 - **White card** (`.card`): `--surface`, 1 px `--line` border, `--r-md` radius, soft shadow at most. Cards sit on
   the grey page background with `--sp-4` gaps.
 - **Action/item row** (Focus Up next, dock, task cards): round or rounded-square **icon tile** on the left (tinted

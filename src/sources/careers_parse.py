@@ -16,7 +16,7 @@ from ..ai import meanings_pack
 MAX_JOB_PAGES = 40       # job pages read when the listing carries no data itself
 CAREER_WORDS = meanings_pack.matcher('page-words', 'careers_link')   # the meanings pack: the old list (seed) + rows the site adds
 JOB_PATH = meanings_pack.matcher('page-words', 'job_path')   # the meanings pack: the old list (seed) + rows the site adds
-JOB_ID = re.compile(r'/(?:(?:[^/]*-)?(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{5,}|[0-9a-z]{16,})|\d{5,}-[^/]+)$', re.I)   # the id last (…-123456) or first (/123456-the-title)
+JOB_ID = re.compile(r'/(?:(?:[^/]*-)?(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{5,}|[0-9a-z]{16,})|\d{5,}-[^/]+|\d{5,}(?:/[^/]+){1,2})$', re.I)   # the id last (…-123456), first (/123456-the-title) or before one or two slugs (/<word>/123456/<employer>/<title>)
 COUNTRIES = {'CH': 'Switzerland', 'DE': 'Germany', 'AT': 'Austria', 'FR': 'France', 'IT': 'Italy', 'GB': 'United Kingdom', 'UK': 'United Kingdom',
              'NL': 'Netherlands', 'IE': 'Ireland', 'ES': 'Spain', 'PT': 'Portugal', 'PL': 'Poland', 'SE': 'Sweden', 'US': 'United States'}
 

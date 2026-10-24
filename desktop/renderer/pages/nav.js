@@ -1,7 +1,7 @@
 // Navigation: pages, ⌘R memory, the ⌘K palette.
 import {openPalette} from '../palette.js';
 import {PROMISE} from '../pro-promise.js';
-import {creditWords} from '../plan-view.js';
+import {SHOW_I_HAVE_PRO, creditWords} from '../plan-view.js';
 import {openQuestionReview} from './question-review.js';
 import {buttonEntry, reveal} from './palette-busy.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, prepareActions, unqueue} from './activity.js';
@@ -155,7 +155,7 @@ export function paletteCommands() {
     } else {
       add('Settings', 'Get Pro', PROMISE, 'pro upgrade plan price buy pay unlimited license', goPlan);
       add('Settings', 'Get Pro + AI', `${PROMISE}, ${creditWords((shared.plan.offers || []).find(o => o.id === 'pro-ai')) || 'AI credit'} included`, 'pro ai upgrade plan price buy pay credit unlimited license', goPlan);
-      add('Settings', 'I have Pro', 'Add this computer with a code sent by e-mail', 'pro sign in signin code add device computer have', () => { goPlan(); setTimeout(() => $('plan-have-pro')?.click(), 300); });
+      if (SHOW_I_HAVE_PRO) add('Settings', 'I have Pro', 'Add this computer with a code sent by e-mail', 'pro sign in signin code add device computer have', () => { goPlan(); setTimeout(() => $('plan-have-pro')?.click(), 300); });
     }
   }
   // Pro is not open yet: the Pro card on the Plan page, and its waitlist (pages/plan-waitlist.js).

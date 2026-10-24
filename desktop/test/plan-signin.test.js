@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {createPlan} from '../lib/plan.js';
-import {signinWords} from '../renderer/plan-view.js';
+import {SHOW_I_HAVE_PRO, signinWords} from '../renderer/plan-view.js';
 
 const storage = () => { let s = {}; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret() {}}; };
 const site = (calls, reply) => async (url, init = {}) => {
@@ -41,4 +41,12 @@ test('wired: the IPC pair, the preload entry and the ⌘K entry (only with the p
   assert.match(read('../lib/app-meta-handlers.js'), /ipcMain\.handle\('planSignin'/);
   assert.ok(read('../renderer/pages/nav.js').includes("'I have Pro'"));
   assert.match(read('../renderer/pages/plan.js'), /signinPart\(/);
+});
+
+test('hidden for now: with the flag off, no "I have Pro" in the Plan card nor in ⌘K', () => {
+  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  assert.equal(SHOW_I_HAVE_PRO, false);
+  assert.match(read('../renderer/pages/plan.js'), /if \(SHOW_I_HAVE_PRO\) body\.append\(signinPart/);
+  assert.match(read('../renderer/pages/nav.js'), /if \(SHOW_I_HAVE_PRO\) add\('Settings', 'I have Pro'/);
+  assert.equal((read('../renderer/pages/plan.js').match(/signinPart\(/g) || []).length, 1, 'the only use of the button sits behind the flag');
 });

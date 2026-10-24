@@ -1,6 +1,8 @@
 // The Pro plan's words and numbers for the window (Settings → Plan, the sidebar counter, ⌘K), kept free of the DOM so a test can read them
 // (private spec jobadabra-lab:docs/specs/2026-10-16-pro-plan.md §4, owner decisions 16 Oct 2026): the AI credit is a bar and a percent, never dollars or "applications left";
 // "one-time payment, no subscription", never "lifetime"; the own key is the way out when the credit runs low. Prices come from the site's offers (/api/pro/status), never from here.
+// "I have Pro" (a code by e-mail adds a computer) is hidden for now, owner 24 Oct 2026: "too an edge case". Turn on to bring back the Plan card button and the ⌘K entry; the sign-in code stays.
+export const SHOW_I_HAVE_PRO = false;
 export const OWN_KEY = 'Your own key is unlimited and saves your AI credit.';
 export const NO_CREDIT = 'Your own AI key is unlimited. Add AI credit to use our AI.';
 const EVERYTHING = ['Unlimited applications, no time limit', 'Your own AI key: unlimited, nothing counted', 'Add AI credit anytime with a one-time top-up', '14-day refund, any reason'];

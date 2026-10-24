@@ -450,7 +450,8 @@ def main():
             if not key:
                 raise SystemExit('--publish-index needs INDEX_PUBLISH_KEY')
             index_url = os.getenv('JOB_PILOTTO_INDEX_URL') or employer_index.URL
-            deadline = min(scout_overrun.publish_deadline(started), time.monotonic() + scout_core.VERIFY_BUDGET_S)
+            from . import scout_boards, scout_cells
+            deadline = min(scout_overrun.publish_deadline(started) - scout_boards.RESERVE_S, time.monotonic() + scout_core.VERIFY_BUDGET_S)
             with scout_overrun.phase('reading what installs shared'):
                 contributions, shared_dead = fetched or fetch_contributions(index_url, key, with_nofeed=True)
             swiss_titles = []
@@ -459,13 +460,11 @@ def main():
             with scout_overrun.phase(f'checking every feed for the index'):
                 feeds_out, failed = build_index(db, json.loads((CONFIG / 'sources.json').read_text()), contributions=contributions, workers=24,
                                                 boards=json.loads(SEEDS.read_text()).get('boards', []), swiss_titles=swiss_titles, deadline=deadline, carry=True)
-            from . import scout_boards, scout_cells
             scout_cells.keep(db, feeds_out)   # the next run's ideas aim at the thinnest kind × country
             print(scout_cells.coverage_line(scout_cells.totals(feeds_out)))
             board_facts = []
-            if time.monotonic() < scout_overrun.publish_deadline(started) - 5 * 60:   # the board pass needs ~2-4 minutes before the upload's reserve
-                with scout_overrun.phase('board pass (job boards of a thin country)'):
-                    scout_boards.run(db)
+            with scout_overrun.phase('board pass (job boards of a thin country)'):   # the checks stopped RESERVE_S early: it has its time, else it says so
+                scout_boards.run(db, until=scout_overrun.publish_deadline(started))
             board_facts = scout_boards.facts(db)   # everything measured in the last 30 days, not only this run's country
             with scout_overrun.phase('market coverage and stats'):
                 stats = central_stats(db, feeds_out, market_coverage(swiss_titles, deadline=deadline), run=run_record(summary, results))

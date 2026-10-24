@@ -16,6 +16,7 @@ MAX_BOARDS = 12         # boards read per country and run
 BUDGET_S = 240          # the pass gives up starting new boards after this long
 KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
 RECENT = 4              # countries done lately wait their turn
+RESERVE_S = 5 * 60      # the feed checks stop this long before the publish deadline, so the pass (a few minutes) always has its time
 
 
 def ensure(db):
@@ -61,11 +62,14 @@ def measure(board, jobs, country):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print):
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None):
     """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
     from .ai import board_ideas
     from .sources import careers, found_boards
     ensure(db)
+    if until is not None and clock() >= until:
+        out('Board pass skipped: no time left before the index must be published')
+        return []
     country = next_country(db)
     if not country:
         return []

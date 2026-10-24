@@ -37,7 +37,7 @@ from . import cost
 from . import engine
 from . import meanings
 from . import transcribe
-from .. import tgcard
+from .. import tgcard, tz
 from ..notion.titles import named
 from ..features import disabled
 from ..stores import chosen, open_stores, rules
@@ -71,7 +71,7 @@ def _moment(value):
         moment = datetime.fromisoformat((value or '').replace('Z', '+00:00'))
     except ValueError:
         return None
-    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+    return moment if moment.tzinfo else moment.replace(tzinfo=tz.local_zone())  # a clock without an offset is the owner's, as everywhere
 
 
 def advance(stores, app, *, now=None, round_='', next_step='', changes=None, note='', source='Telegram', clear_past=True):
@@ -283,6 +283,7 @@ def moved(stores, app_id, at):
     """Focus → "No: moved": Next interview is the new time, and an Interview scheduled event says so."""
     if not _moment(at):
         raise ValueError('Pick the new date and time')
+    at = tz.local_iso(at)  # the picker has no offset: the owner's clock with the offset of that date
     app = _app(stores, app_id)
     stores.applications.update(app['id'], {'next_interview': at})
     rules.add_event(stores, app, 'Interview scheduled', APP_SOURCE, note=f'Moved to {at} (from Focus)', interview_at=at)

@@ -91,7 +91,7 @@ class Google:
             return
         self.scopes = left
         if not os.getenv('GOOGLE_SCOPES'):   # CI keeps its own secret; this computer's store is the one to update
-            with contextlib.suppress(Exception):   # a convenience: the refusal is reported either way
+            with contextlib.suppress(Exception, SystemExit):   # a convenience (SystemExit: no secret store here): the refusal is reported either way
                 secret_store.put(google_scopes.SCOPES_SERVICE, ' '.join(left))
 
     @classmethod

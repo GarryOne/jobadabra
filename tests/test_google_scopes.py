@@ -73,6 +73,11 @@ def answer(server, respond):
 
 
 class RefusalTest(unittest.TestCase):
+    def setUp(self):   # a refusal is remembered in the secret store: never this computer's real one
+        patch = mock.patch.object(google.secret_store, 'put')
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def refuse(self, url, call):
         import urllib.error
         body = io.BytesIO(json.dumps({'error': {'status': 'PERMISSION_DENIED', 'message': 'Request had insufficient authentication scopes.'}}).encode())

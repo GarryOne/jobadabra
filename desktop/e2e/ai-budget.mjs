@@ -28,6 +28,15 @@ export function shouldSkip(issues, now = Date.now()) {
   return !!open && now - Date.parse(open.updatedAt || open.createdAt) < PAUSE_HOURS * 3600000;
 }
 
+// What /self-healing says about the pause (24 Oct 2026: 22-24 Oct showed no judged real bug, and nothing on the page said the verdict pass was paused since 21 Oct):
+// -> {paused, issue, since, until, waiting}; `until` is the date the provider's own message names, when it names one.
+export function budgetState(issues, waiting = 0) {
+  const open = (issues || []).find(issue => issue.state === 'OPEN');
+  if (!open) return {paused: false, issue: null, since: '', until: '', waiting: 0};
+  const until = /regain access on (\d{4}-\d{2}-\d{2})/.exec(`${open.body || ''} ${(open.comments || []).map(comment => comment.body).join(' ')}`)?.[1] || '';
+  return {paused: true, issue: open.number, since: String(open.createdAt || '').slice(0, 10), until, waiting: Number(waiting) || 0};
+}
+
 const list = gh => JSON.parse(gh(['issue', 'list', '--label', LABEL, '--state', 'open', '--json', 'number,state,createdAt,updatedAt']));
 
 export function trip({gh = realGh, job, error}) {

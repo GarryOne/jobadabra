@@ -407,18 +407,8 @@ def build_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=N
     shown = ranked[first:first + PAGE_SIZE]
 
     if page == 1:
-        places_total = sum(in_places(j) for j in everything)
-        stats = [f"{len(everything)} open", f"{places_total} in your places"]
-        if hidden_urls:
-            stats.append(f"{len(hidden_urls)} applied")
-        pipeline = [' · '.join(stats)]
-        rest = [f"{len(blocked)} filtered"] if blocked else []
-        if low_fit:
-            rest.append(f"{len(low_fit)} low fit")
-        if rest:
-            pipeline.append(' · '.join(rest))
-        pipeline_block = tgcard.block('Your pipeline', *pipeline)
-        header = tgcard.card('Job digest', f"{len(new)} new · Top {len(shown)} of {total} jobs", emoji='✈️')
+        # One number (owner, 24 Oct 2026: run results show one number): the jobs new since the last digest. No "Top N of total" and no pipeline counts block.
+        header = tgcard.card('Job digest', f"{len(new)} new", emoji='✈️')
     elif shown:
         header = tgcard.card('Job digest', f"Jobs {first + 1}–{first + len(shown)} of {len(ranked)}", emoji='✈️')
     else:
@@ -450,8 +440,6 @@ def build_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=N
         if job.get('url'):
             entries.append((index, notion.job_code(job['url'])))
     remaining = len(ranked) - (first + len(shown))
-    if page == 1:
-        blocks.append(pipeline_block)
     blocks.append('Tap a job number to mark it applied, save or dismiss it.' + (f' {remaining} more with ➕.' if remaining else ''))
     text = '\n\n'.join(blocks)
     keyboard = _keyboard(entries)

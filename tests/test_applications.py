@@ -164,7 +164,7 @@ class DigestIntegrationTests(unittest.TestCase):
                 self.assertIn(' · Saved\n', message)
         self.assertNotIn('https://x.test/1"', message)
         self.assertIn('https://x.test/0"', message)
-        self.assertIn('1 applied', message)
+        self.assertNotIn('applied', message.split('\n\n')[0])   # one number in the header (owner, 24 Oct 2026)
 
 
 if __name__ == '__main__':

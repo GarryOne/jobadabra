@@ -91,7 +91,7 @@ class EnrichTests(unittest.TestCase):
                     salary={'stated': True, 'text': 'CHF 130k–150k'}))
                 message = digest.format_digest(db)
         self.assertNotIn('SRE German', message)
-        self.assertIn('1 filtered', message)
+        self.assertNotIn('filtered', message)   # the pipeline counts block is gone (owner, 24 Oct 2026)
         for word in ('Senior', '<b>Check:</b> English', 'French +', 'CHF 130k–150k'):   # plain words, no emoji per line (src/tgcard.py)
             self.assertIn(word, message)
         self.assertNotIn('🇬🇧', message)

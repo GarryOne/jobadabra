@@ -281,7 +281,7 @@ class ScoreTests(unittest.TestCase):
                 digest.build_digest(db, seed=2, shown_ids=second)
         self.assertIn('Best matches · ', message)
         self.assertIn('<b>Fit:</b> 95/100', message)
-        self.assertIn('3 low fit', message)
+        self.assertNotIn('low fit', message)   # the pipeline counts block is gone (owner, 24 Oct 2026)
         self.assertEqual(message.count('Best matches · '), 1)
         self.assertIn('Kubernetes + Datadog match; salary not stated', message)
         self.assertNotIn('<i>', message)   # no italics for content

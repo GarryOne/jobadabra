@@ -55,7 +55,12 @@ export async function runParts(ctx, parts) {
           const bad = badSummary(mine?.result);
           if (bad) problems.push(`the list's words are wrong: ${bad}`);
           if (/Completed$/.test(opened.status) && !opened.warnings && !opened.warningList) problems.push('the run says plain "Completed" with no warning, though the AI refused every call');
-          if (/warning/i.test(opened.status) !== /warning/i.test(mine?.pill || '')) problems.push(`the list says "${mine?.pill}" and the panel "${opened.status}"`);
+          if (/warning/i.test(opened.status) !== /warning/i.test(mine?.pill || '')) {
+            // Where the two pills got their words (beta 13, 19, 20: the record says warned=false; the list and the panel derive "warnings" from log lines): what each holds.
+            const warnLine = line => /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached/i.test(String(line));
+            const panelLines = String(opened.log || '').split('\n');
+            problems.push(`the list says "${mine?.pill}" and the panel "${opened.status}" (record: ok=${run.ok} warned=${run.warned} problem="${run.problem || ''}", ${(run.log || []).length} log line(s), ${(run.log || []).filter(warnLine).length} warning-like; panel log: ${panelLines.length} line(s), ${panelLines.filter(warnLine).length} warning-like; panel box "${opened.warningsTitle}"; app: ${JSON.stringify(opened.state?.activity ?? null).slice(0, 300)})`);
+          }
           if (/no line about them/i.test(`${opened.warnings} ${opened.warningList}`)) problems.push('the panel warns but gives no reason ("the run recorded warnings, with no line about them")');
           if (!/Failed|warning|Needs/i.test(`${opened.status} ${mine?.pill}`)) problems.push(`neither the panel ("${opened.status}") nor the list ("${mine?.pill}") says it did not fully work`);
           const shownWords = `${opened.warnings} ${opened.warningList} ${opened.result} ${opened.message} ${mine?.result}`;

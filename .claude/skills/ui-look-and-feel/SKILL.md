@@ -37,6 +37,7 @@ Design system page, built from the repo: `cd desktop && npm run design-system` �
 | Yes / No | "Yes" / "No" | two buttons (segmented) |
 | One of ≤ 3 short options | `chip()` | segmented |
 | One of many (country, age bracket) | the words | a menu (select) |
+| Filters: show jobs that are any of several (Saved + Active) | the ticked names on the button ("Saved + 1") | the multi-select (`multi-select.js`): checkbox list, a count each, Clear |
 | Several from a list (skills, regions) | `chip()` each | chips with × + "Add, then Enter" |
 | Date · Amount · Salary · Duration · Link · Range | formatted ("CHF 140,000 / year, gross", "1 month, ends at month-end") | `answerControl(formatFor({marked: {kind}}))` |
 | Per country (right to work) | `chip(country, {detail: 'Allowed · B permit'})`, `tone: 'bad'` for needs visa | Allowed / Needs visa + permit |

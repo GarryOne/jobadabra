@@ -31,6 +31,8 @@ import {reviewPreferences} from './job-preferences.js';
 import * as viewHistory from '../view-history.js';
 import {buildCommands} from './build.js';
 import {initMenu, refreshMenu} from './menu.js';
+import {FILTER_OPTIONS} from '../jobs-filters.js';
+import {setFilters} from './jobs-filter-menu.js';
 
 // ---------- app ----------
 // The page (and Settings section) open now, kept for a reload (⌘R): the app comes back where it was.
@@ -134,11 +136,11 @@ export function paletteCommands() {
   // The job's Documents tab (tailored CV + cover letter): a job with a kit or a tailored CV, opened straight on that tab.
   (shared.allJobs || []).filter(job => job.url && (job.kit || job.tailored)).forEach(job => add('Jobs', `Open documents: ${job.title} · ${job.company}`, 'Tailored CV and cover letter',
     'documents tailored cv cover letter files pdf', () => { openView('jobs'); openJobPanel(job, 'documents'); }));
-  // Jobs → List | Board and every saved view chip (pages/jobs-views.js), read from the page so a new view is listed by itself.
+  // Jobs → List | Board and every filter of the Show menu (jobs-filters.js), so a new filter is listed by itself.
   document.querySelectorAll('[data-mode]').forEach(node => add('Jobs', `Show jobs as a ${labelOf(node).toLowerCase()}`, node.dataset.mode === 'board'
     ? 'Your applications in columns by stage; drag a card to change its stage' : 'One row per job', 'pipeline kanban board columns stages list', () => { openView('jobs'); node.click(); }));
-  document.querySelectorAll('#jobs-views [data-view]').forEach(node => add('Jobs', `Jobs view: ${labelOf(node.firstChild)}`, node.title,
-    'saved view filter applications active applying in progress kit ready rejected this week', () => { openView('jobs'); if (node.getAttribute('aria-pressed') !== 'true') node.click(); }));
+  FILTER_OPTIONS.forEach(option => add('Jobs', `Jobs filter: ${option.label}`, option.title,
+    'show menu filter saved views applications active applying in progress kit ready rejected this week', () => { openView('jobs'); setFilters([option.id]); document.dispatchEvent(new CustomEvent('jobs-rerender')); }));
   // Each Reports tab (pages/reports.js), by what it holds.
   for (const [tab, label, words] of REPORT_TABS) add('Reports', `Open Reports: ${label}`, '', words, () => { openView('reports'); loadReports(tab); });
   // The AI engine's choices (pages/ai-engine.js): open Settings → Connections → AI and press the card, as by hand.

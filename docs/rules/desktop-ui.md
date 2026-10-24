@@ -8,7 +8,8 @@ The design system page, built from this repo: `cd desktop && npm run design-syst
 Living copy: `npm run gallery` (sections "Chips" and "Value → control", drawn by the screens' own code). How to apply it: skill **ui-look-and-feel** §0.
 - **The value's kind picks the control.** Short text → a field sized to it; long text → a box that grows; yes/no → two buttons; one of ≤ 3 short → segmented;
   one of many → a menu; several → chips with × + Add; date, amount, salary, duration, link, per country, language + level, range → `answerControl(formatFor(...))`
-  (`renderer/question-control.js`). Never prose in a text box: a value is split into its parts, the rest is a note.
+  (`renderer/question-control.js`). **Filters: any of several → the multi-select** (`renderer/multi-select.js`: a button, a checkbox list with counts and Clear, ticked
+  together = union; the Jobs Show menu, `jobs-filters.js`; owner, 24 Oct 2026: a chip row of filters becomes one multiple dropdown). Never prose in a text box: a value is split into its parts, the rest is a note.
 - **Read views are rows and chips, never prose bullets.** Label → value rows (`.summary-rows`), several values as chips, a missing one as `pill('Not set', 'warn')` with its action.
 - **A note for the AI** (a date it was confirmed, "use the closest option") is a muted line under its value, never inside it; edit: a folded "Note for the AI".
 - **Chips are values, pills are status, tags are labels.** `chip(text, {detail, tone, onRemove})` (components.js) shows a value as a person writes it: no quotes,

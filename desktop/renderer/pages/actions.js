@@ -1,4 +1,5 @@
 // Actions: every Telegram command.
+import {setFilters} from './jobs-filter-menu.js';
 import {ai} from '../ai-name.js';
 import {shared} from './shared.js';
 import {COMMAND_KIND, openActivity, refreshActivity} from './activity.js';
@@ -29,8 +30,8 @@ export async function init() {
     const command = button.dataset.command;
     if (COMMAND_FILTER[command]) {
       openView('jobs');
-      $('filter-status').value = COMMAND_FILTER[command];
-      $('filter-status').dispatchEvent(new Event('change'));
+      setFilters([COMMAND_FILTER[command]]);
+      document.dispatchEvent(new CustomEvent('jobs-rerender'));
       return;
     }
     // Only a task that runs in the background opens Recent activity (its row and log); an instant answer

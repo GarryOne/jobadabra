@@ -22,6 +22,8 @@ export {openLogFor} from './jobs-lead.js';
 import {wireLead} from './jobs-lead.js';
 import {loadQuestions} from './jobs-questions.js';
 import {wireViews} from './jobs-views.js';
+import {setFilters, wireFilterMenu} from './jobs-filter-menu.js';
+import {soleFilter} from '../jobs-filters.js';
 import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
@@ -181,7 +183,7 @@ export function showJobsData(data) {
 // A list of applications from elsewhere (a Focus funnel step): only those, whatever their status.
 export function showJobsIn(label, urls, from = '') {
   jobsState.statFilter = {label, from, urls: new Set((urls || []).map(fullKey))};
-  $('filter-status').value = 'all';
+  setFilters(['all']);
   $('filter-text').value = '';
   renderJobs();
 }
@@ -212,10 +214,11 @@ export async function init() {
   $('jobs-talking').addEventListener('toggle', event => { try { localStorage.setItem(TALKING_OPEN, event.target.open ? '1' : '0'); } catch {} renderTalkingBar(); });
   $('jobs-stuck-show').addEventListener('click', () => {
     jobsState.statFilter = 'stuck';
-    $('filter-status').value = 'all';
+    setFilters(['all']);
     renderJobs();
   });
   $('sort-by').addEventListener('change', renderJobs);
+  wireFilterMenu();   // the one Show menu (pages/jobs-filter-menu.js): every filter, ticked together
   wireViews();   // saved views + List | Board (pages/jobs-views.js): they ask for a render through this event
   document.addEventListener('jobs-rerender', () => renderJobs());
   $('jobs-filter-clear').addEventListener('click', () => { jobsState.statFilter = null; renderJobs(); });
@@ -224,10 +227,10 @@ export async function init() {
   // clicking the active one again, or Total matches, shows every match.
   document.querySelectorAll('[data-stat]').forEach(card => card.addEventListener('click', () => {
     const kind = card.dataset.stat;
-    const next = statClick(kind, typeof jobsState.statFilter === 'string' ? jobsState.statFilter : null, $('filter-status').value);
+    const next = statClick(kind, typeof jobsState.statFilter === 'string' ? jobsState.statFilter : null, soleFilter(jobsState.filters));
     jobsState.statFilter = next.stat;
-    if (next.stat) jobsState.view = null;   // one narrowing at a time: a counter replaces a saved view
-    $('filter-status').value = next.filter;
+    setFilters([next.filter]);   // a counter is a selection of the menu: its own list
+
     if (kind === 'companies' && jobsState.statFilter) $('sort-by').value = 'company';
     renderJobs();
   }));
@@ -250,7 +253,7 @@ export async function init() {
     message('import-message', result.text, result.ok ? 'ok' : 'error');
     if (!result.ok) return;
     $('import-url').value = '';
-    $('filter-status').value = 'open';
+    setFilters(['open']);
     await linkToJob('import-dialog', 'import-message', result);
   });
   // Applied elsewhere: tracked in Notion like /add, then shown in the list as Applied.
@@ -296,13 +299,12 @@ export async function init() {
     $('applied-url').value = ''; $('applied-approx').checked = false; setAppliedOrigin('outbound');
     ['applied-title', 'applied-company', 'applied-text'].forEach(id => { $(id).value = ''; });
     $('applied-manual').hidden = true;
-    $('filter-status').value = 'applied';  // show it where it now is
+    setFilters(['applied']);  // show it where it now is
     await linkToJob('applied-dialog', 'applied-message', result);
   });
   wireLead();
   document.querySelectorAll('[data-density]').forEach(button => button.addEventListener('click', () => setDensity(button.dataset.density)));
   try { setDensity(localStorage.getItem('jobsDensity') || 'comfortable'); } catch { setDensity('comfortable'); }
-  $('filter-status').addEventListener('change', renderJobs);
   $('filter-text').addEventListener('input', renderJobs);
 
   // ---------- questions to answer once ----------

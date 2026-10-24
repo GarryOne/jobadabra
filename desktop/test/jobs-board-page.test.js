@@ -17,17 +17,19 @@ test('a drop goes through the app\'s own stage paths (setStatus, setStage → th
   assert.match(handler, /appLog\('outcome'/, 'logged');
 });
 
-test('renderJobs narrows by the saved view and ends by painting the chips and the board', () => {
+test('renderJobs narrows by the ticked filters and ends by painting the board', () => {
   const render = read('renderer/pages/jobs-render.js');
-  assert.match(render, /jobsState\.view \? shared\.allJobs\.filter\(job => inView\(job, jobsState\.view\)\)/);
-  assert.match(render, /paintViews\(\(counted \|\| shared\.allJobs\)\.filter\(job => columnOf\(job\) && matches\(job, text\)\)\);[^\n]*\n\}/);
-  assert.match(read('renderer/pages/jobs.js'), /if \(next\.stat\) jobsState\.view = null;/, 'a counter replaces a view');
+  assert.match(render, /inFiltersLoose\(job, filters, now\) : inFilters\(job, filters, now\)/);
+  assert.match(render, /paintViews\(\(counted \|\| shared\.allJobs\)\.filter\(job => columnOf\(job\) && \(counted \|\| !onBoard\.length \|\| inFilters\(job, onBoard, now\)\) && matches\(job, text\)\)\);[^\n]*\n\}/);
+  assert.match(read('renderer/pages/jobs.js'), /setFilters\(\[next\.filter\]\)/, 'a counter is a selection of the menu');
 });
 
-test('the markup: chips above the list, the List | Board toggle, the board above the list and its panel', () => {
+test('the markup: the Show menu button, no chip row, the List | Board toggle, the board above the list and its panel', () => {
   const html = read('renderer/index.html');
   const at = id => html.indexOf(`id="${id}"`);
-  for (const id of ['jobs-views', 'jobs-mode', 'jobs-board', 'jobs-split']) assert.ok(at(id) > 0, id);
+  assert.ok(at('jobs-views') < 0, 'the chip row is gone');
+  assert.match(html, /<button type="button" class="select-button" id="filter-status"/);
+  for (const id of ['jobs-mode', 'jobs-board', 'jobs-split']) assert.ok(at(id) > 0, id);
   assert.ok(at('jobs-board') < at('jobs-split'), 'the board is not inside the list and job panel');
   assert.match(html, /data-mode="list"[^>]*>List<\/button><button data-mode="board"[^>]*>Board<\/button>/);
   // 15 columns scroll sideways: the scrollbar is always shown (components.css .shows-scrollbar), or the last column reads as cut off.
@@ -35,16 +37,16 @@ test('the markup: chips above the list, the List | Board toggle, the board above
   assert.match(read('renderer/components.css'), /\.shows-scrollbar::-webkit-scrollbar \{ width: 8px; height: 8px; \}/);
 });
 
-test('⌘K lists both modes and every saved view chip from the page', () => {
+test('⌘K lists both modes and every filter of the Show menu', () => {
   const nav = read('renderer/pages/nav.js');
   assert.match(nav, /querySelectorAll\('\[data-mode\]'\)\.forEach/);
-  assert.match(nav, /querySelectorAll\('#jobs-views \[data-view\]'\)\.forEach/);
+  assert.match(nav, /FILTER_OPTIONS\.forEach\(option => add\('Jobs', `Jobs filter: \$\{option\.label\}`/);
 });
 
 // The board's jobs and its columns follow one rule (jobs-board-rules.js columnOf): a job marked Applied only on its Job Matches row was dropped by
 // a second `job.stage` filter before the columns ever saw it (9 Oct 2026, the UI audit).
 test('the jobs the board is given are the ones it has a column for, not only those with a Stage', () => {
   const render = read('renderer/pages/jobs-render.js');
-  assert.match(render, /paintViews\(\(counted \|\| shared\.allJobs\)\.filter\(job => columnOf\(job\) && matches\(job, text\)\)\)/);
+  assert.match(render, /paintViews\(\(counted \|\| shared\.allJobs\)\.filter\(job => columnOf\(job\) && \(counted/);
   assert.doesNotMatch(render, /paintViews\([^)]*job\.stage &&/);
 });

@@ -8,6 +8,7 @@ import {POSTING, pause} from './apply-fixtures.mjs';
 import {addKitJob, removeJobsByUrl, tailoredFiles} from './seed-data.mjs';
 import {cvProblems} from './applycheck.mjs';
 import {readForm, readPanel} from './extension.mjs';
+import {showFilter} from './jobs-filter.mjs';
 
 export async function runCvSteps(ctx, h) {
   const {apply, cv, fail, page, panelOf, proxy} = h;
@@ -18,7 +19,7 @@ export async function runCvSteps(ctx, h) {
     await page.click('.nav[data-view="jobs"]');
     // Under "Everything", whatever filter an earlier step left on the list: this job is Opened/Form filled by now and is not under "New matches" (10 Oct 2026: Windows CI,
     // "waiting for the More actions button of E2E Greenhouse Labs" for 30 s, the list showing other jobs).
-    await page.evaluate(() => { const filter = document.getElementById('filter-status'); filter.value = 'everything'; filter.dispatchEvent(new Event('change')); });
+    await showFilter(page, 'everything');
     await page.locator('article.job-row').filter({hasText: form.company}).first().waitFor({timeout: 60000})
       .catch(() => { throw new Error(`${form.company} is not in the Jobs list even under Everything`); });
     // The list redraws while sessions update, which closes an open ⋯ menu: open it again until the item is there.
@@ -146,7 +147,7 @@ export async function runCvSteps(ctx, h) {
     await page.reload();
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     await page.click('.nav[data-view="jobs"]');
-    await page.evaluate(() => { const filter = document.getElementById('filter-status'); filter.value = 'saved'; filter.dispatchEvent(new Event('change')); });   // Saved jobs are not in the default "New matches"
+    await showFilter(page, 'saved');   // Saved jobs are not in the default "New matches"
     const rowText = () => page.evaluate(() => [...document.querySelectorAll('article.job-row')].filter(row => /E2E Bare/.test(row.textContent)).map(row => row.querySelector('.row-main')?.textContent.trim())[0] || '');
     for (let waited = 0; !(await rowText()) && waited < 120000; waited += 2000) await pause(2000);
     if ((await rowText()) !== 'Apply') throw new Error(`a saved job without a kit should show Apply, it shows "${await rowText()}"`);

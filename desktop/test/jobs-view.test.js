@@ -193,12 +193,12 @@ test('the Inbound counter opens the Inbound list; again shows every match; the o
   assert.equal(statPressed('inbound', null, 'everything'), false);
 });
 
-test('Jobs page: "New matches" (not "To review"), Inbound and Everything as their own menu entries', async () => {
+test('Jobs page: "New matches" (not "To review"), Inbound and Everything as options of the one Show menu', async () => {
   const fs = await import('node:fs');
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
-  const menu = html.slice(html.indexOf('<select id="filter-status"'), html.indexOf('</select>', html.indexOf('<select id="filter-status"')));
-  assert.deepEqual([...menu.matchAll(/<option value="(\w+)">([^<]+)</g)].map(m => `${m[1]}:${m[2]}`),
-    ['open:New matches', 'saved:Saved', 'applied:Applied', 'dismissed:Dismissed', 'inbound:Inbound', 'all:All matches', 'everything:Everything']);
+  const {FILTER_OPTIONS} = await import('../renderer/jobs-filters.js');
+  const labels = FILTER_OPTIONS.map(option => option.label);
+  for (const wanted of ['New matches', 'Saved', 'Applied', 'Dismissed', 'Inbound', 'All matches', 'Everything']) assert.ok(labels.includes(wanted), wanted);
   assert.ok(!html.includes('To review'));
   const cards = [...html.matchAll(/data-stat="(\w+)"/g)].map(m => m[1]);
   assert.deepEqual(cards, ['applied', 'waiting', 'interviews', 'closed', 'total', 'high', 'inbound', 'companies']);

@@ -13,6 +13,7 @@ import urllib.request
 from pathlib import Path
 
 URL = 'https://www.jobpilotto.top/search-lab/session-checks'
+USER_AGENT = 'jobadabra-session-check/1'   # Cloudflare refuses Python's default agent with error 1010 before the Worker sees the request (24 Oct 2026)
 KEYCHAIN = ('job-pilotto', 'job-pilotto.site.session_checks_key')
 BOARD = re.compile(r'Job boards found: (?P<name>.+?) (?P<listed>\d+) job\(s\), (?P<relevant>\d+) relevant(?: \((?P<note>[^)]*)\))?\s*$')
 OWN_SECTION = re.compile(r'Job boards found: (?P<name>.+?) read from its own section')
@@ -65,7 +66,7 @@ def main(argv):
     if args.dry:
         print(json.dumps(body, ensure_ascii=False, indent=2))
         return 0
-    request = urllib.request.Request(URL, data=json.dumps(body).encode(), method='PUT', headers={'Authorization': f'Bearer {key()}', 'Content-Type': 'application/json'})
+    request = urllib.request.Request(URL, data=json.dumps(body).encode(), method='PUT', headers={'Authorization': f'Bearer {key()}', 'Content-Type': 'application/json', 'User-Agent': USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=30) as answer:
             print(answer.status, answer.read().decode())

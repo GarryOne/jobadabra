@@ -47,6 +47,11 @@ class PublishTests(unittest.TestCase):
         self.assertIn('job-pilotto.site.session_checks_key', text)
         self.assertNotIn('print(key', text)
 
+    def test_the_request_names_itself_because_cloudflare_refuses_the_default_agent(self):
+        text = (ROOT / 'tools' / 'persona-search' / 'publish-session-check.py').read_text(encoding='utf-8')
+        self.assertIn("'User-Agent': USER_AGENT", text)
+        self.assertTrue(publish.USER_AGENT.startswith('jobadabra-'))
+
 
 if __name__ == '__main__':
     unittest.main()

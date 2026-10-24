@@ -1,0 +1,108 @@
+"""The central scout's board pass: per thin country, the boards that give jobs located there, published as board facts.
+Why: 24 Oct 2026 (owner, "A. Central scout measures boards"): a first search in a country with no installs (Moldova) found 7 to 22 local jobs depending on
+which boards the AI happened to name, because the shared-board facts need installs in the country. One country a run: the AI proposes its boards
+(board_ideas), the engine reads each by rules only (no AI page reader: the owner chose "rules only" on 24 Oct 2026), the jobs whose place is in that country
+are counted, and a board with MIN_LOCAL of them is kept as a fact. The index publish sends the facts (site: api/employers.js board_facts), where they are
+served as the same board fact installs share. Never worldwide remote: only a job whose place names the country counts.
+Tests: tests/test_scout_boards.py."""
+import time
+from datetime import datetime, timedelta, timezone
+
+from . import pool_tags, role_kinds, scout_cells
+
+MIN_LOCAL = 3           # local jobs a board needs before it is published (the site refuses fewer)
+FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
+MAX_BOARDS = 12         # boards read per country and run
+BUDGET_S = 240          # the pass gives up starting new boards after this long
+KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
+RECENT = 4              # countries done lately wait their turn
+
+
+def ensure(db):
+    db.execute('CREATE TABLE IF NOT EXISTS scout_board_facts (host TEXT NOT NULL, country TEXT NOT NULL, url TEXT NOT NULL, families TEXT NOT NULL, '
+               'local_jobs INTEGER NOT NULL, read_at TEXT NOT NULL, PRIMARY KEY (host, country))')
+
+
+def next_country(db):
+    """The European country (pool id) whose boards are read next: the thinnest by employers with local jobs, not done lately; None without counts."""
+    counted, recent = scout_cells._meta(db, 'country_totals', None), scout_cells._meta(db, 'boards_aimed', [])
+    if not isinstance(counted, dict):
+        return None
+    thin = sorted((counted.get(c, 0), scout_cells.EUROPE.index(c), c) for c in scout_cells.EUROPE if c not in recent)
+    if not thin:
+        scout_cells._set(db, 'boards_aimed', [])
+        db.commit()
+        return None
+    country = thin[0][2]
+    scout_cells._set(db, 'boards_aimed', (recent + [country])[-RECENT:])
+    db.commit()
+    return country
+
+
+def search_for(db, country):
+    """The search the boards are proposed and read for: software and the country's thinnest kinds (by the central list's counts), the whole country."""
+    cells = scout_cells._meta(db, 'cells', None)
+    cells = cells if isinstance(cells, dict) else {}
+    thin = sorted(scout_cells.AIMED, key=lambda kind: (cells.get(f'{kind}|{country}', 0), scout_cells.AIMED.index(kind)))[:KINDS_PER_COUNTRY - 1]
+    words = [word.strip() for kind in ['software', *thin] for word in role_kinds.WORK[kind].split(',') if word.strip()]
+    return {'role_keywords': list(dict.fromkeys(words)),
+            'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
+
+
+def measure(board, jobs, country):
+    """The fact for one board's read: jobs whose place is in `country` (their role families by title), or None under MIN_LOCAL."""
+    places = list(dict.fromkeys(str(job.get('location') or '') for job in jobs if job.get('location')))
+    where = {place: country in pool_tags.countries([place]) for place in places} if places else {}
+    local = [job for job in jobs if where.get(str(job.get('location') or ''))]
+    if len(local) < MIN_LOCAL:
+        return None
+    titles = list(dict.fromkeys(str(job.get('title') or '') for job in local if job.get('title')))[:40]
+    families = pool_tags.families(titles) if titles else []
+    return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
+
+
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print):
+    """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
+    from .ai import board_ideas
+    from .sources import careers, found_boards
+    ensure(db)
+    country = next_country(db)
+    if not country:
+        return []
+    try:
+        search = search_for(db, country)
+        proposed = (ideas or board_ideas.ideas)(search)[:MAX_BOARDS]
+        began, kept, unread = clock(), [], []
+        reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
+        try:
+            for board in proposed:
+                if clock() - began > BUDGET_S:
+                    break
+                jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
+                fact = measure(board, jobs, country)
+                if fact:
+                    kept.append(fact)
+                elif state in ('empty', 'browser'):
+                    unread.append(board['host'])
+        finally:
+            careers.READER = reader
+        stamp = datetime.now(timezone.utc).date().isoformat()
+        for fact in kept:
+            db.execute('INSERT OR REPLACE INTO scout_board_facts (host, country, url, families, local_jobs, read_at) VALUES (?, ?, ?, ?, ?, ?)',
+                       (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp))
+        db.commit()
+        out(f"Board pass: {pool_tags.COUNTRIES[country]}: {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
+            + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else ''))
+        return kept
+    except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
+        out(f'Warning: board pass skipped: {type(error).__name__}: {error}')
+        return []
+
+
+def facts(db, today=None):
+    """Every fact measured within FACT_DAYS, as the index publish sends them: [{host, url, country, families, local_jobs}]."""
+    ensure(db)
+    cutoff = ((today or datetime.now(timezone.utc).date()) - timedelta(days=FACT_DAYS)).isoformat()
+    return [{'host': host, 'url': url, 'country': country, 'families': families.split(','), 'local_jobs': jobs}
+            for host, country, url, families, jobs in db.execute(
+                'SELECT host, country, url, families, local_jobs FROM scout_board_facts WHERE read_at >= ? AND local_jobs >= ? ORDER BY country, host', (cutoff, MIN_LOCAL))]

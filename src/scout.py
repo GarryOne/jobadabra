@@ -456,15 +456,20 @@ def main():
             with scout_overrun.phase(f'checking every feed for the index'):
                 feeds_out, failed = build_index(db, json.loads((CONFIG / 'sources.json').read_text()), contributions=contributions, workers=24,
                                                 boards=json.loads(SEEDS.read_text()).get('boards', []), swiss_titles=swiss_titles, deadline=deadline, carry=True)
-            from . import scout_cells
+            from . import scout_boards, scout_cells
             scout_cells.keep(db, feeds_out)   # the next run's ideas aim at the thinnest kind × country
             print(scout_cells.coverage_line(scout_cells.totals(feeds_out)))
+            board_facts = []
+            if time.monotonic() < scout_overrun.publish_deadline(started) - 5 * 60:   # the board pass needs ~2-4 minutes before the upload's reserve
+                with scout_overrun.phase('board pass (job boards of a thin country)'):
+                    scout_boards.run(db)
+            board_facts = scout_boards.facts(db)   # everything measured in the last 30 days, not only this run's country
             with scout_overrun.phase('market coverage and stats'):
                 stats = central_stats(db, feeds_out, market_coverage(swiss_titles, deadline=deadline), run=run_record(summary, results))
             with scout_overrun.phase('reading the job boards'):
                 boards = board_stats(fetch_boards(index_url, key))
             with scout_overrun.phase('uploading the index'):
-                count = publish_index(feeds_out, index_url, key, stats=stats, nofeed=dead_ends(db, shared_dead), boards=boards)
+                count = publish_index(feeds_out, index_url, key, stats=stats, nofeed=dead_ends(db, shared_dead), boards=boards, board_facts=board_facts)
             print(publish_summary(feeds_out, contributions, boards))
             print('Feeds by system: ' + ', '.join(f'{system} {n}' for system, n in Counter(f['ats'] for f in feeds_out).most_common()))
             print('Market coverage (our index / jobs.ch): ' + ', '.join(f"{m['term']} {m['ours']}/{m['jobsch']}" for m in stats['market']))

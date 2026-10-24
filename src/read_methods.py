@@ -73,6 +73,15 @@ def mark(method):
         read.method = method
 
 
+def found(read, feed):
+    """The scout's find_feed answer (ats, slug, jobs) or None for the source being read: a miss is not a read, a careers page is a page, not a feed."""
+    read.failed = not feed
+    if feed:
+        read.jobs = len(feed[2] or [])
+        if feed[0] == 'careers':
+            mark('plain_page')
+
+
 def ai(usd):
     """AI cost of a source-finding call made while a source is being read (src/ai/cost.py side)."""
     read = _current.get()

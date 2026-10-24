@@ -117,12 +117,13 @@ def _read(board, search, fetch, route, early, show=None):
     return jobs, state, None
 
 
-def _retry_when_unjudged(entry, relevant):
-    """The other ways found nothing relevant while the refresh's time for sorting titles was spent: the titles were not judged, not rejected (24 Oct 2026:
-    a Moldovan board's IT field was read at 163 s, "Time is up for this refresh: 10 title(s) left", 0 relevant, and the board was not looked at again
-    for that link). The board is tried again next refresh; the pages it read are kept (page_reads), so that costs no model."""
+def _retry_when_unjudged(entry, relevant, ai_failed=False):
+    """The other ways found nothing relevant while the refresh's time for sorting titles was spent, or an AI call of theirs failed: the titles or the
+    link were not judged, not rejected (24 Oct 2026: a Moldovan board's IT field was read at 163 s, "Time is up for this refresh: 10 title(s) left",
+    0 relevant, and the board was not looked at again for that link; check #10, Rabota: "decide board field link: CliError", 3 jobs, never retried).
+    The board is tried again next refresh; the pages it read are kept (page_reads), so that costs no model."""
     from .. import time_budget
-    if not relevant and time_budget.over('titles'):
+    if not relevant and (ai_failed or time_budget.over('titles')):
         entry.pop('form_for', None)
 
 
@@ -402,8 +403,10 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             board_yield.record(entry, 0, 0, 'empty')
             return
         if not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
+            from ..ai import decide
+            failed = decide.FAILED[0]
             found, state, relevant = _another_way(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
-            _retry_when_unjudged(entry, relevant)
+            _retry_when_unjudged(entry, relevant, decide.FAILED[0] > failed)
         elif (0 < len(relevant) < FEW_RELEVANT and not (early or route) and state != 'browser' and (board.get('source_kind') or 'general') == 'general'
               and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)

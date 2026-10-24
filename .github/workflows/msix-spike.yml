@@ -19,6 +19,8 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      EXTENSION_VERSION: '0'   # the checkout is shallow: stage.mjs refuses to count the extension's commits there (desktop.yml passes the real one)
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

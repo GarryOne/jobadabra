@@ -60,13 +60,15 @@ jobs:
         shell: pwsh
         run: |
           $pkg = Get-AppxPackage Jobadabra.Spike
-          $family = $pkg.PackageFamilyName
-          Start-Process explorer.exe "shell:AppsFolder\$family!Jobadabra"
+          $manifest = [xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))
+          $appId = $manifest.Package.Applications.Application.Id
+          $exe = $manifest.Package.Applications.Application.Executable
+          "manifest: app id $appId, executable $exe" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          Get-ChildItem $pkg.InstallLocation -Recurse -Filter *.exe -Depth 2 | Select-Object -First 8 -ExpandProperty FullName
+          Start-Process explorer.exe "shell:AppsFolder\$($pkg.PackageFamilyName)!$appId"
           Start-Sleep -Seconds 25
-          $running = Get-Process Jobadabra -ErrorAction SilentlyContinue
-          $listeners = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '127.0.0.1' }
-          "### MSIX spike" | Out-File $env:GITHUB_STEP_SUMMARY -Append
-          "- package: $($pkg.PackageFullName)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
-          "- Jobadabra processes after 25 s: $(@($running).Count)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
-          "- local listeners: $(@($listeners).Count)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          $running = Get-Process | Where-Object { $_.Path -like '*WindowsApps*Jobadabra.Spike*' }
+          "processes from the package after 25 s: $(@($running).Count) ($((@($running) | ForEach-Object Name | Sort-Object -Unique) -join ', '))" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "local listeners: $(@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '127.0.0.1' }).Count)" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          Get-WinEvent -LogName 'Microsoft-Windows-AppXDeploymentServer/Operational','Application' -MaxEvents 15 -ErrorAction SilentlyContinue | Where-Object { $_.LevelDisplayName -in 'Error','Warning' } | Select-Object -First 8 | Format-List TimeCreated, ProviderName, Message
           if (-not $running) { Write-Error 'The packaged app did not start'; exit 1 }

@@ -20,7 +20,7 @@ const shortcutFolders = [path.join(os.homedir(), 'Desktop'), path.join(process.e
 const state = () => ({
   exes: fs.readdirSync(programs).flatMap(dir => { try { return fs.readdirSync(path.join(programs, dir)).filter(name => name.endsWith('.exe') && /^(Job Pilotto|Jobadabra)\.exe$/.test(name)).map(name => path.join(dir, name)); } catch { return []; } }),
   shortcuts: shortcutFolders.flatMap(dir => { try { return fs.readdirSync(dir).filter(name => /^(Job Pilotto|Jobadabra)\.lnk$/.test(name)).map(name => path.join(path.basename(dir), name)); } catch { return []; } }),
-  uninstall: ps("Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'Job Pilotto|Jobadabra' } | ForEach-Object { $_.DisplayName }").split(/\r?\n/).filter(Boolean),
+  uninstall: ps(`Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match '${LEGACY_NAME}|Jobadabra' } | ForEach-Object { $_.DisplayName }`).split(/\r?\n/).filter(Boolean),
 });
 
 execFileSync(path.resolve(oldInstaller), ['/S'], {stdio: 'inherit', timeout: 5 * 60 * 1000});
@@ -39,8 +39,8 @@ say(`after: ${JSON.stringify(after)}`);
 const problems = [];
 if (after.uninstall.length !== 1) problems.push(`${after.uninstall.length} uninstall entries after the upgrade (${after.uninstall.join(', ')}), expected 1`);
 if (after.exes.filter(exe => exe.endsWith('Jobadabra.exe')).length !== 1) problems.push(`Jobadabra.exe not installed exactly once: ${after.exes.join(', ')}`);
-if (after.exes.some(exe => exe.endsWith('Job Pilotto.exe'))) problems.push(`the old Job Pilotto.exe is still installed: ${after.exes.join(', ')}`);
-if (after.shortcuts.some(link => link.endsWith('Job Pilotto.lnk'))) problems.push(`a leftover Job Pilotto shortcut: ${after.shortcuts.join(', ')}`);
+if (after.exes.some(exe => exe.endsWith(`${LEGACY_NAME}.exe`))) problems.push(`the old ${LEGACY_NAME}.exe is still installed: ${after.exes.join(', ')}`);
+if (after.shortcuts.some(link => link.endsWith(`${LEGACY_NAME}.lnk`))) problems.push(`a leftover ${LEGACY_NAME} shortcut: ${after.shortcuts.join(', ')}`);
 if (!after.shortcuts.some(link => link.endsWith('Jobadabra.lnk'))) problems.push(`no Jobadabra shortcut: ${after.shortcuts.join(', ')}`);
 if (!fs.existsSync(sentinel) || fs.readFileSync(sentinel, 'utf8') !== 'kept') problems.push(`the data folder lost its file: ${sentinel}`);
 
@@ -49,4 +49,4 @@ const latest = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.GITHUB
 if (!asset(latest, 'win32')) problems.push(`the updater finds no Windows installer in release ${latest.tag_name}`);
 
 if (problems.length) throw new Error(`upgrade proof failed:\n- ${problems.join('\n- ')}`);
-say('upgrade ok: one uninstall entry, no leftover Job Pilotto exe or shortcut, data folder kept, the updater still finds the Windows installer');
+say('upgrade ok: one uninstall entry, no leftover old-name exe or shortcut, data folder kept, the updater still finds the Windows installer');

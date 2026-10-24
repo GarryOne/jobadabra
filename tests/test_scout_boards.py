@@ -98,6 +98,22 @@ class BoardPassTest(unittest.TestCase):
         self.assertNotIn('board_facts', sent[0])
         self.assertEqual(sent[1]['board_facts'][0]['host'], 'a.md')
 
+    def test_a_country_named_by_hand_is_read_and_each_board_says_listed_and_local(self):
+        """24 Oct 2026, owner: "Small step + Moldova run": the by-hand scout run picks the country; the line shows listed/local per board."""
+        self.assertEqual([scout_boards.named_country(x) for x in ('md', 'Moldova', ' moldova ', 'Narnia', '', None)], ['md', 'md', 'md', None, None, None])
+        out = []
+        reads = {'a.md': [job('Chisinau')] * 4 + [job('Paris')], 'b.md': []}
+        scout_boards.run(self.db, ideas=lambda search: [board(h) for h in reads], read_board=lambda item, *a: (reads[item['host']], 'ok', None),
+                         out=out.append, named='md')
+        self.assertIn('Board pass: Moldova: 2 boards proposed, 1 with 3+ local jobs; listed/local: a.md 5/4, b.md 0/0', out[-1])
+        self.assertIn('md', scout_cells._meta(self.db, 'boards_aimed', []))   # it counts as done: the rotation moves on
+
+    def test_the_workflow_passes_the_country_input_to_the_scout(self):
+        from pathlib import Path
+        flow = (Path(__file__).resolve().parents[1] / '.github/workflows/central-scout.yml').read_text()
+        self.assertIn('country: {description', flow)
+        self.assertIn('SCOUT_BOARD_COUNTRY: ${{ inputs.country }}', flow)
+
 
 class RealBoardIdeasTest(unittest.TestCase):
     def test_the_scouts_country_search_reaches_the_ai_with_an_empty_places_cache(self):

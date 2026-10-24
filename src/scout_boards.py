@@ -24,8 +24,19 @@ def ensure(db):
                'local_jobs INTEGER NOT NULL, read_at TEXT NOT NULL, PRIMARY KEY (host, country))')
 
 
-def next_country(db):
-    """The European country (pool id) whose boards are read next: the thinnest by employers with local jobs, not done lately; None without counts."""
+def named_country(text):
+    """The pool id of a country named by hand ("md" or "Moldova", any case), else None: the by-hand scout run's country input."""
+    wanted = str(text or '').strip().casefold()
+    return next((code for code, name in pool_tags.COUNTRIES.items() if wanted in (code, name.casefold())), None) if wanted else None
+
+
+def next_country(db, named=None):
+    """The European country (pool id) whose boards are read next: the one named by hand, else the thinnest by employers with local jobs, not done
+    lately; None without counts."""
+    if named:
+        scout_cells._set(db, 'boards_aimed', ([c for c in scout_cells._meta(db, 'boards_aimed', []) if c != named] + [named])[-RECENT:])
+        db.commit()
+        return named
     counted, recent = scout_cells._meta(db, 'country_totals', None), scout_cells._meta(db, 'boards_aimed', [])
     if not isinstance(counted, dict):
         return None
@@ -50,11 +61,16 @@ def search_for(db, country):
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
 
 
-def measure(board, jobs, country):
-    """The fact for one board's read: jobs whose place is in `country` (their role families by title), or None under MIN_LOCAL."""
+def local_of(jobs, country):
+    """The jobs whose place is in `country`."""
     places = list(dict.fromkeys(str(job.get('location') or '') for job in jobs if job.get('location')))
     where = {place: country in pool_tags.countries([place]) for place in places} if places else {}
-    local = [job for job in jobs if where.get(str(job.get('location') or ''))]
+    return [job for job in jobs if where.get(str(job.get('location') or ''))]
+
+
+def measure(board, jobs, country):
+    """The fact for one board's read: jobs whose place is in `country` (their role families by title), or None under MIN_LOCAL."""
+    local = local_of(jobs, country)
     if len(local) < MIN_LOCAL:
         return None
     titles = list(dict.fromkeys(str(job.get('title') or '') for job in local if job.get('title')))[:40]
@@ -62,7 +78,7 @@ def measure(board, jobs, country):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None):
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None):
     """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
     from .ai import board_ideas
     from .sources import careers, found_boards
@@ -70,13 +86,13 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
     if until is not None and clock() >= until:
         out('Board pass skipped: no time left before the index must be published')
         return []
-    country = next_country(db)
+    country = next_country(db, named)
     if not country:
         return []
     try:
         search = search_for(db, country)
         proposed = (ideas or board_ideas.ideas)(search)[:MAX_BOARDS]
-        began, kept, unread = clock(), [], []
+        began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
         try:
             for board in proposed:
@@ -84,6 +100,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
                     break
                 jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
                 fact = measure(board, jobs, country)
+                counts.append(f"{board['host']} {len(jobs)}/{len(local_of(jobs, country)) if jobs else 0}")
                 if fact:
                     kept.append(fact)
                 elif state in ('empty', 'browser'):
@@ -96,6 +113,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
                        (fact['host'], country, fact['url'], ','.join(fact['families']), fact['local_jobs'], stamp))
         db.commit()
         out(f"Board pass: {pool_tags.COUNTRIES[country]}: {len(proposed)} boards proposed, {len(kept)} with {MIN_LOCAL}+ local jobs"
+            + (f"; listed/local: {', '.join(counts)}" if counts else '')
             + (f"; not measured (rules could not read the page): {', '.join(unread)}" if unread else ''))
         return kept
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index

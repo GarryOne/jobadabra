@@ -464,7 +464,7 @@ def main():
             print(scout_cells.coverage_line(scout_cells.totals(feeds_out)))
             board_facts = []
             with scout_overrun.phase('board pass (job boards of a thin country)'):   # the checks stopped RESERVE_S early: it has its time, else it says so
-                scout_boards.run(db, until=scout_overrun.publish_deadline(started))
+                scout_boards.run(db, until=scout_overrun.publish_deadline(started), named=scout_boards.named_country(os.environ.get('SCOUT_BOARD_COUNTRY')))
             board_facts = scout_boards.facts(db)   # everything measured in the last 30 days, not only this run's country
             with scout_overrun.phase('market coverage and stats'):
                 stats = central_stats(db, feeds_out, market_coverage(swiss_titles, deadline=deadline), run=run_record(summary, results))

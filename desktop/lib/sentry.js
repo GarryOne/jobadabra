@@ -44,7 +44,7 @@ const normal = text => String(text ?? '').replace(/0x[0-9a-f]+|\b[0-9a-f]{8,}\b|
 export const e2eTags = (env = process.env) => (env.JOB_PILOTTO_E2E_SUITE ? {suite: env.JOB_PILOTTO_E2E_SUITE, expected: env.JOB_PILOTTO_E2E_EXPECTS_FAILURES ? 'yes' : 'no'} : {});
 
 export function buildEvent(kind, fields = {}, {release = '', environment = 'production', installId = '', platform = process.platform, os = '', now = Date.now(), trail = [], tags = {}} = {}) {
-  const message = scrub(fields.message ?? fields.error ?? fields.warning ?? fields.action ?? kind, 300);
+  const message = scrub([fields.message, fields.error, fields.warning, fields.action].find(text => String(text ?? '').trim()) || kind, 300);   // an empty string is no message (Sentry 2C: "run_failed · src.stores call:")
   const event = {
     event_id: crypto.randomBytes(16).toString('hex'), timestamp: now / 1000, platform: 'javascript', level: LEVEL[kind] || 'error',
     release, environment, user: {id: installId}, server_name: undefined,

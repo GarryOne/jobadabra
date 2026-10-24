@@ -24,9 +24,9 @@ import {causedByPlant} from './planted.js';
 // What a run that did not end with 0 reports as failed, or null for a run stopped from outside (no exit code, not the app's watchdog: the
 // person's Stop, quitting the app): 20 Oct 2026, such runs were reported as failed with their last ordinary line as the "error"
 // ("Enriched 100 of 100 job(s); 0 failed", "Shared 0 employer feeds…"). Guard: test/telemetry-run-end.test.js.
-export function runFailure({code, timedOut, tail = []}) {
+export function runFailure({code, timedOut, tail = [], errorKind = ''}) {
   if (code === null && !timedOut) return null;
-  const error = timedOut ? `stopped by the app: ${timedOut}` : [...tail].reverse().find(line => /error|exception|traceback|failed|refused/i.test(line)) || tail.at(-1) || '';
+  const error = timedOut ? `stopped by the app: ${timedOut}` : [...tail].reverse().find(line => /error|exception|traceback|failed|refused/i.test(line)) || tail.at(-1) || errorKind || `exit ${code}, no error line`;   // errorKind: a run whose output is private (a store call) has no tail (Sentry 2C)
   return {error, ...(timedOut ? {timedOut} : {}), cutOff: /cut off|max_tokens|Unterminated string/i.test(tail.join(' '))};
 }
 
@@ -83,7 +83,7 @@ export function registerTelemetryHandlers(ctx) {
     onSearchDone(info => { void reportSearch(storage, telemetry, info); });   // one report per finished Find jobs run (lib/search-report.js)
     server.setAppliedHook(info => track('applied', info));
     app.on('before-quit', () => { void analytics?.flush(); });
-    pipeline.onRunEnd(({args, code, seconds, tail, timedOut, result}) => {
+    pipeline.onRunEnd(({args, code, seconds, tail, timedOut, result, errorKind}) => {
       telemetry.countRun(code === 0);  // the health line's runsOk / runsFailed (release check evidence)
       if (args[0] === 'src' && ['daily', 'check'].includes(args[1])) {
         const searched = args.includes('--mode') ? args[args.indexOf('--mode') + 1] : '';
@@ -101,7 +101,7 @@ export function registerTelemetryHandlers(ctx) {
         if (warning) telemetry.record('run_warning', {job, seconds, warning, count: result.warnings.length});
         return;
       }
-      const failure = runFailure({code, timedOut, tail});
+      const failure = runFailure({code, timedOut, tail, errorKind});
       if (failure) telemetry.record('run_failed', {job, code, seconds, ...failure, tail: tail.slice(-5)});
     });
     server.setFormIssueHandler(fields => {

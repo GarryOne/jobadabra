@@ -42,6 +42,9 @@ export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The
 // `logArgs`: what the logs and the run-end listeners see instead of `args` (a store call's arguments are the person's data). `privateOutput`:
 // stdout is the caller's alone, never written to engine.log, onLine, the tail or a report (a store call's answer is the person's records;
 // logs say identities, never content). stderr is still logged: it is the engine's own words.
+// The type of a private run's failure ("OperationalError" of {"error": "OperationalError: …"}); its message may hold the person's data, so only the type is kept.
+export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';
+
 export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false} = {}) {
   if (isDemo() && demoSearch.isSearchRun(args)) return demoSearch.play(onLine);   // Find jobs in the demo: the scripted search (lib/demo-search.js)
   if (isDemo() && demoSearch.isQuietStep(args)) return Promise.resolve({code: 0, stdout: ''});
@@ -102,7 +105,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
       if (result && code !== 0) result.ok = false;
       engineLog.end({code, seconds, runId});
       appLog('run', `end: python -m ${shown.join(' ')} -> exit ${code} in ${seconds}s`, {run_id: runId, tail: tail.slice(-3)});
-      for (const listener of runEnd) { try { listener({args: shown, code, seconds: Math.round((Date.now() - started) / 1000), tail: [...tail], runId, timedOut, result}); } catch {} }
+      for (const listener of runEnd) { try { listener({args: shown, code, seconds: Math.round((Date.now() - started) / 1000), tail: [...tail], runId, timedOut, result, errorKind: privateOutput && code ? errorKindOf(stdout) : ''}); } catch {} }
       // Killed (by the watchdog, or from outside: no exit code), so it could not close its own row.
       if ((timedOut || exitCode === null) && rowUrl) {
         const reason = timedOut ? stoppedReason(timedOut) : 'Stopped before it finished. What it saved is kept; the next run continues.';

@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {sourcesCard} from '../renderer/coverage-card.js';
+import {keySources} from '../renderer/key-sources.js';
+keySources.offered = true;   // these tests are about the source rows themselves; they are hidden by default (key-sources.js)
 
 const verdict = {at: '2026-10-06T19:51', sources: [
   {id: 'aggregators', name: 'Adzuna and Jooble', effort: 'Two free keys, about 3 minutes', gain: 'job search engines across all trades and countries'},

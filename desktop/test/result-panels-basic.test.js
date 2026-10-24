@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {KEY_SOURCES_OFFERED, KEY_SOURCE_IDS, offered} from '../renderer/key-sources.js';
+import {keySources, KEY_SOURCE_IDS, offered} from '../renderer/key-sources.js';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const CARDS = ['activity-render.js', 'activity-run-card.js', 'activity-few-jobs.js', 'activity-basics.js'].map(name => [name, read(`renderer/pages/${name}`)]);
@@ -24,7 +24,7 @@ test('no step label a user sees names scoring, and no step line carries its coun
 });
 
 test('the three API-key sources are offered nowhere while the flag is off, and Python agrees', () => {
-  assert.equal(KEY_SOURCES_OFFERED, false);
+  assert.equal(keySources.offered, false);
   for (const id of KEY_SOURCE_IDS) assert.equal(offered(id), false);
   assert.match(read('../src/coverage.py'), /^KEY_SOURCES_OFFERED = False$/m);
   assert.match(read('renderer/pages/settings.js'), /ALL_SERVICES\.filter\(service => offered\(service\.id\)\)/);

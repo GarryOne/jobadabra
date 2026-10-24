@@ -82,7 +82,7 @@ def decide(titles, search, client=None, local=False):
     late = [0]   # titles of batches not started: the search's time was up (src/time_budget.py); the next search asks about them
 
     def one(batch):
-        if budget.over('titles', key=batch[0]) and not (local and forced and sure.issuperset(batch)):
+        if budget.over('titles', key=batch[0]) and not (local and (sure.issuperset(batch) and forced or budget.local_titles(len(batch)) >= len(batch))):
             with lock:
                 late[0] += len(batch)
             return

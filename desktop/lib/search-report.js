@@ -2,6 +2,7 @@
 // (src/search_report.py: counts and seconds), this file keeps only the listed fields, adds the nth search and the runs until the first 70+, and records it as
 // a technical report (kind "search", so the Technical reports switch decides and the last 20 stay visible in Settings). Never a job, title, company, link,
 // CV, name or typed word; the one place string is a city candidate the site shows only when 3+ installs share it.
+// Read counts: read_<method>_<measure>, five method names, never a host, URL or company.
 // Guarded by: test/search-report.test.js (the record has only listed fields: a new field fails it until it is listed here and on the privacy page).
 import {engineOf} from './ai/names.js';
 import {run} from './pipeline-run.js';
@@ -11,6 +12,7 @@ import {log as appLog} from './log.js';
 const count = v => Number.isInteger(v) && v >= 0 && v < 1e6;
 const oneOf = list => v => list.includes(v);
 export const FAMILIES = ['software', 'sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare', 'creative_media', 'finance_admin', 'education', 'trades', 'other'];   // src/role_kinds.py KINDS (test keeps them equal)
+export const READ_METHODS = ['feed_api', 'plain_page', 'ai_board', 'browser', 'extension_tab'], READ_MEASURES = ['sources', 'jobs', 's', 'ai_cents'];   // src/read_methods.py (test keeps them equal)
 export const FIELDS = {
   family: oneOf(FAMILIES),
   country: v => /^[A-Z]{2}$/.test(v),
@@ -20,6 +22,7 @@ export const FIELDS = {
   engine: oneOf(['api', 'cli', 'openai', 'codex']),
   trigger: oneOf(['first', 'you', 'schedule', 'telegram', 'other']),
   result: oneOf(['done', 'failed', 'stopped']),   // a search that did not finish sends only this, its engine and its trigger
+  ...Object.fromEntries(READ_METHODS.flatMap(method => READ_MEASURES.map(measure => [`read_${method}_${measure}`, count]))),   // how its sources were read, per fixed method name
 };
 
 // The report from the engine's measured record plus the app's own facts; unlisted or invalid fields are left out.

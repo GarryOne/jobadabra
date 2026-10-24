@@ -54,8 +54,9 @@ class StatsTests(unittest.TestCase):
         db.execute("INSERT INTO scout_meta VALUES ('ideas_cell', 'logistics|pl')")
         from datetime import datetime
         run = scout.run_record({'harvested': 7, 'checked': 40}, [({}, {'status': 'found'}), ({}, {'status': 'none'})], at=datetime(2026, 10, 19, 22, 20))
-        self.assertEqual(scout.central_stats(db, [], run=run)['run'],
-                         {'at': '2026-10-19T22:20', 'added': 7, 'checked': 40, 'found': 1, 'cell': 'logistics|pl'})
+        shown = scout.central_stats(db, [], run=run)['run']
+        self.assertEqual(set(shown.pop('reads')), {'feed_api', 'plain_page', 'ai_board', 'browser', 'extension_tab'}, 'how the run read its employers (src/read_methods.py)')
+        self.assertEqual(shown, {'at': '2026-10-19T22:20', 'added': 7, 'checked': 40, 'found': 1, 'cell': 'logistics|pl'})
         self.assertIsNone(scout.central_stats(db, [])['run'], 'no run record: the site keeps its log as it is')
 
     def test_the_numbers_travel_with_the_index(self):

@@ -9,6 +9,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections import Counter
+from . import read_methods
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
 from . import contribute, pool_tags, regions, role_kinds, scout_carry
@@ -304,7 +305,7 @@ def run_record(summary, results, at=None):
     """One central run, for /admin/scouting's run history: when, the cell its ideas aimed at, names added, employers checked and found."""
     return {'at': (at or now()).strftime('%Y-%m-%dT%H:%M'),   # no '+00:00': the site keeps runs by this exact shape (src/scouting.js)
             'added': summary.get('harvested', 0), 'checked': summary.get('checked', 0),
-            'found': sum(1 for _, outcome in results if outcome.get('status') == 'found')}
+            'found': sum(1 for _, outcome in results if outcome.get('status') == 'found'), 'reads': read_methods.snapshot()}
 
 
 def central_stats(db, feeds_out, market=(), run=None):

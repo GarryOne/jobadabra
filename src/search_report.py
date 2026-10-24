@@ -53,9 +53,20 @@ def place(search):
     return '', ''
 
 
+def reads(since):
+    """How this search's sources were read (src/read_methods.py): read_<method>_<measure> counts, plus the sites the user's own tab read since the last report."""
+    from . import read_methods
+    fields = read_methods.saved(since)
+    sites, jobs = read_methods.take_extension()
+    if sites:
+        fields = fields or {f'read_{m}_{x}': 0 for m in read_methods.METHODS for x in read_methods.MEASURES}
+        fields['read_extension_tab_sources'], fields['read_extension_tab_jobs'] = sites, jobs
+    return fields
+
+
 def build(since, db, search, wanted):
     country, city = place(search)
-    return {'family': family(search), 'country': country, 'city': city, **timings(db, since, wanted)}
+    return {'family': family(search), 'country': country, 'city': city, **timings(db, since, wanted), **reads(since)}
 
 
 def main(argv=None):

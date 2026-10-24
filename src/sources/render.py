@@ -77,6 +77,8 @@ def render(url):
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ('http', 'https') or not parts.hostname or not careers._public(parts.hostname):
         raise ValueError('not a public web address')
+    from .. import read_methods
+    read_methods.mark('browser')   # the source being read now was shown by the headless browser
     return _worker.submit(_render, url, parts).result()
 
 

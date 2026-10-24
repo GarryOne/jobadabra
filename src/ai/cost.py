@@ -65,6 +65,8 @@ def side(model, usage):
     """Count one source-finding call (no-op without usage: a test's fake model)."""
     if usage is not None and hasattr(usage, 'input_tokens'):
         add(SIDE, model, usage)
+        from .. import read_methods
+        read_methods.ai(usd(model, usage))   # the source being read, if any (src/read_methods.py)
         SIDE['done'] = SIDE.get('done', 0) + 1
 
 

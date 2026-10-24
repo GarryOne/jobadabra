@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {siteTest} from './site-private.js';
 import fs from 'node:fs';
-import {FIELDS, FAMILIES, record, reportSearch} from '../lib/search-report.js';
+import {FIELDS, FAMILIES, READ_METHODS, READ_MEASURES, record, reportSearch} from '../lib/search-report.js';
 import {create, KINDS} from '../lib/telemetry.js';
 
 const storageWith = (settings = {}) => {
@@ -21,7 +21,13 @@ test('the record keeps listed fields and drops anything else, including text and
 });
 
 test('every listed field is the one the privacy page names, and the family list equals the engine\'s', () => {
-  assert.deepEqual(Object.keys(FIELDS).sort(), ['city', 'country', 'engine', 'family', 'first_fit70_s', 'first_s', 'fit70', 'in_places', 'nth', 'result', 'runs_to_fit70', 'scored', 'tenth_s', 'trigger']);
+  const reads = READ_METHODS.flatMap(method => READ_MEASURES.map(measure => `read_${method}_${measure}`));
+  assert.deepEqual(Object.keys(FIELDS).sort(), ['city', 'country', 'engine', 'family', 'first_fit70_s', 'first_s', 'fit70', 'in_places', 'nth', 'result', 'runs_to_fit70', 'scored', 'tenth_s', 'trigger', ...reads].sort());
+  const readPy = fs.readFileSync(new URL('../../src/read_methods.py', import.meta.url), 'utf8');
+  assert.deepEqual(READ_METHODS, readPy.match(/^METHODS = \(([^)]*)\)/m)[1].match(/'(\w+)'/g).map(s => s.slice(1, -1)), 'the engine names the same methods');
+  assert.deepEqual(READ_MEASURES, readPy.match(/^MEASURES = \(([^)]*)\)/m)[1].match(/'(\w+)'/g).map(s => s.slice(1, -1)));
+  assert.equal(record({}, {read_browser_sources: 3, read_browser_host: 5, read_feed_api_s: -1}).read_browser_sources, 3);
+  assert.deepEqual(Object.keys(record({}, {read_browser_sources: 3, read_unknown_sources: 1, read_feed_api_s: -1})), ['read_browser_sources'], 'an unlisted method or a negative count is dropped');
   const py = fs.readFileSync(new URL('../../src/role_kinds.py', import.meta.url), 'utf8').match(/^KINDS = \(([^)]*)\)/m)[1].match(/'(\w+)'/g).map(s => s.slice(1, -1));
   assert.deepEqual(FAMILIES, py);
 });

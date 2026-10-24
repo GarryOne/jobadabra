@@ -1,0 +1,70 @@
+name: Spike · Windows Store package (MSIX)
+
+# By hand only (gh workflow run msix-spike.yml): does the app build as an MSIX package and start when installed from it?
+# Why (owner, 25 Oct 2026: "isn't there any way to get the app open without warnings on Windows without spending $100+?"):
+# a Microsoft Store listing is free for individuals and Microsoft re-signs the package, so Store installs never show SmartScreen.
+# This run builds the package with a throwaway identity, signs it with a self-made test certificate on the runner, installs it and
+# checks that the app stays up. Nothing is published and no secret is used; the real Store identity comes from the owner's Partner Center account.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  msix:
+    name: Build and start the MSIX
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install
+        working-directory: desktop
+        run: npm ci
+      - name: Compile · bundle Python
+        working-directory: desktop
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PYTHON_ARCH: x86_64-pc-windows-msvc
+        run: node scripts/stage.mjs --app && scripts/python.sh
+      - name: Compile · build the MSIX with a test identity
+        working-directory: desktop
+        run: |
+          npm version "0.0.1" --no-git-tag-version --allow-same-version >/dev/null
+          npx electron-builder --win appx --publish never \
+            -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
+            -c.appx.publisherDisplayName=Jobadabra -c.appx.applicationId=Jobadabra
+          ls -la dist/*.appx
+      - name: Install · sign with a test certificate and install the package
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=JobadabraSpike' -KeyUsage DigitalSignature -CertStoreLocation Cert:\CurrentUser\My -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
+          $pfx = Join-Path $env:RUNNER_TEMP 'spike.pfx'
+          Export-PfxCertificate -Cert $cert -FilePath $pfx -Password (ConvertTo-SecureString 'spike' -AsPlainText -Force) | Out-Null
+          Import-Certificate -FilePath (Export-Certificate -Cert $cert -FilePath (Join-Path $env:RUNNER_TEMP 'spike.cer')).FullName -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+          $signtool = (Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' | Sort-Object FullName | Select-Object -Last 1).FullName
+          $appx = (Get-ChildItem dist\*.appx | Select-Object -First 1).FullName
+          & $signtool sign /fd SHA256 /f $pfx /p spike $appx
+          Add-AppxPackage -Path $appx
+          Get-AppxPackage Jobadabra.Spike | Format-List Name, PackageFullName, InstallLocation, SignatureKind
+      - name: Smoke · the packaged app starts and stays up
+        shell: pwsh
+        run: |
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $family = $pkg.PackageFamilyName
+          Start-Process explorer.exe "shell:AppsFolder\$family!Jobadabra"
+          Start-Sleep -Seconds 25
+          $running = Get-Process Jobadabra -ErrorAction SilentlyContinue
+          $listeners = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '127.0.0.1' }
+          "### MSIX spike" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          "- package: $($pkg.PackageFullName)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          "- Jobadabra processes after 25 s: $(@($running).Count)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          "- local listeners: $(@($listeners).Count)" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          if (-not $running) { Write-Error 'The packaged app did not start'; exit 1 }

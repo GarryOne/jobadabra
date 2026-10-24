@@ -43,13 +43,14 @@ def _host(url):
         return ''
 
 
-def valid(board):
-    """The board in the shape the code reads, or None: https on its own host, {role} in it, nothing but the two placeholders."""
+def valid(board, listing=False):
+    """The board in the shape the code reads, or None: https on its own host, {role} in it, nothing but the two placeholders. listing: a board the
+    pool serves may be a page that lists the jobs (a section of the board, measured by the scout), so {role} is not required."""
     if not isinstance(board, dict):
         return None
     url, name = str(board.get('search_url') or '').strip(), re.sub(r'\s+', ' ', str(board.get('name') or '')).strip()[:60]
     host = _host(url.replace('{role}', 'x').replace('{place}', 'x'))
-    if not (name and url.startswith('https://') and len(url) <= 300 and '{role}' in url and host and '.' in host):
+    if not (name and url.startswith('https://') and len(url) <= 300 and ('{role}' in url or listing) and host and '.' in host):
         return None
     if set(re.findall(r'\{(\w*)\}', url)) - {'role', 'place'} or any(p in host for p in PORTALS) or any(host.endswith(o) for o in OWN_READERS):
         return None
@@ -139,7 +140,7 @@ def served(countries):
     out = []
     for host, fact in (pool_facts().get('board') or {}).items():
         if wanted & set(fact.get('countries') or []):
-            board = valid({'name': host, 'search_url': fact.get('url'), 'countries': [pool_tags.COUNTRIES.get(c, c) for c in fact['countries']]})
+            board = valid({'name': host, 'search_url': fact.get('url'), 'countries': [pool_tags.COUNTRIES.get(c, c) for c in fact['countries']]}, listing=True)
             if board and board['host'] == host:
                 cells = [cell for cell in fact.get('relevant') or [] if cell['country'] in wanted]
                 out.append({**board, **({'cells': cells} if cells else {})})
@@ -177,8 +178,10 @@ def proven(search, limit=2):
 
 
 def _merge(own, shared):
-    """Shared boards first (ranked), then Claude's own proposals; a board in both keeps its rank."""
+    """Shared boards first (ranked), then Claude's own proposals; a board in both keeps its rank and the shared link (the page measured to give
+    local jobs, maybe a section of the board), with Claude's own kinds and place words."""
     merged = {board['host']: board for board in shared}
     for board in own:
-        merged[board['host']] = {**merged.get(board['host'], {}), **board}
+        known = merged.get(board['host'], {})
+        merged[board['host']] = {**known, **board, **({'search_url': known['search_url']} if known.get('search_url') else {})}
     return list(merged.values())[:MAX_BOARDS * 2]

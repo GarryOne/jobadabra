@@ -17,7 +17,7 @@ SCORE_FIRST = False
 SCORE_OWN = 180   # seconds scoring gets of its own once placing and sorting are done (score_own)
 FLOOR = 3     # the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: "Yes, always 3"): a new user sees fits in press 1
 _scored = [0]  # scores started in this search (may_score)
-LOCAL_TITLES = 90   # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
+LOCAL_TITLES = 300  # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
 _local = [0]
 _lock = threading.Lock()
 

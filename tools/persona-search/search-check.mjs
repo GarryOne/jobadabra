@@ -1,5 +1,6 @@
 // One live job search of a fictional candidate on demand, on this Mac's Claude plan ($0, never an API key): the engine behind the skill check-job-search-locally.
-//   node tools/persona-search/search-check.mjs <finance|music|driver|sre|cluj|chisinau|random> [--seed <text>] [--dry]
+//   node tools/persona-search/search-check.mjs <finance|music|driver|sre|cluj|chisinau|random> [--seed <text>] [--dry] [--quick]
+// --quick: only the first-jobs step (~6 min): boards and local jobs, no light run, no scout (run.mjs --first-only).
 // A throwaway install (run.mjs: its own folder under the OS temp folder, no Keychain, Notion or Telegram; claude is the real install, never a wrapper that carries the owner's
 // identity: desktop/e2e/lib/real-claude.mjs). Prints the numbers of the first "Find jobs" and sets them next to this candidate's earlier local runs (~/jp-search-check/history.jsonl,
 // outside the app's folder). --dry prints the plan and touches nothing. Guard: tests/test_search_check.py.
@@ -26,7 +27,7 @@ export function plan(args, now = new Date(), tmp = os.tmpdir(), pid = process.pi
   const random = who === 'random', seed = random ? (seedAt >= 0 ? rest[seedAt + 1] : `local-${stamp}`) : null, name = random ? 'draw' : who;
   return {who, name, seed, out, tag: `check-${stamp}`,
     cv: random ? ['python3', 'tools/persona-search/draw.py', seed, out] : ['python3', 'tools/persona-search/personas.py', out],
-    run: ['node', 'tools/persona-search/run.mjs', name, out, '--presses', '1', '--fresh', '--tag', `check-${stamp}`]};
+    run: ['node', 'tools/persona-search/run.mjs', name, out, '--presses', '1', '--fresh', '--tag', `check-${stamp}`, ...(rest.includes('--quick') ? ['--first-only'] : [])]};
 }
 
 const median = list => { const sorted = list.filter(value => value != null).sort((a, b) => a - b); return sorted.length ? sorted[Math.floor((sorted.length - 1) / 2)] : null; };

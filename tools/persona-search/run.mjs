@@ -5,7 +5,8 @@
 // Keychain, Notion or Telegram; telemetry and pool sharing are off.
 //   python3 tools/persona-search/personas.py <out>            (the CVs: <out>/<name>/cv.pdf)
 //   node tools/persona-search/run.mjs <name> <out> [--presses 5] [--tag before] [--fresh] [--draft <draft.json>]
-//        [--tape <folder> --record | --replay [--wait-scale 1] [--no-live]] [--judge]
+//        [--tape <folder> --record | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only]
+// --first-only: stop after the first-jobs step (boards read, local jobs listed; ~6 min instead of 20-25): the discover, light run and scout steps are skipped (24 Oct 2026, the beyond-Moldova checks).
 // --judge: after each press, how many of the top 10 are right for the persona (judge.py, plan engine only; never on --engine api).
 // Writes <out>/<name>/draft.json, run-<press>.log and presses.jsonl (one JSON line per press: tools/persona-search/metrics.py + time).
 // --draft: the strategy from an earlier run (no AI), so two runs search for the same thing. --tape (src/search_tape.py, change 0 of the search
@@ -44,6 +45,7 @@ const lib = file => import(path.join(ROOT, 'desktop', 'lib', file));
 const {createStorage} = await lib('storage.js');
 const {ensureConfig, python} = await lib('pipeline-env.js');
 const {searchSteps} = await lib('search-steps.js');
+const {run: searchRun} = await lib('pipeline-run.js');
 const strategy = await lib('strategy.js');
 const claudeCode = await lib('claude-code.js');
 const {realClaude} = await import(path.join(ROOT, 'desktop', 'e2e', 'lib', 'real-claude.mjs'));
@@ -81,7 +83,10 @@ const failed = [];
 const done = fs.existsSync(path.join(out, 'presses.jsonl')) ? fs.readFileSync(path.join(out, 'presses.jsonl'), 'utf8').trim().split('\n').filter(Boolean).length : 0;
 for (let press = done + 1; press <= presses; press++) {
   const started = Date.now(), log = fs.createWriteStream(path.join(out, `run-${press}.log`));
-  const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you');
+  const firstOnly = process.argv.includes('--first-only');
+  let calls = 0;
+  const exec = (...args) => (firstOnly && calls++ > 0 ? Promise.resolve({code: 0}) : searchRun(...args));
+  const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you', exec);
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
   const row = {press, code, crashes, seconds: Math.round((Date.now() - started) / 1000), ...metrics(),

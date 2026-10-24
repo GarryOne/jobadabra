@@ -30,6 +30,13 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
    and quote the latest Random draw's numbers and the real installs' medians for the same role family. One line: better / same / worse, and the weakest number.
 5. A FAILED row (a step crashed) is shown as FAILED with its step, never as numbers.
 
+## Quick loop for fixes (24 Oct 2026, the beyond-Moldova checks: a full check is 20-25 min, mostly the scout and the light run)
+1. **Offline first, seconds, no AI:** save the page a board gave (`curl -sL -A "Mozilla/5.0" <url> -o <scratchpad>/x.html`) and run
+   `python3 tools/persona-search/page-probe.py <x.html> <its address>`: JSON-LD jobs, job links, next pages. Fix the reader on that page, add a fixture-shape test.
+2. **`--quick` (~6 min):** `node tools/persona-search/search-check.mjs <candidate> --quick` stops after the first-jobs step: boards proposed and read, local jobs.
+3. **Count local jobs, never "in places"** (it includes worldwide remote): the press row has `local_jobs` and `local_by_source` (metrics.py).
+4. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
+
 ## Also on CI (only when the owner asks, and asks first)
 `gh workflow run random-draw.yml` runs one Random draw on CI (~$0.85 on the Random-draws API key, a different candidate each seed). Say the cost and wait for a yes before starting it;
 add `-f seed=YYYY-MM-DD` to repeat a day.

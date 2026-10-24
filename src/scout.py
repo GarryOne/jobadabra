@@ -165,7 +165,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
     unread = []   # job systems a careers page named that could not be read: (system, why, company)
 
     done = []
-    read_methods.reset(persist=False)   # how this run reads its employers: in its run record, never the search's saved tally
+    read_methods.reset(persist=False)   # the run record's tally, never the search's saved one
 
     def check(candidate):
         try:
@@ -186,11 +186,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
         with read_methods.reading(candidate['key'], 'feed_api') as read:   # how this employer's jobs were read (src/read_methods.py)
             found = find_feed(candidate, probe, note=lambda system, slug, why: unread.append((system, why, candidate['name'])), search=search,
                               jobsch_lookup=lookup)
-            read.failed = not found
-            if found:
-                read.jobs = len(found[2] or [])
-                if found[0] == 'careers':
-                    read_methods.mark('plain_page')   # a careers page, not a job-system feed
+            read_methods.found(read, found)
         if not found:
             site = candidate.get('found_site') or candidate.get('careers') or candidate.get('website') or ''
             if candidate.get('found_site'):   # where a person would land from "<company> jobs": the address to open, for everyone after

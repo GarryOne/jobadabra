@@ -35,6 +35,16 @@ class ReadMethods(unittest.TestCase):
         self.assertEqual(snap['ai_board']['sources'], 0)
         self.assertEqual((snap['feed_api']['sources'], snap['feed_api']['jobs']), (1, 2))
 
+    def test_the_scouts_answer_sets_the_source(self):
+        with rm.reading('a', 'feed_api') as read:
+            rm.found(read, ('careers', 'x', [1, 2, 3]))
+        with rm.reading('b', 'feed_api') as read:
+            rm.found(read, ('greenhouse', 'y', [1]))
+        with rm.reading('c', 'feed_api') as read:
+            rm.found(read, None)
+        snap = rm.snapshot()
+        self.assertEqual((snap['plain_page']['sources'], snap['plain_page']['jobs'], snap['feed_api']['sources'], snap['feed_api']['jobs']), (1, 3, 1, 1))
+
     def test_a_failed_read_is_not_a_source_read(self):
         with self.assertRaises(ValueError):
             with rm.reading('a', 'feed_api'):

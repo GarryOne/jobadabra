@@ -10,7 +10,6 @@ import {search, searches} from '../lib/searches-handlers.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const demo = JSON.parse(fs.readFileSync(path.join(here, '../demo/searches.json'), 'utf8'));
-const titles = row => report(row).sections.map(section => section.title);
 
 test('only search runs are listed, newest first, at most 50', () => {
   const rows = [{id: 'a', mode: 'mail', started_at: '2026-10-25'}, ...Array.from({length: 60}, (_, i) => ({id: `r${i}`, mode: SEARCH_MODES[i % 5], started_at: `2026-09-${String(i % 28 + 1).padStart(2, '0')}`}))];

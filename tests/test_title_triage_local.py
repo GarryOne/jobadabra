@@ -45,6 +45,14 @@ class LocalFirstTest(unittest.TestCase):
         title_triage.decide(['Remote Rust Engineer'], SEARCH, client)
         self.assertEqual(client.asked, ['java developer', 'data engineer'], 'the local titles were asked, the remote one waits for the next refresh')
 
+    def test_a_local_batch_the_plan_allows_is_not_stopped_by_the_reserve(self):
+        """25 Oct 2026, Chisinau #10: the plan took all the titles (nothing forced), then the safety net (75 s kept for later steps) stopped the batch."""
+        client = Client()
+        with mock.patch.object(time_budget, 'in_calls', side_effect=lambda step, n, *a, **k: n):
+            title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
+            title_triage.decide(['Remote Rust Engineer'], SEARCH, client)
+        self.assertEqual(client.asked, ['java developer', 'data engineer'])
+
     def test_the_floor_is_the_searchs_first_titles_only(self):
         client = Client()
         titles = [f'Engineer {n}' for n in range(time_budget.LOCAL_TITLES + 30)]

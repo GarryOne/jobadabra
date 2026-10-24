@@ -5,6 +5,7 @@ import {groupWarnings, limitedJobs, newDetails, runWarningLines, stepNote} from 
 import {aiLimitHead, barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, deliveryHead, notConnectedHead, notChecked, waitedHead, stepCount} from '../run-status.js';
 import {el, moreButton, pill, tag} from '../components.js';
 import {icon} from '../icons.js';
+import {hasFullReport} from '../searches-view.js';
 import {cardText, emptyResult, markFallback, newJobsShown, parseRunMessage, plainMessage} from '../run-cards.js';
 import {parseSiteRows, parseVisits, rerunSites} from '../visits-card.js';
 import {employersAdvice} from '../onboarding.js';
@@ -287,6 +288,7 @@ export function renderActivity(fresh) {
   ].filter(Boolean).join(' · ');
   // A search that found new jobs: straight to them (newest first).
   const found = !run?.live && kindOf(run) === 'search' ? newJobsShown(run, shownText) : 0;   // the card's own count (run-cards.js)
+  show($('activity-report'), hasFullReport({...run, kind: kindOf(run)}));   // the search's full report in Reports → Searches
   show($('activity-go'), found > 0);
   $('activity-go').textContent = `View new job${found === 1 ? '' : 's'} →`;
   // The header's one visible link, then the rest under ⋯: a Notion page is the run's record, its GitHub run the build

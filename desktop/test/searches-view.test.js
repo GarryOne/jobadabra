@@ -72,3 +72,21 @@ test('the handler lists search runs without their report and log, and reads one 
   assert.equal((await search({}, 'r5', {call})).log.length > 0, true);
   assert.deepEqual(calls, [['cron_runs', 'list'], ['cron_runs', 'get']]);
 });
+
+test('every finished search run of the store has a Full report link; live runs and other kinds have none', async () => {
+  const {hasFullReport, REPORT_KINDS} = await import('../renderer/searches-view.js');
+  for (const kind of REPORT_KINDS) {
+    assert.equal(hasFullReport({kind, pageId: 'r1'}), true, kind);
+    assert.equal(hasFullReport({kind, pageId: 'r1', live: true}), false, `${kind} while it runs`);
+    assert.equal(hasFullReport({kind}), false, `${kind} without a record`);
+  }
+  for (const kind of ['mail', 'insight', 'weekly', 'kits', 'tailor', 'today']) assert.equal(hasFullReport({kind, pageId: 'r1'}), false, kind);
+});
+
+test('the link is on the Jobs find card, in the Recent activity header, and opens the report through one helper', () => {
+  const read = name => fs.readFileSync(path.join(here, '../renderer', name), 'utf8');
+  assert.match(read('pages/jobs-find.js'), /Full report →/);
+  assert.match(read('index.html'), /id="activity-report"[^>]*>Full report →/);
+  assert.match(read('pages/activity.js'), /showFullReport\(run\.pageId/);
+  assert.match(read('pages/full-report.js'), /openView\('reports'\);\s*return openSearchReport\(runId\)/);
+});

@@ -7,6 +7,7 @@ import {$, show} from './core.js';
 import {loadJobs, renderJobs} from './jobs.js';
 import {loadFocus} from './focus.js';
 import {openView} from './nav.js';
+import {showFullReport} from './full-report.js';
 import {renderSessionPage} from './session-log.js';
 import {renderDock} from './sessions.js';
 import {CHECK_MS} from '../session-state.js';
@@ -121,6 +122,10 @@ export async function init() {
     const open = $('activity-warnings-list').hidden;
     show($('activity-warnings-list'), open);
     $('activity-warnings-more').textContent = open ? 'Hide details' : `View ${$('activity-warnings-list').children.length} details`;
+  });
+  $('activity-report').addEventListener('click', () => {
+    const run = lastActivity?.runs?.find(each => each.id === detailRunId);
+    if (run?.pageId) showFullReport(run.pageId, {close: () => openActivity(false)});
   });
   $('activity-go').addEventListener('click', () => {
     openActivity(false);

@@ -9,17 +9,17 @@ permissions:
   contents: read
 jobs:
   zip:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # the version counts the extension's commits
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - run: node tools/store-zip.mjs jobadabra-extension.zip
       - run: unzip -p jobadabra-extension.zip manifest.json | node -e "const m=JSON.parse(require('fs').readFileSync(0,'utf8'));if('key' in m)process.exit(1);console.log(m.version)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: jobadabra-extension-store-zip
           path: jobadabra-extension.zip

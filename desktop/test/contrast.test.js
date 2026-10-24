@@ -53,3 +53,26 @@ test('the measure is WCAG\'s: black on white is 21:1, a mid grey ~4.5:1', () => 
   assert.equal(Math.round(ratio('#000000', '#ffffff')), 21);
   assert.ok(Math.abs(ratio('#767676', '#ffffff') - 4.54) < 0.01);
 });
+
+// The dark theme forgot the bright status tones (owner, 24 Oct 2026, the hero video: "I want a brighter green"): the score rings, marks and dots drew
+// the light theme's dark green #2e9e6a on the dark card. Every colour token now has its own dark value, or is named here as one colour in both themes.
+const SAME_IN_BOTH = new Set(['--on-accent', '--on-signal', '--signal-solid', '--amber',   // the brand amber and the text on it
+  '--rail', '--rail-hover', '--rail-active', '--rail-line', '--rail-dot', '--on-rail', '--on-rail-3',   // the side rail is dark in both themes
+  '--on-navy', '--on-navy-muted', '--on-navy-2', '--on-navy-3']);   // text on the navy surfaces, dark in both themes
+test('every colour token has a dark value, or is named as one colour in both themes', () => {
+  const darkOnly = declared(css.slice(media));
+  const missing = Object.entries(LIGHT).filter(([name, value]) => /^#[0-9a-f]{6}$/i.test(value) && !(name in darkOnly) && !SAME_IN_BOTH.has(name)).map(([name]) => name);
+  assert.deepEqual(missing, [], 'give these a value in the dark block of renderer/tokens.css (or add them to SAME_IN_BOTH with why)');
+});
+
+test('in dark, the bright status fills stand out from the card and the page, and the mark on them reads', () => {
+  const failing = [];
+  for (const tone of ['--good-bright', '--warn-bright', '--bad-bright']) {
+    for (const [what, fg, bg, min] of [['on the card', tone, '--surface', 3], ['on the page', tone, '--bg', 3], ['its mark (✓, a count)', '--on-bright', tone, 4.5]]) {
+      const measured = ratio(resolve(DARK, fg), resolve(DARK, bg));
+      if (measured < min) failing.push(`${tone} ${what}: ${measured.toFixed(2)}:1, needs ${min}:1`);
+    }
+  }
+  assert.deepEqual(failing, []);
+  assert.ok(ratio(resolve(DARK, '--good-bright'), '#2e9e6a') > 1.8, 'the dark green is clearly brighter than the light theme\'s');
+});

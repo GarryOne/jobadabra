@@ -9,6 +9,11 @@ The owner designs by mockup and judges by screenshot. A screen is done when it l
 *and* like the mockup, not when the code works. Before you say a UI change is finished, render it (below) and
 look at it.
 
+## Before the first render: open every mockup you were given (owner, 24 Oct 2026)
+Read each mockup and screenshot your brief lists (the image itself, not its description) before you write the first line of UI, and write down per mockup its
+layout parts (hero, card grid, table columns, picker, phone layout). Your render keeps each part, in our logo, tokens and type; a part you drop is named with why.
+Why: site audit A (24 Oct 2026) built Platforms and Compare from the brief's words without opening Design 01/02; the owner rejected both ("I'm not satisfied with the proposed UIs").
+
 ## First, before writing any UI: the design system (owner, 18 Oct 2026)
 `cd desktop && npm run design-system`, find the component for each value you will show, and build only from those (its "Don't / Do" pairs show what the
 owner rejected). No new look outside it; a missing part goes into the shared components first. The owner checks the result on the before/after shots.

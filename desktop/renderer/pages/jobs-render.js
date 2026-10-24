@@ -8,7 +8,7 @@ import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
 import {searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {ago, avatar, band, byFilter, byStat, inConversation, inStatus, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
+import {ago, avatar, band, byFilter, byStat, inConversation, inStatus, talkingBar, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {openActivity} from './activity.js';
 import {$, show} from './core.js';
@@ -49,14 +49,19 @@ const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
 // job in Notion (⌘-click: in a Jobadabra window), or its link when it has no page.
 // It gives way to the list whenever the list is narrowed to something (a counter or Focus step clicked, the Inbound or
 // Everything menu choice, words typed): the same jobs would show twice.
-// Folded or open as you last left it (a click on the bar).
+// Folded by default; open if you last left it open (a click on the bar).
 export const TALKING_OPEN = 'jobsTalkingOpen';
+export function renderTalkingBar() {
+  const bar = talkingBar(inConversation(shared.allJobs), $('jobs-talking').open);
+  $('jobs-talking-title').textContent = bar.title;
+  $('jobs-talking-count').textContent = bar.detail;
+}
 function renderTalking(narrowed = false) {
   const talking = inConversation(shared.allJobs);
   show($('jobs-talking'), talking.length > 0 && !narrowed);
   const found = talking.filter(isInbound).length;
+  renderTalkingBar();
   const mixed = found > 0 && found < talking.length;  // a tag per row only tells something when both kinds are listed
-  $('jobs-talking-count').textContent = `${talking.length} active · ${found} inbound · ${talking.length - found} outbound`;
   $('jobs-talking-list').replaceChildren(...talking.map(job => {
     const li = Object.assign(el('li', 'focus-item tone-info'), {tabIndex: 0, role: 'button',
       title: job.notion_url ? 'Open in Notion' : 'Open its page'});

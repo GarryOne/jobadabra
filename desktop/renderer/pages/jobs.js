@@ -2,7 +2,7 @@
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
-import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, toReview} from '../jobs-view.js';
+import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
 import {openActivity, refreshActivity, showSearchStatus} from './activity.js';
@@ -14,7 +14,7 @@ import {hostStats, snapshot} from '../intel.js';
 import {searchSelect} from '../search-select.js';
 import {jobsState, MORE, fullKey} from './jobs-state.js';
 import {openJobPanel} from './job-panel.js';
-import {TALKING_OPEN, renderJobs, renderStuck, showLoading} from './jobs-render.js';
+import {TALKING_OPEN, renderJobs, renderTalkingBar, renderStuck, showLoading} from './jobs-render.js';
 export {renderJobs} from './jobs-render.js';
 window.addEventListener('claude-help', () => renderJobs());   // Settings' Claude switch: the job menus follow it (claude-help.js)
 export {pageKey, fullKey} from './jobs-state.js';
@@ -208,8 +208,8 @@ export async function startSearch(why = undefined) {
 
 export async function init() {
   searchSelect($('lead-target'));
-  try { $('jobs-talking').open = localStorage.getItem(TALKING_OPEN) !== '0'; } catch {}
-  $('jobs-talking').addEventListener('toggle', event => { try { localStorage.setItem(TALKING_OPEN, event.target.open ? '1' : '0'); } catch {} });
+  try { $('jobs-talking').open = talkingStartsOpen(localStorage.getItem(TALKING_OPEN)); } catch {}
+  $('jobs-talking').addEventListener('toggle', event => { try { localStorage.setItem(TALKING_OPEN, event.target.open ? '1' : '0'); } catch {} renderTalkingBar(); });
   $('jobs-stuck-show').addEventListener('click', () => {
     jobsState.statFilter = 'stuck';
     $('filter-status').value = 'all';

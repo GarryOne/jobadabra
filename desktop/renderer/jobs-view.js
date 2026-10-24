@@ -87,6 +87,14 @@ export const toReview = jobs => byFilter(jobs, 'open').length;
 // and the jobs you applied to that reached a screening or interviews.
 export const inConversation = jobs => jobs.filter(job => isInbound(job) ? !OVER.has(job.stage) : TALKING.has(job.stage))
   .sort((a, b) => (b.next_step ? 1 : 0) - (a.next_step ? 1 : 0) || String(a.company).localeCompare(String(b.company)));
+// The In conversation bar: folded it is one line ("2 in conversation"), open it names the section and splits inbound / outbound.
+// It starts folded (the job list comes up higher); only a saved "open" choice unfolds it.
+export const talkingStartsOpen = stored => stored === '1';
+export function talkingBar(talking, open) {
+  const found = talking.filter(isInbound).length;
+  return open ? {title: 'In conversation', detail: `${talking.length} active · ${found} inbound · ${talking.length - found} outbound`}
+    : {title: `${talking.length} in conversation`, detail: ''};
+}
 // A job's status pill: its own status, except that an application shows where it stands in Notion (its Stage),
 // e.g. Rejected rather than Applied.
 const STATUS = {unreviewed: ['New', 'info'], saved: ['Saved', 'signal'], applied: ['Applied', 'good'], dismissed: ['Dismissed', 'neutral']};

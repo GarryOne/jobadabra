@@ -14,6 +14,7 @@ import {detailsChanged} from './details-drafts.js';
 import {profileTab, showContact} from './profile.js';
 import {startDefault} from '../tab-choice.js';
 import {byStore} from '../store-words.js';
+import {offered} from '../key-sources.js';
 
 // ---------- Settings: sub-pages (Overview, Application profile, Automation, Connections, Data & backup, Advanced) ----------
 let pageNow = '';
@@ -72,7 +73,7 @@ async function openProfile() {
 // Connections status, shared by Overview (cards + alert), Connections (Connected / Available + alert) and the
 // dot on Connections. required: counted for the alert and the dot (Google Jobs and Always on are optional extras;
 // Always on's card opens its setup on the Automation page).
-const SERVICES = [
+const ALL_SERVICES = [
   {id: 'ai', name: 'AI', icon: 'bot', what: 'Claude or OpenAI: an API key, Claude Code or Codex', required: true,
     why: 'Reading jobs, fit scores and application kits need AI: choose Claude Code, Codex or an API key.'},
   {id: 'notion', name: 'Notion', icon: 'layers', what: 'Job search workspace', required: false,   // about Notion
@@ -90,6 +91,7 @@ const SERVICES = [
   {id: 'tg-cloud', name: 'Cloudflare · Telegram buttons', icon: 'zap', what: 'Your bot answers buttons with the Mac off', connect: 'Set up',
     shown: () => !!shared.state.settings.cloud?.repo},  // it starts runs in the GitHub repository, so only with Always on
 ];
+const SERVICES = ALL_SERVICES.filter(service => offered(service.id));
 // Each service's state. Keys are known at once (this Mac); Google (a Python check) and the extension answer later, so
 // their last answer is remembered here and shown meanwhile ("Checking…" the very first time).
 const SERVICE_CACHE = 'serviceChecks';

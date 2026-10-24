@@ -1,6 +1,7 @@
 // What to do after a jobs check that found few new jobs (owner, 6 Oct 2026: "buttons after the search is done"): the coverage answer's cards
 // (renderer/coverage-card.js) as one list of actions, least effort first: a filter of yours to remove, a role word to add, a place to add (one
 // click each), then a job source to connect (a key). Pure: the same actions the Strategy cards offer, so both say and do the same.
+import {offered} from './key-sources.js';
 import {coverageCard, filtersCard, placesCard, sourcesCard, visitCard} from './coverage-card.js';
 
 export function coverageActions(verdict) {
@@ -59,7 +60,7 @@ export function fewJobsGroups(verdict) {
       // Ideas the Find new employers task has not tried yet: a job search never touches them (owner, 7 Oct 2026: "why didn't 410 go down?").
       explore: pending > 0 ? `Checks up to ${Number(e.batch) || 40} employer ideas per run · About 3 min` : 'Every idea tried: Find jobs looks for new names'};
   }
-  const sources = (Array.isArray(verdict?.sources) ? verdict.sources : []).map(source => ({id: source.id, name: source.name, sub: source.people || source.effort, title: `${source.effort}: ${source.gain}`}));
+  const sources = (Array.isArray(verdict?.sources) ? verdict.sources : []).filter(source => offered(source.id)).map(source => ({id: source.id, name: source.name, sub: source.people || source.effort, title: `${source.effort}: ${source.gain}`}));
   const visits = (Array.isArray(verdict?.visits) ? verdict.visits : []).map(site => ({url: site.url, name: site.name,
     sub: site.kind === 'portal' ? 'your search' : `${site.why}${site.last_read ? ` · read ${site.last_read.slice(0, 10)}` : ''}`, title: site.note || ''}));
   // A company with two pages (Tiffany & Co. on tiffany.com and tiffanycareers.com) is one site to the reader; both pages are still read.

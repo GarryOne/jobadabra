@@ -47,7 +47,7 @@ export async function showSearchStatus() {
 // Plain-language phases of a search, recognised from its log lines.
 export const PHASES = [
   {match: /^(Searching job boards|Job boards:)/, label: 'Job boards'},
-  {match: /^Checking employer career pages/, label: 'Employer career pages & scoring'},
+  {match: /^Checking employer career pages/, label: 'Employer career pages'},
 ];
 // A running task's step as words, wherever it is shown (Actions banner and summary, header, bottom bar): a known phrase, else the engine's line
 // without its technical tail (7 Oct 2026: "Scored 60 of 60 job(s) with claude-sonnet-5-5; 0 failed; tokens in 120 (+173594 cached), out 22743").
@@ -62,9 +62,8 @@ export function searchPhase(step = '') {
   if (live) return live;
   const phase = PHASES.find(item => item.match.test(step));
   if (phase) return phase.label;
-  let m;
-  if ((m = step.match(/^Scored (\d+) of (\d+)/))) return `Scored ${m[1]} of ${m[2]} jobs`;
-  if ((m = step.match(/^Enriched (\d+) of (\d+)/))) return `Read ${m[1]} of ${m[2]} new jobs with AI`;
+  if (/^Scored (\d+) of (\d+)/.test(step)) return 'Matching jobs to your profile';
+  if (/^Enriched (\d+) of (\d+)/.test(step)) return 'Reading new jobs';
   if (/^Checked: /.test(step)) return 'Employer career pages';
   if (/^Job Matches:/.test(step)) return `Saving to ${storeName()}`;
   if (/digest|telegram/i.test(step)) return 'Sending your digest';
@@ -127,7 +126,6 @@ export function runProgress({done, total, percent}, noun = '') {
   li.append(el('span', '', `${done} of ${total}${noun ? ` ${noun}` : ''} · ${percent}%`), track);
   return li;
 }
-export const COUNT_NOUN = {scout: 'employers checked'};
 // The one thing to do on a row, as a link after its words (as "Explain with AI"): a wait on you, a tab to look at, a tab you closed, a silent extension.
 // Each row's one action, a button on its right (owner, 7 Oct 2026: "per row, on the right, Open in Chrome"): the tab while it reads, the site
 // once it is done, Allow while it waits on you, Open again for a tab you closed, the extension when it did not answer.

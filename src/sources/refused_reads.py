@@ -76,6 +76,11 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
         if allowed(site['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
             seen.add(host)
             out.append({'url': site['url'], 'name': site['company'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download'})
+    for pick in visits.unread_picks():   # the scout's picks with no readable job site: tried here before they are ever left to the person
+        host = visits.host_of(pick['url'])
+        if allowed(pick['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
+            seen.add(host)
+            out.append({'url': pick['url'], 'name': pick['name'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download'})
     out.sort(key=lambda item: elsewhere(visits.host_of(item['url'])) != 'opened')   # opened in another install's browser: asked first
     search = None
     for board in (board_ideas.load().get('boards') or {}).values():

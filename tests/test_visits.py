@@ -15,10 +15,18 @@ CARDS = [{'title': 'Photographe de mode', 'url': '/jobs/view/111', 'lines': ['Ph
          {'title': 'Retoucheur photo', 'url': '/jobs/view/222', 'lines': ['Retoucheur photo', 'Atelier Blanc', 'Lausanne, Vaud, Suisse']}]
 
 
+class _Both:
+    """Two patches started and stopped as one."""
+    def __init__(self, *patches): self.patches = patches
+    def start(self): [p.start() for p in self.patches]
+    def stop(self): [p.stop() for p in reversed(self.patches)]
+
+
 class VisitsTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.patch = mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json')
+        self.patch = _Both(self.patch, mock.patch.object(visits, 'left_to_hand', lambda item, data: True))   # these tests are about the list's other rules; the leftover rule has its own test below
         self.patch.start()
 
     def tearDown(self):
@@ -238,6 +246,7 @@ class VisitListCareTests(unittest.TestCase):
         import tempfile
         self.tmp = tempfile.TemporaryDirectory()
         self.patch = mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json')
+        self.patch = _Both(self.patch, mock.patch.object(visits, 'left_to_hand', lambda item, data: True))   # these tests are about the list's other rules; the leftover rule has its own test below
         self.patch.start()
         self.search = {'role_keywords': ['vendeur', 'photographe'], 'locations': {'top_tier': ['geneva'], 'country_wide': [], 'abroad': []}}
         self.picks = [{'name': 'Rolex', 'url': 'https://www.rolex.com'}, {'name': 'Rolex', 'url': 'https://www.carrieres-rolex.com'},
@@ -300,7 +309,7 @@ class PoolFactsTests(unittest.TestCase):
     def setUp(self):
         import tempfile
         self.tmp = tempfile.TemporaryDirectory()
-        self.patches = [mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json')]
+        self.patches = [mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json'), mock.patch.object(visits, 'left_to_hand', lambda item, data: True)]
         for patch in self.patches:
             patch.start()
         self.index = Path(self.tmp.name) / 'employer_index.json'
@@ -372,3 +381,37 @@ class JobPageLinksTests(unittest.TestCase):
                 mock.patch.object(web_search, 'only_job_lists', lambda company, site, urls, client=None: [u for u in urls if 'bewerbungs' not in u]):
             answer = visits.job_page('https://www.fust.ch', '<html><title>Fust | Home</title></html>')
         self.assertEqual(answer, 'https://www.fust.ch/footer/offene-stellen')
+
+
+class LeftToHandTests(unittest.TestCase):
+    """Browse sites manually lists only true leftovers (owner, 24 Oct 2026: 12 Moldovan sites listed, none tried by the automatic Chrome read)."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.patch = mock.patch.object(visits, 'STORE', Path(self.tmp.name) / 'visits.json')
+        self.patch.start()
+        self.picks = [{'name': name, 'url': f'https://{host}'} for name, host in [('Stopped', 'a.example'), ('Opened', 'b.example'), ('Not tried', 'c.example'),
+                                                                                  ('Empty', 'd.example'), ('Slow down', 'e.example')]]
+
+    def tearDown(self):
+        self.patch.stop()
+        self.tmp.cleanup()
+
+    def names(self):
+        with mock.patch.object(visits, 'relevant', lambda items, search: items):
+            return [i['name'] for i in visits.visit_list(SEARCH, set(), now=NOW, picks=self.picks) if i['kind'] == 'employer']
+
+    def test_a_site_is_left_only_when_the_automatic_read_stopped_there(self):
+        states = {'a.example': 'stopped', 'b.example': 'read', 'd.example': 'empty', 'e.example': 'waiting'}
+        visits._save({'refused_reads': {host: {'at': NOW.isoformat(), 'state': state} for host, state in states.items()}})
+        self.assertEqual(self.names(), ['Stopped'], 'opened, empty, slow-down and not-yet-tried sites are not left to the person')
+
+    def test_the_scouts_picks_are_asked_by_the_automatic_read_first(self):
+        from src.sources import refused_reads
+        with mock.patch.object(visits, 'unread_picks', lambda: self.picks), mock.patch.object(visits, 'pool_facts', lambda: {}), \
+                mock.patch.object(refused_reads.board_ideas, 'load', lambda: {'boards': {}}):
+            self.assertEqual([i['name'] for i in refused_reads.queue(now=NOW)], [p['name'] for p in self.picks])
+
+    def test_a_site_the_automatic_read_may_not_open_stays_for_the_person(self):
+        with mock.patch.object(visits, 'relevant', lambda items, search: items):
+            listed = visits.visit_list(SEARCH, {'creative_media'}, now=NOW, picks=[])
+        self.assertIn('LinkedIn', [i['name'] for i in listed], 'a login wall is only ever the person\'s own visit')

@@ -24,7 +24,7 @@ import {readableLog} from '../human-log.js';
 import {renderActionsPage} from './runs-page.js';
 import {toastMessage} from './startup.js';
 import {showStop} from '../stop-task.js';
-import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, warningSummary, WARN_NOUN, runResults, runDetails, runProgress, COUNT_NOUN, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, signedInSince, gmailConnected, runButton, mailReportOf} from './activity-basics.js';
+import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, warningSummary, WARN_NOUN, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, signedInSince, gmailConnected, runButton, mailReportOf} from './activity-basics.js';
 import {renderVisitsCard} from './activity-visits.js';
 import {showAwaitedResult, keepStatusBar, withKept, byYou} from './activity-results.js';
 import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton} from './activity-run-card.js';
@@ -101,7 +101,6 @@ export function renderActivity(fresh) {
   const lastMail = runs.find(run => kindOf(run) === 'mail');
   $('activity').dataset.state = barState(running, lastSearch || lastMail || last);
   const liveLines = running ? shared.logLines : null;
-  const checked = (liveLines || []).filter(line => /^Checked: /.test(line)).length;
   const mailNote = lastMail ? `Gmail ${notChecked(lastMail) ? 'not checked' : `checked ${clockTime(lastMail.endedAt || lastMail.startedAt)} · ${outcome(lastMail)}`}`
     : gmailConnected() === false ? 'Gmail not checked · not connected'   // #541: no "due now" for a check that cannot run
     : nextMailAt ? `First Gmail check ${nextMailAt <= Date.now() ? 'due now' : hhmm(nextMailAt)}` : '';
@@ -112,7 +111,7 @@ export function renderActivity(fresh) {
       : `${kind.icon} ${kind.name} running (${WHO[running.trigger] || running.trigger}${running.where === 'github' ? ', on GitHub' : ''})${next ? ` · ${next} queued` : ''}`;
     $('activity-step').textContent = stepWords(running.step) || 'Starting…';
     barLabel();
-    $('activity-meta').textContent = [duration(running.startedAt, new Date().toISOString()), checked && `${checked} companies checked`].filter(Boolean).join(' · ');
+    $('activity-meta').textContent = [duration(running.startedAt, new Date().toISOString())].filter(Boolean).join(' · ');
   } else if (lastSearch || lastMail) {
     barLabel();
     $('activity-title').textContent = lastSearch ? (lastSearch.ok ? 'Last refresh' : 'Last refresh had problems') : 'No jobs check yet';
@@ -265,7 +264,6 @@ export function renderActivity(fresh) {
   $('activity-selected').textContent = run ? kind.name : 'Nothing has run yet';
   $('activity-status').replaceChildren(...(status ? [pill(...status)] : []));
   showStop($('activity-stop'), run?.live ? run : null);   // a task this Mac runs can be stopped from its detail too
-  const checkedCount = lines.filter(line => /^Checked: /.test(line)).length;
   // What it found, without repeating the task's name ("Gmail check: 4 new emails…" → "4 new emails…").
   const shownText = cardText(run, run ? runResults.get(run.id) : null);
   // Its card says it better than the raw text, whole: the header doesn't repeat it cut short (a digest, an insight, a weekly report).
@@ -281,13 +279,10 @@ export function renderActivity(fresh) {
   $('activity-sub').textContent = !run ? '' : [
     run.note,
     run.live ? (searchPhase(run.step) || 'starting') : said,
-    checkedCount && `${checkedCount} companies checked`,
     !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
     !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`),
     cost,
-    run.where === 'github' ? 'GitHub' : run.where === 'mac' ? 'This Mac' : '',
-    // What the run's record says beyond its result (P8 D): who started it, and whether its message also went to Telegram.
-    !run.live && run.startedBy && `Started: ${run.startedBy}`,
+    run.where === 'github' ? 'In the cloud' : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
     !run.live && run.telegram && 'Sent to Telegram',
   ].filter(Boolean).join(' · ');
   // A search that found new jobs: straight to them (newest first).
@@ -334,7 +329,7 @@ export function renderActivity(fresh) {
   if (tabs) $('activity-phases').replaceChildren(runProgress(shownTabs, 'sites'), ...tabs.sites.map(site => siteRow(site, !!run.live, run.startedAt)));
   const counted = run?.live && !tabs ? stepCount(run.step) : null;   // any other running task whose step counts
   // Over a search's steps; alone for any other task (the steps listed above are a search's only).
-  if (counted) { if (at >= 0 || updates.length) $('activity-phases').prepend(runProgress(counted, COUNT_NOUN[kindOf(run)])); else $('activity-phases').replaceChildren(runProgress(counted, COUNT_NOUN[kindOf(run)])); }
+  if (counted) { if (at >= 0 || updates.length) $('activity-phases').prepend(runProgress(counted)); else $('activity-phases').replaceChildren(runProgress(counted)); }
   show($('activity-phases'), updates.length > 0 || at >= 0 || !!tabs || !!counted);
   // What a one-off job produced (the insight, the list, the report) when it wasn't sent to Telegram. Today's list and
   // Find new employers read better as a small card; anything else stays text. While its Notion page is still being

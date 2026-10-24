@@ -67,16 +67,16 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     heading = nothingNew ? 'No new jobs this run' : onlyNew ? 'Top new since your last digest' : 'Top matches';
     rows.append(...byFit(items).slice(0, 3).map(item => {   // highest fit first, unscored last
       const row = el('li', 'run-card-row');
-      // Two lines: the job, then who it is with. Its fit as a pill ("Not scored" when an AI limit or no score), so
-      // the row never shows a bare "–"; the posting opens from the arrow.
+      // Two lines: the job, then who it is with. Its fit as a pill when it has a score; the posting opens from the arrow.
       const words = el('span', 'run-card-words');
       words.append(el('b', '', item.title), el('span', 'muted', [item.company, item.percent != null ? `${item.percent}%` : ''].filter(Boolean).join(' · ')));
       const scored = item.fit != null;
-      const fit = pill(scored ? String(item.fit) : 'Not scored', scored && item.fit >= 70 ? 'warn' : 'neutral');
-      fit.title = scored ? fitTooltip(item.fit) : 'Not scored yet (no AI score for this job)';
+      // A job with no score shows no pill (owner, 24 Oct 2026: no scoring words on a basic card); a scored one shows its fit.
+      const fit = scored ? pill(String(item.fit), item.fit >= 70 ? 'warn' : 'neutral') : null;
+      if (fit) fit.title = fitTooltip(item.fit);
       const view = Object.assign(el('a', 'run-card-open', '↗'), {href: '#', title: 'Open the job posting'});
       view.dataset.link = item.url;
-      row.append(words, fit, ...(item.url ? [view] : []));
+      row.append(words, ...(fit ? [fit] : []), ...(item.url ? [view] : []));
       return row;
     }));
     // "View all 9 in Jobs" shows exactly those nine, not the whole list: the Jobs page gets a filter for this run's

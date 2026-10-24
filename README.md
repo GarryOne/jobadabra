@@ -103,7 +103,7 @@ switched-off feature behaves exactly as if its keys were missing, and `doctor` l
 
 ## 🧠 AI at every step
 
-Something in Jobadabra is reading, suggesting or checking at each stop of the search: 45 steps today (AI, plus a few plain rules marked as such), each one yours to accept or ignore, none of them pressing Submit.
+Something in Jobadabra is reading, suggesting or checking at each stop of the search: 47 steps today (AI, plus a few plain rules marked as such), each one yours to accept or ignore, none of them pressing Submit.
 Every step runs on the AI you choose: Claude or OpenAI, through an API key or your own Claude Code / Codex plan (setup step 5 below).
 The same list, with more detail, is on the website: [Intelligence](https://www.jobpilotto.top/intelligence.html). Every base prompt is in this repository (`src/ai/`, `desktop/lib/`, `worker/src/extension.js`); what is learned from installs is served as data, never as prompt text.
 

@@ -73,10 +73,10 @@ test('a run\'s page gives its result and technical log', async () => {
 test('every finished job is a notification wherever it ran; a quiet Gmail check and a button action are not', () => {
   assert.deepEqual(history.notice({kind: 'insight', where: 'github', ok: true, result: 'Insight sent: Skills — Go is in 40%'}),
     {title: 'Insight done (on GitHub)', body: 'Insight sent: Skills — Go is in 40%'});
-  assert.deepEqual(history.notice({kind: 'search', trigger: 'schedule', ok: true, new: 3}), {title: 'Scheduled job search done', body: '3 new jobs found.'});
-  assert.deepEqual(history.notice({ok: true, new: 0}), {title: 'Find jobs done', body: 'No new jobs this time.'});  // an older record without kind
+  assert.deepEqual(history.notice({kind: 'search', trigger: 'schedule', ok: true, new: 3}), {title: 'Scheduled job search done', body: '3 jobs added to your list.'});
+  assert.deepEqual(history.notice({ok: true, new: 0}), {title: 'Find jobs done', body: 'No jobs added this time.'});  // an older record without kind
   // A run that worked but warned is not "done" (UI loop #51, #52: a green "Jobs check done" over a refused AI call).
-  assert.deepEqual(history.notice({ok: true, new: 1, warned: true}), {title: 'Find jobs finished with warnings', body: '1 new job found. Open Jobadabra to see what it said.'});
+  assert.deepEqual(history.notice({ok: true, new: 1, warned: true}), {title: 'Find jobs finished with warnings', body: '1 job added to your list. Open Jobadabra to see what it said.'});
   assert.equal(history.notice({kind: 'insight', ok: true, result: 'Written', warned: true}).title, 'Insight finished with warnings');
   assert.equal(history.notice({ok: false, warned: true}).title, 'Find jobs had problems', 'a failure stays a failure');
   assert.equal(history.notice({kind: 'weekly', where: 'github', ok: false}).title, 'Search analysis had problems (on GitHub)');
@@ -222,4 +222,13 @@ test('a run that finished with warning lines in its log is recorded "Warnings", 
   // And read back, the row says warned: the list pill and the panel pill agree with the record.
   const back = history.fromRow({properties: {Run: {title: [{plain_text: 'Job search · on this Mac'}]}, Status: {select: {name: 'Warnings'}}}, id: 'x', created_time: base.startedAt});
   assert.equal(back.warned, true);
+});
+
+// Owner, 24 Oct 2026: a finished run's notification carries one number (the jobs added to the list) and no scoring words.
+test('a finished search notification says the jobs added, with no other number and no scoring words', () => {
+  for (const run of [{kind: 'search', ok: true, new: 0}, {kind: 'search', ok: true, new: 1}, {kind: 'search', ok: true, new: 12, scored: 30, good: 4, log: ['Run counts: looked=9 matches=40 scored=30 good=4']}]) {
+    const {body} = history.notice(run);
+    assert.ok((body.match(/\d+/g) || []).length <= 1, body);
+    assert.doesNotMatch(body, /scor|strong|70|waiting|queue/i, body);
+  }
 });

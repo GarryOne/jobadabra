@@ -41,6 +41,12 @@ def from_env(read=None):
     return saved(read(SCOPES_SERVICE)) if read else None
 
 
+def without(parts, part):
+    """`parts` (None = unknown, both) minus `part`; None when `part` was not in it, so there is nothing new to learn."""
+    known = tuple(SCOPE_URLS) if parts is None else parts
+    return tuple(p for p in known if p != part) if part in known else None
+
+
 def missing(parts):
     """The parts not allowed (empty when `parts` is None = unknown)."""
     return () if parts is None else tuple(part for part in SCOPE_URLS if part not in parts)

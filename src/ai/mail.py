@@ -29,6 +29,7 @@ import sys
 
 from .. import run_log, telegram, tgcard
 from ..sources.google import Google
+from ..sources.google_scopes import CALENDAR, GMAIL, PART_NAMES, WHAT_IT_LOSES, MissingScope
 from ..stores import open_stores
 from . import cost
 from .. import feedback as employer_feedback
@@ -69,6 +70,12 @@ from .mail_failure import (  # noqa: F401 — re-exported: callers and tests use
 )
 
 
+def _allowed(google, part):
+    """False when the user left this part of the Google sign-in unticked (unknown = allowed until Google refuses)."""
+    granted = getattr(google, 'scopes', None)
+    return granted is None or part in granted
+
+
 def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None, calendar=True, dry_run=False,
         now=None, state_path=STATE_FILE, stats=None, on_new=None, always_report=False, stores=None):
     """always_report: a check answers even when there's nothing new. Off for the mail workflow, which the app
@@ -83,21 +90,33 @@ def run(tracker, google, *, client=None, model=DEFAULT_MODEL, days=2, send=None,
         from . import engine
         client = engine.client(action='mail')
     rejected = []
-    print('Gmail: reading new emails…')
-    lines, count = mail_pass(stores, google, client, model, apps, index, state, days, stats, dry_run, now, rejected,
-                             None if dry_run else on_new)
-    if stats is not None:
-        stats.update(pending=count, done=count)
-    sent_pass(stores, google, apps, index, days, stats, dry_run)  # your own replies: for Focus's follow-ups
-    notes = []
-    granted = getattr(google, 'scopes', None)
-    if calendar and granted is not None and 'calendar' not in granted:   # Calendar left unticked: mail still works, the gap is said once
-        print('Gmail: Calendar was not allowed in the Google sign-in, so interviews are not read from it (Settings → Connections → Reconnect).')
-        calendar = False
-    if calendar:
+    lines, count, notes, gaps = [], 0, [], []   # gaps: parts the user left unticked; each is said once and the other part still runs
+    if _allowed(google, GMAIL):
+        print('Gmail: reading new emails…')
+        try:
+            lines, count = mail_pass(stores, google, client, model, apps, index, state, days, stats, dry_run, now, rejected,
+                                     None if dry_run else on_new)
+            if stats is not None:
+                stats.update(pending=count, done=count)
+            sent_pass(stores, google, apps, index, days, stats, dry_run)  # your own replies: for Focus's follow-ups
+        except MissingScope as gap:
+            gaps.append(gap)
+    else:
+        gaps.append(MissingScope(GMAIL))
+    if calendar and _allowed(google, CALENDAR):
         print('Gmail: checking the calendar…')
-        cal_lines, notes = calendar_pass(stores, google, client, model, apps, index, state, stats, now, dry_run)
-        lines += cal_lines
+        try:
+            cal_lines, notes = calendar_pass(stores, google, client, model, apps, index, state, stats, now, dry_run)
+            lines += cal_lines
+        except MissingScope as gap:
+            gaps.append(gap)
+    elif calendar:
+        gaps.append(MissingScope(CALENDAR))
+    for gap in gaps:   # the part's own line in the log, the run row and the app; the part that was allowed keeps its results
+        print(f'Gmail: {PART_NAMES[gap.part]} was not allowed in the Google sign-in, so {WHAT_IT_LOSES[gap.part]}. '
+              'Settings → Connections → Gmail & Calendar → Reconnect.')
+        if stats is not None:
+            stats.setdefault('gaps', []).append(failure_warning(gap))
     if not dry_run:
         save_state(state, state_path)
         lines += review_rejections(stores, client, rejected, stats)
@@ -146,10 +165,11 @@ def main(argv=None):
     log = run_log.new_run('mail')
 
     def log_check(warning=None):  # one ⏰ Search runs row per check: what it read, what it recorded, the cost
-        log['mail'] = {key: value for key, value in stats.items() if key not in ('updates', 'emails')}
+        log['mail'] = {key: value for key, value in stats.items() if key not in ('updates', 'emails', 'gaps')}
         log['updates'] = stats.get('updates', [])
         log['emails'] = stats.get('emails', [])  # every email read: its subject, its link, and what the check did with it
         log['seconds'] = int((datetime.now(timezone.utc) - datetime.fromisoformat(log['started_at'])).total_seconds())
+        log['warnings'] += stats.get('gaps', [])   # a part left unticked: said on the run row, the rest of the check is kept
         if warning:
             log['warnings'].append(warning)
         url = run_log.log_run(stores, log)

@@ -405,7 +405,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             found, state, relevant = _another_way(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
             _retry_when_unjudged(entry, relevant)
         elif (0 < len(relevant) < FEW_RELEVANT and not (early or route) and state != 'browser' and (board.get('source_kind') or 'general') == 'general'
-              and entry.get('few_for') != f'{proposed}|{LADDER}'):   # a list with few relevant jobs: its own section may hold more
+              and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general'})

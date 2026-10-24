@@ -237,6 +237,10 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     as its route (owner, 18 Oct 2026: Randstad listed warehouse jobs for "financial analyst" and has a job sitemap). Else `before`; the
     board is not looked at again while the proposed link stays the same."""
     entry['form_for'], entry['ladder'] = proposed, LADDER
+    refused = []   # a step whose page refused us or only scripts fill: the board ends as a visit, not as "0 jobs" (24 Oct 2026: a bot check behind the search form)
+
+    def stands(answer):
+        return (answer[0], 'browser', answer[2]) if refused and answer[1] != 'ok' else answer
     bare = _bare(proposed)
     if bare:   # an extra filter in the link (a sector, a radius): the same search with only the words and the place
         try:
@@ -244,6 +248,8 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         except Exception:  # noqa: BLE001 — the other ways stand
             again, state = [], 'empty'
         relevant = judge(again) if again else []
+        if state == 'browser':
+            refused.append(bare)
         if relevant:
             entry['search_url'] = bare
             print(f"Job boards found: {board['name']} read without the link's extra filters", flush=True)
@@ -266,6 +272,8 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         except Exception:  # noqa: BLE001 — a form link that fails: the next one, or the proposed link's result
             continue
         relevant = judge(again) if again else []
+        if state == 'browser':
+            refused.append(template)
         if relevant:
             entry['form_url'] = entry['search_url'] = template
             print(f"Job boards found: {board['name']} read through its own search form", flush=True)
@@ -279,15 +287,15 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     try:
         listed, route = board_routes.discover(page[1], page[0], fetch, board, _terms(search, FULL_SEARCHES))
     except board_routes.Stop:   # its own list refused us: the search page's answer stands, the board is not marked for a visit
-        return before
+        return stands(before)
     except Exception:  # noqa: BLE001 — a fallback never breaks the read: the search page's answer stands
-        return before
+        return stands(before)
     relevant = judge(listed) if listed else []
     if relevant:
         entry['route'], entry['route_kind'] = route, route['kind']   # read_board follows it first from then on
         print(f"Job boards found: {board['name']} read from its own job list ({route['kind']})", flush=True)
         return listed, 'ok', relevant
-    return _rendered(board, entry, proposed, page, search, fetch, show, judge) or before
+    return _rendered(board, entry, proposed, page, search, fetch, show, judge) or stands(before)
 
 
 def _rendered(board, entry, proposed, page, search, fetch, show, judge):

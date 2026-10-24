@@ -156,6 +156,35 @@ class LearnedLinkTests(unittest.TestCase):
         entry = board_ideas.load()['boards']['vacatures.example']
         self.assertEqual((entry['state'], entry.get('route')), ('ok', None), 'the search page still answers: not marked for a visit')
 
+    def _behind_a_refusal(self, answer):
+        """The guessed link is a 404; the board's own search form is refused: the board ends as a visit, not as "0 jobs"."""
+        import urllib.error
+
+        def fetch(url):
+            if url.endswith('/robots.txt'):
+                return ''
+            if url == HOME:
+                return form('<input name="wat"><input name="waar">')
+            if url.startswith('https://vacatures.example/zoeken?'):
+                return answer(url)
+            raise urllib.error.HTTPError(url, 404, 'Not Found', None, None)
+        self.fetch = fetch
+        self.read()
+        from src.ai import board_ideas
+        self.assertEqual(board_ideas.load()['boards']['vacatures.example']['state'], 'browser')
+
+    def test_a_search_form_behind_a_bot_check_page_is_offered_as_a_visit_not_read_as_empty(self):
+        """24 Oct 2026: a Luxembourg board's guessed link was a 404 and its own search form answered a "Challenge Validation" page: the ladder
+        dropped that and the board showed "0 jobs" instead of "only your browser reads it". Every way up the ladder that is refused counts."""
+        self._behind_a_refusal(lambda url: '<html><head><title>Challenge Validation</title><script src="/c.js"></script></head><body><iframe src="/c"></iframe></body></html>')
+
+    def test_a_search_form_that_answers_403_is_offered_as_a_visit_not_read_as_empty(self):
+        import urllib.error
+
+        def forbidden(url):
+            raise urllib.error.HTTPError(url, 403, 'Forbidden', None, None)
+        self._behind_a_refusal(forbidden)
+
     def test_the_first_jobs_slice_never_reads_a_form(self):
         relevant = lambda jobs: [job for job in jobs if 'Financial' in job['title']]
         found_boards.read(SEARCH, [BOARD], fetch=self.fetch, is_relevant=relevant, dead=set(), early=True)

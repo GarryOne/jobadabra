@@ -8,7 +8,7 @@ import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
 import {searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {ago, avatar, band, byFilter, byStat, inConversation, inStatus, talkingBar, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
+import {ago, avatar, band, byStat, inConversation, talkingBar, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {openActivity} from './activity.js';
 import {$, show} from './core.js';
@@ -25,8 +25,9 @@ import {byStore, storeName} from '../store-words.js';
 import {fitDetail} from './jobs-fit.js';
 import {openJobPanel, panelUrl} from './job-panel.js';
 import {jobsChanged, loadJobs, showJobsData} from './jobs.js';
-import {inView} from '../jobs-board-rules.js';
 import {paintViews} from './jobs-views.js';
+import {renderFilterMenu} from './jobs-filter-menu.js';
+import {boardIds, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
 const stuck = job => isStuck(job, entry => sessionList.some(item => pageKey(item.url) === pageKey(entry.url)));
@@ -87,23 +88,24 @@ function renderTalking(narrowed = false) {
 }
 export function renderJobs() {
   closeMenu(document.querySelector('.view[data-view="jobs"]'));   // only a menu on this page
-  const filter = $('filter-status').value;
+  const filters = jobsState.filters;
+  const filter = soleFilter(filters);   // '' when several are ticked
+  const now = Date.now();
+  renderFilterMenu();
   const text = $('filter-text').value.trim();
   // A pasted link finds that job whatever its status; words filter within the chosen status.
   const anyStatus = looksLikeLink(text);
-  // The counters count every application (real workload); without one, the menu decides (byFilter): job matches by
-  // status, all of them under All matches, the opportunities that found you under Inbound only, both kinds together
-  // under Everything (the open ones are also "In conversation" above); a pasted link finds any job.
-  // A saved view chip (pages/jobs-views.js) narrows like a counter: those jobs, whatever the menu says.
-  const counted = jobsState.view ? shared.allJobs.filter(job => inView(job, jobsState.view))
-    : jobsState.statFilter === 'stuck' ? shared.allJobs.filter(stuck)
+  // The counters count every application (real workload); without one, the ticked filters decide (jobs-filters.js): any of them holds the job;
+  // a pasted link finds any job.
+  const counted = jobsState.statFilter === 'stuck' ? shared.allJobs.filter(stuck)
     : jobsState.statFilter?.urls ? shared.allJobs.filter(job => jobsState.statFilter.urls.has(fullKey(job.url)))
     : jobsState.statFilter ? byStat(COUNTS_ALL.has(jobsState.statFilter) ? shared.allJobs : openMatches(shared.allJobs), jobsState.statFilter) : null;
   const by = $('sort-by').value;
-  const rows = sorted((counted || (anyStatus ? shared.allJobs : byFilter(shared.allJobs, filter)))
-    .filter(job => (!counted || anyStatus || inStatus(job, filter)) && matches(job, text)),
+  const rows = sorted((counted || shared.allJobs)
+    .filter(job => (anyStatus && !counted) || (counted ? inFiltersLoose(job, filters, now) : inFilters(job, filters, now)))
+    .filter(job => matches(job, text)),
   filter === 'inbound' && !counted && by === 'best' ? 'activity' : by);
-  renderTalking(!!counted || filter === 'inbound' || filter === 'everything' || !!text);
+  renderTalking(!!counted || filters.includes('inbound') || filters.includes('everything') || hasViewOption(filters) || !!text);
   // Jobs found but never scored: the AI step did not run (it is not answering, a limit, no engine). Say so, once, above the list: the
   // rows show "Not scored" and a friend took that for a bug (2 Oct 2026, a search whose AI calls had stalled).
   // A job whose place is unclear is not the AI failing: its row says why (unscoredWhy).
@@ -450,8 +452,9 @@ export function renderJobs() {
     : anyStatus ? 'That job isn\'t in your list: not found by a search yet, or hidden by your language or company filters.'
     : !text && !jobsState.statFilter && emptyFor[filter] ? emptyFor[filter]
     : text || jobsState.statFilter || filter !== 'all' ? 'No job matches this filter.' : 'No open jobs right now.';
-  // The board shows applications only (rows with a Stage), whatever the menu says; a view or counter and the words narrow it.
-  paintViews((counted || shared.allJobs).filter(job => columnOf(job) && matches(job, text)));   // a job the board has a column for (jobs-board-rules.js)
+  // The board shows applications only (rows with a Stage); the stage filters ticked, a counter and the words narrow it.
+  const onBoard = boardIds(filters);   // the ticked filters that name a stage; none: every application
+  paintViews((counted || shared.allJobs).filter(job => columnOf(job) && (counted || !onBoard.length || inFilters(job, onBoard, now)) && matches(job, text)));   // a job the board has a column for (jobs-board-rules.js)
 }
 
 // "Refresh jobs" in the empty list is the same trigger as the header button (a disabled one, while a refresh runs, ignores it).

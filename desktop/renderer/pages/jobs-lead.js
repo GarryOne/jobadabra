@@ -6,6 +6,7 @@ import {showJob} from './activity.js';
 import {jobActions, jobHeadline} from '../job-link.js';
 import {$, message, osPick} from './core.js';
 import {loadJobs} from './jobs.js';
+import {setFilters} from './jobs-filter-menu.js';
 import {storeName} from '../store-words.js';
 
 // A recruiter's message: Claude reads it into a recruiter lead in Notion (like /add <message> in Telegram).
@@ -361,7 +362,7 @@ export function wireLead() {
     if (result.job) $('lead-result-text').after(jobActions(result.job, {openNotion: window.pilot.openNotion,
       show: job => { $('lead-dialog').close(); showJob(job); }}));
     $('lead-text').value = ''; clearLeadShot();
-    $('filter-status').value = 'all';  // it may be saved (a lead) or applied: show both
+    setFilters(['all']);  // it may be saved (a lead) or applied: show both
     loadJobs();
   });
 }

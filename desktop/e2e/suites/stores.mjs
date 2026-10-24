@@ -9,6 +9,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {TABS} from '../../renderer/job-page-view.js';
 import {goView} from '../lib/go-view.mjs';
+import {showFilter} from '../lib/jobs-filter.mjs';
 
 export const name = 'stores';
 export const notion = false;
@@ -110,10 +111,10 @@ export async function run(ctx) {
 
   await ctx.run('a saved view chip narrows the list: Saved shows the saved application only', async () => {
     await page.click('[data-mode="list"]');
-    await page.click('#jobs-views [data-view="saved"]');
+    await showFilter(page, 'saved');   // the step keeps its old name: the chip is now the Saved option of the Show menu
     const urls = await page.evaluate(() => [...document.querySelectorAll('#jobs-body .job-row')].map(row => row.dataset.url));
     if (urls.length !== 1 || urls[0] !== BOARD.saved) throw new Error(`the Saved view lists ${JSON.stringify(urls)}`);
-    await page.click('#jobs-views [data-view="saved"]');   // off again: the next steps see the whole list
+    await showFilter(page, 'everything');   // off again: the next steps see the whole list
   });
 
   // Jobs → a job's page (pages/job-panel.js, P8 A): the store's sections and events of one application, read through the engine, no Notion.
@@ -130,7 +131,7 @@ export async function run(ctx) {
     await settle();
     await page.click('.nav[data-view="jobs"]');
     await page.waitForSelector('.view[data-view="jobs"]:not([hidden])');
-    await page.evaluate(() => { const filter = document.getElementById('filter-status'); filter.value = 'everything'; filter.dispatchEvent(new Event('change')); });
+    await showFilter(page, 'everything');
     await page.waitForSelector(`#jobs-body .job-row[data-url="${PANEL}"]`, {timeout: 30000})
       .catch(() => { throw new Error('the store\'s application is not in the Jobs list'); });
     await page.evaluate(u => document.querySelector(`#jobs-body .job-row[data-url="${u}"]`).click(), PANEL);   // the row itself (its .meta shows only when compact)

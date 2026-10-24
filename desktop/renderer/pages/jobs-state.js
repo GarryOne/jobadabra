@@ -7,7 +7,7 @@ export const jobsState = {
   claudeReady: false,
   benchmarkText: {},   // url -> the board's typical reply line (lib/benchmarks.js), refreshed with the jobs list
   lastJobsData: null,   // the list as last loaded: a deleted job is recounted from it at once
-  view: null,   // the saved view chip on (jobs-board-rules.js VIEWS id) or null: it narrows the list and the board, like a counter
+  filters: ['open'],   // the ticked filters of the one Show menu (jobs-filters.js): a job shows when any of them holds it
   mode: 'list',   // 'list' or 'board' (pages/jobs-views.js, remembered on this computer)
 };
 export const MORE = 500;   // rows each "Show more" adds

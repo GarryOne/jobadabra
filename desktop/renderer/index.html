@@ -357,14 +357,11 @@
       </details>
       <div class="toolbar">
         <label class="search-box"><i data-icon="search"></i><input id="filter-text" type="search" placeholder="Search jobs, companies or places, or paste a job link" aria-label="Search jobs"></label>
-        <select id="filter-status" aria-label="Show">
-          <option value="open">New matches</option><option value="saved">Saved</option><option value="applied">Applied</option><option value="dismissed">Dismissed</option><option value="inbound">Inbound</option><option value="all">All matches</option><option value="everything">Everything</option>
-        </select>
+        <button type="button" class="select-button" id="filter-status" aria-label="Show"></button>
         <label class="sort-box"><i data-icon="sort"></i><select id="sort-by" aria-label="Sort by">
           <option value="best">Best match</option><option value="newest">Newest</option><option value="company">Company A–Z</option>
         </select></label>
       </div>
-      <div class="chip-row" id="jobs-views" role="group" aria-label="Saved views"></div>
       <div class="stuck-banner" id="jobs-stuck" hidden>
         <i data-icon="alert"></i><span id="jobs-stuck-text"></span>
         <button class="secondary small-button" id="jobs-stuck-show">Show them</button>

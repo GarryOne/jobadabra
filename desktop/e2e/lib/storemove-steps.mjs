@@ -9,6 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {openPanel, panelRows} from './activity-steps.mjs';
 import {appLogLines} from './app-log.mjs';
 import {goView} from './go-view.mjs';
+import {showFilter} from './jobs-filter.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // The seeded jobs and the match (lib/store_seed.py): every screen is read for these names only, so the app's own rows (a hint, an empty state) never count.
@@ -44,7 +45,7 @@ async function named(page, selector, {timeout = 30000, want = 1, exact = false} 
 export async function screens(page, {jobs: expectedJobs = COMPANIES.length} = {}) {
   const go = async view => { await goView(page, view); await page.waitForSelector(`.view[data-view="${view}"]:not([hidden])`); await settled(page); };
   await go('jobs');
-  await page.selectOption('#filter-status', 'everything');   // the default shows new matches only; All matches leaves applied jobs out (76d1cdd), Everything keeps the applications
+  await showFilter(page, 'everything');   // the default shows new matches only; All matches leaves applied jobs out (76d1cdd), Everything keeps the applications
   const jobs = await named(page, 'article.job-row', {want: expectedJobs, exact: true});
   await go('focus');
   const focus = await named(page, '#focus-list .focus-item', {timeout: 8000});

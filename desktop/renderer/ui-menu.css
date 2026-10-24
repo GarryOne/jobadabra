@@ -30,3 +30,19 @@
   letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .ui-menu-search { margin-bottom: var(--sp-1); }
 .ui-menu-search input { min-height: 32px; }
+/* The multi-value control's face: looks like the toolbar's selects (multi-select.js). */
+.select-button { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); width: 190px; min-height: var(--control-h); padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--fs-md); font-weight: 400; text-align: left; }
+.select-button .icon { width: 14px; height: 14px; color: var(--muted); transform: rotate(90deg); flex: none; }
+.select-button[aria-expanded="true"] .icon { transform: rotate(-90deg); }
+.ui-multi-face { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The multi-value control (multi-select.js): a checkbox list under its button, several ticked at once. */
+.ui-multi { min-width: 240px; max-height: min(460px, 70vh); overflow-y: auto; }
+.ui-multi button.ui-multi-item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2); }
+.ui-multi-box { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--signal-ink); }
+.ui-multi-item.is-checked .ui-multi-box { background: var(--signal-soft); border-color: var(--signal-edge); }
+.ui-multi-box .icon { width: 14px; height: 14px; }
+.ui-multi-count { font-size: var(--fs-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ui-multi button.ui-multi-clear { color: var(--ink-2); }
+.ui-multi button.ui-multi-clear:disabled { color: var(--muted); cursor: default; }
+.ui-multi .ui-menu-heading:first-child { border-top: 0; }

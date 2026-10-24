@@ -1,6 +1,7 @@
 // Navigation: pages, ⌘R memory, the ⌘K palette.
 import {openPalette} from '../palette.js';
 import {PROMISE} from '../pro-promise.js';
+import {creditWords} from '../plan-view.js';
 import {openQuestionReview} from './question-review.js';
 import {buttonEntry, reveal} from './palette-busy.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, prepareActions, unqueue} from './activity.js';
@@ -150,10 +151,10 @@ export function paletteCommands() {
     const goPlan = () => { openSetting('plan'); };
     if (shared.plan.plan === 'pro') {
       if (shared.plan.package === 'pro') add('Settings', 'Upgrade to Pro + AI', 'Pay only the difference to add the AI credit', 'pro ai upgrade credit plan buy pay difference', goPlan);
-      add('Settings', 'Plan and AI credit', 'Your AI credit left and your plan', 'pro plan credit ai balance license', goPlan); add('Settings', 'Add AI credit', 'A one-time top-up: €5, €10 or €20', 'pro top up topup credit buy ai more', goPlan);
+      add('Settings', 'Plan and AI credit', 'Your AI credit left and your plan', 'pro plan credit ai balance license', goPlan); add('Settings', 'Add AI credit', `A one-time top-up: ${(shared.plan.offers || []).filter(o => o.id.startsWith('topup')).map(o => `€${o.price}`).join(', ') || '€5, €10 or €20'}, each adds that much credit`, 'pro top up topup credit buy ai more', goPlan);
     } else {
       add('Settings', 'Get Pro', PROMISE, 'pro upgrade plan price buy pay unlimited license', goPlan);
-      add('Settings', 'Get Pro + AI', `${PROMISE}, AI credit included`, 'pro ai upgrade plan price buy pay credit unlimited license', goPlan);
+      add('Settings', 'Get Pro + AI', `${PROMISE}, ${creditWords((shared.plan.offers || []).find(o => o.id === 'pro-ai')) || 'AI credit'} included`, 'pro ai upgrade plan price buy pay credit unlimited license', goPlan);
       add('Settings', 'I have Pro', 'Add this computer with a code sent by e-mail', 'pro sign in signin code add device computer have', () => { goPlan(); setTimeout(() => $('plan-have-pro')?.click(), 300); });
     }
   }

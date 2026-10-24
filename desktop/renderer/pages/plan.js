@@ -52,7 +52,7 @@ function render(view) {
   const row = el('div', 'inline', '');
   for (const top of view.topups) {
     const button = el('button', 'secondary', `Add ${top.price}`);
-    button.title = `${top.price} adds AI credit (VAT included in the price)`;
+    button.title = `${top.price} adds ${top.adds || 'AI credit'} (VAT included in the price)`;
     button.addEventListener('click', () => buy(top.kind));
     row.append(button);
   }

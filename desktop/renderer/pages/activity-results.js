@@ -12,11 +12,14 @@ import {renderCardSkeleton, renderNoResult} from './activity-run-card.js';
 import {rerunTask} from './activity-problem-box.js';
 import {openView} from './nav.js';
 import {openActivity} from './activity-panel.js';
+import {showFullReport} from './full-report.js';
+import {hasFullReport} from '../searches-view.js';
 function showActionsResult(run, kind, draw, {pillOf = null} = {}) {
   show($('command-answer'), false);
   // A card with no result says how the run ended with the pill of its cause (Interrupted, Failed, No result); other cards keep "Needs a look" for a run that did not work.
   const [label, tone] = pillOf ? pillOf : run.ok && !run.off ? runPill(run) : ['Needs a look', 'bad'];
-  $('actions-result-head').replaceChildren(el('b', '', `${kind.icon} ${kind.name}`), pill(label, tone), el('span', 'muted', `Finished ${clockTime(run.endedAt || run.startedAt)}`));
+  $('actions-result-head').replaceChildren(el('b', '', `${kind.icon} ${kind.name}`), pill(label, tone), el('span', 'muted', `Finished ${clockTime(run.endedAt || run.startedAt)}`),
+    ...(hasFullReport({...run, kind: kindOf(run)}) ? [Object.assign(el('button', 'link small', 'Full report →'), {type: 'button', title: 'Every number of this search, in Reports', onclick: () => showFullReport(run.pageId)})] : []));   // a search run's details, as in Recent activity
   draw($('actions-card'));
   show($('actions-result'));
   $('actions-result').scrollIntoView({behavior: 'smooth', block: 'nearest'});

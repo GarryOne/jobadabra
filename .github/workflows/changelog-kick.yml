@@ -1,11 +1,13 @@
 name: CI · Start the What's new publish
-# A release reaches https://www.jobadabra.top/changelog within minutes (owner, 24 Oct 2026: "Start it on each release"): when a build is approved for beta ("CI · Release to beta") or promoted to stable
-# ("Release · Promote to stable") this starts changelog-publish.yml in the private site repo, which writes the entry (jobadabra-web: jobs/changelog-publish.mjs). A run that changed nothing starts a harmless no-op there.
+# A release reaches https://www.jobadabra.top/changelog within minutes (owner, 24 Oct 2026: "Start it on each release"): when a release build finishes ("Release · Build, test, beta"), a by-hand e2e gate passes
+# ("CI · End-to-end on Mac + Linux" / "... on Windows") or a build is promoted to stable ("Release · Promote to stable") this starts changelog-publish.yml in the private site repo, which writes the entry (jobadabra-web: jobs/changelog-publish.mjs). A run that changed nothing starts a harmless no-op there.
+# Only TOP-LEVEL workflows are listed: GitHub never fires workflow_run for a called workflow (beta-approve.yml, 'CI · Release to beta', is one: beta 0.8.28 started nothing);
+# tests/test_workflow_run_triggers.py fails on a name that is not a top-level workflow. Extra runs are harmless: changelog-publish only writes versions newer than the page.
 # Needs the secret WEB_DISPATCH_TOKEN: a fine-grained token, resource owner GarryOne, only jobadabra-web, Actions: write. Missing or refused: a named warning, the release is never failed.
 # The site repo's hourly schedule stays as the fallback, and its watchdog (changelog-fresh) alerts when a stable release is still missing after 2 hours.
 on:
   workflow_run:
-    workflows: ['CI · Release to beta', 'Release · Promote to stable']
+    workflows: ['Release · Build, test, beta', 'CI · End-to-end on Mac + Linux', 'CI · End-to-end on Windows', 'Release · Promote to stable']
     types: [completed]
 
 permissions: {}

@@ -57,6 +57,13 @@ class LabCiTest(unittest.TestCase):
         self.assertEqual(lab_ci.describe(0, [], 1)[0], 'failure')   # nothing ran is never green
         self.assertLessEqual(len(lab_ci.describe(25, ['t' * 60] * 5, 1)[1]), 140)
 
+    def test_a_lab_pr_description_is_checked_here_and_reported_on_the_pr(self):
+        """Owner, 24 Oct 2026: the lab's own workflow cannot start until 1 Nov (a red X on every lab PR), so lab-ci posts the `pr-description` status."""
+        self.assertEqual(lab_ci.description_gap('[b9] Do it', 'Served why\n\nSome text.\n') != '', True)
+        self.assertIn('session tag', lab_ci.description_gap('No tag here', '## x\n\n---\n\n### y\n'))
+        self.assertEqual(lab_ci.description_gap('[b9] Do it', '## 🟢 x\n\n---\n\n### y\n'), '')
+        self.assertEqual(lab_ci.DESCRIPTION, 'pr-description')
+
     def test_ship_asks_for_the_run_only_for_the_lab(self):
         ship = (ROOT / 'tools/ship-pr.sh').read_text()
         self.assertIn('lab-ci-dispatch.sh', ship)

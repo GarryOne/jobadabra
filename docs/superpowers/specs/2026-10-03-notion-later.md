@@ -117,7 +117,7 @@ Nothing else is written locally in Trying. If you need another local file, the f
   migration runs: *"Moving your strategy and matches into Notion…"*
 - **Existing workspace kept** (migration found a Notion workspace that already has a Profile): toast *"Your Notion
   already had a Profile, so it was kept. This Mac's version is saved in <folder>."*
-- Welcome checklist: remove the line "Set up your Job Pilotto workspace in Notion (free)". Step eyebrows become
+- Welcome checklist: remove the line "Set up your Jobadabra workspace in Notion (free)". Step eyebrows become
   "Step N of 4". The privacy line in `steps-foot` becomes *"Your data stays in your accounts: this Mac, and your Notion
   when you connect it. Keys are encrypted in your Keychain."*
 
@@ -192,7 +192,7 @@ Nothing else is written locally in Trying. If you need another local file, the f
 - *Fresh* = `connectWorkspace` returned `built` (the app built it from the schema) **or** `templateRoot` was set (Notion
   just copied the template during OAuth). Its Profile, Answers and ⚙️ Search settings pages are empty placeholders.
   **This Mac's strategy wins.**
-- *Existing* = anything else (the user picked a page that already held a Job Pilotto workspace). **Notion wins**
+- *Existing* = anything else (the user picked a page that already held a Jobadabra workspace). **Notion wins**
   (source of truth); this Mac's files are backed up, never written over Notion.
 - In `connectNotion` (main.js L464), on `result.ok`, **before** calling migrate: if `profile.md` or `answers.md`
   exists, `storage.saveSettings({notionMoveIn: fresh ? 'fresh' : 'existing'})`. Persisting it makes a step that fails
@@ -349,7 +349,7 @@ return true;
 | Always on turned off later, or on/off repeatedly | Nothing is copied. Both modes read and write Notion; SQLite is a cache. |
 | Telegram bot set up in Trying | Gated: buttons write Notion. |
 | Demo mode / Look around | Unchanged (demo state has its own fake Notion ids). |
-| Reset ("Reset Job Pilotto on this computer") in Trying | Deletes local files as today; nothing in Notion to touch. |
+| Reset ("Reset Jobadabra on this computer") in Trying | Deletes local files as today; nothing in Notion to touch. |
 | Export in Trying | The export includes `profile.md`/`answers.md` (check `reset.exportTo` copies the whole folder; add them if not). |
 | Terminal runs (`src/paths.py follow_app`) in Trying | They follow the app's folders. With no Notion ids, the engine uses the profile file only if the env var is set: the terminal user sets `JOB_PILOTTO_PROFILE_FILE` themselves. Document it in one line; no code. |
 

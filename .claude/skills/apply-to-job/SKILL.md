@@ -1,9 +1,9 @@
 ---
 name: apply-to-job
-description: Fill a job application form for the owner from their Job Pilotto application kit, live in Chrome, stopping before Submit. Use when the owner says "apply to <job/URL>", "fill this application", "help me apply", or pastes a job/application link. Also use to record what was learned about an application form or platform.
+description: Fill a job application form for the owner from their Jobadabra application kit, live in Chrome, stopping before Submit. Use when the owner says "apply to <job/URL>", "fill this application", "help me apply", or pastes a job/application link. Also use to record what was learned about an application form or platform.
 ---
 
-# Apply to a job (Job Pilotto)
+# Apply to a job (Jobadabra)
 
 Goal: the owner's application form, fully and correctly filled from the application kit, in their
 own Chrome, **stopped before Submit**. The owner reviews and clicks Submit. Then the job is marked
@@ -534,7 +534,7 @@ would, no menu, no portal, no animation to wait for.
 ## Platform notes (kept private, delivered with the context)
 The per-board notes (Greenhouse, Ashby, Lever, and the application systems not seen often) are the product's learned knowledge, so they
 no longer live in this public file. `python3 -m src.ai.apply_run --context <url>` prints them for this job's board under
-"Platform notes" (fetched from the Job Pilotto service); if it prints none, work from the generic rules in this file. Do not write
+"Platform notes" (fetched from the Jobadabra service); if it prints none, work from the generic rules in this file. Do not write
 board-specific findings into this file: report them in the run's `--record` learning, and the owner folds them into the private playbook.
 
 ## Efficiency
@@ -566,7 +566,7 @@ Compared claude-in-chrome against three alternatives on real forms, no submissio
   free-text SRE/infra answers), took ~10 minutes, and deliberately left personal/subjective/legal
   fields (academic history, travel commitment, employer count, the privacy-acknowledgment
   checkbox) for the owner even when the prompt supplied answers — the stricter rule now adopted
-  above. Not wired into the Job Pilotto pipeline (no Notion/Telegram/GitHub Actions trigger); the
+  above. Not wired into the Jobadabra pipeline (no Notion/Telegram/GitHub Actions trigger); the
   owner drives it by hand.
 
 None of the three beat this skill on "actually fills the form, stays inside the pipeline, review

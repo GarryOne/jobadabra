@@ -2,7 +2,7 @@
 
 > 🔄 **Changed 19 Oct 2026 (owner):** Report is a popup ON the panel (what goes, an optional note, Send / Cancel), no trip to the app and no bottom-left ⚑; the app scrubs, holds and uploads. A Stop halts the recording but KEEPS what was recorded, so Report after a Stop sends it. "Nothing leaves before Send" now means before Send in that popup (personal details are removed automatically first).
 
-> ✅ **Verdict:** while Job Pilotto fills an application, the extension keeps a **trace in memory** (every page and answer from the job posting on, sign-in pages never).
+> ✅ **Verdict:** while Jobadabra fills an application, the extension keeps a **trace in memory** (every page and answer from the job posting on, sign-in pages never).
 > ⚑ Report this form hands that trace to the app **at once: no reload, no new recording**. The scrub, last gate and preview stay as today; nothing leaves before Send.
 > **Owner decisions, 16 Oct 2026 (via job-pilotto-cc):** always record (a refresh breaks SAP sessions; a visible "Recording" on a sign-in page kills trust); option A below
 > (a held debugger, Chrome's bar visible during the fill); on by default, with a plain-words setting and a wizard line.
@@ -53,7 +53,7 @@ when he presses Report we send the recording already made, right away, without a
 ### 5. Settings, wizard, the bar explained once
 - Setting `reportForm` is ON by default (new **and** existing installs; it already is: `!== false`). **Renamed** in plain words: **"Keep a trace of each form fill, so you can report a problem and we can fix it"**; one line under it: *Stays on this Mac, sent only when you press Report and confirm, never sign-in pages, deleted when the application ends.*
 - **Wizard:** the same line with one checkbox, checked, near the existing privacy note (`index.html:62`).
-- **Chrome bar:** explained once, where a fill starts (the start card / panel line): *Chrome shows a debugging bar while Job Pilotto keeps the trace.*
+- **Chrome bar:** explained once, where a fill starts (the start card / panel line): *Chrome shows a debugging bar while Jobadabra keeps the trace.*
 - Off = today: no trace, no bar, ⚑ not drawn.
 - ⌘K: a "Keep a trace of each form fill" toggle entry (every new action goes in the palette).
 

@@ -8,7 +8,9 @@ export const ALWAYS_ON = 'Always on: new matches every morning, even when your M
 // What each package says it includes (the prices come from the site's offers, never from here).
 export const PACKAGE_INCLUDES = {pro: [...EVERYTHING, ALWAYS_ON], 'pro-ai': ['Everything in Pro', 'AI credit for a whole job search, no setup', ALWAYS_ON]};
 export const INCLUDED = EVERYTHING;   // the waitlist card's list (pages/plan-waitlist.js)
-export const TOPUP_NOTE = 'Top-ups are one-time, VAT is included in the price. They add AI credit; the bar shows what is left.';
+export const TOPUP_NOTE = 'Top-ups are one-time, VAT is included in the price. Each adds credit worth what you pay, used at our AI prices; the bar shows what is left.';
+// The euro amount an offer adds, as the site says it (offers[].creditEur; 24 Oct 2026: €1 of credit = €1 at our AI prices, so a top-up adds what it costs). '' when the site did not send it (an older site).
+export const creditWords = offer => (offer?.creditEur > 0 ? `€${offer.creditEur} of AI credit` : '');
 export const NOTES = {
   30: 'Your AI credit is under 30%. Add credit anytime, or use your own AI key: it is unlimited and saves your credit.',
   10: 'Your AI credit is under 10%. Add credit anytime, or use your own AI key: it is unlimited and saves your credit.',
@@ -19,7 +21,8 @@ export const NO_CREDIT_BLOCK = 'Our AI needs AI credit. Add credit, or use your 
 const euro = value => `€${value}`;
 const offerOf = (plan, id) => (plan.offers || []).find(offer => offer.id === id);
 // The site's offers as the card shows them: {kind (the checkout kind), name, price, list, included, button}.
-const packageCard = offer => ({kind: offer.id, name: offer.name, price: euro(offer.price), list: offer.list ? euro(offer.list) : null, included: PACKAGE_INCLUDES[offer.id] || [], button: 'Pay securely with Stripe'});
+const packageCard = offer => ({kind: offer.id, name: offer.name, price: euro(offer.price), list: offer.list ? euro(offer.list) : null, button: 'Pay securely with Stripe',
+  included: (PACKAGE_INCLUDES[offer.id] || []).map(text => (creditWords(offer) && text === PACKAGE_INCLUDES['pro-ai'][1] ? `${creditWords(offer)}, no setup` : text))});
 
 // What the Plan card shows for the site's answer: null when the plan is off (nothing about Pro is on screen) or the site offered nothing.
 export function planView(plan = {}) {
@@ -29,7 +32,7 @@ export function planView(plan = {}) {
     const packages = ['pro', 'pro-ai'].map(id => offerOf(plan, id)).filter(Boolean).map(packageCard);
     return packages.length ? {...base, kind: 'upgrade', pill: '', packages} : null;
   }
-  const topups = (plan.offers || []).filter(offer => offer.id.startsWith('topup')).map(offer => ({kind: offer.id, price: euro(offer.price)}));
+  const topups = (plan.offers || []).filter(offer => offer.id.startsWith('topup')).map(offer => ({kind: offer.id, price: euro(offer.price), adds: creditWords(offer)}));
   const upgrade = plan.package === 'pro' && offerOf(plan, 'upgrade') ? {kind: 'upgrade', price: euro(offerOf(plan, 'upgrade').price), name: offerOf(plan, 'upgrade').name} : null;
   if (plan.hasCredit === false) return {...base, kind: 'pro', pill: plan.package === 'pro-ai' ? 'Pro + AI' : 'Pro', hasCredit: false, label: 'Pro: no application limit', note: NO_CREDIT, upgrade, topups};
   const percent = Math.max(0, Math.min(100, plan.creditPercent ?? 0));

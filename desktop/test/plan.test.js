@@ -7,7 +7,7 @@ import {GRACE_DAYS, OFF, createPlan} from '../lib/plan.js';
 import {setSiteOff} from '../lib/recipes.js';
 import {createAppAllowance} from '../lib/app-allowance.js';
 import {chip} from '../renderer/license-chip.js';
-import {INCLUDED, PACKAGE_INCLUDES, NOTES, NO_CREDIT, OWN_KEY, TOPUP_NOTE, planView, warnNow} from '../renderer/plan-view.js';
+import {INCLUDED, PACKAGE_INCLUDES, NOTES, NO_CREDIT, OWN_KEY, TOPUP_NOTE, creditWords, planView, warnNow} from '../renderer/plan-view.js';
 import {planLine} from '../renderer/plan-line.js';
 
 const storage = (settings = {}) => { let s = settings; return {settings: () => s, saveSettings: p => { s = {...s, ...p}; }, secret: () => '', setSecret() {}}; };
@@ -77,8 +77,8 @@ test('credit used up: our AI starts nothing new (top up or own key); an own key 
   for (const warn of [null, 30, 10]) assert.equal(app({plan: {plan: 'pro', mode: 'test', creditPercent: 20, warn}, settings: {aiFree: true}}).allowanceBlock(), null, `warn ${warn}`);
 });
 
-const OFFERS = [{id: 'pro', name: 'Pro', price: '9', list: null, currency: 'EUR', credit: false}, {id: 'pro-ai', name: 'Pro + AI', price: '19', list: '29', currency: 'EUR', credit: true},
-  {id: 'upgrade', name: 'Upgrade to Pro + AI', price: '10', list: null, currency: 'EUR', credit: true}, ...[5, 10, 20].map(n => ({id: `topup${n}`, name: 'AI credit', price: String(n), list: null, currency: 'EUR', credit: true}))];
+const OFFERS = [{id: 'pro', name: 'Pro', price: '9', list: null, currency: 'EUR', credit: false, creditEur: 0}, {id: 'pro-ai', name: 'Pro + AI', price: '19', list: '29', currency: 'EUR', credit: true, creditEur: 10},
+  {id: 'upgrade', name: 'Upgrade to Pro + AI', price: '10', list: null, currency: 'EUR', credit: true, creditEur: 10}, ...[5, 10, 20].map(n => ({id: `topup${n}`, name: 'AI credit', price: String(n), list: null, currency: 'EUR', credit: true, creditEur: n}))];
 
 test('the plan card: nothing when off; two packages for Free with the euro prices from the site; the credit bar for Pro + AI; no bar for Pro; never dollars', () => {
   // 17 Oct 2026: the credit warning names the level crossed, never a different number from the bar; the bullets say hosted keeps it always on.
@@ -130,4 +130,19 @@ test('every place that shows the plan is wired: the panel, the palette entries (
   assert.match(nav, /\['test', 'live'\]\.includes\(shared\.plan\?\.mode\)/);
   for (const label of ['Plan and AI credit', 'Add AI credit', 'Get Pro', 'Get Pro + AI', 'Upgrade to Pro + AI']) assert.ok(nav.includes(`'${label}'`), label);
   assert.match(read('../preload.cjs'), /planState: call\('planState'\), planCheckout: call\('planCheckout'\)/);
+});
+
+// The class rule (owner, 24 Oct 2026: "€10 credit", still $5 to us): every place that names a credit amount reads it from the site's offers; none carries its own number or a dollar.
+test('a credit amount in the window comes from the offers (€10 included, a top-up adds what it costs), never from a literal in the code', () => {
+  const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
+  const proAi = OFFERS.find(o => o.id === 'pro-ai');
+  assert.equal(creditWords(proAi), '€10 of AI credit'); assert.equal(creditWords(OFFERS[0]), '', 'Pro has none');
+  const free = planView({mode: 'test', plan: 'free', offers: OFFERS});
+  assert.ok(free.packages.find(p => p.kind === 'pro-ai').included.includes('€10 of AI credit, no setup'));
+  const older = planView({mode: 'test', plan: 'free', offers: OFFERS.map(({creditEur, ...rest}) => rest)});   // a site that does not send creditEur yet
+  assert.ok(older.packages.find(p => p.kind === 'pro-ai').included.includes(PACKAGE_INCLUDES['pro-ai'][1]));
+  const pro = planView({mode: 'test', plan: 'pro', package: 'pro-ai', hasCredit: true, creditPercent: 50, warn: null, offers: OFFERS});
+  assert.deepEqual(pro.topups.map(t => [t.price, t.adds]), [['€5', '€5 of AI credit'], ['€10', '€10 of AI credit'], ['€20', '€20 of AI credit']]);
+  for (const file of ['../renderer/plan-view.js', '../renderer/pages/plan.js', '../renderer/pages/plan-waitlist.js', '../renderer/pages/nav.js', '../renderer/license-chip.js', '../renderer/hosted-words.js', '../renderer/plan-line.js', '../renderer/pro-promise.js'])
+    assert.doesNotMatch(read(file).replace(/\/\/.*$/gm, ''), /€\d+ (?:of )?(?:our )?AI|\$\d+ (?:of )?(?:AI )?credit|about €5/, `${file} names a credit amount by itself`);
 });

@@ -249,5 +249,38 @@ def page_links(url, markup):
             number, path = match.group(1), path[:match.start()]
         if number and int(number) >= 2 and path == base.path.rstrip('/'):
             found.setdefault(int(number), link)
-    return [found[n] for n in sorted(found)][:MAX_LIST_PAGES - 1]
+    return [found[n] for n in sorted(found)][:MAX_LIST_PAGES - 1] or _stepped_pages(url, markup)
+
+
+def _stepped_pages(url, markup):
+    """Paging whose link carries no name of ours (?offset=20,40,60 or /stranica/2,3): the same list address with one number that changes, the numbers in one
+    step from one or two steps off zero (a window of pages 1,2,3,34 counts its first three). Filters and categories are not a run, so they are not pages.
+    24 Oct 2026: cv.ee's finance section (offset) and posao.hr's health section (path word) were read as their first page only."""
+    base = urllib.parse.urlsplit(url)
+    here, runs = base.path.rstrip('/'), {}
+    for link, _ in links(markup or '', url):
+        parts = urllib.parse.urlsplit(link)
+        if parts.netloc != base.netloc:
+            continue
+        path, query = parts.path.rstrip('/'), dict(urllib.parse.parse_qsl(parts.query))
+        if path == here:
+            others = {key: value for key, value in query.items() if not value.isdigit()}
+            for key, value in query.items():
+                if value.isdigit() and others == {k: v for k, v in dict(urllib.parse.parse_qsl(base.query)).items() if not v.isdigit()}:
+                    runs.setdefault(('?', key), {})[int(value)] = link
+        elif path.startswith(here + '/') and (match := re.fullmatch(r'/([^/]+)/(\d+)', path[len(here):])) and not query:
+            runs.setdefault(('/', match.group(1)), {})[int(match.group(2))] = link
+    for numbers in runs.values():
+        run = sorted(numbers)
+        step = run[1] - run[0] if len(run) > 1 else 0
+        if step <= 0 or run[0] not in (step, 2 * step):
+            continue
+        kept = [run[0]]
+        for number in run[1:]:
+            if number - kept[-1] != step:
+                break
+            kept.append(number)
+        if len(kept) >= 3 or (len(kept) == 2 and run[0] == 2 * step):
+            return [numbers[n] for n in kept if n >= 2][:MAX_LIST_PAGES - 1]
+    return []
 

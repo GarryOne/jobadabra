@@ -147,13 +147,13 @@ doesn't have. Code that adds a column still survives an older workspace (`cron_r
 
 ## 7 · Product brain (daily recommendation)
 
-One action a day, in the **Job Pilotto Brain** Telegram bot: ✅ Explore it → a plan in Notion → ✅ Approve plan. Nothing
+One action a day, in the **Jobadabra Brain** Telegram bot: ✅ Explore it → a plan in Notion → ✅ Approve plan. Nothing
 is explored, built or published without a tap. Workflow `product-brain.yml` (05:00 UTC), plumbing `tools/product_brain.py`,
 buttons `api/brain.js` (private repo `jobadabra-web`), decisions in Notion **🧭 Product Brain · Decisions** (Project Hub → 🧭 Strategy).
 
 <details><summary>Setup (once)</summary>
 
-- Notion: connection **Job Pilotto Brain** (internal), shared with the Decisions database only → GitHub secret `NOTION_BRAIN_TOKEN`.
+- Notion: connection **Jobadabra Brain** (internal), shared with the Decisions database only → GitHub secret `NOTION_BRAIN_TOKEN`.
 - Telegram: @BotFather → new bot → GitHub secret `BRAIN_BOT_TOKEN`; your chat id → `BRAIN_CHAT_ID`.
   The same token and id + a random `BRAIN_WEBHOOK_SECRET` as Worker secrets of `www` (private repo `jobadabra-web`), then
   `setWebhook` to `https://www.jobpilotto.top/api/brain/telegram` with that secret.

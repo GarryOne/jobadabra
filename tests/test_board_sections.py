@@ -188,6 +188,14 @@ class RetryTests(unittest.TestCase):
                 found_boards._retry_when_unjudged(entry, relevant)
                 self.assertEqual('form_for' in entry, kept)
 
+    def test_a_board_whose_ai_call_failed_is_tried_again_too(self):
+        """Check #10 (24 Oct 2026), Rabota: the link pick failed (CliError), nothing was relevant, and the board was marked tried for good."""
+        for failed, relevant, kept in ((True, [], False), (False, [], True), (True, [{'title': 'Dev'}], True)):
+            with self.subTest(failed=failed, relevant=bool(relevant)), mock.patch('src.time_budget.over', return_value=False):
+                entry = {'form_for': 'https://a.example/q?w={role}'}
+                found_boards._retry_when_unjudged(entry, relevant, failed)
+                self.assertEqual('form_for' in entry, kept)
+
     def test_a_board_that_went_up_an_older_ladder_goes_up_the_new_one_once(self):
         link = 'https://a.example/q?w={role}'
         for entry, went in (({'form_for': link, 'ladder': found_boards.LADDER}, True), ({'form_for': link}, False), ({'form_for': link, 'ladder': 1}, False),

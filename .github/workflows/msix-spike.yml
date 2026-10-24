@@ -41,7 +41,7 @@ jobs:
           npm version "0.0.1" --no-git-tag-version --allow-same-version >/dev/null
           npx electron-builder --win appx --publish never \
             -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
-            -c.appx.publisherDisplayName=Jobadabra -c.appx.applicationId=Jobadabra
+            -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
           ls -la dist/*.appx
       - name: Install · sign with a test certificate and install the package
         shell: pwsh

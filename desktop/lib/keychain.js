@@ -27,6 +27,8 @@ export function isolatedItems(env = process.env) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { return {}; }
 }
 
+// 24 Oct 2026: a test wrote the owner's real Keychain (Python side, src/secret_store.py). Under `node --test` the genuine execFileSync never changes it: a test passes a spy.
+const refuseRealChange = (exec, env) => { if (exec === execFileSync && (env.NODE_TEST_CONTEXT || env.JOB_PILOTTO_UNDER_TEST)) throw new Error('A test tried to change the real Keychain: pass a fake exec or run isolated'); };
 const real = (exec, args) => { try { return exec('security', args, {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024}); } catch { return null; } };
 
 // One item's secret, or null. account: the item's -a (omitted: any account, as `security` matches).
@@ -82,6 +84,7 @@ export function remove(service, {account, env = process.env, exec = execFileSync
     return true;
   }
   if (platform !== 'darwin') return false;
+  refuseRealChange(exec, env);
   return real(exec, ['delete-generic-password', ...(account ? ['-a', account] : []), '-s', service]) !== null;
 }
 
@@ -97,5 +100,6 @@ export function write(service, value, {account, comment = '', label = '', env = 
     return true;
   }
   if (platform !== 'darwin' || !value) return false;
+  refuseRealChange(exec, env);
   return real(exec, ['add-generic-password', '-U', '-a', account || 'job-pilotto', '-s', service, ...(label ? ['-l', label] : []), ...(comment ? ['-j', comment] : []), '-w', value]) !== null;
 }

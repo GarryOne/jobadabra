@@ -140,6 +140,9 @@ The owner's review of Strategy and Your details, kept as rules. Don't / Do pairs
 - A screenshot tool that fails for tooling reasons: drop it once, say so; don't sink time into it.
 - **Screenshots show no first-launch overlay** (owner, 17 Oct 2026: the menu tour covered the sidebar in PR shots). Every capture tool runs with `JOB_PILOTTO_SMOKE`, so the page loads `?capture=1` (`lib/e2e-hidden.js` `captureQuery`); a new one-time overlay (tour, hint, what's new) checks `captureRun` (`renderer/menu-tour.js`) like the tour does.
 
+## A detail screen is cards, tiles and bars, never a plain table (owner, 25 Oct 2026)
+A new Reports tab or detail screen starts from the app's own widgets: `summaryTiles` for the main figures (icon, tone), a `.card` per topic with a small category label and a title, `.bar` rows for shares and durations, `pill()` for status and `chip()` for values, a tone on a run row's left edge, folds for the long rest. A `.data-table` is for a list of like rows, not for a report. Why: the first Searches tab (a table per topic) was called "the most ugly and basic design I ever seen"; rebuilt from the tiles, cards and bars the Focus and Jobs screens use, the owner said ship (session ee, Reports → Searches). Before any preview, put the screen next to `docs/ui/jobs.jpg` and `focus.jpg`: if it looks plainer, rebuild it before asking.
+
 ## Reuse, never one-off
 - **A new feature looks like the old ones.** Whatever a task, run or message shows, find the nearest existing one first (`pages/activity.js`
   render*Card, `components.js`) and reuse its card; never show engine or Telegram text in a `<pre>`. A new task kind needs, in the same change:

@@ -188,7 +188,9 @@ class NotionRowTests(Quiet):
             self.assertEqual(named, stores.link(row['id']))
             for column, prop in today['properties'].items():
                 self.assertEqual(value(row['properties'].get(column)), value(prop), f"{today['properties']['Mode']}: {column}")
-            self.assertEqual(shown(fake.blocks[row['id']]), shown(today['children']), str(today['properties']['Mode']))
+            # run_log adds the Run details toggle (src/run_details.py) that the retired writer never had: everything else is today's page.
+            kept = [b for b in fake.blocks[row['id']] if not (b['type'] == 'toggle' and b['toggle']['rich_text'][0]['text']['content'] == 'Run details')]
+            self.assertEqual(shown(kept), shown(today['children']), str(today['properties']['Mode']))
 
 
 def tearDownModule():

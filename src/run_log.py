@@ -18,7 +18,7 @@ import threading
 import time
 from collections import deque
 
-from . import run_result
+from . import run_details, run_result
 from .notion import cron_report
 from .notion.cron_runs import CRASH_LINE, EXIT_GRACE_S, HEARTBEAT_S, LOGGED_MODES, LOG_LINES, STEP_EVERY, STOPPED_WORDS
 from .stores import notion_blocks, notion_rows
@@ -69,6 +69,8 @@ class _Tee:
         *lines, self.partial = self.partial.split('\n')
         lines = [line for line in lines if line.strip()]
         _output.extend(lines)
+        for each in lines:
+            run_details.line(each)
         if lines:
             _progress(lines[-1])
         return self.stream.write(text)
@@ -107,6 +109,7 @@ def begin(stores, run):
     one_log()
     capture()
     _install()
+    run_details.reset()
     try:
         row = stores.cron_runs.begin(run['mode'], where(), _fields(run, final=False))
     except Exception as error:  # noqa: BLE001 - the run goes on without its row
@@ -162,6 +165,21 @@ def stats_of(properties):
     return found
 
 
+def details_of(run):
+    """How the run ran (src/run_details.py): a search run adds the crawl funnel and the employer meter; never raises."""
+    try:
+        crawl = run.get('mode') in cron_report.CRAWL_MODES
+        employers = None
+        if crawl:
+            from . import coverage
+            from .paths import JOBS_DB
+            employers = coverage.employers_state(run.get('funnel')) if JOBS_DB.exists() else None
+        return run_details.build(run, run.get('funnel'), employers)
+    except Exception as error:  # noqa: BLE001 - the details are an extra; the run still closes
+        print(f'Warning: run details not kept ({type(error).__name__}: {error})')
+        return None
+
+
 def finished(run, failed=False):
     """(status, title, summary, report, result, log, stats) of a run at its end, in today's words."""
     from . import telegram
@@ -172,7 +190,7 @@ def finished(run, failed=False):
     return {'status': 'Failed' if failed else cron_report.status(run), 'title': cron_report.title(run, final=not failed),
             'summary': cron_report.report_lines(run)[0], 'report': notion_blocks.to_markdown(children),
             'result': '\n'.join(cron_report.result_lines(messages, run)),
-            'log': '\n'.join(_output), 'stats': stats_of(properties)}
+            'log': '\n'.join(_output), 'stats': stats_of(properties), 'details': details_of(run)}
 
 
 def log_run(stores, run, failed=False):
@@ -181,7 +199,7 @@ def log_run(stores, run, failed=False):
     one_log()
     try:
         end = finished(run, failed)
-        args = {k: end[k] for k in ('summary', 'report', 'result', 'log', 'stats', 'title')}
+        args = {k: end[k] for k in ('summary', 'report', 'result', 'log', 'stats', 'title', 'details')}
         row_id = _open.get('id') if _open.get('run') is run and _open.get('stores') is stores else None
         if row_id:
             _open.pop('run')

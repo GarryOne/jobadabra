@@ -1,0 +1,33 @@
+/* Reports → Searches (pages/reports-searches.js): only the layout the shared parts lack: the run cards, the report's card grid, the bars. Colours are tokens. */
+.rs-list, .rs-detail { display: grid; gap: var(--sp-4); }
+.rs-runs { display: grid; gap: var(--sp-2); }
+.rs-run, .rs-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
+.rs-head { grid-template-columns: auto minmax(0, 1fr); }
+.rs-run { cursor: pointer; border-left: 4px solid var(--line); transition: border-color .15s, box-shadow .15s; }
+.rs-run:hover { box-shadow: 0 1px 6px color-mix(in srgb, var(--ink) 12%, transparent); }
+.rs-run.is-good { border-left-color: var(--good); }
+.rs-run.is-warn { border-left-color: var(--warn); }
+.rs-run.is-bad { border-left-color: var(--bad); }
+.rs-run-words { display: grid; gap: 2px; min-width: 0; }
+.rs-run-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.rs-run-number { display: grid; justify-items: end; line-height: 1.1; }
+.rs-run-number b { font-size: var(--fs-display); }
+.rs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: var(--sp-4); align-items: start; }
+.rs-card { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.rs-steps, .rs-bars, .rs-board-rows { display: grid; gap: var(--sp-2); }
+.rs-card-head { display: grid; gap: var(--sp-1); justify-items: start; }
+.rs-card-title { margin: 0; font-size: var(--fs-card-title); }
+.rs-step { display: grid; grid-template-columns: auto minmax(120px, 1.2fr) auto minmax(60px, 1fr) 56px; align-items: center; gap: var(--sp-2); }
+.rs-took { text-align: right; font-variant-numeric: tabular-nums; }
+.rs-bar-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 64px; align-items: center; gap: var(--sp-2); }
+.rs-bar-row .bar span { background: var(--tone, var(--signal)); }
+.rs-bar-value { text-align: right; font-variant-numeric: tabular-nums; }
+.rs-board { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.rs-board b { flex: 1 1 140px; min-width: 0; }
+.rs-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.rs-fold summary { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; }
+.rs-fold summary .muted { margin-left: auto; }
+@media (max-width: 760px) { .rs-run { grid-template-columns: auto minmax(0, 1fr) auto; } .rs-run > button { grid-column: 1 / -1; } .rs-step { grid-template-columns: auto minmax(0, 1fr) 56px; } .rs-step .bar, .rs-step .muted { display: none; } .rs-bar-row { grid-template-columns: 110px minmax(0, 1fr) 56px; } }
+.rs-detail .summary-tiles { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.rs-card .insight-numbers { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+@media (max-width: 560px) { .rs-grid { grid-template-columns: minmax(0, 1fr); } }

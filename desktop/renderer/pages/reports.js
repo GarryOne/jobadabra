@@ -1,7 +1,7 @@
-// Reports (owner's choice, 9 Oct 2026: one page, tabs Weekly · Insights · Funnel · Form fills): what Notion's 💡 Insights and 🎯 Pipeline
+// Reports (owner's choice, 9 Oct 2026: one page, tabs Weekly · Insights · Funnel · Form fills · Searches): what Notion's 💡 Insights and 🎯 Pipeline
 // pages showed, for every store. Weekly: a report in full (priorities, what worked, numbers, daily insights), ‹ › through the weeks.
 // Insights: the history with its feedback (Useful / Not useful / Acting on it). Funnel: the Pipeline table and "Where to improve".
-// Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
+// Searches: every search run with the details it saved (pages/reports-searches.js, 25 Oct 2026). Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
 // insightFeedback (lib/reports-handlers.js) and Focus's funnel. Parts: .tabs, .data-table, the interview review's groups, .segmented.
 // Pure parts: renderer/reports-view.js. Guards: test/reports-view.test.js, test/reports-handlers.test.js.
 import {el, pill} from '../components.js';
@@ -12,8 +12,9 @@ import {gatedOut} from './notion-connect.js';
 
 export const REPORT_TABS = [['weekly', 'Weekly report', 'weekly report search analysis priorities numbers week'],
   ['insights', 'Insights', 'insights history daily feedback useful'], ['funnel', 'Funnel', 'funnel pipeline conversion from previous where to improve'],
-  ['fills', 'Form fills', 'form fills history runs fields timings extension']];
-const state = {tab: 'weekly', insights: null, week: 0, error: ''};
+  ['fills', 'Form fills', 'form fills history runs fields timings extension'],
+  ['searches', 'Searches', 'searches find jobs runs details numbers employers boards how the search ran full report']];
+const state = {tab: 'weekly', insights: null, week: 0, error: '', openSearch: null};
 
 function group(title, lines) {
   const box = el('div', 'iv-moments-group');
@@ -125,10 +126,17 @@ async function fillsTab(box) {
   return null;
 }
 
+async function searchesTab(box) {
+  const view = await import('./reports-searches.js');
+  view.renderSearches(box, state.openSearch);
+  state.openSearch = null;
+}
+
 async function draw() {
   document.querySelectorAll('[data-reports-tab]').forEach(tab => tab.classList.toggle('is-active', tab.dataset.reportsTab === state.tab));
   const box = $('reports-body');
-  box.classList.toggle('is-plain', state.tab === 'insights' || state.tab === 'funnel');   // their items are cards of their own: no box in a box
+  box.classList.toggle('is-plain', ['insights', 'funnel', 'searches'].includes(state.tab));   // their items are cards of their own: no box in a box
+  if (state.tab === 'searches') { await searchesTab(box); return; }
   if (state.tab === 'fills') { const parts = await fillsTab(box); if (parts) box.replaceChildren(...parts); return; }
   if (state.tab === 'funnel') { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60')); box.replaceChildren(...await funnelTab()); return; }
   if (state.error) { box.replaceChildren(...empty(`Could not read your insights: ${state.error}. Open Reports again to retry.`)); return; }
@@ -147,7 +155,13 @@ export async function loadReports(tab = state.tab) {
   state.insights = result.ok ? result.insights : state.insights;
   state.error = result.ok ? '' : result.error || 'try again';
   $('reports-state').textContent = result.ok ? 'Updated just now' : '';
-  if (state.tab !== 'fills' && state.tab !== 'funnel') draw();
+  if (!['fills', 'funnel', 'searches'].includes(state.tab)) draw();
+}
+
+// Opens Reports on Searches with one run's full report (the "Full report →" link on a search's card and in Recent activity).
+export function openSearchReport(runId) {
+  state.openSearch = runId;
+  return loadReports('searches');
 }
 
 export function init() {

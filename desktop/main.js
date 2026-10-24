@@ -31,6 +31,7 @@ import {registerTextHandlers} from './lib/text-handlers.js';
 import {registerReportsHandlers} from './lib/reports-handlers.js';
 import {registerEmployersHandlers} from './lib/employers-handlers.js';
 import {registerFormFillsHandlers} from './lib/form-fills-handlers.js';
+import {registerSearchesHandlers} from './lib/searches-handlers.js';
 import {registerSearchTuningHandlers} from './lib/search-tuning-handlers.js';
 import {settingsDepsFor} from './lib/settings-deps.js';
 import {createSessionFlow} from './lib/session-flow.js';
@@ -270,6 +271,7 @@ function handlers() {
   registerTextHandlers({ipcMain, storage, DEMO, log: appLog});   // lib/text-handlers.js: Settings → Profile's texts
   registerReportsHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/reports-handlers.js: Reports → insights
   registerEmployersHandlers({ipcMain, storage, DEMO, here, log: appLog, scoutFromPage: file => pipeline.scout(storage, log, 'you', null, {paste: file})});   // lib/employers-handlers.js: the Employers page
+  registerSearchesHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/searches-handlers.js: Reports → Searches
   registerFormFillsHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/form-fills-handlers.js: Reports → Form fills
   registerJobsExportHandlers({DEMO, app, dialog, getWindow: () => window, ipcMain, licenseState, storage});   // lib/jobs-export-handlers.js
   registerJobsHandlers({DEMO, JOBS_PAGE, activity, allowanceBlock, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track});   // lib/jobs-handlers.js

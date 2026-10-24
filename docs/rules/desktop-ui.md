@@ -23,6 +23,8 @@ Living copy: `npm run gallery` (sections "Chips" and "Value → control", drawn 
   raise the file's count in `text-fields-allowed.json` with the reason), `chip.test.js` (raw chip text, a new chip class), `design.test.js` (raw values), `brand-colour.test.js` (a hard-coded orange in the app or extension);
   `npm run shot` prints every saved value cut by its box; `tools/pr-body.sh` refuses a desktop-window PR without the 6 **Design checks** ticked.
 
+- **Run results show one number: the jobs added to the list** (owner, 24 Oct 2026: "too many numbers", "User is not curious about scored, scoring"). Find jobs card, the live search page and the Recent activity run cards lead with it (`find-card-model.js` `addedSoFar`/`addedWords`, `run-cards.js` `runNewCount`); every other count folds into the closed **Details** (`detailsOf`); scoring and its queue (scored, strong matches, waiting for a score) are internal and never shown. Guard: `desktop/test/run-cards.test.js`, `find-card.test.js`, `live-dots.test.js`.
+
 ## Cards: read → Edit → editor; one save bar (owner, 18 Oct 2026, UI redesign)
 Every Profile and Strategy card works one way ("so nice, so clean"). Parts: `renderer/card-shell.js` + `card-shell.css`, `components.js` `cardEdit`, `renderer/save-bar.js`;
 living copy: `npm run gallery` → "Card shell"; API for other sessions: `~/job-pilotto-ui-mockups-2026-10-18/SHARED-PARTS.md`.

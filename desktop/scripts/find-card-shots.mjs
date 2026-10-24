@@ -9,10 +9,11 @@ import {fileURLToPath} from 'node:url';
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const dir = path.resolve(args.includes('--out') ? args[args.indexOf('--out') + 1] : path.join(os.tmpdir(), 'find-card-shots'));
-const feed = state => `window.__jp.findCard(${JSON.stringify(state)}); await new Promise(r => setTimeout(r, 400));`;
+// The page redraws the card from the demo's own runs now and then (pages/jobs.js, every 2 s): the picture is taken right after the feed, or it shows the demo's run, not this state.
+const feed = state => `window.__jp.findCard(${JSON.stringify(state)}); await new Promise(r => setTimeout(r, 120));`;
 const SLICE = ['Finding your first jobs…', 'First jobs: reading 15 of 212 employer sites first', 'First jobs: 9 found', 'Scored 1 of 3 job(s)'];
 const WIDE = [...SLICE, 'First jobs: 3 scored in 21 s; the full search goes on', 'Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one', '⏳ Reading employer job sites: 120 of 212 · 3,412 jobs listed', 'Run counts: looked=612 matches=14 scored=9 good=3'];
-const BIG = [...SLICE, 'Searching job boards…', '⏳ Reading employer job sites: 1953 of 2251 · 131,825 jobs listed · under a minute left', 'Run counts: looked=135769 matches=31 scored=4 good=2'];   // the owner\'s 19 Oct case, demo numbers
+const BIG = [...SLICE, 'Searching job boards…', '⏳ Reading employer job sites: 1953 of 2251 · 131,825 jobs listed · under a minute left', 'Added 9 new job(s): Zurich 9', 'Run counts: looked=135769 matches=31 scored=4 good=2'];   // the owner\'s 19 Oct case, demo numbers
 const CASES = [
   ['1-empty-first-run', feed({running: null, runs: [], lastSearchAt: '', listed: 0}), '#find-card'],
   ['2-searching-first-jobs', feed({running: {kind: 'search', log: SLICE}, runs: [], lastSearchAt: ''}), '#find-card'],

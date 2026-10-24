@@ -4,7 +4,6 @@ import {el, pill} from '../components.js';
 import {fitTooltip} from '../jobs-view.js';
 import {jobActions, jobHeadline, withListJob} from '../job-link.js';
 import {byFit, runItems, runNewCount} from '../run-cards.js';
-import {searchNumbers} from '../find-card-model.js';
 import {shared} from './shared.js';
 import {$, show} from './core.js';
 import {fullKey, showJobsIn} from './jobs.js';
@@ -52,19 +51,17 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
   // A count the message does not carry is left out, never drawn as "–" (#309: three dashes beside "4 new this run").
   const stat = (value, label) => { if (value == null) return ''; const cell = el('span', 'run-card-stat'); cell.append(el('b', '', String(value)), ` ${label}`); return cell; };
   const stats = el('div', 'run-card-stats');
+  // Every other count of a run, closed by default (the run card's Details); null when the message carries none.
+  const detailsOf = cells => { const shown = cells.filter(Boolean); if (!shown.length) return null; const box = el('details', 'run-card-details'); const list = el('div', 'run-card-stats muted'); list.append(...shown); box.append(el('summary', '', 'Details'), list); return box; };
   const rows = el('ol', 'run-card-rows');
   let heading, more = null, help = null, secondary = null;
   if (card.kind === 'digest') {
-    // The same numbers as the Find jobs card on Jobs (find-card-model.js searchNumbers); the digest's own counts stay as the quiet line under them.
-    const fresh = runNewCount(run, card);   // this run's own count, as the toast and footer say (#1408); the digest's own number is named for what it counts
-    const numbers = searchNumbers(run?.log), digestStats = [stat(card.open, 'open'), stat(card.local, 'in your places'), stat(card.applied, 'already applied (hidden)'), stat(fresh, 'new this run'),
-      ...(card.fresh != null && card.fresh !== fresh ? [stat(card.fresh, 'since your last digest')] : [])];
-    if (numbers) {
-      stats.append(stat(numbers.found, 'found'), stat(numbers.scored, 'scored'), stat(numbers.good, 'strong matches (70+)'), ...(numbers.waiting ? [stat(numbers.waiting, 'waiting for a score')] : []));
-      const facts = el('div', 'run-card-stats muted');
-      facts.append(...digestStats);
-      secondary = facts;
-    } else stats.append(...digestStats);
+    // One number leads (owner, 24 Oct 2026: "too many numbers"): the jobs this run added to the list, as the toast and footer say (#1408). Scoring and its queue are
+    // internal and never drawn; the digest's own counts fold into Details. The digest's "N new" counts jobs first seen since the last digest, which can include earlier runs'.
+    const fresh = runNewCount(run, card);
+    stats.append(stat(fresh, `job${fresh === 1 ? '' : 's'} added to your list`));
+    secondary = detailsOf([stat(card.open, 'open'), stat(card.local, 'in your places'), stat(card.applied, 'already applied (hidden)'),
+      ...(card.fresh != null && card.fresh !== fresh ? [stat(card.fresh, 'since your last digest')] : [])]);
     // A run that found nothing new lists no jobs: the digest's "top matches" are the best open jobs from any run, and shown here they read as
     // this run's finds (owner, 6 Oct 2026: two runs in a row "found" the same two jobs). Its open jobs stay one click away, in Jobs.
     const nothingNew = fresh === 0;
@@ -117,10 +114,11 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // New to the search or checked again after its wait: a run never re-reads the same list (an older message has neither number).
     // Every count says its word for 1 and for many (7 Oct 2026: "1 new job feeds"); the bottom line says why some were set aside.
     const s = n => (n === 1 ? '' : 's');
-    if (card.first == null) stats.append(stat(card.checked, `employer${s(card.checked)} checked`));
-    else stats.append(stat(card.first, `new employer${s(card.first)} checked`), ...(card.again ? [Object.assign(stat(card.again, 'checked again'), {title: card.againWhy ? `Checked again: ${card.againWhy}` : ''})] : []));
-    if (card.left) stats.append(stat(card.left, 'set aside'));
-    stats.append(stat(card.fresh, `new job feed${s(card.fresh)}`));
+    // The one number: the employers this run added. The rest folds into Details.
+    stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
+    secondary = detailsOf([card.first == null ? stat(card.checked, `employer${s(card.checked)} checked`) : stat(card.first, `new employer${s(card.first)} checked`),
+      ...(card.again ? [Object.assign(stat(card.again, 'checked again'), {title: card.againWhy ? `Checked again: ${card.againWhy}` : ''})] : []),
+      ...(card.left ? [stat(card.left, 'set aside')] : [])]);
     heading = 'New employers';
     // Five at first; "+2 more" shows the rest here (Show less folds them), and the Employers database has them all.
     const all = card.items.length > 5 && expandedCard === card.items.map(item => item.company).join('|');

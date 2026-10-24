@@ -144,9 +144,18 @@ test('every place showing a run\'s new count reads the run\'s own number', async
   const card = readFileSync(new URL('../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
   assert.doesNotMatch(card, /stat\(card\.fresh, 'new this run'\)/);
   assert.doesNotMatch(card, /card\.fresh (===|<)/, 'nothing-new and few-new decide on the run\'s count');
-  assert.match(card, /stat\(fresh, 'new this run'\)/);
+  assert.match(card, /stat\(fresh, `job\$\{fresh === 1 \? '' : 's'\} added to your list`\)/);
   assert.match(card, /'Top new since your last digest'/, 'the list is the digest\'s new section: named for what it lists, not "this run"');
   const {notice} = await import('../lib/run-history.js'), {freshOf} = await import('../lib/few-jobs.js');
   assert.match(notice({kind: 'search', ok: true, new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}).body, /^7 new jobs found/, 'the notification');
   assert.equal(freshOf({new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}), 7, 'the few-new-jobs nudge');
+});
+
+// Owner, 24 Oct 2026: "too many numbers". Every run card kind leads with ONE number line (the jobs/employers it added); the other counts sit in the closed Details.
+test('every run card draws one headline stat and folds the rest into Details; no scoring words', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  assert.equal((src.match(/stats\.append\(stat\(/g) || []).length, 2, 'one headline stat per card kind (digest, scout): a new count goes in detailsOf');
+  assert.equal((src.match(/detailsOf\(/g) || []).length, 2, 'used by both kinds');
+  assert.doesNotMatch(src, /strong matches|waiting for a score|stat\([^)]*scor/i, 'no scoring count (a job row\'s own fit pill is not a run count)');
 });

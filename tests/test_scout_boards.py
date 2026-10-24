@@ -66,6 +66,19 @@ class BoardPassTest(unittest.TestCase):
         self.assertEqual(first, 'md', 'the country with no employers at all')
         self.assertNotEqual(scout_boards.next_country(self.db), first)
 
+    def test_a_pass_with_no_time_left_says_so_and_reads_nothing(self):
+        out, read = [], []
+        got = scout_boards.run(self.db, ideas=lambda search: read.append(1) or [], clock=lambda: 100.0, until=99.0, out=out.append)
+        self.assertEqual((got, read), ([], []))
+        self.assertTrue(out and out[0].startswith('Board pass skipped: no time left'), out)
+
+    def test_the_feed_checks_stop_early_enough_to_leave_the_pass_its_time(self):
+        # 24 Oct 2026: the checks ran to the publish deadline, so the pass (needs RESERVE_S before it) never ran and said nothing.
+        from pathlib import Path
+        source = (Path(__file__).resolve().parent.parent / 'src' / 'scout.py').read_text()
+        self.assertIn('publish_deadline(started) - scout_boards.RESERVE_S', source)
+        self.assertIn('until=scout_overrun.publish_deadline(started)', source)
+
     def test_a_failure_is_said_and_never_raised(self):
         out = []
 

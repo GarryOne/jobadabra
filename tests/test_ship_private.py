@@ -56,6 +56,15 @@ class ShipPrivateRepoTest(unittest.TestCase):
         self.assertIn('Generated with [Claude Code]', create)
         self.assertFalse((self.repo / 'tools').exists(), 'nothing was copied into the repo')
 
+    def test_a_repo_without_the_toolkit_cannot_open_a_pr_without_a_body(self):
+        self.state.write_text(json.dumps({'origin': str(self.origin)}))
+        env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0',
+               'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions')}
+        result = subprocess.run(['bash', str(ROOT / 'tools' / 'ship.sh')], cwd=self.repo, capture_output=True, text=True, timeout=90, env=env)
+        self.assertNotEqual(result.returncode, 0, 'a lab/site PR with no --body would have a free-form description (lab #57)')
+        self.assertIn('no --body', result.stdout + result.stderr)
+        self.assertFalse([c for c in json.loads(self.state.read_text()).get('calls', []) if c.startswith('pr create')])
+
     def test_pr_body_of_a_repo_without_the_toolkit_passes_the_ci_layout_check(self):
         summary = self.tmp / 'summary.md'; summary.write_text(SUMMARY)
         body = subprocess.run(['bash', str(ROOT / 'tools' / 'pr-body.sh'), 'origin/main', f'--body={summary}'], cwd=self.repo, capture_output=True, text=True)

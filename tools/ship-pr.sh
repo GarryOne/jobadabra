@@ -47,6 +47,8 @@ ship_pr_land() {
   if [ -z "$n" ]; then
     title="${SHIP_PR_TITLE:-$(bash "$tools/pr-title.sh" origin/main)}"   # the newest commit that is not a "Move ..." split, or --title= (18 Oct 2026)
     who="$(session_name)"; [ "$who" = "?" ] || title="[${who##*-}] ${title#"[${who##*-}] "}"   # (a --title already starting with the tag keeps one: 24 Oct 2026, #1750 read "[d8] [d8] ...") the session that opened it, short (owner, 15 Oct 2026; tools/session-name.sh)
+    # A repo without this toolkit (jobadabra-web, jobadabra-lab) has the body check only in its CI, and the lab's Actions can be blocked (24 Oct 2026, lab #57 opened with a free-form body): no body, no PR.
+    [ -z "${external:-}" ] || [ -n "${SHIP_PR_BODY:-}" ] || ship_pr_fail "no --body=<file>: a PR of this repo needs the laid-out description (verdict, Why, Unblocks, impact table, Before/After; ~/jobadabra/tools/pr-body-template.md)"
     [ -n "${SHIP_PR_BODY:-}" ] || step "no --body=<file>: the PR shows the subject, the facts and the commit folded; a 5-second summary goes in a file (CLAUDE.md \"PR descriptions\")"
     body="$(bash "$tools/pr-body.sh" origin/main ${SHIP_PR_BODY:+"--body=$SHIP_PR_BODY"})"   # the summary first, the facts, the commit folded (tools/pr-body.sh)
     rows="$(git log --format='%(trailers:key=Pool-row,valueonly)' origin/main..HEAD | grep -v '^$' | grep -iv '^none' | sort -u || true)"   # the pool rows this PR fixes (the Pool-row lines)

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.sources import careers  # noqa: E402
+from src.sources import careers, careers_parse  # noqa: E402
 
 BASE = 'https://jobs.example.ch/de/offene-stellen'
 
@@ -50,6 +50,16 @@ class PagingTests(unittest.TestCase):
     def test_filters_and_categories_are_not_pages(self):
         menu = ''.join(f'<a href="{BASE}?category={n}">c{n}</a>' for n in (7, 12, 31)) + f'<a href="{BASE}/stranica/9">x</a>'
         self.assertEqual(careers.page_links(BASE, f'<html>{menu}</html>'), [])
+
+    def test_job_links_with_the_id_before_the_employer_and_title_are_all_job_pages(self):
+        """24 Oct 2026: a finance section linked 20 jobs as /vacancy/<id>/<employer>/<title>; only the 3 whose title slug was 16+ letters counted as ending in an id."""
+        words = ('analyst', 'accountant', 'controller', 'bookkeeper', 'auditor', 'treasurer')
+        cards = ''.join(f'<a href="/vacancy/{1660000 + n}/employer-{n}/{word}">{word}</a>' for n, word in enumerate(words))
+        menu = '<a href="/jobs">Jobs</a><a href="/vacancy/search">Search</a>'
+        found = careers.job_links(f'<html>{menu}{cards}</html>', BASE)
+        self.assertEqual(len(found), len(words))
+        self.assertTrue(careers_parse.has_job_ids(f'<html>{cards}</html>', BASE))
+        self.assertFalse(careers_parse.has_job_ids(f'<html>{menu}</html>', BASE))
 
 
 if __name__ == '__main__':

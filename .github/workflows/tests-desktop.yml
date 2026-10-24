@@ -36,6 +36,7 @@ on:
       - 'shared/telemetry.js'
       - 'test/host-cases.json'
       - 'src/role_kinds.py'
+      - 'src/read_methods.py'
       - 'web/public/privacy.html'
       - 'src/ai/inbox_fields.py'
       - 'src/ai/score.py'

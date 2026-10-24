@@ -15,7 +15,7 @@ Why each rule exists: [why.md](why.md#change-loop).
 6. **A new e2e step is seen passing before it lands, and proves its own setup.** The push hook (`tools/new-e2e-steps.mjs`) wants a local run that
    passed it, or `E2E-unverified: <why>`. In the step, assert the setup took effect (the stub was called, the seed is in the state).
 7. **Never start a CI e2e run by hand, and no whole e2e suite on the Mac** (owner, 9 Oct 2026: CI spends the test keys only on PRs; 11 Oct 2026: CI heavy,
-   local light): CI runs the e2e suites on your PR. No `gh workflow run e2e.yml`, no `e2e-try/*` tag, unless the owner asks. Locally only the step you are
+   local light): CI runs the e2e suites on your PR. No `gh workflow run e2e.yml`, no `e2e-try/*` tag, unless the owner asks. **One exception** (owner, 24 Oct 2026): after fixing a red suite, run that one fixed Linux suite (plus its siblings) on your PR branch: `gh workflow run e2e.yml --ref <branch> -f suite=<suite>`; never a beta to check a test fix. Locally only the step you are
    debugging or adding: `cd desktop/e2e && E2E_STEPS=... node run-all.mjs --only <suite>`; `E2E_AI_FAMILY=openai` runs the OpenAI side on Codex.
    `run-all.mjs` refuses a whole suite on the Mac (`lib/local-run.mjs`; the owner's full run by choice: `JP_E2E_FULL=1`; `npm run live` passes).
 

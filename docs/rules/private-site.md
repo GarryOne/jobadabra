@@ -2,6 +2,8 @@
 
 Owner, 19 Oct 2026: "leave open-source rather less than more … make it hard for someone to copy our product from the source code". Moved 20 Oct 2026 (private spec jobadabra-lab:docs/specs/2026-10-19-site-private-repo.md).
 
+**Visibility (owner, 24 Oct 2026):** `GarryOne/jobadabra-web` is public until 1 Nov 2026, then private again; nothing secret in it meanwhile.
+
 ## What is where
 - **Private, `GarryOne/jobadabra-web`** (clone: `~/jobadabra-web`): its folders sit at the top level by audience (21 Oct 2026): `web/` (public pages), `admin/`, `api/`, `shared/`, `workers/www` (the ONE Worker serving them; also `workers/hosted-runner`, `workers/ready-runner`), `db/migrations/`, `test/`, `media/`, `preview/`, and `jobs/` (the scheduled jobs that feed /admin: ops overview, changelog, daily digest, e2e-intel, hosted e2e, the Lab Job Search uploads) with their workflows. There is no `site/` folder.
 - **Public, here**: the desktop app, extension, engine (`src/`), the Telegram bot Worker (`worker/`), the hosted image (`hosted/`), the tests of all of those, and **`docs/site-routes.json`**: the list of every route the app, extension and engine call, with a kind. The public tests `desktop/test/site-routes.test.js` (code calls only listed routes) and the site's `test/site-routes.test.js` (the Worker answers each) pair on it.

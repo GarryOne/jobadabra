@@ -27,7 +27,9 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-scope { margin-left: auto; }
 .find-lead { margin: var(--sp-1) 0 var(--sp-3); }
 .find-steps-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); }
-.find-steps-row .find-activity { margin-left: auto; }
 .find-step .icon { width: 1em; height: 1em; margin-right: var(--sp-1); }
-.find-activity .icon { width: 1em; height: 1em; vertical-align: -.15em; transition: transform .15s; }
-.find-activity.is-open .icon { transform: rotate(90deg); }
+.find-live { margin-top: var(--sp-3); }
+.find-live > summary { cursor: pointer; display: flex; align-items: center; gap: var(--sp-2); width: max-content; margin-left: auto; color: var(--signal); font-size: var(--fs-sm); list-style: none; }
+.find-live > summary::-webkit-details-marker { display: none; }
+.find-live > summary::after { content: ""; width: .5em; height: .5em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
+.find-live[open] > summary::after { transform: rotate(-135deg); }

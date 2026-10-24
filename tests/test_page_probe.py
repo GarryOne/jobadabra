@@ -33,6 +33,11 @@ class QuickCheckTests(unittest.TestCase):
         self.assertIn("'local_jobs'", text)
         self.assertIn("'local_by_source'", text)
 
+    def test_a_place_list_is_not_counted_as_local(self):
+        text = (ROOT / 'tools' / 'persona-search' / 'metrics.py').read_text(encoding='utf-8')
+        self.assertIn('LIST_LOCATION = 60', text)
+        self.assertIn('len(row[2] or \'\') <= LIST_LOCATION', text)
+
 
 if __name__ == '__main__':
     unittest.main()

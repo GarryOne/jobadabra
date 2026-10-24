@@ -41,7 +41,9 @@ export function createReadyHandoff({chrome, api, sessionGet, move, decide = () =
     const handoff = answer?.handoff;
     if (!handoff?.url) return false;
     let set = 0;
-    for (const cookie of handoff.cookies || []) if (await chrome.cookies.set(cookie).catch(() => null)) set++;
+    // cookies is an optional permission (Chrome Web Store, owner 24 Oct 2026): granted from the options page; without it the page loads and the fill goes on, not signed in.
+    const mayCarry = await chrome.permissions?.contains({permissions: ['cookies']}).catch(() => false);
+    if (mayCarry && chrome.cookies) for (const cookie of handoff.cookies || []) if (await chrome.cookies.set(cookie).catch(() => null)) set++;
     await chrome.storage.session.set({[key(tabId)]: {step: 'restore', handoff}});
     const mark = String(url).includes('#') ? `#${String(url).split('#').slice(1).join('#')}` : '';
     decide('ready', 'open in my browser: the night\'s page', {cookies: set, fields: handoff.snapshot?.fields?.length || 0});

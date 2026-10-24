@@ -15,6 +15,14 @@ $('anySite').addEventListener('change', async () => {
   const ok = await (on ? chrome.permissions.request(EVERY_SITE) : chrome.permissions.remove(EVERY_SITE)).catch(() => false);
   if (on && !ok) $('anySite').checked = false;
 });
+// Cookies: an optional permission too, asked by Chrome from this click (ready-handoff.js uses it only when granted).
+const COOKIES = {permissions: ['cookies']};
+$('carryLogins').checked = await chrome.permissions.contains(COOKIES);
+$('carryLogins').addEventListener('change', async () => {
+  const on = $('carryLogins').checked;
+  const ok = await (on ? chrome.permissions.request(COOKIES) : chrome.permissions.remove(COOKIES)).catch(() => false);
+  if (on && !ok) $('carryLogins').checked = false;
+});
 $('acceptConsents').checked = stored.acceptConsents !== false;   // on unless turned off (owner, 17 Oct 2026)
 $('acceptConsents').addEventListener('change', () => chrome.storage.local.set({acceptConsents: $('acceptConsents').checked}));
 // Chrome grants debugger only at install (it can't be optional); this switch decides whether it's used.

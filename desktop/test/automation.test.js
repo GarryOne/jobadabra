@@ -175,7 +175,11 @@ test('pairing hands the extension connection only to the Job Pilotto extension',
   const {createHash} = await import('node:crypto');
   const id = createHash('sha256').update(Buffer.from(manifest.key, 'base64')).digest('hex').slice(0, 32)
     .replace(/[0-9a-f]/g, c => 'abcdefghijklmnop'[parseInt(c, 16)]);
-  assert.equal(id, server.EXTENSION_ID);  // the manifest key and the app agree on the extension's ID
+  assert.ok(server.EXTENSION_IDS.includes(id), 'the manifest key\'s ID is one the app trusts');
+  for (const trusted of server.EXTENSION_IDS) assert.equal(server.ownOrigin(`chrome-extension://${trusted}`), `chrome-extension://${trusted}`);
+  assert.equal(server.ownOrigin('chrome-extension://abcdefghijklmnopabcdefghijklmnop'), '');
+  assert.equal(server.ownOrigin('https://evil.example'), '');
+  assert.equal(server.ownOrigin(undefined), '');
 });
 
 test('one-off jobs from the Actions page are tracked with a readable result line', async () => {

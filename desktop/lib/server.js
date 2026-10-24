@@ -33,9 +33,13 @@ export const DEFAULT_PORT = 47111;
 // own (the end-to-end suites copy the extension with the same port, desktop/e2e/lib/extension.mjs); anything but a whole port number is ignored.
 export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOB_PILOTTO_PORT || '') && Number(env.JOB_PILOTTO_PORT) > 0 && Number(env.JOB_PILOTTO_PORT) < 65536 ? Number(env.JOB_PILOTTO_PORT) : DEFAULT_PORT);
 export const PORT = portFrom();
-// The extension's fixed ID (from the public "key" in extension/manifest.json). /extension/pair hands the
-// connection token only to a request from this extension; web pages can't send its Origin.
-export const EXTENSION_ID = 'gpffoneapcfceflfmfgedkcfbommgcfk';
+// The extension's IDs. /extension/pair hands the connection token only to a request from this extension; web pages can't send its Origin.
+// The first is the primary (the app opens its pages): the copy loaded from the app's folder (the public "key" in extension/manifest.json). The Chrome Web Store
+// gives its own ID (owner, 24 Oct 2026): it is added here once the store item exists, and the folder's old ID stays so installed copies keep working.
+export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk'];
+export const EXTENSION_ID = EXTENSION_IDS[0];
+// The request's Origin when it is one of our extensions' (else ''), to echo back in Access-Control-Allow-Origin.
+export const ownOrigin = origin => (EXTENSION_IDS.some(id => origin === `chrome-extension://${id}`) ? origin : '');
 
 // Job pages open in Chrome right now, as reported by the extension (POST /extension/tabs), without #hash.
 // Kept per browser (the report's `browser`, else its run `boot`): a second browser with the extension adds its tabs, it never replaces this one's.
@@ -58,7 +62,7 @@ export function start(storage, onError = () => {}) {
       for await (const chunk of req) chunks.push(chunk);
       const body = chunks.length ? Buffer.concat(chunks) : undefined;
       if (req.url === '/extension/pair') {
-        const ours = req.headers.origin === `chrome-extension://${EXTENSION_ID}`;
+        const ours = !!ownOrigin(req.headers.origin);
         res.writeHead(ours ? 200 : 403, {'Content-Type': 'application/json', ...(ours ? {'Access-Control-Allow-Origin': req.headers.origin} : {})});
         res.end(JSON.stringify(ours ? {url: `http://127.0.0.1:${PORT}`, token: extensionToken(storage)} : {error: 'Only the Jobadabra extension can pair'}));
         return;
@@ -231,7 +235,7 @@ export function start(storage, onError = () => {}) {
       if (req.url === '/extension/site-password' || req.url === '/extension/account-code') {   // both answer a secret: the extension's origin only
         // Only this extension's origin may read the answer, never a page. Chrome checks CORS for the extension's worker too: without
         // these headers every ask failed its preflight (8 Oct 2026) and no sign-in password was ever filled.
-        const cors = {'Access-Control-Allow-Origin': `chrome-extension://${EXTENSION_ID}`, 'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        const cors = {'Access-Control-Allow-Origin': ownOrigin(req.headers.origin) || `chrome-extension://${EXTENSION_ID}`, 'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Authorization, Content-Type', Vary: 'Origin'};
         if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
         const ok = req.headers.authorization === `Bearer ${extensionToken(storage)}`;

@@ -9,10 +9,11 @@ const HANDOFF = {url: 'https://job-boards.greenhouse.io/acme/jobs/1#x', cookies:
   localStorage: {draft: '1'}, sessionStorage: {}, snapshot: {fields: [{id: 'first_name', type: 'text', value: 'Ada'}], files: []}};
 const MARKED = 'https://job-boards.greenhouse.io/acme/jobs/1?gh_src=x#jobpilotto-fill=s1';
 
-function world(answer) {
+function world(answer, granted = true) {
   const session = {}, cookies = [], updates = [], scripts = [], asks = [];
   const chrome = {
     storage: {session: {set: async items => Object.assign(session, items)}},
+    permissions: {contains: async () => granted},
     cookies: {set: async cookie => (cookie.name === 'bad' ? null : (cookies.push(cookie), cookie))},
     scripting: {executeScript: async ({func, args}) => { scripts.push(args[0]); return [{result: 1}]; }},
   };
@@ -50,10 +51,17 @@ test('a hand-off: its cookies set, the night\'s page loaded with the same mark, 
   assert.equal(await w.flow.restoreHandoff(7), 0, 'once');
 });
 
+test('cookies not granted (optional permission): the page still moves on, no cookie is set', async () => {
+  const w = world({ok: true, handoff: HANDOFF}, false);
+  assert.equal(await w.flow.takeHandoff(7, MARKED, 'loading'), true);
+  assert.deepEqual(w.cookies, []);
+  assert.equal(w.updates.length, 1);
+});
+
 test('the first page finishes loading while the app still answers: that load waits and stops when the tab moved on (no fill of the first page); the night\'s page is never held', async () => {
   let release;
   const w = world(null);
-  w.flow = createReadyHandoff({chrome: {storage: {session: {set: async items => Object.assign(w.session, items)}}, cookies: {set: async c => c}},
+  w.flow = createReadyHandoff({chrome: {storage: {session: {set: async items => Object.assign(w.session, items)}}, permissions: {contains: async () => true}, cookies: {set: async c => c}},
     api: () => new Promise(done => { release = () => done({ok: true, handoff: HANDOFF}); }), sessionGet: async name => ({[name]: w.session[name]}),
     move: async (tabId, url) => { w.updates.push([tabId, url]); }});
   const loading = w.flow.takeHandoff(7, MARKED, 'loading');

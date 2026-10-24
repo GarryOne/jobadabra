@@ -17,7 +17,6 @@
   "permissions": [
     "activeTab",
     "alarms",
-    "cookies",
     "debugger",
     "scripting",
     "storage",
@@ -53,6 +52,9 @@
     "https://*.taleo.net/*",
     "https://*.icims.com/*",
     "https://*.bamboohr.com/*"
+  ],
+  "optional_permissions": [
+    "cookies"
   ],
   "optional_host_permissions": [
     "https://*/*"

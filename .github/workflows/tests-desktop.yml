@@ -28,6 +28,7 @@ on:
       - 'config/notion_template.json'
       - 'docs/notion-profile-template.md'
       - 'docs/site-routes.json'
+      - 'tools/store-zip.mjs'   # desktop/test/store-zip.test.js builds the Web Store package with it
       - 'docs/superpowers/specs/2026-10-10-ai-ladder.md'
       - 'shared/knowledge.js'
       - 'shared/ladder-moves.js'

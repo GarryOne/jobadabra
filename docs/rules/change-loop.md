@@ -34,6 +34,10 @@ Why each rule exists: [why.md](why.md#change-loop).
 6. **A migration or move is its own pure commit** ([files.md](files.md#splitting-a-file-safely)).
 7. **Measure per source** (real / reconstructed / invented), never blended, never tune on invented data.
 
+## A by-hand beta with reds
+Let it run to the end, read every red job's log, name each cause (skill **fix-failing-e2e**), fix them together, then dispatch the next beta. Cancel only a beta that hangs or whose build failed.
+A flake is re-run once, named. Why: [why.md](why.md#a-red-beta-runs-to-the-end-24-oct-2026).
+
 ## Debugging a failing e2e step
 The whole loop, with the cause list and the CI by-hand proof (not a beta): skill **fix-failing-e2e**.
 - **Read before you re-run.** `desktop/e2e/artifacts/<suite>/suite-failures.json`, `artifacts/<suite>.run.log`, the screenshot, `logs/app.log`.

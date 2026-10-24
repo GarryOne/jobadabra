@@ -115,4 +115,8 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 
 ## A dead beta holds the queue (24 Oct 2026)
 - Beta 13 had a red Build · Mac (GitHub's attestation upload) and lacked two fixes merged after it started; beta 14 sat `pending` behind it for the rest of its 45 minutes. Owner: "if a run is already failed, what's the point to wait in the queue for the new one?"
-- Rule: cancel the run that cannot go green, then dispatch (CLAUDE.md working rules); a one-off flake in a run that is otherwise fine is re-run once instead.
+- Rule (superseded the same day, see below): cancel the run that cannot go green, then dispatch; a one-off flake in a run that is otherwise fine is re-run once instead. Still true for a beta that hangs or whose build failed.
+
+## A red beta runs to the end (24 Oct 2026)
+- Betas 13-20 took eight 45-minute runs to reach one green: a suite stops at its first red, the beta is the only place all 66 jobs run, and betas 18 and 19 were cancelled at their first reds, so the reds behind them never showed. Each fix then cost a PR, the owner's merge and a new beta, and main took 19 commits between betas 17 and 20. Owner: "why we need so many iterations".
+- Rule: a by-hand beta with reds runs to the end; every red is read, named and fixed in one batch before the next beta; cancel only a hang or a failed build (CLAUDE.md working rules). Merges to main are not held (the owner did not choose that part).

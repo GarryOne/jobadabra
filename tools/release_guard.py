@@ -35,14 +35,15 @@ def _key(tag):
 
 
 def plan(releases):
-    """-> {'latest': tag that holds Latest or None, 'repoint': desktop tag to make Latest or None, 'demote': [non-desktop tags that are normal releases]}.
+    """-> {'strangers': every release whose tag is not desktop-v* (the list must show desktop builds only; deleting is the owner's), 'latest': tag that holds Latest or None, 'repoint': desktop tag to make Latest or None, 'demote': [non-desktop tags that are normal releases]}.
     Latest is healthy when a desktop-v* release holds it; otherwise the newest published non-pre-release desktop-v* release gets it back."""
     live = [r for r in releases if not r.get('isDraft')]
     latest = next((r['tagName'] for r in live if r.get('isLatest')), None)
     stable = sorted((r['tagName'] for r in live if is_desktop(r['tagName']) and not r.get('isPrerelease')), key=_key, reverse=True)
     repoint = None if is_desktop(latest) or not stable else stable[0]
     return {'latest': latest, 'repoint': repoint,
-            'demote': [r['tagName'] for r in live if not is_desktop(r['tagName']) and not r.get('isPrerelease')]}
+            'demote': [r['tagName'] for r in live if not is_desktop(r['tagName']) and not r.get('isPrerelease')],
+            'strangers': [r['tagName'] for r in live if not is_desktop(r['tagName'])]}
 
 
 def _gh(*args):
@@ -61,7 +62,7 @@ def main(argv):
     dry = '--dry-run' in argv
     releases = json.loads(_gh('release', 'list', '-R', REPO, '-L', '60', '--json', 'tagName,isPrerelease,isDraft,isLatest'))
     found = plan(releases)
-    if is_desktop(found['latest']) and not found['demote']:
+    if is_desktop(found['latest']) and not found['strangers']:
         print(f"ok: Latest is {found['latest']}")
         return 0
     notes = []
@@ -73,6 +74,8 @@ def main(argv):
         notes.append(f'{tag} is a normal release, not a desktop build: made a pre-release')
         if not dry:
             _gh('release', 'edit', tag, '-R', REPO, '--prerelease', '--latest=false')
+    if found['strangers']:   # 24 Oct 2026: "it should be only desktop app releases"; the guard names them, the owner deletes them
+        notes.append('not desktop releases, to be deleted by the owner (keep the tag): ' + ', '.join(found['strangers']))
     _tell('⚠️ Release guard: ' + '; '.join(notes))
     return 0 if found['repoint'] or is_desktop(found['latest']) else 1
 

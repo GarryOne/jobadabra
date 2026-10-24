@@ -1,5 +1,6 @@
 """Only a desktop-v* release is ever stable/Latest (17 Oct 2026: a PR-screenshot release became Latest and the Download link pointed at it)."""
 import importlib.util
+import json
 import re
 import sys
 import unittest
@@ -51,6 +52,33 @@ class GuardTests(unittest.TestCase):
         self.assertEqual([r['tagName'] for r in newer], ['desktop-v0.7.17'])
         stable, _ = promote._newer_than_stable([rel('desktop-v0.7.16', isLatest=True)] + STOLEN[1:])
         self.assertEqual(stable['tagName'], 'desktop-v0.7.16')
+
+
+class OnlyDesktopReleasesTests(unittest.TestCase):
+    """24 Oct 2026, owner: "it should be only desktop app releases" (7 pre-release "PR assets" rows sat in the list)."""
+    LIST = [rel('desktop-v0.7.16', isLatest=True), rel('pr-assets-x', isPrerelease=True), rel('notes-2026', isPrerelease=False)]
+
+    def test_the_guard_names_every_release_that_is_not_a_desktop_build_even_a_pre_release(self):
+        self.assertEqual(guard.plan(self.LIST)['strangers'], ['pr-assets-x', 'notes-2026'])
+        self.assertEqual(guard.plan([rel('desktop-v0.7.16', isLatest=True)])['strangers'], [])
+
+    def test_the_guard_alerts_on_telegram_naming_them_and_deletes_nothing(self):
+        calls, told = [], []
+        guard._gh = lambda *a: calls.append(a) or json.dumps(self.LIST)
+        guard._tell = told.append
+        guard.main([])
+        self.assertIn('pr-assets-x', told[0])
+        self.assertFalse([c for c in calls if 'delete' in c])
+
+    def test_the_labeller_never_edits_a_non_desktop_release(self):
+        calls = []
+        def fake(*a):
+            calls.append(a)
+            return json.dumps(self.LIST) if a[:2] == ('release', 'list') else 'https://github.com/x/y/issues/7' if a[:2] == ('issue', 'create') else '{"id": "n"}' if a[:2] == ('issue', 'view') else '[]'
+        labels._gh = fake
+        labels.main(['x'])
+        edited = [c for c in calls if c[:2] == ('release', 'edit')]
+        self.assertTrue(all(c[2].startswith('desktop-v') for c in edited), edited)
 
 
 class NoOtherReleasesTests(unittest.TestCase):

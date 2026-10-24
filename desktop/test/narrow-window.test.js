@@ -1,6 +1,6 @@
-// The narrowest window (owner, 9 Oct 2026: Job Pilotto and Chrome side by side on a 14-inch screen, about 700 px each).
+// The narrowest window (owner, 9 Oct 2026: Jobadabra and Chrome side by side on a 14-inch screen, about 700 px each).
 // Two things keep it usable: the window may be that narrow, and no single-column grid is a bare `1fr` (it grows to its widest child, so a long
-// line pushed cards and buttons off the right edge: "+ New session", "Job Pilotto never clicks Submit"). Use minmax(0, 1fr).
+// line pushed cards and buttons off the right edge: "+ New session", "Jobadabra never clicks Submit"). Use minmax(0, 1fr).
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
 import {join} from 'node:path';

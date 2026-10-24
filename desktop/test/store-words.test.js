@@ -29,7 +29,7 @@ test('index.html counts too: visible words and titles, not what the page already
 test('store-name.js follows the store for the window-free modules', async () => {
   const {byWhere, setWhere, where} = await import('../renderer/store-name.js');
   assert.equal(where(), 'Notion', 'before the state is read');
-  setWhere('Job Pilotto');
+  setWhere('Jobadabra');
   assert.equal(byWhere('in Notion', 'here'), 'here');
   setWhere('Notion');
   assert.equal(byWhere('in Notion', 'here'), 'in Notion');

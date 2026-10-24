@@ -1,4 +1,4 @@
-"""Internal CI and release workflows message "Job Pilotto · CI alerts", never the product bot that sends the owner's job digest.
+"""Internal CI and release workflows message "Jobadabra · CI alerts", never the product bot that sends the owner's job digest.
 
 17 Oct 2026: the monthly PR-check scorecard (and release-guard) posted through secrets.TELEGRAM_BOT_TOKEN, the bot of the user's own pipeline;
 the owner: "this is product internal. Shouldn't come here." Pipeline · workflows (daily, mail, scout) keep the product bot: they are the user's own.

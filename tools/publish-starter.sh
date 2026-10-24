@@ -7,7 +7,7 @@ repo=GarryOne/job-pilotto-starter
 root="$(git rev-parse --show-toplevel)"
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 if ! gh repo view "$repo" >/dev/null 2>&1; then
-  gh repo create "$repo" --public --description "Starter for your private Job Pilotto repository: use this template, keep it private." >/dev/null
+  gh repo create "$repo" --public --description "Starter for your private Jobadabra repository: use this template, keep it private." >/dev/null
 fi
 gh repo edit "$repo" --template --homepage "https://www.jobpilotto.top" >/dev/null
 git clone -q "https://github.com/$repo.git" "$work/repo" 2>/dev/null || git init -q -b main "$work/repo"

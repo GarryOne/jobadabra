@@ -1,4 +1,4 @@
-You review the latest changes to Job Pilotto (an Electron desktop app in desktop/, a Python engine in src/, a Chrome extension in extension/) for BUGS that would hurt a person using the product.
+You review the latest changes to Jobadabra (an Electron desktop app in desktop/, a Python engine in src/, a Chrome extension in extension/) for BUGS that would hurt a person using the product.
 You change nothing. You read, then write ONE file: .review/findings.json.
 
 The changes to review: the COMMITS listed at the end (product code only, largest first, at most 30). Go through EVERY one: `git show --stat <sha>`, then

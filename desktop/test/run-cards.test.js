@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {byFit, newJobsShown, parseRunMessage, runItems, runNewCount} from '../renderer/run-cards.js';
 
 test("Today's list: counts and one line per match", () => {
-  const card = parseRunMessage(`✈️ Job Pilotto · 🆕 0 new · top 10 of 37
+  const card = parseRunMessage(`✈️ Jobadabra · 🆕 0 new · top 10 of 37
 37 open · 2 🇨🇭 · 18 applied · 59 filtered · 139 low fit
 🎯 Best matches
 1. Software Engineer, Cloud Infrastructure (https://jobs.ashbyhq.com/openai/29c2) · 🎯 78
@@ -49,7 +49,7 @@ test('a jobs check from GitHub: no brand name, jobs without a fit (an AI limit r
 });
 
 test('a digest counts the jobs in your places with 📍 (older digests used 🇨🇭)', () => {
-  const card = parseRunMessage('✈️ Job Pilotto · 🆕 1 new · top 10 of 24\n24 open · 7 📍 · 2 applied\n🆕 New since last run\n1. Data Analyst (https://x.example/1)\n   Acme · Amsterdam');
+  const card = parseRunMessage('✈️ Jobadabra · 🆕 1 new · top 10 of 24\n24 open · 7 📍 · 2 applied\n🆕 New since last run\n1. Data Analyst (https://x.example/1)\n   Acme · Amsterdam');
   assert.equal(card.local, 7);
 });
 
@@ -57,7 +57,7 @@ test('a digest counts the jobs in your places with 📍 (older digests used 🇨
 // on this Mac has a log but no message; the window keeps the message it saw, and the card must be drawn from that.
 test('a run without a message of its own is drawn from the result the window kept', async () => {
   const {cardText} = await import('../renderer/run-cards.js');
-  const kept = ['✈️ Job Pilotto · 🆕 4 new · top 4 of 4', '4 open · 4 📍', '🆕 New since last run',
+  const kept = ['✈️ Jobadabra · 🆕 4 new · top 4 of 4', '4 open · 4 📍', '🆕 New since last run',
     '1. Senior Site Reliability Engineer, no-credit (Site Reliability / Data Analyst) (https://boards.e2e.test/job/1791157083)',
     '   E2E Acme · Zurich, Switzerland or Amsterdam, Netherlands'].join('\n');
   const local = {id: 7, kind: 'search', log: ['…'], ok: true};
@@ -111,7 +111,7 @@ test('top matches: highest fit first, the unscored after them, in their own orde
 });
 
 test('"View new job(s)" counts what the card says, else the run\'s record', () => {
-  const digest = `✈️ Job Pilotto · 🆕 2 new · top 10 of 105
+  const digest = `✈️ Jobadabra · 🆕 2 new · top 10 of 105
 105 open · 91 🇨🇭 · 0 applied`;
   assert.equal(newJobsShown({new: 1}, digest), 1, 'the run\'s own count, not the digest\'s 2 (#1408)');
   assert.equal(newJobsShown({}, digest), 2, 'a run with no record: the digest\'s number');
@@ -136,10 +136,10 @@ test('a digest card lists the jobs this run found, not the older ones that fill 
 // #1408 (22 Oct 2026): the card said "9 new this run" (the digest's count since its last send), the toast and footer "7" (the run's own). Every place
 // that draws a run's new count reads run.new through runNewCount; the sources below must not read the digest's `.fresh` for it.
 test('every place showing a run\'s new count reads the run\'s own number', async () => {
-  const run = {new: 7}, digest = parseRunMessage('✈️ Job Pilotto · 🆕 9 new · top 10 of 105\n105 open · 91 🇨🇭 · 0 applied');
+  const run = {new: 7}, digest = parseRunMessage('✈️ Jobadabra · 🆕 9 new · top 10 of 105\n105 open · 91 🇨🇭 · 0 applied');
   assert.equal(digest.fresh, 9);
   assert.equal(runNewCount(run, digest), 7);
-  assert.equal(newJobsShown(run, '✈️ Job Pilotto · 🆕 9 new · top 10 of 105\n105 open'), 7);
+  assert.equal(newJobsShown(run, '✈️ Jobadabra · 🆕 9 new · top 10 of 105\n105 open'), 7);
   const {readFileSync} = await import('node:fs');
   const card = readFileSync(new URL('../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
   assert.doesNotMatch(card, /stat\(card\.fresh, 'new this run'\)/);
@@ -147,6 +147,6 @@ test('every place showing a run\'s new count reads the run\'s own number', async
   assert.match(card, /stat\(fresh, 'new this run'\)/);
   assert.match(card, /'Top new since your last digest'/, 'the list is the digest\'s new section: named for what it lists, not "this run"');
   const {notice} = await import('../lib/run-history.js'), {freshOf} = await import('../lib/few-jobs.js');
-  assert.match(notice({kind: 'search', ok: true, new: 7, message: '✈️ Job Pilotto · 🆕 9 new · top 10 of 105'}).body, /^7 new jobs found/, 'the notification');
-  assert.equal(freshOf({new: 7, message: '✈️ Job Pilotto · 🆕 9 new · top 10 of 105'}), 7, 'the few-new-jobs nudge');
+  assert.match(notice({kind: 'search', ok: true, new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}).body, /^7 new jobs found/, 'the notification');
+  assert.equal(freshOf({new: 7, message: '✈️ Jobadabra · 🆕 9 new · top 10 of 105'}), 7, 'the few-new-jobs nudge');
 });

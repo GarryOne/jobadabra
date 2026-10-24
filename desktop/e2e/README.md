@@ -1,6 +1,6 @@
 # End-to-end tests
 
-The **real** Job Pilotto app, driven by Playwright on a throwaway profile, in suites that each start from their own state and can run at the same time.
+The **real** Jobadabra app, driven by Playwright on a throwaway profile, in suites that each start from their own state and can run at the same time.
 
 | Suite | Starts from | Covers | Time |
 |---|---|---|---|
@@ -133,7 +133,7 @@ journey step checks that nothing was queued to send. (2 Oct 2026: before this, t
 
 ## The apply suite (the real extension, fixture forms)
 - **Browser:** Playwright's Chromium loads a *copy* of `extension/` whose built-in app address (`127.0.0.1:47111`) is rewritten to a free port (`lib/extension.mjs`
-  `copyExtension`); the app under test listens there (`JOB_PILOTTO_PORT`). So it runs next to your own Job Pilotto and can never pair with it. CI: `npx playwright-core install chromium`.
+  `copyExtension`); the app under test listens there (`JOB_PILOTTO_PORT`). So it runs next to your own Jobadabra and can never pair with it. CI: `npx playwright-core install chromium`.
 - **Forms:** `lib/forms.mjs` serves them over HTTPS; Chromium maps `boards.greenhouse.io`, `jobs.lever.co`, `e2e.recruitee.com` to that server and every other host name
   is unresolvable (the suite asserts no other host was asked for). Each form logs a click or submit event on Submit; any is a failure.
 - **Apply click:** the app runs `open -a "Google Chrome" <url>`; a stand-in `open` first on the app's PATH hands the URL to that Chromium. macOS only.

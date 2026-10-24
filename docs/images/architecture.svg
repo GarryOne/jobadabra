@@ -41,7 +41,7 @@
   <rect x="40" y="30" width="1520" height="128" rx="28" fill="url(#header)"/>
   <circle cx="112" cy="94" r="36" fill="#3B82F6"/>
   <path d="M94 98 L108 112 L132 77" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="170" y="87" class="sans title">Job Pilotto</text>
+  <text x="170" y="87" class="sans title">Jobadabra</text>
   <text x="172" y="125" class="sans subtitle">Automated job discovery, application preparation and learning — with you in control of every submission.</text>
 
   <!-- Section labels -->

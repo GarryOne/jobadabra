@@ -75,7 +75,7 @@ export async function findDatabase(token, title) {
   return found.results.find(db => !db.archived && (db.title || []).map(part => part.plain_text).join('').includes(title)) || null;
 }
 
-// Is the Job Pilotto workspace already built in this page? (A suite then seeds the app in seconds instead of going through the wizard.)
+// Is the Jobadabra workspace already built in this page? (A suite then seeds the app in seconds instead of going through the wizard.)
 export async function workspaceReady(token) {
   const [profile, matches] = await Promise.all([findPage(token, 'Profile — CV and Preferences'), findDatabase(token, 'Job Matches — AI Scored')]);
   return !!(profile && matches);

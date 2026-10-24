@@ -40,7 +40,7 @@ test('this Mac: the run list, a live run and a finished one, as activity records
 test('this Mac: a stopped run is closed Failed with why; one that already ended is left alone', async () => {
   const {call} = fakeEngine();
   const runs = sqliteStore.open(storage, {call}).runs;
-  assert.equal(await runs.close(recordLink('r2'), 'Stopped by Job Pilotto'), true);
+  assert.equal(await runs.close(recordLink('r2'), 'Stopped by Jobadabra'), true);
   assert.equal(ROWS.r2.status, 'Failed');
   assert.equal(await runs.close(recordLink('r1'), 'x'), false);
   assert.deepEqual(await runs.detail(recordLink('r1')), {message: 'Gmail check: 4 emails', log: ['Checked 4 emails', 'Warning: one sender unread'],

@@ -19,7 +19,7 @@ test('closeStopped fails a row still Running, and leaves a row that was closed a
     calls.length = 0;
     const fetcher = async (url, init) => { calls.push([init.method, String(url).replace('https://api.notion.com/v1/', ''), init.body]); return json({id: PAGE, properties: {Status: {select: {name: status}}}}); };
     const storage = {secret: () => 'token', settings: () => ({})};
-    const closed = await runHistory.closeStopped(storage, URL, 'Stopped by Job Pilotto: no output for 1 min', {fetcher});
+    const closed = await runHistory.closeStopped(storage, URL, 'Stopped by Jobadabra: no output for 1 min', {fetcher});
     assert.equal(closed, status === 'Running', name);
     const patch = calls.find(call => call[0] === 'PATCH');
     if (status === 'Running') {
@@ -27,7 +27,7 @@ test('closeStopped fails a row still Running, and leaves a row that was closed a
       assert.equal(patch[1].replace(/\D*pages\//, '').replace(/-/g, ''), PAGE);
       const body = JSON.parse(patch[2]);
       assert.equal(body.properties.Status.select.name, 'Failed');
-      assert.match(body.properties.Summary.rich_text[0].text.content, /Stopped by Job Pilotto/);
+      assert.match(body.properties.Summary.rich_text[0].text.content, /Stopped by Jobadabra/);
     } else assert.equal(patch, undefined);
   }
 });

@@ -182,7 +182,7 @@ def add_message_mode(args, stores=None):
 
 
 def add_link_mode(args, stores=None):
-    # /add <job URL> [date]: track an application made outside Job Pilotto.
+    # /add <job URL> [date]: track an application made outside Jobadabra.
     _gate(stores, '--mode add requires --job <URL> and NOTION_TOKEN', on_store=True)
     run = new_cron_run('add')
     found = {}  # the job it created or updated (ledger.add_application fills it)

@@ -20,7 +20,7 @@ test('created or updated, in the headline', () => {
   assert.equal(jobHeadline({created: false}), 'Job updated');
 });
 
-test('Open job in Notion (⌘-click: in a Job Pilotto window) and Show in Jobs call their handlers', () => {
+test('Open job in Notion (⌘-click: in a Jobadabra window) and Show in Jobs call their handlers', () => {
   const calls = [];
   const job = {url: 'https://www.notion.so/3e5app1', title: 'Web3 DevOps', jobUrl: 'https://lead.test/1', created: true};
   const actions = jobLinkActions(job, {openNotion: (url, inWindow) => calls.push(['notion', url, inWindow]), show: shown => calls.push(['jobs', shown.jobUrl])});

@@ -84,7 +84,7 @@ test('Text size choices set the same setting', () => {
 test('the View menu keeps the zoom keys in the app, and the plain one stays when there is no zoom', async () => {
   const {template} = await import('../lib/app-menu.js');
   const calls = [], zoom = {reset: () => calls.push('reset'), zoomIn: () => calls.push('in'), zoomOut: () => calls.push('out')};
-  const view = template({name: 'Job Pilotto', mac: true, checkForUpdates() {}, zoom}).find(item => item.label === 'View');
+  const view = template({name: 'Jobadabra', mac: true, checkForUpdates() {}, zoom}).find(item => item.label === 'View');
   for (const label of ['Actual Size', 'Zoom In', 'Zoom Out']) view.submenu.find(item => item.label === label).click();
   assert.deepEqual(calls, ['reset', 'in', 'out']);
   assert.deepEqual(view.submenu.filter(item => item.accelerator).map(item => item.accelerator), ['CmdOrCtrl+0', 'CmdOrCtrl+Plus', 'CmdOrCtrl+-']);

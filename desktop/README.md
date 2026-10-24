@@ -1,7 +1,7 @@
-# Job Pilotto — desktop app (macOS)
+# Jobadabra — desktop app (macOS)
 
-The cockpit for Job Pilotto: a setup wizard, Find new jobs, **Apply to N jobs**, settings. **Notion is
-the user interface** (required): users duplicate the public Job Pilotto template, and everything they
+The cockpit for Jobadabra: a setup wizard, Find new jobs, **Apply to N jobs**, settings. **Notion is
+the user interface** (required): users duplicate the public Jobadabra template, and everything they
 view and edit (applications, matches, Profile, insights, interviews) lives there. The app keeps the
 engine's working data (crawl history, score cache, CV) in `~/Library/Application Support/Job Pilotto`;
 keys are encrypted with a key held in your Mac's Keychain (Electron `safeStorage`) and never leave the
@@ -19,7 +19,7 @@ It runs the Python pipeline from this repo (`../src`, with `../.venv` when prese
 with `pip install -r requirements.txt`).
 
 Chrome loads this repo's `extension/` itself; its version stays the base (`"0.9"`, the release build stamps the rest), so after a
-`git pull` the extension does not reload itself: press ↻ on Job Pilotto in `chrome://extensions`. The app's log says
+`git pull` the extension does not reload itself: press ↻ on Jobadabra in `chrome://extensions`. The app's log says
 `extension changed: reload it` when it is due.
 
 ## What's in it
@@ -50,7 +50,7 @@ in Settings) instead of a Cloudflare Worker; it reuses the same endpoint code
 ## Automatic searches and Telegram
 
 - **Every 4 hours while the app is open** (and after the Mac wakes), it runs a search; the Settings
-  switch turns this off. "Open Job Pilotto when I log in" keeps it running.
+  switch turns this off. "Open Jobadabra when I log in" keeps it running.
 - **Telegram** uses the user's own bot (@BotFather → /newbot → paste the token → press Start). The app
   sends the digest after each search and **long-polls** for taps and commands while it runs: no
   webhook, no Cloudflare. The handling is the Worker's own code (`handleUpdate`), with a local

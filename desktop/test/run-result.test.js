@@ -30,10 +30,10 @@ test('a log with no result file still reads the sentences', () => {
 });
 
 test('a digest Telegram refused is named on the run: a blocked bot, a missing chat, a refused token; an ordinary log or an AI key problem says nothing (#298)', () => {
-  assert.match(deliveryProblem(['Job Pilotto · 1 new', 'RuntimeError: Forbidden: bot was blocked by the user']), /^not delivered: Telegram blocked the bot \(open the chat with it and press Start/);
+  assert.match(deliveryProblem(['Jobadabra · 1 new', 'RuntimeError: Forbidden: bot was blocked by the user']), /^not delivered: Telegram blocked the bot \(open the chat with it and press Start/);
   assert.match(deliveryProblem(['Bad Request: chat not found']), /Telegram cannot find the chat/);
   assert.match(deliveryProblem(['Telegram API rejected the message: Unauthorized']), /Telegram refused the bot token/);
-  assert.equal(deliveryProblem(['Job Pilotto · 3 new jobs', 'Mail: 2 new email(s) read']), null);
+  assert.equal(deliveryProblem(['Jobadabra · 3 new jobs', 'Mail: 2 new email(s) read']), null);
   assert.equal(deliveryProblem(['Anthropic 401 Unauthorized: invalid x-api-key']), null, 'an AI key problem is not Telegram');
   assert.equal(deliveryProblem([]), null);
 });

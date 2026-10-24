@@ -1,4 +1,4 @@
-// Windows smoke test (CI, after the installer is built): installs Job Pilotto the way a user would, then checks
+// Windows smoke test (CI, after the installer is built): installs Jobadabra the way a user would, then checks
 // the installed app, not the source tree.
 //   node scripts/windows-smoke.mjs <installer.exe> <output folder> [smoke|packaging|full]
 // The build stage runs `smoke` (a binary that installs and starts, about a minute: the build is not done without it), the beta gate runs `packaging`
@@ -26,9 +26,9 @@ const say = line => console.log(`• [${String(Math.round((Date.now() - t0) / 10
 
 execFileSync(path.resolve(installer), ['/S'], {stdio: 'inherit', timeout: 5 * 60 * 1000});
 const programs = path.join(process.env.LOCALAPPDATA, 'Programs');
-const dir = fs.readdirSync(programs).map(name => path.join(programs, name)).find(d => fs.existsSync(path.join(d, 'Job Pilotto.exe')));
-if (!dir) throw new Error(`Job Pilotto.exe not found under ${programs} after the install`);
-const exe = path.join(dir, 'Job Pilotto.exe');
+const dir = fs.readdirSync(programs).map(name => path.join(programs, name)).find(d => fs.existsSync(path.join(d, 'Jobadabra.exe')));
+if (!dir) throw new Error(`Jobadabra.exe not found under ${programs} after the install`);
+const exe = path.join(dir, 'Jobadabra.exe');
 const pilot = path.join(dir, 'resources', 'pilot');
 const python = path.join(pilot, 'python', 'python.exe');
 say(`installed: ${exe}`);
@@ -82,7 +82,7 @@ say(`pipeline jobs list ok: ${jobs.slice(0, 80)}`);
 // the installer waits for the app to close (ends it if it lingers), installs quietly and opens the new version. Run for real here:
 // the installed app is open, this same installer runs with those arguments, the old process must be gone and the app open again.
 if (want('packaging')) {
-  const running = () => execFileSync('tasklist', ['/FI', 'IMAGENAME eq Job Pilotto.exe', '/FO', 'CSV', '/NH'], {encoding: 'utf8'})
+  const running = () => execFileSync('tasklist', ['/FI', 'IMAGENAME eq Jobadabra.exe', '/FO', 'CSV', '/NH'], {encoding: 'utf8'})
     .split(/\r?\n/).map(line => line.split('","')[1]).filter(Boolean).map(Number);
   const wait = async (check, seconds) => { for (let i = 0; i < seconds * 4; i++) { if (check()) return true; await new Promise(resolve => setTimeout(resolve, 250)); } return false; };
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-smoke-update-'));
@@ -98,7 +98,7 @@ if (want('packaging')) {
   if (!fs.existsSync(exe)) throw new Error(`update: the app is gone after installing over itself: ${exe}`);
   py(['-c', 'import anthropic, keyring']);
   say(`update ok on Windows: the installer (${WINDOWS_INSTALLER_ARGS.join(' ')}) closed the open app, installed over it and reopened it in ${Date.now() - started} ms; the bundled Python still runs`);
-  spawnSync('taskkill', ['/F', '/T', '/IM', 'Job Pilotto.exe'], {stdio: 'ignore'});   // the next checks start the app themselves
+  spawnSync('taskkill', ['/F', '/T', '/IM', 'Jobadabra.exe'], {stdio: 'ignore'});   // the next checks start the app themselves
   if (!(await wait(() => running().length === 0, 30))) throw new Error('update: the reopened app could not be closed');
 }
 // The in-app terminal (Apply with Claude sessions): node-pty loads in the installed app and runs a command.

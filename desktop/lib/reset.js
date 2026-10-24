@@ -9,6 +9,7 @@ import path from 'node:path';
 import * as archive from './archive.js';
 import * as tracker from './tracker-snapshot.js';
 import {writePrivate} from './private-file.js';
+import {LEGACY_NAME} from './app-identity.js';
 
 const MARKER = 'reset-pending.json';
 export const KEYS_FILE = 'keys.json';  // an export's keys, in plain text (only when the user asked for them)
@@ -46,7 +47,7 @@ export function exportName({name = '', role = '', at = new Date()} = {}) {
 // Async since 21 Oct 2026 (lib/archive.js): tar runs beside the app, which keeps answering; onProgress({done, total}), signal cancels.
 export async function exportTo(dir, file, {keys = null, accounts = null, version = '', onProgress, signal} = {}, now = new Date()) {
   const extra = [];
-  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({app: 'Job Pilotto', version, exportedAt: now.toISOString(),
+  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({app: 'Jobadabra', version, exportedAt: now.toISOString(),
     keys: !!keys, accounts: !!accounts}, null, 1));
   extra.push('manifest.json');
   if (keys) { writePrivate(path.join(dir, KEYS_FILE), JSON.stringify(keys)); extra.push(KEYS_FILE); }
@@ -72,7 +73,7 @@ export async function stageImport(dir, file, {onProgress, signal} = {}) {
   tracker.restore(staged);
   let manifest = null;
   try { manifest = JSON.parse(fs.readFileSync(path.join(staged, 'manifest.json'), 'utf8')); } catch {}
-  if (manifest?.app !== 'Job Pilotto' || !fs.existsSync(path.join(staged, 'settings.json'))) {
+  if (![LEGACY_NAME, 'Jobadabra'].includes(manifest?.app) || !fs.existsSync(path.join(staged, 'settings.json'))) {
     fs.rmSync(staged, {recursive: true, force: true});
     throw new Error('This file is not a Jobadabra export');
   }

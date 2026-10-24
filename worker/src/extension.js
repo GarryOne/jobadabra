@@ -1,4 +1,4 @@
-// Endpoints for the Job Pilotto Chrome extension (extension/ in the repo).
+// Endpoints for the Jobadabra Chrome extension (extension/ in the repo).
 //
 //   GET  /extension/kit?url=<job page>  the job's Applications row and its drafted kit, read from Notion
 //   POST /extension/answer {url, fields, page_text}

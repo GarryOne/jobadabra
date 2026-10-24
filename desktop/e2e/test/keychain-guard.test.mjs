@@ -6,7 +6,7 @@ import {guarded, keychainChanges, parseItems, snapshot} from '../lib/keychain-gu
 const item = (service, date) => `keychain: "/Users/x/Library/Keychains/login.keychain-db"\nversion: 512\nclass: "genp"\nattributes:\n    "acct"<blob>="job-pilotto"\n    "mdat"<timedate>=0x32303236313030383134303533345A00  "${date}\\000"\n    "svce"<blob>="${service}"\n`;
 const dump = items => items.map(([service, date]) => item(service, date)).join('');
 
-test('only Job Pilotto items, by service and modification date', () => {
+test('only Jobadabra items, by service and modification date', () => {
   const items = parseItems(dump([['job-pilotto.sites.password', '20261008140534Z'], ['other.app.token', '20261001000000Z']]));
   assert.deepEqual([...items], [['job-pilotto.sites.password', '20261008140534Z']]);
 });

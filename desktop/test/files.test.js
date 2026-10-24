@@ -10,7 +10,7 @@ import {createStorage} from '../lib/storage.js';
 
 const plain = {encrypt: v => v, decrypt: v => v};
 function storage() {
-  const s = createStorage(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-')), 'Job Pilotto'), plain);
+  const s = createStorage(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-')), 'Jobadabra'), plain);
   fs.writeFileSync(s.path('cv.pdf'), '%PDF cv');
   s.saveSettings({setupDone: true, cvName: 'CV_final.pdf', notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_APPLICATIONS_DB: 'apps'}});
   s.setSecret('NOTION_TOKEN', 'ntn');

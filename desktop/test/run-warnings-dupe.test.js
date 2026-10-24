@@ -42,7 +42,7 @@ test('a failed run-history write names the store and what was not saved (#342)',
   const opened = ['run not opened in the run history', 'cronjob run not opened in Notion'];
   const saved = ['run not logged to the run history', 'cronjob run not logged to Notion'];
   try {
-    for (const [name, notion] of [['Notion', true], ['Job Pilotto', false]]) {
+    for (const [name, notion] of [['Notion', true], ['Jobadabra', false]]) {
       setWhere(name);
       for (const words of opened) assert.deepEqual(groupWarnings([`Warning: ${words}: ${reason}`]), [`The run's row could not be opened in ${name}: ${sentence}`], `${words} on ${name}`);
       for (const words of saved) assert.deepEqual(groupWarnings([`Warning: ${words}: ${reason}`]), [`The run's result could not be saved to ${name}: ${sentence}`], `${words} on ${name}`);

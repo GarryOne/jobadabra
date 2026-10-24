@@ -12,7 +12,7 @@ import {fakeNotion} from './fake-notion.js';
 const plain = {encrypt: v => v, decrypt: v => v};
 function setup({done = true} = {}) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-'));
-  const storage = createStorage(path.join(base, 'Job Pilotto'), plain);
+  const storage = createStorage(path.join(base, 'Jobadabra'), plain);
   fs.writeFileSync(storage.path('cv.pdf'), 'OLD');
   fs.writeFileSync(path.join(base, 'new.pdf'), 'NEW');
   storage.saveSettings({setupDone: done, cvName: 'CV_old.pdf', notionIds: {NOTION_PROFILE_PAGE_ID: 'profile'}});

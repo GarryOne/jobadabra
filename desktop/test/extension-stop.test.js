@@ -1,5 +1,5 @@
 // "Stop": one button that halts everything the extension does, on every tab, at once (extension/stop.js). 13 Oct 2026, the owner's own Chrome: the extension acted on a tab that was
-// not an application ("Job Pilotto started debugging this browser", 24 sections opened) and nothing but turning the extension off in chrome://extensions stopped it.
+// not an application ("Jobadabra started debugging this browser", 24 sections opened) and nothing but turning the extension off in chrome://extensions stopped it.
 // Stopped means: no press, no typing, the debugger detached, fill marks and the tabs' application state cleared, and nothing restarts until the person presses Apply again.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

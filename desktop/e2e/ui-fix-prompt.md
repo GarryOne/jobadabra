@@ -1,4 +1,4 @@
-You fix ONE problem in Job Pilotto: in the desktop window (Electron; pages in desktop/renderer/, styles in desktop/renderer/style.css, tokens in tokens.css), or, for a confirmed logic bug, in the Python engine (src/) or the app's logic (desktop/lib/).
+You fix ONE problem in Jobadabra: in the desktop window (Electron; pages in desktop/renderer/, styles in desktop/renderer/style.css, tokens in tokens.css), or, for a confirmed logic bug, in the Python engine (src/) or the app's logic (desktop/lib/).
 The problem is described at the end. It was found by a nightly end-to-end run (a layout check or an AI review of a screenshot) and seen in two runs.
 
 You have about 40 turns: be quick and direct. Do NOT read all of CLAUDE.md or the whole skill: read only the "Desktop UI: one design system" section of CLAUDE.md and the first 60 lines of

@@ -5,7 +5,7 @@ completion cue, not evidence that fields are correct. The Terminal Codex run rep
 agent observation; a human reviewer supplies independent correctness flags.
 
 1. Choose at least one real application form each on Greenhouse, Ashby and Lever; add Workday when
-   the account/login step can be completed by the owner. Prefer roles already in Job Pilotto with
+   the account/login step can be completed by the owner. Prefer roles already in Jobadabra with
    saved kits. Do not click Submit or check legal agreements during the benchmark.
 2. Start one run at a time with `tools/apply-batch-codex-terminal.sh <job URL>`. Capture elapsed
    wall time and Codex usage shown by the account, if available. The runner saves its trace and

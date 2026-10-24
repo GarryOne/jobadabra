@@ -50,7 +50,7 @@ SCHEMA = {
     },
 }
 
-SYSTEM = f"""You read the candidate's own interview reviews (made by Job Pilotto from their interviews) and say what \
+SYSTEM = f"""You read the candidate's own interview reviews (made by Jobadabra from their interviews) and say what \
 they show together, so the next interview goes better. You get the reviews grouped by round type (recruiter screen, \
 technical, hiring manager, other); each interview has a label (I1, I2…).
 

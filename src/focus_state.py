@@ -62,7 +62,7 @@ def _interviewed(interviews):
 
 def reviewed_interviews(interviews, app_id):
     """The reviewed interviews of one application (overall set), newest first, as {'id', 'url', 'day', 'moment',
-    'round', 'next_step', 'overall', 'weak_topics'}. moment: when the call was over for Job Pilotto, the later of the
+    'round', 'next_step', 'overall', 'weak_topics'}. moment: when the call was over for Jobadabra, the later of the
     day it was held (at) and when its record was saved (created_at, after the call). url: its page (link), if any."""
     found = []
     for row in interviews:

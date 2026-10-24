@@ -82,7 +82,7 @@ SCHEMA = {
     },
 }
 
-SYSTEM = """You review job interviews for the candidate (the owner of Job Pilotto). You get the candidate's \
+SYSTEM = """You review job interviews for the candidate (the owner of Jobadabra). You get the candidate's \
 profile, the list of their applications, the caption they wrote, and a transcript or their own notes.
 
 - Identify the application from the caption first, then the transcript (company, role). If two \

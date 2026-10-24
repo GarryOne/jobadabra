@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const WAIT_LINE = /Another Job Pilotto search is running/;
+export const WAIT_LINE = /Another Jobadabra search is running/;
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
 
 // The note's holder {pid, label, at} while that process is alive, else null.

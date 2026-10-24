@@ -162,7 +162,7 @@ class CommandTests(unittest.TestCase):
             stores.applications.create({'url': URL, 'title': 'SRE'}, 'Applied')
             out = StringIO()
             with redirect_stdout(out):
-                ledger.main(['event', URL, 'Screening', '--note', 'Marked in Job Pilotto'])
+                ledger.main(['event', URL, 'Screening', '--note', 'Marked in Jobadabra'])
             self.assertEqual(out.getvalue().strip(), f'{URL}: Screening')
             self.assertEqual(open_stores().applications.get(URL)['stage'], 'Screening')
 

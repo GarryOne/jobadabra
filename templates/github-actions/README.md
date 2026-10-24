@@ -1,12 +1,12 @@
 # Scheduled runs in your own private repo
 
-These three files are what keeps Job Pilotto working while your Mac is off. They live in a
+These three files are what keeps Jobadabra working while your Mac is off. They live in a
 **private** repository of yours, created from the public starter template
 (GarryOne/job-pilotto-starter), and each one calls the matching workflow in this public repo, which runs
 the code with *your* repository's secrets and variables. Your logs, job database and results
 never touch the public repo, and every fix released here reaches your runs automatically.
 
-The files ship without a schedule, so nothing runs before your keys are in place; the Job Pilotto app
+The files ship without a schedule, so nothing runs before your keys are in place; the Jobadabra app
 adds the times you choose (Settings → How often). Defaults:
 
 | File | When | What |

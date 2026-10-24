@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the public Job Pilotto Notion template from the live workspace's schemas (no data).
+"""Build the public Jobadabra Notion template from the live workspace's schemas (no data).
 
     NOTION_TOKEN=... python3 tools/notion_template.py --parent <page id> [--dry-run]
 
-Reads every Job Pilotto database the code uses (properties, options, colours, relations, rollups,
+Reads every Jobadabra database the code uses (properties, options, colours, relations, rollups,
 formulas) and creates empty copies under one new page, plus the Profile, Application Answers
 (from docs/notion-profile-template.md) and Pipeline pages. Publish that page with "Allow
 duplicate as template"; new users duplicate it, and the desktop app finds each database by its
@@ -36,7 +36,7 @@ DATABASES = {
     'NOTION_EMPLOYERS_DB': 'c7fe8570c2ff414086ae9bb1ee2dbf64',
 }
 # Pages with no code reading them: created from a docs file, for the user.
-GUIDES = [('📖', 'How Job Pilotto works', 'docs/job-pilotto-guide.md')]
+GUIDES = [('📖', 'How Jobadabra works', 'docs/job-pilotto-guide.md')]
 PAGES = {
     'NOTION_PROFILE_PAGE_ID': ('👤', 'Profile — CV and Preferences'),
     'NOTION_ANSWERS_PAGE_ID': ('📝', 'Application Answers — Standard Form Fields'),
@@ -83,7 +83,7 @@ def build(token, parent, dry_run=False):
 
     root = request('POST', 'pages', {
         'parent': {'page_id': parent}, 'icon': {'type': 'emoji', 'emoji': '✈️'},
-        'properties': {'title': {'title': [{'text': {'content': 'Job Pilotto'}}]}},
+        'properties': {'title': {'title': [{'text': {'content': 'Jobadabra'}}]}},
         'children': intro_blocks()}, token)
     created = {}
     # Pass 1: every database with its plain properties.
@@ -145,7 +145,7 @@ def build(token, parent, dry_run=False):
     # Pages: Profile and Answers from the template file; Pipeline is written by the code.
     sections = profile_sections()
     for env, (emoji, title) in PAGES.items():
-        blocks = sections.get(env) or [paragraph('Filled in by Job Pilotto after your first search: how many jobs '
+        blocks = sections.get(env) or [paragraph('Filled in by Jobadabra after your first search: how many jobs '
                                                  'you applied to, replies, interviews, and the step to improve.')]
         page = request('POST', 'pages', {'parent': {'page_id': root['id']}, 'icon': {'type': 'emoji', 'emoji': emoji},
                                          'properties': {'title': {'title': [{'text': {'content': title}}]}},
@@ -234,12 +234,12 @@ def profile_sections():
 def intro_blocks():
     return [
         {'type': 'callout', 'callout': {'icon': {'type': 'emoji', 'emoji': '✈️'}, 'color': 'blue_background', 'rich_text': rich(
-            '**Your Job Pilotto workspace.** The Job Pilotto app fills these pages for you: jobs that fit you, '
+            '**Your Jobadabra workspace.** The Jobadabra app fills these pages for you: jobs that fit you, '
             'your applications, replies, interviews and insights. Edit anything here; the app reads your changes.')}},
-        paragraph('**Start here:** open the Job Pilotto app and follow the setup; it connects to this page. '
+        paragraph('**Start here:** open the Jobadabra app and follow the setup; it connects to this page. '
                   'Your Profile and standard answers are drafted from your CV; mark anything wrong and the next '
                   'search uses your edits.'),
-        paragraph('**New here?** Read **How Job Pilotto works** below first: what each page is for, a normal week, '
+        paragraph('**New here?** Read **How Jobadabra works** below first: what each page is for, a normal week, '
                   'and what to edit.'),
         {'type': 'divider', 'divider': {}},
     ]

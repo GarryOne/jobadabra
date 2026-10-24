@@ -16,7 +16,7 @@ export function generator(seed) {
 
 // The window sizes a person really has: the app's smallest (lib/main-window.js MIN_WIDTH x minHeight: the rail, and the height at which the sidebar once cut off its last icon, #118), just under the
 // rail limit, the default, a big screen. The first one must stay the app's own minimum (test/variation.test.mjs reads main.js).
-export const WINDOW_SIZES = [[640, 640], [1024, 640], [1100, 720], [1179, 760], [1280, 820], [1440, 900], [1680, 1000]];   // 640: the app's minimum since 886c923 (Job Pilotto beside Chrome)
+export const WINDOW_SIZES = [[640, 640], [1024, 640], [1100, 720], [1179, 760], [1280, 820], [1440, 900], [1680, 1000]];   // 640: the app's minimum since 886c923 (Jobadabra beside Chrome)
 
 export function createVariation(env = process.env) {
   const raw = String(env.E2E_SEED ?? '').trim();

@@ -1,5 +1,5 @@
 """One 📈 Application Events row per real occurrence: add_event is idempotent, the stage watcher doesn't repeat
-Job Pilotto's own events, a calendar invite that adopts the watcher's guess says so, and an impossible interview time
+Jobadabra's own events, a calendar invite that adopts the watcher's guess says so, and an impossible interview time
 (a pasted chat's "Sep 26" read as 2024 in 2026: the Huxley case) is never stored."""
 import io
 import sys

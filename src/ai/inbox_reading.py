@@ -89,7 +89,7 @@ SCHEMA = {
     },
 }
 
-SYSTEM = """The owner of Job Pilotto pastes a message or a screenshot (LinkedIn, Gmail, WhatsApp, a job site) about their \
+SYSTEM = """The owner of Jobadabra pastes a message or a screenshot (LinkedIn, Gmail, WhatsApp, a job site) about their \
 job search. Read it (for a screenshot, read the text in the image) and say:
 - "Feedback received" = the employer's specific assessment during or after a hiring process. A rejection
   containing specific feedback stays "Rejected" with feedback filled. feedback is a verbatim quote of the

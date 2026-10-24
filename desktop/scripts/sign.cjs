@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const NAME = 'Job Pilotto Self-Signed';
+const NAME = 'Jobadabra Self-Signed';
 
 // A throwaway keychain holding only the certificate, so codesign can use it without touching the login keychain.
 function withCertificate(p12Base64, password, sign) {

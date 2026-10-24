@@ -95,7 +95,7 @@ def main(argv=None):
     settings = app_settings()
     database = os.getenv('NOTION_AGENT_RUNS_DB') or settings.get('notionIds', {}).get('NOTION_AGENT_RUNS_DB')
     if not database:
-        sys.exit('Need NOTION_AGENT_RUNS_DB (or a connected Job Pilotto app).')
+        sys.exit('Need NOTION_AGENT_RUNS_DB (or a connected Jobadabra app).')
     token = token_for(database, [os.getenv('NOTION_TOKEN', '')] + keychain_tokens())
     if not token:
         sys.exit(f'No Notion token on this Mac can open the Agent Runs database {database}: set NOTION_TOKEN to the token of the '

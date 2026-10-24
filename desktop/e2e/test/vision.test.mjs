@@ -92,7 +92,7 @@ test('the review is told that transient UI and guesses about the app\'s insides 
 });
 
 test('the review reads as a job seeker, not a design critic: the nitpick classes are named as never reported (#210, 4 Oct 2026)', () => {
-  assert.match(SYSTEM, /person using the Job Pilotto desktop app to find and win a job/);
+  assert.match(SYSTEM, /person using the Jobadabra desktop app to find and win a job/);
   assert.match(SYSTEM, /visual style or consistency opinions \(emoji versus line icons/);
   assert.match(SYSTEM, /would this make me fail, lose time, misread something, or distrust the app/);
 });

@@ -55,7 +55,7 @@ test('the other three shapes are notes, and none of them is read as an interview
 
   const calendar = parseMailReport([
     '📧 Job emails and calendar',
-    '❓ Huxley — SRE: an interview, but which job? Add the details in Job Pilotto (Focus → Add details: paste the LinkedIn chat or the job link).',
+    '❓ Huxley — SRE: an interview, but which job? Add the details in Jobadabra (Focus → Add details: paste the LinkedIn chat or the job link).',
     '🗓 Huxley — SRE: Teams meeting scheduled with recruiter Jayantie Nejati · Wed 30 Sep 08:30',
   ].join('\n'), 'Gmail check: 3 new email(s) read, 2 update(s) recorded');
   assert.equal(calendar.interview, null);                     // a colon after the company, not " — " around the title
@@ -141,7 +141,7 @@ test('a "which job?" line reads as answered once Focus no longer holds the quest
   assert.equal(settleQuestion('Blockdaemon — which job?', open), 'Blockdaemon — which job?');
   assert.equal(settleQuestion('Blockdaemon — which job?', []), 'Blockdaemon — which job? Answered in Focus');
   assert.equal(settleQuestion('Interview scheduled · Blockdaemon — which job?'.replace('Interview scheduled · ', ''), []), 'Blockdaemon — which job? Answered in Focus');
-  assert.equal(settleQuestion('Blockdaemon: Meeting invitation … which job? Answer in Job Pilotto (Focus).', []), 'Blockdaemon — which job? Answered in Focus');
+  assert.equal(settleQuestion('Blockdaemon: Meeting invitation … which job? Answer in Jobadabra (Focus).', []), 'Blockdaemon — which job? Answered in Focus');
   assert.equal(settleQuestion('Blockdaemon — which job?', null), 'Blockdaemon — which job?');   // Focus not loaded: no judgement
   assert.equal(settleQuestion('Canonical — SRE', []), 'Canonical — SRE');
 });

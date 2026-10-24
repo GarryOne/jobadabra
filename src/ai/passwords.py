@@ -63,7 +63,7 @@ def shared_password():
     password = secret_store.get(SHARED, ACCOUNT)
     if password is None:
         password = memorable()
-        secret_store.put(SHARED, password, ACCOUNT, label='Job Pilotto: job-site password')
+        secret_store.put(SHARED, password, ACCOUNT, label='Jobadabra: job-site password')
     return password
 
 
@@ -132,7 +132,7 @@ def main(argv=None):
         return 0 if found else 1
     if args.action == 'new':
         password = for_site(args.length, symbols=not args.no_symbols)
-        secret_store.put(name, password, ACCOUNT, label=f'Job Pilotto: {args.host}', comment=note(args.email, args.job))
+        secret_store.put(name, password, ACCOUNT, label=f'Jobadabra: {args.host}', comment=note(args.email, args.job))
         if args.no_copy:
             print(f'stored {name}')
             return 0

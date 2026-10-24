@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Job Pilotto Notion workspace as code: config/notion_schema.json.
+"""The Jobadabra Notion workspace as code: config/notion_schema.json.
 
 One file lists every database (title, icon, every column with its type, options, relations, rollups and
 formulas) and every page the code uses. From it:

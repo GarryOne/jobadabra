@@ -1,4 +1,4 @@
-// Owner, 19 Oct 2026: Report said "Job Pilotto could not prepare this report. Is the app open?" on a Doctolib form with the app open and connected. Cause found by a recording (fake applicant, no live site): one request whose
+// Owner, 19 Oct 2026: Report said "Jobadabra could not prepare this report. Is the app open?" on a Doctolib form with the app open and connected. Cause found by a recording (fake applicant, no live site): one request whose
 // path held a malformed percent escape ("/p/100%/x") made the scrub throw, the route answered 500, and the worker turned every failed call into the one sentence "Is the app open?". Guards: the scrub never throws on
 // a URL; a throw in the route is an answer ("failed"), not a silence; the worker names each way a call can fail; the panel has one true, different sentence for every kind (and only "app" asks if the app is open).
 import assert from 'node:assert/strict';

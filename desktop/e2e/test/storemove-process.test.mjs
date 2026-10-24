@@ -5,7 +5,7 @@ import {processRows, standInRows} from '../lib/storemove-steps.mjs';
 
 test('a Unix `ps` listing and a Windows Get-CimInstance listing give the same rows', () => {
   const unix = processRows('  10     1 /Applications/Job Pilotto\n 11 10 python -m src.stores.copy --from sqlite --to notion\n', 'darwin');
-  const windows = processRows(JSON.stringify([{ProcessId: 10, ParentProcessId: 1, CommandLine: 'Job Pilotto.exe'}, {ProcessId: 11, ParentProcessId: 10, CommandLine: 'python.exe -m src.stores.copy --from sqlite --to notion'}, {ProcessId: 12, ParentProcessId: 10, CommandLine: null}]), 'win32');
+  const windows = processRows(JSON.stringify([{ProcessId: 10, ParentProcessId: 1, CommandLine: 'Jobadabra.exe'}, {ProcessId: 11, ParentProcessId: 10, CommandLine: 'python.exe -m src.stores.copy --from sqlite --to notion'}, {ProcessId: 12, ParentProcessId: 10, CommandLine: null}]), 'win32');
   assert.deepEqual(unix.map(({pid, ppid}) => [pid, ppid]), [[10, 1], [11, 10]]);
   assert.deepEqual(windows.map(({pid, ppid}) => [pid, ppid]), [[10, 1], [11, 10], [12, 10]]);
   assert.ok(unix[1].command.includes('-m src.stores.copy') && windows[1].command.includes('-m src.stores.copy'));

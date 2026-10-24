@@ -38,7 +38,7 @@ WEEKLY_SCHEMA = {
 WEEKLY_SCHEMA['required'].append('issues')
 WEEKLY_SCHEMA['properties']['issues'] = learning.ISSUE_SCHEMA
 
-WEEKLY_SYSTEM = """You write the owner's search analysis inside Job Pilotto (on Mondays, or whenever they ask: "Analyze my job search"). Look back at the \
+WEEKLY_SYSTEM = """You write the owner's search analysis inside Jobadabra (on Mondays, or whenever they ask: "Analyze my job search"). Look back at the \
 last 7 days (applications sent, replies, the market, the daily insights and how the owner rated them) \
 and forward to next week. Same rules as the daily insight: only numbers from the statistics; no claims \
 about why applications fail below {min_group} applications in a group; direct and specific, no filler, \

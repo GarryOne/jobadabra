@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # focus-terminal.sh </dev/ttysNNN> — bring the Terminal window whose tab owns that tty to the front
-# and select the tab. Run when a Job Pilotto notification is clicked (see notify.sh).
+# and select the tab. Run when a Jobadabra notification is clicked (see notify.sh).
 tty="${1:?usage: $0 /dev/ttysNNN}"
 osascript - "$tty" <<'OSA'
 on run argv

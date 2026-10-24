@@ -169,7 +169,7 @@ test('a taken extension port is reported, not a crash', async () => {
   if (!taken) blocker.close();
 });
 
-test('pairing hands the extension connection only to the Job Pilotto extension', async () => {
+test('pairing hands the extension connection only to the Jobadabra extension', async () => {
   const server = await import('../lib/server.js');
   const manifest = JSON.parse(fs.readFileSync(new URL('../../extension/manifest.json', import.meta.url)));
   const {createHash} = await import('node:crypto');

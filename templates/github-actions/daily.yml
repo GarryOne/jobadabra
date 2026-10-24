@@ -1,11 +1,11 @@
-# Job Pilotto — your scheduled job search, in YOUR private repo (the Desktop App puts it there).
+# Jobadabra — your scheduled job search, in YOUR private repo (the Desktop App puts it there).
 # It runs the public engine (GarryOne/jobadabra) with this repo's secrets and variables, so your
 # logs, job database and results stay private. Schedules are in UTC.
 name: Job Pilotto
 run-name: ${{ inputs.mode || 'scheduled' }}${{ inputs.job && format(' {0}', inputs.job) || '' }}
 
 on:
-  # The Job Pilotto app adds your schedule here (Settings → How often).
+  # The Jobadabra app adds your schedule here (Settings → How often).
   # Started by the Telegram bot and the Desktop App; same inputs as the engine.
   workflow_dispatch:
     inputs:
@@ -39,5 +39,5 @@ jobs:
       note: ${{ inputs.note }}
       interview: ${{ inputs.interview }}
       code_repository: GarryOne/jobadabra
-      code_ref: main   # the Job Pilotto app writes its own release here, so this repo runs the code of the installed app
+      code_ref: main   # the Jobadabra app writes its own release here, so this repo runs the code of the installed app
     secrets: inherit

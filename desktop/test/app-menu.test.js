@@ -4,8 +4,8 @@ import {CHANNEL_LABELS, answer, template} from '../lib/app-menu.js';
 
 test('Mac: Check for Updates… right under About; standard menus kept', () => {
   const click = () => {};
-  const menu = template({name: 'Job Pilotto', mac: true, checkForUpdates: click});
-  assert.equal(menu[0].label, 'Job Pilotto');
+  const menu = template({name: 'Jobadabra', mac: true, checkForUpdates: click});
+  assert.equal(menu[0].label, 'Jobadabra');
   assert.equal(menu[0].submenu[0].role, 'about');
   assert.deepEqual(menu[0].submenu[1], {label: 'Check for Updates…', click});
   assert.ok(menu[0].submenu.some(item => item.role === 'quit'));
@@ -14,7 +14,7 @@ test('Mac: Check for Updates… right under About; standard menus kept', () => {
 });
 
 test('Windows: no app menu; Check for Updates… in Help', () => {
-  const menu = template({name: 'Job Pilotto', mac: false, checkForUpdates: () => {}});
+  const menu = template({name: 'Jobadabra', mac: false, checkForUpdates: () => {}});
   assert.ok(!menu.some(item => item.label === 'Job Pilotto'));
   assert.ok(menu.at(-1).submenu.some(item => item.label === 'Check for Updates…'));
 });
@@ -23,7 +23,7 @@ test('Windows: no app menu; Check for Updates… in Help', () => {
 test('Update Channel: three radio items under Check for Updates…, on Mac and Windows', () => {
   const picked = [];
   for (const mac of [true, false]) {
-    const menu = template({name: 'Job Pilotto', mac, checkForUpdates: () => {}, channel: 'beta', pickChannel: id => picked.push(id)});
+    const menu = template({name: 'Jobadabra', mac, checkForUpdates: () => {}, channel: 'beta', pickChannel: id => picked.push(id)});
     const list = (mac ? menu[0] : menu.at(-1)).submenu;
     const at = list.findIndex(item => item.label === 'Check for Updates…');
     const channel = list[at + 1];
@@ -36,7 +36,7 @@ test('Update Channel: three radio items under Check for Updates…, on Mac and W
 });
 
 test('from source there is no Update Channel (nothing to install)', () => {
-  const labels = template({name: 'Job Pilotto', mac: true, checkForUpdates: () => {}})[0].submenu.map(item => item.label || '');
+  const labels = template({name: 'Jobadabra', mac: true, checkForUpdates: () => {}})[0].submenu.map(item => item.label || '');
   assert.ok(labels.includes('Check for Updates…'));
   assert.ok(!labels.includes('Update Channel'));
 });
@@ -52,7 +52,7 @@ test('the answer: up to date, an update to install, or why the check failed', ()
 test('Help → Send Feedback… on both platforms', () => {
   const send = () => {};
   for (const mac of [true, false]) {
-    const help = template({name: 'Job Pilotto', mac, checkForUpdates: () => {}, sendFeedback: send}).at(-1);
+    const help = template({name: 'Jobadabra', mac, checkForUpdates: () => {}, sendFeedback: send}).at(-1);
     assert.deepEqual(help.submenu[0], {label: 'Send Feedback…', click: send});
   }
 });
@@ -65,7 +65,7 @@ test('from source (npm start): no update is offered, the menu says to git pull',
 
 test('Edit keeps copy/paste and adds Find… (⌘F), Find Next (⌘G) and Find Previous (⇧⌘G)', () => {
   const calls = [];
-  const menu = template({name: 'Job Pilotto', mac: true, checkForUpdates: () => {}, find: what => calls.push(what)});
+  const menu = template({name: 'Jobadabra', mac: true, checkForUpdates: () => {}, find: what => calls.push(what)});
   const edit = menu.find(item => item.label === 'Edit').submenu;
   for (const role of ['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll']) assert.ok(edit.some(item => item.role === role), role);
   const find = label => edit.find(item => item.label === label);

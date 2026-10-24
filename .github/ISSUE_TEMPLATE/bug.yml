@@ -16,7 +16,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Menu → Job Pilotto → About (e.g. 0.5.3)
+      description: Menu → Jobadabra → About (e.g. 0.5.3)
     validations:
       required: true
   - type: dropdown

@@ -142,7 +142,7 @@ def _waiting_line(info, since):
     what = f"a {info['label']} run" if info.get('label') else 'another run'
     began = f" started {datetime.fromtimestamp(info['at']).strftime('%H:%M')}" if info.get('at') else ''
     pid = f" (pid {info['pid']})" if info.get('pid') else ''
-    return f'Another Job Pilotto search is running (app or terminal): waiting for {what}{began}{pid}; waited {mins} min so far…'
+    return f'Another Jobadabra search is running (app or terminal): waiting for {what}{began}{pid}; waited {mins} min so far…'
 
 
 WIN_LOCK_BYTE = 1 << 20   # the byte a Windows run lock holds (run_lock): far past the holder's note

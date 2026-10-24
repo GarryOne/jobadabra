@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy a Job Pilotto Notion workspace into another one: every database row (all fields, page body, links
+"""Copy a Jobadabra Notion workspace into another one: every database row (all fields, page body, links
 between databases) and the Profile / Standard answers pages. Used to move a real job search into the
 workspace the Desktop App uses, or to keep a test copy. Safe to re-run: rows already copied are updated,
 not duplicated (the source -> target page map is kept in data/notion-copy/).

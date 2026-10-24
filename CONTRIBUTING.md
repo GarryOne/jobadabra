@@ -1,4 +1,4 @@
-# Contributing to Job Pilotto
+# Contributing to Jobadabra
 
 > **In short:** one worktree per change → find the file with `node desktop/scripts/codemap.mjs <words>` → change it → tests → push to `main`.
 > Rules that are never bent are at the bottom. Releases: [RELEASE.md](RELEASE.md).
@@ -82,7 +82,7 @@ async results cached empty, AI answers cut off by `max_tokens`, runs that don't 
 
 ## 5 · Rules never bent
 
-- 🚫 **Never auto-apply to a job:** Job Pilotto drafts and fills; the user submits.
+- 🚫 **Never auto-apply to a job:** Jobadabra drafts and fills; the user submits.
 - 🚫 **No automatic login, no getting past a block:** LinkedIn, Glassdoor, Indeed, levels.fyi and Reddit (owner, 7 Oct 2026): read through the user's own visit (the extension's "Read the jobs on this page", started by their click, in their tab) or when a page answers plainly; never log in automatically, never get past a login wall or a bot check (401/403/429 or a check is a no).
 - 💸 **Ask before spending money on AI** (a new model, a large re-run); show the measured cost.
 - 🔐 **No secrets** in code, commits, docs or Notion.
@@ -90,9 +90,9 @@ async results cached empty, AI answers cut off by `max_tokens`, runs that don't 
 
 ## 6 · License of your contribution
 
-Job Pilotto is source-available under [FSL-1.1-ALv2](LICENSE.md). By opening a pull request you agree that your
+Jobadabra is source-available under [FSL-1.1-ALv2](LICENSE.md). By opening a pull request you agree that your
 contribution is licensed under the same terms, and that the maintainer may also license it under later versions of
-Job Pilotto's license (including the Apache 2.0 future license). Welcome contributions: job feeds, support for more
+Jobadabra's license (including the Apache 2.0 future license). Welcome contributions: job feeds, support for more
 application systems, form-filling fixes, translations.
 
 Everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md). Security problems: [SECURITY.md](SECURITY.md) (report privately).

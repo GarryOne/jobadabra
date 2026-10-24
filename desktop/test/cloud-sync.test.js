@@ -64,13 +64,20 @@ test('a changed key or setting is sent at the next start; the result names it, n
 
 test('a workflow this app no longer ships is deleted; the user\'s own workflows stay', async () => {
   const storage = setUp();
-  const gh = fakeGitHub({'.github/workflows/old.yml': '# Job Pilotto — a check we stopped shipping\non: push\n',
+  const gh = fakeGitHub({'.github/workflows/old.yml': '# Jobadabra — a check we stopped shipping\non: push\n',
     '.github/workflows/mine.yml': '# my own\non: push\n'});
   const changed = await github.updateRepo(storage, {fetcher: gh.fetcher});
   assert.ok(changed.includes('removed .github/workflows/old.yml'), changed.join(', '));
   assert.ok(!('.github/workflows/old.yml' in gh.files));
   assert.ok('.github/workflows/mine.yml' in gh.files);
   assert.ok('.github/workflows/daily.yml' in gh.files, 'the shipped ones are written');
+});
+
+test('a retired workflow is found by either header: the old name and Jobadabra (24 Oct 2026 rename)', async () => {
+  const storage = setUp();
+  const gh = fakeGitHub({'.github/workflows/a.yml': '# Jobadabra — retired\non: push\n', '.github/workflows/b.yml': '# Jobadabra — retired\non: push\n'});
+  const changed = await github.updateRepo(storage, {fetcher: gh.fetcher});
+  assert.ok(changed.includes('removed .github/workflows/a.yml') && changed.includes('removed .github/workflows/b.yml'), changed.join(', '));
 });
 
 test('turning Always on on records what it sent, so the next start sends nothing again', async () => {

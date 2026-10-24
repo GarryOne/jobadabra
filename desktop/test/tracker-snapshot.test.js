@@ -17,7 +17,7 @@ const fakeCrypto = {encrypt: v => Buffer.from(v).toString('base64'), decrypt: s 
 
 function sqliteProfile() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-'));
-  const dir = path.join(base, 'Job Pilotto');
+  const dir = path.join(base, 'Jobadabra');
   createStorage(dir, fakeCrypto).saveSettings({setupDone: true, store: 'sqlite'});
   for (const name of ['profile.md', 'answers.md', 'knowledge.md']) fs.writeFileSync(path.join(dir, name), `# ${name}`);
   fs.mkdirSync(path.join(dir, 'data'), {recursive: true});
@@ -45,7 +45,7 @@ test('an import makes the snapshot the tracker, with every row', async () => {
   const file = path.join(base, 'export.tar.gz');
   await reset.exportTo(dir, file);
   live.close();
-  const other = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-')), 'Job Pilotto');
+  const other = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-')), 'Jobadabra');
   fs.mkdirSync(other);
   await reset.stageImport(other, file);
   const staged = `${other} (import)`;
@@ -57,7 +57,7 @@ test('an import makes the snapshot the tracker, with every row', async () => {
 
 test('without a tracker (the Notion store) an export is as before', async () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-'));
-  const dir = path.join(base, 'Job Pilotto');
+  const dir = path.join(base, 'Jobadabra');
   createStorage(dir, fakeCrypto).saveSettings({setupDone: true});
   assert.equal(tracker.take(dir), null);
   const file = path.join(base, 'export.tar.gz');

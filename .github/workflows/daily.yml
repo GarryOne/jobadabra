@@ -126,7 +126,7 @@ jobs:
           python-version: '3.12'
       # Cache entries are immutable, so each run saves a new key and the next
       # run restores the most recent one by prefix. Changing the prefix starts from
-      # an empty database (happened in the SRE Watch -> Job Pilotto rename); tracked
+      # an empty database (happened in the SRE Watch -> Jobadabra rename); tracked
       # jobs still resolve through Notion (daily.tracked_job), but seen/new history
       # and scores restart.
       - name: Restore job database
@@ -179,7 +179,7 @@ jobs:
           JOB_PILOTTO_SCORE_MODEL: ${{ vars.JOB_PILOTTO_SCORE_MODEL }}
           # Application kits run only when asked (📝 Prepare); optional model override.
           JOB_PILOTTO_KIT_MODEL: ${{ vars.JOB_PILOTTO_KIT_MODEL || 'claude-sonnet-5-5' }}
-          # Your digest's display name; the tool's own name stays generic (Job Pilotto).
+          # Your digest's display name; the tool's own name stays generic (Jobadabra).
           DIGEST_BRAND_NAME: ${{ vars.DIGEST_BRAND_NAME }}
           # Auto-draft kits for the best new matches each run; 0/unset = off (📝 Prepare still works manually).
           JOB_PILOTTO_AUTO_KIT_MAX: ${{ vars.JOB_PILOTTO_AUTO_KIT_MAX }}
@@ -236,13 +236,13 @@ jobs:
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=❌ Job Pilotto ${MODE} run failed: ${RUN_URL}" > /dev/null
+            --data-urlencode "text=❌ Jobadabra ${MODE} run failed: ${RUN_URL}" > /dev/null
       - name: Report failure by e-mail
         if: failure()
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python -m src.notify "Job Pilotto ${MODE} run failed: ${RUN_URL}" || true
+          python -m src.notify "Jobadabra ${MODE} run failed: ${RUN_URL}" || true
       - name: Save job database
         if: always() && env.MODE != 'apply' && env.MODE != 'more' && env.MODE != 'prepare' && env.MODE != 'insight' && env.MODE != 'weekly' && env.MODE != 'interview' && env.MODE != 'add'
         uses: actions/cache/save@v5

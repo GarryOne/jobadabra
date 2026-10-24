@@ -12,7 +12,7 @@ from src.ai import insights, quality
 
 BAD_HEADLINE = 'Search paused: no eligible positions in market, resume building needed.'
 BAD_ACTION = ('Unblock market access: clarify all hard constraints (work permit, regions, employment terms, salary) '
-              'with Job Pilotto or a recruiter to determine whether zero eligible jobs reflects a real market gap.')
+              'with Jobadabra or a recruiter to determine whether zero eligible jobs reflects a real market gap.')
 
 
 class Checker(unittest.TestCase):

@@ -2,7 +2,7 @@
 import {app, safeStorage} from 'electron';
 import {runWithAppToken} from './real-notion-token.mjs';
 
-app.setName('Job Pilotto');   // safeStorage's key is the Keychain item "<app name> Safe Storage": the real app's name, so this process reads the real app's key
+app.setName('Jobadabra');   // safeStorage's key is the Keychain item "<app name> Safe Storage": the real app's name, so this process reads the real app's key
 app.dock?.hide();
 const args = process.argv.slice(process.argv.findIndex(arg => arg.endsWith('real-notion-token-main.mjs')) + 1);
 const [folder, , ...command] = args;

@@ -1,4 +1,4 @@
-"""The Job Pilotto service as the engine sees it: a random local install id, the token the website gives that id, and the private
+"""The Jobadabra service as the engine sees it: a random local install id, the token the website gives that id, and the private
 playbook (per-board notes for application sessions, learned over many applications and kept on our side).
 
 Nothing about the user goes up: the id is random and local. Every call here fails soft ('' / None): the engine works without the service.

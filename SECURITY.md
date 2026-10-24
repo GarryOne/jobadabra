@@ -7,7 +7,7 @@
 
 - A way to read someone's data: keys, Notion content, CV, emails, form answers.
 - A way around the app's protections: the local server's pairing and token, the extension's origin check, the scrubbing
-  of technical reports, the rule that Job Pilotto never clicks Submit.
+  of technical reports, the rule that Jobadabra never clicks Submit.
 - Anything secret shipped in the app or the repository, or a hole in the website's endpoints (`/report/*`, Notion sign-in).
 
 ## What happens next
@@ -22,7 +22,7 @@
 
 Only the latest **stable release** gets security fixes; the app updates itself ("Update to …" in its menu).
 
-## How Job Pilotto protects data
+## How Jobadabra protects data
 
 Keys are encrypted on the user's computer and sent only to their own service. User data lives in the user's own
 Notion. Technical reports are scrubbed on the computer before they're sent, and can be turned off

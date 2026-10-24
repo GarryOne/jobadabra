@@ -1,45 +1,43 @@
-"""The product is called Jobadabra on every screen, message and page a user sees (19 Oct 2026); "Job Pilotto" survives only where it is an internal name.
+"""The product is called Jobadabra in every tracked text file, user-facing or a comment (19 Oct 2026, widened 24 Oct 2026); "Job Pilotto" survives only as a kept compat name.
 
-Fails with file:line when a user-facing file says "Job Pilotto" again. Comment lines are skipped; the lines below are the kept internal names
-(the data folder, the stored event source, old extension and export names that must still be recognised, the Google app's own name).
-The backend renames (data folder, appId, Keychain, env, repos, Workers) are a later, step-by-step plan.
+Fails with file:line when a line says "Job Pilotto" and no KEPT reason covers it. KEPT lines are the names existing installs still use:
+the data folder and Keychain item (moved later by a migration of their own), the stored event source, old extension and export names that
+must still be recognised, the bundle's file name, external accounts' own names. Agent rule files and history are not scanned.
 """
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-USER_FACING = [
-    'desktop/renderer/**/*.html', 'desktop/renderer/**/*.js', 'desktop/lib/**/*.js', 'desktop/main.js', 'desktop/preload.cjs', 'desktop/start.js',
-    'extension/*.html', 'extension/*.js', 'extension/manifest.json',
-    'web/public/*.html', 'site/src/mail*.js', 'api/install.js', 'api/notion.js', 'api/linkedin.js', 'shared/free-ai.js',
-    'worker/src/*.js', 'src/tgcard.py', 'src/digest.py', 'src/notify.py', 'src/doctor.py', 'src/focus_items.py', 'src/ai/mail_lines.py',
-]
-# Internal names that stay (backend, moved later): a line is allowed when it matches one of these.
-KEPT = [
-    r"Application Support|APPDATA|Job Pilotto backup|Job Pilotto Backups|\.app\b|/Job Pilotto",          # the real data folder and the bundle's file name
-    r"'Job Pilotto app'|manifest\??\.app|app: 'Job Pilotto'",       # stored event source, export manifest id
-    r"\[NAME, 'Job Pilotto'\]|LEGACY_NAME|!== 'Job Pilotto'",       # an install from before the rename is still recognised
-    r"Job Pilotto Brain|Job Pilotto – Live Test|archived 28 Sep",   # owner-only bot, the twin's mirror, an old Notion page name
-    r"# Job Pilotto|GitHub App|job-pilotto",                        # a repo file header written by older versions; identifiers
-    r"before the rename|Job Pilotto QA|missing: \['Job Pilotto'\]",  # old-name recognisers, the QA pool's name
-    r"quit app \"Job Pilotto\"|extension installed and the person",  # the bundle's name for osascript; an agent-only twin brief
-]
+NOT_SCANNED = re.compile(
+    r'(^|/)(node_modules|dist|\.claude)/|^(CLAUDE|AGENTS)\.md$|docs/rules/why\.md|docs/superpowers/specs/|desktop/lib/app-identity\.js|'
+    r'desktop/test/app-identity\.test\.js|tests/test_brand_wording\.py|\.(png|jpg|jpeg|gif|ico|icns|woff2?|zip|pdf|lock|svg)$|package-lock')
+# Kept names: a line is allowed when it matches one of these.
+KEPT = re.compile('|'.join([
+    r"Application Support|APPDATA|AppData|/ 'Job Pilotto'|\\Job Pilotto|/Job Pilotto\b|Job Pilotto Safe Storage",  # the real data folder, the Keychain item
+    r"Job Pilotto\.app|quit app \"Job Pilotto\"|productName|shortcutName|\"title\": \"Job Pilotto \$\{version\}\"",  # the bundle's file name (the updater swaps it)
+    r"Job Pilotto (QA|Brain|Backups|backup|\(live test\)|Live[ -]Test|– Live Test|Live-Test)|- mac -|archived 28 Sep",  # owner-only names, old Notion page names
+    r"'Job Pilotto app'|\"Job Pilotto app\"|Job Pilotto app'",                    # the event source stored in users' rows
+    r"manifest\??\.app|app: 'Job Pilotto'|\[NAME, 'Job Pilotto'\]|!== 'Job Pilotto'|=== 'Job Pilotto'|missing: \['Job Pilotto'\]|LEGACY_NAME",  # old installs recognised
+    r"^\s*name: Job Pilotto\s*$|# Job Pilotto'|GitHub App|job-pilotto|before the rename|extension installed and the person",
+    r"^\s*\"why\": |Job Pilotto (Tests|Sentry|Sign-in|Self-heal|E2E|2\b)|missing Job Pilotto|connection \"Job Pilotto\"|integrations → Job Pilotto",  # external accounts' own names
+]))
 
 
 class BrandWording(unittest.TestCase):
-    def test_user_facing_files_say_jobadabra(self):
-        kept = re.compile('|'.join(KEPT))
+    def test_tracked_files_say_jobadabra(self):
+        files = subprocess.run(['git', '-C', str(ROOT), 'ls-files'], capture_output=True, text=True, check=True).stdout.split('\n')
         bad = []
-        for pattern in USER_FACING:
-            for path in sorted(ROOT.glob(pattern)):
-                if 'node_modules' in path.parts:
-                    continue
-                for number, line in enumerate(path.read_text(errors='ignore').splitlines(), 1):
-                    if 'Job Pilotto' not in line or line.lstrip().startswith(('//', '#', '*', '/*', '<!--')) or kept.search(line):
-                        continue
-                    bad.append(f'{path.relative_to(ROOT)}:{number}: {line.strip()[:110]}')
-        self.assertEqual(bad, [], 'say "Jobadabra" (or add the kept internal name to KEPT):\n' + '\n'.join(bad[:40]))
+        for name in files:
+            if not name or NOT_SCANNED.search(name):
+                continue
+            try:
+                lines = (ROOT / name).read_text().splitlines()
+            except (UnicodeDecodeError, OSError):
+                continue
+            bad += [f'{name}:{n}: {line.strip()[:110]}' for n, line in enumerate(lines, 1) if 'Job Pilotto' in line and not KEPT.search(line)]
+        self.assertEqual(bad, [], 'say "Jobadabra" (or add the kept compat name to KEPT with its reason):\n' + '\n'.join(bad[:40]))
 
 
 if __name__ == '__main__':

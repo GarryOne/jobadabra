@@ -37,7 +37,7 @@ test('a job offers the outcomes that make sense for its stage', () => {
   assert.deepEqual(outcomeChoices('Screening').map(c => c.outcome), ['offer', 'rejected']);
   for (const stage of ['Applying', 'Kit ready', 'Offer', 'Rejected', 'Withdrawn', 'No response', undefined]) assert.deepEqual(outcomeChoices(stage), [], String(stage));
   assert.ok(outcomeChoices('Applied').every(c => OUTCOMES.includes(c.outcome) && /anonymously by job board and days only/.test(c.title)));
-  assert.ok(outcomeChoices('Applied', 'Job Pilotto').every(c => c.title.includes('Recorded in Job Pilotto.')), 'the note names the store it is kept in');
+  assert.ok(outcomeChoices('Applied', 'Jobadabra').every(c => c.title.includes('Recorded in Jobadabra.')), 'the note names the store it is kept in');
 });
 
 test('sources fold into known job-board kinds; any other site is "other" and nothing hashed leaves', async () => {

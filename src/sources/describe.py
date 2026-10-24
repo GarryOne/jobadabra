@@ -96,7 +96,7 @@ def readable(url):
 
 
 def _get(url, opener=None, accept='text/html'):
-    request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Job Pilotto; personal job search)', 'Accept': accept})
+    request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Jobadabra; personal job search)', 'Accept': accept})
     try:
         with host_pace.open(request, 15, opener) as response:
             return response.read(3_000_000).decode('utf-8', errors='replace')

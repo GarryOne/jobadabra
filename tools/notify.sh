@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # notify.sh <job URL> <message> — macOS notification about one job, e.g.
-#   Job Pilotto / grafanalabs job 6103687004 / Form filled — review and Submit
+#   Jobadabra / grafanalabs job 6103687004 / Form filled — review and Submit
 # Clicking it brings the Terminal window of the session that sent it to the front (needs
 # `brew install terminal-notifier`; without it, a plain notification). Used by the launchers'
 # agents, the Codex runner and wait-and-mark-applied.sh. Off macOS it goes through the app.
@@ -10,14 +10,14 @@ here="$(cd "$(dirname "$0")" && pwd)"
 id="$(printf '%s' "${url%%\?*}" | sed -E 's#/+$##; s#.*/##')"
 board="$(printf '%s' "$url" | sed -E 's#https?://[^/]+/([^/?]+).*#\1#')"
 case "$url" in *amazon.jobs*) board=amazon; id="$(printf '%s' "$url" | sed -E 's#.*/jobs/([0-9]+).*#\1#')" ;; esac
-# A session running inside the Job Pilotto app (JOB_PILOTTO_SESSION): the app shows it on the session's card and
+# A session running inside the Jobadabra app (JOB_PILOTTO_SESSION): the app shows it on the session's card and
 # notifies you itself when it needs you.
 if [ -n "${JOB_PILOTTO_SESSION:-}" ]; then
   curl -s -m 3 -X POST -H 'X-Job-Pilotto: launcher' --data-urlencode "message=$message" \
     "http://127.0.0.1:47111/claude/session?id=$JOB_PILOTTO_SESSION&event=note" >/dev/null 2>&1
   exit 0
 fi
-# Off macOS (Windows, in Git Bash): the Job Pilotto app shows the notification, when it's running.
+# Off macOS (Windows, in Git Bash): the Jobadabra app shows the notification, when it's running.
 if ! command -v osascript >/dev/null; then
   curl -s -m 3 -X POST -H 'X-Job-Pilotto: launcher' --data-urlencode "job=$board job $id" \
     --data-urlencode "message=$message" http://127.0.0.1:47111/claude/notify >/dev/null 2>&1
@@ -42,7 +42,7 @@ case "$message" in
     if [ -n "$tty" ]; then
       nohup osascript - "$message" "$board job $id" "$here/focus-terminal.sh" "$tty" >/dev/null 2>&1 <<'OSA' &
 on run argv
-  set answer to display dialog ((item 2 of argv) & return & (item 1 of argv)) with title "Job Pilotto" buttons {"Later", "Show window"} default button "Show window" with icon note giving up after 900
+  set answer to display dialog ((item 2 of argv) & return & (item 1 of argv)) with title "Jobadabra" buttons {"Later", "Show window"} default button "Show window" with icon note giving up after 900
   if button returned of answer is "Show window" then do shell script quoted form of (item 3 of argv) & " " & quoted form of (item 4 of argv)
 end run
 OSA
@@ -54,14 +54,14 @@ esac
 
 notifier="$(command -v terminal-notifier || true)"
 if [ -n "$notifier" ]; then
-  args=(-title "Job Pilotto" -subtitle "$board job $id" -message "$message" -sound Glass -group "jobpilotto-$id")
+  args=(-title "Jobadabra" -subtitle "$board job $id" -message "$message" -sound Glass -group "jobpilotto-$id")
   [ -n "$tty" ] && args+=(-execute "'$here/focus-terminal.sh' '$tty'")
   # Fails (exit 3) when macOS hasn't allowed terminal-notifier's notifications: fall back below.
   "$notifier" "${args[@]}" >/dev/null 2>&1 && exit 0
 fi
 osascript - "$message" "$board job $id" <<'OSA' 2>/dev/null
 on run argv
-  display notification (item 1 of argv) with title "Job Pilotto" subtitle (item 2 of argv) sound name "Glass"
+  display notification (item 1 of argv) with title "Jobadabra" subtitle (item 2 of argv) sound name "Glass"
 end run
 OSA
 exit 0

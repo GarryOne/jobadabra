@@ -247,7 +247,7 @@ export async function runParts(ctx, parts) {
       try {
         const {fresh, shown, seconds} = await runTask(ctx, 'run', {maxMs: 180000, kind: 'search'});
         const mine = shown.find(row => row.id === String(fresh[0].id));
-        const opened = await openRun(ctx, LABEL.search, {id: fresh[0].id, snapAs: 'activity-run-failed', situation: 'A Jobs check stopped by Job Pilotto after the AI went silent: Stopped, with its reason, the step it was on and Run again, in the Recent activity panel'});
+        const opened = await openRun(ctx, LABEL.search, {id: fresh[0].id, snapAs: 'activity-run-failed', situation: 'A Jobs check stopped by Jobadabra after the AI went silent: Stopped, with its reason, the step it was on and Run again, in the Recent activity panel'});
         console.log(`  silence: ${seconds}s; ok=${fresh[0].ok}; list: "${mine?.result}" [${mine?.pill}]; panel: [${opened.status}] ${opened.warnings.slice(0, 160)}`);
         const problems = [];
         if (fresh.length !== 1) problems.push(`${fresh.length} rows for one click: ${fresh.map(run => `[${run.id} ${run.trigger} ${run.where} ok=${run.ok} start=${run.startedAt} notion=${run.notionUrl.slice(-6)} result="${run.result.slice(0, 50)}" log=${run.log.length}]`).join(' ')}`);

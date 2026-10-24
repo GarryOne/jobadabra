@@ -1,4 +1,4 @@
-# Releasing Job Pilotto
+# Releasing Jobadabra
 
 > **In short:** **every night at 04:00 Zurich**, if the app changed, a build is made, **every end-to-end suite runs on it, and when all pass it becomes the stable release**
 > (friends' apps offer it, the website serves it, their Notion and GitHub runs follow by themselves). Red or no build: nothing changes. A build on demand
@@ -130,9 +130,9 @@ doesn't have. Code that adds a column still survives an older workspace (`cron_r
 1. Send the stable download: **Mac** `…/releases/latest/download/Job-Pilotto-mac-arm64.dmg`,
    **Windows** `…/releases/latest/download/Job-Pilotto-windows-x64.exe`
    (`https://github.com/GarryOne/jobadabra/…`).
-2. Mac: drag it to **Applications** (updates need it there). The first open shows **"Job Pilotto" Not Opened** (the app
+2. Mac: drag it to **Applications** (updates need it there). The first open shows **"Jobadabra" Not Opened** (the app
    isn't notarized yet): click **Done** (never Move to Bin), then **System Settings → Privacy & Security** → scroll to
-   *"Job Pilotto" was blocked* → **Open Anyway** → confirm. Once only. (Right-click → Open no longer works on recent macOS.)
+   *"Jobadabra" was blocked* → **Open Anyway** → confirm. Once only. (Right-click → Open no longer works on recent macOS.)
    Opened from the disk image by mistake? The app offers **Move to Applications** itself.
    Keychain prompt: **Always Allow** (login password). It comes back **once after each update** until the app has an
    Apple Developer ID: macOS ties keychain access of apps without an Apple team ID to the exact build. Builds still share

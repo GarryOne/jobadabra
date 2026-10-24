@@ -28,7 +28,7 @@
 - [ ] Spacing from the scale (label → field 4, field → field 12, card padding 16)
 - [ ] Looked at in light and dark
 
-<When a screen changed: every image in this table, one row per change; or: No screenshots: <why>.
+<When a screen changed: every image in this table, one row per change; or: No screenshots: <why> (never for a site page: a change to web/public or admin html/css/js needs images, live page vs your branch, 1440px and 390px). A PR in the private site repo (jobadabra-web) hosts its images there: `node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=GarryOne/jobadabra-web`.
 Caption = what changed and where to look (a few words); crop to the changed card and frame the change: `npm run shot -- <page> --select '<card>' --mark '<changed control>'` (same options for before and after). A new screen: "—" before, the reason in the caption.>
 
 | What changed | Before | After |

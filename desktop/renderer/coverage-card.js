@@ -1,5 +1,6 @@
 // The Strategy page's "your search may be too narrow" card (src/coverage.py says it; desktop/lib/strategy.js addRoles acts on it).
 // Pure: the numbers in, the words and chips out. Nothing is shown for a search that catches enough, or after "Not now" for this crawl.
+import {offered} from './key-sources.js';
 const number = value => Number(value || 0).toLocaleString('en-US');
 
 export function coverageCard(verdict, dismissedAt = '') {
@@ -40,7 +41,7 @@ export function filtersCard(verdict, dismissedAt = '') {
 // "More places to find jobs" (src/coverage.py unused_sources): the job sources this install does not use, least effort first, each with what it
 // takes (a free key, a paid plan). Shown whatever the coverage: more sources mean more jobs. A chip opens its panel in Settings → Connections.
 export function sourcesCard(verdict, dismissedAt = '') {
-  const sources = Array.isArray(verdict?.sources) ? verdict.sources : [];
+  const sources = (Array.isArray(verdict?.sources) ? verdict.sources : []).filter(source => offered(source.id));   // the API-key sources are hidden while the flag is off (key-sources.js)
   if (!sources.length || (dismissedAt && verdict.at && dismissedAt === verdict.at)) return null;
   return {
     title: 'More places to find jobs',

@@ -128,6 +128,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
   its row. Instant look-ups answer on the page. Nothing is shown *behind* an open panel.
 
 ## 5. Words
+- **Result panels stay basic; details live only in Reports** (owner, 24 Oct 2026: "is all of these information necessary to be displayed? Does he care?"): no API-key setup rows (Adzuna/Jooble, Brave, SerpApi are hidden behind `KEY_SOURCES_OFFERED`, `src/coverage.py` + `desktop/renderer/key-sources.js`), no internal counts (employers checked, ideas left, schedules, who started it, which machine), no scoring words; one number, one message, one action. "Browse sites manually" lists only sites the automatic read stopped at (`visits.left_to_hand`). Guard: `desktop/test/result-panels-basic.test.js`, `tests/test_visits.py`.
 - Short and concrete: "Reply to AG Talent recruiter", "Apply to your next role", "Needs your input".
 - Buttons are verbs: Run, Respond, Review, Open email, Browse jobs, Done.
 - Times: "Today 19:10", "Mon 19:10", "Updated just now"; money "€70k–90k".

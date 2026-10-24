@@ -205,6 +205,11 @@ SOURCES = (
 )
 
 
+# Owner, 24 Oct 2026: "too much overhead, of configuration for the user"; the in-house scout and search do well without these keys. The three rows are not
+# offered anywhere while this is False (desktop/renderer/key-sources.js is the app's copy; desktop/test/key-sources.test.js ties them). A key already set still works.
+KEY_SOURCES_OFFERED = False
+
+
 def _claude_code(env):
     """The AI engine is the user's own plan's CLI (Claude Code or Codex): its web search stands in for the keyed ones."""
     return (env.get('JOB_PILOTTO_AI_ENGINE') or '').lower() in ('cli', 'codex')
@@ -234,6 +239,8 @@ def unused_sources(env=None):
     """[{id, name, effort, gain, people}] of SOURCES this install does not use, in order (least effort first). `people`: what it gave
     people like this user, from the shared pool (7 Oct 2026), or ''."""
     env = os.environ if env is None else env
+    if not KEY_SOURCES_OFFERED:
+        return []
     return [{**{key: source[key] for key in ('id', 'name', 'effort', 'gain')}, 'people': people_like_you(source['id'])} for source in SOURCES if source['unused'](env)]
 
 

@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -154,6 +155,12 @@ class TradeSuggestionsTests(unittest.TestCase):
         self.assertIn('backend', [s['term'] for s in it['suggestions']])
         self.assertNotIn('client advisor', [s['term'] for s in it['suggestions']])
 
+    def test_no_key_source_is_offered_while_the_flag_is_off(self):
+        # Owner, 24 Oct 2026: Adzuna and Jooble, Brave and SerpApi rows are hidden everywhere (too much configuration).
+        self.assertFalse(coverage.KEY_SOURCES_OFFERED)
+        self.assertEqual(coverage.unused_sources({}), [])
+
+    @mock.patch.object(coverage, 'KEY_SOURCES_OFFERED', True)
     def test_unused_sources_least_effort_first(self):
         names = [s['id'] for s in coverage.unused_sources({})]
         self.assertEqual(names, ['brave', 'aggregators', 'serpapi'])

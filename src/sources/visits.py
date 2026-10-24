@@ -110,8 +110,21 @@ def visit_list(search=None, kinds=None, now=None, picks=None):
         if failed.get('count', 0) >= 2:   # failed twice in a row: offered, not ticked, with why (owner: "let the user delete/dismiss them")
             item = {**item, 'failing': True, 'note': f"Failed {failed['count']} times in a row: {failed.get('why', '')}"[:200]}
         kept.append(item)
+    kept = [item for item in kept if left_to_hand(item, data)]
     kept = relevant(kept, search)
     return sorted(kept, key=lambda item: (item['kind'] != 'employer', item['last_read'] or ''))[:MAX_LIST]
+
+
+def left_to_hand(item, data):
+    """True when this site is for the person's own visit: a portal (login wall), a site the automatic Chrome read may not open, or one it stopped at
+    (refused, bot check, login). A site not asked yet, or opened, empty or asked to slow down there, is not (owner, 24 Oct 2026: 12 sites listed,
+    none tried; picks were not even in the automatic queue)."""
+    if item['kind'] != 'employer':
+        return True
+    from . import refused_reads
+    if not refused_reads.allowed(item['url']):
+        return True
+    return ((data.get('refused_reads') or {}).get(host_of(item['url'])) or {}).get('state') == 'stopped'
 
 
 RELEVANT_MODEL = SMALL_MODEL

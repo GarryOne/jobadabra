@@ -1,7 +1,7 @@
 // Recent activity: the few-jobs help boxes beside the run card (coverage actions, Explain with AI).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {ai} from '../ai-name.js';
-import {el, numberStrip} from '../components.js';
+import {el} from '../components.js';
 import {icon} from '../icons.js';
 import {adviceEvent, fewJobsGroups, runAction} from '../coverage-actions.js';
 import {openSetting} from './settings.js';
@@ -97,23 +97,13 @@ export function withFewJobsHelp(runId) {
   strategy.addEventListener('click', () => { openActivity(false); openView('strategy'); });
   const paint = groups => {
     const parts = [];
+    // One plain action in place of the employer numbers and schedule (owner, 24 Oct 2026); those live in Reports.
     if (groups?.employers) {
-      const e = groups.employers;
-      const coverage = card('file', 'Employer coverage', 'What your employer sources are finding');
-      // Numbers, not a bar: the bar read as loading progress (owner, 7 Oct 2026). The shared .insight-numbers cells.
-      const numbers = numberStrip([[e.matched, `employer${e.matched === 1 ? '' : 's'} had a job for you`], [e.read, `employer${e.read === 1 ? '' : 's'} checked`],
-        [e.pending, `employer idea${e.pending === 1 ? '' : 's'} not tried yet`]].map(([value, label]) => ({value: value.toLocaleString('en-US'), label})), {valueFirst: true});
-      const scout = el('button', `${e.dry ? 'primary' : 'secondary'} item-action`, 'Find jobs →');
-      scout.type = 'button';
-      scout.addEventListener('click', () => { adviceEvent('taken', 'employer', 'few-jobs'); startSearch({employers: true}); });
+      const further = el('button', 'secondary item-action', 'Look further');
+      further.type = 'button';
+      further.addEventListener('click', () => { adviceEvent('taken', 'employer', 'few-jobs'); startSearch({employers: true}); });
       adviceEvent('shown', 'employer', 'few-jobs');
-      coverage.append(numbers, rows([row('', 'Explore more employers', e.explore, scout)]));
-      if (e.runway) {
-        // The schedule as a condition, folded: it explains, it is not an alarm.
-        const schedule = el('details', 'plain few-schedule'), summary = el('summary', '', 'How employer checks are scheduled');
-        schedule.append(summary, el('p', 'muted', `${e.runway}${e.runway.endsWith('.') || e.runway.includes(':') ? '' : '.'} ${e.advice}.`));
-        coverage.append(schedule);
-      }
+      const coverage = card('file', 'Find more employers', 'Searches for employers with jobs for you', further);
       parts.push(coverage);
     }
     const broaden = card('bulb', 'Other ways to broaden your search', 'Optional changes to your search and sources', strategy);

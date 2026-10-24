@@ -48,7 +48,7 @@ jobs:
             -c.appx.identityName=IgorMardari.Jobadabra -c.appx.publisher=CN=0D77B925-8A8E-4E89-A698-35A1E48A4789 \
             "-c.appx.publisherDisplayName=Igor Mardari" -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
           ls -la dist/*.appx
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: Jobadabra-store-package
           path: desktop/dist/*.appx

@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
   push:
     tags: ['extension-v*']
+concurrency:   # a tag push replaces an older tag run; a by-hand run is its own group (tests/test_main_runs_finish.py)
+  group: extension-store-zip-${{ github.event_name == 'push' && 'main' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 permissions:
   contents: read
 jobs:

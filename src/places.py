@@ -95,6 +95,14 @@ def words_of(search):
     return found
 
 
+def _country_named(word):
+    """[the country] when the word is a country's English name (ISO table, src/country_codes.py), else []: a country needs no model's answer, so the
+    central scout (no places cache in CI) and a first search still know "Moldova" is Moldova."""
+    from .country_codes import NAMES
+    lowered = str(word).strip().casefold()
+    return next(([name] for name in NAMES.values() if name.casefold() == lowered), [])
+
+
 def countries(search, cache=None, limit=3):
     """The countries the search's places are in, the user's first places first (at most `limit`): Swiss region words from the fixed table
     (src/regions.py), every other word from what the model said. [] when none is known yet."""
@@ -105,7 +113,7 @@ def countries(search, cache=None, limit=3):
     for key in ('top_tier', 'country_wide', 'abroad'):
         for fragment in ((search.get('locations') or {}).get(key) or []):
             word = readable(fragment).strip('"')
-            for country in ['Switzerland'] if region_of(fragment) else (cache.get(_key(word)) or {}).get('countries') or []:
+            for country in ['Switzerland'] if region_of(fragment) else (cache.get(_key(word)) or {}).get('countries') or _country_named(word):
                 if country not in found:
                     found.append(country)
     return found[:limit]

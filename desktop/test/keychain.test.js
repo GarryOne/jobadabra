@@ -117,3 +117,11 @@ test('the twin also reads the one Ready to send owner secret item, read-only, an
   }
   assert.equal(keychain.read('job-pilotto.ready.owner_secret', {env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_USER_DATA: dir}, exec, platform: 'darwin'}), null);   // an e2e run never reaches it
 });
+
+test('a test that passes no fake exec can never change the real Keychain (24 Oct 2026: a Python test wrote the owner\'s Keychain)', () => {
+  assert.throws(() => keychain.write('job-pilotto.x.token', 'v', {env: {NODE_TEST_CONTEXT: 'child-v8'}, platform: 'darwin'}), /real Keychain/);
+  assert.throws(() => keychain.remove('job-pilotto.x.token', {env: {NODE_TEST_CONTEXT: 'child-v8'}, platform: 'darwin'}), /real Keychain/);
+  const {calls, exec} = spy(() => '');
+  assert.equal(keychain.write('job-pilotto.x.token', 'v', {env: {NODE_TEST_CONTEXT: 'child-v8'}, exec, platform: 'darwin'}), true);   // a fake exec is fine
+  assert.equal(calls.length, 1);
+});

@@ -22,6 +22,20 @@ class FakeKeyring:
         self.items.pop((service, user))
 
 
+class RealStoreIsOffLimitsToTestsTest(unittest.TestCase):
+    """24 Oct 2026: a test wrote job-pilotto.google.scopes into the owner's real Keychain. An unmocked write or delete from a test now raises."""
+    def test_an_unmocked_change_fails_loudly_and_reaches_nothing(self):
+        for platform in ('darwin', 'win32'):
+            with mock.patch.object(sys, 'platform', platform), mock.patch.dict('os.environ', {'JOB_PILOTTO_E2E': '', 'JOB_PILOTTO_TWIN': ''}), \
+                    mock.patch.object(secret_store.subprocess, 'Popen', side_effect=AssertionError('reached the real tool')):
+                for change in (lambda: secret_store.put('job-pilotto.x.token', 'v'), lambda: secret_store.delete('job-pilotto.x.token')):
+                    with self.assertRaisesRegex(RuntimeError, 'real secret store'):
+                        change()
+
+    def test_the_guard_knows_a_test_is_running(self):
+        self.assertTrue(secret_store.under_test())
+
+
 class SecretStoreTest(unittest.TestCase):
     def test_windows_uses_the_credential_manager_through_keyring(self):
         store = FakeKeyring()

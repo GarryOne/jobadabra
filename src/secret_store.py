@@ -11,6 +11,27 @@ import os
 import subprocess
 import sys
 
+_REAL_RUN = subprocess.run   # a test that replaces these has a fake store; only the genuine ones can reach the owner's Keychain
+
+
+def under_test():
+    """True while a test suite runs this code (unittest, pytest, or the flag a harness sets)."""
+    argv0 = (sys.argv[0] if sys.argv else '').replace(os.sep, '/')   # unittest's own runner renames it "python3.x -m unittest"
+    return bool(os.getenv('JOB_PILOTTO_UNDER_TEST') or os.getenv('PYTEST_CURRENT_TEST')
+                or ' -m unittest' in argv0 or argv0.endswith('unittest/__main__.py'))
+
+
+def _reaches_real_store():
+    """True when a write here would reach a real Keychain / Credential Manager (not a faked tool, and not a platform with no store)."""
+    return subprocess.run is _REAL_RUN if sys.platform == 'darwin' else sys.platform == 'win32' and _keyring is _REAL_KEYRING
+
+
+def _refuse_real_write(real):
+    """24 Oct 2026: a test's refused-scope check wrote job-pilotto.google.scopes into the owner's real Keychain. A test never writes or
+    deletes in the real store: it patches secret_store.put/delete, replaces subprocess.run / _keyring, or runs isolated (JOB_PILOTTO_E2E)."""
+    if real and under_test():
+        raise RuntimeError('A test tried to change the real secret store (Keychain / Credential Manager). Patch secret_store.put/delete or run isolated.')
+
 
 def account():
     """The account name secrets are stored under: the login name, as the Keychain items always had."""
@@ -25,6 +46,9 @@ def _keyring():
     except ImportError:
         return None
     return keyring
+
+
+_REAL_KEYRING = _keyring
 
 
 def isolated():
@@ -86,6 +110,7 @@ def put(service, value, user=None, label=None, comment=None):
         items[service] = {'value': value, 'account': user, 'comment': comment or '', 'created': datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}
         _isolated_save(path, items)
         return
+    _refuse_real_write(_reaches_real_store())
     if sys.platform == 'darwin':
         subprocess.run(['security', 'add-generic-password', '-U', '-a', user, '-s', service,
                         *(['-l', label] if label else []), *(['-j', comment] if comment else []), '-w', value], check=True)
@@ -103,6 +128,7 @@ def delete(service, user=None):
         if items.pop(service, None) is not None:
             _isolated_save(path, items)
         return
+    _refuse_real_write(_reaches_real_store())
     if sys.platform == 'darwin':
         subprocess.run(['security', 'delete-generic-password', '-a', user, '-s', service], capture_output=True)
         return

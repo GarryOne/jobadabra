@@ -15,8 +15,18 @@ FIT = 70   # "fit 70+": the score band where the core of the role matches (src/a
 TABLE = '''CREATE TABLE IF NOT EXISTS source_yield (
     run_at TEXT NOT NULL, kind TEXT NOT NULL, source TEXT NOT NULL,
     open INTEGER NOT NULL, in_places INTEGER NOT NULL, new INTEGER NOT NULL, scored INTEGER NOT NULL, fit70 INTEGER NOT NULL,
+    local INTEGER NOT NULL DEFAULT 0, local_fit70 INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (run_at, kind, source))'''
-FIELDS = ('kind', 'source', 'open', 'in_places', 'new', 'scored', 'fit70')
+FIELDS = ('kind', 'source', 'open', 'in_places', 'new', 'scored', 'fit70', 'local', 'local_fit70')   # local*: only jobs LOCATED in your places, never worldwide remote
+
+
+def _table(db):
+    """The table, with the local columns added to one a build before 24 Oct 2026 made."""
+    db.execute(TABLE)
+    have = {row[1] for row in db.execute('PRAGMA table_info(source_yield)')}
+    for column in ('local', 'local_fit70'):
+        if column not in have:
+            db.execute(f'ALTER TABLE source_yield ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0')
 
 
 def _source(name, kind, url):
@@ -46,6 +56,7 @@ def measure(db, run_at, in_places=None, read=None):
     run_at: when this run started (ISO, UTC): a job first seen then or later is new. in_places: the place check (default the crawl's own).
     read: {board host: relevant jobs this read} for the found boards read this run (found_boards.read_since): each keeps a row, so "no job
     in your places three reads running" can be seen here (board_yield.dead); one whose jobs link to other sites keeps its read's count."""
+    from .sources.feeds import in_my_place
     if in_places is None:
         from .sources.feeds import wanted_location as in_places
     fits = _fits(db)
@@ -60,9 +71,12 @@ def measure(db, run_at, in_places=None, read=None):
             continue
         row['in_places'] += 1
         row['new'] += (first_seen or '') >= run_at
+        here = in_my_place({'title': title, 'location': location or ''})
+        row['local'] += here
         if job_id in fits:
             row['scored'] += 1
             row['fit70'] += fits[job_id] >= FIT
+            row['local_fit70'] += here and fits[job_id] >= FIT
     for host, relevant in (read or {}).items():
         rows.setdefault(('job board', host), dict.fromkeys(FIELDS, 0) | {'kind': 'job board', 'source': host, 'in_places': relevant or 0})
     return sorted(rows.values(), key=lambda row: (-row['fit70'], -row['in_places'], -row['open'], row['source']))
@@ -70,7 +84,7 @@ def measure(db, run_at, in_places=None, read=None):
 
 def record(db, run_at, rows):
     """Keep this run's rows (a run measured twice keeps its last count)."""
-    db.execute(TABLE)
+    _table(db)
     with db:
         db.executemany(f"INSERT OR REPLACE INTO source_yield (run_at, {', '.join(FIELDS)}) VALUES (?, {', '.join('?' * len(FIELDS))})",
                        [(run_at, *(row[field] for field in FIELDS)) for row in rows])
@@ -78,7 +92,7 @@ def record(db, run_at, rows):
 
 def latest(db):
     """The last measured run's rows, best first, or []."""
-    db.execute(TABLE)
+    _table(db)
     names = ('run_at', *FIELDS)
     found = db.execute(f"SELECT {', '.join(names)} FROM source_yield WHERE run_at = (SELECT MAX(run_at) FROM source_yield) "
                        'ORDER BY fit70 DESC, in_places DESC, open DESC, source').fetchall()
@@ -86,9 +100,10 @@ def latest(db):
 
 
 def board_counts(db):
-    """{board host: {'in_places', 'fit70'}} of the last measured run: what each job board gave this search, shared with the pool
-    (src/contribute.py site_facts) so other installs read the boards that gave people like them their jobs first."""
-    return {row['source']: {'in_places': row['in_places'], 'fit70': row['fit70']} for row in latest(db) if row['kind'] == 'job board'}
+    """{board host: {'in_places', 'fit70'}} of the last measured run: what each job board gave this search in jobs LOCATED in your places (never
+    worldwide remote: 24 Oct 2026, "in places" said 750 for Moldova and about 5 were there), shared with the pool (src/contribute.py site_facts)
+    so other installs read the boards that gave people like them their local jobs first."""
+    return {row['source']: {'in_places': row['local'], 'fit70': row['local_fit70']} for row in latest(db) if row['kind'] == 'job board'}
 
 
 def line(rows, limit=5):

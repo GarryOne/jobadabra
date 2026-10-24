@@ -75,5 +75,27 @@ class SourceYieldTests(unittest.TestCase):
         self.assertEqual(sum(row['in_places'] for row in rows), 4)
 
 
+    def test_a_boards_shared_counts_are_jobs_located_in_your_places_not_remote_ones(self):
+        """24 Oct 2026: "in places" said 750 for Moldova and about 5 were there; what installs share counts only the local jobs."""
+        from unittest import mock
+        from src.sources import feeds
+        with tempfile.TemporaryDirectory() as tmp:
+            db = self._db(tmp)
+            db.execute("UPDATE jobs SET location = 'Remote' WHERE id = 4")
+            with mock.patch.object(feeds, 'in_my_place', lambda job: job['location'] == 'Nürnberg'), \
+                    mock.patch.object(feeds, 'wanted_location', lambda job: job['location'] in ('Nürnberg', 'Remote')):
+                source_yield.run(db, RUN)
+            self.assertEqual(source_yield.board_counts(db)['board-one.test'], {'in_places': 1, 'fit70': 1})
+
+    def test_a_yield_table_from_before_the_local_counts_gets_their_columns(self):
+        import sqlite3
+        db = sqlite3.connect(':memory:')
+        db.row_factory = sqlite3.Row
+        db.execute('CREATE TABLE source_yield (run_at TEXT NOT NULL, kind TEXT NOT NULL, source TEXT NOT NULL, open INTEGER NOT NULL, in_places INTEGER NOT NULL, '
+                   'new INTEGER NOT NULL, scored INTEGER NOT NULL, fit70 INTEGER NOT NULL, PRIMARY KEY (run_at, kind, source))')
+        db.execute("INSERT INTO source_yield VALUES ('r', 'job board', 'x.example', 3, 3, 0, 0, 0)")
+        self.assertEqual(source_yield.board_counts(db), {'x.example': {'in_places': 0, 'fit70': 0}})
+
+
 if __name__ == '__main__':
     unittest.main()

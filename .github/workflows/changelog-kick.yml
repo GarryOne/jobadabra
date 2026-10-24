@@ -1,0 +1,24 @@
+name: CI · Start the What's new publish
+# A release reaches https://www.jobadabra.top/changelog within minutes (owner, 24 Oct 2026: "Start it on each release"): when a build is approved for beta ("CI · Release to beta") or promoted to stable
+# ("Release · Promote to stable") this starts changelog-publish.yml in the private site repo, which writes the entry (jobadabra-web: jobs/changelog-publish.mjs). A run that changed nothing starts a harmless no-op there.
+# Needs the secret WEB_DISPATCH_TOKEN: a fine-grained token, resource owner GarryOne, only jobadabra-web, Actions: write. Missing or refused: a named warning, the release is never failed.
+# The site repo's hourly schedule stays as the fallback, and its watchdog (changelog-fresh) alerts when a stable release is still missing after 2 hours.
+on:
+  workflow_run:
+    workflows: ['CI · Release to beta', 'Release · Promote to stable']
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  kick:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Start changelog-publish.yml in jobadabra-web
+        env:
+          GH_TOKEN: ${{ secrets.WEB_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "::warning::WEB_DISPATCH_TOKEN is not set in this repo: the What's new page waits for its hourly run (save it: gh secret set WEB_DISPATCH_TOKEN -R GarryOne/jobadabra)."; exit 0; fi
+          gh workflow run changelog-publish.yml -R GarryOne/jobadabra-web || echo "::warning::Could not start changelog-publish.yml in jobadabra-web (is WEB_DISPATCH_TOKEN expired or missing Actions: write?): the page waits for its hourly run."

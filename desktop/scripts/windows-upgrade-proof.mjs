@@ -2,7 +2,7 @@
 // and check what a user would see: one uninstall entry, no leftover shortcut or executable under the old name, the data folder kept, and the
 // updater still able to find this platform's download in the latest release.
 //   node scripts/windows-upgrade-proof.mjs <old installer.exe> <new installer.exe>
-// Why (owner, 25 Oct 2026, renaming Job Pilotto.exe to Jobadabra.exe): a changed executableName / shortcutName can leave a second install.
+// Why (owner, 25 Oct 2026, renaming the Windows executable to Jobadabra.exe): a changed executableName / shortcutName can leave a second install.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

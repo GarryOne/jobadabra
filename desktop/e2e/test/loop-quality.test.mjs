@@ -37,3 +37,9 @@ test('guard rate: a missed bug is closed only when a guard is built, not when th
   assert.match(loopQuality({tracker: rows}).guard.note, /^3 of 4 missed bugs have a guard built; 1 still only an idea$/);
   assert.equal(loopQuality({tracker: null, trackerWhy: 'not connected'}).guard.rate, null);
 });
+
+test('a mutation run that measured nothing says so, instead of "no run yet" (18 Oct 2026: 12 of 12 unknown)', () => {
+  const note = loopQuality({mutation: {score: null, killed: 0, survived: 0, unknown: 12, at: '2026-10-18T06:19:20Z', rows: [{why: 'the activity suite is not green without the mutant (none)'}]}}).mutation.note;
+  assert.match(note, /last run 2026-10-18: 12 of 12 planted code bugs unknown, so nothing was measured/);
+  assert.match(loopQuality({}).mutation.note, /no mutation run yet/);
+});

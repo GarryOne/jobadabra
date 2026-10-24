@@ -13,6 +13,7 @@ import {build} from './lib/selfheal-stats.mjs';
 import {totalRuns} from './lib/run-summary.mjs';
 import {breakerState} from './lib/breaker.mjs';
 import {collectChanges} from './lib/finder-changes.mjs';
+import {LABEL as BUDGET_LABEL, budgetState} from './ai-budget.mjs';
 import {SIGNATURE_LABEL, signaturesFromBody} from './lib/signatures.mjs';
 
 const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 50 * 1024 * 1024});
@@ -90,7 +91,10 @@ export async function collect({days = 30} = {}) {
     }
   } catch { judgeExam = null; }
   ({tracker, trackerWhy} = await readTracker());
-  return {changes: collectChanges(), ...build({issues, prs, costs, recall, runs: summaries.length ? totalRuns(summaries) : null, breaker: breakerState(issues), signatures: learnedCount()}), quality: loopQuality({issues, audits, mutation, tracker, trackerWhy, judgeExam})};
+  let budgetIssues = [];
+  try { budgetIssues = JSON.parse(gh(['issue', 'list', '--label', BUDGET_LABEL, '--state', 'open', '--json', 'number,state,createdAt,body,comments'])); } catch { budgetIssues = []; }
+  const built = build({issues, prs, costs, recall, runs: summaries.length ? totalRuns(summaries) : null, breaker: breakerState(issues), signatures: learnedCount()});
+  return {changes: collectChanges(), ...built, budget: budgetState(budgetIssues, built.totals.unjudged), quality: loopQuality({issues, audits, mutation, tracker, trackerWhy, judgeExam})};
 }
 
 

@@ -2,7 +2,7 @@
 // through clears it; every run's cost is read from claude-code-action's record. 3-4 Oct 2026: the loop hit the limit twice and kept starting jobs.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {clear, outcome, shouldSkip, trip} from '../ai-budget.mjs';
+import {budgetState, clear, outcome, shouldSkip, trip} from '../ai-budget.mjs';
 
 const record = (result, extra = {}) => JSON.stringify([{type: 'system'}, {type: 'result', result, total_cost_usd: 0.42, num_turns: 9, ...extra}]);
 
@@ -44,4 +44,11 @@ test('recording a run\'s cost leaves the working folder untouched', async () => 
   execFileSync(process.execPath, [new URL('../ai-budget.mjs', import.meta.url).pathname, '--after', record, '--job', 'fixer'], {cwd: work, env: {...process.env, RUNNER_TEMP: temp, GITHUB_OUTPUT: '', GITHUB_STEP_SUMMARY: '', GH_TOKEN: ''}, stdio: 'pipe'});
   assert.deepEqual(fs.readdirSync(work), [], 'nothing written where the fixer\'s guard looks');
   assert.equal(JSON.parse(fs.readFileSync(path.join(temp, 'ai-cost.json'), 'utf8')).usd, 0.1);
+});
+
+test('the page is told when the AI pause is on, since when, until when and how many findings wait', () => {
+  const issue = {number: 1654, state: 'OPEN', createdAt: '2026-10-21T02:11:00Z', body: 'x', comments: [{body: 'API Error: 400 You will regain access on 2026-11-01 at 00:00 UTC.'}]};
+  assert.deepEqual(budgetState([issue], 8), {paused: true, issue: 1654, since: '2026-10-21', until: '2026-11-01', waiting: 8});
+  assert.deepEqual(budgetState([{...issue, comments: []}], 3), {paused: true, issue: 1654, since: '2026-10-21', until: '', waiting: 3});
+  assert.deepEqual(budgetState([], 8), {paused: false, issue: null, since: '', until: '', waiting: 0});
 });

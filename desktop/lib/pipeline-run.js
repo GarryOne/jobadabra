@@ -43,7 +43,7 @@ export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The
 // stdout is the caller's alone, never written to engine.log, onLine, the tail or a report (a store call's answer is the person's records;
 // logs say identities, never content). stderr is still logged: it is the engine's own words.
 // The type of a private run's failure ("OperationalError" of {"error": "OperationalError: …"}); its message may hold the person's data, so only the type is kept.
-export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';
+export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';   // words-ok: matches a Python exception type name in our own engine's error, not page text
 
 export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false} = {}) {
   if (isDemo() && demoSearch.isSearchRun(args)) return demoSearch.play(onLine);   // Find jobs in the demo: the scripted search (lib/demo-search.js)

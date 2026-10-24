@@ -24,7 +24,7 @@
 .rs-bar-value { text-align: right; font-variant-numeric: tabular-nums; }
 .rs-board { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .rs-board b { flex: 1 1 140px; min-width: 0; }
-.rs-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.rs-values { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .rs-fold summary { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; }
 .rs-fold summary .muted { margin-left: auto; }
 @media (max-width: 760px) { .rs-run { grid-template-columns: auto minmax(0, 1fr) auto; } .rs-run > button { grid-column: 1 / -1; } .rs-step { grid-template-columns: auto minmax(0, 1fr) 56px; } .rs-step .bar, .rs-step .muted { display: none; } .rs-bar-row { grid-template-columns: 110px minmax(0, 1fr) 56px; } }

@@ -9,7 +9,7 @@ test('every list of items on a Reports tab is cards on a plain body', () => {
   const js = read('pages/reports.js'), css = read('style.css');
   assert.match(js, /el\('section', 'card iv-moments-group reports-insight'\)/);   // Insights: one per insight
   assert.equal((js.match(/el\('section', 'card'\)/g) || []).length, 2);          // Funnel: the steps, the "Where to improve"
-  assert.match(js, /classList\.toggle\('is-plain', state\.tab === 'insights' \|\| state\.tab === 'funnel'\)/);
+  assert.match(js, /classList\.toggle\('is-plain', \['insights', 'funnel', 'searches'\]\.includes\(state\.tab\)\)/);
   assert.match(css, /\.card\.is-plain \{ background: none; border: 0; padding: 0;/);
   assert.doesNotMatch(css, /\.reports-insight \{[^}]*border-bottom/);
 });

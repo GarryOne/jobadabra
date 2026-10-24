@@ -62,7 +62,7 @@ function widget(card) {
     box.append(rows);
   }
   if (card.cells?.length) box.append(numberStrip(card.cells));
-  if (card.chips?.length) { const chips = el('div', 'rs-chips'); chips.append(...card.chips.map(badge)); box.append(chips); }
+  if (card.chips?.length) { const chips = el('div', 'rs-values'); chips.append(...card.chips.map(badge)); box.append(chips); }
   if (card.kind === 'list' && card.lines.length) { const list = el('ul', 'insight-evidence'); list.append(...card.lines.map(text => el('li', '', text))); box.append(list); }
   return box;
 }

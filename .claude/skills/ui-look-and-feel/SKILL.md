@@ -13,6 +13,8 @@ look at it.
 Read each mockup and screenshot your brief lists (the image itself, not its description) before you write the first line of UI, and write down per mockup its
 layout parts (hero, card grid, table columns, picker, phone layout). Your render keeps each part, in our logo, tokens and type; a part you drop is named with why.
 Why: site audit A (24 Oct 2026) built Platforms and Compare from the brief's words without opening Design 01/02; the owner rejected both ("I'm not satisfied with the proposed UIs").
+Then look at the phone render at 1:1, one card at a time (a 2x element shot of the longest-answer card), never only the full-page thumbnail: a wrapped
+line moves an icon or label that looked fine scaled down. Why: the owner found Compare's logo centred on a two-line row (24 Oct 2026, "a small bug of positioning").
 
 ## First, before writing any UI: the design system (owner, 18 Oct 2026)
 `cd desktop && npm run design-system`, find the component for each value you will show, and build only from those (its "Don't / Do" pairs show what the

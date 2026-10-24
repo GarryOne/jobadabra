@@ -52,6 +52,15 @@ jobs:
       - name: Build the installer
         working-directory: desktop
         run: npm run build:win -- -c.buildVersion="${{ github.run_number }}"
+      # The upgrade a friend's Windows app goes through: the last released installer, then this build over it (owner, 25 Oct 2026: the exe was renamed Jobadabra.exe).
+      - name: Upgrade proof · last release, then this build over it
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern Job-Pilotto-windows-x64.exe --dir previous
+          installers=(dist/Job-Pilotto-*-x64.exe)
+          node scripts/windows-upgrade-proof.mjs previous/Job-Pilotto-windows-x64.exe "${installers[0]}"
       - name: Install it and smoke-test what a user gets
         working-directory: desktop
         run: node scripts/windows-smoke.mjs "$(ls dist/Job-Pilotto-*-x64.exe | head -1)" smoke

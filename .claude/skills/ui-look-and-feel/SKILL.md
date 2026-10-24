@@ -24,6 +24,8 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
 (`cd desktop && npm run side-by-side -- <reference.png> <render.png> --out <file.png>`). Light and dark are two images. The file name starts with the session's short name (`npm run side-by-side` adds it: `a2-<name>.png`), so the owner sees whose preview is open. `open` it for the owner and ask
 (AskUserQuestion) ship / change what, with your recommendation; ship only after his yes. The PR's before/after stays the record (owner, 18 Oct 2026:
 "Every session that works on UI, should open a preview image with side by side").
+Run `open` alone and ask only after it returned without error, never in the same batch: on 24 Oct 2026 a hook blocked the command that held `open`, and the owner
+answered "Ship it" to a preview that never appeared.
 
 ## 0. The design system: pick the control from the value (owner, 17 Oct 2026)
 Design system page, built from the repo: `cd desktop && npm run design-system` · living copy `npm run gallery` · rules: `docs/rules/desktop-ui.md` "Design system". Before drawing any value, name its kind and use this row:

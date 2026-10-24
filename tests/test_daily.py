@@ -18,7 +18,7 @@ class DigestFormatTests(unittest.TestCase):
             with job_store.connect(Path(tmp) / 'jobs.sqlite') as db:
                 job_store.import_watch_report(db, report)
                 message = digest.format_digest(db)
-        self.assertIn('1 new · Top 1 of 1 jobs', message)
+        self.assertIn('1 new', message)
         self.assertIn('Tap a job number', message)
         self.assertIn('>SRE &lt;Platform&gt; &amp; Ops</a></b>', message)
         self.assertIn('href="https://example.test/jobs?id=1&amp;x=&quot;y&quot;"', message)

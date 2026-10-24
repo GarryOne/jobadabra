@@ -159,3 +159,10 @@ test('every run card draws one headline stat and folds the rest into Details; no
   assert.equal((src.match(/detailsOf\(/g) || []).length, 2, 'used by both kinds');
   assert.doesNotMatch(src, /strong matches|waiting for a score|stat\([^)]*scor/i, 'no scoring count (a job row\'s own fit pill is not a run count)');
 });
+
+// Owner, 24 Oct 2026: the Telegram digest header is "N new" alone (no "Top N of total", no pipeline block); the card still reads it.
+test('the one-number digest header still makes a card', () => {
+  const card = parseRunMessage('✈️ Jobadabra · Job digest\n3 new\n\n🌍 Outside your preferred locations\nNew since your last run · 1 job\n\n1. Data Analyst (https://x.example/1)\nAcme · Amsterdam');
+  assert.deepEqual([card.kind, card.fresh, card.open, card.applied], ['digest', 3, null, null]);
+  assert.equal(card.items.length, 1);
+});

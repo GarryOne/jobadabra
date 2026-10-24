@@ -353,7 +353,7 @@ button.danger:hover { background: var(--bad-soft); }
 .app.rail .nav-running { position: absolute; top: 4px; right: 4px; margin: 0; width: 10px; height: 10px; border-width: 1.5px; }
 .nav-badge.tone-warn { background: var(--warn-bright); color: var(--ink); }
 .nav-badge.tone-info { background: var(--info); color: var(--on-accent); }
-.nav-badge.tone-good { background: var(--good-bright); color: var(--on-accent); }
+.nav-badge.tone-good { background: var(--good-bright); color: var(--on-bright); }
 .nav-group { font-size: var(--fs-xs); margin-top: 14px; }
 .notion-link { display: flex; align-items: center; gap: 9px; font-weight: 500; font-size: var(--fs-sm); padding: 5px 10px; }
 .notion-link .icon { width: 14px; height: 14px; color: var(--on-navy-3); }
@@ -482,7 +482,7 @@ button.with-icon .icon { width: 15px; height: 15px; }
 .fit-card ul { display: flex; flex-direction: column; gap: var(--sp-2); list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
 .fit-card li { display: flex; align-items: flex-start; gap: var(--sp-3); font-size: var(--fs-md); line-height: 1.45; }
 .fit-mark { width: 18px; height: 18px; flex: none; margin-top: 1px; border-radius: 50%; background: var(--mark);
-  color: var(--on-accent); display: grid; place-items: center; }
+  color: var(--on-bright); display: grid; place-items: center; }
 .fit-card.tone-good .fit-mark { --mark: var(--good-bright); }
 .fit-card.tone-warn .fit-mark { --mark: var(--warn-bright); }
 .fit-mark .icon { width: 13px; height: 13px; stroke-width: 2.4; }
@@ -1852,12 +1852,12 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .activity-panel .activity-phases li + li { border-top: 1px solid var(--line); }
 /* Find jobs using your browser' result card: each site's ✓ / ✕ on the left of its row, the same marks as the live rows above (activity.js renderVisitsCard) */
 .item-rows .site-mark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; font-weight: 700; }
-.item-rows .site-mark.done { border-radius: 50%; background: var(--good-bright); color: var(--on-accent); font-size: var(--fs-xs); }
+.item-rows .site-mark.done { border-radius: 50%; background: var(--good-bright); color: var(--on-bright); font-size: var(--fs-xs); }
 .item-rows .site-mark.done::before { content: '✓'; }
 .item-rows .site-mark.fail { color: var(--bad-bright); }
 .item-rows .site-mark.fail::before { content: '✕'; }
 .activity-panel .activity-phases li.done::before { content: '✓'; display: inline-grid; place-items: center; width: 22px; height: 22px;
-  margin-right: var(--sp-3); border-radius: 50%; background: var(--good-bright); color: var(--on-accent); font-size: var(--fs-xs); }
+  margin-right: var(--sp-3); border-radius: 50%; background: var(--good-bright); color: var(--on-bright); font-size: var(--fs-xs); }
 .activity-panel .activity-phases li.todo { font-weight: 400; }
 .activity-panel .activity-phases li::before { margin-right: var(--sp-3); text-align: center; }   /* every mark in the box of the done tick: names line up */
 .activity-panel .activity-phases .phase-note { margin-left: calc(22px + var(--sp-3)); }

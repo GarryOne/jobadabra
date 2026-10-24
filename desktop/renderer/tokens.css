@@ -17,6 +17,7 @@
   --field-line: #7f8fa3;   /* a field's edge: 3.3:1 on the card (WCAG AA for a control's edge; was 1.8, owner 17 Oct 2026 "fields hard to see"). test/contrast.test.js */
   --label: var(--muted);   /* a field's caption: quieter than the value typed in the field (owner, 17 Oct 2026) */
   --on-accent: #ffffff;     /* text on orange, navy, green… */
+  --on-bright: #ffffff;     /* a mark (✓, a count) on a bright status fill (--good-bright …) */
 
   /* Navy: sidebar, setup steps, logs */
   --navy: #132439;
@@ -152,9 +153,10 @@
     --teal-soft: #0f2a2a;
     --teal-line: #1f5553;
 
-    --good: #5fd39a;  --good-soft: #0f2a1d;
-    --warn: #f0b44b;  --warn-soft: #2a2211;  --warn-line: #4d3d17;
-    --bad: #f07a70;   --bad-soft: #2e1514;   --bad-line: #5c2622;
+    --good: #5fd39a;  --good-bright: #5fd39a;  --good-soft: #0f2a1d;   /* bright fills (score rings, marks, dots): the dark theme's own tones, not the light ones (24 Oct 2026) */
+    --warn: #f0b44b;  --warn-bright: #f0b44b;  --warn-soft: #2a2211;  --warn-line: #4d3d17;
+    --bad: #f07a70;   --bad-bright: #f07a70;   --bad-soft: #2e1514;   --bad-line: #5c2622;
+    --on-bright: #0b1016;   /* dark marks on the bright fills */
     --danger-surface: #2a1312;   --danger-surface-raised: #3b1d1b;   /* ink 14.7/12.8, muted 6.6/5.8, danger 6.4/5.6 */
     --info: #7aa7ec;  --info-soft: #122238;  --info-line: #2a4a7a;
     --violet: #a996ec; --violet-soft: #1d1733;

@@ -94,8 +94,9 @@ def _ways(url, fetch, show):
 
 
 def _jobs(url, listing, fetch, relevant, shape):
-    """Every job of a section's page (its first pages): its own job data, the page reader, or the cards, and the next pages while they give relevant ones."""
-    found = careers.jsonld_jobs(listing, url) or careers._asked(url, listing, [], fetch) or careers.read_page_from(listing, url, fetch)
+    """Every job of a section's page (its first pages): its own job data, else the job pages its cards link, else the AI page reader (as a board's search page is read,
+    found_boards.py; 24 Oct 2026: the reader first saw only the top of a 35-card page and the cards' job pages were never read), and the next pages while they give relevant ones."""
+    found = careers.jsonld_jobs(listing, url) or careers.read_page_from(listing, url, fetch) or careers._asked(url, listing, [], fetch)
     if found:
         found = found + board_pages.more(url, listing, found, fetch, lambda markup, link: careers.jsonld_jobs(markup, link) or careers.read_page_from(
             markup, link, fetch), lambda some: relevant(shape(some)))

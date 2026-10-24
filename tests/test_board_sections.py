@@ -87,6 +87,20 @@ class ReadTests(unittest.TestCase):
                                'https://jobs.example/it': SECTION}, decider({'Toate joburile': 'hub', 'Toate domeniile': 'hub', 'Tech și programare': 'best'}))
         self.assertEqual((len(jobs), url), (3, 'https://jobs.example/it'))
 
+    def test_a_section_of_job_cards_is_read_by_its_job_links_before_the_ai_reads_the_page(self):
+        """24 Oct 2026, a Zagreb nurse: a board's health section listed ~35 cards linking single job pages; the AI page reader came first, saw the top of the
+        page (12 items, one with the section's own address) and the job pages were never read. A page whose cards link job pages is read by those links."""
+        cards = ''.join('<a href="/oglasi/medicinska-sestra-%d/%d/"><div class="title">Medicinska sestra %d</div></a>' % (n, 100000 + n, n) for n in range(6))
+        pages = {'https://jobs.example/zdravlje': cards}
+        pages.update({'https://jobs.example/oglasi/medicinska-sestra-%d/%d/' % (n, 100000 + n): posting(n) for n in range(6)})
+        asked = []
+        reader, careers.READER = careers.READER, lambda url, markup: asked.append(url) or [{'id': url, 'url': url, 'title': 'Section heading', 'location': '', 'employer': ''}]
+        try:
+            jobs, url = self.read(pages, decider({'Zdravlje': 'best'}), home='<a href="/zdravlje">Zdravlje</a>')
+        finally:
+            careers.READER = reader
+        self.assertEqual((len(jobs), url, asked), (6, 'https://jobs.example/zdravlje', []))
+
     def test_a_section_built_by_scripts_gives_nothing_and_breaks_nothing(self):
         self.assertEqual(self.read({'https://jobs.example/it': SHELL}, decider({'Tech și programare': 'best'})), ([], None))
 

@@ -3,6 +3,7 @@
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 import {FIXTURES} from '../lib/cvfixtures.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {step as wizardStep} from '../lib/app.mjs';
@@ -129,6 +130,14 @@ export async function run(ctx) {
 // Export -> reset (kept as a backup) -> the app opens at the setup -> "Import an export…" on its Welcome -> restart: the user's files come back
 // byte for byte, the keys and the set-up state too (6 Oct 2026: the export left out profile.md and answers.md, and Import was only in Settings,
 // out of reach at the setup). Native dialogs are stood in for, and so is the app's own relaunch: the suite starts it again on the same folder.
+// " | the file holds: <first names> | the folder holds: <names>", for the report of a round trip that lost something.
+function whereItWent(file, dir) {
+  const names = list => list.filter(Boolean).slice(0, 40).join(', ');
+  let held = '', folder = '';
+  try { held = names(spawnSync('tar', ['-tzf', file], {encoding: 'utf8', timeout: 20000}).stdout.split(/\r?\n/)); } catch { held = 'unreadable'; }
+  try { folder = names(fs.readdirSync(dir)); } catch { folder = 'unreadable'; }
+  return ` | the file holds: ${held || 'nothing listed'} | the folder holds: ${folder}`;
+}
 async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the automatic backup made, imported instead of an export
   const file = backupFile || path.join(os.tmpdir(), `jp-e2e-export-${process.pid}-${Date.now()}.tar.gz`);
   const at = name => path.join(ctx.profile, name);
@@ -202,6 +211,8 @@ async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the a
   for (const key of ['files', 'notionIds']) for (const name of new Set([...Object.keys(before[key] || {}), ...Object.keys(after[key] || {})]))
     if (JSON.stringify(before[key]?.[name]) !== JSON.stringify(after[key]?.[name])) differ.push(`${key}.${name} ${JSON.stringify(before[key]?.[name])} -> ${JSON.stringify(after[key]?.[name])}`);
   if (before.jobs !== after.jobs) differ.push(`jobs ${before.jobs} -> ${after.jobs}`);
-  if (differ.length) throw new Error(`not as before the export: ${differ.join('; ')}`);
+  // A file that did not come back says where it went: what the export held and what the folder holds now (beta 20, 24 Oct 2026: Linux lost profile.md and answers.md, and the
+  // report said only "-> null").
+  if (differ.length) throw new Error(`not as before the export: ${differ.join('; ')}${whereItWent(file, ctx.profile)}`);
   if (!backupFile) fs.rmSync(file, {force: true});
 }

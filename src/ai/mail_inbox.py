@@ -4,7 +4,7 @@ from html import escape
 import re
 import sys
 
-from .. import tgcard
+from .. import tgcard, tz
 from ..notion import ledger
 from ..notion.ledger import REPLY
 from . import cost, mail_triage
@@ -62,7 +62,7 @@ def mail_pass(stores, google, client, model, apps, index, state, days, stats, dr
             if result.get('kind') == REPLY:
                 result['kind'] = 'Interview scheduled'
         elif result.get('relevant'):  # an AI reading: never an impossible time (a wrong year), for any job or question
-            result['interview_at'] = ledger.plausible_interview(result.get('interview_at'), email['date'])
+            result['interview_at'] = ledger.plausible_interview(tz.local_iso(result.get('interview_at'), result.get('interview_zone')), email['date'])
         row = apps[result['application']] if result.get('relevant') and 0 <= result.get('application', -1) < len(apps) else None
         guess = None  # the job the AI picked but can't be trusted with: suggested when the owner is asked
         if row is not None and not _names_it(row, email):

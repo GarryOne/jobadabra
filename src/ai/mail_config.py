@@ -45,7 +45,7 @@ SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['results'],
     'properties': {'results': {'type': 'array', 'items': {
         'type': 'object', 'additionalProperties': False,
-        'required': ['index', 'relevant', 'application', 'company', 'role', 'kind', 'interview_at', 'summary', 'feedback'],
+        'required': ['index', 'relevant', 'application', 'company', 'role', 'kind', 'interview_at', 'interview_zone', 'summary', 'feedback'],
         'properties': {
             'index': {'type': 'integer'},
             'relevant': {'type': 'boolean', 'description': "About one of the owner's own job applications"},
@@ -53,7 +53,8 @@ SCHEMA = {
             'company': {'type': 'string', 'description': 'Hiring company (or platform) named in the item'},
             'role': {'type': 'string', 'description': 'Exact role title the item names (with its location suffix, e.g. "| Spain | Remote"), else ""'},
             'kind': {'type': 'string', 'enum': KINDS},
-            'interview_at': {'type': 'string', 'description': 'ISO 8601 start of a scheduled call/interview with UTC offset, else ""'},
+            'interview_at': {'type': 'string', 'description': 'Start of a scheduled call/interview as the clock time written, YYYY-MM-DDTHH:MM:SS with no offset, else ""'},
+            'interview_zone': {'type': 'string', 'description': 'IANA time zone of that clock time (e.g. Europe/Zurich), "" when the item names none'},
             'summary': {'type': 'string', 'description': 'What happened, max 120 characters, no personal data'},
             'feedback': {'type': 'string', 'description': 'Verbatim specific employer assessment, else empty. Exclude quoted old mail, generic rejections and candidate requests.'},
         }}}},
@@ -87,6 +88,6 @@ message, or LinkedIn's notification of one); a follow-up about a role already in
 nudges, transcripts or recordings of a call, logistics.
 - role: the role title exactly as the item writes it, including any location part; "" when it names none. An item \
 naming a role that differs from every listed role at that company (e.g. another country) gets application -1.
-- interview_at: only when a specific time is stated; ISO 8601 with offset (assume the user's own time zone if none is given).
+- interview_at: only when a specific time is stated; the clock time as written (YYYY-MM-DDTHH:MM:SS, no UTC offset: the app works out the offset of that date) and interview_zone, its IANA time zone; "" for the zone when the item names none (the owner's own is assumed).
 - summary: factual, short, no email addresses or phone numbers.
 Answer for every item index."""

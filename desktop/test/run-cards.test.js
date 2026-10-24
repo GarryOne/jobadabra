@@ -152,11 +152,11 @@ test('every place showing a run\'s new count reads the run\'s own number', async
 });
 
 // Owner, 24 Oct 2026: "too many numbers". Every run card kind leads with ONE number line (the jobs/employers it added); the other counts sit in the closed Details.
-test('every run card draws one headline stat and folds the rest into Details; no scoring words', async () => {
+test('every run card draws one headline stat and no other count; no scoring words', async () => {
   const fs = await import('node:fs');
   const src = fs.readFileSync(new URL('../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
-  assert.equal((src.match(/stats\.append\(stat\(/g) || []).length, 2, 'one headline stat per card kind (digest, scout): a new count goes in detailsOf');
-  assert.equal((src.match(/detailsOf\(/g) || []).length, 2, 'used by both kinds');
+  assert.equal((src.match(/stats\.append\(stat\(/g) || []).length, 2, 'one headline stat per card kind (digest, scout): a new count is not shown');
+  assert.doesNotMatch(src, /detailsOf|run-card-details|Details/, 'no other count is shown (owner, 24 Oct 2026)');
   assert.doesNotMatch(src, /strong matches|waiting for a score|stat\([^)]*scor/i, 'no scoring count (a job row\'s own fit pill is not a run count)');
 });
 
@@ -165,4 +165,14 @@ test('the one-number digest header still makes a card', () => {
   const card = parseRunMessage('✈️ Jobadabra · Job digest\n3 new\n\n🌍 Outside your preferred locations\nNew since your last run · 1 job\n\n1. Data Analyst (https://x.example/1)\nAcme · Amsterdam');
   assert.deepEqual([card.kind, card.fresh, card.open, card.applied], ['digest', 3, null, null]);
   assert.equal(card.items.length, 1);
+});
+
+// Owner, 24 Oct 2026: "the border is not rounded"; "Do we need them? I don't think so" (open, in your places, applied).
+test('the run card draws its headline in one rounded box and no Details', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../renderer/pages/activity-run-card.js', import.meta.url), 'utf8');
+  assert.match(src, /el\('div', 'run-card-top'\)/);
+  assert.doesNotMatch(src, /stat\(card\.(open|local|applied)/);
+  const css = fs.readFileSync(new URL('../renderer/find-card.css', import.meta.url), 'utf8');
+  assert.match(css, /\.run-card-top \{[^}]*border-radius: var\(--r-md\)/);
 });

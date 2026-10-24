@@ -51,17 +51,13 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
   // A count the message does not carry is left out, never drawn as "–" (#309: three dashes beside "4 new this run").
   const stat = (value, label) => { if (value == null) return ''; const cell = el('span', 'run-card-stat'); cell.append(el('b', '', String(value)), ` ${label}`); return cell; };
   const stats = el('div', 'run-card-stats');
-  // Every other count of a run, closed by default (the run card's Details); null when the message carries none.
-  const detailsOf = cells => { const shown = cells.filter(Boolean); if (!shown.length) return null; const box = el('details', 'run-card-details'); const list = el('div', 'run-card-stats muted'); list.append(...shown); box.append(el('summary', '', 'Details'), list); return box; };
   const rows = el('ol', 'run-card-rows');
-  let heading, more = null, help = null, secondary = null;
+  let heading, more = null, help = null;
   if (card.kind === 'digest') {
     // One number leads (owner, 24 Oct 2026: "too many numbers"): the jobs this run added to the list, as the toast and footer say (#1408). Scoring and its queue are
-    // internal and never drawn; the digest's own counts fold into Details. The digest's "N new" counts jobs first seen since the last digest, which can include earlier runs'.
+    // internal and never drawn; the digest's open, in-your-places and applied counts are not shown either (owner, 24 Oct 2026: "Do we need them? I don't think so"). The digest's "N new" counts jobs first seen since the last digest, which can include earlier runs'.
     const fresh = runNewCount(run, card);
     stats.append(stat(fresh, `job${fresh === 1 ? '' : 's'} added to your list`));
-    secondary = detailsOf([stat(card.open, 'open'), stat(card.local, 'in your places'), stat(card.applied, 'already applied (hidden)'),
-      ...(card.fresh != null && card.fresh !== fresh ? [stat(card.fresh, 'since your last digest')] : [])]);
     // A run that found nothing new lists no jobs: the digest's "top matches" are the best open jobs from any run, and shown here they read as
     // this run's finds (owner, 6 Oct 2026: two runs in a row "found" the same two jobs). Its open jobs stay one click away, in Jobs.
     const nothingNew = fresh === 0;
@@ -114,11 +110,8 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // New to the search or checked again after its wait: a run never re-reads the same list (an older message has neither number).
     // Every count says its word for 1 and for many (7 Oct 2026: "1 new job feeds"); the bottom line says why some were set aside.
     const s = n => (n === 1 ? '' : 's');
-    // The one number: the employers this run added. The rest folds into Details.
+    // The one number: the employers this run added. Nothing else is shown (checked, checked again, set aside).
     stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
-    secondary = detailsOf([card.first == null ? stat(card.checked, `employer${s(card.checked)} checked`) : stat(card.first, `new employer${s(card.first)} checked`),
-      ...(card.again ? [Object.assign(stat(card.again, 'checked again'), {title: card.againWhy ? `Checked again: ${card.againWhy}` : ''})] : []),
-      ...(card.left ? [stat(card.left, 'set aside')] : [])]);
     heading = 'New employers';
     // Five at first; "+2 more" shows the rest here (Show less folds them), and the Employers database has them all.
     const all = card.items.length > 5 && expandedCard === card.items.map(item => item.company).join('|');
@@ -158,7 +151,10 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
   // The few-jobs cards are siblings of this card, never inside it (a card in a card): the pane's own slot, else after the card.
   const slot = target.id === 'activity-card' ? $('activity-help') : null;
   if (slot) { slot.replaceChildren(...(help ? [help] : [])); show(slot, !!help); }
-  target.replaceChildren(...(stats.childElementCount ? [stats] : []), ...(secondary ? [secondary] : []), body, ...(help && !slot ? [help] : []));
+  // The headline is one rounded box, like every card (owner, 24 Oct 2026: "the border is not rounded").
+  const top = el('div', 'run-card-top');
+  top.append(...(stats.childElementCount ? [stats] : []));
+  target.replaceChildren(...(top.childElementCount ? [top] : []), body, ...(help && !slot ? [help] : []));
 }
 
 // A run's card while its Notion page is being read: the card's own shape, in the app's skeleton bars, so the pane

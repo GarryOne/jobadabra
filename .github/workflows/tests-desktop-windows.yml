@@ -57,6 +57,7 @@ on:
       - 'desktop/scripts/side-by-side.mjs'
       - 'desktop/scripts/smoke-screens.mjs'
       - 'desktop/scripts/windows-smoke.mjs'
+      - 'desktop/scripts/windows-upgrade-proof.mjs'
       - 'desktop/start.js'
       - 'desktop/package.json'
       - 'desktop/package-lock.json'

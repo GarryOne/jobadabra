@@ -29,6 +29,8 @@ on:
       - 'docs/notion-profile-template.md'
       - 'docs/site-routes.json'
       - 'tools/store-zip.mjs'   # desktop/test/store-zip.test.js builds the Web Store package with it
+      - 'tools/pr-assets.mjs'   # desktop/test/pr-assets-args.test.js
+      - 'tools/pr-body-template.md'   # the same test reads the template
       - 'docs/superpowers/specs/2026-10-10-ai-ladder.md'
       - 'shared/knowledge.js'
       - 'shared/ladder-moves.js'

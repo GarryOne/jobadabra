@@ -52,7 +52,7 @@ test('it never throws and never writes outside the folder it was given (a failin
 
 test('it never writes into the real data folder of the app', () => {
   const real = path.join(os.homedir(), 'Library', 'Application Support');
-  assert.equal(captureCall({route: '/x', request, answer}, {env: {LIVE_CAPTURE_DIR: path.join(real, 'Jobadabra', 'x')}}), false);
+  assert.equal(captureCall({route: '/x', request, answer}, {env: {LIVE_CAPTURE_DIR: path.join(real, 'Job Pilotto', 'x')}}), false);
 });
 
 test('the shipped app source calls it in one place per kept route (page-kind, form judge) and only through captureCall', () => {

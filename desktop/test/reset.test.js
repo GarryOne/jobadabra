@@ -304,8 +304,8 @@ test('reset: a process working inside the data folder does not stop the reset', 
   } finally { holder.kill(); }
 });
 
-// 24 Oct 2026 rename: exports now say "Jobadabra" in their manifest; exports made before say "Jobadabra". Both are imported.
-test('an export is written as "Jobadabra" and an old "Jobadabra" export is still imported', async () => {
+// 24 Oct 2026 rename: exports now say "Jobadabra" in their manifest; exports made before say "Job Pilotto". Both are imported.
+test('an export is written as "Jobadabra" and an old "Job Pilotto" export is still imported', async () => {
   const a = profile();
   const file = path.join(a.base, 'export.tar.gz');
   await reset.exportTo(a.dir, file);
@@ -320,7 +320,7 @@ test('an export is written as "Jobadabra" and an old "Jobadabra" export is still
   fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({...manifest, app: 'Job Pilotto'}));
   const oldFile = path.join(a.base, 'old.tar.gz');
   await archive.pack(old, oldFile, {names: fs.readdirSync(old)});
-  assert.equal((await reset.stageImport(b.dir, oldFile)).app, 'Jobadabra');
+  assert.equal((await reset.stageImport(b.dir, oldFile)).app, 'Job Pilotto');
 
   fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({app: 'Something else'}));
   const badFile = path.join(a.base, 'bad.tar.gz');

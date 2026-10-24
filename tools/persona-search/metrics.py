@@ -11,6 +11,8 @@ from src import country_codes, source_yield
 from src.paths import JOBS_DB
 from src.sources import feeds
 
+LIST_LOCATION = 60   # a longer location names many places: not counted as local
+
 
 def main():
     db = sqlite3.connect(JOBS_DB)
@@ -21,7 +23,7 @@ def main():
     source_names = dict(db.execute('SELECT j.id, COALESCE(s.name, \'\') FROM jobs j LEFT JOIN sources s ON s.id = j.source_id').fetchall())
     in_places = [row for row in rows if feeds.wanted_location({'location': row[2] or '', 'title': row[1]})]
     # Located in the user's places by their own words (a city or country in the job's place), never remote anywhere: what a place check counts (24 Oct 2026, memory feedback-local-jobs-only-no-worldwide-remote)
-    local = [row for row in in_places if feeds.mentions(feeds.PLACE, country_codes.name(row[2] or ''))]
+    local = [row for row in in_places if len(row[2] or '') <= LIST_LOCATION and feeds.mentions(feeds.PLACE, country_codes.name(row[2] or ''))]   # a place list ("Moldova, Romania, Poland") is not one place
     scored = sorted(((scores[row[0]].get('score') or 0, row) for row in in_places if row[0] in scores), key=lambda pair: -pair[0])
     print(json.dumps({
         'open': len(rows), 'in_places': len(in_places), 'local_jobs': len(local),

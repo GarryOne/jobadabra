@@ -35,7 +35,9 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
    `python3 tools/persona-search/page-probe.py <x.html> <its address>`: JSON-LD jobs, job links, next pages. Fix the reader on that page, add a fixture-shape test.
 2. **`--quick` (~6 min):** `node tools/persona-search/search-check.mjs <candidate> --quick` stops after the first-jobs step: boards proposed and read, local jobs.
 3. **Count local jobs, never "in places"** (it includes worldwide remote): the press row has `local_jobs` and `local_by_source` (metrics.py).
-4. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
+4. **`--quick` misses what happens after "First jobs"**: the title-budget and ladder-retry fixes (#1826, #1827) show at 129-371 s in the full board pass; they need the full run (fc, 24 Oct 2026).
+5. **Variance is mostly which boards the AI proposes** (Chisinau: 22/14/7/12/18 local jobs on the same code): compare per-board counts (`local_by_source`) and run 2-3 times. The persona CV says "remote from <country>". The primary checkout auto-pulls every ~2 min, so a check started later runs newer code.
+6. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
 
 ## Also on CI (only when the owner asks, and asks first)
 `gh workflow run random-draw.yml` runs one Random draw on CI (~$0.85 on the Random-draws API key, a different candidate each seed). Say the cost and wait for a yes before starting it;

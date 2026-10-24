@@ -97,3 +97,31 @@ class BoardPassTest(unittest.TestCase):
                       board_facts=[{'host': 'a.md', 'url': 'https://a.md/?q={role}', 'country': 'md', 'families': ['software_dev'], 'local_jobs': 4}])
         self.assertNotIn('board_facts', sent[0])
         self.assertEqual(sent[1]['board_facts'][0]['host'], 'a.md')
+
+
+class RealBoardIdeasTest(unittest.TestCase):
+    def test_the_scouts_country_search_reaches_the_ai_with_an_empty_places_cache(self):
+        """24 Oct 2026, scout run 40115771200: "0 boards proposed, took 0 s": country_wide ['Moldova'] resolved to no country in CI (empty places
+        cache), so board_ideas.asked_for returned None before any AI call. The earlier tests passed a fake `ideas` and never saw it."""
+        import json
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace
+        from src.ai import board_ideas
+        db = sqlite3.connect(':memory:')
+        scout_cells.keep(db, [{'countries': [c]} for c in scout_cells.EUROPE if c != 'md' for _ in range(5)])
+        answer = {'boards': [{'name': 'Local', 'search_url': 'https://jobs.example.md/?q={role}', 'countries': ['Moldova'], 'kinds': ['any']}]}
+        asked = []
+
+        def create(**kwargs):
+            asked.append(json.loads(kwargs['messages'][0]['content']))
+            return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps(answer))])
+        client = SimpleNamespace(messages=SimpleNamespace(create=create))
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        out = []
+        with mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={}), \
+                mock.patch('src.ai.engine.ready', return_value=True), mock.patch('src.ai.engine.client', return_value=client), \
+                mock.patch.object(board_ideas, 'served', return_value=[]):
+            scout_boards.run(db, read_board=lambda *a: ([], 'empty', None), out=out.append)
+        self.assertEqual([a['countries'] for a in asked], [['Moldova']], out)

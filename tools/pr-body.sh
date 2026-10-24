@@ -30,7 +30,7 @@ if [ -n "$summary" ] && [ -s "$summary" ]; then
   # page file (html, css, js) never gets "No screenshots: <why>"; it needs the images. They are hosted in the repo that owns the PR (pr-assets.mjs --repo=<owner/repo>).
   pages="$(git diff --name-only "$base"..HEAD | grep -E '^(web/public|admin)/.*\.(html|css|js)$' | head -3 | paste -sd ' ' - || true)"
   if [ -n "$pages" ] && ! grep -qiE '!\[[^]]*\]\([^)]+\.(png|jpe?g|gif|webp)\)|<img ' "$summary"; then
-    echo "pr-body: this PR changes a site page ($pages): \"No screenshots:\" is not allowed for it; add the before/after images (live page vs your branch, 1440px and 390px) in a | What changed | Before | After | table: `node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=<owner/repo>` hosts them in the repo that owns the PR (tools/pr-body-template.md)" >&2; exit 2
+    echo "pr-body: this PR changes a site page ($pages): \"No screenshots:\" is not allowed for it; add the before/after images (live page vs your branch, 1440px and 390px) in a | What changed | Before | After | table: `node tools/pr-assets.mjs pr-assets-<branch> <png>... --repo=<owner/repo>` hosts them in the repo that owns the PR; shoot the page with page-shot.mjs in jobadabra-web (tools/pr-body-template.md)" >&2; exit 2
   fi
   # Every image in a row of | What changed | Before | After | (owner, 17 Oct 2026, #1290: "just screens, it's not clear"): tools/pr-screens.py, the same check CI runs on the body.
   python3 "$(dirname "$0")/pr-screens.py" < "$summary" || { echo 'pr-body: the screens are not in the | What changed | Before | After | table (tools/pr-body-template.md)' >&2; exit 2; }

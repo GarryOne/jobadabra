@@ -41,7 +41,10 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
    (scout_cells.totals), and its board measure counts jobs resolved through pool_tags.countries (AI labels); same rule (local only, never worldwide remote), different unit and resolver.
 7. **Thin country: check first that board facts were served for it.** Board seeding is inert until a central scout run has printed `Board pass: <country>: N boards proposed, M with 3+ local jobs`
    (stored as site facts `central-scout-<cc>`). Say in the report whether they were served and from which run; if not, "no boards" is the cause, not the search. Scout-side checks: skill `check-central-scout-locally`.
-8. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
+8. **Publish every finished check** so other sessions read it on `/admin/lab-job-search` tab "Session checks" (owner, 24 Oct 2026): before running a check, read that tab for the same case;
+   after it, `python3 tools/persona-search/publish-session-check.py <out> <case> --session <your short name> --label "Nurse, Zagreb" --country Croatia --role nurse --mode full|quick --build <sha> --broke "<what broke>" --conclusion "<what it shows>" --prs "#n"`
+   (`--dry` prints the row; the key is the Keychain item `job-pilotto.site.session_checks_key`; counts and board names only, no job titles or companies).
+9. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.
 
 ## Also on CI (only when the owner asks, and asks first)
 `gh workflow run random-draw.yml` runs one Random draw on CI (~$0.85 on the Random-draws API key, a different candidate each seed). Say the cost and wait for a yes before starting it;

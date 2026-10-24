@@ -6,6 +6,7 @@ import {shared} from './shared.js';
 import {toastMessage} from './startup.js';
 import {NOTES, SHOW_I_HAVE_PRO, TOPUP_NOTE, planView, warnNow} from '../plan-view.js';
 import {signinPart} from './plan-signin.js';
+import {promoLink} from './plan-promo.js';
 import {BADGE} from '../pro-promise.js';
 
 const REFRESH_MS = 10 * 60 * 1000;
@@ -34,6 +35,7 @@ function render(view) {
     }
     body.append(cards);
     if (SHOW_I_HAVE_PRO) body.append(signinPart(() => load()));
+    body.append(promoLink(() => load()));
     return;
   }
   if (view.hasCredit) {
@@ -77,6 +79,7 @@ function warn(plan) {
 
 // onChange: what shows the license state again (the counter and the plan line follow the site's answer).
 let load = () => {};
+export const reloadPlan = () => load();
 export function initPlan(onChange = () => {}) {
   load = async () => {
     const plan = await window.pilot.planState().catch(() => null);

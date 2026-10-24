@@ -62,5 +62,15 @@ export function createPlan(storage, {fetcher = globalThis.fetch, now = () => Dat
       return {...answer, ok: response.ok && answer.ok === true, status: response.status};
     } catch { return {ok: false, error: 'Could not reach Jobadabra. Check your connection and try again.'}; }
   }
-  return {state, refresh, checkout, signin};
+  // A promo code (the site checks it; nothing about codes is known here): -> {ok, already?} and the plan refreshed, or {ok: false, error: 'wrong' | 'expired' | 'used_up' | 'limit' | text}.
+  async function redeem(code) {
+    if (siteOffForUser()) return {ok: false, error: 'Not available in this build.'};
+    try {
+      const response = await fetcher(`${SITE}/api/pro/redeem`, {method: 'POST', headers: {'x-api-key': await siteKey(), 'Content-Type': 'application/json'}, body: JSON.stringify({code})});
+      const answer = await response.json().catch(() => ({}));
+      if (response.ok && answer.ok) await refresh();
+      return {ok: response.ok && answer.ok === true, ...(answer.already ? {already: true} : {}), ...(answer.error ? {error: answer.error} : {})};
+    } catch { return {ok: false, error: 'offline'}; }
+  }
+  return {state, refresh, checkout, signin, redeem};
 }

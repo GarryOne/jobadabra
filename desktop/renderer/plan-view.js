@@ -53,3 +53,7 @@ const WORDS = {
 };
 export const signinWords = answer => answer.error === 'wrong' ? `That code is not right. ${answer.left} ${answer.left === 1 ? 'try' : 'tries'} left.` : WORDS[answer.error] || answer.error || 'That did not work. Try again.';
 
+
+// A promo code: what to say for the site's answer (the site decides; the words are fixed here).
+const PROMO_WORDS = {wrong: "That code doesn't work.", expired: 'This code has expired.', used_up: 'This code has been used up.', limit: 'Too many tries. Try again in an hour.', offline: 'Could not reach Jobadabra. Check your connection and try again.'};
+export const redeemWords = answer => (answer.ok ? (answer.already ? 'Pro is already on.' : 'Pro is on. Thank you.') : PROMO_WORDS[answer.error] || 'That did not work. Try again.');

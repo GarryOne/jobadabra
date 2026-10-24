@@ -21,6 +21,7 @@ const NOT_A_CARD = {
   'pages/ready-pick.js': 'the Fill now count dialog',
   'pages/employers-paste.js': 'the Add employers dialog',
   'pages/plan-waitlist.js': 'the Pro waitlist dialog',
+  'pages/plan-promo.js': 'the promo code dialog',
   'pages/settings.js': 'Delete for good / Cancel confirm on Data & backup',
   'job-drawer/tab-description.js': 'the job drawer\'s description editor, not a Profile or Strategy card',
 };

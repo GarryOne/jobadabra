@@ -38,6 +38,7 @@ export function registerAppMetaHandlers(ctx) {
     if (!['start', 'verify'].includes(step)) return {ok: false, error: 'Unknown step.'};
     return getPlan().signin(step, {email: String(body.email || '').slice(0, 200), code: String(body.code || '').slice(0, 12), ...(body.remove ? {remove: String(body.remove).slice(0, 64)} : {})});
   });
+  ipcMain.handle('planRedeem', async (_, code) => DEMO ? {ok: false, error: 'demo'} : getPlan().redeem(String(code || '').slice(0, 64)));   // a promo code: the site checks it
   ipcMain.handle('licenseRemove', () => { const state = getLicense().remove(); return {...state, text: licenseLib.text(state)}; });
   ipcMain.handle('telemetryRecord', (_, kind, fields) => {
     // A window error also goes to app.log (type and message; the stack stays in the report): it was invisible there.

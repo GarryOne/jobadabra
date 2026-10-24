@@ -53,7 +53,7 @@ contextBridge.exposeInMainWorld('pilot', {
   markOutcome: call('markOutcome'),
   searchCoverage: call('searchCoverage'), roleIdeas: call('roleIdeas'), addRoles: call('addRoles'), editTargets: call('editTargets'), editGoal: call('editGoal'), stopTask: call('stopTask'), unqueueTask: call('unqueueTask'), loosenSearch: call('loosenSearch'), explainCoverage: call('explainCoverage'), addPlaces: call('addPlaces'),
   dismissReason: call('dismissReason'), intelSnapshot: call('intelSnapshot'), benchmarkLines: call('benchmarkLines'),
-  license: call('license'), licenseSet: call('licenseSet'), licenseRemove: call('licenseRemove'), planState: call('planState'), planCheckout: call('planCheckout'), planSignin: call('planSignin'), proWaitlistJoin: call('proWaitlistJoin'),
+  license: call('license'), licenseSet: call('licenseSet'), licenseRemove: call('licenseRemove'), planState: call('planState'), planCheckout: call('planCheckout'), planSignin: call('planSignin'), planRedeem: call('planRedeem'), proWaitlistJoin: call('proWaitlistJoin'),
   onAllowance: callback => ipcRenderer.on('allowance', (_, state) => callback(state)),
   onFewJobs: callback => ipcRenderer.on('few-jobs', (_, info) => callback(info)),
   onVisitRead: callback => ipcRenderer.on('visit-read', (_, answer) => callback(answer)),

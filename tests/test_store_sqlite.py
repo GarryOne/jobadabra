@@ -92,6 +92,22 @@ class SqliteOwnTests(_Folder, unittest.TestCase):
         self.assertEqual(real(db), len(sqlite.MIGRATIONS))
         self.assertIn('applications', {r[0] for r in db.execute("SELECT name FROM sqlite_master")})
 
+    def test_a_locked_file_is_waited_for_not_failed_at_once(self):
+        # Sentry JOB-PILOTTO-APP-2C (24 Oct 2026): `cron_runs list` at app start failed in 1 s with "database is locked" although the
+        # connection waits 10 s: SQLite returns that at once while another process switches the journal mode or upgrades a read.
+        path = self.folder / 'tracker.sqlite'
+        sqlite.connect(path).close()
+        real, calls = sqlite._version, []
+        def locked_twice(db):
+            calls.append(1)
+            if len(calls) <= 2:
+                raise sqlite.sqlite3.OperationalError('database is locked')
+            return real(db)
+        with mock.patch.object(sqlite, '_version', locked_twice):
+            db = sqlite.connect(path)
+        self.assertEqual(real(db), len(sqlite.MIGRATIONS))
+        self.assertGreaterEqual(len(calls), 3)
+
     def test_open_stores_picks_it_by_default(self):
         self.assertEqual(stores.open_stores(self.env).name, 'sqlite')
 

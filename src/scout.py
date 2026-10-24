@@ -28,7 +28,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import timedelta
 from html import escape
 from pathlib import Path
-from . import budget_tape, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, tgcard
+from . import budget_tape, read_methods, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, tgcard
 from .notion import client as notion, cron_runs  # noqa: F401 -- notion: tests patch scout.notion (its Tracker)
 from .paths import CONFIG, JOBS_DB, load_search_config
 from .sources import ats, careers, feeds  # noqa: F401 -- `feeds` is also reached as scout.feeds by tests
@@ -165,6 +165,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
     unread = []   # job systems a careers page named that could not be read: (system, why, company)
 
     done = []
+    read_methods.reset(persist=False)   # how this run reads its employers: in its run record, never the search's saved tally
 
     def check(candidate):
         try:
@@ -182,8 +183,14 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
     def check_one(candidate):
         if candidate['status'] == 'manual':
             return {'status': 'manual'}
-        found = find_feed(candidate, probe, note=lambda system, slug, why: unread.append((system, why, candidate['name'])), search=search,
-                          jobsch_lookup=lookup)
+        with read_methods.reading(candidate['key'], 'feed_api') as read:   # how this employer's jobs were read (src/read_methods.py)
+            found = find_feed(candidate, probe, note=lambda system, slug, why: unread.append((system, why, candidate['name'])), search=search,
+                              jobsch_lookup=lookup)
+            read.failed = not found
+            if found:
+                read.jobs = len(found[2] or [])
+                if found[0] == 'careers':
+                    read_methods.mark('plain_page')   # a careers page, not a job-system feed
         if not found:
             site = candidate.get('found_site') or candidate.get('careers') or candidate.get('website') or ''
             if candidate.get('found_site'):   # where a person would land from "<company> jobs": the address to open, for everyone after

@@ -14,6 +14,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from .. import read_methods
 from . import ats, board_employers, boards_ahead, feeds, host_pace
 
 SPACING_HOURS = 6
@@ -243,7 +244,12 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
             if ahead is not None and name == boards_ahead.NAME:
                 found, matched = ahead.take(db, now)
             else:
-                found = read(search)
+                if name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
+                    found = read(search)
+                else:
+                    with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
+                        found = read(search)
+                        counted.jobs = read_methods.in_places(found)
                 matched = kept(db, name, found, now)
             with db:
                 db.execute('INSERT OR REPLACE INTO aggregator_runs (source, at) VALUES (?, ?)', (name, now.isoformat(timespec='seconds')))

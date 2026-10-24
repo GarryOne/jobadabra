@@ -9,7 +9,7 @@ import random
 import sys
 from collections import Counter
 from datetime import datetime, timezone
-from . import contribute, coverage, digest, first_jobs, doctor, employer_index, features, jobs_so_far, ledger_store, notify, run_counts, scout, source_yield, store, telegram
+from . import read_methods, contribute, coverage, digest, first_jobs, doctor, employer_index, features, jobs_so_far, ledger_store, notify, run_counts, scout, source_yield, store, telegram
 from .ai import budget, enrich, insights, interviews, kit, score
 from .notion import client as notion_client, funnel
 from .paths import DATA, REPORTS, load_search_config
@@ -27,6 +27,7 @@ def ai_ready():
 def search(args, stores=None):
     stores = stores or open_run()
     run_counts.reset()   # this search's own counts start at 0
+    read_methods.reset(datetime.now(timezone.utc).isoformat(timespec='seconds'))   # and how its sources are read (src/read_methods.py)
     run = new_cron_run(args.mode)
     started = datetime.now(timezone.utc).isoformat(timespec='seconds')   # a job first seen from now on is new (src/source_yield.py)
     spend = None

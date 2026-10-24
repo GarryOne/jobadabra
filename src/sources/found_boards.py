@@ -52,7 +52,10 @@ def read_board(board, search, fetch=careers.get_text, route=None, early=False, s
     declared routes (src/sources/board_routes.py); a script-only one with none is read by the headless browser (show: careers.renderer(),
     owner 19 Oct 2026), else 'browser' (a visit); a readable one goes to the AI page reader once per board per run, within its caps, and the
     recipe it leaves replays with no model next time."""
-    jobs, state, route = _read(board, search, fetch, route, early, show)
+    from .. import read_methods
+    with read_methods.reading(board.get('host') or board.get('search_url'), 'ai_board') as read:
+        jobs, state, route = _read(board, search, fetch, route, early, show)
+        read.jobs = read_methods.in_places(jobs)
     return list({job['url']: job for job in jobs}.values()), state, route   # every way out: a board refusing mid-read kept its repeats (18 Oct 2026)
 
 

@@ -193,5 +193,8 @@ def outcome(url, status, html, title='', final='', now=None, step='download', ca
     from .. import role_kinds
     titles = [job.get('title') for job in result['jobs'] if isinstance(job, dict)]
     _keep(host, url, state, '', now, jobs=len(result['jobs']), kinds=role_kinds.mix(titles) if titles else None, step=step, route=route_of(final, html) if result['jobs'] else None)
+    if result['jobs']:
+        from .. import read_methods
+        read_methods.note_extension(host, read_methods.in_places(result['jobs']))   # counted in the next search report (no host leaves the machine)
     print(f"Refused sites: read {host} in your browser: {len(result['jobs'])} job(s), {result.get('fits', 0)} matching your search")
     return {'ok': True, 'state': state, 'jobs': len(result['jobs']), 'fits': result.get('fits', 0), 'name': result['name'], 'feed': result['feed']}

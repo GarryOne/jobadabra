@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from . import feeds
+from .. import read_methods
 
 
 def _item(source, job, status):
@@ -52,7 +53,10 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     ticker, lock, read = Ticker('Reading employer job sites', len(sources)), threading.Lock(), [0, 0]   # [sites read, jobs listed]
 
     def fetch(source):
-        got = feeds._fetched(fetcher, source)
+        with read_methods.reading(key(source), 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
+            got = feeds._fetched(fetcher, source)
+            counted.failed = got[1] is not None   # a failed read is not a source read
+            counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
         with lock:
             read[0] += 1
             read[1] += len(got[0] or [])

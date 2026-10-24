@@ -6,6 +6,7 @@ import json
 import re
 import sys
 
+from .. import tz
 from ..notion.ledger import REPLY
 from . import cost, mail, opportunity
 
@@ -68,7 +69,7 @@ LAST_MESSAGE = {
 
 SCHEMA = {
     'type': 'object', 'additionalProperties': False,
-    'required': ['kind', 'match', 'role', 'when', 'first_contact', 'interview_at', 'feedback', 'job_description',
+    'required': ['kind', 'match', 'role', 'when', 'first_contact', 'interview_at', 'interview_zone', 'feedback', 'job_description',
                  'seen', 'first_contact_text', 'interview_text', 'last_message', 'booking_link']
                 + opportunity.SCHEMA['required'],
     'properties': {
@@ -78,7 +79,8 @@ SCHEMA = {
         'when': {'type': 'string', 'description': 'ISO 8601 date/time the message was sent if shown, else ""'},
         'job_description': {'type': 'string', 'description': 'Everything the item says about the role itself, as written (for screenshots: transcribed): responsibilities, stack, team, requirements, the company or client, location, work mode, contract, pay, interview process. Not greetings or small talk. "" if it says nothing about the role'},
         'first_contact': {'type': 'string', 'description': 'ISO 8601 date of the earliest message shown in the conversation (the first time they talked), else ""'},
-        'interview_at': {'type': 'string', 'description': 'ISO 8601 start of a call/interview with a fixed time, with offset, else ""'},
+        'interview_at': {'type': 'string', 'description': 'Start of a call/interview with a fixed time as the clock time written, YYYY-MM-DDTHH:MM:SS with no offset, else ""'},
+        'interview_zone': {'type': 'string', 'description': 'IANA time zone of that clock time (e.g. Europe/Zurich), "" when the item names none'},
         'feedback': {'type': 'string', 'description': 'Specific employer feedback quoted verbatim, else empty; no generic rejections or inferred reasons.'},
         'seen': SEEN,
         'first_contact_text': {'type': 'string', 'description': 'The earliest date exactly as written in the item, with the day divider above the first message and its time ("Sep 21", "MONDAY 12:33 AM", "Mon 14:02", "21/09/2026"), else ""'},
@@ -197,7 +199,9 @@ def read(client, model, text, image, jobs, stats=None):
         output_config={'format': {'type': 'json_schema', 'schema': SCHEMA}},
     )
     cost.add(stats, model, response.usage)
-    return json.loads(next(b.text for b in response.content if b.type == 'text'))
+    item = json.loads(next(b.text for b in response.content if b.type == 'text'))
+    item['interview_at'] = tz.local_iso(item.get('interview_at'), item.get('interview_zone'))  # the offset of that date, not a guessed one
+    return item
 
 
 def step(text):

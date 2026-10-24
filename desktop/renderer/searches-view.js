@@ -12,6 +12,9 @@ const n = value => (value === null || value === undefined || value === '' ? null
 const some = pairs => pairs.filter(([, value]) => value !== null && value !== undefined && value !== '');
 
 export const isSearchRun = row => SEARCH_MODES.includes(row?.mode || row?.kind);
+// A run card or drawer entry links to its full report when it is a finished search run the store keeps (an app-side activity kind: renderer/pages/activity-basics.js KIND).
+export const REPORT_KINDS = ['search', 'visits', 'scout'];
+export const hasFullReport = run => !!run && !run.live && !!run.pageId && REPORT_KINDS.includes(run.kind);
 export const kindName = row => NAMES[row?.mode || row?.kind] || 'Search';
 export const secondsOf = row => row?.stats?.duration_s ?? (row?.finished_at && row?.started_at ? Math.round((Date.parse(row.finished_at) - Date.parse(row.started_at)) / 1000) : null);
 export const duration = seconds => (seconds === null || seconds === undefined ? '–' : seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`);

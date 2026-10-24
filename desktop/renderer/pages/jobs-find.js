@@ -8,6 +8,7 @@ import {jobCounts} from '../jobs-view.js';
 import {findCard, readProgressModel} from '../find-card-model.js';
 import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
+import {showFullReport} from './full-report.js';
 
 let signature = '', wasSearching = false, finishedHere = false;
 let start = () => {};
@@ -74,7 +75,9 @@ function draw(model) {
     steps.append(chips, live);
     card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
   } else if (model.state === 'done') {
-    card.replaceChildren(findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true}));
+    const head = findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
+    if (model.runId) head.append(button('Full report →', () => showFullReport(model.runId), 'link small'));   // every number of this search, in Reports → Searches
+    card.replaceChildren(head);
   } else if (model.state === 'failed') {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button('Try again', () => start()));

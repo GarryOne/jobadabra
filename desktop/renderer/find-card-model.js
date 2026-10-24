@@ -2,6 +2,7 @@
 // with the one that is running, the last lines in words, and the one number (jobs added). Drawn by pages/jobs-find.js. Guarded by: test/find-card.test.js.
 // Spec: docs/superpowers/specs/2026-10-16-first-jobs-fast.md
 import {readableLog} from './human-log.js';
+import {hasFullReport} from './searches-view.js';
 
 // A first run reads a slice and scores 3 jobs first; the usual run starts with the job boards. The latest line that matches a step is the running one.
 export const FIRST = /^(Finding your first jobs|First jobs:)/;
@@ -64,7 +65,7 @@ export function findCard({running = null, last = null, lastSearchAt = '', listed
     return {state: 'searching', chips: stepChips(log), lines, ...runCounts(log), added: addedSoFar(log), employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
   }
   if (last && last.ok === false && (finishedHere || !listed)) return {state: 'failed', problem: last.problem || last.result || '', listed};
-  if (finishedHere && last) return {state: 'done', listed, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log)};
+  if (finishedHere && last) return {state: 'done', listed, runId: hasFullReport(last) ? last.pageId : null, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log)};
   if (!lastSearchAt && !listed) return {state: 'empty'};
   return {state: 'none'};
 }

@@ -72,7 +72,8 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   // Fails the run unless the extension talks to the stand-in only.
   const assertIsolated = async () => {
     const stored = await worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null)));
-    if (!stored.includes(`"workerUrl":"http://127.0.0.1:${port}"`) || stored.includes('47111')) throw new Error(`NOT ISOLATED: the extension is not on the stand-in app's port ${port}`);
+    const wrongUrl = !stored.includes(`"workerUrl":"http://127.0.0.1:${port}"`), liveAt = stored.indexOf('47111');
+    if (wrongUrl || liveAt >= 0) throw new Error(`NOT ISOLATED: the extension is not on the stand-in app's port ${port} (${wrongUrl ? `workerUrl stored: ${stored.match(/"workerUrl":"[^"]*"/)?.[0] || 'none'}` : `"47111" stored at ${liveAt}: …${stored.slice(Math.max(0, liveAt - 40), liveAt + 20)}…`}; ${stored.length} characters stored)`);
     return true;
   };
   await assertIsolated().catch(async error => { await close(); throw error; });

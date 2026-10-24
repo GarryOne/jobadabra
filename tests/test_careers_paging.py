@@ -39,6 +39,18 @@ class PagingTests(unittest.TestCase):
     def test_at_most_max_list_pages(self):
         self.assertEqual(len(careers.page_links(BASE, listing(1, pages=200))), careers.MAX_LIST_PAGES - 1)
 
+    def test_pages_named_by_an_offset_or_a_path_word_are_found_by_their_numbers(self):
+        """24 Oct 2026: a Tallinn accountant's finance section (cv.ee, ?offset=20,40,...) and a Zagreb nurse's health section (posao.hr, /stranica/1,2,3...)
+        gave their first page only: no name of ours matched the paging link. A run of numbers in one step, from one or two steps off zero, is paging."""
+        offset = ''.join(f'<a href="{BASE}?offset={n}">{n}</a>' for n in (20, 40, 60, 80))
+        self.assertEqual(careers.page_links(BASE, f'<html>{offset}</html>'), [f'{BASE}?offset={n}' for n in (20, 40, 60, 80)])
+        words = ''.join(f'<a href="{BASE}/stranica/{n}">{n}</a>' for n in (1, 2, 3, 34))
+        self.assertEqual(careers.page_links(BASE, f'<html>{words}</html>'), [f'{BASE}/stranica/{n}' for n in (2, 3)])
+
+    def test_filters_and_categories_are_not_pages(self):
+        menu = ''.join(f'<a href="{BASE}?category={n}">c{n}</a>' for n in (7, 12, 31)) + f'<a href="{BASE}/stranica/9">x</a>'
+        self.assertEqual(careers.page_links(BASE, f'<html>{menu}</html>'), [])
+
 
 if __name__ == '__main__':
     unittest.main()

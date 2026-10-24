@@ -13,7 +13,7 @@ test('the last check under 3 new jobs is a nudge (owner: "if the last Search fou
 });
 
 test('the count comes from the run, else from its digest; unknown is never "few"', () => {
-  assert.equal(freshOf({message: '✈️ Job Pilotto · 🆕 0 new · top 10 of 24'}), 0);
+  assert.equal(freshOf({message: '✈️ Jobadabra · 🆕 0 new · top 10 of 24'}), 0);
   assert.equal(freshOf({message: 'no digest here'}), null);
   assert.equal(streak([{id: 2, kind: 'search', ok: true, endedAt: '2026-10-07T10:00:00Z', message: '?'}]), null);
 });

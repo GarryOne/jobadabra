@@ -80,7 +80,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           STARTED_BY_SOMEONE: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          text="📧 Gmail isn't connected for Always on yet. In the Job Pilotto app: Settings → Connections → Gmail & Calendar → Connect (it's sent to GitHub too)."
+          text="📧 Gmail isn't connected for Always on yet. In the Jobadabra app: Settings → Connections → Gmail & Calendar → Connect (it's sent to GitHub too)."
           echo "$text"
           if [ "$STARTED_BY_SOMEONE" = "true" ] && [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
             curl -sS -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
@@ -93,7 +93,7 @@ jobs:
       - name: No workspace in this repository
         if: env.GOOGLE_REFRESH_TOKEN != '' && env.NOTION_APPLICATIONS_DB == ''
         run: |
-          echo "::notice::No Job Pilotto workspace in ${GITHUB_REPOSITORY} (NOTION_APPLICATIONS_DB is empty)."
+          echo "::notice::No Jobadabra workspace in ${GITHUB_REPOSITORY} (NOTION_APPLICATIONS_DB is empty)."
           echo "A Gmail check needs the workspace the Desktop App writes to your private repo; nothing to do here."
           echo "It runs from your private Always-on repo's schedule, or as 'Check Gmail now' in the app."
       - uses: actions/checkout@v5

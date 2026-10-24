@@ -166,7 +166,7 @@
      "Job boards: jobs.ch, SwissDevJobs, TechTree (Swiss place word: (?:(?<!\\w)zurich(?!\\w)))",
      "Checking employer career pages, then reading and scoring new jobs…",
      "Descriptions: 0 of 17 missing fetched",
-     "⚠️ Stopped by Job Pilotto: no output for 15 min. The run went quiet, so it was stopped. Run it again; if it keeps stopping, check your AI key or plan in Settings. The last thing it did: Descriptions: 0 of 17 missing fetched"
+     "⚠️ Stopped by Jobadabra: no output for 15 min. The run went quiet, so it was stopped. Run it again; if it keeps stopping, check your AI key or plan in Settings. The last thing it did: Descriptions: 0 of 17 missing fetched"
     ],
     "kind": "search",
     "ok": false
@@ -358,7 +358,7 @@
    "run": {
     "trigger": "you",
     "log": [
-     "Another Job Pilotto search is running (app or terminal): waiting for it…"
+     "Another Jobadabra search is running (app or terminal): waiting for it…"
     ],
     "kind": "tailor",
     "ok": false
@@ -453,7 +453,7 @@
     "trigger": "you",
     "ok": true,
     "log": [],
-    "message": "✈️ Job Pilotto · 🆕 0 new · top 10 of 24\n24 open · 5 🇨🇭 · 9 applied · 37 filtered · 80 low fit\n🎯 Best matches\n1. Staff SRE, Observability (https://example.com/jobs/alpine-1) · 🎯 84\n   Alpine Data · Remote (Europe) · Staff\n2. Platform Engineer, Developer Experience (https://example.com/jobs/northwind-2) · 🎯 78\n   Northwind AI · Zurich · Senior\n3. DevOps Engineer (https://example.com/jobs/lakeside-3) · 🎯 71\n   Lakeside Payments · Geneva · Mid\n4. Cloud Engineer (https://example.com/jobs/acme-4) · 🎯 66\n   Acme Robotics · Remote"
+    "message": "✈️ Jobadabra · 🆕 0 new · top 10 of 24\n24 open · 5 🇨🇭 · 9 applied · 37 filtered · 80 low fit\n🎯 Best matches\n1. Staff SRE, Observability (https://example.com/jobs/alpine-1) · 🎯 84\n   Alpine Data · Remote (Europe) · Staff\n2. Platform Engineer, Developer Experience (https://example.com/jobs/northwind-2) · 🎯 78\n   Northwind AI · Zurich · Senior\n3. DevOps Engineer (https://example.com/jobs/lakeside-3) · 🎯 71\n   Lakeside Payments · Geneva · Mid\n4. Cloud Engineer (https://example.com/jobs/acme-4) · 🎯 66\n   Acme Robotics · Remote"
    }
   },
   {

@@ -71,7 +71,7 @@ SCHEMA = {
     },
 }
 
-SYSTEM = """You read a message a recruiter or hiring person sent the owner of Job Pilotto (an email, or a LinkedIn \
+SYSTEM = """You read a message a recruiter or hiring person sent the owner of Jobadabra (an email, or a LinkedIn \
 message pasted as text) and extract the role they pitch. Only state what the message says; never guess. The owner's \
 own replies may be included: ignore them for the facts, but set owner_agreed when the owner said yes or \
 agreed to a call. If the message isn't a pitch for a role (a job alert, \
@@ -118,7 +118,7 @@ def label(lead):
 
 
 def source_for(lead, source):
-    """The row's Source: LinkedIn for a LinkedIn message (however it reached Job Pilotto), else the given one.
+    """The row's Source: LinkedIn for a LinkedIn message (however it reached Jobadabra), else the given one.
     Confirmed in the app (first_contact_here): yes = the channel you named (LinkedIn, Gmail for an email, Phone);
     no = the job started elsewhere, so how it was added (Manual, Telegram)."""
     here = lead.get('first_contact_here')

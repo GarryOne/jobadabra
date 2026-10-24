@@ -26,7 +26,7 @@ Env var: `NOTION_APPLICATIONS_DB`. One row per opportunity: applied, saved or in
 | Location | Text | |
 | Job URL | URL | Canonical posting URL — the match key everything uses |
 | Stage | Select | Options: `Kit ready` (a kit was drafted automatically), `Saved` (you tapped ⭐), `Applying`, `Applied`, `Confirmation received`, `Screening`, `Interview scheduled`, `Interviewing`, `Offer`, `Rejected`, `Withdrawn`, `No response`, `Dismissed`, `Closed` (posting gone) |
-| Source | Select | Where the contact started: `LinkedIn`, `Gmail` (an email), `Phone` (a call, as confirmed in the app's Log box), else how the row was added (`Telegram`, `Manual`, `Job Pilotto app`). A later channel never replaces it; something logged later but dated before the first contact does |
+| Source | Select | Where the contact started: `LinkedIn`, `Gmail` (an email), `Phone` (a call, as confirmed in the app's Log box), else how the row was added (`Telegram`, `Manual`, `Jobadabra app`). A later channel never replaces it; something logged later but dated before the first contact does |
 | Applied on | Date | Set when Stage becomes Applied |
 | Posted | Date | Posting date from the source, or first-seen date if unknown |
 | Next interview | Date | Set by the Gmail check or by you; cleared once the interview is reviewed or confirmed held |

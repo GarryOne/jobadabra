@@ -7,7 +7,7 @@ const item = (service, {account = 'job-pilotto', comment = null, cdat = '2026100
 version: 512
 class: "genp"
 attributes:
-    0x00000007 <blob>="Job Pilotto: x"
+    0x00000007 <blob>="Jobadabra: x"
     "acct"<blob>="${account}"
     "cdat"<timedate>=0x32303236313030383131353430325A00  "${cdat}Z\\000"
     "icmt"<blob>=${comment === null ? '<NULL>' : `"${comment}"`}

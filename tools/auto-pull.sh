@@ -20,7 +20,7 @@ log() { mkdir -p "$(dirname "$LOG")"; echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> 
 notify() {   # JP_AUTOPULL_NOTIFY_FILE: tests read the notices from a file instead of macOS notifications
   if [ -n "${JP_AUTOPULL_NOTIFY_FILE:-}" ]; then echo "$1" >> "$JP_AUTOPULL_NOTIFY_FILE"; return; fi
   msg="$(printf '%s' "$1" | tr -d '"\\')"
-  command -v osascript >/dev/null 2>&1 && osascript -e "display notification \"$msg\" with title \"Job Pilotto checkout\"" >/dev/null 2>&1 || true
+  command -v osascript >/dev/null 2>&1 && osascript -e "display notification \"$msg\" with title \"Jobadabra checkout\"" >/dev/null 2>&1 || true
 }
 # A skip is never silent (17 Oct 2026: a detached HEAD sat 80 minutes with only a log line and the owner's app missed 39 commits). The first skip
 # of a streak is timed in "$STATE.since"; once it lasts 10 minutes ONE notice goes out ("isn't updating: <reason>, N commits behind. Fix: <command>"),
@@ -35,7 +35,7 @@ skip() {   # skip <reason> [fix command]
   since="$(cat "$STATE.since" 2>/dev/null)"; last="$(cat "$STATE.notified" 2>/dev/null)"
   if [ $((now - ${since:-$now})) -ge 600 ] && [ $((now - ${last:-0})) -ge 3600 ]; then
     behind="$(git -C "$REPO" rev-list --count HEAD..origin/main 2>/dev/null || echo '?')"
-    notify "Job Pilotto isn't updating: $1, $behind commits behind. Fix: ${2:-see $LOG}"
+    notify "Jobadabra isn't updating: $1, $behind commits behind. Fix: ${2:-see $LOG}"
     echo "$now" > "$STATE.notified"
   fi
   exit 0

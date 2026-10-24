@@ -42,7 +42,7 @@ test('an older Profile\'s "Contact" and "Links" sections are read too (Name is s
 
 test('form knowledge lives on its Notion page: a newer note replaces its line, the rest are appended', async () => {
   const storage = connected({NOTION_KNOWLEDGE_PAGE: 'kp'});
-  const {fetcher, texts} = fakeNotion(['What Job Pilotto learned…', '[any] Preferred First Name: Same as first name → "Igor"']);
+  const {fetcher, texts} = fakeNotion(['What Jobadabra learned…', '[any] Preferred First Name: Same as first name → "Igor"']);
   const [old] = await knowledge.notes(storage, fetcher);
   assert.deepEqual({...old, block: undefined}, {scope: 'any', kind: 'answer', field: 'Preferred First Name', note: 'Same as first name', value: 'Igor', block: undefined});
   await knowledge.add(storage, [

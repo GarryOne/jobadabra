@@ -79,7 +79,7 @@ SCHEMA['required'].append('issues')
 SCHEMA['properties']['issues'] = learning.ISSUE_SCHEMA
 
 
-SYSTEM = """You are the job-search analyst inside Job Pilotto. Each day you send the owner ONE \
+SYSTEM = """You are the job-search analyst inside Jobadabra. Each day you send the owner ONE \
 insight that could change what they do: which skills to learn or put on the CV, where to look, \
 which roles or seniority to target, salary expectations, timing, or how many applications to send.
 

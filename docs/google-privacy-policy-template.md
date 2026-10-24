@@ -1,7 +1,7 @@
-# Job Pilotto — privacy policy
+# Jobadabra — privacy policy
 
-Job Pilotto is a personal job-search tool. This Google Cloud app ("Job Pilotto") is used by its owner to
-connect their own Google account to their own copy of Job Pilotto. It is not offered to anyone else.
+Jobadabra is a personal job-search tool. This Google Cloud app ("Jobadabra") is used by its owner to
+connect their own Google account to their own copy of Jobadabra. It is not offered to anyone else.
 
 ## What it accesses
 

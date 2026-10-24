@@ -1,8 +1,8 @@
-# Job Pilotto — architecture
+# Jobadabra — architecture
 
 Read this once at the start of a session. Then find the file the task names with `node desktop/scripts/codemap.mjs <words>`. Workflow detail, only if the task touches one: `docs/HOW-IT-RUNS.md`.
 
-Job Pilotto is a personal job-search system: it finds jobs, scores them, tracks them in Notion, and can fill application forms. It never clicks Submit.
+Jobadabra is a personal job-search system: it finds jobs, scores them, tracks them in Notion, and can fill application forms. It never clicks Submit.
 
 The public repo at `~/jobadabra` is the engine plus the Mac/Windows app. A user's private GitHub repo only holds schedules and secrets, and calls this engine. Prompts and the product brain live in the private sibling `~/jobadabra-lab`.
 
@@ -35,7 +35,7 @@ The core crawl and printed digest need no accounts. Everything else turns on whe
 `desktop/lib/github.js` is the "Always on" path. The user creates `<user>/jobadabra-personal-always-on` (made before 24 Oct 2026: `job-pilotto-private`) from a public starter. That repo's workflows (`templates/github-actions/`, scheduled every 4 hours for jobs, optional scout, mail three times a day) call the reusable workflows in this repo: `daily.yml`, `scout.yml`, `mail.yml`, by the name GitHub gives this repo now (`lib/engine-repo.js`: a renamed repo's `uses:` is not redirected). Those workflows have no schedule of their own, so the public repo never runs on anyone's data.
 
 **What lives on the user's side, and how it stays in step** (8 Oct 2026). At every app start: the repo's workflow files are rewritten,
-pinned to the app's own release (`desktop-v<version>`); our retired ones (first line `# Job Pilotto`) are deleted, the user's own kept;
+pinned to the app's own release (`desktop-v<version>`); our retired ones (first line `# Jobadabra`) are deleted, the user's own kept;
 secrets and variables (models included) are sent again when their fingerprint changed (`github.js` `updateRepo`); the Telegram Worker is
 redeployed when its code or settings changed (`telegram-cloud.js` `refresh`). Model IDs are data: `JOB_PILOTTO_SMALL_MODEL` and the stage
 variables (`src/ai/models.py`), so a new model needs no engine release. Not synced: a secret removed on the Mac stays in the repo

@@ -69,7 +69,7 @@ export async function reloadExtension(context) {
 }
 
 // Stops the app the launcher started, as a whole: `spawn` gives the `node .bin/electron` shim, and the real Electron (and its helpers) are its children, so a kill of the
-// shim alone leaves them running with the ports and the app's own "Job Pilotto is still working" quit prompt up (9 Oct 2026: the first restart hung 90 s on that prompt;
+// shim alone leaves them running with the ports and the app's own "Jobadabra is still working" quit prompt up (9 Oct 2026: the first restart hung 90 s on that prompt;
 // a SIGKILL of the shim left an orphan on the debugging port). The child is started detached (its own group); the group gets SIGTERM, then SIGKILL when the prompt
 // or anything else holds it. The twin's folder is a copy and its Notion a mirror: nothing to protect from a hard stop.
 const alive = pid => { try { process.kill(-pid, 0); return true; } catch { return false; } };

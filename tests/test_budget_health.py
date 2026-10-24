@@ -45,7 +45,7 @@ class BudgetTests(unittest.TestCase):
             ok = budget.status(run_history((3.0, '2026-09-20T10:00:00+00:00'), (2.0, '2026-09-21T10:00:00+00:00')), NOW)
             warn = budget.status(run_history((11.0, '2026-09-20T10:00:00+00:00')), NOW)
             pause = budget.status(run_history((14.0, '2026-09-20T10:00:00+00:00')), NOW)
-        self.assertEqual((ok['spent'], ok['level'], ok['source']), (5.0, 'ok', 'Job Pilotto log'))
+        self.assertEqual((ok['spent'], ok['level'], ok['source']), (5.0, 'ok', 'Jobadabra log'))
         self.assertEqual((warn['level'], pause['level']), ('warn', 'pause'))
 
     def test_only_this_months_runs_count(self):
@@ -71,7 +71,7 @@ class BudgetTests(unittest.TestCase):
     def test_pause_caps_optional_ai_and_alerts_once_per_month_and_level(self):
         args = Namespace(auto_kit_max=5, score_max=60, enrich_max=100)
         warnings = []
-        info = {'spent': 13.8, 'budget': 15.0, 'pct': 0.92, 'level': 'pause', 'source': 'Job Pilotto log'}
+        info = {'spent': 13.8, 'budget': 15.0, 'pct': 0.92, 'level': 'pause', 'source': 'Jobadabra log'}
         self.assertTrue(budget.apply_caps(args, info, warnings))
         self.assertEqual((args.auto_kit_max, args.score_max, args.enrich_max), (0, 10, 30))
         db, sent = sqlite3.connect(':memory:'), []

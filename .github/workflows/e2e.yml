@@ -1,6 +1,6 @@
 name: CI · End-to-end on Mac + Linux
 
-# The real Job Pilotto app, driven by Playwright on a macOS runner, one suite per Notion test page (desktop/e2e/README.md). It does two jobs, on two clocks:
+# The real Jobadabra app, driven by Playwright on a macOS runner, one suite per Notion test page (desktop/e2e/README.md). It does two jobs, on two clocks:
 #  1. RELEASE GATE. The release run (desktop.yml, "Release · Build, test, beta") calls this workflow as its "E2E · Mac + Linux" job right after the build (7 Oct 2026: one run
 #     per release, build -> test -> approve, instead of three runs chained by triggers). It runs EVERY gate suite on the build's commit -> when all pass (and build.yml is green
 #     on the commit) the `promote` job approves the build for Mac beta testers (JOB_PILOTTO_SOAK = on; canary-promote.yml then soaks it and promotes) or makes it stable (soak off).

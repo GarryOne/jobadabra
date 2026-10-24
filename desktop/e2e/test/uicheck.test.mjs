@@ -79,7 +79,7 @@ test('text that is hidden on purpose with font-size 0 is not tiny; real tiny tex
   } finally { await browser.close(); }
 });
 
-// 2 Oct 2026 (issue #47's screenshot): in the icon rail the brand text ("Job Pilotto" + DEV) ran out of its 72 px box over the page title, and the "Search & commands" button was cut.
+// 2 Oct 2026 (issue #47's screenshot): in the icon rail the brand text ("Jobadabra" + DEV) ran out of its 72 px box over the page title, and the "Search & commands" button was cut.
 // No check saw it: the checks looked only inside the page (the sidebar is outside it), and "text cut off" only covered clipped text, not text that spills out and stays visible.
 test('text that runs out of its box and stays visible is found, in the app chrome too, and an element that fits is not', async () => {
   const browser = await chromium.launch({channel: 'chrome'});

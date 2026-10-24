@@ -1,10 +1,10 @@
-# Job Pilotto — reads job-related Gmail and Calendar events (read-only) into Notion and Telegram.
+# Jobadabra — reads job-related Gmail and Calendar events (read-only) into Notion and Telegram.
 # 05, 10, 16 UTC = 07:00, 12:00, 18:00 in Zurich (summer time); change the cron for your time zone.
 name: Gmail and Calendar
 run-name: mail${{ inputs.delay && inputs.delay != '0' && format(' (after {0} min)', inputs.delay) || '' }}
 
 on:
-  # The Job Pilotto app adds your schedule here (Settings → How often).
+  # The Jobadabra app adds your schedule here (Settings → How often).
   workflow_dispatch:
     inputs:
       delay: {description: 'minutes to wait first', required: false, default: '0'}
@@ -20,5 +20,5 @@ jobs:
       delay: ${{ inputs.delay || '0' }}
       days: ${{ inputs.days || '2' }}
       code_repository: GarryOne/jobadabra
-      code_ref: main   # the Job Pilotto app writes its own release here, so this repo runs the code of the installed app
+      code_ref: main   # the Jobadabra app writes its own release here, so this repo runs the code of the installed app
     secrets: inherit

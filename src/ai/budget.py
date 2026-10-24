@@ -75,7 +75,7 @@ def ledger_spend(stores, now):
 def status(stores, now=None, opener=urllib.request.urlopen):
     """{'spent', 'budget', 'pct', 'level', 'source'} for this month. stores: the active store (src/stores open_stores)."""
     now = now or datetime.now(timezone.utc)
-    budget, key, spent, source = monthly_budget(), admin_key(), None, 'Job Pilotto log'
+    budget, key, spent, source = monthly_budget(), admin_key(), None, 'Jobadabra log'
     from . import providers
     if key and providers.spec().family == 'claude':   # Anthropic's own report; an OpenAI engine's spend is in the run log
         try:

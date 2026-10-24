@@ -1,4 +1,4 @@
-// Fill-failure reports from the Job Pilotto app: form STRUCTURE only (site, field labels, types, options, why a
+// Fill-failure reports from the Jobadabra app: form STRUCTURE only (site, field labels, types, options, why a
 // field couldn't be filled, extension version, and a scrubbed HTML snapshot of the field for replay tests: see
 // snapshot.js, which scrubs it again here); never answers or personal data. A report signed with
 // REPORT_TOKEN (the owner's app) is trusted and queued for the daily fixer; anything else lands as triage and

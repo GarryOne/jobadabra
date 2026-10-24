@@ -107,7 +107,7 @@ class CopyTests(unittest.TestCase):
 
     def test_a_workspace_just_built_takes_the_source_texts_over_its_placeholder(self):
         source, target = filled(), memory.open_store()
-        target.texts.set('profile', 'Filled in by Job Pilotto.')
+        target.texts.set('profile', 'Filled in by Jobadabra.')
         counts = copy.copy(source, target, source_texts_win=True)
         self.assertEqual(target.texts.get('profile'), '# Me')
         self.assertNotIn('kept', counts)

@@ -1,4 +1,4 @@
-// "Data imported ✓" / "Job Pilotto was reset" is shown once per app start, not again on every window reload (6 Oct 2026).
+// "Data imported ✓" / "Jobadabra was reset" is shown once per app start, not again on every window reload (6 Oct 2026).
 import assert from 'node:assert/strict';
 import {mainSource} from './main-source.js';
 import {test} from 'node:test';

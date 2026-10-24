@@ -18,7 +18,7 @@ const NOTION = {
     {id: 'h2', type: 'heading_2', text: 'Availability and pay'}, {id: 't2', type: 'table', header: true, rows: [row('r3', 'Question', 'Answer'),
       row('r4', 'Salary expectation — Switzerland', '❓ (salary is not a priority; estimated floor CHF 48,000 a year)'), row('r5', 'If a salary field is optional', 'Leave blank')]},
     {id: 'b1', type: 'bulleted_list_item', text: 'GitHub: ❓'}, {id: 'b2', type: 'bulleted_list_item', text: 'Website / portfolio: ❓ optional'}],
-  knowledge: [{id: 'p0', type: 'paragraph', text: 'What Job Pilotto learned from your form fills, used by every later kit and fill.'},
+  knowledge: [{id: 'p0', type: 'paragraph', text: 'What Jobadabra learned from your form fills, used by every later kit and fill.'},
     {id: 'k1', type: 'bulleted_list_item', text: '[jobs.example.test · answer] Name :: Field ID x asks for last name only. → "Doe"'},
     {id: 'k2', type: 'bulleted_list_item', text: '[any · option] Salutation: the form offers Mr / Ms'}],
 };

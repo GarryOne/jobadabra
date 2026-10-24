@@ -1,4 +1,4 @@
-# Job Pilotto — finds new employer job feeds, a small batch at a time. Runs the public engine with this
+# Jobadabra — finds new employer job feeds, a small batch at a time. Runs the public engine with this
 # private repo's settings. Optional: one central scout already finds employers for everyone and every run downloads
 # its index, so new installs have no schedule here (Settings → How often → Find new employers turns yours on).
 # Schedules are in UTC.
@@ -6,7 +6,7 @@ name: Source scout
 run-name: scout${{ inputs.batch && format(' {0}', inputs.batch) || '' }}
 
 on:
-  # The Job Pilotto app adds your schedule here (Settings → How often).
+  # The Jobadabra app adds your schedule here (Settings → How often).
   workflow_dispatch:
     inputs:
       batch: {description: 'candidates to probe this run', required: false, default: '40'}
@@ -21,5 +21,5 @@ jobs:
     with:
       batch: ${{ inputs.batch || '40' }}
       code_repository: GarryOne/jobadabra
-      code_ref: main   # the Job Pilotto app writes its own release here, so this repo runs the code of the installed app
+      code_ref: main   # the Jobadabra app writes its own release here, so this repo runs the code of the installed app
     secrets: inherit

@@ -6,6 +6,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {execFileSync, spawn} from 'node:child_process';
+import * as archive from '../lib/archive.js';
 import * as reset from '../lib/reset.js';
 import {createStorage} from '../lib/storage.js';
 import {tar} from '../lib/tar.js';
@@ -301,4 +302,28 @@ test('reset: a process working inside the data folder does not stop the reset', 
     assert.equal(done.deleted, true);
     assert.ok(!fs.existsSync(a.dir) || fs.readdirSync(a.dir).length === 0, 'nothing of the profile is left');
   } finally { holder.kill(); }
+});
+
+// 24 Oct 2026 rename: exports now say "Jobadabra" in their manifest; exports made before say "Jobadabra". Both are imported.
+test('an export is written as "Jobadabra" and an old "Jobadabra" export is still imported', async () => {
+  const a = profile();
+  const file = path.join(a.base, 'export.tar.gz');
+  await reset.exportTo(a.dir, file);
+  const b = profile();
+  const manifest = await reset.stageImport(b.dir, file);
+  assert.equal(manifest.app, 'Jobadabra');
+
+  // The same export with the manifest an older app wrote.
+  const old = path.join(a.base, 'old-export');
+  fs.mkdirSync(old);
+  await archive.unpack(file, old);
+  fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({...manifest, app: 'Job Pilotto'}));
+  const oldFile = path.join(a.base, 'old.tar.gz');
+  await archive.pack(old, oldFile, {names: fs.readdirSync(old)});
+  assert.equal((await reset.stageImport(b.dir, oldFile)).app, 'Jobadabra');
+
+  fs.writeFileSync(path.join(old, 'manifest.json'), JSON.stringify({app: 'Something else'}));
+  const badFile = path.join(a.base, 'bad.tar.gz');
+  await archive.pack(old, badFile, {names: fs.readdirSync(old)});
+  await assert.rejects(reset.stageImport(b.dir, badFile), /not a Jobadabra export/);
 });

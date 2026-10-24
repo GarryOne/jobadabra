@@ -30,7 +30,7 @@ cat <<'NOTES'
 
 ## Install (Mac with Apple Silicon)
 
-1. Download **Job-Pilotto-mac-arm64.dmg** below, open it and drag **Job Pilotto** to Applications.
+1. Download **Job-Pilotto-mac-arm64.dmg** below, open it and drag **Jobadabra** to Applications.
 2. The first time you open it, macOS says it can't verify the developer (the app isn't notarised by
    Apple yet). Go to **System Settings → Privacy & Security** and click **Open Anyway**. Only once.
 NOTES

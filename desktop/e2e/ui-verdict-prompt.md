@@ -1,4 +1,4 @@
-You judge ONE finding of the Job Pilotto UI loop. You change NOTHING: no edits to any file under desktop/. You only read, then write a verdict.
+You judge ONE finding of the Jobadabra UI loop. You change NOTHING: no edits to any file under desktop/. You only read, then write a verdict.
 
 The finding (at the end) was seen on only ONE build, so nobody knows yet whether it is real. It came from one of three detectors; its first line says which.
 

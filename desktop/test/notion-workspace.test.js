@@ -1,4 +1,4 @@
-// "Connect with Notion" with the Job Pilotto template: the token's duplicated_template_id is the page Notion copied
+// "Connect with Notion" with the Jobadabra template: the token's duplicated_template_id is the page Notion copied
 // the template into; the app waits for that copy (never an older one), builds in it when empty, repairs what's missing.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -51,7 +51,7 @@ test('one click: the copied template is found once Notion has shared it, and an 
   const old = workspaceItems('old-root', 'old_');
   const copy = workspaceItems(COPY_DASHED, 'new_');
   // Look 1: only the old copy; look 2: half the new one; look 3: all of it.
-  const fetcher = fakeNotion(n => [page('old-root', null, 'Job Pilotto'), ...old, ...(n === 1 ? [] : n === 2 ? copy.slice(0, 4) : copy)]);
+  const fetcher = fakeNotion(n => [page('old-root', null, 'Jobadabra'), ...old, ...(n === 1 ? [] : n === 2 ? copy.slice(0, 4) : copy)]);
   const progress = [];
   let built = false;
   const result = await connectWorkspace('ntn_x', {templateRoot: COPY_DASHED, fetcher, onProgress: p => progress.push(p), ...fast,
@@ -64,7 +64,7 @@ test('one click: the copied template is found once Notion has shared it, and an 
 });
 
 test('the template\'s copy stays empty: the workspace is built in that page from the schema', async () => {
-  const fetcher = fakeNotion(() => [page(COPY_DASHED, null, 'Job Pilotto')]);
+  const fetcher = fakeNotion(() => [page(COPY_DASHED, null, 'Jobadabra')]);
   let builtIn = null;
   const repair = async (_, ids, _schema, _fetcher, root) => {
     builtIn = root;
@@ -89,7 +89,7 @@ test('an older template copy (a database missing): the schema adds it inside the
 });
 
 test('without a template (the user picked their own empty page): built in the one shared page, as before', async () => {
-  const fetcher = fakeNotion(() => [page('mine', null, 'Job Pilotto')]);
+  const fetcher = fakeNotion(() => [page('mine', null, 'Jobadabra')]);
   let builtIn = null;
   const repair = async (_, ids, _schema, _fetcher, root) => { builtIn = root; return {ids: {NOTION_PROFILE_PAGE_ID: 'p'}, created: ['x'], columns: []}; };
   const result = await connectWorkspace('ntn_x', {fetcher, ...fast, repair});

@@ -17,7 +17,7 @@ import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 export const EXTENSION_DIR = path.resolve(E2E, '..', '..', 'extension');
 export const DEFAULT_APP_PORT = 47111;   // the extension's built-in address for the app (extension/flow.js APP)
 
-// A port nothing listens on. The test app and its extension use it, so the suite runs next to the user's own Job Pilotto, which keeps 47111: the extension
+// A port nothing listens on. The test app and its extension use it, so the suite runs next to the user's own Jobadabra, which keeps 47111: the extension
 // under test can never pair with a live app.
 export async function freePort() {
   for (;;) {

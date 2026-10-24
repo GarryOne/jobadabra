@@ -94,7 +94,7 @@ def page_meta(url, opener=urllib.request.urlopen):
     gives little or nothing: the caller asks for the text then."""
     meta = dict(ats.posting(url) or {})
     try:
-        request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Job Pilotto)'})
+        request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Jobadabra)'})
         with opener(request, timeout=20) as response:
             page = response.read().decode('utf-8', errors='replace')
     except Exception:  # noqa: BLE001 — a page we can't read still gets tracked with what we have

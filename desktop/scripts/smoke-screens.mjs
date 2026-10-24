@@ -37,7 +37,7 @@ export async function jobsScreen({exe, out, prefix, say}) {
       const run = (file, args) => { try { return execFileSync(file, args, {encoding: 'utf8', timeout: 30000, maxBuffer: 20 * 1024 * 1024}); } catch (error) { return `(${file}: ${error.message.split('\n')[0]})`; } };
       stuck = process.platform === 'darwin'
         ? `${run('ps', ['-axo', 'pid,ppid,stat,etime,command']).split('\n').filter(line => /Job Pilotto/i.test(line)).join('\n')}\n${topOfStack(run('sample', [String(child.pid), '2']))}`
-        : run('tasklist', ['/FI', 'IMAGENAME eq Job Pilotto.exe', '/FO', 'LIST']);
+        : run('tasklist', ['/FI', 'IMAGENAME eq Jobadabra.exe', '/FO', 'LIST']);
     }
     return Promise.race([exited, wait(40000).then(() => { child.kill('SIGKILL'); return exited; })]);
   })();

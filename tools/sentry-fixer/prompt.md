@@ -1,4 +1,4 @@
-You fix ONE crash or failure that real users of the Job Pilotto desktop app (Electron, desktop/) and its Python engine (src/) reported to Sentry. The Sentry issue is at the end.
+You fix ONE crash or failure that real users of the Jobadabra desktop app (Electron, desktop/) and its Python engine (src/) reported to Sentry. The Sentry issue is at the end.
 You have about 40 turns: be quick and direct. Read only the files you need; start from the in-app frames of the stack trace (file and line), then grep for the message.
 
 Rules (a script checks them afterwards and refuses the change if you break one):

@@ -3,7 +3,7 @@
 
 const API = 'https://api.github.com';
 
-// Which Job Pilotto code the user's repo runs: an installed app sets its own release tag (desktop-v<version>), so
+// Which Jobadabra code the user's repo runs: an installed app sets its own release tag (desktop-v<version>), so
 // the GitHub runs match the app and its Notion schema, and move on together when the app updates (the files are
 // rewritten at each start). A source checkout (the owner's) keeps "main".
 let engineRef = 'main';

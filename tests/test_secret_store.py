@@ -39,10 +39,10 @@ class SecretStoreTest(unittest.TestCase):
             return mock.Mock(returncode=0, stdout='secret\n')
         with mock.patch.object(sys, 'platform', 'darwin'), mock.patch.object(secret_store.subprocess, 'run', run):
             self.assertEqual(secret_store.get('job-pilotto.x.password', 'job-pilotto'), 'secret')
-            secret_store.put('job-pilotto.x.password', 'pw', 'job-pilotto', label='Job Pilotto: x')
+            secret_store.put('job-pilotto.x.password', 'pw', 'job-pilotto', label='Jobadabra: x')
         self.assertEqual(calls[0], ['security', 'find-generic-password', '-a', 'job-pilotto', '-s', 'job-pilotto.x.password', '-w'])
         self.assertEqual(calls[1], ['security', 'add-generic-password', '-U', '-a', 'job-pilotto', '-s', 'job-pilotto.x.password',
-                                    '-l', 'Job Pilotto: x', '-w', 'pw'])
+                                    '-l', 'Jobadabra: x', '-w', 'pw'])
 
     def test_a_site_password_keeps_its_email_and_job_beside_it_never_in_the_password(self):
         calls = []

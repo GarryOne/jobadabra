@@ -42,6 +42,6 @@ test('a page that tells the person what to do shows its own sentence once, like 
 
 test('a page the ladder could not read says so once and asks the person to open it', () => {
   const time = () => '14:45';
-  const other = {startedAt: 'x', status: 'running', stuck: 'other', note: 'Job Pilotto could not tell how to apply: open the page'};
-  assert.deepEqual(texts(sessionSteps(other, null, {time})), ['done: Opened the job in Chrome · 14:45', 'warn: Job Pilotto could not tell how to apply: open the page']);
+  const other = {startedAt: 'x', status: 'running', stuck: 'other', note: 'Jobadabra could not tell how to apply: open the page'};
+  assert.deepEqual(texts(sessionSteps(other, null, {time})), ['done: Opened the job in Chrome · 14:45', 'warn: Jobadabra could not tell how to apply: open the page']);
 });

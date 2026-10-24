@@ -59,7 +59,7 @@ SCHEMA = {
         }}}},
 }
 
-SYSTEM = """You sort the job-search emails (and calendar events) of the owner of Job Pilotto. For each item:
+SYSTEM = """You sort the job-search emails (and calendar events) of the owner of Jobadabra. For each item:
 - "Feedback received" = an employer's assessment following a rejection, or feedback during an ongoing process.
   A rejection containing specific feedback stays "Rejected" with feedback filled. The email that turns the
   application down is always "Rejected", even when it adds that no individual feedback is given (feedback empty).

@@ -27,7 +27,7 @@ test('waits until the holder is gone, and fails naming it when it never goes', a
 });
 
 test('a log that waited for another run is caught', () => {
-  assert.equal(waitedForLock(['Another Job Pilotto search is running (app or terminal): waiting for a scout run; waited 0 min so far…']), true);
+  assert.equal(waitedForLock(['Another Jobadabra search is running (app or terminal): waiting for a scout run; waited 0 min so far…']), true);
   assert.equal(waitedForLock(['Stopped by Jobadabra: no output for 10 s']), false);
 });
 

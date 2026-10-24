@@ -1,5 +1,5 @@
 // Always on: the user's own private GitHub repo runs the searches on a
-// schedule. Least privilege: Job Pilotto is a GitHub App the user installs on that one repository
+// schedule. Least privilege: Jobadabra is a GitHub App the user installs on that one repository
 // ("Only select repositories"), so the app can't see or touch any other repo. The user creates the repo
 // from the public starter template, installs the app on it, and approves a sign-in code; the app then
 // commits the schedule and search settings, and stores their keys as encrypted repository secrets. Each run executes the public
@@ -19,7 +19,7 @@ import {channelsOf} from './notify-channel.js';
 import {pinned, resolveEngineRepo} from './engine-repo.js';
 export {setEngineRef, resolveEngineRepo, currentEngineRepo, ENGINE_REPO} from './engine-repo.js';
 
-// The Job Pilotto GitHub App (public identifiers; device flow needs no client secret). Its permissions,
+// The Jobadabra GitHub App (public identifiers; device flow needs no client secret). Its permissions,
 // on the one repository it's installed on: Actions, Contents, Secrets, Variables and Workflows (write).
 export const CLIENT_ID = process.env.JOB_PILOTTO_GITHUB_CLIENT_ID || 'Iv23liEIBvK1hG0oejDr';
 export const APP_SLUG = process.env.JOB_PILOTTO_GITHUB_APP || 'job-pilotto';
@@ -333,7 +333,7 @@ export async function retiredWorkflows(api, repo, files) {
   for (const entry of Array.isArray(listed) ? listed : []) {   // a folder lists; anything else has nothing to retire
     if (entry.type !== 'file' || !/\.ya?ml$/.test(entry.name) || files[entry.path]) continue;
     const current = await api('GET', `/repos/${repo}/contents/${entry.path}`);
-    if (Buffer.from(current.content || '', 'base64').toString().startsWith('# Job Pilotto')) retired.push({path: entry.path, sha: current.sha});
+    if (Buffer.from(current.content || '', 'base64').toString().match(/^# (Jobadabra|Jobadabra)/)) retired.push({path: entry.path, sha: current.sha});
   }
   return retired;
 }

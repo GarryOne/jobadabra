@@ -86,7 +86,7 @@ class SearchSettingsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(s, 'CONFIG', Path(tmp)):
             for name in ('search', 'preferences'):
                 (Path(tmp) / f'{name}.json').write_text(json.dumps(FILES[name]))
-            old = s.render(s.load_cached(), show=s.readable_v1, intro='What Job Pilotto looks for.')
+            old = s.render(s.load_cached(), show=s.readable_v1, intro='What Jobadabra looks for.')
             # Untouched: rebuilt from the cache, so "site reliability" still matches anywhere.
             new = s.upgrade(Page(old), 'p')
             self.assertIn('- site reliability', new)

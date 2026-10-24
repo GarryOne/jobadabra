@@ -1,4 +1,4 @@
-// The browsers' own records say whether the Job Pilotto extension is installed (lib/extension-install.js): instant,
+// The browsers' own records say whether the Jobadabra extension is installed (lib/extension-install.js): instant,
 // and still true with Chrome closed. The unpacked extension's ID is Chrome's own hash of its path, which is what
 // lets the app open its options page without asking the browser anything.
 import assert from 'node:assert/strict';
@@ -21,10 +21,10 @@ const fake = (files, list = () => ['Default']) => ({
   read: at => { const key = Object.keys(files).find(k => at.endsWith(platforms(k))); if (!key) throw new Error(`no ${at}`); return files[key]; },
 });
 
-test('the Job Pilotto record in a browser profile is found; other extensions are not', () => {
+test('the Jobadabra record in a browser profile is found; other extensions are not', () => {
   const files = {
     'Default/Secure Preferences': prefs({
-      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Job Pilotto'),
+      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Jobadabra'),
       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb: record('Gemini in Chrome', {location: 5, path: '/Chrome.app/glic'}),
     }),
     'Profile 1/Secure Preferences': prefs({cccccccccccccccccccccccccccccccc: record('Something Else')}),
@@ -37,12 +37,12 @@ test('the Job Pilotto record in a browser profile is found; other extensions are
 });
 
 test('a turned-off extension is found and said to be off', () => {
-  const io = fake({'Default/Secure Preferences': prefs({aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Job Pilotto', {disable_reasons: [1]})})});
+  const io = fake({'Default/Secure Preferences': prefs({aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Jobadabra', {disable_reasons: [1]})})});
   assert.equal(ext.inProfile('/support/Google/Chrome', io)[0].enabled, false);
 });
 
 test('older browsers keep it in Preferences, which is read too', () => {
-  const io = fake({'Default/Preferences': prefs({aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Job Pilotto')})});
+  const io = fake({'Default/Preferences': prefs({aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Jobadabra')})});
   assert.equal(ext.inProfile('/support/Chromium', io).length, 1);
 });
 
@@ -50,8 +50,8 @@ test('every browser that has it is listed, and the copy loaded from our folder i
   const io = {
     exists: at => at === platforms('/support/Google/Chrome') || at === platforms('/support/BraveSoftware/Brave-Browser')
       || at.endsWith(platforms('/Default/Secure Preferences')),
-    read: at => prefs(at.includes('Brave') ? {bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb: record('Job Pilotto', {path: '/Users/x/Desktop/extension'})}
-      : {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Job Pilotto')}),
+    read: at => prefs(at.includes('Brave') ? {bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb: record('Jobadabra', {path: '/Users/x/Desktop/extension'})}
+      : {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Jobadabra')}),
   };
   const found = ext.installed({folder: '/app/extension', support: '/support', read: io.read, exists: io.exists,
     browsers: [{name: 'Google Chrome', dir: 'Google/Chrome', app: 'Google Chrome'},
@@ -121,7 +121,7 @@ test('the PC\'s profiles are read too: %LOCALAPPDATA%, one folder deeper than th
   const dir = path.win32.join(local, 'Google', 'Chrome', 'User Data');
   const io = {
     exists: at => at === dir || at.endsWith(path.win32.join('Default', 'Secure Preferences')),
-    read: () => prefs({aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Job Pilotto')}),
+    read: () => prefs({aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: record('Jobadabra')}),
   };
   const found = ext.installed({folder: '/app/extension', platform: 'win32', env: {LOCALAPPDATA: local}, browsers: [chrome], ...io});
   assert.deepEqual(found.map(entry => [entry.browser, entry.profile, entry.current]), [['Google Chrome', 'Default', true]]);

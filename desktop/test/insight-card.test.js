@@ -63,7 +63,7 @@ test('optional parts are drawn exactly as given, and only when complete', () => 
 test('another run\'s message is not an insight', () => {
   for (const other of ['📊 Weekly report\nQuiet week: 2 applications\nYou sent 2 applications.',
     '🔎 Source scout · checked 12 · 🆕 7 new sources\n1. Northwind AI · Ashby · quality 61',
-    '✈️ Job Pilotto · 🆕 0 new · top 10 of 24\n24 open · 5 🇨🇭',
+    '✈️ Jobadabra · 🆕 0 new · top 10 of 24\n24 open · 5 🇨🇭',
     'Insight sent: Salary — Huxley\'s role caps pay at EUR 100-150k/year.',
     '💡 Insight · Salary',  // a head with nothing under it is not a card
     '']) {

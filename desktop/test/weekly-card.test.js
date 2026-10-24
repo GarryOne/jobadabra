@@ -60,7 +60,7 @@ test('a wrapped summary is one paragraph', () => {
 test('another run\'s message is not a weekly report', () => {
   for (const other of ['💡 Insight · Timing\n6 of 7 replies arrived within 0-2 days\n• Days to first reply: 0,1,2',
     '🔎 Source scout · checked 12 · 🆕 7 new sources\n1. Northwind AI · Ashby · quality 61',
-    '✈️ Job Pilotto · 🆕 0 new · top 10 of 24\n24 open · 5 🇨🇭',
+    '✈️ Jobadabra · 🆕 0 new · top 10 of 24\n24 open · 5 🇨🇭',
     'Weekly report sent: 9 applications sent this week.',
     '📊 Weekly report',  // a head with nothing under it is not a card
     '']) {

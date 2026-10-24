@@ -1,4 +1,4 @@
-name: A form Job Pilotto couldn't fill
+name: A form Jobadabra couldn't fill
 description: An application form where a field stayed empty or took the wrong value
 labels: [form-report]   # not fill-failure: the daily fixer only takes those from the owner's app
 body:

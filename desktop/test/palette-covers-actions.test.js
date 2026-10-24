@@ -35,7 +35,7 @@ test('a button that starts a task an Actions card offers is not listed twice in 
   for (const [kind, ...selectors] of buttons) for (const selector of selectors) assert.ok(html.includes(`id="${selector.slice(1)}"`) || builtInJs.includes(`.id = '${selector.slice(1)}'`), `${kind}: ${selector} is not in the page`);
   assert.match(nav, /if \(node && !twins\.has\(node\)/);                         // button(view, id, …)
   assert.match(nav, /filter\(node => reachable\(node, section\) && !twins\.has\(node\)\)/);   // the Settings sweep (a section on a closed Profile tab too)
-  assert.match(nav, /if \(danger && buttons\.length === 1\) return;/);   // a section's sole danger button is its own entry ("Reset Job Pilotto" was listed twice)
+  assert.match(nav, /if \(danger && buttons\.length === 1\) return;/);   // a section's sole danger button is its own entry ("Reset Jobadabra" was listed twice)
 });
 
 // The class (owner, 6 Oct 2026: Run was turned off for Tailor CVs only, then for the other cards when asked again): every Run on an Actions card that starts a

@@ -1,4 +1,4 @@
-// Does the app's launcher find Microsoft Edge, and does Edge load the unpacked Job Pilotto extension? Run by .github/workflows/edge-check.yml on a Windows runner (Edge is preinstalled there).
+// Does the app's launcher find Microsoft Edge, and does Edge load the unpacked Jobadabra extension? Run by .github/workflows/edge-check.yml on a Windows runner (Edge is preinstalled there).
 // The launcher check must pass; whether branded Edge still honours --load-extension is reported, not enforced (Chrome 137+ stopped; Edge may have too).
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';

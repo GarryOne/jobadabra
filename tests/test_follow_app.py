@@ -118,7 +118,7 @@ class RunLockTests(unittest.TestCase):
             self.assertFalse(done.is_set())
         thread.join(3)
         self.assertTrue(done.is_set())
-        self.assertIn('Another Job Pilotto search is running (app or terminal): waiting for a daily scheduled run', out.getvalue())
+        self.assertIn('Another Jobadabra search is running (app or terminal): waiting for a daily scheduled run', out.getvalue())
 
     def test_a_run_gives_up_on_a_holder_that_never_lets_go(self):
         folder = tempfile.mkdtemp()

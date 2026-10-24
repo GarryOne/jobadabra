@@ -46,7 +46,7 @@ export async function backupNowStep(ctx) {
   execFileSync(tar(), ['-xzf', file, '-C', out]);
   const names = fs.readdirSync(out, {recursive: true}).map(slash);
   for (const left of ['keys.json', 'accounts.json']) if (names.some(name => name.split('/').pop() === left)) throw new Error(`the backup holds ${left}: keys must never be in it`);
-  if (!names.some(name => /(^|\/)manifest\.json$/.test(name))) throw new Error('the backup has no manifest: it is not a Job Pilotto export');
+  if (!names.some(name => /(^|\/)manifest\.json$/.test(name))) throw new Error('the backup has no manifest: it is not a Jobadabra export');
   const leaked = names.filter(name => fs.statSync(path.join(out, name)).isFile() && fs.readFileSync(path.join(out, name)).includes(MARKER));
   if (leaked.length) throw new Error(`a saved key's value is readable in the backup: ${leaked.join(', ')}`);
   fs.rmSync(out, {recursive: true, force: true});

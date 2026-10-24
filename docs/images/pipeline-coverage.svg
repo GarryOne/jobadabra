@@ -40,7 +40,7 @@
   <rect x="40" y="30" width="1520" height="130" rx="28" fill="url(#header)"/>
   <circle cx="111" cy="95" r="37" fill="#3B82F6"/>
   <path d="M93 99 L107 113 L132 77" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="170" y="88" class="sans title">Job Pilotto covers most of the pipeline</text>
+  <text x="170" y="88" class="sans title">Jobadabra covers most of the pipeline</text>
   <text x="172" y="126" class="sans subtitle">From discovering opportunities to learning what actually produces interviews and offers.</text>
 
   <text x="50" y="214" class="sans section">END-TO-END JOB SEARCH AUTOMATION</text>
@@ -176,5 +176,5 @@
   <text x="752" y="722" text-anchor="middle" class="sans small" fill="#1D4ED8">INSIGHTS → YOUR SETTINGS</text>
 
   <text x="50" y="782" class="sans" font-size="18" font-weight="620" fill="#334155">Discovery → scoring → kits → filling → <tspan fill="#EA580C" font-weight="760">your approval</tspan> → tracking → learning</text>
-  <text x="1550" y="782" text-anchor="end" class="sans" font-size="15" font-weight="560" fill="#64748B">Job Pilotto automates the work — you keep the decision.</text>
+  <text x="1550" y="782" text-anchor="end" class="sans" font-size="15" font-weight="560" fill="#64748B">Jobadabra automates the work — you keep the decision.</text>
 </svg>

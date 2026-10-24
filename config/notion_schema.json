@@ -1080,7 +1080,7 @@
     "NOTION_CRON_RUNS_DB": {
       "title": "Cronjob Runs",
       "icon": "🕰️",
-      "description": "One row per run of any Job Pilotto job (jobs check, Gmail check, prep kit, insight…), wherever it ran. Every run fills the core (when, kind, who started it, status, AI cost, summary); the other columns belong to one kind of run and stay empty on the rest (jobs check: feeds, new, changed…; Gmail check: emails, updates; one job's run: Application). Each AI step's cost and the log are on the run's page. Written by src/notion/cron_runs.py.",
+      "description": "One row per run of any Jobadabra job (jobs check, Gmail check, prep kit, insight…), wherever it ran. Every run fills the core (when, kind, who started it, status, AI cost, summary); the other columns belong to one kind of run and stay empty on the rest (jobs check: feeds, new, changed…; Gmail check: emails, updates; one job's run: Application). Each AI step's cost and the log are on the run's page. Written by src/notion/cron_runs.py.",
       "columns": {
         "AI cost (USD)": {
           "type": "number",

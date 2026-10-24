@@ -1,5 +1,5 @@
 /* global document, window */
-// Launch the real Job Pilotto app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
+// Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
 import {journey} from './journey.mjs';
 import {ownerGuardEnv} from './owner-guard-env.mjs';

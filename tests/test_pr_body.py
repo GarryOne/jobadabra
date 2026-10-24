@@ -97,7 +97,12 @@ class PrBodyTest(unittest.TestCase):
                 self.assertEqual(run(ok + images + '\n**Design checks**\n' + '- [x] a\n' * 5 + '- [ ] b\n').returncode, 2, 'five ticked of six is refused')
                 images += '\n**Design checks**\n' + '- [x] checked\n' * 6
             self.assertEqual(run(ok + images).returncode, 0, screen)
-            self.assertEqual(run(ok + 'No screenshots: an API route, nothing drawn changed\n').returncode, 0, screen)
+            refused = run(ok + 'No screenshots: an API route, nothing drawn changed\n')
+            if screen.startswith(('web/public/', 'admin/')):
+                # A site page is always visible: "No screenshots" is not an answer for it (owner, 24 Oct 2026, jobadabra-web #74/#75).
+                self.assertEqual(refused.returncode, 2, screen); self.assertIn('is not allowed', refused.stderr)
+            else:
+                self.assertEqual(refused.returncode, 0, screen)
         git(self.repo, 'reset', '-q', '--hard', self.base)
         (self.repo / 'test').mkdir(parents=True, exist_ok=True); (self.repo / 'test' / 'a.test.js').write_text('x\n')
         git(self.repo, 'add', '.'); git(self.repo, 'commit', '-qm', 'Change a test')

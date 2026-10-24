@@ -7,6 +7,7 @@ Finished: kind is then its Mode, where comes from its Run URL and Trigger. `list
 and log come with `get()`). Guarded by tests/test_store_notion.py (the store contract on the Notion stand-in).
 """
 from datetime import datetime, timezone
+import json
 import re
 
 from ..notion.cron_report import _para, _result_paras
@@ -29,6 +30,7 @@ PROGRESS_LINES = 40     # the last lines kept in the Progress column
 LOG_CHUNK = 25          # log lines per code block, as src/notion/cron_report.py writes them
 RESULT = 'Result'
 LOG = 'Technical log'
+DETAILS = 'Run details'   # a toggle of code blocks holding the details JSON (src/run_details.py)
 
 
 def _now():
@@ -43,7 +45,7 @@ def _text(content, kind='paragraph'):
 SECTIONS = re.compile(r'^#{1,3} ', re.M)
 
 
-def _body(report='', result='', log=''):
+def _body(report='', result='', log='', details=None):
     """The page blocks of a finished run, in today's shapes: the report (Markdown with its sections, "### Report",
     "### Emails read", "### Stages", rendered by notion_blocks; or bare "- line" bullets), "Result" with the message (one
     paragraph a line, the end merged past RESULT_PARAS as src/notion/cron_report.py writes it), the Technical log toggle."""
@@ -64,6 +66,12 @@ def _body(report='', result='', log=''):
             'rich_text': rows.write(f'{LOG} (last {len(lines)} lines)', 'rich_text')['rich_text'],
             'children': [{'object': 'block', 'type': 'code', 'code': {
                 'language': 'plain text', 'rich_text': rows.write(chunk, 'rich_text')['rich_text']}} for chunk in chunks]}})
+    if details:
+        text = json.dumps(details, ensure_ascii=False, separators=(',', ':'))
+        blocks.append({'object': 'block', 'type': 'toggle', 'toggle': {
+            'rich_text': rows.write(DETAILS, 'rich_text')['rich_text'],
+            'children': [{'object': 'block', 'type': 'code', 'code': {
+                'language': 'json', 'rich_text': rows.write(text[i:i + 1900], 'rich_text')['rich_text']}} for i in range(0, len(text), 1900)]}})
     return blocks
 
 
@@ -118,9 +126,15 @@ class NotionCronRuns:
                                   if b['type'] == 'bulleted_list_item')
         result = [] if at is None else [rows.plain_text(b['paragraph']['rich_text']) for b in blocks[at + 1:] if b['type'] == 'paragraph']
         toggle = next((b for b in blocks if b['type'] == 'toggle' and rows.plain_text(b['toggle']['rich_text']).startswith(LOG)), None)
+        saved = next((b for b in blocks if b['type'] == 'toggle' and rows.plain_text(b['toggle']['rich_text']) == DETAILS), None)
         log = [] if not toggle else [rows.plain_text(code['code']['rich_text']) for code in self.tracker._children(toggle['id'])
                                      if code['type'] == 'code']
-        return {'report': report_md, 'result': '\n'.join(result), 'log': '\n'.join(log)}
+        try:
+            details = json.loads(''.join(rows.plain_text(code['code']['rich_text']) for code in self.tracker._children(saved['id'])
+                                         if code['type'] == 'code')) if saved else ''
+        except ValueError:
+            details = ''
+        return {'report': report_md, 'result': '\n'.join(result), 'log': '\n'.join(log), 'details': details}
 
     def _page(self, run_id):
         try:
@@ -153,15 +167,15 @@ class NotionCronRuns:
         if props:
             self.tracker.update_page(run_id, self._writable(props))
 
-    def finish(self, run_id, status, summary='', report='', result='', log='', stats=None, title=''):
+    def finish(self, run_id, status, summary='', report='', result='', log='', stats=None, title='', details=None):
         record = self._record(self._page(run_id))
         props = {**self._properties({'status': status, 'summary': summary, 'finished_at': _now()}, stats),
                  **(self._properties({'title': title}) if title else self._title(record['kind'], record['started_at'], summary))}
         page = self.tracker.update_page(run_id, self._writable(props))
-        blocks = _body(report, result, log)
+        blocks = _body(report, result, log, details)
         for start in range(0, len(blocks), 100):
             self.tracker.append_blocks(run_id, blocks[start:start + 100])
-        return self._record(page, {'report': report, 'result': result, 'log': log})
+        return self._record(page, {'report': report, 'result': result, 'log': log, 'details': details or ''})
 
     def get(self, run_id):
         try:
@@ -186,13 +200,14 @@ class NotionCronRuns:
         if unknown:
             raise KeyError(f'not a field: {", ".join(sorted(unknown))}')
         body = {key: values.pop(key, '') or '' for key in ('report', 'result', 'log')}
+        details = values.pop('details', None)
         values.pop('id', None)
         stats = values.pop('stats', None) or {}
         values['started_at'] = values.get('started_at') or _now()
         props = {**self._title(values.get('kind', ''), values['started_at'], values.get('summary', '')),
                  **self._properties(values, stats)}  # the engine's title, when given
         page = self.tracker.create_page(self.database_id, self._writable(props))
-        blocks = _body(**body)
+        blocks = _body(**body, details=details)
         for start in range(0, len(blocks), 100):
             self.tracker.append_blocks(page['id'], blocks[start:start + 100])
         return self._record(page, body)

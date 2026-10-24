@@ -81,6 +81,7 @@ def search(args, stores=None):
                 crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
                 if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
                     crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()
+                run['funnel'] = crawl_funnel   # kept on the run's details too (src/run_details.py), not only in data/coverage.json (last crawl)
                 coverage.save(crawl_funnel)   # how much of the market the role keywords catch (Strategy page, and anonymous counts if reports are on)
                 # Paid per search, so only full crawls use it; off without SERPAPI_API_KEY.
                 if args.mode in ('scheduled', 'run') and google_jobs.api_key():

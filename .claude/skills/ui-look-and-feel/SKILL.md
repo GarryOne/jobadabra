@@ -117,6 +117,8 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
 - **Numbers big, labels small**: progress "0 / 30", funnel counts; a bar under it with the %.
 - **Emoji**: fine inside text the owner reads (Telegram style), but UI chrome uses line icons.
 
+- **A detail or report screen is built from the same parts as Focus and Jobs** (owner, 25 Oct 2026, Searches tab: "the most ugly and basic design I ever seen. Make it look cool, modern, with cards, with colors, with widgets"): `summaryTiles` for the figures, a `.card` per topic, `.bar` rows, pills and chips, tone on a row's left edge; never one `.data-table` per topic. Compare with `docs/ui/jobs.jpg` before the preview. Rule: docs/rules/desktop-ui.md.
+
 ## 4. States
 - **Loading**: skeleton cards in the page's final shape (`.skeleton` bars, shimmer), plus a small spinner and
   "Syncing …" next to Refresh. Never an empty page, and never an empty-state message while data is still loading.

@@ -445,9 +445,9 @@ class CronRuns(_Table):
         row = self._get(run_id)
         self._write({**row, 'stats': {**(row.get('stats') or {}), **_stats(stats or {})}})
 
-    def finish(self, run_id, status, summary='', report='', result='', log='', stats=None, title=''):
+    def finish(self, run_id, status, summary='', report='', result='', log='', stats=None, title='', details=None):
         return self._update(run_id, {'status': status, 'summary': summary, 'report': report, 'result': result,
-                                    'log': log, 'finished_at': _now(), **({'title': title} if title else {}),
+                                    'log': log, 'finished_at': _now(), **({'title': title} if title else {}), **({'details': details} if details else {}),
                                     **({'stats': {**(self._get(run_id).get('stats') or {}), **_stats(stats)}} if stats else {})})
 
     def get(self, run_id):

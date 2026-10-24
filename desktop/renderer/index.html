@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="actions-layout.css">
 <link rel="stylesheet" href="magic.css">
 <link rel="stylesheet" href="find-card.css">
+<link rel="stylesheet" href="reports-searches.css">
 <link rel="stylesheet" href="activity-drawer.css">
 <link rel="stylesheet" href="setup-steps.css">
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
@@ -658,7 +659,7 @@
 
     <div class="view" data-view="reports" hidden>
       <header class="view-head jobs-head">
-        <div><h1>Reports</h1><p class="muted subtitle">Your weekly reports, insights, funnel and form fills.</p></div>
+        <div><h1>Reports</h1><p class="muted subtitle">Your weekly reports, insights, funnel, form fills and every search in full.</p></div>
         <span class="muted small" id="reports-state"></span>
       </header>
       <div class="tabs" role="tablist" aria-label="Reports">
@@ -666,6 +667,7 @@
         <button role="tab" type="button" data-reports-tab="insights">Insights</button>
         <button role="tab" type="button" data-reports-tab="funnel">Funnel</button>
         <button role="tab" type="button" data-reports-tab="fills">Form fills</button>
+        <button role="tab" type="button" data-reports-tab="searches">Searches</button>
       </div>
       <div class="card" id="reports-body"></div>
     </div>

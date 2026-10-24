@@ -38,7 +38,7 @@ contextBridge.exposeInMainWorld('pilot', {
   employers: call('employers'),
   employerActive: call('employerActive'),
   employersFromPage: call('employersFromPage'),
-  formFills: call('formFills'),
+  formFills: call('formFills'), reportsSearches: call('reportsSearches'), reportsSearch: call('reportsSearch'),
   formFill: call('formFill'),
   storeState: call('storeState'), keepOnThisMac: call('keepOnThisMac'), moveToNotion: call('moveToNotion'),
   textSize: call('textSize'), setTextSize: call('setTextSize'), onZoomChanged: callback => ipcRenderer.on('zoomChanged', (_, value) => callback(value)),

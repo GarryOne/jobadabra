@@ -1,0 +1,302 @@
+[
+ {
+  "id": "r5",
+  "kind": "run",
+  "mode": "run",
+  "where": "mac",
+  "status": "OK",
+  "started_at": "2026-10-25T08:33:00+00:00",
+  "finished_at": null,
+  "summary": "0 new jobs",
+  "report": "",
+  "result": "",
+  "log": "Checked: Northwind Labs\nChecked: Harbor Robotics\nJob boards found: TechTree 112 job(s), 41 relevant\nNo new jobs since the last run; nothing sent.",
+  "progress": [],
+  "trigger": "Mac (you)",
+  "run_url": "",
+  "application": "",
+  "stats": {
+   "new_jobs": 0,
+   "duration_s": 186,
+   "feeds": 8,
+   "feed_errors": 0,
+   "ai_cost_usd": 0,
+   "billed_to": "Claude subscription",
+   "scored": 0
+  },
+  "title": "",
+  "log_id": "",
+  "details": {
+   "v": 1,
+   "steps": [
+    {
+     "label": "Reading employer pages",
+     "at_s": 2,
+     "secs": 112
+    },
+    {
+     "label": "Reading job boards",
+     "at_s": 114,
+     "secs": 41
+    },
+    {
+     "label": "Reading new jobs with AI",
+     "at_s": 155,
+     "secs": 20
+    }
+   ],
+   "jobs": {
+    "fetched": 3412,
+    "in_places": 388,
+    "matched": 41,
+    "title_hits": 50,
+    "elsewhere": 9,
+    "dropped": [
+     {
+      "filter": "senior",
+      "count": 14
+     },
+     {
+      "filter": "lead",
+      "count": 9
+     }
+    ],
+    "added": 0,
+    "changed": 1,
+    "expired": 2
+   },
+   "employers": {
+    "pending": 371,
+    "batch": 61,
+    "employers_checked": 8,
+    "feeds": 8,
+    "feed_errors": 0
+   },
+   "boards": {
+    "read": 2,
+    "refused_reads": 1,
+    "refused_stopped": 1,
+    "headless_reads": 1,
+    "left_to_open": 0,
+    "list": [
+     {
+      "name": "TechTree",
+      "jobs": 112,
+      "relevant": 41
+     },
+     {
+      "name": "Remote Roles EU",
+      "jobs": 64,
+      "relevant": 7
+     }
+    ]
+   },
+   "ai": {
+    "enrich": {
+     "model": "claude-haiku-5-5",
+     "done": 0,
+     "tokens_in": 0,
+     "tokens_out": 0
+    },
+    "score": {
+     "model": "claude-sonnet-5-5",
+     "done": 0,
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "usd": 0
+    }
+   },
+   "scoring": {
+    "done": 0,
+    "pending": 0
+   },
+   "problems": []
+  }
+ },
+ {
+  "id": "r4",
+  "kind": "scheduled",
+  "mode": "scheduled",
+  "where": "cloud",
+  "status": "Warnings",
+  "started_at": "2026-10-24T09:15:00+00:00",
+  "finished_at": null,
+  "summary": "11 new jobs",
+  "report": "",
+  "result": "",
+  "log": "Checked: Northwind Labs\nChecked: Harbor Robotics\nJob boards found: TechTree 112 job(s), 41 relevant\nNo new jobs since the last run; nothing sent.",
+  "progress": [],
+  "trigger": "Schedule",
+  "run_url": "",
+  "application": "",
+  "stats": {
+   "new_jobs": 11,
+   "duration_s": 240,
+   "feeds": 8,
+   "feed_errors": 1,
+   "ai_cost_usd": 0,
+   "billed_to": "Claude subscription",
+   "scored": 11
+  },
+  "title": "",
+  "log_id": "",
+  "details": {
+   "v": 1,
+   "steps": [
+    {
+     "label": "Reading employer pages",
+     "at_s": 2,
+     "secs": 112
+    },
+    {
+     "label": "Reading job boards",
+     "at_s": 114,
+     "secs": 41
+    },
+    {
+     "label": "Reading new jobs with AI",
+     "at_s": 155,
+     "secs": 20
+    }
+   ],
+   "jobs": {
+    "fetched": 5120,
+    "in_places": 602,
+    "matched": 77,
+    "title_hits": 50,
+    "elsewhere": 9,
+    "dropped": [
+     {
+      "filter": "senior",
+      "count": 14
+     },
+     {
+      "filter": "lead",
+      "count": 9
+     }
+    ],
+    "added": 11,
+    "changed": 1,
+    "expired": 2
+   },
+   "employers": {
+    "pending": 371,
+    "batch": 61,
+    "employers_checked": 24,
+    "feeds": 24,
+    "feed_errors": 1
+   },
+   "boards": {
+    "read": 2,
+    "refused_reads": 1,
+    "refused_stopped": 1,
+    "headless_reads": 1,
+    "left_to_open": 0,
+    "list": [
+     {
+      "name": "TechTree",
+      "jobs": 112,
+      "relevant": 41
+     },
+     {
+      "name": "Remote Roles EU",
+      "jobs": 64,
+      "relevant": 7
+     }
+    ]
+   },
+   "ai": {
+    "enrich": {
+     "model": "claude-haiku-5-5",
+     "done": 0,
+     "tokens_in": 0,
+     "tokens_out": 0
+    },
+    "score": {
+     "model": "claude-sonnet-5-5",
+     "done": 0,
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "usd": 0
+    }
+   },
+   "scoring": {
+    "done": 0,
+    "pending": 0
+   },
+   "problems": [
+    "Employer feed Fabrikam failed: HTTP 503"
+   ]
+  }
+ },
+ {
+  "id": "r3",
+  "kind": "scheduled",
+  "mode": "scheduled",
+  "where": "github",
+  "status": "OK",
+  "started_at": "2026-10-23T06:00:00+00:00",
+  "finished_at": null,
+  "summary": "3 new jobs",
+  "report": "",
+  "result": "",
+  "log": "",
+  "progress": [],
+  "trigger": "Schedule",
+  "run_url": "",
+  "application": "",
+  "stats": {
+   "new_jobs": 3,
+   "duration_s": 300,
+   "feeds": 40,
+   "feed_errors": 0,
+   "ai_cost_usd": 0,
+   "billed_to": "Claude subscription",
+   "scored": 3
+  },
+  "title": "",
+  "log_id": "",
+  "details": null
+ },
+ {
+  "id": "r2",
+  "kind": "run",
+  "mode": "run",
+  "where": "mac",
+  "status": "Failed",
+  "started_at": "2026-10-22T18:40:00+00:00",
+  "finished_at": null,
+  "summary": "0 new jobs",
+  "report": "",
+  "result": "",
+  "log": "Stopped.",
+  "progress": [],
+  "trigger": "Mac (you)",
+  "run_url": "",
+  "application": "",
+  "stats": {
+   "new_jobs": 0,
+   "duration_s": 31,
+   "feeds": 8,
+   "feed_errors": 0,
+   "ai_cost_usd": 0,
+   "billed_to": "Claude subscription",
+   "scored": 0
+  },
+  "title": "",
+  "log_id": "",
+  "details": {
+   "v": 1,
+   "steps": [
+    {
+     "label": "Reading employer pages",
+     "at_s": 1,
+     "secs": 30
+    }
+   ],
+   "problems": [
+    "Stopped by you"
+   ]
+  }
+ }
+]

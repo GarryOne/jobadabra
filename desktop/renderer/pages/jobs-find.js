@@ -70,9 +70,9 @@ function draw(model) {
     const live = Object.assign(el('details', 'find-live'), {open: liveOpen});
     live.append(el('summary', '', 'Live updates'), lines);
     live.addEventListener('toggle', () => { liveOpen = live.open; });
-    const steps = el('div', 'find-steps-row');
-    steps.append(chips);
-    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps, live);
+    const steps = el('div', 'find-steps-row');   // the chips, with the fold's label at the right of the same row; the lines open below it
+    steps.append(chips, live);
+    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
   } else if (model.state === 'done') {
     card.replaceChildren(findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true}));
   } else if (model.state === 'failed') {

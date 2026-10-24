@@ -20,3 +20,18 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 /* The run card's one headline number in a rounded box, like every card (owner, 24 Oct 2026). */
 .run-card-top { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
 .run-card-top > .run-card-stats { border-bottom: 0; }
+/* The Find jobs card head (owner, 24 Oct 2026): spinner, title, a green "+N added" pill, "This search" at the right. */
+.find-head { display: flex; align-items: center; gap: var(--sp-3); }
+.find-title { margin: 0; font-size: var(--fs-card-title, 1.125rem); }
+.find-scope { margin-left: auto; }
+.find-lead { margin: var(--sp-1) 0 var(--sp-3); }
+.find-step .icon { width: 1em; height: 1em; margin-right: var(--sp-1); }
+/* The steps row: the chips, with the "Live updates" fold's label at the right of the same row (no line of its own, no box when folded); the lines open below it. */
+.find-steps-row { position: relative; margin-top: var(--sp-3); padding-right: 9rem; }
+.find-steps-row .chip-row { margin: 0; min-height: var(--sp-6); align-items: center; }
+.find-live { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+.find-live > summary { position: absolute; top: 0; right: 0; min-height: var(--sp-6); display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; color: var(--signal); font-size: var(--fs-sm); list-style: none; }
+.find-live > summary::-webkit-details-marker { display: none; }
+.find-live > summary::after { content: ""; width: .5em; height: .5em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
+.find-live[open] > summary::after { transform: rotate(-135deg); }
+.find-live[open] > .run-card-rows { margin-top: var(--sp-3); }

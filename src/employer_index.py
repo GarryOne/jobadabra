@@ -82,6 +82,11 @@ def clean_boards(items):
     return out[:30]
 
 
+def clean_sites(items):
+    """The facts about sites the pool serves (src/sources/visits_jobpages.py pool_facts, src/ai/board_ideas.py served): dicts with a host and a kind, kept as served."""
+    return [item for item in items if isinstance(item, dict) and isinstance(item.get('host'), str) and isinstance(item.get('kind'), str)][:3000] if isinstance(items, list) else []
+
+
 SPECIFIC = ('families', 'metros', 'roles', 'countries')   # the most telling label first: a photographer's family says more than "Europe"
 
 
@@ -191,6 +196,7 @@ def _read(cache):
         data = json.loads(cache.read_text())
         return {'fetched': data.get('fetched'), 'etag': data.get('etag'), 'feeds': clean(data.get('feeds')),
                 'install': data.get('install'), 'regions': data.get('regions') or [], 'nofeed': clean_nofeed(data.get('nofeed')), 'boards': clean_boards(data.get('boards')),
+                'sites': clean_sites(data.get('sites')),
                 'generated': data.get('generated') if isinstance(data.get('generated'), str) else None}
     except (OSError, ValueError, AttributeError):
         return None
@@ -251,18 +257,18 @@ def load(cache=None, url=None, get=_get, now=None, install_id=None, retry_wait=N
             try:
                 status, body, etag = get(url, headers)
                 if status == 304 and stored:
-                    feeds, etag, dead, boards = stored['feeds'], stored['etag'] or etag, stored.get('nofeed') or [], stored.get('boards') or []
+                    feeds, etag, dead, boards, sites = stored['feeds'], stored['etag'] or etag, stored.get('nofeed') or [], stored.get('boards') or [], stored.get('sites') or []
                     generated = stored.get('generated')
                 else:
                     parsed = json.loads(body)
-                    feeds, dead, boards = clean(parsed.get('feeds')), clean_nofeed(parsed.get('nofeed')), clean_boards(parsed.get('boards'))
+                    feeds, dead, boards, sites = clean(parsed.get('feeds')), clean_nofeed(parsed.get('nofeed')), clean_boards(parsed.get('boards')), clean_sites(parsed.get('sites'))
                     generated = parsed.get('generated') if isinstance(parsed.get('generated'), str) else None
                 break
             except Exception:  # noqa: BLE001 — once more after a short wait, then the outer handler decides
                 if attempt == 2:
                     raise
                 time.sleep(retry_wait)
-        entry = {'fetched': now.isoformat(timespec='seconds'), 'etag': etag, 'install': install_id, 'regions': regions, 'feeds': feeds, 'nofeed': dead, 'boards': boards, 'generated': generated}
+        entry = {'fetched': now.isoformat(timespec='seconds'), 'etag': etag, 'install': install_id, 'regions': regions, 'feeds': feeds, 'nofeed': dead, 'boards': boards, 'sites': sites, 'generated': generated}
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(entry, indent=1, ensure_ascii=False) + '\n')
         return feeds

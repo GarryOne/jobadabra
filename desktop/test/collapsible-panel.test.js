@@ -29,6 +29,7 @@ const CHEVRON_FILES = {
   'pages/application-answers.js': 'toggleOnBar',
   'pages/activity-mail.js': 'the fold is one full-width button',
   'interview-insight.js': 'the bar folds, the arrow bubbles',
+  'pages/jobs-find.js': 'Live updates: one button, the label and the arrow toggle together',
   'pages/jobs-fit.js': 'Collapse button, not a fold bar',
   'pages/jobs-render.js': 'the fit cell opens the breakdown',
   'pages/session-next-step.js': 'a link line, not a fold',

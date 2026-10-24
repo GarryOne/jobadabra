@@ -1,0 +1,13 @@
+{
+ "id": "e1764-log-open-watched",
+ "expect": "false-positive",
+ "cause": "by-design",
+ "note": "#1764: a log open while a run streams stays open when the run stops (cardstates pins it)",
+ "view": "activity-run-failed",
+ "kind": "consistency",
+ "severity": "medium",
+ "source": "ai-review",
+ "title": "Technical log open on a stopped run",
+ "detail": "In the Find jobs detail pane the Technical log is expanded although the run is Stopped, not live. It repeats the reason already given in the amber card.",
+ "impact": ""
+}

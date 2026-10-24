@@ -131,3 +131,7 @@ test('the shape rules say what they dropped and why: malformed, no stated impact
   assert.deepEqual(kept.map(row => row.title), ['T1', 'T3', 'T4', 'T5']);
   assert.deepEqual(dropped.map(row => [row.title, row.why]), [['T2', 'no stated impact'], ['Bad', 'malformed'], ['T6', 'over 6 on one page'], ['T7', 'over 6 on one page']]);
 });
+
+test('the reviewer is told the test-mode and by-design states of #1789-#1791, #1764 and #1730 are not findings', () => {
+  for (const words of [/end-to-end journey/, /Technical log that stays open/, /No search yet/]) assert.match(SYSTEM, words);
+});

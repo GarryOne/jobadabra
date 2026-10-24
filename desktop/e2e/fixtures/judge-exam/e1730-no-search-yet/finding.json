@@ -1,0 +1,13 @@
+{
+ "id": "e1730-no-search-yet",
+ "expect": "false-positive",
+ "cause": "by-design",
+ "note": "#1730: 'No search yet' names this install's own searches, not the applications in Notion",
+ "view": "focus",
+ "kind": "wrong-result",
+ "severity": "medium",
+ "source": "ai-review",
+ "title": "\"No search yet\" contradicts the active search shown",
+ "detail": "The bottom status bar says \"No search yet. Click 'Find jobs' on Jobs to start one.\" while Up next lists applications and kits ready to review.",
+ "impact": ""
+}

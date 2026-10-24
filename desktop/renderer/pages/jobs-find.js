@@ -66,16 +66,13 @@ function draw(model) {
     }));
     const lines = el('ul', 'run-card-rows');
     lines.append(...liveRows(model.lines));
-    lines.hidden = !liveOpen;
-    // The live updates fold (owner, 24 Oct 2026): open by default, and the choice survives the card's redraws.
-    const toggle = Object.assign(el('button', 'link find-activity', 'Live updates '), {type: 'button'});
-    toggle.append(icon('chevron'));
-    toggle.setAttribute('aria-expanded', String(liveOpen));
-    toggle.classList.toggle('is-open', liveOpen);
-    toggle.addEventListener('click', () => { liveOpen = !liveOpen; lines.hidden = !liveOpen; toggle.setAttribute('aria-expanded', String(liveOpen)); toggle.classList.toggle('is-open', liveOpen); });
+    // The live updates fold (owner, 24 Oct 2026): a native <details>, open by default; the choice survives the card's redraws.
+    const live = Object.assign(el('details', 'find-live'), {open: liveOpen});
+    live.append(el('summary', '', 'Live updates'), lines);
+    live.addEventListener('toggle', () => { liveOpen = live.open; });
     const steps = el('div', 'find-steps-row');
-    steps.append(chips, toggle);
-    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps, lines);
+    steps.append(chips);
+    card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps, live);
   } else if (model.state === 'done') {
     card.replaceChildren(findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true}));
   } else if (model.state === 'failed') {

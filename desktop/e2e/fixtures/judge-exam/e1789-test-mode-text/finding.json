@@ -1,0 +1,13 @@
+{
+ "id": "e1789-test-mode-text",
+ "expect": "false-positive",
+ "cause": "by-design",
+ "note": "#1789-#1791: 'Not in the end-to-end journey' is the Ready to send card's reason in a test run only",
+ "view": "actions-result-mail",
+ "kind": "error-shown",
+ "severity": "medium",
+ "source": "ai-review",
+ "title": "Ready to send shows internal test wording",
+ "detail": "The 'Ready to send' card shows a 'Not available' badge with 'Not in the end-to-end journey: it never reaches our server.' This is internal jargon, and 'Try again' is offered.",
+ "impact": ""
+}

@@ -1,0 +1,9 @@
+  load();
+}
+// The status bar's last finished state, kept on this Mac: shown the moment the window opens, instead of
+// "No search yet" until the run history has been read (from Notion). A running state is never kept.
+const STATUS_KEPT = 'statusBar';
+export function keepStatusBar() {
+  const kept = {state: $('activity').dataset.state, title: $('activity-title').textContent,
+    step: $('activity-step').textContent, meta: $('activity-meta').textContent};
+  try { localStorage.setItem(STATUS_KEPT, JSON.stringify(kept)); } catch {}

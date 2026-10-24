@@ -1,0 +1,10 @@
+  // The technical log, in the same place on every run (owner, 6 Oct 2026): open while a run streams here; folded for every finished
+  // run (its box or card says what happened, "View technical log" opens it); a run that finishes while you watch keeps what you chose.
+  const streamLocal = !!run?.live && run?.where !== 'github';
+  const noLog = !!run && !run.live && !lines.length;
+  if (run && $('activity-log').dataset.for !== String(run.id)) {
+    $('activity-log').dataset.for = String(run.id);
+    $('activity-log').open = streamLocal;
+  }
+  if (noLog) $('activity-log').open = false;
+  $('activity-log').classList.toggle('is-empty', noLog);   // the same row, "No log available", nothing to open

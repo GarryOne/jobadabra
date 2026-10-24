@@ -1,0 +1,6 @@
+// -> {ok: true, batch, jobs} or {ok: false, why}.
+export async function status(storage, {now = Date.now, ...options} = {}) {
+  if (siteOffForUser()) return {ok: false, why: `Not in ${siteOffReason()}: it never reaches our server.`};
+  if (!ownerSecret(storage)) return {ok: false, why: 'Only on the owner\'s install while it is tested.'};
+  const key = await keyFor(storage, options);
+  if (!key) {

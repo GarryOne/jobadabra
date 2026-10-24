@@ -259,3 +259,13 @@ test('jobs-view.js holds no tech word list', () => {
   const source = fs.readFileSync(new URL('../renderer/jobs-view.js', import.meta.url), 'utf8');
   for (const word of ['Observability', 'Kubernetes', 'Terraform', 'OpenTelemetry', 'DevOps']) assert.ok(!source.includes(word), word);
 });
+
+test('In conversation starts folded as one line; a saved open choice unfolds it', async () => {
+  const {talkingBar, talkingStartsOpen} = await import('../renderer/jobs-view.js');
+  assert.equal(talkingStartsOpen(null), false);
+  assert.equal(talkingStartsOpen('0'), false);
+  assert.equal(talkingStartsOpen('1'), true);
+  const talking = [{stage: 'Screening', source: 'Job Pilotto app'}, {stage: 'Recruiter lead', source: 'Gmail'}];
+  assert.deepEqual(talkingBar(talking, false), {title: '2 in conversation', detail: ''});
+  assert.deepEqual(talkingBar(talking, true), {title: 'In conversation', detail: '2 active · 1 inbound · 1 outbound'});
+});

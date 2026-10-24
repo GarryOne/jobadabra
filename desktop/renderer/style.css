@@ -1178,6 +1178,7 @@ main { min-width: 0; }
 .jobs-talking > summary h2 { font-size: var(--fs-lg); margin: 0; }
 .jobs-talking > summary .muted { margin-left: auto; }
 .jobs-talking[open] > summary { margin-bottom: var(--sp-3); }
+.jobs-talking:not([open]) { padding-block: var(--sp-3); }  /* folded: one slim line, the job list comes up higher */
 .jobs-talking .focus-item { cursor: pointer; }
 .jobs-talking .focus-item:hover, .jobs-talking .focus-item:focus-visible { border-color: var(--line-strong); border-left-color: var(--info); }
 /* Skeleton placeholders while Focus loads */

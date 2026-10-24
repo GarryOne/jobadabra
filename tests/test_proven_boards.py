@@ -101,11 +101,24 @@ class HistoryTests(Fixture):
 
 
 class ShareTests(Fixture):
+    def setUp(self):
+        super().setUp()
+        for patch in (mock.patch.object(feeds, 'wanted_location', lambda j: j['location'] in ('Amsterdam', 'Remote')),
+                      mock.patch.object(feeds, 'in_my_place', lambda j: j['location'] == 'Amsterdam')):
+            patch.start()
+            self.addCleanup(patch.stop)
+
     def test_a_board_fact_carries_what_the_board_gave_this_search(self):
-        self.search_run(0, {'b1.example': [job('Controller', 'Amsterdam', 1)]}, boards=[board(1), board(2)])
+        self.search_run(0, {'b1.example': [job('Controller', 'Amsterdam', 1), job('Controller', 'Remote', 2)]}, boards=[board(1), board(2)])
+        self.db.execute("INSERT INTO companies (id, name, updated_at) VALUES (1, 'Acme', ?)", (START.isoformat(),))
+        self.db.execute("INSERT INTO sources (id, name, kind) VALUES (1, 'Job boards found', 'job board')")
+        for n, place in ((1, 'Amsterdam'), (2, 'Remote')):   # the two jobs the board listed, saved
+            self.db.execute('INSERT INTO jobs (id, canonical_key, source_id, company_id, title, url, location, first_seen_at, last_seen_at, state) '
+                            "VALUES (?, ?, 1, 1, 'Controller', ?, ?, ?, ?, 'open')", (n, f'k{n}', f'https://b1.example/job/Controller{place}{n}', place, START.isoformat(), START.isoformat()))
+        source_yield.run(self.db, (START + timedelta(hours=1)).isoformat(timespec='seconds'))
         facts = {fact['host']: fact for fact in contribute.site_facts(db=self.db) if fact['kind'] == 'board'}
         self.assertEqual(facts['b1.example']['board'], {'countries': ['nl']})
-        self.assertEqual(facts['b1.example']['yield'], {'in_places': 1, 'fit70': 0})
+        self.assertEqual(facts['b1.example']['yield'], {'in_places': 1, 'fit70': 0}, 'the remote job is in your places for you but is not shared as local')
         self.assertNotIn('b2.example', facts, 'a board that listed nothing is not a fact')
         self.assertNotIn('yield', contribute.site_facts()[0], 'no job cache, no counts')
 

@@ -98,12 +98,15 @@ def search(args, stores=None):
                     from . import features
                     from .ai import engine
                     if features.enabled('job_alerts') and engine.ready():
-                        from .sources import google as google_api, job_alerts
+                        from .sources import google as google_api, google_scopes, job_alerts
                         gmail = google_api.Google.from_env()
                         if gmail and (gmail.scopes is None or 'gmail' in gmail.scopes):   # Gmail left unticked: no alert emails to read
-                            alerts = job_alerts.scan(feed_db, gmail, engine.client(action='mail'))
-                            report['jobs'] += alerts['jobs']
-                            report['sources'] += alerts['sources']
+                            try:
+                                alerts = job_alerts.scan(feed_db, gmail, engine.client(action='mail'))
+                                report['jobs'] += alerts['jobs']
+                                report['sources'] += alerts['sources']
+                            except google_scopes.MissingScope:   # an older sign-in without Gmail: learned now, the crawl goes on without alert emails
+                                pass
             from .ai import cost as ai_cost
             if ai_cost.SIDE:   # careers pages, link picks and alert emails read with AI during this crawl: part of the run's AI cost
                 run['sources'] = dict(ai_cost.SIDE)

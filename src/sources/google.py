@@ -21,6 +21,7 @@ Usage:
 """
 import argparse
 import base64
+import contextlib
 import hashlib
 import html
 import http.server
@@ -75,14 +76,23 @@ class Google:
     scopes = None   # the parts the user allowed; None = unknown, all assumed (an object made without __init__, as some tests do)
 
     def __init__(self, client_id, client_secret, refresh_token, opener=urllib.request.urlopen, scopes=None):
-        self.client_id, self.client_secret, self.refresh_token = client_id, client_secret, refresh_token
-        self.opener, self._token = opener, None
+        self.client_id, self.client_secret, self.refresh_token, self.opener, self._token = client_id, client_secret, refresh_token, opener, None
         self.scopes = scopes   # the parts the user allowed (google_scopes.GMAIL, CALENDAR); None = unknown, all assumed
 
     def need(self, part):
         """Raise the named MissingScope before any request when the user left this part unticked."""
         if self.scopes is not None and part not in self.scopes:
             raise MissingScope(part)
+
+    def learn_missing(self, part):
+        """Google refused this part: remember it (here and in the secret store) so the next check skips it before any request."""
+        left = google_scopes.without(self.scopes, part)
+        if left is None:
+            return
+        self.scopes = left
+        if not os.getenv('GOOGLE_SCOPES'):   # CI keeps its own secret; this computer's store is the one to update
+            with contextlib.suppress(Exception):   # a convenience: the refusal is reported either way
+                secret_store.put(google_scopes.SCOPES_SERVICE, ' '.join(left))
 
     @classmethod
     def from_env(cls):
@@ -113,13 +123,17 @@ class Google:
         except urllib.error.HTTPError as error:
             part = google_scopes.part_of_refusal(url, error.code, error.read().decode(errors='replace'))
             if part:   # a sign-in saved before the granted parts were kept: Google's own "insufficient scope" says which part is missing
+                self.learn_missing(part)
                 raise MissingScope(part) from error
             raise
 
     def account_email(self):
         """The signed-in address: Gmail's profile, or the calendar's own id when only Calendar was allowed."""
         if self.scopes is None or google_scopes.GMAIL in self.scopes:
-            return self.profile()['emailAddress']
+            try:
+                return self.profile()['emailAddress']
+            except MissingScope:   # an older sign-in without Gmail: learned just now, Calendar names the account
+                pass
         self.need(google_scopes.CALENDAR)
         return self.get('https://www.googleapis.com/calendar/v3/calendars/primary').get('id', '')
 

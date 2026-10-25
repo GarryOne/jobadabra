@@ -16,7 +16,7 @@ NOT_SCANNED = re.compile(
 # Kept names: a line is allowed when it matches one of these.
 KEPT = re.compile('|'.join([
     r"Application Support|APPDATA|AppData|/ 'Job Pilotto'|\\Job Pilotto|/Job Pilotto\b|Job Pilotto Safe Storage",  # the real data folder, the Keychain item
-    r"Job Pilotto\.app|quit app \"Job Pilotto\"|productName|shortcutName|\"title\": \"Job Pilotto \$\{version\}\"",  # the bundle's file name (the updater swaps it)
+    r"Job Pilotto Self-Signed|Job Pilotto\.app|quit app \"Job Pilotto\"|productName|shortcutName|\"title\": \"Job Pilotto \$\{version\}\"",  # the bundle's file name (the updater swaps it)
     r"Job Pilotto (QA|Brain|2\b|\(<old workspace>\)|Backups|backup|\(live test\)|Live[ -]Test|– Live Test|Live-Test)|- mac -|archived 28 Sep",  # owner-only names, old Notion page names
     r"'Job Pilotto app'|\"Job Pilotto app\"|Job Pilotto app'",                    # the event source stored in users' rows
     r"manifest\??\.app|app: 'Job Pilotto'|\[NAME, 'Job Pilotto'\]|!== 'Job Pilotto'|=== 'Job Pilotto'|missing: \['Job Pilotto'\]|LEGACY_NAME",  # old installs recognised

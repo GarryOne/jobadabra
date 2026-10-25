@@ -290,7 +290,7 @@ jobs:
         run: |
           npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
           npm run build -- -c.buildVersion="${{ github.run_number }}"   # CFBundleVersion = the release build number
-          codesign -dvv dist/mac-arm64/*.app 2>&1 | grep -q "Authority=Jobadabra Self-Signed" \
+          codesign -dvv dist/mac-arm64/*.app 2>&1 | grep -q "Authority=Job Pilotto Self-Signed" \
             || { echo "::error::The app isn't signed with the release certificate"; exit 1; }
       # Smoke tests only in beta mode (the nightly, a beta by hand: owner, 10 Oct 2026); a "Build only" run is compile + unit tests.
       - name: Smoke test · the built app (bundled Python, Keychain, signature, the binary, the Jobs screen)

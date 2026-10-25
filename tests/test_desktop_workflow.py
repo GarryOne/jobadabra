@@ -177,6 +177,15 @@ class DesktopWorkflowTest(unittest.TestCase):
         self.assertIn('node desktop/e2e/key-preflight.mjs', WORKFLOW.split('\n  ai-ready:\n')[1].split('\n  test-mac:')[0])
 
 
+    def test_the_signature_check_names_the_certificate_that_signs(self):
+        # 25 Oct 2026, beta 0.8.29: the rename changed this check to "Jobadabra Self-Signed" but the certificate in MAC_SIGN_P12 is still called
+        # "Job Pilotto Self-Signed" (a new certificate would make every Mac ask for Keychain access again), so the Mac build failed after compiling.
+        root = pathlib.Path(__file__).resolve().parent.parent
+        check = re.search(r'grep -q "Authority=([^"]+)"', (root / '.github/workflows/desktop.yml').read_text()).group(1)
+        self.assertEqual(check, 'Job Pilotto Self-Signed')
+        self.assertIn(f"const NAME = '{check}'", (root / 'desktop/scripts/sign.cjs').read_text())
+
+
 if __name__ == '__main__':
     unittest.main()
 

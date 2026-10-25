@@ -10,7 +10,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const NAME = 'Jobadabra Self-Signed';
+// The certificate's own name: kept on purpose, a new certificate would make every Mac ask for Keychain access again (guarded by tests/test_desktop_workflow.py).
+const NAME = 'Job Pilotto Self-Signed';
 
 // A throwaway keychain holding only the certificate, so codesign can use it without touching the login keychain.
 function withCertificate(p12Base64, password, sign) {

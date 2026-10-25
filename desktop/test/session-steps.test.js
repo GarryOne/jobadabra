@@ -20,9 +20,9 @@ test('a session\'s steps, for every state its card shows', () => {
   assert.equal(texts(sessionSteps({status: 'done'}, report, {submitted: true})).at(-1), 'done: Submitted · marked Applied');
 });
 
-test('the terminal is only for a Claude conversation with Claude help on; elsewhere the steps, and the terminal one click away', () => {
+test('the terminal is only for a Claude conversation with the takeover on (resumeOffered); elsewhere the steps, and the terminal one click away', () => {
   const page = fs.readFileSync(new URL('../renderer/pages/session-steps.js', import.meta.url), 'utf8');
-  assert.match(page, /export const terminalShown = item => \(claudeHelp\(\) && \(item\.kind \|\| 'claude'\) === 'claude'\) \|\| logAsked\.has\(item\.id\);/);
+  assert.match(page, /export const terminalShown = item => \(resumeOffered\(\) && \(item\.kind \|\| 'claude'\) === 'claude'\) \|\| logAsked\.has\(item\.id\);/);
   const log = fs.readFileSync(new URL('../renderer/pages/session-log.js', import.meta.url), 'utf8');
   assert.match(log, /show\(\$\('ss-log'\), terminalShown\(item\)\);/);
   assert.match(fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8'), /<ul class="activity-phases" id="ss-steps"><\/ul>/);   // Recent activity's step list, reused

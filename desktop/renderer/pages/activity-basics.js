@@ -2,7 +2,7 @@
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
 import {costText, dollars} from '../ai-cost.js';
-import {claudeHelp} from '../claude-help.js';
+import {resumeOffered} from '../claude-help.js';
 import {AI_BUSY, groupWarnings, humanError, limitedJobs, sentences} from '../run-warnings.js';
 import {aiLimitHead, failedOutcome, stoppedHead, deliveryHead, notConnectedHead, waitedHead, unsavedRun} from '../run-status.js';
 import {el} from '../components.js';
@@ -153,7 +153,7 @@ export function siteRow(site, live = true, since = '') {
   // A finished run keeps only what still makes sense: the site itself, or the extension check (not a running tab's actions).
   // A finished run's stopped site: Read with Claude beside Open in Chrome (= Open it myself), as the result card's row had them.
   const finishedMiss = !live && ['stopped', 'closed'].includes(site.state);
-  if (finishedMiss && site.url && claudeHelp() && !/no answer from the extension|did not answer/.test(site.words)) li.append(claudeReadButton(site, words));   // only with Claude help on (claude-help.js)
+  if (finishedMiss && site.url && resumeOffered() && !/no answer from the extension|did not answer/.test(site.words)) li.append(claudeReadButton(site, words));   // only with Claude help on (claude-help.js)
   const action = site.url && (finishedMiss && site.state === 'closed' ? ['Open in Chrome', () => window.pilot.openVisit(site.url)] : siteAction(site));
   if (action && (live || ['done', 'stopped', 'closed'].includes(site.state))) {
     const key = `site:${site.url}:${action[0]}`;

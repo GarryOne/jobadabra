@@ -228,7 +228,7 @@ export function renderJobs() {
       // The easy way is the main button: Chrome opens the form in a normal tab and the extension fills it from the kit.
       // Apply with Claude (a session that drives Chrome through the employer's site, sign-up and every page) is in the
       // ⋯ menu, for pages the extension can't reach on its own.
-      const live = jobsState.claudeReady ? sessionFor(job.url) : null;
+      const live = jobsState.claudeReady && resumeOffered() ? sessionFor(job.url) : null;   // a Claude session's Continue / View session: takeover only (claude-help.js)
       if (live) {
         // A session inside the app: Continue when it waits for you, else View session.
         const open = el('button', `row-main ${live.status === 'input' ? 'state-apply' : 'state-opened'}`, live.status === 'input' ? 'Continue' : 'View session');

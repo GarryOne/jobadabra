@@ -79,7 +79,7 @@ otherwise. Nothing fails because a feature is missing: `python3 -m src doctor` j
 | Mac app | guided setup, job list, Apply / Prepare / Tailor CV buttons, schedules, notifications | a Mac (Apple silicon) | free | 10 min |
 | Chrome extension | fills the form from its kit in seconds, you Submit | Chrome + the Mac app (or the Worker; [extension/README.md](extension/README.md)) | free | 5 min |
 | Tailored CV | a version of your CV per job, every change highlighted | the Mac app, `ANTHROPIC_API_KEY` | ~$0.12/CV | 1 min |
-| Apply with Claude (recommended) | from the job board through the employer's sign-up to a filled form, you Submit | the Mac app, Claude Code, Notion; Gmail for confirmation emails | your Claude plan | 5 min |
+| Apply with Claude (off for now) | from the job board through the employer's sign-up to a filled form, you Submit | the Mac app, Claude Code, Notion; Gmail for confirmation emails | your Claude plan | 5 min |
 | `transcribe` | interview recordings → transcript with speakers, on your machine | `pip install -r requirements-transcribe.txt` (the app installs it on the first recording) | free (models ~520 MB, downloaded once) | 2 min |
 | Form filling by an AI agent | an AI agent fills the form in Chrome, you Submit | a Mac, Claude Code or Codex, Chrome | your AI plan | 10 min |
 
@@ -148,7 +148,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
 - **A tip at every step** *(new)*: One slim line of advice on Jobs, Focus, Interviews, Application sessions and on the form itself. Each is labelled Fact, Recruiters say, Worth trying or Tip, so you see how strong it is. One click hides them all.
 - **Learns from every form**: Each form that leaves fields teaches reusable notes from what you already gave. A question you answer once is answered for good.
 - **Recipes and labels from all installs** *(new)*: Which fields a site really means, learned from fills across installs and served as data. Nothing from the network ever becomes prompt text.
-- **Apply with Claude**: For pages the extension cannot fill alone, Claude follows the employer site and sign-up. You solve CAPTCHAs and submit.
+- **Apply with Claude** *(off for now)*: For pages the extension cannot fill alone, Claude follows the employer site and sign-up. You solve CAPTCHAs and submit.
 - **Knows when you really applied**: After you press Submit, the page that follows is read to tell a real confirmation from a thank-you banner.
 
 **Track: Reads your inbox so you do not have to**
@@ -286,7 +286,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   - **Show** menu: New matches · Saved · Applied · Dismissed = job matches only; **Inbound** = everything that found
     you (all stages, newest first); All jobs = everything.
   - **Inbound / Outbound** = the Job Tracker's **Origin** column: set when the row is created, yours to change in Notion.
-  **Prepare** (draft the kit) → **Apply with Claude** (recommended, see below) or **Fill in Chrome** (the extension).
+  **Prepare** (draft the kit) → **Fill in Chrome** (Apply with Claude is off for now, see below) (the extension).
   **Apply to N** starts several at once. A ⛔ badge shows the kit's eligibility verdict on hover.
 - 📥 **Everything that reaches you, tracked**: **+ Add → Add application** (link + date; it gets the same AI facts and fit
   score as a found job), **Recruiter message** (a recruiter's email, LinkedIn message or call → a Recruiter lead with
@@ -315,7 +315,9 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
 
 <a id="apply-with-claude"></a>
 
-### 🧭 Apply with Claude (recommended)
+### 🧭 Apply with Claude (off for now)
+> Claude's takeover (this section, Resume Claude, Read with Claude, the terminal) is hidden behind one flag since 15 Oct 2026; the extension is the way to apply.
+
 Many postings don't end in a form: jobs.ch's Apply leads to the employer's careers site, which has its
 own **Apply now**, then a sign-in page, then several form pages. The extension stops there; Claude
 doesn't.

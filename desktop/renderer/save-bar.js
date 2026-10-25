@@ -38,7 +38,9 @@ export function pageSaveBar({host, tabs = {}, tabButton = () => null, openTab = 
   note.setAttribute('role', 'status');
   const discard = Object.assign(el('button', 'secondary', 'Discard all'), {type: 'button'});
   const save = Object.assign(el('button', 'primary', saveLabel), {type: 'button'});
-  node.append(lead, note, discard, save);
+  const actions = el('div', 'save-bar-actions');
+  actions.append(note, discard, save);
+  node.append(lead, actions);
   host?.append(node);
 
   const pending = () => sources.filter(source => source.count() > 0);

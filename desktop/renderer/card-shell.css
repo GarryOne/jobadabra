@@ -38,10 +38,26 @@ button.card-edit:hover { border-color: var(--ink-2); }
 .page-save-bar .save-bar-title { font-weight: 600; }
 .tabs button.has-drafts::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: var(--sp-1); border-radius: var(--r-pill);
   background: var(--signal); vertical-align: middle; }
-/* Profile's bottom dock (index.html #profile-dock): the fold bar and the page save bar stacked in ONE sticky box. As two sticky bars with their own offsets,
-   the save bar slid over the fold bar on a short tab (18 Oct 2026). */
-.page-dock { position: sticky; bottom: 0; z-index: 5; display: grid; gap: var(--sp-2); margin-top: var(--sp-4); }
-.page-dock > .foldbar, .page-dock > .save-bar { position: static; margin: 0; }
+/* The bottom dock (index.html #profile-dock): ONE row for Profile's fold bar and page save bar (owner, 25 Oct 2026): the drafts' words at the left, Expand all /
+   Collapse all centred, Discard all / Save all changes at the right; with no drafts only the fold controls. One sticky box (so neither covers the other, 18 Oct 2026)
+   on the page's --bg, not the cards' --surface, with a shadow up: it reads as floating on top. A page with only a save bar (Strategy) gets the same look from .save-bar. */
+.page-dock { position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: var(--sp-3);
+  margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-5); background: var(--bg); border: 1px solid var(--line-strong); border-top: 2px solid var(--field-line); border-radius: var(--r-md); box-shadow: var(--shadow-up); }
+.page-dock:not(:has(> .foldbar:not([hidden]), > .save-bar:not([hidden]))) { display: none; }
+.page-dock > .foldbar { grid-column: 2; grid-row: 1; position: static; margin: 0; padding: 0; background: none; border: 0; box-shadow: none; }
+.page-dock > .save-bar { display: contents; }
+.page-dock > .save-bar[hidden] { display: none; }
+.page-dock .save-bar-words { grid-column: 1; grid-row: 1; min-width: 0; }
+.page-dock .save-bar-words > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* the drafts' words give way before the centred fold controls move */
+.page-dock .save-bar-actions { grid-column: 3; grid-row: 1; margin-left: 0; flex-wrap: wrap; }
+/* Narrow: the fold controls take their own centred row on top; the words and the buttons share the row under it, the buttons at the right. */
+@media (max-width: 1180px) {
+  .page-dock { grid-template-columns: minmax(0, 1fr) auto; }
+  .page-dock > .foldbar { grid-column: 1 / -1; }
+  .page-dock .save-bar-words { grid-column: 1; grid-row: 2; }
+  .page-dock .save-bar-actions { grid-column: 2; grid-row: 2; }
+  .page-dock .save-bar-words .muted { display: none; }
+}
 /* An editor's Done in the card's own footer: a quiet rule above it, at the right (the surveys' Done is a direct child of .exp-part-body). */
 .card-done-slot:not(:empty) { margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line); }
 .exp-part-body > .card-done { justify-self: stretch; text-align: right; margin-top: var(--sp-2); padding-top: var(--sp-3); border-top: 1px solid var(--line); border-radius: 0; }

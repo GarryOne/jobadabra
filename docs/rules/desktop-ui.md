@@ -150,6 +150,8 @@ A new Reports tab or detail screen starts from the app's own widgets: `summaryTi
 - **A queued run's panel:** name, a Queued pill, "Waiting for <task> to finish" (else "Waiting to start"), its place in the queue only when known, and Cancel. No empty log, no progress bar, no start-time guess.
 - **Inside one run, only that run.** No global schedule (Upcoming runs lives on Actions → Runs, above the list, and in the bottom bar). A search run lists "Added in this run", never the digest's "since your last digest". The amber box shows only for a warning or a problem. The header does not repeat what the card says.
 - **Runs list:** Task, Status and Date filters you can see, Load more, and the selection kept as new runs arrive. In a narrow window it is list → detail with "Back to runs".
+- **A run shows in all three places, never fewer** (owner, 25 Oct 2026): Actions (where you clicked: feedback on that page, a collapsed drawer is easy to miss), Jobs for Find jobs (its Find jobs card, already compact for that screen: don't touch it), and the drawer.
+- **One run, two versions, one look** (owner, 25 Oct 2026: "even if we show the same card in 3 different places, the UI of it should be the same"; "for all runs/tasks 2 versions: one compact which will show in app, and another one detailed which will show in Actions → Runs, or in the Drawer"): on Actions a run is always the compact banner (the running banner's shape: icon or spinner, task name + status pill, one meta line, at most one next-step button, View run, Stop/Cancel/Dismiss). The full report (site lists, cards, log) is only the detailed run panel: the drawer or Actions → Runs. Never a detailed result card on the Actions page.
 - Guard: `desktop/test/run-view.test.js`.
 
 ## Reuse, never one-off

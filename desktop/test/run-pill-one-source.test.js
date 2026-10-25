@@ -38,7 +38,8 @@ test('every failure mode × engine: the list pill, the header pill and the resul
 });
 
 test('a clean run is Completed everywhere; a failed one is not warned', () => {
-  assert.deepEqual(runPill({ok: true, log: ['Searching']}, {long: true}).slice(0, 2), ['Completed', 'good']);
+  assert.deepEqual(runPill({ok: true, new: 2, log: ['Searching']}, {long: true}).slice(0, 2), ['Completed', 'good']);
+  assert.deepEqual(runPill({ok: true, log: ['Searching']}, {long: true}).slice(0, 2), ['No result', 'neutral'], 'nothing saved is not Completed (owner, 25 Oct 2026)');
   assert.deepEqual(runPill({ok: false, log: ['Warning: x']}).slice(0, 2), ['Failed', 'bad']);
 });
 

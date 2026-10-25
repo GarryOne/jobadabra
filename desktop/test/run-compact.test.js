@@ -9,8 +9,9 @@ import {compactRun} from '../renderer/run-compact.js';
 const read = file => readFileSync(new URL(`../renderer/${file}`, import.meta.url), 'utf8');
 const KINDS = [...read('pages/activity-basics.js').matchAll(/(\w+): \{icon: '[^']+', line: '[\w-]+', name: ("[^"]+"|'[^']+')\}/g)].map(match => match[1]);
 const ENDS = {
-  completed: {ok: true},
-  warned: {ok: true, warned: true},
+  completed: {ok: true, result: 'what it did'},
+  warned: {ok: true, warned: true, result: 'what it did'},
+  unsaved: {ok: true},
   failed: {ok: false, problem: 'Claude Code is not ready: sign in again'},
   unexpected: {ok: false},
   interrupted: {ok: false, interrupted: true},
@@ -26,7 +27,8 @@ test('every kind, in every end, is one compact banner: name, pill, one line, at 
       assert.equal(model.title, 'Task', where);
       assert.equal(model.pill.length, 2, where);
       assert.ok(['good', 'warn', 'bad', 'neutral', 'info'].includes(model.tone), `${where}: tone ${model.tone}`);
-      assert.equal(model.line, 'Finished Sun 13:55 · took 2 min 5 s · what it did', where);
+      assert.equal(model.line, 'Finished Sun 13:55 · took 2 min 5 s · what it did', where);   // the Recent runs row's line, as the caller gives it
+      if (end === 'unsaved') assert.deepEqual(model.pill, ['No result', 'neutral'], where);
       assert.ok(!model.line.includes('\n'), `${where}: one line`);
       assert.equal(model.close.label, 'Dismiss', where);
       if (model.next) assert.ok(model.next.view || model.next.rerun, `${where}: a next step the banner can do`);
@@ -40,6 +42,18 @@ test('the pill and the tone follow the run, as everywhere else (run-status.js ru
   assert.deepEqual(pillOf(ENDS.warned), ['Completed with warnings', 'warn']);
   assert.deepEqual(pillOf(ENDS.failed), ['Failed', 'bad']);
   assert.deepEqual(pillOf(ENDS.stopped), ['Stopped by you', 'neutral']);
+});
+
+test('a finished run with nothing saved says No result, never Completed · done (the owner\'s 25 Oct 2026 shot)', () => {
+  const model = compactRun({kind: 'search', ok: true}, {name: 'Find jobs', outcome: 'its result was not saved', at: 'Sun 14:11'});
+  assert.deepEqual(model.pill, ['No result', 'neutral']);
+  assert.equal(model.line, 'Finished Sun 14:11 · its result was not saved');
+  assert.equal(model.next, null, 'Read again and the log are in its run panel (View run)');
+  assert.deepEqual(compactRun({kind: 'search', ok: true, new: 0}, {name: 'Find jobs'}).pill, ['Completed', 'good'], 'a count of 0 is a result');
+  // One rule for every place a run is drawn: the pill (runPill) and the row's line (activity-basics.js outcome) say it, so the drawer header, Recent runs and Runs agree.
+  assert.match(read('run-status.js'), /return unsavedRun\(run\) \? \['No result', 'neutral'\] : \['Completed', 'good'\];/);
+  assert.match(read('pages/activity-basics.js'), /if \(unsavedRun\(run\)\) return 'its result was not saved';/);
+  assert.match(read('pages/activity-render.js'), /unsavedRun\(run\);\n\s+if \(unsaved\) renderNoResult\(/, 'its run panel offers Read again and the log');
 });
 
 test('the next step: a failure\'s own fix, or the new jobs a find added; nothing else', () => {

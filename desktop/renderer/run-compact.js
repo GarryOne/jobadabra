@@ -3,9 +3,10 @@
 // pill is run-status.js runPill, the one line is the Recent runs row's outcome, the next step a failure's own fix or the new jobs. The full report stays in
 // the run panel (pages/activity-render.js). Drawn by pages/run-banner.js. Guarded by test/run-compact.test.js.
 import {failureHead, runPill} from './run-status.js';
+export {unsavedRun} from './run-status.js';
 
 const FINDS = ['search', 'visits', 'scout'];   // the runs that add jobs to your list
-const ICON = {good: 'check-circle', warn: 'alert', bad: 'alert', info: 'pulse', neutral: 'pulse'};
+const ICON = {good: 'check-circle', warn: 'alert', bad: 'alert', info: 'pulse', neutral: 'pulse'};   // neutral: stopped by you, or nothing saved
 
 // `name`: the task's name; `kind`: its activity kind; `outcome`: the Recent runs row's one line; `at` / `took`: the finish time and the duration, in words;
 // `waiting` / `place`: a queued run's words (renderer/run-pick.js queueWords).
@@ -15,7 +16,7 @@ export function compactRun(run, {name = 'A task', kind = run?.kind || 'search', 
     return {state: 'queued', tone: 'neutral', icon: 'clock', title: name, pill: ['Queued', 'neutral'], line: [waiting || 'Waiting to start', place].filter(Boolean).join(' · '),
       next: null, close: {label: 'Cancel', cancel: true}};
   }
-  const [label, tone] = runPill({...run, kind}, {long: true});
+  const [label, tone] = runPill({...run, kind}, {long: true});   // "No result" for a run that saved nothing (run-status.js unsavedRun), as everywhere
   const failed = failureHead({...run, kind}, name);
   const added = Number(run.new) || 0;
   const next = failed?.fix?.view || failed?.fix?.rerun ? {...failed.fix}   // a fix the banner can do: open its page, or run it again

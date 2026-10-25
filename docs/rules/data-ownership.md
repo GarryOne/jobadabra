@@ -57,6 +57,15 @@ Every run downloads it (`src/employer_index.py`, cache `data/employer_index.json
 the starter `config/sources.json`; a run crawls only feeds matching the user's `search.json` (`employer_index.relevant`). It never lives in a
 user's store, and nothing about a user is sent to get it.
 
+## Sources are found by the app, never named by the owner (owner, 26 Oct 2026)
+"Why I need to teach you step by step, what platforms/website to go for every location?" … "Why you can't figure out by yourself?"
+- The app finds the job boards and employers of **any field or place** by itself; a site the owner names is a **test** of that, never a seed or a host in code.
+- A field or place the central list is thin on starts with a web search (role + place → boards and employers) at second 0, beside the cheap sources;
+  measured yield, never a fixed order or a word list, decides what is read next. Boards whose terms allow it are read; the rest are offered as visits.
+- What a search finds is learned for every install (per field × country), so a field × place is searched about once for all users.
+- A region (Europe, DACH, Nordics) is **every country it covers at equal weight**, never one of its countries ("Europe should be europe").
+- Spec and checklist: `docs/superpowers/specs/2026-10-18-search-learns-sources.md` "Pilot gap".
+
 ## Wrong data
 Fix the root cause in code first (with a regression test), push, then repair the owner's rows by hand through the Notion MCP (read them, change
 only what is wrong, say what changed). Never one-off repair code for one edge case. Product code every user needs is fine (a new column + its

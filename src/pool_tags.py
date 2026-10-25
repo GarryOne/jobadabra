@@ -65,7 +65,9 @@ def countries(texts):
     from . import places as places_
     cache = places_.load()
     swiss = ['ch'] if any(places_.in_switzerland(t, cache) for t in texts) else []
-    return sorted({*swiss, *meanings.labels('pool-country', texts, COUNTRIES, 'A place a job seeker searches in. Answer the country it is in.')})
+    # a region is every country it covers, each the same (26 Oct 2026: "europe" was labelled 'ch' alone)
+    regions = {code for t in texts for name in places_.region_countries(t, cache) for code, known in COUNTRIES.items() if known == name}
+    return sorted({*swiss, *regions, *meanings.labels('pool-country', texts, COUNTRIES, 'A place a job seeker searches in. Answer the country it is in.')})
 
 
 def families(texts):

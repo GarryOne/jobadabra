@@ -18,6 +18,7 @@ MODEL = SMALL_MODEL
 MAX_WORDS = 12          # place words asked about in one call
 MAX_NAMES = 80          # names kept per word
 EXPAND_KINDS = ('country', 'region', 'state')
+REGION_COUNTRIES = 60   # a region keeps every country it covers (26 Oct 2026: "Europe" kept its 10 biggest, Switzerland among them, and was read as Swiss)
 NAME_OK = re.compile(r"[^\W\d_](?:[^\W\d_]|[ .'’\-])*[^\W\d_.]")
 
 SCHEMA = {
@@ -39,8 +40,8 @@ For a country, region or state: names = the main cities and towns where employer
 (the local name and the English name when they differ, e.g. "München" and "Munich"), plus the states, provinces or countries inside it when it is a region or a country with \\
 states. Short forms postings use, such as "UK", "USA", "NYC", count too. Only real places: never invent one, and leave out a name that is also a common word.
 For a city or other: names = [] (up to three other spellings of the city that postings really use, if any).
-countries = the country the place is in (a city, a state, a country itself), or the countries a region covers (up to 10, biggest job markets first), \
-by the English name Wikipedia uses ("Portugal", "United States", "Germany"); [] for "other".
+countries = the country the place is in (a city, a state, a country itself), or for a region every country it covers (all of them, in no order of \
+importance: each counts the same), by the English name Wikipedia uses ("Portugal", "United States", "Germany"); [] for "other".
 Answer for every word given, with the word exactly as written."""
 
 
@@ -104,8 +105,8 @@ def _country_named(word):
 
 
 def countries(search, cache=None, limit=3):
-    """The countries the search's places are in, the user's first places first (at most `limit`): Swiss region words from the fixed table
-    (src/regions.py), every other word from what the model said. [] when none is known yet."""
+    """The countries the search's places are in, the user's first places first (at most `limit`; None: all, as a region's every country):
+    Swiss region words from the fixed table (src/regions.py), every other word from what the model said. [] when none is known yet."""
     from .notion.search_settings import readable
     from .regions import region_of
     cache = load() if cache is None else cache
@@ -116,7 +117,7 @@ def countries(search, cache=None, limit=3):
             for country in ['Switzerland'] if region_of(fragment) else (cache.get(_key(word)) or {}).get('countries') or _country_named(word):
                 if country not in found:
                     found.append(country)
-    return found[:limit]
+    return found if limit is None else found[:limit]
 
 
 def in_switzerland(word, cache=None):
@@ -134,8 +135,8 @@ def in_switzerland(word, cache=None):
             return entry['cc'] == 'CH'
     cache = load() if cache is None else cache
     known = (cache.get(_key(readable(str(word)).strip('"'))) or {}).get('countries') or _expanded_from(word, cache)
-    if known:
-        return 'Switzerland' in known
+    if known:   # a place in Switzerland; a region that covers it (Europe, DACH) is all its countries, never Switzerland alone (26 Oct 2026)
+        return set(known) == {'Switzerland'}
     return bool(re.search(SWITZERLAND, str(word), re.I))
 
 
@@ -184,8 +185,10 @@ def ask(client, words):
     for item in answer.get('places') or []:
         key = _key(item.get('word', ''))
         if key in asked and item.get('kind') in ('country', 'region', 'state', 'city', 'other'):
+            region = item['kind'] == 'region'
             out[key] = {'word': asked[key], 'kind': item['kind'], 'names': clean_names(item.get('names')) if item['kind'] != 'other' else [],
-                        'countries': clean_names(item.get('countries'))[:10] if item['kind'] != 'other' else [], 'at': stamp}
+                        'countries': clean_names(item.get('countries'))[:REGION_COUNTRIES if region else 10] if item['kind'] != 'other' else [],
+                        **({'every': True} if region else {}), 'at': stamp}
     return out
 
 
@@ -203,12 +206,27 @@ def from_pack(words):
     return out
 
 
+def stale_words(search, cache):
+    """The search's place words to ask (again): unknown ones; one kept before 8 Oct 2026 has no countries yet (Find new employers needs them);
+    a region kept before 26 Oct 2026 has only its 10 biggest countries, not every one."""
+    def stale(entry):
+        return 'countries' not in entry or (entry.get('kind') == 'region' and not entry.get('every'))
+    return [word for word in words_of(search) if stale(cache.get(_key(word), {}))]
+
+
+def region_countries(word, cache=None):
+    """Every country of this place word when it is a region (Europe, DACH, Nordics), else []."""
+    from .notion.search_settings import readable
+    cache = load() if cache is None else cache
+    entry = cache.get(_key(readable(str(word)).strip('"'))) or cache.get(_key(str(word))) or {}
+    return list(entry.get('countries') or []) if entry.get('kind') == 'region' else []
+
+
 def refresh(search, client=None, file=None):
     """Work out the place words of this search that are not in the cache yet; returns how many it asked about. Nothing is asked when all are known."""
     file = file or path()
     cache = load(file)
-    # a word kept before 8 Oct 2026 has no countries yet: asked once more, so Find new employers knows where to look
-    words = [word for word in words_of(search) if 'countries' not in cache.get(_key(word), {})][:MAX_WORDS]
+    words = stale_words(search, cache)[:MAX_WORDS]
     if not words:
         return 0
     shared = from_pack(words)

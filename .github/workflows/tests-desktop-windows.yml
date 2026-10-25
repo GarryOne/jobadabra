@@ -11,6 +11,7 @@ on:
       - 'desktop/lib/ai/codex-cli.js'
       - 'desktop/lib/analytics.js'
       - 'desktop/lib/app-feedback.js'
+      - 'desktop/lib/app-identity.js'
       - 'desktop/lib/app-updates.js'
       - 'desktop/lib/applications.js'
       - 'desktop/lib/apply-handlers.js'

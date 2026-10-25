@@ -195,9 +195,12 @@ export function paletteCommands() {
   add('Strategy', 'Review your preferences', 'The AI reads your job preferences and proposes clean values', 'job preferences review clean values ai',
     () => { openView('strategy'); setTimeout(() => { openCard('prefs'); reviewPreferences(); $('strategy-job-prefs')?.scrollIntoView({block: 'start'}); }, 300); });
   button('jobs', 'apply-open', 'apply fill forms');
-  button('jobs', 'applied-open', 'track add application outside');
-  button('jobs', 'import-open', 'add job link paste posting');
-  button('jobs', 'lead-open', 'log activity recruiter message email screenshot');
+  button('jobs', 'add-open', 'add new job application message update recruiter');
+  // The three flows behind "+ Add" keep their own entries (their openers are out of sight, so the sweep above skips them): each opens its flow directly.
+  [['import-open', 'Add job', 'A job you want to consider', 'add job link paste posting'],
+   ['applied-open', 'Add application', 'A job you\'ve already applied to', 'track add application applied elsewhere outside'],
+   ['lead-open', 'Add message or update', 'A recruiter message or another job update', 'log activity recruiter message email screenshot update']]
+    .forEach(([id, label, hint, keywords]) => add('Jobs', label, hint, keywords, () => { openView('jobs'); $(id).click(); }));
   button('interviews', 'iv-add', 'upload audio video transcript file');
   button('interviews', 'iv-record', 'start call audio', 'Record a call (everyone agreed)');
   button('interviews', 'iv-recordings', 'files folder finder');

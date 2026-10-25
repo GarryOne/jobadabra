@@ -6,6 +6,7 @@
 <title>Jobadabra</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="add-dialog.css">
 <link rel="stylesheet" href="ui-menu.css">
 <link rel="stylesheet" href="chips.css">
 <link rel="stylesheet" href="card-shell.css">
@@ -362,9 +363,13 @@
         <label class="sort-box"><i data-icon="sort"></i><select id="sort-by" aria-label="Sort by">
           <option value="best">Best match</option><option value="newest">Newest</option><option value="company">Company A–Z</option>
         </select></label>
-        <button type="button" class="secondary" id="import-open" title="A job that is not in Jobadabra yet. Paste its link and it is scored like one the search found"><i data-icon="plus"></i> Add a job…</button>
-        <button type="button" class="secondary" id="applied-open" title="Applied to a job outside Jobadabra? Track it with the rest"><i data-icon="plus"></i> Applied elsewhere…</button>
-        <button type="button" class="secondary" id="lead-open" title="A recruiter's pitch, a reply, a rejection… paste the text or a screenshot"><i data-icon="plus"></i> Log job activity…</button>
+        <button type="button" class="secondary" id="add-open" title="Add a job, an application you sent elsewhere, or a message or update about a job"><i data-icon="plus"></i> Add</button>
+        <!-- The three flows' own openers: the Add dialog (pages/jobs-add.js) presses them, openLogFor too; out of sight, so only "+ Add" shows. -->
+        <span hidden>
+          <button type="button" class="secondary" id="import-open" title="A job that is not in Jobadabra yet. Paste its link and it is scored like one the search found"><i data-icon="plus"></i> Add job</button>
+          <button type="button" class="secondary" id="applied-open" title="Applied to a job outside Jobadabra? Track it with the rest"><i data-icon="plus"></i> Add application</button>
+          <button type="button" class="secondary" id="lead-open" title="A recruiter's pitch, a reply, a rejection… paste the text or a screenshot"><i data-icon="plus"></i> Add message or update</button>
+        </span>
         <button type="button" class="secondary" id="jobs-export" aria-label="Export job list" hidden><i data-icon="external"></i> Export</button>
       </div>
       <div class="stuck-banner" id="jobs-stuck" hidden>
@@ -2169,6 +2174,21 @@
     <div class="dialog-foot">
       <button class="secondary" value="cancel" formnovalidate>Cancel</button>
       <button id="reassign-save" class="primary" value="default">Save</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="add-dialog" class="panel-dialog">
+  <form method="dialog">
+    <div class="dialog-head">
+      <span class="dialog-icon"><i data-icon="plus"></i></span>
+      <h2>Add</h2>
+      <button class="icon-button" value="cancel" formnovalidate title="Close" aria-label="Close"><i data-icon="close"></i></button>
+    </div>
+    <p class="dialog-lead">What would you like to add?</p>
+    <div class="add-choices" role="menu">
+      <button type="button" class="add-choice" role="menuitem" data-add="import-open"><span class="ui-tile tone-neutral"><i data-icon="briefcase"></i></span><span class="add-choice-text"><b>Add job</b><span class="muted">A job you want to consider</span></span><i data-icon="chevron"></i></button>
+      <button type="button" class="add-choice" role="menuitem" data-add="applied-open"><span class="ui-tile tone-neutral"><i data-icon="send"></i></span><span class="add-choice-text"><b>Add application</b><span class="muted">A job you've already applied to</span></span><i data-icon="chevron"></i></button>
+      <button type="button" class="add-choice" role="menuitem" data-add="lead-open"><span class="ui-tile tone-neutral"><i data-icon="chat"></i></span><span class="add-choice-text"><b>Add message or update</b><span class="muted">A recruiter message or another job update</span></span><i data-icon="chevron"></i></button>
     </div>
   </form>
 </dialog>

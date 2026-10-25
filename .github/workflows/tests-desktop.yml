@@ -45,6 +45,7 @@ on:
       - 'src/notion/cron_report.py'   # desktop/test/automation.test.js reads CRAWL_MODES from it
       - 'src/notion/ledger.py'
       - 'src/stores/notion_texts.py'
+      - 'tests/fixtures/eta-sequence.json'
       - 'tests/fixtures/opportunity_origin.json'
       - 'tests/fixtures/run-result.json'
       - 'tests/fixtures/target_roles_cases.json'

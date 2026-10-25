@@ -56,8 +56,9 @@ export async function pass({chrome = globalThis.chrome, call = api, config = nul
         if (tabbed.page) page = {...tabbed.page, step: 'tab', ...(tabbed.state === 'captcha' ? {captcha: true} : {})};   // words-ok: the app AI's fixed page_state answer, not a page's words
         else if (tabbed.skipped === 'incognito') page = {...page, tabSkipped: 'incognito'};   // the app tells the person about the one Chrome switch
       }
-      await call(cfg, '/extension/refused-outcome', {method: 'POST', body: JSON.stringify(page)}).catch(() => null);
+      const reported = await call(cfg, '/extension/refused-outcome', {method: 'POST', body: JSON.stringify(page)}).catch(() => null);
       read++;
+      if (reported?.stop) break;   // the person pressed Stop in the app: no further site
     }
     await tab.close().catch(() => {});
     if (sites.length) await call(cfg, '/extension/refused-done', {method: 'POST', body: '{}'}).catch(() => null);

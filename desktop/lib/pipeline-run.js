@@ -39,13 +39,14 @@ export const LIMITS = {idleMs: E2E_IDLE || 15 * 60 * 1000, totalMs: 45 * 60 * 10
 export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The run went quiet, so it was stopped. Run it again; if it keeps stopping, check your AI key or plan in Settings.`;
 // `stopAfterMs`: a run whose answer is no use after that long is stopped then (7 Oct 2026: Claude's filter choices went on for 130 s after
 // the page had been read without them, slowing every other Claude call of a Find jobs using your browser run).
+// `inTask`: the kind of task whose command this is, when its output does not go through the task's own line handler.
 // `logArgs`: what the logs and the run-end listeners see instead of `args` (a store call's arguments are the person's data). `privateOutput`:
 // stdout is the caller's alone, never written to engine.log, onLine, the tail or a report (a store call's answer is the person's records;
 // logs say identities, never content). stderr is still logged: it is the engine's own words.
 // The type of a private run's failure ("OperationalError" of {"error": "OperationalError: …"}); its message may hold the person's data, so only the type is kept.
 export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';   // words-ok: matches a Python exception type name in our own engine's error, not page text
 
-export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false} = {}) {
+export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false, inTask = ''} = {}) {
   if (isDemo() && demoSearch.isSearchRun(args)) return demoSearch.play(onLine);   // Find jobs in the demo: the scripted search (lib/demo-search.js)
   if (isDemo() && demoSearch.isQuietStep(args)) return Promise.resolve({code: 0, stdout: ''});
   if (isDemo() && !demo.pipelineAllowed(args)) { onLine('Demo mode: nothing runs and nothing is sent.'); return Promise.resolve({code: 1, stdout: ''}); }
@@ -60,7 +61,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
   onLine = line => { tail.push(line); if (tail.length > 30) tail.shift(); told(line); };
   // The task this command belongs to (its output goes to the task's own log): Stop ends it, and a stopped task starts no next step.
   const ticket = ticketRunning();
-  const owner = ticket && told === ticket.tee ? ticket : null;
+  const owner = ticket && (told === ticket.tee || (inTask && ticket.kind === inTask)) ? ticket : null;   // inTask: a command a run of that kind starts with its own line handler (visits.js engineJson): Stop ends it too (25 Oct 2026)
   if (owner?.stopped) { engineLog.end({code: null, seconds: 0, runId}); return Promise.resolve({code: null, stdout: '', result: null, runId, timedOut: false}); }
   return new Promise((resolve, reject) => {
     const child = spawn(python(), ['-m', ...args], {cwd: REPO, detached: process.platform !== 'win32', env: {...pipelineEnv(storage), ...extraEnv,

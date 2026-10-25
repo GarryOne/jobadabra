@@ -48,3 +48,42 @@ test('no task the Mac runs turns Stop off', () => {
   const source = ['pipeline', 'pipeline-queue', 'pipeline-tasks', 'pipeline-run'].map(name => fs.readFileSync(new URL(`../lib/${name}.js`, import.meta.url), 'utf8')).join('\n');
   assert.doesNotMatch(source, /stoppable:\s*false/);
 });
+
+// Owner, 25 Oct 2026: Stop on "Find jobs using your browser" said "Stopped by you" but the run went on. Its job-page lookup is an engine command
+// started with the visits module's own line handler, not the task's, so Stop never found it. Every engine command a run of the task starts is ended.
+test('Stop ends the engine command a Find jobs using your browser run waits on (the job-page lookup)', async () => {
+  const visits = await import('../lib/visits.js');
+  const slow = (s, args, onLine, env, options) => pipeline.run(s, ['timeit', '-n', '1', '-r', '1', 'import time; time.sleep(30)'], onLine, env, options);
+  const started = Date.now(), s = storage();
+  const done = pipeline.work(s, 'visits', () => {}, async (tee, signal) => {
+    await visits.runAll([{name: 'Acme', url: 'https://acme.example/', kind: 'employer'}], {tee, signal, openTab: () => ({ok: true}),
+      prepare: site => visits.withJobPages(s, [site], tee, slow).then(sites => sites[0])});
+    return true;
+  });
+  await until(() => pipeline.running()?.log?.some(line => /Finding its job page/.test(line)));
+  await new Promise(r => setTimeout(r, 500));
+  assert.equal(pipeline.stopTask().ok, true);
+  const {run} = await done;
+  assert.equal(run.stopped, 'you');
+  assert.ok(Date.now() - started < 10000, 'Stop did not wait for the 30 s lookup');
+});
+
+// Owner, 25 Oct 2026: "stopping doesn't work", so the class: every kind of run (engine command or the app's own work) ends within seconds
+// of Stop, is recorded as stopped by you, and the run queued behind it starts.
+test('Stop ends every kind of run and the next queued run starts', async () => {
+  const kinds = ['search', 'mail', 'scout', 'insight', 'weekly', 'kits', 'today'];
+  for (const kind of [...kinds, 'visits', 'tailor']) {
+    const s = storage(), started = Date.now();
+    const slowCommand = ['timeit', '-n', '1', '-r', '1', 'import time; time.sleep(30)'];
+    const first = kinds.includes(kind) ? pipeline.task(s, kind, slowCommand, () => {})
+      : pipeline.work(s, kind, () => {}, (tee, signal) => new Promise(resolve => signal.addEventListener('abort', () => resolve(true))));
+    const next = pipeline.task(s, 'stats', ['timeit', '-n', '1', '-r', '1', 'pass'], () => {});
+    await until(() => pipeline.running()?.kind === kind && pipeline.running()?.stoppable);
+    assert.equal(pipeline.queued().length, 1, `${kind}: the second run waits`);
+    assert.equal(pipeline.stopTask().ok, true, kind);
+    const {run} = await first;
+    assert.equal(run.stopped, 'you', kind);
+    assert.equal((await next).ok, true, `${kind}: the queued run started after Stop`);
+    assert.ok(Date.now() - started < 10000, `${kind}: ended within seconds`);
+  }
+});

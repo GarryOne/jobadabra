@@ -2,12 +2,13 @@
 when the downloaded employer list already has scout_cells.FLOOR employers that mostly hire for the search's kind of work in its places, the
 install skips the name-finding steps and checks only the names the person added. No network."""
 import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from src import scout, scout_core, scout_need
+from src import scout, scout_core, scout_need, source_yield
 from src import store as job_store
 from src.scout_cells import FLOOR
 from tests.test_budget_tape import contextlib_quiet
@@ -23,10 +24,24 @@ def index_file(folder, n, kind='logistics', place='Nürnberg'):
     return path
 
 
+def yield_db(hits):
+    """A job cache whose last measured run gave `hits` jobs in the person's places (None: no run measured yet)."""
+    db = sqlite3.connect(':memory:')
+    if hits is not None:
+        source_yield.record(db, '2026-10-20T10:00:00', [dict.fromkeys(source_yield.FIELDS, 0) | {'kind': 'employer', 'source': 'Co1', 'in_places': hits}])
+    return db
+
+
 class CoveredTest(unittest.TestCase):
-    def covered(self, n, **kw):
+    def covered(self, n, hits=scout_need.MIN_HITS, **kw):
         with tempfile.TemporaryDirectory() as folder, mock.patch('src.sources.feeds.wanted_location', lambda job: job['location'] == 'Nürnberg'):
-            return scout_need.covered(DRIVER, index_file(folder, n, **kw))
+            return scout_need.covered(DRIVER, index_file(folder, n, **kw), db=yield_db(hits))
+
+    def test_a_long_index_list_is_not_cover_when_the_search_itself_found_next_to_nothing(self):
+        """The pilot search (26 Oct 2026): 1,000+ office employers filed under its kind, 0 hits, and the scout still found no new names."""
+        self.assertIsNone(self.covered(FLOOR * 40, hits=0))
+        self.assertIsNone(self.covered(FLOOR * 40, hits=scout_need.MIN_HITS - 1))
+        self.assertIsNone(self.covered(FLOOR * 40, hits=None))   # never measured: thin
 
     def test_enough_employers_of_the_kind_in_the_places_cover_the_search(self):
         self.assertEqual(self.covered(FLOOR), FLOOR)
@@ -50,7 +65,7 @@ class RunTest(unittest.TestCase):
             probed.append(slug)
             return []
         with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, contextlib_quiet(), \
-                mock.patch.object(scout_core, 'CENTRAL', False), mock.patch.object(scout_need, 'covered', lambda *a: covered), \
+                mock.patch.object(scout_core, 'CENTRAL', False), mock.patch.object(scout_need, 'covered', lambda *a, **k: covered), \
                 mock.patch.object(scout, 'harvest', mock.Mock(side_effect=lambda *a, **k: steps.append('harvest') or 0)), \
                 mock.patch.object(scout, 'ai_ideas', lambda *a: steps.append('ideas')), \
                 mock.patch.object(scout.scout_role_search, 'guarded', lambda *a: steps.append('role search')), \

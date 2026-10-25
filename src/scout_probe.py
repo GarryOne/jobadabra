@@ -53,8 +53,7 @@ def skipping(skip):
 
 
 STACK = keyword_regex(_SEARCH['quality_stack_keywords'])
-SWISS_OR_ZURICH = place_regex([*_SEARCH['locations']['top_tier'], *_SEARCH['locations']['country_wide'],
-                                r'\bch\b'])
+SWISS_OR_ZURICH = place_regex([*_SEARCH['locations']['top_tier'], *_SEARCH['locations']['country_wide']])   # the user's own places only
 
 STOP_WORDS = {'gmbh', 'sagl', 'ltd', 'inc', 'llc', 'plc', 'the', 'and', 'group', 'holding', 'switzerland', 'schweiz', 'suisse', 'international', 'solutions', 'services', 'systems', 'technologies', 'technology', 'software'}
 

@@ -143,6 +143,15 @@ The owner's review of Strategy and Your details, kept as rules. Don't / Do pairs
 ## A detail screen is cards, tiles and bars, never a plain table (owner, 25 Oct 2026) [approved]
 A new Reports tab or detail screen starts from the app's own widgets: `summaryTiles` for the main figures (icon, tone), a `.card` per topic with a small category label and a title, `.bar` rows for shares and durations, `pill()` for status and `chip()` for values, a tone on a run row's left edge, folds for the long rest. A `.data-table` is for a list of like rows, not for a report. Why: the first Searches tab (a table per topic) was called "the most ugly and basic design I ever seen"; rebuilt from the tiles, cards and bars the Focus and Jobs screens use, the owner said ship (session ee, Reports → Searches). Before any preview, put the screen next to `docs/ui/jobs.jpg` and `focus.jpg`: if it looks plainer, rebuild it before asking.
 
+## One run view: the drawer shows one run, Actions → Runs shows them all (owner, 25 Oct 2026) [approved]
+- **One run panel, one design.** The bottom drawer and Actions → Runs show the same run panel (`.ap-detail`, drawn by `renderActivity`). There is never a second template. Switching containers keeps open folds, typed answers and the log's scroll.
+- **Words:** "Runs" everywhere: Recent runs, View all runs, Open in Runs.
+- **The drawer shows one run, never the list.** The generic Details opens the running task, else the next queued task, else the latest finished run. With several queued, a quiet "N tasks queued · View queue →" opens Runs filtered to queued. Once a run is open, it stays selected: queued → running → done update the same panel, and a new run starting or finishing never switches it. Open in Runs keeps the selection and closes the drawer.
+- **A queued run's panel:** name, a Queued pill, "Waiting for <task> to finish" (else "Waiting to start"), its place in the queue only when known, and Cancel. No empty log, no progress bar, no start-time guess.
+- **Inside one run, only that run.** No global schedule (Upcoming runs lives on Actions → Runs, above the list, and in the bottom bar). A search run lists "Added in this run", never the digest's "since your last digest". The amber box shows only for a warning or a problem. The header does not repeat what the card says.
+- **Runs list:** Task, Status and Date filters you can see, Load more, and the selection kept as new runs arrive. In a narrow window it is list → detail with "Back to runs".
+- Guard: `desktop/test/run-view.test.js`.
+
 ## Reuse, never one-off
 - **A new feature looks like the old ones.** Whatever a task, run or message shows, find the nearest existing one first (`pages/activity.js`
   render*Card, `components.js`) and reuse its card; never show engine or Telegram text in a `<pre>`. A new task kind needs, in the same change:

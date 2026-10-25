@@ -81,7 +81,7 @@ export async function openRun(ctx, label, {inPanel = false, id, snapAs, situatio
   } else {
     await (id ? page.locator(`#runs-table .runs-row[data-run-id="${id}"]`) : page.locator('#runs-table .runs-row').filter({has: page.locator('b', {hasText: new RegExp(`^${label}$`)})}).first()).click();
   }
-  await page.waitForFunction(() => !document.getElementById('activity-panel')?.hidden, null, {timeout: 10000});
+  await page.waitForFunction(runPanelShown, null, {timeout: 10000});
   await sleep(page, 1500);   // a run read from Notion fetches its page for the log
   // The pill is drawn from the run's log: while the app still says it reads it from Notion the pill says "Completed" for a run the list calls "With warnings" (beta 12, CI: 25 s+ behind the start-up reads). Wait for the reading to end, not a longer sleep.
   await page.waitForFunction(() => !/Reading from Notion|Waiting for the log/.test(document.getElementById('log')?.textContent || ''), null, {timeout: 40000}).catch(() => {});   // a log that never arrives is the step's own finding
@@ -101,7 +101,7 @@ export async function openRun(ctx, label, {inPanel = false, id, snapAs, situatio
   });
   // The nightly UI loop looks at these screenshots (layout checks and the AI review): the states where a UI goes wrong are the failure ones.
   if (snapAs) await snap(ctx, snapAs, {view: 'actions', situation});
-  await page.click('#activity-close');
+  await closeRunPanel(page);
   return seen;
 }
 
@@ -114,12 +114,20 @@ export async function appReady(ctx) {
 // The rows of the open Recent activity panel as a person sees them: {kind, what, state}.
 export const panelRows = page => page.evaluate(() => [...document.querySelectorAll('#activity-recent .recent-row')].map(row => ({kind: row.querySelector('.run-kind')?.textContent || '',
   what: row.querySelector('.run-what')?.textContent?.replace(/\s+/g, ' ').trim() || '', state: row.dataset.state || ''})));
+// Actions → Runs (owner, 25 Oct 2026: every run in the app, the drawer shows one): "View all runs" opens the tab with the run list and the run panel.
 export async function openPanel(ctx) {
   const {page} = ctx;
   await page.click('.nav[data-view="actions"]');
   await page.click('#runs-all');
-  await page.waitForFunction(() => !document.getElementById('activity-panel')?.hidden, null, {timeout: 10000});
+  await page.waitForFunction(() => !document.getElementById('actions-runs')?.hidden && !!document.querySelector('#actions-runs .ap-grid'), null, {timeout: 10000});
   await sleep(page, 800);
+}
+// The one run panel is on screen, in the drawer or in Actions → Runs.
+export const runPanelShown = () => !!document.querySelector('.ap-detail')?.offsetParent;
+// Leave it: the drawer closes; Actions → Runs goes back to Tasks.
+export async function closeRunPanel(page) {
+  if (await page.evaluate(() => !document.getElementById('activity-panel')?.hidden)) await page.click('#activity-close');
+  else await page.click('[data-actions-tab="tasks"]');
 }
 // Search rows this app started (a "schedule" row is someone else's, see runTask).
 export const searchRows = async (page, before) => { const {mine, twice} = own((await runsData(page)).runs.filter(run => run.kind === 'search' && run.trigger !== 'schedule' && !before.has(run.id))); return [...mine, ...twice]; };

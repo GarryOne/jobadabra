@@ -3,7 +3,6 @@
 import {claimOverlay, registerOverlay, releaseOverlay} from '../overlay-slot.js';
 import {humanError} from '../run-warnings.js';
 import {doneTitle} from '../run-status.js';
-import {kindCounts} from '../run-list.js';
 import {shared} from './shared.js';
 import {$, aiReady, show} from './core.js';
 import {panelClosed, panelOpened, remembered} from './nav.js';
@@ -13,19 +12,7 @@ import {goStep} from './wizard.js';
 import {CV_FILES} from '../cv-files.js';
 import {KIND, kindOf, capital, outcome, refreshGmailConnection} from './activity-basics.js';
 import {lastActivity, renderActivity} from './activity-render.js';
-export let kindFilter = '';        // the header's filter: one kind of run at a time ('' = every kind)
-// The header's filter menu: every kind in the run history with how many, and "All runs".
-export function filterMenu() {
-  const runs = lastActivity?.runs || [];
-  return [
-    {label: `${kindFilter ? '' : '✓ '}All runs · ${runs.length}`, run: () => { kindFilter = ''; renderActivity(lastActivity); }},
-    '-',
-    ...kindCounts(runs, kindOf).map(({kind, count}) => ({
-      label: `${kindFilter === kind ? '✓ ' : ''}${KIND[kind]?.name || kind} · ${count}`,
-      run: () => { kindFilter = kind; renderActivity(lastActivity); },
-    })),
-  ];
-}
+import {mountInDrawer, pinDefault, runsTabShown, showRunsTab} from './runs-tab.js';
 // The bar's action: hide the open panel, watch what's running, or see the details.
 export function barLabel() {
   $('activity-open').textContent = !$('activity-panel').hidden ? 'Hide activity ⌄' : lastActivity?.running ? 'View progress ↑' : 'Details ▴';
@@ -36,6 +23,9 @@ export function barLabel() {
 export const PANEL_KEY = 'activityPanel';
 export const panelMemory = (open, run) => (open ? (run == null ? 'live' : String(run)) : '');
 export function openActivity(open, {fromHistory = false} = {}) {
+  // Actions → Runs on screen holds the run panel: the run shows there, never in a drawer over it (owner, 25 Oct 2026).
+  if (open && runsTabShown()) { showRunsTab(shared.selectedRun ?? undefined); return; }
+  if (open) { mountInDrawer(); pinDefault(); }   // the generic Details: the running, next queued or latest run, then kept (renderer/run-pick.js)
   if (!fromHistory && open === $('activity-panel').hidden) (open ? panelOpened : panelClosed)(shared.selectedRun);
   if (open) claimOverlay('activity'); else releaseOverlay('activity');   // a job's drawer and this panel take turns (renderer/overlay-slot.js)
   show($('activity-panel'), open);

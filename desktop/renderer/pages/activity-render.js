@@ -14,7 +14,7 @@ import {parseInsight} from '../insight-card.js';
 import {parseWeekly} from '../weekly-card.js';
 import {parseInterviewReview} from '../interview-review.js';
 import {kitsOutcome, parseKitsReady} from '../kits-ready.js';
-import {filterRuns, groupRuns, runTime} from '../run-list.js';
+import {groupRuns, runTime} from '../run-list.js';
 import {shared} from './shared.js';
 import {seeded} from '../live-log.js';
 import {showScheduleState} from './connections.js';
@@ -31,7 +31,10 @@ import {showAwaitedResult, keepStatusBar, withKept, byYou} from './activity-resu
 import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton} from './activity-run-card.js';
 import {renderMailCard} from './activity-mail.js';
 import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
-import {kindFilter, barLabel, PANEL_KEY, panelMemory} from './activity-panel.js';
+import {barLabel, PANEL_KEY, panelMemory} from './activity-panel.js';
+import {anyFilter, filterBy, listFilter} from '../run-filters.js';
+import {idOf, pickRun, queueWords} from '../run-pick.js';
+import {actionsShown, drawFilters, drawQueueNote, rowPicked} from './runs-tab.js';
 import {byStore} from '../store-words.js';
 import {startSearch} from './jobs.js';
 import {showPartial, splitPartial} from './activity-partial.js';
@@ -67,6 +70,7 @@ export function prepareActions() {
   if (!lastActivity) return;
   renderActionsPage(lastActivity);
   showAwaitedResult(lastActivity.runs, {opening: true});
+  actionsShown();   // Actions → Runs takes its run panel back from the drawer
 }
 // "Remove" on a queued row (and its ⌘K twin, nav.js): the task never starts; Recent activity is drawn again either way.
 export async function unqueue(run) {
@@ -119,7 +123,7 @@ export function renderActivity(fresh) {
     $('activity-step').textContent = lastSearch ? `${clockTime(lastSearch.endedAt || lastSearch.startedAt)} · ${outcome(lastSearch)}` +
       (lastSearch.ok ? '' : ' · click to see why') : '';
     // The next jobs check, unless the open panel's Upcoming checks already says it.
-    $('activity-meta').textContent = [mailNote, $('activity-panel').hidden && nextSearchAt && `Next refresh ${hhmm(nextSearchAt)}`].filter(Boolean).join(' · ');
+    $('activity-meta').textContent = [mailNote, nextSearchAt && `Next refresh ${hhmm(nextSearchAt)}`].filter(Boolean).join(' · ');
   } else {
     $('activity-title').textContent = 'No search yet';
     $('activity-step').textContent = 'Click "Find jobs" on Jobs to start one.';
@@ -127,25 +131,28 @@ export function renderActivity(fresh) {
   }
   if (!running) keepStatusBar();
 
-  // Recent activity: newest first; click one to see its log below.
-  const shown = runs.find(run => run.id === shared.selectedRun) || null;
+  // The one run the panel shows: the picked one wherever it is now (queued, running, done), else the default (renderer/run-pick.js).
+  const {run: picked, keep} = pickRun(data, shared.selectedRun);
+  if (shared.selectedRun != null && keep !== shared.selectedRun) shared.selectedRun = keep;   // a queued ticket that started: its run's own id
+  const shown = picked && !picked.live && !picked.waiting ? picked : null;
   // Newest on top: the queued ones (the latest queued first), then the running one, then the finished ones.
   // Each queued one says what it waits for: the one queued before it, or the running task.
   const queue = data.queued || [];
   const waiting = queue.map((run, i) => ({...run, waiting: true,
     after: i ? KIND[kindOf(queue[i - 1])].name : running ? KIND[kindOf(running)].name : 'the current task'})).reverse();
-  // The header's filter keeps one kind of run; the list then shows a page of them (queued and running first).
-  const liveRows = filterRuns(waiting.concat(running ? [{...running, live: true}] : []), kindFilter, kindOf);
-  const kept = filterRuns(runs, kindFilter, kindOf);
+  // Task, Status and Date keep what the list shows (renderer/run-filters.js); a page of them, queued and running first, then Load more.
+  const by = {kindOf, toneOf: run => runPill(run)[1]};
+  const liveRows = filterBy(waiting.concat(running ? [{...running, live: true}] : []), listFilter, by);
+  const kept = filterBy(runs, listFilter, by);
   const recent = liveRows.concat(kept.slice(0, shownRuns));
-  $('activity-count').textContent = `${recent.length} recent`;
-  show($('activity-filter'), runs.length > 1);
-  $('activity-filter').classList.toggle('is-active', !!kindFilter);
+  $('activity-count').textContent = String(liveRows.length + kept.length);
+  drawFilters();
+  drawQueueNote(queue);
   // One row: the task and what it found, where it ran, its AI cost, its time and its status pill. The time is its
   // own column (not part of the sentence), and the rows are grouped Today / Earlier (renderer/run-list.js).
   const recentRow = run => {
     const button = Object.assign(document.createElement('button'), {type: 'button', className: 'recent-row'});
-    button.classList.toggle('current', run.live ? !shown : shown ? run === shown : run === last && !running);
+    button.classList.toggle('current', run.live ? !!picked?.live : run.waiting ? !!picked?.waiting && idOf(run) === idOf(picked) : run === shown);   // by identity: two records can share an id
     button.dataset.state = run.live ? 'busy' : run.waiting ? 'queued' : run.ok && !run.off ? 'ok' : 'error';
     const kind = KIND[kindOf(run)];
     // Its warnings: from the log (a run on this Mac), else the row's Status in Notion (a GitHub run: no log until opened).
@@ -170,7 +177,7 @@ export function renderActivity(fresh) {
     // A queued task can be taken out of the queue before it starts (owner, 7 Oct 2026): the same inline link as "GitHub ↗", not a button in a button.
     if (run.waiting && run.id) when.replaceChildren(removeLink(run));
     button.append(el('span', 'run-icon', icon(kind.line)), words, when, pill(...runPill(run)));
-    button.addEventListener('click', () => { if (run.waiting) return; shared.selectedRun = run.live ? null : run.id; renderActivity(lastActivity);
+    button.addEventListener('click', () => { shared.selectedRun = run.id; rowPicked(); renderActivity(lastActivity);
       $('activity-recent').querySelector('.recent-row.current')?.focus({preventScroll: true}); });   // a click on a row (focused by the browser, then redrawn) keeps it too
     return button;
   };
@@ -181,7 +188,7 @@ export function renderActivity(fresh) {
     ...group.runs.map(run => { const item = document.createElement('li'); item.append(recentRow(run)); return item; })]));
   if (keepFocus) $('activity-recent').querySelector('.recent-row.current')?.focus({preventScroll: true});
   if (!recent.length) $('activity-recent').append(Object.assign(document.createElement('li'), {className: 'muted',
-    textContent: runs.length ? `No ${KIND[kindFilter]?.name || kindFilter} runs here.` : 'Nothing has run yet.'}));
+    textContent: runs.length && anyFilter(listFilter) ? 'No runs match these filters.' : 'Nothing has run yet.'}));
   // "View more": the runs the filter keeps that the list hasn't shown yet (they scroll in below).
   show($('activity-all'), kept.length > shownRuns);
 
@@ -220,7 +227,6 @@ export function renderActivity(fresh) {
 
   // The selected run (or the live / latest one): what it did, its phases, and its full log. A run read from
   // Notion brings its result and log from its page the first time it's shown.
-  const picked = shown || (running ? {...running, live: true} : last);
   // A run recorded on this Mac has a log of its own but, when it was sent to Telegram (--send) or is a Gmail check, not
   // the message and report lines its Notion page holds: those are read from the page too, the local log kept (5 Oct 2026:
   // with Always on off, a Search analysis showed nothing and a Gmail check lost its header, as only GitHub runs read the page).
@@ -251,7 +257,7 @@ export function renderActivity(fresh) {
   // A GitHub run has no local lines: the sidebar link opens the job. A local run streams shared.logLines.
   const githubLive = !!run?.live && run?.where === 'github';
   // The window's own buffer is empty after a reload (⌘R): then the app's copy of the running job's log (run.log) is what to show.
-  const lines = githubLive ? (run?.log || []) : (shown ? run?.log || [] : (liveLines?.length ? liveLines : run?.log) || []);
+  const lines = githubLive ? (run?.log || []) : (shown || run?.waiting ? run?.log || [] : (liveLines?.length ? liveLines : run?.log) || []);
   const kind = run ? KIND[kindOf(run)] : null;
   const detailWarnings = runWarningLines(run);
   // A result with only a few sources that did not answer keeps its card first: one small line under it, no box (pages/activity-partial.js); the step list does not say it again.
@@ -269,7 +275,7 @@ export function renderActivity(fresh) {
   const shownText = cardText(run, run ? runResults.get(run.id) : null);
   // Its card says it better than the raw text, whole: the header doesn't repeat it cut short (a digest, an insight, a weekly report).
   const hasCard = !!(shownText && (parseRunMessage(shownText) || parseInsight(shownText) || parseWeekly(shownText)
-    || (KITS_CARD.has(kindOf(run)) && parseKitsReady(shownText)) || parseVisits(shownText)));
+    || (KITS_CARD.has(kindOf(run)) && parseKitsReady(shownText)) || parseVisits(shownText))) || !!(run && !run.live && mailReportOf(run));
   // A stopped run's box says why in full: the header doesn't repeat it.
   // A box that names what happened in full (stopped, couldn't start, stopped unexpectedly): the header doesn't repeat it.
   const boxSaysIt = run && (stoppedHead({...run, kind: kindOf(run)}) || waitedHead({...run, kind: kindOf(run)}) || ['unexpected', 'interrupted'].includes(failureHead({...run, kind: kindOf(run)})?.problem));
@@ -277,7 +283,10 @@ export function renderActivity(fresh) {
   const seconds = run?.endedAt && run.startedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
   // A run that used no AI shows no cost: "$0" on every row was noise.
   const cost = run && !run.live && (billingLabel(run) || (run.usd > 0 && `AI $${run.usd < 0.01 ? run.usd.toFixed(3) : run.usd.toFixed(2)}`));
-  $('activity-sub').textContent = !run ? '' : [
+  const queued = queueWords(run, data, kindName => KIND[kindName]?.name || 'the current task');
+  show($('activity-unqueue'), !!run?.waiting && !!run.id);
+  $('activity-unqueue').dataset.id = run?.waiting ? idOf(run) : '';
+  $('activity-sub').textContent = !run ? '' : run.waiting ? [run.note, queued.waiting, queued.place].filter(Boolean).join(' · ') : [
     run.note,
     run.live ? (searchPhase(run.step) || 'starting') : said,
     !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
@@ -336,7 +345,9 @@ export function renderActivity(fresh) {
   // What a one-off job produced (the insight, the list, the report) when it wasn't sent to Telegram. Today's list and
   // Find new employers read better as a small card; anything else stays text. While its Notion page is still being
   // read, the card's own shape shows as skeleton bars, so the pane never looks half-built and then jumps.
-  const card = (shownText ? parseRunMessage(shownText) : null) || (kindOf(run) === 'search' ? newJobsCard(run, lines) : null);   // no digest: the new jobs as a card
+  // A search lists only the jobs this run added (its "New job:" lines), never the digest's "since your last digest" (owner, 25 Oct 2026).
+  const own = kindOf(run) === 'search' ? newJobsCard(run, lines) : null;
+  const card = (own?.items.length ? own : null) || (shownText ? parseRunMessage(shownText) : null) || own;
   // A Gmail check's message has no digest header but plenty of structure (the interview it is about, the topics to
   // strengthen, the recruiter's next step): it gets its own card, not its raw lines in a <pre>.
   const mail = !run?.live && !card ? mailReportOf(run) : null;
@@ -439,6 +450,7 @@ export function renderActivity(fresh) {
   // run (its box or card says what happened, "View technical log" opens it); a run that finishes while you watch keeps what you chose.
   const streamLocal = !!run?.live && run?.where !== 'github';
   const noLog = !!run && !run.live && !lines.length;
+  show($('activity-log'), !run?.waiting);   // a queued run: no empty log before it starts
   if (run && $('activity-log').dataset.for !== String(run.id)) {
     $('activity-log').dataset.for = String(run.id);
     $('activity-log').open = streamLocal;

@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="find-card.css">
 <link rel="stylesheet" href="reports-searches.css">
 <link rel="stylesheet" href="activity-drawer.css">
+<link rel="stylesheet" href="runs-tab.css">
 <link rel="stylesheet" href="setup-steps.css">
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
 </head>
@@ -592,13 +593,18 @@
           <a href="#" class="link" id="actions-automation">Automation settings</a>
         </div>
       </header>
+      <div class="tabs" role="tablist" aria-label="Actions">
+        <button role="tab" type="button" data-actions-tab="tasks" class="is-active" aria-selected="true">Tasks</button>
+        <button role="tab" type="button" data-actions-tab="runs" aria-selected="false">Runs</button>
+      </div>
+      <div class="actions-tasks" id="actions-tasks" role="tabpanel">
       <section class="card run-banner" id="run-banner" hidden>
         <span class="spinner"></span>
         <div class="run-banner-words"><b id="run-banner-title"></b><span class="muted" id="run-banner-step"></span></div>
         <button class="primary" id="run-banner-act" hidden>Go to Chrome and allow</button>
         <a href="#" class="link" id="run-banner-log" hidden>View log ↗</a>
         <button class="secondary" id="run-banner-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there.">Stop</button>
-        <button class="secondary" id="run-banner-view">View activity</button>
+        <button class="secondary" id="run-banner-view">View run</button>
       </section>
       <section class="card actions-result" id="actions-result" hidden>
         <header class="actions-result-head"><span id="actions-result-head"></span><button class="link small" id="actions-result-close" aria-label="Dismiss">Dismiss</button></header>
@@ -656,10 +662,23 @@
         </div>
       </div>
       <section class="card runs-card">
-        <div class="focus-card-head"><h2>Recent runs</h2><a href="#" class="link small" id="runs-all">View all activity</a></div>
+        <div class="focus-card-head"><h2>Recent runs</h2><a href="#" class="link small" id="runs-all">View all runs</a></div>
         <ol class="runs-table" id="runs-table"></ol>
       </section>
       <section class="card status-card" id="status-card" hidden></section>
+      </div>
+      <!-- Every run (owner, 25 Oct 2026): the run list and the one run panel, moved here from the drawer while this tab shows (pages/runs-tab.js). -->
+      <div class="actions-runs" id="actions-runs" role="tabpanel" hidden>
+        <!-- Upcoming runs: global, so above the list and never inside one run (owner, 25 Oct 2026); the soonest one is highlighted. -->
+        <div class="ap-upcoming">
+          <div class="ap-strip" id="ap-strip">
+            <span class="ap-strip-head"><i data-icon="clock"></i><span>Upcoming runs</span></span>
+            <div id="activity-schedule" class="ap-strip-items"></div>
+            <a href="#" class="ap-strip-manage" id="activity-manage" title="Settings → Automation">Manage schedule ↗</a>
+          </div>
+        </div>
+        <div class="actions-runs-body" id="actions-runs-body"></div>
+      </div>
     </div>
 
     <div class="view" data-view="reports" hidden>
@@ -1690,14 +1709,19 @@
         <aside class="ap-list">
           <div class="ap-head">
             <span class="ap-pulse"><i data-icon="pulse"></i></span>
-            <h3 id="activity-heading">Recent activity</h3><span class="ui-pill" id="activity-count"></span>
-            <button class="icon-btn ui-more ap-filter" id="activity-filter" hidden aria-haspopup="menu" aria-expanded="false"
-              title="Show one kind of run" aria-label="Show one kind of run"><i data-icon="sliders"></i></button>
+            <h3 id="activity-heading">Runs</h3><span class="ui-pill" id="activity-count"></span>
+          </div>
+          <div class="ap-filters" role="group" aria-label="Filter runs">
+            <button type="button" class="select-button" id="activity-filter" aria-haspopup="menu" aria-expanded="false" title="Show one task"></button>
+            <button type="button" class="select-button" id="activity-filter-status" aria-haspopup="menu" aria-expanded="false" title="Show one status"></button>
+            <button type="button" class="select-button" id="activity-filter-date" aria-haspopup="menu" aria-expanded="false" title="Show a date range"></button>
           </div>
           <ul class="activity-recent" id="activity-recent"></ul>
-          <button class="arrow-link ap-all" id="activity-all" title="Show your older runs here">View more</button>
+          <button class="arrow-link ap-all" id="activity-all" title="Show your older runs here">Load more</button>
         </aside>
         <section class="ap-detail">
+          <button type="button" class="link small ap-back" id="activity-back">← Back to runs</button>
+          <p class="muted small ap-queue" id="activity-queue" hidden><span id="activity-queue-text"></span> · <a href="#" class="link" id="activity-queue-view">View queue →</a></p>
           <div class="ap-detail-head">
             <span class="ap-detail-icon" id="activity-icon"></span>
             <div class="ap-detail-title">
@@ -1708,10 +1732,12 @@
               <button class="primary" id="activity-go" hidden></button>
               <button class="link small" id="activity-report" hidden title="Every number of this search, in Reports">Full report →</button>
               <button class="secondary" id="check-mail" hidden>Check Gmail now</button>
+              <button class="secondary" id="activity-unqueue" hidden title="Take it out of the queue: it will not start">Cancel</button>
               <button class="secondary" id="activity-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there.">Stop</button>
               <a href="#" class="activity-notion" id="activity-notion" hidden>Open in Notion ↗</a>
               <a href="#" class="activity-notion" id="activity-github" hidden>View GitHub run ↗</a>
               <span id="activity-more"></span>
+              <a href="#" class="link small ap-open-runs" id="activity-open-runs" title="Every run, in Actions → Runs">Open in Runs →</a>
               <button class="icon-btn ap-close" id="activity-close" aria-label="Close" title="Close (Esc)"><i data-icon="close"></i></button>
             </div>
           </div>
@@ -1743,14 +1769,6 @@
           <div class="few-help" id="activity-help" hidden></div>
           <section class="insight-next" id="activity-next" hidden></section>
           <details class="activity-log ap-card" id="activity-log"><summary><i data-icon="file"></i><b id="log-title">Technical log</b><span class="muted" id="log-count"></span><span class="ui-pill tone-info dot" id="log-live" hidden>Live</span><button type="button" class="link with-icon log-copy" id="log-copy" data-copy="log" title="Copy the whole log"><i data-icon="copy"></i>Copy</button></summary><pre id="log" class="log"></pre><button type="button" class="link log-latest" id="log-latest" hidden>Jump to latest ↓</button></details>
-          <!-- Upcoming checks: global (not about the run above); the soonest one is highlighted. -->
-          <div class="ap-upcoming">
-            <div class="ap-strip" id="ap-strip">
-              <span class="ap-strip-head"><i data-icon="clock"></i><span>Upcoming runs</span></span>
-              <div id="activity-schedule" class="ap-strip-items"></div>
-              <a href="#" class="ap-strip-manage" id="activity-manage" title="Settings → Automation">Manage schedule ↗</a>
-            </div>
-          </div>
         </section>
       </div>
     </div>

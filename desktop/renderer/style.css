@@ -1546,59 +1546,59 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .ap-resize::after { content: ''; width: 44px; height: 4px; border-radius: var(--r-pill); background: var(--line-strong);
   opacity: 0; transition: opacity .15s; }
 .ap-resize:hover::after, .ap-resize.is-dragging::after { opacity: 1; }
-.activity-panel .ap-grid { display: grid; grid-template-columns: minmax(320px, 38%) minmax(0, 1fr); width: 100%; height: 100%; min-height: 0; }
-.activity-panel .ap-list { display: flex; flex-direction: column; min-height: 0; padding: var(--sp-4) var(--sp-3) var(--sp-3);
+:is(.activity-panel, .actions-runs) .ap-grid { display: grid; grid-template-columns: minmax(320px, 38%) minmax(0, 1fr); width: 100%; height: 100%; min-height: 0; }
+:is(.activity-panel, .actions-runs) .ap-list { display: flex; flex-direction: column; min-height: 0; padding: var(--sp-4) var(--sp-3) var(--sp-3);
   border-right: 1px solid var(--line); overflow: auto; }
-.activity-panel .ap-head { margin: 0 0 var(--sp-3) var(--sp-2); }
-.activity-panel .ap-head h3 { font-size: var(--fs-lg); }
-.activity-panel .activity-recent { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+:is(.activity-panel, .actions-runs) .ap-head { margin: 0 0 var(--sp-3) var(--sp-2); }
+:is(.activity-panel, .actions-runs) .ap-head h3 { font-size: var(--fs-lg); }
+:is(.activity-panel, .actions-runs) .activity-recent { display: flex; flex-direction: column; gap: 2px; margin: 0; }
 /* "Today" / "Earlier": a quiet label over each group of rows. */
-.activity-panel .recent-group { padding: var(--sp-3) var(--sp-3) var(--sp-1); font-size: var(--fs-sm); color: var(--muted); }
-.activity-panel .recent-group:first-child { padding-top: 0; }
+:is(.activity-panel, .actions-runs) .recent-group { padding: var(--sp-3) var(--sp-3) var(--sp-1); font-size: var(--fs-sm); color: var(--muted); }
+:is(.activity-panel, .actions-runs) .recent-group:first-child { padding-top: 0; }
 /* The time and the status are one column each, the same in every row (the owner's mockup, 30 Sep 2026). With plain
    "auto auto" each row sized its own two columns from its own pill, so a narrower "Completed" pushed its time and its
    badge ~15px right of a "With warnings" row and the badges never lined up. The widths fit the longest of each — the
    time can read "Wed 12:59" (before today: 56px) and the pill "With warnings" (11px/600: 94px) — and minmax keeps a
    longer label from being clipped, at the cost of that one row's alignment. */
-.activity-panel .recent-row { grid-template-columns: 28px minmax(0, 1fr) minmax(62px, auto) minmax(100px, auto); gap: var(--sp-3);
+:is(.activity-panel, .actions-runs) .recent-row { grid-template-columns: 28px minmax(0, 1fr) minmax(62px, auto) minmax(100px, auto); gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
   border: 0; border-radius: var(--r-md); font-size: var(--fs-md);
   /* The divider is a background line, not border-top: a top border on a rounded row curves into the corners (hairline arcs). */
   background: linear-gradient(var(--line), var(--line)) center top / calc(100% - 2 * var(--sp-3)) 1px no-repeat; }
 /* A run's badge sits in the middle of its column, so "Completed" and "With warnings" (different widths) share one axis. */
-.activity-panel .recent-row > .ui-pill { justify-self: center; }
+:is(.activity-panel, .actions-runs) .recent-row > .ui-pill { justify-self: center; }
 /* The first row under a "Today"/"Earlier" label carries no line of its own (the label separates them). */
-.activity-panel .recent-group + li > .recent-row { background-image: none; }
-.activity-panel .recent-row.current { background: var(--info-soft); box-shadow: inset 0 0 0 1px var(--info-line); }
-.activity-panel .recent-row[data-state="warn"] .run-status { background: var(--warn-bright); }
-.activity-panel .recent-row[data-state="warn"] .run-status::after { content: '!'; }
-.activity-panel .run-status { width: 18px; height: 18px; font-size: var(--fs-xs); }
-.activity-panel .run-icon { display: grid; place-items: center; color: var(--muted); }
-.activity-panel .run-icon .icon { width: 20px; height: 20px; }
-.activity-panel .run-words { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-.activity-panel .run-kind { font-weight: 600; }
-.activity-panel .run-what { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.activity-panel .run-github, .activity-panel .run-link { color: var(--signal-ink); font-weight: 600; font-size: var(--fs-sm); cursor: pointer; }
-.activity-panel .run-github:hover, .activity-panel .run-link:hover { text-decoration: underline; }
+:is(.activity-panel, .actions-runs) .recent-group + li > .recent-row { background-image: none; }
+:is(.activity-panel, .actions-runs) .recent-row.current { background: var(--info-soft); box-shadow: inset 0 0 0 1px var(--info-line); }
+:is(.activity-panel, .actions-runs) .recent-row[data-state="warn"] .run-status { background: var(--warn-bright); }
+:is(.activity-panel, .actions-runs) .recent-row[data-state="warn"] .run-status::after { content: '!'; }
+:is(.activity-panel, .actions-runs) .run-status { width: 18px; height: 18px; font-size: var(--fs-xs); }
+:is(.activity-panel, .actions-runs) .run-icon { display: grid; place-items: center; color: var(--muted); }
+:is(.activity-panel, .actions-runs) .run-icon .icon { width: 20px; height: 20px; }
+:is(.activity-panel, .actions-runs) .run-words { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+:is(.activity-panel, .actions-runs) .run-kind { font-weight: 600; }
+:is(.activity-panel, .actions-runs) .run-what { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.activity-panel, .actions-runs) .run-github, :is(.activity-panel, .actions-runs) .run-link { color: var(--signal-ink); font-weight: 600; font-size: var(--fs-sm); cursor: pointer; }
+:is(.activity-panel, .actions-runs) .run-github:hover, :is(.activity-panel, .actions-runs) .run-link:hover { text-decoration: underline; }
 /* The time is its own column ("18:06"; "Tue 12:59" for anything before today), before the status pill. */
-.activity-panel .run-time { color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.activity-panel .ap-all { align-self: center; margin-top: var(--sp-3); }
+:is(.activity-panel, .actions-runs) .run-time { color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:is(.activity-panel, .actions-runs) .ap-all { align-self: center; margin-top: var(--sp-3); }
 
-.activity-panel .ap-detail { border: 0; border-radius: 0; background: none; padding: var(--sp-4) var(--sp-5) var(--sp-3);
+:is(.activity-panel, .actions-runs) .ap-detail { border: 0; border-radius: 0; background: none; padding: var(--sp-4) var(--sp-5) var(--sp-3);
   display: flex; flex-direction: column; gap: var(--sp-3); overflow: auto; min-height: 0; }
 /* The detail scrolls, so its boxes keep their own height: shrunk, the result box was a 25px sliver (issue #119). */
-.activity-panel .ap-detail > * { flex-shrink: 0; }
-.activity-panel .ap-detail-head { display: flex; align-items: flex-start; gap: var(--sp-3); }
-.activity-panel .ap-detail-icon { font-size: var(--fs-xl); width: 40px; height: 40px; display: grid; place-items: center;
+:is(.activity-panel, .actions-runs) .ap-detail > * { flex-shrink: 0; }
+:is(.activity-panel, .actions-runs) .ap-detail-head { display: flex; align-items: flex-start; gap: var(--sp-3); }
+:is(.activity-panel, .actions-runs) .ap-detail-icon { font-size: var(--fs-xl); width: 40px; height: 40px; display: grid; place-items: center;
   border-radius: 50%; background: var(--surface-2); flex: none; }
-.activity-panel .ap-detail-icon .icon { width: 22px; height: 22px; color: var(--muted); }
-.activity-panel .ap-detail-title { flex: 1; min-width: 0; }
+:is(.activity-panel, .actions-runs) .ap-detail-icon .icon { width: 22px; height: 22px; color: var(--muted); }
+:is(.activity-panel, .actions-runs) .ap-detail-title { flex: 1; min-width: 0; }
 /* The name and its pill share one line; the line under them is one line too (the mockup), never three. */
-.activity-panel .ap-detail-title h3 { margin: 0; font-size: var(--fs-xl); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.activity-panel .ap-detail-title p { margin: var(--sp-1) 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.activity-panel .ap-detail-title .ui-pill { flex: none; }
+:is(.activity-panel, .actions-runs) .ap-detail-title h3 { margin: 0; font-size: var(--fs-xl); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(.activity-panel, .actions-runs) .ap-detail-title p { margin: var(--sp-1) 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(.activity-panel, .actions-runs) .ap-detail-title .ui-pill { flex: none; }
 /* The run's name with its state as a pill beside it. */
-.activity-panel .ap-detail-name { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: nowrap; min-width: 0; }
+:is(.activity-panel, .actions-runs) .ap-detail-name { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: nowrap; min-width: 0; }
 /* The list header's filter: one kind of run at a time, at the right of the heading. */
 .ap-head .ap-filter { margin-left: auto; }
 .ap-head .ap-filter.is-active { color: var(--signal-ink); background: var(--signal-soft); border-color: var(--signal-line); }
@@ -1617,21 +1617,21 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .activity-warnings:not(.is-folded) .ap-warn-fold .icon { transform: rotate(90deg); }
 .activity-warnings.is-folded .ap-warn-words > p, .activity-warnings.is-folded .ap-warn-words > .alert-actions,
 .activity-warnings.is-folded .ap-warn-words > ul { display: none; }
-.activity-panel .ap-detail-actions { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
-.activity-panel .ap-detail-actions .activity-notion { margin: 0; }
-.activity-panel .activity-warnings, .activity-panel .activity-job { margin: 0; }
+:is(.activity-panel, .actions-runs) .ap-detail-actions { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
+:is(.activity-panel, .actions-runs) .ap-detail-actions .activity-notion { margin: 0; }
+:is(.activity-panel, .actions-runs) .activity-warnings, :is(.activity-panel, .actions-runs) .activity-job { margin: 0; }
 .actions-result .run-problem { margin: 0; border: 0; border-radius: 0; }   /* the callout IS the card's body (its tint, no frame): no box in a box */
 .run-problem .ap-warn-icon { color: var(--tone); }
 /* The same box as an email card (activity.js mailCardRow): its padding, corners and spacing, in every state. */
-.activity-panel .activity-warnings, .run-problem { padding: var(--sp-4); border-radius: var(--r-lg); }
-.activity-panel .ap-warn-words, .run-problem .ap-warn-words { display: grid; gap: var(--sp-2); }
-.activity-panel .ap-warn-words > *, .run-problem .ap-warn-words > * { margin: 0; }
-.activity-panel .ap-warn-head strong, .run-problem .ap-warn-head strong { font-size: var(--fs-lg); }
-.activity-panel .activity-warnings p, .run-problem p { margin: 0; }
-.activity-panel .activity-warnings #activity-warnings-hint { margin-top: 0; color: var(--muted); }
+:is(.activity-panel, .actions-runs) .activity-warnings, .run-problem { padding: var(--sp-4); border-radius: var(--r-lg); }
+:is(.activity-panel, .actions-runs) .ap-warn-words, .run-problem .ap-warn-words { display: grid; gap: var(--sp-2); }
+:is(.activity-panel, .actions-runs) .ap-warn-words > *, .run-problem .ap-warn-words > * { margin: 0; }
+:is(.activity-panel, .actions-runs) .ap-warn-head strong, .run-problem .ap-warn-head strong { font-size: var(--fs-lg); }
+:is(.activity-panel, .actions-runs) .activity-warnings p, .run-problem p { margin: 0; }
+:is(.activity-panel, .actions-runs) .activity-warnings #activity-warnings-hint { margin-top: 0; color: var(--muted); }
 /* The details under the actions: quiet bullets, one line each, with room between them. */
-.activity-panel .activity-warnings ul { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); color: var(--ink-2); line-height: 1.5; }
-.activity-panel .activity-warnings li + li { margin-top: var(--sp-1); }
+:is(.activity-panel, .actions-runs) .activity-warnings ul { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); color: var(--ink-2); line-height: 1.5; }
+:is(.activity-panel, .actions-runs) .activity-warnings li + li { margin-top: var(--sp-1); }
 /* A small inline link's focus ring: still clearly visible, but not a box drawn around two words. */
 .alert-actions .link:focus-visible { outline-width: 2px; outline-offset: 1px; border-radius: var(--r-sm); }
 /* A Gmail check's card (renderer/mail-report.js): one surface whose bands are the parts of the check — what it did,
@@ -1686,7 +1686,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .run-card-body.mail-card { background: transparent; padding: 0; gap: var(--sp-3); }   /* beats .run-card-body's padding: aligned with the header and the log */
 /* No card in a card: holding the Gmail card, the run panel's box gives up its border and fill; the strip and the email cards
    sit straight on the panel's white (owner, 6 Oct 2026). */
-.activity-panel .ap-card:has(> .mail-card) { border: 0; background: transparent; }
+:is(.activity-panel, .actions-runs) .ap-card:has(> .mail-card) { border: 0; background: transparent; }
 .mail-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); color: var(--muted); }
 .mail-strip-stat { display: inline-flex; align-items: center; gap: var(--sp-2); }
@@ -1837,55 +1837,55 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
   .insight-number + .insight-number { border-left: 1px solid var(--line); padding-left: var(--sp-4); }
   .insight-group + .insight-group { border-left: 1px solid var(--line); padding-left: var(--sp-5); }
 }
-.activity-panel .ap-card { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
-.activity-panel .activity-phases.ap-card { padding: var(--sp-2) var(--sp-4); margin: 0; gap: 0; }
-.activity-panel .activity-phases li { padding: var(--sp-3) 0; font-weight: 600; }
+:is(.activity-panel, .actions-runs) .ap-card { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+:is(.activity-panel, .actions-runs) .activity-phases.ap-card { padding: var(--sp-2) var(--sp-4); margin: 0; gap: 0; }
+:is(.activity-panel, .actions-runs) .activity-phases li { padding: var(--sp-3) 0; font-weight: 600; }
 .activity-phases .phase-note { display: block; margin-left: 22px; font-size: var(--fs-md); font-weight: 400; color: var(--muted); }
 .activity-phases .phase-note + .phase-note { font-size: var(--fs-sm); }
 .activity-phases li.run-progress { display: grid; gap: 6px; font-weight: 600; margin-bottom: 4px; }   /* a running task: "N of M · X%" over the shared meter */
 .activity-phases li.run-progress .score-track { background: var(--line); }
 /* Find jobs using your browser: mark · name and its step · its one button on the right (activity.js siteRow) */
-.activity-panel .activity-phases li.site-row { display: flex; align-items: center; gap: var(--sp-3); }
-.activity-panel .activity-phases li.site-row[class]::before { margin-right: 0; flex: none; }   /* [class]: over li.done::before, which comes later */
+:is(.activity-panel, .actions-runs) .activity-phases li.site-row { display: flex; align-items: center; gap: var(--sp-3); }
+:is(.activity-panel, .actions-runs) .activity-phases li.site-row[class]::before { margin-right: 0; flex: none; }   /* [class]: over li.done::before, which comes later */
 .activity-phases li.site-row .site-words { flex: 1; min-width: 0; }
-.activity-panel .activity-phases li.site-row .phase-note { margin-left: 0; }
-.activity-panel .activity-phases li + li { border-top: 1px solid var(--line); }
+:is(.activity-panel, .actions-runs) .activity-phases li.site-row .phase-note { margin-left: 0; }
+:is(.activity-panel, .actions-runs) .activity-phases li + li { border-top: 1px solid var(--line); }
 /* Find jobs using your browser' result card: each site's ✓ / ✕ on the left of its row, the same marks as the live rows above (activity.js renderVisitsCard) */
 .item-rows .site-mark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; font-weight: 700; }
 .item-rows .site-mark.done { border-radius: 50%; background: var(--good-bright); color: var(--on-bright); font-size: var(--fs-xs); }
 .item-rows .site-mark.done::before { content: '✓'; }
 .item-rows .site-mark.fail { color: var(--bad-bright); }
 .item-rows .site-mark.fail::before { content: '✕'; }
-.activity-panel .activity-phases li.done::before { content: '✓'; display: inline-grid; place-items: center; width: 22px; height: 22px;
+:is(.activity-panel, .actions-runs) .activity-phases li.done::before { content: '✓'; display: inline-grid; place-items: center; width: 22px; height: 22px;
   margin-right: var(--sp-3); border-radius: 50%; background: var(--good-bright); color: var(--on-bright); font-size: var(--fs-xs); }
-.activity-panel .activity-phases li.todo { font-weight: 400; }
-.activity-panel .activity-phases li::before { margin-right: var(--sp-3); text-align: center; }   /* every mark in the box of the done tick: names line up */
-.activity-panel .activity-phases .phase-note { margin-left: calc(22px + var(--sp-3)); }
-.activity-panel .activity-log.ap-card { padding: 0; }
-.activity-panel .activity-log summary { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4);
+:is(.activity-panel, .actions-runs) .activity-phases li.todo { font-weight: 400; }
+:is(.activity-panel, .actions-runs) .activity-phases li::before { margin-right: var(--sp-3); text-align: center; }   /* every mark in the box of the done tick: names line up */
+:is(.activity-panel, .actions-runs) .activity-phases .phase-note { margin-left: calc(22px + var(--sp-3)); }
+:is(.activity-panel, .actions-runs) .activity-log.ap-card { padding: 0; }
+:is(.activity-panel, .actions-runs) .activity-log summary { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4);
   margin: 0; color: var(--ink); font-size: var(--fs-md); list-style: none; }
-.activity-panel .activity-log summary::-webkit-details-marker { display: none; }
-.activity-panel .activity-log summary::after { content: '⌄'; margin-left: auto; color: var(--muted); }
-.activity-panel .activity-log[open] summary::after { content: '⌃'; }
-.activity-panel .activity-log .log-copy { margin-left: auto; }   /* Copy sits on the right, before the arrow */
-.activity-panel .activity-log summary:has(.log-copy:not([hidden]))::after { margin-left: 0; }
-.activity-panel .activity-log .log { margin: 0 var(--sp-3) var(--sp-3); max-height: 260px; }
-.activity-panel .activity-log.is-empty summary { cursor: default; color: var(--muted); }
-.activity-panel .activity-log.is-empty summary::after { content: none; }
-.activity-panel .activity-log .log-latest { display: block; margin: calc(-1 * var(--sp-2)) var(--sp-4) var(--sp-3) auto; }
-.activity-panel .ap-foot { display: flex; align-items: center; gap: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line);
+:is(.activity-panel, .actions-runs) .activity-log summary::-webkit-details-marker { display: none; }
+:is(.activity-panel, .actions-runs) .activity-log summary::after { content: '⌄'; margin-left: auto; color: var(--muted); }
+:is(.activity-panel, .actions-runs) .activity-log[open] summary::after { content: '⌃'; }
+:is(.activity-panel, .actions-runs) .activity-log .log-copy { margin-left: auto; }   /* Copy sits on the right, before the arrow */
+:is(.activity-panel, .actions-runs) .activity-log summary:has(.log-copy:not([hidden]))::after { margin-left: 0; }
+:is(.activity-panel, .actions-runs) .activity-log .log { margin: 0 var(--sp-3) var(--sp-3); max-height: 260px; }
+:is(.activity-panel, .actions-runs) .activity-log.is-empty summary { cursor: default; color: var(--muted); }
+:is(.activity-panel, .actions-runs) .activity-log.is-empty summary::after { content: none; }
+:is(.activity-panel, .actions-runs) .activity-log .log-latest { display: block; margin: calc(-1 * var(--sp-2)) var(--sp-4) var(--sp-3) auto; }
+:is(.activity-panel, .actions-runs) .ap-foot { display: flex; align-items: center; gap: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--line);
   font-size: var(--fs-sm); flex-wrap: wrap; }
-.activity-panel .ap-foot-icon { color: var(--muted); display: inline-flex; }
-.activity-panel .ap-schedule-line { display: flex; gap: var(--sp-4); flex: 1; flex-wrap: wrap; }
-.activity-panel .ap-schedule-line { gap: var(--sp-2); align-items: center; }
-.activity-panel .ap-slot { display: inline-flex; align-items: center; gap: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-md);
+:is(.activity-panel, .actions-runs) .ap-foot-icon { color: var(--muted); display: inline-flex; }
+:is(.activity-panel, .actions-runs) .ap-schedule-line { display: flex; gap: var(--sp-4); flex: 1; flex-wrap: wrap; }
+:is(.activity-panel, .actions-runs) .ap-schedule-line { gap: var(--sp-2); align-items: center; }
+:is(.activity-panel, .actions-runs) .ap-slot { display: inline-flex; align-items: center; gap: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-md);
   padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2); background: var(--surface); }
-.activity-panel .ap-slot .ui-tile { width: 30px; height: 30px; }
-.activity-panel .ap-slot .ui-tile .icon { width: 15px; height: 15px; }
-.activity-panel .ap-slot-words { display: grid; line-height: 1.25; }
-.activity-panel .ap-slot-words .muted { font-size: var(--fs-xs); }
-.activity-panel .ap-slot-words b { font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
-.activity-panel .ap-slot.is-off b { color: var(--muted); font-weight: 600; }
+:is(.activity-panel, .actions-runs) .ap-slot .ui-tile { width: 30px; height: 30px; }
+:is(.activity-panel, .actions-runs) .ap-slot .ui-tile .icon { width: 15px; height: 15px; }
+:is(.activity-panel, .actions-runs) .ap-slot-words { display: grid; line-height: 1.25; }
+:is(.activity-panel, .actions-runs) .ap-slot-words .muted { font-size: var(--fs-xs); }
+:is(.activity-panel, .actions-runs) .ap-slot-words b { font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
+:is(.activity-panel, .actions-runs) .ap-slot.is-off b { color: var(--muted); font-weight: 600; }
 @media (max-width: 1180px) { .activity-panel .ap-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; } .activity-panel .ap-list { border-right: 0; overflow: visible; } .activity-panel .ap-detail { overflow: visible; } }
 
 /* Recent activity opens out of the bottom bar: attached to it (no gap, a thin line where they meet), rounded only at
@@ -1994,7 +1994,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 @container (max-width: 900px) { .ap-strip-head span { display: none; } }
 /* The checks are whole units that wrap onto the next line, so they never run into "Manage schedule"; the "·" stays at
    the end of the line it belongs to. */
-.activity-panel #activity-schedule { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2);
+:is(.activity-panel, .actions-runs) #activity-schedule { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2);
   color: var(--muted); font-size: var(--fs-sm); flex: 1; min-width: 0; }
 .ap-item { white-space: nowrap; }
 .ap-item:not(:last-child)::after { content: '·'; margin-left: var(--sp-2); color: var(--line-strong); }

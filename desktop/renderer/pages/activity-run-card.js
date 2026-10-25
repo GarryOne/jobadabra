@@ -62,9 +62,11 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // this run's finds (owner, 6 Oct 2026: two runs in a row "found" the same two jobs). Its open jobs stay one click away, in Jobs.
     const nothingNew = fresh === 0;
     // Only this run's finds: the older jobs that fill the digest's page are not this run's, and stay in Jobs (run-cards.js runItems).
-    const items = nothingNew ? [] : runItems(card);
-    const onlyNew = items.length < card.items.length || items.some(item => item.section === 'new');
-    heading = nothingNew ? 'No new jobs this run' : onlyNew ? 'Top new since your last digest' : 'Top matches';
+    // Inside one run, only that run's jobs (owner, 25 Oct 2026): its own "New job:" lines, or the digest's new section when it holds exactly the jobs
+    // this run added. A digest whose new section mixes in earlier runs' jobs lists none here: the count stays and Jobs has them.
+    const listed = nothingNew ? [] : runItems(card);
+    const items = card.own || listed.length === fresh ? listed : [];
+    heading = nothingNew ? 'No new jobs this run' : 'Added in this run';
     rows.append(...byFit(items).slice(0, 3).map(item => {   // highest fit first, unscored last
       const row = el('li', 'run-card-row');
       // Two lines: the job, then who it is with. Its fit as a pill when it has a score; the posting opens from the arrow.
@@ -89,7 +91,7 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     const here = urls.length && known.size ? urls.filter(url => known.has(fullKey(url))).length : urls.length;
     const total = items.length;
     if (!total || nothingNew) rows.append(el('li', 'muted', nothingNew ? 'Nothing new since the last check. Jobs found before are in Jobs.'
-      : 'This run found nothing new to show. Your saved jobs are in Jobs.'));
+      : fresh ? 'They are in Jobs.' : 'This run found nothing new to show. Your saved jobs are in Jobs.'));
     // Fewer in Jobs than listed: the button counts what it opens, and a line says where the rest are ("7 of 10" read as a mismatch, 7 Oct 2026).
     // "of these N", not "N more": some of them are the Not scored rows just above (8 Oct 2026: "4 more" under two of those four).
     if (here && here < total) rows.append(el('li', 'muted', `${total - here} of these ${total} ${total - here === 1 ? 'is' : 'are'} not in Jobs yet: still waiting.`));

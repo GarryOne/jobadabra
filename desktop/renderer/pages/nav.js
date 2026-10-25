@@ -7,6 +7,7 @@ import {buttonEntry, reveal} from './palette-busy.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, prepareActions, unqueue} from './activity.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
+import {showRunsTab} from './runs-tab.js';
 import {showCvChanged} from './cv-change.js';
 import {loadFocus} from './focus.js';
 import {showFocusStarted} from './focus-onboarding.js';
@@ -122,8 +123,10 @@ export function paletteCommands() {
   };
   document.querySelectorAll('.nav').forEach(nav => add('Go to', `Open ${labelOf(nav)}`, '', 'page view', () => nav.click()));
   // The bottom bar's panel is not a page, so the loop above misses it (owner, 7 Oct 2026: "recent" found nothing).
-  add('Go to', 'Open Recent activity', 'Every task run: its result, its log, and Stop for the one running', 'recent activity history runs tasks log results running',
-    () => openActivity(true));
+  add('Go to', 'Open Runs', 'Every task run in Actions → Runs: filter by task, status and date', 'runs recent activity history tasks log results queued failed',
+    () => showRunsTab());
+  add('Go to', 'Open the current run', 'The running task, else the next queued one, else the latest: its result, its log, and Stop', 'current run running now activity details progress log',
+    () => { shared.selectedRun = null; openActivity(true); });
   // A card whose Run is off because its task runs or waits (runs-page.js syncRunButtons) is still listed: its entry brings you to the card.
   document.querySelectorAll('.action[data-command]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
     labelOf(node.querySelector('span')), PALETTE_KEYWORDS[node.dataset.command], () => openView('actions')));

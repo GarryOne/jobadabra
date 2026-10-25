@@ -130,7 +130,7 @@ export function tracked(storage, kind, trigger, onLine, work, resume, summarize,
     runningTicket = ticket;
     const log = [];
     const startedAt = new Date().toISOString();   // the id is this very moment, so a record of the quit (takeQueue: Date.parse(startedAt)) is the same run
-    const record = {id: Date.parse(startedAt), kind, trigger, startedAt, ...(ticket.note ? {note: ticket.note} : {})};
+    const record = {id: Date.parse(startedAt), ticket: ticket.id, kind, trigger, startedAt, ...(ticket.note ? {note: ticket.note} : {})};   // ticket: a run picked while queued stays picked (renderer/run-pick.js)
     current = {...record, step: 'Starting', resume, stoppable: true};   // every task the Mac runs can be stopped (Actions banner, Recent activity)
     ticket.children = new Set();
     ticket.abort = new AbortController();

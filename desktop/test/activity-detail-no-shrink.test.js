@@ -9,5 +9,5 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 test('children of .ap-detail keep their height instead of shrinking to a sliver', () => {
   const css = fs.readFileSync(path.join(here, '../renderer/style.css'), 'utf8');
-  assert.match(css, /\.activity-panel \.ap-detail > \*\s*\{[^}]*flex-shrink:\s*0/);
+  assert.match(css, /(\.activity-panel|:is\(\.activity-panel, \.actions-runs\)) \.ap-detail > \*\s*\{[^}]*flex-shrink:\s*0/);   // shared with Actions → Runs
 });

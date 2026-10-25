@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {ensureStaged} from './lib/ensure-staged.mjs';
+import {suitesUsing} from './lib/import-graph.mjs';
 import {autoSuites, exploreDecision, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, waitingFindings} from './lib/plan.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
@@ -36,7 +37,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   let exploring = false, why = '';
 
   let suites = [], tag = '';
-  if (event === 'push') suites = suitesFor(changed(env.BEFORE, sha) || ['desktop/e2e/suite.mjs'], all, {watches, cadence});
+  if (event === 'push') suites = suitesFor(changed(env.BEFORE, sha) || ['desktop/e2e/suite.mjs'], all, {watches, cadence, uses: suitesUsing(path.dirname(fileURLToPath(import.meta.url)))});
   else if (env.PROMOTE_TAG) suites = [];   // a manual dry run of the promotion step: no suites
   // The gate: the release run calls it only for a release it built (a nightly or a beta by hand, desktop.yml), or a gate by hand. Always + nightly suites, not the manual ones.
   else if (env.GATE_TAG) {

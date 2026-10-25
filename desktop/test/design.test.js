@@ -21,7 +21,10 @@ const RULES = [
 export function violations(css) {
   const found = [];
   const clean = css.replace(/\/\*[\s\S]*?\*\//g, match => match.replace(/[^\n]/g, ' '));  // comments don't count; lines stay
-  clean.split('\n').forEach((line, i) => {
+  // Selectors don't count either: an id such as #add-open or #bed-list is not the hex colour #add or #bed (25 Oct 2026, #1899).
+  const blank = text => text.replace(/[^\n]/g, ' ');
+  const code = clean.replace(/[^{};]*\{/g, match => blank(match));
+  code.split('\n').forEach((line, i) => {
     for (const rule of RULES) {
       for (const match of line.matchAll(rule.find)) found.push({line: i + 1, rule: rule.name, text: match[0].trim(), use: rule.use});
     }
@@ -41,6 +44,11 @@ test('the guard catches raw values and lets tokens through', () => {
   assert.deepEqual([...new Set(bad.map(v => v.rule))].sort(), ['raw colour', 'raw corner radius', 'raw font family', 'raw font size']);
   const good = violations('.a { color: var(--muted); border-radius: var(--r-md); font-size: var(--fs-sm); box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / .1); }\n/* #fff 12px */ .b { border-radius: 50%; font: 600 var(--fs-md) var(--font-mono); }');
   assert.deepEqual(good, []);
+});
+
+test('an id selector that starts with hex letters is not a colour; the same word in a value still is', () => {
+  assert.deepEqual(violations('#add-open { display: flex; }\n.row #bed .x,\n#fade { color: var(--muted); }\n@media (min-width: 1px) { #add-open .icon { width: 16px; } }'), []);
+  assert.deepEqual(violations('#add-open { color: #add; }').map(v => v.rule), ['raw colour']);
 });
 
 test('the index page loads the tokens before the screens\' styles', () => {

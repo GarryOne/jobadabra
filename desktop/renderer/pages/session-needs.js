@@ -271,7 +271,7 @@ export function showSendBar(item) {
   const bar = $('ss-needs-send');
   if (!bar) return;
   const waiting = [...(batch.get(item?.id)?.values() || [])];
-  show(bar, waiting.length > 0 && shared.openSessionId === item?.id);
+  show(bar, resumeOffered() && waiting.length > 0 && shared.openSessionId === item?.id);   // a reply to Claude: hidden while Claude's takeover is off (owner, 15 Oct 2026)
   if (!waiting.length) return;
   const open = document.querySelectorAll('#ss-needs > .ss-need:not(.is-done)').length;
   $('ss-needs-send-text').textContent = `${waiting.length} answer${waiting.length === 1 ? '' : 's'} ready${open ? ` · ${open} still open` : ''}`;

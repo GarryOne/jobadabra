@@ -64,3 +64,13 @@ test('class: the takeover is off in the app and the extension reads the same fla
   assert.equal(next(info({takeover: true, auto: false}), fresh).view, 'offer');
   assert.equal(next(info({takeover: false, stuck: false}), fresh).view, 'hidden');
 });
+
+// The footer bar "Send it to Claude" / "Send all N to Claude" (session-needs.js showSendBar, #ss-needs-send) is a reply to Claude too: it asks resumeOffered like the rest
+// (owner, 25 Oct 2026: "Do we still have Send to Claude anywhere? That should be disabled/hidden").
+test('the Send to Claude bar on Applying is shown only when resumeOffered()', () => {
+  const code = read('renderer/pages/session-needs.js');
+  const at = code.indexOf('export function showSendBar');
+  assert.ok(at >= 0, 'showSendBar found');
+  assert.match(code.slice(at, at + 400), /show\(bar, resumeOffered\(\) && /);
+  assert.match(read('renderer/index.html'), /id="ss-needs-send" hidden/, 'the bar starts hidden');
+});

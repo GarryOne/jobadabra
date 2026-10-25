@@ -12,6 +12,8 @@ test('under 880 px tall the rail hides feedback, the theme switch and the plan b
   const short = block('max-height: 880px');
   for (const part of ['#nav-feedback', '#theme-toggle', '.allowance-chip']) assert.match(short, new RegExp(`\\.app\\.rail ${part.replace('.', '\\.')}[^{]*\\{[^}]*display: none|\\.app\\.rail ${part.replace('.', '\\.')},`), `${part} steps aside in a short rail`);
   assert.match(short, /\.app\.rail \.sidebar \.nav \{ padding:/, 'the rows tighten');
+  // The badge/dot row is 14 px tall on the button's top edge (menu.css top): a top padding under it puts the marker over the icon (the interactions suite, beta of 25 Oct 2026).
+  assert.ok(Number(short.match(/\.app\.rail \.sidebar \.nav \{ padding: (\d+)px/)[1]) >= 15, 'the top padding keeps the icon clear of the badge row');
   assert.doesNotMatch(short, /#rail-toggle/, 'collapse stays in a wide window: the way back from a collapsed menu');
   assert.match(css, /@media \(max-height: 880px\) and \(max-width: 1179px\) \{ \.app\.rail #rail-toggle \{ display: none; \} \}/, 'only where the rail is forced by the width');
 });

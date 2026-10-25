@@ -25,7 +25,7 @@ async function inspectResult(ctx, task) {
   await page.waitForFunction(() => ['actions-result', 'command-answer'].some(id => { const box = document.getElementById(id); return box && !box.hidden; }), null, {timeout: 15000}).catch(() => {});
   // The compact banner (owner, 25 Oct 2026): the task's name, its pill and one line; the full report is the run panel's.
   const shown = await page.evaluate(() => ({card: !!document.querySelector('#actions-result:not([hidden]) .run-banner-head .ui-pill'),
-    detailed: !!document.querySelector('#actions-card, #actions-result .run-card'),
+    detailed: !!document.querySelector('#actions-result .run-card, #actions-result .insight-card'),
     text: document.getElementById('command-answer')?.hidden ? '' : (document.getElementById('command-answer')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160)}));
   await snap(ctx, `actions-result-${task.command}`, {view: 'actions'});
   return shown;

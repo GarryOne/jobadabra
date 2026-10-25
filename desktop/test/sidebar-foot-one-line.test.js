@@ -34,3 +34,16 @@ test('the privacy note opens a popover with every old fact and its own close but
   assert.match(store, /Escape/);
   assert.match(store, /closest\('\.steps-privacy-wrap'\)/);
 });
+
+// Owner, 25 Oct 2026: the main sidebar's build line wrapped "15:39" onto a second row at some zooms. Every short status line in the foot is one row, cut with an ellipsis.
+test('the main sidebar foot lines (build, plan chip, search hint, update, sessions) never wrap', () => {
+  const rule = css.match(/\.sidebar \.build-line, ([^{]*)\{([^}]*)\}/);
+  assert.ok(rule, 'one shared nowrap rule');
+  for (const part of ['.build-line', '.allowance-chip-plan', '.allowance-chip-text', '.palette-hint span', '.nav-update span']) assert.ok(rule[0].includes(part), part);
+  assert.match(rule[2], /white-space: nowrap/);
+  assert.match(rule[2], /overflow: hidden/);
+  assert.match(rule[2], /text-overflow: ellipsis/);
+  assert.match(css, /\.nav-sessions > span:nth-child\(2\) \{[^}]*white-space: nowrap/);
+  const sessions = fs.readFileSync(path.join(root, 'pages', 'sessions.js'), 'utf8');
+  assert.match(sessions, /\$\('nav-sessions'\)\.title = text/, 'the full text is in the tooltip');
+});

@@ -84,6 +84,7 @@ function renderNavBadge() {
   $('nav-sessions').hidden = !sessionList.length;
   $('nav-sessions').className = `nav-sessions tone-${tone}`;
   $('nav-sessions-text').textContent = text;
+  $('nav-sessions').title = text;   // one row, cut with an ellipsis when narrow; the full text is here
 }
 export function renderDock() {
   renderNavBadge();

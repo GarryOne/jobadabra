@@ -2044,6 +2044,9 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .app.rail .nav-update { font-size: 0; gap: 0; justify-content: center; width: 48px; }
 /* The running build under the menu (renderer/pages/build.js): one muted mono line, the commit and when it was made. */
 .sidebar .build-line { margin: 2px 0 0 12px; font: var(--fs-xs) var(--font-mono); color: var(--on-rail-3); }
+/* Owner, 25 Oct 2026: "on specific scales/zooms, this puts on 2 rows. Let's make sure it's always one row." Every short status line in the sidebar foot is one row at any zoom or width:
+   too narrow, it is cut with an ellipsis and the full text is in its title (the line, the chip, the Search hint). */
+.sidebar .build-line, .sidebar .allowance-chip-plan, .sidebar .allowance-chip-text, .sidebar .palette-hint span, .sidebar .nav-update span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .sidebar .build-line .link { font: inherit; color: inherit; text-decoration: underline; }
 .sidebar .build-line[hidden], .app.rail .build-line { display: none; }
 /* Settings → Advanced → Technical reports: the switch, and what's sent. */

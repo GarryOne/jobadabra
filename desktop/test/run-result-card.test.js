@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
-import {cleanTop, CLEAN_TOP, NUMBER, resultWords, titleWithNumber, topTone, WORDS} from '../renderer/run-result-card.js';
+import {cleanTop, CLEAN_TOP, liveTop, NUMBER, resultWords, titleWithNumber, topTone, WORDS} from '../renderer/run-result-card.js';
 import {runPill} from '../renderer/run-status.js';
 import {addedWords} from '../renderer/find-card-model.js';
 
@@ -96,5 +96,25 @@ test('an ended search\'s drawer is its result card: no step rows, no failed-sour
   const render = read('pages/activity-render.js');
   assert.match(render, /const onStep = kindOf\(run\) === 'search' && !run\?\.live && split\.partial \? split\.partial : null;/, 'taken out of the problem box');
   assert.doesNotMatch(render, /partialWords\(onStep\)/, 'and not put anywhere else in the drawer');
-  assert.match(render, /show\(\$\('activity-phases'\), updates\.length > 0 \|\| \(at >= 0 && !!run\?\.live\) \|\| !!tabs \|\| !!counted\);/, 'its step rows only while it runs');
+  assert.match(render, /show\(\$\('activity-phases'\), updates\.length > 0 \|\| \(at >= 0 && !!run\?\.live\) \|\| !!tabs\);/, 'its step rows only while it runs');
+});
+
+test('every kind loads the same way: one running top with its step in words and its count as a bar, never said twice (owner, 25 Oct 2026)', () => {
+  for (const kind of KINDS) {
+    const top = liveTop({id: 1, kind, live: true, step: 'Checking employers: 3 of 12'});
+    assert.deepEqual(top, {title: 'Checking employers', count: {done: 3, total: 12, percent: 25}}, `${kind}: the step without its count, the count as the bar`);
+    assert.equal(liveTop({id: 1, kind, ok: true}), null, `${kind}: an ended run has no running top`);
+    assert.equal(liveTop({id: 1, kind, live: true, waiting: true}), null, `${kind}: a queued run waits, it does not run`);
+  }
+  assert.equal(liveTop({live: true, step: ''}).title, 'Starting');
+  assert.equal(liveTop({live: true, step: ''}, {started: true}).title, 'Working on it', 'never "Starting" beside a log that is already working');
+  assert.equal(liveTop({live: true, step: 'x'}, {words: 'Reading employer job sites: 120 of 202 · 3,412 jobs listed'}).title, 'Reading employer job sites');
+  assert.deepEqual(liveTop({live: true}, {count: {done: 2, total: 5, percent: 40}}).count, {done: 2, total: 5, percent: 40}, 'the sites a browser run read');
+  const render = read('pages/activity-render.js'), top = read('pages/activity-result-top.js'), html = read('index.html'), css = read('style.css');
+  assert.match(render, /run\.live \? \(run\.startedAt \? `Started \$\{hhmm\(Date\.parse\(run\.startedAt\)\)\}` : ''\)/, 'the header says when it started; the step is the top\'s');
+  assert.doesNotMatch(render, /runProgress\(/, 'no second bar: the top has the one');
+  assert.doesNotMatch(render, /phase-note', counter/, 'no count on the step row: the top has it');
+  assert.match(top, /show\(\$\('activity-warnings'\), problem \|\| !!clean \|\| !!live\);/);
+  assert.match(html, /id="activity-warnings-progress" hidden><div class="progress-head"><span id="activity-warnings-count"><\/span><\/div><div class="bar"><span><\/span><\/div>/);
+  assert.match(css, /\.bar\.is-sliding span \{ position: absolute; width: 35%; animation: bar-slide/, 'the sliding bar is the shared one (the Jobs card\'s too)');
 });

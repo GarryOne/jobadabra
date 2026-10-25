@@ -4,7 +4,7 @@
 // Guarded by test/run-result-card.test.js.
 import {addedWords} from './find-card-model.js';
 import {NEXT} from './run-compact.js';
-import {runPill} from './run-status.js';
+import {runPill, stepCount} from './run-status.js';
 
 // Every kind's run has this top once it ended (owner, 25 Oct 2026: "Every action run result, should have its status in a consistent way").
 // Kept as the list of kinds the top was built for: test/run-result-card.test.js fails on a new kind until it is drawn and checked.
@@ -36,5 +36,15 @@ export function cleanTop(run, {kind, added = 0, asks = 0, title = ''} = {}) {
   const step = NEXT[kind], counts = {added, asks};
   const next = run.ok !== false && step && (!step.when || step.when(counts)) ? {label: step.label(counts), view: step.view} : null;
   return {tone, icon: ICONS[tone] || 'pulse', title: NUMBER[kind]?.(added) || title || label, next};
+}
+// A running run's top, the same for every kind (owner, 25 Oct 2026: "Every action run loading should be in the same way"): the step it is on, in words,
+// and its count when the step has one ({done, total, percent}; the bar slides without one). `words`: the step as the panel names it (a search's phase label),
+// else the step itself; its count is cut from the words, the bar says it ("Reading employer job sites: 120 of 400" → "Reading employer job sites").
+export function liveTop(run, {words = '', count = null, started = false} = {}) {
+  if (!run?.live || run.waiting) return null;
+  const step = String(words || run.step || '');
+  const title = step.replace(/\s*[:·-]?\s*\d[\d,]* of \d[\d,]*.*$/, '').trim();
+  // No step named: "Starting" until its log has a line, then "Working on it" (never "Starting" beside a log that is already working).
+  return {title: title ? title[0].toUpperCase() + title.slice(1) : started ? 'Working on it' : 'Starting', count: count || stepCount(run.step)};
 }
 export const titleWithNumber = (title, kind, added = 0) => (NUMBER[kind] ? `${title} · ${NUMBER[kind](added)}` : title);

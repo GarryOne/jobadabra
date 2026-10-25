@@ -2,12 +2,13 @@
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {shared} from './shared.js';
-import {COMMAND_KIND, KIND, TASK_BUTTONS, capital, clockTime, hhmm, kindOf, lastActivity, stepWords, openActivity, outcome, renderActivity} from './activity.js';
+import {COMMAND_KIND, KIND, TASK_BUTTONS, capital, clockTime, hhmm, kindOf, stepWords, openActivity, outcome} from './activity.js';
 import {$, runWhen, show} from './core.js';
 import {openView} from './nav.js';
 import {runPill, telegramHealth} from '../run-status.js';
 import {showStop, stopRunning} from '../stop-task.js';
 import {refreshBusy} from '../search-changed.js';
+import {showRunsTab} from './runs-tab.js';
 
 // Status: what's running, the last and next search, the last and next Gmail check, as a small card.
 export async function showStatusCard() {
@@ -28,8 +29,8 @@ export async function showStatusCard() {
     row.append(el('span', 'status-glyph', glyph), el('span', 'muted', label), el('b', '', value));
     return row;
   }));
-  const more = Object.assign(el('a', 'link small', 'See Recent activity →'), {href: '#'});
-  more.addEventListener('click', event => { event.preventDefault(); openActivity(true); });
+  const more = Object.assign(el('a', 'link small', 'View all runs →'), {href: '#'});
+  more.addEventListener('click', event => { event.preventDefault(); showRunsTab(); });
   card.append(more);
   show(card);
   show($('command-answer'), false);
@@ -99,7 +100,7 @@ export function renderActionsPage(data) {
     tile.append(icon(TASK_ICON[kind] || 'pulse'));
     li.append(tile, el('b', '', KIND[kind]?.name || 'Task'), pill(label, tone), el('span', 'muted', runWhen(run.endedAt || run.startedAt)),
       el('span', 'muted runs-result', capital(outcome(run))), el('span', 'runs-go', '›'));
-    li.addEventListener('click', () => { shared.selectedRun = run.id; openActivity(true); renderActivity(lastActivity); });
+    li.addEventListener('click', () => showRunsTab(run.id));   // in the app, on that run (owner, 25 Oct 2026)
     return li;
   });
   $('runs-table').replaceChildren(...(rows.length ? rows : [el('li', 'muted runs-empty', 'Nothing has run yet. Press Run on a task above.')]));
@@ -116,7 +117,7 @@ export async function init() {
   $('run-banner-stop').addEventListener('click', event => stopRunning(event.currentTarget));
   $('run-banner-view').addEventListener('click', () => { shared.selectedRun = null; openActivity(true); });   // null = the running task, not whichever row was open last
   $('actions-result-close').addEventListener('click', () => show($('actions-result'), false));
-  $('runs-all').addEventListener('click', event => { event.preventDefault(); openActivity(true); });
+  $('runs-all').addEventListener('click', event => { event.preventDefault(); showRunsTab(); });
   $('actions-automation').addEventListener('click', event => {
     event.preventDefault();
     openView('settings');

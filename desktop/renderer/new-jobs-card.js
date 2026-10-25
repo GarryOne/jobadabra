@@ -9,5 +9,5 @@ export const newJobItems = lines => (lines || []).map(line => NEW_JOB.exec(Strin
 // A run with new jobs and no lines naming them (an older run) still says its count: the card, never just the header line.
 export function newJobsCard(run, lines) {
   if (!run || run.live || !run.ok || !(run.new > 0)) return null;
-  return {kind: 'digest', fresh: run.new, items: newJobItems(lines)};
+  return {kind: 'digest', fresh: run.new, items: newJobItems(lines), own: true};   // own: these are this run's jobs, by name
 }

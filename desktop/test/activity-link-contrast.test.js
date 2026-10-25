@@ -6,7 +6,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const css = fs.readFileSync(path.join(dir, '..', 'renderer', 'style.css'), 'utf8');
+// The run panel's rules are shared with Actions → Runs (":is(.activity-panel, .actions-runs) .x", test/run-view.test.js): read as the drawer's.
+const css = fs.readFileSync(path.join(dir, '..', 'renderer', 'style.css'), 'utf8').replaceAll(':is(.activity-panel, .actions-runs) ', '.activity-panel ');
 
 for (const selector of ['.activity-notion', '.activity-panel .run-github', '.activity-panel .run-link']) {
   test(`${selector} text uses --signal-ink`, () => {

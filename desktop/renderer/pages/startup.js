@@ -57,7 +57,7 @@ export async function init() {
     } else openView(shared.state.notion ? 'focus' : 'jobs');
     // The Recent activity panel open over it, on the same run (pages/activity.js PANEL_KEY); its content paints when the runs arrive.
     const panel = remembered(PANEL_KEY);
-    if (panel) setTimeout(() => { shared.selectedRun = panel === 'live' ? null : Number(panel); openActivity(true); }, 0);
+    if (panel) setTimeout(() => { shared.selectedRun = panel === 'live' ? null : Number(panel) || panel; openActivity(true); }, 0);
   } else {
     show($('wizard'));
     const saved = shared.state.settings.wizardStep === 'goals' ? 'cv' : shared.state.settings.wizardStep;  // the old goals step: now part of the CV step

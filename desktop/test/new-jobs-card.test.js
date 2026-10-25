@@ -27,9 +27,10 @@ test('every state of a finished search with new jobs and no digest draws a card;
   for (const run of [{ok: true, new: 0}, {ok: true}, {ok: false, new: 8}, {ok: true, new: 8, live: true}, null]) assert.equal(newJobsCard(run, LINES), null);
 });
 
-test('the renderer uses it for a search only when no digest parsed, and the step list leaves the partial note to the line under the card', () => {
+// Owner, 25 Oct 2026: inside one run, only that run's jobs. The run's own "New job:" lines win over a digest (whose new section can hold earlier runs' jobs).
+test('the renderer lists a search run\'s own new jobs first, a digest when it has none, and the step list leaves the partial note to the line under the card', () => {
   const source = activitySource();
-  assert.match(source, /\(shownText \? parseRunMessage\(shownText\) : null\) \|\| \(kindOf\(run\) === 'search' \? newJobsCard\(run, lines\) : null\)/);
+  assert.match(source, /const own = kindOf\(run\) === 'search' \? newJobsCard\(run, lines\) : null;\n\s+const card = \(own\?\.items\.length \? own : null\) \|\| \(shownText \? parseRunMessage\(shownText\) : null\) \|\| own;/);
   assert.match(source, /stepNote\(stepWarnings\)/);
   assert.doesNotMatch(source, /stepNote\(detailWarnings\)/);
   assert.match(source, /const stepWarnings = partial \? split\.rest : detailWarnings;/);

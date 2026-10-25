@@ -1,6 +1,6 @@
 // Recent activity: the bar at the bottom of every screen and its panel. This file keeps init() (the start-up wiring) and re-exports the rest of the panel,
 // which lives in activity-*.js (basics, visits, results, render, run-card, mail, cards, panel, few-jobs). Guarded by the tests that read activity-*.js (test/activity-source.js).
-import {openMenu, toggleOnBar} from '../components.js';
+import {toggleOnBar} from '../components.js';
 import {shared} from './shared.js';
 import {openSetting} from './settings.js';
 import {$, show} from './core.js';
@@ -19,7 +19,7 @@ import {showKeptStatusBar} from './activity-results.js';
 import {rerunKind} from './activity-problem-box.js';
 import {lastActivity, PANEL_HEIGHT, setPanelHeight, foldedWarnings, detailRunId, renderActivity, showMoreRuns, setFoldedWarnings} from './activity-render.js';
 import {showJumpToLatest, refreshActivity} from './activity-run-card.js';
-import {filterMenu, openActivity, announceRuns, refreshCv, QUESTIONS, currentAnswers} from './activity-panel.js';
+import {openActivity, announceRuns, refreshCv, QUESTIONS, currentAnswers} from './activity-panel.js';
 let wasRunning = false;
 let answersTimer;
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
@@ -38,7 +38,6 @@ export async function init() {
     event.preventDefault();
     if (event.currentTarget.dataset.url) window.pilot.openExternal(event.currentTarget.dataset.url);
   });
-  $('activity-filter').addEventListener('click', () => openMenu($('activity-filter'), filterMenu()));
   // ↑/↓ walk Recent activity while the panel is open: the neighbouring run opens, as if clicked. It does not depend on where
   // the focus is (every redraw of the list can drop it, and with live data one does come at any moment): it starts from the
   // current row. Typing in a field, an open menu and modifier keys keep their own arrows. Waiting runs have nothing to open.
@@ -116,7 +115,7 @@ export async function init() {
       refreshActivity();
     }
   });
-  $('activity-toggle').addEventListener('click', () => openActivity($('activity-panel').hidden));
+  $('activity-toggle').addEventListener('click', () => { if ($('activity-panel').hidden) shared.selectedRun = null; openActivity($('activity-panel').hidden); });   // the generic Details: the default run (renderer/run-pick.js)
   $('activity-close').addEventListener('click', () => openActivity(false));
   $('activity-warnings-more').addEventListener('click', () => {
     const open = $('activity-warnings-list').hidden;

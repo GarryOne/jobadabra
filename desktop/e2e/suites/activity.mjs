@@ -7,7 +7,7 @@ import path from 'node:path';
 import {badSummary, leaks, liveLogProblems} from '../lib/activity.mjs';
 import {finish, snap} from '../lib/layout.mjs';
 import {journey} from '../lib/journey.mjs';
-import {LABEL, appReady, chooseMenu, noRowStaysRunning, openPanel, openRun, panelRows, prepare, problemsWith, runTask, runsData, sleep} from '../lib/activity-steps.mjs';
+import {LABEL, appReady, chooseMenu, closeRunPanel, noRowStaysRunning, openPanel, openRun, runPanelShown, panelRows, prepare, problemsWith, runTask, runsData, sleep} from '../lib/activity-steps.mjs';
 
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): the relaunch steps read a weekly run, and the filter shows only with two runs.
@@ -72,10 +72,10 @@ export async function run(ctx) {
   // never slowed it: the step passed or failed on step order alone. Find new employers' own task step above still checks its row, its end and its log.
   // ---------- (4) Recent activity itself ----------
   // Before the failure tests: the history keeps about the newest 25 runs, and after the tests below the first tasks have scrolled out of it.
-  await ctx.run('"View all activity" opens the panel, and its filter keeps one kind of run at a time', async () => {
+  await ctx.run('"View all runs" opens Actions → Runs, and its task filter keeps one kind of run at a time', async () => {
     await openPanel(ctx);
     const all = await panelRows(page);
-    if (!/\d+ recent/.test(await page.textContent('#activity-count'))) throw new Error('the panel does not count its runs');
+    if (!/^\d+$/.test((await page.textContent('#activity-count')).trim())) throw new Error('Runs does not count its runs');
     // The panel lists a page of the newest runs; the filter menu lists every kind in the whole history, with how many.
     await page.click('#activity-filter');
     const entries = await page.locator('.ui-menu button').allTextContents();
@@ -88,11 +88,11 @@ export async function run(ctx) {
     const mailOnly = await panelRows(page);
     if (!mailOnly.length || mailOnly.some(row => row.kind !== LABEL.mail)) throw new Error(`the Gmail filter shows: ${mailOnly.map(row => row.kind).join(', ') || 'nothing'}`);
     await page.click('#activity-filter');
-    await chooseMenu(page, /^(✓ )?All runs/);
+    await chooseMenu(page, /^(✓ )?Any task/);
     await sleep(page, 500);
     if ((await panelRows(page)).length < all.length) throw new Error('"All runs" did not bring the other runs back');
-    await snap(ctx, 'activity-panel', {view: 'actions', situation: 'The Recent activity panel open over the Actions page after many runs'});
-    await page.click('#activity-close');
+    await snap(ctx, 'activity-panel', {view: 'actions', situation: 'Actions → Runs after many runs'});
+    await closeRunPanel(page);
   }, {needs: ctx.needs});
 
   await ctx.run('opening a finished run shows its result card and its Technical log', async () => {
@@ -113,13 +113,13 @@ export async function run(ctx) {
     await popup.waitFor({timeout: 180000});
     // Look at an older run first and leave the panel open on it: the panel would show the new run by itself (it is the latest), so only the click can switch it.
     await page.locator('#runs-table .runs-row').filter({hasNot: page.locator('b', {hasText: new RegExp(`^${LABEL.mail}$`)})}).first().click();   // the Actions page lists the newest five
-    await page.waitForFunction(() => !document.getElementById('activity-panel')?.hidden, null, {timeout: 10000});
+    await page.waitForFunction(runPanelShown, null, {timeout: 10000});
     const before = await selected();
     if (!before || new RegExp(LABEL.mail, 'i').test(before)) throw new Error(`the test could not open an older run first (the panel shows "${before}")`);
     await popup.click();   // the pop-up is still on screen: they last 8 s
     await page.waitForFunction(label => (document.getElementById('activity-selected')?.textContent || '').includes(label), LABEL.mail, {timeout: 5000})
-      .catch(async () => { throw new Error(`the pop-up opened Recent activity on "${await selected()}", not on the run it announced (${LABEL.mail})`); });
-    await page.click('#activity-close');
+      .catch(async () => { throw new Error(`the pop-up opened the run panel on "${await selected()}", not on the run it announced (${LABEL.mail})`); });
+    await closeRunPanel(page);
   }, {needs: ctx.needs});
 
   // 5 Oct 2026: a run sent to Telegram (--send) leaves no message in this Mac's record; the report lives on its Notion page only.

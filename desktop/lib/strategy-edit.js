@@ -91,6 +91,8 @@ export async function editLists(storage, asked, {run, ensurePage, writePage, wai
     for (const [name, file] of Object.entries(FILES)) {
       if (JSON.stringify(next[name]) !== JSON.stringify(files[name])) storage.writeText(file, JSON.stringify(next[name], null, 2) + '\n');
     }
+    // A role in another field redraws the words drawn from the old one (board words, stack, Google Jobs searches: src/field_redraft.py).
+    if (edits.roles) await run(storage, ['src.field_redraft', 'apply']).catch(() => null);
     try {
       await publishSearchSettings(storage, {run, ensurePage, writePage});
       if (edited(readFiles(storage), edits)) return {changed: Object.keys(edits)};

@@ -75,3 +75,14 @@ test("a save drops the engine's copy of the settings page, so the next search re
   await editLists(t.storage, {country: {add: ['Romandie']}}, t.deps);
   assert.equal(fs.existsSync(copy), false);
 });
+
+test('a roles edit asks the engine to redraft the words drawn from the old field, after the write and before the publish; other edits do not', async () => {
+  const t = setup();
+  await editLists(t.storage, {roles: {add: ['Pilot']}}, t.deps);
+  const steps = t.calls.map(call => call.join(':'));
+  assert.ok(steps.indexOf('write:config/search.json') < steps.indexOf('run:apply'), steps.join(' '));
+  assert.ok(steps.indexOf('run:apply') < steps.findIndex(step => step.startsWith('publish')), steps.join(' '));
+  const other = setup();
+  await editLists(other.storage, {places: {add: ['Zurich']}}, other.deps);
+  assert.ok(!other.calls.some(call => call[1] === 'apply'));
+});

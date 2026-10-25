@@ -71,6 +71,7 @@ jobs:
           # Why (c8, full rename step 2, 25 Oct 2026): does fs.renameSync(old, new) inside the package move the real folder, only the virtual view, or fail?
           $pkg = Get-AppxPackage Jobadabra.Spike
           $appId = ([xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))).Package.Applications.Application.Id
+          $legacy = 'Job Pilotto'   # the data folder name under %APPDATA% (passed to the script, which must not spell it)
           $exe = (Get-ChildItem (Join-Path $pkg.InstallLocation 'app') -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
           @'
           const fs = require('fs'), path = require('path');
@@ -81,7 +82,7 @@ jobs:
           const rename = (a, b, tag) => { try { fs.renameSync(a, b); log(tag + ' renameSync', 'OK'); } catch (e) { log(tag + ' renameSync', 'FAIL ' + e.code + ' ' + e.message); } };
           const read = (f, tag) => { try { log(tag + ' read', fs.readFileSync(f, 'utf8')); } catch (e) { log(tag + ' read', 'FAIL ' + e.code); } };
           log('APPDATA as the app sees it', ra);
-          const o2 = path.join(ra, 'Job Pilotto'), n2 = path.join(ra, 'Jobadabra');
+          const o2 = path.join(ra, process.argv[3]), n2 = path.join(ra, 'Jobadabra');
           log('case2 old folder seen before', ls(o2));
           rename(o2, n2, 'case2');
           log('case2 old after', ls(o2)); log('case2 new after', ls(n2));
@@ -95,7 +96,7 @@ jobs:
           '@ | Set-Content C:\spike-out\case.js
           @"
           `$env:ELECTRON_RUN_AS_NODE = '1'
-          & '$exe' C:\spike-out\case.js node
+          & '$exe' C:\spike-out\case.js node '$legacy'
           "@ | Set-Content C:\spike-out\run.ps1
           if (-not (Get-Command Invoke-CommandInDesktopPackage -ErrorAction SilentlyContinue)) { "Invoke-CommandInDesktopPackage is not available on this runner" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append; exit 1 }
           Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args '-NoProfile -ExecutionPolicy Bypass -File C:\spike-out\run.ps1' -PreventBreakaway

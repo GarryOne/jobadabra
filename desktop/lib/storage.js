@@ -1,4 +1,4 @@
-// Everything the app keeps lives in the user's own folder (~/Library/Application Support/Job Pilotto):
+// Everything the app keeps lives in the user's own folder (~/Library/Application Support/Jobadabra):
 //   settings.json   choices that aren't secret (models, setup progress, Notion page ids)
 //   secrets.json    API keys and tokens, each encrypted with a key held in the macOS Keychain
 //   config/         the pipeline's search.json, preferences.json, sources.json, scout_seeds.json

@@ -4,8 +4,8 @@
 // The file: <LIVE_CAPTURE_DIR>/ai-calls.json = [{route, at, request, answer}]; desktop/e2e/record-sites.mjs copies it into the replay candidate's folder.
 // Guard: desktop/test/live-capture.test.js (also: the shipped app source calls it in one place).
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import {realDataFolders} from './app-identity.js';
 
 const SECRET_KEYS = /^(value|values|typed|cookie|cookies|password|passwd|token|authorization|secret|session)$/i;   // words-ok: object KEY names to drop from what is written, never page text or a judgment about a page
 const QUERY = /\?[\w%.~-]+=[^\s"'<>&]*(?:&[\w%.~-]+=[^\s"'<>&]*)*/g;
@@ -29,8 +29,7 @@ export function scrub(value) {
 }
 
 const insideRealData = dir => {   // the app's own folder (never "Job Pilotto QA", which is the pool's)
-  const real = path.join(os.homedir(), 'Library', 'Application Support', 'Job Pilotto') + path.sep;
-  return (path.resolve(dir) + path.sep).startsWith(real);
+  return realDataFolders().some(real => (path.resolve(dir) + path.sep).startsWith(path.resolve(real) + path.sep));
 };
 
 // -> true when written. Never throws: a capture must not change what the app does.

@@ -3,7 +3,7 @@
 The cockpit for Jobadabra: a setup wizard, Find new jobs, **Apply to N jobs**, settings. **Notion is
 the user interface** (required): users duplicate the public Jobadabra template, and everything they
 view and edit (applications, matches, Profile, insights, interviews) lives there. The app keeps the
-engine's working data (crawl history, score cache, CV) in `~/Library/Application Support/Job Pilotto`;
+engine's working data (crawl history, score cache, CV) in `~/Library/Application Support/Jobadabra`;
 keys are encrypted with a key held in your Mac's Keychain (Electron `safeStorage`) and never leave the
 Mac except to the service they belong to. No server, no GitHub Actions, no Cloudflare needed.
 

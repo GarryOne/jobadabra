@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {realDataFolders} from '../lib/app-identity.js';
 import {isTwin, realFolder, twinRefusal, twinSecret} from '../lib/twin.js';
 import {createStorage} from '../lib/storage.js';
 import {pipelineEnv} from '../lib/pipeline-env.js';
@@ -18,7 +19,11 @@ test('a twin starts only on its own folder and with the mirror\'s token', () => 
   assert.match(twinRefusal({...twin, JOB_PILOTTO_USER_DATA: ''}, real), /never runs on the real folder/);
   assert.match(twinRefusal({...twin, JOB_PILOTTO_USER_DATA: `${real}/`}, real), /is the real folder/);
   assert.match(twinRefusal({...twin, JOB_PILOTTO_TWIN_NOTION_TOKEN: ''}, real), /Live Test mirror/);
-  assert.equal(realFolder('/Users/someone', 'darwin'), real);
+  assert.equal(realFolder('/Users/someone', 'darwin', {}, () => false), '/Users/someone/Library/Application Support/Jobadabra');   // neither exists: the new name
+  assert.equal(realFolder('/Users/someone', 'darwin', {}, dir => dir === real), real);                                           // an install not moved yet
+  for (const name of ['Jobadabra', 'Job Pilotto']) {   // both names are "the real folder" for the refusal
+    assert.match(twinRefusal({...twin, JOB_PILOTTO_USER_DATA: `/Users/someone/Library/Application Support/${name}`}, realDataFolders('/Users/someone', 'darwin', {})), /is the real folder/);
+  }
 });
 
 test('the twin\'s Notion token is the mirror\'s, never one in the cloned secrets.json', () => {

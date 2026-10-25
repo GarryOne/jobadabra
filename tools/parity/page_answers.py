@@ -6,7 +6,9 @@ os.environ.update({'JOB_PILOTTO_DATA_DIR': os.environ['RD'] + '/data', 'JOB_PILO
 from src.sources import boards, careers, visits
 lists = {n: getattr(careers, n) for n in ('CAREER_WORDS', 'JOB_PATH', 'NO_JOBS', 'STRONG_WORDS', 'JOB_HOST', 'NOT_JOBS', 'TITLE_LIKE', 'NOT_A_JOB')}
 lists.update({'CAREER': boards.CAREER, 'JOBLIST': visits.JOBLIST, 'NOT_A_LIST': visits.NOT_A_LIST})
-cache = os.path.expanduser('~/Library/Application Support/Job Pilotto/data/discovery-cache')
+sys.path.insert(0, os.path.join(repo, 'tools'))
+from app_data_dir import app_data_dir
+cache = str(app_data_dir() / 'data' / 'discovery-cache')
 res = {}
 for name in sorted(os.listdir(cache)):
     try:

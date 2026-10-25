@@ -22,7 +22,7 @@ const NAME = /['"`](Job Pilotto|Jobadabra)\b[^'"`]*['"`]/;
 const IDENTITY_USE = /setName\(|['"]userData['"]|Safe Storage/;
 const FOLDER_USE = /Application Support|APPDATA/;
 // Files that still spell the old data folder as a literal (the folder keeps that name until its own migration); this list may only shrink.
-const OLD_FOLDER_LITERALS = new Set(['e2e/lib/offline-guard.mjs', 'e2e/twin-drive.mjs', 'lib/ai/model-memo.js', 'lib/live-capture.js', 'lib/twin.js']);
+const OLD_FOLDER_LITERALS = new Set(['e2e/twin-drive.mjs']);   // the twin's own "Job Pilotto (live test)" folder
 
 const lines = [];
 for (const file of files) {

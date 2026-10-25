@@ -4,6 +4,7 @@
 // drops it when the PDF changes). A folded card says "Mostly readable · 3 issues · 2 content suggestions". Moved here from pages/profile.js;
 // model: cv-check-model.js. Guarded by test/cv-check-model.test.js and test/cv-check-view.test.js.
 import {el, pill} from './components.js';
+import {costText} from './ai-cost.js';
 import {icon} from './icons.js';
 import {costLine, fixesOf, passedOf, scoreTone, summaryOf} from './cv-check-model.js';
 
@@ -88,7 +89,8 @@ export function showCvCheck(data, {cvName = '', when = at => at} = {}) {
       parts.push(...ai.components.map(item => part(`${item.name} · ${item.score}`, item.note)));
       if (ai.strengths.length) parts.push(part('Working well', ai.strengths.join(' · ')));
       if (ai.missing_keywords.length) parts.push(part('Terms the target roles ask for that the CV never states', `${ai.missing_keywords.join(', ')}. Add one only if it is true.`));
-      if (ai.usd > 0 && ai.billing !== 'subscription') parts.push(part('Cost of this review', `$${ai.usd.toFixed(2)}`));
+      const spent = ai.billing !== 'subscription' && costText(ai.usd);
+      if (spent) parts.push(part('Cost of this review', spent));
     }
     folds.push(fold('chart', 'Score breakdown', '', parts));
     const text = el('pre', 'cvc-pre', ats.text);

@@ -1,5 +1,6 @@
 // The AI engine chooser's words and states (the setup wizard's AI step and Settings → Connections → AI), kept free of
 // the DOM so the tests can check them. The user picks; nothing is chosen for them (lib/claude-code.js engine()).
+import {costText, dollars} from './ai-cost.js';
 const freeOn = settings => !!(settings?.aiFree || settings?.aiTrial);
 export const usingFree = settings => freeOn(settings) && (!settings.aiEngine || settings.aiEngine === 'api');   // Free is the engine in charge (a later pick of another engine wins)
 // The one-time hint after AI-written text on Free AI (renderer/own-key-hint.js): its words, and when it is wanted (Free, not shown yet).
@@ -85,11 +86,10 @@ export function selection({picked = null, family = null} = {}) {
 export const PAID_BY = {free: 'credits', api: 'api', openai: 'api', cli: 'plan', codex: 'plan'};
 export const USAGE = {credits: {before: 'Uses your AI credits.', after: 'Used your AI credits'}, api: {before: 'Billed to your API account.', after: 'Billed to your API account'},
   plan: {before: 'Uses your plan allowance.', after: 'Used your plan allowance'}};
-const dollars = usd => `$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}`;
 export const usageBefore = (settings, hasKey = false) => USAGE[PAID_BY[chosen(settings, hasKey)]]?.before || '';
-export const usageAfter = ({paidBy = '', usd = 0} = {}) => (paidBy === 'api' && usd > 0 ? `Cost ${dollars(usd)}` : USAGE[paidBy]?.after || '');
+export const usageAfter = ({paidBy = '', usd = 0} = {}) => (paidBy === 'api' && costText(usd) ? `Cost ${dollars(usd)}` : USAGE[paidBy]?.after || '');
 // The last run's real cost, labelled as the past (never an estimate for the next one): only a measured amount on an API account.
-export const lastCost = ({paidBy = '', usd = 0} = {}, what = 'draft') => (paidBy === 'api' && usd > 0 ? `Last ${what}: ${dollars(usd)}` : '');
+export const lastCost = ({paidBy = '', usd = 0} = {}, what = 'draft') => (paidBy === 'api' && costText(usd) ? `Last ${what}: ${dollars(usd)}` : '');
 
 // The chosen engine: 'api', 'cli', 'openai', 'codex' or null. In Settings an install that had a key before the choice existed shows 'api'
 // (it keeps running on the key); the wizard shows nothing chosen until the user picks.
@@ -141,6 +141,6 @@ export const needsNotice = (settings, engine = 'cli') => (engine === 'codex' ? !
 export function billingLabel(run = {}) {
   if (run.billing === 'Claude subscription') return 'Claude Code · your plan';
   if (run.billing === 'ChatGPT plan') return 'Codex · your plan';
-  if (run.billing === 'Both') return `$${(run.usd || 0).toFixed(2)} + Claude Code`;
+  if (run.billing === 'Both') return costText(run.usd, usd => `${dollars(usd)} + Claude Code`) || 'Claude Code · your plan';
   return null;
 }

@@ -21,11 +21,11 @@ export function pickTop(jobs, limit = Math.max(...CHIPS), {minFit = DEFAULT_MIN_
 }
 
 // The popup's cost line for the first `count` of the pick: "3 jobs: 2 kits + 3 CVs with letters, about $0.26", or "3 jobs are ready: nothing to prepare".
-export function costLine(picked, count) {
+export function costLine(picked, count, {showCost = false} = {}) {   // showCost: only on the user's own API key (ai/names.js costVisible)
   const list = picked.slice(0, count), kits = list.filter(job => job.needsKit).length, cvs = list.filter(job => job.needsCv).length;
   const total = Math.round(list.reduce((sum, job) => sum + job.usd, 0) * 100) / 100, jobsWord = `${list.length} job${list.length === 1 ? '' : 's'}`;
   if (!list.length) return 'No job is left to fill: every good match is on the server already.';
   if (!kits && !cvs) return `${jobsWord} ready: nothing to prepare, no AI cost.`;
   const parts = [kits && `${kits} kit${kits === 1 ? '' : 's'}`, cvs && `${cvs} CV${cvs === 1 ? '' : 's'} with letter${cvs === 1 ? '' : 's'}`].filter(Boolean);
-  return `${jobsWord}: prepare ${parts.join(' + ')}, about $${total.toFixed(2)} of AI.`;
+  return `${jobsWord}: prepare ${parts.join(' + ')}${showCost ? `, about $${total.toFixed(2)} of AI` : ''}.`;
 }

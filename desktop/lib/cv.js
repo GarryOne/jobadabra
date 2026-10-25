@@ -357,7 +357,7 @@ export function reviewPage(storage, record) {
         <a href="jobpilotto-cv:reveal">Show in Finder</a> <a href="jobpilotto-cv:copy">Copy path</a></div>
       <div class="jp-note">Clean: no highlights or notes. The page on the right is only a preview of what changed.</div></div>` : ''}
     <div class="jp-title">Preview of changes · ${esc(record.job.title)} · ${esc(record.job.company)}</div>
-    <div class="jp-meta">${new Date(record.createdAt).toLocaleString()} · ${esc(record.model)} · $${record.usd.toFixed(2)}</div>
+    <div class="jp-meta">${new Date(record.createdAt).toLocaleString()} · ${esc(record.model)}</div>
     <div class="jp-actions"><label><input type="checkbox" id="jp-clean"> Hide highlights</label></div>
     <div class="jp-legend"><span class="k-rew">reworded</span> <span class="k-ins">added</span> <span class="k-del">removed</span> <span class="k-mov">moved up</span></div>
     ${warningList ? `<ul class="jp-warn">${warningList}</ul>` : ''}

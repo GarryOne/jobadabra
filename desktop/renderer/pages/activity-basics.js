@@ -1,6 +1,7 @@
 // Recent activity: run names, phases, outcomes, the Gmail connection and the card chooser (cardFor).
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
+import {costText, dollars} from '../ai-cost.js';
 import {claudeHelp} from '../claude-help.js';
 import {AI_BUSY, groupWarnings, humanError, limitedJobs, sentences} from '../run-warnings.js';
 import {aiLimitHead, failedOutcome, stoppedHead, deliveryHead, notConnectedHead, waitedHead, unsavedRun} from '../run-status.js';
@@ -38,7 +39,7 @@ export async function showSearchStatus() {
   if (!lastSearchAt) { title.textContent = 'No check yet'; detail.textContent = ''; return; }
   const last = runs.find(run => (run.kind || 'search') === 'search');
   const found = last?.new != null ? ` · ${last.new} new match${last.new === 1 ? '' : 'es'}` : '';
-  const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : last?.usd ? ` · $${last.usd.toFixed(2)}` : '';
+  const cost = billingLabel(last || {}) ? ` · ${billingLabel(last)}` : costText(last?.usd, usd => ` · ${dollars(usd)}`);
   if (last && !last.ok) { title.textContent = 'Last check had problems →'; detail.textContent = clockTime(lastSearchAt); return; }
   title.textContent = `Checked ${clockTime(lastSearchAt)}${found}${cost}`;
   detail.textContent = '';

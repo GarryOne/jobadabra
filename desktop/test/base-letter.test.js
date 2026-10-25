@@ -5,6 +5,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';
+import {setCostEngine, setCostsShown} from '../renderer/ai-cost.js';
+
+setCostsShown(true);
+setCostEngine(() => 'api');   // the API-key user's cases; test/ai-cost.test.js covers every other engine
 
 install();
 globalThis.window.pilot = new Proxy({}, {get: () => async () => ({})});
@@ -33,6 +37,8 @@ test('the empty state shows until a choice or a letter; reading shows the editor
 });
 
 test('who pays: said before from the engine, after from the run; an unknown cost is never $0', () => {
+  setCostsShown(true);
+  setCostEngine(() => 'api');   // the page modules imported above set the window's own engine
   assert.equal(usageBefore({aiFree: true}), 'Uses your AI credits.');
   assert.equal(usageBefore({aiEngine: 'cli'}), 'Uses your plan allowance.');
   assert.equal(usageBefore({aiEngine: 'api'}, true), 'Billed to your API account.');

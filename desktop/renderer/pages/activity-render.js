@@ -1,6 +1,7 @@
 // Recent activity: renderActivity, the Recent activity panel redraw, its panel height and its list state.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
+import {costText, dollars} from '../ai-cost.js';
 import {runWarningLines, stepNote} from '../run-warnings.js';
 import {barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, notChecked, waitedHead} from '../run-status.js';
 import {el, moreButton, pill, tag} from '../components.js';
@@ -285,7 +286,7 @@ export function renderActivity(fresh) {
   const said = run && !run.live && !hasCard && !boxSaysIt ? capital(String(outcome(run)).replace(new RegExp(`^${kind?.name || ''}:\\s*`, 'i'), '')) : '';
   const seconds = run?.endedAt && run.startedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
   // A run that used no AI shows no cost: "$0" on every row was noise.
-  const cost = run && !run.live && (billingLabel(run) || (run.usd > 0 && `AI $${run.usd < 0.01 ? run.usd.toFixed(3) : run.usd.toFixed(2)}`));
+  const cost = run && !run.live && (billingLabel(run) || costText(run.usd, usd => `AI ${dollars(usd)}`));
   const queued = queueWords(run, data, kindName => KIND[kindName]?.name || 'the current task');
   show($('activity-unqueue'), !!run?.waiting && !!run.id);
   $('activity-unqueue').dataset.id = run?.waiting ? idOf(run) : '';

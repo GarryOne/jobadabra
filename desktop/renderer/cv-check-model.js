@@ -1,6 +1,7 @@
 // The CV check as Profile → CV shows it (owner review fix 8, mockup 08, 18 Oct 2026): one summary line, the fixes first (parser and content review in one
 // list, most important first), the passed checks, score parts and extracted text kept for the folds, and the cost line under each action. Pure (no DOM):
 // the data is lib/cv-check.js's saved result; guarded by test/cv-check-model.test.js.
+import {costText} from './ai-cost.js';
 export const RANK = {high: 0, medium: 1, low: 2};
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -27,7 +28,8 @@ export function summaryOf(data) {
 export function costLine(action, {billing = '', ai = null} = {}) {
   if (action === 'readability') return 'No AI usage';
   if (billing === 'subscription') return 'Uses your plan allowance';
-  if (ai?.usd > 0 && ai.billing !== 'subscription') return `Last review: $${ai.usd.toFixed(2)} · This run may differ.`;
+  const last = ai?.billing !== 'subscription' && costText(ai?.usd);
+  if (last) return `Last review: ${last} · This run may differ.`;
   return 'Uses your AI provider; cost varies';
 }
 

@@ -17,6 +17,7 @@ import {moreButton, openMenu} from '../components.js';
 import {cvCheckAction, lastCheck, showCvCheck} from '../cv-check-view.js';
 import {documentFacts} from '../cv-check-model.js';
 import {icon} from '../icons.js';
+import {costText, dollars} from '../ai-cost.js';
 import {shared} from './shared.js';
 import {byStore, storeName} from '../store-words.js';
 import {showCloud, showExtensionStatus, showGoogle, showSchedule, showTelegram} from './connections.js';
@@ -207,7 +208,7 @@ export async function init() {
     cvReadBlocked = !result.ok && isSpendingLimit(humanError(result.error));
     show($('cv-limit-link'), cvReadBlocked);
     shared.cvReadFailed = !result.ok;
-    $('cv-message').textContent = result.ok ? `Done ($${result.usd.toFixed(2)}).` : cvError(result.error, 'read');
+    $('cv-message').textContent = result.ok ? `Done${costText(result.usd, usd => ` (${dollars(usd)})`)}.` : cvError(result.error, 'read');
     loadCvSetting();
   };
   $('cv-limit-link').addEventListener('click', event => {

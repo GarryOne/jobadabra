@@ -34,7 +34,7 @@ test('readyTop lists the best jobs and their cost; readyRun({top}) prepares what
     assert.deepEqual(top.picked.map(job => job.code), ['a', 'b', 'c', 'd'], 'best fit first; the form the night holds is left out');
     assert.deepEqual(top.chips, [1, 3, 5, 10]);
     assert.match(top.lines[1], /nothing to prepare/);
-    assert.match(top.lines[3], /prepare 1 kit \+ 2 CVs with letters, about \$0\.16/);
+    assert.match(top.lines[3], /^3 jobs: prepare 1 kit \+ 2 CVs with letters\.$/);
     for (const line of Object.values(top.lines)) assert.doesNotMatch(line, /undefined|NaN/);
 
     night = {ok: true, batch: {night: nightOf().night, state: 'finished'}, jobs: [{job: 'held', state: 'prepared'}]};

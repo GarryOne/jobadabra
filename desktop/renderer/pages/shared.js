@@ -1,4 +1,6 @@
 import {setEngineSource, engineNamed} from '../ai-name.js';
+import {setCostEngine} from '../ai-cost.js';
+import {chosen} from '../ai-engine-view.js';
 
 // State more than one page changes (an imported binding is read-only, so it lives on one object).
 export const shared = {
@@ -23,3 +25,4 @@ export const shared = {
 };
 
 setEngineSource(() => engineNamed(shared.state?.settings?.aiEngine, shared.state?.settings, !!shared.state?.secrets?.ANTHROPIC_API_KEY));   // every {AI} text follows the engine the user chose (renderer/ai-name.js)
+setCostEngine(() => chosen(shared.state?.settings || {}, !!shared.state?.secrets?.ANTHROPIC_API_KEY));   // AI costs show only on the user's own API key (ai-cost.js)

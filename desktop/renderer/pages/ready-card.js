@@ -2,6 +2,7 @@
 // start the night now (the test), and in the morning one row per form (complete, what is left, a wall) with Done and the night's video of its fill (a popup). You press Submit; nothing here does. Built from the task-card parts the Tailor card uses (.task-card, .task-body, pill). Guard: test/ready-card.test.js.
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
+import {costText, dollars} from '../ai-cost.js';
 import {wand} from '../magic.js';
 import {$} from './core.js';
 import {liveOf, readyToSubmit, rowOf} from './ready-rows.js';
@@ -25,7 +26,8 @@ export function paint(card, state, names, act) {
     summary.append(pill(`${jobs.length} form${jobs.length === 1 ? '' : 's'}`, 'neutral'));
     if (ready) summary.append(pill(`${ready} ready`, 'good'));
     if (needs) summary.append(pill(`${needs} need${needs === 1 ? 's' : ''} you`, 'warn'));
-    summary.append(pill(`$${(night.costUsd || 0).toFixed(2)} of AI and servers`, 'neutral'));
+    const spent = costText(night.costUsd, usd => `${dollars(usd)} of AI and servers`);
+    if (spent) summary.append(pill(spent, 'neutral'));
     if (night.aiStopped) summary.append(Object.assign(pill('AI stopped', 'warn'), {title: "Your AI stopped during the night (its limit or the night's cost cap): open questions are left for you, the rest is filled."}));
   } else summary.append(pill('Nothing sent yet', 'neutral'));
   // The forms the night works on now: how many fill and wait, and one Stop for all of them (owner, 18 Oct 2026: Stop for the whole night).

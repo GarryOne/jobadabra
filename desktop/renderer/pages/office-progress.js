@@ -2,7 +2,11 @@
 // the hood"): a head with the share and MB, the bar, then each step ticking off, on every spot marked data-office-progress (Profile → CV).
 // Reuses the onboarding "Reading your CV" block (.progress, .progress-head, .bar, .draft-feed). Fed by main's 'officeProgress' event
 // (lib/office-addon.js). Guard: desktop/test/office-progress.test.js.
+import {Eta} from '../eta.js';
 const MB = bytes => Math.round(bytes / 1048576);
+// One estimate per download (its start time), so the time left only ever goes down (eta.js).
+const etas = new Map();
+const etaOf = started => { if (!etas.has(started)) etas.set(started, new Eta(0)); return etas.get(started); };
 const ORDER = ['download', 'check', 'unpack', 'ready'];
 
 // One event -> what the block shows: {hidden} or {title, right, share, steps: [{text, kind: done|now|next}], fine, action}
@@ -15,8 +19,7 @@ export function officeView(event = {}, {platform = 'darwin', now = Date.now()} =
       fine: `${step === 'failed' ? `${error} ` : ''}Your Word CV still works: the app draws its PDF itself, a little less like Word.`, action: 'Try again'};
   }
   const at = ORDER.indexOf(step), seconds = (now - started) / 1000, speed = seconds > 2 ? bytes / seconds : 0;
-  const left = step === 'download' && total && speed ? Math.round((total - bytes) / speed) : null;
-  const leftText = left === null ? '' : left < 60 ? ', under a minute left' : `, about ${Math.round(left / 60)} min left`;
+  const leftText = step === 'download' && total && speed ? etaOf(started).text(seconds, bytes, total).replace(/^ · /, ', ') : '';
   const sizes = total ? `${MB(bytes)} of ${MB(total)} MB` : `${MB(bytes)} MB`;
   const texts = [
     `Downloading LibreOffice (free, open source): ${sizes}${leftText}`,

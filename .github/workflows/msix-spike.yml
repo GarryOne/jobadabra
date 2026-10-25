@@ -50,6 +50,9 @@ jobs:
           New-Item -ItemType Directory -Force (Join-Path $dir 'sub') | Out-Null
           Set-Content (Join-Path $dir 'seed.txt') 'seeded-before-install'
           Set-Content (Join-Path $dir 'sub\nested.txt') 'seeded-nested'
+          New-Item -ItemType Directory -Force (Join-Path $env:APPDATA 'ControlUntouched') | Out-Null
+          Set-Content (Join-Path $env:APPDATA 'ControlUntouched\c.txt') 'control'
+          "real APPDATA before install: $((Get-ChildItem $env:APPDATA -Directory | ForEach-Object Name) -join ', ')" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
           New-Item -ItemType Directory -Force 'C:\spike-out' | Out-Null
           "seeded: $dir" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
       - name: Install · sign with a test certificate and install the package
@@ -104,8 +107,8 @@ jobs:
           "--- result as the packaged app saw it ---" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
           if (Test-Path C:\spike-out\node.txt) { Get-Content C:\spike-out\node.txt | Tee-Object $env:GITHUB_STEP_SUMMARY -Append } else { "no result file: the packaged app could not run the script as node" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append }
           "--- the real disk, seen from outside the package ---" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          "real APPDATA: $((Get-ChildItem $env:APPDATA -Directory | Where-Object { $_.Name -match 'Job|Jobadabra|Case1' } | ForEach-Object { $_.Name }) -join ', ')" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          Get-ChildItem (Join-Path $env:APPDATA 'Job Pilotto') -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "  real Job Pilotto: $($_.FullName)" } | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "real APPDATA after: $((Get-ChildItem $env:APPDATA -Directory -Force | ForEach-Object Name) -join ', ')" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "real folder 'Job Pilotto' exists: $(Test-Path (Join-Path $env:APPDATA 'Job Pilotto'))  'Jobadabra' exists: $(Test-Path (Join-Path $env:APPDATA 'Jobadabra'))  control exists: $(Test-Path (Join-Path $env:APPDATA 'ControlUntouched\c.txt'))" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
           $cache = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache"
           "package cache: $cache" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
           Get-ChildItem $cache -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "  cache: $($_.FullName.Substring($cache.Length))" } | Tee-Object $env:GITHUB_STEP_SUMMARY -Append

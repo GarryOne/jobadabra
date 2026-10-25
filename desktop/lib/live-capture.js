@@ -5,7 +5,7 @@
 // Guard: desktop/test/live-capture.test.js (also: the shipped app source calls it in one place).
 import fs from 'node:fs';
 import path from 'node:path';
-import {realDataFolders} from './app-identity.js';
+import {everyRealDataFolder} from './app-identity.js';
 
 const SECRET_KEYS = /^(value|values|typed|cookie|cookies|password|passwd|token|authorization|secret|session)$/i;   // words-ok: object KEY names to drop from what is written, never page text or a judgment about a page
 const QUERY = /\?[\w%.~-]+=[^\s"'<>&]*(?:&[\w%.~-]+=[^\s"'<>&]*)*/g;
@@ -29,7 +29,7 @@ export function scrub(value) {
 }
 
 const insideRealData = dir => {   // the app's own folder (never "Job Pilotto QA", which is the pool's)
-  return realDataFolders().some(real => (path.resolve(dir) + path.sep).startsWith(path.resolve(real) + path.sep));
+  return everyRealDataFolder().some(real => (path.resolve(dir) + path.sep).startsWith(path.resolve(real) + path.sep));
 };
 
 // -> true when written. Never throws: a capture must not change what the app does.

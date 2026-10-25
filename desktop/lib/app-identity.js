@@ -14,6 +14,9 @@ export const realDataFolders = (home = os.homedir(), platform = process.platform
   ? path.win32.join(env.APPDATA || path.win32.join(home, 'AppData', 'Roaming'), name)
   : path.posix.join(home, 'Library', 'Application Support', name)));
 
+// The same on every OS: a guard that must refuse the real folder wherever a test names it (a CI run on Windows still names the Mac-style path).
+export const everyRealDataFolder = (home = os.homedir(), env = process.env) => [...new Set(['darwin', 'win32'].flatMap(platform => realDataFolders(home, platform, env)))];
+
 // An install from before the rename: the data folder moves to its new name, in one rename (atomic on one volume: it is whole in one place or the other).
 // -> the folder to use. If the move fails (a file held open on Windows, a Store package's private folder) the old folder is used as it is and the
 // move is tried again at the next start; nothing is copied or deleted. A new folder that is only an empty leftover is replaced.

@@ -6,10 +6,10 @@ import http from 'node:http';
 import https from 'node:https';
 import path from 'node:path';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
-import {realDataFolders} from '../../lib/app-identity.js';
+import {everyRealDataFolder} from '../../lib/app-identity.js';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
-const REALS = realDataFolders();
+const REALS = everyRealDataFolder();
 const DROPPED = ['REPLAY_REFILL_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'OPENAI_API_KEY', 'JOB_PILOTTO_TWIN', 'JOB_PILOTTO_PORT'];
 
 export function offlineEnv(dir, parent = process.env) {

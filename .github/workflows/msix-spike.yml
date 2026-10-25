@@ -43,6 +43,15 @@ jobs:
             -c.appx.identityName=Jobadabra.Spike -c.appx.publisher=CN=JobadabraSpike \
             -c.appx.publisherDisplayName=Jobadabra -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
           ls -la dist/*.appx
+      - name: Data · seed a real AppData folder like an installer-made install would
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:APPDATA 'Job Pilotto'
+          New-Item -ItemType Directory -Force (Join-Path $dir 'sub') | Out-Null
+          Set-Content (Join-Path $dir 'seed.txt') 'seeded-before-install'
+          Set-Content (Join-Path $dir 'sub\nested.txt') 'seeded-nested'
+          New-Item -ItemType Directory -Force 'C:\spike-out' | Out-Null
+          "seeded: $dir" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
       - name: Install · sign with a test certificate and install the package
         shell: pwsh
         working-directory: desktop
@@ -56,6 +65,49 @@ jobs:
           & $signtool sign /fd SHA256 /f $pfx /p spike $appx
           Add-AppxPackage -Path $appx
           Get-AppxPackage Jobadabra.Spike | Format-List Name, PackageFullName, InstallLocation, SignatureKind
+      - name: Data · rename a folder as the packaged app (cases 1 and 2)
+        shell: pwsh
+        run: |
+          # Why (c8, full rename step 2, 25 Oct 2026): does fs.renameSync(old, new) inside the package move the real folder, only the virtual view, or fail?
+          $pkg = Get-AppxPackage Jobadabra.Spike
+          $appId = ([xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))).Package.Applications.Application.Id
+          $exe = (Get-ChildItem (Join-Path $pkg.InstallLocation 'app') -Filter *.exe | Where-Object { $_.Name -notmatch 'uninstall|elevate' } | Select-Object -First 1).FullName
+          @'
+          const fs = require('fs'), path = require('path');
+          const out = [];
+          const log = (k, v) => out.push(k + ': ' + v);
+          const ra = process.env.APPDATA;
+          const ls = p => { try { return fs.readdirSync(p).join(',') || '(empty)'; } catch (e) { return 'ERR ' + e.code; } };
+          const rename = (a, b, tag) => { try { fs.renameSync(a, b); log(tag + ' renameSync', 'OK'); } catch (e) { log(tag + ' renameSync', 'FAIL ' + e.code + ' ' + e.message); } };
+          const read = (f, tag) => { try { log(tag + ' read', fs.readFileSync(f, 'utf8')); } catch (e) { log(tag + ' read', 'FAIL ' + e.code); } };
+          log('APPDATA as the app sees it', ra);
+          const o2 = path.join(ra, 'Job Pilotto'), n2 = path.join(ra, 'Jobadabra');
+          log('case2 old folder seen before', ls(o2));
+          rename(o2, n2, 'case2');
+          log('case2 old after', ls(o2)); log('case2 new after', ls(n2));
+          read(path.join(n2, 'seed.txt'), 'case2 seed at new name');
+          const o1 = path.join(ra, 'Case1Old'), n1 = path.join(ra, 'Case1New');
+          fs.mkdirSync(o1, { recursive: true }); fs.writeFileSync(path.join(o1, 'w.txt'), 'written-by-packaged-app');
+          rename(o1, n1, 'case1');
+          log('case1 old after', ls(o1)); log('case1 new after', ls(n1));
+          read(path.join(n1, 'w.txt'), 'case1 file at new name');
+          fs.writeFileSync('C:\\spike-out\\' + process.argv[2] + '.txt', out.join('\n'));
+          '@ | Set-Content C:\spike-out\case.js
+          @"
+          `$env:ELECTRON_RUN_AS_NODE = '1'
+          & '$exe' C:\spike-out\case.js node
+          "@ | Set-Content C:\spike-out\run.ps1
+          if (-not (Get-Command Invoke-CommandInDesktopPackage -ErrorAction SilentlyContinue)) { "Invoke-CommandInDesktopPackage is not available on this runner" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append; exit 1 }
+          Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args '-NoProfile -ExecutionPolicy Bypass -File C:\spike-out\run.ps1' -PreventBreakaway
+          Start-Sleep -Seconds 15
+          "--- result as the packaged app saw it ---" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          if (Test-Path C:\spike-out\node.txt) { Get-Content C:\spike-out\node.txt | Tee-Object $env:GITHUB_STEP_SUMMARY -Append } else { "no result file: the packaged app could not run the script as node" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append }
+          "--- the real disk, seen from outside the package ---" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "real APPDATA: $((Get-ChildItem $env:APPDATA -Directory | Where-Object { $_.Name -match 'Job|Jobadabra|Case1' } | ForEach-Object { $_.Name }) -join ', ')" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          Get-ChildItem (Join-Path $env:APPDATA 'Job Pilotto') -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "  real Job Pilotto: $($_.FullName)" } | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          $cache = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache"
+          "package cache: $cache" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          Get-ChildItem $cache -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "  cache: $($_.FullName.Substring($cache.Length))" } | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
       - name: Smoke · the packaged app starts and stays up
         shell: pwsh
         run: |

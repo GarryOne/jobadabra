@@ -8,6 +8,7 @@ import path from 'node:path';
 import {DESKTOP, launch} from '../lib/app.mjs';
 import {appLogLines} from '../lib/app-log.mjs';
 import {LEAVE_DIALOG} from '../lib/leave-prompt.mjs';
+import {openRunsList} from '../lib/runs-list.mjs';
 const BAR = '#strategy-bar-host .page-save-bar';   // Strategy's one save bar (renderer/pages/strategy-cards.js)
 
 export const name = 'foryou';
@@ -75,8 +76,7 @@ export async function run(ctx) {
     });
 
     await ctx.run('a jobs check with few new jobs offers the same advice as rows with a Review button, recorded as shown', async () => {
-      await page.evaluate(async () => { (await import('./pages/activity.js')).openActivity(true); });
-      for (let i = 0; i < 10 && await page.locator('#activity-all:visible').count(); i++) await page.click('#activity-all');
+      await openRunsList(page);
       const rows = page.locator('#activity-recent li:not(.recent-group) button');
       let found = false;
       for (let i = 0; i < await rows.count() && !found; i++) {

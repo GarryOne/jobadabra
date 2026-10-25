@@ -9,6 +9,7 @@ import {addKitJob, removeJobsByUrl, tailoredFiles} from './seed-data.mjs';
 import {cvProblems} from './applycheck.mjs';
 import {readForm, readPanel} from './extension.mjs';
 import {showFilter} from './jobs-filter.mjs';
+import {openRunsList} from './runs-list.mjs';
 
 export async function runCvSteps(ctx, h) {
   const {apply, cv, fail, page, panelOf, proxy} = h;
@@ -113,12 +114,14 @@ export async function runCvSteps(ctx, h) {
       await page.waitForFunction(() => /Tailor CV \+ cover letter/.test(document.getElementById('run-banner-title')?.textContent || '') && !document.getElementById('run-banner')?.hidden, null, {timeout: 60000, polling: 500})
         .catch(() => { throw new Error('the Actions banner never showed Tailor CVs running'); });
       // "View activity" on the banner opens the RUNNING task, even when a finished row was open before.
-      await page.click('#run-banner-view');
+      // Open a finished run in Actions → Runs, go back to Tasks: the drawer follows the one opened, so the banner's button must pick the running one (run-pick.js).
+      await openRunsList(page, {all: false});
       const finished = page.locator('#activity-recent .recent-row').filter({hasNotText: 'Running'}).first();
-      if (await finished.count()) { await finished.click(); await page.click('#activity-toggle').catch(() => {}); }
+      if (await finished.count()) await finished.click();
+      await page.click('[data-actions-tab="tasks"]');
       await page.click('#run-banner-view');
-      await page.waitForFunction(() => /Running/.test(document.querySelector('#activity-recent .recent-row.current')?.textContent || ''), null, {timeout: 10000})
-        .catch(() => { throw new Error('"View activity" did not open the running Tailor CVs task'); });
+      await page.waitForFunction(() => { const detail = document.querySelector('.ap-detail'); return !!detail?.offsetParent && /Running/.test(detail.innerText); }, null, {timeout: 10000})
+        .catch(() => { throw new Error('"View details" did not open the running Tailor CVs task'); });
       if (!(await page.locator('#tailor-top').isDisabled())) throw new Error('Run is still pressable while Tailor CVs is running');
     } finally { ctx.tailorHold = null; release(); }
     let said = '';

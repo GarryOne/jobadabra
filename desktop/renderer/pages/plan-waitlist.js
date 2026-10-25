@@ -6,6 +6,8 @@ import {$, message, show} from './core.js';
 import {shared} from './shared.js';
 import {INCLUDED, ALWAYS_ON} from '../plan-view.js';
 import {BADGE} from '../pro-promise.js';
+import {promoLink} from './plan-promo.js';
+import {reloadPlan} from './plan.js';
 import {PRO_CHECKOUT, PRO_PRICE, showsProWaitlist} from '../plan-line.js';
 
 export const PRO_FEATURES = [...INCLUDED, ALWAYS_ON];
@@ -65,11 +67,11 @@ export function showProCard(state = {}) {
   const body = $('pro-waitlist-body');
   body.replaceChildren(el('p', 'panel-lead', el('span', 'ui-pill tone-good', BADGE)), el('ul', 'plan-list', ''));
   body.lastChild.append(...PRO_FEATURES.map(text => el('li', '', text)));
-  if (joined) { body.append(el('p', 'plan-joined', `You're on the waitlist (${joined})`)); body.lastChild.id = 'pro-waitlist-joined'; return; }
+  if (joined) { body.append(el('p', 'plan-joined', `You're on the waitlist (${joined})`)); body.lastChild.id = 'pro-waitlist-joined'; body.append(promoLink(reloadPlan)); return; }
   const button = el('button', 'primary', PRO_CHECKOUT ? 'Upgrade to Pro' : 'Join the Pro waitlist');
   button.id = 'pro-waitlist-open';
   button.addEventListener('click', () => PRO_CHECKOUT ? window.pilot.planCheckout('pro') : openWaitlist());
   const row = el('div', 'inline', '');
   row.append(button);
-  body.append(row);
+  body.append(row, promoLink(reloadPlan));
 }

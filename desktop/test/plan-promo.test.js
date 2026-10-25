@@ -53,8 +53,8 @@ test('wired: IPC, preload, the Plan card link (Free only) and the ⌘K entry (pl
   assert.match(read('../lib/app-meta-handlers.js'), /ipcMain\.handle\('planRedeem'/);
   const plan = read('../renderer/pages/plan.js'), upgrade = plan.slice(plan.indexOf("view.kind === 'upgrade'"), plan.indexOf('if (view.hasCredit)'));
   assert.ok(upgrade.includes('promoLink('), 'the link sits on the Free (upgrade) view, never on a Pro one');
-  const nav = read('../renderer/pages/nav.js'), pro = nav.indexOf("shared.plan.plan === 'pro'"), entry = nav.indexOf("'Redeem a promo code'");
-  assert.ok(nav.lastIndexOf("['test', 'live'].includes(shared.plan?.mode)", entry) > -1 && entry > nav.indexOf('} else {', pro), 'inside the plan-on block, in the Free branch');
+  const nav = read('../renderer/pages/nav.js'), entry = nav.indexOf("'Redeem a promo code'");
+  assert.ok(nav.lastIndexOf('GATED_FEATURES.promo(proGate(', entry) > -1, 'shown to every free person, with paying on or off (renderer/pro-gate.js)');
   assert.ok(JSON.parse(read('../../docs/site-routes.json')).routes.some(route => route.path === '/api/pro/redeem'));
 });
 

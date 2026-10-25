@@ -29,6 +29,8 @@ import {openWaitlist} from './plan-waitlist.js';
 import {openPromoDialog} from './plan-promo.js';
 import {reloadPlan} from './plan.js';
 import {showsProWaitlist} from '../plan-line.js';
+import {GATED_FEATURES, proGate} from '../pro-gate.js';
+import {openProGate} from './pro-upgrade-dialog.js';
 import {loadStrategy} from './strategy.js';
 import {openCard} from './strategy-cards.js';
 import {reviewPreferences} from './job-preferences.js';
@@ -147,8 +149,8 @@ export function paletteCommands() {
     ? 'Your applications in columns by stage; drag a card to change its stage' : 'One row per job', 'pipeline kanban board columns stages list', () => { openView('jobs'); node.click(); }));
   // Export job list (Pro, pages/jobs-export.js): the Jobs button opens its menu; a free user is taken to the Plan card once Pro is on at the site.
   const exporting = exportState(shared.licenseState || {});
-  if (exporting !== 'hidden') add('Jobs', 'Export job list', exporting === 'open' ? 'Save your jobs as a spreadsheet (CSV) or JSON file' : 'Part of Pro: save your jobs as a spreadsheet', 'export download save csv json excel spreadsheet jobs list pro',
-    () => { if (exporting === 'locked') return openSetting('plan'); openView('jobs'); setTimeout(() => $('jobs-export').click(), 150); }, exporting === 'locked' ? {badge: ['Pro']} : {});
+  add('Jobs', 'Export job list', exporting === 'open' ? 'Save your jobs as a spreadsheet (CSV) or JSON file' : 'Part of Pro: save your jobs as a spreadsheet', 'export download save csv json excel spreadsheet jobs list pro',
+    () => { if (exporting === 'locked') return openProGate(); openView('jobs'); setTimeout(() => $('jobs-export').click(), 150); }, exporting === 'locked' ? {badge: ['Pro']} : {});
   FILTER_OPTIONS.forEach(option => add('Jobs', `Jobs filter: ${option.label}`, option.title,
     'show menu filter saved views applications active applying in progress kit ready rejected this week', () => { openView('jobs'); setFilters([option.id]); document.dispatchEvent(new CustomEvent('jobs-rerender')); }));
   // Each Reports tab (pages/reports.js), by what it holds.
@@ -167,10 +169,11 @@ export function paletteCommands() {
     } else {
       add('Settings', 'Get Pro', PROMISE, 'pro upgrade plan price buy pay unlimited license', goPlan);
       add('Settings', 'Get Pro + AI', `${PROMISE}, ${creditWords((shared.plan.offers || []).find(o => o.id === 'pro-ai')) || 'AI credit'} included`, 'pro ai upgrade plan price buy pay credit unlimited license', goPlan);
-      add('Settings', 'Redeem a promo code', 'Get Pro with a code you were given', 'promo code redeem pro voucher coupon gift free', () => openPromoDialog(reloadPlan));
       if (SHOW_I_HAVE_PRO) add('Settings', 'I have Pro', 'Add this computer with a code sent by e-mail', 'pro sign in signin code add device computer have', () => { goPlan(); setTimeout(() => $('plan-have-pro')?.click(), 300); });
     }
   }
+  // A promo code gives Pro with paying on or off (renderer/pro-gate.js): shown to everyone who is not Pro yet.
+  if (GATED_FEATURES.promo(proGate(shared.licenseState || {})).shown) add('Settings', 'Redeem a promo code', 'Get Pro with a code you were given', 'promo code redeem pro voucher coupon gift free', () => openPromoDialog(reloadPlan));
   // Pro is not open yet: the Pro card on the Plan page, and its waitlist (pages/plan-waitlist.js).
   if (showsProWaitlist(shared.licenseState || {}) && !shared.state?.settings?.proWaitlist?.email) add('Settings', 'Join the Pro waitlist', 'Get one e-mail when Pro opens', 'pro waitlist early access upgrade plan price join email', () => { openSetting('license'); setTimeout(openWaitlist, 150); });
   button('sessions', 'ss-stop', 'stop freeze halt panic extension chrome everything cancel emergency', 'Stops everything the extension does, on every tab');

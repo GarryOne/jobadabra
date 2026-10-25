@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
-import {compactRun} from '../renderer/run-compact.js';
+import {compactRun, NEXT, NO_NEXT} from '../renderer/run-compact.js';
 
 const read = file => readFileSync(new URL(`../renderer/${file}`, import.meta.url), 'utf8');
 const KINDS = [...read('pages/activity-basics.js').matchAll(/(\w+): \{icon: '[^']+', line: '[\w-]+', name: ("[^"]+"|'[^']+')\}/g)].map(match => match[1]);
@@ -18,11 +18,11 @@ const ENDS = {
   stopped: {ok: false, stopped: 'you'},
 };
 
-test('every kind, in every end, is one compact banner: name, pill, one line, at most one next step, View run and Dismiss', () => {
+test('every kind, in every end, is one compact banner: name, pill, one line, the next step or fix, Run again when it did not end well, View details, Dismiss', () => {
   assert.ok(KINDS.length >= 17, `found ${KINDS.length} kinds`);
   for (const kind of KINDS) {
     for (const [end, run] of Object.entries(ENDS)) {
-      const model = compactRun({id: 1, kind, ...run}, {name: 'Task', kind, outcome: 'what it did', at: 'Sun 13:55', took: '2 min 5 s'});
+      const model = compactRun({id: 1, kind, ...run}, {name: 'Task', kind, outcome: 'what it did', at: 'Sun 13:55', took: '2 min 5 s', canRerun: true});
       const where = `${kind}, ${end}`;
       assert.equal(model.title, 'Task', where);
       assert.equal(model.pill.length, 2, where);
@@ -31,7 +31,10 @@ test('every kind, in every end, is one compact banner: name, pill, one line, at 
       if (end === 'unsaved') assert.deepEqual(model.pill, ['No result', 'neutral'], where);
       assert.ok(!model.line.includes('\n'), `${where}: one line`);
       assert.equal(model.close.label, 'Dismiss', where);
-      if (model.next) assert.ok(model.next.view || model.next.rerun, `${where}: a next step the banner can do`);
+      if (model.next) assert.ok(model.next.view, `${where}: a next step the banner can do`);
+      // Owner, 25 Oct 2026: "If an action failed we should have Run again": every end that did not work offers it, a clean one never.
+      assert.equal(model.again, !['completed', 'warned'].includes(end), `${where}: Run again`);
+      assert.equal(compactRun({id: 1, kind, ...run}, {name: 'Task', kind}).again, false, `${where}: no Run again for a task Actions cannot start`);
     }
   }
 });
@@ -48,7 +51,7 @@ test('a finished run with nothing saved says No result, never Completed · done 
   const model = compactRun({kind: 'search', ok: true}, {name: 'Find jobs', outcome: 'its result was not saved', at: 'Sun 14:11'});
   assert.deepEqual(model.pill, ['No result', 'neutral']);
   assert.equal(model.line, 'Finished Sun 14:11 · its result was not saved');
-  assert.equal(model.next, null, 'Read again and the log are in its run panel (View run)');
+  assert.equal(model.next, null, 'Read again and the log are in its run panel (View details)');
   assert.deepEqual(compactRun({kind: 'search', ok: true, new: 0}, {name: 'Find jobs'}).pill, ['Completed', 'good'], 'a count of 0 is a result');
   // One rule for every place a run is drawn: the pill (runPill) and the row's line (activity-basics.js outcome) say it, so the drawer header, Recent runs and Runs agree.
   assert.match(read('run-status.js'), /return unsavedRun\(run\) \? \['No result', 'neutral'\] : \['Completed', 'good'\];/);
@@ -62,7 +65,34 @@ test('the next step: a failure\'s own fix, or the new jobs a find added; nothing
   assert.equal(compactRun({kind: 'search', ok: true, new: 0}, {name: 'Find jobs'}).next, null);
   assert.equal(compactRun({kind: 'mail', ok: true}, {name: 'Check Gmail'}).next, null);
   assert.deepEqual(compactRun({kind: 'mail', ...ENDS.failed}, {name: 'Check Gmail'}).next, {label: 'Open AI settings', view: 'settings'});
-  assert.equal(compactRun({kind: 'weekly', ...ENDS.unexpected}, {name: 'Analyze'}).next.rerun, true);
+  const failed = compactRun({kind: 'weekly', ...ENDS.unexpected}, {name: 'Analyze', canRerun: true});
+  assert.equal(failed.next, null);
+  assert.equal(failed.again, true, 'a failure without its own fix: Run again is the main button');
+  const fixable = compactRun({kind: 'mail', ...ENDS.failed}, {name: 'Check Gmail', canRerun: true});
+  assert.equal(fixable.next.label, 'Open AI settings');
+  assert.equal(fixable.again, true, 'fix it, then Run again');
+});
+
+test('every kind has its own next step, or a reason it has none (a new kind fails here until it is placed)', () => {
+  for (const kind of KINDS) {
+    assert.ok(NEXT[kind] || NO_NEXT[kind], `${kind}: add it to NEXT or NO_NEXT in renderer/run-compact.js`);
+    assert.ok(!(NEXT[kind] && NO_NEXT[kind]), `${kind}: in NEXT and NO_NEXT`);
+  }
+  assert.equal(compactRun({kind: 'mail', ok: true, result: 'done'}, {name: 'Check Gmail', asks: 2}).next.label, 'Answer 2 questions');
+  assert.match(compactRun({kind: 'mail', ok: true, result: 'done'}, {name: 'Check Gmail', asks: 2, outcome: 'done'}).line, /2 questions for you$/);
+  assert.equal(compactRun({kind: 'scout', ok: true, result: 'done'}, {name: 'Find employers'}).next.view, 'employers');
+  assert.equal(compactRun({kind: 'insight', ok: true, result: 'done'}, {name: 'Analyze'}).next, null);
+  const pages = new Set([...read('index.html').matchAll(/data-view="([a-z-]+)"/g)].map(match => match[1]));
+  for (const [kind, step] of Object.entries(NEXT)) assert.ok(pages.has(step.view), `${kind}: its next step opens "${step.view}", not a page`);
+});
+
+test('the banner draws up to three buttons and Dismiss: the next step, Run again, View details', () => {
+  const banner = read('pages/run-banner.js');
+  assert.match(banner, /model\.next \? \[button\('primary'/);
+  assert.match(banner, /model\.again \? \[button\(model\.next \? 'secondary' : 'primary', 'Run again'/);
+  assert.match(banner, /'View details'/);
+  assert.match(read('index.html'), /id="run-banner-view">View details</, 'the running banner says the same words');
+  assert.match(read('pages/activity-results.js'), /canRerun: !!runButton\(kind\)/, 'Run again only where Actions has the task\'s Run button');
 });
 
 test('a queued run: Queued, what it waits for and its place, Cancel, no next step', () => {

@@ -5,28 +5,30 @@ import {compactRun} from '../run-compact.js';
 import {queueWords} from '../run-pick.js';
 import {shared} from './shared.js';
 import {$, show} from './core.js';
-import {clockTime, duration, KIND, kindOf, capital, outcome} from './activity-basics.js';
+import {clockTime, duration, KIND, kindOf, capital, outcome, runButton} from './activity-basics.js';
 import {lastActivity, unqueue} from './activity-render.js';
 import {rerunTask} from './activity-problem-box.js';
 import {openView} from './nav.js';
 import {openActivity} from './activity-panel.js';
 import {drawBanner} from './run-banner.js';
 import {taskName} from './runs-page.js';
+import {pendingMailQuestions} from './focus.js';
 // The Actions page shows the newest finished run as the compact banner (owner, 25 Oct 2026: "in Actions, we shouldn't show such a detailed card report. This should be
-// the full report (Actions → Runs) or the Drawer"): its name, pill, when, how long and the Recent runs row's line, one next step, View run, Dismiss. It is drawn at
+// the full report (Actions → Runs) or the Drawer"): its name, pill, when, how long and the Recent runs row's line, the next step or fix, Run again when it did not end well, View details, Dismiss. It is drawn at
 // once from the run's row (no page read, so nothing appears a moment later and pushes the task grid down: #286). Model: renderer/run-compact.js.
 function showActionsResult(run) {
   show($('command-answer'), false);
   const kind = kindOf(run), name = taskName(kind);
   const model = compactRun(run, {name, kind, outcome: capital(outcome(run)), at: clockTime(run.endedAt || run.startedAt),
-    took: run.endedAt && run.startedAt ? duration(run.startedAt, run.endedAt) : ''});
+    took: run.endedAt && run.startedAt ? duration(run.startedAt, run.endedAt) : '', asks: kind === 'mail' ? pendingMailQuestions().length : 0, canRerun: !!runButton(kind)});
   drawBanner($('actions-result'), model, {
     view: () => { shared.selectedRun = run.id; openActivity(true); },   // its full report, in the run panel
-    next: next => (next.view ? openView(next.view) : next.rerun ? rerunTask(run) : null),
+    next: next => openView(next.view),
+    again: () => rerunTask(run),
     close: () => show($('actions-result'), false)});
   show($('actions-result'));
 }
-// The next queued task, compact, under the running banner: what it waits for, Cancel and View run (its queued panel). The queue itself is in Actions → Runs.
+// The next queued task, compact, under the running banner: what it waits for, Cancel and View details (its queued panel). The queue itself is in Actions → Runs.
 export function showQueuedBanner(data) {
   const next = data?.queued?.[0] ? {...data.queued[0], waiting: true, place: 1} : null;
   show($('actions-queued'), !!next);

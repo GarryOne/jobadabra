@@ -4,6 +4,7 @@
 // AI, problems, scoring and the technical log (folded). Built from page-parts summaryTiles, components (tile, pill, chip, numberStrip, liveDot) and the
 // insight card; only the layout of the report's card grid and its bars is new (reports-searches.css). Logic: renderer/searches-view.js.
 // Guarded by test/searches-view.test.js.
+import {pairRows} from '../card-grid.js';
 import {chip, el, liveDot, numberStrip, pill, tile} from '../components.js';
 import {summaryTiles} from '../page-parts.js';
 import {byStore, storeName} from '../store-words.js';
@@ -18,7 +19,7 @@ const kicker = (category, title, tone) => { const head = el('div', 'rs-card-head
 const badge = item => (item.tone ? pill(item.detail ? `${item.label} · ${item.detail}` : item.label, item.tone, {dot: true}) : chip(item.label, {detail: item.detail || ''}));
 
 function widget(card) {
-  const box = el('section', `card rs-card rs-${card.kind}`);
+  const box = el('section', `card rs-card rs-${card.kind}${card.wide ? ' is-wide' : ''}`);   // a wide card takes its own row (components.css .card-grid)
   box.dataset.card = card.id;
   if (card.kind === 'fold') {
     const fold = el('details', 'rs-fold'), summary = el('summary', '');
@@ -110,8 +111,9 @@ function detailView(row) {
   const backLine = el('div', ''); backLine.append(back);
   box.append(backLine, head);
   if (tiles.length) box.append(summaryTiles(tiles));
-  const grid = el('div', 'rs-grid');
+  const grid = el('div', 'card-grid rs-grid');
   grid.append(...cards.map(widget));
+  pairRows(grid);   // an odd card out takes its row: no half row left empty
   box.append(grid);
   return box;
 }

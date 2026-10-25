@@ -12,8 +12,7 @@
 .rs-run-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .rs-run-number { display: grid; justify-items: end; line-height: 1.1; }
 .rs-run-number b { font-size: var(--fs-display); }
-.rs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: var(--sp-4); align-items: start; }
-.rs-card { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.rs-card { display: grid; gap: var(--sp-3); padding: var(--sp-4); align-content: start; }
 .rs-steps, .rs-bars, .rs-board-rows { display: grid; gap: var(--sp-2); }
 .rs-card-head { display: grid; gap: var(--sp-1); justify-items: start; }
 .rs-card-title { margin: 0; font-size: var(--fs-card-title); }
@@ -30,4 +29,3 @@
 @media (max-width: 760px) { .rs-run { grid-template-columns: auto minmax(0, 1fr) auto; } .rs-run > button { grid-column: 1 / -1; } .rs-step { grid-template-columns: auto minmax(0, 1fr) 56px; } .rs-step .bar, .rs-step .muted { display: none; } .rs-bar-row { grid-template-columns: 110px minmax(0, 1fr) 56px; } }
 .rs-detail .summary-tiles { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .rs-card .insight-numbers { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-@media (max-width: 560px) { .rs-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -8,6 +8,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'tools'))
 import app_data_dir  # noqa: E402
 
 
+OLD = 'Job Pilotto'   # the folder name before the rename
+
+
 class AppDataDir(unittest.TestCase):
     def pick(self, *existing):
         with tempfile.TemporaryDirectory() as tmp:
@@ -18,8 +21,8 @@ class AppDataDir(unittest.TestCase):
 
     def test_names(self):
         self.assertEqual(self.pick(), 'Jobadabra')
-        self.assertEqual(self.pick('Job Pilotto'), 'Job Pilotto')
-        self.assertEqual(self.pick('Job Pilotto', 'Jobadabra'), 'Jobadabra')
+        self.assertEqual(self.pick(OLD), OLD)
+        self.assertEqual(self.pick(OLD, 'Jobadabra'), 'Jobadabra')
 
 
 if __name__ == '__main__':

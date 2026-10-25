@@ -4,6 +4,21 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {asset, check, install, macSwapScript, newer, resetLimit, stableRelease, windowsExplanation} from '../lib/updater.js';
 
+test('the download is the Jobadabra-* file, or the Job-Pilotto-* one on a release made before the rename (an installed 0.8.27 reads only those)', () => {
+  const both = {tag_name: 'desktop-v0.9.1', assets: ['Job-Pilotto-0.9.1-arm64.zip', 'Jobadabra-0.9.1-arm64.zip', 'Job-Pilotto-0.9.1-x64.exe', 'Jobadabra-0.9.1-x64.exe',
+    'Job-Pilotto-windows-x64.exe', 'Jobadabra-windows-x64.exe'].map(name => ({name, browser_download_url: 'https://dl/' + name}))};
+  assert.equal(asset(both, 'darwin').name, 'Jobadabra-0.9.1-arm64.zip');
+  assert.equal(asset(both, 'win32').name, 'Jobadabra-0.9.1-x64.exe');
+  assert.equal(asset(both, 'win32', {own: true}).name, 'Jobadabra-0.9.1-x64.exe');
+  const aliases = {tag_name: 'desktop-v0.9.1', assets: [{name: 'Jobadabra-mac-arm64.zip'}, {name: 'Jobadabra-windows-x64.exe'}]};
+  assert.equal(asset(aliases, 'darwin').name, 'Jobadabra-mac-arm64.zip');
+  assert.equal(asset(aliases, 'win32').name, 'Jobadabra-windows-x64.exe');
+  assert.equal(asset(aliases, 'win32', {own: true}), null, 'a beta never takes a generic installer');
+  const old = {tag_name: 'desktop-v0.8.27', assets: [{name: 'Job-Pilotto-0.8.27-arm64.zip'}, {name: 'Job-Pilotto-0.8.27-x64.exe'}]};
+  assert.equal(asset(old, 'darwin').name, 'Job-Pilotto-0.8.27-arm64.zip');
+  assert.equal(asset(old, 'win32', {own: true}).name, 'Job-Pilotto-0.8.27-x64.exe');
+});
+
 test('versions compare as releases do: numbers, then a release beats its pre-releases', () => {
   assert.ok(newer('0.4.0-alpha.41', '0.4.0-alpha.39'));
   assert.ok(newer('0.4.0-alpha.10', '0.4.0-alpha.9'));

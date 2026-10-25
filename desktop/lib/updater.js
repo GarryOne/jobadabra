@@ -39,8 +39,10 @@ export const approvedFor = (body, platform = process.platform) => (platform === 
 // installer, which a failed Windows build leaves as the PREVIOUS release's: tools/release-stable.sh guards stable the same way).
 export function asset(release, platform = process.platform, {own = false} = {}) {
   const version = String(release?.tag_name || '').replace(/^desktop-v/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const names = platform === 'darwin' ? [/^Job-Pilotto-[\d.]+.*-arm64\.zip$/, /^Job-Pilotto-mac-arm64\.zip$/]
-    : platform === 'win32' ? [new RegExp(`^Job-Pilotto-${version}-x64\\.exe$`), ...(own ? [] : [/^Job-Pilotto-windows-x64\.exe$/, /^Job-Pilotto-.*-x64\.exe$/])] : [];
+  // Jobadabra-* first; Job-Pilotto-* is what a release made before 25 Oct 2026 has (and what is still uploaded beside it: tools/release-file-names.sh).
+  const names = platform === 'darwin' ? [/^Jobadabra-[\d.]+.*-arm64\.zip$/, /^Jobadabra-mac-arm64\.zip$/, /^Job-Pilotto-[\d.]+.*-arm64\.zip$/, /^Job-Pilotto-mac-arm64\.zip$/]
+    : platform === 'win32' ? [new RegExp(`^Jobadabra-${version}-x64\\.exe$`), new RegExp(`^Job-Pilotto-${version}-x64\\.exe$`),
+      ...(own ? [] : [/^Jobadabra-windows-x64\.exe$/, /^Job-Pilotto-windows-x64\.exe$/, /^Jobadabra-.*-x64\.exe$/, /^Job-Pilotto-.*-x64\.exe$/])] : [];
   for (const pattern of names) {
     const found = (release?.assets || []).find(item => pattern.test(item.name));
     if (found) return found;

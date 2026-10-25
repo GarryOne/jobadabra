@@ -296,7 +296,7 @@ jobs:
       - name: Smoke test · the built app (bundled Python, Keychain, signature, the binary, the Jobs screen)
         if: needs.changes.outputs.gate == 'true'
         working-directory: desktop
-        run: node scripts/mac-smoke.mjs "dist/Job-Pilotto-${VERSION}-arm64.zip" smoke
+        run: node scripts/mac-smoke.mjs "dist/Jobadabra-${VERSION}-arm64.zip" smoke
       - name: Keep the Mac screenshot
         if: always() && needs.changes.outputs.gate == 'true'
         uses: actions/upload-artifact@v6
@@ -308,16 +308,16 @@ jobs:
       - name: Build provenance (anyone can verify the download was built here, from this commit)
         uses: actions/attest-build-provenance@v3
         with:
-          subject-path: desktop/dist/Job-Pilotto-*-arm64.*
+          subject-path: desktop/dist/Jobadabra-*-arm64.*
       - name: Add to the release, and publish it (the first lane done publishes; the other adds its files to the published pre-release)
         working-directory: desktop
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Stable names too, so a download link can always point at the latest build.
-          cp "dist/Job-Pilotto-${VERSION}-arm64.dmg" dist/Job-Pilotto-mac-arm64.dmg
-          cp "dist/Job-Pilotto-${VERSION}-arm64.zip" dist/Job-Pilotto-mac-arm64.zip
-          gh release upload "desktop-v${VERSION}" dist/Job-Pilotto-*.dmg dist/Job-Pilotto-*.zip
+          # Stable names too, so a download link can always point at the latest build, and the old Job-Pilotto-* names as copies (tools/release-file-names.sh).
+          tools_dir="${GITHUB_WORKSPACE}/tools"
+          gh release upload "desktop-v${VERSION}" $("$tools_dir/release-file-names.sh" make mac "$VERSION" dist)
+          GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check mac "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
 
   windows:
@@ -395,7 +395,7 @@ jobs:
       - name: Smoke test · the installed app (install, bundled Python, Credential Manager, the Jobs screen)
         if: needs.changes.outputs.gate == 'true'
         working-directory: desktop
-        run: node scripts/windows-smoke.mjs "dist/Job-Pilotto-${VERSION}-x64.exe" smoke smoke
+        run: node scripts/windows-smoke.mjs "dist/Jobadabra-${VERSION}-x64.exe" smoke smoke
       - name: Keep the Windows screenshots
         if: always() && needs.changes.outputs.gate == 'true'
         uses: actions/upload-artifact@v6
@@ -409,9 +409,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # A stable name too, so a download link can always point at the latest build.
-          cp "dist/Job-Pilotto-${VERSION}-x64.exe" dist/Job-Pilotto-windows-x64.exe
-          gh release upload "desktop-v${VERSION}" "dist/Job-Pilotto-${VERSION}-x64.exe" dist/Job-Pilotto-windows-x64.exe
+          # A stable name too, so a download link can always point at the latest build, and the old Job-Pilotto-* names as copies (tools/release-file-names.sh).
+          tools_dir="${GITHUB_WORKSPACE}/tools"
+          gh release upload "desktop-v${VERSION}" $("$tools_dir/release-file-names.sh" make windows "$VERSION" dist)
+          GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check windows "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
       # Build · Windows failed: the release carries the last working Windows installer, so the Windows download link of a release that becomes stable keeps working until a
       # Windows build passes again. It is never approved for Windows (E2E · Windows needs this build to pass). A step, not a job: no box of its own in the graph.
@@ -421,10 +422,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           prev=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
-            -q '[.[] | select(.draft | not) | select(.tag_name != "desktop-v'"$VERSION"'") | select(any(.assets[]; .name == "Job-Pilotto-windows-x64.exe"))][0].tag_name')
+            -q '[.[] | select(.draft | not) | select(.tag_name != "desktop-v'"$VERSION"'") | select(any(.assets[]; .name == "Job-Pilotto-windows-x64.exe" or .name == "Jobadabra-windows-x64.exe"))][0].tag_name')
           if [ -n "$prev" ]; then
-            gh release download "$prev" --repo "$GITHUB_REPOSITORY" -p Job-Pilotto-windows-x64.exe -D previous
-            gh release upload "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" previous/Job-Pilotto-windows-x64.exe --clobber
+            # whichever generic names that release has (Jobadabra-* and the Job-Pilotto-* copy; a release before 25 Oct 2026 has only the old one)
+            gh release download "$prev" --repo "$GITHUB_REPOSITORY" -p Job-Pilotto-windows-x64.exe -p Jobadabra-windows-x64.exe -D previous
+            gh release upload "desktop-v${VERSION}" --repo "$GITHUB_REPOSITORY" previous/* --clobber
             echo "::warning::Windows build failed; desktop-v${VERSION} carries the Windows installer from ${prev}."
           else
             echo "::warning::Windows build failed and no earlier release has a Windows installer."

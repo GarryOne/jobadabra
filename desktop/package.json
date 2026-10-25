@@ -115,7 +115,7 @@
       }
     },
     "dmg": {
-      "title": "Job Pilotto ${version}"
+      "title": "Jobadabra ${version}"
     },
     "win": {
       "target": [
@@ -135,7 +135,7 @@
       "shortcutName": "Jobadabra",
       "uninstallDisplayName": "Jobadabra"
     },
-    "artifactName": "Job-Pilotto-${version}-${arch}.${ext}",
+    "artifactName": "Jobadabra-${version}-${arch}.${ext}",
     "afterPack": "scripts/sign.cjs",
     "compression": "maximum",
     "electronLanguages": [

@@ -58,12 +58,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download --repo "$GITHUB_REPOSITORY" --pattern Job-Pilotto-windows-x64.exe --dir previous
-          installers=(dist/Job-Pilotto-*-x64.exe)
-          node scripts/windows-upgrade-proof.mjs previous/Job-Pilotto-windows-x64.exe "${installers[0]}"
+          # the last release's generic installer: Jobadabra-* once it has it, else the Job-Pilotto-* name every release made before 25 Oct 2026 has
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern Jobadabra-windows-x64.exe --pattern Job-Pilotto-windows-x64.exe --dir previous
+          previous=(previous/Jobadabra-windows-x64.exe previous/Job-Pilotto-windows-x64.exe)
+          for file in "${previous[@]}"; do [ -f "$file" ] && { before="$file"; break; }; done
+          installers=(dist/Jobadabra-*-x64.exe)
+          node scripts/windows-upgrade-proof.mjs "$before" "${installers[0]}"
       - name: Install it and smoke-test what a user gets
         working-directory: desktop
-        run: node scripts/windows-smoke.mjs "$(ls dist/Job-Pilotto-*-x64.exe | head -1)" smoke
+        run: node scripts/windows-smoke.mjs "$(ls dist/Jobadabra-*-x64.exe | head -1)" smoke
       - name: Keep the screenshots
         if: always()
         uses: actions/upload-artifact@v6

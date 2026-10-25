@@ -9,3 +9,13 @@
 :is(.activity-panel, .actions-runs) .run-result > :not([hidden]) ~ :not([hidden]) { border-top: 1px solid var(--line); }
 :is(.activity-panel, .actions-runs) .run-result > .activity-phases { padding: var(--sp-2) var(--sp-4); }
 :is(.activity-panel, .actions-runs) .run-result > .activity-partial { padding: var(--sp-2) var(--sp-4); }
+/* A top with no button or link left (no next step, no log) has no empty actions row under its title. */
+:is(.activity-panel, .actions-runs) .run-result .alert-actions:not(:has(> :not([hidden]))) { display: none; }
+/* An empty line under the title takes no room either. */
+:is(.activity-panel, .actions-runs) .run-result #activity-warnings-summary:empty { display: none; }
+/* Inside the frame a Gmail check's emails are rows split by a line, never cards in the card (owner, 30 Sep 2026: "a table in table"). */
+:is(.activity-panel, .actions-runs) .run-result .mail-emails { gap: 0; }
+:is(.activity-panel, .actions-runs) .run-result :is(.mail-email, .mail-card > .mail-nochange, .mail-card > .mail-notes) {
+  background: transparent; border: 0; border-radius: 0; }
+:is(.activity-panel, .actions-runs) .run-result .mail-email + .mail-email,
+:is(.activity-panel, .actions-runs) .run-result .mail-card > * + * { border-top: 1px solid var(--line); }

@@ -17,15 +17,18 @@ export function showJumpToLatest() {
   const log = $('log');
   show($('log-latest'), !!log && $('activity-log').open && !!lastActivity?.running && log.scrollHeight - log.scrollTop - log.clientHeight >= 40);
 }
+// A Logged activity run's job, created or updated: its links in the result card's top (pages/activity-result-top.js), whose title says what was logged.
+// Returns whether there is one. Its name ("Job created — …") is the links' hover.
 export function showRunJob(runJob) {
   const job = withListJob(runJob, shared.allJobs || []);
-  show($('activity-job'), !!job);
-  if (!job) return;
-  $('activity-job-title').textContent = jobHeadline(job);
+  const links = $('activity-warnings-links');
+  if (!job) { links.replaceChildren(); links.dataset.for = ''; return false; }
+  links.title = jobHeadline(job);
   const key = JSON.stringify([job.url, job.jobUrl, job.title]);
-  if ($('activity-job-links').dataset.for === key) return;  // redrawn every 2 s: keep the buttons (and their focus)
-  $('activity-job-links').dataset.for = key;
-  $('activity-job-links').replaceChildren(jobActions(job, {openNotion: window.pilot.openNotion, show: showJob}));
+  if (links.dataset.for === key) return true;  // redrawn every 2 s: keep the buttons (and their focus)
+  links.dataset.for = key;
+  links.replaceChildren(jobActions(job, {openNotion: window.pilot.openNotion, show: showJob}));
+  return true;
 }
 export function showJob(job) {
   openActivity(false);
@@ -116,7 +119,8 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // Every count says its word for 1 and for many (7 Oct 2026: "1 new job feeds"); the bottom line says why some were set aside.
     const s = n => (n === 1 ? '' : 's');
     // The one number: the employers this run added. Nothing else is shown (checked, checked again, set aside).
-    stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
+    // In the run panel the card's top says it (run-result-card.js WORDS.scout).
+    if (target.id !== 'activity-card') stats.append(stat(card.fresh ?? 0, `new employer${s(card.fresh ?? 0)} added`));
     heading = 'New employers';
     // Five at first; "+2 more" shows the rest here (Show less folds them), and the Employers database has them all.
     const all = card.items.length > 5 && expandedCard === card.items.map(item => item.company).join('|');

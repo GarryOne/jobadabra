@@ -1615,7 +1615,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .activity-warnings.is-folded .ap-warn-words > ul { display: none; }
 :is(.activity-panel, .actions-runs) .ap-detail-actions { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
 :is(.activity-panel, .actions-runs) .ap-detail-actions .activity-notion { margin: 0; }
-:is(.activity-panel, .actions-runs) .activity-warnings, :is(.activity-panel, .actions-runs) .activity-job { margin: 0; }
+:is(.activity-panel, .actions-runs) .activity-warnings { margin: 0; }
 .run-problem .ap-warn-icon { color: var(--tone); }
 /* The same box as an email card (activity.js mailCardRow): its padding, corners and spacing, in every state. */
 :is(.activity-panel, .actions-runs) .activity-warnings, .run-problem { padding: var(--sp-4); border-radius: var(--r-lg); }

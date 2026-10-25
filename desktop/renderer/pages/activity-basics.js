@@ -21,6 +21,7 @@ import {renderRunCard} from './activity-run-card.js';
 import {renderMailCard} from './activity-mail.js';
 import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
 import {storeName} from '../store-words.js';
+import {WORDS} from '../run-result-card.js';
 
 // ---------- runs ----------
 export const clockTime = iso => new Date(iso).toLocaleString([], {weekday: 'short', hour: '2-digit', minute: '2-digit'});
@@ -209,7 +210,9 @@ function outcomeOf(run) {
   }
   if (!run.ok) return 'had problems';
   // A one-off job (insight, weekly report, today's list, find employers): the result line it printed.
-  if (kindOf(run) !== 'search') return run.summary || 'done';
+  // An employers search or today's list says its number from its message (run-result-card.js WORDS), as its result card's top does: never "done".
+  const card = !run.summary && WORDS[kindOf(run)] && run.message ? parseRunMessage(run.message) : null;
+  if (kindOf(run) !== 'search') return run.summary || (card ? WORDS[kindOf(run)](card) : 'done');
   return run.new != null ? plural(run.new, 'new job') : 'done';
 }
 // An Actions page command waits for its run (by kind) to end, then its answer shows the result.

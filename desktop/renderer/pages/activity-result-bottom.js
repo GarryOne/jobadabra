@@ -17,9 +17,11 @@ import {renderVisitsCard} from './activity-visits.js';
 import {renderRunCard, renderCardSkeleton, renderNoResult} from './activity-run-card.js';
 import {renderMailCard} from './activity-mail.js';
 import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
+import {WORDS} from '../run-result-card.js';
 
 // `lines`: the run's log; `shownText`: its result text (run-cards.js cardText); `tabs`: a live Find jobs using your browser's site rows;
-// `readingNow`: its Notion page is being read; `redraw`: draws the panel again (after Read again). Returns which view it drew.
+// `readingNow`: its Notion page is being read; `redraw`: draws the panel again (after Read again). Returns which view it drew, and its result in one
+// line for the top (`title`, the finding's `headline` element, the questions it `asks`).
 export function drawResultBottom({run, lines, shownText, tabs, readingNow, redraw}) {
   const own = kindOf(run) === 'search' ? newJobsCard(run, lines) : null;
   const card = (own?.items.length ? own : null) || (shownText ? parseRunMessage(shownText) : null) || own;
@@ -41,9 +43,7 @@ export function drawResultBottom({run, lines, shownText, tabs, readingNow, redra
   show($('activity-help'), false);   // only a search card with few new jobs fills it
   let drawnCard = null;   // {empty}: a search that added nothing has no bottom (its top says so)
   if (card) drawnCard = renderRunCard(card, run);
-  else if (mail) {
-    renderMailCard(mail, pendingMailQuestions(), lastAnswered());
-  }
+  else if (mail) drawnCard = renderMailCard(mail, pendingMailQuestions(), lastAnswered());
   else if (insight) renderInsightCard(insight);
   else if (weekly) renderWeeklyCard(weekly);
   else if (review) renderInterviewCard(review);
@@ -55,6 +55,10 @@ export function drawResultBottom({run, lines, shownText, tabs, readingNow, redra
   if (unsaved) renderNoResult(noResultHead({...run, kind: kindOf(run)}, KIND[kindOf(run)] || {name: 'The run'}), {log: () => $('activity-log')?.scrollIntoView({block: 'nearest'}),
     fix: run.pageId ? () => { runDetails.delete(run.pageId); redraw(); } : null});
   if (card || insight || weekly || mail || review || kits || sites) show($('activity-result'), false);  // the card shows the same, laid out
-  show($('activity-card'), (!!card && !drawnCard?.empty) || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);
-  return {card, mail, insight, weekly, review, kits, sites, reading, unsaved, drawnCard};
+  show($('activity-card'), ((!!card || !!mail) && !drawnCard?.empty) || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);
+  // The result in one line, for the card's top (run-result-card.js): a finding's headline moves up there (pages/activity-render.js hides it here when
+  // the top shows it), a Gmail check's counts are the top's, an employers or today's-list card says its number.
+  const headline = insight || weekly || review || kits ? $('activity-card').querySelector('.insight-head .insight-title') : null;
+  const title = card?.kind === 'scout' ? WORDS.scout(card) : card && kindOf(run) === 'today' ? WORDS.today(card) : drawnCard?.title || headline?.textContent || '';
+  return {card, mail, insight, weekly, review, kits, sites, reading, unsaved, drawnCard, title, headline, asks: drawnCard?.asks || 0, summary: drawnCard?.summary || ''};
 }

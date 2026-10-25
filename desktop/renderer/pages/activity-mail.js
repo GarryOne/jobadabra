@@ -404,7 +404,15 @@ export function renderMailCard(report, pending = [], answered = null, target = $
     cell.append(icon('check-circle'), report.status.sentence || report.status.title);
     status.append(cell);
   }
-  box.prepend(status);
+  // In the run panel the card's top says the counts (run-result-card.js): the strip is not drawn twice, and a check with nothing else has no bottom.
+  // A count of 0 is not said ("0 updates recorded"); a check that changed nothing says so once, under the top's title.
+  const title = [...counts.filter(({value}) => Number(value) !== 0).map(({value, label}) => `${value} ${label}`),
+    waiting && `${waiting} ${waiting === 1 ? 'needs your answer' : 'need your answer'}`].filter(Boolean).join(' · ') || report.status.sentence || report.status.title || '';
+  if (target.id === 'activity-card') {
+    const only = box.childElementCount === 1 && box.firstElementChild.classList.contains('mail-nochange') ? box.firstElementChild.textContent : '';
+    if (!box.childElementCount || only) { target.replaceChildren(); return {empty: true, title, summary: only, asks: waiting}; }
+  } else box.prepend(status);
   target.replaceChildren(box);
+  return {empty: false, title, asks: waiting};
 }
 

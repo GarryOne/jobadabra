@@ -45,20 +45,15 @@
 .roomy-cards :is(.chip, .chip-tag):not(.removable) { padding: var(--chip-pad); font-size: var(--fs-base); font-weight: 500; color: var(--ink);
   background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--r-pill); }
 
-/* Summary tiles side by side with a divider between them, no box each (mockup 03 Main goals); four tiles go 2 × 2. */
-.roomy-cards .summary-tiles.is-divided { gap: var(--sp-4) 0; padding-top: var(--sp-5); border-top: 1px solid var(--line);
-  grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.roomy-cards .summary-tiles.is-divided:has(> :nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.roomy-cards .summary-tiles.is-divided:not(:has(> :nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.roomy-cards .summary-tiles.is-divided > .summary-tile { border: 0; border-radius: 0; padding: var(--sp-1) var(--sp-5); align-items: center; gap: var(--sp-4); }
-.roomy-cards .summary-tiles.is-divided > .summary-tile:not(:first-child) { border-left: 1px solid var(--line); }
-.roomy-cards .summary-tiles.is-divided:has(> :nth-child(4)) > .summary-tile:nth-child(odd) { border-left: 0; padding-left: 0; }
-.roomy-cards .summary-tiles.is-divided > .summary-tile:first-child { padding-left: 0; }
+/* Summary tiles as one column, a fact per row with its icon beside it and a rule between rows (owner, 25 Oct 2026: "one column per row, instead of two":
+   in a narrow window the two columns broke words mid-word). One column at every width; "Estimated" and "+N more" stay beside their value. */
+.roomy-cards .summary-tiles.is-divided { gap: 0; padding-top: var(--sp-2); border-top: 1px solid var(--line); grid-template-columns: minmax(0, 1fr); }
+.roomy-cards .summary-tiles.is-divided > .summary-tile { border: 0; border-radius: 0; padding: var(--sp-4) 0; align-items: center; gap: var(--sp-4); }
+.roomy-cards .summary-tiles.is-divided > .summary-tile:not(:first-child) { border-top: 1px solid var(--line); }
 .roomy-cards .summary-tiles.is-divided .ui-tile { width: 44px; height: 44px; }
 .roomy-cards .summary-tiles.is-divided .ui-tile .icon { width: 22px; height: 22px; }
 .roomy-cards .summary-tiles.is-divided .summary-tile-label { font-size: var(--fs-md); }
 .roomy-cards .summary-tiles.is-divided .summary-tile-value { font-size: var(--fs-card-title); font-weight: 700; }
-@container (max-width: 640px) { .roomy-cards .summary-tiles.is-divided { grid-template-columns: minmax(0, 1fr); } }
 
 /* A reference row (a fact kept on another page) as one more lined row: label column, the words, the quiet link at the right. */
 .roomy-cards .card-read > .reference-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2) var(--sp-4);

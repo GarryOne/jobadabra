@@ -1,5 +1,5 @@
 // Strategy → Main goals (owner, 18 Oct 2026, UI redesign B, mockup 03 + decisions 1, 2 and 4): four tiles, Target roles · Target level · Work mode ·
-// Minimum salary (page-parts.js summaryTiles: four columns, 2×2 when narrow; the salary with its currency and period said), a "From Your details" row with
+// Minimum salary (page-parts.js summaryTiles: one column, a fact per row, owner 25 Oct 2026; the salary with its currency and period said), a "From Your details" row with
 // Languages and Work eligibility as recorded there (page-parts.js referenceRow: read-only, never goals), and one editor behind Edit: the roles list, then each
 // goal with its kind's control (goal-kinds.js). Saved by Strategy's page bar (strategy-cards.js): roles to Search settings, goals to the Profile
 // (lib/goals.js; Target level also sets the search's level, lib/goal-level.js). Guarded by test/main-goals.test.js.

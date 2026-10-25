@@ -1,5 +1,5 @@
 // What the shared pool tells a person, in the real window on demo data (7 Oct 2026): the Strategy card "Where people like you get interviews" and its way
-// into the Jobs list, the job sources card saying what a source gave people like you, the "Few new jobs" chips after a check, and that every one of
+// into the Jobs list, the job sources card staying away while key sources are not offered, the "Few new jobs" chips after a check, and that every one of
 // these recommendations is recorded as shown / taken / dismissed in fixed words (app.log area "advice"; the same event goes to technical reports).
 // Its own demo window: no Notion, no AI, no engine run.
 import fs from 'node:fs';
@@ -53,13 +53,13 @@ export async function run(ctx) {
       await page.dispatchEvent('#filter-text', 'input');
     });
 
-    await ctx.run('the job sources card says what a source gave people like you', async () => {
+    // 25 Oct 2026 (beta 0.8.30): "Connect more job sources" only ever lists the sources that need the person's own API key, and those are not offered
+    // anywhere (renderer/key-sources.js, owner 24 Oct), so the row is not drawn; the step that waited for it went red on both platforms.
+    await ctx.run('the job sources card is not offered: every source it could list needs a key of the person\'s own', async () => {
       await page.click('.nav[data-view=strategy]');
-      await page.click('[data-tab=strategy-suggestions]');   // the rows live in the Suggestions tab
-      await page.waitForSelector('#strategy-sources:visible', {timeout: 10000});
-      await page.click('#strategy-sources [data-review]');
-      const chips = await page.locator('#sources-chips .option-row b').allInnerTexts();
-      if (!chips.some(chip => /in 10 people like you/.test(chip))) throw new Error(`no "people like you" in ${JSON.stringify(chips)}`);
+      await page.click('[data-tab=strategy-suggestions]');
+      await page.waitForSelector('#strategy-foryou:visible', {timeout: 10000});   // the tab has drawn its rows
+      if (await page.locator('#strategy-sources').count()) throw new Error('the "Connect more job sources" row is drawn although key sources are not offered');
     });
 
     await ctx.run('⋯ "Hide until the next search" hides the employers row, records it, and it stays hidden on the next visit', async () => {

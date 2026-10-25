@@ -8,6 +8,7 @@ import * as notion from './notion.js';   // Notion-only: the Profile/answers tex
 import * as notionGate from './notion-gate.js';
 import {withoutNotes} from './config-text.js';
 import {writePrivate} from './private-file.js';
+import {log as appLog} from './log.js';
 import {dropFragment, editTitles, hasFragment, titlesOf, view as viewRoles, withDerived} from './target-roles.js';
 
 // Accepting a draft writes the Profile, answers and the pipeline's settings into the user's folder.
@@ -51,6 +52,9 @@ export function keepLocally(storage, draft, parts = null) {
 }
 // Copies an older version kept on the Mac go once Notion has them (lib/migrate.js).
 export function dropLocalCopies(storage) {
+  // Logged (25 Oct 2026, beta 0.8.30: the settings suite's export held no profile.md or answers.md, and nothing said who removed them).
+  const present = ['profile.md', 'answers.md'].filter(name => fs.existsSync(storage.path(name)));
+  if (present.length) appLog('files', 'local copies dropped, Notion has them', {files: present});
   for (const name of ['profile.md', 'answers.md']) fs.rmSync(storage.path(name), {force: true});
 }
 

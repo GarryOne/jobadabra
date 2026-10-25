@@ -2,7 +2,7 @@
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
 import {runWarningLines, stepNote} from '../run-warnings.js';
-import {barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, notChecked, waitedHead, stepCount, noResultHead} from '../run-status.js';
+import {barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, notChecked, waitedHead, stepCount} from '../run-status.js';
 import {el, moreButton, pill, tag} from '../components.js';
 import {icon} from '../icons.js';
 import {hasFullReport} from '../searches-view.js';
@@ -12,26 +12,21 @@ import {employersAdvice} from '../onboarding.js';
 import {settleQuestion} from '../mail-report.js';
 import {parseInsight} from '../insight-card.js';
 import {parseWeekly} from '../weekly-card.js';
-import {parseInterviewReview} from '../interview-review.js';
-import {kitsOutcome, parseKitsReady} from '../kits-ready.js';
+import {parseKitsReady} from '../kits-ready.js';
 import {groupRuns, runTime} from '../run-list.js';
 import {shared} from './shared.js';
 import {seeded} from '../live-log.js';
 import {showScheduleState} from './connections.js';
 import {$, show} from './core.js';
-import {lastAnswered, lastQuestions, pendingMailQuestions} from './focus.js';
+import {lastQuestions} from './focus.js';
 import {remembered} from './nav.js';
 import {readableLog} from '../human-log.js';
 import {renderActionsPage} from './runs-page.js';
 import {toastMessage} from './startup.js';
 import {showStop} from '../stop-task.js';
 import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, gmailConnected, mailReportOf} from './activity-basics.js';
-import {renderVisitsCard} from './activity-visits.js';
 import {showAwaitedResult, showQueuedBanner, keepStatusBar, withKept, byYou} from './activity-results.js';
-import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton, renderNoResult} from './activity-run-card.js';
-import {unsavedRun} from '../run-status.js';
-import {renderMailCard} from './activity-mail.js';
-import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
+import {showJumpToLatest, showRunJob, linked, refreshActivity} from './activity-run-card.js';
 import {barLabel, PANEL_KEY, panelMemory} from './activity-panel.js';
 import {anyFilter, filterBy, listFilter} from '../run-filters.js';
 import {idOf, pickRun, queueWords} from '../run-pick.js';
@@ -39,8 +34,8 @@ import {actionsShown, drawFilters, drawQueueNote, rowPicked} from './runs-tab.js
 import {byStore} from '../store-words.js';
 import {startSearch} from './jobs.js';
 import {splitPartial} from './activity-partial.js';
-import {newJobsCard} from '../new-jobs-card.js';
 import {drawResultTop} from './activity-result-top.js';
+import {drawResultBottom} from './activity-result-bottom.js';
 export let lastActivity = null;
 const RUNS_PAGE = 8;
 let shownRuns = RUNS_PAGE;
@@ -355,41 +350,8 @@ export function renderActivity(fresh) {
   // Find new employers read better as a small card; anything else stays text. While its Notion page is still being
   // read, the card's own shape shows as skeleton bars, so the pane never looks half-built and then jumps.
   // A search lists only the jobs this run added (its "New job:" lines), never the digest's "since your last digest" (owner, 25 Oct 2026).
-  const own = kindOf(run) === 'search' ? newJobsCard(run, lines) : null;
-  const card = (own?.items.length ? own : null) || (shownText ? parseRunMessage(shownText) : null) || own;
-  // A Gmail check's message has no digest header but plenty of structure (the interview it is about, the topics to
-  // strengthen, the recruiter's next step): it gets its own card, not its raw lines in a <pre>.
-  const mail = !run?.live && !card ? mailReportOf(run) : null;
-  // An insight is written to be sent, not read: its card is the finding, the numbers behind it and the one action
-  // (the mockup, 30 Sep). Only what the insight carries is drawn — anything else is absent, never an empty slot.
-  const insight = !card && !mail && shownText ? parseInsight(shownText) : null;
-  // The week's report: the same card, with what worked and what to change in place of the finding's evidence.
-  const weekly = !card && !mail && !insight && shownText ? parseWeekly(shownText) : null;
-  // An interview review: the same card shape as the others, from the message src/ai/interviews.py wrote.
-  const review = !run?.live && !card && !mail && !insight && !weekly && kindOf(run) === 'interview' && run?.message
-    ? parseInterviewReview(run.message) : null;
-  const kits = !run?.live && !card && !mail && !insight && !weekly && !review && KITS_CARD.has(kindOf(run)) && run?.message ? parseKitsReady(run.message) : null;
-  if (kits) kits.outcome = kitsOutcome(kits, run.log);
-  const sites = !run?.live && !card && !mail && !insight && !weekly && !review && !kits && run?.message ? parseVisits(run.message) : null;   // Find jobs using your browser
-  const reading = !!run?.pageId && readingPages.has(run.pageId);
-  show($('activity-help'), false);   // only a search card with few new jobs fills it
-  let drawnCard = null;   // {empty}: a search that added nothing has no bottom (its top says so)
-  if (card) drawnCard = renderRunCard(card, run);
-  else if (mail) {
-    renderMailCard(mail, pendingMailQuestions(), lastAnswered());
-  }
-  else if (insight) renderInsightCard(insight);
-  else if (weekly) renderWeeklyCard(weekly);
-  else if (review) renderInterviewCard(review);
-  else if (kits) renderKitsCard(kits);
-  else if (sites) renderVisitsCard({...sites, since: run.startedAt}, undefined, {list: !tabs});   // the step card above has the sites (parseSiteRows)
-  else if (reading) renderCardSkeleton();
-  // Nothing saved: the amber box with Read again and the log (it was the Actions card's; the Actions banner is compact since 25 Oct 2026).
-  const unsaved = !card && !mail && !insight && !weekly && !review && !kits && !sites && !reading && unsavedRun(run);
-  if (unsaved) renderNoResult(noResultHead({...run, kind: kindOf(run)}, KIND[kindOf(run)] || {name: 'The run'}), {log: () => $('activity-log')?.scrollIntoView({block: 'nearest'}),
-    fix: run.pageId ? () => { runDetails.delete(run.pageId); renderActivity(lastActivity); } : null});
-  if (card || insight || weekly || mail || review || kits || sites) show($('activity-result'), false);  // the card shows the same, laid out
-  show($('activity-card'), (!!card && !drawnCard?.empty) || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);
+  const {card, mail, insight, weekly, review, kits, sites, reading} = drawResultBottom({run, lines, shownText, tabs,
+    readingNow: !!run?.pageId && readingPages.has(run.pageId), redraw: () => renderActivity(lastActivity)});
   // A search that can't have found much yet suggests Find new employers, whatever its result card shows (renderer/onboarding.js employersAdvice).
   const advice = employersAdvice(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});
   if (advice) {

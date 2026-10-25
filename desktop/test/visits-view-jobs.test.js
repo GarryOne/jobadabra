@@ -9,7 +9,7 @@ test('every list of read sites offers View jobs through viewJobsButton, with the
   assert.match(page('activity-visits.js'), /viewJobsButton\(site, site\.detail, card\.since\)/, 'the result card row');
   assert.match(page('activity-basics.js'), /viewJobsButton\(site, site\.words, since\)/, 'the step card row');
   assert.match(page('activity-render.js'), /siteRow\(site, !!run\.live, run\.startedAt\)/);
-  assert.match(page('activity-render.js'), /since: run\.startedAt/);
+  assert.match(page('activity-result-bottom.js'), /since: run\.startedAt/);
   assert.match(page('activity-basics.js'), /since: run\?\.startedAt/);
 });
 

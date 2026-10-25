@@ -866,9 +866,9 @@
             <div id="locations-set-aside"></div>
           </section>
           <!-- Owner, 17 Oct 2026: must-haves / deal-breakers apart from preferences that rank; from Profile → Preferences (pages/job-preferences.js). -->
-          <div class="roomy-pair">
-          <div id="strategy-locations"></div>
-          <section class="card job-prefs setting" id="strategy-job-prefs">
+          <div class="roomy-pair card-grid">
+          <div id="strategy-locations" class="is-wide"></div>
+          <section class="card job-prefs setting is-wide" id="strategy-job-prefs">
             <!-- Its head (Unsaved, Edit / Done) and its read rows or editor are drawn by pages/job-preferences.js; "Review your preferences" is in the editor. -->
             <div class="card-head job-prefs-head"><div><h3>Job preferences</h3><p class="muted small">What a job must have, and what ranks it higher. Scoring reads them.</p></div></div>
             <div class="outline-body" id="preferences-body"></div>
@@ -877,7 +877,7 @@
           <details class="card advanced-settings" id="strategy-advanced">
             <summary><span class="ui-tile tone-neutral"><i data-icon="sliders"></i></span>
               <span class="card-words"><b>Advanced search settings</b><span class="muted small">Skills, exclusions and more.</span></span></summary>
-            <div class="review-grid" id="strategy-targets"></div>
+            <div class="review-grid card-grid" id="strategy-targets"></div>
           </details>
         </div>
       </section>
@@ -959,7 +959,7 @@
           </div>
           <div class="settings-page-head"><h2>Your setup</h2><p class="muted">Connected services and extension status. <button class="link" id="ov-review-setup" type="button">Review setup →</button></p></div>
           <div class="service-grid" id="ov-services"></div>
-          <div class="summary-grid">
+          <div class="summary-grid card-grid">
             <article class="summary-card">
               <div class="summary-head"><i data-icon="user"></i><h3>Application profile</h3></div>
               <p class="muted">Your CV and contact details for tailored applications.</p>
@@ -1465,7 +1465,7 @@
           <div class="setting panel" id="setting-data">
             <div class="summary-head"><i data-icon="refresh"></i><h3>Move your data</h3></div>
             <p class="muted panel-lead">Save a copy of what Jobadabra keeps on this computer, or restore one.<span id="data-notion-line"> Your Notion data stays in Notion: to keep, copy or move it, use Notion itself (its page history, Duplicate, Export, Move to another workspace).</span></p>
-            <div class="choice-grid">
+            <div class="choice-grid card-grid">
               <div class="choice-card"><span class="file-tile"><i data-icon="upload"></i></span>
                 <div><b>Export</b><p class="muted small">Save a copy of everything Jobadabra keeps on this computer: settings, profile, CVs, recordings, job list and history.</p>
                   <button class="secondary" id="export-data">Export data</button>

@@ -149,7 +149,7 @@ section('Settings parts', '.settings-nav (+ .nav-dot), .service-card with .servi
     <div><div class="service-grid"><button class="service-card"><span class="ui-tile tone-good"></span><span><b>Notion</b>
       <span class="service-state is-on"><i data-icon="check"></i>Connected</span></span></button>
       <button class="service-card"><span><b>Telegram</b><span class="service-state"><i data-icon="info"></i>Not connected</span></span></button></div>
-    <div class="summary-grid"><article class="summary-card"><div class="summary-head"><i data-icon="clock"></i><h3>Automation</h3></div>
+    <div class="summary-grid card-grid"><article class="summary-card"><div class="summary-head"><i data-icon="clock"></i><h3>Automation</h3></div>
       <p class="muted">Your job search schedule.</p><dl class="summary-rows"><dt>Job search</dt><dd>Every 4 hours</dd></dl>
       <button class="arrow-link">Manage automation</button></article></div></div></div>`;
   fillIcons(box);

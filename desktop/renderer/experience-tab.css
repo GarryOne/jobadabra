@@ -29,16 +29,12 @@
 .exp-job[open] .job-chevron { transform: rotate(90deg); }
 @container (max-width: 560px) { .exp-job > summary { grid-template-columns: auto minmax(0, 1fr) auto; } .job-when { grid-column: 2; white-space: normal; } }
 
-/* Your background (mockup 09): Education and the folded CV gaps card side by side; the gaps card open (mockup 06) or anything else spans the row. */
-.exp-profile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.exp-profile > * { grid-column: 1 / -1; }
-.exp-profile:has(> [data-part=gaps]:not([open])) > :is([data-part=education], [data-part=gaps]) { grid-column: auto; }
+/* Your background: Education, the CV gaps card and the rest each on a full row (owner, 25 Oct 2026: cards that grow with your data are one column; was two side by side, mockup 09). */
 .exp-part[data-part=gaps] > summary { flex-wrap: wrap; border-bottom: 0; }
 .exp-part[data-part=gaps][open] > summary { border-bottom: 1px solid var(--line); }
 .gaps-teaser { flex-basis: 100%; display: grid; gap: var(--sp-1); padding-left: calc(20px + var(--sp-3)); }
 .exp-part[data-part=gaps][open] > summary :is(.gaps-teaser > b, .gaps-review), .exp-part[data-part=gaps]:not([open]) > summary > .ui-pill { display: none; }
 #setting-experience-profile { container-type: inline-size; }
-@container (max-width: 640px) { .exp-profile:has(> [data-part=gaps]:not([open])) > :is([data-part=education], [data-part=gaps]) { grid-column: 1 / -1; } }
 .gaps-review { color: var(--info); font-weight: 600; }
 .part-note { display: inline-flex; margin-left: var(--sp-2); vertical-align: -2px; color: var(--muted); cursor: help; }
 .part-note > .icon { width: 14px; height: 14px; }

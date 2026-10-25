@@ -42,14 +42,11 @@ export const TARGET_CARDS = [
     ['gplaces', 'Google Jobs places: "City,Region,Country · language"', 'Add a place, e.g. Zurich,Zurich,Switzerland · de']]],
 ];
 export const TARGET_LISTS = ['roles', ...TARGET_CARDS.flatMap(([, , , lists]) => lists.map(([name]) => name))];
-// Advanced search settings: two columns that stack on their own (owner, 7 Oct 2026: cards sharing a grid row left tall gaps under the shorter one).
+// Advanced search settings: one column of full-width cards (owner, 25 Oct 2026: "2 columns with very different heights, let's better have 1 column, and
+// full rows cards"; they hold lists that grow with the user's data, so each is .is-wide in the shared .card-grid).
 export const ADVANCED = ['stack', 'languages', 'search'];
-const COLUMNS = [['stack'], ['languages', 'search']];
-export const inColumns = cards => COLUMNS.map(keys => {
-  const column = el('div', 'target-column');
-  column.append(...keys.map(key => cards.find(card => card.dataset.list === key)).filter(Boolean));
-  return column;
-});
+export const inColumns = cards => ADVANCED.map(key => cards.find(card => card.dataset.list === key || card.dataset.card === key)).filter(Boolean)
+  .map(card => { card.classList.add('is-wide'); return card; });
 // A list's entries as stored ({fragment, label}): the match lists come as both, the plain ones (search phrases, languages) as written.
 export const entriesOf = (data, name) => data?.lists?.[name] || (data?.texts?.[name] || []).map(text => ({fragment: text, label: text}));
 // One list as it will be after Save: the stored entries not removed, then the words added.

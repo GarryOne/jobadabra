@@ -80,7 +80,7 @@ export function roomyCards() {
   const box = el('div', 'roomy-cards');
   const card = (head, ...parts) => { const node = el('section', 'card'), read = el('div', 'card-read'); read.append(...parts); node.append(head, read); return node; };
   const edit = what => cardEdit('Edit', what, () => {});
-  const pair = el('div', 'roomy-pair');
+  const pair = el('div', 'roomy-pair card-grid');
   pair.append(
     card(cardHead({glyph: 'pin', tone: 'teal', title: 'Locations', lead: 'Where you want to work.', action: edit('locations')}),
       readRows([{icon: 'pin', label: 'Preferred locations', value: chipLine(['Lyon', 'Porto'])}, {icon: 'globe', label: 'Acceptable locations', value: chipLine(['France', 'Portugal'])},
@@ -88,6 +88,7 @@ export function roomyCards() {
     card(cardHead({glyph: 'sliders', tone: 'violet', title: 'Job preferences', lead: 'What a job must have.', action: edit('job preferences')}),
       readRows([{icon: 'briefcase', label: 'Employment type', value: 'Full-time'}, {icon: 'clock', label: 'Workload', value: '80 – 100%'},
         {icon: 'target', label: 'Role priorities', value: chipLine(['Store Manager', 'Area Manager'])}], {lined: true})));
+  for (const node of pair.children) node.classList.add('is-wide');   // Locations and Job preferences grow with the user's data: one column
   box.append(
     card(cardHead({glyph: 'target', tone: 'signal', title: 'Main goals', lead: 'What every job is scored against.', action: edit('main goals')}),
       summaryTiles([{key: 'roles', icon: 'briefcase', tone: 'violet', label: 'Target roles', value: 'Store Manager · Area Manager', more: '+1 more'},

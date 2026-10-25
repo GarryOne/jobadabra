@@ -98,6 +98,9 @@ jobs:
             --model claude-sonnet-5-5 --max-turns 30
             --allowedTools "Read,Glob,Grep,Write,Bash(git log:*),Bash(git show:*)"
           prompt: Read .heal/prejudge-prompt.md and follow it exactly. Write only .heal/verdicts.md.
+      - name: Why Claude failed (the API's own error)
+        if: failure()
+        run: python3 tools/claude-failure-reason.py
       - name: Read the verdicts, and the cost of judging
         if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0'
         env:

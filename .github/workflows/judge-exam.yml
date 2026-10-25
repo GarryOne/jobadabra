@@ -46,6 +46,9 @@ jobs:
             --model claude-sonnet-5-5 --max-turns 40
             --allowedTools "Read,Glob,Grep,Write"
           prompt: Read .heal/exam-prompt.md and follow it exactly. Write only .heal/verdicts.md.
+      - name: Why Claude failed (the API's own error)
+        if: failure()
+        run: python3 tools/claude-failure-reason.py
       - name: Score it
         if: steps.prepare.outputs.skip != 'true'
         env:

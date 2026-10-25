@@ -18,15 +18,12 @@ export const reasonText = reason => {
   return words ? `Connect Notion ${words}.` : '';
 };
 
-// What happened to the prompt, to the app (lib/notion-gate.js gateEvent keeps only fixed lists; nothing else is sent).
-const report = (reason, where, outcome, why) => window.pilot.notionGateEvent({reason, where, outcome, why}).catch?.(() => {});
 
 let current = null;  // the open prompt: {reason, where, from, then, sent, notNow, why, connecting, mode, moving}
 let underwaySince = 0;  // news of a connect this prompt did not start (Settings, a token): see notion-connect-rules.js
-function finish(outcome) {
+function finish() {
   if (!current || current.sent) return;
   current.sent = true;
-  report(current.reason, current.where, outcome, outcome === 'not_now' ? current.why : undefined);
 }
 
 function progressLine({found, total, building, waitingPage, template, moving}) {
@@ -106,13 +103,12 @@ async function connect() {
   const result = await window.pilot.notionOAuth({from: box.from}).catch(error => ({ok: false, error: error.message}));
   $('notion-connect-go').disabled = false;
   if (!result.ok) {
-    report(box.reason, box.where, 'failed');  // the prompt stays open: try again, or paste a token in Settings
     message('notion-connect-message', result.error || 'Not connected.', 'error');
     show($('notion-connect-token'));
     return;
   }
   shared.state = await window.pilot.state();
-  finish('connected');
+  finish();
   if (box.mode === 'connect-move' && moveAfterConnect(result)) { await move(box); return; }
   // Where the data lives now (lib/store-handlers.js startOnNotionIfEmpty): nothing on this Mac yet → Notion from now on; data here → it stays
   // until "Move my data to Notion" (Settings → Data & backup).
@@ -147,7 +143,6 @@ export function showNotionPanel() {
 }
 
 // A page that needs Notion: until it is connected only the gate card shows. true = locked (don't load the page).
-const viewed = new Set();
 export function applyViewGate(name, {then = null} = {}) {
   const view = document.querySelector(`.view[data-view="${name}"]`);
   const reason = LOCKED_VIEWS[name];
@@ -159,7 +154,6 @@ export function applyViewGate(name, {then = null} = {}) {
   if (!host) { host = el('div', 'notion-gate-host'); view.prepend(host); }
   host.replaceChildren(notionGate({reasonText: reasonText(reason),
     onConnect: () => openNotionConnect({reason, where: 'view', from: `gate:${reason}`, then})}));
-  if (!viewed.has(name)) { viewed.add(name); report(reason, 'view', 'viewed'); }  // once per page per start
   return true;
 }
 
@@ -192,7 +186,7 @@ export function init() {
     return chip;
   }));
   // Closed by Esc, the backdrop, Close or a chip: Not now when it was asked, else just closed (a connect already reported itself).
-  $('notion-connect-dialog').addEventListener('close', () => { finish(current?.notNow ? 'not_now' : 'closed'); });
+  $('notion-connect-dialog').addEventListener('close', () => { finish(); });
   // Any action that needs Notion (preload.cjs): the prompt, then the same action again, then the Jobs list read afresh.
   window.addEventListener('pilot-needs-notion', () => {
     const need = window.pilot.takeNotionNeed();

@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import {STEPS, track} from '../lib/setup-funnel.js';
 import {assertSiteAccepts, siteTest} from './site-private.js';
 
-// The website's funnel (/telemetry) counts the same steps, then "done". It keeps 'notion' as a legacy step (older apps reported it; a newer install that went past it counts as having reached it).
-const SITE_STEPS = ['welcome', 'ai', 'notion', 'cv', 'draft', 'hosted', 'extras', 'done'];
+// The website's funnel (/telemetry) counts the same steps, then "done" (its legacy 'notion' row was dropped 25 Oct 2026).
+const SITE_STEPS = [...STEPS, 'done'];
 
 siteTest('the website counts every setup step', () => {
   const site = fs.readFileSync(new URL('../../shared/telemetry.js', import.meta.url), 'utf8');
@@ -16,8 +16,7 @@ siteTest('the website counts every setup step', () => {
 test('the steps match the wizard', () => {
   const core = fs.readFileSync(new URL('../renderer/pages/core.js', import.meta.url), 'utf8');
   assert.match(core, new RegExp(`STEPS = \\[${STEPS.map(s => `'${s}'`).join(', ')}\\]`));
-  assert.deepEqual(STEPS, SITE_STEPS.filter(s => s !== 'notion' && s !== 'done'));
-  // Every step has its page in the wizard, and the sidebar lists exactly these.
+    // Every step has its page in the wizard, and the sidebar lists exactly these.
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
   // 'hosted' is built in script (renderer/pages/hosted.js: index.html may only shrink), placed before 'extras'; the others are in the page.
   const BUILT = ['hosted'], inPage = STEPS.filter(step => !BUILT.includes(step));

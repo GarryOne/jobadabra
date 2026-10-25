@@ -126,7 +126,7 @@ class FeedbackTests(unittest.TestCase):
         app = stores.applications.by_id(app['id'])
         self.assertEqual((app['stage'], app['feedback_status'], app['employer_feedback']), ('Interviewing', 'Received feedback', words))
         received = stores.events.list(app_id=app['id'], kind=feedback.RECEIVED)
-        self.assertEqual([(e['note'], e['source'], e['source_id'][:9]) for e in received], [(words, 'Job Pilotto app', 'feedback:')])
+        self.assertEqual([(e['note'], e['source'], e['source_id'][:9]) for e in received], [(words, 'Jobadabra app', 'feedback:')])
         feedback.act(stores, app, 'review')
         self.assertEqual(stores.applications.by_id(app['id'])['feedback_status'], 'Received feedback')
         self.assertEqual(len(stores.events.list(app_id=app['id'], kind=feedback.REVIEWED)), 1)

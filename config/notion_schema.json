@@ -242,6 +242,10 @@
               "color": "purple"
             },
             {
+              "name": "Jobadabra app",
+              "color": "orange"
+            },
+            {
               "name": "Job Pilotto app",
               "color": "orange"
             },
@@ -1450,6 +1454,10 @@
             },
             {
               "name": "Calendar",
+              "color": "orange"
+            },
+            {
+              "name": "Jobadabra app",
               "color": "orange"
             },
             {

@@ -1,7 +1,7 @@
 """Focus history: what you resolved (app events, rated insights), newest first, from the store."""
 import unittest
 
-from src import focus
+from src import app_source, focus
 from src.stores import memory
 
 
@@ -20,6 +20,22 @@ class FocusHistoryTest(unittest.TestCase):
         self.assertEqual([i['title'] for i in items], ['Replied to Northwind', 'Insight: Useful', 'Skipped asking Zephyr AI for feedback'])
         self.assertEqual(items[1]['note'], 'Location limits your applications')
         self.assertEqual(items[0]['note'], 'You answered (marked done in Focus)')
+
+    def test_events_logged_under_either_app_name_are_listed(self):
+        """Class test (25 Oct 2026 rename): rows written before it say 'Job Pilotto app'; new ones say 'Jobadabra app'; both are the app's own events."""
+        for source in app_source.APP_SOURCES:
+            stores = memory.open_store()
+            app = stores.applications.create({'url': 'https://x.test/n', 'company': 'Northwind'}, 'Screening')
+            stores.events.add(app['id'], 'Replied', '2099-09-29T10:00:00+00:00', source=source, note='n')
+            self.assertEqual([i['title'] for i in focus.history(stores)], ['Replied to Northwind'], source)
+        self.assertEqual(app_source.APP_SOURCE, 'Jobadabra app')   # what is written now
+
+    def test_a_reader_never_compares_to_one_app_name(self):
+        """Fails when src/ names 'Job Pilotto app' outside the shared constant, so a new reader cannot match only the old value."""
+        import pathlib
+        bad = [f'{path}:{n}' for path in pathlib.Path(focus.__file__).parent.rglob('*.py') if path.name != 'app_source.py'
+               for n, line in enumerate(path.read_text().splitlines(), 1) if 'Job Pilotto app' in line]
+        self.assertEqual(bad, [])
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ import json
 import re
 import sys
 
+from ..app_source import APP_SOURCE
 from ..stores import open_stores
 from . import mail, opportunity
 
@@ -28,7 +29,7 @@ def _new_job(stores, event, changes):
             'platform': 'LinkedIn' if linkedin else 'Email', 'in_house': False}
     url = opportunity.lead_url(lead, '', event['source_id'])
     record, _ = opportunity.track(stores, lead, f"Subject: {subject}\n\n{event['note']}", source='Gmail',
-                                  event_source='Job Pilotto app', gmail_id=event['source_id'], at=event['at'] or None, url=url,
+                                  event_source=APP_SOURCE, gmail_id=event['source_id'], at=event['at'] or None, url=url,
                                   note=f'From an email you placed: "{subject[:120]}"')
     return record or stores.applications.get(url) or opportunity.same_pitch(stores, lead)   # already tracked: that job
 

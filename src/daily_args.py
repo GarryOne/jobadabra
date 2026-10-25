@@ -59,7 +59,7 @@ def build_parser(description):
     parser.add_argument('--interview-at', default='', help='add mode: the call\'s date and time, as you confirmed it (YYYY-MM-DDTHH:MM)')
     parser.add_argument('--company', default=None, help='add mode, a new job: the hiring company, as you confirmed it ("" = not named)')
     parser.add_argument('--agency', default=None, help='add mode, a new job: the recruiter\'s agency, as you confirmed it ("" = none)')
-    parser.add_argument('--from-app', action='store_true', help='add mode: logged in the Desktop App (Source "Job Pilotto app", even with --send)')
+    parser.add_argument('--from-app', action='store_true', help='add mode: logged in the Desktop App (Source "Jobadabra app", even with --send)')
     parser.add_argument('--first-contact', choices=('yes', 'no'), default=None,
                         help='add mode, a new job: this was the first contact about it (its Source follows the channel)')
     parser.add_argument('--origin', choices=('inbound', 'outbound'), default=None,

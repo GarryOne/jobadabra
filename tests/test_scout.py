@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.sources import ats
 from src import store as job_store
-from src import pool_served, scout, scout_candidates, scout_core
+from src import pool_served, scout, scout_candidates, scout_core, scout_probe
 from src.stores import memory, notion
 
 SEEDS = {'excluded': ['Acme'], 'tier1_known': [{'name': 'Bigco', 'ats': 'lever', 'slug': 'bigco'}],
@@ -305,6 +305,18 @@ class ScoutTests(unittest.TestCase):
         self.assertGreater(high, 80)
         self.assertLess(low, 45)
         self.assertEqual(stats['swiss'], 6)
+
+    def test_quality_place_bonus_uses_only_the_users_places(self):
+        # The +10 place bonus once also matched a hard-coded "CH", so a user searching elsewhere got it for any Swiss posting (25 Oct 2026).
+        import importlib
+        own = {**scout_core._SEARCH, 'locations': {'top_tier': ['berlin'], 'country_wide': [], 'abroad': []}}
+        try:
+            with mock.patch.object(scout_core, '_SEARCH', own):
+                reloaded = importlib.reload(scout_probe)
+                self.assertIsNone(reloaded.SWISS_OR_ZURICH.search('Bern, CH'))
+                self.assertTrue(reloaded.SWISS_OR_ZURICH.search('Berlin, Germany'))
+        finally:
+            importlib.reload(scout_probe)
 
     def test_central_judges_count_every_kind_of_job(self):
         # Owner, 19 Oct 2026: a job search across Europe for every role. The central scout read a care home's feed through the example

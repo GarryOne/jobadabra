@@ -16,6 +16,21 @@ test('Windows: the whole tree goes with taskkill /T /F; if taskkill cannot run t
   assert.deepEqual(signals, ['SIGTERM']);
 });
 
+test('Windows: what taskkill said is logged, and a process still alive 2 s later is named (beta 0.8.30: a Stopped run held the run lock)', () => {
+  const lines = [], later = [];
+  const child = {pid: 4242, kill() {}};
+  killTree(child, {platform: 'win32', run: () => ({status: 128, stderr: 'ERROR: The process "4242" not found.'}), log: (...args) => lines.push(args),
+    after: fn => { later.push(fn); }, alive: () => true});
+  assert.equal(lines[0][1], 'taskkill');
+  assert.deepEqual([lines[0][2].pid, lines[0][2].status], [4242, 128]);
+  assert.match(lines[0][2].said, /not found/);
+  later[0]();
+  assert.match(lines[1][1], /still alive/);
+  const quiet = [];
+  killTree(child, {platform: 'win32', run: () => ({status: 0}), log: (...args) => quiet.push(args), after: fn => fn(), alive: () => false});
+  assert.equal(quiet.length, 1, 'a process that is gone adds no second line');
+});
+
 test('Mac/Linux: the signal goes to the run\'s whole process group; without a group the process itself gets it', () => {
   const sent = [], signals = [], child = {pid: 77, kill: signal => signals.push(signal)};
   killTree(child, {platform: 'darwin', kill: (...args) => sent.push(args)});

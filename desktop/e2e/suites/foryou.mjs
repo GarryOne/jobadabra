@@ -53,13 +53,13 @@ export async function run(ctx) {
       await page.dispatchEvent('#filter-text', 'input');
     });
 
-    // 25 Oct 2026 (beta 0.8.30): "Connect more job sources" only ever lists the sources that need the person's own API key, and those are not offered
+    // 25 Oct 2026 (beta 0.8.30): the job sources row only ever lists the sources that need the person's own API key, and those are not offered
     // anywhere (renderer/key-sources.js, owner 24 Oct), so the row is not drawn; the step that waited for it went red on both platforms.
     await ctx.run('the job sources card is not offered: every source it could list needs a key of the person\'s own', async () => {
       await page.click('.nav[data-view=strategy]');
       await page.click('[data-tab=strategy-suggestions]');
       await page.waitForSelector('#strategy-foryou:visible', {timeout: 10000});   // the tab has drawn its rows
-      if (await page.locator('#strategy-sources').count()) throw new Error('the "Connect more job sources" row is drawn although key sources are not offered');
+      if (await page.locator('#strategy-sources').count()) throw new Error('the job sources row is drawn although key sources are not offered');
     });
 
     await ctx.run('⋯ "Hide until the next search" hides the employers row, records it, and it stays hidden on the next visit', async () => {

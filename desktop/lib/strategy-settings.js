@@ -54,7 +54,7 @@ export function keepLocally(storage, draft, parts = null) {
 export function dropLocalCopies(storage) {
   // Logged (25 Oct 2026, beta 0.8.30: the settings suite's export held no profile.md or answers.md, and nothing said who removed them).
   const present = ['profile.md', 'answers.md'].filter(name => fs.existsSync(storage.path(name)));
-  if (present.length) appLog('files', 'local copies dropped, Notion has them', {files: present});
+  if (present.length) appLog('files', 'local copies dropped, the store has them', {files: present});
   for (const name of ['profile.md', 'answers.md']) fs.rmSync(storage.path(name), {force: true});
 }
 

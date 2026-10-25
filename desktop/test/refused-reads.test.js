@@ -154,3 +154,19 @@ test('a captcha held in the extension is listed for Focus, ends when the site is
   storage.saveSettings({refusedShowCheck: true});
   assert.deepEqual([takeShowCheck(storage), takeShowCheck(storage)], [true, false]);
 });
+
+// Owner, 25 Oct 2026: Stop on the run left every site "Next" and the run "Running": the pass ended only when the extension said so.
+test('Stop ends the pass at once and the extension is told to read no further site', async () => {
+  const f = fakes(), storage = storageWith({readRefusedSites: true}), controller = new AbortController();
+  const work = (_s, kind, _log, fn) => { f.calls.push(`work ${kind}`); return fn(line => f.lines.push(line), controller.signal).then(ok => { f.calls.push(`task ended ${ok}`); }); };
+  await queue(storage, {run: f.run, work, scoreArgs: () => ['src.desktop', 'score']});
+  assert.ok(passRunning());
+  controller.abort();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.ok(!passRunning(), 'the pass is over, not waiting for the extension');
+  assert.ok(f.calls.includes('task ended false'));
+  process.env.__LAST_URL = 'https://jobs.coop.ch';
+  const answer = await outcome(storage, {url: 'https://jobs.coop.ch', status: 200, html: '<html></html>', title: 't'}, {run: f.run});
+  assert.equal(answer.stop, true, 'the page in flight is kept; the next report says stop');
+  assert.ok(!f.calls.includes('src.desktop score'));
+});

@@ -10,6 +10,7 @@ import * as now from './refused-now.js';
 export const settingOn = storage => storage.settings().readRefusedSites !== false;
 export const PASS_MS = 15 * 60 * 1000;   // a pass the extension never finishes (Chrome closed) ends here, with what it brought
 let pass = null;   // {tee, expected, results, fits, finish}
+let stopped = false;   // Stop ended the pass: the extension's next page report answers `stop`, and it reads no further site (25 Oct 2026)
 
 export const passRunning = () => !!pass;
 
@@ -29,14 +30,15 @@ export async function queue(storage, {allowed = true, incognito = true, log = ()
   } catch { sites = []; }
   if (!sites.length) return {...off, on: true};
   appLog('refused-reads', 'pass started', {sites: sites.length});
-  work(storage, 'visits', log, tee => new Promise(resolve => {
+  stopped = false;
+  work(storage, 'visits', log, (tee, signal) => new Promise(resolve => {
     const state = {tee, expected: sites.length, results: [], fits: 0};
     const finish = async () => {
       if (pass !== state) return;
       pass = null;
       clearTimeout(timer);
       let scored = null;
-      if (state.fits && !allowanceBlock()) {   // the matching jobs are scored and listed in this run's turn, like Find jobs using your browser
+      if (state.fits && !allowanceBlock() && !signal?.aborted) {   // stopped: the pages read are kept, the next jobs check scores them. The matching jobs are scored and listed in this run's turn, like Find jobs using your browser
         tee(`Scoring the ${state.fits} matching job${state.fits === 1 ? '' : 's'} for your Jobs list…`);
         const {stdout = ''} = await run(storage, scoreArgs(storage, state.fits), tee).catch(() => ({stdout: ''}));
         scored = /Job Matches: (\d+) created/.exec(String(stdout))?.[1] ?? null;
@@ -47,6 +49,7 @@ export async function queue(storage, {allowed = true, incognito = true, log = ()
       resolve(state.results.some(result => result.ok));
     };
     state.finish = finish;
+    signal?.addEventListener('abort', () => { stopped = true; finish(); }, {once: true});   // Stop: the pass ends now, the extension is told with its next report
     const timer = setTimeout(finish, PASS_MS);
     pass = state;
     tee(`Reading ${sites.length} refused site${sites.length === 1 ? '' : 's'} in your browser, 1 at a time`);
@@ -70,7 +73,7 @@ export async function outcome(storage, payload, {run = pipeline.run} = {}) {
   const name = answer?.name || new URL(url).hostname;
   keepCheckWaiting(storage, url, answer);
   appLog('refused-reads', 'site fetched in your browser', {host: new URL(url).hostname, state: answer?.state || 'failed', jobs: answer?.jobs ?? null});
-  if (!pass) return answer || {ok: false};
+  if (!pass) return stopped ? {...(answer || {ok: false}), stop: true} : answer || {ok: false};
   const jobs = answer?.jobs || 0;
   const ok = !!answer?.ok && answer.state === 'read';
   pass.results.push({name, url, ok, jobs, added: jobs, fits: answer?.fits || 0, why: ok ? '' : answer?.why || (answer?.state === 'empty' ? 'no jobs found' : answer?.state === 'skipped' ? answer.why : 'not read')});

@@ -37,7 +37,7 @@ export async function engineJson(storage, command, body, runEngine = pipeline.ru
   const file = path.join(os.tmpdir(), `jp-${command}-${process.pid}-${Date.now()}.json`);
   fs.writeFileSync(file, JSON.stringify(body));
   try {
-    const {stdout} = await runEngine(storage, ['src.desktop', command, file], onLine);
+    const {stdout} = await runEngine(storage, ['src.desktop', command, file], onLine, {}, {inTask: 'visits'});   // inTask: Stop on the run ends this command too
     try { return JSON.parse(String(stdout).trim().split('\n').pop()); } catch { return null; }
   } finally {
     fs.rmSync(file, {force: true});

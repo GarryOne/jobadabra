@@ -5,11 +5,12 @@ import {test} from 'node:test';
 import {pass, mayFetch, readNowIfAsked, ALARM, NOW_ALARM, MAX_SITES} from '../../extension/refused-read.js';
 
 const chromeWith = allowed => ({permissions: {contains: async () => allowed}});
-function harness({on = true, sites = [], allowed = true, pages = {}} = {}) {
+function harness({on = true, sites = [], allowed = true, pages = {}, stopAfter = 0} = {}) {
   const calls = [], fetched = [];
   let open = 0, most = 0;
   const call = async (_cfg, path, init) => {
     calls.push([path, init?.body ? JSON.parse(init.body) : null]);
+    if (path === '/extension/refused-outcome' && stopAfter && calls.filter(([p]) => p === path).length >= stopAfter) return {ok: true, stop: true};
     return path === '/extension/refused-queue' ? {ok: true, on, sites} : {ok: true};
   };
   const fetchPage = async (url, init) => {
@@ -111,4 +112,11 @@ test('Open Chrome\'s switch: the extension opens its own details page once, and 
     await readNowIfAsked({chrome, call: async () => answer, config: {}});
     assert.deepEqual(opened, expected);
   }
+});
+
+// Owner, 25 Oct 2026: Stop in the app must stop the reading in Chrome too, not only the app's row.
+test('when the app answers stop, no further site is fetched', async () => {
+  const h = harness({sites: [{url: 'https://a.example.ch'}, {url: 'https://b.example.ch'}, {url: 'https://c.example.ch'}], stopAfter: 1});
+  assert.equal((await h.run()).read, 1);
+  assert.deepEqual(h.fetched.map(([url]) => url), ['https://a.example.ch']);
 });

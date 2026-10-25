@@ -28,7 +28,7 @@ const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [
 const remembered = (map, entries) => { for (const [key, value] of entries || []) map.set(key, value); return map; };
 const handled = remembered(new Map(), keptRows.handled);  // `${session}|${text}` → what was done
 const KEEP = /^(?:keep|leave|ok|fine|no change|looks right|as is|nothing)/i;
-const offline = item => (item.live === false ? 'The session has ended: resume it to send this to Claude' : '');
+const offline = item => (item.live === false ? 'The session has ended: resume it to send this' : '');
 // The answers you already saved (Notion → Application Answers, the same page the Profile shows), for the rows that
 // offer a choice: read once, on the side, the first time a row wants them. Offline or without Notion the row still
 // offers Claude's own answer and "Change with Claude…".
@@ -117,7 +117,7 @@ export function smallButton(text, kind, run, title = '') {
   button.addEventListener('click', run);
   return button;
 }
-// Enter in a row's answer box presses its button (Use, Fill it in, Send to Claude), unless the button is off or an IME is composing.
+// Enter in a row's answer box presses its button (Use, Fill it in, Send), unless the button is off or an IME is composing.
 export function submitOnEnter(input, button) {
   input.addEventListener('keydown', event => {
     if (event.key !== 'Enter' || event.isComposing || button.disabled || !button.isConnected) return;
@@ -276,7 +276,7 @@ export function showSendBar(item) {
   const open = document.querySelectorAll('#ss-needs > .ss-need:not(.is-done)').length;
   $('ss-needs-send-text').textContent = `${waiting.length} answer${waiting.length === 1 ? '' : 's'} ready${open ? ` · ${open} still open` : ''}`;
   const button = $('ss-needs-send-btn');
-  button.textContent = waiting.length === 1 ? 'Send it to Claude' : `Send all ${waiting.length} to Claude`;
+  button.textContent = waiting.length === 1 ? 'Send answer' : `Send all ${waiting.length} answers`;
   button.disabled = !!offline(item);
   button.onclick = () => { say(batchMessage(waiting)); batch.delete(item.id); show(bar, false); };
 }
@@ -330,7 +330,7 @@ export function needRow(need, item) {
       };
       const before = [...actions.childNodes];
       const back = () => { li.classList.remove('is-asking'); actions.replaceChildren(...before); };
-      const sendButton = smallButton('Send to Claude', 'primary', send, offline(item));
+      const sendButton = smallButton('Send', 'primary', send, offline(item));
       submitOnEnter(input, sendButton);
       input.addEventListener('keydown', event => { if (event.key === 'Escape') back(); });
       li.classList.add('is-asking');   // the answer box takes its own line under the text, not a corner of the row

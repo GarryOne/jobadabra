@@ -104,7 +104,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
     deadline = time.monotonic() + budget if budget else None
     may_add = budget_tape.until('scout names', deadline - budget / 2 if budget else None)
     # Central + Mac only when thin (owner, 20 Oct 2026): a search the shared list already covers adds no names; only the person's own are checked.
-    have = None if scout_core.CENTRAL or harvest_sources is not None else scout_need.covered()
+    have = None if scout_core.CENTRAL or harvest_sources is not None else scout_need.covered(db=db)
     if have:
         print(f'Scout: the shared list already has {have} employers for your kind of work in your places, so no new names today; '
               'checking only the ones you added.')

@@ -112,3 +112,65 @@ class PruneTest(WorktreeTest):
         self.assertIn('keep recent: touched in the last 7 days', out)
         for tree in (unlanded, dirty, recent):
             self.assertTrue(tree.exists(), tree.name)
+
+
+class PruneSquashTest(WorktreeTest):
+    """A squash merge leaves the branch's commits off main; prune must still call a merged PR's head landed (25 Oct 2026: it kept ~95% of 667 worktrees)."""
+
+    def two_commit_branch(self, name):
+        tree = self.make(name)
+        for part in ('a', 'b'):
+            (tree / f'{name}-{part}.txt').write_text(part)
+            git(tree, 'add', '-A')
+            git(tree, 'commit', '-qm', f'{name} {part}')
+        return tree
+
+    def squash(self, tree, name):
+        """main gets ONE new commit with the branch's files: what GitHub's squash merge does."""
+        other = self.main.parent / f'squash-{name}'
+        git(self.main, 'worktree', 'add', '-q', '--detach', str(other), 'origin/main')
+        for part in ('a', 'b'):
+            (other / f'{name}-{part}.txt').write_text(part)
+        git(other, 'add', '-A')
+        git(other, 'commit', '-qm', f'Squash {name}')
+        git(other, 'push', '-q', 'origin', 'HEAD:main')
+        git(self.main, 'worktree', 'remove', '--force', str(other))
+
+    def heads(self, name, *shas):
+        path = self.main.parent / name
+        path.write_text('\n'.join(shas) + '\n')
+        return str(path)
+
+    def prune_with(self, merged, opened, *args):
+        import os
+        env = {**os.environ, 'JP_PRUNE_DAYS': '0', 'JP_MERGED_PR_HEADS': merged, 'JP_OPEN_PR_HEADS': opened}
+        done = subprocess.run(['sh', str(self.main / 'tools' / 'worktree.sh'), 'prune', *args], cwd=self.main, capture_output=True, text=True, env=env)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    def test_a_squash_merged_worktree_is_removed_and_its_branch_kept(self):
+        tree = self.two_commit_branch('squashed')
+        merged = self.heads('merged.txt', git(tree, 'rev-parse', 'HEAD'))
+        self.squash(tree, 'squashed')
+        self.assertIn('keep squashed: commits not on main', self.prune_with(self.heads('none.txt'), self.heads('open0.txt')),
+                      'without the PR lookup a squash merge looks unlanded')
+        out = self.prune_with(merged, self.heads('open.txt'), '--yes')
+        self.assertIn('removed squashed (branch kept)', out)
+        self.assertFalse(tree.exists())
+        self.assertIn('squashed', git(self.main, 'branch', '--list', 'squashed'))
+
+    def test_squash_merged_still_keeps_unpushed_commits_open_prs_and_dirty_work(self):
+        later = self.two_commit_branch('later')   # merged PR head, then one more local commit
+        (later / 'later-c.txt').write_text('c')
+        git(later, 'add', '-A')
+        git(later, 'commit', '-qm', 'after the merge')
+        opened = self.two_commit_branch('opened')
+        dirty = self.two_commit_branch('dirty')
+        (dirty / 'scratch.txt').write_text('uncommitted')
+        both = self.heads('both.txt', *(git(t, 'rev-parse', 'HEAD') for t in (opened, dirty)))
+        out = self.prune_with(self.heads('merged2.txt', git(later, 'rev-parse', 'HEAD~1'), *Path(both).read_text().split()), both, '--yes')
+        self.assertIn('keep later: commits not on main', out)
+        self.assertIn('keep opened: its PR is open', out)
+        self.assertIn('keep dirty: its PR is open', out)   # an open head wins before the other checks
+        for tree in (later, opened, dirty):
+            self.assertTrue(tree.exists(), tree.name)

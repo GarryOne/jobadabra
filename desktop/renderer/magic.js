@@ -50,6 +50,27 @@ export function wire(card) {
 // Marks a button or menu row as one where the AI does the work: it gets the wand cursor (magic.css). Static buttons carry data-wand in index.html.
 export const wand = node => { node.dataset.wand = ''; return node; };
 
+// The light that follows the cursor over an Actions task card (owner, 25 Oct 2026: on the card, not just its button; not across the app).
+// One listener for every .task-card, drawn now or later; magic.css paints it from --mx/--my. Mouse and pen only, off with reduced motion.
+export function initGlow(root = document) {
+  if (root.dataset?.glowWired) return;
+  if (root.dataset) root.dataset.glowWired = '1';
+  let card = null, at = null;
+  root.addEventListener('pointermove', event => {
+    const hit = event.target.closest?.('.task-card');
+    if (!hit || !shouldRun({reduced: calm(), pointerType: event.pointerType})) return;
+    const wasQueued = !!card;
+    card = hit; at = event;
+    if (wasQueued) return;
+    requestAnimationFrame(() => {
+      const box = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${at.clientX - box.left}px`);
+      card.style.setProperty('--my', `${at.clientY - box.top}px`);
+      card = null;
+    });
+  }, {passive: true});
+}
+
 export function initMagic(root = document) {
   root.querySelectorAll('[data-magic]').forEach(wire);
 }

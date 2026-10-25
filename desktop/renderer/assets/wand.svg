@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="19" height="32" viewBox="-11 -11 22 37"><!-- The magic-wand cursor, upright (hotspot 9,9 = the star's centre): a five-point star on a thin gold stick with a grey end (owner's pick, 25 Oct 2026). Used by magic.css. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="25" viewBox="-11 -11 22 37"><!-- The magic-wand cursor, upright (hotspot 7,7 = the star's centre): a five-point star on a thin gold stick with a grey end (owner's pick, 25 Oct 2026). Used by magic.css. -->
 <line x1="0" y1="6" x2="0" y2="23" stroke="#000" stroke-width="5.2" stroke-linecap="round"/>
 <line x1="0" y1="6" x2="0" y2="17" stroke="#f2a93b" stroke-width="2.6" stroke-linecap="round"/>
 <line x1="0" y1="17" x2="0" y2="23" stroke="#8a8f9a" stroke-width="2.6" stroke-linecap="round"/>

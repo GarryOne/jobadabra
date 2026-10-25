@@ -56,7 +56,7 @@ test('a finished run with nothing saved says No result, never Completed · done 
   // One rule for every place a run is drawn: the pill (runPill) and the row's line (activity-basics.js outcome) say it, so the drawer header, Recent runs and Runs agree.
   assert.match(read('run-status.js'), /return unsavedRun\(run\) \? \['No result', 'neutral'\] : \['Completed', 'good'\];/);
   assert.match(read('pages/activity-basics.js'), /if \(unsavedRun\(run\)\) return 'its result was not saved';/);
-  assert.match(read('pages/activity-render.js'), /unsavedRun\(run\);\n\s+if \(unsaved\) renderNoResult\(/, 'its run panel offers Read again and the log');
+  assert.match(read('pages/activity-result-bottom.js'), /unsavedRun\(run\);\n\s+if \(unsaved\) renderNoResult\(/, 'its run panel offers Read again and the log');
 });
 
 test('the next step: a failure\'s own fix, or the new jobs a find added; nothing else', () => {

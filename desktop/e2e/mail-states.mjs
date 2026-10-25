@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {DESKTOP, E2E, launch} from './lib/app.mjs';
+import {openRunsList} from './lib/runs-list.mjs';
 
 process.env.E2E_HIDDEN ??= '0';   // the point is to look: shown, unless asked otherwise
 const {states, focus} = JSON.parse(fs.readFileSync(path.join(E2E, 'fixtures', 'mail-states.json'), 'utf8'));
@@ -33,9 +34,7 @@ await session.app.evaluate(({BrowserWindow}) => {
   win.show();
   win.focus();
 });
-await session.page.evaluate(async () => { (await import('./pages/activity.js')).openActivity(true); });
-// Every state in the list: it shows 8 runs, then "View more".
-for (let i = 0; i < 3 && await session.page.locator('#activity-all:visible').count(); i++) await session.page.click('#activity-all');
+await openRunsList(session.page);
 // MAIL_STATES_SHOTS=<folder>: click each state and save the panel, to check them without looking (then the window stays open).
 if (process.env.MAIL_STATES_SHOTS) {
   fs.mkdirSync(process.env.MAIL_STATES_SHOTS, {recursive: true});
@@ -43,7 +42,7 @@ if (process.env.MAIL_STATES_SHOTS) {
   for (let i = 0; i < states.length; i++) {
     await rows.nth(i).click();
     await session.page.waitForTimeout(600);
-    await session.page.locator('#activity-panel').screenshot({path: path.join(process.env.MAIL_STATES_SHOTS, `${String(i + 1).padStart(2, '0')}.png`)});
+    await session.page.locator('#actions-runs').screenshot({path: path.join(process.env.MAIL_STATES_SHOTS, `${String(i + 1).padStart(2, '0')}.png`)});
   }
   // The open question's button opens the job picker in a popup (not Focus): click it and keep a picture of the dialog.
   const asking = states.findIndex(state => state.name.startsWith('7 emails'));

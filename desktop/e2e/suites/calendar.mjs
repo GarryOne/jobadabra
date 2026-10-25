@@ -128,7 +128,8 @@ export async function run(ctx) {
     if ((await page.locator('#cal-title').innerText()) !== next) throw new Error(`"›" shows "${await page.locator('#cal-title').innerText()}", expected "${next}"`);
     const chips = await chipsOf(page, nextMonthDay);
     if (chips.length !== 1 || !/E2E Epsilon/.test(chips[0]) || !showsClock(chips[0], {h: 12, m: 0})) throw new Error(`the 15th of next month shows ${JSON.stringify(chips)}, expected "E2E Epsilon" at 12:00`);
-    if (await page.locator('#cal-grid .cal-cell.today').count()) throw new Error('"today" is highlighted in another month');
+    // Only the month's own days: the grid also draws the neighbours' days (.out), and in Tokyo "today" can be the first of them (25 Oct 2026 17:10 UTC is the 26th there, a day of November's first week).
+    if (await page.locator('#cal-grid .cal-cell.today:not(.out)').count()) throw new Error('"today" is highlighted in another month');
     await page.click('#cal-prev'); await page.click('#cal-prev');
     // The old call is seeded 40 days back: from the 10th of a month on, that is last month. Only it may be there.
     const lastMonth = await page.locator('#cal-grid .cal-cell:not(.out) .cal-chip').allInnerTexts();

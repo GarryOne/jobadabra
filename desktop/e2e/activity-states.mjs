@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DESKTOP, E2E, launch} from './lib/app.mjs';
+import {openRunsList} from './lib/runs-list.mjs';
 
 export const STATES = JSON.parse(fs.readFileSync(path.join(E2E, 'fixtures', 'activity-states.json'), 'utf8')).states;
 
@@ -28,8 +29,7 @@ export async function openStates({google = 'on', visible = false} = {}) {
   const {page} = session;
   await page.waitForSelector('.nav[data-view=focus]:not([hidden])', {timeout: 30000});
   await session.app.evaluate(({BrowserWindow}) => { BrowserWindow.getAllWindows()[0].setBounds({x: 40, y: 40, width: 1400, height: 940}); });
-  await page.evaluate(async () => { (await import('./pages/activity.js')).openActivity(true); });
-  for (let i = 0; i < 10 && await page.locator('#activity-all:visible').count(); i++) await page.click('#activity-all');
+  await openRunsList(page);
   const rows = page.locator('#activity-recent li:not(.recent-group) button');
   // Select a state by name: its row, then the panel has drawn it.
   const select = async name => { await rows.nth(STATES.findIndex(state => state.name === name)).click(); await page.waitForTimeout(400); };
@@ -43,7 +43,7 @@ export const readable = page => page.evaluate(() => ['activity-selected', 'activ
 
 // Shoot the window, then scroll the run's detail pane by a screen until its end.
 async function shootScrolled(page, folder, name) {
-  const pane = await page.evaluateHandle(() => { const node = document.querySelector('#activity-panel:not([hidden]) .ap-detail'); return node && node.scrollHeight > node.clientHeight + 4 ? node : null; });
+  const pane = await page.evaluateHandle(() => { const node = document.querySelector('.ap-detail'); return node && node.scrollHeight > node.clientHeight + 4 ? node : null; });
   const has = await pane.evaluate(node => !!node);
   if (has) await pane.evaluate(node => { node.scrollTop = 0; });
   for (let part = 1; part <= 8; part++) {

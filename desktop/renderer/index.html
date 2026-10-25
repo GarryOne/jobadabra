@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="reports-searches.css">
 <link rel="stylesheet" href="activity-drawer.css">
 <link rel="stylesheet" href="runs-tab.css">
+<link rel="stylesheet" href="run-banner.css">
 <link rel="stylesheet" href="setup-steps.css">
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
 </head>
@@ -606,10 +607,9 @@
         <button class="secondary" id="run-banner-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there.">Stop</button>
         <button class="secondary" id="run-banner-view">View run</button>
       </section>
-      <section class="card actions-result" id="actions-result" hidden>
-        <header class="actions-result-head"><span id="actions-result-head"></span><button class="link small" id="actions-result-close" aria-label="Dismiss">Dismiss</button></header>
-        <div class="run-card" id="actions-card"></div>
-      </section>
+      <!-- The next queued task and the last finished one, compact (pages/run-banner.js); their full report is the run panel's (drawer / Runs). -->
+      <section class="card run-banner" id="actions-queued" hidden></section>
+      <section class="card run-banner actions-result" id="actions-result" hidden></section>
       <pre class="answer" id="command-answer" hidden></pre>
       <h2 class="action-section">Run a task</h2>
       <div class="task-grid">

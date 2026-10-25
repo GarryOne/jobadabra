@@ -41,6 +41,8 @@ export async function showStatusCard() {
 const TASK_ICON = {search: 'search', mail: 'mail', insight: 'chart', weekly: 'file', today: 'send', scout: 'building', kits: 'file-text', tailor: 'scissors'};
 const TASK_TITLE = {search: 'Find jobs', mail: 'Gmail & Calendar check', insight: 'Insight', weekly: 'Analyze my job search', kits: 'Prepare top matches', tailor: 'Tailor CV + cover letter for top matches',
   today: "Today's matches", scout: 'More employers'};
+// A task's name as the Actions banners say it (running, queued and finished: one word for one task).
+export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || 'A task';
 // Every button that starts a task is off while that task runs or waits (a second press would only join it), and back when it ends: the Actions cards, Tailor CVs, and the same
 // task's other buttons (Jobs → Refresh jobs, Settings → Check Gmail now). `busy` is the kinds running or queued now. Only a button this turned off is turned on again.
 export function syncRunButtons(busy) {
@@ -116,7 +118,6 @@ export async function init() {
   });
   $('run-banner-stop').addEventListener('click', event => stopRunning(event.currentTarget));
   $('run-banner-view').addEventListener('click', () => { shared.selectedRun = null; openActivity(true); });   // null = the running task, not whichever row was open last
-  $('actions-result-close').addEventListener('click', () => show($('actions-result'), false));
   $('runs-all').addEventListener('click', event => { event.preventDefault(); showRunsTab(); });
   $('actions-automation').addEventListener('click', event => {
     event.preventDefault();

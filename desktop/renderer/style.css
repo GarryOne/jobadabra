@@ -1467,10 +1467,6 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .actions-telegram .dot.is-on { background: var(--good-bright); }
 .actions-telegram .dot.is-warn { background: var(--warn-bright); }
 #actions-automation { text-decoration: none; }
-.run-banner { display: flex; align-items: center; gap: var(--sp-4); background: var(--info-soft); border-color: var(--info-line); }
-.run-banner .spinner { width: 28px; height: 28px; flex: none; }
-.run-banner-words { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.run-banner-words b { font-size: var(--fs-lg); }
 .task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .task-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); }
 .task-category { display: block; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; color: var(--muted); margin-bottom: var(--sp-2); }
@@ -1620,7 +1616,6 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 :is(.activity-panel, .actions-runs) .ap-detail-actions { display: flex; align-items: center; gap: var(--sp-3); flex: none; }
 :is(.activity-panel, .actions-runs) .ap-detail-actions .activity-notion { margin: 0; }
 :is(.activity-panel, .actions-runs) .activity-warnings, :is(.activity-panel, .actions-runs) .activity-job { margin: 0; }
-.actions-result .run-problem { margin: 0; border: 0; border-radius: 0; }   /* the callout IS the card's body (its tint, no frame): no box in a box */
 .run-problem .ap-warn-icon { color: var(--tone); }
 /* The same box as an email card (activity.js mailCardRow): its padding, corners and spacing, in every state. */
 :is(.activity-panel, .actions-runs) .activity-warnings, .run-problem { padding: var(--sp-4); border-radius: var(--r-lg); }
@@ -2007,10 +2002,6 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .ap-strip-manage:hover { color: var(--signal-ink); }
 /* Recent activity: Today's list / Find new employers as a compact card (renderer/run-cards.js). The counts sit on
    their own tinted band; the heading, the rows and the link share the card's plain body (one surface, no box in a box). */
-.actions-result { padding: 0; overflow: hidden; margin-bottom: var(--sp-4); }
-.actions-result-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); }
-.actions-result-head > span { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.actions-result-head .link { margin-left: auto; }
 .run-card { padding: 0; display: grid; gap: 0; font-size: var(--fs-sm); }
 .run-card[hidden] { display: none; }
 .run-card-stats { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-3); row-gap: var(--sp-1);

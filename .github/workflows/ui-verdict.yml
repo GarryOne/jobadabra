@@ -73,6 +73,9 @@ jobs:
             --model claude-sonnet-5-5 --max-turns 25
             --allowedTools "Read,Glob,Grep,Write,Bash(git log:*),Bash(git show:*)"
           prompt: Read .heal/prompt.md and follow it exactly. Write only .heal/verdict.md.
+      - name: Why Claude failed (the API's own error)
+        if: failure()
+        run: python3 tools/claude-failure-reason.py
       - name: AI budget and cost of this run
         if: always()
         run: node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "verdict of issue $NUMBER"

@@ -59,6 +59,9 @@ jobs:
             --allowedTools "Read,Glob,Grep,Edit,Write,Bash(git show:*),Bash(git log:*),Bash(cd desktop/e2e && npm test:*),Bash(npm test:*),Bash(node --test:*)"
           prompt: |
             Follow desktop/e2e/finder-review-prompt.md exactly. The facts are in .finder-review/facts.md.
+      - name: Why Claude failed (the API's own error)
+        if: failure()
+        run: python3 tools/claude-failure-reason.py
       - name: The AI's cost and limit
         if: always() && steps.budget.outputs.skip != 'true'
         run: node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "Finder self-review"

@@ -108,6 +108,9 @@ jobs:
             --model claude-sonnet-5-5 --max-turns 50
             --allowedTools "Read,Glob,Grep,Edit,Write,Bash(node --test:*),Bash(python3 -m unittest:*),Bash(git diff:*),Bash(git status:*)"
           prompt: Read .heal/prompt.md and follow it exactly.
+      - name: Why Claude failed (the API's own error)
+        if: failure()
+        run: python3 tools/claude-failure-reason.py
       - name: AI budget and cost of this run
         if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         run: node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job fixer

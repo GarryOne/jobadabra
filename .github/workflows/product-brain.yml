@@ -148,6 +148,9 @@ jobs:
             --allowedTools "Read,Glob,Grep,Write,WebSearch"
           prompt: ${{ secrets.BRAIN_PROMPT_EXPLORE }}
 
+      - name: Why Claude failed (the API's own error)
+        if: failure()
+        run: python3 tools/claude-failure-reason.py
       - name: Send the plan
         if: env.STEP == 'explore'
         run: python tools/product_brain.py plan --id "$DECISION" --file .brain/plan.md

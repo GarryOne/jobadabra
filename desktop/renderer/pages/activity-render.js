@@ -1,13 +1,13 @@
 // Recent activity: renderActivity, the Recent activity panel redraw, its panel height and its list state.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
-import {groupWarnings, limitedJobs, newDetails, runWarningLines, stepNote} from '../run-warnings.js';
-import {aiLimitHead, barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, deliveryHead, notConnectedHead, notChecked, waitedHead, stepCount, noResultHead} from '../run-status.js';
+import {runWarningLines, stepNote} from '../run-warnings.js';
+import {barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, notChecked, waitedHead, stepCount, noResultHead} from '../run-status.js';
 import {el, moreButton, pill, tag} from '../components.js';
 import {icon} from '../icons.js';
 import {hasFullReport} from '../searches-view.js';
 import {cardText, emptyResult, markFallback, newJobsShown, parseRunMessage, plainMessage} from '../run-cards.js';
-import {parseSiteRows, parseVisits, rerunSites} from '../visits-card.js';
+import {parseSiteRows, parseVisits} from '../visits-card.js';
 import {employersAdvice} from '../onboarding.js';
 import {settleQuestion} from '../mail-report.js';
 import {parseInsight} from '../insight-card.js';
@@ -25,7 +25,7 @@ import {readableLog} from '../human-log.js';
 import {renderActionsPage} from './runs-page.js';
 import {toastMessage} from './startup.js';
 import {showStop} from '../stop-task.js';
-import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, warningSummary, WARN_NOUN, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, signedInSince, gmailConnected, runButton, mailReportOf} from './activity-basics.js';
+import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, gmailConnected, mailReportOf} from './activity-basics.js';
 import {renderVisitsCard} from './activity-visits.js';
 import {showAwaitedResult, showQueuedBanner, keepStatusBar, withKept, byYou} from './activity-results.js';
 import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton, renderNoResult} from './activity-run-card.js';
@@ -38,8 +38,9 @@ import {idOf, pickRun, queueWords} from '../run-pick.js';
 import {actionsShown, drawFilters, drawQueueNote, rowPicked} from './runs-tab.js';
 import {byStore} from '../store-words.js';
 import {startSearch} from './jobs.js';
-import {showPartial, splitPartial} from './activity-partial.js';
+import {splitPartial} from './activity-partial.js';
 import {newJobsCard} from '../new-jobs-card.js';
+import {drawResultTop} from './activity-result-top.js';
 export let lastActivity = null;
 const RUNS_PAGE = 8;
 let shownRuns = RUNS_PAGE;
@@ -400,59 +401,9 @@ export function renderActivity(fresh) {
   const drew = !!card || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading || !!plain || !$('activity-result').hidden;
   if (emptyResult(kindOf(run), run, drew)) $('activity-panel').dataset.emptyResult = kindOf(run); else delete $('activity-panel').dataset.emptyResult;
   markFallback($('activity-result'), kindOf(run), $('activity-result').hidden ? '' : $('activity-result').textContent);
-  // Warnings (Notion busy, a step skipped…) shown plainly above the log, not buried in it. A run whose row says
-  // Warnings — its own verdict — still says so when neither its log nor its report has a line about it: the list's
-  // pill and this card never contradict each other.
+  // Warnings (Notion busy, a step skipped…) and a failed run's reason: the top of the run's result (pages/activity-result-top.js).
   const warnings = partial ? split.rest : detailWarnings;
-  // A failed run says so in its box, with its reason and the fix the app can open (#290); one the AI provider stopped
-  // says that in plain words, with the way to raise the limit (the owner's mockup, 6 Oct 2026).
-  const head = (run && (aiLimitHead({...run, kind: kindOf(run)}, KIND[kindOf(run)]?.name) || stoppedHead({...run, kind: kindOf(run)})
-    || deliveryHead({...run, kind: kindOf(run)}) || notConnectedHead(run, gmailConnected()) || waitedHead({...run, kind: kindOf(run)})))
-    || signedInSince(failureHead(run && {...run, kind: kindOf(run)}, KIND[kindOf(run)]?.name));
-  // A message not delivered comes after the run's results; every other box comes first. Its icon says what it is about.
-  if (head?.delivery) $('activity-phases').after($('activity-warnings')); else $('activity-phases').before($('activity-warnings'));
-  $('activity-warnings').querySelector('.ap-warn-icon').replaceChildren(icon(head?.icon || 'alert'));
-  const warnedOnly = !warnings.length && !partial && !run?.live && !!run?.warned && !head;
-  showPartial(partial?.partial);
-  const limited = limitedJobs(warnings);
-  show($('activity-warnings'), warnings.length > 0 || warnedOnly || !!head?.problem);
-  if (warnings.length || warnedOnly || head?.problem) {
-    // The headline says what it means for you ("9 jobs still need scoring"), not which card this is.
-    $('activity-warnings-title').textContent = limited ? `${plural(limited, 'job')} still ${limited === 1 ? 'needs' : 'need'} scoring`
-      : head ? head.title : run?.live ? 'Running with warnings' : `${WARN_NOUN[kindOf(run)] || 'Run'} completed with warnings`;
-    const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : 'The run recorded warnings, with no line about them in its log or report.';
-    $('activity-warnings-summary').textContent = summary;
-    show($('activity-warnings-hint'), !!head?.hint);
-    $('activity-warnings-hint').textContent = head?.hint || '';
-    const external = $('activity-warnings-external');
-    show(external, !!head?.fix?.url);
-    external.dataset.url = head?.fix?.url || '';
-    external.replaceChildren(...(head?.fix?.url ? [`${head.fix.label} `, icon('external')] : []));
-    show($('activity-warnings-fix'), !!head?.fix && !head.fix.url);
-    $('activity-warnings-fix').textContent = head?.fix ? head.fix.label : '';
-    $('activity-warnings-fix').dataset.view = head?.fix?.view || '';
-    // Run again: the task's own Run button on the Actions page, so it queues, joins and reports like any other run.
-    const again = head?.fix?.rerun ? runButton(kindOf(run)) : null;
-    $('activity-warnings-fix').dataset.rerun = again ? kindOf(run) : '';
-    $('activity-warnings-fix').dataset.sites = again && kindOf(run) === 'visits' ? JSON.stringify(rerunSites(run.log || [])) : '';
-    if (head?.fix?.rerun && !again) show($('activity-warnings-fix'), false);
-    show($('activity-warnings-log'), !!head?.viewLog || (!head && warnings.length > 0));   // warnings: the exact lines are in the log
-    show($('activity-warnings-limit'), limited > 0);
-    const grouped = newDetails(groupWarnings(head?.delivery ? warnings.filter(line => !head.lines.includes(line)) : warnings), head?.delivery ? head.hint : summary);
-    // One line needs no toggle: it is shown. Two or more fold behind "View N details".
-    const single = grouped.length === 1;
-    const listShown = single || (grouped.length > 0 && !$('activity-warnings-list').hidden && $('activity-warnings-list').dataset.for === String(run?.id));
-    $('activity-warnings-list').dataset.for = String(run?.id);
-    show($('activity-warnings-list'), listShown);
-    show($('activity-warnings-more'), grouped.length > 1);
-    $('activity-warnings-more').textContent = listShown ? 'Hide details' : `View ${grouped.length} detail${grouped.length === 1 ? '' : 's'}`;
-    $('activity-warnings-list').replaceChildren(...grouped.map(text => el('li', '', text)));
-    // Folded away: the headline stays, the rest hides (the chevron turns).
-    const folded = foldedWarnings === String(run?.id);
-    $('activity-warnings').classList.toggle('is-folded', folded);
-    $('activity-warnings-fold').setAttribute('aria-expanded', String(!folded));
-    $('activity-warnings-fold').title = folded ? 'Show' : 'Hide';
-  }
+  drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id)});
   // The technical log, in the same place on every run (owner, 6 Oct 2026): open while a run streams here; folded for every finished
   // run (its box or card says what happened, "View technical log" opens it); a run that finishes while you watch keeps what you chose.
   const streamLocal = !!run?.live && run?.where !== 'github';

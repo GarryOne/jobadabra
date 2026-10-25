@@ -75,3 +75,22 @@ test('the class: every place that waits for a held app folder goes through the o
   assert.match(read('lib/app.mjs'), /mkdtempSync\(path\.join\(os\.tmpdir\(\), 'jp-e2e-'\)\)/);
   assert.match(read('lib/folder-free.mjs'), /\^jp-e2e-/);
 });
+
+const decoded = args => Buffer.from(args.at(-1), 'base64').toString('utf16le');
+
+test('fileHolders: only on Windows; asks Restart Manager about the files inside the folder; lines are capped; a failing shell says why', async () => {
+  const {fileHolders} = await import('../lib/folder-free.mjs');
+  assert.equal(fileHolders({platform: 'darwin', dir: '/t/jp-e2e-abc', run: () => assert.fail('no shell off Windows')}), '');
+  let script = '';
+  const lines = Array.from({length: 40}, (_, index) => `${index} app${index}.exe`).join('\r\n');
+  const listed = fileHolders({platform: 'win32', dir: 'C:\\Temp\\jp-e2e-m8crhW', run: (_shell, args) => { assert.equal(args.at(-2), '-EncodedCommand'); script = decoded(args); return {stdout: lines}; }}).split(' | ');
+  assert.match(script, /RmGetList/);
+  assert.match(script, /C:\\Temp\\jp-e2e-m8crhW/);
+  assert.equal(listed.length, 25);
+  assert.match(fileHolders({platform: 'win32', dir: 'C:\\x', run: () => { throw new Error('no powershell'); }}), /^could not ask: no powershell/);
+});
+
+test('the give-up message names the processes that hold files in the folder, before the process list', async () => {
+  await assert.rejects(waitForFolderFree('/p/data', {every: 1, timeout: 5, rename: () => { throw Object.assign(new Error('EPERM x'), {code: 'EPERM'}); }, exists: () => true, whoHasFiles: () => '4242 MsMpEng.exe', who: () => '7 <- 1 node.exe'}),
+    /held by a process.*files in it are open in: 4242 MsMpEng\.exe; processes still running: 7 <- 1 node\.exe/);
+});

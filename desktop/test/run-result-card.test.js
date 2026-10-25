@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
-import {cleanTop, CLEAN_TOP, NUMBER, titleWithNumber, topTone} from '../renderer/run-result-card.js';
+import {cleanTop, CLEAN_TOP, NUMBER, resultWords, titleWithNumber, topTone, WORDS} from '../renderer/run-result-card.js';
 import {runPill} from '../renderer/run-status.js';
 import {addedWords} from '../renderer/find-card-model.js';
 
@@ -20,17 +20,19 @@ const ENDS = {
   stopped: {ok: false, stopped: 'you'},
 };
 
-test('every kind, in every end: the top\'s tone is the pill\'s, a clean top only for its kinds and never on a No result run', () => {
+test('every kind, in every end: the top\'s tone is the pill\'s, a clean top for every kind and never on a No result run', () => {
   assert.ok(KINDS.length >= 17, `found ${KINDS.length} kinds`);
+  assert.deepEqual([...CLEAN_TOP].sort(), [...KINDS].sort(), 'every kind has its top (owner, 25 Oct 2026: "Every action run result, should have its status in a consistent way")');
   for (const kind of KINDS) {
     for (const [end, fields] of Object.entries(ENDS)) {
       const run = {id: 1, kind, ...fields, new: fields.ok && end !== 'unsaved' ? 2 : undefined};
       const where = `${kind}, ${end}`;
       assert.equal(topTone(run, kind), runPill({...run, kind}, {long: true})[1], `${where}: one source for the tone`);
-      const top = cleanTop(run, {kind, added: 2});
-      if (!CLEAN_TOP.has(kind) || end === 'unsaved') { assert.equal(top, null, where); continue; }
+      const top = cleanTop(run, {kind, added: 2, title: 'What it did'});
+      if (end === 'unsaved') { assert.equal(top, null, where); continue; }
       assert.equal(top.tone, topTone(run, kind), `${where}: a warned run is never a green top`);
-      assert.equal(top.title, addedWords(2), `${where}: the number in the app's own words`);
+      assert.equal(top.title, NUMBER[kind] ? addedWords(2) : 'What it did', `${where}: the number in the app's own words, else the kind's own line`);
+      if (!fields.ok) assert.equal(top.next, null, `${where}: a run that did not work offers no next step`);
     }
   }
   assert.equal(cleanTop({kind: 'search', live: true}, {kind: 'search'}), null, 'a live run has no ended top');
@@ -41,7 +43,18 @@ test('Find jobs: the number and the next step are the Jobs card\'s and the Actio
   assert.equal(cleanTop({kind: 'search', ok: true, new: 0, result: 'x'}, {kind: 'search', added: 0}).next, null, 'nothing added: no button to an empty list');
   assert.equal(titleWithNumber('Find jobs was interrupted', 'search', 0), `Find jobs was interrupted · ${addedWords(0)}`);
   assert.equal(titleWithNumber('Gmail was not checked', 'mail', 0), 'Gmail was not checked', 'a kind without its number yet keeps its title');
-  for (const kind of CLEAN_TOP) assert.ok(NUMBER[kind], `${kind}: a clean top needs its number`);
+});
+
+test('each kind says its result in one line: its card\'s number, its finding\'s headline, or its own line without the task\'s name or emoji', () => {
+  assert.equal(WORDS.scout({fresh: 7}), '7 employers added');
+  assert.equal(WORDS.scout({fresh: 0}), 'No new employers added');
+  assert.equal(WORDS.today({fresh: 1}), "1 new job in today's list");
+  assert.equal(resultWords('🤝 Tracked recruiter lead: Platform Engineer'), 'Tracked recruiter lead: Platform Engineer');
+  assert.equal(resultWords('Insight: salary under your floor', 'Insight'), 'Salary under your floor');
+  assert.equal(resultWords('done'), '', 'never "done" as a result');
+  assert.equal(cleanTop({kind: 'insight', ok: true, result: 'x'}, {kind: 'insight'}).title, 'Completed', 'no line at all: the pill\'s word, never empty');
+  assert.deepEqual(cleanTop({kind: 'mail', ok: true, result: 'x'}, {kind: 'mail', asks: 1, title: '2 emails reviewed'}).next, {label: 'Answer 1 question', view: 'focus'},
+    'a Gmail check that left a question: its top offers it, as the Actions banner does');
 });
 
 test('the run panel draws the top, the steps and the bottom inside one frame, with no box of their own', () => {
@@ -51,6 +64,9 @@ test('the run panel draws the top, the steps and the bottom inside one frame, wi
   const css = read('run-result.css');
   assert.match(css, /\.run-result > :is\(\.activity-warnings, \.ap-card, \.activity-message, \.activity-partial\) \{\s*margin: 0; border: 0; border-radius: 0;/, 'the parts lose their own boxes');
   assert.match(html, /<link rel="stylesheet" href="run-result.css">/);
+  assert.match(css, /\.run-result :is\(\.mail-email, \.mail-card > \.mail-nochange, \.mail-card > \.mail-notes\) \{\s*background: transparent; border: 0; border-radius: 0; \}/,
+    'a Gmail check\'s emails are rows in the card, never cards in the card');
+  assert.match(css, /\.run-result \.alert-actions:not\(:has\(> :not\(\[hidden\]\)\)\) \{ display: none; \}/, 'a top with no button has no empty row');
 });
 
 test('nothing is said twice: the header leaves the reason to the top, the bottom leaves the number and the next step to it', () => {
@@ -61,7 +77,18 @@ test('nothing is said twice: the header leaves the reason to the top, the bottom
   assert.match(card, /view\.hidden = target\.id === 'activity-card';/, 'the bottom\'s View in Jobs is the top\'s button');
   assert.match(card, /runNewCount\(run, card\) === 0 \|\| !rows\.querySelector\('\.run-card-row'\)\)\) \{ target\.replaceChildren\(\); return \{empty: true\}; \}/,
     'a run that added nothing, or lists no rows, has no bottom: never "Nothing new since the last check" under an interrupted run');
-  assert.match(top, /show\(\$\('activity-warnings-log'\), !run\?\.live \|\| /, 'every ended run\'s top offers its log');
+  assert.match(top, /show\(\$\('activity-warnings-log'\), hasLog && \(!run\?\.live \|\| /, 'every ended run\'s top offers its log');
+  assert.match(top, /show\(\$\('activity-warnings-log'\), hasLog\);/, '…only when it has one: never a link to "No log available"');
+  assert.match(render, /hasLog: lines\.length > 0,/);
+  assert.match(render, /if \(top\.clean\) \$\('activity-sub'\)\.textContent = subLine\(false\);/, 'the top says the result: the header does not');
+  assert.match(render, /if \(headline\) headline\.hidden = top\.clean;/, 'a finding\'s headline is the top\'s title, not said again in its card');
+  const mail = read('pages/activity-mail.js');
+  assert.match(mail, /if \(target\.id === 'activity-card'\) \{[\s\S]*?\n  \} else box\.prepend\(status\);/, 'a Gmail check\'s counts are the top\'s, not a strip under it');
+  assert.match(card, /if \(target\.id !== 'activity-card'\) stats\.append\(stat\(card\.fresh \?\? 0, `new employer/, 'the employers added are the top\'s');
+  assert.match(mail, /counts\.filter\(\(\{value\}\) => Number\(value\) !== 0\)/, 'a count of 0 is never said ("0 updates recorded")');
+  assert.match(mail, /if \(!box\.childElementCount \|\| only\) \{ target\.replaceChildren\(\); return \{empty: true, title, summary: only/,
+    'a check that changed nothing says it once, under the top\'s title, with no bottom of one line');
+  assert.match(render, /show\(\$\('check-mail'\), false\);/, 'one Run again: the header\'s Check Gmail now gives way to the top\'s');
   assert.match(top, /const alsoAgain = !run\?\.live && !!head\?\.problem && !head\?\.fix\?\.rerun && !!runButton\(kindOf\(run\)\);/, 'Run again beside a fix');
 });
 

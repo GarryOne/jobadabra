@@ -1743,9 +1743,6 @@
             </div>
           </div>
           <div class="activity-result" id="activity-result" role="region" aria-label="Result" tabindex="0" hidden></div>
-          <!-- A Logged activity run's job (created or updated): links to it. -->
-          <div class="alert tone-good activity-job" id="activity-job" hidden><i data-icon="check-circle"></i>
-            <div><strong id="activity-job-title"></strong><div id="activity-job-links"></div></div></div>
           <!-- One result card per run (owner, 25 Oct 2026): its top (how it ended), its step rows and its kind's own bottom, one frame (run-result.css). -->
           <section class="run-result" id="run-result" aria-label="Result">
             <div class="alert tone-warn activity-warnings" id="activity-warnings" hidden>
@@ -1757,6 +1754,7 @@
                   <button type="button" class="primary with-icon" id="activity-warnings-external" hidden></button>
                   <button type="button" class="primary" id="activity-warnings-fix" hidden></button>
                   <button type="button" class="secondary" id="activity-warnings-again" hidden>Run again</button>
+                  <span class="ap-warn-links" id="activity-warnings-links" hidden></span>
                   <a href="#" class="link" id="activity-warnings-log" hidden>View technical log</a>
                   <a href="#" class="link" id="activity-warnings-limit" hidden>Increase limit ↗</a>
                   <button class="link" id="activity-warnings-more"></button>

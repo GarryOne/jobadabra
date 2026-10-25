@@ -35,6 +35,7 @@ import {byStore} from '../store-words.js';
 import {startSearch} from './jobs.js';
 import {splitPartial} from './activity-partial.js';
 import {drawResultTop} from './activity-result-top.js';
+import {resultWords} from '../run-result-card.js';
 import {drawResultBottom} from './activity-result-bottom.js';
 export let lastActivity = null;
 const RUNS_PAGE = 8;
@@ -288,15 +289,17 @@ export function renderActivity(fresh) {
   const queued = queueWords(run, data, kindName => KIND[kindName]?.name || 'the current task');
   show($('activity-unqueue'), !!run?.waiting && !!run.id);
   $('activity-unqueue').dataset.id = run?.waiting ? idOf(run) : '';
-  $('activity-sub').textContent = !run ? '' : run.waiting ? [run.note, queued.waiting, queued.place].filter(Boolean).join(' · ') : [
+  // The run's result in one line goes in its card's top when that top is drawn (subLine(false)): the header says it only when no top does.
+  const subLine = withSaid => (!run ? '' : run.waiting ? [run.note, queued.waiting, queued.place].filter(Boolean).join(' · ') : [
     run.note,
-    run.live ? (searchPhase(run.step) || 'starting') : said,
+    run.live ? (searchPhase(run.step) || 'starting') : withSaid && said,
     !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
     !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`),
     cost,
     run.where === 'github' ? 'In the cloud' : '',   // owner, 24 Oct 2026: basics only here; who started it, the machine and counts live in Reports
     !run.live && run.telegram && 'Sent to Telegram',
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).join(' · '));
+  $('activity-sub').textContent = subLine(true);
   // A search that found new jobs: straight to them (newest first).
   const found = !run?.live && kindOf(run) === 'search' ? newJobsShown(run, shownText) : 0;   // the card's own count (run-cards.js)
   show($('activity-report'), hasFullReport({...run, kind: kindOf(run)}));   // the search's full report in Reports → Searches
@@ -315,7 +318,7 @@ export function renderActivity(fresh) {
   const result = run && !run.live ? runResults.get(run.id) || '' : '';
   $('activity-result').textContent = result;
   show($('activity-result'), !!result);
-  showRunJob(!run?.live && kindOf(run) === 'add' ? run.job : null);
+  const jobLinks = showRunJob(!run?.live && kindOf(run) === 'add' ? run.job : null);
   const asked = lastQuestions();
   // A finished check's updates are the card's "What changed" (mailReportOf): listed here too they were a second box.
   const updates = !run?.live && kindOf(run) === 'mail' && !mailReportOf(run) ? (run.updates || []).map(text => settleQuestion(text, asked)) : [];
@@ -350,7 +353,7 @@ export function renderActivity(fresh) {
   // Find new employers read better as a small card; anything else stays text. While its Notion page is still being
   // read, the card's own shape shows as skeleton bars, so the pane never looks half-built and then jumps.
   // A search lists only the jobs this run added (its "New job:" lines), never the digest's "since your last digest" (owner, 25 Oct 2026).
-  const {card, mail, insight, weekly, review, kits, sites, reading} = drawResultBottom({run, lines, shownText, tabs,
+  const {card, mail, insight, weekly, review, kits, sites, reading, title, headline, asks, summary} = drawResultBottom({run, lines, shownText, tabs,
     readingNow: !!run?.pageId && readingPages.has(run.pageId), redraw: () => renderActivity(lastActivity)});
   // A search that can't have found much yet suggests Find new employers, whatever its result card shows (renderer/onboarding.js employersAdvice).
   const advice = employersAdvice(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});
@@ -371,7 +374,14 @@ export function renderActivity(fresh) {
   markFallback($('activity-result'), kindOf(run), $('activity-result').hidden ? '' : $('activity-result').textContent);
   // Warnings (Notion busy, a step skipped…) and a failed run's reason: the top of the run's result (pages/activity-result-top.js).
   const warnings = partial || onStep ? split.rest : detailWarnings;
-  const top = drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id), added: found});
+  const added = kindOf(run) === 'visits' ? Number(run?.new) || 0 : found;
+  const top = drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id), added, asks, summary, links: jobLinks, hasLog: lines.length > 0,
+    title: title || resultWords(outcome(run || {}), kind?.name)});
+  // The top says the result: the header does not repeat it, nor the finding's card its headline (owner, 25 Oct 2026: one fact, said once).
+  if (top.clean) $('activity-sub').textContent = subLine(false);
+  if (headline) headline.hidden = top.clean;
+  // The top's Run again is the one way to run it again: the header's Check Gmail now would be a second button for the same thing.
+  if (!$('activity-warnings-again').hidden || (!$('activity-warnings-fix').hidden && $('activity-warnings-fix').dataset.rerun)) show($('check-mail'), false);
   if (top.next) show($('activity-go'), false);   // the card's top offers it: the header does not repeat it
   // The technical log, in the same place on every run (owner, 6 Oct 2026): open while a run streams here; folded for every finished
   // run (its box or card says what happened, "View technical log" opens it); a run that finishes while you watch keeps what you chose.
@@ -401,5 +411,4 @@ export function renderActivity(fresh) {
   }
   showJumpToLatest();
 }
-// A Logged activity run's job, created or updated: a green box linking to it (its Notion page, the Jobs list).
 // While a run streams and you scrolled up to read, "Jump to latest" brings the log back to its newest line (and following resumes).

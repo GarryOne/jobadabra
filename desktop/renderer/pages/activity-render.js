@@ -2,7 +2,7 @@
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
 import {runWarningLines, stepNote} from '../run-warnings.js';
-import {barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, notChecked, waitedHead, stepCount} from '../run-status.js';
+import {barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, notChecked, waitedHead} from '../run-status.js';
 import {el, moreButton, pill, tag} from '../components.js';
 import {icon} from '../icons.js';
 import {hasFullReport} from '../searches-view.js';
@@ -24,7 +24,7 @@ import {readableLog} from '../human-log.js';
 import {renderActionsPage} from './runs-page.js';
 import {toastMessage} from './startup.js';
 import {showStop} from '../stop-task.js';
-import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, gmailConnected, mailReportOf} from './activity-basics.js';
+import {clockTime, duration, PHASES, stepWords, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, runResults, runDetails, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, gmailConnected, mailReportOf} from './activity-basics.js';
 import {showAwaitedResult, showQueuedBanner, keepStatusBar, withKept, byYou} from './activity-results.js';
 import {showJumpToLatest, showRunJob, linked, refreshActivity} from './activity-run-card.js';
 import {barLabel, PANEL_KEY, panelMemory} from './activity-panel.js';
@@ -292,7 +292,7 @@ export function renderActivity(fresh) {
   // The run's result in one line goes in its card's top when that top is drawn (subLine(false)): the header says it only when no top does.
   const subLine = withSaid => (!run ? '' : run.waiting ? [run.note, queued.waiting, queued.place].filter(Boolean).join(' · ') : [
     run.note,
-    run.live ? (searchPhase(run.step) || 'starting') : withSaid && said,
+    run.live ? (run.startedAt ? `Started ${hhmm(Date.parse(run.startedAt))}` : '') : withSaid && said,   // the step is the card's top (one fact, once)
     !run.live && `Finished ${hhmm(Date.parse(run.endedAt || run.startedAt))}`,
     !run.live && seconds > 0 && (seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`),
     cost,
@@ -329,9 +329,6 @@ export function renderActivity(fresh) {
       // The step a run that warned stopped at is not a clean tick: a refused AI call under "reading and scoring" must not look done (UI loop #51).
       const li = Object.assign(document.createElement('li'), {className: phaseStatus(run, i, at), textContent: phaseLabel(phase, lines)});
       // The step a stopped run was on says what it was doing and the last thing it reported.
-      // The running step's live counter, outside the log (owner, 7 Oct 2026: "live updates on the job counter itself").
-      const counter = run?.live && i === at ? lines.map(liveCount).filter(Boolean).pop() : '';
-      if (counter) li.append(el('span', 'phase-note', counter));
       if (li.className === 'warn' && stepWarnings.length) li.append(el('span', 'phase-note', stepNote(stepWarnings)));   // why this step has the !
       if (i === at && stopped) li.append(...[stopped.doing && `Stopped while ${stopped.doing}.`, stopped.last && `Last reported: ${stopped.last}`].filter(Boolean).map(text => el('span', 'phase-note', text)));
       return li;
@@ -342,13 +339,11 @@ export function renderActivity(fresh) {
   // read from the result message, which has every site (the kept log is cut to its last 400 lines).
   const tabs = run?.live && kindOf(run) === 'visits' ? parseSiteRows(lines) : null;
   const shownTabs = tabs && !run.live ? {...tabs, done: tabs.total, percent: 100} : tabs;   // a finished run: every site is settled (settled())
-  if (tabs) $('activity-phases').replaceChildren(runProgress(shownTabs, 'sites'), ...tabs.sites.map(site => siteRow(site, !!run.live, run.startedAt)));
-  const counted = run?.live && !tabs ? stepCount(run.step) : null;   // any other running task whose step counts
-  // Over a search's steps; alone for any other task (the steps listed above are a search's only).
-  if (counted) { if (at >= 0 || updates.length) $('activity-phases').prepend(runProgress(counted)); else $('activity-phases').replaceChildren(runProgress(counted)); }
+  // How far it is (the step's count, or the sites read) is the card's top's bar, the same for every kind (pages/activity-result-top.js); the rows here are the kind's own.
+  if (tabs) $('activity-phases').replaceChildren(...tabs.sites.map(site => siteRow(site, !!run.live, run.startedAt)));
   // A search's step rows only while it runs (its live progress): once it ended, the drawer is its result card and the steps are in its full report
   // (owner, 25 Oct 2026: "this one I don't want to display it in the drawer"; "We'll have the Reports -> Searches which will be more details").
-  show($('activity-phases'), updates.length > 0 || (at >= 0 && !!run?.live) || !!tabs || !!counted);
+  show($('activity-phases'), updates.length > 0 || (at >= 0 && !!run?.live) || !!tabs);
   // What a one-off job produced (the insight, the list, the report) when it wasn't sent to Telegram. Today's list and
   // Find new employers read better as a small card; anything else stays text. While its Notion page is still being
   // read, the card's own shape shows as skeleton bars, so the pane never looks half-built and then jumps.
@@ -376,6 +371,7 @@ export function renderActivity(fresh) {
   const warnings = partial || onStep ? split.rest : detailWarnings;
   const added = kindOf(run) === 'visits' ? Number(run?.new) || 0 : found;
   const top = drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id), added, asks, summary, links: jobLinks, hasLog: lines.length > 0,
+    step: kindOf(run) === 'search' ? searchPhase(run?.step) : run?.step, count: tabs ? {done: shownTabs.done, total: shownTabs.total, percent: shownTabs.percent} : null,
     title: title || resultWords(outcome(run || {}), kind?.name)});
   // The top says the result: the header does not repeat it, nor the finding's card its headline (owner, 25 Oct 2026: one fact, said once).
   if (top.clean) $('activity-sub').textContent = subLine(false);

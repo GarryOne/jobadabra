@@ -5,7 +5,6 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-card .spinner { flex: none; }
 .find-card .bar { position: relative; }
 .find-card .bar span::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--surface) 55%, transparent) 50%, transparent 70%); transform: translateX(-100%); animation: find-sheen 1.6s ease-in-out infinite; }
-.find-card .bar.is-sliding span { position: absolute; width: 35%; animation: find-slide 1.4s ease-in-out infinite; }
 .find-card .bar.is-sliding span::after { display: none; }
 .find-card .find-step.is-active::before { animation: find-ping 1.2s ease-out infinite; border-radius: 50%; }
 .find-card .find-step.is-done::before { content: "✓"; font-size: .85em; margin-right: var(--sp-1); }
@@ -13,7 +12,6 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-card .run-card-row:nth-child(2) { animation-delay: .12s; }
 .find-card .run-card-row:nth-child(3) { animation-delay: .24s; }
 @keyframes find-sheen { to { transform: translateX(100%); } }
-@keyframes find-slide { from { left: -35%; } to { left: 100%; } }
 @keyframes find-ping { from { box-shadow: 0 0 0 0 rgb(var(--signal-rgb) / .55); } to { box-shadow: 0 0 0 7px transparent; } }
 @keyframes find-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .find-card .bar span::after, .find-card .bar.is-sliding span, .find-card .find-step::before, .find-card .run-card-row { animation: none; } .find-card .bar.is-sliding span { position: static; width: 35%; } }

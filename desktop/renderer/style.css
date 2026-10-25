@@ -250,6 +250,11 @@ body.data-busy { cursor: progress; }
 .progress-head .muted { margin-left: auto; font-variant-numeric: tabular-nums; }
 .bar { height: 8px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
 .bar span { display: block; height: 100%; width: 2%; background: var(--signal); border-radius: var(--r-pill); transition: width .4s ease; }
+/* Before its first count a bar slides, so a running task never looks still (the Jobs card's Find jobs, every run's top in its run panel). */
+.bar.is-sliding { position: relative; }
+.bar.is-sliding span { position: absolute; width: 35%; animation: bar-slide 1.4s ease-in-out infinite; }
+@keyframes bar-slide { from { left: -35%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .bar.is-sliding span { animation: none; position: static; } }
 .search-status { font-size: var(--fs-md); color: var(--muted); margin-top: 4px; display: flex; gap: 8px; align-items: center; }
 .search-status.busy::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line-strong);
   border-top-color: var(--signal-edge); animation: spin .8s linear infinite; }

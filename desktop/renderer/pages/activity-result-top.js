@@ -10,12 +10,13 @@ import {rerunSites} from '../visits-card.js';
 import {$, show} from './core.js';
 import {KIND, kindOf, warningSummary, WARN_NOUN, plural, signedInSince, gmailConnected, runButton} from './activity-basics.js';
 import {showPartial} from './activity-partial.js';
-import {cleanTop, titleWithNumber, topTone, TOP_TONES} from '../run-result-card.js';
+import {cleanTop, liveTop, titleWithNumber, topTone, TOP_TONES} from '../run-result-card.js';
 
 // `warnings`: the run's warning lines not said elsewhere; `partial`: the sources that did not answer (pages/activity-partial.js); `folded`: its box is folded away;
 // `added`: the jobs the run added (its one number); `title`: its result in one line (pages/activity-result-bottom.js); `asks`: the questions it left you;
-// `links`: the run logged a job (its links are drawn); `hasLog`: it has log lines to open; `summary`: a line under the title. Returns {next, clean}: whether the top offers the run's next step (the header then does not repeat it) and says the result.
-export function drawResultTop({run, warnings, partial, folded, added = 0, title = '', asks = 0, links = false, hasLog = true, summary = ''}) {
+// `links`: the run logged a job (its links are drawn); `hasLog`: it has log lines to open; `summary`: a line under the title; `step` / `count`: a running run's
+// step in words and its count (the sites a browser run read), for its running top. Returns {next, clean}: whether the top offers the run's next step (the header then does not repeat it) and says the result.
+export function drawResultTop({run, warnings, partial, folded, added = 0, title = '', asks = 0, links = false, hasLog = true, summary = '', step = '', count = null}) {
   // Warnings (Notion busy, a step skipped…) shown plainly above the log, not buried in it. A run whose row says
   // Warnings — its own verdict — still says so when neither its log nor its report has a line about it: the list's
   // pill and this card never contradict each other.
@@ -32,15 +33,34 @@ export function drawResultTop({run, warnings, partial, folded, added = 0, title 
   const limited = limitedJobs(warnings);
   const problem = warnings.length > 0 || warnedOnly || !!head?.problem;
   const clean = !problem ? cleanTop(run, {kind: kindOf(run), added, asks, title}) : null;
-  // The top's tone is the pill's (run-result-card.js topTone): a warning amber, a failure red, a clean end green; a live run with warnings stays amber.
-  const tone = run?.live ? 'warn' : clean?.tone || (head?.problem || warnings.length || warnedOnly ? topTone(run, kindOf(run)) : 'warn');
+  // A running run, every kind the same way: a spinner, the step it is on, its bar (counted, or sliding before a count); Stop is the header's, the log streams below.
+  const live = run?.live && !problem ? liveTop(run, {words: step, count, started: hasLog}) : null;
+  const going = run?.live ? liveTop(run, {words: step, count, started: hasLog}) : null;   // the bar shows on a running run's warnings too
+  // The top's tone is the pill's (run-result-card.js topTone): a warning amber, a failure red, a clean end green, a clean running run the Running pill's;
+  // a live run with warnings stays amber.
+  const tone = live ? topTone(run, kindOf(run)) : run?.live ? 'warn' : clean?.tone || (head?.problem || warnings.length || warnedOnly ? topTone(run, kindOf(run)) : 'warn');
   for (const each of TOP_TONES) $('activity-warnings').classList.toggle(`tone-${each}`, each === (tone === 'good' && !clean ? 'warn' : tone));
-  show($('activity-warnings-fold'), !clean);   // a clean end has nothing to fold
+  show($('activity-warnings-fold'), !clean && !live);   // a clean end or a clean running run has nothing to fold
   show($('activity-warnings-again'), false);
-  show($('activity-warnings'), problem || !!clean);
+  show($('activity-warnings'), problem || !!clean || !!live);
   $('activity-warnings-fix').dataset.go = '';
+  show($('activity-warnings-progress'), !!going);
+  if (going) {
+    $('activity-warnings-count').textContent = going.count ? `${going.count.done.toLocaleString('en-US')} of ${going.count.total.toLocaleString('en-US')} · ${going.count.percent}%` : '';
+    const bar = $('activity-warnings-progress').querySelector('.bar');
+    bar.classList.toggle('is-sliding', !going.count);
+    bar.firstElementChild.style.width = going.count ? `${going.count.percent}%` : '';
+  }
   // A logged job's own links (Open in Notion, Show in Jobs; pages/activity-run-card.js showRunJob) sit with the top's actions, however it ended.
   show($('activity-warnings-links'), !!links);
+  if (live) {
+    $('activity-warnings').querySelector('.ap-warn-icon').replaceChildren(Object.assign(el('span', 'spinner'), {ariaHidden: 'true'}));
+    $('activity-warnings-title').textContent = live.title;
+    $('activity-warnings-summary').textContent = '';
+    for (const id of ['activity-warnings-hint', 'activity-warnings-external', 'activity-warnings-limit', 'activity-warnings-more', 'activity-warnings-list', 'activity-warnings-fix', 'activity-warnings-log']) show($(id), false);
+    $('activity-warnings').classList.remove('is-folded');
+    return {next: false, clean: false, live: true};
+  }
   if (clean) {
     $('activity-warnings').querySelector('.ap-warn-icon').replaceChildren(icon(clean.icon));
     $('activity-warnings-title').textContent = clean.title;

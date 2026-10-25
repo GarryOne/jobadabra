@@ -67,6 +67,7 @@
   --shadow-rgb: 15 30 50;
   --shadow-sm: 0 1px 2px rgb(var(--shadow-rgb) / .12);
   --shadow-md: 0 4px 16px rgb(var(--shadow-rgb) / .08);
+  --shadow-up: 0 -6px 18px rgb(var(--shadow-rgb) / .16);   /* a bar docked at the bottom edge, floating over the cards */
   --shadow-lg: 0 18px 48px rgb(var(--shadow-rgb) / .22), 0 3px 10px rgb(var(--shadow-rgb) / .08);
   --shadow-xl: 0 30px 80px rgb(var(--shadow-rgb) / .35), 0 4px 14px rgb(var(--shadow-rgb) / .12);
   --scrim: rgb(var(--shadow-rgb) / .4);
@@ -162,6 +163,7 @@
     --violet: #a996ec; --violet-soft: #1d1733;
 
     --shadow-rgb: 0 0 0;
+    --shadow-up: 0 -8px 24px rgb(0 0 0 / .5);   /* the dock's shadow must show on a dark page */
     --lit-dots: rgb(255 255 255 / .05);
     --lit-glow: rgb(255 178 36 / .17);
     --logo-ink-l: 74%; --logo-bg-l: 17%; --logo-line-l: 28%;

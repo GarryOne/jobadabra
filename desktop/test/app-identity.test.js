@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {DATA_NAME, keepLegacyIdentity, LEGACY_NAME, migrateDataFolder, realDataFolders} from '../lib/app-identity.js';
+import {DATA_NAME, everyRealDataFolder, keepLegacyIdentity, LEGACY_NAME, migrateDataFolder, realDataFolders} from '../lib/app-identity.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'app-identity-'));
 const seed = (dir, files) => { for (const [rel, text] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(dir, rel)), {recursive: true}); fs.writeFileSync(path.join(dir, rel), text); } };
@@ -109,6 +109,12 @@ test('a machine without a keychain still ends up named Jobadabra', async () => {
 test('every guard that protects the real folder lists both names', () => {
   assert.deepEqual(realDataFolders('/Users/a', 'darwin', {}), ['/Users/a/Library/Application Support/Jobadabra', '/Users/a/Library/Application Support/Job Pilotto']);
   assert.deepEqual(realDataFolders('C:\\Users\\a', 'win32', {APPDATA: 'C:\\Users\\a\\AppData\\Roaming'}), ['C:\\Users\\a\\AppData\\Roaming\\Jobadabra', 'C:\\Users\\a\\AppData\\Roaming\\Job Pilotto']);
+});
+
+test('the guards that keep tests off the real folder refuse both OS styles and both names', () => {
+  const folders = everyRealDataFolder('/Users/a', {APPDATA: 'C:\\Users\\a\\AppData\\Roaming'});
+  assert.equal(folders.length, 4);
+  assert.ok(folders.includes('/Users/a/Library/Application Support/Job Pilotto') && folders.includes('/Users/a/Library/Application Support/Jobadabra'));
 });
 
 // Electron finds its "<CFBundleName> Helper" apps by the bundle's CFBundleName; the builder names them after productName. A different CFBundleName

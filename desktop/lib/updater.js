@@ -127,8 +127,8 @@ export async function stableRelease(current, {fetcher = globalThis.fetch, platfo
 export const MAC_APP = 'Jobadabra.app';
 // Where the new app goes: next to the old one under the new name, unless something is already there (then the old path is kept).
 export function swapTarget(oldApp, exists = fs.existsSync) {
-  const target = path.join(path.dirname(oldApp), MAC_APP);
-  return path.basename(oldApp) === MAC_APP || exists(target) ? oldApp : target;
+  const target = path.posix.join(path.posix.dirname(oldApp), MAC_APP);   // Mac paths whatever OS runs the test
+  return path.posix.basename(oldApp) === MAC_APP || exists(target) ? oldApp : target;
 }
 
 // The Mac swap, run after the app quits: wait for it, put the new .app in its place, open it.
@@ -141,12 +141,12 @@ export function macSwapScript(pid, oldApp, newApp, logFile = '', target = oldApp
   const say = text => (logFile ? `echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [update] swap: ${text}" >> ${q(logFile)}` : ':');
   const renamed = target !== oldApp;
   const place = renamed
-    ? `rm -rf ${q(oldApp)}.old ${q(target)}.old && mv ${q(oldApp)} ${q(`${oldApp}.old`)} && mv ${q(newApp)} ${q(target)} && ln -s ${q(path.basename(target))} ${q(oldApp)} && rm -rf ${q(`${oldApp}.old`)}`
+    ? `rm -rf ${q(oldApp)}.old ${q(target)}.old && mv ${q(oldApp)} ${q(`${oldApp}.old`)} && mv ${q(newApp)} ${q(target)} && ln -s ${q(path.posix.basename(target))} ${q(oldApp)} && rm -rf ${q(`${oldApp}.old`)}`
     : `rm -rf ${q(oldApp)}.old && mv ${q(oldApp)} ${q(`${oldApp}.old`)} && mv ${q(newApp)} ${q(oldApp)} && rm -rf ${q(`${oldApp}.old`)}`;
   return [...(logFile ? [`exec 2>> ${q(logFile)}`] : []),
     say(`waiting for the app (pid ${Number(pid)}) to quit`),
     `while kill -0 ${Number(pid)} 2>/dev/null; do sleep 0.3; done`,
-    say(renamed ? `the app quit; putting the new version in place as ${path.basename(target)}` : 'the app quit; putting the new version in place'),
+    say(renamed ? `the app quit; putting the new version in place as ${path.posix.basename(target)}` : 'the app quit; putting the new version in place'),
     `${place} || ${say('replacing the app FAILED (error)')}`,
     `xattr -dr com.apple.quarantine ${q(target)} 2>/dev/null`,
     say('opening the new version'),

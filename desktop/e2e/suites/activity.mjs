@@ -1,6 +1,6 @@
 /* global document */
 // Actions + Recent activity: every task on the Actions page (one row, an end, plain words, a clean log, nothing left Running) and the Recent activity screen itself (filter,
-// "View all activity", a finished run's result card, a run read only from Notion). Starts from a set-up install; resets only its own run rows in Notion.
+// "View all runs" (Actions → Runs), a finished run's result card, a run read only from Notion). Starts from a set-up install; resets only its own run rows in Notion.
 // What goes WRONG (the AI failing, two things at once, a quit in the middle) is the activityfailures suite, in parallel, on its own Notion page.
 import fs from 'node:fs';
 import path from 'node:path';

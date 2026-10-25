@@ -21,7 +21,7 @@ test('shown after a save, gone once a refresh finished after it', async () => {
 
 test('the banner goes while a refresh runs or waits, through the same signal as the Refresh buttons', () => {
   const runs = fs.readFileSync(new URL('../renderer/pages/runs-page.js', import.meta.url), 'utf8');
-  assert.match(runs, /export function syncRunButtons\(busy\) \{\n  refreshBusy\(busy\.includes\('search'\)\);/);
+  assert.match(runs, /export function syncRunButtons\(busy, runningKind = null\) \{\n  refreshBusy\(busy\.includes\('search'\)\);/);
   const jobs = fs.readFileSync(new URL('../renderer/pages/jobs.js', import.meta.url), 'utf8');
   assert.match(jobs, /export async function startSearch\(why = undefined\) \{\n  refreshBusy\(true\);/, 'a click hides it at once');
   const banner = fs.readFileSync(new URL('../renderer/search-changed.js', import.meta.url), 'utf8');

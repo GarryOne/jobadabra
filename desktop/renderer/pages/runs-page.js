@@ -9,6 +9,8 @@ import {runPill, telegramHealth} from '../run-status.js';
 import {showStop, stopRunning} from '../stop-task.js';
 import {refreshBusy} from '../search-changed.js';
 import {showRunsTab} from './runs-tab.js';
+import {FIND_CARD_BUTTONS, applyQueuedLook, startState} from '../start-busy.js';
+import {initStartFeedback} from './start-feedback.js';
 
 // Status: what's running, the last and next search, the last and next Gmail check, as a small card.
 export async function showStatusCard() {
@@ -45,11 +47,12 @@ const TASK_TITLE = {search: 'Find jobs', mail: 'Gmail & Calendar check', insight
 export const taskName = kind => TASK_TITLE[kind] || KIND[kind]?.name || 'A task';
 // Every button that starts a task is off while that task runs or waits (a second press would only join it), and back when it ends: the Actions cards, Tailor CVs, and the same
 // task's other buttons (Jobs → Refresh jobs, Settings → Check Gmail now). `busy` is the kinds running or queued now. Only a button this turned off is turned on again.
-export function syncRunButtons(busy) {
+export function syncRunButtons(busy, runningKind = null) {
   refreshBusy(busy.includes('search'));   // "Your search changed" goes while a refresh applies it
+  const queued = busy.filter((kind, i) => !(kind === runningKind && busy.indexOf(kind) === i));
   const set = (node, kind) => {
     if (!node) return;
-    const now = busy.includes(kind);
+    const now = busy.includes(kind), state = startState(kind, {running: runningKind, queued});
     if (now) {
       if (!node.disabled) { node.disabled = true; node.dataset.runBusy = '1'; }
       if (node.dataset.title0 === undefined) node.dataset.title0 = node.title || '';
@@ -57,10 +60,13 @@ export function syncRunButtons(busy) {
     } else if (node.dataset.runBusy) {
       node.disabled = false; delete node.dataset.runBusy;
     }
+    // Waiting behind another task: the button says so (owner, 25 Oct 2026), in words that fit its size.
+    applyQueuedLook(node, state, runningKind ? taskName(runningKind) : '');
     if (!now && node.dataset.title0 !== undefined) { node.title = node.dataset.title0; delete node.dataset.title0; }
   };
   for (const node of document.querySelectorAll('.action[data-command]')) if (COMMAND_KIND[node.dataset.command]) set(node, COMMAND_KIND[node.dataset.command]);
   for (const [kind, ...selectors] of TASK_BUTTONS) for (const selector of selectors) set(document.querySelector(selector), kind);
+  for (const node of document.querySelectorAll(FIND_CARD_BUTTONS)) set(node, 'search');   // Jobs → Find jobs / Find more jobs (drawn again with each state)
 }
 let actWired = false;
 export function renderActionsPage(data) {
@@ -73,7 +79,7 @@ export function renderActionsPage(data) {
     document.createTextNode(blocked ? 'Telegram not delivering' : connected ? 'Telegram connected' : 'Telegram not connected'));
   show($('run-banner'), !!running);
   showStop($('run-banner-stop'), running);
-  syncRunButtons([running, ...(data.queued || [])].filter(Boolean).map(kindOf));
+  syncRunButtons([running, ...(data.queued || [])].filter(Boolean).map(kindOf), running ? kindOf(running) : null);
   // The menu says so too, on every screen: a spinner on Actions while a task runs (not a count: the other badges mean "waiting for you").
   const dot = $('nav-actions-running');
   dot.hidden = !running;
@@ -110,6 +116,7 @@ export function renderActionsPage(data) {
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
+  initStartFeedback();
   $('run-banner-log').addEventListener('click', event => { 
     event.preventDefault();
     const url = event.currentTarget.dataset.url;

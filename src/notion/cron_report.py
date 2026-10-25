@@ -180,7 +180,9 @@ def report_lines(run):
     if scored and (run.get('score') or {}).get('usd'):
         lines.append(f"Scoring cost ${(run['score'].get('usd', 0) / scored):.4f} per job.")
     if errors:
-        failing = ', '.join(run.get('failing_feeds', [])[:6])
+        named = run.get('failing_feeds', [])[:6]
+        rest = errors - len(named)   # never more failures than it names without saying so (owner's shot, 25 Oct 2026: 7 failed, 6 named)
+        failing = ', '.join(named) + (f' and {rest} more' if named and rest > 0 else '')
         lines.append(f'{errors} feed(s) failed: {failing}.')
     if run.get('closed_stale'):
         lines.append(f"Closed {run['closed_stale']} job(s) not seen for a week.")

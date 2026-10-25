@@ -18,6 +18,15 @@ test('several sources are counted and named; other warnings stay for the box', (
   assert.equal(rest.length, 2);
 });
 
+test('the engine\'s list line ("- 7 feed(s) failed: … and 1 more.") is the same sources line, its count and names agree (owner\'s 25 Oct 2026 shot: "• - 7 feed(s) failed" with 6 names)', () => {
+  const {partial, rest} = splitPartial(['- 7 feed(s) failed: A, B, C, D, E, F and 1 more.']);
+  assert.deepEqual(partial, {count: 7, names: ['A', 'B', 'C', 'D', 'E', 'F']});
+  assert.deepEqual(rest, []);
+  assert.equal(partialWords(partial), '7 sources didn’t answer: A, B, C, D, E, F and 1 more');
+  assert.equal(partialWords({count: 7, names: ['A', 'B']}), '7 sources didn’t answer: A, B and 5 more', 'never more sources than it names without saying so');
+  assert.equal(partialWords({count: 3, names: []}), '3 sources didn’t answer');
+});
+
 test('every state: no failed sources draws no line; unrelated warnings are untouched', () => {
   for (const warnings of [[], ['2868 job(s) waiting, none scored this run'], ['Notion was busy (429)'], undefined]) {
     const {partial, rest} = splitPartial(warnings);

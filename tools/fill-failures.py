@@ -19,7 +19,10 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-APP = Path.home() / 'Library' / 'Application Support' / 'Job Pilotto'
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from app_data_dir import app_data_dir  # noqa: E402
+
+APP = app_data_dir()
 
 
 def app_settings():

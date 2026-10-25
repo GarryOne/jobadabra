@@ -2,9 +2,9 @@
 // Shared by the e2e tripwire (e2e/lib/privacy-tripwire.mjs), the page capture scrub (e2e/lib/capture-page.mjs) and the product's "Report this form" scrub (lib/report-scrub.js).
 // Values stay on this Mac: compared and replaced, never printed or stored. Guards: e2e/test/capture-page.test.mjs, privacy-tripwire.test.mjs, test/report-scrub.test.js.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {EMAIL, PHONE} from './live-capture.js';
+import {realDataFolders} from './app-identity.js';
 import {splitMark} from '../renderer/question-kind.js';
 
 export const plain = text => String(text || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -20,7 +20,7 @@ export function personalValues(texts) {
 // the setup read from the CV, kept also when the Profile lives in Notion: 12 Oct 2026, a Notion user's Mac had no profile.md, so nothing of theirs was known).
 // The contact comes back as "label: value" lines ("full name: …", "location: …"), the shape personalValues and the tripwire read. The imported CV (cv/cv.json)
 // adds its name, its location and each job's place written as "city, country" (a one-part place such as a work mode is not a place of the person's).
-export const appProfileTexts = (folders = [path.join(os.homedir(), 'Library/Application Support/Job Pilotto')]) =>
+export const appProfileTexts = (folders = realDataFolders()) =>
   folders.flatMap(folder => [...['profile.md', 'answers.md'].map(name => { try { return fs.readFileSync(path.join(folder, name), 'utf8'); } catch { return ''; } }), draftTexts(folder), cvTexts(folder)]);
 function cvTexts(folder) {
   try {

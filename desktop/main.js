@@ -300,8 +300,8 @@ function handlers() {
 // Started from a terminal that's since closed, writing a log line fails (EIO/EPIPE); that must never crash the app.
 for (const stream of [process.stdout, process.stderr]) stream?.on?.('error', () => {});
 
-keepLegacyIdentity({app, safeStorage});   // Jobadabra on screen; the data folder and the Keychain item keep the old name (lib/app-identity.js)
-// A separate data folder for tests and demos (JOB_PILOTTO_USER_DATA), so they never touch the real one.
+// A separate data folder for tests and demos (JOB_PILOTTO_USER_DATA), so they never touch the real one (nor move it: lib/app-identity.js moves a pre-rename folder).
+keepLegacyIdentity({app, safeStorage, userDataOverride: DEMO_FOLDER || process.env.JOB_PILOTTO_USER_DATA || '', log: text => console.log(`[data folder] ${text}`)});   // the Keychain item keeps the old name
 if (DEMO_FOLDER) app.setPath('userData', DEMO_FOLDER);
 else if (process.env.JOB_PILOTTO_USER_DATA) app.setPath('userData', process.env.JOB_PILOTTO_USER_DATA);
 // A live-test twin (lib/twin.js) on the real folder, or without the mirror's Notion token, stops here, before anything opens it.

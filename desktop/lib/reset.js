@@ -167,9 +167,9 @@ export function notionLeftBehind(dir) {
 export function adoptBackupKeys(storage) {
   const profile = storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID;
   if (!profile) return null;
-  const parent = path.dirname(storage.dir), prefix = `${path.basename(storage.dir)} (backup `;
+  const parent = path.dirname(storage.dir), prefixes = [...new Set([path.basename(storage.dir), LEGACY_NAME])].map(name => `${name} (backup `);   // backups made before the folder was renamed keep the old name
   const read = (dir, name) => { try { return JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')); } catch { return {}; } };
-  const backups = fs.readdirSync(parent).filter(name => name.startsWith(prefix)).sort().reverse().map(name => path.join(parent, name));
+  const backups = fs.readdirSync(parent).filter(name => prefixes.some(prefix => name.startsWith(prefix))).sort().reverse().map(name => path.join(parent, name));
   const from = backups.find(dir => read(dir, 'settings.json').notionIds?.NOTION_PROFILE_PAGE_ID === profile && Object.keys(read(dir, 'secrets.json')).length);
   if (!from) return null;
   const sealed = read(from, 'secrets.json'), mine = read(storage.dir, 'secrets.json');

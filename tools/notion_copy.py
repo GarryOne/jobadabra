@@ -14,7 +14,7 @@ Tokens are read from the macOS Keychain by service name (never printed), e.g. jo
     #    and the target's Profile / Standard answers are replaced; --dry-run: only count)
     python3 tools/notion_copy.py copy --from job-pilotto.notion.token --from-ids ~/jobadabra/.env \
         --to job-pilotto.notion-app.token [--replace] [--dry-run]
-    # (one token that sees both workspaces: --to the same token, --to-ids "~/Library/Application Support/Job Pilotto/settings.json")
+    # (one token that sees both workspaces: --to the same token, --to-ids "~/Library/Application Support/Jobadabra/settings.json")
     # 4. Optional: write ⚙️ Search settings from a config folder (search.json + preferences.json)
     python3 tools/notion_copy.py settings --token job-pilotto.notion-app.token --config ~/jobadabra/config
 

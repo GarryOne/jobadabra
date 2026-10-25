@@ -13,7 +13,10 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-APP = Path.home() / 'Library' / 'Application Support' / 'Job Pilotto'
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from app_data_dir import app_data_dir  # noqa: E402
+
+APP = app_data_dir()
 
 
 def run(repo, script, work, out):

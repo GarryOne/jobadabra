@@ -4,9 +4,9 @@
 // The file holds the hash and the answer, never the request text. Wired in one place: lib/ai/index.js client(). Guard: desktop/test/model-memo.test.js.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {fakeContacts} from '../live-capture.js';
+import {realDataFolders} from '../app-identity.js';
 
 // Volatile parts of a request: an address's query or fragment, a timestamp, a uuid, a long hex id, a run of 6+ digits (an epoch, a job id in a path).
 // Short numbers stay (a field id, a count, the digest's [n]); the order of everything stays (a numbered list's number is the answer).
@@ -131,7 +131,7 @@ export function nearestDiffers(parts, kept, lines = {}) {
 }
 const PARTS = '#parts', LINES = '#lines', VOLATILE = '#volatile', MS = '#ms', LAYOUT = '#layout';   // <layoutKey>#layout -> the exact key
 
-const insideRealData = file => (path.resolve(file) + path.sep).startsWith(path.join(os.homedir(), 'Library', 'Application Support', 'Job Pilotto') + path.sep);
+const insideRealData = file => realDataFolders().some(real => (path.resolve(file) + path.sep).startsWith(path.resolve(real) + path.sep));
 
 // -> the cache file for this process, or '' (no cache).
 export function memoFile(env = process.env) {

@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
+import {realDataFolders} from '../lib/app-identity.js';
 import {looksLikeSubmit} from './lib/twin-guards.mjs';
 import {appProfileTexts, personalValues, scrub, snapshotInPage, writeCapture} from './lib/capture-page.mjs';
 
@@ -159,7 +160,7 @@ const commands = {
     const url = tab.url();
     await browser.close();
     const twinHome = path.join(os.homedir(), 'Library/Application Support/Job Pilotto (live test)/home');
-    const html = scrub(raw, personalValues(appProfileTexts([path.join(os.homedir(), 'Library/Application Support/Job Pilotto'), twinHome])));
+    const html = scrub(raw, personalValues(appProfileTexts([...realDataFolders(), twinHome])));
     const {dir, file} = writeCapture({out: path.resolve(out), caseName, pageName, url, html});
     return `captured ${file} (${html.length} chars) into ${dir}: write its shape, ai answers and expect in case.json, then: cd desktop && node --test test/recorded-privacy.test.js`;
   },

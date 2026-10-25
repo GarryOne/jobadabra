@@ -2,7 +2,8 @@
 
 Free, no key: Arbeitnow (Europe, mostly Germany), Himalayas and Jobicy (remote). Free with a key: Adzuna (`ADZUNA_APP_ID` +
 `ADZUNA_APP_KEY`, 16 countries incl. Switzerland) and Jooble (`JOOBLE_API_KEY`). Each one's terms are kept: the job's own address and the
-source's name go with every job (Jobicy, Arbeitnow ask for that), each is asked at most every SPACING_HOURS, and only the roles and places of
+source's name go with every job (Jobicy, Arbeitnow ask for that), each is asked at most every SPACING_HOURS for the same search (a changed
+search reads at once: 25 Oct 2026, a pilot search 8 minutes after a software one read no board), and only the roles and places of
 this user's search are kept. Remotive is not used: its terms forbid passing its jobs to another product. job-room.ch (the Swiss public
 employment service) is not used either until it offers a documented public API.
 """
@@ -22,6 +23,7 @@ PAGES = 2
 JOBSCH_PAGES = 5   # jobs.ch pages read at most per search and place (20 postings a page)
 TIMEOUT = 30
 TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_runs (source TEXT PRIMARY KEY, at TEXT NOT NULL)'
+SEARCH_TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_searches (source TEXT PRIMARY KEY, search TEXT NOT NULL)'   # which search each last read was for
 # Search-place country words -> Adzuna's country codes (the countries it covers).
 # Every country Adzuna serves (its API's endpoints), by the English name places.countries() answers (src/places.py: the AI says which
 # country each place word is in, in any language; 8 Oct 2026: a regex of ten countries' city names).
@@ -201,12 +203,37 @@ def sources(env=None):
     return found
 
 
-def read_lately(db, name, now=None):
-    """When reader `name` was last read, if that was within SPACING_HOURS (it is not read again before), else None."""
+def search_key(search):
+    """A short key of what a reader is asked for: the search's roles, board searches and places (other settings do not change a read)."""
+    import hashlib
+    search = search or {}
+    places = search.get('locations') or {}
+    parts = [sorted(map(str, search.get('role_keywords') or [])), sorted(map(str, search.get('jobs_board_search_queries') or [])),
+             {key: sorted(map(str, places.get(key) or [])) for key in sorted(places)} if isinstance(places, dict) else []]
+    return hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()[:12]
+
+
+def read_lately(db, name, now=None, search=None):
+    """When reader `name` was last read, if that was within SPACING_HOURS for this search (it is not read again before), else None.
+    Without a search, or a last read from before the key was kept, any search counts as the same one."""
     db.execute(TABLE)
+    db.execute(SEARCH_TABLE)
     last = db.execute('SELECT at FROM aggregator_runs WHERE source = ?', (name,)).fetchone()
     at = datetime.fromisoformat(last[0]) if last else None
-    return at if at and at > (now or datetime.now(timezone.utc)) - timedelta(hours=SPACING_HOURS) else None
+    if not at or at <= (now or datetime.now(timezone.utc)) - timedelta(hours=SPACING_HOURS):
+        return None
+    kept_for = db.execute('SELECT search FROM aggregator_searches WHERE source = ?', (name,)).fetchone()
+    return None if search is not None and kept_for and kept_for[0] != search_key(search) else at
+
+
+def mark_read(db, name, now, search=None):
+    """Reader `name` was read now (for this search)."""
+    db.execute(TABLE)
+    db.execute(SEARCH_TABLE)
+    with db:
+        db.execute('INSERT OR REPLACE INTO aggregator_runs (source, at) VALUES (?, ?)', (name, now.isoformat(timespec='seconds')))
+        if search is not None:
+            db.execute('INSERT OR REPLACE INTO aggregator_searches (source, search) VALUES (?, ?)', (name, search_key(search)))
 
 
 def kept(db, name, found, now=None):
@@ -238,7 +265,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     now = now or datetime.now(timezone.utc)
     db.execute(TABLE)
     for name, read in (readers if readers is not None else sources()):
-        if read_lately(db, name, now):
+        if read_lately(db, name, now, search):
             continue
         try:
             if ahead is not None and name == boards_ahead.NAME:
@@ -251,8 +278,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
                         found = read(search)
                         counted.jobs = read_methods.in_places(found)
                 matched = kept(db, name, found, now)
-            with db:
-                db.execute('INSERT OR REPLACE INTO aggregator_runs (source, at) VALUES (?, ?)', (name, now.isoformat(timespec='seconds')))
+            mark_read(db, name, now, search)
             if on_jobs and matched and not (ahead is not None and name == boards_ahead.NAME and ahead.shown):   # shown already
                 on_jobs(matched)
             report['jobs'].extend(matched)

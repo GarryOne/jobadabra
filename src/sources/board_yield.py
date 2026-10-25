@@ -85,11 +85,11 @@ def pick(boards, kept, retry_due=lambda entry: False, dropped=frozenset(), remem
 def _read_by_the_search():
     """The found boards were read by a search within the board scan's spacing (src/sources/aggregators.py read_lately)."""
     from contextlib import closing
-    from ..paths import DATA
+    from ..paths import DATA, load_search_config
     from . import aggregators, boards_ahead, feeds
     try:
         with closing(feeds.database(DATA / 'jobs.sqlite')) as db:
-            return aggregators.read_lately(db, boards_ahead.NAME) is not None
+            return aggregators.read_lately(db, boards_ahead.NAME, search=load_search_config()) is not None
     except Exception:  # noqa: BLE001 — unknown: the step reads them
         return False
 

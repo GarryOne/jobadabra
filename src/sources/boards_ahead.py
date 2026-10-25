@@ -55,7 +55,7 @@ def start(db, search, env=None, now=None):
     read = dict(aggregators.sources(env)).get(NAME)
     if read is None:
         return None
-    if aggregators.read_lately(db, NAME, now):
+    if aggregators.read_lately(db, NAME, now, search):
         return None
     return Ahead(search, read)
 

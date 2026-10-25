@@ -448,8 +448,8 @@ export function renderJobs() {
   if (jobsState.jobsLoading && !shared.allJobs.length) { show($('jobs-empty'), false); showLoading(); return; }  // still loading, not empty
   show($('jobs-empty'), rows.length === 0 && !document.body.dataset.findCard?.match(/^(empty|searching|failed)$/));   // the Find jobs card on top says it
   const emptyFor = {saved: 'No saved jobs yet. On any job, <b>⋯ → Save</b> keeps it here for later.',
-    applied: 'No applications yet. Apply from a job, or add one you sent elsewhere with <b>+ Applied elsewhere…</b>',
-    dismissed: 'No dismissed jobs.', inbound: 'Nothing found you yet. A recruiter\'s message you log (<b>+ Log job activity…</b>) shows here.'};
+    applied: 'No applications yet. Apply from a job, or add one you sent elsewhere with <b>+ Add</b>',
+    dismissed: 'No dismissed jobs.', inbound: 'Nothing found you yet. A recruiter\'s message you log (<b>+ Add</b> → message or update) shows here.'};
   $('jobs-empty').innerHTML = !shared.allJobs.length ? ($('refresh').disabled ? 'Searching now: the jobs appear here as they are found.'
       : 'No jobs here yet. Click <button type="button" class="link" data-refresh-jobs><b>Find jobs</b></button>.')
     : anyStatus ? 'That job isn\'t in your list: not found by a search yet, or hidden by your language or company filters.'

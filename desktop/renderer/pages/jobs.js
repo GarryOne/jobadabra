@@ -20,6 +20,7 @@ window.addEventListener('claude-help', () => renderJobs());   // Settings' Claud
 export {pageKey, fullKey} from './jobs-state.js';
 export {openLogFor} from './jobs-lead.js';
 import {wireLead} from './jobs-lead.js';
+import {wireAdd} from './jobs-add.js';
 import {loadQuestions} from './jobs-questions.js';
 import {wireViews} from './jobs-views.js';
 import {setFilters, wireFilterMenu} from './jobs-filter-menu.js';
@@ -305,6 +306,7 @@ export async function init() {
     await linkToJob('applied-dialog', 'applied-message', result);
   });
   wireLead();
+  wireAdd();
   document.querySelectorAll('[data-density]').forEach(button => button.addEventListener('click', () => setDensity(button.dataset.density)));
   try { setDensity(localStorage.getItem('jobsDensity') || 'comfortable'); } catch { setDensity('comfortable'); }
   $('filter-text').addEventListener('input', renderJobs);

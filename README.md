@@ -203,7 +203,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   score and Job Matches row as a job Jobadabra found (`src/ai/added.py`, about USD 0.01–0.02). LinkedIn,
   Glassdoor and Indeed pages are never read: in the app, paste the title, company and description instead.
 - 📥 **Log box: inbound and recruiter opportunities from a message or screenshots.** A recruiter's pitch, a
-  reply, an interview time, a rejection from LinkedIn, Gmail or WhatsApp: in the app, Jobs → **+ Log job activity**
+  reply, an interview time, a rejection from LinkedIn, Gmail or WhatsApp: in the app, Jobs → **+ Add → Add message or update**
   (paste the text, or up to **5 screenshots** of a chat, read together), or send it to the bot (a screenshot, a
   forward, or `/add` its text). Claude Haiku 5.5 reads it with the list of your jobs and **updates the job it's about,
   or adds it**: a new pitch becomes a **Recruiter lead** (Screening if you already said yes). It fills what the job
@@ -288,7 +288,7 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   - **Inbound / Outbound** = the Job Tracker's **Origin** column: set when the row is created, yours to change in Notion.
   **Prepare** (draft the kit) → **Apply with Claude** (recommended, see below) or **Fill in Chrome** (the extension).
   **Apply to N** starts several at once. A ⛔ badge shows the kit's eligibility verdict on hover.
-- 📥 **Everything that reaches you, tracked**: **+ Applied elsewhere…** (link + date; it gets the same AI facts and fit
+- 📥 **Everything that reaches you, tracked**: **+ Add → Add application** (link + date; it gets the same AI facts and fit
   score as a found job), **Recruiter message** (a recruiter's email, LinkedIn message or call → a Recruiter lead with
   "Reached via" Email / LinkedIn / Phone, one lead per pitch) and **Log message or screenshot** (⌘V; the job it's
   about is updated, or added). LinkedIn pages are never fetched: you paste the text.

@@ -1,7 +1,7 @@
 // App updates: the installed app checks GitHub for the latest *stable* release (a build promoted with
 // tools/release-stable.sh; every push only makes a pre-release), and installs it on one click, the same way on both
 // computers: the download is fetched, the app quits, the new version is put in place, and the app reopens. On the Mac
-// that means unpacking the .zip and swapping this Job Pilotto.app; on Windows, running the installer quietly once
+// that means unpacking the .zip and swapping this app (an install from before the rename moves to Jobadabra.app); on Windows, running the installer quietly once
 // this process has let go of Jobadabra.exe and its app.asar. Its Notion schema, pipeline and extension come with it
 // (the schema repair runs at the next start).
 import {spawn} from 'node:child_process';
@@ -123,20 +123,34 @@ export async function stableRelease(current, {fetcher = globalThis.fetch, platfo
   return offer && {...offer, ahead: newer(current, offer.version)};
 }
 
+// The Mac bundle is called Jobadabra.app; installs made before the rename were called Job Pilotto.app.
+export const MAC_APP = 'Jobadabra.app';
+// Where the new app goes: next to the old one under the new name, unless something is already there (then the old path is kept).
+export function swapTarget(oldApp, exists = fs.existsSync) {
+  const target = path.join(path.dirname(oldApp), MAC_APP);
+  return path.basename(oldApp) === MAC_APP || exists(target) ? oldApp : target;
+}
+
 // The Mac swap, run after the app quits: wait for it, put the new .app in its place, open it.
+// target (default: oldApp): a different path when the app is renamed on the way (swapTarget); the old path then stays as a link to it,
+// so a Dock pin, a Login Item or an alias made before the rename keeps opening the app.
 // logFile: the app's log (logs/app.log); each step of the swap is written there as an [update] line, with any error, since
 // it runs after the app has quit and nothing else would record it.
-export function macSwapScript(pid, oldApp, newApp, logFile = '') {
+export function macSwapScript(pid, oldApp, newApp, logFile = '', target = oldApp) {
   const q = value => `'${String(value).replace(/'/g, `'\\''`)}'`;
   const say = text => (logFile ? `echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [update] swap: ${text}" >> ${q(logFile)}` : ':');
+  const renamed = target !== oldApp;
+  const place = renamed
+    ? `rm -rf ${q(oldApp)}.old ${q(target)}.old && mv ${q(oldApp)} ${q(`${oldApp}.old`)} && mv ${q(newApp)} ${q(target)} && ln -s ${q(path.basename(target))} ${q(oldApp)} && rm -rf ${q(`${oldApp}.old`)}`
+    : `rm -rf ${q(oldApp)}.old && mv ${q(oldApp)} ${q(`${oldApp}.old`)} && mv ${q(newApp)} ${q(oldApp)} && rm -rf ${q(`${oldApp}.old`)}`;
   return [...(logFile ? [`exec 2>> ${q(logFile)}`] : []),
     say(`waiting for the app (pid ${Number(pid)}) to quit`),
     `while kill -0 ${Number(pid)} 2>/dev/null; do sleep 0.3; done`,
-    say('the app quit; putting the new version in place'),
-    `rm -rf ${q(oldApp)}.old && mv ${q(oldApp)} ${q(`${oldApp}.old`)} && mv ${q(newApp)} ${q(oldApp)} && rm -rf ${q(`${oldApp}.old`)} || ${say('replacing the app FAILED (error)')}`,
-    `xattr -dr com.apple.quarantine ${q(oldApp)} 2>/dev/null`,
+    say(renamed ? `the app quit; putting the new version in place as ${path.basename(target)}` : 'the app quit; putting the new version in place'),
+    `${place} || ${say('replacing the app FAILED (error)')}`,
+    `xattr -dr com.apple.quarantine ${q(target)} 2>/dev/null`,
     say('opening the new version'),
-    `open ${q(oldApp)}`].join('\n');
+    `open ${q(target)}`].join('\n');
 }
 
 // The Windows update: the downloaded installer itself, started before the app quits, the way electron-updater does it. --updated
@@ -175,7 +189,7 @@ export async function install(update, {exe, pid = process.pid, quit, onStep = ()
     quit();
     return;
   }
-  const oldApp = path.resolve(exe, '..', '..', '..');  // …/Job Pilotto.app/Contents/MacOS/Job Pilotto
+  const oldApp = path.resolve(exe, '..', '..', '..');  // …/Jobadabra.app/Contents/MacOS/Jobadabra (Job Pilotto.app before the rename)
   if (!oldApp.endsWith('.app') || oldApp.startsWith('/Volumes/')) throw new Error('Move Jobadabra to Applications first, then update.');
   fs.accessSync(path.dirname(oldApp), fs.constants.W_OK);  // an Applications folder this user can write to
   onStep('Unpacking…');
@@ -183,6 +197,6 @@ export async function install(update, {exe, pid = process.pid, quit, onStep = ()
   const newApp = fs.readdirSync(dir).map(name => path.join(dir, name)).find(name => name.endsWith('.app'));
   if (!newApp) throw new Error('The download has no app in it');
   onStep('Restarting…');
-  run('/bin/sh', ['-c', macSwapScript(pid, oldApp, newApp, logFile)], {detached: true, stdio: 'ignore'}).unref();
+  run('/bin/sh', ['-c', macSwapScript(pid, oldApp, newApp, logFile, swapTarget(oldApp))], {detached: true, stdio: 'ignore'}).unref();
   quit();
 }

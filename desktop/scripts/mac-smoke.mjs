@@ -20,7 +20,7 @@ const say = line => console.log(`• [${String(Math.round((Date.now() - t0) / 10
 // offerMove) before it makes its window, and on a runner nobody answers it (10 Oct 2026: no window for 60 s, the process sampled idle). CI only: this puts a copy
 // in /Applications, which must never replace somebody's real install.
 if (!process.env.CI) throw new Error('mac-smoke.mjs installs into /Applications and runs only on CI (CI=true)');
-const app = '/Applications/Job Pilotto.app';
+const app = '/Applications/Jobadabra.app';   // the Mac build's productName (npm run build); Windows keeps its install folder
 if (fs.existsSync(app)) throw new Error(`${app} already exists: not replacing it`);
 execFileSync('ditto', ['-x', '-k', path.resolve(archive), '/Applications'], {stdio: 'inherit'});   // ditto keeps the bundle's symlinks and signature, unzip may not
 if (!fs.existsSync(app)) throw new Error(`no ${app} inside ${archive}`);

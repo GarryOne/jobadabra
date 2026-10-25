@@ -156,9 +156,10 @@ jobs:
         run: pip install --quiet -r requirements.txt
       - name: Chromium for the real extension, and a virtual display
         working-directory: desktop/e2e
+        timeout-minutes: 15
         run: |
           npx playwright-core install --with-deps chromium
-          sudo apt-get install -y -qq xvfb >/dev/null
+          bash ../../tools/apt-install.sh xvfb
       - name: Wait for the earlier pool runs (one at a time, oldest first, none dropped)
         env:
           GH_TOKEN: ${{ github.token }}

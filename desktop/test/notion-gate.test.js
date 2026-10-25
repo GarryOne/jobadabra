@@ -49,23 +49,6 @@ test('check() gives null when connected or in demo mode, else the result', () =>
   assert.deepEqual(gate.check(make(), 'save'), gate.needs('save'));
 });
 
-test('gateEvent keeps only values from fixed lists, and why only with not_now', () => {
-  const ok = gate.gateEvent({reason: 'save', where: 'dialog', outcome: 'not_now', why: 'privacy'}, {firstRunAt: '2026-10-03T10:00:00Z', shown: 2, now: Date.parse('2026-10-03T10:30:00Z')});
-  assert.deepEqual(ok, {step: 'notion_gate', reason: 'save', where: 'dialog', outcome: 'not_now', why: 'privacy', minutes: 30, shown: 3});
-  // why is dropped unless the outcome is not_now
-  assert.equal(gate.gateEvent({reason: 'save', where: 'dialog', outcome: 'connected', why: 'privacy'}).why, undefined);
-  // unknown values are dropped (the whole event when reason/where/outcome are unknown), and free text never passes
-  assert.equal(gate.gateEvent({reason: 'my job at Acme', where: 'dialog', outcome: 'closed'}), null);
-  assert.equal(gate.gateEvent({reason: 'save', where: 'elsewhere', outcome: 'closed'}), null);
-  assert.equal(gate.gateEvent({reason: 'save', where: 'dialog', outcome: 'refused'}), null);
-  assert.equal(gate.gateEvent({reason: 'save', where: 'dialog', outcome: 'not_now', why: 'Acme is evil'}).why, undefined);
-  assert.equal(gate.gateEvent({reason: 'toString', where: 'dialog', outcome: 'closed'}), null);
-  assert.equal(gate.gateEvent(null), null);
-  // extras and settings have no action: reason none
-  assert.equal(gate.gateEvent({reason: 'none', where: 'extras', outcome: 'connected'}).reason, 'none');
-  assert.equal(gate.gateEvent({reason: 'save', where: 'dialog', outcome: 'closed'}).minutes, null);  // no first start known
-});
-
 // Store adapters (9 Oct 2026): with the data on this Mac nothing asks for Notion, except what runs off the Mac (moved first).
 test('data on this Mac: every gate opens, except the ones that run off the Mac, which ask to move the data first', () => {
   const storage = make();

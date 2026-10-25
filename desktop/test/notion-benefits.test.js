@@ -13,7 +13,6 @@ test('six advantages, each with a known icon, a bold lead and a sentence', () =>
   }
 });
 
-test('the why choices and the locked pages use keys the app validates', () => {
-  assert.deepEqual(benefits.WHY_CHOICES.map(([key]) => key).sort(), [...gate.WHY].sort());
+test('the locked pages use keys the app validates', () => {
   for (const reason of Object.values(benefits.LOCKED_VIEWS)) assert.ok(gate.REASONS[reason], reason);
 });

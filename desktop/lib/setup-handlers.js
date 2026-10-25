@@ -6,7 +6,6 @@ import * as claudeCode from './claude-code.js';
 import * as atUpload from './cv-import-at-upload.js';
 import * as cvChange from './cv-change.js';
 import * as cvlib from './cv.js';
-import * as notionGate from './notion-gate.js';
 import * as notionOAuth from './notion-oauth.js';   // Notion-only: connecting Notion (sign in with Notion), the person's own choice
 import {forWindow} from './site-accounts.js';
 import fs from 'node:fs';
@@ -24,7 +23,7 @@ import {registerOfficeHandlers} from './office-handlers.js';
 import {isDocx, setDocxCv} from './cv-docx.js';
 
 export function registerSetupHandlers(ctx) {
-  const {DEMO, connectNotion, dialog, handleImportant, ipcMain, needsNotion, shell, storage, syncCv, getTelemetry, track, trackSetup, getWindow, setNotionFrom, keepLook, renderDocx, toWindow} = ctx;
+  const {DEMO, connectNotion, dialog, handleImportant, ipcMain, needsNotion, shell, storage, syncCv, trackSetup, getWindow, setNotionFrom, keepLook, renderDocx, toWindow} = ctx;
   registerNotifyHandlers({ipcMain, storage, DEMO, log: appLog});
   const office = officeAddon(storage, {toWindow, toast: body => toWindow('toast', body)});
   registerOfficeHandlers({ipcMain, addon: office, DEMO});
@@ -43,17 +42,6 @@ export function registerSetupHandlers(ctx) {
     return {...await connectNotion(signedIn.access_token, {templateRoot: notionOAuth.templateRoot(signedIn)}), workspace: signedIn.workspace_name};
   });
   ipcMain.handle('notionOAuthCancel', () => notionOAuth.cancel());
-  // The connect prompt's outcome (lib/notion-gate.js gateEvent): fixed lists only; counted per install, reported when reports are on.
-  ipcMain.handle('notionGateEvent', (_, payload) => {
-    const settings = storage.settings();
-    const event = notionGate.gateEvent(payload, {firstRunAt: settings.firstRunAt, shown: settings.notionGateShown || 0});
-    if (!event) return false;
-    storage.saveSettings({notionGateShown: event.shown});
-    appLog('notion', 'gate', {reason: event.reason, where: event.where, outcome: event.outcome, why: event.why});
-    if (getTelemetry()) getTelemetry().record('setup', event);
-    track('notion_gate', {reason: event.reason, outcome: event.outcome, ...(event.why ? {why: event.why} : {})});
-    return true;
-  });
   ipcMain.handle('saveSettings', (_, patch) => {
     const before = storage.settings();
     const saved = storage.saveSettings(patch);

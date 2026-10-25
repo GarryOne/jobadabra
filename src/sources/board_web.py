@@ -1,11 +1,12 @@
-"""Specialist and local job boards found with a web search (owner's yes, 19 Oct 2026, step 3 of the local-sources sketch: Music in Berlin
-and Driver in Nuremberg had no trade or city board that gave a job; the proposal comes from the model's memory, and 2 of Driver's 3 trade
-boards were made up). After a full board read in which fewer than WANT sector or regional boards gave relevant jobs, one web search per
-proposal (its countries, roles and kinds: board_ideas.asked_for) every DAYS days, through the AI engine's own web search: the user's plan
-(Claude Code, Codex: free) or an Anthropic API key (about $0.03 a search, capped by DAYS; owner's yes). Only boards whose address the
-search showed; each joins the cached proposal (found_boards.json 'ideas'), is read at once, and one that gives nothing is checked like any
+"""Specialist and local job boards found with a web search, as a source of the run from its start (owner, 26 Oct 2026: "It should not read the
+web search last. It should probably start with that."; first built 19 Oct 2026, step 3 of the local-sources sketch, after a full board read).
+start() asks it beside the board proposal and the reads; finish() hands its new boards to the same read. Its one skip: this search was searched
+in the last RECENT days, or its boards are working (WANT sector or regional boards gave relevant jobs) and it was searched in the last DAYS.
+The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
+Anthropic API key (about $0.03 a search); never on Free AI alone. Only boards whose address the search showed; each is marked origin 'web'
+(its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
 (src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOB_PILOTTO_DISABLE=web_search.
-Tests: tests/test_board_web.py."""
+Tests: tests/test_board_web.py, tests/test_web_first.py."""
 import json
 import os
 from datetime import datetime, timezone
@@ -14,7 +15,8 @@ from ..features import disabled
 from . import careers
 
 WANT = 2        # working sector or regional boards a search should have
-DAYS = 30       # one web search per proposal this often at most
+DAYS = 30       # a search whose boards work is searched again this often
+RECENT = 7      # a thin search (its boards do not work yet) is searched again after this many days
 MAX_FOUND = 6   # boards kept from one search
 ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI and OpenAI's API: not here, a signed-in plan beside them can)
 LOCAL_KINDS = ('sector', 'regional')
@@ -46,12 +48,38 @@ def needed(kept, boards):
     return len(working) < WANT
 
 
-def _due(data, key, now):
+def _due(data, key, now, kept=None):
+    """Never searched: due. Then weekly while the search's boards do not work (needed), monthly once they do."""
     try:
         last = datetime.fromisoformat((data.get('web') or {})[key])
     except (KeyError, TypeError, ValueError):
         return True
-    return (now - last).days >= DAYS
+    days = (now - last).days
+    thin = needed(kept or {}, [{'host': host, **entry} for host, entry in (kept or {}).items()])
+    return days >= (RECENT if thin else DAYS)
+
+
+def start(search_config, data, fetch=None, now=None):
+    """The web search started now, in its own thread, beside the board proposal and the reads (a Future of its boards), or None when it is
+    not due or cannot run. It records into `data` (the read's found_boards.json), which the read saves after finish()."""
+    from concurrent.futures import ThreadPoolExecutor
+    known = [{'name': entry.get('name') or host, 'host': host} for host, entry in (data.get('boards') or {}).items()]
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-web')
+    future = pool.submit(search, search_config, known, now=now, fetch=fetch, data=data)
+    pool.shutdown(wait=False)
+    return future
+
+
+def finish(started, proposed, timeout=None):
+    """The started search's boards that the proposal does not already hold, each marked origin 'web'; [] when none or it failed."""
+    if started is None:
+        return []
+    try:
+        found = started.result(timeout=timeout) or []
+    except Exception:  # noqa: BLE001 — the proposal's boards stand
+        return []
+    hosts = {board['host'] for board in proposed}
+    return [{**board, 'origin': 'web'} for board in found if board['host'] not in hosts]
 
 
 def _with_search(item, fetch):
@@ -65,25 +93,26 @@ def _with_search(item, fetch):
     return {**item, 'search_url': made[0]} if made else item
 
 
-def search(search_config, known, client=None, now=None, fetch=None):
+def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
-    [] when off, not due, or the search fails."""
+    [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
     if careers.READER is None or disabled('web_search') or os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
         return []
     from ..ai import board_ideas, cost, engine
     from ..ai.models import SMALL_MODEL
     now = now or datetime.now(timezone.utc)
     asked = board_ideas.asked_for(search_config)
-    data = board_ideas.load()
-    if not asked or not _due(data, asked[0], now):
+    own, data = data is None, board_ideas.load() if data is None else data
+    if not asked or not _due(data, asked[0], now, data.get('boards')):
         return []
     key, countries, roles, kinds, places = asked
     if client is None:
         client = _searcher()
         if client is None:
             return []
-    data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per DAYS, even when it fails
-    board_ideas.save(data)
+    data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per RECENT/DAYS, even when it fails
+    if own:
+        board_ideas.save(data)
     try:
         response = client.messages.create(
             model=SMALL_MODEL, max_tokens=3000, system=[{'type': 'text', 'text': SYSTEM}],
@@ -105,9 +134,9 @@ def search(search_config, known, client=None, now=None, fetch=None):
             hosts.add(board['host'])
             found.append(board)
     if found:
-        data = board_ideas.load()
-        if key in (data.get('ideas') or {}):
-            data['ideas'][key] = data['ideas'][key] + found
+        data = board_ideas.load() if own else data
+        data.setdefault('ideas', {})[key] = (data['ideas'].get(key) or []) + [{**board, 'origin': 'web'} for board in found]
+        if own:
             board_ideas.save(data)
     print(f"Job boards: a web search found {', '.join(board['name'] for board in found) or 'no trade or local board'}", flush=True)
     return found

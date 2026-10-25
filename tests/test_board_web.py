@@ -66,10 +66,17 @@ class SearchTests(Base):
         self.assertEqual(client.asked[0]['tools'][0]['type'], 'web_search_20250305')
         self.assertIn('Board 1', client.asked[0]['messages'][0]['content'], 'the known boards are named, so it looks past them')
         self.assertEqual([b['host'] for b in board_ideas.load()['ideas']['k1']], ['b1.example', 'buehnenjobs.example'])
-        self.assertEqual(board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=29)), [], 'once a month')
+        self.assertEqual(board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=6)), [], 'searched this week: rests')
         self.assertEqual(len(client.asked), 1)
-        board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=30))
-        self.assertEqual(len(client.asked), 2)
+        board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=7))
+        self.assertEqual(len(client.asked), 2, 'its boards give nothing yet: weekly (owner, 26 Oct 2026)')
+        data = board_ideas.load()
+        data['boards'] = {'s1.example': {'source_kind': 'sector', 'state': 'ok', 'relevant': 4},
+                          's2.example': {'source_kind': 'regional', 'state': 'ok', 'relevant': 2}}
+        board_ideas.save(data)
+        self.assertEqual(board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=14 + 22)), [], 'working boards: monthly')
+        board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=7 + 30))
+        self.assertEqual(len(client.asked), 3)
 
     def test_a_board_found_as_a_plain_page_gets_its_home_page_s_search_link(self):
         crew = {'name': 'Crew Board', 'search_url': 'https://crew.example/', 'countries': ['Germany'], 'kinds': ['creative_media'],
@@ -111,7 +118,7 @@ class ReadTests(Base):
             found_boards.read(SEARCH, [board(1)], early=True, is_relevant=list, dead=set())
             self.assertEqual(searched, [], 'the first-jobs slice never waits for a web search')
             jobs = found_boards.read(SEARCH, [board(1)], is_relevant=list, dead=set())
-        self.assertEqual(searched, [['b1.example']])
+        self.assertEqual(len(searched), 1, 'the full read searches the web once, from its start')
         self.assertEqual(asked, ['b1.example', 'b1.example', 'buehnenjobs.example'], 'read in the same search, the others not again')
         self.assertIn('https://buehnenjobs.example/1', [job['url'] for job in jobs])
 

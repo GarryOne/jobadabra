@@ -339,6 +339,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     stamp = (now or datetime.now(timezone.utc)).isoformat(timespec='seconds')
     jobs = []
     retry, dropped = (lambda entry: _retry_due(entry, now)), (dead if dead is not None else _dead())
+    searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
     proposed = boards if boards is not None else board_ideas.ideas(search)
     todo = board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf'))   # web=False: these only
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
@@ -422,7 +423,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
               and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
-                      'source_kind': board.get('source_kind') or 'general'})
+                      'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})
         board_yield.record(entry, len(found), len(relevant), state)
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else ' (refuses automated reading: offered as a visit)'}", flush=True)
         run_counts.looked(found)
@@ -434,10 +435,9 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             ticker.tick(done, f" · {read_item[0]['name']}")
     for _, spare_item, result in sorted(taken, key=lambda entry: entry[0]):   # after the others, in the spares' order: a replay sees one order
         keep(spare_item, result)
+    more = board_web.finish(searching, proposed)   # its web search, started with the read: its boards are read now, in this run
     board_ideas.save(data)
     board_employers.note(jobs, 'Job boards found')
-    if web and not early and board_web.needed(kept, proposed):   # no trade or local board gave a job: one web search for them (board_web)
-        more = board_web.search(search, proposed, fetch=fetch)
-        if more:   # read now, whatever the relevant jobs so far: they are what this search lacked
-            jobs.extend(read(search, more, fetch, now, is_relevant, dead, workers=workers, web=False))
+    if more:
+        jobs.extend(read(search, more, fetch, now, is_relevant, dead, workers=workers, web=False))
     return jobs

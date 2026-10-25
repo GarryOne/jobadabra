@@ -1,6 +1,7 @@
 // Recent activity: the site-reading (visits) card and the busy-button memory (presses) its buttons share.
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {cardHead, el} from '../components.js';
+import {wand} from '../magic.js';
 import {claudeHelp} from '../claude-help.js';
 import {shared} from './shared.js';
 import {$} from './core.js';
@@ -62,6 +63,7 @@ const WORDS = '.item-words, .site-words';
 export function claudeReadButton(site, words) {
   const claude = el('button', 'secondary item-action', 'Read with Claude');
   claude.type = 'button';
+  wand(claude);
   claude.title = 'A Claude in Chrome session opens this site, sets the filters for your search and reads its jobs (needs Claude Code)';
   // Starting a Claude session takes ~10 s (owner, 7 Oct 2026: "I press, nothing happens"): said on the button, the way Re-score does it,
   // then it stays off while that session reads; a refusal is said in the row.

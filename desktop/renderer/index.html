@@ -202,7 +202,7 @@
           Nothing is saved until you review the result.</span></p>
         <div class="actions">
           <button class="ghost" data-back>Back</button>
-          <button class="primary" id="draft-build">Build my strategy</button>
+          <button class="primary" id="draft-build" data-wand>Build my strategy</button>
         </div>
       </div>
       <div id="draft-loading" class="progress" hidden>
@@ -213,7 +213,7 @@
       </div>
       <div id="draft-error" class="message error" hidden></div>
       <div class="stale-draft" id="draft-stale" hidden><span id="draft-stale-text"></span>
-        <button class="secondary small-btn" id="draft-redraft">Redraft</button></div>
+        <button class="secondary small-btn" id="draft-redraft" data-wand>Redraft</button></div>
       <div id="draft-view" class="review" hidden>
         <!-- The summary the AI wrote and Change CV; below it the Strategy page's own cards (pages/setup-strategy.js moves #strategy-live in here). -->
         <section class="card overview">
@@ -227,7 +227,7 @@
       <div class="actions sticky" id="draft-actions">
         <span class="saved-note" id="draft-saved" hidden>✓ Saved automatically</span>
         <button class="ghost" data-back>Back</button>
-        <button class="secondary" id="draft-again">Regenerate draft</button>
+        <button class="secondary" id="draft-again" data-wand>Regenerate draft</button>
         <button class="primary" id="draft-save" disabled>Save strategy &amp; continue</button>
       </div>
       <p class="message" id="draft-save-message"></p>
@@ -321,7 +321,7 @@
         <div><h1>Job matches</h1><p class="muted subtitle" id="jobs-stats">Loading…</p></div>
         <div class="jobs-head-right">
         <div class="head-actions">
-          <button class="secondary with-icon" id="refresh" title="Finds your first jobs in seconds, then reads the job boards and every employer site on your list, finds more employers, removes the jobs that are gone or outside your search, and scores the new ones with AI."><i data-icon="refresh"></i><span>Find jobs</span></button>
+          <button class="secondary with-icon" id="refresh" title="Finds your first jobs in seconds, then reads the job boards and every employer site on your list, finds more employers, removes the jobs that are gone or outside your search, and scores the new ones with AI." data-wand><i data-icon="refresh"></i><span>Find jobs</span></button>
           <button class="primary with-icon" id="apply-open"><i data-icon="send"></i><span>Apply to jobs…</span></button>
         </div>
         <button class="last-search" id="search-status" title="Open the progress and history of your searches for new jobs"><span class="dot"></span><b>No search yet</b><small></small></button>
@@ -329,7 +329,7 @@
       </header>
       <div class="alert tone-info settings-alert search-changed" id="jobs-search-changed" hidden><i data-icon="refresh"></i>
         <div><strong>Your search changed</strong><p>Refresh your jobs to apply it: jobs outside your search are removed (not the ones you applied to or interview for), and new ones are found.</p></div>
-        <button class="primary" data-refresh-jobs>Find jobs</button></div>
+        <button class="primary" data-refresh-jobs data-wand>Find jobs</button></div>
       <div class="ss-tips" id="tips-jobs" aria-label="Tips"></div>
       <div class="stat-cards">
         <button class="stat signal" data-stat="applied" aria-pressed="false"><span class="stat-icon"><i data-icon="send"></i></span><div><b id="stat-applied">–</b><span>Applied</span></div></button>
@@ -399,7 +399,7 @@
         <div class="job-list" id="jobs-body"></div>
       </div>
       <div class="callout tone-warn" id="jobs-unscored" hidden><span id="jobs-unscored-text"></span> <button class="link" id="jobs-unscored-go" type="button">Check now</button></div>
-      <p class="empty" id="jobs-empty" hidden>No jobs here yet. Click <button type="button" class="link" data-refresh-jobs><b>Find jobs</b></button>.</p>
+      <p class="empty" id="jobs-empty" hidden>No jobs here yet. Click <button type="button" class="link" data-refresh-jobs data-wand><b>Find jobs</b></button>.</p>
     </div>
 
     <div class="view" data-view="focus" hidden>
@@ -618,7 +618,7 @@
             <span class="task-category">DISCOVERY</span>
             <div class="task-body"><span class="task-tile"><i data-icon="search"></i></span>
               <div class="task-words"><b>Find jobs</b><span class="muted">Reads job boards and every employer site, finds more employers, adds new jobs, removes gone ones, AI scores the new</span><span class="task-schedule muted small" data-task-schedule="search"></span></div>
-              <button class="secondary action" data-command="run"><b hidden>Find jobs</b>Run</button></div>
+              <button class="secondary action" data-command="run" data-wand><b hidden>Find jobs</b>Run</button></div>
           </div>
         </div>
         <div class="task-pair">
@@ -627,13 +627,13 @@
             <div class="task-body"><span class="task-tile"><i data-icon="file-text"></i></span>
               <div class="task-words"><b>Tailor CV + cover letter for top matches</b><span class="muted">A tailored CV and cover letter (PDF) for each of your best matches<br>Ready before you apply · 1–2 min each</span></div>
               <label class="task-count-field"><input id="tailor-top-n" class="task-count" type="number" min="1" max="10" value="5" aria-label="How many top matches"><span class="task-count-unit">top matches</span></label>
-              <button class="secondary action" id="tailor-top" data-palette="tailor"><b hidden>Tailor CV + cover letter for top matches</b>Run</button></div>
+              <button class="secondary action" id="tailor-top" data-palette="tailor" data-wand><b hidden>Tailor CV + cover letter for top matches</b>Run</button></div>
           </div>
 <div class="task-card is-medium">
             <span class="task-category">COMMUNICATION</span>
             <div class="task-body"><span class="task-tile"><i data-icon="mail"></i></span>
               <div class="task-words"><b>Check Gmail &amp; Calendar</b><span class="muted">Sync replies, confirmations and interviews</span><span class="task-schedule muted small" data-task-schedule="mail"></span></div>
-              <button class="secondary action" data-command="mail"><b hidden>Check Gmail &amp; Calendar</b>Run</button></div>
+              <button class="secondary action" data-command="mail" data-wand><b hidden>Check Gmail &amp; Calendar</b>Run</button></div>
           </div>
         </div>
         <!-- More: the smaller tasks, collapsed by default, its state remembered (renderer/more-group.js, pages/actions-layout.js). -->
@@ -644,19 +644,19 @@
             <span class="task-category">DISCOVERY</span>
             <div class="task-body"><span class="task-tile"><i data-icon="globe"></i></span>
               <div class="task-words"><b>Find jobs using your browser</b><span class="muted">Like Find jobs, for the sites and job portals that block it: read in your browser by the extension</span></div>
-              <button class="secondary action" id="visits-run" data-palette="visits"><b hidden>Find jobs using your browser</b>Run</button></div>
+              <button class="secondary action" id="visits-run" data-palette="visits" data-wand><b hidden>Find jobs using your browser</b>Run</button></div>
           </div>
 <div class="task-card is-row">
             <span class="task-category">INSIGHTS</span>
             <div class="task-body"><span class="task-tile"><i data-icon="sliders"></i></span>
               <div class="task-words"><b>Tune my strategy</b><span class="muted">Changes your own results support, for you to accept</span><span class="task-hint small" id="tune-hint" hidden>Works best after your first week of results</span></div>
-              <button class="secondary action" id="tune-open" data-palette="tune"><b hidden>Tune my strategy</b>Run</button></div>
+              <button class="secondary action" id="tune-open" data-palette="tune" data-wand><b hidden>Tune my strategy</b>Run</button></div>
           </div>
 <div class="task-card is-row">
             <span class="task-category">INSIGHTS</span>
             <div class="task-body"><span class="task-tile"><i data-icon="chart"></i></span>
               <div class="task-words"><b>Analyze my job search</b><span class="muted">Last 7 days: what works, what to change</span></div>
-              <button class="secondary action" data-command="weekly"><b hidden>Analyze my job search</b>Run</button></div>
+              <button class="secondary action" data-command="weekly" data-wand><b hidden>Analyze my job search</b>Run</button></div>
           </div>
           </div>
         </div>
@@ -843,7 +843,7 @@
         <button class="primary" id="profile-empty-rebuild">Rebuild from CV</button></div>
       <div class="alert tone-info settings-alert search-changed" id="strategy-search-changed" hidden><i data-icon="refresh"></i>
         <div><strong>Your search changed</strong><p>Refresh your jobs to apply it: jobs outside your search are removed (not the ones you applied to or interview for), and new ones are found.</p></div>
-        <button class="primary" data-refresh-jobs>Find jobs</button></div>
+        <button class="primary" data-refresh-jobs data-wand>Find jobs</button></div>
       <div class="alert tone-info settings-alert" id="strategy-cv-changed" hidden><i data-icon="info"></i>
         <div><strong>Your CV changed</strong><p>New applications already use it. Review what it changes in your Profile before anything is re-scored.</p></div>
         <button class="primary" id="strategy-cv-review">Review what changes</button></div>
@@ -1125,7 +1125,7 @@
               <textarea id="letter-text" data-reads-letter="Reading your letter…" rows="10" placeholder="Write your letter: who you are, what you do best, what you look for next." spellcheck="true"></textarea>
               <label class="small muted">Ask for a change (optional)<input id="letter-feedback" type="text" placeholder="e.g. shorter, more about incident response"></label>
               <div class="inline">
-                <button type="button" class="secondary with-icon" id="letter-draft"><i data-icon="refresh"></i><span>Redraft with AI</span></button>
+                <button type="button" class="secondary with-icon" id="letter-draft" data-wand><i data-icon="refresh"></i><span>Redraft with AI</span></button>
                 <button type="button" class="primary" id="letter-approve" disabled>Approve &amp; make PDF</button>
                 <button type="button" class="link with-icon" id="letter-pdf" hidden><i data-icon="eye"></i><span>Open PDF</span></button>
               </div>

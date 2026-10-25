@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {removedStrings, suitesExpecting, report, planPrSuites} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
+import {suitesUsing} from './lib/import-graph.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const base = process.argv[process.argv.indexOf('--base') + 1] || 'origin/main';
@@ -23,7 +24,7 @@ try {
     const facts = await suiteFacts();
     const linux = {};
     for (const suite of facts.all) linux[suite] = (await facts.os(suite)) === 'ubuntu-24.04';
-    const plan = planPrSuites({pointed: suitesFor(changedFiles, facts.all, facts), hits: suitesExpecting(strings, sources), linux: suite => linux[suite], cadence: facts.cadence});
+    const plan = planPrSuites({pointed: suitesFor(changedFiles, facts.all, {...facts, uses: suitesUsing(here)}), hits: suitesExpecting(strings, sources), linux: suite => linux[suite], cadence: facts.cadence});
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\n`);
   }

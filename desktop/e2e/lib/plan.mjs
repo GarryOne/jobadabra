@@ -13,7 +13,10 @@ export function autoSuites(all, cadence = {}, alwaysOnly = false) {
   return all.filter(suite => { const when = cadence[suite] || 'always'; return alwaysOnly ? when === 'always' : (when !== 'manual' && when !== 'watched'); });
 }
 
-export function suitesFor(files, all, {watches = {}, cadence = {}} = {}) {
+// A helper file under desktop/e2e (not a suite) also runs the suites that import it, when they are few: `uses` = {path under desktop/e2e: [suites]} (lib/import-graph.mjs).
+// One that nearly every suite imports (layout.mjs) stays the settings smoke: it would otherwise run them all.
+export const MAX_USERS = 3;
+export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = {}) {
   const chosen = new Set();
   for (const file of files.map(name => String(name).trim()).filter(Boolean)) {
     const suite = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
@@ -21,7 +24,11 @@ export function suitesFor(files, all, {watches = {}, cadence = {}} = {}) {
     if (/^extension\//.test(file)) { chosen.add('apply'); chosen.add('applyflows'); chosen.add('recorded'); continue; }
     if (/^desktop\/e2e\/(recorded\/|lib\/page-replay\.mjs$)/.test(file)) { chosen.add('recorded'); continue; }   // layer 2: a case or its harness
     if (/^desktop\/e2e\/test\//.test(file) || /\.md$/.test(file)) continue;   // unit tests run on their own; docs run nothing
-    if (/^desktop\/e2e\//.test(file) || file === '.github/workflows/e2e.yml') chosen.add(SMOKE);
+    if (/^desktop\/e2e\//.test(file) || file === '.github/workflows/e2e.yml') {
+      chosen.add(SMOKE);
+      const users = uses[file.replace(/^desktop\/e2e\//, '')] || [];
+      if (users.length <= MAX_USERS) for (const user of users) if (all.includes(user)) chosen.add(user);
+    }
   }
   for (const file of files.map(name => String(name).trim()).filter(Boolean)) {   // files a suite watches (the scoring prompt, a model id): that suite runs too
     for (const [suite, paths] of Object.entries(watches)) if (all.includes(suite) && paths.some(path => file === path || (path.endsWith('/') && file.startsWith(path)))) chosen.add(suite);

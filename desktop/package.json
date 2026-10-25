@@ -16,7 +16,7 @@
     "twin:drive": "node e2e/twin-drive.mjs",
     "live": "cd e2e && E2E_HEADED=1 LIVE=1 node run-all.mjs --only applyflows",
     "test:scenarios": "node scripts/stage.mjs && node --test test/app-scenarios.test.js",
-    "build": "node scripts/stage.mjs --app && electron-builder --mac --publish never",
+    "build": "node scripts/stage.mjs --app && electron-builder --mac --publish never -c.productName=Jobadabra",
     "screenshots": "node scripts/stage.mjs && node scripts/screenshots.mjs",
     "gallery": "JOB_PILOTTO_DEMO=1 JOB_PILOTTO_PAGE=gallery.html JOB_PILOTTO_USER_DATA=${TMPDIR:-/tmp}/job-pilotto-gallery electron .",
     "build:win": "node scripts/stage.mjs --app && electron-builder --win --publish never",

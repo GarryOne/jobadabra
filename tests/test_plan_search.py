@@ -32,18 +32,19 @@ def env(base, **more):
 class PlanClient(unittest.TestCase):
     def test_a_signed_in_plan_searches_when_another_engine_answers(self):
         for named, binary, adapter in (('claude', 'JOB_PILOTTO_CLAUDE_BIN', claude_code.ClaudeCode), ('codex', 'JOB_PILOTTO_CODEX_BIN', codex_cli.Codex)):
-            with self.subTest(named), env(FREE, JOB_PILOTTO_PLAN_SEARCH=named, **{binary: f'/x/{named}'}), mock.patch('os.path.exists', return_value=True):
+            with self.subTest(named), env(FREE, JOB_PILOTTO_PLAN_SEARCH=named, **{binary: f'/x/{named}'}), \
+                    mock.patch.object(web_search, '_binary', side_effect=lambda name: f"/x/{'claude' if name == 'cli' else 'codex'}"):
                 self.assertTrue(web_search._claude_code())
                 self.assertEqual(web_search._plan_engine(), named)
                 self.assertIsInstance(web_search.plan_client(), adapter)
 
     def test_no_plan_named_no_plan_search_even_with_a_cli_on_this_mac(self):
-        with env(FREE), mock.patch.object(claude_code, 'find_binary', return_value='/usr/local/bin/claude'):
+        with env(FREE), mock.patch.object(web_search, '_binary', return_value='/usr/local/bin/claude'):
             self.assertFalse(web_search._claude_code(), 'only the app says a plan is signed in: a test never starts a real CLI')
             self.assertIsNone(web_search.plan_client())
 
     def test_the_chosen_plan_engine_stays_the_search(self):
-        with env({'JOB_PILOTTO_AI_ENGINE': 'cli'}), mock.patch.object(claude_code, 'find_binary', return_value='/x/claude'), \
+        with env({'JOB_PILOTTO_AI_ENGINE': 'cli'}), mock.patch.object(web_search, '_binary', return_value='/x/claude'), \
                 mock.patch('src.ai.engine.client', return_value='the engine') as made:
             self.assertTrue(web_search._claude_code())
             self.assertEqual(web_search.plan_client(), 'the engine')

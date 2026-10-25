@@ -3,7 +3,6 @@
 // that lets forms use it, pages/letter-fallback.js). Who pays is said before Draft with AI and after it ran (ai-engine-view.js usage words), never a guess.
 // A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/base-letter.test.js and test/contact-reading.test.js.
 import {pill} from '../components.js';
-import {wand} from '../magic.js';
 import {emptyState} from '../page-parts.js';
 import {profileBar} from './profile-save-bar.js';
 import {$, message, runWhen, show} from './core.js';
@@ -34,10 +33,9 @@ const usageLine = () => [usageBefore(shared.state?.settings, !!shared.state?.sec
 // The empty state (page-parts.js emptyState), drawn again each paint so its usage note follows the engine; its buttons keep their ids (⌘K, tests).
 function drawEmpty() {
   const box = emptyState({icon: 'file', chip: '', title: 'No base letter yet', text: 'Draft one with AI from your CV, Profile and writing preferences, or write your own.',
-    actions: [{label: 'Draft with AI', run: () => draft($('letter-start-ai'))}, {label: 'Write my own', run: () => { writing = true; paint(); $('letter-text').focus(); }}], note: usageLine()});
+    actions: [{label: 'Draft with AI', ai: true, run: () => draft($('letter-start-ai'))}, {label: 'Write my own', run: () => { writing = true; paint(); $('letter-text').focus(); }}], note: usageLine()});
   const [ai, own] = box.querySelectorAll('button');
   ai.id = 'letter-start-ai';
-  wand(ai);
   own.id = 'letter-own';
   $('letter-empty').replaceChildren(box);
 }

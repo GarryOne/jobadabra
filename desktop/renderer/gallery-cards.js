@@ -63,7 +63,7 @@ export function pageBlocks() {
         detail: el('p', 'muted', 'Say how many people you led and for how long.')},
     ], {statusAt: 'first'})),
     panel('emptyState', emptyState({icon: 'file', title: 'No base letter yet', text: 'One general letter, written from your CV and Profile; each job still gets its own.',
-      actions: [{label: 'Draft with AI'}, {label: 'Write my own'}], note: 'Drafting uses your AI once.'})),
+      actions: [{label: 'Draft with AI', ai: true}, {label: 'Write my own'}], note: 'Drafting uses your AI once.'})),
     panel('summaryTiles', summaryTiles([{key: 'role', icon: 'target', tone: 'signal', label: 'Role', value: 'Operations Manager'},
       {key: 'where', icon: 'pin', tone: 'info', label: 'Where', value: 'Zurich · Remote'}, {key: 'salary', icon: 'coins', tone: 'good', label: 'Minimum salary', value: 'CHF 140k'},
       {key: 'start', icon: 'calendar', tone: 'neutral', label: 'Start', value: ''}])),

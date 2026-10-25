@@ -3,6 +3,7 @@
 import {ai} from '../ai-name.js';
 import {emailNoun, questionWhy} from '../question-words.js';
 import {el, pill} from '../components.js';
+import {wand} from '../magic.js';
 import {icon} from '../icons.js';
 import {mailChanges, mailCounts, mailNoCards, mailResults} from '../mail-report.js';
 import {shared} from './shared.js';
@@ -246,6 +247,7 @@ function interviewPanel(report) {
   const prep = prepAction(interview.company) || jobPrep(interview.company, interview.title);
   const go = el('button', prep?.busy ? 'secondary' : 'primary', prep ? prep.label : 'Build prep kit');
   go.type = 'button';
+  wand(go);
   if (prep?.busy) go.prepend(el('span', 'spinner small'));
   go.title = prep ? prep.title || '' : 'Place this interview on a job first: the kit is built on the job\'s page.';
   go.disabled = !prep || !!prep.busy;

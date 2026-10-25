@@ -25,6 +25,8 @@ const nameKey = storage => {
 // May this user see an AI cost? Nobody today (owner, 25 Oct 2026); if it returns, only on their own API key. The window's twin is renderer/ai-cost.js costVisible.
 export const COSTS_SHOWN = false;
 export const costVisible = (storage, shown = COSTS_SHOWN) => shown && ['api', 'openai'].includes(nameKey(storage));
+// The engine as the daily health report names it: Free AI (our relay, the in-house API) is 'free', never 'api'; nothing chosen is 'none'.
+export const reportedEngine = storage => nameKey(storage);
 export function aiText(storage, text) {
   const engine = nameKey(storage), family = modelsOf(engine);
   return String(text).replace(/\{AI(?::(small|main|big))?\}/g, (_, tier) => (tier ? MODELS[family][tier] : NAMES[engine] || 'AI'));

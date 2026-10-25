@@ -1,13 +1,13 @@
 // The free allowance, the health line and visit scoring (moved out of main.js, 8 Oct 2026): where the user stands (the license state), the guard before new work starts,
 // scoring the jobs read in Chrome now, and the once-a-day health line with anonymous counts. The license, storage and telemetry are reached through getters.
 // Guards: the license, health-line and visit-scoring tests in desktop/test.
-import * as claudeCode from './claude-code.js';
 import * as pipeline from './pipeline.js';
 import * as terminals from './terminals.js';
 import * as viewCache from './view-cache.js';
 import * as aiFree from './ai-free.js';
 import {createPlan} from './plan.js';
 import {log as appLog} from './log.js';
+import {reportedEngine} from './ai/names.js';
 
 export function createAppAllowance(ctx) {
   const {DEMO, getLicense, log, getStorage, getTelemetry, toWindow} = ctx;
@@ -50,7 +50,7 @@ export function createAppAllowance(ctx) {
     if (!getTelemetry()?.enabled() || settings.telemetryHealthAt === today) return;
     getStorage().saveSettings({telemetryHealthAt: today});
     const has = name => !!getStorage().secret(name);
-    getTelemetry().record('health', {ai: has('ANTHROPIC_API_KEY'), aiEngine: claudeCode.engine(settings, has('ANTHROPIC_API_KEY')) || 'none', notion: has('NOTION_TOKEN'), telegram: has('TELEGRAM_BOT_TOKEN'),
+    getTelemetry().record('health', {ai: has('ANTHROPIC_API_KEY'), aiEngine: reportedEngine(getStorage()), notion: has('NOTION_TOKEN'), telegram: has('TELEGRAM_BOT_TOKEN'),
       serpapi: has('SERPAPI_API_KEY'), alwaysOn: !!settings.cloud?.repo, theme: settings.theme || 'dark',
       sessions: terminals.list().length, runsKept: pipeline.runs(getStorage()).length, ...outcomes(settings), ...allowanceHealth(), ...getTelemetry().takeRuns()});
   }

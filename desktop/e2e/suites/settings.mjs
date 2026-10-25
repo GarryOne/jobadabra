@@ -2,6 +2,7 @@
 // Settings: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
+import {appLogText} from '../lib/app-log.mjs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {FIXTURES} from '../lib/cvfixtures.mjs';
@@ -136,7 +137,9 @@ function whereItWent(file, dir) {
   let held = '', folder = '';
   try { held = names(spawnSync('tar', ['-tzf', file], {encoding: 'utf8', timeout: 20000}).stdout.split(/\r?\n/)); } catch { held = 'unreadable'; }
   try { folder = names(fs.readdirSync(dir)); } catch { folder = 'unreadable'; }
-  return ` | the file holds: ${held || 'nothing listed'} | the folder holds: ${folder}`;
+  let removed = '';   // who took the files: the app logs every drop of the local copies (lib/strategy-settings.js dropLocalCopies)
+  try { removed = appLogText(dir).split('\n').filter(line => /local copies dropped/.test(line)).slice(-3).join(' / '); } catch { /* no log */ }
+  return ` | the file holds: ${held || 'nothing listed'} | the folder holds: ${folder} | ${removed || 'the app logged no drop of the local copies'}`;
 }
 async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the automatic backup made, imported instead of an export
   const file = backupFile || path.join(os.tmpdir(), `jp-e2e-export-${process.pid}-${Date.now()}.tar.gz`);

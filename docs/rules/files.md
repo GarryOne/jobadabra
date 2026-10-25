@@ -24,5 +24,7 @@ a quiet window). `tools/file-size.mjs` warns (never blocks) when a change touche
   from `git show HEAD:…`, never guessed. Recompute ranges from names, not line numbers.
 - **Prove it runs:** tests that read `main.js`'s source go through `test/main-source.js`; then START the app (`npm run shot -- sessions`). A moved
   flow file is added to `FLOW_FILES`; run `npm run flows`.
+- **Tests that read the old file by name follow the code** (`grep -rln "'<old file>'" desktop/test tests`): point the ones whose pattern moved at the
+  new file in the same pure commit, then run the whole test dir (25 Oct 2026: activity-result-bottom.js left run-compact and visits-view-jobs red).
 - **Land fast:** rebase right before the push and port what others changed in the moved range.
 - **A migration or move is its own pure commit**, in a quiet window announced to all peers, never mixed with behaviour changes.

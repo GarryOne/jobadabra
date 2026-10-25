@@ -50,7 +50,7 @@ export function createAppAllowance(ctx) {
     if (!getTelemetry()?.enabled() || settings.telemetryHealthAt === today) return;
     getStorage().saveSettings({telemetryHealthAt: today});
     const has = name => !!getStorage().secret(name);
-    getTelemetry().record('health', {ai: has('ANTHROPIC_API_KEY'), aiEngine: reportedEngine(getStorage()), notion: has('NOTION_TOKEN'), telegram: has('TELEGRAM_BOT_TOKEN'),
+    getTelemetry().record('health', {ai: has('ANTHROPIC_API_KEY'), aiEngine: reportedEngine(getStorage(), getPlan().state().plan), notion: has('NOTION_TOKEN'), telegram: has('TELEGRAM_BOT_TOKEN'),
       serpapi: has('SERPAPI_API_KEY'), alwaysOn: !!settings.cloud?.repo, theme: settings.theme || 'dark',
       sessions: terminals.list().length, runsKept: pipeline.runs(getStorage()).length, ...outcomes(settings), ...allowanceHealth(), ...getTelemetry().takeRuns()});
   }

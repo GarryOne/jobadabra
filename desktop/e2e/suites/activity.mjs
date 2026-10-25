@@ -23,7 +23,9 @@ export const env = {JOB_PILOTTO_E2E_HISTORY_MS: '3000', JOB_PILOTTO_E2E_RESUME_M
 async function inspectResult(ctx, task) {
   const {page} = ctx;
   await page.waitForFunction(() => ['actions-result', 'command-answer'].some(id => { const box = document.getElementById(id); return box && !box.hidden; }), null, {timeout: 15000}).catch(() => {});
-  const shown = await page.evaluate(() => ({card: !!document.querySelector('#actions-result:not([hidden]) #actions-card > *'),
+  // The compact banner (owner, 25 Oct 2026): the task's name, its pill and one line; the full report is the run panel's.
+  const shown = await page.evaluate(() => ({card: !!document.querySelector('#actions-result:not([hidden]) .run-banner-head .ui-pill'),
+    detailed: !!document.querySelector('#actions-card, #actions-result .run-card'),
     text: document.getElementById('command-answer')?.hidden ? '' : (document.getElementById('command-answer')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 160)}));
   await snap(ctx, `actions-result-${task.command}`, {view: 'actions'});
   return shown;
@@ -64,8 +66,9 @@ export async function run(ctx) {
       await noRowStaysRunning(ctx);
       const result = await inspectResult(ctx, task);
       console.log(`  ${task.command}: the Actions page shows ${result.card ? 'a card' : result.text ? `text "${result.text.slice(0, 60)}"` : 'nothing'}`);
-      // The report has a card of its own (renderer/pages/activity.js cardFor): the same one Recent activity draws, never the chat message it was written as.
-      if (task.command === 'weekly' && !result.card) throw new Error(`the Actions page shows the finished Search analysis as text, not as its card: "${result.text || 'nothing at all'}"`);
+      // On Actions every finished task is the compact banner, never raw text and never its detailed card (that one is the run panel's, checked below).
+      if (!result.card) throw new Error(`the Actions page shows the finished ${task.what} as text, not as its compact banner: "${result.text || 'nothing at all'}"`);
+      if (result.detailed) throw new Error(`the Actions page draws the detailed card of ${task.what}; it belongs in the drawer and Actions → Runs`);
     }, {needs: ctx.needs});
   }
   // Removed 6 Oct 2026: "Find new employers with a slow AI still streams its live log". On the fixtures the scout asks the AI nothing (it reads the boards), so a slow AI

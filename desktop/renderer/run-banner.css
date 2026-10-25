@@ -1,0 +1,12 @@
+/* The run banner on Actions (pages/runs-page.js running, pages/run-banner.js queued and finished; owner, 25 Oct 2026: one compact look for every run):
+   an icon or spinner, the task name + pill, one meta line, its buttons. Its tone says how the run is: info while it runs, then good, warn or bad; a queued run is plain.
+   Guarded by test/run-compact.test.js. */
+.run-banner { display: flex; align-items: center; gap: var(--sp-4); background: var(--info-soft); border-color: var(--info-line); margin-bottom: var(--sp-3); }
+.run-banner .spinner { width: 28px; height: 28px; flex: none; }
+.run-banner-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.run-banner-words b { font-size: var(--fs-lg); }
+.run-banner-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.run-banner.tone-good { background: var(--good-soft); border-color: var(--line); }
+.run-banner.tone-warn { background: var(--warn-soft); border-color: var(--warn-line); }
+.run-banner.tone-bad { background: var(--bad-soft); border-color: var(--bad-line); }
+.run-banner.tone-neutral { background: var(--surface); border-color: var(--line); }

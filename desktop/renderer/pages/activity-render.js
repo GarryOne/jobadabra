@@ -27,7 +27,7 @@ import {toastMessage} from './startup.js';
 import {showStop} from '../stop-task.js';
 import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, warningSummary, WARN_NOUN, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, signedInSince, gmailConnected, runButton, mailReportOf} from './activity-basics.js';
 import {renderVisitsCard} from './activity-visits.js';
-import {showAwaitedResult, keepStatusBar, withKept, byYou} from './activity-results.js';
+import {showAwaitedResult, showQueuedBanner, keepStatusBar, withKept, byYou} from './activity-results.js';
 import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton} from './activity-run-card.js';
 import {renderMailCard} from './activity-mail.js';
 import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
@@ -69,6 +69,7 @@ window.addEventListener('focus-updated', () => { if (lastActivity) renderActivit
 export function prepareActions() {
   if (!lastActivity) return;
   renderActionsPage(lastActivity);
+  showQueuedBanner(lastActivity);
   showAwaitedResult(lastActivity.runs, {opening: true});
   actionsShown();   // Actions → Runs takes its run panel back from the drawer
 }
@@ -92,6 +93,7 @@ export function renderActivity(fresh) {
   if (!$('activity-panel').hidden) remembered(PANEL_KEY, panelMemory(true, shared.selectedRun));   // another run picked in the open panel
   const data = withKept(fresh);
   renderActionsPage(data);
+  showQueuedBanner(data);
   lastActivity = data;
   // Settings → Automation shows the same next times beside each schedule.
   shared.nextRuns = {search: data.nextSearchAt, mail: data.nextMailAt, scout: data.nextScoutAt};

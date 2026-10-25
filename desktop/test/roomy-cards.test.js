@@ -84,6 +84,17 @@ test('divided tiles: "+N more" and a status badge sit inside the value, never as
   assert.match(text(box.children[1].children[1].children[1]), /^CHF 1As written$/);
 });
 
+// Owner, 25 Oct 2026: "the content is too crowded. Let's have it one column per row, instead of two" (Main goals broke words mid-word in a narrow window).
+// The class is every rule that lays out the divided tiles: none may name a second column, at any width.
+test('class: divided summary tiles are one column at every width, no rule gives them two or more', () => {
+  const rules = read('roomy-cards.css').split('}').filter(rule => rule.includes('.summary-tiles.is-divided'));
+  assert.ok(rules.length >= 3, 'the divided-tiles rules are found');
+  for (const rule of rules) {
+    for (const match of rule.matchAll(/grid-template-columns:\s*([^;]+);/g)) assert.equal(match[1].trim(), 'minmax(0, 1fr)', `one column: ${rule.trim().slice(0, 80)}`);
+    assert.ok(!/border-left|nth-child\(odd\)/.test(rule), `no column divider: ${rule.trim().slice(0, 80)}`);
+  }
+});
+
 // Profile tabs restyled from the mockups (owner approved 18 Oct 2026: Your details 05, Experience 09/06, CV 08, Application answers 02/04/10, Cover letter 07): the class is every panel of those tabs;
 // a new one fails until it has the roomy header. Every Profile tab is in ROOMY_TABS now; a new tab joins it.
 const ROOMY_TABS = {details: 7, experience: 3, cv: 1, answers: 2, letter: 2};

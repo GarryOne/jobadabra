@@ -83,7 +83,7 @@ test('every finished search run of the store has a Full report link; live runs a
   for (const kind of ['mail', 'insight', 'weekly', 'kits', 'tailor', 'today']) assert.equal(hasFullReport({kind, pageId: 'r1'}), false, kind);
 });
 
-test('the link is on the Jobs find card and the run panel header (the Actions banner leads there through View run), and opens the report through one helper', () => {
+test('the link is on the Jobs find card and the run panel header (the Actions banner leads there through View details), and opens the report through one helper', () => {
   const read = name => fs.readFileSync(path.join(here, '../renderer', name), 'utf8');
   assert.match(read('pages/jobs-find.js'), /Full report →/);
   assert.match(read('index.html'), /id="activity-report"[^>]*>Full report →/);

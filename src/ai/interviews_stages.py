@@ -13,7 +13,7 @@ IN_TALKS = ('Recruiter lead', 'Screening', 'Interview scheduled')
 # Never touched by an interview: an offer, or the application is over.
 CLOSED = ('Offer', 'Rejected', 'Withdrawn', 'Closed', 'Dismissed')
 CANCELLED = 'Interview cancelled'  # 📈 Application Events kind: the call didn't happen (Stage stays)
-APP_SOURCE = 'Job Pilotto app'
+from ..app_source import APP_SOURCE  # noqa: F401  (interviews.py imports it from here)
 
 
 def held_stage(stage, round_=''):

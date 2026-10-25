@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 
+from .app_source import APP_SOURCE
 from .notion.ledger import moment
 
 REACHED = {'Screening', 'Interview scheduled', 'Interviewing', 'Offer'}
@@ -86,13 +87,13 @@ def act(stores, app, action, text=''):
         if any(e['source_id'] == seed for e in history):  # the same words pasted twice on this job
             return
         app = save_received(stores, app, text)
-        event = ledger_store.add_event(stores, app, kind, 'Job Pilotto app', note=text[:1900])
+        event = ledger_store.add_event(stores, app, kind, APP_SOURCE, note=text[:1900])
         stores.events.update(event['id'], {'source_id': seed})
     else:
         if action == 'review' and not app.get('employer_feedback'):
             raise ValueError('There is no employer feedback to review yet.')
         app = stores.applications.update(app['id'], {'feedback_status': STATUSES[kind]})
-        ledger_store.add_event(stores, app, kind, 'Job Pilotto app', note={
+        ledger_store.add_event(stores, app, kind, APP_SOURCE, note={
             'request': 'You sent a feedback request (confirmed in the desktop app).',
             'review': 'You reviewed the employer feedback.', 'skip': 'You chose not to request feedback.'}[action])
 

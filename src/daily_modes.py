@@ -9,6 +9,7 @@ import os
 from html import escape
 from pathlib import Path
 from . import import_url, store, telegram
+from .app_source import APP_SOURCE
 from .ai import added, cost, inbox, insights, interview_insights, interviews, kit
 from .notion import client as notion, cron_runs, ledger
 from .daily_helpers import KITS_DEFAULT, _job_arg, apply_message, for_job_matches, kits_message, log_ai_run, log_text, new_cron_run, prepare_kit, queue_mail_check
@@ -140,7 +141,7 @@ def add_message_mode(args, stores=None):
             name, data = interviews.download(telegram.credentials()[0], args.file)
             image = (name, data, inbox.MEDIA.get(Path(name).suffix.lower(), 'image/jpeg'))
         # Where it was added: the app's Log box is the app even when its reply also goes to Telegram (--send).
-        source = 'Job Pilotto app' if args.from_app else 'Telegram' if args.send else 'Manual'
+        source = APP_SOURCE if args.from_app else 'Telegram' if args.send else 'Manual'
         if args.propose:  # the app's step 1: nothing written; the proposal comes back to be confirmed
             # With --reading: the job you picked in the confirmation step (--target), for the same reading (no AI).
             earlier = json.loads(Path(args.reading).read_text(encoding='utf-8')) if args.reading else None
@@ -159,7 +160,7 @@ def add_message_mode(args, stores=None):
                                      first_contact=None if args.first_contact is None else args.first_contact == 'yes',
                                      agreed=None if args.agreed is None else args.agreed == 'yes', origin=args.origin)
         reply = escape(inbox.log(stores, text=args.note or '', image=image, source=source,
-                                 event_source='Job Pilotto app' if args.from_app else 'Telegram' if args.send else 'CLI',
+                                 event_source=APP_SOURCE if args.from_app else 'Telegram' if args.send else 'CLI',
                                  talking=args.action == 'talking', stats=run['mail'], target=args.target,
                                  on_new=added.hook(stores, args.db, run), proposal=proposal, found=found))
         run['mail'].update(pending=1, done=1)

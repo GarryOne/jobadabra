@@ -112,7 +112,7 @@ class ProposeTest(unittest.TestCase):
 class LastMessageEventTest(unittest.TestCase):
     def log(self, tracker, answer=None):
         proposal = inbox.propose(stores_for(tracker), image=SHOT, client=Client(answer or duvo_chat()), now=NOW)
-        return inbox.log(stores_for(tracker), image=SHOT, now=NOW, event_source='Job Pilotto app',
+        return inbox.log(stores_for(tracker), image=SHOT, now=NOW, event_source='Jobadabra app',
                          proposal=inbox.confirm(proposal, kind=inbox.UPDATE, channel='LinkedIn'))
 
     def test_the_real_case_saves_your_last_message_for_focus(self):
@@ -121,7 +121,7 @@ class LastMessageEventTest(unittest.TestCase):
         event = next(p for p in tracker.created if p.get('Kind'))
         self.assertEqual(event['Kind'], {'select': {'name': 'Replied'}})
         self.assertEqual(event['At'], {'date': {'start': '2026-09-28T10:05:00+02:00'}})
-        self.assertEqual(event['Source'], {'select': {'name': 'Job Pilotto app'}})
+        self.assertEqual(event['Source'], {'select': {'name': 'Jobadabra app'}})
         self.assertTrue(event['Note']['rich_text'][0]['text']['content'].startswith('You wrote: Hi Márton'))
         self.assertTrue(event['Source ID']['rich_text'][0]['text']['content'].startswith('chat:'))
         self.assertIn('Already tracked: Duvo.ai — Senior SRE (Screening). Nothing new about the job. Your last message was on '
@@ -284,7 +284,7 @@ class FollowUpFocusTest(unittest.TestCase):
         self.assertEqual(out.getvalue().splitlines(), ['{"ok": true}'] * 2)
         [replied, skipped] = stores.events.list(app_id=app['id'])
         self.assertEqual((replied['kind'], replied['note'], replied['source']),
-                         ('Replied', 'You followed up (marked done in Focus)', 'Job Pilotto app'))
+                         ('Replied', 'You followed up (marked done in Focus)', 'Jobadabra app'))
         self.assertEqual((skipped['kind'], skipped['source_id']), ('Details skipped', 'skip-details:Screening'))
 
 

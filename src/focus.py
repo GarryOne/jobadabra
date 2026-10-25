@@ -34,6 +34,7 @@ import sys
 from zoneinfo import ZoneInfo
 
 from . import telegram, tgcard, tz
+from .app_source import APP_SOURCE, is_app_source
 from .ai import meanings
 from . import feedback
 from .features import disabled
@@ -361,7 +362,7 @@ def history(stores, days=90):
     apps = {app['id']: app for app in stores.applications.list()}
     items = []
     for event in stores.events.list():
-        if event['source'] != 'Job Pilotto app' or (event['at'] or '')[:10] < since:
+        if not is_app_source(event['source']) or (event['at'] or '')[:10] < since:
             continue
         kind, app = event['kind'] or '', apps.get(event['app_id']) or {}
         company = app.get('company') or app.get('title') or 'an employer'
@@ -409,10 +410,10 @@ def main(argv=None):
             raise SystemExit(f'No application {args.page_id}')
         if args.what == 'details_skipped':
             token = details_token(_when(_field(row, 'next_interview')), _field(row, 'stage'))
-            ledger_store.add_event(stores, row, 'Details skipped', 'Job Pilotto app', note="You don't know the employer yet",
+            ledger_store.add_event(stores, row, 'Details skipped', APP_SOURCE, note="You don't know the employer yet",
                                    source_id=f'skip-details:{token}')
         else:
-            ledger_store.add_event(stores, row, REPLIED, 'Job Pilotto app', note='You followed up (marked done in Focus)'
+            ledger_store.add_event(stores, row, REPLIED, APP_SOURCE, note='You followed up (marked done in Focus)'
                                    if args.what == 'followed_up' else 'You answered (marked done in Focus)')
         print(json.dumps({'ok': True}))
         return 0

@@ -57,7 +57,8 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // One number leads (owner, 24 Oct 2026: "too many numbers"): the jobs this run added to the list, as the toast and footer say (#1408). Scoring and its queue are
     // internal and never drawn; the digest's open, in-your-places and applied counts are not shown either (owner, 24 Oct 2026: "Do we need them? I don't think so"). The digest's "N new" counts jobs first seen since the last digest, which can include earlier runs'.
     const fresh = runNewCount(run, card);
-    stats.append(stat(fresh, `job${fresh === 1 ? '' : 's'} added to your list`));
+    // In the run panel the card's top says the number (run-result-card.js): the bottom never says it again.
+    if (target.id !== 'activity-card') stats.append(stat(fresh, `job${fresh === 1 ? '' : 's'} added to your list`));
     // A run that found nothing new lists no jobs: the digest's "top matches" are the best open jobs from any run, and shown here they read as
     // this run's finds (owner, 6 Oct 2026: two runs in a row "found" the same two jobs). Its open jobs stay one click away, in Jobs.
     const nothingNew = fresh === 0;
@@ -96,7 +97,9 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
     // "of these N", not "N more": some of them are the Not scored rows just above (8 Oct 2026: "4 more" under two of those four).
     if (here && here < total) rows.append(el('li', 'muted', `${total - here} of these ${total} ${total - here === 1 ? 'is' : 'are'} not in Jobs yet: still waiting.`));
     const words = !total || nothingNew ? 'Open Jobs →' : !here ? 'View in Jobs →' : here === total ? `View all ${total} in Jobs →` : `View ${here} in Jobs →`;
-    const view = el('button', 'link', words);
+    const view = el('button', 'link run-card-view', words);
+    // In the run panel the card's top offers it ("See the N new jobs" presses this button): the bottom does not show it again.
+    view.hidden = target.id === 'activity-card';
     view.addEventListener('click', () => {
       openActivity(false);
       openView('jobs');
@@ -153,10 +156,15 @@ export function renderRunCard(card, run = null, target = $('activity-card')) {
   // The few-jobs cards are siblings of this card, never inside it (a card in a card): the pane's own slot, else after the card.
   const slot = target.id === 'activity-card' ? $('activity-help') : null;
   if (slot) { slot.replaceChildren(...(help ? [help] : [])); show(slot, !!help); }
+  // A search that added nothing has no bottom in the run panel: its top says "No jobs added to your list", and a run that never finished
+  // must not read "Nothing new since the last check" (owner's shot, 25 Oct 2026). The ways to find more stay below (#activity-help).
+  // Nor one that lists no job rows: "They are in Jobs · Open Jobs" would repeat the top's next step.
+  if (slot && card.kind === 'digest' && (runNewCount(run, card) === 0 || !rows.querySelector('.run-card-row'))) { target.replaceChildren(); return {empty: true}; }
   // The headline is one rounded box, like every card (owner, 24 Oct 2026: "the border is not rounded").
   const top = el('div', 'run-card-top');
   top.append(...(stats.childElementCount ? [stats] : []));
   target.replaceChildren(...(top.childElementCount ? [top] : []), body, ...(help && !slot ? [help] : []));
+  return {empty: false};
 }
 
 // A run's card while its Notion page is being read: the card's own shape, in the app's skeleton bars, so the pane

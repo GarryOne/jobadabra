@@ -1,4 +1,5 @@
-// The top of a run's result in its run panel: how it ended when that needs saying (a failure, a stop, warnings), why, and its fix.
+// The top of a run's one result card in its run panel: how it ended (a failure, a stop, warnings, or a clean end for the kinds in run-result-card.js CLEAN_TOP),
+// the one number, why, and its fix or next step.
 // Moved out of pages/activity-render.js as a pure move (25 Oct 2026). Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js),
 // desktop/test/run-status.test.js and the e2e activity suites.
 import {groupWarnings, limitedJobs, newDetails} from '../run-warnings.js';
@@ -9,9 +10,11 @@ import {rerunSites} from '../visits-card.js';
 import {$, show} from './core.js';
 import {KIND, kindOf, warningSummary, WARN_NOUN, plural, signedInSince, gmailConnected, runButton} from './activity-basics.js';
 import {showPartial} from './activity-partial.js';
+import {cleanTop, titleWithNumber, topTone, TOP_TONES} from '../run-result-card.js';
 
-// `warnings`: the run's warning lines not said elsewhere; `partial`: the sources that did not answer (pages/activity-partial.js); `folded`: its box is folded away.
-export function drawResultTop({run, warnings, partial, folded}) {
+// `warnings`: the run's warning lines not said elsewhere; `partial`: the sources that did not answer (pages/activity-partial.js); `folded`: its box is folded away;
+// `added`: the jobs the run added (its one number). Returns {next}: true when the top offers the run's next step (the header then does not repeat it).
+export function drawResultTop({run, warnings, partial, folded, added = 0}) {
   // Warnings (Notion busy, a step skipped…) shown plainly above the log, not buried in it. A run whose row says
   // Warnings — its own verdict — still says so when neither its log nor its report has a line about it: the list's
   // pill and this card never contradict each other.
@@ -26,11 +29,32 @@ export function drawResultTop({run, warnings, partial, folded}) {
   const warnedOnly = !warnings.length && !partial && !run?.live && !!run?.warned && !head;
   showPartial(partial?.partial);
   const limited = limitedJobs(warnings);
-  show($('activity-warnings'), warnings.length > 0 || warnedOnly || !!head?.problem);
-  if (warnings.length || warnedOnly || head?.problem) {
+  const problem = warnings.length > 0 || warnedOnly || !!head?.problem;
+  const clean = !problem ? cleanTop(run, {kind: kindOf(run), added}) : null;
+  // The top's tone is the pill's (run-result-card.js topTone): a warning amber, a failure red, a clean end green; a live run with warnings stays amber.
+  const tone = run?.live ? 'warn' : clean?.tone || (head?.problem || warnings.length || warnedOnly ? topTone(run, kindOf(run)) : 'warn');
+  for (const each of TOP_TONES) $('activity-warnings').classList.toggle(`tone-${each}`, each === (tone === 'good' && !clean ? 'warn' : tone));
+  show($('activity-warnings-fold'), !clean);   // a clean end has nothing to fold
+  show($('activity-warnings-again'), false);
+  show($('activity-warnings'), problem || !!clean);
+  $('activity-warnings-fix').dataset.go = '';
+  if (clean) {
+    $('activity-warnings').querySelector('.ap-warn-icon').replaceChildren(icon(clean.icon));
+    $('activity-warnings-title').textContent = clean.title;
+    $('activity-warnings-summary').textContent = '';
+    for (const id of ['activity-warnings-hint', 'activity-warnings-external', 'activity-warnings-limit', 'activity-warnings-more', 'activity-warnings-list']) show($(id), false);
+    // Its next step opens the run's new jobs, newest first, as the header's link did (pages/activity.js #activity-go).
+    show($('activity-warnings-fix'), !!clean.next);
+    $('activity-warnings-fix').textContent = clean.next?.label || '';
+    Object.assign($('activity-warnings-fix').dataset, {view: clean.next?.view || '', rerun: '', sites: '', go: clean.next ? '1' : ''});
+    show($('activity-warnings-log'), true);
+    $('activity-warnings').classList.remove('is-folded');
+    return {next: !!clean.next};
+  }
+  if (problem) {
     // The headline says what it means for you ("9 jobs still need scoring"), not which card this is.
     $('activity-warnings-title').textContent = limited ? `${plural(limited, 'job')} still ${limited === 1 ? 'needs' : 'need'} scoring`
-      : head ? head.title : run?.live ? 'Running with warnings' : `${WARN_NOUN[kindOf(run)] || 'Run'} completed with warnings`;
+      : head ? (run?.live ? head.title : titleWithNumber(head.title, kindOf(run), added)) : run?.live ? 'Running with warnings' : `${WARN_NOUN[kindOf(run)] || 'Run'} completed with warnings`;
     const summary = head?.problem ? head.summary : warnings.length ? warningSummary(warnings) : 'The run recorded warnings, with no line about them in its log or report.';
     $('activity-warnings-summary').textContent = summary;
     show($('activity-warnings-hint'), !!head?.hint);
@@ -47,7 +71,11 @@ export function drawResultTop({run, warnings, partial, folded}) {
     $('activity-warnings-fix').dataset.rerun = again ? kindOf(run) : '';
     $('activity-warnings-fix').dataset.sites = again && kindOf(run) === 'visits' ? JSON.stringify(rerunSites(run.log || [])) : '';
     if (head?.fix?.rerun && !again) show($('activity-warnings-fix'), false);
-    show($('activity-warnings-log'), !!head?.viewLog || (!head && warnings.length > 0));   // warnings: the exact lines are in the log
+    // Run again beside a fix that is not itself Run again (owner, 25 Oct 2026: "If an action failed we should have run again"), as the Actions banner has it.
+    const alsoAgain = !run?.live && !!head?.problem && !head?.fix?.rerun && !!runButton(kindOf(run));
+    show($('activity-warnings-again'), alsoAgain);
+    $('activity-warnings-again').dataset.rerun = alsoAgain ? kindOf(run) : '';
+    show($('activity-warnings-log'), !run?.live || !!head?.viewLog || warnings.length > 0);   // every ended run's top offers its log (owner, 25 Oct 2026: "here is the log")
     show($('activity-warnings-limit'), limited > 0);
     const grouped = newDetails(groupWarnings(head?.delivery ? warnings.filter(line => !head.lines.includes(line)) : warnings), head?.delivery ? head.hint : summary);
     // One line needs no toggle: it is shown. Two or more fold behind "View N details".
@@ -63,4 +91,5 @@ export function drawResultTop({run, warnings, partial, folded}) {
     $('activity-warnings-fold').setAttribute('aria-expanded', String(!folded));
     $('activity-warnings-fold').title = folded ? 'Show' : 'Hide';
   }
+  return {next: false};
 }

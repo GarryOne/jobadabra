@@ -37,8 +37,9 @@ test('every state: no failed sources draws no line; unrelated warnings are untou
 
 test('the renderer shows the line only for a finished, ok run (a failed run keeps its error box), for every kind', () => {
   const source = activitySource();
-  assert.match(source, /const partial = run\?\.ok && !run\.live && split\.partial \? split : null;/);
-  assert.match(source, /const warnings = partial \? split\.rest : detailWarnings;/);
+  // A search's sources go on its step row (test/run-result-card.test.js); every other kind keeps the line under its card.
+  assert.match(source, /const partial = !onStep && run\?\.ok && !run\.live && split\.partial \? split : null;/);
+  assert.match(source, /const warnings = partial \|\| onStep \? split\.rest : detailWarnings;/);
   assert.doesNotMatch(source, /kindOf\(run\) === 'search'[^\n]*splitPartial/, 'not a search-only branch: Gmail, employers and analysis runs share it');
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
   assert.ok(html.indexOf('id="activity-card"') < html.indexOf('id="activity-partial"') && html.indexOf('id="activity-partial"') < html.indexOf('id="activity-next"'), 'under the card');

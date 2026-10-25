@@ -1,0 +1,11 @@
+/* One result card per run in its run panel (owner, 25 Oct 2026: "Instead of having 3 cards representing the status/result, there should be one single card"):
+   the top (how it ended: pages/activity-result-top.js), the step rows (#activity-phases) and the kind's own bottom (#activity-card) are parts of one frame,
+   separated by a line, never boxes stacked. Guarded by test/run-result-card.test.js. */
+:is(.activity-panel, .actions-runs) .run-result { display: grid; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+:is(.activity-panel, .actions-runs) .run-result:not(:has(> :not([hidden]))) { display: none; }
+:is(.activity-panel, .actions-runs) .run-result > :is(.activity-warnings, .ap-card, .activity-message, .activity-partial) {
+  margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+:is(.activity-panel, .actions-runs) .run-result > .ap-card { background: transparent; }
+:is(.activity-panel, .actions-runs) .run-result > :not([hidden]) ~ :not([hidden]) { border-top: 1px solid var(--line); }
+:is(.activity-panel, .actions-runs) .run-result > .activity-phases { padding: var(--sp-2) var(--sp-4); }
+:is(.activity-panel, .actions-runs) .run-result > .activity-partial { padding: var(--sp-2) var(--sp-4); }

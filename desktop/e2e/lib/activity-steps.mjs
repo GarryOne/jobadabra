@@ -86,7 +86,7 @@ export async function openRun(ctx, label, {inPanel = false, id, snapAs, situatio
   // The pill is drawn from the run's log: while the app still says it reads it from Notion the pill says "Completed" for a run the list calls "With warnings" (beta 12, CI: 25 s+ behind the start-up reads). Wait for the reading to end, not a longer sleep.
   await page.waitForFunction(() => !/Reading from Notion|Waiting for the log/.test(document.getElementById('log')?.textContent || ''), null, {timeout: 40000}).catch(() => {});   // a log that never arrives is the step's own finding
   // A page read is two Notion calls that wait their turn behind the app's start-up reads (25 s+ seen): wait for the result instead of a fixed look (6 Oct 2026: the step looked before the read ended).
-  if (untilResult) await page.waitForFunction(() => ['activity-card', 'activity-message', 'activity-result'].some(id => { const node = document.getElementById(id); return node && !node.hidden && node.textContent.trim(); }), null, {timeout: 90000}).catch(() => {});
+  if (untilResult) await page.waitForFunction(() => ['activity-card', 'activity-message', 'activity-result', 'activity-warnings'].some(id => { const node = document.getElementById(id); return node && !node.hidden && node.textContent.trim(); }), null, {timeout: 90000}).catch(() => {});
   const seen = await page.evaluate(() => {
     const text = id => (document.getElementById(id)?.hidden ? '' : document.getElementById(id)?.textContent || '').replace(/\s+/g, ' ').trim();
     return {title: text('activity-selected'), status: text('activity-status'), warningsTitle: text('activity-warnings-title'), warnings: text('activity-warnings-summary'),

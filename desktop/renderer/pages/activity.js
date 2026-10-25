@@ -81,9 +81,11 @@ export async function init() {
   document.addEventListener('focus-rendered', () => { if (lastActivity && !$('activity-panel').hidden) renderActivity(lastActivity); });
   $('activity-warnings-fix').addEventListener('click', event => {
     event.preventDefault();
-    const {view, rerun, sites} = event.currentTarget.dataset;
-    if (rerun) rerunKind(rerun, sites ? JSON.parse(sites) : null); else if (view) openView(view);   // a browser run's dialog ticks this run's sites (pages/actions.js)
+    const {view, rerun, sites, go} = event.currentTarget.dataset;
+    if (go) ($('activity-card').querySelector('.run-card-view') || $('activity-go')).click();   // a clean run's next step: exactly its new jobs in Jobs, else the newest first
+    else if (rerun) rerunKind(rerun, sites ? JSON.parse(sites) : null); else if (view) openView(view);   // a browser run's dialog ticks this run's sites (pages/actions.js)
   });
+  $('activity-warnings-again').addEventListener('click', event => rerunKind(event.currentTarget.dataset.rerun));
   $('log').addEventListener('scroll', showJumpToLatest);
   $('log-latest').addEventListener('click', () => { $('log').scrollTop = $('log').scrollHeight; showJumpToLatest(); });
   $('activity-log').addEventListener('click', event => { if ($('activity-log').classList.contains('is-empty') && event.target.closest('summary')) event.preventDefault(); });

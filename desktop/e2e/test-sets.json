@@ -152,6 +152,7 @@
   "plan-gate-real.test.mjs",
   "key-preflight.test.mjs",
   "plan-windows.test.mjs",
+  "import-graph.test.mjs",
   "plan.test.mjs",
   "planted.test.mjs",
   "pool-acted.test.mjs",

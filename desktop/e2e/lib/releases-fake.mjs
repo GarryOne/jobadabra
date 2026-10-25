@@ -10,7 +10,7 @@ export function release(base, version, {prerelease = false, approved = false, bo
     approved && `Beta-approved (Windows): desktop-v${version} (every Windows suite passed on its commit)`].filter(Boolean);
   return {tag_name: `desktop-v${version}`, name: `Build · ${version}`, draft: false, prerelease, html_url: `${base}/release/${version}`,
     body: `${body}${marks.map(line => `\n${line}`).join('')}`,
-    assets: [file(`Job-Pilotto-${version}-arm64.zip`), file(`Job-Pilotto-${version}-x64.exe`)]};
+    assets: [file(`Jobadabra-${version}-arm64.zip`), file(`Jobadabra-${version}-x64.exe`), file(`Job-Pilotto-${version}-arm64.zip`), file(`Job-Pilotto-${version}-x64.exe`)]};
 }
 
 export async function startReleasesFake() {

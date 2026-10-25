@@ -1,5 +1,5 @@
 // Mac smoke test (CI, after the app is built): unpacks the built .zip the way a user's Mac would and checks the packaged app, not the source tree.
-//   node scripts/mac-smoke.mjs <Job-Pilotto-….zip> <output folder>
+//   node scripts/mac-smoke.mjs <Jobadabra-….zip> <output folder>
 // Checks, about 1 minute: the bundled Python imports what the pipeline needs and lists (no) jobs from an empty folder; a secret round-trips through the Keychain;
 // the signature is valid; the packaged binary runs and its native terminal module loads; the app opens the Jobs list (smoke-screens.mjs).
 // owner, 10 Oct 2026: a build is "compiles, unit tests pass, and a very small, fast smoke", the same on Mac and Windows; the Mac had none.
@@ -11,7 +11,7 @@ import path from 'node:path';
 import {jobsScreen} from './smoke-screens.mjs';
 
 const [archive, out] = process.argv.slice(2);
-if (!archive || !out) throw new Error('usage: node scripts/mac-smoke.mjs <Job-Pilotto-….zip> <output folder>');
+if (!archive || !out) throw new Error('usage: node scripts/mac-smoke.mjs <Jobadabra-….zip> <output folder>');
 fs.mkdirSync(out, {recursive: true});
 const t0 = Date.now();
 const say = line => console.log(`• [${String(Math.round((Date.now() - t0) / 1000)).padStart(3)}s] ${line}`);

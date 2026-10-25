@@ -30,17 +30,18 @@ jobs:
         run: |
           if [ -z "$TAG" ]; then   # the newest release that has a Mac zip (a build whose Mac lane failed has none; old builds are pruned)
             for candidate in $(gh release list --limit 15 --json tagName,isDraft -q '.[] | select(.isDraft | not) | .tagName'); do
-              if gh release view "$candidate" --json assets -q '.assets[].name' | grep -q '^Job-Pilotto-[0-9].*-arm64\.zip$'; then TAG=$candidate; break; fi
+              if gh release view "$candidate" --json assets -q '.assets[].name' | grep -qE '^(Jobadabra|Job-Pilotto)-[0-9].*-arm64\.zip$'; then TAG=$candidate; break; fi
             done
           fi
           [ -n "$TAG" ] || { echo "::error::No release with a Mac zip"; exit 1; }
           echo "Smoke-testing $TAG"
-          gh release download "$TAG" -p 'Job-Pilotto-[0-9]*-arm64.zip' -D dist
+          gh release download "$TAG" -p 'Jobadabra-[0-9]*-arm64.zip' -p 'Job-Pilotto-[0-9]*-arm64.zip' -D dist
           ls -la dist
       - name: Smoke test · the built app
         working-directory: desktop
         run: |
-          zips=(../dist/Job-Pilotto-[0-9]*-arm64.zip)
+          zips=(../dist/Jobadabra-[0-9]*-arm64.zip ../dist/Job-Pilotto-[0-9]*-arm64.zip)   # a release made before the rename has only the old name
+          [ -f "${zips[0]}" ] || zips=("${zips[@]:1}")
           node scripts/mac-smoke.mjs "${zips[0]}" smoke
       - name: Keep the Mac screenshot
         if: always()

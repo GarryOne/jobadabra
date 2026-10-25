@@ -12,6 +12,14 @@
 | 🔨 **Build** (a GitHub pre-release) | nobody until approved; 🧪 **Beta** once the gate approves it: people who switched the beta on | nightly at 04:00 Zurich (cron: 02:00 and 03:00 UTC, the step lets the one at 04:xx/05:xx Zurich go on) if anything the app bundles changed since the last release, or on demand: `gh workflow run desktop.yml` (always builds). Not per push (`.github/workflows/desktop.yml`) |
 | ✅ **Stable** ("Latest" on GitHub) | friends' apps + the website's Download buttons | **the nightly pipeline** (below), or you with `tools/release-stable.sh` |
 
+### File names: Jobadabra-*, with Job-Pilotto-* copies (owner, 25 Oct 2026: "Rename first, then beta")
+Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64.dmg/.zip`, `Jobadabra-<version>-x64.exe`, `Jobadabra-windows-x64.exe`, **and the same files under `Job-Pilotto-…`**
+(`tools/release-file-names.sh make`; `check` fails the build when one is missing). The updater matches **GitHub asset names** (not a `latest.yml`), and an installed 0.8.27 matches only `Job-Pilotto-*`; the new updater matches both.
+- **The `Job-Pilotto-*` copies stop by evidence, not by count** (coordinator, 25 Oct 2026): only when the app-version telemetry on /admin shows **no active install on a version whose updater matches only the old names** (0.8.27 and earlier).
+  A friend whose Mac was off for weeks must still find an update. GitHub release assets cost no storage; the copies cost only upload time.
+- Guard: `tests/test_release_file_names.py` fails when the script, `desktop.yml` or `updater.js` drops an old name. To drop them, show the telemetry in the PR and change that test in the same PR.
+- Site side (`jobadabra-web`): `/download/*` prefers `Jobadabra-*`, falls back to `Job-Pilotto-*`; `/install` tries the new zip, then the old alias.
+
 ### The nightly pipeline (`desktop.yml` → `e2e.yml`)
 1. **04:00 Zurich:** `desktop.yml` builds Mac + Windows if the app changed since the last release that reached someone (a stable, or a build approved as beta; a build that failed its gate does not count, so the next night tries again; tests alone do not count), as a pre-release. GitHub may start a scheduled run late.
 2. **When the build finishes**, `e2e.yml` runs **every suite on the build's own commit** (`desktop/e2e/plan-run.mjs`; only for the nightly build: one made by hand is for trying).
@@ -49,9 +57,9 @@ Older builds are `0.4.0-alpha.N`; the updater and the release tools still order 
    journey itself is broken: say why in the release notes. The decision itself is `tools/e2e_gate.py` (tested in `tests/test_e2e_gate.py`).
    It refuses a build whose Windows installer isn't there yet — but that guard is weaker than it looks, and the
    release it promotes is the one `/releases/latest` (what `desktop/lib/updater.js` reads) points at:
-   - `desktop.yml`'s Mac-only fallback copies the **generic** `Job-Pilotto-windows-x64.exe` from the last good release
+   - `desktop.yml`'s Mac-only fallback copies the **generic** `Jobadabra-windows-x64.exe` / `Job-Pilotto-windows-x64.exe` from the last good release
      when the Windows job fails, and the guard greps that generic name. Before promoting, check the release has its own
-     versioned `Job-Pilotto-<version>-x64.exe` and that its size equals the generic one (30 Sep 2026: alpha.131–133 had
+     versioned `Jobadabra-<version>-x64.exe` and that its size equals the generic one (30 Sep 2026: alpha.131–133 had
      no installer of their own and still looked promotable).
    - Pushing twice in a row leaves a **draft** behind: GitHub replaces a superseded *pending* run in the
      `desktop-release` group (`cancel-in-progress: false` still drops a pending one), and `tools/prune-releases.sh`
@@ -127,8 +135,8 @@ doesn't have. Code that adds a column still survives an older workspace (`cron_r
 
 ## 6 · First install for a friend
 
-1. Send the stable download: **Mac** `…/releases/latest/download/Job-Pilotto-mac-arm64.dmg`,
-   **Windows** `…/releases/latest/download/Job-Pilotto-windows-x64.exe`
+1. Send the stable download: **Mac** `…/releases/latest/download/Jobadabra-mac-arm64.dmg`,
+   **Windows** `…/releases/latest/download/Jobadabra-windows-x64.exe`
    (`https://github.com/GarryOne/jobadabra/…`).
 2. Mac: drag it to **Applications** (updates need it there). The first open shows **"Jobadabra" Not Opened** (the app
    isn't notarized yet): click **Done** (never Move to Bin), then **System Settings → Privacy & Security** → scroll to

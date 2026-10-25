@@ -129,7 +129,7 @@ class DesktopWorkflowTest(unittest.TestCase):
         # Windows is not slower than the Mac in beta mode (owner, 10 Oct 2026: "why can't it be just like on Mac?"): its smoke is the same small set (mode smoke), and the slow
         # installed-app checks (add-on, update in place, in-app terminal: windows-smoke.mjs mode packaging) are the weekly run's (windows-smoke.yml, mode full), never a build step.
         self.assertNotIn('packaging', re.sub(r'#.*', '', job('windows')).replace('windows-smoke.mjs', ''))
-        self.assertIn('windows-smoke.mjs "dist/Job-Pilotto-${VERSION}-x64.exe" smoke smoke', job('windows'))
+        self.assertIn('windows-smoke.mjs "dist/Jobadabra-${VERSION}-x64.exe" smoke smoke', job('windows'))
         self.assertNotIn(' packaging', (pathlib.Path(__file__).resolve().parent.parent / '.github/workflows/windows-smoke.yml').read_text())   # the weekly run takes the default: full
         self.assertIn('needs: [changes, build, ai-ready]', job('test-mac'))
         self.assertIn('needs: [changes, windows, ai-ready]', job('test-windows'))

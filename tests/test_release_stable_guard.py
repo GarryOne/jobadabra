@@ -96,6 +96,19 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('Stable:', done.stdout)
 
+    def test_the_jobadabra_names_are_guarded_the_same_way(self):
+        # Since 25 Oct 2026 a build's own installer is Jobadabra-<version>-x64.exe; the Job-Pilotto-* names beside it are copies.
+        new_own, new_generic = OWN.replace('Job-Pilotto', 'Jobadabra'), GENERIC.replace('Job-Pilotto', 'Jobadabra')
+        done = self.promote([(new_own, 7), (new_generic, 7), (OWN, 7), (GENERIC, 7)])
+        self.assertEqual(done.returncode, 0, done.stderr)
+        done = self.promote([(new_own, 7), (new_generic, 8), (OWN, 7), (GENERIC, 7)])
+        self.assertEqual(done.returncode, 1)
+        self.assertIn('Jobadabra-', done.stderr)
+        # the mac-only fallback carried the previous release's installer under the generic names only
+        done = self.promote([(DMG, 1), (new_generic, 7), (GENERIC, 7)])
+        self.assertEqual(done.returncode, 1)
+        self.assertIn('carries no installer of its own', done.stderr)
+
     def test_a_carried_over_installer_is_refused(self):
         # The mac-only fallback: the previous release's .exe under the generic name, nothing versioned.
         done = self.promote([(DMG, 197596581), (GENERIC, 191848238)])

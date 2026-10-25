@@ -127,7 +127,7 @@ export async function stableRelease(current, {fetcher = globalThis.fetch, platfo
 export const MAC_APP = 'Jobadabra.app';
 // Where the new app goes: next to the old one under the new name, unless something is already there (then the old path is kept).
 export function swapTarget(oldApp, exists = fs.existsSync) {
-  const target = path.posix.join(path.posix.dirname(oldApp), MAC_APP);   // Mac paths whatever OS runs the test
+  const target = path.posix.join(path.posix.dirname(oldApp), MAC_APP);   // the installed app's paths, whatever OS runs the test
   return path.posix.basename(oldApp) === MAC_APP || exists(target) ? oldApp : target;
 }
 

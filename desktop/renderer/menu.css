@@ -37,7 +37,7 @@
    in a wide window: it is the way back from a collapsed menu. Guard: desktop/test/rail-short-window.test.js. */
 @media (max-height: 880px) {
   .app.rail #nav-feedback, .app.rail #theme-toggle, .app.rail .allowance-chip { display: none; }
-  .app.rail .sidebar .nav { padding: 9px 2px 3px 0; }
+  .app.rail .sidebar .nav { padding: 15px 2px 0 0; }   /* the top 15px stay: they keep the icon clear of the badge/dot row (style.css), so only the bottom gives */
   .app.rail .palette-hint { padding: 8px 0; }
   .app.rail .sidebar .brand { margin-bottom: 0; }
   .app.rail .sidebar .mark { width: 30px; height: 30px; }

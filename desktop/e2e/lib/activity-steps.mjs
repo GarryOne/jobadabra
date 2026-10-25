@@ -114,7 +114,7 @@ export async function appReady(ctx) {
 // The rows of the open Recent activity panel as a person sees them: {kind, what, state}.
 export const panelRows = page => page.evaluate(() => [...document.querySelectorAll('#activity-recent .recent-row')].map(row => ({kind: row.querySelector('.run-kind')?.textContent || '',
   what: row.querySelector('.run-what')?.textContent?.replace(/\s+/g, ' ').trim() || '', state: row.dataset.state || ''})));
-// Actions → Runs (owner, 25 Oct 2026: every run in the app, the drawer shows one): "View all runs" opens the tab with the run list and the run panel.
+// Actions → Runs (owner, 25 Oct 2026: every run in the app, the drawer shows one): the link to all runs opens the tab with the run list and the run panel.
 export async function openPanel(ctx) {
   const {page} = ctx;
   await page.click('.nav[data-view="actions"]');

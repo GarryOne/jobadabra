@@ -1,6 +1,6 @@
 /* global document */
 // Actions + Recent activity: every task on the Actions page (one row, an end, plain words, a clean log, nothing left Running) and the Recent activity screen itself (filter,
-// "View all runs" (Actions → Runs), a finished run's result card, a run read only from Notion). Starts from a set-up install; resets only its own run rows in Notion.
+// the link to all runs (Actions → Runs), a finished run's result card, a run read only from Notion). Starts from a set-up install; resets only its own run rows in Notion.
 // What goes WRONG (the AI failing, two things at once, a quit in the middle) is the activityfailures suite, in parallel, on its own Notion page.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -72,7 +72,7 @@ export async function run(ctx) {
   // never slowed it: the step passed or failed on step order alone. Find new employers' own task step above still checks its row, its end and its log.
   // ---------- (4) Recent activity itself ----------
   // Before the failure tests: the history keeps about the newest 25 runs, and after the tests below the first tasks have scrolled out of it.
-  await ctx.run('"View all runs" opens Actions → Runs, and its task filter keeps one kind of run at a time', async () => {
+  await ctx.run('The link to all runs opens Actions → Runs, and its task filter keeps one kind of run at a time', async () => {
     await openPanel(ctx);
     const all = await panelRows(page);
     if (!/^\d+$/.test((await page.textContent('#activity-count')).trim())) throw new Error('Runs does not count its runs');

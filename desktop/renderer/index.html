@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="activity-drawer.css">
 <link rel="stylesheet" href="runs-tab.css">
 <link rel="stylesheet" href="run-banner.css">
+<link rel="stylesheet" href="run-result.css">
 <link rel="stylesheet" href="setup-steps.css">
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
 </head>
@@ -1745,26 +1746,30 @@
           <!-- A Logged activity run's job (created or updated): links to it. -->
           <div class="alert tone-good activity-job" id="activity-job" hidden><i data-icon="check-circle"></i>
             <div><strong id="activity-job-title"></strong><div id="activity-job-links"></div></div></div>
-          <div class="alert tone-warn activity-warnings" id="activity-warnings" hidden>
-            <div class="ap-warn-words">
-              <div class="ap-warn-head"><span class="ap-warn-icon"><i data-icon="alert"></i></span><strong id="activity-warnings-title"></strong></div>
-              <p id="activity-warnings-summary"></p>
-              <p class="muted" id="activity-warnings-hint" hidden></p>
-              <div class="alert-actions">
-                <button type="button" class="primary with-icon" id="activity-warnings-external" hidden></button>
-                <button type="button" class="primary" id="activity-warnings-fix" hidden></button>
-                <a href="#" class="link" id="activity-warnings-log" hidden>View technical log</a>
-                <a href="#" class="link" id="activity-warnings-limit" hidden>Increase limit ↗</a>
-                <button class="link" id="activity-warnings-more"></button>
+          <!-- One result card per run (owner, 25 Oct 2026): its top (how it ended), its step rows and its kind's own bottom, one frame (run-result.css). -->
+          <section class="run-result" id="run-result" aria-label="Result">
+            <div class="alert tone-warn activity-warnings" id="activity-warnings" hidden>
+              <div class="ap-warn-words">
+                <div class="ap-warn-head"><span class="ap-warn-icon"><i data-icon="alert"></i></span><strong id="activity-warnings-title"></strong></div>
+                <p id="activity-warnings-summary"></p>
+                <p class="muted" id="activity-warnings-hint" hidden></p>
+                <div class="alert-actions">
+                  <button type="button" class="primary with-icon" id="activity-warnings-external" hidden></button>
+                  <button type="button" class="primary" id="activity-warnings-fix" hidden></button>
+                  <button type="button" class="secondary" id="activity-warnings-again" hidden>Run again</button>
+                  <a href="#" class="link" id="activity-warnings-log" hidden>View technical log</a>
+                  <a href="#" class="link" id="activity-warnings-limit" hidden>Increase limit ↗</a>
+                  <button class="link" id="activity-warnings-more"></button>
+                </div>
+                <ul class="small" id="activity-warnings-list" hidden></ul>
               </div>
-              <ul class="small" id="activity-warnings-list" hidden></ul>
+              <button class="icon-btn ap-warn-fold" id="activity-warnings-fold" aria-expanded="true" title="Hide" aria-label="Hide"><i data-icon="chevron"></i></button>
             </div>
-            <button class="icon-btn ap-warn-fold" id="activity-warnings-fold" aria-expanded="true" title="Hide" aria-label="Hide"><i data-icon="chevron"></i></button>
-          </div>
-          <ol class="activity-phases ap-card" id="activity-phases"></ol>
-          <pre class="activity-message" id="activity-message" hidden></pre>
-          <div class="run-card ap-card" id="activity-card" hidden></div>
-          <p class="muted activity-partial" id="activity-partial" hidden><i data-icon="alert"></i><span id="activity-partial-text"></span> · <button type="button" class="link" id="activity-partial-details">details</button></p>
+            <ol class="activity-phases ap-card" id="activity-phases"></ol>
+            <pre class="activity-message" id="activity-message" hidden></pre>
+            <div class="run-card ap-card" id="activity-card" hidden></div>
+            <p class="muted activity-partial" id="activity-partial" hidden><i data-icon="alert"></i><span id="activity-partial-text"></span> · <button type="button" class="link" id="activity-partial-details">details</button></p>
+          </section>
           <!-- A search with few new jobs: employer coverage, then other ways to broaden the search (pages/activity.js withFewJobsHelp). -->
           <div class="few-help" id="activity-help" hidden></div>
           <section class="insight-next" id="activity-next" hidden></section>

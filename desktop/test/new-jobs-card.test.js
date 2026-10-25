@@ -28,12 +28,12 @@ test('every state of a finished search with new jobs and no digest draws a card;
 });
 
 // Owner, 25 Oct 2026: inside one run, only that run's jobs. The run's own "New job:" lines win over a digest (whose new section can hold earlier runs' jobs).
-test('the renderer lists a search run\'s own new jobs first, a digest when it has none, and the step list leaves the partial note to the line under the card', () => {
+test('the renderer lists a search run\'s own new jobs first, a digest when it has none, and the partial note is said once (a search on its step row, test/run-result-card.test.js; any other kind under its card)', () => {
   const source = activitySource();
   assert.match(source, /const own = kindOf\(run\) === 'search' \? newJobsCard\(run, lines\) : null;\n\s+const card = \(own\?\.items\.length \? own : null\) \|\| \(shownText \? parseRunMessage\(shownText\) : null\) \|\| own;/);
   assert.match(source, /stepNote\(stepWarnings\)/);
   assert.doesNotMatch(source, /stepNote\(detailWarnings\)/);
-  assert.match(source, /const stepWarnings = partial \? split\.rest : detailWarnings;/);
+  assert.match(source, /const stepWarnings = partial \|\| onStep \? split\.rest : detailWarnings;/);
 });
 
 test('the readable log names a new job in words', () => {

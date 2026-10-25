@@ -266,8 +266,10 @@ export function renderActivity(fresh) {
   const detailWarnings = runWarningLines(run);
   // A result with only a few sources that did not answer keeps its card first: one small line under it, no box (pages/activity-partial.js); the step list does not say it again.
   const split = splitPartial(detailWarnings);
-  const partial = run?.ok && !run.live && split.partial ? split : null;
-  const stepWarnings = partial ? split.rest : detailWarnings;
+  // A search's sources that did not answer are in its full report (Reports → Searches), however it ended: never a line in the drawer's problem box (owner, 25 Oct 2026).
+  const onStep = kindOf(run) === 'search' && !run?.live && split.partial ? split.partial : null;
+  const partial = !onStep && run?.ok && !run.live && split.partial ? split : null;
+  const stepWarnings = partial || onStep ? split.rest : detailWarnings;
   // The header: the run's name, its state as a pill, then one muted line — what it did, when it finished, how long it
   // took, what it cost and where it ran (the mockup's "Nothing new · Finished 18:06 · 62 s · GitHub").
   const status = !run ? null : runPill({...run, kind: kindOf(run)}, {long: true});
@@ -282,7 +284,8 @@ export function renderActivity(fresh) {
     || (KITS_CARD.has(kindOf(run)) && parseKitsReady(shownText)) || parseVisits(shownText))) || !!(run && !run.live && mailReportOf(run));
   // A stopped run's box says why in full: the header doesn't repeat it.
   // A box that names what happened in full (stopped, couldn't start, stopped unexpectedly): the header doesn't repeat it.
-  const boxSaysIt = run && (stoppedHead({...run, kind: kindOf(run)}) || waitedHead({...run, kind: kindOf(run)}) || ['unexpected', 'interrupted'].includes(failureHead({...run, kind: kindOf(run)})?.problem));
+  // Any failure the top names says its reason there: the header never repeats it (owner, 25 Oct 2026: one fact, said once).
+  const boxSaysIt = run && (stoppedHead({...run, kind: kindOf(run)}) || waitedHead({...run, kind: kindOf(run)}) || !!failureHead({...run, kind: kindOf(run)})?.problem);
   const said = run && !run.live && !hasCard && !boxSaysIt ? capital(String(outcome(run)).replace(new RegExp(`^${kind?.name || ''}:\\s*`, 'i'), '')) : '';
   const seconds = run?.endedAt && run.startedAt ? Math.round((Date.parse(run.endedAt) - Date.parse(run.startedAt)) / 1000) : null;
   // A run that used no AI shows no cost: "$0" on every row was noise.
@@ -345,7 +348,9 @@ export function renderActivity(fresh) {
   const counted = run?.live && !tabs ? stepCount(run.step) : null;   // any other running task whose step counts
   // Over a search's steps; alone for any other task (the steps listed above are a search's only).
   if (counted) { if (at >= 0 || updates.length) $('activity-phases').prepend(runProgress(counted)); else $('activity-phases').replaceChildren(runProgress(counted)); }
-  show($('activity-phases'), updates.length > 0 || at >= 0 || !!tabs || !!counted);
+  // A search's step rows only while it runs (its live progress): once it ended, the drawer is its result card and the steps are in its full report
+  // (owner, 25 Oct 2026: "this one I don't want to display it in the drawer"; "We'll have the Reports -> Searches which will be more details").
+  show($('activity-phases'), updates.length > 0 || (at >= 0 && !!run?.live) || !!tabs || !!counted);
   // What a one-off job produced (the insight, the list, the report) when it wasn't sent to Telegram. Today's list and
   // Find new employers read better as a small card; anything else stays text. While its Notion page is still being
   // read, the card's own shape shows as skeleton bars, so the pane never looks half-built and then jumps.
@@ -368,7 +373,8 @@ export function renderActivity(fresh) {
   const sites = !run?.live && !card && !mail && !insight && !weekly && !review && !kits && run?.message ? parseVisits(run.message) : null;   // Find jobs using your browser
   const reading = !!run?.pageId && readingPages.has(run.pageId);
   show($('activity-help'), false);   // only a search card with few new jobs fills it
-  if (card) renderRunCard(card, run);
+  let drawnCard = null;   // {empty}: a search that added nothing has no bottom (its top says so)
+  if (card) drawnCard = renderRunCard(card, run);
   else if (mail) {
     renderMailCard(mail, pendingMailQuestions(), lastAnswered());
   }
@@ -383,7 +389,7 @@ export function renderActivity(fresh) {
   if (unsaved) renderNoResult(noResultHead({...run, kind: kindOf(run)}, KIND[kindOf(run)] || {name: 'The run'}), {log: () => $('activity-log')?.scrollIntoView({block: 'nearest'}),
     fix: run.pageId ? () => { runDetails.delete(run.pageId); renderActivity(lastActivity); } : null});
   if (card || insight || weekly || mail || review || kits || sites) show($('activity-result'), false);  // the card shows the same, laid out
-  show($('activity-card'), !!card || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);
+  show($('activity-card'), (!!card && !drawnCard?.empty) || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);
   // A search that can't have found much yet suggests Find new employers, whatever its result card shows (renderer/onboarding.js employersAdvice).
   const advice = employersAdvice(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});
   if (advice) {
@@ -402,8 +408,9 @@ export function renderActivity(fresh) {
   if (emptyResult(kindOf(run), run, drew)) $('activity-panel').dataset.emptyResult = kindOf(run); else delete $('activity-panel').dataset.emptyResult;
   markFallback($('activity-result'), kindOf(run), $('activity-result').hidden ? '' : $('activity-result').textContent);
   // Warnings (Notion busy, a step skipped…) and a failed run's reason: the top of the run's result (pages/activity-result-top.js).
-  const warnings = partial ? split.rest : detailWarnings;
-  drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id)});
+  const warnings = partial || onStep ? split.rest : detailWarnings;
+  const top = drawResultTop({run, warnings, partial, folded: foldedWarnings === String(run?.id), added: found});
+  if (top.next) show($('activity-go'), false);   // the card's top offers it: the header does not repeat it
   // The technical log, in the same place on every run (owner, 6 Oct 2026): open while a run streams here; folded for every finished
   // run (its box or card says what happened, "View technical log" opens it); a run that finishes while you watch keeps what you chose.
   const streamLocal = !!run?.live && run?.where !== 'github';

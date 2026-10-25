@@ -54,6 +54,13 @@ class ReportTest(unittest.TestCase):
         self.assertIn('Scored: 1 of 3 call(s) failed.', lines)
         self.assertIn('1 feed(s) failed: Acme.', lines)
 
+    def test_failed_feeds_beyond_six_names_say_how_many_more(self):
+        run = sample_run()
+        run['feed_errors'] = 8
+        run['failing_feeds'] = [f'Clinic {n}' for n in range(1, 9)]
+        lines = cron_runs.report_lines(run)
+        self.assertIn('8 feed(s) failed: Clinic 1, Clinic 2, Clinic 3, Clinic 4, Clinic 5, Clinic 6 and 2 more.', lines)
+
     def test_quiet_run(self):
         run = {'mode': 'scheduled', 'started_at': '2026-09-26T08:00:05+00:00', 'warnings': [], 'feeds': 40}
         self.assertTrue(cron_runs.report_lines(run)[0].startswith('Quiet run'))

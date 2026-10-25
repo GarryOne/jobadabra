@@ -3,7 +3,7 @@
 // rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/find-card.test.js.
 import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
-import {wire} from '../magic.js';
+import {wand, wire} from '../magic.js';
 import {jobCounts} from '../jobs-view.js';
 import {findCard, readProgressModel} from '../find-card-model.js';
 import {jobsState} from './jobs-state.js';
@@ -28,6 +28,9 @@ function findHead(title, model, lead, {done = false, spinner = false} = {}) {
   box.append(row, el('p', 'muted find-lead', lead));
   return box;
 }
+
+// The compact cards' one button, on the right (a done search and "Find more jobs"): a wand button, so it gets the cursor and the burst (magic.js).
+const again = label => wand(button(label, () => start(), 'primary find-again'));
 
 // Employers read as progress (bar + "1,953 of 2,251"); before the first count the bar slides, so the card never looks still. The raw count of
 // downloaded listings is not shown: 130k+ is noise (owner, 19 Oct 2026).
@@ -76,13 +79,16 @@ function draw(model) {
     card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
   } else if (model.state === 'done') {
     const head = findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
-    if (model.runId) head.append(button('Full report →', () => showFullReport(model.runId), 'link small'));   // every number of this search, in Reports → Searches
-    card.replaceChildren(head);
+    if (model.runId) head.append(wand(button('Full report →', () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches
+    card.replaceChildren(head, again('Find jobs again'));
+  } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")
+    const head = findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
+    card.replaceChildren(head, again('Find jobs'));
   } else if (model.state === 'failed') {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button('Try again', () => start()));
   }
-  show(card, model.state !== 'none');
+  show(card, true);
   document.body.dataset.findCard = model.state;
 }
 

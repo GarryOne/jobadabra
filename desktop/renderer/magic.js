@@ -13,9 +13,9 @@ export function burst(n, reach, rand = Math.random) {
   });
 }
 
-function sparkle(card, x, y, spec) {
+function sparkle(card, x, y, spec, extra = '') {
   const spark = document.createElement('span');
-  spark.className = 'magic-spark';
+  spark.className = `magic-spark ${extra}`.trim();
   spark.style.setProperty('--x', `${x}px`);
   spark.style.setProperty('--y', `${y}px`);
   spark.style.setProperty('--dx', `${spec.dx}px`);
@@ -50,14 +50,15 @@ export function wire(card) {
 // Marks a button or menu row as one where the AI does the work: it gets the wand cursor (magic.css). Static buttons carry data-wand in index.html.
 export const wand = node => { node.dataset.wand = ''; return node; };
 
-// The light that follows the cursor over an Actions task card (owner, 25 Oct 2026: on the card, not just its button; not across the app).
-// One listener for every .task-card, drawn now or later; magic.css paints it from --mx/--my. Mouse and pen only, off with reduced motion.
+// The light that follows the cursor over an Actions task card, an empty "create with AI" card and the Find jobs card (owner, 25 Oct 2026: on the card, not just its button; not across the app).
+const GLOW = '.task-card, .empty-state, .find-card:not(.magic)';   // the one list of glowing cards; magic.css paints the same two
+// One listener for every card in GLOW, drawn now or later; magic.css paints it from --mx/--my. Mouse and pen only, off with reduced motion.
 export function initGlow(root = document) {
   if (root.dataset?.glowWired) return;
   if (root.dataset) root.dataset.glowWired = '1';
   let card = null, at = null;
   root.addEventListener('pointermove', event => {
-    const hit = event.target.closest?.('.task-card');
+    const hit = event.target.closest?.(GLOW);
     if (!hit || !shouldRun({reduced: calm(), pointerType: event.pointerType})) return;
     const wasQueued = !!card;
     card = hit; at = event;
@@ -69,6 +70,22 @@ export function initGlow(root = document) {
       card = null;
     });
   }, {passive: true});
+}
+
+// A press on a wand button (owner, 25 Oct 2026: "like magic wand exploding a bit"): the card burst's sparks from the press point, and the button flashes once.
+// One listener for every [data-wand] button, drawn now or later; the sparks live on the page, so a button's own box does not clip them. Look: magic.css.
+export function initWandBurst(root = document) {
+  if (root.dataset?.burstWired) return;
+  if (root.dataset) root.dataset.burstWired = '1';
+  root.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-wand]');
+    if (!button || button.disabled || calm()) return;
+    const box = button.getBoundingClientRect();
+    const {x, y} = event.detail ? {x: event.clientX, y: event.clientY} : {x: box.left + box.width / 2, y: box.top + box.height / 2};   // a keyboard press bursts from the middle
+    for (const spec of burst(14, 100)) sparkle(document.body, x, y, spec, 'is-press');
+    button.classList.remove('is-zap'); void button.offsetWidth; button.classList.add('is-zap');
+    setTimeout(() => button.classList.remove('is-zap'), 600);
+  });
 }
 
 export function initMagic(root = document) {

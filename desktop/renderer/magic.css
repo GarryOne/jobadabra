@@ -52,12 +52,18 @@
 /* The wand cursor, only where the AI does the work (owner, 25 Oct 2026: not app-wide): the cards above, and any button or menu row with data-wand
    (index.html, magic.js wand()). The tip of the wand is the hotspot; a plain pointer is the fallback. Guard: test/wand-cursor.test.js. */
 .magic-go:not(:disabled), [data-wand]:not(:disabled) { cursor: url(assets/wand.svg) 7 7, pointer; }
-/* The cursor's light over an Actions task card (magic.js initGlow): the .magic glow and lit edge, no lift, no sparkles. */
-.task-card { position: relative; isolation: isolate; }
-.task-card::before, .task-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .35s var(--ease); }
-.task-card::before { z-index: -1; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--signal-rgb) / .16), transparent 70%); }
-.task-card::after { z-index: 2; padding: 1px; background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--signal-rgb) / .8), transparent 75%);
+/* The cursor's light over a card (magic.js initGlow, GLOW there lists the same cards): the .magic glow and lit edge, no lift, no sparkles.
+   The Find jobs card's first-run state is already a .magic card, so it is left out here. */
+:is(.task-card, .empty-state, .find-card:not(.magic)) { position: relative; isolation: isolate; }
+:is(.task-card, .empty-state, .find-card:not(.magic))::before, :is(.task-card, .empty-state, .find-card:not(.magic))::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .35s var(--ease); }
+:is(.task-card, .empty-state, .find-card:not(.magic))::before { z-index: -1; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--signal-rgb) / .16), transparent 70%); }
+:is(.task-card, .empty-state, .find-card:not(.magic))::after { z-index: 2; padding: 1px; background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgb(var(--signal-rgb) / .8), transparent 75%);
   -webkit-mask: linear-gradient(var(--ink) 0 0) content-box, linear-gradient(var(--ink) 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(var(--ink) 0 0) content-box exclude, linear-gradient(var(--ink) 0 0); }
-@media (hover: hover) and (pointer: fine) { .task-card:hover::before, .task-card:hover::after { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .task-card::before, .task-card::after { transition: none; } }
+@media (hover: hover) and (pointer: fine) { :is(.task-card, .empty-state, .find-card:not(.magic)):hover::before, :is(.task-card, .empty-state, .find-card:not(.magic)):hover::after { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { :is(.task-card, .empty-state, .find-card:not(.magic))::before, :is(.task-card, .empty-state, .find-card:not(.magic))::after { transition: none; } }
+/* A press on a wand button (magic.js initWandBurst): the sparks fly from the page, and the button flashes once, stronger than the cursor's light. */
+.magic-spark.is-press { position: fixed; z-index: 9999; }
+.is-zap { animation: magic-zap .6s var(--ease); }
+@keyframes magic-zap { 0% { box-shadow: 0 0 0 0 rgb(var(--signal-rgb) / .7); } 40% { box-shadow: 0 0 18px 6px rgb(var(--signal-rgb) / .55); } 100% { box-shadow: 0 0 0 14px rgb(var(--signal-rgb) / 0); } }
+@media (prefers-reduced-motion: reduce) { .is-zap { animation: none; } }

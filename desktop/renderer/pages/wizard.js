@@ -8,7 +8,7 @@ import {toDraft} from './strategy-review.js';
 import {hideCards} from './setup-strategy.js';
 import {mountEngine} from './ai-engine.js';
 import {canContinue} from '../ai-engine-view.js';
-import {initMagic} from '../magic.js';
+import {initMagic, initWandBurst} from '../magic.js';
 
 // The AI step's engine chooser (pages/ai-engine.js): mounted the first time the step opens. Nothing is pre-selected;
 // Continue once the user picked one that can run (Claude Code verified, or an API key saved or typed).
@@ -94,6 +94,7 @@ export const saveState = {};
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
   initMagic();   // the Welcome card's wand glow and sparkles (magic.css)
+  initWandBurst();   // sparks and a flash when any wand button is pressed (magic.js)
   hostedInit();   // the hosted step and its Settings card are built in script (pages/hosted.js)
   // Finished steps (or any step once setup was done before) can be opened from the sidebar.
   document.querySelectorAll('#step-list li').forEach(li => li.addEventListener('click', () => {

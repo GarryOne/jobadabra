@@ -136,6 +136,7 @@ function menuItem(item) {
   } else if (item.icon) button.append(item.label); else button.textContent = item.label;
   if (item.current) button.setAttribute('aria-current', 'true');
   button.title = item.title || '';
+  if (item.wand) button.dataset.wand = '';   // an AI action: the wand cursor (magic.css)
   button.disabled = !!item.disabled;
   button.setAttribute('role', 'menuitem');
   button.addEventListener('click', event => { closeMenu(); item.run(event); });

@@ -47,6 +47,9 @@ export function wire(card) {
   });
 }
 
+// Marks a button or menu row as one where the AI does the work: it gets the wand cursor (magic.css). Static buttons carry data-wand in index.html.
+export const wand = node => { node.dataset.wand = ''; return node; };
+
 export function initMagic(root = document) {
   root.querySelectorAll('[data-magic]').forEach(wire);
 }

@@ -49,3 +49,6 @@
   .magic:hover { transform: none; }
   .magic:hover .ui-tile { transform: rotate(-6deg); }
 }
+/* The wand cursor, only where the AI does the work (owner, 25 Oct 2026: not app-wide): the cards above, and any button or menu row with data-wand
+   (index.html, magic.js wand()). The tip of the wand is the hotspot; a plain pointer is the fallback. Guard: test/wand-cursor.test.js. */
+.magic-go:not(:disabled), [data-wand]:not(:disabled) { cursor: url(assets/wand.svg) 9 9, pointer; }

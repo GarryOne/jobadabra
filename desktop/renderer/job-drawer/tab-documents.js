@@ -2,6 +2,7 @@
 // inside Application → Preparation (owner, 18 Oct 2026: "New 'Documents' tab"). The CV opens in its window and saves as a file; the letter is
 // the job's own (job-letter.js: copy, edit, write again) or, before one is made, the kit's. Nothing drafted: the state card with the action.
 import {el, pill} from '../components.js';
+import {wand} from '../magic.js';
 import {stateCard} from './parts.js';
 import {jobLetterView} from './job-letter.js';
 import {docButton, docCard, docCopy, letterPanel, rows} from './documents-rows.js';
@@ -19,7 +20,7 @@ function tailorButton(job, redraw, status, label = 'Tailor CV + cover letter') {
     const error = await tailor(job, redraw)();
     if (error) { run.disabled = false; run.textContent = 'Try again'; status.replaceChildren(pill('Failed', 'bad'), ` ${error}`); }
   }, true);
-  return run;
+  return wand(run);
 }
 
 function cvCard(job, files, redraw) {

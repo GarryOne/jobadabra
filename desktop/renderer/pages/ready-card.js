@@ -2,6 +2,7 @@
 // start the night now (the test), and in the morning one row per form (complete, what is left, a wall) with Done and the night's video of its fill (a popup). You press Submit; nothing here does. Built from the task-card parts the Tailor card uses (.task-card, .task-body, pill). Guard: test/ready-card.test.js.
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
+import {wand} from '../magic.js';
 import {$} from './core.js';
 import {liveOf, readyToSubmit, rowOf} from './ready-rows.js';
 import {liveParts} from './ready-live.js';
@@ -72,6 +73,7 @@ export function build() {
   const card = el('div', 'task-card is-medium ready-card'), words = el('div', 'task-words');
   card.append(el('span', 'task-category', 'APPLICATIONS'));
   const main = el('div', 'task-body'), send = el('button', 'secondary action', 'Fill tonight on the server'), run = el('button', 'secondary action', 'Fill now');
+  wand(send); wand(run);
   send.id = 'ready-send'; send.dataset.palette = 'ready'; run.id = 'ready-run';
   const hidden = el('b', '', 'Ready to send: fill tonight\'s forms on the server (nothing is submitted)'); hidden.hidden = true; send.prepend(hidden);
   words.append(el('b', '', 'Ready to send'), el('span', 'muted', 'Your finished jobs are filled on our server overnight. Nothing is submitted: in the morning you open a filled form and press Submit yourself.'));

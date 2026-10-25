@@ -5,6 +5,7 @@
 // Kept apart from Suggestions: a recommendation and an outdated score are different things. Guarded by test/strategy-rescore.test.js and
 // tests/test_strategy_outdated.py.
 import {el, tile} from '../components.js';
+import {wand} from '../magic.js';
 import {$, show} from './core.js';
 import {startSearch} from './jobs.js';
 import {toastMessage} from './startup.js';
@@ -27,6 +28,7 @@ export function drawOutdated(outdated, reload) {
   }
   const go = el('button', 'secondary item-action', busy ? 'Re-scoring…' : 'Re-score jobs');
   go.type = 'button';
+  wand(go);
   go.disabled = busy;
   go.addEventListener('click', () => confirmRescore(count, outdated, reload));
   box.replaceChildren(tile('refresh', 'info'), words, go);

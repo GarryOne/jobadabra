@@ -313,7 +313,7 @@ export function renderJobs() {
         })});
     }
     if (!job.kit && job.code && job.url && job.status !== 'applied' && !prepareState(job)) {
-      menu.push({icon: 'layers', label: 'Prepare only', title: 'Draft the kit (about 20 s) without opening the form: read it first, then Apply', run: () =>
+      menu.push({icon: 'layers', wand: true, label: 'Prepare only', title: 'Draft the kit (about 20 s) without opening the form: read it first, then Apply', run: () =>
         background('Preparing kit…', async () => {
           const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
           if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Prepare failed', result.error || 'Try again.');
@@ -341,7 +341,7 @@ export function renderJobs() {
         const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`);
         if (result.ok) job.tailored = true; else toastMessage('Tailoring failed', result.error || 'Try again.');
       });
-      menu.push({icon: 'scissors', label: job.tailored ? 'Re-tailor CV + cover letter' : 'Tailor CV + cover letter',
+      menu.push({icon: 'scissors', wand: true, label: job.tailored ? 'Re-tailor CV + cover letter' : 'Tailor CV + cover letter',
         title: 'Make a version of your CV and a cover letter for this job: bullets reordered and reworded toward the posting, only from facts in your CV (about 1–2 min)',
         run: tailorNow});
       // Which terms the posting asks for the CV states, and which requirements could be a yes/no question on the form (a dialog: nothing added to the list).

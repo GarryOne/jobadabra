@@ -674,3 +674,12 @@ table.lib-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm
 .is-card-opens { cursor: pointer; }
 .is-card-opens:hover { border-top-color: var(--line-strong); border-right-color: var(--line-strong); border-bottom-color: var(--line-strong); box-shadow: var(--shadow-sm); }   /* not the left edge: a card's accent stays */
 .is-card-opens:has(:focus-visible) { box-shadow: 0 0 0 2px var(--signal-line); }
+
+/* A grid of cards, one rule for every page (owner, 25 Oct 2026: "Technical log should be last, full-row. The others, which have fixed height, and not too much
+   content, they can 2 columns per row"; "it's very important to not have weird empty spaces. But rather have same height for all the columns"): small fixed
+   cards two per row, both as tall as the row (content at their top); a card whose height varies (a log, a long list) is .is-wide, on its own row at full width.
+   card-grid.js pairRows gives an unpaired card its own row, so no half row stays empty. One column in a narrow window. Guards: test/card-grid.test.js. */
+.card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: stretch; }
+.card-grid > * { min-width: 0; align-content: start; }
+.card-grid > .is-wide { grid-column: 1 / -1; }
+@media (max-width: 760px) { .card-grid { grid-template-columns: minmax(0, 1fr); } }

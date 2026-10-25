@@ -88,8 +88,10 @@ export function report(row) {
   if (!row.details) cards.push({id: 'totals', kind: 'facts', category: 'TOTALS', title: 'What the row kept', cells: some([['New jobs', n(stats.new_jobs)], ['Changed', n(stats.changed_jobs)],
     ['Employer pages read', n(stats.feeds)], ['Pages that failed', n(stats.feed_errors)], ['Expired', n(stats.closed_stale)], ['Tokens', n(stats.tokens_total)], ['AI cost', money(stats.ai_cost_usd)]]).map(cell), chips: []});
   const log = String(row.log || '').split('\n').filter(Boolean);
-  if (log.length) cards.push({id: 'log', kind: 'fold', category: 'RAW', title: 'Technical log', lines: log, mono: true});
-  return {tiles, cards};
+  if (log.length) cards.push({id: 'log', kind: 'fold', category: 'RAW', title: 'Technical log', lines: log, mono: true, wide: true});
+  // Two small cards per row (the shared .card-grid, card-grid.js), a wide one (the Technical log) last on its own row (owner, 25 Oct 2026: "Technical log should
+  // be last, full-row. The others, which have fixed height, and not too much content, they can 2 columns per row"). Guard: test/searches-view.test.js.
+  return {tiles, cards: [...cards.filter(card => !card.wide), ...cards.filter(card => card.wide)]};
 }
 
 // What a list row shows at a glance: the run's one-line meta (when is drawn by the page).

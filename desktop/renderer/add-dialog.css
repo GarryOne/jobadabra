@@ -7,3 +7,6 @@
 .add-choice-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .add-choice-text b { font-size: var(--fs-md); }
 .add-choice > .icon { color: var(--muted); width: 18px; height: 18px; flex: none; }
+/* The toolbar's "+ Add": the plus and the word on one centre line (a bare inline icon sat above the text). */
+#add-open { display: inline-flex; align-items: center; gap: var(--sp-2); }
+#add-open .icon { width: 16px; height: 16px; flex: none; }

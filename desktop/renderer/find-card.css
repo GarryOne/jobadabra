@@ -33,3 +33,8 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-live > summary::after { content: ""; width: .5em; height: .5em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
 .find-live[open] > summary::after { transform: rotate(-135deg); }
 .find-live[open] > .run-card-rows { margin-top: var(--sp-3); }
+/* The compact cards (a done search, "Find more jobs"): the words on the left, one button on the right, centred on the card (owner, 25 Oct 2026). */
+.find-card.is-done, .find-card.is-none { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.find-card.is-done .find-head-box, .find-card.is-none .find-head-box { flex: 1; min-width: 0; }
+.find-card.is-done .find-scope, .find-card.is-none .find-scope { display: none; }
+.find-again { flex: none; }

@@ -13,7 +13,7 @@ const html = read('index.html');
 const STATIC = ['id="refresh"', 'data-refresh-jobs>', 'data-command="run"', 'id="tailor-top"', 'data-command="mail"', 'id="visits-run"', 'id="tune-open"',
   'data-command="weekly"', 'id="draft-build"', 'id="draft-redraft"', 'id="draft-again"', 'id="letter-draft"'];
 const BUILT = [['pages/activity-visits.js', "const claude = el('button'"], ['pages/strategy-rescore.js', "const go = el('button'"], ['pages/base-letter.js', "ai.id = 'letter-start-ai'"],
-  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"]];
+  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"]];
 
 test('every AI action in index.html carries data-wand', () => {
   for (const key of STATIC) {
@@ -56,11 +56,30 @@ test('the wizard cards (Welcome, Your CV) and the Jobs empty card use the wand',
 
 test('the cursor light over every Actions task card: one listener for the .task-card class, the CSS paints it from --mx/--my, hover and fine pointers only', () => {
   assert.match(read('pages/actions.js'), /initGlow\(\)/);
-  assert.match(read('magic.js'), /closest\?\.\('\.task-card'\)/);
+  assert.match(read('magic.js'), /const GLOW = '\.task-card, \.empty-state, \.find-card:not\(\.magic\)'/);
+  assert.match(read('magic.js'), /closest\?\.\(GLOW\)/);
   const css = read('magic.css');
-  assert.match(css, /\.task-card::before\s*\{[^}]*var\(--mx/);
-  assert.match(css, /\(hover: hover\) and \(pointer: fine\)\s*\{\s*\.task-card:hover::before/);
-  assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\.task-card::before/);
+  assert.match(css, /:is\(\.task-card, \.empty-state, \.find-card:not\(\.magic\)\)::before\s*\{[^}]*var\(--mx/);
+  assert.match(css, /\(hover: hover\) and \(pointer: fine\)\s*\{\s*:is\([^)]*\)\)?:hover::before/);
+  assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*:is\([^)]*\)\)?::before/);
   const cards = [...html.matchAll(/class="[^"]*\btask-card\b[^"]*"/g)];
   assert.ok(cards.length >= 6, 'the Actions cards are found');
+});
+
+test('a press on any wand button bursts sparks and flashes it: one delegated listener, started at start-up, still for reduced motion', () => {
+  const js = read('magic.js'), css = read('magic.css');
+  assert.match(js, /closest\?\.\('\[data-wand\]'\)/);
+  assert.match(js, /if \(!button \|\| button\.disabled \|\| calm\(\)\) return;/);
+  assert.match(read('pages/wizard.js'), /initWandBurst\(\)/);
+  assert.match(css, /\.is-zap\s*\{\s*animation: magic-zap/);
+  assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\.is-zap\s*\{\s*animation: none/);
+  assert.match(css, /\.magic-spark\.is-press\s*\{\s*position: fixed/);
+});
+
+test('the compact Find jobs cards (done, and "Find more jobs" when no search finished here) carry the same one button, on the right', () => {
+  const js = read('pages/jobs-find.js'), css = read('find-card.css');
+  assert.match(js, /card\.replaceChildren\(head, again\('Find jobs again'\)\)/);
+  assert.match(js, /findHead\('Find more jobs'[\s\S]*again\('Find jobs'\)/);
+  assert.doesNotMatch(js, /show\(card, model\.state !== 'none'\)/, 'the none state draws the compact card');
+  assert.match(css, /\.find-card\.is-done, \.find-card\.is-none \{[^}]*justify-content: space-between/);
 });

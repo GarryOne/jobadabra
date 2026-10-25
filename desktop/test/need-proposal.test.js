@@ -60,9 +60,9 @@ test('every way the card is fed shows proposals: Claude\'s message (askRow) and 
   assert.match(needs, /export function emptyRow\(label, item\) \{\n  const proposal = proposalFor\(item, label\); if \(proposal\) return markKnockout\(proposedRow/);
 });
 
-test('Enter in an answer box presses its button, for every row with one (Use, Fill it in, Send to Claude)', () => {
+test('Enter in an answer box presses its button, for every row with one (Use, Fill it in, Send)', () => {
   const sources = ['session-needs.js', 'need-proposal.js'].map(name => fs.readFileSync(new URL(`../renderer/pages/${name}`, import.meta.url), 'utf8')).join('\n');
-  const buttons = [...sources.matchAll(/const (\w+) = smallButton\('(Use|Fill it in|Send to Claude)'/g)];
+  const buttons = [...sources.matchAll(/const (\w+) = smallButton\('(Use|Fill it in|Send)'/g)];
   assert.equal(buttons.length, 3);
   for (const [, name, text] of buttons) assert.match(sources, new RegExp(`submitOnEnter\\(input, ${name}\\)`), `${text}: Enter does nothing`);
   // The page module needs a DOM to import: the helper is run from its own source.

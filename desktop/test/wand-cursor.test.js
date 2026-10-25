@@ -53,3 +53,14 @@ test('the wizard cards (Welcome, Your CV) and the Jobs empty card use the wand',
   assert.equal((html.match(/class="primary magic-go"/g) || []).length >= 2, true);
   assert.match(read('pages/jobs-find.js'), /primary magic-go/);
 });
+
+test('the cursor light over every Actions task card: one listener for the .task-card class, the CSS paints it from --mx/--my, hover and fine pointers only', () => {
+  assert.match(read('pages/actions.js'), /initGlow\(\)/);
+  assert.match(read('magic.js'), /closest\?\.\('\.task-card'\)/);
+  const css = read('magic.css');
+  assert.match(css, /\.task-card::before\s*\{[^}]*var\(--mx/);
+  assert.match(css, /\(hover: hover\) and \(pointer: fine\)\s*\{\s*\.task-card:hover::before/);
+  assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\.task-card::before/);
+  const cards = [...html.matchAll(/class="[^"]*\btask-card\b[^"]*"/g)];
+  assert.ok(cards.length >= 6, 'the Actions cards are found');
+});

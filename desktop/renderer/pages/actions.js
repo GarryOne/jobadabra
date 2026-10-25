@@ -10,6 +10,7 @@ import {openView} from './nav.js';
 import {showStatusCard} from './runs-page.js';
 import {initBoard} from './actions-board.js';
 import {initActionsLayout} from './actions-layout.js';
+import {initGlow} from '../magic.js';
 import {initReadyCard} from './ready-card.js';
 import {initFocusReady} from './focus-ready.js';
 import {initFocusIncognito} from './focus-incognito.js';
@@ -189,6 +190,7 @@ export async function init() {
   initFocusIncognito();   // one line when refused sites wait for Chrome's Allow in Incognito (focus-incognito.js)
   initFocusReady();   // Ready to send on Focus: one line above Up next, owner only (focus-ready.js)
   initReadyCard();   // Ready to send: its card, only on the owner's install (ready-card.js)
+  initGlow();   // the light that follows the cursor over each task card (magic.js, magic.css)
   initActionsLayout();   // the More group for the smaller tasks, the schedule lines (actions-layout.js)
   $('visits-at-once').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); if (!$('visits-start').disabled) $('visits-start').click(); } });
   // Replace CV: the new file is used for uploads at once; the review of what it changes in the Profile (and so in

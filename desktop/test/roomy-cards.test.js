@@ -30,7 +30,7 @@ test('class: every Strategy card is inside .roomy-cards and draws its header wit
     assert.match(head, /^<div class="card-head"><span class="ui-tile tone-\w+">.*?<div class="card-words"><h3>/, head);
   }
   assert.match(read('pages/strategy-cards.js'), /return cardHead\(\{glyph, tone, title, lead, badge, action\}\);/);
-  assert.match(yours, /class="roomy-pair"/, 'Locations beside Job preferences through the shared pair');
+  assert.match(yours, /class="roomy-pair card-grid"/, 'Locations beside Job preferences through the shared pair');
   assert.doesNotMatch(read('strategy-cards.css'), /\.strategy-pair\b/, 'no page-only copy of the pair');
 });
 

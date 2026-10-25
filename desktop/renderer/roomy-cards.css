@@ -67,10 +67,7 @@
 
 .roomy-cards .card { container-type: inline-size; }
 
-/* Two cards side by side where they fit (Locations | Job preferences); one column in a narrow window. */
-.roomy-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
-.roomy-pair > * { min-width: 0; }
-@container (max-width: 900px) { .roomy-pair { grid-template-columns: minmax(0, 1fr); } }
+/* Locations and Job preferences: a .card-grid of .is-wide cards, one column (they grow with the user's data; owner, 25 Oct 2026). */
 
 /* Profile cards (mockup 05, .setting.panel.roomy): the same header (tile · title over its lead · quiet Edit), read views as columns. The fold (profile-fold.js)
    keeps its title | summary | actions columns while folded; open, the title takes the width and the lead shows. */

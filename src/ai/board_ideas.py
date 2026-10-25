@@ -78,37 +78,76 @@ def save(data):
     file.write_text(json.dumps(data, ensure_ascii=False, indent=1))
 
 
-def asked_for(search):
-    """(cache key, countries, roles, kinds, place words) of this search's board proposal; None without countries or roles. The key is the
-    proposal's in found_boards.json 'ideas' (and its web search's, src/sources/board_web.py)."""
+SLICE = 5   # countries per proposal call; a region's countries are split into equal slices, each asked (26 Oct 2026: Europe = its first 5 only)
+
+
+def _asked(countries, roles, kinds, place_words):
+    key = hashlib.sha256(json.dumps([countries, sorted(roles), kinds, 'main-model'], ensure_ascii=False).encode()).hexdigest()[:12]
+    return key, countries, roles, kinds, place_words
+
+
+def _parts(search):
     from .. import places
     from ..notion.search_settings import terms
     from ..role_kinds import of_search
-    countries = places.countries(search, limit=5)
+    countries = places.countries(search, limit=None)
     roles = terms((search or {}).get('role_keywords'))[:20]
     if not countries or not roles:
         return None
-    kinds = sorted(of_search(search) or [])
-    key = hashlib.sha256(json.dumps([countries, sorted(roles), kinds, 'main-model'], ensure_ascii=False).encode()).hexdigest()[:12]
-    return key, countries, roles, kinds, [w for w in places.words_of(search)][:10]
+    return countries, roles, sorted(of_search(search) or []), [w for w in places.words_of(search)][:10]
+
+
+def asked_for(search):
+    """(cache key, countries, roles, kinds, place words) of this search's whole board proposal, every country of its places; None without
+    countries or roles. Its web search (src/sources/board_web.py) is keyed by it; the proposal itself is asked in slices (slices)."""
+    parts = _parts(search)
+    return _asked(*parts) if parts else None
+
+
+def slices(search):
+    """[asked_for-shaped tuples] per slice of at most SLICE countries, the slices as equal as they can be: every country of a region is asked
+    with the same weight (owner, 26 Oct 2026: "Europe should be europe. All countries should have equal weight.")."""
+    parts = _parts(search)
+    if not parts:
+        return []
+    countries, roles, kinds, place_words = parts
+    count = -(-len(countries) // SLICE)
+    size, extra = divmod(len(countries), count)
+    out, start = [], 0
+    for n in range(count):
+        end = start + size + (1 if n < extra else 0)
+        out.append(_asked(countries[start:end], roles, kinds, place_words))
+        start = end
+    return out
 
 
 def ideas(search, client=None):
-    """The boards Claude proposed for this search's countries, roles and kinds (validated), from the cache when it already answered for
-    them; [] without AI or without countries."""
-    asked = asked_for(search)
+    """The boards Claude proposed for this search's countries, roles and kinds (validated), one call per slice of countries, each from the
+    cache when it already answered for it; [] without AI or without countries."""
+    asked = slices(search)
     if not asked:
         return []
+    shared = ranked(served([country for part in asked for country in part[1]]), search)
+    own = []
+    for part in asked:
+        found = _proposal(part, client)
+        if found is None:
+            return _merge(own, shared)   # no AI or it failed: what is known so far, and the shared boards
+        own.extend(board for board in found if board['host'] not in {b['host'] for b in own})
+    return _merge(own, shared)
+
+
+def _proposal(asked, client=None):
+    """The validated boards Claude proposed for one slice (cached per its key), or None without AI or when the call failed."""
     key, countries, roles, kinds, place_words = asked
     data = load()
-    shared = ranked(served(countries), search)
     if key in (data.get('ideas') or {}):
-        return _merge(data['ideas'][key], shared)
+        return data['ideas'][key]
     try:
         from . import cost, engine
         if client is None:
             if not engine.ready():
-                return shared   # no AI: the boards other installs found for these countries
+                return None   # no AI: the boards other installs found for these countries
             client = engine.client(action='scout')
         response = client.messages.create(
             model=MODEL, max_tokens=6000, system=[{'type': 'text', 'text': SYSTEM}],
@@ -122,12 +161,12 @@ def ideas(search, client=None):
     except Exception as error:  # noqa: BLE001 — the fixed boards and the shared ones still run
         print(f'Job boards: the AI proposed none this time ({reason(error)}); the known boards still run', flush=True)
         detail('job boards', error)
-        return shared
+        return None
     found = list({b['host']: b for b in (valid(item) for item in answer) if b}.values())[:MAX_BOARDS]
     data.setdefault('ideas', {})[key] = found
     save(data)
     print(f"Job boards proposed for {', '.join(countries)}: {', '.join(b['name'] for b in found) or 'none'}", flush=True)
-    return _merge(found, shared)
+    return found
 
 
 def served(countries):
@@ -173,7 +212,7 @@ def proven(search, limit=2):
     """The boards that gave installs like this one the most jobs in their places (rank > 0), best first, without any AI call: read in the
     first-jobs slice (src/first_jobs.py)."""
     from .. import places
-    countries = places.countries(search, limit=5)
+    countries = places.countries(search, limit=None)
     return [board for board in ranked(served(countries), search) if board.get('rank')][:limit] if countries else []
 
 

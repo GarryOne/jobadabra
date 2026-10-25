@@ -11,9 +11,10 @@ const html = read('index.html');
 
 // The registry: each AI action, found by the text that identifies its button in index.html or its builder in a script.
 const STATIC = ['id="refresh"', 'data-refresh-jobs>', 'data-command="run"', 'id="tailor-top"', 'data-command="mail"', 'id="visits-run"', 'id="tune-open"',
-  'data-command="weekly"', 'id="draft-build"', 'id="draft-redraft"', 'id="draft-again"', 'id="letter-draft"'];
-const BUILT = [['pages/activity-visits.js', "const claude = el('button'"], ['pages/strategy-rescore.js', "const go = el('button'"], ['pages/base-letter.js', "ai.id = 'letter-start-ai'"],
-  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"]];
+  'data-command="weekly"', 'id="cvc-ai-run"', 'id="strategy-redo"', 'id="profile-empty-rebuild"', 'id="prep-go"', 'id="check-mail"', 'id="jobs-unscored-go"',
+  'id="iv-save-review"', 'id="rescore-go"', 'id="ss-needs-send-btn"', 'id="draft-build"', 'id="draft-redraft"', 'id="draft-again"', 'id="letter-draft"'];
+const BUILT = [['pages/activity-visits.js', "const claude = el('button'"], ['pages/strategy-rescore.js', "const go = el('button'"],
+  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/activity-mail.js', "'Build prep kit'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"]];
 
 test('every AI action in index.html carries data-wand', () => {
   for (const key of STATIC) {
@@ -82,4 +83,13 @@ test('the compact Find jobs cards (done, and "Find more jobs" when no search fin
   assert.match(js, /findHead\('Find more jobs'[\s\S]*again\('Find jobs'\)/);
   assert.doesNotMatch(js, /show\(card, model\.state !== 'none'\)/, 'the none state draws the compact card');
   assert.match(css, /\.find-card\.is-done, \.find-card\.is-none \{[^}]*justify-content: space-between/);
+});
+
+test('an empty state whose action says the AI does the work is marked ai: true (the wand + burst), in every caller and in the gallery', () => {
+  const callers = ['pages/base-letter.js', 'gallery-cards.js'];
+  for (const file of callers) {
+    const text = read(file);
+    for (const [, label] of text.matchAll(/\{label: '([^']*(?:with AI|with Claude)[^']*)'([^}]*)\}/g)) assert.match(text, new RegExp(`\\{label: '${label}', ai: true`), `${file}: ${label}`);
+  }
+  assert.match(read('page-parts.js'), /action\.ai \? wand\(/);
 });

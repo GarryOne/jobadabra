@@ -4,6 +4,7 @@
 // Living copy: npm run gallery → "Page blocks". Guarded by test/page-parts.test.js.
 import {el, pill, tile} from './components.js';
 import {icon} from './icons.js';
+import {wand} from './magic.js';
 
 const button = (label, className, run, aria = '') => {
   const node = Object.assign(el('button', className, label), {type: 'button'});
@@ -70,7 +71,7 @@ export function reviewList(items = [], {doneLabel = 'Reviewed', empty = 'Nothing
 }
 
 // Something not made yet (a base letter, a first CV): a neutral chip, an icon, a title, one line, then two actions (the first is the primary next step,
-// the second quiet) and an optional muted note under them. actions: [{label, run}] (at most two).
+// the second quiet) and an optional muted note under them. actions: [{label, run, ai}] (at most two; ai: true when the AI does the work: the wand cursor and burst, magic.js).
 export function emptyState({icon = 'file', chip = 'Not created', title = '', text = '', actions = [], note = ''} = {}) {
   const box = el('div', 'empty-state');
   box.append(tile(icon, 'neutral'));
@@ -79,7 +80,7 @@ export function emptyState({icon = 'file', chip = 'Not created', title = '', tex
   if (text) box.append(el('p', 'muted', text));
   if (actions.length) {
     const row = el('div', 'empty-state-actions');
-    row.append(...actions.slice(0, 2).map((action, i) => button(action.label, i === 0 ? 'primary' : 'secondary', () => action.run?.())));
+    row.append(...actions.slice(0, 2).map((action, i) => action.ai ? wand(button(action.label, i === 0 ? 'primary' : 'secondary', () => action.run?.())) : button(action.label, i === 0 ? 'primary' : 'secondary', () => action.run?.())));
     box.append(row);
   }
   if (note) box.append(el('p', 'muted small', note));

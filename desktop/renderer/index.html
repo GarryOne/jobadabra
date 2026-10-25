@@ -399,7 +399,7 @@
       <div class="job-split" id="jobs-split">
         <div class="job-list" id="jobs-body"></div>
       </div>
-      <div class="callout tone-warn" id="jobs-unscored" hidden><span id="jobs-unscored-text"></span> <button class="link" id="jobs-unscored-go" type="button">Check now</button></div>
+      <div class="callout tone-warn" id="jobs-unscored" hidden><span id="jobs-unscored-text"></span> <button class="link" id="jobs-unscored-go" type="button" data-wand>Check now</button></div>
       <p class="empty" id="jobs-empty" hidden>No jobs here yet. Click <button type="button" class="link" data-refresh-jobs data-wand><b>Find jobs</b></button>.</p>
     </div>
 
@@ -534,7 +534,7 @@
               <span id="ss-needs-count"></span>
             </div>
             <ul class="ss-checks ss-needs-list" id="ss-needs"></ul>
-            <div class="panel-foot" id="ss-needs-send" hidden><p class="message" id="ss-needs-send-text"></p><button class="primary" id="ss-needs-send-btn">Send to Claude</button></div>
+            <div class="panel-foot" id="ss-needs-send" hidden><p class="message" id="ss-needs-send-text"></p><button class="primary" id="ss-needs-send-btn" data-wand>Send to Claude</button></div>
             <p class="muted small ss-needs-none">Nothing needs you now.</p>
             <button class="ss-needs-history" id="ss-needs-history" hidden></button>
           </section>
@@ -793,7 +793,7 @@
           <input id="iv-job-url" type="url" placeholder="Paste the job's link: https://…" hidden>
           <p class="fine">Not in your Applications yet? It's added there when you save (an interview means you applied).</p>
           <div class="inline spaced">
-            <button class="primary" id="iv-save-review">Save and review</button>
+            <button class="primary" id="iv-save-review" data-wand>Save and review</button>
             <button class="ghost" id="iv-save">Save without review</button>
             <button class="ghost" id="iv-discard">Delete draft</button>
           </div>
@@ -829,7 +829,7 @@
     <div class="view strategy-page" data-view="strategy" hidden>
       <header class="view-head"><div><h1>Search strategy</h1><p class="muted">Choose the jobs you want and how they are ranked.</p></div>
         <div class="head-actions"><span class="synced" id="strategy-synced"></span>
-          <button class="secondary" id="strategy-redo">↻ Rebuild from CV…</button>
+          <button class="secondary" id="strategy-redo" data-wand>↻ Rebuild from CV…</button>
           <!-- Owner, 18 Oct 2026 (review fix 10): Notion is one "View source in Notion" in this menu, on the Notion store only (pages/strategy.js). -->
           <button type="button" class="secondary ui-more" id="strategy-more" data-notion-only title="More" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><i data-icon="more"></i></button>
           <button class="primary" id="strategy-jobs">View matching jobs</button></div></header>
@@ -841,7 +841,7 @@
       <div class="strategy-notices">
       <div class="alert tone-bad settings-alert" id="strategy-profile-empty" hidden><i data-icon="alert"></i>
         <div><strong>Your Profile is empty, so fit scores are paused</strong><p>Your Profile is still the blank template, so no job can be scored against it. Rebuild it from your CV here, or fill it in<span data-notion-only> Notion</span>.</p></div>
-        <button class="primary" id="profile-empty-rebuild">Rebuild from CV</button></div>
+        <button class="primary" id="profile-empty-rebuild" data-wand>Rebuild from CV</button></div>
       <div class="alert tone-info settings-alert search-changed" id="strategy-search-changed" hidden><i data-icon="refresh"></i>
         <div><strong>Your search changed</strong><p>Refresh your jobs to apply it: jobs outside your search are removed (not the ones you applied to or interview for), and new ones are found.</p></div>
         <button class="primary" data-refresh-jobs data-wand>Find jobs</button></div>
@@ -1011,7 +1011,7 @@
             <div class="cvc-folds" id="cvc-folds" hidden></div>
             <div class="cvc-actions">
               <div class="cvc-action"><button class="secondary with-icon" id="cvc-run"><i data-icon="file"></i><span>Check PDF readability</span></button><span class="muted small" id="cvc-run-cost">No AI usage</span></div>
-              <div class="cvc-action"><button class="secondary with-icon" id="cvc-ai-run"><i data-icon="sliders"></i><span>Review CV content</span></button><span class="muted small" id="cvc-ai-cost"></span></div>
+              <div class="cvc-action"><button class="secondary with-icon" id="cvc-ai-run" data-wand><i data-icon="sliders"></i><span>Review CV content</span></button><span class="muted small" id="cvc-ai-cost"></span></div>
             </div>
             <p class="message" id="cvc-message"></p>
           </div>
@@ -1732,7 +1732,7 @@
             <div class="ap-detail-actions">
               <button class="primary" id="activity-go" hidden></button>
               <button class="link small" id="activity-report" hidden title="Every number of this search, in Reports">Full report →</button>
-              <button class="secondary" id="check-mail" hidden>Check Gmail now</button>
+              <button class="secondary" id="check-mail" hidden data-wand>Check Gmail now</button>
               <button class="secondary" id="activity-unqueue" hidden title="Take it out of the queue: it will not start">Cancel</button>
               <button class="secondary" id="activity-stop" hidden title="Stop this task. What it saved is kept; the next run continues from there.">Stop</button>
               <a href="#" class="activity-notion" id="activity-notion" hidden>Open in Notion ↗</a>
@@ -2047,7 +2047,7 @@
     <p class="dialog-lead" id="rescore-lead"></p>
     <div class="dialog-foot">
       <button class="secondary" value="cancel">Cancel</button>
-      <button class="primary" value="go" id="rescore-go">Re-score</button>
+      <button class="primary" value="go" id="rescore-go" data-wand>Re-score</button>
     </div>
   </form>
 </dialog>
@@ -2144,7 +2144,7 @@
     <div class="dialog-foot">
       <button class="ghost" value="cancel" formnovalidate>Close</button>
       <button id="prep-open" type="button" class="secondary" hidden>Open in Notion</button>
-      <button id="prep-go" class="primary" value="default">Build prep kit</button>
+      <button id="prep-go" class="primary" value="default" data-wand>Build prep kit</button>
     </div>
   </form>
 </dialog>

@@ -18,8 +18,8 @@ test('filters: text over name, places, roles and job system; kind (no kind = Emp
 });
 
 test('stats, feed statuses, tones and names', () => {
-  assert.equal(statsLine(rows), '3 tracked · 2 active · 2 with a feed · 1 job board');
-  assert.equal(statsLine(rows, rows.slice(0, 1)), '1 of 3 tracked · 2 active · 2 with a feed · 1 job board');
+  assert.equal(statsLine(rows), '3 tracked · 2 active · 2 feed found · 1 job board');
+  assert.equal(statsLine(rows, rows.slice(0, 1)), '1 of 3 tracked · 2 active · 2 feed found · 1 job board');
   assert.deepEqual(feedStatuses([...rows, {feed_status: 'Custom'}]), ['Feed found', 'No public feed', 'Custom']);
   assert.equal(feedTone('Manual watch'), 'bad');
   assert.equal(feedTone('Unknown'), 'neutral');

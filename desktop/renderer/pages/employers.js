@@ -5,7 +5,8 @@
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
 import {byStore, storeName} from '../store-words.js';
-import {day, detailLines, feedName, feedStatuses, feedTone, filterEmployers, metaLine, researchLinks, statsLine} from '../employers-view.js';
+import {SORT_COLUMNS, day, detailLines, feedHelp, feedName, feedStatuses, feedTone, filterEmployers, metaLine, qualityHelp, researchLinks, statsLine} from '../employers-view.js';
+import {drawHeader, loadSort, nextSort, saveSort, sortRows} from '../table-sort.js';
 import {$, message as say, show} from './core.js';
 import {skeletonRows} from './interview-practice.js';
 import {gatedOut} from './notion-connect.js';
@@ -15,6 +16,8 @@ import {addPasteButton} from './employers-paste.js';
 const message = (id, text, tone) => { say(id, text, tone); show($(id), !!text); };
 let rows = null;          // the store's employers, null until read
 const opened = new Set(); // rows whose detail is shown, by id
+const SORT_KEY = 'employers-sort';
+let sort = loadSort(SORT_KEY, SORT_COLUMNS, {key: 'name', dir: 'asc'});
 
 const filters = () => ({text: $('emp-filter').value, kind: $('emp-kind').value, feed: $('emp-feed').value, active: $('emp-active').value});
 
@@ -83,11 +86,19 @@ function rowOf(row) {
   if (row.tier === 'Tier 1') kind.append(' ', pill('Tier 1', 'signal'));
   cell(kind);
   const feed = el('div', '');
-  if (row.feed_status) feed.append(pill(row.feed_status, feedTone(row.feed_status), {dot: true}));
+  if (row.feed_status) {
+    const chip = Object.assign(el('span', 'tip'), {tabIndex: 0});
+    chip.dataset.tip = feedHelp(row.feed_status);
+    chip.append(pill(row.feed_status, feedTone(row.feed_status), {dot: true}));
+    feed.append(chip);
+  }
   const name = feedName(row);
   if (name) feed.append(el('div', 'muted small', name));
   cell(feed);
-  cell(el('span', '', row.quality === null || row.quality === undefined || row.quality === '' ? '–' : String(row.quality)));
+  const none = row.quality === null || row.quality === undefined || row.quality === '';
+  const quality = el('span', none ? '' : 'tip', none ? '–' : String(row.quality));
+  if (!none) { quality.tabIndex = 0; quality.dataset.tip = qualityHelp(row); }
+  cell(quality);
   cell(el('span', 'muted is-nowrap', row.origin || '–'));   // "Find employers" on one line
   cell(el('span', 'muted', day(row.checked) || '–'));
   cell(activeSwitch(row));
@@ -96,9 +107,13 @@ function rowOf(row) {
 
 export function render() {
   if (!rows) return;
-  const shown = filterEmployers(rows, filters());
+  drawHeader($('emp-head'), SORT_COLUMNS, sort, key => { sort = nextSort(sort, key, SORT_COLUMNS); saveSort(SORT_KEY, sort); render(); });
+  const shown = sortRows(filterEmployers(rows, filters()), sort, SORT_COLUMNS);
   $('emp-stats').textContent = rows.length ? statsLine(rows, shown) : byStore('Your 🏢 Employers & Sources in Notion', 'Your employers and job boards');
   $('emp-rows').replaceChildren(...shown.flatMap(rowOf));
+  // The table box clips: a tip in the last two rows (of 3 or more) opens upward, where there is room.
+  const trs = [...$('emp-rows').querySelectorAll('tr[data-id]')];
+  if (trs.length >= 3) for (const tr of trs.slice(-2)) for (const tip of tr.querySelectorAll('.tip')) tip.dataset.up = '';
   show($('emp-empty'), !shown.length);
   $('emp-empty').textContent = rows.length ? 'No employer matches these filters.'
     : 'No employers yet. Find jobs adds some, and every search adds the ones it reads.';

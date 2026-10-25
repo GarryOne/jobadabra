@@ -316,7 +316,8 @@ jobs:
         run: |
           # Stable names too, so a download link can always point at the latest build, and the old Job-Pilotto-* names as copies (tools/release-file-names.sh).
           tools_dir="${GITHUB_WORKSPACE}/tools"
-          gh release upload "desktop-v${VERSION}" $("$tools_dir/release-file-names.sh" make mac "$VERSION" dist)
+          files=(); while IFS= read -r file; do files+=("$file"); done < <("$tools_dir/release-file-names.sh" make mac "$VERSION" dist)   # not mapfile: the Mac runner has bash 3.2
+          gh release upload "desktop-v${VERSION}" "${files[@]}"
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check mac "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
 
@@ -411,7 +412,8 @@ jobs:
         run: |
           # A stable name too, so a download link can always point at the latest build, and the old Job-Pilotto-* names as copies (tools/release-file-names.sh).
           tools_dir="${GITHUB_WORKSPACE}/tools"
-          gh release upload "desktop-v${VERSION}" $("$tools_dir/release-file-names.sh" make windows "$VERSION" dist)
+          files=(); while IFS= read -r file; do files+=("$file"); done < <("$tools_dir/release-file-names.sh" make windows "$VERSION" dist)   # not mapfile: the Mac runner has bash 3.2
+          gh release upload "desktop-v${VERSION}" "${files[@]}"
           GH_REPO="$GITHUB_REPOSITORY" "$tools_dir/release-file-names.sh" check windows "desktop-v${VERSION}"
           gh release edit "desktop-v${VERSION}" --draft=false --prerelease
       # Build · Windows failed: the release carries the last working Windows installer, so the Windows download link of a release that becomes stable keeps working until a

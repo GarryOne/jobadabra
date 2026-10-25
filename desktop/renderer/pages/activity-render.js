@@ -2,7 +2,7 @@
 // Split out of activity.js as a pure move. Guarded by the tests that read the activity-*.js sources (desktop/test/activity-source.js) and the e2e activity suites.
 import {billingLabel} from '../ai-engine-view.js';
 import {groupWarnings, limitedJobs, newDetails, runWarningLines, stepNote} from '../run-warnings.js';
-import {aiLimitHead, barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, deliveryHead, notConnectedHead, notChecked, waitedHead, stepCount} from '../run-status.js';
+import {aiLimitHead, barState, failureHead, phaseStatus, runPill, runWarned, stoppedHead, deliveryHead, notConnectedHead, notChecked, waitedHead, stepCount, noResultHead} from '../run-status.js';
 import {el, moreButton, pill, tag} from '../components.js';
 import {icon} from '../icons.js';
 import {hasFullReport} from '../searches-view.js';
@@ -28,7 +28,8 @@ import {showStop} from '../stop-task.js';
 import {clockTime, duration, PHASES, stepWords, liveCount, searchPhase, KIND, KITS_CARD, kindOf, WHO, WHERE, warningSummary, WARN_NOUN, runResults, runDetails, runProgress, siteRow, phaseLabel, phaseIndex, hhmm, plural, capital, outcome, GOOGLE_SIGNIN, signedInSince, gmailConnected, runButton, mailReportOf} from './activity-basics.js';
 import {renderVisitsCard} from './activity-visits.js';
 import {showAwaitedResult, showQueuedBanner, keepStatusBar, withKept, byYou} from './activity-results.js';
-import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton} from './activity-run-card.js';
+import {showJumpToLatest, showRunJob, linked, refreshActivity, renderRunCard, renderCardSkeleton, renderNoResult} from './activity-run-card.js';
+import {unsavedRun} from '../run-status.js';
 import {renderMailCard} from './activity-mail.js';
 import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
 import {barLabel, PANEL_KEY, panelMemory} from './activity-panel.js';
@@ -376,8 +377,12 @@ export function renderActivity(fresh) {
   else if (kits) renderKitsCard(kits);
   else if (sites) renderVisitsCard({...sites, since: run.startedAt}, undefined, {list: !tabs});   // the step card above has the sites (parseSiteRows)
   else if (reading) renderCardSkeleton();
+  // Nothing saved: the amber box with Read again and the log (it was the Actions card's; the Actions banner is compact since 25 Oct 2026).
+  const unsaved = !card && !mail && !insight && !weekly && !review && !kits && !sites && !reading && unsavedRun(run);
+  if (unsaved) renderNoResult(noResultHead({...run, kind: kindOf(run)}, KIND[kindOf(run)] || {name: 'The run'}), {log: () => $('activity-log')?.scrollIntoView({block: 'nearest'}),
+    fix: run.pageId ? () => { runDetails.delete(run.pageId); renderActivity(lastActivity); } : null});
   if (card || insight || weekly || mail || review || kits || sites) show($('activity-result'), false);  // the card shows the same, laid out
-  show($('activity-card'), !!card || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading);
+  show($('activity-card'), !!card || !!mail || !!insight || !!weekly || !!review || !!kits || !!sites || reading || unsaved);
   // A search that can't have found much yet suggests Find new employers, whatever its result card shows (renderer/onboarding.js employersAdvice).
   const advice = employersAdvice(run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});
   if (advice) {

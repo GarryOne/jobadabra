@@ -3,7 +3,7 @@
 import {billingLabel} from '../ai-engine-view.js';
 import {claudeHelp} from '../claude-help.js';
 import {AI_BUSY, groupWarnings, humanError, limitedJobs, sentences} from '../run-warnings.js';
-import {aiLimitHead, failedOutcome, stoppedHead, deliveryHead, notConnectedHead, waitedHead} from '../run-status.js';
+import {aiLimitHead, failedOutcome, stoppedHead, deliveryHead, notConnectedHead, waitedHead, unsavedRun} from '../run-status.js';
 import {el} from '../components.js';
 import {parseRunMessage} from '../run-cards.js';
 import {parseVisits} from '../visits-card.js';
@@ -197,6 +197,7 @@ function outcomeOf(run) {
   if (failed) return failed;   // a failed run says so before what its Notion row reports (#301)
   if (!run.ok && !run.problem && !run.live && !run.waiting) return 'Unexpected error';   // no reason recognised: the box says what to do
   if (run.result) return run.result;  // a run read from Notion ⏱️ Search runs says it itself
+  if (unsavedRun(run)) return 'its result was not saved';   // the pill says No result (run-status.js)
   if (kindOf(run) === 'mail') {
     if (run.off) return 'Gmail not connected (Settings → Connections)';
     if (run.problem) return run.problem;

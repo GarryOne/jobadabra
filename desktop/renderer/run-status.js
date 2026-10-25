@@ -180,6 +180,10 @@ export function phaseStatus(run, i, at) {
 }
 
 // A run's status pill: running, queued, failed, completed with warnings, completed. [label, tone, options]
+// A finished run that saved nothing (no result, summary, count, update or message): its pill says No result, its line that the result was not saved, and its
+// run panel offers Read again (pages/activity-render.js), the same in the Actions banner, the drawer, Recent runs and Actions → Runs.
+export const unsavedRun = run => !!run && !run.live && !run.waiting && !!run.ok && !run.off && !run.interrupted && !run.stopped && !run.result && !run.summary && !run.message
+  && run.new == null && !run.updates?.length;
 export function runStatus(run, warned) {
   if (run.live) return ['Running', 'info', {dot: true}];
   if (run.waiting) return ['Queued', 'neutral'];
@@ -187,7 +191,8 @@ export function runStatus(run, warned) {
   if (run.interrupted) return ['Interrupted', 'warn'];   // the app was closed while it ran (lib/pipeline.js takeQueue)
   if (run.stopped === 'you') return ['Stopped by you', 'neutral'];   // Stop on Actions or Recent activity: not a failure
   if (!run.ok) return stoppedHead(run) ? ['Stopped', 'bad'] : ['Failed', 'bad'];
-  return warned ? ['With warnings', 'warn'] : ['Completed', 'good'];
+  if (warned) return ['With warnings', 'warn'];   // a warning says more than an empty result
+  return unsavedRun(run) ? ['No result', 'neutral'] : ['Completed', 'good'];   // nothing saved: never "Completed" (owner, 25 Oct 2026)
 }
 
 // The one pill for a run, wherever it is drawn: the Actions list (short words), the Recent activity header and the Actions result card ({long: true}: "Completed with warnings").

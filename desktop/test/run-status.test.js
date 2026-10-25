@@ -6,7 +6,8 @@ import {barState, doneTitle, failedOutcome, failureHead, phaseStatus, runStatus,
 import {activitySource} from './activity-source.js';
 
 test('a finished run is Completed, With warnings or Failed, a running one Running, a waiting one Queued', () => {
-  assert.deepEqual(runStatus({ok: true}, false).slice(0, 2), ['Completed', 'good']);
+  assert.deepEqual(runStatus({ok: true, result: '3 new jobs'}, false).slice(0, 2), ['Completed', 'good']);
+  assert.deepEqual(runStatus({ok: true}, false).slice(0, 2), ['No result', 'neutral'], 'a finished run that saved nothing');
   assert.deepEqual(runStatus({ok: true}, true).slice(0, 2), ['With warnings', 'warn']);
   assert.deepEqual(runStatus({ok: false}, false).slice(0, 2), ['Failed', 'bad']);
   assert.deepEqual(runStatus({ok: true, off: true}, false).slice(0, 2), ['Not checked', 'warn']);   // nothing checked: a connection to make (owner, 6 Oct 2026)

@@ -83,11 +83,11 @@ test('every finished search run of the store has a Full report link; live runs a
   for (const kind of ['mail', 'insight', 'weekly', 'kits', 'tailor', 'today']) assert.equal(hasFullReport({kind, pageId: 'r1'}), false, kind);
 });
 
-test('the link is on the Jobs find card, the Recent activity header and the Actions result card, and opens the report through one helper', () => {
+test('the link is on the Jobs find card and the run panel header (the Actions banner leads there through View run), and opens the report through one helper', () => {
   const read = name => fs.readFileSync(path.join(here, '../renderer', name), 'utf8');
   assert.match(read('pages/jobs-find.js'), /Full report →/);
   assert.match(read('index.html'), /id="activity-report"[^>]*>Full report →/);
   assert.match(read('pages/activity.js'), /showFullReport\(run\.pageId/);
-  assert.match(read('pages/activity-results.js'), /hasFullReport\(\{\.\.\.run, kind: kindOf\(run\)\}\)[\s\S]*Full report →/);   // the Actions page's result card too
+  assert.doesNotMatch(read('pages/activity-results.js'), /Full report/);   // the Actions banner is compact (owner, 25 Oct 2026): the report is the run panel's
   assert.match(read('pages/full-report.js'), /openView\('reports'\);\s*return openSearchReport\(runId\)/);
 });

@@ -5,9 +5,11 @@ import {reportedEngine} from '../lib/ai/names.js';
 
 const storage = (settings, key = '') => ({settings: () => settings, secret: () => key});
 
-test('Free AI reports free, a key api, plans cli/codex, nothing none', () => {
+test('Free AI reports free (trial) or pro (Pro plan), a key api, plans cli/codex, nothing none', () => {
   assert.equal(reportedEngine(storage({aiFree: true})), 'free');
   assert.equal(reportedEngine(storage({aiTrial: true})), 'free');
+  assert.equal(reportedEngine(storage({aiFree: true}), 'pro'), 'pro');   // our AI after the Pro plan is bought
+  assert.equal(reportedEngine(storage({aiEngine: 'api'}, 'sk-ant-x'), 'pro'), 'api');   // a Pro user on their own key is still a key
   assert.equal(reportedEngine(storage({aiEngine: 'api'}, 'sk-ant-x')), 'api');
   assert.equal(reportedEngine(storage({aiFree: true, aiEngine: 'cli'})), 'cli');
   assert.equal(reportedEngine(storage({aiEngine: 'openai'})), 'openai');

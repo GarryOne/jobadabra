@@ -31,3 +31,17 @@
 .menu-tour-row small { margin-right: auto; color: var(--ink-2); }
 .sidebar .menu-tour-lit { outline: 2px solid var(--amber); outline-offset: -2px; }
 #setting-text-size .segmented { width: fit-content; }
+/* A short window in the icon rail (under 880 css px tall: below it the full list no longer fits: a small window at a large text size, or the site hero's phone take at 528 px) left the page list
+   117 px between the brand and the bottom buttons: two pages, the third sliced (owner, 25 Oct 2026: "the sidebar menu collapsed is broken"). The list
+   gets the room: feedback (in ⌘K) and the theme switch (Settings → Appearance) and the plan bar step aside, the rows and the brand tighten. Collapse stays
+   in a wide window: it is the way back from a collapsed menu. Guard: desktop/test/rail-short-window.test.js. */
+@media (max-height: 880px) {
+  .app.rail #nav-feedback, .app.rail #theme-toggle, .app.rail .allowance-chip { display: none; }
+  .app.rail .sidebar .nav { padding: 9px 2px 3px 0; }
+  .app.rail .palette-hint { padding: 8px 0; }
+  .app.rail .sidebar .brand { margin-bottom: 0; }
+  .app.rail .sidebar .mark { width: 30px; height: 30px; }
+  .app.rail .sidebar .nav-group { margin: 6px 0 2px; }
+}
+/* Narrow too (under 1180 px the rail is forced, sidebar-rail.js railed): the collapse button cannot expand the menu there, so it steps aside as well. */
+@media (max-height: 880px) and (max-width: 1179px) { .app.rail #rail-toggle { display: none; } }

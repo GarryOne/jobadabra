@@ -7,6 +7,10 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {KEPT, SEARCH_MODES, listLine, listRow, report, searchRuns} from '../renderer/searches-view.js';
 import {search, searches} from '../lib/searches-handlers.js';
+import {setCostEngine, setCostsShown} from '../renderer/ai-cost.js';
+
+setCostsShown(true);
+setCostEngine(() => 'api');   // these cases are the API-key user's; test/ai-cost.test.js covers every other engine
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const demo = JSON.parse(fs.readFileSync(path.join(here, '../demo/searches.json'), 'utf8'));

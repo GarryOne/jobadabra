@@ -1,5 +1,6 @@
 // A replaced CV and what follows it.
 import {ai} from '../ai-name.js';
+import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {shared} from './shared.js';
@@ -105,7 +106,7 @@ export async function init() {
     if (!result.ok) return message('cv-review-message', result.error, 'error');
     cvSuggestions = result.suggestions;
     message('cv-review-message', '');
-    $('cv-profile-status').textContent = `Comparison complete · Actual cost $${result.usd.toFixed(2)}`;
+    $('cv-profile-status').textContent = `Comparison complete${costText(result.usd, usd => ` · Actual cost ${dollars(usd)}`)}`;
     $('cv-compare').textContent = 'Compare again';
     show($('cv-impact'), cvSuggestions.length > 0);   // what applying costs matters only when there is something to apply
     if (cvSuggestions.length) {
@@ -150,7 +151,7 @@ export async function init() {
     button.disabled = true;
     button.textContent = 'Reading your CV… (about 30 s)';
     const result = await window.pilot.importCv();
-    button.textContent = result.ok ? `✓ Done ($${result.usd.toFixed(2)})` : 'Retry';
+    button.textContent = result.ok ? `✓ Done${costText(result.usd, usd => ` (${dollars(usd)})`)}` : 'Retry';
     button.disabled = !!result.ok;
     if (result.ok) setPill('cv-base-pill', '✓ Updated', 'good');
     loadCvSetting();

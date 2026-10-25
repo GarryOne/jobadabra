@@ -1,6 +1,7 @@
 // Setup step 3: the drafted strategy. The cards are the Strategy page's own (pages/setup-strategy.js moves them in and feeds them the draft); this file
 // owns what only the setup has: the AI draft note, Regenerate draft and Replace my strategy. Guarded by test/setup-strategy.test.js.
 import {ai} from '../ai-name.js';
+import {costText, dollars} from '../ai-cost.js';
 import {el, pill} from '../components.js';
 import {shared} from './shared.js';
 import {buildDraft, currentAnswers} from './activity.js';
@@ -53,8 +54,9 @@ export function renderDraft() {
   show($('draft-loading'), false); show($('draft-error'), false); show($('draft-view'));
   $('draft-title').textContent = 'Review your strategy';
   show($('draft-subtitle'));
-  $('draft-cost').textContent = `✦ AI draft · $${shared.draft.usd.toFixed(2)}`;
-  show($('draft-cost'));
+  const spent = costText(shared.draft.usd, usd => `✦ AI draft · ${dollars(usd)}`);   // only on the user's own API key (ai-cost.js)
+  $('draft-cost').textContent = spent;
+  show($('draft-cost'), !!spent);
   $('draft-summary').textContent = shared.draft.summary;
   $('draft-summary').title = 'Click to show all';
   showCards({changed: draftChanged});   // Main goals, Locations, Job preferences and Advanced search settings: the Strategy page's cards, reading the draft
@@ -110,7 +112,7 @@ async function openRebuildReview() {
   $('replace-go').disabled = true;
   $('replace-dialog').showModal();
   const current = shared.draft;
-  $('rebuild-draft-cost').textContent = shared.draft?.usd ? `This draft cost $${shared.draft.usd.toFixed(2)} (already spent). ` : '';
+  $('rebuild-draft-cost').textContent = costText(shared.draft?.usd, usd => `This draft cost ${dollars(usd)} (already spent). `);
   const result = await window.pilot.rebuildImpact(current);
   if (!result.ok) { $('rebuild-groups').replaceChildren(el('p', 'message error', result.error)); return; }
   if (!result.groups.length) { $('rebuild-groups').replaceChildren(el('p', 'muted', 'This draft changes nothing in your current strategy.')); return; }

@@ -179,3 +179,7 @@ A new Reports tab or detail screen starts from the app's own widgets: `summaryTi
 `button(view, id, keywords)`. A long or paid action opens its card and focuses its input instead of running. Settings needs nothing (listed from
 the page; checked by the settings suite's ⌘K step). A new long task on this Mac is a tracked task (`pipeline.work` / `pipeline.task`).
 - **❓ is data, never shown** (owner, 16 Oct 2026): a value starting with ❓ means not set; screens say "Not set" and use the words after it as the hint (`renderer/answers-model.js` valueOf / shown). The Profile tabs' render test fails on a ❓ or a textarea on screen (`desktop/test/profile-tabs-render.test.js`).
+
+## AI costs: shown to nobody for now (owner, 25 Oct 2026)
+- No dollar amount for AI is drawn on any engine ("I don't foresee much users using the API Key"; the figure is tokens × our price table, not a bill). To bring it back for API-key users only: set `SHOWN` in `renderer/ai-cost.js` and `COSTS_SHOWN` in `lib/ai/names.js`; Free AI and plans never see one.
+- A new cost display goes through that helper (`costText`/`costVisible`); `desktop/test/ai-cost.test.js` fails on a file that draws `$` + `toFixed` without it.

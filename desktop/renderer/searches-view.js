@@ -2,6 +2,7 @@
 // row per search run and the sections of one run's full report, from a store run record (src/stores CRON_RUN_FIELDS) and its `details`
 // (src/run_details.py: steps, jobs, employers, boards, AI, scoring, problems). Every part is optional: a run from before the details were
 // kept shows its totals and says so. Drawn by pages/reports-searches.js. Guarded by test/searches-view.test.js.
+import {costText} from './ai-cost.js';
 export const SEARCH_MODES = ['scheduled', 'run', 'first', 'visits', 'scout'];   // the runs that search: Find jobs (any trigger), in the browser, more employers
 export const KEPT = 50;                                                          // runs listed (owner, 25 Oct 2026)
 const NAMES = {scheduled: 'Find jobs', run: 'Find jobs', first: 'First jobs', visits: 'Find jobs using your browser', scout: 'More employers'};
@@ -31,7 +32,7 @@ export function listRow(row) {
 
 export const listLine = (runs, shown = runs) => (!runs.length ? '' : shown.length === runs.length ? `${runs.length} search${runs.length === 1 ? '' : 'es'}, newest first` : `${shown.length} of ${runs.length} searches`);
 
-const money = usd => (usd ? `$${usd < 0.01 ? Number(usd).toFixed(3) : Number(usd).toFixed(2)}` : null);
+const money = usd => costText(usd) || null;   // only on the user's own API key (ai-cost.js)
 const cell = ([label, value]) => ({label, value});
 const share = (value, total) => (!total || !value ? 0 : Math.max(2, Math.min(100, Math.round(value / total * 100))));
 

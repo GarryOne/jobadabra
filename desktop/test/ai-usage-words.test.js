@@ -3,6 +3,10 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {lastCost, usageAfter, usageBefore} from '../renderer/ai-engine-view.js';
+import {setCostEngine, setCostsShown} from '../renderer/ai-cost.js';
+
+setCostsShown(true);
+setCostEngine(() => 'api');   // the API-key user's cases; test/ai-cost.test.js covers every other engine
 
 test('before: who pays, from the engine in charge', () => {
   assert.equal(usageBefore({aiFree: true}), 'Uses your AI credits.');

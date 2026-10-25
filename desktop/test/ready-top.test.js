@@ -24,7 +24,8 @@ test('each job says what it lacks and what that costs; a finished job costs noth
 test('the cost line counts the first N, in words, never undefined or NaN', () => {
   const picked = pickTop([job('r', 90, done), job('n', 80), job('c', 70, {kit: true})]);
   assert.equal(costLine(picked, 1), '1 job ready: nothing to prepare, no AI cost.');
-  assert.equal(costLine(picked, 3), '3 jobs: prepare 1 kit + 2 CVs with letters, about $0.16 of AI.');
+  assert.equal(costLine(picked, 3), '3 jobs: prepare 1 kit + 2 CVs with letters.');
+  assert.equal(costLine(picked, 3, {showCost: true}), '3 jobs: prepare 1 kit + 2 CVs with letters, about $0.16 of AI.');   // only on the user's own API key
   assert.match(costLine([], 3), /No job is left/);
   for (const count of [0, 1, 3, 5, 10, undefined]) assert.doesNotMatch(costLine(picked, count), /undefined|NaN/);
 });

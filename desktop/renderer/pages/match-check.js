@@ -1,5 +1,6 @@
 // CV match dialog (lib/match-check.js): this job's posting against the CV, on request. Opened from the Jobs ⋯ menu and from the session card.
 import {el, pill} from '../components.js';
+import {costText, dollars} from '../ai-cost.js';
 import {$, message, runWhen, show} from './core.js';
 
 const FOUND = {found: ['Stated', 'good'], implied: ['Only implied', 'warn'], missing: ['Not mentioned', 'bad']};
@@ -22,7 +23,7 @@ function showResult(data) {
   $('match-grade').textContent = result.grade;
   $('match-grade').className = `cvc-score ${result.grade <= 'A' ? 'good' : result.grade === 'B' ? 'ok' : 'low'}`;
   $('match-summary').textContent = result.summary;
-  $('match-sub').textContent = `${data.stale ? 'Made with an earlier CV · ' : ''}${runWhen(data.at)} · $${(result.usd || 0).toFixed(2)}`;
+  $('match-sub').textContent = `${data.stale ? 'Made with an earlier CV · ' : ''}${runWhen(data.at)} ${costText(result.usd, usd => ` · ${dollars(usd)}`)}`;
   $('match-musts').replaceChildren(...result.musts.map(item => row(...FOUND[item.status], item.term, item.evidence)));
   show($('match-knock-h'), result.knockouts.length > 0);
   $('match-knocks').replaceChildren(...result.knockouts.map(item => row(...KNOCK[item.status], item.requirement, item.note)));

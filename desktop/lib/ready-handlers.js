@@ -8,6 +8,7 @@ import * as viewCache from './view-cache.js';
 import {buildBatch, nightOf, ownKeyFor, pickToRefill, pickToSend, withOwnAi} from './ready-batch.js';
 import {fillNowPlan, waitingOn} from './ready-fill-now.js';
 import {CHIPS, costLine, pickTop} from './ready-top.js';
+import {costVisible} from './ai/names.js';
 import {createAutoSend, startAutoSend} from './ready-auto.js';
 import {isTwin} from './twin.js';
 import {log as appLog} from './log.js';
@@ -129,7 +130,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     if (process.env.JOB_PILOTTO_DEMO) { try { return JSON.parse(fs.readFileSync(storage.path('ready-top.json'), 'utf8')); } catch { return {ok: false}; } }   // the demo's fictional pick (desktop/demo/ready-top.json)
     const all = cached().length ? cached() : await jobs().catch(() => []), rows = await site.rows(storage).catch(() => ({}));
     const picked = pickTop(all, Math.max(...CHIPS), {minFit: settings().minFit, skip: new Set((rows.jobs || []).filter(job => !job.cleared_at).map(job => job.job))});
-    return {ok: true, picked: picked.map(({code, title, company, fit, needsKit, needsCv}) => ({code, name: `${title} · ${company}`, fit, needsKit, needsCv})), chips: CHIPS, lines: Object.fromEntries(CHIPS.map(count => [count, costLine(picked, count)]))};
+    return {ok: true, picked: picked.map(({code, title, company, fit, needsKit, needsCv}) => ({code, name: `${title} · ${company}`, fit, needsKit, needsCv})), chips: CHIPS, lines: Object.fromEntries(CHIPS.map(count => [count, costLine(picked, count, {showCost: costVisible(storage)})]))};
   });
   // After the popup's yes: make what the chosen jobs lack (the Tailor task's own pieces: the kit, then the CV with its letter), then send the ones that are complete and start them.
   // It asks first, before any AI spend, when the send would replace forms of this night still waiting for you.

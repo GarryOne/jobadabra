@@ -29,7 +29,7 @@ import {captureAnswer} from './live-capture.js';
 import {keptAnswerClient} from './ai/index.js';
 import {nightAnswers} from './ready-handoff.js';
 import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, proposalReporter, sharedLogger, tellWindow} from './server-hooks.js';
-import {NAMES} from './ai/names.js';
+import {NAMES, costVisible} from './ai/names.js';
 import {cvFactsText} from '../shared/worker/cv-facts.js';
 import {configForPrompt} from './config-text.js';
 import {factsOf} from './base-facts.js';
@@ -158,7 +158,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       if (trace.withheld?.length) appLog('privacy', `owner's own value kept out of ${trace.withheld.length} field(s): ${trace.withheld.map(w => `${w.field} (${w.kind})`).join(', ')}`);   // field ids and kinds, never the value
       answerReporter(trace);
     },
-    onReviewAnswer: call => { appLog('fill', `Reviewed one written answer (${call.chars} characters)${call.usd ? ` · $${call.usd}` : ' · on your plan'}`, call); },   // counts and cost only, never the text (worker/src/written-answer.js)
+    onReviewAnswer: call => { appLog('fill', `Reviewed one written answer (${call.chars} characters)`, call); },   // counts and cost only, never the text (worker/src/written-answer.js)
     onRun: async run => {
       // A running count of forms the extension filled (technical reports' daily health line: how much it helps).
       storage.saveSettings({formsFilled: (storage.settings().formsFilled || 0) + 1});
@@ -206,7 +206,7 @@ async function learnFromRun(storage, run, job) {
   if (!notes.length) return;
   await knowledge.add(storage, notes);
   proposalReporter(learn.proposalsOf(notes));  // label wording + profile field only, counted by the site (3+ people) before it is even a candidate
-  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}, $${usd.toFixed(3)}). Only you can see them.`);   // about Notion
+  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}${costVisible(storage) && usd > 0 ? `, $${usd.toFixed(3)}` : ''}). Only you can see them.`);   // about Notion
 }
 
 // A note that has left its field empty three fills in a row is not working: drop it from the Notion page and let the field be studied again.

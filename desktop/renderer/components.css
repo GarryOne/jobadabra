@@ -639,6 +639,15 @@ table.lib-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm
 .lib-table th { text-align: left; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
   padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .lib-table th:last-child { width: 1%; }
+/* A sortable header (renderer/table-sort.js): the label as a plain button with an arrow; a tip stays in normal case. */
+.lib-table .sort-head { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.lib-table .sort-head:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.lib-table .sort-head:hover { color: var(--ink); }
+.lib-table .sort-arrow { font-size: var(--fs-xs); min-width: 1ch; }
+.lib-table th .tip::after, .lib-table td .tip::after { text-transform: none; letter-spacing: normal; text-align: left; }
+.lib-table td .tip { cursor: help; }
+.lib-wrap:has(.tip) { min-height: 260px; }   /* a short table still has room for its tip (the box clips) */
+.lib-table .tip[data-up]::after { top: auto; bottom: calc(100% + 6px); }
 .lib-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .lib-table tr:last-child td { border-bottom: 0; }
 .lib-table tr:hover td { background: var(--surface-2); }

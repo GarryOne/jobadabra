@@ -6,6 +6,21 @@ import {shortDay} from './date.js';
 export const FEED_TONES = {'Feed found': 'good', 'No open jobs': 'info', 'Low relevance': 'warn', 'Manual watch': 'bad', 'No public feed': 'neutral'};
 export const feedTone = status => FEED_TONES[status] || 'neutral';
 
+// What each status means and what happens next (the scout's check: src/scout.py check_one, src/scout_notion.py employer_record).
+export const FEED_HELP = {
+  'Feed found': 'We read its job list and some jobs are in your places. It starts Active: every search reads it.',
+  'Low relevance': 'We read its job list, but none of its jobs are in your places. It starts paused; checked again in 3 weeks. Switch it on to read it anyway.',
+  'No open jobs': 'Its careers page or job list had no postings when we looked. It starts paused; checked again every week.',
+  'Manual watch': 'Listed with a careers page, but no job list a program can read. You watch it by hand: searches skip it.',
+  'No public feed': 'We found no job list a program can read. It is not searched; checked again in 3 months.',
+};
+export const feedHelp = status => FEED_HELP[status] || '';
+
+// Quality column: the scale and what it adds up (src/scout_probe.py quality). A row's own counts follow in its notes.
+export const QUALITY_HELP = 'How well its jobs fit your search, 0 to 100. Up to 20 for jobs matching your roles, 40 for jobs in your places, 10 each for a match in your top places, '
+  + 'overlap with your CV’s skills, postings under 90 days old and a published salary. 60 or more is a good fit; under 30 means little in your places. – means no job list was read.';
+export const qualityHelp = row => [`Quality ${row.quality} of 100.`, row.notes].filter(Boolean).join(' ');
+
 const words = row => [row.name, row.website, row.cities, row.relevant_roles, row.ats, row.slug, row.notes, row.origin, row.kind, row.size]
   .filter(Boolean).join(' ').toLowerCase();
 
@@ -25,7 +40,7 @@ export function feedStatuses(rows) {
 export function statsLine(rows, shown = rows) {
   const all = rows || [], active = all.filter(row => row.active).length, boards = all.filter(row => row.kind === 'Job board').length;
   const feeds = all.filter(row => row.feed_status === 'Feed found').length;
-  const head = `${all.length} tracked · ${active} active · ${feeds} with a feed${boards ? ` · ${boards} job board${boards === 1 ? '' : 's'}` : ''}`;
+  const head = `${all.length} tracked · ${active} active · ${feeds} feed found${boards ? ` · ${boards} job board${boards === 1 ? '' : 's'}` : ''}`;
   return shown.length === all.length ? head : `${shown.length} of ${head}`;
 }
 
@@ -51,6 +66,17 @@ export function detailLines(row) {
     ['In your preferred places', yes(row.in_preferred_places)], ['Added', day(row.added || row.created_at)]]
     .filter(([, value]) => value !== undefined && value !== null && value !== '');
 }
+
+// The table's sortable columns (renderer/table-sort.js). Feed status sorts in the select's order (found first); blanks go last.
+export const SORT_COLUMNS = [
+  {key: 'name', label: 'Employer', type: 'words', value: row => row.name},
+  {key: 'kind', label: 'Kind', type: 'words', value: row => row.kind || 'Employer'},
+  {key: 'feed', label: 'Feed', type: 'number', value: row => (row.feed_status ? -(Object.keys(FEED_TONES).indexOf(row.feed_status) + 1 || Object.keys(FEED_TONES).length + 1) : null)},
+  {key: 'quality', label: 'Quality', type: 'number', tip: QUALITY_HELP, value: row => (row.quality === '' ? null : row.quality)},
+  {key: 'origin', label: 'Origin', type: 'words', value: row => row.origin},
+  {key: 'checked', label: 'Checked', type: 'date', value: row => (row.checked ? Date.parse(row.checked) || null : null)},
+  {key: 'active', label: 'Active', type: 'flag', value: row => (row.active ? 1 : 0)},
+];
 
 // The date a row was checked, in the screens' one format (date.js).
 export const day = (iso, now = Date.now()) => shortDay(iso, now);

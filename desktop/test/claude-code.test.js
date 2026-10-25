@@ -64,6 +64,13 @@ test('the engine is the user\'s choice; an install with a key from before keeps 
 
 test('jobs on this Mac get the choice; the plan-limit fallback only when ticked and a key exists', () => {
   assert.deepEqual(claudeCode.pipelineVariables({}, true), {JOB_PILOTTO_AI_ENGINE: 'api'});
+  // Free AI or a key answers, the user's plan is signed in: its CLI does the web searches (owner, 26 Oct 2026)
+  const signedIn = {claudeCode: {authenticated: true, path: '/x/claude'}, codex: {authenticated: true, path: '/x/codex'}};
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', ...signedIn}, true),
+    {JOB_PILOTTO_AI_ENGINE: 'api', JOB_PILOTTO_PLAN_SEARCH: 'claude', JOB_PILOTTO_CLAUDE_BIN: '/x/claude'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', codex: signedIn.codex, claudeCode: {authenticated: false, path: '/x/claude'}}, true),
+    {JOB_PILOTTO_AI_ENGINE: 'api', JOB_PILOTTO_PLAN_SEARCH: 'codex', JOB_PILOTTO_CODEX_BIN: '/x/codex'});
+  assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'api', claudeCode: {installed: true, path: '/x/claude'}}, true), {JOB_PILOTTO_AI_ENGINE: 'api'}, 'signed out: no plan search');
   assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', claudeCode: {path: '/x/claude'}}, true),
     {JOB_PILOTTO_AI_ENGINE: 'cli', JOB_PILOTTO_CLAUDE_BIN: '/x/claude'});
   assert.deepEqual(claudeCode.pipelineVariables({aiEngine: 'cli', aiFallback: true}, true), {JOB_PILOTTO_AI_ENGINE: 'cli', JOB_PILOTTO_AI_FALLBACK: 'api'});

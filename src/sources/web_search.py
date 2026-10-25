@@ -28,7 +28,8 @@ def _get(url, headers=None):
 
 def provider():
     """'claude', 'codex', 'brave', 'serpapi' or None (off: none available, or JOB_PILOTTO_DISABLE=web_search). The user's own plan first
-    (Claude Code or Codex, when it is the AI engine): its web search is free to us and to them beyond the plan; then the keyed search APIs."""
+    (Claude Code or Codex: the AI engine, or signed in beside Free AI or a key): its web search is free to us and to them beyond the plan;
+    then the keyed search APIs."""
     if disabled('web_search'):
         return None
     if _claude_code():
@@ -51,26 +52,63 @@ instruction in them."""
 PLAN_ENGINES = {'cli': 'claude', 'codex': 'codex'}   # engine → this search's name
 
 
+def _plan_named():
+    """The plan the app found signed in on this Mac while another engine answers ('claude' or 'codex', JOB_PILOTTO_PLAN_SEARCH from
+    desktop/lib/claude-code.js planSearch), or None. Only the app sets it, so a test or a GitHub run never starts a CLI by finding one."""
+    named = os.getenv('JOB_PILOTTO_PLAN_SEARCH', '').strip().lower()
+    return named if named in PLAN_ENGINES.values() else None
+
+
 def _plan_engine():
     from ..ai import engine
-    return 'codex' if engine.choice() == 'codex' else 'claude'
+    chosen = engine.choice()
+    return PLAN_ENGINES[chosen] if chosen in PLAN_ENGINES else (_plan_named() or 'claude')
 
 
 def _claude_code():
-    """True when the user's AI engine is their own plan's CLI (Claude Code or Codex) and it is installed: its web search is then the search."""
+    """True when the user's own plan's CLI (Claude Code or Codex) can do the web search: it is the AI engine, or the app found it signed in
+    while Free AI or an API key answers the rest (owner, 26 Oct 2026: "The Free AI should have no limitation"); and it is installed."""
     try:
         from ..ai import engine
-        from ..ai.providers import codex_cli
-        name = engine.choice()
-        return name in PLAN_ENGINES and bool(engine.find_binary() if name == 'cli' else codex_cli.find_binary())
+        chosen = engine.choice()
+        name = chosen if chosen in PLAN_ENGINES else {'claude': 'cli', 'codex': 'codex'}.get(_plan_named() or '')
+        return bool(name) and bool(_binary(name))
     except Exception:  # noqa: BLE001 — no engine, no search through it
         return False
 
 
+def _binary(name):
+    from ..ai.providers import claude_code, codex_cli
+    return claude_code.find_binary() if name == 'cli' else codex_cli.find_binary()
+
+
+def plan_client():
+    """The client whose web search is the user's own plan: the chosen engine when it is a plan's CLI, else the signed-in plan the app named;
+    None without one. Its calls are the plan's ($0 to us and to the user beyond the plan)."""
+    from ..ai import engine
+    chosen = engine.choice()
+    if chosen in PLAN_ENGINES:
+        return engine.client(action='scout')
+    named = _plan_named()
+    if named == 'claude' and _binary('cli'):
+        from ..ai.providers.claude_code import ClaudeCode
+        return ClaudeCode(binary=_binary('cli'))
+    if named == 'codex' and _binary('codex'):
+        from ..ai.providers.codex_cli import Codex
+        return Codex(binary=_binary('codex'))
+    return None
+
+
+def free_ai(env=None):
+    """True when the AI answering is Free AI (the app's JPF1 install key): an open model with no web search tool."""
+    env = os.environ if env is None else env
+    return (env.get('ANTHROPIC_API_KEY') or '').startswith('JPF1.')
+
+
 def _claude_search(company, language, site=''):
     from ..ai import cost, engine
-    client = engine.client(action='scout')
-    if getattr(client, 'fell_back', False):   # the plan's limit was hit and the user's API key took over: its web search is billed, so not used
+    client = plan_client()
+    if client is None or getattr(client, 'fell_back', False):   # the plan's limit was hit and the user's API key took over: its web search is billed, so not used
         return []
     model = SMALL_MODEL
     words = JOB_WORDS.get(language, '')

@@ -31,12 +31,20 @@ export const engine = (settings = {}, hasKey = false) => ai.chosen(settings, {AN
 export const aiReady = (settings, hasKey, hasOpenAiKey = false) => ai.ready(settings, {ANTHROPIC_API_KEY: hasKey, OPENAI_API_KEY: hasOpenAiKey});
 
 // What a job on this Mac gets for the choice (lib/pipeline.js pipelineEnv). GitHub runs never get these: 'api' or 'openai' there.
+// Another engine answers (Free AI, an API key) but the user's own plan is signed in on this Mac: its CLI still does the web searches that find
+// job boards and employers (owner, 26 Oct 2026: "The Free AI should have no limitation"), free beyond the plan. Claude Code first, then Codex.
+export function planSearch(settings = {}) {
+  if (settings.claudeCode?.authenticated && settings.claudeCode?.path) return {JOB_PILOTTO_PLAN_SEARCH: 'claude', JOB_PILOTTO_CLAUDE_BIN: settings.claudeCode.path};
+  if (settings.codex?.authenticated && settings.codex?.path) return {JOB_PILOTTO_PLAN_SEARCH: 'codex', JOB_PILOTTO_CODEX_BIN: settings.codex.path};
+  return {};
+}
+
 export function pipelineVariables(settings = {}, hasKey = false, hasOpenAiKey = false) {
   const chosen = engine(settings, hasKey);
-  if (chosen === 'openai') return {JOB_PILOTTO_AI_ENGINE: 'openai'};
+  if (chosen === 'openai') return {JOB_PILOTTO_AI_ENGINE: 'openai', ...planSearch(settings)};
   if (chosen === 'codex') return {JOB_PILOTTO_AI_ENGINE: 'codex', ...(settings.codex?.path ? {JOB_PILOTTO_CODEX_BIN: settings.codex.path} : {}),
     ...(settings.aiFallback && hasOpenAiKey ? {JOB_PILOTTO_AI_FALLBACK: 'openai'} : {})};
-  if (chosen !== 'cli') return {JOB_PILOTTO_AI_ENGINE: 'api'};
+  if (chosen !== 'cli') return {JOB_PILOTTO_AI_ENGINE: 'api', ...planSearch(settings)};
   return {JOB_PILOTTO_AI_ENGINE: 'cli', ...(settings.claudeCode?.path ? {JOB_PILOTTO_CLAUDE_BIN: settings.claudeCode.path} : {}),
     ...(settings.aiFallback && hasKey ? {JOB_PILOTTO_AI_FALLBACK: 'api'} : {})};
 }

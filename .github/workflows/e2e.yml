@@ -473,7 +473,7 @@ jobs:
   review:
     name: AI review of the screenshots
     needs: [plan, suite]
-    if: always() && needs.plan.result == 'success' && needs.plan.outputs.count != '0' && needs.plan.outputs.review == '1' && inputs.mutant == ''
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.count != '0' && needs.plan.outputs.review == '1' && inputs.mutant == '' && inputs.pr_suites == ''   # a PR's run has no screenshot review
     runs-on: ubuntu-24.04
     timeout-minutes: 20   # the batch waits up to 6 min, then asks what is left directly
     permissions:

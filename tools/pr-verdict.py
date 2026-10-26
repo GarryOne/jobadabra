@@ -30,7 +30,7 @@ BUDGET_MIN = 10
 STEP = "Write the PR's verdict"   # the last step of every PR job (tests/test_pr_verdict.py checks each one has it)
 # Jobs that only report (an HTML report, a results upload) never hold or turn the verdict: on #2044 the settings suite was green at 04:36 and the PR waited on
 # e2e's "HTML report" queued for a runner (owner, 26 Oct 2026: "again, why I cannot merge this PR?").
-REPORT_JOBS = {'HTML report'}   # never fails (page-cases' report does: its fill time vs main; it gets the verdict step)
+REPORT_JOBS = {'HTML report', 'AI review of the screenshots'}   # never decide a PR (page-cases' report does: its fill time vs main; it gets the verdict step). The review: after the suites, on main and release runs only (.github/actions/e2e-review)
 RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required', 'stale'}
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
 

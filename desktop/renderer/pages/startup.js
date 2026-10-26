@@ -8,7 +8,7 @@ import {$, show} from './core.js';
 import {loadJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
 import {PANEL_KEY, openActivity} from './activity.js';
-import {openSetting, settingsPage} from './settings.js';
+import {settingsPage} from './settings.js';
 import {refusal, refusalAction} from '../refusal.js';
 import {openTopupDialog} from './topup-dialog.js';
 import {toDraft} from './strategy-review.js';
@@ -20,7 +20,8 @@ import {goStep} from './wizard.js';
 // or a NO_PLACE reason when there is none (test/toast-targets.test.js checks every call names one).
 export function toastMessage(title, body, target = null) {
   let hint = false, action = null;
-  // action: {label, run}, the next step as a button in the pop-up (owner, 7 Oct 2026: "Role added" said nothing about what to do next).
+  // action: {label, run}, the next step, run by a click on the pop-up itself (owner, 7 Oct 2026: "Role added" said nothing about what to do next;
+  // 27 Oct 2026: "The toast notifications shouldn't really have a button, but just clicking them, should produce an action"). No button in a pop-up.
   if (typeof title === 'object') ({title, body, hint, target = null, action = null} = title);
   // The same message twice (a double click, two checks finding the same thing) replaces the first instead of stacking.
   for (const old of $('toasts').children) if (old.dataset.key === `${title}\n${body}`) old.remove();
@@ -30,15 +31,12 @@ export function toastMessage(title, body, target = null) {
   if (hint) toast.append(Object.assign(document.createElement('small'), {textContent:
     window.pilot.platform === 'win32' ? 'Windows notifications are off for this app: Settings → System → Notifications → Jobadabra → On.'
       : 'macOS notifications are off for this app: System Settings → Notifications → Electron (or Jobadabra) → Allow notifications.'}));
-  // A pop-up that is news about something opens it on a click (renderer/targets.js); the others just close.
+  // One click, one thing: the action when there is one, else open what the pop-up is about (renderer/targets.js); the others just close.
   const place = clean(target);   // a NO_PLACE reason (a string) is no place
-  if (place) { toast.classList.add('toast-link'); toast.title = 'Click to open'; }
-  if (action) {
-    const next = Object.assign(document.createElement('button'), {type: 'button', className: 'secondary toast-action', textContent: action.label});
-    next.addEventListener('click', event => { event.stopPropagation(); toast.remove(); action.run(); });
-    toast.append(next);
-  }
-  toast.addEventListener('click', () => { toast.remove(); if (place) openTarget(place); });
+  if (action) { toast.append(Object.assign(document.createElement('small'), {className: 'toast-next', textContent: `${action.label} ›`})); toast.title = `Click: ${action.label}`; }
+  else if (place) toast.title = 'Click to open';
+  if (action || place) toast.classList.add('toast-link');
+  toast.addEventListener('click', () => { toast.remove(); if (action) action.run(); else if (place) openTarget(place); });
   $('toasts').append(toast);
   setTimeout(() => toast.remove(), hint || action ? 20000 : 8000);   // a step to take stays long enough to take it
   return toast;
@@ -53,7 +51,7 @@ export function sayRefused(title, result, {place = null, retry = null} = {}) {
   if (!why) return null;
   if (why.credit) { openTopupDialog(why, {action: title.replace(/ did not start$/, ''), retry}); return why; }
   const label = refusalAction(why);
-  toastMessage({title, body: why.text, action: label ? {label, run: () => openSetting('plan')} : null, target: label ? {card: 'license'} : place});
+  toastMessage({title, body: why.text, target: label ? {card: 'license'} : place});   // the click opens Settings → Plan's card (no button)
   return why;
 }
 

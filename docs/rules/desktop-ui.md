@@ -173,6 +173,12 @@ A new Reports tab or detail screen starts from the app's own widgets: `summaryTi
   `npm run gallery` shows every token and component. The website (private repo `jobadabra-web`) has its own styles.
 - **UI from an owner mockup:** confirm layout + behaviour in one message before code. A card has many states; a mockup shows one: keep every state.
 
+## Pop-ups (toasts): no button; the click is the one thing (owner, 27 Oct 2026) [approved]
+- "On clicking on any notification, it should forward/redirect us and highlight a specific section/screen/card" and "The toast notifications shouldn't really have a button, but just clicking them, should produce an action".
+- `toastMessage` (`renderer/pages/startup.js`) takes `target` (a job's row, a session's card, `{card: '<id>'}`, a page, Recent activity: `renderer/targets.js`) or `action` (`{label, run}`: the click runs it; the label shows as a small "<label> ›" line). Neither: `NO_PLACE.<reason>`.
+- No button inside a pop-up; the one exception is the "Why dismiss?" chips (`dismiss-reason.js`), the answers it asks for. Look: `--toast-bg` / `--toast-line` (dark lifted above the cards, 1 px edge).
+- Guards: `desktop/test/toast-targets.test.js` (every call names a target, an action or a reason; no button in a pop-up). macOS notifications carry the same target (`lib/app-notify.js`).
+
 ## Every new screen and action goes in the ⌘K palette
 `paletteCommands()` in `desktop/renderer/pages/nav.js`. A new page is a `.nav` button (listed automatically). A new Actions card needs
 `data-command` or `data-palette` on its Run button (`test/palette-covers-actions.test.js`). Any other new top-level button is added with

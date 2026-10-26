@@ -5,8 +5,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {NO_PLACE} from '../renderer/targets.js';
 
-const DESKTOP = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const jsFiles = dir => fs.readdirSync(path.join(DESKTOP, dir), {withFileTypes: true}).flatMap(entry =>
+export const DESKTOP = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const jsFiles = dir => fs.readdirSync(path.join(DESKTOP, dir), {withFileTypes: true}).flatMap(entry =>
   entry.isDirectory() ? jsFiles(path.join(dir, entry.name)) : entry.name.endsWith('.js') ? [path.join(dir, entry.name)] : []);
 
 // The text between a call's parentheses, from the index just after "(": strings, template literals (with ${…}) and nesting skipped over.
@@ -54,7 +54,7 @@ export function missing(args) {
   const parts = topLevel(args);
   if (parts.length === 1 && /^[A-Za-z_$][\w$]*$/.test(parts[0])) return null;   // forwards a toast built elsewhere (its maker is checked where it is written)
   const objects = parts.filter(part => part.startsWith('{'));
-  if (objects.some(object => /[{,]\s*target\s*[:,}]/.test(object))) return null;
+  if (objects.some(object => /[{,]\s*(target|action)\s*[:,}]/.test(object))) return null;   // action: the click runs it
   if (parts.length >= 3 && !parts[0].startsWith('{')) return null;   // (title, body, target)
   return 'no target and no NO_PLACE reason';
 }
@@ -63,6 +63,7 @@ export function missing(args) {
 // a toast sent to the window, and the toast callbacks lib modules are given.
 const CALLS = [
   {dirs: ['renderer'], pattern: /\btoastMessage\(/g, skip: /export function toastMessage\(/},
+  {dirs: ['renderer'], pattern: /(?<![.\w])toast\(\{/g},   // toastMessage passed in under another name (start-feedback.js announceQueued)
   {dirs: ['renderer'], pattern: /\bsayRefused\(/g, skip: /export function sayRefused\(/, place: true},   // (title, result, {place})
   {dirs: ['lib'], files: ['main.js'], pattern: /(?<![.\w])notify\(/g, skip: /function notify\(/},
   {dirs: ['lib'], files: ['main.js'], pattern: /toWindow\('toast',/g},

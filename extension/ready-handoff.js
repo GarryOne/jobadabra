@@ -19,8 +19,9 @@ export function restoreInPage(handoff) {
   return put;
 }
 
-// deps: {chrome, api(path, init), sessionGet(key), move(tabId, url): tabs.js moveTab (so the move counts as the extension's own, never an outside link), decide(what, fields)}.
-export function createReadyHandoff({chrome, api, sessionGet, move, decide = () => {}}) {
+// deps: {chrome, api(path, init), sessionGet(key), move(tabId, url): tabs.js moveTab (so the move counts as the extension's own, never an outside link), decide(what, fields),
+// mark: the app's fill mark (background.js FILL_MARK)}.
+export function createReadyHandoff({chrome, api, sessionGet, move, decide = () => {}, mark: fillMark = 'jobpilotto-fill'}) {
   const asking = new Map();   // tabId -> {url, ask}: the ask still waiting on the app
   // While a marked tab first loads: ask once. -> true when the tab was sent on to the night's page (the caller stops; that load comes back here).
   // The page can finish loading while the app still answers (e2e, 18 Oct 2026: the fill began on the first page, then again on the night's): that
@@ -60,5 +61,14 @@ export function createReadyHandoff({chrome, api, sessionGet, move, decide = () =
     decide('ready', 'open in my browser: the night\'s storage back', {storage: restored, fromNight: !!state.handoff?.fromNight});
     return restored;
   }
-  return {takeHandoff, restoreHandoff};
+  // A tab the app opened, looked at only after it loaded (its load came while the worker was starting: tab-report.js considerMissed; the popup's "Apply on this page"):
+  // asked now, as while loading (26 Oct 2026, Windows beta: Chrome's first tab loaded before the worker, so no cookies, storage or night mark).
+  // -> true when the tab was sent on to the night's page (the caller stops: that load fills it); otherwise the night's storage is put back if it waits.
+  async function takeLate(tabId, url) {
+    if (!String(url || '').includes(`#${fillMark}`)) return false;   // a next page in the tab: its first page asked already
+    if (await takeHandoff(tabId, url, 'loading')) return true;
+    await restoreHandoff(tabId);
+    return false;
+  }
+  return {takeHandoff, restoreHandoff, takeLate};
 }

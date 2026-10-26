@@ -13,7 +13,7 @@ import {sharedFixes} from './tab-pages.js';
 import {consider, tabReloaded} from './fill-flow.js';
 
 export function createPanelMessages(ctx) {
-  const {fillOpenedTab, jobOf, prefetch, started} = ctx;
+  const {fillOpenedTab, jobOf, prefetch, readyHandoff, started} = ctx;
   return function messages_panel(message, sender, reply) {
     // The panel (review.js). App first: its job, its session and the state of the form, shared both ways. Without the
     // app (not open, or your own Worker) the panel still shows the form's progress and fills through your Worker.
@@ -50,6 +50,7 @@ export function createPanelMessages(ctx) {
         if (!tab || !/^https:/.test(tab.url || '') || !(armed || tab.url.includes('#jobpilotto-fill'))) return {ok: false, why: 'This page was not opened by the Jobadabra app: press Apply in the app.'};
         tabReloaded(tab.id);   // a page whose Apply press was tried once is pressed again: this is the person asking (a reload does the same, tab-report.js)
         decide('fill', 'Apply pressed in the extension popup', {host: new URL(tab.url).hostname});
+        if (await readyHandoff.takeLate(tab.id, tab.url).catch(() => false)) return {ok: true};   // a load the worker missed: the night's page first (ready-handoff.js)
         consider(tab, await jobOf(tab)).catch(() => {});
         return {ok: true};
       })().then(reply, () => reply({ok: false, why: 'Could not start here.'}));

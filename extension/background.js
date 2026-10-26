@@ -59,7 +59,7 @@ export const FILL_MARK = 'jobpilotto-fill';
 const started = new Set();
 const armedLogged = new Set();
 const panelRefused = new Set();
-const readyHandoff = createReadyHandoff({chrome, api: (path, init) => settings().then(config => api(config, path, init)), sessionGet, move: moveTab, decide});   // Open in my browser (ready-handoff.js)
+const readyHandoff = createReadyHandoff({chrome, api: (path, init) => settings().then(config => api(config, path, init)), sessionGet, move: moveTab, decide, mark: FILL_MARK});   // Open in my browser (ready-handoff.js)
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (!tab.url?.includes(`#${FILL_MARK}`)) return;
   // A mark added to a tab already open changes only its address (a hash change: no loading status).
@@ -475,7 +475,7 @@ chrome.storage.onChanged.addListener((_, area) => {
   clearTimeout(keepTimer);
   keepTimer = setTimeout(() => keepMemory().catch(() => {}), 500);
 });
-createTabReport({WORKER, armedLogged, bootId, fillsNow, jobOf, keepMemory, newer, reportCorrections, started});   // tab-report.js
+createTabReport({WORKER, armedLogged, bootId, fillsNow, jobOf, keepMemory, newer, readyHandoff, reportCorrections, started});   // tab-report.js
 export function newer(a, b) {
   const [x, y] = [a, b].map(v => String(v || '0').split('.').map(Number));
   for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
@@ -491,6 +491,6 @@ initFillFlow({started, fillOpenedTab, reportFlow, onPage, fillsNow, arm, progres
 // Message groups: registered here, after everything they use exists, in the order the messages were answered before.
 messageHandlers.push(createStopMessages());   // stop-messages.js: first, so a stopped worker refuses before any other group acts
 messageHandlers.push(createLearningMessages({arm, fillOpenedTab, handOff, jobOf, panelRefused, reportFlow, stepBox, stepNow, watchSubmission}));   // messages-learning.js
-messageHandlers.push(createPanelMessages({fillOpenedTab, jobOf, prefetch, started}));   // messages-panel.js
+messageHandlers.push(createPanelMessages({fillOpenedTab, jobOf, prefetch, readyHandoff, started}));   // messages-panel.js
 messageHandlers.push(createAppMessages({bootId, jobOf}));   // messages-app.js
 messageHandlers.push(createReportMessages());   // messages-report.js: the panel's "Report this form" flag

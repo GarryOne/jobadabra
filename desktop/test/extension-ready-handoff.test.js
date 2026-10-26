@@ -100,3 +100,46 @@ test('the page side puts back only the storage and marks the night\'s page: no f
   page([]); restoreInPage({localStorage: {}, snapshot: {fields: []}});
   assert.equal(globalThis.document.marks['data-jobpilotto-night'], undefined, 'a hand-off not from a night leaves the page unmarked');
 });
+
+// A marked tab first looked at after its load (26 Oct 2026, Windows beta 40275152602: Chrome's first tab loaded before the worker started; the late look
+// filled it, but the hand-off was asked only while loading, so no cookies, no storage and no night mark: the panel said the company, not "Last night's fill is back").
+test('a marked tab looked at only after it loaded: the hand-off is asked now, the tab goes on to the night\'s page, whose load puts the night back', async () => {
+  const w = world({ok: true, handoff: {...HANDOFF, fromNight: true}});
+  assert.equal(await w.flow.takeLate(7, MARKED), true, 'sent on to the night\'s page: the caller stops, that load fills it');
+  assert.deepEqual(w.asks, [['/extension/ready-handoff', MARKED]]);
+  assert.equal(w.updates.length, 1);
+  const night = 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1';
+  assert.equal(await w.flow.takeHandoff(7, night, 'loading'), false, 'the night\'s page loading is not asked again');
+  assert.equal(await w.flow.restoreHandoff(7), 1);
+  assert.equal(w.scripts[0].fromNight, true, 'the page is marked as the night\'s (restoreInPage)');
+});
+
+test('a late look with no hand-off, or one already asked, or a page the app did not mark: nothing moves and the fill goes on', async () => {
+  const none = world({ok: true, handoff: null});
+  assert.equal(await none.flow.takeLate(7, MARKED), false);
+  assert.equal(await none.flow.takeLate(7, MARKED), false);
+  assert.equal(none.asks.length, 1, 'asked once per tab');
+  const unmarked = world({ok: true, handoff: HANDOFF});
+  assert.equal(await unmarked.flow.takeLate(8, 'https://job-boards.greenhouse.io/acme/jobs/1'), false);
+  assert.deepEqual([unmarked.asks, unmarked.updates], [[], []], 'a next page (no fill mark) is never asked');
+  const waiting = world({ok: true, handoff: HANDOFF});
+  await waiting.flow.takeHandoff(9, MARKED, 'loading');   // asked while loading, the night's page came: its storage still waits for the look
+  assert.equal(await waiting.flow.takeLate(9, 'https://job-boards.greenhouse.io/acme/jobs/1#jobpilotto-fill=s1'), false);
+  assert.equal(waiting.scripts.length, 1, 'the night\'s storage and mark are put back before the fill');
+});
+
+// The class: every path that looks at a tab the app opened after its load asks the hand-off before it fills (tab-report.js considerMissed, the popup's
+// "Apply on this page" in messages-panel.js); the loading path is background.js's onUpdated. A new late path without it fails here.
+test('every late look at an app-opened tab asks for the night\'s hand-off before it fills', async () => {
+  const fs = await import('node:fs');
+  const read = file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8');
+  for (const [file, start] of [['tab-report.js', 'async function considerMissed'], ['messages-panel.js', "message?.type === 'applyHere'"]]) {
+    const text = read(file), from = text.indexOf(start);
+    assert.ok(from >= 0, `${file}: "${start}" not found`);
+    const body = text.slice(from), late = body.indexOf('takeLate('), fills = body.indexOf('consider(');
+    assert.ok(late >= 0 && late < fills, `${file}: ${start} fills before it asks for the night's hand-off (readyHandoff.takeLate)`);
+  }
+  const background = read('background.js');
+  assert.match(background, /createTabReport\(\{[^}]*readyHandoff/, 'background.js gives tab-report.js the hand-off');
+  assert.match(background, /createPanelMessages\(\{[^}]*readyHandoff/, 'background.js gives messages-panel.js the hand-off');
+});

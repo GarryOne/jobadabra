@@ -30,7 +30,7 @@ const browserId = () => (browserKept ||= chrome.storage.local.get('browserId').t
 }).catch(() => ''));
 
 export function createTabReport(ctx) {
-  const {WORKER, armedLogged, bootId, fillsNow, jobOf, keepMemory, newer, reportCorrections, started} = ctx;
+  const {WORKER, armedLogged, bootId, fillsNow, jobOf, keepMemory, newer, readyHandoff, reportCorrections, started} = ctx;
   // The version this copy runs: the manifest's, or the one it last reloaded itself for when that is higher. A development copy (Chrome loads the checkout's extension/) keeps the manifest's
   // base version ("0.9") while the app reports a stamped one (desktop/lib/server-env.js latestExtension); after the reload it must not look stale (15 Oct 2026: a pulled change never reached it).
   const runningVersion = async () => {
@@ -138,6 +138,7 @@ export function createTabReport(ctx) {
       let host = '';
       try { host = new URL(tab.url).hostname; } catch { /* not a url */ }
       decide('fill', 'a loaded page nobody had looked at: looking now', {host});
+      if (await readyHandoff.takeLate(tab.id, tab.url)) continue;   // Open in my browser: the night's page first, as on a load (ready-handoff.js); that load fills it
       await consider(tab, await jobOf(tab));
     }
   }

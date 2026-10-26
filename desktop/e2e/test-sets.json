@@ -232,6 +232,7 @@
   "reversals.test.mjs",
   "review-batch.test.mjs",
   "review-cache.test.mjs",
+  "review-checklist.test.mjs",
   "review-free-run.test.mjs",
   "review-free.test.mjs",
   "review-lessons.test.mjs",

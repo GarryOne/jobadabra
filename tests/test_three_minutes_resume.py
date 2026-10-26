@@ -69,20 +69,23 @@ class ARunResumesWhereTheLastOneStopped(Isolated):
 
     def stage_employer_sites(self):
         started = {1: [], 2: []}
-        run = [1]
+        run, slow, lock = [1], [], threading.Lock()
         slow_done = threading.Event()
 
         def fetcher(source):
-            started[run[0]].append(source['slug'])
-            time.sleep(3 if source['slug'] == 's5' else 0.3)   # s5 is still being read at the cut
-            if source['slug'] == 's5':
+            with lock:
+                started[run[0]].append(source['slug'])
+                if not slow:   # the first site read is still being read at the cut, however busy the machine
+                    slow.append(source['slug'])
+            time.sleep(3 if source['slug'] == slow[0] and run[0] == 1 else 0.3)
+            if source['slug'] == slow[0]:
                 slow_done.set()
             return [job(source['slug'])]
         sites = [{'company': f'Co{i}', 'ats': 'lever', 'slug': f's{i}'} for i in range(10)]
         with mock.patch.object(feeds, 'FETCH_WORKERS', 2), mock.patch.object(read_budget, 'READ_FLOOR', 0):
             time_budget.start(BUDGET)
             feeds.scan(sites, self.db, fetcher=fetcher, details={})
-            self.assertTrue(wait_for(lambda: slow_done.is_set() and kept_late('employer', 'lever:s5')), 's5 ended and was kept')
+            self.assertTrue(wait_for(lambda: slow_done.is_set() and kept_late('employer', f'lever:{slow[0]}')), 'the open site ended and was kept')
             run[0] = 2
             time_budget.start(60)
             feeds.scan(sites, self.db, fetcher=fetcher, details={})

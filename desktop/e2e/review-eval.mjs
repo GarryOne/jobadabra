@@ -2,12 +2,13 @@
 // judge shows): every AI-review issue closed as resolution:fixed (a real bug: did the reviewer see it again?) or resolution:by-design (a false alarm: did it
 // raise it again?), on the issue's own screenshot. "The same problem" is judged by a small Workers AI text model, never by word matching.
 //   CI_FREE_AI_CF_TOKEN=… CI_FREE_AI_CF_ACCOUNT_ID=… GITHUB_TOKEN=… node review-eval.mjs --out <dir> [--models a,b] [--lessons both|on|off] [--limit n]
+// A claude-* model is asked on E2E_ANTHROPIC_KEY (CI only: .github/workflows/review-eval.yml, by hand); the judge stays a small Workers AI text model.
 // Each by-design issue is scored with the lessons of the OTHER issues only (lib/review-lessons.mjs, exclude), so a lesson never grades itself.
 // Writes <dir>/review-eval.json and prints one table. Costs about $0.002 a screenshot per model on CI's Workers AI token (measured, Oct 2026).
 import fs from 'node:fs';
 import path from 'node:path';
 import {DESKTOP} from './lib/app.mjs';
-import {buildRequest, parseFindings} from './lib/vision.mjs';
+import {buildRequest, parseFindings, usageCost} from './lib/vision.mjs';
 import {FREE_MODEL, askFree} from './lib/review-free.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 
@@ -18,6 +19,16 @@ const MODELS = arg('models', FREE_MODEL).split(',');
 const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infinity;
 const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
 const REPO = process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+// A Claude model answers in the same shape as askFree: {ok, message, usd} or {ok: false, status, detail}.
+async function askClaude(request, {model}) {
+  const response = await fetch(`${process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com'}/v1/messages`, {method: 'POST', signal: AbortSignal.timeout(120000),
+    headers: {'x-api-key': process.env.E2E_ANTHROPIC_KEY || '', 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}, body: JSON.stringify({...request, model})}).catch(error => error);
+  if (response instanceof Error) return {ok: false, status: 0, detail: response.message};
+  if (!response.ok) return {ok: false, status: response.status, detail: (await response.text().catch(() => '')).slice(0, 300)};
+  const message = await response.json();
+  return {ok: true, message: {...message, content: (message.content || []).filter(block => block.type === 'text')}, usd: usageCost(model, message.usage || {}) || 0};
+}
+const ask = (request, {model}) => (model.startsWith('claude-') ? askClaude(request, {model}) : askFree(request, {model}));
 const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 fs.mkdirSync(path.join(OUT, 'shots'), {recursive: true});
 const skill = path.resolve(DESKTOP, '..', '.claude', 'skills', 'ui-look-and-feel', 'SKILL.md');
@@ -69,7 +80,7 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     const pngBase64 = await shot(item);
     if (!pngBase64) { run.rows.push({...item, gone: true}); continue; }
     const extra = withLessons ? lessonsText(lessonsFor(lessons, item.view, {exclude: item.number})) : '';
-    const answer = await askFree(buildRequest({view: item.view, pngBase64, rules, lessons: extra}), {model});
+    const answer = await ask(buildRequest({view: item.view, pngBase64, rules, lessons: extra, model}), {model});
     if (!answer.ok) { run.rows.push({...item, failed: `${answer.status} ${answer.detail}`.slice(0, 160)}); console.log(`  #${item.number} ${model}: failed ${answer.status}`); continue; }
     const findings = parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;

@@ -1,8 +1,8 @@
 name: E2E screenshot review
 description: >-
-  The AI review of one e2e lane's screenshots after its suites: every suite's pages in ONE Claude Sonnet Message Batch (half the price, same model and prompt),
+  The AI review of one e2e lane's screenshots after its suites: every suite's pages in ONE Claude Haiku 5.5 Message Batch (half the price, same prompt),
   a page that looks the same as the last one judged not asked again (desktop/e2e/lib/review-cache.mjs).
-# Owner, 26 Oct 2026: "I want to cut the costs in half, but to be close to the same quality as Claude". Each suite job used to review its own 1-10 pages, under the
+# Owner, 26 Oct 2026: "I want to cut the costs in half, but to be close to the same quality as Claude", then Haiku 5.5 (~$1 a month) over Free AI (~$31 in neurons). Each suite job used to review its own 1-10 pages, under the
 # batch's 20, so no run ever batched ("0 by batch"). Used by e2e.yml and e2e-windows.yml (a review job after the suites) and inside desktop.yml's Release jobs
 # (before their block check, which reads the findings; the release graph stays Build -> E2E -> Release). The findings go up as <prefix>review: one folder per
 # suite (named as the suite's artifact) beside the pictures they name; ui-findings.yml and block-check.mjs read them with the suites' own. Guard: tests/test_e2e_review_job.py.
@@ -46,13 +46,14 @@ runs:
         path: desktop/e2e/.review-cache
         key: ai-review-batch-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: ai-review-batch-${{ inputs.lane }}-
-    - name: AI review of the screenshots (Claude Sonnet, every page in one batch)
+    - name: AI review of the screenshots (Claude Haiku 5.5, every page in one batch)
       if: inputs.anthropic-key != ''
       shell: bash
       working-directory: desktop/e2e
       env:
         E2E_ANTHROPIC_KEY: ${{ inputs.anthropic-key }}
         E2E_REVIEW_ENGINE: claude
+        E2E_REVIEW_MODEL: claude-haiku-5-5   # owner, 26 Oct 2026: about $1 a month (1/20 of Sonnet's price); review-eval.yml scores it on the judged issues
         E2E_REVIEW_BATCH_MIN: '1'   # the batch waits on a Linux runner after the suites, never inside a suite's Mac job
         E2E_REVIEW_OUT: ${{ github.workspace }}/.e2e-review/out
         E2E_ARTIFACTS: ${{ github.workspace }}/.e2e-review/usage

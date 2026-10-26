@@ -51,15 +51,49 @@ test('a folder still held after endAfter has its own leftover processes ended on
   assert.equal(waited, 6);
 });
 
-test('endLeftovers: only on Windows, only for a run folder named jp-e2e-, and a failing shell ends nothing', async () => {
+// Beta 4 (26 Oct 2026, Windows settings): after a reset the app's own Electron child (pid 2020) held files in the data folder past 20 s; the 8 s end had
+// ended the three processes whose command line names the folder (700, 6296, 4136) and missed it: its command line does not name the folder.
+const TABLE = [
+  {pid: 5040, parent: 900, name: 'electron.exe', cmd: 'electron.exe . --remote-debugging-port=0'},           // the app's main (gone after its exit in life; a row here, so it is ended if alive)
+  {pid: 2020, parent: 5040, name: 'electron.exe', cmd: 'electron.exe --type=utility --utility-sub-type=network.mojom.NetworkService'},
+  {pid: 2100, parent: 2020, name: 'python.exe', cmd: 'python -m src.desktop jobs'},                              // a grandchild
+  {pid: 2200, parent: 5040, name: 'conhost.exe', cmd: 'conhost.exe 0x4'},                                         // a child, but not ours to end by name
+  {pid: 3000, parent: 900, name: 'electron.exe', cmd: 'electron.exe --user-data-dir=C:\\Temp\\jp-e2e-m8crhW\\x'}, // names the folder: ended as before
+  {pid: 4000, parent: 900, name: 'electron.exe', cmd: 'electron.exe another app'},                                // someone else's: never ended
+  {pid: 4100, parent: 900, name: 'node.exe', cmd: 'node suite.mjs settings'},                                     // the harness itself
+];
+
+test('leftoverPids: the app main\'s descendants and the processes naming the run folder, only ours by name, never another app or the harness', async () => {
+  const {leftoverPids} = await import('../lib/folder-free.mjs');
+  assert.deepEqual(leftoverPids(TABLE, {name: 'jp-e2e-m8crhW', mainPid: 5040, self: 4100}).sort(), [2020, 2100, 3000, 5040]);
+  assert.deepEqual(leftoverPids(TABLE, {name: 'jp-e2e-m8crhW', self: 4100}), [3000]);   // no main pid known: the folder match alone, as before
+  assert.deepEqual(leftoverPids(TABLE, {name: 'jp-e2e-none', mainPid: 4100, self: 4100}), []);   // never the harness's own tree
+  const loop = [{pid: 1, parent: 2, name: 'electron.exe', cmd: ''}, {pid: 2, parent: 1, name: 'electron.exe', cmd: ''}];
+  assert.deepEqual(leftoverPids(loop, {name: 'jp-e2e-x', mainPid: 1, self: 9}).sort(), [1, 2]);   // a parent cycle (pid reuse) ends
+});
+
+test('endLeftovers: only on Windows, only for a run folder named jp-e2e-; lists the processes, ends the picked ones, and a failing shell ends nothing', async () => {
   const {endLeftovers} = await import('../lib/folder-free.mjs');
   const never = () => assert.fail('no shell');
   assert.deepEqual(endLeftovers({platform: 'darwin', dir: '/t/jp-e2e-abc', run: never}), []);
   assert.deepEqual(endLeftovers({platform: 'win32', dir: 'C:\\Users\\x', run: never}), []);
-  let script = '';
-  assert.deepEqual(endLeftovers({platform: 'win32', dir: 'C:\\Temp\\jp-e2e-m8crhW', run: (_s, args) => { script = args.at(-1); return {stdout: '2016\r\n4296\r\n'}; }}), ['2016', '4296']);
-  assert.match(script, /CommandLine -like '\*jp-e2e-m8crhW\*'/);
-  assert.deepEqual(endLeftovers({platform: 'win32', dir: 'C:\\Temp\\jp-e2e-m8crhW', run: () => { throw new Error('x'); }}), []);
+  const scripts = [];
+  const listing = TABLE.map(row => [row.pid, row.parent, row.name, row.cmd].join('\t')).join('\r\n');
+  const run = (_shell, args) => { scripts.push(args.at(-1)); return {stdout: scripts.length === 1 ? listing : ''}; };
+  assert.deepEqual(endLeftovers({platform: 'win32', dir: 'C:\\Temp\\jp-e2e-m8crhW', mainPid: 5040, self: 4100, run}).sort(), ['2020', '2100', '3000', '5040']);
+  assert.match(scripts[0], /Win32_Process/);
+  assert.match(scripts[1], /Stop-Process -Id \d+(,\d+){3} -Force/);
+  const quiet = [];
+  assert.deepEqual(endLeftovers({platform: 'win32', dir: 'C:\\Temp\\jp-e2e-zzz', mainPid: 77, self: 4100, run: (_s, args) => { quiet.push(args.at(-1)); return {stdout: listing}; }}), []);
+  assert.equal(quiet.length, 1);   // nothing picked: no Stop-Process call
+  assert.deepEqual(endLeftovers({platform: 'win32', dir: 'C:\\Temp\\jp-e2e-m8crhW', mainPid: 5040, run: () => { throw new Error('x'); }}), []);
+});
+
+test('the wait passes the app main pid to the leftover end', async () => {
+  const held = refusing(6);
+  let asked = null;
+  await waitForFolderFree('/p/jp-e2e-a', {every: 1, endAfter: 3, mainPid: 5040, rename: held.rename, exists: () => true, end: pid => { asked = pid; return []; }});
+  assert.equal(asked, 5040);
 });
 
 test('the class: every place that waits for a held app folder goes through the one shared wait, which can end the run\'s own leftovers', async () => {
@@ -70,6 +104,7 @@ test('the class: every place that waits for a held app folder goes through the o
   const all = [...sources('lib'), ...sources('suites')].filter(file => file !== 'lib/folder-free.mjs');
   // Callers of the shared wait: the app's own exit wait (ctx.waitForExit); a suite waits through it, never with its own rename loop.
   assert.deepEqual(all.filter(file => /waitForFolderFree\(/.test(read(file))), ['lib/context.mjs']);
+  assert.match(read('lib/context.mjs'), /waitForFolderFree\(session\.profile, \{mainPid/);   // the app's main pid: its descendants are ended too (beta 4)
   assert.deepEqual(all.filter(file => /ctx\.waitForExit\(/.test(read(file))), ['suites/settings.mjs']);
   // The app's profile folder is the `jp-e2e-` one the leftovers' command lines name; a rename of the prefix would silently end nothing.
   assert.match(read('lib/app.mjs'), /mkdtempSync\(path\.join\(os\.tmpdir\(\), 'jp-e2e-'\)\)/);

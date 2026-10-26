@@ -5,7 +5,12 @@ into the request (block) and the scorer's fixed answer has a `search` part: the 
 is a career change (another field than the profile's experience) and one line on what the profile lacks. On a career change the job is ranked
 and shown by its fit to the search (apply: the ring, the digest and the Jobs list read 'score'); the CV's own fit is kept as 'cv_fit'.
 A score made before this part existed, under the digest's bar, for a title the current search wants, is scored again once (again_ids).
+On a career change, a title the AI's title check says is a role of the search is shown at SEARCH_ROLE_FIT at least (owner's pick, 26 Oct
+2026: "Use the title check"): Free AI's open model rated his 13 First Officer jobs 0-30 for his pilot search while Claude rated them 55-95;
+the title check is one yes/no question open models answer well (src/sources/feeds.py judged_title; tests/test_score_title_floor.py).
 The AI judges all of it; no word lists. Tests: tests/test_score_career_change.py."""
+
+SEARCH_ROLE_FIT = 70   # the title check's yes on a career change: the searched role, with the CV's gap (tier B: shown, under a strong A)
 
 PART = {
     'type': 'object', 'additionalProperties': False, 'required': ['fit', 'career_change', 'cv_gap'],
@@ -55,14 +60,28 @@ def tier(value):
     return 'A' if value >= 85 else 'B' if value >= 50 else 'C'
 
 
-def apply(data):
-    """On a career change, the job is ranked by its fit to the search: 'score' becomes that fit and the CV's own is kept as 'cv_fit'."""
+def _search_role(job):
+    """The AI's title check said this posting's title is a role of the current search (True only on its yes; unjudged is not a yes)."""
+    if not job or not job.get('title'):
+        return False
+    from ..sources import feeds
+    try:
+        return feeds.judged_title(job['title']) is True
+    except Exception:  # noqa: BLE001 — a title check we cannot read lifts nothing
+        return False
+
+
+def apply(data, job=None):
+    """On a career change, the job is ranked by its fit to the search: 'score' becomes that fit and the CV's own is kept as 'cv_fit'.
+    That fit is at least SEARCH_ROLE_FIT when the AI's title check says the title is a role of the search (_search_role)."""
     part = data.get('search') or {}
     try:
         fit = max(0, min(100, int(part.get('fit'))))
     except (TypeError, ValueError):   # an answer without the part (an engine without the answer form): kept as asked, never asked again
         data['search'] = {}
         return data
+    if part.get('career_change') is True and fit < SEARCH_ROLE_FIT and _search_role(job):
+        fit = SEARCH_ROLE_FIT
     data['search'] = {**part, 'fit': fit, 'cv_gap': str(part.get('cv_gap') or '')[:120]}
     if part.get('career_change') is True and fit > int(data.get('score') or 0):
         data.update(cv_fit=data['score'], score=fit, tier=tier(fit))

@@ -88,6 +88,14 @@ class MicrosoftStoreOnStable(unittest.TestCase):
         self.assertRegex(publish, r'msstore publish "\$msix"', 'the .msix file is the argument')
         self.assertRegex(submit, r'msix="\$\{file%\.appx\}\.msix"', 'msstore refuses an .appx: copy it to .msix')
 
+    def test_the_package_targets_a_windows_the_store_accepts_as_msix(self):
+        # 0.8.41's third try: "You cannot upload msix/msixbundle/msixupload packages that targets Windows MinVersion <= 10.0.17134.0";
+        # electron-builder's x64 default is 10.0.14316.0.
+        build = self.FLOW[self.FLOW.index('\n  msix:'):self.FLOW.index('\n  submit:')]
+        found = re.search(r'-c\.appx\.minVersion=10\.0\.(\d+)\.0', build)
+        self.assertTrue(found, 'set appx.minVersion: the default is below the Store floor for .msix')
+        self.assertGreater(int(found.group(1)), 17134)
+
     def test_the_credentials_are_only_secrets_never_echoed(self):
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$\{\{ *secrets\.')
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$MS_STORE_CLIENT_SECRET')

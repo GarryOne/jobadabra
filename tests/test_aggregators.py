@@ -163,9 +163,13 @@ class AggregatorTests(unittest.TestCase):
     def test_keyed_sources_only_with_their_keys_and_free_ones_can_be_switched_off(self):
         names = lambda env: [name for name, _ in aggregators.sources(env)]
         self.assertEqual(names({}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Job boards found'])
-        self.assertEqual(names({'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k', 'JOOBLE_API_KEY': 'j'}), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Job boards found', 'Adzuna', 'Jooble'])
+        keys = {'ADZUNA_APP_ID': 'i', 'ADZUNA_APP_KEY': 'k', 'JOOBLE_API_KEY': 'j'}
+        # Parked (owner, 26 Oct 2026; src/features.py PARKED): saved keys are not used until JOB_PILOTTO_ENABLE names the source.
+        self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Job boards found'])
+        keys['JOB_PILOTTO_ENABLE'] = 'adzuna,jooble'
+        self.assertEqual(names(keys), ['Arbeitnow', 'Himalayas', 'Jobicy', 'jobs.ch', 'Job boards found', 'Adzuna', 'Jooble'])
         self.assertNotIn('Job boards found', names({'JOB_PILOTTO_DISABLE': 'found_boards'}))
-        self.assertEqual(names({'JOB_PILOTTO_DISABLE': 'aggregators', 'JOOBLE_API_KEY': 'j'}), ['Jooble'])
+        self.assertEqual(names({'JOB_PILOTTO_DISABLE': 'aggregators', 'JOOBLE_API_KEY': 'j', 'JOB_PILOTTO_ENABLE': 'jooble'}), ['Jooble'])
 
     def test_adzuna_asks_per_country_of_your_places(self):
         asked = []

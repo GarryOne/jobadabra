@@ -235,7 +235,8 @@ export function paletteCommands() {
   const onClosedTab = section => !!section.dataset.profilePanel && section.dataset.profilePanel !== openTab() && hiddenAt(section) === section
     && !hiddenAt(section.parentElement);
   // A connection's card (Settings → Connections → Manage: Chrome extension, Telegram, ...) is hidden until chosen: listed too, its entry opens it (settings.js openSetting).
-  const onClosedPanel = section => section.classList.contains('conn-panel') && hiddenAt(section) === section && !hiddenAt(section.parentElement);
+  // A parked feature's card (data-parked, src/features.py PARKED) is never listed: it stays hidden until the feature is back.
+  const onClosedPanel = section => section.classList.contains('conn-panel') && !section.dataset.parked && hiddenAt(section) === section && !hiddenAt(section.parentElement);
   const reachable = (node, section) => shown(node) || ((onClosedTab(section) || onClosedPanel(section)) && hiddenAt(node) === section);
   document.querySelectorAll('[data-profile-tab]').forEach(tab => add('Settings', `Open Profile: ${labelOf(tab)}`, '', 'settings profile tab',
     () => { openView('settings'); settingsPage('profile'); profileTab(tab.dataset.profileTab); }));

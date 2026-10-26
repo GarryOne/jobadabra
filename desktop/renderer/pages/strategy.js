@@ -9,7 +9,7 @@ import {guardLeave, openView} from './nav.js';
 import {toastMessage} from './startup.js';
 import {inDraft, reloadDraft} from '../strategy-sink.js';
 import {strategyState, showTab} from './strategy-state.js';
-import {ADVANCED, CARD_TONE, TARGET_CARDS, entriesOf, inColumns, renderCards, renderStrategy} from './strategy-targets.js';
+import {ADVANCED, CARD_TONE, TARGET_CARDS, entriesOf, inColumns, renderCards, renderStrategy, shownLists} from './strategy-targets.js';
 import {strategyBar} from './strategy-cards.js';
 import {loadCoverage} from './strategy-suggestions.js';
 import {loadPreferences} from './job-preferences.js';
@@ -50,7 +50,7 @@ function strategySkeleton() {
     heading.append(tile(glyph, CARD_TONE[key] || 'neutral'), title);
     head.append(heading);
     card.append(head);
-    for (const [name, label] of lists) {
+    for (const [name, label] of shownLists(lists)) {
       if (name === 'places') { const priority = el('div', 'priority'); priority.append(el('b', '', label), chipBones(2)); card.append(priority); continue; }
       if (label) card.append(el('p', 'sub', label));
       card.append(chipBones(lists.length > 1 ? 2 : 3));

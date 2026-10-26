@@ -27,10 +27,10 @@ Chrome loads this repo's `extension/` itself; its version stays the base (`"0.9"
 | Screen | What it does |
 |---|---|
 | **Setup wizard** | Anthropic key (checked, then stored encrypted) → **Notion**: duplicate the template, create an integration, paste its secret; the app finds every database and page by title (one copy, never mixed) and checks their columns → CV (PDF) → a short questionnaire → Claude drafts your Profile, standard answers and search settings (about USD 0.05–0.10), you review, and they're written into your Notion Profile pages → optional extras |
-| **Jobs** | Every open job, best fit first; **Find new jobs** runs job boards, employer feeds and (with keys) Google Jobs, AI facts and fit scores; Save / Applied / Dismiss per job |
+| **Jobs** | Every open job, best fit first; **Find new jobs** runs job boards, employer feeds, AI facts and fit scores; Save / Applied / Dismiss per job |
 | **Apply to N jobs** | Picks your best open matches (saved first). **In Chrome with the extension**: opens them as tabs; the extension fills each form, you review and submit. **AI agent sessions**: one Claude session per job in Terminal (`tools/apply-batch-claude.sh`), needs Notion |
 | **Strategy** | Links to your Profile and standard answers in Notion (edit them there); rebuild them from your CV |
-| **Settings** | Keys (Anthropic, Notion, SerpApi), the Chrome extension connection, your data folder |
+| **Settings** | Keys (Anthropic, Notion), the Chrome extension connection, your data folder |
 
 The Chrome extension connects to the app on this Mac (`http://127.0.0.1:47111` plus a token shown
 in Settings) instead of a Cloudflare Worker; it reuses the same endpoint code

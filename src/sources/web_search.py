@@ -1,14 +1,14 @@
 """A web search for a company's own job site ("<company> jobs"), as a person would do it, for employers the scout cannot reach by name or website
 (6 Oct 2026: Coop's jobs are on coopjobs.ch / jobs.coop.ch, Rolex's on carrieres-rolex.com). Brave Search (BRAVE_SEARCH_API_KEY, free plan:
-2,000 searches a month) or, without it, SerpApi's Google search (SERPAPI_API_KEY, the Google Jobs key; one credit a search). Off without
-either. Only result addresses are used, never their text; a job board or network is not an employer's job site and is left out.
+2,000 searches a month) or, without it, SerpApi's Google search (SERPAPI_API_KEY, the Google Jobs key; one credit a search). The user's own plan
+(Claude Code or Codex) comes first; both keyed paths are parked (src/features.py PARKED, 26 Oct 2026). Off without any. Only result addresses are used, never their text; a job board or network is not an employer's job site and is left out.
 """
 import json
 import os
 import urllib.parse
 import urllib.request
 
-from ..features import disabled
+from ..features import disabled, off
 from . import careers
 from ..ai.models import SMALL_MODEL
 from ..ai.providers.contract import detail, reason
@@ -29,14 +29,14 @@ def _get(url, headers=None):
 def provider():
     """'claude', 'codex', 'brave', 'serpapi' or None (off: none available, or JOB_PILOTTO_DISABLE=web_search). The user's own plan first
     (Claude Code or Codex: the AI engine, or signed in beside Free AI or a key): its web search is free to us and to them beyond the plan;
-    then the keyed search APIs."""
+    then the keyed search APIs, while they are not parked (src/features.py PARKED: brave_search, google_jobs; owner, 26 Oct 2026)."""
     if disabled('web_search'):
         return None
     if _claude_code():
         return _plan_engine()
-    if os.getenv('BRAVE_SEARCH_API_KEY', '').strip():
+    if os.getenv('BRAVE_SEARCH_API_KEY', '').strip() and not off('brave_search'):
         return 'brave'
-    if os.getenv('SERPAPI_API_KEY', '').strip() and not disabled('google_jobs'):
+    if os.getenv('SERPAPI_API_KEY', '').strip() and not off('google_jobs'):
         return 'serpapi'
     return None
 

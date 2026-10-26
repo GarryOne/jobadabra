@@ -37,7 +37,7 @@ export function settingsPage(name) {
 // One Settings card (setting-<id>): its sub-page, then scrolled to. Used by every link into Settings.
 export function openSetting(id) {
   const card = $(`setting-${id}`) || $(id);  // a card, or a part of one (tg-cloud: inside Always on)
-  if (!card) return;
+  if (!card || card.closest('[data-parked]')) return;   // a parked feature's card never opens (src/features.py PARKED)
   const view = card.closest('.view')?.dataset.view;
   if (view && view !== 'settings') {  // a card on another page (Profile: CV, details, links, assistant)
     openView(view);

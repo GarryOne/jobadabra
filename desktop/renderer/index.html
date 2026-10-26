@@ -258,7 +258,7 @@
         <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="cloud"></i></span>
           <span class="service-text"><b>Always on: your GitHub</b><span class="muted small">Runs on GitHub, even when your Mac is off: searches, application kits, insights and mail checks, on your schedule, from your own private repository (free).</span></span>
           <button class="secondary" data-goto-settings="cloud">Set up</button></div>
-        <div class="service-card is-row" id="key-source-card" hidden><span class="ui-tile tone-signal"><i data-icon="search"></i></span>
+        <div class="service-card is-row" id="key-source-card" data-parked="google_jobs" hidden><span class="ui-tile tone-signal"><i data-icon="search"></i></span>
           <span class="service-text"><b>Google Jobs</b><span class="muted small">Adds Google Jobs listings (SerpApi, free plan: 250 searches a month).</span></span>
           <button class="secondary" data-goto-settings="serpapi">Add key</button></div>
         <div class="service-card is-row is-wide" id="claude-extra" hidden><span class="ui-tile tone-signal"><i data-icon="bot"></i></span>
@@ -1409,19 +1409,19 @@
           </details>
         </div>
       </div>
-      <div class="setting conn-panel" id="setting-serpapi" hidden>
+      <div class="setting conn-panel" id="setting-serpapi" data-parked="google_jobs" hidden>
         <div><h3>🔎 Google Jobs (SerpApi)</h3><p class="muted status-line" data-secret="SERPAPI_API_KEY"></p>
           <p class="muted small">Free plan at <a href="#" data-link="https://serpapi.com/users/sign_up">serpapi.com</a>: 250 searches a month.</p></div>
         <div class="inline"><input type="password" id="set-serpapi" placeholder="SerpApi key"><button class="secondary" id="set-serpapi-save">Save</button></div>
       </div>
-      <div class="setting conn-panel" id="setting-brave" hidden>
+      <div class="setting conn-panel" id="setting-brave" data-parked="brave_search" hidden>
         <div><h3>🔎 Web search (Brave)</h3><p class="muted status-line" data-secret="BRAVE_SEARCH_API_KEY"></p>
           <p class="muted small">Finds an employer's own job site with a web search ("Coop jobs"), as you would, when its name and website lead
             nowhere. Free plan at <a href="#" data-link="https://brave.com/search/api/">brave.com/search/api</a>: 2,000 searches a month. When your AI runs
             on Claude Code, its own web search is used first (on your Claude plan); this key, then your SerpApi key, come after.</p></div>
         <div class="inline"><input type="password" id="set-brave" placeholder="Brave Search key"><button class="secondary" id="set-brave-save">Save</button></div>
       </div>
-      <div class="setting conn-panel" id="setting-aggregators" hidden>
+      <div class="setting conn-panel" id="setting-aggregators" data-parked="adzuna,jooble" hidden>
         <div><h3>🔎 Adzuna and Jooble</h3><p class="muted status-line" data-secret="ADZUNA_APP_KEY"></p>
           <p class="muted small">More jobs from two job search engines (Adzuna covers many countries). Free keys: register at
             <a href="#" data-link="https://developer.adzuna.com/signup">developer.adzuna.com</a> (an app id and a key) and request one at

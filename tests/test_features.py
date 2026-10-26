@@ -36,6 +36,13 @@ class FeaturesTest(unittest.TestCase):
             self.assertIsNone(notion.Tracker.from_env())
             self.assertEqual(google_jobs.api_key(), '')
 
+    def test_a_parked_source_leaves_its_saved_key_unused(self):
+        # Owner, 26 Oct 2026: Google Jobs (SerpApi) parked with Adzuna, Jooble and Brave (src/features.py PARKED).
+        with mock.patch.dict(features.os.environ, {'SERPAPI_API_KEY': 'k', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': ''}):
+            self.assertEqual(google_jobs.api_key(), '')
+        with mock.patch.dict(features.os.environ, {'SERPAPI_API_KEY': 'k', 'JOB_PILOTTO_DISABLE': '', 'JOB_PILOTTO_ENABLE': 'google_jobs'}):
+            self.assertEqual(google_jobs.api_key(), 'k')
+
     def test_daily_flags_follow_the_switch(self):
         args = SimpleNamespace(enrich_max=100, score_max=60, auto_kit_max=5, insight=True, send=True)
         with mock.patch.dict(features.os.environ, {'JOB_PILOTTO_DISABLE': 'score,insights,telegram'}):

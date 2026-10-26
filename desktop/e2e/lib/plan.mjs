@@ -108,7 +108,10 @@ export const reviewNeeded = ({files, waiting, known}) => !known || waiting > 0 |
 
 // Where a suite runs in CI (6 Oct 2026, the 5-minute e2e): Linux by default (20 runner slots, about twice as fast as a Mac); macOS only for a suite that needs the Mac
 // itself (Keychain, `open` to Chrome and the extension, pixels and fonts), which exports `macos = true` with its reason. The Free plan runs at most 5 macOS jobs at once.
-export const runnerOf = module => (module.macos ? 'macos-latest' : 'ubuntu-24.04');
+// `macos = 'release'` (apply, applyflows: the real extension opened through `open`): the Mac for a release, a gate, the night and a run by hand, so the Mac path is
+// proved before every release; Linux for a pull request's run and the same steps after its merge (`pr`): no wait for a macOS slot (#2119's apply waited 17 min;
+// owner, 26 Oct 2026: "Both, PRs on Linux (Recommended)"). Guard: test/pr-linux.test.mjs.
+export const runnerOf = (module, {pr = false} = {}) => ((module.macos === true || (module.macos === 'release' && !pr)) ? 'macos-latest' : 'ubuntu-24.04');
 
 // What Windows runs, outside a run by hand that names its suites: apply (the fill, where Windows' own product reds came from: #2074's night fill) and the settings
 // smoke (the app launches and draws). The e2e audit (owner's yes, 26 Oct 2026): Windows was 38% of e2e runner-minutes, ~14,200 a month, and its other reds were CI

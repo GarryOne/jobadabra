@@ -38,5 +38,5 @@ test('CI runs every part of the apply steps in exactly one suite, and the CV ste
   const apply = partsOf('apply'), applyflows = partsOf('applyflows');
   assert.deepEqual([...apply, ...applyflows].sort(), ['cv', 'flows', 'forms']);   // each once: a part in both doubles its time, a part in neither never runs on CI
   assert.ok(apply.includes('cv') && apply.includes('forms'), 'the CV steps use the form fixtures, seeded where the forms run');
-  assert.equal(applySuite.macos && applyflowsSuite.macos, true, 'both need the macOS runner (the extension through `open`, the CV attached)');
+  assert.deepEqual([applySuite.macos, applyflowsSuite.macos], ['release', 'release'], 'both run on the macOS runner for a release (the extension through `open`, the CV attached) and on Linux for a PR (test/pr-linux.test.mjs)');
 });

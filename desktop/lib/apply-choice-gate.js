@@ -8,7 +8,7 @@ export const APPLY_ACTIONS = Object.freeze(['apply', 'applyOne', 'applyWithClaud
   'readySend', 'readyRun', 'readyOpen', 'readyAgain']);
 // A handler that starts a fill but is left out, and why (the class test reads this).
 export const NOT_GATED = Object.freeze({
-  takeOverClaude: 'the form panel\'s own "let Claude finish" on a form the person already has open (off for now, SHOW_RESUME_CLAUDE)',
+  takeOverClaude: 'the form panel\'s own take-over button, on a form the person already has open (off for now: SHOW_RESUME_CLAUDE)',
 });
 export const CHOOSE_FIRST = Object.freeze({ok: false, needsApplyChoice: true, error: 'Choose how Jobadabra applies for you first.'});
 
@@ -23,7 +23,7 @@ export function guard(handle, getStorage, log = () => {}) {
 }
 
 // For the class test: what starts a fill inside a handler's body (an apply, a form tab, Claude, a Ready send or run).
-export const STARTS_A_FILL = /\b(apply\.(start|applyOne|openOne|claudeOne|resumeSession)|applyOne|restartAs|startClaude|takeOver|sendPlanned|sendTonight|runTop|site\.(runNow|again))\s*\(/;
+export const STARTS_A_FILL = /\b(apply\.(start|applyOne|openOne|claudeOne|resumeSession)|applyOne|restartAs|startClaude|takeOver|sendPlanned|sendTonight|runTop|site\.(runNow|again))\s*\(/;   // words-ok: our own function names for the class test, not page words
 
 // [[name, body]] of each `.handle('name', ...)` in a source file: strings and comments removed first (a word in a comment is not a call), the body
 // read up to the call's closing parenthesis.

@@ -23,7 +23,7 @@ const EXT_LINE = {
   closed: 'Installed in Chrome. Chrome isn\'t running, so it can\'t reach this app: open it and it reports within 30 seconds.',
   idle: 'Installed in Chrome, connecting to this app. If it stays amber, press Connect the extension below and then Connect to the Jobadabra app.',
   off: 'Installed in Chrome but turned off: switch it back on in chrome://extensions.',
-  absent: 'Not installed in Chrome yet — the three steps below take a minute.',
+  absent: 'Not installed in Chrome yet: Add to Chrome below takes a minute.',
   checking: 'Looking for it in Chrome…',
 };
 let browserApp = 'Google Chrome';  // the browser the extension is (or will be) installed in, from the app
@@ -52,6 +52,17 @@ export async function showExtensionStatus() {
 
 // The card's buttons, bound once at start (connections.js init).
 export function bindExtension() {
+  // Add to Chrome (Settings and the setup wizard): the Chrome Web Store page in the browser the extension goes in.
+  for (const button of document.querySelectorAll('[data-add-extension]')) {
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const result = await window.pilot.extensionStore().catch(() => null);
+      button.disabled = false;
+      toastMessage(result?.opened ? 'Chrome Web Store opened' : 'Couldn\'t open Chrome',
+        inBrowser(result?.opened ? 'Press Add to Chrome there. It connects to this app by itself within 30 seconds.'
+          : 'Open Chrome, then search the Chrome Web Store for Jobadabra.', browserApp));
+    });
+  }
   $('ext-stray-quit').addEventListener('click', async event => {
     const button = event.currentTarget;
     button.disabled = true;

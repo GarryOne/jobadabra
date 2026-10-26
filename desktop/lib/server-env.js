@@ -258,8 +258,14 @@ export function extensionChangedNote({boot, version, at}, state, {latest, newest
 
 // The sentence a stale copy deserves, or '' when the two agree (or either is unknown). One wording for the two
 // places that need it: the fill failure the app records, and the sessions page's "likely cause" line.
-export function staleExtension(version, latest) {
+// The Chrome Web Store item's ID (owner, 26 Oct 2026). A store copy updates from the store by itself, after Google's review: never "reload it".
+export const STORE_EXTENSION_ID = 'nmbnjhmpofifgcdalfefddbiihccogoi';
+let checkedInId = '';   // the ID of the copy that last checked in (server.js, /extension/tabs)
+export const noteExtensionId = id => { if (id) checkedInId = id; };
+export function staleExtension(version, latest, id = checkedInId) {
   if (!version || !latest || version === latest) return '';
+  if (id === STORE_EXTENSION_ID) return `Chrome runs Jobadabra extension ${version} from the Chrome Web Store; this app ships ${latest}. `
+    + 'Chrome updates it by itself once the store has the new version, usually within a day.';
   return `Chrome runs Jobadabra extension ${version}, older than this app's ${latest}: reload it once `
     + '(chrome://extensions → ↻ on Jobadabra); from then on it updates itself.';
 }

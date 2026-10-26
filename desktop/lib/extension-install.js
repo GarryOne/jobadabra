@@ -159,6 +159,10 @@ export function openInChrome(url, {exec = execFile, platform = process.platform,
   return new Promise(resolve => exec(command[0], command[1], error => resolve(!error)));
 }
 
+// The extension's Chrome Web Store page: the install every user gets (owner, 26 Oct 2026). Edge and Brave install from it too.
+export const STORE_URL = 'https://chromewebstore.google.com/detail/jobadabra/nmbnjhmpofifgcdalfefddbiihccogoi';
+export const openStorePage = (options = {}) => openInChrome(STORE_URL, options);
+
 // A browser's own extensions page: chrome://extensions, edge://extensions…
 export const extensionsUrl = browser => `${schemeOf(browser)}://extensions`;
 

@@ -11,7 +11,7 @@ import {handleExtension} from '../shared/worker/extension.js';
 import {log as appLog} from './log.js';
 import * as pipeline from './pipeline.js';
 import * as viewCache from './view-cache.js';
-import {extensionToken, issueTicket, checkTicket, localEnv, latestExtension, developmentCopy, extensionChangedNote, newestExtensionFile} from './server-env.js';
+import {extensionToken, issueTicket, checkTicket, localEnv, latestExtension, developmentCopy, extensionChangedNote, newestExtensionFile, noteExtensionId} from './server-env.js';
 import {me} from './server-contact.js';
 import {extensionBuild} from './build-state.js';
 import {packagedBuild} from './build-handlers.js';
@@ -36,7 +36,7 @@ export const PORT = portFrom();
 // The extension's IDs. /extension/pair hands the connection token only to a request from this extension; web pages can't send its Origin.
 // The first is the copy loaded from the app's folder (the public "key" in extension/manifest.json); the second the Chrome Web Store item's
 // (owner, 26 Oct 2026: nmbnjhmpofifgcdalfefddbiihccogoi). Guard: test/extension-store-id.test.js.
-export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk', 'nmbnjhmpofifgcdalfefddbiihccogoi'];
+export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk', 'nmbnjhmpofifgcdalfefddbiihccogoi'];   // the second = server-env.js STORE_EXTENSION_ID (an import here runs before it is set)
 export const EXTENSION_ID = EXTENSION_IDS[0];
 // The ID whose pages the app opens (wake.html): the copy that last checked in, else the folder's. A store user has no folder copy.
 // The request's Origin when it is one of our extensions' (else ''), to echo back in Access-Control-Allow-Origin.
@@ -137,6 +137,7 @@ export function start(storage, onError = () => {}) {
               : at - seen.at > 90 * 1000 ? `after ${Math.round((at - seen.at) / 1000)} s of silence` : '';
             if (why) appLog('extension', `checked in: ${why}`, {version, tabs: (report.urls || []).length});
             seen = {at, version, id: ownOrigin(req.headers.origin).slice('chrome-extension://'.length) || seen?.id || ''};
+            noteExtensionId(seen.id);   // the "older copy" note words a store copy apart (server-env.js staleExtension)
             if (developmentCopy()) {
               const changed = extensionChangedNote({boot: String(report.boot || report.worker || ''), version, at}, devCopy, {latest: latestExtension(), newest: newestExtensionFile});
               devCopy = changed.state;

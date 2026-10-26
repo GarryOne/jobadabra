@@ -11,6 +11,7 @@ import atexit
 import json
 import os
 import re
+import sys
 import urllib.request
 
 SITE = 'https://www.jobpilotto.top'
@@ -96,7 +97,7 @@ def _post(items, urlopen=None, env=None, kind='matches'):
     if env.get('JOB_PILOTTO_E2E') and not env.get('JOB_PILOTTO_SITE_URL'):
         return True   # the end-to-end journey never reaches the real site
     if not key:
-        print('Warning: no e-mail sent: this run has no install key.')
+        print('Warning: no e-mail sent: this run has no install key.', file=sys.stderr)
         return False
     html = SEPARATOR.join(item[0] for item in items)[:MAX_HTML]
     buttons = [b for item in items for b in _buttons(item[1])][:6]
@@ -106,10 +107,10 @@ def _post(items, urlopen=None, env=None, kind='matches'):
         with urlopen(request, timeout=20) as response:
             answer = json.load(response)
     except Exception as error:  # noqa: BLE001 - a site outage must not stop a person's search
-        print(f'Warning: the e-mail was not sent ({type(error).__name__}).')
+        print(f'Warning: the e-mail was not sent ({type(error).__name__}).', file=sys.stderr)
         return False
     if not answer.get('ok'):
-        print(f"Warning: the e-mail was not sent ({answer.get('reason') or answer.get('error') or 'refused'}).")
+        print(f"Warning: the e-mail was not sent ({answer.get('reason') or answer.get('error') or 'refused'}).", file=sys.stderr)
         return False
     return True
 

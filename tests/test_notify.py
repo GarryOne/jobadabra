@@ -131,14 +131,14 @@ class DeliveryTests(unittest.TestCase):
         for answer in ({'ok': False, 'reason': 'unconfirmed'}, OSError('offline')):
             site = Site(answer)
             out = io.StringIO()
-            with mock.patch('sys.stdout', out):
+            with mock.patch('sys.stderr', out):
                 ok = run_with(EMAIL, site, lambda: (telegram.send(CARD, None, None), notify.flush())[1])
             self.assertFalse(ok)
             self.assertIn('Warning: the e-mail was not sent', out.getvalue())
 
     def test_no_install_key_means_no_email_and_no_crash(self):
         out = io.StringIO()
-        with mock.patch('sys.stdout', out):
+        with mock.patch('sys.stderr', out):
             ok = run_with({'JOB_PILOTTO_NOTIFY': 'email', 'JOB_PILOTTO_SITE_URL': 'https://site.test'}, Site(), lambda: (telegram.send(CARD, None, None), notify.flush())[1])
         self.assertFalse(ok)
 

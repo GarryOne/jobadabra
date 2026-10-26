@@ -19,7 +19,7 @@ from urllib.request import Request
 from ..paths import DATA, REPORTS, keyword_regex, load_search_config
 from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
-from ..ai import meanings_pack
+from ..ai import meanings_pack, page_words
 from ..ai.providers.contract import detail, reason
 _SEARCH = load_search_config()
 ROLE = keyword_regex(_SEARCH['board_discovery_keywords'])
@@ -195,11 +195,13 @@ def platform(url):
 
 def useful_links(page,base):
     found=[]
-    for href,label in Page(page).links:
-        url=urljoin(base,href)
-        if urlsplit(url).scheme not in ('http','https') or any(
-            domain in urlsplit(url).netloc for domain in ('linkedin.com','xing.com','slideshare.net','facebook.com','instagram.com','youtube.com')):continue
-        if CAREER.search(label+' '+url) or platform(url)!='Company website / unknown ATS':
+    pairs=[(label,urljoin(base,href)) for href,label in Page(page).links]
+    pairs=[(label,url) for label,url in pairs if urlsplit(url).scheme in ('http','https') and not any(
+        domain in urlsplit(url).netloc for domain in ('linkedin.com','xing.com','slideshare.net','facebook.com','instagram.com','youtube.com'))]
+    words=page_words.link_words(((label,url) for label,url in pairs if platform(url)=='Company website / unknown ATS'),floor='board_careers_link')
+    for label,url in pairs:
+        now=words.get((str(label or ''),str(url or '')))
+        if (now and (now.weak or now.strong)) or platform(url)!='Company website / unknown ATS':
             if url not in found:found.append(url)
     return sorted(found, key=lambda u: (bool(urlsplit(u).fragment), len(urlsplit(u).path)))
 

@@ -12,7 +12,8 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 from . import board_state, careers, host_pace
-from .careers_parse import JOB_ID, JOB_PATH, MAX_JOB_PAGES, NOT_JOBS, jsonld_jobs
+from ..ai import page_words
+from .careers_parse import JOB_ID, MAX_JOB_PAGES, jsonld_jobs
 
 MAX_SITEMAPS = 3      # sitemaps read per board
 MAX_ITEMS = 200       # feed items kept
@@ -114,9 +115,12 @@ def _sitemap_pages(url, fetch, host):
         children = [loc for loc in locations if re.search(r'job|career|karriere|stelle|vacanc|offre|emploi|post', loc, re.I)][:MAX_SITEMAPS] or locations[:1]
         locations = [loc for child in children for loc in _locs(_get(fetch, child))]
     pages = []
-    for loc in locations:
-        parts = urllib.parse.urlsplit(loc)
-        if (parts.hostname or '').removeprefix('www.') == host.removeprefix('www.') and (JOB_PATH.search(parts.path) or JOB_ID.search(parts.path)) and not NOT_JOBS.search(parts.path):
+    same = [(loc, urllib.parse.urlsplit(loc)) for loc in locations]
+    same = [(loc, parts) for loc, parts in same if (parts.hostname or '').removeprefix('www.') == host.removeprefix('www.')]
+    words = page_words.link_words(('', parts.path) for loc, parts in same)
+    for loc, parts in same:
+        now = words[('', str(parts.path or ''))]
+        if now and (now.job_path or JOB_ID.search(parts.path)) and not now.not_jobs:
             pages.append(loc)
     return pages
 

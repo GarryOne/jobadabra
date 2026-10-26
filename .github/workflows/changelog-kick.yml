@@ -10,6 +10,10 @@ on:
     workflows: ['Release · Build, test, beta', 'CI · End-to-end on Mac + Linux', 'CI · End-to-end on Windows', 'Release · Promote to stable']
     types: [completed]
 
+concurrency:   # it follows every e2e run (bisect steps too): one runs, the newest waits; an extra run is harmless, so a replaced one loses nothing
+  group: changelog-kick
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:

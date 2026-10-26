@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from tools import e2e_bisect as b  # noqa: E402
 
+CREDIT = '✗ the interactions suite stopped: E2E_ANTHROPIC_KEY: the API refused model claude-haiku-5-5 (400): "Your credit balance is too low"'
 COMMITS = [f'{i:02x}'.ljust(40, '0') for i in range(12)]   # [0] green, [11] red
 
 
@@ -58,20 +59,35 @@ class AfterRun(unittest.TestCase):
         b.gh = lambda *args, check=True: self.calls.append(args) or ''
         b.gh_json = lambda *args: {'html_url': 'https://run/9', 'head_sha': 'a' * 40}
         b.open_issues = lambda: [{'number': 70, 'title': 'Red main: cardstates'}, {'number': 71, 'title': 'Red main: settings'}]
-        b.jobs_of = lambda rid: [{'name': 'cardstates', 'conclusion': 'success'}, {'name': 'settings', 'conclusion': 'failure'},
-                                 {'name': 'interactions', 'conclusion': 'failure'}, {'name': 'recorded-2of5', 'conclusion': 'failure'},
-                                 {'name': 'Telegram alert', 'conclusion': 'failure'}, {'name': 'jobs', 'conclusion': 'skipped'}]
+        self.saved += (b.log_of,)
+        self.logs = {2: '✗ the icon rail: a marker covers the icon', 3: '✗ recorded: the panel says "Filled 3"', 4: '', 5: CREDIT}
+        b.log_of = lambda job_id: self.logs.get(job_id, '')
+        b.jobs_of = lambda rid: [{'id': 1, 'name': 'cardstates', 'conclusion': 'success'}, {'id': 6, 'name': 'settings', 'conclusion': 'failure'},
+                                 {'id': 2, 'name': 'interactions', 'conclusion': 'failure'}, {'id': 3, 'name': 'recorded-2of5', 'conclusion': 'failure'},
+                                 {'id': 4, 'name': 'Telegram alert', 'conclusion': 'failure'}, {'id': 7, 'name': 'jobs', 'conclusion': 'skipped'}]
 
     def tearDown(self):
-        b.gh, b.gh_json, b.open_issues, b.jobs_of = self.saved
+        b.gh, b.gh_json, b.open_issues, b.jobs_of, b.log_of = self.saved
 
-    def test_closes_green_again_and_bisects_only_new_reds(self):
+    def started(self):
+        return [next(a for a in c if a.startswith('suite=')) for c in self.calls if c[:2] == ('workflow', 'run')]
+
+    def test_closes_green_again_and_bisects_one_new_red(self):
         b.after_run('9')
         closes = [c for c in self.calls if c[:2] == ('issue', 'close')]
-        starts = [c for c in self.calls if c[:2] == ('workflow', 'run')]
         self.assertEqual([c[2] for c in closes], ['70'], 'cardstates passed: its issue closes; settings stays open')
-        started = sorted(next(a for a in c if a.startswith('suite=')) for c in starts)
-        self.assertEqual(started, ['suite=interactions', 'suite=recorded'], 'settings already has an issue; the alert job is no suite')
+        # 26 Oct 2026: 10 red suites started 10 bisects at once and filled the job queue. One per main check; the next check starts the next.
+        self.assertEqual(self.started(), ['suite=interactions'], 'settings already has an issue; the alert job is no suite; one bisect per run')
+
+    def test_an_environment_red_is_never_bisected(self):
+        # 26 Oct 2026: the dead Claude key turned every suite red; bisecting it finds no PR and only fills the queue.
+        self.logs[2] = CREDIT
+        b.after_run('9')
+        self.assertEqual(self.started(), ['suite=recorded'], 'interactions is red on the key: skipped, recorded is a product red')
+        self.logs[3] = "✗ x: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+        self.calls.clear()
+        b.after_run('9')
+        self.assertEqual(self.started(), [], 'every red is the environment: no bisect')
 
 
 class Workflows(unittest.TestCase):
@@ -83,6 +99,13 @@ class Workflows(unittest.TestCase):
         self.assertIn("'Bisect '", (ROOT / '.github/workflows/ui-findings.yml').read_text())
         self.assertIn('Bisect', (ROOT / 'tools/main_e2e_state.py').read_text())
         self.assertRegex((ROOT / 'desktop/e2e/plan-run.mjs').read_text(), r'otherCode = run => /\^\([^)]*Bisect')
+
+    def test_one_bisect_at_a_time(self):
+        # 26 Oct 2026: `group: e2e-bisect-${{ inputs.suite }}` let 10 bisects run at once; one group: one runs, the newest waits.
+        flow = (ROOT / '.github/workflows/e2e-bisect.yml').read_text()
+        block = re.search(r'(?ms)^concurrency:[^\n]*\n(.*?)(?=^\S)', flow).group(1)
+        self.assertRegex(block, r'group: e2e-bisect\s*(#|\n)')
+        self.assertIn('cancel-in-progress: false', block)
 
 
 if __name__ == '__main__':

@@ -65,5 +65,41 @@ class NewestMainRunWins(unittest.TestCase):
             self.assertNotIn("'push'", concurrency(text)[0] or '', path.name)
 
 
+
+# 26 Oct 2026: 10 red suites started 10 bisects at once (group e2e-bisect-<suite>) and main checks had no group; the job queue held PR checks 20+ minutes.
+# A workflow that ANOTHER workflow starts (workflow_run, or a chain like the bisect) needs a group that cannot multiply: no run id, commit or input in it.
+MULTIPLIERS = re.compile(r'github\.(run_id|run_number|run_attempt|sha)|inputs\.')
+CHAINS = {   # started by another workflow through `gh workflow run`, with their one group
+    'e2e-bisect.yml': 'e2e-bisect',
+}
+
+
+def workflows():
+    return {p.name: p.read_text(encoding='utf-8') for p in sorted((ROOT / '.github' / 'workflows').glob('*.yml'))}
+
+
+class NothingMultiplies(unittest.TestCase):
+    def test_a_workflow_another_workflow_starts_has_one_group(self):
+        started = {name: text for name, text in workflows().items() if re.search(r'(?m)^  workflow_run:', text.split('\njobs:')[0])}
+        self.assertGreaterEqual(len(started), 3, 'positive control: the workflow_run workflows are read')
+        for name, text in {**started, **{n: workflows()[n] for n in CHAINS}}.items():
+            group, cancel = concurrency(text)
+            self.assertTrue(group, f'{name}: no concurrency group: each start can add a run to the queue')
+            self.assertIsNone(MULTIPLIERS.search(group), f'{name}: group {group} has one run per run/commit/input: it multiplies')
+            self.assertEqual(cancel, 'false', f'{name}: a started run finishes; the newest waits')
+            if name in CHAINS: self.assertEqual(group, CHAINS[name], name)
+
+    def test_main_checks_share_one_e2e_group(self):
+        group, cancel = concurrency(workflows()['e2e.yml'])
+        self.assertIn("&& 'e2e-main' ||", group or '', 'the Worker cron and the backup schedule wait in one group')
+        self.assertIn('inputs.scheduled', group)
+        self.assertIn("github.event_name == 'schedule' && github.workflow == 'CI · End-to-end on Mac + Linux'", group, 'the release run calling it never joins')
+        self.assertIn("format('e2e-{0}', github.run_id)", group, 'any other run is its own group')
+        self.assertEqual(cancel, 'false')
+
+    def test_the_bisect_chain_starts_one_bisect_per_check(self):
+        self.assertIn('started = suite', (ROOT / 'tools' / 'e2e_bisect.py').read_text(encoding='utf-8'), 'tools/e2e_bisect.py after_run starts one bisect')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -137,11 +137,13 @@ class AfterSuiteJobs(unittest.TestCase):
 
 
 class Workflow(unittest.TestCase):
-    def test_pr_suites_waits_and_is_not_report_only(self):
+    def test_pr_suites_report_only_until_steps_land(self):
+        # owner, 26 Oct 2026: "all my PRs are being blocked from merge" / "How we can unblock the situation" -> "Report-only + cap 4":
+        # a PR's suites run but never hold a runner to wait or block the merge, at most 4 per PR, until the per-step selection lands
         text = WORKFLOW.read_text()
-        self.assertIn('tools/pr-suites-wait.sh', text, 'the PR run must wait for its e2e run, or a red suite does not block the merge')
-        self.assertNotIn('report only', text.split('\n', 1)[0].lower())
-        self.assertIn('github.event.pull_request.head.sha', text)
+        self.assertNotIn('tools/pr-suites-wait.sh', text, 'no job holds a runner to wait for the e2e run')
+        self.assertIn('REPORT ONLY', text)
+        self.assertRegex(text, r'timeout-minutes: 15\b')
 
 
 if __name__ == '__main__':

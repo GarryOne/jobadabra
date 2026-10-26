@@ -59,13 +59,16 @@ export function report({strings, hits, changedFiles, sources}) {
   return {rows, stale: stale.map(row => row.suite), text: lines.join('\n')};
 }
 
-// The suites to run ON the PR (they block its merge since 26 Oct 2026, gate G1a): the ones its files point at (plan.mjs suitesFor: a suite's own file, the extension, the harness),
+// The suites to run ON the PR (report only again since 26 Oct 2026; gate G1a blocked the merge for a few hours): the ones its files point at (plan.mjs suitesFor: a suite's own file, the extension, the harness),
 // the ones that quote removed UI text, and the ones that RUN the lines it changes (the coverage map, gate G1b: `covering`, {suite: reason}). Linux suites always; a macOS
 // suite only when it RAN the changed lines (owner, 26 Oct 2026: "Yes, mapped Mac suites too"; #1911 broke the Mac-only interactions with a CSS change). A line no suite
 // ran (reason "loads …": a file's top level, an unused rule) picks every suite that loads the file, on Linux only: the Free plan runs 5 macOS jobs at once.
-// No count cap since G1a: suites run in parallel, so the PR waits for the slowest one, not their sum.
+// At most MAX_PR_SUITES, report only (owner, 26 Oct 2026: "all my PRs are being blocked from merge" -> "Report-only + cap 4"): 16-24 suites a PR filled GitHub's ~20 runners.
+// The ones over the cap are left to the nightly run and the beta, until a PR runs only the steps its changes reach (CLAUDE.md "Tests").
+export const MAX_PR_SUITES = 4;
 export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cadence = {}}) {
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (cadence[suite] || 'always') !== 'manual');
   const run = wanted.filter(suite => linux(suite) || String(covering[suite] || '').startsWith('runs '));
-  return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
+  const capped = run.slice(0, MAX_PR_SUITES);
+  return {suites: capped, left: wanted.filter(suite => !capped.includes(suite))};
 }

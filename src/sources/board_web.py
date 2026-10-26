@@ -109,6 +109,13 @@ def _due(data, key, now, kept=None, search_config=None):
 
 _early = {}   # {search key: (Future, its own copy of found_boards.json)}: started before the first jobs, taken by the full read (start)
 _lock = threading.Lock()
+_searched = set()   # (run, search key) pairs already searched: once per run (owner's state, 26 Oct 2026: two searches in one run)
+
+
+def _run(key):
+    """This run's mark for a search key: (when the search's clock started, key); None outside a run (no clock started: tests, tools)."""
+    from .. import time_budget
+    return None if time_budget.BEGAN is None else (time_budget.BEGAN, key)
 
 
 def _submit(search_config, data, fetch, now):
@@ -229,6 +236,12 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         print('Job boards: no web search: this search names no places or roles', flush=True)
         return []
     key, countries, roles, kinds, places = asked
+    run = _run(key)
+    with _lock:
+        again = run is not None and run in _searched
+    if again:   # the first-jobs search and the full read are one run: its thin tries are one per run (tests/test_board_web_thin.py)
+        print('Job boards: no web search: searched in this run', flush=True)
+        return []
     kept, last, due = data.get('boards') or {}, _last(data, key), _next_search(data, key, data.get('boards'), search_config)
     if due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
         print(f"Job boards: no web search: searched {last.isoformat(timespec='minutes')}, next after {due.isoformat(timespec='minutes')}; "
@@ -247,6 +260,9 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         if client is None:   # said, never silent (owner's pilot run, 26 Oct 2026: no line told why no board was searched for)
             print('Job boards: no web search: no AI here searches the web (a signed-in Claude Code or Codex, an API key, or Free AI)', flush=True)
             return []
+    if run is not None:
+        with _lock:
+            _searched.add(run)
     data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per due time, even when it fails
     data.setdefault('web_thin', {})[key] = tries + 1 if len(working) < WANT else 0   # thin searches in a row (TRIES, then weekly)
     if own:

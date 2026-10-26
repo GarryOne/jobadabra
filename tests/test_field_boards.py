@@ -68,6 +68,12 @@ class FieldBoards(unittest.TestCase):
         self.assertEqual(board_ideas.ideas(EUROPE, client), found)
         self.assertEqual(len(client.asked), calls, 'kept: asked again only for another search')
 
+    def test_the_central_scout_asks_no_field_call(self):
+        """Its search mixes several kinds of work for one country (src/scout_boards.py search_for): no one field to ask for."""
+        client = Client()
+        board_ideas.ideas(EUROPE, client, field=False)
+        self.assertFalse([kw for kw in client.asked if kw['system'][0]['text'] == board_ideas.FIELD_SYSTEM])
+
     def test_without_ai_nothing_is_asked_and_a_failed_field_call_leaves_the_slices(self):
         with mock.patch('src.ai.engine.ready', return_value=False):
             self.assertEqual(board_ideas.ideas(EUROPE), [])

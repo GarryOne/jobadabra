@@ -135,14 +135,15 @@ def slices(search):
     return out
 
 
-def ideas(search, client=None):
+def ideas(search, client=None, field=True):
     """The boards Claude proposed for this search's countries, roles and kinds (validated), one call per slice of countries, each from the
-    cache when it already answered for it; [] without AI or without countries."""
+    cache when it already answered for it; [] without AI or without countries. field: also the field's own boards, first (_field); off for
+    the central scout, whose search mixes several kinds of work for one country (src/scout_boards.py)."""
     asked = slices(search)
     if not asked:
         return []
     shared = ranked(served([country for part in asked for country in part[1]]), search)
-    own = list(_field(asked_for(search), client) or [])   # the field's own boards first: the slices' general ones come after (MAX_BOARDS * 2 cap)
+    own = list((_field(asked_for(search), client) if field else None) or [])   # the field's own boards first: the slices' general ones come after (MAX_BOARDS * 2 cap)
     for part in asked:
         found = _proposal(part, client)
         if found is None:

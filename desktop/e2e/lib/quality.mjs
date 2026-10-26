@@ -110,11 +110,13 @@ export function fingerprints(text) {
   return [0, Math.floor((flat.length - 40) / 2), flat.length - 40].map(start => flat.slice(start, start + 40));
 }
 
-// Model noise. The scorer and the judge are language models: one text in nine may be a slip, and one job in nine may land more than the tolerance away on a second
+// Model noise. The scorer and the judge are language models: one text in six may be a slip, and two jobs in nine may land more than the tolerance away on a second
 // scoring. More than that is a quality problem. A single job that moves further than HARD_JUMP is a problem on its own. Facts, duplicates, ranking and leaks have no allowance.
-export const NOISE_SHARE = 0.12;
+// Two jobs in nine may move on the second scoring (owner, 26 Oct 2026: "2 of 9"; measured on Free AI with ask-twice at temperature 0: 13% of jobs move > 8 points,
+// so 1 of 9 failed one healthy run in three; 2 of 9 passes 90%, and today's broken setting (30% moving) still fails 55%).
+export const NOISE_SHARE = 2 / 9;
 export const HARD_JUMP = 20;
-export const allowedMisses = total => Math.floor(total * NOISE_SHARE);   // 9 -> 1, 8 -> 0, 17 -> 2
+export const allowedMisses = total => Math.floor(total * NOISE_SHARE + 1e-9);   // 9 -> 2, 8 -> 1, 17 -> 3
 
 // -> {ok, allowed, problems}: `apart` is unstable()'s answer for `compared` jobs.
 export function stabilityVerdict(apart, compared) {
@@ -126,7 +128,10 @@ export function stabilityVerdict(apart, compared) {
 }
 
 // -> {ok, allowed, tolerated}: `failed` are the judged texts that invent facts or contradict the posting, out of `judged`.
+// One text in six may be a slip of the judged model: 9 -> 1, 18 -> 3 (both scorings judged). Owner, 26 Oct 2026: "Fresh daily + rate gate"; measured on Free AI:
+// at 11% invented per text (temperature 0) 3 of 18 passes 87% of runs, at today's 26% only 27%, where 1 of 9 failed one run in four even at 11%.
+export const JUDGE_SHARE = 1 / 6;
 export function judgeVerdict(failed, judged) {
-  const allowed = allowedMisses(judged);
+  const allowed = Math.floor(judged * JUDGE_SHARE + 1e-9);
   return {ok: failed.length <= allowed, allowed, tolerated: failed.length <= allowed ? failed : []};
 }

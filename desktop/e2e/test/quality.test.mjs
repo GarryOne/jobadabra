@@ -102,13 +102,14 @@ test('leaks: a posting sentence, an email or a token in a log is found; clean lo
   assert.deepEqual(fingerprints('short'), []);
 });
 
-test('noise allowance: one in nine is tolerated, two is not, and a big jump never is', () => {
-  assert.deepEqual([9, 8, 17, 0].map(allowedMisses), [1, 0, 2, 0]);
+test('noise allowance: two jobs in nine may move and one text in six may slip, more is not, and a big jump never is', () => {
+  assert.deepEqual([9, 8, 17, 0].map(allowedMisses), [2, 1, 3, 0]);   // owner, 26 Oct 2026: "2 of 9"
   const moved = (id, first, second) => ({id, first, second});
   assert.ok(stabilityVerdict([], 9).ok);
   assert.ok(stabilityVerdict([moved('a', 50, 60)], 9).ok);                                          // one of nine, 10 points
-  assert.ok(!stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50)], 9).ok);                       // two of nine
-  assert.ok(!stabilityVerdict([moved('a', 50, 60)], 8).ok);                                           // eight jobs: no allowance
+  assert.ok(stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50)], 9).ok);                        // two of nine
+  assert.ok(!stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50), moved('c', 30, 40)], 9).ok);   // three of nine
+  assert.ok(!stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50)], 8).ok);                       // eight jobs: one allowed
   const jump = stabilityVerdict([moved('a', 50, 50 + HARD_JUMP + 1)], 9);                              // one job, but 21 points
   assert.ok(!jump.ok && /moved 21 points/.test(jump.problems[0]));
   assert.ok(judgeVerdict(['x'], 9).ok);
@@ -116,6 +117,10 @@ test('noise allowance: one in nine is tolerated, two is not, and a big jump neve
   assert.ok(!judgeVerdict(['x'], 5).ok);                                                              // five texts: no allowance
   assert.deepEqual(judgeVerdict(['x'], 9).tolerated, ['x']);
   assert.deepEqual(judgeVerdict(['x', 'y'], 9).tolerated, []);
+  // Both scorings judged: 18 texts, at most 3 invented (owner, 26 Oct 2026: "Fresh daily + rate gate"; measured: 11% of Free AI texts at temperature 0 passes 87%, 26% passes 27%)
+  assert.equal(judgeVerdict([], 18).allowed, 3);
+  assert.ok(judgeVerdict(['a', 'b', 'c'], 18).ok);
+  assert.ok(!judgeVerdict(['a', 'b', 'c', 'd'], 18).ok);
 });
 
 test('a Notion block becomes a line: text, and table rows as their cells (the Profile is mostly tables)', () => {

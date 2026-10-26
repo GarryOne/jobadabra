@@ -186,9 +186,11 @@ class PrSuitesDispatchInputs(unittest.TestCase):
 
     def test_dispatch_declares_what_pr_suites_passes(self):
         root = pathlib.Path(__file__).resolve().parent.parent / '.github' / 'workflows'
-        passed = set(re.findall(r'gh workflow run e2e\.yml[^\n]*?-f (\w+)=', (root / 'pr-suites.yml').read_text()))
-        self.assertTrue(passed, 'pr-suites.yml no longer dispatches e2e.yml?')
-        e2e = (root / 'e2e.yml').read_text()
-        dispatch = e2e.split('workflow_dispatch:')[1].split('\n  schedule:')[0]
-        declared = set(re.findall(r'^      (\w+):\s*$', dispatch, re.M))
-        self.assertEqual(passed - declared, set())
+        for name in ('e2e', 'e2e-windows'):   # e2e-windows.yml: a PR's short Windows check (PR 3 of the PR-checks plan)
+            passed = set(re.findall(r'(?:gh workflow run|dispatch) ' + re.escape(name) + r'\.yml[^\n]*', (root / 'pr-suites.yml').read_text()))
+            passed = {flag for line in passed for flag in re.findall(r'-f (\w+)=', line)}
+            self.assertTrue(passed, f'pr-suites.yml no longer dispatches {name}.yml?')
+            text = (root / f'{name}.yml').read_text()
+            dispatch = text.split('workflow_dispatch:')[1].split('\n  schedule:')[0].split('\n  workflow_call:')[0]
+            declared = set(re.findall(r'^      (\w+):\s*$', dispatch, re.M))
+            self.assertEqual(passed - declared, set(), name)

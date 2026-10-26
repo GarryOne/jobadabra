@@ -104,7 +104,7 @@ class Workflows(unittest.TestCase):
         seen, exempt = 0, set()
         for path in WORKFLOWS.glob('*.yml'):
             text = path.read_text(); trigger = text.split('\njobs:')[0]
-            if not (re.search(r'(?m)^  pull_request:', trigger) or path.name == 'e2e.yml'):
+            if not (re.search(r'(?m)^  pull_request:', trigger) or path.name in ('e2e.yml', 'e2e-windows.yml')):
                 continue
             jobs = re.split(r'(?m)^(?=  [A-Za-z0-9_-]+:\s*(?:#.*)?$)', text.split('\njobs:\n', 1)[1])
             needed = set()   # jobs a deciding job needs
@@ -119,7 +119,7 @@ class Workflows(unittest.TestCase):
                 if '\n    steps:' not in job or (name and name.group(1).strip('\'"') in pv.REPORT_JOBS) or key in needed:
                     self.assertNotIn(pv.STEP, job, f'{path.name} {key}: a report job, or one a deciding job needs (it would see its run ended before them)')
                     exempt.add((path.name, key)); continue
-                if cond and ('refs/heads/main' in cond.group(1) or "github.event_name == 'schedule'" in cond.group(1)):
+                if cond and ('refs/heads/main' in cond.group(1) or "github.event_name == 'schedule'" in cond.group(1) or "inputs.tag != ''" in cond.group(1)):
                     continue
                 with self.subTest(workflow=path.name, job=key):
                     steps = re.findall(r'(?m)^      - (?:name|uses): *(.+)$', job)
@@ -138,7 +138,20 @@ class Workflows(unittest.TestCase):
         suites = (WORKFLOWS / 'pr-suites.yml').read_text()
         self.assertRegex(suites, r'gh pr view "\$PR"[^\n]*--json state[^\n]*!= OPEN[^\n]*skipped=1[^\n]*exit 0')
         self.assertIn("steps.start.outputs.skipped != '1'", suites)
-        self.assertLess(suites.index('!= OPEN'), suites.index('gh workflow run e2e.yml'))
+        self.assertLess(suites.index('!= OPEN'), suites.index('dispatch e2e.yml'))
+
+
+    def test_a_ci_or_shell_pr_runs_one_short_windows_check(self):
+        # #1997: the relay's tar broke every Windows suite, seen only by the next beta. pr-suites.mjs says windows=1 (lib/pr-suites.mjs windowsSmoke).
+        suites = (WORKFLOWS / 'pr-suites.yml').read_text(); win = (WORKFLOWS / 'e2e-windows.yml').read_text()
+        trigger = suites.split('\npermissions:')[0]
+        for path in ("'.github/**'", "'tools/*.sh'", "'desktop/scripts/*.sh'"):
+            self.assertIn(path, trigger)
+        self.assertRegex(suites, r"gh workflow run e2e-windows\.yml --ref \"\$HEAD_REF\" -f suites=settings -f pr_steps=")
+        self.assertIn("inputs.pr_steps && format('E2E for PR · windows {0} · {1}'", win, 'the verdict counts it by its title')
+        self.assertIn("E2E_STEP_NAMES: ${{ inputs.pr_steps }}", win)
+        self.assertIn("E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}", win)
+        self.assertRegex(win, r"Take the suite's lock[^\n]*\n        if: inputs\.pr_steps == ''", 'a PR check on SQLite needs no Notion page: it never waits for the lock on a runner')
 
 
 def job(id, name, status='completed', conclusion='success', steps=None, runner=''):

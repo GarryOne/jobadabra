@@ -23,6 +23,10 @@ on:
       - 'tests/fixtures/mail_eval.json'
       - 'desktop/e2e/fixtures/golden/**'
       - '.github/workflows/pr-suites.yml'
+      # CI plumbing and shell: one short Windows check (lib/pr-suites.mjs windowsSmoke; #1997's relay tar broke every Windows suite, seen only by the next beta)
+      - '.github/**'
+      - 'tools/*.sh'
+      - 'desktop/scripts/*.sh'
 
 permissions:
   contents: read
@@ -62,38 +66,55 @@ jobs:
           node desktop/e2e/pr-suites.mjs --base origin/main --plan | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Start them
         id: start
-        if: steps.plan.outputs.suites != ''
+        if: steps.plan.outputs.suites != '' || steps.plan.outputs.windows != ''
         env:
           GH_TOKEN: ${{ github.token }}
           SUITES: ${{ steps.plan.outputs.suites }}
           LEFT: ${{ steps.plan.outputs.left }}
           STEPS: ${{ steps.plan.outputs.steps }}   # {suite: [step names]}: only the steps this PR's changed lines reach (desktop/e2e/pr-suites.mjs)
+          WINDOWS: ${{ steps.plan.outputs.windows }}   # the Windows check's steps (JSON) when this PR changes CI plumbing or shell; empty: none
           HEAD_REF: ${{ github.head_ref }}   # a branch name is untrusted text: never inline in the script
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           # Merged or closed while this job waited for a runner (an override merge deletes the branch: #2041 went red on HTTP 422 "No ref found"): nothing to test.
           if [ "$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state -q .state)" != OPEN ]; then echo "PR #$PR is merged or closed: no e2e run." | tee -a "$GITHUB_STEP_SUMMARY"; echo "skipped=1" >> "$GITHUB_OUTPUT"; exit 0; fi
-          # The input made for this (e2e.yml): SQLite store, no screenshot review, no harness-test step. It runs the PR branch's own e2e.yml, so a branch cut before the input existed gets HTTP 422.
-          if ! gh workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" -f pr_steps="${STEPS:-}" 2>"$RUNNER_TEMP/dispatch.err"; then
-            cat "$RUNNER_TEMP/dispatch.err"
-            if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's e2e.yml is older than main's: rebase on main (tools/ship.sh does it), then push again." | tee -a "$GITHUB_STEP_SUMMARY"; fi
-            exit 1
+          started() { echo "$1" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          dispatch() {   # a branch whose workflow file predates the input gets HTTP 422 "Unexpected inputs"
+            if ! gh workflow run "$@" 2>"$RUNNER_TEMP/dispatch.err"; then
+              cat "$RUNNER_TEMP/dispatch.err"
+              if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's $1 is older than main's: rebase on main (tools/ship.sh does it), then push again." | tee -a "$GITHUB_STEP_SUMMARY"; fi
+              exit 1
+            fi
+          }
+          # The input made for this (e2e.yml): SQLite store, no screenshot review, no harness-test step. It runs the PR branch's own e2e.yml.
+          if [ -n "$SUITES" ]; then
+            dispatch e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" -f pr_steps="${STEPS:-}"
+            started "Started e2e.yml on \`$HEAD_REF\`: $SUITES. Left to the gate: ${LEFT:-none}."
           fi
-          echo "Started e2e.yml on \`$HEAD_REF\`: $SUITES. Left to the gate: ${LEFT:-none}. See https://github.com/$GITHUB_REPOSITORY/actions/workflows/e2e.yml" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -n "$WINDOWS" ]; then
+            gh workflow run e2e-windows.yml --ref "$HEAD_REF" -f suites=settings -f pr_steps="$WINDOWS" 2>"$RUNNER_TEMP/dispatch.err" || { cat "$RUNNER_TEMP/dispatch.err"; exit 1; }
+            started "Started the Windows check on \`$HEAD_REF\`: settings · $WINDOWS."
+          fi
       # Seen listed before this job ends: pr-verdict.yml runs when this workflow ends, and must find the e2e run pending, never a commit that looks finished.
-      - name: See the e2e run listed
-        if: steps.plan.outputs.suites != '' && steps.start.outputs.skipped != '1'
+      - name: See the e2e runs listed
+        if: (steps.plan.outputs.suites != '' || steps.plan.outputs.windows != '') && steps.start.outputs.skipped != '1'
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SUITES: ${{ steps.plan.outputs.suites }}
+          WINDOWS: ${{ steps.plan.outputs.windows }}
         run: |
-          for _ in $(seq 1 24); do
-            id="$(gh run list -R "$GITHUB_REPOSITORY" --workflow e2e.yml --commit "$HEAD_SHA" -L 20 --json databaseId,displayTitle -q '[.[] | select(.displayTitle | startswith("E2E for PR · "))][0].databaseId // empty')"
-            [ -n "$id" ] && { echo "E2E for this PR: https://github.com/$GITHUB_REPOSITORY/actions/runs/$id" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; }
-            sleep 5
-          done
-          echo "::error::no \"E2E for PR\" run for $HEAD_SHA after 2 min: this branch's e2e.yml is older than main's (its runs are titled otherwise). Rebase on main (tools/ship.sh does it) and push again."; exit 1
+          listed() {   # $1: the workflow file; its run for this PR is titled "E2E for PR · ..."
+            for _ in $(seq 1 24); do
+              id="$(gh run list -R "$GITHUB_REPOSITORY" --workflow "$1" --commit "$HEAD_SHA" -L 20 --json databaseId,displayTitle -q '[.[] | select(.displayTitle | startswith("E2E for PR · "))][0].databaseId // empty')"
+              [ -n "$id" ] && { echo "$1 for this PR: https://github.com/$GITHUB_REPOSITORY/actions/runs/$id" | tee -a "$GITHUB_STEP_SUMMARY"; return 0; }
+              sleep 5
+            done
+            echo "::error::no \"E2E for PR\" run of $1 for $HEAD_SHA after 2 min: this branch's $1 is older than main's (its runs are titled otherwise). Rebase on main (tools/ship.sh does it) and push again."; return 1
+          }
+          if [ -n "$SUITES" ]; then listed e2e.yml; fi
+          if [ -n "$WINDOWS" ]; then listed e2e-windows.yml; fi
       # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
       - name: Write the PR's verdict
         if: always() && github.event_name == 'pull_request'

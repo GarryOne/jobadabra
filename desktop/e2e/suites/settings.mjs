@@ -101,15 +101,36 @@ export async function run(ctx) {
     const listed = await page.locator('#palette-list [role="option"]').allInnerTexts();
     const opens = listed.filter(text => /^Open /.test(text.trim())).length;
     if (opens < new Set(pages.map(([view]) => view)).size) throw new Error(`the palette lists ${opens} "Open …" commands for ${pages.length} pages: ${listed.slice(0, 12).join(' | ')}`);
-    // Settings, the whole class: every page, every section heading, and Export/Import data (6 Oct 2026: Export and Import were not in ⌘K).
-    const wanted = await page.evaluate(() => [
-      ...[...new Map([...document.querySelectorAll('[data-settings-go]')].reverse().map(go => [go.dataset.settingsGo, go.textContent.replace(/\s+/g, ' ').trim()])).values()].map(name => `Open Settings: ${name}`),   // one a page: its first button
-      ...[...document.querySelectorAll('[data-settings-page] .setting[id]')].filter(section => !section.closest('[hidden]:not(.view):not([data-settings-page])'))
-        .map(section => (section.querySelector('h3') || section.querySelector('h4, summary'))?.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean),
-      'Move your data: Export data', 'Move your data: Import data']);
+    // Settings, the whole class: every page, every section heading, and Export/Import data (6 Oct 2026: Export and Import were not in ⌘K). A Settings row shows
+    // its path (27 Oct 2026): "Settings → Connections → Chrome extension", each step without its leading emoji.
+    const wanted = await page.evaluate(() => {
+      const name = node => node?.textContent.replace(/\s+/g, ' ').trim().replace(/^\P{L}+/u, '');
+      return [
+        ...[...new Map([...document.querySelectorAll('[data-settings-go]')].reverse().map(go => [go.dataset.settingsGo, name(go)])).values()].map(page => `Settings → ${page}`),   // one a page: its first button
+        ...[...document.querySelectorAll('[data-settings-page] .setting[id]')].filter(section => !section.closest('[hidden]:not(.view):not([data-settings-page])'))
+          .map(section => name(section.querySelector('h3') || section.querySelector('h4, summary'))).filter(Boolean),
+        'Move your data → Export data', 'Move your data → Import data'];
+    });
     const text = listed.map(item => item.replace(/\s+/g, ' '));
     const absent = wanted.filter(label => !text.some(item => item.includes(label)));
     if (absent.length) throw new Error(`not in ⌘K: ${absent.join(' | ')}`);
+    // One row per card (owner, 27 Oct 2026: "when searching for Extension, I see too many options. I'd expect to see Settings -> Connections -> Chrome extension.
+    // and that's pretty much it"): typed, "extension" lists that card alone; over the card names people type, no row twice and no row found only by its hint or
+    // keywords beside a label match (palette.js rank; the demo-app twin with exact top rows: test/palette-one-row-per-card.test.js, local only).
+    await page.locator('#palette[open] input').fill('extension');
+    const extension = (await page.locator('#palette-list [role="option"]').allInnerTexts()).map(item => item.split('\n')[0].trim());
+    if (extension.length !== 1 || !extension[0].endsWith('Connections → Chrome extension')) throw new Error(`⌘K "extension" should list Settings → Connections → Chrome extension alone: ${extension.join(' | ')}`);
+    const crowded = await page.evaluate(async queries => {
+      const {rank, shownLabel} = await import(new URL('palette.js', document.baseURI).href);
+      const entries = window.__jp.paletteCommands(), words = text => String(text).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      const named = (command, query) => words(query).some(term => words(`${command.label} ${command.alias || ''}`).some(word => word.startsWith(term)));
+      return queries.flatMap(query => {
+        const rows = rank(entries, query), shown = rows.map(row => `${row.group}|${shownLabel(row)}`);
+        const twice = shown.filter((row, i) => shown.indexOf(row) !== i), weak = rows.some(row => named(row, query)) ? rows.filter(row => !named(row, query)) : [];
+        return [...twice.map(row => `"${query}" lists ${row} twice`), ...weak.map(row => `"${query}" lists ${shownLabel(row)}, found only by its hint or keywords`)];
+      });
+    }, ['extension', 'chrome', 'telegram', 'gmail', 'notion', 'calendar', 'cv', 'profile', 'plan', 'promo', 'find jobs']);
+    if (crowded.length) throw new Error(`⌘K lists more than the card asked for: ${crowded.join(' | ')}`);
     await page.keyboard.press('Escape');
     await page.locator('#palette[open]').waitFor({state: 'detached', timeout: 5000}).catch(async () => {
       if (await page.locator('#palette[open]').count()) throw new Error('Esc did not close the palette');

@@ -9,10 +9,10 @@ name: CI · End-to-end on Mac + Linux
 #     goes ahead on a new commit; on an unchanged one it takes a second and a third look (each a different seeded path, lib/variation.mjs) and then stops until the next commit:
 #     at most 3 runs per commit (lib/plan.mjs exploreDecision), so a busy day costs the schedule (3 runs) and an idle weekend 3 runs in all. A look at an unchanged commit runs ONLY the suites that
 #     walk a different path each time (`export const varies`, today `interactions`, `apply` and `wander`): the others would repeat themselves.
-#     The AI review of screenshots (the costly part) runs when the UI or its tests changed, a finding waits, or the run is exploring. A push to main runs NO e2e (decided: e2e never runs on commit); by hand: gh workflow run e2e.yml -f suite=jobs,activity.
+#     The AI review of screenshots (the costly part) runs when the UI or its tests changed, a finding waits, or the run is exploring. A push to main runs NO e2e here; after each merge main-steps.yml starts only the steps it touched ("E2E after merge", owner 26 Oct 2026); by hand: gh workflow run e2e.yml -f suite=jobs,activity.
 # All of it is decided in desktop/e2e/plan-run.mjs (tested). The test key's AI credit is shared and small: see desktop/e2e/README.md.
 # Secrets (Settings → Secrets → Actions): E2E_ANTHROPIC_KEY, and one E2E_NOTION_TOKEN_<SUITE> per suite (a connection that sees only that suite's test page).
-run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name) || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026); a PR's run says its suites (it read "all suites" until 26 Oct 2026), and pr-verdict.yml finds it by "E2E for PR · ". Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
+run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || inputs.after_merge && format('E2E after merge · {0} · {1}', inputs.after_merge, inputs.pr_suites) || inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name) || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026); a PR's run says its suites (it read "all suites" until 26 Oct 2026), and pr-verdict.yml finds it by "E2E for PR · ". Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
 
 on:
   workflow_dispatch:
@@ -26,6 +26,10 @@ on:
         default: ''
       pr_steps:
         description: 'With pr_suites: {suite: [step names]} = run only these steps of that suite (their needs and the setup too); a suite not named runs whole (pr-suites.mjs)'
+        type: string
+        default: ''
+      after_merge:
+        description: 'With pr_suites on main: the merged commit whose steps these are (main-steps.yml). Titled "E2E after merge · <sha> · <suites>"; a newer merge replaces a queued one; its red is filed on that PR'
         type: string
         default: ''
       fixed:
@@ -191,8 +195,9 @@ jobs:
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     concurrency:
       # A pull request's run cancels an older run of the SAME pull request; no other job shares a group (a shared group drops its second waiter: the suite's lock waits instead).
-      group: ${{ inputs.pr_suites != '' && format('e2e-pr-{0}-{1}', github.ref, matrix.key) || format('e2e-run-{0}-{1}', github.run_id, matrix.key) }}
-      cancel-in-progress: ${{ inputs.pr_suites != '' }}
+      # After a merge (main-steps.yml): one group per suite on main, never cancelled while it runs (its red names its commit); a newer merge's job replaces the one waiting.
+      group: ${{ inputs.after_merge != '' && format('e2e-after-merge-{0}', matrix.key) || inputs.pr_suites != '' && format('e2e-pr-{0}-{1}', github.ref, matrix.key) || format('e2e-run-{0}-{1}', github.run_id, matrix.key) }}
+      cancel-in-progress: ${{ inputs.pr_suites != '' && inputs.after_merge == '' }}
     env:
       # A suite whose secrets are missing FAILS here instead of a green "skipped" (lib/skip.mjs). 6 Oct 2026: failuresnotion and failureschannels
       # had never run (no token) and showed ✓. Forks have no secrets: they still skip with a warning.
@@ -454,7 +459,7 @@ jobs:
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
       # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
       - name: Write the PR's verdict
-        if: always() && inputs.pr_suites != ''   # the e2e run a PR started (pr-suites.yml)
+        if: always() && inputs.pr_suites != '' && inputs.after_merge == ''   # the e2e run a PR started (pr-suites.yml); a run after a merge is main's, no PR's
         continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
         shell: bash
         env:
@@ -593,7 +598,7 @@ jobs:
   alert:
     name: Telegram alert
     needs: [plan, suite]
-    if: always() && github.ref == 'refs/heads/main' && (inputs.scheduled || inputs.gate_tag || github.event_name == 'schedule')
+    if: always() && github.ref == 'refs/heads/main' && (inputs.scheduled || inputs.gate_tag || github.event_name == 'schedule' || inputs.after_merge != '')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -612,18 +617,20 @@ jobs:
           CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
           CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
           RESULT: ${{ needs.plan.result == 'success' && needs.suite.result || needs.plan.result }}
+          AFTER_MERGE: ${{ inputs.after_merge }}
         run: |
-          if [ "$RESULT" = failure ] || [ "$RESULT" = cancelled ]; then
+          if [ "$RESULT" = failure ] || { [ "$RESULT" = cancelled ] && [ -z "$AFTER_MERGE" ]; }; then   # after a merge, a newer merge cancels the waiting job: not a red
             failed=$(gh run view "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(", ")' 2>/dev/null || true)
-            node ci-alert.mjs failure "Failed job: ${failed:-the run (see the link)}" "Open the failed job; the next scheduled run re-checks"
-          else node ci-alert.mjs success; fi
+            node ci-alert.mjs failure "Failed job: ${failed:-the run (see the link)}${AFTER_MERGE:+ (the steps merge $AFTER_MERGE touched)}" "Open the failed job; the next scheduled run re-checks"
+          elif [ -z "$AFTER_MERGE" ]; then node ci-alert.mjs success; fi   # a few green steps after a merge never say main is green again
       # A red on main gets an owner (gate G2b, owner's yes 26 Oct 2026): each red suite with no open `red-main` issue is bisected to its breaking PR (e2e-bisect.yml),
       # and the issue of a suite this run passed is closed. Not for a release gate (it tests a release, and its reds are the beta's).
       - name: Own the red (bisect new reds, close the ones green again)
         if: ${{ !inputs.gate_tag }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"
+          AFTER_MERGE: ${{ inputs.after_merge }}
+        run: if [ -n "$AFTER_MERGE" ]; then python3 tools/e2e_bisect.py after-merge "$GITHUB_RUN_ID"; else python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"; fi   # after a merge: filed on its PR, no bisect
 
   # The release step of a gate by hand (gh workflow run e2e.yml -f gate_tag=<tag>): beta-approve.yml, the same job the release run (desktop.yml) shows as its own
   # "Release · Mac beta" step after "E2E · Mac + Linux" (release_run: not here, so it is not done twice).

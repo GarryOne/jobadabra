@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 EXCEPTIONS = {
     'worker.yml': 'a deploy: one group, a started deploy finishes and a waiting older one is replaced by the newest',
+    'main-steps.yml': "plans one merge's own diff in about a minute and holds no runner after; cancelling it would drop that merge's steps (e2e.yml's per-suite job groups replace a waiting older job)",
 }
 
 

@@ -72,8 +72,8 @@ test('every workflow job that runs a suite passes its slice and names everything
     for (const block of text.split(/\n(?=  [\w-]+:\n)/)) if (/node suite\.mjs \$\{\{ matrix\.suite \}\}/.test(block)) jobs.push({file, id: /^\s*([\w-]+):/.exec(block)[1], block});
   }
   assert.deepEqual(jobs.map(job => `${job.file}:${job.id}`).sort(), ['desktop.yml:test-mac', 'desktop.yml:test-windows', 'e2e-windows.yml:suite', 'e2e.yml:suite']);
-  // Where the suite's own name is right: its file, the command that runs it, a comparison with a named suite, a step's title.
-  const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|matrix\.suite == '|name: .*\$\{\{ matrix\.suite \}\} suite/;
+  // Where the suite's own name is right: its file, the command that runs it, a comparison with a named suite, a step's title, the steps a PR picked for it (every slice runs them).
+  const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|matrix\.suite == '|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]/;
   for (const job of jobs) {
     assert.match(job.block, /JP_REPLAY_SHARD: \$\{\{ matrix\.shard \}\}/, `${job.file} ${job.id}: pass the slice to the suite (JP_REPLAY_SHARD: \${{ matrix.shard }})`);
     for (const line of job.block.split('\n').filter(text => text.includes('matrix.suite') && !allowed.test(text)))

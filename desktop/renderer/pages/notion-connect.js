@@ -6,6 +6,7 @@ import {GATE_FOOTNOTE, GATE_TITLE, LOCKED_VIEWS, WHY_CHOICES} from '../notion-be
 import {closeOnProgress, connectMode, GO_LABEL, ignoreGateEvent, moveAfterConnect} from '../notion-connect-rules.js';
 import {MOVE_WORDS, movedText} from '../store-move-text.js';
 import {shared} from './shared.js';
+import {signInWait} from '../sign-in-wait.js';
 
 export const notionConnected = () => !!shared.state?.notion?.NOTION_PROFILE_PAGE_ID;
 // The data has a home (Notion connected, or kept on this Mac: lib/store), so tracking works; false only while trying.
@@ -90,6 +91,7 @@ async function move(box) {
   setTimeout(() => { $('notion-connect-dialog').close(); box.then?.(result); }, 2500);
 }
 
+let waitSignIn = fn => fn();   // set by init(): the Go button as Cancel sign-in while Notion's wait runs
 async function connect() {
   if (!current) return;
   const box = current;
@@ -98,10 +100,8 @@ async function connect() {
   setMode(box);
   if (box.mode === 'move') { await move(box); return; }
   box.connecting = true;
-  $('notion-connect-go').disabled = true;
-  message('notion-connect-message', 'Waiting for Notion: approve in your browser, then come back here…', 'waiting');
-  const result = await window.pilot.notionOAuth({from: box.from}).catch(error => ({ok: false, error: error.message}));
-  $('notion-connect-go').disabled = false;
+  message('notion-connect-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
+  const result = await waitSignIn(() => window.pilot.notionOAuth({from: box.from}).catch(error => ({ok: false, error: error.message})));
   if (!result.ok) {
     message('notion-connect-message', result.error || 'Not connected.', 'error');
     show($('notion-connect-token'));
@@ -163,6 +163,7 @@ export function init() {
   benefits.replaceChildren(...notionBenefits().children);
   $('notion-connect-title').textContent = GATE_TITLE;
   $('notion-connect-note').textContent = GATE_FOOTNOTE;
+  waitSignIn = signInWait($('notion-connect-go'), () => window.pilot.notionOAuthCancel());
   $('notion-connect-go').addEventListener('click', connect);
   // Setup → Optional extras → Notion: the first three advantages; "Connect" opens the prompt on this step (the other extras'
   // buttons finish setup and open Settings, strategy-review.js); connected, the button is "Manage" and does that like the rest.

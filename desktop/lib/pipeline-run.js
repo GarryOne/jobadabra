@@ -46,7 +46,7 @@ export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The
 // The type of a private run's failure ("OperationalError" of {"error": "OperationalError: …"}); its message may hold the person's data, so only the type is kept.
 export const errorKindOf = stdout => /^"?([A-Za-z_][\w.]*(?:Error|Exception|Exit))\b/.exec(String((() => { try { return JSON.parse(String(stdout).trim().split('\n').pop()).error; } catch { return ''; } })() || ''))?.[1] || '';   // words-ok: matches a Python exception type name in our own engine's error, not page text
 
-export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false, inTask = ''} = {}) {
+export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterMs = 0, logArgs = null, privateOutput = false, inTask = '', onChild = null} = {}) {
   if (isDemo() && demoSearch.isSearchRun(args)) return demoSearch.play(onLine);   // Find jobs in the demo: the scripted search (lib/demo-search.js)
   if (isDemo() && demoSearch.isQuietStep(args)) return Promise.resolve({code: 0, stdout: ''});
   if (isDemo() && !demo.pipelineAllowed(args)) { onLine('Demo mode: nothing runs and nothing is sent.'); return Promise.resolve({code: 1, stdout: ''}); }
@@ -67,6 +67,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
     const child = spawn(python(), ['-m', ...args], {cwd: REPO, detached: process.platform !== 'win32', env: {...pipelineEnv(storage), ...extraEnv,
       JOB_PILOTTO_RUN_ID: runId, JOB_PILOTTO_RESULT_FILE: resultFile}});
     children.add(child);
+    onChild?.(child);   // a caller that must end this one command by itself (Cancel sign-in), by the child's own handle
     owner?.children.add(child);
     child.on('exit', () => { children.delete(child); owner?.children.delete(child); });
     const stopper = stopAfterMs ? setTimeout(() => {

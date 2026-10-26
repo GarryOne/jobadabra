@@ -46,6 +46,10 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 /* Dialog with a header (icon, title, ✕), a lead line and a footer bar (e.g. Jobs → Log job activity). */
 .panel-dialog { width: min(560px, 92vw); padding: var(--sp-6) var(--sp-6) 0; }
 .panel-dialog label { display: block; font-weight: 600; font-size: var(--fs-md); margin: var(--sp-4) 0 var(--sp-2); }
+/* The top-up dialog (pages/topup-dialog.js): its pill above the title, the packs and the promo field in the dialog's own spacing. */
+.topup-dialog .dialog-head { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.topup-dialog .topup-packs, .topup-dialog .topup-promo { margin-top: var(--sp-4); }
+.topup-dialog .topup-promo .inline input { flex: 1; min-width: 0; }
 .dialog-head { display: flex; align-items: center; gap: var(--sp-3); }
 .dialog-head h2 { flex: 1; margin: 0; font-size: var(--fs-xl); }
 .dialog-icon { color: var(--signal); display: inline-flex; }

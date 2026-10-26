@@ -1,12 +1,12 @@
 // Settings → Plan (private spec jobadabra-lab:docs/specs/2026-10-16-pro-plan.md §4): Upgrade to Pro for a free install, the AI credit bar and the top-ups for a Pro one. Shown only when the site's
 // Pro plan is on (lib/plan.js says so); with it off nothing about Pro is on screen but the one honest line (plan-line.js). Words and numbers: renderer/plan-view.js. Guard: test/plan.test.js.
-import {el} from '../components.js';
+import {choiceCards, el} from '../components.js';
 import {$, message, show} from './core.js';
 import {shared} from './shared.js';
 import {toastMessage} from './startup.js';
-import {NOTES, SHOW_I_HAVE_PRO, TOPUP_NOTE, planView, warnNow} from '../plan-view.js';
+import {NOTES, PLAN_CHOICES, SHOW_I_HAVE_PRO, TOPUP_NOTE, planView, warnNow} from '../plan-view.js';
 import {signinPart} from './plan-signin.js';
-import {promoLink} from './plan-promo.js';
+import {openPromoDialog, promoLink} from './plan-promo.js';
 import {BADGE} from '../pro-promise.js';
 
 const REFRESH_MS = 10 * 60 * 1000;
@@ -38,6 +38,10 @@ function render(view) {
     body.append(promoLink(() => load()));
     return;
   }
+  // A Pro sees both plans, Free greyed and Pro selected (owner, 27 Oct 2026), then the AI credit below.
+  const plans = choiceCards(PLAN_CHOICES, {selected: 'pro', label: 'Your plan'});
+  plans.classList.add('is-pair', 'plan-choices');
+  body.append(plans);
   if (view.hasCredit) {
     const bar = el('div', 'bar license-bar', ''), fill = el('span', '', '');
     fill.style.width = `${Math.max(2, view.percent)}%`;
@@ -59,7 +63,14 @@ function render(view) {
     button.addEventListener('click', () => buy(top.kind));
     row.append(button);
   }
-  body.append(row, el('p', 'muted small', TOPUP_NOTE));
+  if (view.topups.length) body.append(row, el('p', 'muted small', TOPUP_NOTE));
+  if (view.promo) {   // paying is off: a credit code is how AI credit is added, so Top up (owner's word for Pro, 27 Oct 2026) opens the code field
+    const top = el('button', 'primary', 'Top up with a promo code');
+    top.type = 'button';
+    top.addEventListener('click', () => openPromoDialog(() => load()));
+    body.append(el('div', 'inline', ''));
+    body.lastChild.append(top);
+  }
 }
 
 async function buy(kind) {

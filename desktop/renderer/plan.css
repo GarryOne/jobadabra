@@ -11,3 +11,4 @@
 .plan-packages { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .plan-packages .summary-card { display: flex; flex-direction: column; gap: 8px; }
 .plan-packages .summary-card button { margin-top: auto; align-self: flex-start; }
+.plan-choices { margin-bottom: var(--sp-4); }   /* a Pro's two plans (Free greyed, Pro selected) above the AI credit */

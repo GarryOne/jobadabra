@@ -35,11 +35,17 @@ export function showLicense(state) {
   const shown = chip(state);
   $('license-used-label').textContent = licensed ? 'Applications sent' : 'Applications used';
   $('license-used').textContent = licensed ? `${state.used} · no limit` : `${shown.used} of ${state.limit}`;
-  $('license-days-label').textContent = licensed ? 'Licensed to' : 'Days left';
-  $('license-days').textContent = licensed ? state.license.name : `${state.daysLeft} of 60`;
+  // A Pro's second number is its AI credit (owner, 27 Oct 2026): on our AI the credit left, a bar like the sidebar's; on its own AI a full bar, unlimited, and why.
+  const pro = state.license?.kind === 'pro', ourAi = pro && !!state.pro?.ourAi;
+  const noCredit = state.pro?.hasCredit === false || !state.pro?.creditPercent;
+  $('license-days-label').textContent = pro ? 'AI credit' : licensed ? 'Licensed to' : 'Days left';
+  $('license-days').textContent = pro ? (ourAi ? shown.text.replace(/^AI credit /, '') + ' left' : 'Unlimited · your own AI') : licensed ? state.license.name : `${state.daysLeft} of 60`;
   $('license-bar').hidden = licensed;
-  $('license-days-bar').hidden = licensed;
-  if (shown) {
+  $('license-days-bar').hidden = licensed && !pro;
+  if (pro) {
+    $('license-days-bar').firstElementChild.style.width = `${ourAi ? shown.percent : 100}%`;
+    $('license-days-bar').dataset.tone = ourAi ? shown.tone : 'good';
+  } else if (shown) {
     $('license-bar').firstElementChild.style.width = `${shown.percent}%`;
     $('license-bar').dataset.tone = shown.tone;
     // The days bar fills as the days are used; red when the last 5 are left, like the applications.
@@ -47,7 +53,8 @@ export function showLicense(state) {
     $('license-days-bar').firstElementChild.style.width = `${Math.max(2, Math.round(daysUsed / 60 * 100))}%`;
     $('license-days-bar').dataset.tone = (state.daysLeft ?? 60) <= 5 ? 'bad' : 'info';
   }
-  $('license-note').textContent = licensed ? (state.license.until ? `Valid until ${state.license.until}.` : 'No end date.')
+  $('license-note').textContent = pro ? (!ourAi ? 'Unlimited: you use your own AI key, so nothing is counted.' : noCredit ? 'No AI credit left: top up, or add a promo code.' : 'No end date.')
+    : licensed ? (state.license.until ? `Valid until ${state.license.until}.` : 'No end date.')
     : ended ? `New applications, kits and searches are paused. ${byStore('Tracking, Notion, export and your data keep working.', 'Tracking, export and your data keep working.')}`
       : '';   // the rule is the page's subtitle; the one line about Pro is below
   showProCard(state);   // the Pro card with the waitlist button, while Pro is off (pages/plan-waitlist.js)

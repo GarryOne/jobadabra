@@ -41,7 +41,7 @@ export function registerApplyHandlers(ctx) {
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   ipcMain.handle('apply', async (_, options) => {
     const agents = options?.mode === 'agents';
-    const blocked = needsNotion('apply') || allowanceBlock() || (agents ? null : needExtension());   // (an earlier one-line form sent these answers through the "Claude is off" branch)
+    const blocked = needsNotion('apply') || await allowanceBlock() || (agents ? null : needExtension());   // (an earlier one-line form sent these answers through the "Claude is off" branch)
     if (blocked) return blocked;
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
@@ -50,7 +50,7 @@ export function registerApplyHandlers(ctx) {
   ipcMain.handle('applyOne', async (_, url, details) => {
     const gate = needsNotion('apply');
     if (gate) return gate;
-    const blocked = allowanceBlock() || needExtension();
+    const blocked = await allowanceBlock() || needExtension();
     if (blocked) return blocked;
     const result = await (DEMO ? apply.openOne(url, {session: 'demo'}) : apply.applyOne(storage, url, details || {}));
     if (result?.ok) track('apply_started', {how: 'extension'});

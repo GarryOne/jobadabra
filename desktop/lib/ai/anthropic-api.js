@@ -3,8 +3,10 @@
 // SDK's answer and errors come back as they are, with usage.billing 'api'. Free AI (lib/ai-free.js) still works: the SDK
 // follows ANTHROPIC_BASE_URL itself, so no baseURL is set here.
 import Anthropic from '@anthropic-ai/sdk';
-import {API, Adapter, requestFrom} from './contract.js';
+import {API, Adapter, AiLimit, requestFrom} from './contract.js';
 import {withoutLimits} from './schema.js';
+import {capNow, heard} from './refusals.js';
+import {isFreeKey} from '../ai-free.js';
 
 // The one place every ask to the API passes through (create and stream): the schema without maxItems/minItems, which the API refuses in structured
 // output (400). Callers write them to cap their own lists and check the answer themselves; everything else in the params stays as written.
@@ -27,7 +29,12 @@ export class AnthropicApi extends Adapter {
   }
 
   async complete(request) {
-    const answer = await this.sdk.messages.create(forApi(request.params), request.action ? {headers: {'x-jp-action': request.action}} : undefined);
+    // On our Free AI key, a line already reached (refusals.js) stops the call here: the site would refuse it, and the window opens the top-up dialog.
+    const cap = isFreeKey(this.sdk?.apiKey) ? capNow() : null;
+    if (cap) { heard(null, cap); throw new AiLimit(cap.message || 'Free AI is not available right now.', {final: true}); }
+    let answer;
+    try { answer = await this.sdk.messages.create(forApi(request.params), request.action ? {headers: {'x-jp-action': request.action}} : undefined); }
+    catch (error) { heard(error); throw error; }   // a refusal is heard (refusals.js: a Free AI line reached opens the top-up dialog); the error goes on as it was
     if (answer?.usage) Object.assign(answer.usage, {billing: API, provider: 'anthropic'});
     return answer;
   }

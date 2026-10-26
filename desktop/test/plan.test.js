@@ -72,7 +72,7 @@ test('Pro lifts the limit: licensed, never ended, nothing blocked after the free
 test('credit used up: our AI starts nothing new (top up or own key); an own key and any other credit level are never blocked', () => {
   const gone = {plan: 'pro', mode: 'test', creditPercent: 0, warn: 0};
   const onFree = app({plan: gone, settings: {aiFree: true}}).allowanceBlock();
-  assert.equal(onFree.credit, true); assert.match(onFree.error, /Add credit/); assert.match(onFree.error, /own AI key/);
+  assert.equal(onFree.credit, true); assert.match(onFree.error, /Top up/); assert.match(onFree.error, /own AI key/);
   assert.equal(app({plan: gone, settings: {aiEngine: 'cli'}}).allowanceBlock(), null, 'an own key stays unlimited');
   for (const warn of [null, 30, 10]) assert.equal(app({plan: {plan: 'pro', mode: 'test', creditPercent: 20, warn}, settings: {aiFree: true}}).allowanceBlock(), null, `warn ${warn}`);
 });

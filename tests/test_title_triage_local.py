@@ -34,7 +34,7 @@ class LocalFirstTest(unittest.TestCase):
                         mock.patch('src.paths.DATA', pathlib.Path(tempfile.mkdtemp()))]   # its paces: the default ones, not a stray step_pace.json
         for patch in self.patches:
             patch.start()
-        time_budget.start(180, now=time.monotonic() - 150)   # the titles' time ran out (they keep 80 s for scoring), the run's 3 minutes did not
+        time_budget.start(180, now=time.monotonic() - 105)   # the titles' time ran out (at 95 s), scoring's share (time_budget.SCORING) not begun
         self.addCleanup(lambda: setattr(time_budget, 'DEADLINE', None))
 
     def tearDown(self):
@@ -58,12 +58,20 @@ class LocalFirstTest(unittest.TestCase):
     def test_the_floor_is_the_searchs_first_titles_only(self):
         client = Client()
         titles = [f'Engineer {n}' for n in range(time_budget.LOCAL_TITLES + 30)]
-        title_triage.decide(titles, SEARCH, client, local=True)
+        with mock.patch.object(time_budget, 'in_calls', return_value=0):   # the clock gives no batch: the floor alone
+            title_triage.decide(titles, SEARCH, client, local=True)
         self.assertEqual(len(client.asked), time_budget.LOCAL_TITLES)
 
     def test_past_the_runs_end_local_titles_wait_too(self):
         # owner, 26 Oct 2026: "A find jobs session should take at most 3min" (tests/test_three_minutes.py)
         time_budget.start(180, now=time.monotonic() - 1000)
+        client = Client()
+        title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
+        self.assertEqual(client.asked, [])
+
+    def test_in_scorings_share_local_titles_wait(self):
+        # 26 Oct 2026, a proof on a copy of the owner's data: floor title calls held the board read to 136 s; the search scored 3 jobs
+        time_budget.start(180, now=time.monotonic() - 125)
         client = Client()
         title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
         self.assertEqual(client.asked, [])

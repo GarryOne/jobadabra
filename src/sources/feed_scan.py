@@ -56,7 +56,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     from ..progress import Ticker
     ticker, lock, read = Ticker('Reading employer job sites', len(sources)), threading.Lock(), [0, 0]   # [sites read, jobs listed]
 
-    took, asked = {}, {}   # seconds per site read (src/source_yield.py timed: the shared ranking is per minute); each read's "changed since?" state
+    took, asked, taken = {}, {}, []   # seconds per site read (source_yield.timed); each read's "changed since?" state; sites read after the last cut (late_reads)
 
     def fetch(source):
         started = time.monotonic()
@@ -64,6 +64,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
             with ats.conditional(feed_facts.ask(facts.get(key(source)))) as asked[key(source)]:   # a 304 comes back as ats.Unchanged
                 late = late_reads.take('employer', key(source))   # read after the last search's cut: its answer, not a second read
                 got = (late, None) if late is not None else feeds._fetched(fetcher, source)
+                if late is not None:
+                    taken.append(key(source))
             counted.failed = got[1] is not None   # a failed read is not a source read
             counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
         took[key(source)] = round(time.monotonic() - started, 1)
@@ -103,6 +105,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
                 submit()
     finally:
         pool.shutdown(wait=not cut_off[0], cancel_futures=True)
+    if taken:
+        print(f"Employers: {len(taken)} site(s) read after the last search's time taken from it, not read again", flush=True)
     kept = [index for index in range(begun[0]) if downloads[index] is not None]
     read_budget.keep_left([sources[index] for index in sorted(pending.values())] + sources[begun[0]:], key, len(kept), total)
     sources, downloads = [sources[index] for index in kept], [downloads[index] for index in kept]

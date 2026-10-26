@@ -96,7 +96,8 @@ export async function runParts(ctx, parts) {
     // The run's own writes fail the way Notion and networks really do; reads still work, so the panel can show what became of the run. A person must see a clear end,
     // in words: never "Running" for ever, never the HTML of an error page or Notion's JSON.
     const NOTION_FAULTS = [
-      {mode: 'rate-limit', times: 3, what: 'Notion is busy (429) for a moment', recovers: true},
+      // writes: the 3 refusals hit the run's own writes (its row, its report), never reads that leave no trace: what ran before no longer decides whether a warning is logged (beta 2, 25 Oct 2026).
+      {mode: 'rate-limit', times: 3, writes: true, what: 'Notion is busy (429) for a moment', recovers: true},
       {mode: 'html', writes: true, what: 'Notion answers an HTML error page instead of JSON'},
       {mode: 'offline', writes: true, what: 'the connection to Notion is gone'},
     ];

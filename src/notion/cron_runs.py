@@ -16,6 +16,7 @@ import re
 import sys
 
 from .. import run_result, tz
+from ..warning_lines import record_logged_warnings
 from ..stores.notion_columns import without_missing as _without_missing
 # Rendering lives in cron_report.py; every name stays importable from here.
 from .cron_report import (  # noqa: F401
@@ -190,6 +191,7 @@ def log_run(tracker, run, failed=False):
     try:
         if failed:
             run['failed'] = True  # the report's words (report_lines): a run that crashed never says "done"
+        record_logged_warnings(run, list(_output))  # what the run logged as a warning is recorded too: the row's Status and the panel agree (src/warning_lines.py)
         properties, children = run_page(run, final=not failed)
         if failed:
             properties['Status'] = {'select': {'name': 'Failed'}}

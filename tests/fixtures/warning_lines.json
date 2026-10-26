@@ -1,0 +1,15 @@
+{"_note": "One list for both sides: src/warning_lines.py and desktop/renderer/run-warnings.js must call exactly these lines warnings (or not).",
+ "cases": [
+  {"line": "Warning: Notion was busy", "warning": true},
+  {"line": "Notion 429 Too Many Requests, retrying in 2 s", "warning": true},
+  {"line": "HTTP 429 from api.notion.com", "warning": true},
+  {"line": "Too Many Requests", "warning": true},
+  {"line": "Skipped job abc: no description", "warning": true},
+  {"line": "Enriched 3 of 5 job(s); 2 failed", "warning": true},
+  {"line": "Feed acme was skipped: timeout", "warning": true},
+  {"line": "AI limit reached, 12 job(s) not scored", "warning": true},
+  {"line": "Enriched 1 of 1 job(s); 0 failed", "warning": false},
+  {"line": "0 skipped, 0 failed", "warning": false},
+  {"line": "Found 12 new jobs", "warning": false},
+  {"line": "Run done", "warning": false}
+ ]}

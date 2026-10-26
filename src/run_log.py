@@ -19,6 +19,7 @@ import time
 from collections import deque
 
 from . import run_details, run_result
+from .warning_lines import record_logged_warnings
 from .notion import cron_report
 from .notion.cron_runs import CRASH_LINE, EXIT_GRACE_S, HEARTBEAT_S, LOGGED_MODES, LOG_LINES, STEP_EVERY, STOPPED_WORDS
 from .stores import notion_blocks, notion_rows
@@ -185,6 +186,7 @@ def finished(run, failed=False):
     from . import telegram
     if failed:
         run['failed'] = True  # the report's words (report_lines): a run that crashed never says "done"
+    record_logged_warnings(run, list(_output))  # what the run logged as a warning is recorded too: the row's Status and the panel agree (src/warning_lines.py)
     properties, children = cron_report.run_page(run, final=not failed)
     messages = telegram.MESSAGES
     return {'status': 'Failed' if failed else cron_report.status(run), 'title': cron_report.title(run, final=not failed),

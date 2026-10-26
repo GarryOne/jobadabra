@@ -299,6 +299,7 @@ const paintCoverage = verdict => {
     }})),
     brief: {title: 'Employers hiring people like you', text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), cta: 'See employers'},
     menu: [hideItem('employer', 'foryou', FORYOU_DISMISSED, forYou.at)]});
+  if (shownIdeas) paintIdeas(shownIdeas);   // drawn before this check answered: its "your role words catch" line comes now
   drawSuggestions();
   if (strategyState.strategyShown && !strategyState.editing) renderTargets();   // the exclusions card says what the languages hid
 };
@@ -334,10 +335,12 @@ async function loadIdeas() {
   if (fresh) { try { localStorage.setItem(IDEAS_LAST, JSON.stringify(answer.ideas)); } catch { /* shown when it answers */ } }
   paintIdeas(fresh ? answer.ideas : kept || []);   // the engine could not answer: the kept ideas stay
 }
+let shownIdeas = null;
 function paintIdeas(ideas) {
+  shownIdeas = ideas;
   // A kept idea already added as a role is not offered again (the engine leaves it out of its next answer too).
   const searched = new Set(entriesOf(strategyState.lastStrategy, 'roles').map(entry => String(entry.fragment).toLowerCase()));
-  const card = ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), aside());
+  const card = ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), aside(), strategyState.shownVerdict);
   if (!card) { rows.ideas = null; drawSuggestions(); return; }
   // A card each: the role, why it fits, its openings; the word it is searched by under "Search details" (owner mockup, 7 Oct 2026).
   const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: '+ Add role', accent: true,
@@ -348,8 +351,8 @@ function paintIdeas(ideas) {
   const top = open[0];
   rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: 'Explore related roles', count: card.chips.length,
     note: open.length ? '' : 'No current openings found in your selected locations.',
-    summary: top ? `${plain(top.label).replace(/ · \d+$/, '')} · ${top.count} open role${top.count === 1 ? '' : 's'}${open.length > 1 ? `, and ${open.length - 1} more` : ''}`
-      : `${empty.length} role${empty.length === 1 ? '' : 's'} from your Profile, none with openings in your places now`,
+    summary: card.narrow || (top ? `${plain(top.label).replace(/ · \d+$/, '')} · ${top.count} open role${top.count === 1 ? '' : 's'}${open.length > 1 ? `, and ${open.length - 1} more` : ''}`
+      : `${empty.length} role${empty.length === 1 ? '' : 's'} from your Profile, none with openings in your places now`),
     text: 'Based on your Profile. A role you add is included in your future searches.', options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
     hiddenLabel: 'Show roles with no current openings',
     brief: {title: 'Explore related roles', text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? `, ${open.length} with openings in your places` : ', no current openings in your places'}`, cta: 'Review roles'},

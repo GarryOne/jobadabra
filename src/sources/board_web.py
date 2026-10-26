@@ -3,7 +3,7 @@ web search last. It should probably start with that."; first built 19 Oct 2026, 
 early() starts it with the run, before the first jobs; start() hands it to the full read beside the proposal (or starts it there); finish() hands its new boards to the same read. Its one skip: this search was searched
 in the last RECENT days, or its boards are working (WANT sector or regional boards gave relevant jobs) and it was searched in the last DAYS.
 The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
-Anthropic API key (about $0.03 a search); never on Free AI alone. Only boards whose address the search showed; each is marked origin 'web'
+Anthropic API key (about $0.03 a search), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
 (src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOB_PILOTTO_DISABLE=web_search.
 Tests: tests/test_board_web.py, tests/test_web_first.py."""
@@ -19,7 +19,7 @@ from . import careers
 WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
 RECENT = 7      # a thin search (its boards do not work yet) is searched again after this many days
-ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI and OpenAI's API: not here, a signed-in plan beside them can)
+ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI through the site's lane; OpenAI's API: not here, a signed-in plan beside it can)
 LOCAL_KINDS = ('sector', 'regional')
 # The instruction, search cap and answer form, shared with the site relay that runs this search for Free AI without a plan (one text, public).
 PROMPT = json.loads((Path(__file__).resolve().parents[2] / 'config' / 'board_web_search.json').read_text())
@@ -28,14 +28,17 @@ SYSTEM, MAX_USES, MAX_TOKENS, MAX_FOUND = PROMPT['system'], PROMPT['max_uses'], 
 
 def _searcher():
     """The client that runs this web search: the user's own plan (src/sources/web_search.py plan_client: the engine, or signed in beside
-    Free AI or a key), else their own API key; None on Free AI alone, whose open model has no web search tool (25 Oct 2026: the owner's
-    Free AI install never searched the web)."""
+    Free AI or a key), else their own API key; on Free AI alone, the site's web search lane (jobadabra-web shared/free-ai-web.js: the same
+    public prompt on the Anthropic API, one shared answer per roles × places for 30 days, $10 a month for everyone; 25 Oct 2026: the owner's
+    Free AI install never searched the web, its open model has no web search tool)."""
     from ..ai import engine
     from . import web_search
     if web_search._claude_code():
         return web_search.plan_client()
-    if engine.choice() not in ENGINES or not engine.ready() or web_search.free_ai():
+    if engine.choice() not in ENGINES or not engine.ready():
         return None
+    if web_search.free_ai():   # Free AI without a plan: the site runs this one search on its own capped key (owner, 26 Oct 2026: "Yes, $10/month cap")
+        return engine.client(action='web_search')
     return engine.client(action='scout')
 
 

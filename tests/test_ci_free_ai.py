@@ -16,6 +16,7 @@ RELAY_STEP = re.compile(r'uses: \./(?:\.ci-relay/)?\.github/actions/free-ai-rela
 # Jobs that see E2E_ANTHROPIC_KEY but start no relay, each with its reason.
 NO_RELAY = {
     ('desktop.yml', 'ai-ready'): 'the gate\'s preflight: it checks CI_FREE_AI_CF_TOKEN instead (asserted below)',
+    ('review-eval.yml', 'eval'): 'scores a review model on the judged issues, by hand; asks the model itself, runs no app',
     ('key-org-proof.yml', 'proof'): 'proves which organization each key belongs to; runs no suite',
     ('record-sites.yml', 'smoke'): 'the live pool on real sites: its own key and recordings; moves in its own PR',
     ('watch-live.yml', 'smoke'): 'the live pool\'s daily watch: moves with record-sites',

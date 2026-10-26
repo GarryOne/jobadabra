@@ -215,6 +215,19 @@ class ShipPrTest(ShipFixture):
         self.assertNotIn('First summary', body)
         self.assertEqual(sum(1 for call in self.calls() if call.startswith('pr create')), 1)
 
+    def test_a_bad_body_stops_ship_before_any_check_or_push(self):
+        # 26 Oct 2026 (c5): ship ran 139 s of push checks, pushed, then failed on "no Before/After table". The body is checked first now, in about a second.
+        self.change(self.tree, 'mine.txt', 'y\n', 'My change')
+        bad = self.tmp / 'bad.md'
+        bad.write_text('🟢 A change\n\n- ✅ a bullet\n')   # no Why, no impact table, no Before/After
+        result = self.pr_ship(None, f'--body={bad}')
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('the PR description is not laid out', result.stderr)
+        self.assertIn('nothing was pushed', result.stderr)
+        self.assertNotIn('running the push checks', result.stdout + result.stderr)
+        self.assertNotIn('topic', git(self.origin, 'branch', '--list', 'topic'), 'the branch never reached origin')
+        self.assertFalse(any(call.startswith('pr create') for call in self.calls()))
+
     def test_a_failed_flow_check_rebases_and_pushes_again_by_itself(self):
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
         self.change(self.other, 'theirs.txt', 'x\n', 'Landed meanwhile')

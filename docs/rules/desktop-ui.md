@@ -83,6 +83,10 @@ One shared version of each, never a page's own (`renderer/page-parts.js` + `page
 
 ## Read views, lists, buttons and choices (owner's UI feedback, 18 Oct 2026) [approved]
 The owner's review of Strategy and Your details, kept as rules. Don't / Do pairs drawn with fictional data: `npm run design-system` → "Don't / Do".
+- **Buttons are solid** (owner, 27 Oct 2026: "Let's have always just solid buttons in the app"; the Always on card's text-only "Change e-mail" sat under a
+  boxed button, misaligned: "doesn't look like a button… seems broken, disorganized"). Every button has its own box: `primary` (the card's one main action),
+  `secondary`, `danger` / `danger-outline`; never text-only `ghost` or `link`. A card's buttons sit in one row, never a lone button under another.
+  Guard: `desktop/test/solid-buttons.test.js` counts today's text-only buttons per file (`test/text-buttons-allowed.json`, 165 on 27 Oct 2026); a file may only lower its count.
 - **A read view shows values, never raw notes** ("What is this long text?"): no `[language]`-style tags, "(note: …)", "(confirmed …)" or AI instructions inside a value.
   A date it was confirmed is a muted line under a text value (never under chips: see "Chips and words" below); anything longer folds as the card's one **Note for the AI**.
 - **Long lists fold** (Relocation's ~80 places): more than a dozen items show as the first few chips and "+N more", never a paragraph.

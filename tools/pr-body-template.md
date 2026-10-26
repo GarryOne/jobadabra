@@ -24,7 +24,7 @@
 - [ ] Each value uses its kind's control (Value → control)
 - [ ] No saved value is cut by its box; long text grows
 - [ ] Chips show values only (no quotes, codes, regex); a note for the AI is a muted line under its value
-- [ ] One primary button per card; no card inside a card
+- [ ] One primary button per card; every button solid (no text-only ghost/link), one row; no card inside a card
 - [ ] Spacing from the scale (label → field 4, field → field 12, card padding 16)
 - [ ] Looked at in light and dark
 

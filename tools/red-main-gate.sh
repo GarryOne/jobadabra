@@ -5,17 +5,24 @@
 #   red, commits landed since                              → re-runs ONLY the red suites on main now and waits: green → exit 0, red → exit 1
 #   --force "<why>" (as beta-release.sh's)                → exit 0 with the reds named; beta-release.sh puts the reason in the beta run's summary
 # Why: 25 Oct 2026, main's 21:47 run was red on cardstates, interactions and settings; beta 2 started 1.5 h later and failed on the same suites.
-# Usage: tools/red-main-gate.sh <repo> [--force "<why>"]     RED_MAIN_POLL / RED_MAIN_FIND_S / RED_MAIN_WAIT_S for tests.
+# Usage: tools/red-main-gate.sh <repo> [--force "<why>" | --status]   --status only reads (exit 0 green, 1 red); any other option is refused and starts nothing (26 Oct 2026: a --dry-run was ignored and re-ran main's red suites)     RED_MAIN_POLL / RED_MAIN_FIND_S / RED_MAIN_WAIT_S for tests.
 # Tests: tests/test_red_main_gate.py
 set -uo pipefail
 repo="${1:?repo}"; shift
-force=""; [ "${1:-}" = --force ] && force="${2:-}"
+force="" status=""
+case "${1:-}" in
+  "") ;;
+  --force) force="${2:?--force needs a reason}" ;;
+  --status) status=1 ;;   # read-only: name the red suites, start nothing
+  *) echo "Unknown option: $1 (use --force \"<why>\" or --status). Nothing started." >&2; exit 2 ;;
+esac
 here="$(cd "$(dirname "$0")" && pwd)"
 poll="${RED_MAIN_POLL:-30}" find_max="${RED_MAIN_FIND_S:-300}" wait_max="${RED_MAIN_WAIT_S:-3600}"
 
 reds="$(python3 "$here/main_e2e_state.py" --repo "$repo")"
 if [ -z "$reds" ]; then echo "Main's e2e: no suite red."; exit 0; fi
 echo "Main's e2e is red:"; awk -F'\t' '{ printf "  %s (since %s, %s)\n", $1, $2, $4 }' <<<"$reds"
+if [ -n "$status" ]; then exit 1; fi
 if [ -n "$force" ]; then echo "Starting the beta anyway (--force): $force"; exit 0; fi
 
 head="$(gh api "repos/${repo}/commits/main" --jq .sha 2>/dev/null)"

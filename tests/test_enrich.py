@@ -199,8 +199,12 @@ class ApiOutageTests(unittest.TestCase):
             lines = self.run_enrich(error)
             warning = [line for line in lines if line.startswith('Warning:')]
             self.assertEqual(len(warning), 1, lines)
-            self.assertIn(type(error).__name__, warning[0])
+            self.assertIn('AI unavailable', warning[0])  # plain words for the person since 4f96988
+            self.assertNotIn(type(error).__name__, warning[0])
             self.assertIn('job(s) left for the next check', warning[0])
+            technical = [line for line in lines if line.startswith('Technical: enrich:')]
+            self.assertEqual(len(technical), 1, lines)
+            self.assertIn(type(error).__name__, technical[0])  # the class name goes to the technical line
 
 
 if __name__ == '__main__':

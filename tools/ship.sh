@@ -54,7 +54,9 @@ if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools
     echo "ship: fix the file (template: tools/pr-body-template.md), then run ship again" >&2; exit 2; }
   export SHIP_BODY_CHECKED=1
 fi
-log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${branch//\//-}.log}"
+# Another repo's log carries its name (26 Oct 2026: node24-actions shipped from jobadabra and jobadabra-web at once shared one log, and their events mixed).
+repo_tag=""; [ -z "$external" ] || { repo_tag="$(git remote get-url origin 2>/dev/null)"; repo_tag="${repo_tag##*/}"; repo_tag="${repo_tag%.git}-"; }
+log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
 [ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || session_name() { echo "${JOB_PILOTTO_SESSION:-?}"; }
 if [ "$background" = 1 ]; then
   export JOB_PILOTTO_SESSION="$(session_name)"   # the detached run has no Claude session among its parents any more

@@ -8,6 +8,7 @@ import {electronPdfReader} from './lib/ai/pdf-pages.js';
 import {recordIpc} from './lib/e2e-ipc.js';
 import {isTwin, twinRefusal} from './lib/twin.js';
 import {forWindow} from './lib/site-accounts.js';
+import {channelsOf} from './lib/notify-channel.js';
 import * as devMarker from './lib/dev-marker.js';
 import {hideWindows} from './lib/e2e-hidden.js';
 import fs from 'node:fs';
@@ -184,7 +185,7 @@ function handlers() {
   ipcMain.handle('state', () => ({
     about,
     settings: forWindow(storage.settings()),   // the window shows the effective choice, whatever was never saved
-    secrets: storage.secretsPresent(),
+    secrets: storage.secretsPresent(), notifyBy: channelsOf(storage),   // how the person is told (Connections: Telegram optional once e-mail is chosen)
     hasCv: fs.existsSync(storage.path('cv.pdf')), hasProfile: !!(storage.settings().setupDone && (storage.settings().notionIds?.NOTION_PROFILE_PAGE_ID || storage.readText('profile.md'))),
     folder: storage.dir,
     store: storeState(storage),   // where the data lives (lib/store): {label, caps, trying}

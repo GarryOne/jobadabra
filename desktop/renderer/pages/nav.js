@@ -260,7 +260,7 @@ export function paletteCommands() {
       if (section.tagName === 'DETAILS') section.open = true;
       section.scrollIntoView({block: 'start'});
     };
-    add('Settings', title, '', `settings ${page}`, open);
+    add('Settings', title, '', `settings ${page} ${section.dataset.keywords || ''}`, open);   // data-keywords: the words a person types for it ("email" finds Notifications)
     // The section's own sub-headings ("Chrome extension: manual connection" inside Developer options), each its own entry; never a field's value.
     section.querySelectorAll('h3, h4').forEach(heading => {
       const name = labelOf(heading);

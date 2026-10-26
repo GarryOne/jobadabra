@@ -1,6 +1,7 @@
 // Status card and the Actions page.
 import {el, pill} from '../components.js';
 import {icon} from '../icons.js';
+import {channelLine} from '../notify-words.js';
 import {shared} from './shared.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, capital, clockTime, hhmm, kindOf, stepWords, openActivity, outcome} from './activity.js';
 import {$, runWhen, show} from './core.js';
@@ -75,8 +76,8 @@ export function renderActionsPage(data) {
   const {running, runs = []} = data;
   const connected = !!(shared.state.settings.telegramChatId || shared.state.settings.telegramCloud);
   const blocked = connected && telegramHealth(runs) === 'blocked';   // the last message was refused: a saved token is not a working bot
-  $('actions-telegram').replaceChildren(el('span', `dot ${blocked ? 'is-warn' : connected ? 'is-on' : ''}`),
-    document.createTextNode(blocked ? 'Telegram not delivering' : connected ? 'Telegram connected' : 'Telegram not connected'));
+  const line = channelLine({by: shared.state.notifyBy || [], chosen: shared.state.settings.notifyBy, connected, blocked});   // the chosen channels, not Telegram alone (renderer/notify-words.js)
+  $('actions-telegram').replaceChildren(el('span', `dot ${line.dot}`), document.createTextNode(line.text));
   show($('run-banner'), !!running);
   showStop($('run-banner-stop'), running);
   syncRunButtons([running, ...(data.queued || [])].filter(Boolean).map(kindOf), running ? kindOf(running) : null);

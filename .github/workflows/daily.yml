@@ -234,6 +234,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
+          case ",$JOB_PILOTTO_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
           curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "text=❌ Jobadabra ${MODE} run failed: ${RUN_URL}" > /dev/null

@@ -142,6 +142,19 @@ jobs:
           # is noise (the app dispatches this workflow for its "Check Gmail now", 1 Oct 2026).
           # --log-run: its ⏱️ Search runs row (running, then result and log) is how the app and Notion see it.
           python -m src.ai.mail "${send[@]}" --log-run --days "${{ inputs.days || '2' }}"
+      - name: Report failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python -m src.notify "Jobadabra Gmail check failed: ${RUN_URL}" || true   # e-mail, when chosen (src/notify.py)
+          [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ] || exit 0
+          case ",$JOB_PILOTTO_NOTIFY," in ,,|*,telegram,*) ;; *) exit 0 ;; esac   # Telegram turned off in Settings → Notifications
+          curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=❌ Jobadabra Gmail check failed: ${RUN_URL}" > /dev/null
       - name: Save mail state
         if: always() && env.GOOGLE_REFRESH_TOKEN != '' && env.NOTION_APPLICATIONS_DB != ''
         uses: actions/cache/save@v5

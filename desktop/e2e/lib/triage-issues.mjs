@@ -111,7 +111,7 @@ export const suiteOfIssue = issue => /found by a run of the (\w+) suite/.exec(is
 // `cleared(issue)` says whether this run looked at the issue's page/suite again (the caller knows the artifacts).
 export const toClose = (issues, matched, runUrl, cleared) => issues.filter(issue => issue.state === 'OPEN' && !matched.has(issue.number)
   && (issue.labels || []).some(item => (item.name || item) === NOT_SEEN)
-  && !(issue.labels || []).some(item => (item.name || item) === CONFIRMED)   // a person said it is real: "not seen" proves nothing (it may only show under a condition, like the API failing, #94), so only a fix closes it
+  && !(issue.labels || []).some(item => ['intermittent', CONFIRMED].includes(item.name || item))   // intermittent (lib/flaky-proof.mjs): it shows only sometimes, so two clean runs prove nothing (#1897); a person said it is real: "not seen" proves nothing (it may only show under a condition, like the API failing, #94), so only a fix closes it
   && !(issue.comments || []).some(comment => (comment.body || '').includes(runUrl)) && cleared(issue));
 
 // A probe issue ("jobs: dead control on jobs: "0Inbound"") is cleared by a run whose probe pressed that same control again and did not flag it. Until 3 Oct 2026 nothing cleared

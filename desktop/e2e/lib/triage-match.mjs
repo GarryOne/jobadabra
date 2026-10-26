@@ -73,7 +73,7 @@ export const fixedBefore = (finding, issues) => matchExisting(finding, (issues |
 export const failedCommits = issue => new Set([commitOf(issue.body), ...(issue.comments || []).filter(comment => /^Seen again\b/.test(comment.body || '')).map(comment => commitOf(comment.body))].filter(Boolean));
 export const flakyOn = (issue, sha7) => !!sha7 && /·\s*test-failure\s*·/.test(issue.body || '') && failedCommits(issue).has(sha7);
 export const regressionComment = (issue, runUrl) => `↩️ **Regression:** this looks like #${issue.number} ("${String(issue.title || '').replace(/^\[auto-ui\] /, '').slice(0, 80)}"), which a fix closed. The fix did not hold (${runUrl}).`;
-export const flakyComment = (sha7, runUrl) => `🎲 **Flaky:** this step failed and then passed on the same commit \`${sha7}\` (${runUrl}). The product did not change, so the test is the problem: labelled \`flaky\`, ranked last, never offered to the fixer.`;
+export const flakyComment = (sha7, runUrl, why = '') => `🎲 **Flaky:** this step failed and then passed on the same commit \`${sha7}\` (${runUrl})${why ? `, on ${why}` : ''}: the test's timing or environment, not a wrong value. Labelled \`flaky\`, ranked last, never offered to the fixer. (A wrong value that comes right on a rerun is labelled \`intermittent\` instead: lib/flaky-proof.mjs.)`;
 
 export function recentSightings(issue, now = Date.now(), days = 7) {
   return sightingKeys(issue, date => !date || now - Date.parse(date) <= days * 86400000).size;

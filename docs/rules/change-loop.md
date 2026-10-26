@@ -36,7 +36,7 @@ Why each rule exists: [why.md](why.md#change-loop).
 
 ## A by-hand beta with reds
 Let it run to the end, read every red job's log, name each cause (skill **fix-failing-e2e**), fix them together, then dispatch the next beta. Cancel only a beta that hangs or whose build failed.
-A flake is re-run once, named. Why: [why.md](why.md#a-red-beta-runs-to-the-end-24-oct-2026).
+A flake is re-run once, named; "flaky" needs proof (gate G5, 26 Oct 2026): the failure was timing or the test's environment. A wrong value that came right on a rerun is `intermittent`, a bug: the job stays red (`desktop/e2e/flaky-proof.mjs`). Why: [why.md](why.md#a-red-beta-runs-to-the-end-24-oct-2026).
 **No beta while main's e2e is red** (gate G2, 26 Oct 2026): `tools/beta-release.sh` refuses (`tools/red-main-gate.sh`); when fixes landed since the red run it first re-runs only the red suites on main (the one by-hand e2e run a tool starts itself). `--force "<why>"` overrides; the reason shows in the beta run's summary. Why: beta 2 (25 Oct) started 1.5 h after main went red on the same suites.
 **A red main suite has an owner** (gate G2b): it is bisected to its breaking PR (`e2e-bisect.yml`), named in a `red-main` issue and on the PR; your red-PR hook says "Main's e2e suite X went red with your PR #n": fix it at once, like a red PR.
 

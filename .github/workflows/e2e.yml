@@ -312,19 +312,26 @@ jobs:
           # A run on an older commit (target_ref: the stable canary, a release candidate) plans with main's suite list; a suite added since does not exist in that build.
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs ${{ matrix.suite }}; else node suite.mjs ${{ matrix.suite }}; fi
-      # Flaky or real? A red suite runs once more on the same commit (6 Oct 2026). The job stays red either way; a pass the second time writes flaky.json beside the
-      # first run's artifacts, and triage labels those failed steps `flaky` (the test, not the product). Its own artifacts stay out of the upload: nothing is filed twice.
+      # Flaky or real? A red suite runs once more on the same commit (6 Oct 2026); red twice fails the job. A pass the second time passes it only with proof (gate G5,
+      # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
+      # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: The ${{ matrix.key }} suite once more, to tell flaky from real
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant
         working-directory: desktop/e2e
         timeout-minutes: 15
         run: |
+          set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
           first="$E2E_ARTIFACTS"
           export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1   # its step table says "second try" (lib/step-summary.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           if again ${{ matrix.suite }}; then
             echo '{"rerun": "passed"}' > "$first/flaky.json"
-            echo "Passed on the second try: the failed steps are flaky (labelled by triage)." | tee -a "$GITHUB_STEP_SUMMARY"
+            # "Flaky" needs proof (gate G5): a first-try failure on a wrong value, not timing, is a bug that shows sometimes; the job stays red (lib/flaky-proof.mjs).
+            if node flaky-proof.mjs "$first/suite-failures.json" | tee -a "$GITHUB_STEP_SUMMARY"; then
+              echo "Passed on the second try, and every failure of the first was timing or the test's environment: flaky (labelled by triage)." | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              exit 1
+            fi
           else
             echo "Failed again on the same commit: a real failure." | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1   # red twice: the job (and the gate) fail

@@ -6,7 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {pickCandidates, fixerCard, scorecard, appVersionAt, versionLabel, CONFIRMED, FALSE_POSITIVE, NEEDS_HUMAN, recentSightings, score, LABEL, NOT_SEEN, closedByFixComment, probeCleared, namesIssue, firstBuildSha, testedSha, SEEN_AGAIN, SIGHTINGS_NEEDED, sightings, PRIORITIES, priorityLabel, rankIssues, rankingBody, issueBody, issueTitle, labelFor, labelsFor, LIMIT_TESTED, NO_CREDIT, capNewAi, droppedTable, macTwin, matchExisting, normalize, notSeenComment, closedComment, suiteOfIssue, toClose, suppressedBy, pickCandidate, readinessSummary, screenshotOf, seenAgainComment} from './lib/triage.mjs';
-import {FLAKY, REGRESSION, fixedBefore, flakyOn, flakyComment, regressionComment} from './lib/triage.mjs';
+import {FLAKY, REGRESSION, fixedBefore, flakyOn, regressionComment} from './lib/triage.mjs';
+import {INTERMITTENT, labelRerun} from './lib/flaky-proof.mjs';
+import {foundText} from './lib/triage-issues.mjs';
 import {asIssues, entryOf, NOISE_WORDS, pendingOf, REGISTER_LABEL, registerBody, registerEntries, signatureVerdict, wordOf} from './lib/prejudge.mjs';
 import {POSSIBLE_DUPLICATE, sameCauseComment, sameCauseLinks} from './lib/same-cause.mjs';
 import {setResolution} from './lib/resolution.mjs';
@@ -287,7 +289,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       if (regressed && /\/issues\/\d+$/.test(url)) { out.regressions = [...(out.regressions || []), Number(url.split('/').pop())]; gh(['issue', 'comment', url.split('/').pop(), '--body', regressionComment(regressed, runUrl)]); }
       if (judged && /\/issues\/\d+$/.test(url)) gh(['issue', 'comment', url.split('/').pop(), '--body', verdictComment(judged, {number: Number(url.split('/').pop())})]);
       out.filed.push(finding.id);
-      if (finding.flaky && /\/issues\/\d+$/.test(url)) markFlaky(Number(url.split('/').pop()));
+      if (finding.flaky && /\/issues\/\d+$/.test(url)) markFlaky(Number(url.split('/').pop()), finding.detail);
     } else if (existing.state === 'OPEN' && !(existing.comments || []).some(comment => (comment.body || '').includes(runUrl))) {
       const comment = seenAgainComment(runUrl, picture, build);
       gh(['issue', 'comment', String(existing.number), '--body', comment]);
@@ -299,7 +301,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       if ((existing.labels || []).some(item => (item.name || item) === NOT_SEEN)) gh(['issue', 'edit', String(existing.number), '--remove-label', NOT_SEEN]);
       if (versionOfRun && !(existing.labels || []).some(item => (item.name || item) === versionOfRun)) addVersion(existing.number);   // seen on another version: that one is added too
       out.again.push(finding.id);
-      if (finding.flaky) markFlaky(existing.number);
+      if (finding.flaky) markFlaky(existing.number, finding.detail);
     }
   }
   // A failed step and a screenshot or layout finding of the same suite in this run: probably one defect, linked and labelled, not merged.
@@ -323,21 +325,12 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
       return commits.find(commit => namesIssue(commit.message, issue.number)) || null;
     } catch { return null; }
   };
-  // A step that failed and then passed when the job ran its suite again on the same commit (flaky.json): labelled flaky on the spot.
-  function markFlaky(number) {
-    gh(['label', 'create', FLAKY, '--force', '--color', 'FEF2C0', '--description', 'A test step that failed and passed on the same commit']);
-    gh(['issue', 'edit', String(number), '--add-label', FLAKY]);
-    gh(['issue', 'comment', String(number), '--body', flakyComment(testedSha(build), runUrl)]);
-    out.flaky = [...(out.flaky || []), number];
-  }
+  // A step that failed and then passed on the same commit (flaky.json, or its suite passing now): flaky only with proof, its failure being timing or the test's
+  // environment; a wrong value that came right is intermittent, a bug that shows sometimes (gate G5, lib/flaky-proof.mjs; #1897 was labelled flaky and was a bug).
+  function markFlaky(number, message) { return labelRerun({gh, number, message, sha7: testedSha(build), runUrl, out}); }   // a declaration: the filing loop above calls it
   for (const {issue, view} of gone) {
     // Failed on this very commit, and its suite passed now: flaky, whatever happens next (it still closes after two clean runs).
-    if (suiteCleared(issue) && flakyOn(issue, testedSha(build)) && !(issue.labels || []).some(item => (item.name || item) === FLAKY)) {
-      gh(['label', 'create', FLAKY, '--force', '--color', 'FEF2C0', '--description', 'A test step that failed and passed on the same commit']);
-      gh(['issue', 'edit', String(issue.number), '--add-label', FLAKY]);
-      gh(['issue', 'comment', String(issue.number), '--body', flakyComment(testedSha(build), runUrl)]);
-      out.flaky = [...(out.flaky || []), issue.number];
-    }
+    if (suiteCleared(issue) && flakyOn(issue, testedSha(build)) && !(issue.labels || []).some(item => [FLAKY, INTERMITTENT].includes(item.name || item))) markFlaky(issue.number, foundText(issue.body));
     const fix = fixOf(issue);
     if (fix && !(issue.labels || []).some(item => (item.name || item) === NOT_SEEN)) {
       gh(['issue', 'comment', String(issue.number), '--body', closedByFixComment(runUrl, fix.sha, build)]);
@@ -481,7 +474,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const incomplete = String(option('incomplete') || '').split(',').map(name => name.trim()).filter(Boolean);   // the suites whose job was cancelled or timed out (ui-findings.yml)
   const result = triage({artifacts: option('artifacts'), runUrl: option('run-url'), build: option('build'), platform: option('platform') || 'mac', verdicts, incomplete});
   for (const item of result.trackerRows || []) console.log(`Bug Tracker row for #${item.number}: ${(await writeTrackerRow({token: process.env.NOTION_BRAIN_WRITE_TOKEN, db: process.env.BUG_TRACKER_DB, row: trackerRow(item)})).status}`);
-  const lines = [`## UI findings`, `${result.findings.length} finding(s) in this run: ${result.filed.length} new, ${result.again.length} seen again, ${result.gone.length} not seen any more, ${result.closed.length} closed after a second clean run${result.judgedNoise?.length ? `, ${result.judgedNoise.length} judged noise before filing (not filed)` : ''}${result.regressions?.length ? `, ${result.regressions.length} regression(s) (a fixed defect came back)` : ''}${result.flaky?.length ? `, ${result.flaky.length} step(s) marked flaky` : ''}${result.skipped.length ? `; ${result.skipped.length} suite(s) not filed (${result.skipped.map(item => `${item.suite}: ${item.why}`).join(', ')})` : ''}${result.unreviewed.length ? `; the AI could not review ${result.unreviewed.length} page(s) (${[...new Set(result.unreviewed.map(item => `${item.view}: ${item.why}`))].join(', ')}): nothing filed or cleared for them` : ''}.`];
+  const lines = [`## UI findings`, `${result.findings.length} finding(s) in this run: ${result.filed.length} new, ${result.again.length} seen again, ${result.gone.length} not seen any more, ${result.closed.length} closed after a second clean run${result.judgedNoise?.length ? `, ${result.judgedNoise.length} judged noise before filing (not filed)` : ''}${result.regressions?.length ? `, ${result.regressions.length} regression(s) (a fixed defect came back)` : ''}${result.flaky?.length ? `, ${result.flaky.length} step(s) marked flaky` : ''}${result.intermittent?.length ? `, ${result.intermittent.length} step(s) intermittent (a wrong value that came right on a rerun: a bug, not a flake)` : ''}${result.skipped.length ? `; ${result.skipped.length} suite(s) not filed (${result.skipped.map(item => `${item.suite}: ${item.why}`).join(', ')})` : ''}${result.unreviewed.length ? `; the AI could not review ${result.unreviewed.length} page(s) (${[...new Set(result.unreviewed.map(item => `${item.view}: ${item.why}`))].join(', ')}): nothing filed or cleared for them` : ''}.`];
   // The producer only files and updates issues. The fixer (ui-fix.yml, four times a day) picks the most critical one: node pick.mjs.
   if (!args.includes('--file-only')) {
     const candidate = result.candidate;

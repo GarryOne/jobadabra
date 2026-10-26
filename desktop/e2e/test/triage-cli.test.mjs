@@ -72,6 +72,28 @@ test('suite-failures.json files are read from every suite folder, and a failed s
   assert.match(created[0], /^\[auto-ui\] activity: step failed: a step/);
 });
 
+// Gate G5, end to end: a rerun pass (flaky.json) on #1897's wrong value files the step as intermittent; a timeout as flaky. Runs the CLI's filing loop, where
+// the labelling is called before its definition (a const there threw only on this path, which no other test reached).
+test('a step that passed on the rerun is labelled by its proof: a wrong value intermittent, a timeout flaky', async () => {
+  const {triage} = await import('../triage.mjs');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  for (const [message, label] of [['the list says "Completed" and the panel "Completed with warnings"', 'intermittent'], ['locator.click: Timeout 30000ms exceeded.', 'flaky']]) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rerun-'));
+    fs.mkdirSync(path.join(dir, 'e2e-artifacts-failuresnotion'));
+    fs.writeFileSync(path.join(dir, 'e2e-artifacts-failuresnotion', 'suite-failures.json'), JSON.stringify([{suite: 'failuresnotion', step: 'Notion is busy (429) for a moment during a Jobs check', message}]));
+    fs.writeFileSync(path.join(dir, 'e2e-artifacts-failuresnotion', 'flaky.json'), '{"rerun": "passed"}');
+    const added = [];
+    const gh = args => {
+      if (args[0] === 'issue' && args[1] === 'edit' && args[3] === '--add-label') added.push(args[4]);
+      if (args[0] === 'issue' && args[1] === 'create') return 'https://github.com/o/r/issues/1897';
+      return args[0] === 'issue' && args[1] === 'list' ? '[]' : args[0] === 'pr' ? '[]' : '';
+    };
+    const result = triage({artifacts: dir, runUrl: 'https://x/runs/1', gh});
+    assert.deepEqual(added, [label], message);
+    assert.deepEqual(result[label], [1897]);
+  }
+});
+
 test('a finding of the interaction probe names the control in its title and keeps its source', async () => {
   const {normalize, FIX_KINDS} = await import('../lib/triage.mjs');
   const [finding] = normalize({ui: [{view: 'jobs', severity: 'warning', kind: 'dead-control', control: 'Show more', detail: 'Clicking "Show more" did nothing', source: 'interaction-probe', shot: 'probe-jobs-1'}]});

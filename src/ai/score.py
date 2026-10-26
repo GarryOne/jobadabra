@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 from .. import paths as _paths  # noqa: F401 (import side effect: loads .env before getenv below)
 from .. import run_counts, store
-from . import cost, engine, hints, locations, schema_notes, score_not_a_job, score_search
+from . import cost, engine, hints, locations, schema_notes, score_agree, score_not_a_job, score_search
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 
@@ -275,6 +275,11 @@ def unread_parts(components, facts, basis=None):
 
 
 def score_one(client, model, job, profile, effort=None):
+    data, usage = _score_once(client, model, job, profile, effort)   # on Free AI a job that can show is asked twice (score_agree)
+    return score_agree.steady(data, usage, lambda: _score_once(client, model, job, profile, effort), RESCORE_MIN)
+
+
+def _score_once(client, model, job, profile, effort):
     data, usage = _ask(client, model, job, profile, effort, '', SCHEMA)
     missing = unread_parts(data['components'], job.get('ai'), data.get('basis'))
     if missing and score_not_a_job.is_one_job(data):   # never kept as sure: ask again once, naming the parts, and the answer's shape no longer allows null for them

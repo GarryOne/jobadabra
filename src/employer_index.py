@@ -14,7 +14,7 @@ import re
 import secrets
 import urllib.request
 
-from . import role_kinds
+from . import role_kinds, source_rank
 from .paths import DATA
 from . import service
 
@@ -196,7 +196,7 @@ def _read(cache):
         data = json.loads(cache.read_text())
         return {'fetched': data.get('fetched'), 'etag': data.get('etag'), 'feeds': clean(data.get('feeds')),
                 'install': data.get('install'), 'regions': data.get('regions') or [], 'nofeed': clean_nofeed(data.get('nofeed')), 'boards': clean_boards(data.get('boards')),
-                'sites': clean_sites(data.get('sites')),
+                'sites': clean_sites(data.get('sites')), 'ranking': source_rank.clean(data.get('ranking')),
                 'generated': data.get('generated') if isinstance(data.get('generated'), str) else None}
     except (OSError, ValueError, AttributeError):
         return None
@@ -258,17 +258,18 @@ def load(cache=None, url=None, get=_get, now=None, install_id=None, retry_wait=N
                 status, body, etag = get(url, headers)
                 if status == 304 and stored:
                     feeds, etag, dead, boards, sites = stored['feeds'], stored['etag'] or etag, stored.get('nofeed') or [], stored.get('boards') or [], stored.get('sites') or []
-                    generated = stored.get('generated')
+                    generated, ranking = stored.get('generated'), stored.get('ranking') or {}
                 else:
                     parsed = json.loads(body)
                     feeds, dead, boards, sites = clean(parsed.get('feeds')), clean_nofeed(parsed.get('nofeed')), clean_boards(parsed.get('boards')), clean_sites(parsed.get('sites'))
                     generated = parsed.get('generated') if isinstance(parsed.get('generated'), str) else None
+                    ranking = source_rank.clean(parsed.get('ranking'))   # each role kind × country's sources (src/source_rank.py)
                 break
             except Exception:  # noqa: BLE001 — once more after a short wait, then the outer handler decides
                 if attempt == 2:
                     raise
                 time.sleep(retry_wait)
-        entry = {'fetched': now.isoformat(timespec='seconds'), 'etag': etag, 'install': install_id, 'regions': regions, 'feeds': feeds, 'nofeed': dead, 'boards': boards, 'sites': sites, 'generated': generated}
+        entry = {'fetched': now.isoformat(timespec='seconds'), 'etag': etag, 'install': install_id, 'regions': regions, 'feeds': feeds, 'nofeed': dead, 'boards': boards, 'sites': sites, 'ranking': ranking, 'generated': generated}
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(entry, indent=1, ensure_ascii=False) + '\n')
         return feeds

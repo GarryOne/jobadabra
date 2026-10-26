@@ -24,7 +24,8 @@ FEED = {'company': 'Bigco', 'ats': 'lever', 'slug': 'bigco', 'quality': 80, 'che
 BOARD_FACT = {'kind': 'board', 'host': 'jobber.md', 'url': 'https://jobber.md/jobs', 'recipe': {'countries': ['md']},
               'relevant': [{'country': 'md', 'family': 'software_dev', 'installs': 1, 'in_places': 67, 'fit70': 0}]}
 FULL_ANSWER = {'version': 2, 'generated': '2026-10-24T19:02:06.717Z', 'regions': ['europe'], 'feeds': [FEED], 'nofeed': [],
-               'boards': [], 'sites': [BOARD_FACT, {'kind': 'jobpage', 'host': 'bigco.com', 'url': 'https://bigco.com/careers'}]}
+               'boards': [], 'sites': [BOARD_FACT, {'kind': 'jobpage', 'host': 'bigco.com', 'url': 'https://bigco.com/careers'}],
+               'ranking': {'finance_admin|md': {'proven': [{'kind': 'employer', 'source': 'lever:bigco', 'installs': 1, 'local': 4, 'fit70': 1, 'seconds': 2.0, 'per_run': 4.0, 'per_min': 120.0}], 'dead': ['board:empty.md']}}}
 NOT_KEPT = {'version'}   # the answer's own format number; the cache keeps what a reader needs
 
 
@@ -81,6 +82,7 @@ class CacheKeepsServedKeysTest(unittest.TestCase):
         first = json.loads(self.cache.read_text())
         self.load(status=304, now=NOW.replace(hour=20))   # older than MAX_AGE: asks, the site says 304
         self.assertEqual(json.loads(self.cache.read_text())['sites'], first['sites'])
+        self.assertEqual(json.loads(self.cache.read_text())['ranking'], first['ranking'])
         self.assertTrue(first['sites'])
 
     def test_a_served_board_reaches_the_pool_facts_and_the_board_proposal(self):

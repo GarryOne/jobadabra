@@ -3,11 +3,12 @@ roles and places, record their seen history. Moved out of feeds.py (500-line rul
 tests patch feeds.* as before. Tests: tests/test_feed_scan_parallel.py, tests/test_coverage.py, tests/test_non_it_crawl.py."""
 import os
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from . import feeds
-from .. import read_methods
+from .. import read_methods, source_yield
 
 
 def _item(source, job, status):
@@ -52,11 +53,16 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     from ..progress import Ticker
     ticker, lock, read = Ticker('Reading employer job sites', len(sources)), threading.Lock(), [0, 0]   # [sites read, jobs listed]
 
+    took = {}   # seconds per site read (src/source_yield.py timed: the shared ranking is per minute)
+
     def fetch(source):
+        started = time.monotonic()
         with read_methods.reading(key(source), 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
             got = feeds._fetched(fetcher, source)
             counted.failed = got[1] is not None   # a failed read is not a source read
             counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
+        took[key(source)] = round(time.monotonic() - started, 1)
+        source_yield.timed('employer feed', source['company'], took[key(source)])
         with lock:
             read[0] += 1
             read[1] += len(got[0] or [])
@@ -105,7 +111,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
             feeds.run_counts.matched(matched)
             report["jobs"].extend(matched)
             report["sources"].append({"company": source["company"], "ok": True,
-                                      "total": len(jobs), "matches": len(matched)})
+                                      "total": len(jobs), "matches": len(matched), "seconds": took.get(board)})
         except Exception as error:
             report["sources"].append({"company": source["company"], "ok": False, "ats": source.get("ats", "greenhouse"), "slug": source.get("slug") or source.get("board"),
                                       "error": f"{type(error).__name__}: {error}"})

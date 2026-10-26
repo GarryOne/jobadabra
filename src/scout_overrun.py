@@ -13,6 +13,7 @@ DUMP_EVERY_S = 15 * 60
 GRACE_S = 10 * 60   # the budget ends new checks; running ones normally finish well inside this
 LEAVE_GRACE_S = 2   # an idle pool worker ends in milliseconds; a check given up on does not
 _before = set()     # the threads alive when the run started (arm): not this run's checks
+_armed = [False]    # arm() ran in this process: only then may leave_if_stuck leave
 
 
 def arm(budget_s, grace_s=GRACE_S, file=None):
@@ -20,6 +21,7 @@ def arm(budget_s, grace_s=GRACE_S, file=None):
     Also notes the threads alive now: leave_if_stuck counts only threads this run started."""
     _before.clear()
     _before.update(t.ident for t in threading.enumerate())
+    _armed[0] = True
     if not budget_s:
         return False
     target = file or sys.stderr
@@ -39,6 +41,8 @@ def leave_if_stuck(grace_s=LEAVE_GRACE_S):
     Daemon threads never hold the exit and are not counted, nor threads alive before the run began (arm); a pool shut with wait=False keeps
     its idle workers alive a moment, and those end by themselves (26 Oct 2026: all three counted as stuck checks, other tests' leftover threads
     ended a unittest shard halfway with exit 0)."""
+    if not _armed[0]:   # no run began here (a test that stubs arm): never leave (26 Oct 2026: os._exit(0) ended a CI shard halfway on 4 PRs)
+        return
     until = time.monotonic() + grace_s
     held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon and t.ident not in _before]
     for thread in held:

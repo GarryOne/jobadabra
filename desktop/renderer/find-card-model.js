@@ -4,25 +4,50 @@
 import {readableLog} from './human-log.js';
 import {hasFullReport} from './searches-view.js';
 
-// A first run reads a slice and scores 3 jobs first; the usual run starts with the job boards. The latest line that matches a step is the running one.
+// A first run reads a slice and scores 3 jobs first; the usual run starts with the employer sites. The latest line that matches a step is the
+// running one. The job boards are read beside the employer sites (src/sources/boards_ahead.py, the web search from second 0), so their chip
+// is not moved by the others' order: it runs from its first line or the employer read, and shows ✓ only on the engine's "Job boards: done"
+// (src/sources/aggregators.py scan) or once a step after it starts (owner, 26 Oct 2026: ✓ showed before the boards a web search found were read).
 export const FIRST = /^(Finding your first jobs|First jobs:)/;
 const EMPLOYERS = /^(Checking employer|Reading employer|⏳ Reading employer|Titles:|Places:|⏳ Scoring|Scored |Added |Job Matches)/;
+const BOARDS = {label: 'Job boards', match: /^(Searching job boards|Job boards( found| first)?:|⏳ Reading job boards)/, done: /^Job boards: done\b/, beside: true};
+const MORE = /^(Growing your sources|Source scout|🔭)/;
 const SLICE_END = /^First jobs: (\d+ scored|\d+ found, none to score)/;
 const STEPS = {
-  first: [['First jobs', FIRST], ['All employers', EMPLOYERS], ['Job boards', /^Searching job boards/], ['More employers', /^(Growing your sources|Source scout|🔭)/]],
-  usual: [['Job boards', /^Searching job boards/], ['Employer sites', EMPLOYERS], ['More employers', /^(Growing your sources|Source scout|🔭)/]],
+  first: [{label: 'First jobs', match: FIRST}, {label: 'All employers', match: EMPLOYERS}, BOARDS, {label: 'More employers', match: MORE}],
+  usual: [BOARDS, {label: 'Employer sites', match: EMPLOYERS}, {label: 'More employers', match: MORE}],
 };
 
 export function stepChips(log = []) {
   const first = log.some(line => FIRST.test(String(line)));
-  const steps = STEPS[first ? 'first' : 'usual'];
-  let active = 0, sliceDone = !first;   // the slice reads feeds and scores too: its own lines are not the "All employers" step
+  const steps = STEPS[first ? 'first' : 'usual'], order = steps.filter(step => !step.beside);   // the steps that follow each other
+  let active = 0, sliceDone = !first, boardsSeen = false, boardsDone = false;   // the slice reads feeds and scores too: its own lines are not the "All employers" step
   for (const raw of log) {
     const line = String(raw);
     if (SLICE_END.test(line)) sliceDone = true;
-    steps.forEach(([, pattern], i) => { if (pattern.test(line) && i >= active && (sliceDone || i === 0 || i > 1)) active = i; });
+    if (BOARDS.match.test(line)) boardsSeen = true;
+    if (BOARDS.done.test(line)) boardsDone = true;
+    order.forEach(({match}, i) => { if (match.test(line) && i >= active && (sliceDone || i === 0 || i > 1)) active = i; });
   }
-  return steps.map(([label], i) => ({label, state: i < active ? 'done' : i === active ? 'active' : 'pending'}));
+  const employers = order.findIndex(step => step.match === EMPLOYERS);
+  const state = i => (i < active ? 'done' : i === active ? 'active' : 'pending');
+  return steps.map(step => ({label: step.label, state: !step.beside ? state(order.indexOf(step))
+    : boardsDone || active === order.length - 1 ? 'done' : boardsSeen || active >= employers ? 'active' : 'pending'}));
+}
+
+// Live updates (owner, 26 Oct 2026: "Keep each step's result visible: 'web search found…', 'boards read', 'employers stopped'"): every step's
+// result line of this run, in words, kept until it ends, then the newest progress tick, last; ticks replace each other. A result is a line the
+// engine starts with a step's name (and the scoring, added and digest lines); per-item lines (one employer, one job, one AI answer) are the
+// technical log's, in Recent activity. Guarded by: test/live-updates.test.js.
+const RESULT = /^((First jobs|Job boards|Job boards found|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready)/;
+export function liveLines(log = []) {
+  const results = [], tick = [];
+  for (const raw of log) {
+    const line = String(raw);
+    if (/^⏳ (?!Still running)/.test(line)) tick[0] = line;
+    else if (RESULT.test(line)) results.push(line);
+  }
+  return readableLog([...results, ...tick]);
 }
 
 // This search's own numbers: the engine's last "Run counts: looked=N matches=M scored=K" line (src/run_counts.py, each job once by its URL).
@@ -61,8 +86,7 @@ export function findCard({running = null, last = null, lastSearchAt = '', listed
   const searching = running && (running.kind || 'search') === 'search';
   if (searching) {
     const log = running.log || [];
-    const lines = readableLog(log.slice(-60)).filter(line => !/^⏳ Still running/.test(line)).slice(-3);
-    return {state: 'searching', chips: stepChips(log), lines, ...runCounts(log), added: addedSoFar(log), employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
+    return {state: 'searching', chips: stepChips(log), lines: liveLines(log), ...runCounts(log), added: addedSoFar(log), employers: employersRead(log), first: log.some(line => FIRST.test(String(line)))};
   }
   if (last && last.ok === false && (finishedHere || !listed)) return {state: 'failed', problem: last.problem || last.result || '', listed};
   if (finishedHere && last) return {state: 'done', listed, runId: hasFullReport(last) ? last.pageId : null, added: last.new ?? addedSoFar(last.log), ...runCounts(last.log)};

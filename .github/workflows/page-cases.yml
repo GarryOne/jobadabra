@@ -72,6 +72,7 @@ on:
       - 'desktop/renderer/fragment-words.js'
       - 'desktop/renderer/question-filter.js'
       - 'desktop/renderer/question-kind.js'
+      - 'desktop/renderer/run-lines.js'
       - 'desktop/renderer/run-status.js'
       - 'desktop/renderer/run-warnings.js'
       - 'desktop/renderer/store-name.js'

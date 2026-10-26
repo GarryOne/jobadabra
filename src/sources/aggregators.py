@@ -273,7 +273,7 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     # The end-to-end fixture mode reads feeds from files and never reaches a live site (careers.py does the same): real postings from a public API would land in a test's data
     # (3 Oct 2026: jobicy rows in the quality suite). `readers` given = a test of this function itself.
     if readers is None and os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
-        return report
+        return _done(report)
     now = now or datetime.now(timezone.utc)
     db.execute(TABLE)
     from .. import time_budget
@@ -306,4 +306,11 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
             report['sources'].append({'company': name, 'ok': False, 'error': f'{type(error).__name__}: {error}'})
     if late:
         time_budget.later('free job APIs', len(late), 'sources' if len(late) != 1 else 'source')
+    return _done(report)
+
+
+def _done(report):
+    """The step's end, said once every board and job API is read (the found boards read beside the employer sites and those a web search found
+    mid-run included): the Find card's "Job boards" chip shows ✓ only then (desktop/renderer/find-card-model.js stepChips; owner, 26 Oct 2026)."""
+    print(f"Job boards: done, {len(report['jobs'])} job(s) for your search", flush=True)
     return report

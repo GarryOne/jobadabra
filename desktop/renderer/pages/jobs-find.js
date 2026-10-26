@@ -12,7 +12,7 @@ import {showFullReport} from './full-report.js';
 
 let signature = '', wasSearching = false, finishedHere = false;
 let start = () => {};
-let liveOpen = true;
+let liveOpen = true, liveFollow = true, liveShown = new Set();   // the fold: open, following its newest line, the lines drawn last time
 export const wireFindCard = startSearch => { start = startSearch; };
 
 const button = (text, handler, className = 'primary') => Object.assign(el('button', className, text), {type: 'button', onclick: handler});
@@ -70,6 +70,9 @@ function draw(model) {
     }));
     const lines = el('ul', 'run-card-rows');
     lines.append(...liveRows(model.lines));
+    [...lines.children].forEach((row, i) => row.classList.toggle('is-new', !liveShown.has(model.lines[i])));   // only a new line rises in (find-card.css)
+    liveShown = new Set(model.lines);
+    lines.addEventListener('scroll', () => { liveFollow = lines.scrollHeight - lines.scrollTop - lines.clientHeight < 24; });   // scrolled up to read: stay there
     // The live updates fold (owner, 24 Oct 2026): a native <details>, open by default; the choice survives the card's redraws.
     const live = Object.assign(el('details', 'find-live'), {open: liveOpen});
     live.append(el('summary', '', 'Live updates'), lines);
@@ -77,6 +80,7 @@ function draw(model) {
     const steps = el('div', 'find-steps-row');   // the chips, with the fold's label at the right of the same row; the lines open below it
     steps.append(chips, live);
     card.replaceChildren(findHead('Finding jobs…', model, model.added ? 'New matches appear below as they’re found.' : 'Looking for your first jobs…', {spinner: true}), readProgress(model), steps);
+    if (liveFollow) lines.scrollTop = lines.scrollHeight;
   } else if (model.state === 'done') {
     const head = findHead('Search done', model, 'The best matches are first. Find jobs again any time.', {done: true});
     if (model.runId) head.append(wand(button('Full report →', () => showFullReport(model.runId), 'link small')));   // every number of this search, in Reports → Searches

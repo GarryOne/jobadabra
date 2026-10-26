@@ -5,7 +5,7 @@ in the last DAYS while its boards work (WANT sector or regional boards gave rele
 the very next run, told what it found before, up to TRIES thin searches in a row (owner via the coordinator, 26 Oct 2026), then after a rest that
 grows while it stays thin: 1, 2, 4, then RECENT days (owner's yes, 26 Oct 2026: three thin tries ran within 8 minutes, then a flat 7-day rest).
 The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
-Anthropic API key (about $0.03 a search), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
+Anthropic API key (about $0.07 a search: up to 6 planned web searches, owner's yes 26 Oct 2026), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
 (src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOB_PILOTTO_DISABLE=web_search.
 Tests: tests/test_board_web.py, tests/test_board_web_thin.py, tests/test_web_first.py."""

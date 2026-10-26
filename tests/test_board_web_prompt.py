@@ -20,7 +20,10 @@ class OneSharedPrompt(unittest.TestCase):
     def test_the_file_holds_the_instruction_the_cap_and_the_board_answer_form(self):
         shared = json.loads(FILE.read_text())
         self.assertEqual(shared['schema'], board_ideas.SCHEMA, 'the answer form is the one the engine validates boards with')
-        self.assertLessEqual(shared['max_uses'], 3, 'at most 3 searches a call: the cost the owner approved rests on it')
+        self.assertLessEqual(shared['max_uses'], 6, 'at most 6 searches a call: the cost the owner approved rests on it (26 Oct 2026, planned search: about $0.07 a call)')
+        for kind in ('lists, directories', 'trade press', 'job titles', "the field's own words"):   # the planned search (tests/test_field_boards.py)
+            self.assertIn(kind, shared['system'], 'each kind of search the measured plan used')
+        self.assertIn('sites like them', shared['system'], 'a thin retry looks for boards like the ones found before')
         self.assertIn('untrusted', shared['system'], 'search results never steer the model')
         for word in ('{role}', '{place}'):
             self.assertIn(word, shared['system'])

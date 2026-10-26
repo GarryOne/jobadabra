@@ -15,6 +15,7 @@ TESTS, PAGES = 'CI · Tests', 'CI · Page cases (all cases, real extension, Linu
 CLASSIFIED = {
     'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
     'CI · Tests': 'counted',
+    'CI · Re-run jobs GitHub never started': 'ignored: after a beta or e2e run ends; only re-runs jobs GitHub gave no runner, never tests a push to main',
     "CI · Start the What's new publish": 'ignored: after a beta approval or a promotion to stable only, never on a push to main; it starts the site repo\'s publish and never fails a release',
     'Proof · LibreOffice add-on on Mac and Windows': 'ignored: pull requests that edit the add-on, and by hand; downloads LibreOffice for real on Mac and Windows runners, never on a push to main',
     'Proof · Screenshot review scored on the judged issues': 'ignored: by hand only (it spends a few cents on Claude); scores a review model, never runs on a push to main',

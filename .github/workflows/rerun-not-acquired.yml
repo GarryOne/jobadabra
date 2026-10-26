@@ -1,0 +1,35 @@
+# A beta or e2e job that GitHub never started (no runner: "The job was not acquired by Runner of type hosted even after multiple attempts", 0 steps) is GitHub's
+# capacity, not a red suite: it is re-run once, with the Release jobs that waited on it. A run with a real red is left as it is (tools/rerun_not_acquired.py).
+# Beta 3 (run 40341958250, 26 Oct 2026): interactions waited 29 min for a macOS runner and was cancelled; the Free plan runs 5 macOS jobs at once, a beta needs 7.
+# Tests: tests/test_rerun_not_acquired.py
+name: CI · Re-run jobs GitHub never started
+
+on:
+  workflow_run:
+    workflows: ['Release · Build, test, beta', 'CI · End-to-end on Mac + Linux', 'CI · End-to-end on Windows']
+    types: [completed]
+
+permissions:
+  actions: write   # gh run rerun
+  checks: read     # the never-started job's annotation
+
+concurrency:   # one group (tests/test_main_runs_finish.py); each run lasts seconds
+  group: rerun-not-acquired
+  cancel-in-progress: false
+
+jobs:
+  rerun:
+    name: Re-run never-started jobs
+    # once per run: a re-run (attempt 2+) is never re-run again
+    if: github.event.workflow_run.conclusion != 'success' && github.event.workflow_run.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: tools/rerun_not_acquired.py
+      - name: Re-run the jobs that got no runner, once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: python3 tools/rerun_not_acquired.py "${{ github.event.workflow_run.id }}"

@@ -1,5 +1,5 @@
 // Reviews the journey's screenshots (artifacts/ui-<view>.png) with AI and writes artifacts/ai-findings.json.
-//   CI on Free AI (owner, 26 Oct 2026): a Workers AI vision model looks first (lib/review-free.mjs, CI_FREE_AI_CF_TOKEN, about $0.002 a page); Claude looks again
+//   CI on Free AI (owner, 26 Oct 2026): three Workers AI readers and a merge look first (lib/review-free.mjs, CI_FREE_AI_CF_TOKEN, about $0.008 a page); Claude looks again
 //   only at the pages it flagged, and only with E2E_REVIEW_CONFIRM=claude (off until the owner funds Claude). Off Free AI: E2E_ANTHROPIC_KEY=… node review-ui.mjs (Sonnet).
 // A page that looks the same as the last one judged for the same question (lib/review-cache.mjs: the same prompt, facts and lessons, and lib/png-grid.mjs's
 // look) is not asked again: its findings come from the review cache (E2E_REVIEW_CACHE, kept between CI runs), so they are still "seen again".
@@ -14,7 +14,7 @@ import {ARTIFACTS, DESKTOP} from './lib/app.mjs';
 import {judgeFamily} from './lib/engine.mjs';
 import {lookStrips} from './lib/png-grid.mjs';
 import {prune, questionKey, recall, remember} from './lib/review-cache.mjs';
-import {FREE_MODEL, askFree} from './lib/review-free.mjs';
+import {FREE_MODEL, reviewFree} from './lib/review-free.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 import {MODEL, buildRequest, fingerprint, parseFindings, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
 
@@ -52,7 +52,8 @@ const jobs = [...names.filter(name => /^ui-.+\.png$/.test(name)).sort().map(name
     const request = ask(REVIEW_MODEL);
     let strips = null;
     try { strips = lookStrips(png); } catch { /* a picture we cannot read is asked every time */ }
-    return {...job, id: `r${index}`, request, body: JSON.stringify(request), ask, key: questionKey(job.view, request), strips};
+    const free = () => reviewFree({view: job.view, pngBase64: png.toString('base64'), facts, lessons: lessonsText(lessonsFor(lessons, job.view))});
+    return {...job, id: `r${index}`, request, body: JSON.stringify(request), ask, free, key: questionKey(job.view, request), strips};
   });
 
 // One failed call (HTTP, or a batch item's error): a request we got wrong fails the step; the key's own limit or a busy service is a warning.
@@ -86,10 +87,11 @@ function answered(job, message, {batch = false, usd: freeUsd} = {}) {
   return text;
 }
 
-// Free AI's first look (lib/review-free.mjs): the same accounting as a Claude call.
+// Free AI's first look (lib/review-free.mjs: three readers, then a merge): the same accounting as a Claude call. A reader that failed is named; the others still count.
 async function free(job) {
-  const result = await askFree(job.request);
-  if (!result.ok) return failed(job, result.status, result.detail);
+  const result = await job.free();
+  if (!result.ok) { usage.usd += result.usd || 0; return failed(job, result.status, result.detail); }
+  for (const reader of result.readers.filter(item => item.failed)) console.log(`::warning::AI review of ${job.view}: the ${reader.name} reader failed (${reader.failed.status}): ${String(reader.failed.detail).slice(0, 160)}; the others still count`);
   return answered(job, result.message, {usd: result.usd});
 }
 

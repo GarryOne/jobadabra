@@ -1,4 +1,4 @@
-// The screenshot review on Free AI end to end (review-ui.mjs against a fake Cloudflare and a fake Claude): Free AI looks first, a page that looks the same
+// The screenshot review on Free AI end to end (review-ui.mjs against a fake Cloudflare and a fake Claude): Free AI (three readers and a merge) looks first, a page that looks the same
 // next run is not asked again, a changed page is, and the Claude second pass runs only behind E2E_REVIEW_CONFIRM=claude, only on what Free AI flagged.
 import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';
@@ -9,6 +9,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {promisify} from 'node:util';
 import {png} from './png-make.mjs';
+import {MODELS} from '../lib/review-free.mjs';
 
 const run = promisify(execFile);
 const SCRIPT = new URL('../review-ui.mjs', import.meta.url).pathname;
@@ -20,9 +21,13 @@ async function fakes() {
     let body = ''; for await (const chunk of req) body += chunk;
     res.writeHead(200, {'content-type': 'application/json'});
     if (req.url.includes('/ai/run/')) {
-      const page = JSON.parse(body).messages[1].content.find(block => block.type === 'text').text.match(/Page: (\S+)/)[1];
-      seen.free.push(page);
-      return res.end(JSON.stringify({success: true, result: {response: page === 'jobs' ? FINDING : '{"findings":[]}', usage: {prompt_tokens: 3000, completion_tokens: 40}}}));
+      // Workers AI by model (lib/review-free.mjs): the checklist call names the page once; the describers, the text checklist and the merge answer around it.
+      const model = decodeURIComponent(req.url.split('/ai/run/')[1]), asked = JSON.parse(body), text = JSON.stringify(asked.messages), page = text.match(/Page: (\w+)/)?.[1];
+      const merge = String(asked.messages[0].content).startsWith('Several reviewers');
+      if (model === MODELS.check) seen.free.push(page);
+      const flagged = page === 'jobs' ? {checks: [{id: 'broken-layout', answer: 'yes', where: 'first row', evidence: 'the first row is 400 px tall'}]} : {checks: []};
+      const response = MODELS.describe.includes(model) ? 'A list of jobs.' : merge ? FINDING : JSON.stringify(model === MODELS.check ? flagged : {checks: []});
+      return res.end(JSON.stringify({success: true, result: {response, usage: {prompt_tokens: 3000, completion_tokens: 40}}}));
     }
     seen.claude++;
     res.end(JSON.stringify({content: [{type: 'text', text: '{"findings":[]}'}], stop_reason: 'end_turn', usage: {input_tokens: 1000, output_tokens: 10}}));
@@ -49,8 +54,8 @@ test('Free AI reviews each page; the same look next run is not asked again; a ch
     assert.equal(api.seen.claude, 0, 'the Claude pass is off by default');
     assert.deepEqual(first.findings.reviewed, ['jobs', 'settings']);
     assert.equal(first.findings.findings.length, 1);
-    assert.ok(first.usage.usd > 0 && first.usage.usd < 0.01, String(first.usage.usd));
-    assert.match(first.usage.model, /llama-4-scout/);
+    assert.ok(first.usage.usd > 0 && first.usage.usd < 0.02, String(first.usage.usd));   // two pages, up to six fake calls each at 3000 tokens
+    assert.match(first.usage.model, /^free-ai:/);
     const again = await review(api, dir);
     assert.equal(api.seen.free.length, 2, 'nothing asked again');
     assert.equal(again.usage.cached, 2);

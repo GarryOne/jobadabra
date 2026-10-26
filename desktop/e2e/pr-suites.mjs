@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, stepsCovering, stillWhole} from './lib/coverage-pick.mjs';
@@ -87,7 +87,7 @@ try {
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${JSON.stringify(steps)}`);
-    const ciText = ['workflows', 'actions'].flatMap(dir => { const root = path.join(here, '..', '..', '.github', dir); return fs.readdirSync(root, {recursive: true}).filter(name => /\.ya?ml$/.test(name)).map(name => fs.readFileSync(path.join(root, name), 'utf8')); }).join('\n');
+    const ciText = windowsCiText(file => { try { return fs.readFileSync(path.join(here, '..', '..', file), 'utf8'); } catch { return null; } });
     const windows = windowsSmoke(changedFiles, ciText) ? JSON.stringify(WINDOWS_SMOKE.steps) : '';
     if (windows) console.log(`\nWindows: ${WINDOWS_SMOKE.suite} · ${WINDOWS_SMOKE.steps.join(', ')} (this PR changes CI plumbing or shell)`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${JSON.stringify(steps)}\nwindows=${windows}\n`);

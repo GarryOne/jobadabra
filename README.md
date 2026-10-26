@@ -73,7 +73,7 @@ otherwise. Nothing fails because a feature is missing: `python3 -m src doctor` j
 | `render` | headless browser for careers pages built in the browser (public pages only; honours robots.txt, stops at any refusal) | `pip install -r requirements-render.txt` + `playwright install chromium` | free | 5 min |
 | `aggregators` | Arbeitnow, Himalayas and Jobicy: free public job APIs, each source named on its jobs, each read at most every 6 hours | nothing | free | on by default |
 | `adzuna` / `jooble` | more job search (Adzuna covers Switzerland) | `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` / `JOOBLE_API_KEY` | free tier | 5 min |
-| `job_alerts` | jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail; their pages are never opened | Gmail connected + the AI key; alerts switched on at those sites (Settings → Gmail explains how) | a fraction of a cent per alert email | 5 min |
+| `job_alerts` | **parked** (26 Oct 2026): off and hidden in the app until `JOB_PILOTTO_ENABLE=job_alerts`; jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail; their pages are never opened | `JOB_PILOTTO_ENABLE=job_alerts`, Gmail connected + the AI key; alerts switched on at those sites | a fraction of a cent per alert email | 5 min |
 | `google_jobs` | Google Jobs listings via [SerpApi](https://serpapi.com) | `SERPAPI_API_KEY` | free plan: 250 searches/month | 5 min |
 | `mail` | Gmail + Calendar update your applications | Google OAuth client + sign-in, Notion, Anthropic | a few cents/day | 15 min |
 | Mac app | guided setup, job list, Apply / Prepare / Tailor CV buttons, schedules, notifications | a Mac (Apple silicon) | free | 10 min |

@@ -5,6 +5,7 @@ Everything else switches itself on when the key or variable it needs is set, so 
 unlocks features one at a time. To turn one off without deleting its keys, list it in
 JOB_PILOTTO_DISABLE (comma-separated, or "all"), e.g. JOB_PILOTTO_DISABLE=google_jobs,mail —
 in .env locally, or as a GitHub repository variable for the scheduled runs.
+A parked feature (PARKED) is off even when set up, until JOB_PILOTTO_ENABLE lists it; its code and tests stay.
 """
 from dataclasses import dataclass
 import os
@@ -80,9 +81,14 @@ FEATURES = (
             'free keys from developer.adzuna.com'),
     Feature('jooble', 'Jooble job search', ('JOOBLE_API_KEY',), 'free tier', 'a free key from jooble.org/api/about'),
     Feature('job_alerts', 'Jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail', ('GOOGLE_REFRESH_TOKEN', AI), 'paid',
-            'connect Gmail (Settings → Connections) and switch on job alerts on those sites; a fraction of a cent per alert email'),
+            'parked: JOB_PILOTTO_ENABLE=job_alerts with Gmail connected and job alerts switched on at those sites; a fraction of a cent per alert email'),
 )
 BY_NAME = {f.name: f for f in FEATURES}
+
+# Parked: off for everyone, and hidden in the app (index.html data-parked="<name>"), until listed in JOB_PILOTTO_ENABLE.
+# job_alerts (owner, 26 Oct 2026): "let's park/disable/hid this functionality for now. It's too advanced."
+# Guard: tests/test_parked_features.py (off, and no visible entry in the app, for every name here).
+PARKED = frozenset({'job_alerts'})
 
 
 def disabled_names(env=None):
@@ -94,6 +100,12 @@ def disabled(name, env=None):
     """True when JOB_PILOTTO_DISABLE lists this feature (or "all")."""
     names = disabled_names(env)
     return name in names or 'all' in names
+
+
+def parked(name, env=None):
+    """True for a parked feature not listed in JOB_PILOTTO_ENABLE (comma-separated)."""
+    env = os.environ if env is None else env
+    return name in PARKED and name not in {n.strip().lower() for n in (env.get('JOB_PILOTTO_ENABLE') or '').split(',')}
 
 
 def _has(env, need):
@@ -115,15 +127,15 @@ def configured(name, env=None):
 
 
 def enabled(name, env=None):
-    return configured(name, env) and not disabled(name, env)
+    return configured(name, env) and not disabled(name, env) and not parked(name, env)
 
 
 def status(env=None):
-    """[(feature, 'on' | 'off' | 'disabled', missing variables)] for every optional feature."""
+    """[(feature, 'on' | 'off' | 'disabled' | 'parked', missing variables)] for every optional feature."""
     env = os.environ if env is None else env
     rows = []
     for feature in FEATURES:
         missing = [_name(need) for need in feature.needs if not _has(env, need)]
-        state = 'disabled' if disabled(feature.name, env) else 'off' if missing else 'on'
+        state = 'disabled' if disabled(feature.name, env) else 'parked' if parked(feature.name, env) else 'off' if missing else 'on'
         rows.append((feature, state, missing))
     return rows

@@ -137,6 +137,21 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
             with mock.patch.object(self.stores.texts, 'plain', lambda name: 'as the page reads'):
                 self.assertEqual(daily_helpers.profile_source(self.stores)(), 'as the page reads')   # texts.plain: Notion's page text
 
+    def test_a_scheduled_run_never_reads_job_alert_emails_while_they_are_parked(self):
+        """Owner, 26 Oct 2026: job alerts parked (src/features.py PARKED). Gmail and the AI ready: no scan, unless JOB_PILOTTO_ENABLE names it."""
+        from src.ai import engine
+        from src.sources import google as google_api, job_alerts
+        env = {'JOB_PILOTTO_STORE': 'memory', 'GOOGLE_REFRESH_TOKEN': 't', 'JOB_PILOTTO_AI_ENGINE': 'cli',
+               'JOB_PILOTTO_DISABLE': 'mail,notion,google_jobs,page_reader,scout_ai,title_triage,place_triage,found_boards,role_ideas'}
+        for extra, read in (({}, False), ({'JOB_PILOTTO_ENABLE': 'job_alerts'}, True)):   # the second: proof the run reaches the switch
+            with self.subTest(extra=extra), mock.patch.object(engine, 'ready', return_value=True), \
+                    mock.patch.object(engine, 'client', return_value=object()), \
+                    mock.patch.object(google_api.Google, 'from_env', return_value=mock.Mock(scopes=None)), \
+                    mock.patch.object(job_alerts, 'scan', return_value={'jobs': [], 'sources': []}) as scan:
+                code, out = self.run_daily('--score-max', '0', env={**env, **extra})
+                self.assertEqual(code, 0, out)
+                self.assertEqual(scan.called, read, out)
+
 
 
 class ModesOnTheStoreTests(unittest.TestCase):

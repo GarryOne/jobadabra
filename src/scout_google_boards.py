@@ -110,7 +110,7 @@ def _search(db, country, name, kinds, key, get, account, now, out, found):
             scout_cells._set(db, 'serp_month', {'month': month, 'used': used + searched})   # counted before the answer: a failed call still used one
             db.commit()
             try:
-                data = get(SEARCH_URL, {'engine': 'google', 'q': query, 'num': 10, 'api_key': key})
+                data = get(SEARCH_URL, {'engine': 'google', 'q': query, 'num': 10, 'gl': country, 'api_key': key})   # gl: Google as seen from that country
             except Exception:  # noqa: BLE001 — one failed search: the next one
                 continue
             for result in data.get('organic_results') or []:

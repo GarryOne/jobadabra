@@ -79,7 +79,7 @@ export function sites() {
         if (skip?.test(line) || /^\s*(\/\/|\*)/.test(line)) continue;
         const from = match.index + match[0].length - (match[0].endsWith('{') ? 1 : 0);
         const args = callArgs(source, from).trim();
-        found.push({where: `${file}:${source.slice(0, match.index).split('\n').length}`, args, place});
+        found.push({where: `${file.replaceAll('\\', '/')}:${source.slice(0, match.index).split('\n').length}`, args, place});
       }
     }
   }

@@ -8,7 +8,7 @@ import {defaultRun, idOf} from '../run-pick.js';
 import {shared} from './shared.js';
 import {$} from './core.js';
 import {openView} from './nav.js';
-import {KIND, kindOf} from './activity-basics.js';
+import {KIND, kindOf, refreshGmailConnection} from './activity-basics.js';
 import {lastActivity, renderActivity, unqueue} from './activity-render.js';
 import {kindCounts} from '../run-list.js';
 
@@ -45,6 +45,7 @@ export function showTab(name) {
     mountGrid($('actions-runs-body'));
     pinDefault();
     if (lastActivity) renderActivity(lastActivity);
+    refreshGmailConnection();   // like the drawer's open (activity-panel.js): Gmail as it is now, for the header button, the schedule and a Gmail run's notes
   }
 }
 

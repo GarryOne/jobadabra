@@ -56,7 +56,9 @@ export async function run(ctx) {
       await select('tailor--3-of-5-partial');
       await select('visits--2-of-3-sites-read-1-stopped');
       const again = page.locator('#activity-card .item-rows > li.is-failed');
-      for (const label of ['Read with Claude', 'Open it myself']) if (!await again.getByRole('button', {name: label}).count()) problems.push(`Claude help on: no "${label}" on the stopped site`);
+      // Claude's takeover is OFF (owner, 15 Oct 2026; 510d60c): Read with Claude is offered only where resumeOffered() says so, so even with Claude ready the stopped site offers Open it myself alone.
+      if (!await again.getByRole('button', {name: 'Open it myself'}).count()) problems.push('Claude help on: no "Open it myself" on the stopped site');
+      if (await again.getByRole('button', {name: 'Read with Claude'}).count()) problems.push('Claude help on: "Read with Claude" shows while the takeover is off');
       await claudeReady(false);   // back to the default for the steps after
       if (problems.length) throw new Error(problems.join('; '));
     });
@@ -65,7 +67,9 @@ export async function run(ctx) {
       const {page, select} = states;
       await select('tailor--3-of-5-partial');
       const problems = [];
-      if (!/3 of 5 CVs ready/.test(await text(page, '#activity-card'))) problems.push('the heading is not "3 of 5 CVs ready"');
+      // The result card's top no longer repeats the count as a heading (ffe56e3: one result card top for every run); the count is the run's line in the list, the card says what failed.
+      if (!/Tailored 3 of 5 CVs, 2 failed/.test(await text(page, '#activity-recent .recent-row.current'))) problems.push('the run\'s line does not say "Tailored 3 of 5 CVs, 2 failed"');
+      if (!/2 CVs could not be tailored/.test(await text(page, '#activity-card'))) problems.push('the card does not say "2 CVs could not be tailored"');
       const views = await page.locator('.kits-jobs li:not(.is-failed) button').count();
       const failed = await page.locator('.kits-jobs li.is-failed').count();
       if (views !== 3 || failed !== 2) problems.push(`${views} View CV and ${failed} Not tailored rows, for 3 and 2`);
@@ -80,7 +84,8 @@ export async function run(ctx) {
     await ctx.run('Gmail "which job?" answers: three questions open, then each answer its own saved outcome', async () => {
       const {page, select} = states;
       await select('gmail--7-emails-3-which-job-questions-open');
-      if (!/3 need your answer/.test(await text(page, '#activity-card'))) throw new Error(`the count is not 3: "${(await text(page, '#activity-card')).slice(0, 200)}"`);
+      // The count sits in the run's notes box (#activity-warnings: "N need your answer · Answer N questions"), not in the card, since the run view shares one result card top.
+      if (!/3 need your answer/.test(await text(page, '#activity-warnings'))) throw new Error(`the count is not 3: "${(await text(page, '#activity-warnings')).slice(0, 200)}"`);
       for (const choice of ['tracked', 'new', 'none']) {
         await page.locator('.mail-question-go').first().click();
         await page.waitForSelector('#reassign-dialog[open]', {timeout: 5000});

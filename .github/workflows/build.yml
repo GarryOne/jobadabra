@@ -117,4 +117,9 @@ jobs:
           echo "every Linux suite passed" | tee -a "$GITHUB_STEP_SUMMARY"
 
   windows:
+    permissions:   # what tests-desktop-windows.yml asks for, or GitHub refuses to start this whole run (tests/test_workflow_call_permissions.py)
+      contents: read
+      actions: read
+      pull-requests: read
+      statuses: write
     uses: ./.github/workflows/tests-desktop-windows.yml

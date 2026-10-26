@@ -266,6 +266,14 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('"state=failure"', written)
 
+    def test_gh_output_is_read_as_utf8_on_any_runner(self):
+        # #2062: on Windows, text=True decoded gh's UTF-8 as cp1252; "E2E for PR · " did not match and the e2e runs were not counted (a false green).
+        from unittest import mock
+        with mock.patch.object(pv.subprocess, 'run', return_value=mock.Mock(stdout='[]')) as run_:
+            pv.gh('run', 'list')
+        self.assertEqual(run_.call_args.kwargs.get('encoding'), 'utf-8')
+        self.assertNotIn('text', run_.call_args.kwargs, 'text=True uses the locale (cp1252 on Windows)')
+
     def test_a_merged_pr_gets_nothing(self):
         done, written = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': '2026-10-26T04:59:23Z'}])
         self.assertEqual((done.returncode, written), (0, ''), done.stderr)

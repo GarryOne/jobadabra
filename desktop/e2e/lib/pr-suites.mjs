@@ -146,6 +146,25 @@ export function stepsTouched(text, ranges) {
 // One short Windows check on a PR that changes CI plumbing or shell (PR 3 of the PR-checks plan, owner's yes 26 Oct 2026): #1997's relay tar read "D:\a\_temp" as
 // a host and every Windows suite went red, seen only by the next beta. The app launch, the relay and one settings step, on SQLite (no Notion lock to wait for).
 export const WINDOWS_SMOKE = {suite: 'settings', steps: ['every Settings section renders']};
-// A shell script counts only when CI runs it (`ci`: the text of the workflows and actions): tools/ship.sh runs on the Mac, tools/e2e-lock.sh on every runner.
+// Only what the Windows run itself runs counts (owner's yes to the e2e audit, 26 Oct 2026: any .github/ file started it, and a workflow COMMENT naming tools/ship.sh
+// did: #2073, #2088 central-scout.yml, #2090 ship.sh, #2070 main-steps.yml): e2e-windows.yml, the local actions and workflows it uses, and the scripts its
+// steps name (`ci`: windowsCiText). A comment names nothing.
 const SHELL = /^(tools|desktop\/scripts)\/[^/]+\.sh$/;
-export const windowsSmoke = (files, ci = '') => files.some(file => file.startsWith('.github/') || (SHELL.test(file) && ci.includes(file)));
+export const WINDOWS_WORKFLOW = '.github/workflows/e2e-windows.yml';
+const uncommented = text => String(text || '').replace(/(^|\s)#.*$/gm, '$1');
+// The text the Windows run executes, comments dropped: e2e-windows.yml and every local action or workflow it `uses:` (read(path) -> text or null). -> {text, files}
+export function windowsCiText(read) {
+  const files = [WINDOWS_WORKFLOW], parts = [];
+  for (let i = 0; i < files.length; i++) {
+    const text = uncommented(read(files[i]));
+    parts.push(text);
+    for (const [, local] of text.matchAll(/uses:\s*\.\/(?:\.ci-relay\/)?(\.github\/[\w./-]+)/g)) {
+      const file = /\.ya?ml$/.test(local) ? local : `${local.replace(/\/$/, '')}/action.yml`;
+      if (!files.includes(file) && read(file) != null) files.push(file);
+    }
+  }
+  return {text: parts.join('\n'), files};
+}
+const named = (file, text) => text.includes(file) || (file.startsWith('desktop/') && text.includes(file.slice('desktop/'.length)));
+export const windowsSmoke = (files, ci = {text: '', files: [WINDOWS_WORKFLOW]}) =>
+  files.some(file => ci.files.includes(file) || ci.files.some(used => used.endsWith('/action.yml') && file.startsWith(used.slice(0, -'action.yml'.length))) || (SHELL.test(file) && named(file, ci.text)));

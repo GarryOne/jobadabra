@@ -120,9 +120,18 @@ class Learning(NoAI):
         rows = json.loads((Path(self.tmp.name) / 'meanings_outbox.json').read_text())['rows']
         self.assertEqual(rows, [{'topic': 'job-region', 'wording': 'lisboa, portugal', 'answer': 'europe'}])
 
+    def test_a_careers_link_is_shared_as_its_public_shape_only(self):
+        from src.ai import page_words
+        wording = page_words._wording('Offene Stellen', '/jobs/12345?token=secret&utm=x')
+        meanings_pack.queue('link-kind', wording, 'job_list')
+        meanings_pack.queue('title-kind', 'Pflegefachfrau 80%', 'job_title')
+        rows = json.loads((Path(self.tmp.name) / 'meanings_outbox.json').read_text())['rows']
+        self.assertEqual(rows, [{'topic': 'link-kind', 'wording': 'link text: offene stellen | path: /jobs/0', 'answer': 'job_list'},
+                                {'topic': 'title-kind', 'wording': 'pflegefachfrau 80%', 'answer': 'job_title'}])
+
     def test_only_public_page_topics_may_ever_be_shared(self):
         """A topic may share only when its wording comes from a public page; a user's own words leave the machine as fixed ids only."""
-        public = {'job-region', 'job-title-kind', 'job-location-geo'}   # add a topic here only if its wording is a posting's, a form's or a button's, never the user's
+        public = {'job-region', 'job-title-kind', 'job-location-geo', 'link-kind', 'title-kind'}   # link-kind, title-kind: employers' public links and titles (owner, 26 Oct 2026); add a topic here only if its wording is a posting's, a form's or a button's, never the user's
         self.assertEqual({t for t, spec in meanings_pack.schema().items() if spec.get('share')}, public)
 
 

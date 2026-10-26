@@ -66,6 +66,14 @@ class CopiesTests(unittest.TestCase):
         for kind in set(role_kinds.KINDS) - {'software'}:
             self.assertIn(f'{kind} = {role_kinds.WORK[kind]}', family['description'])
 
+    def test_every_family_the_job_facts_ai_may_pick_says_its_work(self):
+        """26 Oct 2026, e2e quality on Free AI (PR #1992): 5 SRE and platform jobs came back 'engineering': the IT families were bare names
+        ("sre, platform, …") beside described trades. Every family in the list, a new one too, says its work."""
+        family = enrich.SCHEMA['properties']['role_family']
+        for name in family['enum']:
+            with self.subTest(name):
+                self.assertRegex(family['description'], rf'(^|[\s:;(]){re.escape(name)} = \w')
+
 
 class JudgedTests(unittest.TestCase):
     def test_a_title_nobody_judged_is_left_out_of_the_mix(self):

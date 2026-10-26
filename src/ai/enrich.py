@@ -18,6 +18,7 @@ from .. import store
 from ..paths import JOBS_DB
 from . import cost, engine
 from .seniority import settle
+from ..role_kinds import KINDS, WORK
 from .models import SMALL_MODEL
 from .providers.contract import detail, reason
 
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS enrichments (
 
 LANGUAGES = ['English', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Dutch', 'Other']
 _evidence = {'type': 'string', 'description': 'Short verbatim quote from the posting, or "" if none'}
+IT_FAMILIES = ('sre', 'platform', 'devops', 'cloud_infrastructure', 'software', 'data', 'security', 'support_it')   # the IT role families before the trades
 SCHEMA = {
     'type': 'object',
     'additionalProperties': False,
@@ -88,11 +90,13 @@ SCHEMA = {
                 'evidence': _evidence,
             },
         },
-        # IT families, then the kinds of role of every other trade (src/role_kinds.py KINDS): 6 Oct 2026, a photographer's shop and warehouse
-        # jobs could only be 'other'. A test keeps this list and role_kinds.KINDS in step.
-        'role_family': {'type': 'string', 'enum': ['sre', 'platform', 'devops', 'cloud_infrastructure', 'software',
-                                                   'data', 'security', 'support_it', 'sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare',
-                                                   'creative_media', 'finance_admin', 'education', 'trades', 'engineering', 'business_ops', 'manufacturing', 'science', 'customer_service', 'legal', 'aviation_transport', 'public_security', 'other']},
+        # IT families, then the kinds of role of every other trade (src/role_kinds.py KINDS, read from there): 6 Oct 2026, a photographer's shop
+        # and warehouse jobs could only be 'other'. 26 Oct 2026: with customer_service added, "Senior Site Reliability Engineer, Customer Care"
+        # was filed as call-centre work: the description says each family's work and that the job's own work decides, not the team it serves.
+        'role_family': {'type': 'string', 'enum': [*IT_FAMILIES, *(kind for kind in KINDS if kind not in IT_FAMILIES)],
+                        'description': "The job's own kind of work, not the team, product or customers it serves. IT work: "
+                                       + ', '.join(IT_FAMILIES) + ' (support_it = IT support and help desk). Other work: '
+                                       + '; '.join(f'{kind} = {WORK[kind]}' for kind in KINDS if kind not in IT_FAMILIES) + '.'},
         'technologies': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Up to 8 key skills, tools, licences, certifications or topics the role names (any trade), short, in the posting\'s own language; [] when none'},
         'responsibilities': {'type': 'array', 'items': {'type': 'string'},
                              'description': 'What the role involves day to day: up to 4 short plain sentences (under 110 characters each), in the posting\'s own terms; [] when it says nothing'},

@@ -106,7 +106,7 @@ export function registerApplyHandlers(ctx) {
       let host = '';
       try { host = new URL(String(url || '')).hostname; } catch { /* no url */ }
       appLog('review', 'extension not on the form tab: joining it', {host});
-      woke = await extensionInstall.openInChrome(`chrome-extension://${server.EXTENSION_ID}/wake.html`, {browser: apply.extensionBrowser()}).catch(() => false);
+      woke = await extensionInstall.openInChrome(`chrome-extension://${server.extensionIdNow()}/wake.html`, {browser: apply.extensionBrowser()}).catch(() => false);
       appLog('review', `wake page ${woke ? 'opened' : 'did not open'}`, {browser: apply.extensionBrowser() || 'default'});
       taken = await review.delivered(key, 6000);
     }

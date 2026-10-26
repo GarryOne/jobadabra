@@ -4,7 +4,7 @@ role: Pilot vs software developer", and none reached the digest: the scorer neve
 into the request (block) and the scorer's fixed answer has a `search` part: the fit to those roles (whatever the CV shows), whether the search
 is a career change (another field than the profile's experience) and one line on what the profile lacks. On a career change the job is ranked
 and shown by its fit to the search (apply: the ring, the digest and the Jobs list read 'score'); the CV's own fit is kept as 'cv_fit'.
-A score made before this part existed, under the digest's bar, for a title the current search wants, is scored again once (again).
+A score made before this part existed, under the digest's bar, for a title the current search wants, is scored again once (again_ids).
 The AI judges all of it; no word lists. Tests: tests/test_score_career_change.py."""
 
 PART = {
@@ -66,20 +66,30 @@ def apply(data):
     data['search'] = {**part, 'fit': fit, 'cv_gap': str(part.get('cv_gap') or '')[:120]}
     if part.get('career_change') is True and fit > int(data.get('score') or 0):
         data.update(cv_fit=data['score'], score=fit, tier=tier(fit))
-        if data['search']['cv_gap']:   # first among the gaps: the drawer's match panel and Job Matches show them
-            data['gaps'] = [data['search']['cv_gap'], *[gap for gap in data.get('gaps') or [] if gap != data['search']['cv_gap']]][:3]
+        missing = data['search']['cv_gap']
+        # The one line every place shows (the Jobs row, the drawer, Job Matches, the Telegram card): a store's own field, no new column.
+        data['reason'] = f'Fits your search · Your CV: {missing}' if missing else f"Fits your search · {data.get('reason') or ''}".rstrip(' ·')
+        if missing:   # first among the gaps: the drawer's match panel and Job Matches show them
+            data['gaps'] = [missing, *[gap for gap in data.get('gaps') or [] if gap != missing]][:3]
     return data
 
 
-def gap(fit):
-    """What the CV lacks for a job shown by its fit to the search ('' for any other job): the Telegram card's 'Your CV' line."""
-    return ((fit or {}).get('search') or {}).get('cv_gap') or '' if (fit or {}).get('cv_fit') is not None else ''
-
-
-def again(job, data, bar):
-    """A score made before the search part existed, under the digest's bar, for a title the current search wants: scored once more (owner's
-    pick, 26 Oct 2026: "Low ones the search wants")."""
-    if 'search' in (data or {}) or int((data or {}).get('score') or 0) >= bar:
-        return False
+def again_ids(jobs, rows, bar):
+    """The jobs whose score was made before the search part existed, under the digest's bar, with a title the current search wants: scored
+    once more (owner's pick, 26 Oct 2026: "Low ones the search wants"). rows: {job id: its scores row}. The AI sorts their titles first, in
+    one batch (feeds.triage); a failed sort keeps none on words (src/sources/feeds.py wanted_title)."""
+    import json
+    low = []
+    for job in jobs:
+        row = rows.get(job['id'])
+        try:
+            data = json.loads(row['data_json'] or '{}') if row else None
+        except ValueError:
+            data = None
+        if data is not None and 'search' not in data and int(data.get('score') or 0) < bar:
+            low.append(job)
+    if not low:
+        return set()
     from ..sources import feeds
-    return bool(feeds.wanted_title(job.get('title')))
+    feeds.triage(low)
+    return {job['id'] for job in low if feeds.wanted_title(job.get('title'))}

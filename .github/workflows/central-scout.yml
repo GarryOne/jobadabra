@@ -102,6 +102,7 @@ jobs:
           BATCH: ${{ inputs.batch || '500' }}
           SCOUT_TITLE_KINDS: ops/config/title_kinds.json.gz   # titles judged on the owner's Claude plan (tools/recount_title_kinds.py); absent: nothing changes
           SCOUT_BOARD_COUNTRY: ${{ inputs.country }}
+          SCOUT_SERPAPI_KEY: ${{ secrets.CENTRAL_SCOUT_SERPAPI_KEY }}   # Google results for the board pass, under its own caps (src/scout_google_boards.py); never as SERPAPI_API_KEY
           JOB_PILOTTO_AI_COST_FILE: ${{ runner.temp }}/ai-cost.json
         run: python -m src scout --batch "$BATCH" --publish-index
       - name: Report the AI cost to /ai-cost

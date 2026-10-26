@@ -30,6 +30,11 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'the form\'s panel offers a tailored CV': 23, 'the person submits a form': 21,
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11};
+// applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
+export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
+  'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,
+  'a sign-in page before the form:': 30, 'a form drawn after a spinner': 25, 'an upload slot that appears only when +': 23, 'the AI gave a page the wrong kind': 18, 'a sign-up page before the form': 15,
+  'a form with collapsed sections': 13};
 export const browser = true;
 export const engine = 'api';   // the form's open question is answered by the AI proxy, which needs the API engine
 export const macos = true;   // runs on a macOS runner: the real Chrome extension, opened through `open` as on a Mac (lib/plan.mjs runnerOf)
@@ -67,7 +72,7 @@ export async function runApply(ctx, parts) {
   const all = ctx.run;
   const live = parts.includes('live') ? livePosting() : null;   // the live run: one real posting, read from this Mac's job list; the fixture checks do not apply to it
   // A slice (the suite's `shards`, JP_REPLAY_SHARD=i/n): the shared steps run in every slice; the others split by weight, take turns, or follow a step they need (lib/step-slices.mjs).
-  const takes = stepSlicer(live ? null : parseShard(process.env.JP_REPLAY_SHARD), {seconds: parts.includes('flows') ? {} : stepSeconds, needs: stepNeeds, setup: SETUP});
+  const takes = stepSlicer(live ? null : parseShard(process.env.JP_REPLAY_SHARD), {seconds: parts.includes('flows') ? flowSeconds : stepSeconds, needs: stepNeeds, setup: SETUP});
   ctx.run = (name, fn, options) => {
     if (!((partOf(name) === 'both' && !(live && name.startsWith('through all of it'))) || parts.includes(partOf(name)))) return undefined;
     if (partOf(name) !== 'both' && !takes(name)) return undefined;

@@ -54,6 +54,7 @@ def sites_only_you_can_open():   # the "Sites only you can open" list with its "
 
 LISTS = {'refused sites read in the browser': queue, 'refused sites read on Check for new jobs': queue_on_check,
          'Sites only you can open': sites_only_you_can_open}
+FITS = {name: 'An Airline' for name in LISTS}   # per list, the site that fits the pilot search and must still be read or offered (a board list names a board)
 SIBLINGS = {'job boards the run reads (found_boards, board_web)': 'jobadabra-33 [c2ad9c], its open boards-first work',
             'employer feeds with no kind mix yet (employer_index.relevant)': 'this audit, PR 4 (located kind counts)'}
 
@@ -89,7 +90,7 @@ class SourcesFollowStrategyTest(unittest.TestCase):
             with self.subTest(list=name):
                 names = [site['name'] for site in sites_of()]
                 self.assertEqual([n for n in names if n.startswith(OFF)], [], f'{name}: an earlier search\'s sites')
-                self.assertIn('An Airline', names, f'{name}: the employer that fits is still read or offered')
+                self.assertIn(FITS[name], names, f'{name}: the site that fits is still read or offered')
 
     def test_when_the_ai_fails_the_browser_reads_none_of_them(self):
         self.judge.fail = True
@@ -108,7 +109,8 @@ class SourcesFollowStrategyTest(unittest.TestCase):
         bank = {'company': 'maib', 'places': ['Chisinau']}
         self.assertEqual(employer_index.relevant([bank], lambda job: True, {'aviation_transport'}), [])
 
-    def test_every_sibling_list_has_an_owner(self):
+    def test_every_list_names_its_fitting_site_and_every_sibling_its_owner(self):
+        self.assertEqual(set(FITS), set(LISTS), 'a new list says which site of the pilot search it must keep')
         self.assertTrue(all(SIBLINGS.values()))
         self.assertTrue(role_kinds.KINDS)
 

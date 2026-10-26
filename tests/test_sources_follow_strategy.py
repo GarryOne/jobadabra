@@ -8,14 +8,14 @@ SIBLINGS with their owner, so the gap is never silent."""
 import json
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 from src import employer_index, role_kinds
 from src.ai import board_ideas
-from src.sources import board_yield, host_pace, refused_reads, visits
+from src.sources import board_yield, feed_facts, feeds, host_pace, refused_reads, visits
 
 NOW = datetime(2026, 10, 26, 1, 0, tzinfo=timezone.utc)
 SEARCH = {'role_keywords': ['First Officer', 'pilot'], 'locations': {'top_tier': ['Europe'], 'country_wide': []}}
@@ -61,11 +61,31 @@ def boards_read_first():   # the boards a run reads first (src/sources/boards_fi
     return board_yield.working(SEARCH, board_ideas.load()['boards'])
 
 
+def employers_the_search_reads():   # feeds.scan over employer_index.relevant: the employer sites a run fetches (src/sources/feed_scan.py)
+    index = [{'company': 'maib', 'ats': 'lever', 'slug': 'maib', 'kinds': {'finance_admin': 0.9, 'software': 0.1}, 'places': ['Chisinau']},
+             {'company': 'Moldtelecom', 'ats': 'lever', 'slug': 'moldtelecom', 'kinds': {'software': 0.7, 'customer_service': 0.3}, 'places': ['Chisinau']},
+             {'company': 'An Airline', 'ats': 'lever', 'slug': 'airline', 'kinds': {'aviation_transport': 0.4, 'hospitality': 0.6}, 'places': ['Luxembourg']}]
+    earlier = {**SEARCH, 'title_exclude_keywords': ['captain']}   # the strategy before: the same roles and places, another exclusion
+    with tempfile.TemporaryDirectory() as folder:
+        db = feeds.database(Path(folder) / 'jobs.sqlite')
+        db.execute(feeds.REST_TABLE)
+        db.execute(feed_facts.TABLE)
+        old, at = feeds._search_digest(earlier), NOW.isoformat(timespec='seconds')
+        db.execute('INSERT INTO feed_rest VALUES (?, ?, ?, ?)', ('lever:airline', 5, (NOW + timedelta(days=6)).isoformat(timespec='seconds'), old))
+        db.execute('INSERT INTO feed_facts VALUES (?, ?, ?, 1, NULL, ?, 0)', ('lever:airline', old, at, feed_facts.ids_of([])))
+        fetched = []
+        with mock.patch.object(feeds, '_SEARCH', SEARCH), mock.patch.object(feed_facts, '_now', lambda: NOW):
+            feeds.scan(employer_index.relevant(index, lambda job: True, {'aviation_transport'}), db,
+                       fetcher=lambda source: fetched.append({'name': source['company']}) or [], details={})
+        db.close()
+    return fetched
+
+
 LISTS = {'refused sites read in the browser': queue, 'refused sites read on Check for new jobs': queue_on_check,
-         'Sites only you can open': sites_only_you_can_open, 'job boards read first': boards_read_first}
+         'Sites only you can open': sites_only_you_can_open, 'job boards read first': boards_read_first,
+         'employers the search reads': employers_the_search_reads}
 FITS = {**{name: 'An Airline' for name in LISTS}, 'job boards read first': 'Crew Board'}   # per list, the site of the pilot search it must keep
-SIBLINGS = {'employers the search reads (feeds.scan over employer_index.relevant, with an old search\'s rest and facts)': 'jobadabra-c5, after its feed_rest PR',
-            'employer feeds with no kind mix yet (employer_index.relevant)': 'this audit, PR 4 (located kind counts)'}
+SIBLINGS = {'employer feeds with no kind mix yet (employer_index.relevant)': 'this audit, PR 4 (located kind counts)'}
 
 
 class SourcesFollowStrategyTest(unittest.TestCase):

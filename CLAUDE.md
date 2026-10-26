@@ -16,7 +16,8 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
 5. New file: start it with a one-line comment (docstring in Python) saying what it's for (at least 25 characters): the code map reads it.
 
 ## Safety rules (never relaxed without the owner)
-- **The app submits only in Full automation, which the person turns on** (owner, 26 Oct 2026, replacing "Never Submit, never auto-apply"). By default the kit drafts and the person submits.
+- **The app submits only in Full automation, which the person turns on** (owner, 26 Oct 2026, replacing "Never Submit, never auto-apply"). By default the kit drafts and the person submits;
+  the person's own Submit press in the app for one job, after seeing its answers, is the person submitting (owner, 26 Oct 2026), and stays off while a required field is empty.
   In Settings → Apply the person may turn on Full automation; then the app submits only forms that pass that person's checks (defaults: no required field empty, answers from saved facts,
   fit 80+, at most 20 a day and 1 per employer, a 10-minute wait with Stop; each is the person's to change, AI-guessed answers too). Not built yet: until it ships, nothing submits.
   Tests, the pool, the twin, Ready's night and our own sessions never submit. We never disguise a browser as a person. We never solve a captcha or bot check and never use an SMS code (a captcha is the person's to solve, see below); never past a login wall

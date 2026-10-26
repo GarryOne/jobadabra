@@ -36,6 +36,9 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
   never a hand-written rule tree, threshold chain or keyword list standing in for it. Emails, pages, buttons and questions come in any language.
   **A word list is never in front of the AI:** only the offline floor when there is no AI at all (`ai_first`); a busy or failed AI leaves the item unknown, never a keyword's guess.
   **Judgments about a page are the AI's** (ready? did it work? bot check? which step?); structure only finds controls, floors only AND with the AI.
+  **Judgments of public data** (a posting's title kind, a job place's country) **come from every install's own AI and the central scout**, shared through the pack
+  (k≥3), never from a one-off run on one machine (owner, 26 Oct 2026: "using any user's machine/installation ... but also using the central scout").
+  **Not judged yet = not read on a guess** (e.g. an employer with no kind counts for the person's countries; audit PR 4).
 - **The direction of every page fix: see fields → the AI judges each one's meaning → fill** (owner, 12 Oct 2026). A page's kind (account, form, posting) never
   decides WHETHER its fields are filled, only what is pressed; never add a code path for a page type or shape. A weak or missing AI answer is never kept as sure:
   it is asked again or climbs the ladder (digest, picture). If a fix needs "when the page looks like X, do Y", the AI's fixed answer is missing a value: add it there.

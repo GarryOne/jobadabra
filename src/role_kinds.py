@@ -99,21 +99,43 @@ MIN_FIT = 0.15        # the wanted kinds' share of an employer's jobs below whic
 TECH_HEAVY = 0.3      # a software share from which an employer counts as a tech company, for a search that wants no software
 
 
-def fits(feed_kinds, wanted, checked=''):
+def fits(feed_kinds, wanted):
     """Whether an employer with this mix hires for the wanted kinds: at least MIN_FIT of its jobs (7 Oct 2026: 7% "creative" kept a tech
-    startup for a photographer), and for a search with no software, not a company whose software jobs outnumber the wanted ones. Unknown on
-    either side keeps it, and so does a feed counted before SINCE (`checked`, the scout's date) whose titles are mostly 'other' (then mostly
-    never judged), unless it also hires software people: skipping is for a clear mismatch."""
+    startup for a photographer), and for a search with no software, not a company whose software jobs outnumber the wanted ones. An employer
+    with no mix yet is not read on a guess, nor one whose wanted share is small (an old mostly-'other' mix too): the scout counts it (owner,
+    26 Oct 2026, audit PR 4: a pilot search read 763 employers none known to hire pilots). The search's kinds not known (no AI): nothing skipped."""
     if wanted and UNKNOWN in wanted:
         return False   # a field no kind fits: no employer list is read in bulk (26 Oct 2026: a pilot search read 1,025 office employers)
-    feed_kinds = valid(feed_kinds)
-    if not feed_kinds or not wanted:
+    if not wanted:
         return True
+    feed_kinds = valid(feed_kinds)
+    if not feed_kinds:
+        return False
     share, tech = sum(feed_kinds.get(kind, 0) for kind in wanted), feed_kinds.get('software', 0)
     if 'software' not in wanted and tech >= TECH_HEAVY and share < tech:
         return False
-    if share >= MIN_FIT:
-        return True
-    if checked and checked >= SINCE[:10]:
-        return False   # counted since the kinds grew: its 'other' was judged, so no wanted share means it is known not to hire them (owner, 26 Oct 2026)
-    return feed_kinds.get('other', 0) >= 0.5 and tech < 0.1   # an older mix: its 'other' was mostly titles never judged
+    return share >= MIN_FIT
+
+
+def valid_counts(counts):
+    """A published `kind_counts` as the engine keeps it ({country id: {kind: whole count from 1}}, src/scout_kind_counts.py); None when it is not one."""
+    from .pool_tags import COUNTRIES
+    if not isinstance(counts, dict):
+        return None
+    out = {}
+    for country, kinds in counts.items():
+        if country in COUNTRIES and isinstance(kinds, dict):
+            kept = {kind: int(n) for kind, n in kinds.items() if kind in KINDS and isinstance(n, (int, float)) and not isinstance(n, bool) and n >= 1}
+            if kept:
+                out[country] = kept
+    return out or None
+
+
+def located(feed, countries):
+    """The mix of a feed's jobs in these countries (its kind_counts), or its whole mix when none of them is counted there."""
+    counts, here = valid_counts(feed.get('kind_counts')) or {}, {}
+    for country in countries or ():
+        for kind, n in counts.get(country, {}).items():
+            here[kind] = here.get(kind, 0) + n
+    total = sum(here.values())
+    return {kind: n / total for kind, n in here.items()} if total else feed.get('kinds')

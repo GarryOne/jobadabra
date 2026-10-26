@@ -123,7 +123,7 @@ class AnInstallWithStateTests(AiFirst):
                  {'company': 'Airline', 'places': ['Zurich'], 'kinds': {'aviation_transport': 0.3, 'other': 0.7}, 'checked': '2026-10-27'},
                  {'company': 'Not counted yet', 'places': ['Zurich']}]
         zurich = lambda job: 'zurich' in job['location'].lower()
-        self.assertEqual([f['company'] for f in employer_index.relevant(index, zurich, wanted)], ['Airline', 'Not counted yet'])
+        self.assertEqual([f['company'] for f in employer_index.relevant(index, zurich, wanted)], ['Airline'], 'not counted yet: not read on a guess')
         with sqlite3.connect(path) as db:
             kept = dict(db.execute("SELECT key, answer FROM decisions WHERE topic = 'role-kind'").fetchall())
         self.assertEqual(kept['first officer'], 'aviation_transport', 'the AI answer replaces the old one and is kept')

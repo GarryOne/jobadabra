@@ -102,6 +102,18 @@ class CiFreeAiTests(unittest.TestCase):
                             wrong.append(f'{path.name} {name}: ./{target} comes from a checkout of {refs.get(root)}')
         self.assertEqual(wrong, [], 'check out the workflow\'s own commit (ref: ${{ github.sha }}) into a side path and use the action from there')
 
+    def test_no_tar_is_handed_a_path_where_windows_runs_it(self):
+        """Git Bash's tar on a Windows runner reads "D:\\a\\_temp\\x" as a remote host "D": unpack inside a `cd` instead of `tar -C <path>` / `tar -f <path>`.
+
+        26 Oct 2026: beta 40261885119, all 19 Windows e2e suites red at "Free AI relay": `tar: D\\:\\a\\\\_temp/free-ai-tree: Cannot open`.
+        A local action runs on every runner, so every action counts; in a workflow, the jobs that run on Windows."""
+        texts = [(str(path.relative_to(ROOT)), path.read_text()) for path in sorted((ROOT / '.github' / 'actions').glob('*/action.yml'))]
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            texts += [(f'{path.name} {name}', text) for name, text in jobs(path.read_text()).items() if re.search(r'(?mi)^    runs-on:.*windows|matrix\.os|windows-', text)]
+        wrong = [f'{where}: {line.strip()}' for where, text in texts for line in text.splitlines()
+                 if re.search(r'(^|[\s|(;&])tar\s+(-\S*\s+)*(-C|--directory|-f|-\w*f)\s*"?\$', line)]
+        self.assertEqual(wrong, [], 'cd into the folder first, e.g. `... | (cd "$tree" && tar -x)`')
+
     def test_every_job_left_out_still_exists(self):
         for (workflow, name), why in NO_RELAY.items():
             self.assertIn(name, jobs((WORKFLOWS / workflow).read_text()), f'{workflow} {name} is gone: drop it from NO_RELAY ({why})')

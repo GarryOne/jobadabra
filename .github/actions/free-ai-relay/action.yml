@@ -50,8 +50,8 @@ runs:
       run: |
         set -euo pipefail
         tree="$RUNNER_TEMP/free-ai-tree"; rm -rf "$tree"; mkdir -p "$tree"
-        git -C "$GITHUB_WORKSPACE/$PUBLIC_TREE" archive HEAD | tar -x -C "$tree"
-        git -C "$GITHUB_WORKSPACE/.free-ai-site" archive HEAD | tar -x -C "$tree"
+        git -C "$GITHUB_WORKSPACE/$PUBLIC_TREE" archive HEAD | (cd "$tree" && tar -x)
+        git -C "$GITHUB_WORKSPACE/.free-ai-site" archive HEAD | (cd "$tree" && tar -x)
         site="$(git -C "$GITHUB_WORKSPACE/.free-ai-site" rev-parse --short HEAD)"
         rm -rf "$GITHUB_WORKSPACE/.free-ai-site"   # nothing private stays in the workspace the suites and their artifacts see
         log="$RUNNER_TEMP/free-ai-relay.log"; key="$RUNNER_TEMP/free-ai.key"

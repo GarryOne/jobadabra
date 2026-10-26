@@ -18,39 +18,34 @@ class BudgetTests(unittest.TestCase):
 
     def test_each_step_keeps_time_for_the_ones_after_it(self):
         budget.start(180, now=0)
-        self.assertFalse(budget.over('titles', now=100))
-        self.assertTrue(budget.over('titles', now=110), 'titles stop 75 s early: reading and scoring still get time')
-        self.assertFalse(budget.over('enrich', now=130))
-        self.assertTrue(budget.over('enrich', now=145))
-        self.assertFalse(budget.over('score', now=175))
-        self.assertTrue(budget.over('score', now=180))
+        self.assertFalse(budget.over('titles', now=99))
+        self.assertTrue(budget.over('titles', now=100), 'titles stop 80 s early: reading and scoring still get time')
+        self.assertFalse(budget.over('enrich', now=129))
+        self.assertTrue(budget.over('enrich', now=130))
+        self.assertFalse(budget.over('score', now=169))
+        self.assertTrue(budget.over('score', now=170), 'no call starts in the last 10 s: one running ends by 180 s')
 
     def test_a_refresh_that_scores_first_leaves_the_facts_their_time(self):
         # 10 Oct 2026: scoring took all 180 s, the facts started with "Time is up", and 0 of 103 jobs ever had them.
         budget.start(180, now=0)
         budget.score_first()
-        self.assertFalse(budget.over('score', now=119))
-        self.assertTrue(budget.over('score', now=120), 'scoring stops 60 s early')
-        self.assertFalse(budget.over('enrich', now=170), 'the facts run to the end of the budget')
-        self.assertTrue(budget.over('enrich', now=180))
-        self.assertEqual(budget.batch('score', 1000, now=0), int((180 - 60) * 1.0 / budget.PACE['score']), 'the batch is sized without their 60 s')
+        self.assertFalse(budget.over('score', now=144))
+        self.assertTrue(budget.over('score', now=145), 'scoring stops 35 s early (25 s of facts, the last 10 kept)')
+        self.assertFalse(budget.over('enrich', now=169), 'the facts run to the end of the budget')
+        self.assertTrue(budget.over('enrich', now=170))
+        self.assertEqual(budget.batch('score', 1000, now=0), int((180 - 35) * 1.0 / budget.PACE['score']), 'the batch is sized without their 35 s')
         budget.start(180, now=0)
         self.assertTrue(budget.over('enrich', now=145), 'a fresh budget is back to reading first')
 
-    def test_the_crawl_does_not_use_up_the_ai_budget(self):
-        # 17 Oct 2026: the clock ran from the process start, the crawl took 10 min, and 2,868 jobs waited with "No time left" on every run.
+    def test_the_crawl_and_the_ai_steps_share_one_deadline(self):
+        # 17 Oct 2026: a 10-minute crawl left the AI no time, and restart() gave the AI steps 180 s after it; 26 Oct 2026 (owner: "A find
+        # jobs session should take at most 3min") the runs took 12-23 min. Now every read stops at half the budget, the AI steps get the rest.
+        from src.sources import read_budget
         budget.start(180, now=0)
-        self.assertTrue(budget.over('score', now=600), 'after a 10-minute crawl the old clock was spent')
-        self.assertEqual(budget.batch('score', 2868, now=600, say=False), budget.FLOOR, 'only the first 3 a search always scores (tests/test_score_floor.py)')
-        budget.restart(now=600)   # feeds.scan calls this when the downloads are done
-        self.assertFalse(budget.over('score', now=700))
-        self.assertGreater(budget.batch('score', 2868, now=600, say=False), 0)
-        self.assertTrue(budget.over('score', now=780), 'the AI steps still end 180 s after the crawl')
-
-    def test_restart_without_a_budget_does_nothing(self):
-        budget.start(0)
-        budget.restart(now=5)
-        self.assertIsNone(budget.DEADLINE)
+        self.assertEqual(read_budget.cut_at(), 90, 'the reads end at half the budget')
+        self.assertFalse(budget.over('score', now=90), 'scoring has the time after the reads')
+        self.assertGreater(budget.batch('score', 2868, now=90, say=False), 20)
+        self.assertEqual(budget.batch('score', 2868, now=600, say=False), 0, 'nothing past the run\'s 3 minutes, not even the floor')
 
     def test_a_run_that_scored_none_with_a_backlog_says_so(self):
         from src.daily_helpers import none_scored
@@ -137,13 +132,13 @@ class SizedBatchTests(unittest.TestCase):
     def test_each_step_takes_its_share_at_its_own_measured_pace(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch('src.paths.DATA', pathlib.Path(tmp)), contextlib.redirect_stdout(io.StringIO()) as out:
             budget.start(180, now=0)
-            self.assertEqual(budget.batch('score', 60, now=120), 20, '60 s left at 3 s a job')
+            self.assertEqual(budget.batch('score', 60, now=120), 16, '50 s left (the last 10 kept) at 3 s a job')
             budget.record('score', 60, 30)   # this Mac scores at 2 s a job: the pace moves halfway there
-            self.assertEqual(budget.batch('score', 60, now=120), 24, '60 s left at 2.5 s a job')
+            self.assertEqual(budget.batch('score', 60, now=120), 20, '50 s left at 2.5 s a job')
             self.assertEqual(budget.in_calls('title_rounds', 300, 30, 2, now=60), 120, '20% of 120 s at 10 s a round: 2 rounds of 2 calls of 30')
             self.assertEqual(budget.batch('enrich', 5, now=0), 5, 'a small batch is taken whole, nothing said')
-        self.assertIn('This refresh scores 20 of 60 jobs', out.getvalue())
-        self.assertIn('40 wait for the next refresh, best places and closest jobs first', out.getvalue())
+        self.assertIn('This refresh scores 16 of 60 jobs', out.getvalue())
+        self.assertIn('44 wait for the next refresh, best places and closest jobs first', out.getvalue())
 
 
 class PlaceCallsTests(unittest.TestCase):

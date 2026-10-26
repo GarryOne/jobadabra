@@ -107,10 +107,11 @@ class NoReadHoldsTheRun(unittest.TestCase):
             got = employer_sites(hang)
         self.assertEqual(len(got), 8)
 
-    def test_the_cut_counts_from_the_search_start_not_the_restart(self):
+    def test_the_cut_counts_from_the_search_start_in_the_runs_own_budget(self):
         time_budget.start(180, now=100.0)
-        time_budget.restart(now=400.0)   # the crawl's end gives the AI steps the whole budget; the read's cut stays
         self.assertEqual(read_budget.cut_at(), 100.0 + read_budget.READ_SECONDS + read_budget.READ_GRACE)
+        time_budget.start(3, now=0.0)   # a 3-second run reads for the same part of its budget (time_budget.part)
+        self.assertAlmostEqual(read_budget.cut_at(), (read_budget.READ_SECONDS + read_budget.READ_GRACE) * 3 / 180)
 
 
 if __name__ == '__main__':

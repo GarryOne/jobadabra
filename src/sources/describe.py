@@ -180,6 +180,11 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
     """Fill in up to `limit` open jobs (seen in the last `days`) that have no description, from any posting page (page_text), 4 at a time.
     A site that refuses is not asked again for a week; it and sign-in sites are said as "readable in your browser". A site that asks us to
     slow down (host_pace.Busy) keeps its jobs for a later run, not refused. Returns a log line."""
+    from . import read_budget
+    if read_budget.past_cut():   # the run's read time is up: the postings stay without a description until the next search
+        from .. import time_budget
+        time_budget.later('descriptions', 1, 'round of posting reads')
+        return ''
     now = now or datetime.now(timezone.utc)
     since = (now - timedelta(days=days)).isoformat(timespec='seconds')
     rows = db.execute("SELECT id, url FROM jobs WHERE state='open' AND coalesce(description, '') = '' AND first_seen_at >= ? "

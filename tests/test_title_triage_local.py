@@ -1,4 +1,5 @@
-"""Titles of jobs located in the user's own places are sorted first and past the clock (24 Oct 2026, Chisinau: worldwide-remote titles spent the 3 minutes)."""
+"""Titles of jobs located in the user's own places are sorted first and past the titles' clock (24 Oct 2026, Chisinau: worldwide-remote titles spent
+the 3 minutes), never past the run's end (owner, 26 Oct 2026: "A find jobs session should take at most 3min")."""
 import json
 import pathlib
 import re
@@ -29,10 +30,11 @@ class Client:
 class LocalFirstTest(unittest.TestCase):
     def setUp(self):
         self.patches = [mock.patch.object(title_triage, 'STORE', pathlib.Path(tempfile.mkdtemp()) / 't.json'),
-                        mock.patch.object(feeds, 'PLACE', re.compile(r'moldova|chi[sș]in[aă]u', re.I))]
+                        mock.patch.object(feeds, 'PLACE', re.compile(r'moldova|chi[sș]in[aă]u', re.I)),
+                        mock.patch('src.paths.DATA', pathlib.Path(tempfile.mkdtemp()))]   # its paces: the default ones, not a stray step_pace.json
         for patch in self.patches:
             patch.start()
-        time_budget.start(180, now=time.monotonic() - 1000)   # the clock ran out long ago
+        time_budget.start(180, now=time.monotonic() - 150)   # the titles' time ran out (they keep 80 s for scoring), the run's 3 minutes did not
         self.addCleanup(lambda: setattr(time_budget, 'DEADLINE', None))
 
     def tearDown(self):
@@ -58,6 +60,13 @@ class LocalFirstTest(unittest.TestCase):
         titles = [f'Engineer {n}' for n in range(time_budget.LOCAL_TITLES + 30)]
         title_triage.decide(titles, SEARCH, client, local=True)
         self.assertEqual(len(client.asked), time_budget.LOCAL_TITLES)
+
+    def test_past_the_runs_end_local_titles_wait_too(self):
+        # owner, 26 Oct 2026: "A find jobs session should take at most 3min" (tests/test_three_minutes.py)
+        time_budget.start(180, now=time.monotonic() - 1000)
+        client = Client()
+        title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
+        self.assertEqual(client.asked, [])
 
     def test_a_job_is_in_my_place_by_its_location_not_by_being_remote(self):
         for location, mine in [('Chișinău', True), ('Moldova', True), ('MD', True), ('Remote - Worldwide', False), ('Remote', False), ('Berlin', False)]:

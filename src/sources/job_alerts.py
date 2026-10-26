@@ -117,8 +117,13 @@ def extract(client, email_text, pairs, site):
 def scan(db, google, client, now=None):
     """A feeds.scan-style report ({'jobs', 'sources'}) from the alert emails not read yet; your roles and places only."""
     now = now or datetime.now(timezone.utc)
-    db.execute(TABLE)
     report = {'jobs': [], 'sources': []}
+    from . import read_budget
+    if read_budget.past_cut():   # the run's read time is up: the unread emails stay unread for the next search (tests/test_three_minutes.py)
+        from .. import time_budget
+        time_budget.later('job-alert emails', 1, 'check of your alert emails')
+        return report
+    db.execute(TABLE)
     budget = MAX_EMAILS
     for name, source in SOURCES.items():
         if budget <= 0:

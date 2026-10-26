@@ -105,8 +105,6 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     sources, downloads = [sources[index] for index in kept], [downloads[index] for index in kept]
     where = {old: new for new, old in enumerate(kept)}   # the jobs shown early follow their site to its place in the read list
     shown = {(where[index], job): item for (index, job), item in shown.items() if index in where}
-    from .. import time_budget
-    time_budget.restart()   # downloading is not AI time: the places, titles and scoring after it get the whole budget (src/time_budget.py)
     report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested), "unchanged": [source['company'] for source in same]}
     tally = feeds.coverage.Tally()
     feeds.triage_places([job for jobs, failure in downloads if not failure for job in jobs or []])   # where the new locations are: Claude, once each

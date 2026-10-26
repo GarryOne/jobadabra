@@ -276,9 +276,15 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
         return report
     now = now or datetime.now(timezone.utc)
     db.execute(TABLE)
+    from .. import time_budget
+    from . import read_budget
+    late = []   # due past the search's read cut: not read, not marked read; the next search reads them (tests/test_three_minutes.py)
     for name, read in (readers if readers is not None else sources()):
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
+            continue
+        if read_budget.past_cut() and not (ahead is not None and name == boards_ahead.NAME):   # the boards read beside the employers are only taken
+            late.append(name)
             continue
         try:
             if ahead is not None and name == boards_ahead.NAME:
@@ -298,4 +304,6 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
             report['sources'].append({'company': name, 'ok': True, 'total': len(found), 'matches': len(matched)})
         except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError) as error:
             report['sources'].append({'company': name, 'ok': False, 'error': f'{type(error).__name__}: {error}'})
+    if late:
+        time_budget.later('free job APIs', len(late), 'sources' if len(late) != 1 else 'source')
     return report

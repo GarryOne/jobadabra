@@ -40,15 +40,22 @@ class ParallelScanTest(unittest.TestCase):
         self.assertIn('feed down', report['sources'][3]['error'])
         self.assertEqual(len(report['jobs']), 11)
 
-    def test_the_ai_budget_restarts_when_the_downloads_end(self):
-        # 17 Oct 2026: the crawl outlasted the 3-minute clock, so no job was scored for a week (src/time_budget.restart).
+    def test_the_downloads_never_move_the_runs_deadline(self):
+        # 17 Oct 2026 the clock restarted after the downloads (a crawl outlasted 3 min, nothing scored for a week); 26 Oct 2026 that made
+        # runs of 12-23 min. The reads now end at their cut, and the deadline stays the run's (tests/test_three_minutes.py).
+        import tempfile
+        import time
+        from pathlib import Path
+        from unittest import mock
         from src import time_budget
-        time_budget.start(180, now=0)
+        began = time.monotonic()
+        time_budget.start(180, now=began)
         try:
             db = sqlite3.connect(':memory:')
             db.execute('CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))')
-            feeds.scan([{'company': 'Co', 'ats': 'lever', 'slug': 's1'}], db, fetcher=lambda source: [job(1)], details={})
-            self.assertGreater(time_budget.STARTED, 0, 'the clock was started again after the downloads')
+            with tempfile.TemporaryDirectory() as tmp, mock.patch('src.paths.DATA', Path(tmp)):
+                feeds.scan([{'company': 'Co', 'ats': 'lever', 'slug': 's1'}], db, fetcher=lambda source: [job(1)], details={})
+            self.assertEqual((time_budget.STARTED, time_budget.DEADLINE), (began, began + 180), 'the downloads leave the run\'s clock alone')
         finally:
             time_budget.start(0)
 

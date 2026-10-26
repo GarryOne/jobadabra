@@ -172,12 +172,20 @@ def found_first(search_config, wait):
 
 def start(search_config, data, fetch=None, now=None):
     """The web search beside the board proposal and the reads: the one started with the run (early) for this search, else one started now,
-    in its own thread. A (Future of its boards, the found_boards.json it records into) pair; the read saves its own after finish()."""
+    in its own thread. A (Future of its boards, the found_boards.json it records into) pair; the read saves its own after finish().
+    None past the search's read cut: a new search is asked by the next one (tests/test_three_minutes.py)."""
     from ..ai import board_ideas
+    from . import read_budget
     asked = board_ideas.asked_for(search_config)
     with _lock:
         taken = _early.pop(asked[0], None) if asked else None
-    return taken if taken else (_submit(search_config, data, fetch, now), data)
+    if taken:
+        return taken
+    if read_budget.past_cut():
+        from .. import time_budget
+        time_budget.later('web search', 1, 'search')
+        return None
+    return (_submit(search_config, data, fetch, now), data)
 
 
 def _merge(into, copy):

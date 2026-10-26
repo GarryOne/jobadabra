@@ -40,13 +40,14 @@ jobs:
       - name: Suite · python
         id: python
         continue-on-error: true
-        run: bash tools/check.sh --area python
+        run: |
+          bash tools/check.sh --area python || { echo "::error title=Suite failed::python: the job fails at \"Every suite passed\""; exit 1; }
       - name: Suite · worker
         id: worker
         continue-on-error: true
         run: |
           (cd worker && npm ci)
-          bash tools/check.sh --area worker
+          bash tools/check.sh --area worker || { echo "::error title=Suite failed::worker: the job fails at \"Every suite passed\""; exit 1; }
       # Install exactly what a developer has, dev dependencies included: `npm test` runs scripts/stage.mjs, which needs esbuild. Only Electron's large binary is skipped.
       - name: Suite · desktop
         id: desktop
@@ -55,7 +56,7 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: |
           (cd desktop && npm ci)
-          bash tools/check.sh --area desktop
+          bash tools/check.sh --area desktop || { echo "::error title=Suite failed::desktop: the job fails at \"Every suite passed\""; exit 1; }
       # The recorded pages and the widget zoo need the replay's own install (the app's runtime packages only, the generated shared files, the full Chromium).
       - name: Install the replays' packages and browser
         id: replay-install
@@ -78,7 +79,8 @@ jobs:
           JP_REPLAY_TABS: 4
           JP_REPLAY_SHARD: 1/1
           JP_REPLAY_RESULTS: replay-results-1.json
-        run: node --test --test-concurrency=1 test/recorded-pages.test.mjs
+        run: |
+          node --test --test-concurrency=1 test/recorded-pages.test.mjs || { echo "::error title=Suite failed::page cases: the job fails at \"Every suite passed\""; exit 1; }
       # /admin/lab-form-filling's Fixed-site replays show CI on main only: this build's results, ONE PUT with its sha (desktop/e2e/replays-report.mjs). Also when a case failed.
       - name: Send the page cases to /admin/lab-form-filling
         id: pages-report
@@ -95,7 +97,8 @@ jobs:
         env:
           JP_REPLAY: 1
           REPLAY_LOG: 1   # the extension's decision lines per page: why a miss happened
-        run: node widget-zoo.mjs --json widget-zoo.json
+        run: |
+          node widget-zoo.mjs --json widget-zoo.json || { echo "::warning title=Control tests missed::the widget zoo failed (a warning, never red)"; exit 1; }
       - uses: actions/upload-artifact@v6
         if: always()
         with:

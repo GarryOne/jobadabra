@@ -75,6 +75,7 @@ class CategoryPages(unittest.TestCase):
         board_ideas.save({'ideas': {'k1': []}, 'boards': {}})
         client = Client([CATEGORY, GENERAL_HOME])
         with mock.patch.object(careers, 'READER', 'auto'), \
+                mock.patch('src.sources.board_check.field_kind', return_value=None), \
                 mock.patch.object(board_ideas, 'asked_for', return_value=('k1', ['Germany'], ['first officer'], [], ['Berlin'])):
             found = board_web.search({'role_keywords': ['first officer']}, [], client=client, fetch=lambda url: NO_FORM)
         self.assertEqual([(board['host'], board['search_url']) for board in found], [('crew-careers.example', CATEGORY['search_url'])],

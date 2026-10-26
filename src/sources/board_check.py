@@ -4,7 +4,10 @@ job: its home page is fetched (structure only: no address, or a home page that i
 and the AI says what the site is from its name, description and link texts, one fixed answer (src/ai/decide.py). Nothing is checked
 while the AI page reader is off (careers.READER None: tests, a user who keeps pages from the AI). found_boards.read reads a spare board in place of one
 that is not a board, hands 'one employer' to the scout with its website (board_employers.note_site) and skips them later
-(board_yield.pick). Tests: tests/test_board_check.py."""
+(board_yield.pick). Tests: tests/test_board_check.py.
+field_kind: the same question for THIS search's field, asked before a board the web search found joins the list (owner's yes, 26 Oct 2026, discovery
+sketch "AI judges the page": a pilot search's web search returned a recruiter, a news site's search page and an empty board as trade boards).
+Tests: tests/test_board_judge.py."""
 import re
 import socket
 import urllib.error
@@ -100,3 +103,33 @@ def kind(board, fetch, ask=None):
         ask = decide.one
     answer = ask(TOPIC, urllib.parse.urlsplit(address).hostname, digest(page), KINDS, INSTRUCTIONS)
     return (answer if answer in KINDS else None), page
+
+
+FIELD_KINDS = ('field board', 'job board', 'one employer', 'other')
+FIELD_TOPIC = 'job site kind for a field'
+FIELD_INSTRUCTIONS = ("Say what this website is for the person looking for work given first, from its name, description and the texts of its "
+                      "links. 'field board': it lists job offers from many employers in that person's field (a job board of the field, a "
+                      "recruiter's list of many clients' jobs in it, the job section of the field's trade press or association). 'job board': it "
+                      "lists job offers from many employers of any field (a general job portal). 'one employer': it is one company's or "
+                      "organisation's own site, even with a careers page. 'other': anything else (news without job offers, a directory, a shop, "
+                      "a parked or empty domain).")
+
+
+def field_kind(board, fetch, roles, ask=None):
+    """'field board', 'job board', 'one employer' or 'other' for the page this board was found as (its home page when it is a search template),
+    for someone looking for work as `roles`; None when unknown (the page reader off, no page, no AI answer): the board then stands as found."""
+    if careers.READER is None:
+        return None
+    address = home(board) if '{' in board['search_url'] else board['search_url']
+    try:
+        page = str(fetch(address) or '')
+    except Exception:  # noqa: BLE001 — a refusal or a passing error: the board stands, its read and check come later
+        return None
+    if not page.strip():
+        return None
+    if ask is None:
+        from ..ai import decide
+        ask = decide.one
+    text = f"Looking for work as: {', '.join(roles)}\n{digest(page)}"
+    answer = ask(FIELD_TOPIC, urllib.parse.urlsplit(address).hostname, text, FIELD_KINDS, FIELD_INSTRUCTIONS)
+    return answer if answer in FIELD_KINDS else None

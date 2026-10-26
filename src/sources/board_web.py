@@ -253,6 +253,32 @@ def _with_search(item, fetch):
     return {**item, 'search_url': made[0]} if made else item
 
 
+def _judged(found, roles, fetch):
+    """The boards the AI judged as job boards from the page each was found as (src/sources/board_check.py field_kind), checked at once: a board
+    of the field is marked 'sector'; a general one stays only with a keyword search page; one employer's site or anything else is left out,
+    said in the log. Unknown (no answer): the board stands as the search gave it."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from . import board_check
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix='board-judge') as pool:
+        kinds = list(pool.map(lambda board: board_check.field_kind(board, fetch, roles), found))
+    kept = []
+    for board, kind in zip(found, kinds):
+        if kind == 'field board':
+            kept.append({**board, 'source_kind': 'sector'})
+        elif kind == 'job board' and board['source_kind'] == 'sector':
+            if '{role}' in board['search_url']:
+                kept.append({**board, 'source_kind': 'general'})
+            else:
+                print(f"Job boards: {board['name']} lists every kind of job, with no search by words: left out", flush=True)
+        elif kind in ('one employer', 'other'):
+            why = "is one employer's own site" if kind == 'one employer' else 'is not a job board'
+            print(f"Job boards: {board['name']} {why}: left out", flush=True)
+        else:
+            kept.append(board)
+    return kept
+
+
 def search(search_config, known, client=None, now=None, fetch=None, data=None):
     """The specialist and local boards one web search found for this search's proposal (validated, new hosts only), joined to the proposal;
     [] when off, not due, or the search fails. data: the caller's found_boards.json, written by the caller (start); else loaded and saved."""
@@ -318,6 +344,7 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         if board and board['host'] not in hosts and len(found) < MAX_FOUND:
             hosts.add(board['host'])
             found.append(board)
+    found = _judged(found, roles, fetch)
     if found:
         data = board_ideas.load() if own else data
         data.setdefault('ideas', {})[key] = (data['ideas'].get(key) or []) + [{**board, 'origin': 'web'} for board in found]

@@ -6,14 +6,20 @@ call past the deadline (a call already running finishes). No budget (a CLI run, 
 One deadline, wall clock (owner, 26 Oct 2026: "A find jobs session should take at most 3min"; runs with --budget 180 took 12-23 min): every
 stage in STAGES shares the run's DEADLINE, set once at start() and never moved; the reads stop at their cut (src/sources/read_budget.py),
 the AI steps at their reserve, every floor at the end; a stage past its time only queues its work and says so once (later).
-The seconds below are planned for the app's 180 s and scaled to the run's own budget (part). Tests: tests/test_three_minutes.py."""
+The seconds below are planned for the app's 180 s and scaled to the run's own budget (part). Tests: tests/test_three_minutes.py.
+One Find jobs press runs several processes (the job boards' step, then the search, then the scout): each counts from the press (SEARCH_AT, set
+by the app, desktop/lib/search-steps.js), not from its own start, so they share one deadline; a step with a share of it ends at its stage
+(owner's 06:21 press, 26 Oct 2026: 269 s, the job boards' step 177 s of it with no clock before the search's own 3 minutes)."""
 import json
+import os
 import threading
 import time
 
 from . import budget_tape
 
 DEADLINE = None
+STAGE_END = None   # this process's own end on the search's clock (the job boards' step: its share), before DEADLINE; None: DEADLINE
+SEARCH_AT = 'JOB_PILOTTO_SEARCH_AT'   # epoch seconds of the Find jobs press, the same for each of its processes (desktop/lib/search-steps.js)
 STARTED = None
 BEGAN = None   # when the search started (src/sources/read_budget.py cut_at)
 PLANNED = 180   # the app's budget, which the seconds below are planned for (part)
@@ -34,12 +40,26 @@ _local = [0]
 _lock = threading.Lock()
 
 
-def start(seconds, now=None):
-    global DEADLINE, STARTED, BEGAN
-    STARTED = BEGAN = now if now is not None else time.monotonic()
+def _since_press():
+    """Seconds since the Find jobs press this process belongs to (SEARCH_AT), 0 without one (a CLI run, a cloud run, a test)."""
+    try:
+        at = float(os.environ.get(SEARCH_AT) or 0)
+    except ValueError:
+        return 0.0
+    return max(0.0, time.time() - at) if at > 0 else 0.0
+
+
+def start(seconds, now=None, stage=None, name=None):
+    """The run's budget: `seconds` from the press (SEARCH_AT) or from now. stage: this process ends at that many of the PLANNED seconds
+    (part), a step that has only its share of the press. name: a step that is not a search of its own on a search tape (budget_tape)."""
+    global DEADLINE, STARTED, BEGAN, STAGE_END
+    STARTED = BEGAN = (now if now is not None else time.monotonic()) - (_since_press() if seconds and now is None else 0)
     DEADLINE = STARTED + seconds if seconds else None
+    STAGE_END = None
+    if seconds and stage:
+        STAGE_END = min(DEADLINE, BEGAN + part(stage))
     if seconds:
-        budget_tape.new_search()
+        budget_tape.new_search(name)
     score_first(False)
     _said.clear()
     _scored[0] = 0   # a new search: its first FLOOR scores start again whatever the clock
@@ -53,10 +73,15 @@ def part(seconds):
     return seconds * (DEADLINE - BEGAN) / PLANNED
 
 
+def end():
+    """When this process's time is over: its stage's end (STAGE_END) or the run's DEADLINE; None without a budget."""
+    return STAGE_END if STAGE_END is not None else DEADLINE
+
+
 def ended(now=None):
     """The run's time is over: no AI call starts, TAIL before the deadline so a call running ends by it. The floors (FLOOR scores,
     LOCAL_TITLES) beat every step's reserve, never this (26 Oct 2026, a proof run: local-title calls started at 179 s ended the run at 188 s)."""
-    return DEADLINE is not None and (now if now is not None else time.monotonic()) >= DEADLINE - part(TAIL)
+    return DEADLINE is not None and (now if now is not None else time.monotonic()) >= end() - part(TAIL)
 
 
 def later(stage, n, noun):
@@ -136,7 +161,7 @@ def over(step='score', now=None, key=None):
 def _over(step, now):
     if DEADLINE is None:
         return False
-    return (now if now is not None else time.monotonic()) >= DEADLINE - reserve(step)
+    return (now if now is not None else time.monotonic()) >= min(DEADLINE - reserve(step), end() - part(TAIL))
 
 
 # Each step's share of the time left when it starts: title sorting least (a backlog that shrinks to a few dozen titles a day), scoring all
@@ -169,7 +194,8 @@ def _batch(step, wanted, now, say):
     if DEADLINE is None or wanted <= 0:
         return wanted
     floor = min(wanted, floor_left()) if step == 'score' and not ended(now) else 0   # never fewer than the search's first scores (may_score)
-    left = DEADLINE - (now if now is not None else time.monotonic()) - part(TAIL + (FACTS if SCORE_FIRST and step in ('score', 'job') else 0))
+    stop = min(DEADLINE - part(FACTS if SCORE_FIRST and step in ('score', 'job') else 0), end())   # a stage's own end comes first
+    left = stop - (now if now is not None else time.monotonic()) - part(TAIL)
     pace = max(0.5, _paces().get(step, PACE[step]))
     n = max(floor, min(wanted, int(left * SHARE[step] / pace)))
     if not say:

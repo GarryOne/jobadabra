@@ -25,6 +25,9 @@ _SEARCH = load_search_config()
 ROLE = keyword_regex(_SEARCH['board_discovery_keywords'])
 CAREER = meanings_pack.matcher('page-words', 'board_careers_link')   # the meanings pack: the old list (seed) + rows the site adds
 ATS = {'greenhouse.io':'Greenhouse','lever.co':'Lever','ashbyhq.com':'Ashby','smartrecruiters.com':'SmartRecruiters','myworkdayjobs.com':'Workday','successfactors.com':'SAP SuccessFactors','successfactors.eu':'SAP SuccessFactors','teamtailor.com':'Teamtailor','personio.de':'Personio','personio.com':'Personio','recruitee.com':'Recruitee','apply.workable.com':'Workable','hr4you.com':'HR4YOU'}
+# Of the press's 180 s (src/time_budget.py PLANNED, scaled to the run's budget): the job boards' step ends here and the search gets the rest
+# (owner's 06:21 press, 26 Oct 2026: this step took 177 s of 269 with no clock; earlier presses 52-56 s). Tests: tests/test_three_minutes.py.
+SHARE_S = 60
 CITIES = {'zurich':['zürich','zurich','zuerich'], 'geneva':['genève','geneva','genf'], 'lausanne':['lausanne'], 'basel':['basel','bâle'], 'bern':['bern','berne'], 'zug':['zug'], 'winterthur':['winterthur'], 'lucerne':['luzern','lucerne'], 'st. gallen':['st. gallen','st.gallen'], 'lugano':['lugano']}
 
 
@@ -384,13 +387,16 @@ def _board_label(url):
     return ' · '.join([host] + [w for w in words if w]) if query.get('term') else url
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--pages',type=int,default=1);p.add_argument('--max-companies',type=int,default=30);p.add_argument('--refresh',action='store_true');args=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--pages',type=int,default=1);p.add_argument('--max-companies',type=int,default=30);p.add_argument('--refresh',action='store_true');p.add_argument('--budget',type=int,default=0,help='seconds of the Find jobs press (src/time_budget.py): this step ends at its share of them; 0 = none');args=p.parse_args()
     if not 1<=args.pages<=10 or not 1<=args.max_companies<=200:p.error('pages: 1–10; max-companies: 1–200')
     from ..features import disabled
     if disabled('discover'):
         print('job board discovery is off (JOB_PILOTTO_DISABLE includes discover).');return 0
     if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # the end-to-end journey (desktop/e2e): only its fixture feeds, no live crawl
         print('job board discovery is off (fixture feeds only).');return 0
+    if args.budget:   # one Find jobs press, one deadline: this step counts from the press and ends at its share; the boards left wait for the next search
+        from .. import time_budget
+        time_budget.start(args.budget,stage=SHARE_S,name='discover')
     client=Client(args.refresh);jobs=[];sources=[]
     used=boards(_SEARCH)
     if not used:   # nothing fixed for these roles and places: the boards found for them (any country)
@@ -401,11 +407,12 @@ def main():
     seen_urls=set();pages_found=[];asked=0
     pairs=[[query,place] for query in (jobsch_terms(_SEARCH) if 'jobs.ch' in used else []) for place in jobsch_places(_SEARCH)]
     ordered,done=rotation(pairs);taken=0
+    from . import read_budget
     for query,place in ordered:   # every role x every place, MAX_REQUESTS pages a refresh, the next refresh going on from here
-        if asked>=MAX_REQUESTS:break
+        if asked>=MAX_REQUESTS or read_budget.past_cut():break   # past this step's share of the press: the next refresh goes on from here
         taken+=1
         for page in range(1,args.pages+1):   # --pages is the most read: a short page or one with nothing new ends the search
-            if asked>=MAX_REQUESTS:break
+            if asked>=MAX_REQUESTS or read_budget.past_cut():break
             url='https://www.jobs.ch/en/vacancies/?'+urlencode({'term':query,**({'location':place} if place else {}),'page':page})
             try:
                 asked+=1
@@ -417,7 +424,10 @@ def main():
             except Exception as e:
                 sources.append({'source':url,'status':str(e)});break
     done(taken)
-    if pairs and taken<len(pairs):
+    if pairs and taken<len(pairs) and read_budget.past_cut():
+        from .. import time_budget
+        time_budget.later('job boards',len(pairs)-taken,'searches')
+    elif pairs and taken<len(pairs):
         print(f'Job boards: {taken} of {len(pairs)} searches this refresh (your roles x your places); the next refresh goes on from there',flush=True)
     # Which titles are your kind of job: the AI title check, as for every source (7 Oct 2026: a word match dropped most titles here)
     from . import feeds
@@ -430,7 +440,7 @@ def main():
         fit=[job for job in found if feeds.wanted_title(job['title'])];fit_fresh=[job for job in fresh if feeds.wanted_title(job['title'])]
         jobs.extend(fit_fresh);sources.append({'source':url,'status':jobsch_status(listed,len(fit),len(fit_fresh))})
     for label,url in [('SwissDevJobs','https://swissdevjobs.ch/api/jobsLight'),('TechTree','https://jobs.techtree.dev/')]:
-        if label not in used:continue
+        if label not in used or read_budget.past_cut():continue
         try:
             page=client.get(url)['html']
             found=parse_tree(page) if label=='TechTree' else parse_swissdevjobs(json.loads(page),wanted_title);jobs.extend(found)
@@ -441,9 +451,13 @@ def main():
         if job['url'] in seen:continue
         seen.add(job['url']);groups.setdefault(job['company'],[]).append(job)
     report={'checked_at':datetime.now(timezone.utc).isoformat(timespec='seconds'),'sources':sources,'discovered_companies':len(groups),'companies':[]}
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        for company in pool.map(lambda pair:enrich(pair,client),list(groups.items())[:args.max_companies]):
+    with ThreadPoolExecutor(max_workers=3) as pool:   # an employer's career links not followed by the cut: the next search finds it on the board again
+        for company in pool.map(lambda pair:None if read_budget.past_cut() else enrich(pair,client),list(groups.items())[:args.max_companies]):
+            if company is None:continue
             report['companies'].append(company);print('Checked:',company['company'],flush=True)
+    if (unchecked:=min(len(groups),args.max_companies)-len(report['companies'])):
+        from .. import time_budget
+        time_budget.later('job boards',unchecked,'employers')
     report['companies'].sort(key=lambda c:(not bool(c['career_pages']),-(c['min_employees'] or 0),c['company']))
     out=REPORTS;out.mkdir(exist_ok=True)
     (out/'companies.html').write_text(render(report))

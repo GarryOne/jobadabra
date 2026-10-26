@@ -44,13 +44,14 @@ def _load():
     return _tape
 
 
-def new_search():
+def new_search(name=None):
     """A process starts its time budget: it is the run's next search. The count lives in the run's own data folder (fresh for each replay and
-    each recording), so the same processes in the same order get the same numbers in both."""
+    each recording), so the same processes in the same order get the same numbers in both. name: a step of a press that is no search of its own
+    (the job boards' step, 'discover'): its own count, so the searches keep their numbers on a tape recorded before that step had a clock."""
     if not active():
         return
     from .paths import DATA
-    file = DATA / 'budget_epoch.txt'
+    file = DATA / (f'{name}_epoch.txt' if name else 'budget_epoch.txt')
     try:
         epoch = int(file.read_text()) + 1
     except (OSError, ValueError):
@@ -61,7 +62,7 @@ def new_search():
     except OSError:
         pass
     with _lock:
-        _epoch[0] = epoch
+        _epoch[0] = f'{name} {epoch}' if name else epoch
         _seen.clear()
 
 

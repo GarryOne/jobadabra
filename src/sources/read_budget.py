@@ -50,7 +50,10 @@ def cut_at():
     read until 5 min 37 s). From the search's start, READ_GRACE past READ_SECONDS; None without a budget."""
     if time_budget.DEADLINE is None or time_budget.BEGAN is None:
         return None
-    return time_budget.BEGAN + time_budget.part(READ_SECONDS + READ_GRACE)
+    cut = time_budget.BEGAN + time_budget.part(READ_SECONDS + READ_GRACE)
+    if time_budget.STAGE_END is not None:   # a step with its share of the press (the job boards' step): its reads end with its AI calls
+        cut = min(cut, time_budget.STAGE_END - time_budget.part(time_budget.TAIL))
+    return cut
 
 
 def past_cut(now=None):

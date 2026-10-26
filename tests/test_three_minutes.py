@@ -4,7 +4,9 @@ fresh minutes after the crawl). One run of slow fake stages ends inside its budg
 (src/time_budget.py STAGES): past the run's time, each only queues its work."""
 import io
 import json
+import os
 import sqlite3
+import sys
 import tempfile
 import threading
 import time
@@ -14,7 +16,7 @@ from pathlib import Path
 from unittest import mock
 
 from src import time_budget
-from src.sources import aggregators, board_web, boards_ahead, careers, feeds, found_boards, read_budget
+from src.sources import aggregators, board_web, board_yield, boards, boards_ahead, careers, feeds, found_boards, read_budget
 
 BUDGET = 3        # seconds: the app's 180 s, scaled (time_budget.part)
 SLACK = 0.6       # a call already running when a stage stops may finish
@@ -223,6 +225,66 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
             for stage in ('employer sites', 'title sorting', 'scoring', 'job facts', 'employer names'):
                 with self.subTest(stage):
                     self.assertTrue(self.work(stage), stage)
+
+
+class OnePressOneDeadline(Isolated):
+    """A Find jobs press runs the job boards' step (src discover) before daily: one deadline from the press for both (owner's 06:21 press,
+    26 Oct 2026: 269 s, discover 177 s of it with no clock, then daily's own 3 minutes). Each step counts from the press (the app's
+    JOB_PILOTTO_SEARCH_AT), and discover ends at its share of it (desktop/test/search-steps.test.js gives every step the press)."""
+
+    def test_a_step_counts_from_the_press_not_from_its_own_start(self):
+        with mock.patch.dict(os.environ, {time_budget.SEARCH_AT: str(time.time() - 1)}):
+            time_budget.start(BUDGET)
+        self.assertAlmostEqual(time_budget.DEADLINE - time.monotonic(), BUDGET - 1, delta=0.2)
+        self.assertAlmostEqual(read_budget.cut_at() - time.monotonic(), time_budget.part(90) - 1, delta=0.2, msg='the read cut too')
+
+    def test_slow_boards_end_at_discovers_share_and_wait_for_the_next_search(self):
+        release = threading.Event()
+        self.addCleanup(release.set)
+
+        def slow(board_, *a, **k):   # a board still open long after the cut; a failed late read keeps nothing (late_reads.when_done)
+            release.wait(10)
+            raise OSError('the test is over')
+        argv = ['python -m src discover', '--pages', '5', '--max-companies', '40', '--budget', str(BUDGET)]
+        env = {k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_FIXTURE_DIR'}
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(time.time())}, clear=True), \
+                mock.patch.object(boards, 'boards', return_value=[]), mock.patch('src.ai.board_ideas.ideas', return_value=[board(i) for i in range(6)]), \
+                mock.patch.object(found_boards, 'read_board', side_effect=slow), mock.patch.object(board_web, 'start', return_value=None), \
+                mock.patch.object(board_web, 'finish', return_value=[]), mock.patch.object(board_yield, '_read_since', return_value=None), \
+                redirect_stdout(io.StringIO()) as log:
+            began = time.monotonic()
+            boards.main()
+            took = time.monotonic() - began
+        share = time_budget.part(boards.SHARE_S)
+        self.assertLess(took, share, f'discover took {took:.2f} s of its {share:.2f} s share of the press')
+        self.assertRegex(log.getvalue(), r'⏱ Time is up \(\d+ min \d\d s\) for job boards: 6 boards wait for the next search')
+
+    def test_past_its_share_the_fixed_boards_read_nothing_and_follow_no_employer(self):
+        """The fixed boards' branch (jobs.ch, SwissDevJobs, TechTree, then each employer's career links): past the step's share it asks
+        no page; the searches not asked go on next time from where this one stopped (rotation)."""
+        asked = []
+        argv = ['python -m src discover', '--budget', str(BUDGET)]
+        env = {k: v for k, v in os.environ.items() if k != 'JOB_PILOTTO_FIXTURE_DIR'}
+        with mock.patch.object(sys, 'argv', argv), mock.patch.dict(os.environ, {**env, time_budget.SEARCH_AT: str(time.time() - BUDGET)}, clear=True), \
+                mock.patch.object(boards, 'boards', return_value=['jobs.ch', 'SwissDevJobs', 'TechTree']), \
+                mock.patch.object(boards, 'jobsch_terms', return_value=['pilot']), mock.patch.object(boards, 'jobsch_places', return_value=['Zurich']), \
+                mock.patch.object(boards, 'rotation', side_effect=lambda pairs: (pairs, lambda taken: None)), \
+                mock.patch.object(boards.Client, 'get', side_effect=lambda url: asked.append(url)), \
+                mock.patch.object(boards, 'enrich', side_effect=lambda pair, client: asked.append(pair)), \
+                mock.patch.object(boards, 'REPORTS', self.data), redirect_stdout(io.StringIO()) as log:
+            boards.main()
+        self.assertEqual(asked, [])
+        self.assertRegex(log.getvalue(), r'⏱ Time is up \(\d+ min \d\d s\) for job boards: 1 searches? waits? for the next search')
+
+    def test_discover_is_not_a_search_of_its_own_on_a_tape(self):
+        """A recorded search's decisions are numbered by the processes that start a budget (src/budget_tape.py): discover's clock keeps its
+        own count, so a tape recorded before it had one still replays daily's decisions as daily's."""
+        tape = self.data / 'tape'
+        with mock.patch.dict(os.environ, {'JOB_PILOTTO_SEARCH_TAPE': str(tape), 'JOB_PILOTTO_SEARCH_TAPE_MODE': 'record'}):
+            time_budget.start(BUDGET, stage=boards.SHARE_S, name='discover')
+            self.assertFalse((self.data / 'budget_epoch.txt').exists())
+            time_budget.start(BUDGET)
+            self.assertEqual((self.data / 'budget_epoch.txt').read_text(), '1')
 
 
 class NoRoundStepTakesARoundItsShareDoesNotCover(unittest.TestCase):

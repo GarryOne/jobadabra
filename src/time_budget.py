@@ -11,6 +11,7 @@ from . import budget_tape
 
 DEADLINE = None
 STARTED = None
+BEGAN = None   # when the search started: restart() moves STARTED, never this (src/sources/read_budget.py cut_at)
 RESERVE = {'titles': 75, 'enrich': 40, 'score': 0}   # seconds kept for the AI steps that come after this one
 FACTS = 60   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
 SCORE_FIRST = False
@@ -23,8 +24,8 @@ _lock = threading.Lock()
 
 
 def start(seconds, now=None):
-    global DEADLINE, STARTED
-    STARTED = now if now is not None else time.monotonic()
+    global DEADLINE, STARTED, BEGAN
+    STARTED = BEGAN = now if now is not None else time.monotonic()
     DEADLINE = STARTED + seconds if seconds else None
     if seconds:
         budget_tape.new_search()

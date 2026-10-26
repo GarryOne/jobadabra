@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 from .. import run_counts
 from ..progress import Ticker
-from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace
+from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, read_budget
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
 FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up to this many (a board gave 3 jobs from 2 of the driver's 5, 18 Oct 2026)
@@ -431,10 +431,17 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         run_counts.looked(found)
         run_counts.matched(relevant)
         jobs.extend(found)
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
-        for done, (read_item, result) in enumerate(zip(reads, pool.map(one_or_spare, reads)), 1):
-            keep(read_item, result)
-            ticker.tick(done, f" · {read_item[0]['name']}")
+    pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
+    for done, (read_item, future) in enumerate([(read_item, pool.submit(one_or_spare, read_item)) for read_item in reads], 1):
+        result = read_budget.result(future, cut)   # a board still open at the search's cut is not waited for (read_budget.cut_at)
+        if result is read_budget.LEFT:
+            left.append(read_item[0]['name'])
+            continue
+        keep(read_item, result)
+        ticker.tick(done, f" · {read_item[0]['name']}")
+    pool.shutdown(wait=not left, cancel_futures=True)
+    if left:
+        print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)
     for _, spare_item, result in sorted(taken, key=lambda entry: entry[0]):   # after the others, in the spares' order: a replay sees one order
         keep(spare_item, result)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run

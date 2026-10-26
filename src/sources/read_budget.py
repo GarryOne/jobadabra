@@ -6,12 +6,15 @@ after its read began (or at the run's deadline, the earlier), always reading the
 or cloud run, a test without one): every site, as before. Used by src/sources/feed_scan.py. Tests: tests/test_read_budget.py."""
 import json
 import time
+from concurrent.futures import TimeoutError as Late
 from datetime import datetime, timezone
 
 from .. import paths, time_budget
 
 READ_SECONDS = 120   # of the search's 3 minutes; the AI steps after the read keep their own (time_budget.restart)
 READ_FLOOR = 40      # sites read whatever the clock says: the best ones of every search
+READ_GRACE = 30      # a site already open may take this long past the read's time; then it is left for the next run, not waited for
+LEFT = object()      # result(): the site was still being read at the cut
 LEFT_DAYS = 7        # a kept list older than this is dropped (a search moved on)
 FILE = 'employers_left.json'
 
@@ -26,6 +29,28 @@ def deadline(now=None):
         return None
     started = now if now is not None else time.monotonic()
     return min(started + READ_SECONDS, max(time_budget.DEADLINE, started))
+
+
+def cut_at():
+    """The monotonic time a timed search stops waiting for any site still being read: employer sites, job boards, the boards its web search
+    found, the web search itself (owner's run d4561921e533, 26 Oct 2026: no new site after 2 minutes, but ~22 slow ones already open held the
+    read until 5 min 37 s). From the search's start, READ_GRACE past READ_SECONDS; None without a budget."""
+    if time_budget.DEADLINE is None or time_budget.BEGAN is None:
+        return None
+    return time_budget.BEGAN + READ_SECONDS + READ_GRACE
+
+
+def seconds_left(at):
+    """How long to wait for an open site before the cut (None: no cut, wait for it)."""
+    return None if at is None else max(0.0, at - time.monotonic())
+
+
+def result(future, at):
+    """The future's result, or LEFT when the cut comes first (its site is not waited for). A failed read raises as future.result() does."""
+    try:
+        return future.result(timeout=seconds_left(at))
+    except Late:
+        return LEFT
 
 
 def over(at, index, now=None):

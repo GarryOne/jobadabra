@@ -75,6 +75,21 @@ test('a schedule on an unchanged commit takes up to three looks with the AI revi
   assert.match((await plan({EVENT: 'schedule', SHA: HEAD}, {runs: others})).why, /look 2 of 3/, 'soak top-ups, the canary, the gate and pushes test other things');
 });
 
+// Gate G7 (26 Oct 2026): main's 23:33 and 23:47 runs skipped while beta 2 ran and ended green with no suite run; as looks, three such skips retire a commit nobody tested.
+test('a run that tested nothing (ended cancelled by "Nothing tested") is neither a look nor the last tested commit', async () => {
+  const skipped = hours => sched(hours, {conclusion: 'cancelled'});
+  const fresh = await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [skipped(1), skipped(2), skipped(3), {event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js']});
+  assert.equal(fresh.count, String(ALL.length), 'three skipped runs on HEAD: HEAD is still a new commit, every suite runs');
+  assert.match(fresh.why, /a new commit/);
+  assert.match((await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [skipped(1), sched(8)]})).why, /look 2 of 3/, 'only the tested run is a look');
+});
+
+test('a schedule while a release run tests plans no suite and says why (e2e.yml then ends the run grey)', async () => {
+  const out = await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [{event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js'], releasing: [{status: 'in_progress', displayTitle: 'Beta by hand'}]});
+  assert.equal(out.count, '0');
+  assert.match(out.why, /release run is testing \(Beta by hand\)/);
+});
+
 test('a schedule with new commits runs every suite on that commit', async () => {
   const changed = await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [{event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js']});
   assert.deepEqual([changed.count, changed.ref, changed.review, changed.tag], ['4', HEAD, '0', '']);

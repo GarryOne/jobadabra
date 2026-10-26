@@ -38,6 +38,8 @@ Why each rule exists: [why.md](why.md#change-loop).
 Let it run to the end, read every red job's log, name each cause (skill **fix-failing-e2e**), fix them together, then dispatch the next beta. Cancel only a beta that hangs or whose build failed.
 A flake is re-run once, named. Why: [why.md](why.md#a-red-beta-runs-to-the-end-24-oct-2026).
 
+**Green means tested** (gate G7, 26 Oct 2026): a main e2e run that ran no suite ends grey (cancelled) with its reason, never green; on 25 Oct two skipped runs read as a green main 1 h after a red one.
+
 ## Debugging a failing e2e step
 The whole loop, with the cause list and the CI by-hand proof (not a beta): skill **fix-failing-e2e**.
 - **Read before you re-run.** `desktop/e2e/artifacts/<suite>/suite-failures.json`, `artifacts/<suite>.run.log`, the screenshot, `logs/app.log`.

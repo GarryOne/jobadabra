@@ -29,11 +29,14 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const json = args => { try { return JSON.parse(gh(args)); } catch { return []; } };
 
   const runs = json(['run', 'list', '-R', repo, '--workflow', 'e2e.yml', '--status', 'completed', '-L', '60', '--json', 'event,headSha,conclusion,createdAt,displayTitle']);
-  const lastSha = runs.find(run => run.event !== 'push' && ['success', 'failure'].includes(run.conclusion))?.headSha || '';
+  // A run tested something only when it ended green or red. A run that planned no suite ends cancelled (e2e.yml "Nothing tested", gate G7, 26 Oct 2026): it is never the
+  // last tested commit and never one of a commit's looks. Before G7 it ended green: on 25 Oct two runs skipped while beta 2 ran, read as green, and counted as looks.
+  const tested = run => ['success', 'failure'].includes(run.conclusion);
+  const lastSha = runs.find(run => run.event !== 'push' && tested(run))?.headSha || '';
   const issues = json(['issue', 'list', '-R', repo, '--label', 'auto-ui', '--state', 'open', '--limit', '300', '--json', 'number,state,labels,body,comments,createdAt']);
   const waiting = waitingFindings(issues);
   // Runs of main's code on this commit (a gate run, a release candidate's top-up or the stable canary tests another commit under main's name: not these).
-  const own = run => run.headSha === ref && run.event !== 'push' && run.event !== 'workflow_run' && !/^(Stable canary|RC soak|Gate|Beta E2E tests) /.test(run.displayTitle || '');
+  const own = run => run.headSha === ref && tested(run) && run.event !== 'push' && run.event !== 'workflow_run' && !/^(Stable canary|RC soak|Gate|Beta E2E tests) /.test(run.displayTitle || '');
   let exploring = false, why = '';
 
   let suites = [], tag = '';

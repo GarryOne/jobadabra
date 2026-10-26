@@ -110,6 +110,7 @@ jobs:
       tag: ${{ steps.list.outputs.tag }}
       review: ${{ steps.list.outputs.review }}
       suites: ${{ steps.list.outputs.suites }}
+      why: ${{ steps.list.outputs.why }}   # why a run planned what it did (no suite: the Nothing tested job says it)
       over: ${{ steps.spend.outputs.over }}
     steps:
       - uses: actions/checkout@v5
@@ -418,6 +419,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
+
+  # Nothing tested is never green (gate G7, owner's yes 26 Oct 2026). A scheduled run on main that planned no suite (a release run was testing, the commit's looks were
+  # used up, nothing varies) used to end green: on 25 Oct the 23:33 and 23:47 runs skipped while beta 2 ran and read as a green main. It now says why and ends CANCELLED
+  # (grey). plan-run.mjs counts only green or red runs as tested, so the next scheduled run tests this commit. Never in a gate (gate_tag): there it would cancel a release.
+  nothing-tested:
+    name: Nothing tested
+    needs: plan
+    if: needs.plan.outputs.count == '0' && !inputs.gate_tag && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.scheduled)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write   # cancel this run
+    steps:
+      - name: Say why, then end the run grey, not green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WHY: ${{ needs.plan.outputs.why }}
+        run: |
+          echo "### ⊘ Nothing tested on ${GITHUB_SHA:0:7}: ${WHY:-no suite was planned}" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "This run ends cancelled so it never reads as a green e2e check; the next scheduled run tests this commit." | tee -a "$GITHUB_STEP_SUMMARY"
+          gh run cancel "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY"
+          sleep 120   # the cancel lands while this step waits
 
   # One Playwright HTML report for the run (6 Oct 2026): every suite wrote a blob (desktop/e2e/report/playwright.config.mjs); merged here, uploaded as e2e-report
   # (uncompressed: the owner's site serves its files straight from the artifact, admin/e2e-report.js) and linked on the run's Summary page.

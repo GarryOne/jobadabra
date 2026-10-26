@@ -667,6 +667,15 @@ jobs:
           name: e2e-artifacts-${{ matrix.key }}
           path: e2e-artifacts/${{ matrix.key }}
           if-no-files-found: ignore
+      # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read
+      # (#2087's quality run 40340783596, 26 Oct 2026). Guard: tests/test_e2e_artifacts_uploaded.py.
+      - name: The second try's screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-rerun-${{ matrix.key }}
+          path: e2e-rerun/${{ matrix.key }}
+          if-no-files-found: ignore
       - name: The App token to give the lock back (the first one may have expired)
         id: lock_app_end
         if: always()

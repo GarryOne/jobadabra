@@ -131,6 +131,7 @@ export async function run(ctx) {
       });
     }, ['extension', 'chrome', 'telegram', 'gmail', 'notion', 'calendar', 'cv', 'profile', 'plan', 'promo', 'find jobs']);
     if (crowded.length) throw new Error(`⌘K lists more than the card asked for: ${crowded.join(' | ')}`);
+    await page.locator('#palette[open] input').fill('');   // Esc in a search box with text clears the text first
     await page.keyboard.press('Escape');
     await page.locator('#palette[open]').waitFor({state: 'detached', timeout: 5000}).catch(async () => {
       if (await page.locator('#palette[open]').count()) throw new Error('Esc did not close the palette');

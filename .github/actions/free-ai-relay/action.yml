@@ -25,7 +25,7 @@ runs:
     - name: Read access to the site (the CI App)
       if: inputs.cf-token != '' && inputs.app-id != ''
       id: site_token
-      uses: actions/create-github-app-token@v2
+      uses: actions/create-github-app-token@v3
       with:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.app-key }}

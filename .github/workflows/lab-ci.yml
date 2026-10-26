@@ -31,7 +31,7 @@ jobs:
         run: python3 -m pip install --quiet cryptography==44.0.2
       - name: Read access to the private lab and a status on its commits (the CI App, the lab only)
         id: lab_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}

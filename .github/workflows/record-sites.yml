@@ -302,7 +302,7 @@ jobs:
       - name: The App token, so the PR's checks start
         id: pr_app
         continue-on-error: true   # a failed mint falls back to the workflow token, never a red job
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}

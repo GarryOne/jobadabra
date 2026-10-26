@@ -76,7 +76,7 @@ jobs:
         id: records_app
         if: steps.records_app_key.outputs.set == 'true'
         continue-on-error: true   # a failed mint falls back to the old secret, never a red job
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
@@ -151,7 +151,7 @@ jobs:
         id: records_app
         if: steps.records_app_key.outputs.set == 'true'
         continue-on-error: true   # a failed mint falls back to the old secret, never a red job
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}

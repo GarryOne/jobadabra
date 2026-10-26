@@ -226,7 +226,7 @@ jobs:
         id: lock_app
         if: inputs.pr_steps == ''
         continue-on-error: true   # a failed mint falls back to the workflow token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
@@ -312,7 +312,7 @@ jobs:
         id: lock_app_end
         if: always() && inputs.pr_steps == ''
         continue-on-error: true   # a failed mint falls back to the workflow token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}

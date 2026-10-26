@@ -1,0 +1,60 @@
+# CI on Free AI (owner, 26 Oct 2026: "Let's just switch to Free AI (CloudFlare workers AI). I don't want to top up anymore"): starts the site's own Free AI handler
+# on this runner (jobadabra-web jobs/persona-search/free-ai-local.mjs: Workers AI over REST on CI's own token, production's caps, KV and D1 in memory, no alerts,
+# never production's /api/ai, Worker or counters; docs/rules/why.md) and hands the job E2E_FREE_AI_URL and a throwaway JPF1 key (E2E_FREE_AI_KEY, masked).
+# desktop/e2e/lib/engine.mjs then runs the app under test and the judges on it. No token (a fork): nothing starts and the job runs as before.
+# The relay runs inside the joined tree the site is built in (the public tree with the site's files laid over it, as its tools/overlay.sh does), built here with
+# git archive so it works on Linux, Mac and Windows runners. Needs Node 22 set up first (node:sqlite). Guarded by tests/test_ci_free_ai.py.
+name: Free AI relay
+description: The site's Free AI handler on this runner, for the e2e suites
+inputs:
+  cf-token: {description: 'secrets.CI_FREE_AI_CF_TOKEN', required: false, default: ''}
+  cf-account: {description: 'secrets.CI_FREE_AI_CF_ACCOUNT_ID', required: false, default: ''}
+  app-id: {description: 'secrets.CI_APP_ID (the CI App reads jobadabra-web)', required: false, default: ''}
+  app-key: {description: 'secrets.CI_APP_PRIVATE_KEY', required: false, default: ''}
+  port: {description: 'the relay port on this runner', required: false, default: '8787'}
+runs:
+  using: composite
+  steps:
+    - name: No Free AI token here
+      if: inputs.cf-token == '' || inputs.app-id == ''
+      shell: bash
+      run: |
+        echo "Free AI relay: no CI_FREE_AI_CF_TOKEN or CI App here (a fork): the suites run on the Claude/OpenAI keys as before."
+    - name: Read access to the site (the CI App)
+      if: inputs.cf-token != '' && inputs.app-id != ''
+      id: site_token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.app-key }}
+        owner: GarryOne
+        repositories: jobadabra-web
+    - name: The site's Free AI handler
+      if: inputs.cf-token != '' && inputs.app-id != ''
+      uses: actions/checkout@v5
+      with:
+        repository: GarryOne/jobadabra-web
+        token: ${{ steps.site_token.outputs.token }}
+        path: .free-ai-site
+        persist-credentials: false
+    - name: Start the relay
+      if: inputs.cf-token != '' && inputs.app-id != ''
+      shell: bash
+      env:
+        FREE_AI_LOCAL_CF_AI_TOKEN: ${{ inputs.cf-token }}
+        FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ inputs.cf-account }}
+        PORT: ${{ inputs.port }}
+      run: |
+        set -euo pipefail
+        tree="$RUNNER_TEMP/free-ai-tree"; rm -rf "$tree"; mkdir -p "$tree"
+        git -C "$GITHUB_WORKSPACE" archive HEAD | tar -x -C "$tree"
+        git -C "$GITHUB_WORKSPACE/.free-ai-site" archive HEAD | tar -x -C "$tree"
+        site="$(git -C "$GITHUB_WORKSPACE/.free-ai-site" rev-parse --short HEAD)"
+        rm -rf "$GITHUB_WORKSPACE/.free-ai-site"   # nothing private stays in the workspace the suites and their artifacts see
+        log="$RUNNER_TEMP/free-ai-relay.log"; key="$RUNNER_TEMP/free-ai.key"
+        (cd "$tree" && nohup node jobs/persona-search/free-ai-local.mjs "$PORT" "$key" --install-prefix ci-e2e- > "$log" 2>&1 &)
+        for i in $(seq 1 60); do grep -q "listening on $PORT" "$log" 2>/dev/null && break; sleep 0.5; done
+        if ! grep -q "listening on $PORT" "$log"; then echo "::error::the Free AI relay did not start (jobadabra-web $site):"; cat "$log"; exit 1; fi
+        echo "::add-mask::$(cat "$key")"
+        { echo "E2E_FREE_AI_URL=http://127.0.0.1:$PORT/api/ai"; echo "E2E_FREE_AI_KEY=$(cat "$key")"; echo "E2E_FREE_AI_LOG=$log"; } >> "$GITHUB_ENV"
+        echo "Free AI relay: listening on $PORT (jobadabra-web $site); the app under test and the judges run on Free AI"

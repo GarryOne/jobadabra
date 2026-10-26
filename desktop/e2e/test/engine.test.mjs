@@ -61,7 +61,7 @@ test('the AI family alternates per CI run (odd: OpenAI, even: Claude), never wit
   assert.equal(pickFamily({}), 'claude');
   assert.equal(pickEngine({env: {E2E_AI_FAMILY: 'openai'}, installed: () => true}), 'codex');
   assert.throws(() => pickEngine({env: {E2E_AI_ENGINE: 'openai'}}), /CI only/);
-  assert.throws(() => pickFamily({E2E_AI_FAMILY: 'gpt'}), /claude, openai or rotate/);
+  assert.throws(() => pickFamily({E2E_AI_FAMILY: 'gpt'}), /claude, openai, free or rotate/);
 });
 
 // Owner, 12 Oct 2026: each live run's AI cost shows apart in the Console and on /admin/ai-cost: the CI recording by hand asks on its own key (the PR key went on 15 Oct 2026).
@@ -74,4 +74,26 @@ test('live runs ask on their own key (a recording run by hand), the Tests key un
   assert.deepEqual([liveKeyName(notYet), testKey(notYet)], ['E2E_ANTHROPIC_KEY', 'tests'], 'its own key not set yet: the Tests key');
   assert.equal(testKey({...env, CI: '', JOB_PILOTTO_VISIT_KIND: 'hand'}), '', 'never on a Mac');
   assert.equal(liveKeyName({...env, JOB_PILOTTO_VISIT_KIND: 'hand'}, 'openai'), 'E2E_OPENAI_KEY', 'an OpenAI engine keeps its own Tests key');
+});
+
+// Owner, 26 Oct 2026 (CI's Anthropic credit ran out): "Let's just switch to Free AI (CloudFlare workers AI). I don't want to top up anymore". With the relay up on the
+// runner (.github/actions/free-ai-relay), every CI suite's app runs on Free AI and the judges ask it too; the Claude smoke is parked until he funds Claude.
+test('CI on Free AI: with the relay up the app and the judges run on Free AI, its throwaway key, never the Claude key', async () => {
+  const {pickEngine, pickFamily, judgeFamily, familySecret, testKey, freeAi, freeAiPlanned} = await import('../lib/engine.mjs');
+  const relay = {E2E_FREE_AI_URL: 'http://127.0.0.1:8787/api/ai', E2E_FREE_AI_KEY: 'JPF1.ci-e2e-x.t'};
+  const ci = (run, extra = {}) => ({CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_OPENAI_KEY: 'sk-test', E2E_ANTHROPIC_KEY: 'sk-ant-test', ...extra});
+  for (const run of [7, 8]) assert.equal(pickFamily(ci(run, relay)), 'free', `run ${run}: Free AI on every run`);
+  assert.equal(pickEngine({env: ci(8, relay), family: 'free'}), 'api', 'Free AI IS the API engine with a JPF1 key (desktop/lib/ai-free.js)');
+  assert.equal(testKey(ci(8, relay), 'api', 'free'), relay.E2E_FREE_AI_KEY);
+  assert.equal(familySecret('free'), 'E2E_FREE_AI_KEY');
+  assert.equal(judgeFamily(ci(8, relay)), 'free');
+  assert.equal(judgeFamily(ci(8, {...relay, E2E_JUDGE_FAMILY: 'claude'})), 'claude', 'one switch puts the judges back on Claude when he funds it');
+  assert.equal(pickFamily(ci(8, {...relay, E2E_AI_FAMILY: 'openai'})), 'openai', 'a pin still wins');
+  // No relay (a fork, or the token unset): today's rotation, unchanged.
+  assert.equal(pickFamily(ci(7)), 'openai');
+  assert.equal(judgeFamily(ci(7)), 'claude');
+  assert.equal(freeAi(ci(7, {E2E_FREE_AI_URL: relay.E2E_FREE_AI_URL})), false, 'a URL without its key is not a relay');
+  assert.equal(freeAi({...relay}), false, 'never on a Mac');
+  assert.equal(freeAiPlanned(ci(7, {CI_FREE_AI_CF_TOKEN: 'cf'})), true, 'the token set: the relay will start (the preflight checks the token)');
+  assert.throws(() => pickFamily({...relay, E2E_AI_FAMILY: 'free'}), /CI only/);
 });

@@ -11,7 +11,8 @@ import {startGoogleFake} from './google-fake.mjs';
 import {startReleasesFake} from './releases-fake.mjs';
 import {buildStandIn, startNotionFake} from './notion-fake.mjs';
 import {useNotionAt} from './notion.mjs';
-import {appKey, appModelEnv, DUMMY_KEY, familyOf, isCi, keySecret, pickEngine, testKey} from './engine.mjs';
+import {appKey, appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFamily, testKey} from './engine.mjs';
+import {checkRelay} from './free-ai-check.mjs';
 import {copyExtension, freePort, makeOpenShim} from './extension.mjs';
 import {startForms} from './forms.mjs';
 import {createVariation, placeOf} from './variation.mjs';
@@ -52,11 +53,14 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const standIn = store === 'standin' || (store === 'sqlite' && notionStandIn) ? await startNotionFake() : null;
   // Off the real workspace nothing reaches Notion: the harness's own Notion calls go to the stand-in, or on this Mac's store to a dead local port (lib/store.mjs).
   if (store && store !== 'notion') useNotionAt(notionFarSide({store, standIn: standIn?.url}));
-  const engine = pickEngine({suiteEngine});
+  const family = pickFamily(), engine = pickEngine({suiteEngine, family});   // family: claude | openai | free (CI on Free AI: lib/engine.mjs freeAi)
   // The app's key follows its engine's family (E2E_OPENAI_KEY for OpenAI); a light suite is the judges' own calls: Claude's key.
-  const key = light ? KEY() : testKey(process.env, engine), token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
-  if (!light) console.log(`  AI family under test: ${familyOf(engine) === 'openai' ? 'OpenAI' : 'Claude'} (engine ${engine}${isCi() ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
-  if (!light && isCi()) { await checkKeyAccepted({engine, key}); await checkOtherKeys({engine}); console.log(`  preflight: the ${keySecret(engine)} key fingerprint ${keyFingerprint(key)}`); }   // a refused key stops the suite here, named, not as a puzzling AI step later
+  const key = light ? KEY() : testKey(process.env, engine, family), token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
+  if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
+  if (!light && isCi()) {
+    if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key}); else await checkKeyAccepted({engine, key});
+    await checkOtherKeys({engine: family === 'free' ? 'free' : engine}); console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
+  }   // a refused key stops the suite here, named, not as a puzzling AI step later
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
   const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), ...(budgetMinutes ? {budgetMs: budgetMinutes * 60000} : {})});
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).
@@ -65,8 +69,8 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const judgeKey = KEY();
   if (light) return {suite, key, judgeKey, engine, runner, run: runner.run, ARTIFACTS, E2E, needs: isCi() ? [{name: 'E2E_ANTHROPIC_KEY', value: key}] : [], skipAll: isCi() && !key, close: async () => {}};
   const ctx = {suite, key, judgeKey, token, runner, standIn, store, run: runner.run, ARTIFACTS, E2E, cv: process.env.E2E_CV || path.join(E2E, 'fixtures', 'cv.pdf'),
-    engine, family: familyOf(engine), appKey: appKey(key), needsKey: isCi() ? [{name: keySecret(engine), value: key}] : [],   // CI only: on a Mac nothing needs a key
-    needs: [...(['api', 'openai'].includes(engine) && isCi() ? [{name: keySecret(engine), value: key}] : []),
+    engine, family, appKey: appKey(key), needsKey: isCi() ? [{name: familySecret(family, engine), value: key}] : [],   // CI only: on a Mac nothing needs a key
+    needs: [...(['api', 'openai'].includes(engine) && isCi() ? [{name: familySecret(family, engine), value: key}] : []),
       // A suite with no Notion part (`export const notion = false`, the update flow) needs no Notion token and gets no page.
       ...(onNotion ? [{name: `a Notion token for the ${suite} suite (E2E_NOTION_TOKEN${suite === 'wizard' ? '' : `_${(notionTokenOf || suite).toUpperCase()}`})`, value: token}] : [])]};
   if (ctx.needs.some(item => !item.value)) { ctx.skipAll = true; return ctx; }
@@ -83,7 +87,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   ctx.built = onNotion && !fresh && await workspaceReady(token);
   ctx.feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-feeds-'));
   fs.cpSync(path.join(E2E, 'fixtures', 'feeds'), ctx.feeds, {recursive: true});
-  ctx.proxy = await startAiProxy({delayMs: 0});
+  ctx.proxy = await startAiProxy({delayMs: 0, ...(family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});   // CI on Free AI: the app's calls go on to the relay
   // The OpenAI engine's calls (the app's and the engine's SDK follow OPENAI_BASE_URL in a test run): metered as app-openai, replayed like Claude's, and they obey
   // ctx.proxy's controls: a suite's stand-ins (setCanned), faults (setMode) and delay apply on an OpenAI turn too, in OpenAI's own shapes (lib/ai-proxy.mjs).
   ctx.openaiProxy = ctx.family === 'openai' ? await startAiProxy({target: 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: ctx.proxy}) : null;

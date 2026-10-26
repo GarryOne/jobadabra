@@ -10,8 +10,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {ARTIFACTS, DESKTOP} from './lib/app.mjs';
+import {judgeFamily} from './lib/engine.mjs';
 import {MODEL, buildRequest, fingerprint, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
 
+// CI on Free AI (owner, 26 Oct 2026: "Let's just switch to Free AI"): the relay reads no pictures, so the review waits for its Workers AI vision model instead of
+// failing on the Claude key (CI's Anthropic credit is out). E2E_JUDGE_FAMILY=claude brings it back.
+if (judgeFamily() === 'free') { console.log('Screenshot review: paused while CI runs on Free AI (the relay reads no pictures; the vision review comes next).'); process.exit(0); }
 const key = process.env.E2E_ANTHROPIC_KEY;
 if (!key) { console.error('E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
 const API = process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com';   // a test points this at a fake

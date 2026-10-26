@@ -166,6 +166,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
+        uses: ./.github/actions/free-ai-relay
+        with:
+          cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          cf-account: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          app-id: ${{ secrets.CI_APP_ID }}
+          app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
         run: |
           mkdir -p "$E2E_ARTIFACTS"
@@ -219,6 +226,14 @@ jobs:
           E2E_BROWSER: msedge
           E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts-windows/apply-edge   # its own folder: the Chromium run's evidence stays
         run: node suite.mjs apply
+      - name: What the suite spent on Free AI (the relay's own meter)
+        if: always() && env.E2E_FREE_AI_URL != ''
+        continue-on-error: true   # a report never decides a run
+        shell: bash
+        run: |
+          spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
+          echo "Free AI (Workers AI) this suite: $spent" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
         continue-on-error: true   # a report never decides a run

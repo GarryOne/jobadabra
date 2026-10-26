@@ -1,0 +1,45 @@
+name: E2E · Bisect a red main suite
+# A red e2e suite on main gets an owner (gate G2b, owner's yes 26 Oct 2026). Started by e2e.yml's alert job (tools/e2e_bisect.py after-run) for each red suite with no
+# open `red-main` issue: finds the last main check where the suite was green, runs it on the commits in between (e2e.yml, titled "Bisect <suite> <sha>"), then names
+# the breaking PR in a `red-main` issue and on the PR; the session that shipped it reads it at its next prompt (tools/pr-red-check.sh).
+# Why: 25 Oct 2026, main went red at 21:47 on three suites and no session was told; beta 2 started on them 1.5 h later.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'The red suite'
+        required: true
+      bad:
+        description: 'The main commit it was red on'
+        required: true
+      run_url:
+        description: 'The red run'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: write        # start e2e.yml for each bisect step
+  issues: write         # the red-main issue
+  pull-requests: write  # tell the breaking PR
+
+concurrency:
+  group: e2e-bisect-${{ inputs.suite }}
+  cancel-in-progress: false
+
+jobs:
+  bisect:
+    name: Bisect ${{ inputs.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360   # up to 8 steps of one suite each (a step waits for its suite's lock)
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the commits between green and red
+      - name: Bisect, then name the breaking PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUITE: ${{ inputs.suite }}
+          BAD: ${{ inputs.bad }}
+          RUN_URL: ${{ inputs.run_url }}
+        run: python3 tools/e2e_bisect.py bisect "$SUITE" "$BAD" "$RUN_URL"

@@ -12,7 +12,7 @@ name: CI · End-to-end on Mac + Linux
 #     The AI review of screenshots (the costly part) runs when the UI or its tests changed, a finding waits, or the run is exploring. A push to main runs NO e2e (decided: e2e never runs on commit); by hand: gh workflow run e2e.yml -f suite=jobs,activity.
 # All of it is decided in desktop/e2e/plan-run.mjs (tested). The test key's AI credit is shared and small: see desktop/e2e/README.md.
 # Secrets (Settings → Secrets → Actions): E2E_ANTHROPIC_KEY, and one E2E_NOTION_TOKEN_<SUITE> per suite (a connection that sees only that suite's test page).
-run-name: ${{ inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026). Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
+run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026). Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
 
 on:
   workflow_dispatch:
@@ -63,6 +63,10 @@ on:
       mutant:
         description: 'MUTATION TEST (mutation.yml): write this mutant of desktop/e2e/mutants.json into the app first, or "baseline". Fixed path, no AI review, nothing filed, no Windows run'
         required: false
+      bisect:
+        description: 'Set by e2e-bisect.yml (tools/e2e_bisect.py, gate G2b): one step of a bisect, the suite on target_ref. Titled "Bisect <suite> <sha>": never a main check, never filed by the Finder, no paid judge'
+        type: boolean
+        default: false
   schedule:
     - cron: '47 21,23,1 * * *'   # 23:47, 01:47, 03:47 in Zurich in summer, 22:47-02:47 in winter: at night only (owner, 15 Oct 2026: the 20 runners are for PRs by day); the UI loop's producer, ui-findings.yml, follows each run
   # The release run (desktop.yml) calls this as its "E2E · Mac + Linux" job, right after it built the release (7 Oct 2026). GitHub names the jobs "E2E · Mac + Linux / <job>"
@@ -219,7 +223,7 @@ jobs:
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       JOB_PILOTTO_E2E_EXPECTS_FAILURES: ${{ inputs.mutant && '1' || '' }}   # a mutant run breaks the app on purpose: its crash reports are tagged expected, so the Sentry loop ignores them
       E2E_SEED: ${{ (inputs.fixed || inputs.canary || inputs.soak || inputs.gate_tag || inputs.mutant) && '0' || github.run_id }}   # a different path in every scheduled, top-up or manual run; the release gate, the soak top-ups (their three green runs must be comparable) and the stable canary walk the fixed one (lib/variation.mjs)
-      E2E_FULL: ${{ needs.plan.outputs.over != 'true' && (inputs.gate_tag || (github.event_name == 'workflow_dispatch' && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.scheduled)) && '1' || '' }}   # the paid AI judge steps: the nightly gate and manual runs only
+      E2E_FULL: ${{ needs.plan.outputs.over != 'true' && (inputs.gate_tag || (github.event_name == 'workflow_dispatch' && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.scheduled && !inputs.bisect)) && '1' || '' }}   # the paid AI judge steps: the nightly gate and manual runs only
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
     steps:
@@ -491,11 +495,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      actions: read
+      actions: write   # start e2e-bisect.yml for a new red suite (tools/e2e_bisect.py)
+      issues: write    # the red-main issues
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: desktop/e2e
+          sparse-checkout: |
+            desktop/e2e
+            tools
       - name: Tell the owner (a failure, or back to green)
         working-directory: desktop/e2e
         env:
@@ -508,6 +515,13 @@ jobs:
             failed=$(gh run view "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(", ")' 2>/dev/null || true)
             node ci-alert.mjs failure "Failed job: ${failed:-the run (see the link)}" "Open the failed job; the next scheduled run re-checks"
           else node ci-alert.mjs success; fi
+      # A red on main gets an owner (gate G2b, owner's yes 26 Oct 2026): each red suite with no open `red-main` issue is bisected to its breaking PR (e2e-bisect.yml),
+      # and the issue of a suite this run passed is closed. Not for a release gate (it tests a release, and its reds are the beta's).
+      - name: Own the red (bisect new reds, close the ones green again)
+        if: ${{ !inputs.gate_tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"
 
   # The release step of a gate by hand (gh workflow run e2e.yml -f gate_tag=<tag>): beta-approve.yml, the same job the release run (desktop.yml) shows as its own
   # "Release · Mac beta" step after "E2E · Mac + Linux" (release_run: not here, so it is not done twice).

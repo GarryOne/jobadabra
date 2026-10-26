@@ -45,6 +45,10 @@ while :; do
   if [ $(( $(date +%s) - start )) -ge "$wait_max" ]; then echo "The re-check is still running after $(( wait_max / 60 )) min: no beta. ${url}"; exit 1; fi
   sleep "$poll"
 done
-if [ "${st#completed }" = success ]; then echo "Re-check green: main's e2e is green again."; exit 0; fi
+if [ "${st#completed }" = success ]; then
+  echo "Re-check green: main's e2e is green again."
+  GITHUB_REPOSITORY="$repo" python3 "$here/e2e_bisect.py" after-run "$id" || true   # closes the red-main issues of the suites green again (gate G2b)
+  exit 0
+fi
 echo "Re-check ${st#completed }: main is still red (${url}). No beta: fix the suite (skill fix-failing-e2e), or --force \"<why>\"."
 exit 1

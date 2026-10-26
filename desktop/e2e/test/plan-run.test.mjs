@@ -84,6 +84,13 @@ test('a run that tested nothing (ended cancelled by "Nothing tested") is neither
   assert.match((await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [skipped(1), sched(8)]})).why, /look 2 of 3/, 'only the tested run is a look');
 });
 
+test('a bisect step, a canary or a mutant on main\'s name never makes main\'s head "tested" (gate G2b)', async () => {
+  for (const displayTitle of [`Bisect cardstates ${OLD}`, 'Stable canary desktop-v1', 'Mutant raw-http-error']) {
+    const out = await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [sched(1, {event: 'workflow_dispatch', displayTitle}), {event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js']});
+    assert.match(out.why, /a new commit/, displayTitle);
+  }
+});
+
 test('a schedule while a release run tests plans no suite and says why (e2e.yml then ends the run grey)', async () => {
   const out = await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [{event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js'], releasing: [{status: 'in_progress', displayTitle: 'Beta by hand'}]});
   assert.equal(out.count, '0');

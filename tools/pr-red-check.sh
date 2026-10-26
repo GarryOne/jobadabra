@@ -42,6 +42,23 @@ lookup() {  # <branch> <dir of its worktree>: prints "<n>\t<url>\t<red checks jo
   [ -z "$out" ] || printf '%s\n' "$out"
 }
 
+# A red main this session's merged PR broke (gate G2b, 26 Oct 2026): tools/e2e_bisect.py opens a `red-main` issue naming the breaking PR and its branch;
+# the session that shipped that branch is told like a red PR. Prints "<issue>\t<branch>\t<suite>\t<pr>" per open issue; cached for $ttl seconds like lookup().
+red_main() {
+  local file="$dir/red-main.look" now stamp tmp out pid i=0
+  now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
+  if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
+  tmp="$file.$$"
+  ( cd "$cwd" && gh issue list --label red-main --state open --json number,title,body --jq '.[] | (.body | capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")?) as $m
+      | select($m != null) | "\(.number)\t\($m.br)\t\(.title | sub("^Red main: "; ""))\t\($m.pr)"' > "$tmp" 2>/dev/null; echo done > "$tmp.ok" ) &
+  pid=$!
+  while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
+  if [ ! -e "$tmp.ok" ]; then kill "$pid" 2>/dev/null; rm -f "$tmp" "$tmp.ok"; return 0; fi
+  out="$(cat "$tmp")"; rm -f "$tmp" "$tmp.ok"
+  { echo "$now"; [ -z "$out" ] || echo "$out"; } > "$file"
+  [ -z "$out" ] || printf '%s\n' "$out"
+}
+
 messages=""; seen=" "
 for d in "${dirs[@]}"; do
   branch="$(git -C "$d" symbolic-ref --short -q HEAD 2>/dev/null)" || continue
@@ -57,6 +74,16 @@ for d in "${dirs[@]}"; do
   [ "$conflict" != conflict ] || messages="${messages}PR #$n conflicts with main: rebase now (a stacked parent that was squash-merged: git rebase --onto origin/main <parent's old tip>; otherwise git rebase origin/main and keep both sides' work; push through tools/ship.sh --background; blocked for real: tools/pr-red-ack.sh $n \"<why>\")
 "
 done
+reds_main=""; [ "$seen" = " " ] || reds_main="$(red_main)"   # on main only: nothing to look up
+if [ -n "$reds_main" ]; then
+  for b in $seen; do
+    while IFS=$'\t' read -r issue br suite prn; do
+      [ "$br" = "$b" ] || continue
+      messages="${messages}Main's e2e suite ${suite} went red with your PR #${prn} (issue #${issue}): fix it now (skill fix-failing-e2e, push through tools/ship.sh --background); the issue closes when main's next check passes ${suite}
+"
+    done <<<"$reds_main"
+  done
+fi
 [ -n "$messages" ] || exit 0
 case "$event" in
   Stop) [ "$again" = true ] && exit 0; printf '%s' "$messages" >&2; exit 2 ;;   # blocks once per stop chain: a second stop in the chain goes through

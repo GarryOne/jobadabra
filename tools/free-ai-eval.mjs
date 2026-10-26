@@ -29,7 +29,7 @@ export async function evaluate(cases, model, run, now = () => Date.now()) {
     const started = now();
     const row = {id: item.id, baseline: item.baseline, ...(item.expect ? {right: false} : {}), valid: false, schemaOk: false, score: NaN, usage: {}, ms: NaN};
     try {
-      const message = fromWorkersAi(await run(model, await toWorkersAi(item.params, async () => { throw new Error('PDF cases need the site route'); })), model);
+      const message = fromWorkersAi(await run(model, await toWorkersAi(item.params, async () => { throw new Error('PDF cases need the site route'); }, item.action)), model);
       row.usage = message.usage; row.ms = now() - started;
       const data = JSON.parse(message.content[0].text);
       row.valid = true; row.reply = data;

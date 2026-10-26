@@ -23,8 +23,9 @@ const flagValue = name => { const i = process.argv.indexOf(`--${name}`); return 
 const MODEL = {small: SMALL, strong: STRONG}[flagValue('model')] || (String(flagValue('model')).startsWith('@cf/') ? flagValue('model') : SMALL);   // which Workers AI model plays "free": small, strong or any @cf/ id
 const PRICE = (flagValue('price') || '').split(',').map(Number);   // USD per million tokens, input,output, for a model costUsd does not know
 const cost = (model, usage) => (PRICE.length === 2 && PRICE.every(Number.isFinite) ? ((usage?.input_tokens || 0) * PRICE[0] + (usage?.output_tokens || 0) * PRICE[1]) / 1e6 : costUsd(model, usage));
+const WRITING_STEP = 'kit';   // every feature here writes: the model's default temperature, as live (desktop/lib/free-ai-models.js temperatureFor)
 const answer = async (item, run, model) => {
-  try { const message = fromWorkersAi(await run(model, await toWorkersAi(item.params, async () => { throw new Error('no pdf'); })), model); return {data: JSON.parse(message.content[0].text), usage: message.usage}; } catch (error) { return {error: error.message}; }
+  try { const message = fromWorkersAi(await run(model, await toWorkersAi(item.params, async () => { throw new Error('no pdf'); }, WRITING_STEP)), model); return {data: JSON.parse(message.content[0].text), usage: message.usage}; } catch (error) { return {error: error.message}; }
 };
 
 // Per feature and writer: how many of its cases pass each criterion, and how many pass all six. `judged` = {caseId: {free: verdict|null, sonnet: verdict|null}}.

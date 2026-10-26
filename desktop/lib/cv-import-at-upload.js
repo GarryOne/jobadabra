@@ -5,6 +5,8 @@
 // Guarded by test/cv-import-at-upload.test.js (it also fails when a new caller bypasses these functions).
 import * as cvChange from './cv-change.js';
 import * as cvlib from './cv.js';
+import {writePrivate} from './private-file.js';
+import path from 'node:path';
 import fs from 'node:fs';
 import {log} from './log.js';
 
@@ -40,4 +42,13 @@ export function setCv(storage, file, name, {client = null, key = '', look = null
     toast({title: 'CV not read yet', body: 'Your CV is saved. It will be read again when you tailor a CV.'});
   });
   return {...set, done};
+}
+
+// A CV the app built (lib/cv-build.js): the PDF becomes the main CV and cv.json is written with that PDF's hash, so the import never reads it again.
+export function setBuiltCv(storage, file, name, cv, now = new Date()) {
+  const set = cvChange.replace(storage, file, name, now);
+  fs.mkdirSync(cvlib.dir(storage), {recursive: true});
+  writePrivate(path.join(cvlib.dir(storage), 'cv.json'), JSON.stringify(cv, null, 2) + '\n');
+  writePrivate(path.join(cvlib.dir(storage), 'import.json'), JSON.stringify({pdf: cvlib.pdfHash(storage)}) + '\n');
+  return set;
 }

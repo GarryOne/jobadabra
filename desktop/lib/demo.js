@@ -53,7 +53,7 @@ export function restartArgs(argv, folder = null) {
 // this computer (keys, login item, recording): in demo mode they answer this instead of running.
 export const BLOCKED = ['notionConnect', 'notionOAuth', 'saveSecret', 'startFreeAi', 'checkAnthropic', 'cloudOff',
   'telegramCloudOn', 'telegramCloudOff', 'telegramConnect', 'googleConnect', 'licenseRemove', 'applyWithClaude', 'apply',
-  'applyOne', 'sessionRestart', 'sessionReopen', 'sessionsStopExtension', 'sessionResume', 'updateInstall', 'updateCheck', 'betaSet', 'testSet', 'betaRollback', 'resetProfile', 'importProfile', 'importCv',
+  'applyOne', 'sessionRestart', 'sessionReopen', 'sessionsStopExtension', 'sessionResume', 'updateInstall', 'updateCheck', 'betaSet', 'testSet', 'betaRollback', 'resetProfile', 'importProfile', 'importCv', 'buildCvDraft', 'buildCvSave', 'buildCvDownload',
   'backupNow', 'checkMail', 'command', 'rescoreOutdated', 'prepareKit', 'tailorCv', 'tailorTop', 'readySend', 'readyRun', 'readyLive', 'readyOpen', 'readyVideo', 'readyDone', 'readyDeleteAll', 'readySettings', 'ivRecordStart',
   'ivTranscribe', 'ivSave', 'ivLink', 'ivReview', 'answerQuestion', 'cvApply', 'cvReview', 'cvCheckRun', 'cvCheckAi', 'matchCheck', 'saveStrategy', 'setStatus', 'setStage',
   'setAutomation', 'lookAround'];

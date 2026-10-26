@@ -67,3 +67,10 @@
 .is-zap { animation: magic-zap .6s var(--ease); }
 @keyframes magic-zap { 0% { box-shadow: 0 0 0 0 rgb(var(--signal-rgb) / .7); } 40% { box-shadow: 0 0 18px 6px rgb(var(--signal-rgb) / .55); } 100% { box-shadow: 0 0 0 14px rgb(var(--signal-rgb) / 0); } }
 @media (prefers-reduced-motion: reduce) { .is-zap { animation: none; } }
+
+/* The CV step's three ways in (pages/cv-build.js): Choose your CV in the middle and a little bigger, the other two on its sides, quieter; they sit above the card-wide button. */
+.cv-ways { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: var(--sp-3); }
+.cv-ways .magic-go { margin-top: 0; padding: var(--sp-3) calc(var(--sp-6) * 1.4); }
+.cv-way { position: relative; z-index: 4; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); border-radius: var(--r-pill); }
+.cvb-job { margin-top: var(--sp-3); }
+.cvb-job > summary { cursor: pointer; font-weight: 600; margin-bottom: var(--sp-2); }

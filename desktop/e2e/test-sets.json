@@ -2,6 +2,7 @@
  "_about": "Which harness test file runs where: \"pr\" = the safety-critical set every harness PR runs (privacy scrub, records publish and fetch, discovery pick and judge, journey check, gates, ledgers, owner guards); \"daily\" = everything else, run by harness-daily.yml. Every file in test/ is in exactly one list (test/test-sets.test.mjs).",
  "pr": [
   "app-words-ratchet.test.mjs",
+  "coverage.test.mjs",
   "discovery-cli.test.mjs",
   "discovery-judge.test.mjs",
   "discovery-pick.test.mjs",

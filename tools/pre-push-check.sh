@@ -146,6 +146,12 @@ if command -v node >/dev/null && [ -f "$repo/tools/file-size.mjs" ]; then
   sizes="$(cd "$repo" && timed "file size" node tools/file-size.mjs 2>&1)" || { echo "Push blocked: a file is too big:
 $sizes" >&2; exit 2; }
 fi
+# A new harness test file must be in desktop/e2e/test-sets.json ("pr" or "daily"), or CI's harness tests fail on it (26 Oct 2026: #1976 went red on coverage.test.mjs).
+# The same pure test CI runs, a fraction of a second. Any push that touches desktop/e2e/test.
+if command -v node >/dev/null && [ -f "$repo/desktop/e2e/test/test-sets.test.mjs" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -q '^desktop/e2e/test'; then
+  sets="$(cd "$repo/desktop/e2e" && timed "harness test sets" node --test test/test-sets.test.mjs 2>&1)" || { echo "Push blocked: a harness test file is in no set (or a set names a missing file): add it to desktop/e2e/test-sets.json
+$(echo "$sets" | grep -E 'in no set|missing|actual' | head -5)" >&2; exit 2; }
+fi
 # A new file a replay workflow loads must be in that workflow's `pull_request` paths (20 Oct 2026: #1638 opened red on "control tests" and "page cases" because worker/src/answer-declarations.js was
 # missing): the same check the workflows run (tools/replay-files.mjs --check), seconds, before the PR exists. Any push, any area.
 if command -v node >/dev/null && [ -f "$repo/tools/replay-files.mjs" ]; then

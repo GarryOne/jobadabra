@@ -53,6 +53,7 @@ class Base(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.ai.cost.side'),
                       mock.patch('src.time_budget.BEGAN', None),   # no run clock: an earlier test's left one would make these one run (board_web._run)
+                      mock.patch('src.sources.board_check.field_kind', return_value=None),   # no page judge here: tests/test_board_judge.py
                       mock.patch.object(board_ideas, 'asked_for', return_value=('k1', ['Germany'], ['Tontechniker'], [], ['Berlin']))):
             patch.start()
             self.addCleanup(patch.stop)

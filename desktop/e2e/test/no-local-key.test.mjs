@@ -8,6 +8,7 @@ import {test} from 'node:test';
 const E2E = path.resolve(import.meta.dirname, '..');
 const CI_ONLY = new Set([
   'review-ui.mjs',          // the AI screenshot review: CI only (README)
+  'review-eval.mjs',        // scores a screenshot reviewer on the judged issues: CI only, by hand (.github/workflows/review-eval.yml)
   'ai-cost-report.mjs',     // reads what Anthropic billed (admin key), spends nothing
   'lib/ai-proxy.mjs',       // the stand-in for the API: it forwards only when a key is behind it
   'lib/model.mjs',          // the one door: the API in CI, Claude Code on a Mac

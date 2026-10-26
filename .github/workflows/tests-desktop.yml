@@ -23,7 +23,13 @@ on:
       - 'tools/design-system/**'   # desktop/test/design-system-page.test.js builds the page with it
       - 'docs/rules/desktop-ui.md'
       - '.claude/skills/ui-look-and-feel/SKILL.md'
-      - 'hosted/ready-fill/**'   # the night's filler: desktop/test/ready-fill.test.js imports it
+      - 'hosted/**'   # ready-fill.test.js imports the night's filler; site-routes.test.js reads every shipped folder
+      - 'src/**'   # settings-paths-exist, bridge-registry, plan-promo, run-lines-plain, site-routes and identity-rule read engine text (#2099 changed only src/ai/decide.py and main went red)
+      - 'worker/src/**'   # identity-rule.test.js, site-routes.test.js
+      - 'tests/fixtures/audience_cases.json'   # audience.test.js
+      - 'tests/fixtures/swiss_cases.json'
+      - 'tools/ship.sh'   # merge-baseline.test.js
+      - 'docs/flows/ladder.md'   # ladder-architecture.test.js checks the rung map against the code
       - 'config/notion_schema.json'
       - 'config/notion_template.json'
       - 'docs/notion-profile-template.md'

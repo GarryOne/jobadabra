@@ -40,6 +40,37 @@ def starts(name, files):
     return any(takes(f) for f in files)
 
 
+# A test that builds the repo's root (`new URL('../../', import.meta.url)`, `path.resolve(dirname, '..', '..')`) names files from it.
+ROOTED = re.compile(r"""new URL\(['"](?:\.\./)+['"]|['"]\.\.['"]\s*,\s*['"]\.\.['"]""")
+
+
+def repo_reads(test, area):
+    """The existing repo files and folders a test file reads outside its own folder: '../..' paths, path.join(.., '..', '..', 'a', 'b') parts, and,
+    in a test that builds the repo root, root-relative paths ('tools/ship.sh') and lists of existing paths with a folder among them (['src', 'desktop'])."""
+    text = test.read_text(errors='ignore')
+    found = set()
+    def add(target):
+        target = target.resolve()
+        if target.exists() and ROOT in target.parents:
+            found.add(target)
+            return True
+        return False
+    for ref in re.findall(r"""['"`]((?:\.\./)+[\w.-][^'"`$]*)['"`]""", text):
+        add(test.parent / ref) or add(ROOT / area / 'test' / ref)
+    for parts in re.findall(r"""['"]\.\.['"]\s*,\s*['"]\.\.['"]((?:\s*,\s*['"][\w.-]+['"])+)""", text):
+        add(test.parent.parent.parent / Path(*re.findall(r"""['"]([\w.-]+)['"]""", parts)))
+    if not ROOTED.search(text):
+        return found
+    for ref in re.findall(r"""['"`]([a-z][\w.-]*(?:(?:/[\w.-]+)+/?|/))['"`]""", text):   # 'tools/ship.sh', 'desktop/lib/', 'tools/'
+        add(ROOT / ref.rstrip('/'))
+    for body in re.findall(r"\[([^\[\]]*)\]", text):
+        names = re.findall(r"""^\s*['"]([\w./-]+)['"]\s*$""", body.replace(',', '\n'), re.M)
+        if len(names) >= 2 and len(names) == body.count(',') + 1 and all((ROOT / name).exists() for name in names) and any((ROOT / name).is_dir() for name in names):   # folders walked, not names passed on
+            for name in names:
+                add(ROOT / name)
+    return found
+
+
 def pr_workflows():
     return sorted(p.name for p in WORKFLOWS.glob('*.yml') if re.search(r'(?m)^  pull_request:', on_block(p.name)))
 
@@ -83,24 +114,30 @@ class TheClass(unittest.TestCase):
 
     def test_a_suite_starts_on_every_file_its_tests_read(self):
         # 14 Oct 2026: worker tests read extension/ files, but tests-worker.yml had no extension/** path; #731 changed extension/combo-click.js,
-        # its worker test never ran on the PR, and main went red. Every '../..' file a suite's tests name must start that suite.
+        # its worker test never ran on the PR, and main went red. Every file a suite's tests read outside its folder must start that suite:
+        # '../..' paths, and (26 Oct 2026) paths named from a repo root: #2099 changed only src/ai/decide.py, which settings-paths-exist.test.js
+        # walks as `['src', ...]` under `new URL('../../')`; tests-desktop.yml never started and main went red.
         for area in ('worker', 'site', 'desktop'):
             missing = set()
             for test in (ROOT / area / 'test').rglob('*'):
                 if test.suffix not in ('.js', '.mjs') or 'node_modules' in test.parts:
                     continue
-                for ref in re.findall(r"""['"`]((?:\.\./)+[\w.-][^'"`$]*)['"`]""", test.read_text(errors='ignore')):
-                    for base in (test.parent, ROOT / area / 'test'):
-                        target = (base / ref).resolve()
-                        if target.exists() and ROOT in target.parents:
-                            break
-                    else:
-                        continue
+                for target in repo_reads(test, area):
                     rel = target.relative_to(ROOT).as_posix()
                     probe = f'{rel}/x.js' if target.is_dir() else rel
                     if not rel.startswith(f'{area}/') and not starts(f'tests-{area}.yml', [probe]):
                         missing.add(rel)
             self.assertEqual(sorted(missing), [], f'tests-{area}.yml: files its tests read but its paths never start on')
+
+    def test_repo_reads_finds_every_way_a_test_names_a_file(self):
+        # positive controls on the real tests that read outside their folder in each way
+        def reads(name):
+            return {target.relative_to(ROOT).as_posix() for target in repo_reads(ROOT / 'desktop/test' / name, 'desktop')}
+        self.assertIn('src', reads('settings-paths-exist.test.js'), "a folder in a list walked from `new URL('../../')` (#2099)")
+        self.assertIn('tools/ship.sh', reads('merge-baseline.test.js'), "a file read as new URL('tools/ship.sh', root)")
+        self.assertIn('tests/fixtures/audience_cases.json', reads('audience.test.js'), "path.join(dirname, '..', '..', 'tests', ...)")
+        self.assertNotIn('tests', reads('plan-promo.test.js'), 'a list of names to skip is not a read')
+        self.assertNotIn('README.md', reads('ladder-fingerprint.test.js'), 'file names passed to a function are not a read')
 
     def test_every_file_a_suite_watches_starts_the_pr_suites(self):
         # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; pr-suites.yml had no src/ path, so it never started
@@ -143,7 +180,7 @@ class TheShapes(unittest.TestCase):
     def test_docs_and_tools_start_python_only(self):
         self.assertEqual(self.started(['docs/HOW-IT-RUNS.md', 'CLAUDE.md']), {'tests-python.yml'})
         # a shell script starts the PR planner too, which runs the Windows check only for a script CI runs (lib/pr-suites.mjs windowsSmoke): not tools/ship.sh
-        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml'})
+        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
         self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'pr-suites.yml'})   # worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at
@@ -154,8 +191,9 @@ class TheShapes(unittest.TestCase):
         started = self.started(['desktop/e2e/lib/forms.mjs'])
         self.assertLessEqual({'harness.yml', 'tests-desktop.yml', 'page-cases.yml'}, started)
 
-    def test_a_worker_change_starts_only_its_suite(self):
-        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml'})
+    def test_a_worker_change_starts_its_suite_and_the_desktop_tests_that_read_it(self):
+        # identity-rule.test.js and site-routes.test.js walk all of worker/src (26 Oct 2026, the repo-root reads)
+        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml'})
         self.assertEqual(self.started(['worker/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml'}, 'a desktop test reads it')
 
     def test_a_workflow_change_starts_that_workflow(self):

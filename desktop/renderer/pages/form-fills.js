@@ -3,6 +3,7 @@
 // detail in place: the field-by-field table (answer source, result, note, low confidence), Left for you, learnings, step timings or the
 // session's timeline and numbers. Drawn inside the Reports card, so tables are .data-table (no box in a box); shared components only.
 // Logic without a window: renderer/form-fills-view.js. Guarded by test/form-fills-view.test.js, test/form-fills-handlers.test.js.
+import {plainError} from '../run-warnings.js';
 import {cardHead, el, numberStrip, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {byStore, storeName} from '../store-words.js';
@@ -120,7 +121,7 @@ export async function renderFormFills(container) {
   if (answer?.error) {
     const retry = Object.assign(el('button', 'link', 'Retry'), {type: 'button'});
     retry.addEventListener('click', () => renderFormFills(container));
-    host.replaceChildren(el('p', 'message error', `Could not read your form fills from ${storeName()}: ${answer.error}`),
+    host.replaceChildren(el('p', 'message error', `Could not read your form fills from ${storeName()}: ${plainError(answer.error)}`),
       el('p', 'muted small', byStore('Form fills are kept in Notion 🤖 Agent Runs.', 'Form fills are kept by Jobadabra on this Mac.')), retry);
     return;
   }

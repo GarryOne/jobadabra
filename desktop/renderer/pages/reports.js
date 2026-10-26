@@ -4,6 +4,7 @@
 // Searches: every search run with the details it saved (pages/reports-searches.js, 25 Oct 2026). Form fills: lane F's view (pages/form-fills.js renderFormFills(container), mac-cd), mounted here. Data: IPC reportsInsights /
 // insightFeedback (lib/reports-handlers.js) and Focus's funnel. Parts: .tabs, .data-table, the interview review's groups, .segmented.
 // Pure parts: renderer/reports-view.js. Guards: test/reports-view.test.js, test/reports-handlers.test.js.
+import {plainError} from '../run-warnings.js';
 import {el, pill} from '../components.js';
 import {dayLabel, funnelRows, improveLines, insightItems, weeklyCardOf, weeklyReports} from '../reports-view.js';
 import {weeklyCard} from './activity-cards.js';
@@ -99,7 +100,7 @@ function insightsTab() {
 async function funnelTab() {
   const read = await window.pilot.focus().catch(error => ({ok: false, error: error.message}));   // Focus's own read (shared with its page)
   const focus = read?.focus || {}, funnel = focus.funnel;
-  if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${read.error}` : 'No applications yet: the funnel fills as you apply.');
+  if (!funnel?.steps?.length) return empty(read?.error ? `Could not read your funnel: ${plainError(read.error)}` : 'No applications yet: the funnel fills as you apply.');
   const table = el('table', 'data-table');
   const head = el('tr');
   for (const name of ['Step', 'Reached', 'From previous', 'Of applied', 'Still open here']) head.append(el('th', '', name));
@@ -139,7 +140,7 @@ async function draw() {
   if (state.tab === 'searches') { await searchesTab(box); return; }
   if (state.tab === 'fills') { const parts = await fillsTab(box); if (parts) box.replaceChildren(...parts); return; }
   if (state.tab === 'funnel') { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60')); box.replaceChildren(...await funnelTab()); return; }
-  if (state.error) { box.replaceChildren(...empty(`Could not read your insights: ${state.error}. Open Reports again to retry.`)); return; }
+  if (state.error) { box.replaceChildren(...empty(`Could not read your insights: ${plainError(state.error)}. Open Reports again to retry.`)); return; }
   if (!state.insights) { box.replaceChildren(el('span', 'skeleton w-80'), el('span', 'skeleton w-60'), el('span', 'skeleton w-40')); return; }
   box.replaceChildren(...(state.tab === 'insights' ? insightsTab() : weeklyTab()));
 }

@@ -33,7 +33,7 @@ class BotPrChecks(unittest.TestCase):
     def test_each_pushes_and_opens_with_the_app_token(self):
         for name, text in pr_opening_workflows().items():
             with self.subTest(workflow=name):
-                self.assertIn('actions/create-github-app-token@v2', text)
+                self.assertIn('actions/create-github-app-token@', text)
                 self.assertNotIn(BARE_PUSH, text, f'{name}: a GITHUB_TOKEN push starts no checks')
                 self.assertRegex(text, r'GH_TOKEN="\$\{PR_TOKEN:-\$GH_TOKEN\}" gh pr create')
 

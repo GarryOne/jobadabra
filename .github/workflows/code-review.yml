@@ -59,23 +59,23 @@ jobs:
               if [ -f .previous/.review/candidates.txt ]; then grep -vxF -f "$read_list" .previous/.review/candidates.txt | head -60 > .review/carried.txt || true; fi
             else
               oldest=$(git log --since='7 hours ago' --format=%H HEAD | tail -1)
-              if [ -z "$oldest" ]; then echo "range=" >> "$GITHUB_OUTPUT"; echo "No commits in the last 7 hours." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+              if [ -z "$oldest" ]; then echo "range=" >> "$GITHUB_OUTPUT"; echo "No commits in the last 7 hours."; exit 0; fi
               range="$(git rev-parse "$oldest~1" 2>/dev/null || echo "$oldest")..HEAD"
             fi
           fi
           code=$(git diff --name-only "$range" | grep -vE '(\.md$|^docs/|^CODEMAP)' || true)
-          if [ -z "$code" ] && [ ! -s .review/carried.txt ]; then echo "range=" >> "$GITHUB_OUTPUT"; echo "Only docs changed in $range: nothing to review." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ -z "$code" ] && [ ! -s .review/carried.txt ]; then echo "range=" >> "$GITHUB_OUTPUT"; echo "Only docs changed in $range: nothing to review."; exit 0; fi
           mkdir -p .review
           # Only commits that touch product code (not tests, the e2e harness or docs), largest product change first, at most 30 (every 8 h, ~85 product commits a day on 7 Oct 2026: 3 x 30 keeps up): what a person runs is where a bug hurts.
           PRODUCT=(src desktop/lib desktop/main.js desktop/preload.cjs desktop/renderer extension ':!**/test/**' ':!**/tests/**' ':!desktop/e2e/**')
           { git log --format=%H --no-merges "$range" -- "${PRODUCT[@]}"; cat .review/carried.txt; } | awk 'NF && !seen[$0]++' > .review/candidates.txt
           while read -r sha; do echo "$(git show --numstat --format= "$sha" -- "${PRODUCT[@]}" | awk '{s+=$1+$2} END{print s+0}') $sha"; done < .review/candidates.txt | sort -rn | head -30 | awk '{print $2}' > .review/commits.txt
           total=$(wc -l < .review/candidates.txt | tr -d ' '); picked=$(wc -l < .review/commits.txt | tr -d ' ')
-          if [ "$picked" = 0 ]; then echo "range=" >> "$GITHUB_OUTPUT"; echo "No product-code commits in $range." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ "$picked" = 0 ]; then echo "range=" >> "$GITHUB_OUTPUT"; echo "No product-code commits in $range."; exit 0; fi
           echo "range=$range" >> "$GITHUB_OUTPUT"
           { cat desktop/e2e/code-review-prompt.md; echo; echo "RANGE: $range"; echo "COMMITS (review these, all of them):"; cat .review/commits.txt; } > .review/prompt.md
           carried=$(wc -l < .review/carried.txt | tr -d ' ')
-          echo "Reviewing $picked of $total product-code commit(s) in $range (${carried} carried from the last review)$([ "$picked" -lt "$total" ] && echo "; the $((total - picked)) smallest are carried to the next run")." >> "$GITHUB_STEP_SUMMARY"
+          echo "Reviewing $picked of $total product-code commit(s) in $range (${carried} carried from the last review)$([ "$picked" -lt "$total" ] && echo "; the $((total - picked)) smallest are carried to the next run")."
       - name: Claude reads the changes (read-only)
         if: steps.range.outputs.range != ''
         uses: anthropics/claude-code-action@v1

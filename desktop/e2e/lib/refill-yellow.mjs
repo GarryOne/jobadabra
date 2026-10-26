@@ -14,7 +14,7 @@ export const sameSet = (now, previous) => !!previous && now.rerecord.map(one => 
 
 const short = why => String(why).replace(/\s+/g, ' ').replace(/\(asks answered.*$/, '').trim().slice(0, 110);
 
-// -> the summary line, as in the job summary
+// -> the summary line, as in the job log
 export const line = merged => `🟡 Refill: ${merged.published} published, ${merged.rerecord.length} need a re-record: ${merged.rerecord.map(one => `${one.row} (${short(one.why)})`).join('; ')}`;
 
 // -> a Telegram message (lib/telegram-html.mjs); run: the run's URL

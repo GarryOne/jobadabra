@@ -2,7 +2,7 @@ name: CI · Sentry fixer
 
 # THE SENTRY FIXER, once a day. It reads the unresolved issues of the app's Sentry project (org job-pilotto, project job-pilotto-app, EU region), keeps only what is REAL and
 # FRESH, picks the most critical (people affected, then events) and lets Claude Code fix it and open ONE pull request for the owner to review. Never merges anything.
-# Left out, and said so in the run summary: reports of end-to-end runs (environment e2e) unless tagged expected:no (a surprise in a suite that breaks nothing on purpose = synthetic monitoring), warnings (the app telling the user something, e.g. a spend limit), issues not seen for
+# Left out, and said so in the run log: reports of end-to-end runs (environment e2e) unless tagged expected:no (a surprise in a suite that breaks nothing on purpose = synthetic monitoring), warnings (the app telling the user something, e.g. a spend limit), issues not seen for
 # 7 days (stale), one-offs (one event, one person, unless fatal), issues in Sentry already resolved or ignored, issues that already have a pull request (open, or merged/closed within 14 days),
 # bugs planted on purpose by the recall benchmark (exception type RecallPlant), and issues Claude already judged need no change within 14 days (a closed issue labelled sentry-fix-verdict).
 # Claude only edits files (no git, no gh, no network). The last step checks the paths (tools/sentry-fixer/lib.mjs: the app's code and the engine and their tests, never reporting, secrets or
@@ -49,7 +49,7 @@ jobs:
         run: |
           open=$(gh pr list --repo "$REPO" --state open --label auto-sentry-fix --json number --jq length)
           echo "Open automatic Sentry fixes: $open"
-          if [ "$open" -ge 3 ]; then echo "full=true" >> "$GITHUB_OUTPUT"; echo "Three automatic Sentry fixes already wait for review; not starting another." >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ "$open" -ge 3 ]; then echo "full=true" >> "$GITHUB_OUTPUT"; echo "Three automatic Sentry fixes already wait for review; not starting another."; fi
       - uses: actions/setup-python@v6
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         with:
@@ -100,13 +100,13 @@ jobs:
           set -euo pipefail
           # Claude did not run (no credit, a bad key, an outage): that says nothing about the issue.
           if [ "$CLAUDE_OUTCOME" != success ]; then
-            echo "Claude Code did not run ($CLAUDE_OUTCOME); nothing was changed." >> "$GITHUB_STEP_SUMMARY"
+            echo "Claude Code did not run ($CLAUDE_OUTCOME); nothing was changed."
             exit 1
           fi
           changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^\.heal/' || true)
           if [ -z "$changed" ]; then
             verdict=$(head -1 .heal/verdict.md 2>/dev/null | awk '{print $1}' | tr -cd 'a-z-')
-            echo "No change for $SHORT_ID: $(head -1 .heal/verdict.md 2>/dev/null || echo 'Claude made no change')." >> "$GITHUB_STEP_SUMMARY"
+            echo "No change for $SHORT_ID: $(head -1 .heal/verdict.md 2>/dev/null || echo 'Claude made no change')."
             # Remember the verdict for 14 days (tools/sentry-fixer/lib.mjs judgedRecently), or the next run picks the same issue again. Short id and verdict word only: the log is public.
             gh label create sentry-fix-verdict --repo "$REPO" --force --color C5DEF5 --description 'The Sentry fixer judged an issue needs no change'
             num=$(gh issue create --repo "$REPO" --title "Sentry fixer: $SHORT_ID ${verdict:-no-change}" --label sentry-fix-verdict \
@@ -115,7 +115,7 @@ jobs:
             exit 0
           fi
           if ! echo "$changed" | node tools/sentry-fixer/check-change.mjs; then
-            echo "The change for $SHORT_ID was refused by the guard; no pull request. $RUN_URL" >> "$GITHUB_STEP_SUMMARY"
+            echo "The change for $SHORT_ID was refused by the guard; no pull request. $RUN_URL"
             exit 1
           fi
           (cd desktop && npm test)
@@ -139,4 +139,4 @@ jobs:
           if [ "$BASE" != main ]; then gh label create dry-run --repo "$REPO" --force --color FBCA04 --description 'A dry run: close it'; extra="--label dry-run"; fi
           # shellcheck disable=SC2086
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base "$BASE" --head "$branch" --title "$title" --body-file .heal/laid-out.md --label auto-sentry-fix $extra)
-          echo "Pull request opened: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pull request opened: $url"

@@ -115,11 +115,10 @@ class E2eLockTest(unittest.TestCase):
     def test_a_rerun_attempt_without_ref_rights_runs_without_the_lock_and_says_so(self):
         # beta 17 (24 Oct 2026): the re-run of a job that took its lock on attempt 1 got 403 "Resource not accessible by integration" on creating the ref
         self.set_runs({'2': 'in_progress'})
-        summary = self.tmp / 'summary.md'
-        passed = self.run_lock('acquire', '2', **{'FAKE_POST_FAIL': '1', 'GITHUB_RUN_ATTEMPT': '2', 'GITHUB_STEP_SUMMARY': str(summary)})
+        passed = self.run_lock('acquire', '2', **{'FAKE_POST_FAIL': '1', 'GITHUB_RUN_ATTEMPT': '2'})
         self.assertEqual(passed.returncode, 0, passed.stderr)
         self.assertIn('WITHOUT its lock', passed.stderr)
-        self.assertIn('ran without the suite lock', summary.read_text())
+        self.assertIn('::warning::apply: ran without the suite lock', passed.stdout)
         self.assertEqual(self.refs(), {})
 
     def test_the_apps_token_takes_the_lock_when_the_workflow_token_cannot(self):

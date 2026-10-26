@@ -112,9 +112,9 @@ jobs:
           red=""
           for pair in $RESULTS; do case "${pair#*=}" in success|skipped) ;; *) red="$red ${pair%%=*}(${pair#*=})" ;; esac; done
           # measured, never a verdict (control-tests.yml: "measure, not required"; the report is a publish): a warning, not a red main
-          for pair in $WARNINGS; do case "${pair#*=}" in success|skipped) ;; *) echo "::warning::${pair%%=*} ${pair#*=}"; echo "Warning: ${pair%%=*} ${pair#*=}" >> "$GITHUB_STEP_SUMMARY" ;; esac; done
-          if [ -n "$red" ]; then echo "::error::red suites:$red"; echo "Red suites:$red" >> "$GITHUB_STEP_SUMMARY"; exit 1; fi
-          echo "every Linux suite passed" | tee -a "$GITHUB_STEP_SUMMARY"
+          for pair in $WARNINGS; do case "${pair#*=}" in success|skipped) ;; *) echo "::warning::${pair%%=*} ${pair#*=}"; echo "Warning: ${pair%%=*} ${pair#*=}" ;; esac; done
+          if [ -n "$red" ]; then echo "::error::red suites:$red"; echo "Red suites:$red"; exit 1; fi
+          echo "every Linux suite passed"
 
   windows:
     permissions:   # what tests-desktop-windows.yml asks for, or GitHub refuses to start this whole run (tests/test_workflow_call_permissions.py)

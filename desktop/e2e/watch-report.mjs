@@ -1,6 +1,6 @@
 // node watch-report.mjs <smoke reports dir> <picked.json> <out dir> <states dir> [journey log]: after the watch's live recording and its journey check, the verdict per row against the row's
 // last live run (lib/watch-list.mjs), ONE Telegram message only when a flow got worse (none on the first run), this run's state file (<out dir>/watch.json: spend, each row's last measured state)
-// and the job summary. Never fails the job on a Telegram problem. Guard: e2e/test/watch-cli.test.mjs.
+// and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/watch-cli.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -32,7 +32,6 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
     ...picked.rows.map(shape => `watch: ${shape}: ${judged.held.includes(shape) ? 'held' : `${verdictWord(judged.rows[shape]?.verdict)}${judged.rows[shape]?.journey === 'failed' ? ', journey failed' : ''}`}${judged.worse.find(item => item.shape === shape) ? ` — WORSE: ${judged.worse.find(item => item.shape === shape).why}` : ''}`)];
   console.log(lines.join('\n'));
   try { console.log(`watch: ${await send(text, {env})}`); } catch (error) { console.log(`watch: telegram failed (${String(error?.message || error).slice(0, 80)})`); }
-  if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `### Daily watch\n| Row | Today | Worse than last live run |\n|---|---|---|\n${picked.rows.map(shape => `| ${shape} | ${judged.held.includes(shape) ? 'held' : verdictWord(judged.rows[shape]?.verdict)}${judged.rows[shape]?.journey === 'failed' ? ' (journey failed)' : ''} | ${judged.worse.find(item => item.shape === shape)?.why || '–'} |`).join('\n')}\n`);
   return 0;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exit(await main());

@@ -9,7 +9,7 @@
 # Never a fork PR: the key is never given to it. Never every PR. Refill runs take their turn one at a time (pool-ci-wait.mjs), so two never publish the same rows.
 # On main the publish works in groups of 3 rows (records-publish.mjs refuses more at once), one runner per group, and a failed or cap-refused run tells the owner on Telegram (ci-alert.mjs).
 # Key: REPLAY_REFILL_ANTHROPIC_KEY, its own workspace and spend limit, NO fallback to ANTHROPIC_API_KEY or any other key: missing = the job says so and stops (lib/refill.mjs).
-# Money: the estimate is printed first (pick job), above max_asks (default 40) or $3 the run does not start, a row stops at 30 paid calls, each row's spend is in the job summary and on /admin/ai-cost (job replay-refill).
+# Money: the estimate is printed first (pick job), above max_asks (default 40) or $3 the run does not start, a row stops at 30 paid calls, each row's spend is in the job log and on /admin/ai-cost (job replay-refill).
 # The tree: main's tools + the PR's head merged on the runner (tools/refill-merge-main.sh; a branch older than this workflow still runs; one that conflicts with main stops with "rebase it").
 # Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), AI_COST_PUBLISH_KEY.
 # Guard: tests/test_refill_workflow.py, desktop/e2e/test/refill.test.mjs. Never posts a Replay-accept line.
@@ -81,8 +81,8 @@ jobs:
             said="$(node refill-trigger.mjs "$before" ladder-baseline.json "$BEFORE" 2>/dev/null)"
             verdict="$(echo "$said" | tail -n 1)"
             if [ "$verdict" = changed ]; then run=1; else run=0; fi
-            echo "refill (main): the push $verdict what the AI is asked (the ladder prompt fingerprints, the worker's instructions and field list): run=$run" | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "$said" | grep -v -x -E 'changed|same' | sed 's/^/  - /' | tee -a "$GITHUB_STEP_SUMMARY" || true
+            echo "refill (main): the push $verdict what the AI is asked (the ladder prompt fingerprints, the worker's instructions and field list): run=$run"
+            echo "$said" | grep -v -x -E 'changed|same' | sed 's/^/  - /' || true
           else run=1; fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
       - name: Wait for its turn (earlier refill runs finish first)
@@ -145,10 +145,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REFILL_KEY: ${{ secrets.REPLAY_REFILL_ANTHROPIC_KEY }}
         run: |
-          if [ -z "$REFILL_KEY" ]; then echo "refill: no REPLAY_REFILL_ANTHROPIC_KEY secret: nothing was asked (this workflow never runs on another key)" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          if [ -z "$REFILL_KEY" ]; then echo "refill: no REPLAY_REFILL_ANTHROPIC_KEY secret: nothing was asked (this workflow never runs on another key)"; exit 1; fi
           if [ -n "$PR" ]; then
             cross="$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json isCrossRepository -q .isCrossRepository)"
-            if [ "$cross" != "false" ]; then echo "refill: PR $PR is from a fork or unknown: the key is never given to it" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+            if [ "$cross" != "false" ]; then echo "refill: PR $PR is from a fork or unknown: the key is never given to it"; exit 1; fi
           fi
       - uses: actions/checkout@v5   # the workflow's own ref (main): its tools, never the PR's code
       - uses: actions/setup-node@v5
@@ -175,11 +175,11 @@ jobs:
           cp replay-faithful.json "$RUNNER_TEMP/pins.json"   # main's pins, unless the PR's head has its own file (data only: the PR's code is not run here)
           if git fetch --quiet origin "refs/pull/$PR/head"; then git show FETCH_HEAD:desktop/e2e/replay-faithful.json > "$RUNNER_TEMP/pins-pr.json" 2>/dev/null && mv "$RUNNER_TEMP/pins-pr.json" "$RUNNER_TEMP/pins.json"; fi
           node refill-pick.mjs "$RUNNER_TEMP/pins.json" "$RUNNER_TEMP/step4" $all --max-asks "$MAX_ASKS" > "$RUNNER_TEMP/pick.json"
-          { echo "### Replay refill: PR $PR"; echo; echo '```'; jq -r .line "$RUNNER_TEMP/pick.json"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo "### Replay refill: PR $PR"; echo; echo '```'; jq -r .line "$RUNNER_TEMP/pick.json"; echo '```'; }
           [ -z "$(jq -r .refused "$RUNNER_TEMP/pick.json")" ] || { echo "::error::the estimate is above the cap: nothing was asked"; jq -r .refused "$RUNNER_TEMP/pick.json" > "$RUNNER_TEMP/auto-why.txt"; exit 1; }
           if [ "$AUTO" = true ] && [ "$(jq '.rows | length' "$RUNNER_TEMP/pick.json")" != 0 ]; then   # the month's $5 (/admin/ai-cost, job replay-refill), read here: the PR's job holds no key
-            if AI_COST_PUBLISH_KEY="$COST_KEY" node refill-auto.mjs cap "$(jq .usd "$RUNNER_TEMP/pick.json")" > "$RUNNER_TEMP/auto-why.txt"; then tee -a "$GITHUB_STEP_SUMMARY" < "$RUNNER_TEMP/auto-why.txt"
-            else tee -a "$GITHUB_STEP_SUMMARY" < "$RUNNER_TEMP/auto-why.txt"; echo "::error::the automatic refill is over its cap: nothing was asked"; exit 1; fi
+            if AI_COST_PUBLISH_KEY="$COST_KEY" node refill-auto.mjs cap "$(jq .usd "$RUNNER_TEMP/pick.json")" > "$RUNNER_TEMP/auto-why.txt"; then cat "$RUNNER_TEMP/auto-why.txt"
+            else cat "$RUNNER_TEMP/auto-why.txt"; echo "::error::the automatic refill is over its cap: nothing was asked"; exit 1; fi
           fi
           echo "rows=$(jq -c .rows "$RUNNER_TEMP/pick.json")" >> "$GITHUB_OUTPUT"
           echo "groups=$(jq -c .groups "$RUNNER_TEMP/pick.json")" >> "$GITHUB_OUTPUT"
@@ -231,7 +231,7 @@ jobs:
           bash net-records-fetch.sh "$RUNNER_TEMP/records"
           printf '%s' "$ONLY" > "$RUNNER_TEMP/only.txt"   # empty = every recorded row; else just the rows the daily replay flagged
           node refill-pick.mjs --main "$RUNNER_TEMP/records" --max-asks "$MAX_ASKS" --only "$RUNNER_TEMP/only.txt" > "$RUNNER_TEMP/pick.json"
-          { echo "### Replay refill: main ($([ -s "$RUNNER_TEMP/only.txt" ] && echo 'the rows the daily replay flagged' || echo 'every recorded row'))"; echo; echo '```'; jq -r .line "$RUNNER_TEMP/pick.json"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo "### Replay refill: main ($([ -s "$RUNNER_TEMP/only.txt" ] && echo 'the rows the daily replay flagged' || echo 'every recorded row'))"; echo; echo '```'; jq -r .line "$RUNNER_TEMP/pick.json"; echo '```'; }
           echo "line=$(jq -r .line "$RUNNER_TEMP/pick.json" | head -n 1)" >> "$GITHUB_OUTPUT"
           [ -z "$(jq -r .refused "$RUNNER_TEMP/pick.json")" ] || { echo "::error::the estimate is above the cap: nothing was asked"; exit 1; }
           echo "rows=$(jq -c .rows "$RUNNER_TEMP/pick.json")" >> "$GITHUB_OUTPUT"
@@ -327,7 +327,7 @@ jobs:
         if: always()
         run: |
           if grep -q "OUT OF CREDITS" "$RUNNER_TEMP/fill.log" 2>/dev/null; then echo "::error::refill: OUT OF CREDITS (the refill key's balance or workspace limit): add credit in the Anthropic console, then run it again"; fi
-          { echo "#### ${{ matrix.row }}"; echo '```'; grep -E "^(fill-memo|replay-net: refill)" "$RUNNER_TEMP/fill.log" 2>/dev/null | cut -c1-300 || echo "no result"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "#### ${{ matrix.row }}"; echo '```'; grep -E "^(fill-memo|replay-net: refill)" "$RUNNER_TEMP/fill.log" 2>/dev/null | cut -c1-300 || echo "no result"; echo '```'; }
 
   publish:
     # Groups of 3 rows, one runner each: records-publish.mjs refuses more at once (its guard replays each refilled row twice). Each group is its own bundle (NET_RECORDS_BUNDLE_SUFFIX).
@@ -378,7 +378,7 @@ jobs:
         run: |
           n="$(find "$RUNNER_TEMP/packs" -name meta.json | wc -l | tr -d ' ')"
           echo "packs=$n" >> "$GITHUB_OUTPUT"
-          [ "$n" != 0 ] || echo "refill: no row was refilled: nothing to publish" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$n" != 0 ] || echo "refill: no row was refilled: nothing to publish"
       - uses: actions/download-artifact@v7
         if: steps.packs.outputs.packs != '0'
         with:
@@ -413,13 +413,13 @@ jobs:
           bash net-records-fetch.sh "$GITHUB_WORKSPACE/records"
           mkdir -p "$RUNNER_TEMP/packs-flat"
           find "$RUNNER_TEMP/packs" -name meta.json | while read -r meta; do d="$(dirname "$meta")"; cp -r "$d" "$RUNNER_TEMP/packs-flat/$(basename "$(dirname "$d")")-$(basename "$d")"; done
-          { echo "#### Merged"; node refill-merge.mjs "$GITHUB_WORKSPACE/records" "$RUNNER_TEMP/packs-flat" "$RUNNER_TEMP/staged"; } | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo "#### Merged"; node refill-merge.mjs "$GITHUB_WORKSPACE/records" "$RUNNER_TEMP/packs-flat" "$RUNNER_TEMP/staged"; } || true
       - name: This group's rows (at most 3)
         id: group
         if: steps.packs.outputs.packs != '0'
         working-directory: desktop/e2e
         run: |
-          node refill-group.mjs "$RUNNER_TEMP/staged" "${{ matrix.group }}" "$RUNNER_TEMP/staged-group" | tee -a "$GITHUB_STEP_SUMMARY"
+          node refill-group.mjs "$RUNNER_TEMP/staged" "${{ matrix.group }}" "$RUNNER_TEMP/staged-group" || true
           if [ -d "$RUNNER_TEMP/staged-group" ] && [ -n "$(ls -A "$RUNNER_TEMP/staged-group")" ]; then echo "rows=1" >> "$GITHUB_OUTPUT"; else echo "rows=0" >> "$GITHUB_OUTPUT"; fi
       - name: Publish this group's rows through the guard
         if: steps.packs.outputs.packs != '0' && steps.group.outputs.rows == '1'
@@ -430,9 +430,9 @@ jobs:
           DISPATCH_TOKEN: ${{ github.token }}   # starts the site replay after the publish (actions: write above); the write token has no rights on this repo
           NET_RECORDS_BUNDLE_SUFFIX: -g${{ matrix.group }}   # two groups in the same second never write the same asset
         run: |
-          if [ -z "$NET_RECORDS_WRITE_TOKEN" ]; then echo "refill: no NET_RECORDS_WRITE_TOKEN secret: the rows are refilled but not published (the owner adds it, then run again)" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          if [ -z "$NET_RECORDS_WRITE_TOKEN" ]; then echo "refill: no NET_RECORDS_WRITE_TOKEN secret: the rows are refilled but not published (the owner adds it, then run again)"; exit 1; fi
           node records-publish.mjs "$RUNNER_TEMP/staged-group" --against "$GITHUB_WORKSPACE/records" --report "$RUNNER_TEMP/yellow-g${{ matrix.group }}.json" 2>&1 | tee -a "$RUNNER_TEMP/publish.log"; code=${PIPESTATUS[0]}
-          { echo "#### Publish group ${{ matrix.group }}"; echo '```'; tail -n 40 "$RUNNER_TEMP/publish.log" | cut -c1-300; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "#### Publish group ${{ matrix.group }}"; echo '```'; tail -n 40 "$RUNNER_TEMP/publish.log" | cut -c1-300; echo '```'; }
           exit "$code"
       # Rows that only need a re-record (pinned not same as live, step mismatch) end this job green; their list travels to the summary and the one yellow message (owner, 17 Oct 2026).
       - name: Keep this group's list of rows that need a re-record
@@ -442,7 +442,7 @@ jobs:
           name: yellow-${{ github.run_id }}-g${{ matrix.group }}
           path: ${{ runner.temp }}/yellow-g${{ matrix.group }}.json
   finish:
-    # Once, after every group: the spend (job summary and /admin/ai-cost) and, for a PR run, the PR's gate again.
+    # Once, after every group: the spend (job log and /admin/ai-cost) and, for a PR run, the PR's gate again.
     needs: [pick, refill, publish]
     if: always() && needs.pick.result == 'success' && needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
@@ -468,10 +468,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/yellow"
           gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -p "yellow-$GITHUB_RUN_ID-*" -D "$RUNNER_TEMP/yellow" || true
           mapfile -t lists < <(find "$RUNNER_TEMP/yellow" -name '*.json')
-          node desktop/e2e/refill-yellow.mjs "$RUNNER_TEMP/yellow-merged.json" "${lists[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          node desktop/e2e/refill-yellow.mjs "$RUNNER_TEMP/yellow-merged.json" "${lists[@]}" || true
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Spend (job summary and /admin/ai-cost)
+      - name: Spend (job log and /admin/ai-cost)
         if: always() && steps.packs.outputs.packs != '0'
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
@@ -479,7 +479,7 @@ jobs:
         run: |
           total="$(find "$RUNNER_TEMP/packs" -name meta.json -exec cat {} + | jq -s '{usd: (map(.usd) | add), calls: (map(.calls) | add)}')"
           echo "$total" > "$RUNNER_TEMP/refill-cost.json"
-          echo "**Refill spend: \$$(jq -r '.usd | . * 10000 | round / 10000' "$RUNNER_TEMP/refill-cost.json") in $(jq -r .calls "$RUNNER_TEMP/refill-cost.json") call(s)** (the pick job's estimate is above)" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "**Refill spend: \$$(jq -r '.usd | . * 10000 | round / 10000' "$RUNNER_TEMP/refill-cost.json") in $(jq -r .calls "$RUNNER_TEMP/refill-cost.json") call(s)** (the pick job's log has the estimate)"
           node desktop/e2e/ai-cost-report.mjs --job "$AI_COST_JOB" --file "$RUNNER_TEMP/refill-cost.json" || true
       - name: Re-run the PR's site replays gate (the new bundle is read by its replay)
         if: inputs.pr != '' && needs.publish.result == 'success' && steps.packs.outputs.packs != '0'
@@ -488,7 +488,7 @@ jobs:
         run: |
           head="$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json headRefName -q .headRefName)"
           run="$(gh run list -R "$GITHUB_REPOSITORY" -w site-replays-pr.yml -b "$head" -L 1 --json databaseId -q '.[0].databaseId // empty')"
-          if [ -n "$run" ]; then gh run rerun "$run" -R "$GITHUB_REPOSITORY" && echo "refill: the PR's site replays gate (run $run) started again" | tee -a "$GITHUB_STEP_SUMMARY"; else echo "refill: no gate run found for $head: push or re-run it by hand" | tee -a "$GITHUB_STEP_SUMMARY"; fi
+          if [ -n "$run" ]; then gh run rerun "$run" -R "$GITHUB_REPOSITORY" && echo "refill: the PR's site replays gate (run $run) started again"; else echo "refill: no gate run found for $head: push or re-run it by hand"; fi
 
   notify:
     # A failed or cap-refused run on main says so on Telegram (the replay's bot: ci-alert.mjs), and the first good one after it says "back to green". A by-hand PR run does not (its own gate says).

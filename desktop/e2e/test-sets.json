@@ -268,7 +268,6 @@
   "step-limit.test.mjs",
   "step-needs.test.mjs",
   "step-shots.test.mjs",
-  "step-summary.test.mjs",
   "store-call.test.mjs",
   "store.test.mjs",
   "storemove-process.test.mjs",

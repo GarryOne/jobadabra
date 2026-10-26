@@ -55,7 +55,7 @@ export const SUITE_BUDGET_MS = Number(process.env.E2E_SUITE_BUDGET_MS) || 7 * 60
 export const budgetMsOf = suite => (suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
 export const slowest = (results, count = 5) => results.filter(result => result.seconds).sort((a, b) => b.seconds - a.seconds).slice(0, count).map(result => `${result.name.slice(0, 70)} (${Math.round(result.seconds)} s)`);
 
-// The screenshot a failed step leaves (without .png); the step summary names it (lib/step-summary.mjs).
+// The screenshot a failed step leaves (without .png); the HTML report attaches it.
 export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)}`;
 
 // faultTally: () => the fakes' {armed, failed} counters (lib/faults.mjs), to check that a step's fault fired.

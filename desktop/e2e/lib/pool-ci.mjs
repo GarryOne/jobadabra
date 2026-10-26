@@ -1,5 +1,5 @@
 // The pool's smoke on a GitHub runner (owner, 12 Oct 2026: by hand only, start simple; .github/workflows/record-sites.yml): the hard caps the workflow sets (rows,
-// AI dollars), no Electron leg there (never a second visit after a block page; the runner has no Electron), and the job summary: one table row per run row, a bot
+// AI dollars), no Electron leg there (never a second visit after a block page; the runner has no Electron), and the job log: one table row per run row, a bot
 // wall on the runner's data-center IP shown as "blocked (CI IP)" and never a failure, red only for a row that did not finish (a harness error), the tripwire, or a
 // refused AI (12 Oct 2026: the Tests key had no credit and the row ran without AI, which is no result).
 // Used by record-sites.mjs and pool-ci-summary.mjs. Guard: e2e/test/pool-ci.test.mjs.
@@ -62,7 +62,7 @@ function notRunLine(report, now) {
 const endingCell = item => (item.ending === 'unresolved' ? '❌ unresolved' : item.ending === 'held' ? 'held by the test' : item.ending || '–');
 
 // The day's report (record-sites.mjs: results + thisRun) and each row's last CI run (baseline: lib/pool-ci-state.mjs baselines) -> {markdown, red: [reasons]} for
-// $GITHUB_STEP_SUMMARY; red is empty when the run is green. Only the rows this run ran (the day's report also keeps other runs' rows).
+// the job log; red is empty when the run is green. Only the rows this run ran (the day's report also keeps other runs' rows).
 // keyName: which Anthropic key the run used, by NAME (lib/engine.mjs liveKeyName); anything but a known name is never printed.
 const KEY_NAMES = [keySecret('api'), ...Object.values(LIVE_KEYS)];   // the names come from the engine rule, the only file that names keys (e2e/test/no-local-key.test.mjs)
 export function summary(report = {}, {baseline = {}, now = new Date(), keyName = ''} = {}) {

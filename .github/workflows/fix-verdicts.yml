@@ -39,7 +39,7 @@ jobs:
         env:
           NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
         run: |
-          if [ -z "$NET_RECORD_KEY" ]; then echo "replay-verify: key not set (NET_RECORD_KEY): nothing replayed" | tee -a "$GITHUB_STEP_SUMMARY"; echo "ok=0" >> "$GITHUB_OUTPUT"; else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+          if [ -z "$NET_RECORD_KEY" ]; then echo "replay-verify: key not set (NET_RECORD_KEY): nothing replayed"; echo "ok=0" >> "$GITHUB_OUTPUT"; else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v5
         if: steps.key.outputs.ok == '1'
         with:
@@ -59,7 +59,7 @@ jobs:
           records=$(gh release view net-records -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].updatedAt] | max // ""' 2>/dev/null || true)
           if git cat-file -e "$sha" 2>/dev/null && git diff --quiet "$sha" HEAD -- desktop extension src worker/src .github/workflows/fix-verdicts.yml ':!desktop/test' ':!desktop/e2e/test' \
              && { [ -z "$records" ] || [[ "$records" < "$at" ]]; }; then
-            echo "replay-verify: nothing changed since the last green run (${sha::7}, $at): nothing to do" | tee -a "$GITHUB_STEP_SUMMARY"; echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "replay-verify: nothing changed since the last green run (${sha::7}, $at): nothing to do"; echo "skip=1" >> "$GITHUB_OUTPUT"
           else echo "replay-verify: changed since ${sha::7}: replaying"; fi
       - uses: actions/setup-node@v5
         if: steps.key.outputs.ok == '1' && steps.dup.outputs.skip != '1'
@@ -95,7 +95,7 @@ jobs:
           (npm ci || npm install) >/dev/null 2>&1
           bash net-records-fetch.sh --bundles-only "$RUNNER_TEMP/bundles"   # the run's ONE download of the release, still encrypted: the replay jobs take it from the artifact below
           NET_RECORDS_BUNDLES="$RUNNER_TEMP/bundles" bash net-records-fetch.sh "$RUNNER_TEMP/records"
-          node verify-plan.mjs "$RUNNER_TEMP/records" "$RUNNER_TEMP/plan.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          node verify-plan.mjs "$RUNNER_TEMP/records" "$RUNNER_TEMP/plan.json" || true
           echo "jobs=$(node -e 'process.stdout.write(JSON.stringify({include: JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).jobs.map((job, index) => ({index, job}))}))' "$RUNNER_TEMP/plan.json")" >> "$GITHUB_OUTPUT"
           cp "$RUNNER_TEMP/plan.json" "$GITHUB_WORKSPACE/plan.json"
       - uses: actions/upload-artifact@v6   # the release's bundles, still ENCRYPTED (public repo: nothing decrypted is ever uploaded); the replay jobs decrypt with NET_RECORD_KEY
@@ -172,7 +172,7 @@ jobs:
         run: |
           set -o pipefail
           printf '%s' "$JOB" > "$RUNNER_TEMP/job.json"
-          node verify-row.mjs "$RUNNER_TEMP/records" "$RUNNER_TEMP/job.json" "$GITHUB_WORKSPACE/verify-out" 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          node verify-row.mjs "$RUNNER_TEMP/records" "$RUNNER_TEMP/job.json" "$GITHUB_WORKSPACE/verify-out" 2>&1
       - uses: actions/upload-artifact@v6   # the verdict only: fixed words, no record, no key
         if: always()
         with:
@@ -199,4 +199,4 @@ jobs:
         working-directory: desktop/e2e
         env:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
-        run: node verify-report.mjs "$(find "$RUNNER_TEMP/in" -name plan.json | head -1)" "$RUNNER_TEMP/in" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node verify-report.mjs "$(find "$RUNNER_TEMP/in" -name plan.json | head -1)" "$RUNNER_TEMP/in" || true

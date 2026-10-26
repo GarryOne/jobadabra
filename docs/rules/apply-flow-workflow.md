@@ -42,7 +42,7 @@
 - No many-row replay on the Mac: a before/after over more than 3 rows runs in CI (`gh workflow run site-replays.yml --ref <branch>`, ~14 min in parallel, $0; owner, 15 Oct 2026); `replay-records.mjs` refuses it locally (`desktop/e2e/lib/wide-local.mjs`).
 
 ## An intended replay drop: accepted on the PR that causes it (owner, 14 Oct 2026; since 17 Oct 2026 the daily run judges it, no PR gate)
-- A fix can make a counted row "worse" on purpose (an upload counted once, not twice). The daily run's summary shows that row's **field-by-field diff** (label, baseline outcome, new outcome; never a value) and a copy-ready line.
+- A fix can make a counted row "worse" on purpose (an upload counted once, not twice). The daily run's log shows that row's **field-by-field diff** (label, baseline outcome, new outcome; never a value) and a copy-ready line.
 - The owner labels the PR `replay-accepted` and comments `Replay-accept: <row name> — <reason>` (or a bare `Replay-accept: <reason>` for every worse row). The daily run (`site-replays.yml`) reads the label and comments of the PRs merged since its baseline (`replay-accepts.mjs`) and passes only the named rows; any other worse row stays red and alerts.
 - **Never accept your own drop.** Every session posts as the owner, so its comment would count as the owner's. Show the owner the gate's diff and wait; the hook `tools/replay-accept-guard.py` blocks the post unless the command has `REPLAY_ACCEPT_OK=1`, which you set only when the owner asked for that accept in your own chat.
 
@@ -68,7 +68,7 @@ with a test in `desktop/test/app-scenarios.test.js`. The twin (docs/live-test.md
 
 ## Refilling answers a prompt change made stale (15 Oct 2026)
 - A merge that changes what the app asks the AI turns pinned rows "ask changed" / "out of date" in the daily site replays. There is no refill after each merge: the daily run starts `CI · Replay refill` itself for just the rows it flags (`only`), or run it by hand (`gh workflow run replay-refill.yml -f only=<row names>`); never from a PR (no PR-started workflow may reach an AI key). A row whose re-record will not reproduce is dropped, not chased.
-- Its own key `REPLAY_REFILL_ANTHROPIC_KEY` (no fallback), a cap (40 asks, $3), the estimate first, the spend in the job summary and on /admin/ai-cost (`replay-refill`). Old answers are never changed. `npm run fill-memo` stays for one row on the Mac.
+- Its own key `REPLAY_REFILL_ANTHROPIC_KEY` (no fallback), a cap (40 asks, $3), the estimate first, the spend in the job log and on /admin/ai-cost (`replay-refill`). Old answers are never changed. `npm run fill-memo` stays for one row on the Mac.
 
 <details><summary>Gaps being closed (14 Oct 2026) and where</summary>
 

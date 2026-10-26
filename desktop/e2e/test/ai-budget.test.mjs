@@ -41,7 +41,7 @@ test('recording a run\'s cost leaves the working folder untouched', async () => 
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cost-cwd-')), temp = fs.mkdtempSync(path.join(os.tmpdir(), 'cost-tmp-'));
   const record = path.join(temp, 'exec.json');
   fs.writeFileSync(record, JSON.stringify([{type: 'result', result: 'ok', total_cost_usd: 0.1, num_turns: 2}]));
-  execFileSync(process.execPath, [new URL('../ai-budget.mjs', import.meta.url).pathname, '--after', record, '--job', 'fixer'], {cwd: work, env: {...process.env, RUNNER_TEMP: temp, GITHUB_OUTPUT: '', GITHUB_STEP_SUMMARY: '', GH_TOKEN: ''}, stdio: 'pipe'});
+  execFileSync(process.execPath, [new URL('../ai-budget.mjs', import.meta.url).pathname, '--after', record, '--job', 'fixer'], {cwd: work, env: {...process.env, RUNNER_TEMP: temp, GITHUB_OUTPUT: '', GH_TOKEN: ''}, stdio: 'pipe'});
   assert.deepEqual(fs.readdirSync(work), [], 'nothing written where the fixer\'s guard looks');
   assert.equal(JSON.parse(fs.readFileSync(path.join(temp, 'ai-cost.json'), 'utf8')).usd, 0.1);
 });

@@ -37,7 +37,7 @@ async function review(api, dir, {pictures = {}, env = {}} = {}) {
   const art = path.join(dir, `art-${Math.random().toString(36).slice(2)}`); fs.mkdirSync(art);
   for (const view of ['jobs', 'settings']) fs.writeFileSync(path.join(art, `ui-${view}.png`), pictures[view] || shot());
   const {stdout} = await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_REVIEW_ENGINE: 'free', E2E_JUDGE_FAMILY: 'claude', CI_FREE_AI_CF_TOKEN: 'cf', CI_FREE_AI_CF_ACCOUNT_ID: 'acct',
-    E2E_REVIEW_FREE_URL: api.url, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_ARTIFACTS: art, E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_LESSONS: '0', GITHUB_STEP_SUMMARY: '', ...env}});
+    E2E_REVIEW_FREE_URL: api.url, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_ARTIFACTS: art, E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_LESSONS: '0', ...env}});
   return {stdout, findings: JSON.parse(fs.readFileSync(path.join(art, 'ai-findings.json'), 'utf8')), usage: JSON.parse(fs.readFileSync(path.join(art, 'ai-review-usage.json'), 'utf8'))};
 }
 

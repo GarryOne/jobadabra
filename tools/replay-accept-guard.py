@@ -31,7 +31,7 @@ def main():
     if 'REPLAY_ACCEPT_OK=1' in cmd or not POSTS.search(cmd): return
     if TEXT.search(cmd) or TEXT.search(files_named(cmd, data.get('cwd') or '')):
         print("Blocked by tools/replay-accept-guard.py: a `Replay-accept:` comment accepts a replay drop AS THE OWNER (every session posts through the owner's GitHub account). "
-              "Never accept your own drop: show the owner the gate's field-by-field diff (the replay gate's job summary) and wait. Only when the owner asked for exactly this "
+              "Never accept your own drop: show the owner the gate's field-by-field diff (the replay gate's job log) and wait. Only when the owner asked for exactly this "
               "accept in this chat: put REPLAY_ACCEPT_OK=1 in the command. See docs/rules/apply-flow-workflow.md.", file=sys.stderr)
         sys.exit(2)
 

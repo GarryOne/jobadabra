@@ -5,7 +5,7 @@
 # Usage: e2e-lock.sh acquire <key> | e2e-lock.sh release <key>   (needs GH_TOKEN with contents: write, GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_JOB, GITHUB_SHA)
 # E2E_LOCK_TOKEN (the CI App's token, minted by the job) is used instead of GH_TOKEN when set: a RE-RUN attempt's workflow token cannot create refs (beta 17, 24 Oct 2026:
 # 403 "Resource not accessible by integration" on the re-run of a job that took its lock on attempt 1). If creating the lock is still refused that way, the job runs WITHOUT the lock
-# and says so in the run summary, never red for it.
+# and says so in a warning annotation, never red for it.
 # Tests: tests/test_e2e_lock.py
 set -uo pipefail
 [ -n "${E2E_LOCK_TOKEN:-}" ] && export GH_TOKEN="$E2E_LOCK_TOKEN"
@@ -33,7 +33,7 @@ acquire() {
       if [ "$fails" -ge 3 ]; then
         if printf '%s' "$made" | grep -q 'Resource not accessible by integration'; then
           echo "e2e-lock: WARNING: the token may not create refs on this attempt (run attempt ${GITHUB_RUN_ATTEMPT:-?}); ${key} runs WITHOUT its lock" >&2
-          [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "⚠️ ${key}: ran without the suite lock (the token cannot create refs on this attempt: ${me})" >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning::${key}: ran without the suite lock (the token cannot create refs on this attempt: ${me})"
           return 0
         fi
         exit 1

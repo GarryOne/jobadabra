@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {causeOf, sharedCauseLines, sharedCauses} from '../lib/step-cause.mjs';
-import {stepSummary} from '../lib/step-summary.mjs';
 
 const timeout = (pick, resolved = '') => ['locator.click: Timeout 30000ms exceeded.', 'Call log:', `  - waiting for locator('#activity-recent li:not(.recent-group) button')${pick}`,
   ...(resolved ? [`    - locator resolved to ${resolved}`, '  - attempting click action', '    2 × waiting for element to be visible, enabled and stable', '      - element is not visible'] : [])].join('\n');
@@ -50,11 +49,4 @@ test('beta 2: five different checks are five causes, none shared', () => {
 test('steps not run over the budget share one cause', () => {
   const over = n => ({name: `step ${n}`, status: 'failed', note: 'not run: the suite was over its 7-minute budget', budget: true});
   assert.deepEqual(sharedCauses([over(1), over(2), over(3)]).map(group => group.steps.length), [3]);
-});
-
-test('the Summary page says the shared cause above the table, and each red its one-line cause', () => {
-  const page = stepSummary('cardstates', BETA1);
-  assert.ok(page.indexOf('⚠ one cause, 6 steps') < page.indexOf('| | Step |'), page);
-  assert.match(page, /\| Gmail connected now \| {2}\| click on locator\('#activity-recent li:not\(\.recent-group\) button'\): not visible \(gave up after 30 s\) · screenshot/);
-  assert.doesNotMatch(stepSummary('cardstates', BETA2), /one cause/);
 });

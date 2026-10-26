@@ -1,5 +1,5 @@
-// node pool-ci-summary.mjs <smoke reports folder> [baseline file]: the CI pool run's job summary (.github/workflows/record-sites.yml) from the newest day report record-sites.mjs wrote:
-// the table on stdout (the workflow appends it to $GITHUB_STEP_SUMMARY), exit 1 when a row did not finish, the tripwire fired, the AI was refused or a row fell below
+// node pool-ci-summary.mjs <smoke reports folder> [baseline file]: the CI pool run's table for the job log (.github/workflows/record-sites.yml) from the newest day report record-sites.mjs wrote:
+// the table on stdout (the job log), exit 1 when a row did not finish, the tripwire fired, the AI was refused or a row fell below
 // its last CI run (the baseline file of pool-ci-state.mjs prepare; lib/pool-ci.mjs summary).
 import fs from 'node:fs';
 import path from 'node:path';

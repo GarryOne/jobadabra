@@ -266,7 +266,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         json.dump([{'id': 20, 'name': 'python', 'status': 'in_progress', 'conclusion': None, 'runner_name': 'r1',
                     'steps': [{'name': 'Run tests', 'status': 'completed', 'conclusion': 'success'}, {'name': pv.STEP, 'status': 'in_progress'}]}],
                   open(os.path.join(d, 'jobs-2.json'), 'w'))
-        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='2', RUNNER_NAME='r1', GITHUB_STEP_SUMMARY='')
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='2', RUNNER_NAME='r1')
         script = os.path.join(d, 'pr-verdict.py'); open(script, 'w').write((ROOT / 'tools' / 'pr-verdict.py').read_text())   # as the step does: a copy, no repo around it
         done = subprocess.run([sys.executable, script, '--repo', 'o/r', '--sha', 'abc1234', '--job-status', job_status], env=env, capture_output=True, text=True, timeout=60)
         written = open(os.path.join(d, 'written')).read() if os.path.exists(os.path.join(d, 'written')) else ''

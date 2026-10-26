@@ -64,7 +64,7 @@ Detail moved to files here: [reproduce.md](reproduce.md) (decisions made, how to
 - A route the recording lacks: ask `record-applying-sites` for the full journey; never visit the site. The owner says stop.
 
 ## Never
-- Accept your own drop. Never accept your own drop: a row that fell because of your fix is the owner's call. Show the owner the daily replay's field-by-field diff (the job summary of "CI · Site replays · all (offline)") and wait; the owner labels the PR `replay-accepted` and comments the `Replay-accept:` line. A hook blocks posting it; `REPLAY_ACCEPT_OK=1` only when the owner asked for exactly that accept in this chat.
+- Accept your own drop. Never accept your own drop: a row that fell because of your fix is the owner's call. Show the owner the daily replay's field-by-field diff (the job log of "CI · Site replays · all (offline)") and wait; the owner labels the PR `replay-accepted` and comments the `Replay-accept:` line. A hook blocks posting it; `REPLAY_ACCEPT_OK=1` only when the owner asked for exactly that accept in this chat.
 - Submit, a consent, an account button, a captcha or SMS code; the owner's live app, profile, CV, Keychain or paid AI; a fix named after one website.
 - A recorded case whose expected result or AI answer was written to fit the fix. A long foreground wait (background + `Monitor`). A fix built on a guess (lessons.md).
 - Silently fixing a gap in the debugging process (a missing log, a report that hides evidence): list it and send it to the coordinator.

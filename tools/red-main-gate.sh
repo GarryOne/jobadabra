@@ -4,7 +4,7 @@
 #   main's state unreadable (gh failed)                    → exit 1: unknown is never green (--force still goes on)
 #   red, and no commit on main since the red run           → exit 1: fix it first (the beta would show the same reds)
 #   red, commits landed since                              → re-runs ONLY the red suites on main now and waits: green → exit 0, red → exit 1
-#   --force "<why>" (as beta-release.sh's)                → exit 0 with the reds named; beta-release.sh puts the reason in the beta run's summary
+#   --force "<why>" (as beta-release.sh's)                → exit 0 with the reds named; beta-release.sh puts the reason in the beta run's log
 # Why: 25 Oct 2026, main's 21:47 run was red on cardstates, interactions and settings; beta 2 started 1.5 h later and failed on the same suites.
 # Usage: tools/red-main-gate.sh <repo> [--force "<why>" | --status]   --status only reads (exit 0 green, 1 red); any other option is refused and starts nothing (26 Oct 2026: a --dry-run was ignored and re-ran main's red suites)     RED_MAIN_POLL / RED_MAIN_FIND_S / RED_MAIN_WAIT_S for tests.
 # Tests: tests/test_red_main_gate.py

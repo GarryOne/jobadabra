@@ -30,7 +30,6 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
   const lines = [`watch: month ${money.month}: spent $${money.spent} of $25, ${rows.length} watch row(s), AI cap $${money.maxUsd} for this run${money.capped ? ' (cap reached: no run)' : ''}`, ...rows.map(row => `watch: ${row.shape}`)];
   console.log(lines.join('\n'));
   if (env.GITHUB_OUTPUT) fs.appendFileSync(env.GITHUB_OUTPUT, `count=${count}\nonly=${rows.map(row => row.shape).join('|')}\nmax_usd=${money.maxUsd.toFixed(2)}\ncap_alert=${alert ? 1 : 0}\n`);
-  if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `### Daily watch: ${count} row(s)\n${lines.map(line => `- ${line.replace(/^watch: /, '')}`).join('\n')}\n`);
   return 0;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exit(await main().catch(error => { console.error(`watch: ${error.message}`); return 1; }));

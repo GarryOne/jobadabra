@@ -28,4 +28,4 @@ jobs:
           DRY_RUN: '1'
           PROMOTE_TAG: ${{ inputs.tag }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-stable.sh "$PROMOTE_TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: tools/release-stable.sh "$PROMOTE_TAG"

@@ -45,7 +45,7 @@ jobs:
           if grep -q '^skip=true' "$GITHUB_OUTPUT"; then echo "count=0" >> "$GITHUB_OUTPUT"; exit 0; fi
           open=$(gh pr list --repo "$REPO" --state open --label auto-ui-fix --json number --jq length)
           room=$((4 - open))
-          if [ "$room" -le 0 ]; then echo "count=0" >> "$GITHUB_OUTPUT"; echo "Four automatic fixes already wait for review; not starting another." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ "$room" -le 0 ]; then echo "count=0" >> "$GITHUB_OUTPUT"; echo "Four automatic fixes already wait for review; not starting another."; exit 0; fi
           node desktop/e2e/pick.mjs --out .heal --fix-list "$room"
 
   fix:
@@ -157,14 +157,14 @@ jobs:
           for pair in "Put the finding's screenshot next to it:$SHOT_OUTCOME" "Install the app's dependencies:$DEPS_OUTCOME"; do
             if [ "${pair##*:}" = failure ]; then
               echo "::error::The step \"${pair%:*}\" failed, so Claude was not run; the issue is left as it is."
-              echo "The step \"${pair%:*}\" failed: see its log above. Nothing was changed on the issue." >> "$GITHUB_STEP_SUMMARY"
+              echo "The step \"${pair%:*}\" failed: see its log above. Nothing was changed on the issue."
               exit 1
             fi
           done
           # Claude did not run (the API refused: no credit, a bad key, an outage): that says nothing about the finding. Nothing is labelled or closed (2 Oct 2026: a first run that
           # failed on "Credit balance is too low" parked the issue as needs-human, "Claude made no change").
           if [ "$CLAUDE_OUTCOME" != success ]; then
-            echo "The fixer could not run Claude (step outcome: $CLAUDE_OUTCOME): see this run's transcript artifact. Nothing was changed on the issue." >> "$GITHUB_STEP_SUMMARY"
+            echo "The fixer could not run Claude (step outcome: $CLAUDE_OUTCOME): see this run's transcript artifact. Nothing was changed on the issue."
             echo "::error::Claude Code did not run ($CLAUDE_OUTCOME); the issue is left as it is."
             exit 1
           fi
@@ -188,7 +188,7 @@ jobs:
                   gh label create confirmed --repo "$REPO" --force --color 0E8A16 --description 'A person or the verdict pass says this is real: ready to fix'
                   gh issue edit "$number" --repo "$REPO" --add-label confirmed
                   gh issue comment "$number" --repo "$REPO" --body-file .heal/comment.md
-                  echo "Issue #$number judged real and confirmed." >> "$GITHUB_STEP_SUMMARY"
+                  echo "Issue #$number judged real and confirmed."
                 else
                   gh issue edit "$number" --repo "$REPO" --add-label needs-human
                   gh issue comment "$number" --repo "$REPO" --body "The UI loop could not fix this by itself. ${reason:-Claude made no change.}"
@@ -198,19 +198,19 @@ jobs:
                 resolution=$(node desktop/e2e/resolution.mjs --file .heal/verdict.md || true)
                 if [ -n "$resolution" ]; then gh label create "$resolution" --repo "$REPO" --force --color F9D0C4 --description 'Why this issue was closed (desktop/e2e/lib/resolution.mjs)'; gh issue edit "$number" --repo "$REPO" --add-label "$resolution"; fi
                 gh issue close "$number" --repo "$REPO" --reason "not planned" --comment "$(cat .heal/comment.md)"
-                echo "Issue #$number closed as a false positive." >> "$GITHUB_STEP_SUMMARY" ;;
+                echo "Issue #$number closed as a false positive." ;;
               harness)
                 gh label create harness --repo "$REPO" --force --color BFD4F2 --description 'The test was wrong, not the product: the Finder self-review fixes the test'
                 gh issue edit "$number" --repo "$REPO" --add-label harness --add-label wontfix-auto
                 resolution=$(node desktop/e2e/resolution.mjs --file .heal/verdict.md || true)
                 if [ -n "$resolution" ]; then gh label create "$resolution" --repo "$REPO" --force --color F9D0C4 --description 'Why this issue was closed (desktop/e2e/lib/resolution.mjs)'; gh issue edit "$number" --repo "$REPO" --add-label "$resolution"; fi
                 gh issue close "$number" --repo "$REPO" --reason "not planned" --comment "$(cat .heal/comment.md)"
-                echo "Issue #$number closed as a test-harness problem." >> "$GITHUB_STEP_SUMMARY" ;;
+                echo "Issue #$number closed as a test-harness problem." ;;
               *)
                 gh issue edit "$number" --repo "$REPO" --add-label needs-human
                 if [ "$mode" = verdict ]; then gh issue comment "$number" --repo "$REPO" --body-file .heal/comment.md
                 else gh issue comment "$number" --repo "$REPO" --body "The UI loop could not fix this by itself. ${reason:-Claude made no change.}"; fi
-                echo "Issue #$number needs a person." >> "$GITHUB_STEP_SUMMARY" ;;
+                echo "Issue #$number needs a person." ;;
             esac
             exit 0
           fi
@@ -245,7 +245,7 @@ jobs:
           if [ "$BASE" != main ]; then gh label create dry-run --repo "$REPO" --force --color FBCA04 --description 'A dry run of the UI loop: close it'; extra="--label dry-run"; fi
           # shellcheck disable=SC2086
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base "$BASE" --head "$branch" --title "$title" --body-file .heal/laid-out.md --label auto-ui-fix $extra)
-          echo "Pull request opened: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pull request opened: $url"
           # Autonomy, opt-in (JOB_PILOTTO_FIXER_AUTOMERGE=on): a fix of the window only (desktop/renderer and its tests), at most 80 changed lines, that already
           # passed every suite and the lint, merges itself, and a confirmed small engine fix with its own test may too (JOB_PILOTTO_FIXER_AUTOMERGE_ENGINE=on, below).
           # Anything else waits for a person. Off by default: until 4 Oct 2026 nothing merged itself.
@@ -262,17 +262,17 @@ jobs:
             if [ -n "$kind" ]; then
               # Fixes merge in parallel: one that now conflicts with a fix merged meanwhile stays open for a person.
               if ! gh pr merge "$url" --repo "$REPO" --squash --delete-branch; then
-                echo "Could not merge automatically (probably a conflict with a fix merged meanwhile): a person merges it." >> "$GITHUB_STEP_SUMMARY"; exit 0
+                echo "Could not merge automatically (probably a conflict with a fix merged meanwhile): a person merges it."; exit 0
               fi
               # A merge by the workflow's own token does not apply "Fixes #N" (4 Oct 2026: #122, #123, #135 stayed open after their fixes landed): close it here.
               gh label create resolution:fixed --repo "$REPO" --force --color 0E8A16 --description 'A fix landed (desktop/e2e/lib/resolution.mjs)' || true; gh issue edit "$number" --repo "$REPO" --add-label resolution:fixed || true
               gh issue close "$number" --repo "$REPO" --comment "Fixed by $url (merged by the UI loop). The page's suite runs again now: the next findings run checks it stays gone." || true
               gh pr comment "$url" --repo "$REPO" --body "Merged by the UI loop ($kind fix, $lines line(s), passed every suite and the lint). Its suite runs again now; revert this commit if it was wrong."
-              echo "Merged automatically ($kind, $lines lines)." >> "$GITHUB_STEP_SUMMARY"
+              echo "Merged automatically ($kind, $lines lines)."
               # The proof, now rather than at the next scheduled run: the issue's own suite on the new main.
               suite=$(gh issue view "$number" --repo "$REPO" --json labels --jq '[.labels[].name | select(startswith("suite:")) | sub("suite:";"")][0] // ""')
-              if [ -n "$suite" ]; then gh workflow run e2e.yml --repo "$REPO" --ref main -f suite="$suite" || echo "The suite could not be started: the scheduled run checks it." >> "$GITHUB_STEP_SUMMARY"; fi
+              if [ -n "$suite" ]; then gh workflow run e2e.yml --repo "$REPO" --ref main -f suite="$suite" || echo "The suite could not be started: the scheduled run checks it."; fi
             else
-              echo "Not merged automatically ($lines lines): it is outside what may merge itself (window-only up to 80 lines, or a confirmed engine fix up to 40 lines with its own test). A person merges it." >> "$GITHUB_STEP_SUMMARY"
+              echo "Not merged automatically ($lines lines): it is outside what may merge itself (window-only up to 80 lines, or a confirmed engine fix up to 40 lines with its own test). A person merges it."
             fi
           fi

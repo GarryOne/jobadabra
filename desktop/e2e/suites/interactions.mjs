@@ -89,7 +89,6 @@ export async function run(ctx) {
     fs.writeFileSync(path.join(ARTIFACTS, 'recall.json'), JSON.stringify(result, null, 2));
     ctx.findings.push(...recallFindings(result));
     console.log(`  recall: ${result.caught} of ${result.planted} planted bugs caught${result.caught < result.planted ? ` (missed: ${result.rows.filter(row => !row.caught).map(row => row.id).join(', ')})` : ''}`);
-    if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Detector recall: ${result.caught} of ${result.planted} planted bugs caught.\n`);
   }, {needs: ctx.needs});
   await ctx.run('the narrowest window: the sidebar is an icon rail and every page still fits', async () => {
     await visitNarrow(ctx, ['focus', 'jobs', 'actions', 'settings']);

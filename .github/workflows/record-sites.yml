@@ -23,7 +23,7 @@
 #   Red when NO row ran ("NOT RUN: <why>, next visit possible <when>" leads the summary and a PR gets it as a comment: 12 Oct 2026, a 1-minute green ran nothing),
 #   for a row that did not finish (a harness error), the tripwire, a refused AI, or a row reaching less than its last CI run on main or on this
 #   PR (lib/pool-ci-state.mjs); never for a bot wall, a refusal or a gone posting.
-# Result: the job summary table and the artifact (the day report, smoke.log, evidence/<day>/<row>/: end.png, step-*.png, app.log, run.log, evidence.md).
+# Result: the table in the job log and the artifact (the day report, smoke.log, evidence/<day>/<row>/: end.png, step-*.png, app.log, run.log, evidence.md).
 # Captures: every row's journey (scrubbed pages, styles, AI answers, app.log, build) as pool-captures-<run>, 30 days (owner, 13 Oct 2026; spec
 # 2026-10-13-capture-once-measure-many.md); `npm run captures -- pull` keeps them on the Mac, `npm run measure` re-runs a build on them with no site visit.
 name: CI · Record sites (by hand)
@@ -216,21 +216,21 @@ jobs:
           path: record-sites-out/state/state.json
           retention-days: 14
           if-no-files-found: warn
-      - name: Job summary (red when no row ran, a row did not finish, the tripwire, a refused AI, a fall below its last CI run)
+      - name: The rows table (red when no row ran, a row did not finish, the tripwire, a refused AI, a fall below its last CI run)
         if: always()
         working-directory: desktop/e2e
         env:
           NOT_RUN_FILE: ${{ runner.temp }}/not-run.txt   # a run where no row ran: its NOT RUN line (lib/pool-ci.mjs), never a green pass
         run: |
           set -o pipefail
-          node pool-ci-summary.mjs "$RECORD_REPORTS" "$GITHUB_WORKSPACE/record-sites-out/baseline.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          node pool-ci-summary.mjs "$RECORD_REPORTS" "$GITHUB_WORKSPACE/record-sites-out/baseline.json"
       - name: The ladder moves, the rows' endings, and (on main only) the rows' results for /admin/lab-form-filling
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}   # the narrow key: it writes only the replays, test-source ladder moves, the rows' endings and (main only) the rows' results
         run: |
-          node desktop/e2e/pool-moves.mjs "$RECORD_REPORTS" | tee -a "$GITHUB_STEP_SUMMARY"   # the moves per row: the one-next-move spec's phase-1 proof
+          node desktop/e2e/pool-moves.mjs "$RECORD_REPORTS" || true   # the moves per row: the one-next-move spec's phase-1 proof
           node desktop/e2e/pool-endings.mjs "$RECORD_REPORTS"   # each row's ending: main's feed /admin/lab-form-filling's Resolution tile (phase 1a)
           # A recording run is how the pool's table moves (owner, 14 Oct 2026): the site refuses any branch but main (admin/applying-ci-rows.js).
           [ "$GITHUB_REF" = "refs/heads/main" ] && node desktop/e2e/pool-ci-rows.mjs "$RECORD_REPORTS" || echo "ci rows report: not sent (not a run on main)"
@@ -327,4 +327,4 @@ jobs:
           tools/bot-pr-body.sh HEAD~1 --verdict='🟢 The daily discovery batch reached new flow shapes: they join the pool.' --why='the daily discovery batch (record-sites.yml) found sites with shapes the pool lacks' \
             --unblocks='the pool tests those shapes from tomorrow, once the owner merges' --label='Pool shapes' --before='not in the pool' --after='in desktop/e2e/smoke-sites.json' \
             --rate='Form filling=🟡 Medium|new shapes get tested' --rate='Offline replays=🟡 Medium|new rows to record' --rate='Tests & harness=🟡 Medium|a wider pool' --detail=pr-detail.md > pr-body.md
-          GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --base main --head "$branch" --title "Add the daily discovery batch's new shapes to the pool" --body-file pr-body.md | tee -a "$GITHUB_STEP_SUMMARY"
+          GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --base main --head "$branch" --title "Add the daily discovery batch's new shapes to the pool" --body-file pr-body.md || true

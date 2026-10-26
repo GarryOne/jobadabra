@@ -38,7 +38,7 @@ async function review(api, extraEnv = {}) {
   const art = path.join(dir, 'art'); fs.mkdirSync(art);
   for (const view of ['jobs', 'settings']) fs.writeFileSync(path.join(art, `ui-${view}.png`), Buffer.from([137, 80, 78, 71, view.length]));
   const {stdout} = await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_REVIEW_BATCH_MIN: '2', E2E_ARTIFACTS: art,
-    E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', GITHUB_STEP_SUMMARY: '', E2E_JUDGE_FAMILY: 'claude', E2E_REVIEW_LESSONS: '0', ...extraEnv}});
+    E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', E2E_JUDGE_FAMILY: 'claude', E2E_REVIEW_LESSONS: '0', ...extraEnv}});
   return {stdout, findings: JSON.parse(fs.readFileSync(path.join(art, 'ai-findings.json'), 'utf8')), usage: JSON.parse(fs.readFileSync(path.join(art, 'ai-review-usage.json'), 'utf8'))};
 }
 
@@ -93,7 +93,7 @@ test('every suite\'s folder in one batch; each folder\'s findings and pictures l
     const out = path.join(dir, 'out'), usageDir = path.join(dir, 'usage');
     await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_REVIEW_BATCH_MIN: '1', E2E_ARTIFACTS: usageDir,
       E2E_REVIEW_DIRS: [...dirs, path.join(dir, 'in', 'empty')].join(path.delimiter), E2E_REVIEW_OUT: out, E2E_REVIEW_ENGINE: 'claude', E2E_JUDGE_FAMILY: 'free',
-      E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', GITHUB_STEP_SUMMARY: '', E2E_REVIEW_LESSONS: '0'}});
+      E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', E2E_REVIEW_LESSONS: '0'}});
     assert.equal(api.seen.batches, 1, 'one batch for both suites');
     assert.deepEqual(api.seen.ids, ['r0', 'r1']);
     const jobs = JSON.parse(fs.readFileSync(path.join(out, 'e2e-artifacts-jobs', 'ai-findings.json'), 'utf8'));

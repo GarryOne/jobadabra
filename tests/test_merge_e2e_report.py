@@ -28,9 +28,8 @@ class MergeReportTest(unittest.TestCase):
         bin_dir = self.tmp / 'bin'; bin_dir.mkdir()
         npx = bin_dir / 'npx'   # a fake npx: records the folder it was given, fails when told to
         npx.write_text('#!/usr/bin/env bash\nls "${@: -1}" > "$FAKE_NPX_SAW"\n[ -z "$FAKE_NPX_FAIL" ]\n'); npx.chmod(npx.stat().st_mode | stat.S_IEXEC)
-        self.summary = self.tmp / 'summary.md'; self.output = self.tmp / 'output.txt'; self.saw = self.tmp / 'saw.txt'
-        self.env = {**os.environ, 'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'GITHUB_STEP_SUMMARY': str(self.summary),
-                    'GITHUB_OUTPUT': str(self.output), 'FAKE_NPX_SAW': str(self.saw)}
+        self.output = self.tmp / 'output.txt'; self.saw = self.tmp / 'saw.txt'
+        self.env = {**os.environ, 'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'GITHUB_OUTPUT': str(self.output), 'FAKE_NPX_SAW': str(self.saw)}
 
     def good_zip(self, name):
         with zipfile.ZipFile(self.blobs / name, 'w') as z: z.writestr('report.jsonl', 'ok')
@@ -44,7 +43,7 @@ class MergeReportTest(unittest.TestCase):
         self.good_zip('report-a.zip'); corrupt_zip(self.blobs / 'report-bad.zip')
         done = self.run_script()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn('report-bad.zip', self.read(self.summary))
+        self.assertIn('report-bad.zip', done.stdout)
         self.assertIn('made=1', self.read(self.output))
         self.assertNotIn('report-bad.zip', self.read(self.saw), 'the merge never sees the corrupt zip')
         self.assertIn('report-a.zip', self.read(self.saw))
@@ -54,13 +53,13 @@ class MergeReportTest(unittest.TestCase):
         done = self.run_script(FAKE_NPX_FAIL='1')
         self.assertEqual(done.returncode, 0)
         self.assertNotIn('made=1', self.read(self.output))
-        self.assertIn('could not be merged', self.read(self.summary))
+        self.assertIn('could not be merged', done.stdout)
 
     def test_only_corrupt_blobs_is_still_green(self):
         corrupt_zip(self.blobs / 'report-bad.zip')
         done = self.run_script()
         self.assertEqual(done.returncode, 0)
-        self.assertIn('No readable suite report', self.read(self.summary))
+        self.assertIn('No readable suite report', done.stdout)
 
 
 class WorkflowsUseTheScriptTest(unittest.TestCase):

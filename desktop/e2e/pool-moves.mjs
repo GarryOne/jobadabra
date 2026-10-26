@@ -1,5 +1,5 @@
 // node pool-moves.mjs <smoke reports folder>: after a CI pool run, the ladder moves each row's pages confirmed (lib/ladder-moves.mjs poolMoves, from the rows' saved app logs), printed as a
-// table for the job summary, then sent to the site's learning marked source 'ci' (sendMoves: CI only, the narrow REPLAYS_PUBLISH_KEY). Spec docs/superpowers/specs/2026-10-12-one-next-move.md,
+// table for the job log, then sent to the site's learning marked source 'ci' (sendMoves: CI only, the narrow REPLAYS_PUBLISH_KEY). Spec docs/superpowers/specs/2026-10-12-one-next-move.md,
 // phase 1. Never fails the job: it prints lines.
 import fs from 'node:fs';
 import path from 'node:path';

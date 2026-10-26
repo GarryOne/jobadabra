@@ -55,7 +55,7 @@ export function clear({gh = realGh, job}) {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const args = process.argv.slice(2), at = flag => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : ''; };
   const out = (key, value) => { if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`); };
-  const summary = line => { console.log(line); if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`); };
+  const summary = line => console.log(line);
   if (args.includes('--check')) {
     let skip = false;
     try { skip = shouldSkip(list(realGh)); } catch { /* cannot tell: run */ }

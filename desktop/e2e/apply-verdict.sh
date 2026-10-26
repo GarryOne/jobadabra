@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Applies one verdict to one GitHub issue, the same way wherever it was judged: the CI verdict pass (ui-verdict.yml) and the triage-github-open-issues skill (a person's session).
-#   desktop/e2e/apply-verdict.sh <issue number> <verdict file> [repo]      (needs gh; prints one line per action, for a run summary)
+#   desktop/e2e/apply-verdict.sh <issue number> <verdict file> [repo]      (needs gh; prints one line per action, for the job log)
 #   JUDGE="triage session (Claude Code, with the owner)" names who judged in the comment's footer; the default is the CI verdict pass. Runs from the repo root (evidence is checked there).
 # The verdict file: first line the word (real | false-positive | harness | needs-human | fixed), then "Why: …", "Cause: …" (a false positive's), "Severity: high|medium|low",
 # evidence as file:line (desktop/e2e/lib/verdict-comment.mjs parses it). What it does: the comment (banner, why, evidence, next step); the judge's severity on a real or parked

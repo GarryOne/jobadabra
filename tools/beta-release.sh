@@ -6,7 +6,7 @@
 # Each platform is approved on its own. A red gate leaves that platform's testers on their current beta. Never call tools/beta-approve.sh by hand: it skips the gate.
 #   tools/beta-release.sh [--no-watch] [--force "<why>"]
 # No beta while main's e2e is red (gate G2, 26 Oct 2026; tools/red-main-gate.sh): fixes landed since → only the red suites re-run on main first; --force "<why>" starts it
-# anyway and the reason shows in the beta run's summary. Why: beta 2 (25 Oct) started 1.5 h after main went red on the same suites.
+# anyway and the reason shows in the beta run's log. Why: beta 2 (25 Oct) started 1.5 h after main went red on the same suites.
 set -euo pipefail
 repo=GarryOne/jobadabra
 watch=1 force=""

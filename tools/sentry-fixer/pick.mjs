@@ -29,7 +29,6 @@ const {pick, left} = choose(candidates, prs, Date.now(), verdicts);
 
 const lines = [`## Sentry fixer`, pick ? `Most critical fixable issue: ${pick.issue.shortId}` : 'Nothing is ready to fix.', ...left.map(item => `- ${item.shortId}: ${item.why}`)];
 console.log(lines.join('\n'));
-if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
 if (pick) {
   const facts = eventFacts(pick.event || {});
   const candidate = {shortId: pick.issue.shortId, title: pick.issue.title, culprit: pick.issue.culprit, count: Number(pick.issue.count), users: pick.issue.userCount, firstSeen: pick.issue.firstSeen, lastSeen: pick.issue.lastSeen, link: pick.issue.permalink, ...facts};

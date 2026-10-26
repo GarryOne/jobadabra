@@ -40,6 +40,5 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   if (candidate) writeCandidate(candidate, outDir);
   const summary = fixerSummary({candidate});
   console.log(summary);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `candidate=${candidate ? candidate.number : 'none'}\n`   /* a real newline: a literal \\n made the output "none\\n" and every 'none' guard passed (a quiet run failed, 3 Oct 2026) */);
 }

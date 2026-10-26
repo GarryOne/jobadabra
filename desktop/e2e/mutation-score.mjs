@@ -10,7 +10,6 @@ const result = {...score(mutants, JSON.parse(fs.readFileSync(runsFile, 'utf8')))
 fs.writeFileSync(outFile, JSON.stringify(result, null, 2));
 const text = summary(result);
 console.log(text);
-if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
 if (process.env.GH_TOKEN) {
   const gh = args => execFileSync('gh', args, {encoding: 'utf8'});
   gh(['label', 'create', 'detector-miss', '--force', '--color', 'B60205', '--description', 'A bug the Finder should have caught and did not']);

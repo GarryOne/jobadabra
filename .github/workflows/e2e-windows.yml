@@ -111,7 +111,7 @@ jobs:
           SHA: ${{ inputs.sha }}
           REVIEW: ${{ inputs.review }}
           GATE_TAG: ${{ inputs.tag }}   # the release run's Windows gate: planned as the Mac + Linux gate (plan-run.mjs), not after it
-        run: node plan-windows.mjs 2>> "$GITHUB_STEP_SUMMARY" >> "$GITHUB_OUTPUT"
+        run: node plan-windows.mjs >> "$GITHUB_OUTPUT"
 
   suite:
     name: ${{ matrix.key }} (Windows)
@@ -241,7 +241,7 @@ jobs:
         working-directory: desktop/e2e
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11), and by force 3 min later (suite.mjs)
         run: |
-          if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           node suite.mjs ${{ matrix.suite }}
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
         if: matrix.suite == 'apply'
@@ -257,7 +257,7 @@ jobs:
         shell: bash
         run: |
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
-          echo "Free AI (Workers AI) this suite: $spent" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
@@ -338,7 +338,7 @@ jobs:
           "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"
 
   # One Playwright HTML report for the run (6 Oct 2026): every suite wrote a blob (desktop/e2e/report/playwright.config.mjs); merged here, uploaded as e2e-report
-  # (uncompressed: the owner's site serves its files straight from the artifact, admin/e2e-report.js) and linked on the run's Summary page.
+  # (uncompressed: the owner's site serves its files straight from the artifact, admin/e2e-report.js) and its link printed in the merge step's log.
 
   # The AI screenshot review: every suite's pages in ONE Claude batch, after the suites (.github/actions/e2e-review; owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude").
   review:
@@ -390,15 +390,13 @@ jobs:
           npm ci || npm install
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           bash "$GITHUB_WORKSPACE/tools/merge-e2e-report.sh" "$GITHUB_WORKSPACE/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
+          if grep -q "^made=1" "$GITHUB_OUTPUT"; then echo "HTML report (admins): https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report?os=windows"; fi
       - uses: actions/upload-artifact@v6
         if: steps.merge.outputs.made == '1'
         with:
           name: e2e-report-windows   # its own name: in the release run it sits beside the Mac + Linux gate's e2e-report (admin/e2e-report.js reads both)
           path: e2e-report
           compression-level: 0
-      - name: The link on the run's Summary page
-        if: steps.merge.outputs.made == '1'
-        run: echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)" >> "$GITHUB_STEP_SUMMARY"
 
   # Windows beta approval (owner, 6 Oct 2026) for a gate by hand (tag set, not from the release run): beta-approve.yml, the same job the release run (desktop.yml) shows
   # as its own "Release · Windows beta" step after "E2E · Windows". Each platform is approved on its own (desktop/lib/updater.js approvedFor).

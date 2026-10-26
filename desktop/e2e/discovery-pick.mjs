@@ -52,7 +52,6 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
     const maxUsd = Math.min(result.budget.remaining, Math.max(ROW_USD * result.rows.length * 2, 0.2)).toFixed(2);   // twice the expected spend, never above what the week has left
     fs.appendFileSync(env.GITHUB_OUTPUT, `count=${result.rows.length}\nonly=${result.rows.map(row => row.shape).join('|')}\nmax_usd=${maxUsd}\ncap_alert=${alert ? 1 : 0}\n`);
   }
-  if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `### Discovery batch: ${result.rows.length} row(s)\n${lines.map(line => `- ${line.replace(/^discovery: /, '')}`).join('\n')}\n`);
   return 0;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exit(await main().catch(error => { console.error(`discovery: ${error.message}`); return 1; }));

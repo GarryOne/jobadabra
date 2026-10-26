@@ -96,14 +96,15 @@ def total_tokens(run):
                for key in ('tokens_in', 'tokens_out', 'cache_read'))
 
 
-PLAN_BILLED = {'claude': 'Claude subscription', 'openai': 'ChatGPT plan'}        # the user's own plan (Claude Code, Codex)
-API_BILLED = {'claude': 'Anthropic API credits', 'openai': 'OpenAI API credits'}   # their API key
-PLAN_WORDS = {'claude': 'Claude Code, your plan', 'openai': 'Codex, your ChatGPT plan'}
+PLAN_BILLED = {'claude': 'Claude subscription', 'openai': 'ChatGPT plan'}       # the user's own plan (Claude Code, Codex)
+API_BILLED = {'claude': 'Anthropic API credits', 'openai': 'OpenAI API credits', 'free': 'Free AI'}   # their API key
+PLAN_WORDS = {'claude': 'Claude Code, your plan', 'openai': 'Codex, your ChatGPT plan', 'free': 'Free AI'}
 
 
 def _family(run):
-    """'openai' when the run's AI was OpenAI's (a stage's provider, src/ai/cost.py), else 'claude'."""
-    return 'openai' if any((run.get(stage) or {}).get('provider') == 'openai' for stage, _, _ in STAGES) else 'claude'
+    """'free' when the run's AI was Free AI's open model, 'openai' when it was OpenAI's (a stage's provider, src/ai/cost.py), else 'claude'."""
+    providers = {(run.get(stage) or {}).get('provider') for stage, _, _ in STAGES}
+    return 'free' if 'free' in providers else 'openai' if 'openai' in providers else 'claude'
 
 
 def billed_to(run):

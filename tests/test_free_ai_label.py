@@ -8,6 +8,7 @@ from types import SimpleNamespace
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from src.ai import cost  # noqa: E402
 from src.ai.providers.anthropic_api import AnthropicApi  # noqa: E402
+from src.notion import cron_report  # noqa: E402
 
 OPEN = '@cf/qwen/qwen3-30b-a3b-fp8'
 
@@ -47,6 +48,21 @@ class FreeAiLabelTests(unittest.TestCase):
         usage = ask('claude-sonnet-5-5').usage
         self.assertEqual(cost.answered('claude-sonnet-5-5', usage), 'claude-sonnet-5-5')
         self.assertAlmostEqual(cost.usd('claude-sonnet-5-5', usage), 3.0)
+
+    def test_billed_to_names_free_ai_and_every_provider_has_every_label(self):
+        # A Free AI run said "Anthropic API credits" (26 Oct 2026): the provider a stage records picks the label, in all three words tables.
+        stats = {}
+        cost.add(stats, 'claude-sonnet-5-5', ask(OPEN).usage)
+        self.assertEqual(cron_report.billed_to({'score': stats}), 'Free AI')
+        self.assertEqual(cron_report.cost_text({'score': stats}).startswith('AI cost $0.000'), True)
+        for family in ('claude', 'openai', 'free'):
+            for calls in ('api_calls',) if family == 'free' else ('api_calls', 'cli_calls'):   # Free AI has no plan path
+                with self.subTest(family=family, calls=calls):
+                    self.assertTrue(cron_report.billed_to({'score': {calls: 1, 'provider': family}}))
+                    self.assertIn(family, cron_report.PLAN_WORDS)
+        claude = {}
+        cost.add(claude, 'claude-sonnet-5-5', ask('claude-sonnet-5-5').usage)
+        self.assertEqual(cron_report.billed_to({'score': claude}), 'Anthropic API credits')
 
 
 if __name__ == '__main__':

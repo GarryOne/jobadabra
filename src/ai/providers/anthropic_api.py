@@ -57,6 +57,7 @@ def named_by_answer(response):
     if isinstance(said, str) and said and not said.startswith('claude') and usage is not None:
         try:
             usage.model = said
+            usage.provider = 'free'   # cron_report's "Billed to" says Free AI, not Anthropic API credits
         except (AttributeError, TypeError, ValueError):
             pass
     return response

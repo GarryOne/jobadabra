@@ -12,10 +12,14 @@ import time
 DUMP_EVERY_S = 15 * 60
 GRACE_S = 10 * 60   # the budget ends new checks; running ones normally finish well inside this
 LEAVE_GRACE_S = 2   # an idle pool worker ends in milliseconds; a check given up on does not
+_before = set()     # the threads alive when the run started (arm): not this run's checks
 
 
 def arm(budget_s, grace_s=GRACE_S, file=None):
-    """After budget_s + grace_s, dump every thread's stack once to `file` (stderr). Returns False when there is no budget to overrun."""
+    """After budget_s + grace_s, dump every thread's stack once to `file` (stderr). Returns False when there is no budget to overrun.
+    Also notes the threads alive now: leave_if_stuck counts only threads this run started."""
+    _before.clear()
+    _before.update(t.ident for t in threading.enumerate())
     if not budget_s:
         return False
     target = file or sys.stderr
@@ -32,10 +36,11 @@ def disarm():
 def leave_if_stuck(grace_s=LEAVE_GRACE_S):
     """Everything is saved and published: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every
     non-daemon thread before it exits, so the job would sit until its cancel. Leaves at once when one is still running after grace_s.
-    Daemon threads never hold the exit and are not counted; a pool shut with wait=False keeps its idle workers alive a moment, and those end
-    by themselves (26 Oct 2026: both counted as stuck checks, a test's leftover heartbeat threads ended a unittest shard halfway with exit 0)."""
+    Daemon threads never hold the exit and are not counted, nor threads alive before the run began (arm); a pool shut with wait=False keeps
+    its idle workers alive a moment, and those end by themselves (26 Oct 2026: all three counted as stuck checks, other tests' leftover threads
+    ended a unittest shard halfway with exit 0)."""
     until = time.monotonic() + grace_s
-    held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon]
+    held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon and t.ident not in _before]
     for thread in held:
         thread.join(max(0, until - time.monotonic()))
     stuck = [t for t in held if t.is_alive()]

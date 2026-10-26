@@ -34,11 +34,15 @@ class OverrunTest(unittest.TestCase):
 
     def test_a_central_run_leaves_at_once_only_while_a_check_thread_still_runs(self):
         # 26 Oct 2026: counting every thread, os._exit(0) ended a unittest shard halfway with exit 0: a just-shut pool's idle workers
-        # (1 run in 5 of tests/test_scout*.py) and other tests' daemon heartbeat threads (CI, PR #1979) looked like stuck checks.
+        # (1 run in 5 of tests/test_scout*.py) and other tests' leftover threads (CI, PR #1979) looked like stuck checks.
+        hang = threading.Event()
+        older = threading.Thread(target=hang.wait)   # alive before the run began (another test's thread): not this run's check
+        older.start()
+        self.addCleanup(hang.set)
+        scout_overrun.arm(0)   # the run starts
         with mock.patch.object(scout_overrun.os, '_exit') as leave:
             scout_overrun.leave_if_stuck(grace_s=0.2)
         leave.assert_not_called()
-        hang = threading.Event()
         heartbeat = threading.Thread(target=hang.wait, daemon=True, name='run-row-heartbeat')   # never holds the exit
         quick = threading.Thread(target=lambda: time.sleep(0.05))   # an idle pool worker: ends in the grace
         heartbeat.start()

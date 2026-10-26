@@ -21,12 +21,15 @@ export function when(iso, now = new Date()) {
   return `${gap <= 0 ? 'today' : gap === 1 ? 'tomorrow' : at.toLocaleDateString('en', {weekday: 'short'})} ~${clock}`;
 }
 
-// -> {state, pill: [text, tone], line, asksEmail, button: 'on' | 'resume' | 'save' | null, off, download, note}
-//   mine: the app's own record {on, skipped, email}; schedule: the server's {state, pause_reason, next_run_at, email_channel} or null.
-export function model(mine = {}, schedule = null, now = new Date()) {
-  const email = mine.email || '', skipped = !!mine.skipped && !mine.on;
-  if (skipped) return {state: 'off', pill: ['Off', 'neutral'], line: 'Turn it on to get new matches every morning, even when your Mac is off.', asksEmail: true, button: 'on', off: false, download: false};
-  if (!mine.on || !email) return {state: 'needs-email', pill: ['On', 'good'], line: 'Add your email to get the matches. Searches start as soon as you do.', asksEmail: true, button: 'save', off: false, download: false};
+// -> {state, pill: [text, tone], line, asksEmail, button: 'on' | 'email' | 'resume' | null, off, download, note}
+//   mine: the app's own record {on, skipped, email}; schedule: the server's {state, pause_reason, next_run_at, email_channel} or null;
+//   shared: the address Settings → Notifications keeps, the one Always on uses (#1711, owner 27 Oct 2026: one shared e-mail). asksEmail: there is none yet,
+//   and the button goes to Notifications to add it.
+export function model(mine = {}, schedule = null, now = new Date(), shared = '') {
+  const email = mine.email || shared || '', skipped = !!mine.skipped && !mine.on;
+  if (!email && (skipped || !mine.on)) return {state: 'needs-email', pill: skipped ? ['Off', 'neutral'] : ['On', 'good'], line: 'Add your e-mail in Notifications to get the matches. Then turn it on here.', asksEmail: true, button: 'email', off: false, download: false};
+  if (skipped) return {state: 'off', pill: ['Off', 'neutral'], line: `Turn it on to get new matches every morning at ${email}, even when your Mac is off.`, asksEmail: false, button: 'on', off: false, download: false};
+  if (!mine.on) return {state: 'ready', pill: ['On', 'good'], line: `Searches start as soon as you turn it on. Matches go to ${email}.`, asksEmail: false, button: 'on', off: false, download: false};
   if (schedule?.state === 'paused') {
     const why = {
       'inactive': ['Paused: you have not opened Jobadabra for 14 days. Resume to get matches again.', 'resume'],

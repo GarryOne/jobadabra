@@ -26,7 +26,8 @@ class CiApt(unittest.TestCase):
 
     def test_the_script_cuts_every_try_retries_once_and_fails_with_a_message(self):
         script = (ROOT / "tools" / "apt-install.sh").read_text()
-        for needle in ("Acquire::Retries", "Acquire::http::Timeout", "timeout --kill-after=10", "for attempt in 1 2", "::error::apt-install: could not install"):
+        for needle in ("Acquire::Retries", "Acquire::http::Timeout", "timeout --kill-after=10", "for attempt in 1 2", "::error::apt-install: could not install",
+                       "archive.ubuntu.com"):   # try 2 on another mirror (web #154: the runner's mirror stalled 3 times in a row)
             self.assertIn(needle, script)
 
 

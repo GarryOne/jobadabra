@@ -66,7 +66,7 @@ export function webSearchChip(log = []) {
 // result line of this run, in words, kept until it ends, then the newest progress tick, last; ticks replace each other. A result is a line the
 // engine starts with a step's name (and the scoring, added and digest lines); per-item lines (one employer, one job, one AI answer) are the
 // technical log's, in Recent activity. Guarded by: test/live-updates.test.js.
-const RESULT = /^((First jobs|Job boards|Job boards found|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready)/;
+const RESULT = /^((First jobs|Job boards|Job boards found|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready|⏱ Time is up \()/;
 export function liveLines(log = []) {
   const results = [], tick = [];
   let matches = 0;

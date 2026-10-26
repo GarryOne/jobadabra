@@ -67,7 +67,7 @@ def main(argv):
     except (subprocess.CalledProcessError, json.JSONDecodeError, OSError) as error:
         print(f'main_e2e_state: could not read main\'s e2e runs ({error}); unknown', file=sys.stderr)
         print(json.dumps({'unknown': True}) if '--json' in argv else '')
-        return 0
+        return 3   # unknown is never green: the gate refuses a beta on it
     reds = red(st)
     if '--json' in argv:
         print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds]}))

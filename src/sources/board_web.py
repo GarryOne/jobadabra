@@ -2,7 +2,8 @@
 web search last. It should probably start with that."; first built 19 Oct 2026, step 3 of the local-sources sketch, after a full board read).
 early() starts it with the run, before the first jobs; start() hands it to the full read beside the proposal (or starts it there); finish() hands its new boards to the same read. Its one skip: this search was searched
 in the last DAYS while its boards work (WANT sector or regional boards gave relevant jobs for THIS search's field and places), else it searches again on
-the very next run, told what it found before, up to TRIES thin searches in a row, then every RECENT days (owner via the coordinator, 26 Oct 2026).
+the very next run, told what it found before, up to TRIES thin searches in a row (owner via the coordinator, 26 Oct 2026), then after a rest that
+grows while it stays thin: 1, 2, 4, then RECENT days (owner's yes, 26 Oct 2026: three thin tries ran within 8 minutes, then a flat 7-day rest).
 The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
 Anthropic API key (about $0.03 a search), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
@@ -19,7 +20,7 @@ from . import careers
 
 WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
-RECENT = 7      # a thin search (its boards do not work yet) that already searched TRIES times in a row: searched again after this many days
+RECENT = 7      # the longest rest of a search still thin after TRIES tries in a row: 1, 2, 4, then this many days (_rest)
 TRIES = 3       # thin searches in a row, each on the next run, before the weekly rest (owner, 26 Oct 2026: search again while it found too little)
 ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI through the site's lane; OpenAI's API: not here, a signed-in plan beside it can)
 LOCAL_KINDS = ('sector', 'regional')
@@ -92,13 +93,19 @@ def _last(data, key):
 
 def _next_search(data, key, kept=None, search_config=None):
     """When this search's web search is due next: None when never searched (due now); the last search's own time (the very next run) while it
-    left fewer than WANT working boards and fewer than TRIES thin searches ran in a row; else RECENT days after it; DAYS once its boards work."""
+    left fewer than WANT working boards and fewer than TRIES thin searches ran in a row; else _rest after it; DAYS once its boards work."""
     last = _last(data, key)
     if last is None:
         return None
     if len(_working(kept, search_config)) >= WANT:
         return last + timedelta(days=DAYS)
-    return last if int((data.get('web_thin') or {}).get(key) or 0) < TRIES else last + timedelta(days=RECENT)
+    tries = int((data.get('web_thin') or {}).get(key) or 0)
+    return last if tries < TRIES else last + _rest(tries)
+
+
+def _rest(tries):
+    """The rest after `tries` thin searches in a row (TRIES or more): 1 day, then 2, 4, and at most RECENT days."""
+    return timedelta(days=min(RECENT, 2 ** (tries - TRIES)))
 
 
 def _due(data, key, now, kept=None, search_config=None):
@@ -307,7 +314,7 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     fetch = fetch or careers.get_text
     found = []
     for item in answer:
-        board = board_ideas.valid(item) or board_ideas.valid(_with_search(item, fetch))
+        board = board_ideas.valid(_with_search(item, fetch)) or board_ideas.valid(item)   # its search link first, else a field board's category page
         if board and board['host'] not in hosts and len(found) < MAX_FOUND:
             hosts.add(board['host'])
             found.append(board)

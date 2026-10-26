@@ -74,7 +74,7 @@ class WebSearchFirst(Base):
 
 
 class OneSkip(unittest.TestCase):
-    def test_due_never_searched_weekly_while_thin_monthly_once_working(self):
+    def test_due_never_searched_a_day_after_thin_tries_monthly_once_working(self):
         from datetime import timedelta
 
         from tests.test_board_web_thin import kept
@@ -83,8 +83,8 @@ class OneSkip(unittest.TestCase):
         search = {'role_keywords': ['Tontechniker']}
         with mock.patch('src.role_kinds.of_search', return_value={'creative_media'}), mock.patch('src.places.countries', return_value=['Germany']):
             self.assertTrue(board_web._due({}, 'k', NOW, {}, search))
-            self.assertFalse(board_web._due(data, 'k', NOW + timedelta(days=board_web.RECENT - 1), {}, search))
-            self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=board_web.RECENT), {}, search))
+            self.assertFalse(board_web._due(data, 'k', NOW + timedelta(hours=23), {}, search))
+            self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=1), {}, search), 'TRIES thin tries: a day, not a week')
             self.assertFalse(board_web._due(data, 'k', NOW + timedelta(days=board_web.DAYS - 1), working, search))
             self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=board_web.DAYS), working, search))
 

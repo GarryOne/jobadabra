@@ -4,7 +4,7 @@ Same tests as `python -m unittest discover -s tests`, split by module so wall ti
   python3 tools/py-shards.py [--jobs N] [--app-only] [module ...]   (no module = every tests/test_*.py)
 Modules are balanced by measured seconds (tools/py-shard-weights.json, modules over 1.5 s; the rest count 0.5 s), slowest first; a stale weight only costs speed, never coverage.
 Width: cores / push-check slots, +2 while free memory is over 3 GB (default_jobs; 6 here, 11 Oct 2026: 52 s -> 39 s; base 4: two push checks at once, each with the journey gate and the other suites beside it; 8 wide drove the load to 124-152, 11 Oct 2026). The slow modules (test_ship, test_heavy_lock, test_pre_push_check) are sleep- and git-bound, so they overlap well (11 Oct 2026: 4 shards ~84 s, the longest module 50 s).
-Exit 0 when every shard passed; otherwise 1 with each failing shard's output on stderr.
+Exit 0 when every shard passed (exit 0 and unittest's own summary); otherwise 1 with each failing shard's output on stderr.
 """
 import argparse
 import json
@@ -67,6 +67,16 @@ def weights():
 
 
 DURATIONS = ['--durations', '0'] if sys.version_info >= (3, 12) else []   # unittest prints every test's time (3.12+): the shards name their slow tests
+
+
+def ended_badly(out, code):
+    """Why a shard failed, or None: a non-zero exit, or no unittest summary ("Ran N tests" then OK) even with exit 0. 26 Oct 2026: a test
+    reached the scout's os._exit(0), the process ended halfway with exit 0, and the tests after it never ran while the shard passed."""
+    if code:
+        return f'exit {code}'
+    if not re.search(r'^Ran \d+ tests?', out, re.M) or not re.search(r'^OK\b', out, re.M):
+        return "ended without unittest's summary (an os._exit in the code a test ran?)"
+    return None
 
 
 def slowest(outputs):
@@ -143,7 +153,7 @@ def main(argv=None):
         out, _ = proc.communicate()
         results[i] = (out, time.monotonic() - started)
         shard = procs[i][0]
-        print(f'py-shards: shard {"FAILED" if proc.returncode else "done"} {results[i][1]:.1f}s, {len(shard)} modules ({", ".join(shard[:3])}{", ..." if len(shard) > 3 else ""})', flush=True)
+        print(f'py-shards: shard {"FAILED" if ended_badly(out, proc.returncode) else "done"} {results[i][1]:.1f}s, {len(shard)} modules ({", ".join(shard[:3])}{", ..." if len(shard) > 3 else ""})', flush=True)
     print(f'py-shards: {len(procs)} shards started ({len(modules)} modules)', flush=True)
     threads = [threading.Thread(target=collect, args=(i, proc)) for i, (_, proc) in enumerate(procs)]
     for t in threads:
@@ -153,9 +163,10 @@ def main(argv=None):
     failed = ran = 0
     for (shard, proc), (out, _) in zip(procs, results):
         ran += sum(int(n) for n in re.findall(r'^Ran (\d+) tests?', out, re.M))
-        if proc.returncode:
+        why = ended_badly(out, proc.returncode)
+        if why:
             failed += 1
-            print(f'py-shards: shard FAILED ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr)
+            print(f'py-shards: shard FAILED, {why} ({len(shard)} modules: {", ".join(shard[:4])}...)\n{out}', file=sys.stderr)
     by_module, by_test = slowest([out for out, _ in results])
     if by_module:
         print('py-shards: slowest modules: ' + ', '.join(f'{m} {s:.0f}s' for m, s in by_module[:8]))

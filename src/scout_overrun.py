@@ -11,6 +11,7 @@ import time
 
 DUMP_EVERY_S = 15 * 60
 GRACE_S = 10 * 60   # the budget ends new checks; running ones normally finish well inside this
+LEAVE_GRACE_S = 2   # an idle pool worker ends in milliseconds; a check given up on does not
 
 
 def arm(budget_s, grace_s=GRACE_S, file=None):
@@ -28,9 +29,14 @@ def disarm():
     faulthandler.cancel_dump_traceback_later()
 
 
-def leave_if_stuck():
+def leave_if_stuck(grace_s=LEAVE_GRACE_S):
     """Everything is saved and published: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every thread
-    before it exits, so the job would sit until its cancel. Leaves at once when one is left."""
+    before it exits, so the job would sit until its cancel. Leaves at once when one is still running after grace_s: a pool shut with wait=False
+    keeps its idle workers alive a moment, and those end by themselves (26 Oct 2026: counted as stuck, they ended a unittest run halfway)."""
+    until = time.monotonic() + grace_s
+    for thread in threading.enumerate():
+        if thread is not threading.current_thread():
+            thread.join(max(0, until - time.monotonic()))
     if threading.active_count() > 1:
         print(f'scout: {threading.active_count() - 1} check thread(s) still running after the run; leaving without them', flush=True)
         sys.stdout.flush()

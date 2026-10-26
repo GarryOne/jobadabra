@@ -43,10 +43,12 @@ export function stepChips(log = []) {
 const day = iso => new Date(iso).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
 const clock = iso => new Date(iso).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
 const boardCount = names => names.replace(/\([^)]*\)/g, '').split(',').filter(name => name.trim()).length;   // "A (x, y), B" is 2 boards
+const SAME_RUN = /^Job boards: no web search: searched in this run/;
 export function webSearchChip(log = []) {
   let chip = {label: 'Web search', state: 'pending'}, m;
   for (const raw of log) {
     const line = String(raw);
+    if (SAME_RUN.test(line)) continue;   // a second ask in this run: no news
     if (/^Job boards: (searching the web|the web search is still searching)/.test(line)) chip = {label: 'Web search', state: 'active'};
     else if ((m = /^Job boards: a web search found (.+)$/.exec(line))) {
       const n = /^no trade or local board/.test(m[1]) ? 0 : boardCount(m[1]);
@@ -71,7 +73,7 @@ export function liveLines(log = []) {
   for (const raw of log) {
     const line = String(raw);
     if (/^⏳ (?!Still running)/.test(line)) tick[0] = line;
-    else if (RESULT.test(line)) results.push(line);
+    else if (RESULT.test(line) && !SAME_RUN.test(line)) results.push(line);
     else if (COUNTS.test(line)) matches = Number(COUNTS.exec(line)[2]);
   }
   // the tick says the jobs that match so far (owner, 26 Oct 2026: "13 pilot jobs found" showed nowhere while 1,221 listings were read)

@@ -33,6 +33,7 @@
   "test-sets.test.mjs"
  ],
  "daily": [
+  "coverage-steps.test.mjs",
   "a11y.test.mjs",
   "activity.test.mjs",
   "ai-budget.test.mjs",
@@ -153,6 +154,8 @@
   "plan-run.test.mjs",
   "png-grid.test.mjs",
   "pr-suites.test.mjs",
+  "pr-suites-steps.test.mjs",
+  "runner-picked-steps.test.mjs",
   "plan-gate-real.test.mjs",
   "key-preflight.test.mjs",
   "plan-windows.test.mjs",

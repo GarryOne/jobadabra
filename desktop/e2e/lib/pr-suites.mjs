@@ -69,3 +69,43 @@ export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cad
   const run = wanted.filter(suite => linux(suite) || String(covering[suite] || '').startsWith('runs '));
   return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
 }
+
+// The step that quotes each removed UI text (PR 2 of the PR-checks plan): in a suite file, the `ctx.run('<name>', ...)` call whose text holds the quote. A quote outside
+// any step with a literal name (a helper, a lib file, a `${}` name) → the whole suite. -> {suite: {steps: [names], whole: bool}}
+export function stepCalls(text) {
+  const calls = [];
+  const re = /\bctx\.run\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g;
+  for (let m; (m = re.exec(text));) {
+    const literal = m[1] !== '`' || !m[2].includes('${');
+    let depth = 0, i = m.index + m[0].indexOf('('), quote = '', end = text.length;
+    for (; i < text.length; i++) {
+      const c = text[i];
+      if (quote) { if (c === '\\') i++; else if (c === quote) quote = ''; continue; }
+      if (c === '/' && text[i + 1] === '/') { i = text.indexOf('\n', i); if (i < 0) break; continue; }
+      if (c === '/' && text[i + 1] === '*') { i = text.indexOf('*/', i + 2) + 1; if (i <= 0) break; continue; }
+      if (c === '\'' || c === '"' || c === '`') { quote = c; continue; }
+      if (c === '(') depth++;
+      else if (c === ')' && --depth === 0) { end = i; break; }
+    }
+    calls.push({name: literal ? m[2].replace(/\\(.)/g, '$1') : null, start: m.index, end});
+  }
+  return calls;
+}
+export function stepsQuoting(hits, sources) {
+  const out = {};
+  for (const [suite, strings] of Object.entries(hits)) {
+    const text = String(sources[`suites/${suite}.mjs`] || ''), calls = stepCalls(text), entry = out[suite] = {steps: [], whole: false};
+    for (const string of strings) {
+      let at = text.indexOf(string), placed = false;
+      if (at < 0) { entry.whole = true; continue; }   // quoted in a lib file the suite imports
+      for (; at >= 0; at = text.indexOf(string, at + 1)) {
+        const inside = calls.filter(call => call.start <= at && at <= call.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0];
+        if (!inside?.name) { entry.whole = true; break; }
+        if (!entry.steps.includes(inside.name)) entry.steps.push(inside.name);
+        placed = true;
+      }
+      if (!placed) entry.whole = true;
+    }
+  }
+  return out;
+}

@@ -5,7 +5,7 @@
 // env -> '' when the run may go on, else why not (one paragraph for the terminal).
 export function localRunRefused(env = process.env) {
   if (env.CI || env.GITHUB_ACTIONS) return '';
-  if (String(env.E2E_STEPS || '').trim() || env.LIVE === '1' || env.JP_E2E_FULL === '1') return '';
+  if (String(env.E2E_STEPS || '').trim() || String(env.E2E_STEP_NAMES || '').trim() || env.LIVE === '1' || env.JP_E2E_FULL === '1') return '';
   return 'no whole e2e suite on this Mac: CI runs the suites on your PR (tools/ship.sh opens it; docs/rules/change-loop.md rule 7).\n'
     + "Locally only the step you are debugging or adding: E2E_STEPS='<step>,<prerequisites>' node run-all.mjs --only <suite>. A full run by the owner's choice: JP_E2E_FULL=1.";
 }

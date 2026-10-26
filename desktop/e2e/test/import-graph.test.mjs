@@ -30,3 +30,34 @@ test('the real tree: the helpers #1941 changed point at the suites that use them
   assert.ok(used['lib/apply-cv-steps.mjs'].includes('apply'));
   assert.ok(used['activity-states.mjs'].includes('cardstates'));
 });
+
+// #2043 (26 Oct 2026): src/ai/schema_notes.py changed the scoring prompt; quality watches score.py, which imports it, yet quality never ran on the PR.
+// A watched Python file's own imports (within the repo) are watched too.
+import {watchesWithImports} from '../lib/import-graph.mjs';
+
+test('a file a watched Python file imports from its own folder is watched too (#2043: schema_notes.py → quality)', () => {
+  const files = {
+    'src/ai/score.py': 'from .. import run_counts, store\nfrom . import cost, engine, schema_notes, score_not_a_job\nfrom .models import MAIN_MODEL\nimport json\n',
+    'src/ai/schema_notes.py': 'from .models import MAIN_MODEL\n',
+    'src/ai/models.py': 'X = 1\n', 'src/ai/cost.py': '', 'src/ai/engine/__init__.py': 'from .core import run\n', 'src/ai/engine/core.py': '',
+    'src/run_counts.py': '', 'src/store.py': '', 'src/ai/score_not_a_job.py': '', 'src/ai/mail.py': 'from . import cost\n',
+  };
+  const read = file => (file in files ? files[file] : null);
+  const out = watchesWithImports({quality: ['src/ai/score.py', 'desktop/lib/pipeline.js'], mailreading: ['src/ai/mail.py']}, read);
+  assert.deepEqual(out.quality.sort(), ['desktop/lib/pipeline.js', 'src/ai/cost.py', 'src/ai/engine/__init__.py', 'src/ai/engine/core.py', 'src/ai/models.py',
+    'src/ai/schema_notes.py', 'src/ai/score.py', 'src/ai/score_not_a_job.py'], 'its own folder only: src/run_counts.py and src/store.py are not followed');
+  assert.deepEqual(out.mailreading.sort(), ['src/ai/cost.py', 'src/ai/mail.py']);
+});
+
+test('every file a suite watches, imports included, starts pr-suites.yml (else the plan never runs: #2043)', async () => {
+  const {suiteFacts} = await import('../plan-run.mjs');
+  const facts = await suiteFacts();
+  const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const yml = (await import('node:fs')).readFileSync(path.join(repo, '.github', 'workflows', 'pr-suites.yml'), 'utf8');
+  const globs = [...yml.split('\npermissions:')[0].matchAll(/^\s+- '([^']+)'/gm)].map(m => m[1]);
+  const starts = file => globs.some(glob => (glob.endsWith('/**') ? file.startsWith(glob.slice(0, -2)) : file === glob));
+  const watched = watchesWithImports(facts.watches);
+  assert.ok(watched.quality.includes('src/ai/schema_notes.py'), 'positive control');
+  const missing = Object.entries(watched).flatMap(([suite, files]) => files.filter(file => !starts(file.endsWith('/') ? `${file}x.js` : file)).map(file => `${suite}: ${file}`));
+  assert.deepEqual(missing, [], 'add these to pr-suites.yml paths');
+});

@@ -24,6 +24,10 @@ on:
         description: 'Exactly these suites as a pull request would run them (pr-suites.yml starts it with this): SQLite store, no AI screenshot review, no harness-test step, the PR branch''s own concurrency group'
         type: string
         default: ''
+      pr_steps:
+        description: 'With pr_suites: {suite: [step names]} = run only these steps of that suite (their needs and the setup too); a suite not named runs whole (pr-suites.mjs)'
+        type: string
+        default: ''
       fixed:
         description: 'The fixed path (E2E_SEED=0), as the release gate, instead of a new seeded one: two runs then ask the same requests (replay, cost checks)'
         type: boolean
@@ -219,6 +223,8 @@ jobs:
       E2E_NOTION_TOKEN_INTERACTIONS: ${{ secrets.E2E_NOTION_TOKEN_INTERACTIONS }}
       E2E_NOTION_TOKEN_WANDER: ${{ secrets.E2E_NOTION_TOKEN_WANDER }}
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/${{ matrix.key }}
+      # A pull request runs only the steps its changed lines reach (owner, 26 Oct 2026: "not even an entire e2e suite, but just few tests/scenarios/cases"; lib/runner.mjs).
+      E2E_STEP_NAMES: ${{ inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
       # AI cost (7 Oct 2026: the e2e key billed ~$10 a day, mostly unseen). Only the scheduled runs ask the model live; every other run (gates, soaks, the canary, reruns,
       # by hand) answers a request it has seen before from the replay cache, and pays only for new ones (lib/ai-meter.mjs). Judges on Haiku, except the quality suite,
@@ -344,6 +350,16 @@ jobs:
           first="$E2E_ARTIFACTS"
           export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1   # its step table says "second try" (lib/step-summary.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
+          # The first try ran only the steps this PR reaches: the second runs the WHOLE suite (owner's yes, 26 Oct 2026). Green whole = the picked steps lack a setup step
+          # they need when run alone (declare it in the suite's stepNeeds), never a false block; red whole = red.
+          if [ -n "$E2E_STEP_NAMES" ] && [ "$E2E_STEP_NAMES" != null ]; then
+            unset E2E_STEP_NAMES
+            if again ${{ matrix.suite }}; then
+              echo "The picked steps went red alone and the whole suite passed: a picked step needs a setup step it does not declare (stepNeeds in suites/${{ matrix.suite }}.mjs). Not a block." | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Red again with the whole suite: a real failure." | tee -a "$GITHUB_STEP_SUMMARY"; exit 1
+          fi
           if again ${{ matrix.suite }}; then
             echo '{"rerun": "passed"}' > "$first/flaky.json"
             # "Flaky" needs proof (gate G5): a first-try failure on a wrong value, not timing, is a bug that shows sometimes; the job stays red (lib/flaky-proof.mjs).

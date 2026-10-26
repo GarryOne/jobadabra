@@ -1,4 +1,4 @@
-// Which app code a suite runs (gate G1b, owner's yes 26 Oct 2026): with E2E_COVERAGE=1 every app session records the window's JS functions and CSS rules it used and the
+// Which app code a suite, and each of its steps, runs (gate G1b, owner's yes 26 Oct 2026; per step since PR 2 of the PR-checks plan): with E2E_COVERAGE=1 every app session records the window's JS functions and CSS rules it used and the
 // main process's JS functions it ran, as repo lines, in <artifacts>/coverage-<suite>-<n>.json. coverage-map.mjs merges a run's files into the code → suite map that a
 // pull request's plan reads (lib/coverage-pick.mjs), so a PR runs the suites that run the code it changes. Why: on 25 Oct #1911 changed menu.css and broke interactions,
 // and #1913 changed the run views and broke cardstates; neither PR ran the suite. Never a reason to fail: a session that cannot record is only logged.
@@ -81,29 +81,78 @@ const MAIN_TAKE = async () => {
   return result.filter(entry => /\/desktop\//.test(entry.url) && !/node_modules/.test(entry.url));
 };
 
+// CSS.takeCoverageDelta's rule usage + the sheets seen (id → {url, text}) → Playwright-shaped CSS entries ({url, text, ranges}) for addEntries.
+export function cssDeltaEntries(usage, sheets) {
+  const byId = {};
+  for (const rule of usage || []) {
+    const sheet = sheets[rule.styleSheetId];
+    if (!rule.used || !sheet?.url || sheet.text == null) continue;
+    (byId[rule.styleSheetId] ||= {url: sheet.url, text: sheet.text, ranges: []}).ranges.push({start: rule.startOffset, end: rule.endOffset});
+  }
+  return Object.values(byId);
+}
+
+// Per step (PR 2 of the PR-checks plan, owner 26 Oct 2026: "not even an entire e2e suite, but just few tests/scenarios/cases from that suite"): at each step's end
+// the runner calls takeStep; each read of V8's precise coverage resets its counters, and CSS.takeCoverageDelta gives the rules used since the last read, so what one
+// read returns is that step's. Lines read outside any step (launch, between steps, the close) go to SETUP. The suite's `files` stay the union (the suite pick).
+export const SETUP = '(setup)';
+async function windowRecorder(app, page) {
+  const cdp = await page.context().newCDPSession(page);
+  const sheets = {};
+  cdp.on('CSS.styleSheetAdded', ({header}) => { sheets[header.styleSheetId] = {url: header.sourceURL, text: null}; });
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.startPreciseCoverage', {callCount: true, detailed: true});
+  await cdp.send('DOM.enable'); await cdp.send('CSS.enable');
+  await cdp.send('CSS.startRuleUsageTracking');
+  return async () => {
+    const files = {};
+    const {result} = await cdp.send('Profiler.takePreciseCoverage');
+    addEntries(files, result, {kind: 'js'});
+    const {coverage} = await cdp.send('CSS.takeCoverageDelta');
+    for (const id of new Set((coverage || []).filter(rule => rule.used).map(rule => rule.styleSheetId))) {
+      if (sheets[id] && sheets[id].text == null && repoPath(sheets[id].url || '')) sheets[id].text = (await cdp.send('CSS.getStyleSheetText', {styleSheetId: id}).catch(() => ({text: null}))).text;
+    }
+    addEntries(files, cssDeltaEntries(coverage, sheets), {kind: 'css'});
+    return files;
+  };
+}
+
+// One read of everything since the last one: {path: {loaded, lines}}.
+async function readDelta(handle) {
+  const files = {};
+  const quiet = async (what, fn) => { try { await fn(); } catch (error) { console.log(`  (coverage: ${what} not read: ${error.message})`); } };
+  if (handle.window) await quiet('window', async () => { for (const [file, entry] of Object.entries(await handle.window())) files[file] = entry; });
+  if (handle.main) await quiet('main process', async () => addEntries(files, await handle.app.evaluate(MAIN_TAKE), {kind: 'js'}));
+  return files;
+}
+const addInto = (into, files) => { for (const [file, {lines}] of Object.entries(files)) { const now = into[file] || {loaded: true, lines: []}; into[file] = {loaded: true, lines: mergeRanges([...now.lines, ...lines])}; } return into; };
+
 let sessions = 0;
 export async function startCoverage(app, page, env = process.env) {
   if (!on(env)) return null;
-  const handle = {app, page, number: ++sessions, renderer: false, main: false};
-  try { await page.coverage.startJSCoverage({resetOnNavigation: false}); await page.coverage.startCSSCoverage({resetOnNavigation: false}); handle.renderer = true; } catch (error) { console.log(`  (no window coverage: ${error.message})`); }
+  const handle = {app, page, number: ++sessions, window: null, main: false, steps: {}};
+  try { handle.window = await windowRecorder(app, page); } catch (error) { console.log(`  (no window coverage: ${error.message})`); }
   try { await app.evaluate(MAIN_START); handle.main = true; } catch (error) { console.log(`  (no main-process coverage: ${error.message})`); }
   return handle;
 }
 
-// Before the app exits: write what this session ran. `dir`: the suite's artifacts.
+// The runner, at a step's end: what this step ran. Lines read before it (launch, the gap since the last step) go to SETUP first.
+export async function takeStep(handle, name) {
+  if (!handle || (!handle.window && !handle.main)) return;
+  addInto(handle.steps[name] ||= {}, await readDelta(handle));
+}
+export async function takeSetup(handle) { if (handle) addInto(handle.steps[SETUP] ||= {}, await readDelta(handle)); }
+
+// Before the app exits: write what this session ran, per step and in all. `dir`: the suite's artifacts.
 export async function saveCoverage(handle, dir, env = process.env) {
   if (!handle) return null;
+  await takeSetup(handle);
   const files = {};
-  const quiet = async (what, fn) => { try { await fn(); } catch (error) { console.log(`  (coverage: ${what} not read: ${error.message})`); } };
-  if (handle.renderer) {
-    await quiet('window JS', async () => addEntries(files, await handle.page.coverage.stopJSCoverage(), {kind: 'js'}));
-    await quiet('window CSS', async () => addEntries(files, await handle.page.coverage.stopCSSCoverage(), {kind: 'css'}));
-  }
-  if (handle.main) await quiet('main process', async () => addEntries(files, await handle.app.evaluate(MAIN_TAKE), {kind: 'js'}));
+  for (const stepFiles of Object.values(handle.steps)) addInto(files, stepFiles);
   const suite = env.E2E_SUITE || 'default';
   const file = path.join(dir, `coverage-${suite}-${handle.number}.json`);
   fs.mkdirSync(dir, {recursive: true});
-  fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
-  console.log(`  coverage: ${Object.keys(files).length} app file(s) → ${path.basename(file)}`);
+  fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
+  console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).length - (handle.steps[SETUP] ? 1 : 0)} step(s) → ${path.basename(file)}`);
   return file;
 }

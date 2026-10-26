@@ -63,9 +63,28 @@ class Verdict(unittest.TestCase):
         self.assertEqual(state, 'failure')
         self.assertIn('10-min budget', why)
         self.assertEqual(pv.verdict(slow, files=['tools/pr-suites.sh'], messages=['x\n\nCI-budget: one-off migration'])[0], 'success')
-        for file in ['.github/workflows/x.yml', 'tools/pr-verdict.py', 'desktop/e2e/lib/plan.mjs', 'desktop/e2e/pr-suites.mjs', 'desktop/e2e/plan-run.mjs']:
+        for file in ['.github/workflows/pr-suites.yml', '.github/actions/free-ai-relay/action.yml', 'tools/pr-verdict.py', 'desktop/e2e/lib/plan.mjs', 'desktop/e2e/pr-suites.mjs', 'desktop/e2e/plan-run.mjs']:
             self.assertTrue(pv.ci_change([file]), file)
         self.assertFalse(pv.ci_change(['tools/ship.sh', 'desktop/e2e/suites/jobs.mjs']))
+
+    def test_a_workflow_no_pr_runs_is_not_a_ci_change(self):
+        # #2137 went red at 11.4 min, every check green, only because it edited the users' Always On workflows (daily/scout/mail.yml: workflow_call), which no PR runs.
+        slow = [run('CI · Pull request', end='2026-10-26T03:14:00Z')]
+        always_on = ['.github/workflows/daily.yml', '.github/workflows/scout.yml', '.github/workflows/mail.yml']
+        self.assertFalse(pv.ci_change(always_on))
+        self.assertEqual(pv.verdict(slow, files=always_on)[0], 'success')
+        for name in ['e2e.yml', 'pr-suites.yml', 'e2e-windows.yml']:   # dispatched by a PR workflow, or one itself
+            self.assertTrue(pv.ci_change([f'.github/workflows/{name}']), name)
+
+    def test_the_pr_workflows_list_is_every_workflow_a_pr_can_start(self):
+        # A pull_request trigger, or started by a workflow a PR runs (gh workflow run X, pr-suites' dispatch X, uses: ./.github/workflows/X), followed to the end. A new PR workflow fails here.
+        texts = {path.name: path.read_text(encoding='utf-8') for path in WORKFLOWS.glob('*.yml')}
+        reach = {name for name, text in texts.items() if re.search(r'(?m)^  pull_request(_target)?:|^on:.*\bpull_request\b', text)}
+        while True:
+            more = {name for name in texts if name not in reach and any(re.search(r'(?m)^[^#\n]*(\bworkflow run\s+|\bdispatch\s+|uses:\s*\./\.github/workflows/)%s\b' % re.escape(name), texts[known]) for known in reach)}
+            if not more: break
+            reach |= more
+        self.assertEqual(set(pv.PR_WORKFLOWS), reach, 'pr-verdict.py PR_WORKFLOWS: the workflows a PR can start')
 
     def test_a_status_description_fits_github(self):
         many = [run(f'CI · workflow number {i}', conclusion='failure', id=i) for i in range(20)]

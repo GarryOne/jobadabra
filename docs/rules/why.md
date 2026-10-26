@@ -27,6 +27,10 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 ## Meaning and pages
 - **Meaning comes from AI, never keyword lists** (owner, 8 Oct 2026: "AI should interpret mails"): an English-only subject-word Gmail search never
   fetched a German or Portuguese rejection; AI-translated keywords were proposed and refused.
+- **The AI decides, code only fetches, validates and keeps safe** (owner, 26 Oct 2026): a keyword list answered before the AI and its "office" read
+  "First Officer" as finance_admin, so a pilot search read 1,107 office employers and found nothing (#1978 made kinds `ai_first`). The search itself was a
+  scripted chain of gates (rests, caps, "web search only if too few") that hid the failure through 20+ PRs. Owner: "We should not limit ourselves on a very
+  scriptic/progrmatic algoritm".
 - **Judgments about a page are the AI's, even without words** (8 Oct 2026): "is the form ready?" was HTML `required`, "did it work?" was "the form is
   gone", and bot checks were a list of vendors: all three failed on the first real site.
 - **Reading websites is universal** (owner, 8 Oct 2026: "we'll have thousands of them").

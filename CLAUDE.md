@@ -29,8 +29,11 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
 - **Secrets only in the macOS Keychain** (`job-pilotto.*`), GitHub secrets and Cloudflare Worker secrets; never in code, docs or Notion.
 - **The flow core claims itself** (`FLOW_CORE` / `FLOW_FILES`, `desktop/e2e/flows.mjs`): your open PR is the claim, no message to peers; the required check "Core flow files up to date with main"
   fails when main changed a flow file your PR also changes, and `tools/ship.sh` rebases and pushes again. Read the file's "Invariants:" block first ([docs/rules/applying.md](docs/rules/applying.md)).
-- **Meaning comes from AI, never from keyword lists:** emails, pages, buttons and questions come in any language. Fetch by structure, let AI decide with a fixed
-  answer the code validates (`src/ai/decide.py`, `meanings.py`); a word list is at most a free shortcut in front of the AI or a safety floor.
+- **The AI decides; code fetches, validates and keeps safe** (owner, 26 Oct 2026: "we should AI as much as needed and possible to decice on things, to make decisions,
+  to interpret data... We should not limit ourselves on a very scriptic/progrmatic algoritm"). Every judgment in the product (what a text, title, page or search means,
+  which kind of work, which source or step next, whether a result is right) is an AI call with a fixed answer the code validates (`src/ai/decide.py`, `meanings.py`);
+  never a hand-written rule tree, threshold chain or keyword list standing in for it. Emails, pages, buttons and questions come in any language.
+  **A word list is never in front of the AI:** only the offline floor when there is no AI at all (`ai_first`); a busy or failed AI leaves the item unknown, never a keyword's guess.
   **Judgments about a page are the AI's** (ready? did it work? bot check? which step?); structure only finds controls, floors only AND with the AI.
 - **The direction of every page fix: see fields → the AI judges each one's meaning → fill** (owner, 12 Oct 2026). A page's kind (account, form, posting) never
   decides WHETHER its fields are filled, only what is pressed; never add a code path for a page type or shape. A weak or missing AI answer is never kept as sure:

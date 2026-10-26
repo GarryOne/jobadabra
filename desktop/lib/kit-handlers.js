@@ -29,7 +29,7 @@ export function registerKitHandlers(ctx) {
   const prepareKitFor = async (code, name = 'this job', {quiet = false} = {}) => {
     const gate = needsNotion('prepare');
     if (gate) return gate;
-    const blocked = allowanceBlock();
+    const blocked = await allowanceBlock();
     if (blocked) return blocked;
     // With Always on, background jobs run in the user's GitHub repo: Recent activity
     // shows it starting, its progress and its result (its ⏱️ Search runs row); the job's row updates from Notion.
@@ -128,7 +128,7 @@ export function registerKitHandlers(ctx) {
     const n = Math.max(1, Math.min(10, Number(count) || 5));
     const gate = needsNotion('tailor');
     if (gate) return gate;
-    const blocked = allowanceBlock();
+    const blocked = await allowanceBlock();
     if (blocked) return blocked;
     appLog('cv', 'tailor top matches', {asked: n, by: 'you'});
     // A tracked task like a Jobs check: the banner, a live log, a row in Recent activity and the result line. Started, not awaited: the window follows it.

@@ -62,15 +62,25 @@ export function createPlan(storage, {fetcher = globalThis.fetch, now = () => Dat
       return {...answer, ok: response.ok && answer.ok === true, status: response.status};
     } catch { return {ok: false, error: 'Could not reach Jobadabra. Check your connection and try again.'}; }
   }
-  // A promo code (the site checks it; nothing about codes is known here): -> {ok, already?} and the plan refreshed, or {ok: false, error: 'wrong' | 'expired' | 'used_up' | 'limit' | text}.
+  // A promo code (the site checks it; nothing about codes is known here): -> {ok, already?, credit? (euros, a credit code)} and the plan refreshed, or {ok: false, error: 'wrong' | 'expired' | 'used_up' | 'limit' | text}.
   async function redeem(code) {
     if (siteOffForUser()) return {ok: false, error: 'Not available in this build.'};
     try {
       const response = await fetcher(`${SITE}/api/pro/redeem`, {method: 'POST', headers: {'x-api-key': await siteKey(), 'Content-Type': 'application/json'}, body: JSON.stringify({code})});
       const answer = await response.json().catch(() => ({}));
       if (response.ok && answer.ok) await refresh();
-      return {ok: response.ok && answer.ok === true, ...(answer.already ? {already: true} : {}), ...(answer.error ? {error: answer.error} : {})};
+      return {ok: response.ok && answer.ok === true, ...(answer.already ? {already: true} : {}), ...(answer.credit > 0 ? {credit: answer.credit} : {}), ...(answer.error ? {error: answer.error} : {})};
     } catch { return {ok: false, error: 'offline'}; }
   }
-  return {state, refresh, checkout, signin, redeem};
+  // Where this install stands with our AI (GET /api/ai/caps): {lane, capped, message, resetsAt} or null (offline, a site without the route, a slow answer).
+  // Read before an AI step starts (lib/ai-caps.js); nothing is counted at the site.
+  async function caps({timeoutMs = 2500} = {}) {
+    if (siteOffForUser()) return null;
+    try {
+      const response = await fetcher(`${SITE}/api/ai/caps`, {headers: {'x-api-key': await siteKey()}, signal: AbortSignal.timeout(timeoutMs)});
+      const body = response.ok ? await response.json().catch(() => null) : null;
+      return body?.ok ? {lane: body.lane, capped: body.capped || null, message: body.message || '', resetsAt: body.resetsAt || null} : null;
+    } catch { return null; }
+  }
+  return {state, refresh, checkout, signin, redeem, caps};
 }

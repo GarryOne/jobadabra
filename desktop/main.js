@@ -128,7 +128,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const DEMO_FOLDER = demo.folderFrom(process.argv);
 const LOOK_AROUND = !!DEMO_FOLDER;
 const DEMO = !!process.env.JOB_PILOTTO_DEMO || LOOK_AROUND;
-const {licenseState, allowanceBlock, readSites, scoreVisitJobs, healthOnce, getPlan} = createAppAllowance({DEMO, getLicense: () => license, log: line => log(line), getStorage: () => storage, getTelemetry: () => telemetry, toWindow});   // lib/app-allowance.js
+const {licenseState, allowanceBlock, allowanceGate, aiGate, aiCaps, watchAiCaps, readSites, scoreVisitJobs, healthOnce, getPlan} = createAppAllowance({DEMO, getLicense: () => license, log: line => log(line), getStorage: () => storage, getTelemetry: () => telemetry, toWindow});   // lib/app-allowance.js
 const JOBS_PAGE = 200;   // the Jobs list's first page; each "Show more" adds 500
 const HIDDEN = hideWindows({app, BrowserWindow, shell});   // an e2e run: windows never show or take focus (lib/e2e-hidden.js)
 pipeline.setDemo(DEMO);  // Python: only the jobs that read the demo folder
@@ -278,9 +278,9 @@ function handlers() {
   registerSearchesHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/searches-handlers.js: Reports → Searches
   registerFormFillsHandlers({ipcMain, storage, DEMO, here, log: appLog});   // lib/form-fills-handlers.js: Reports → Form fills
   registerJobsExportHandlers({DEMO, app, dialog, getWindow: () => window, ipcMain, licenseState, storage});   // lib/jobs-export-handlers.js
-  registerJobsHandlers({DEMO, JOBS_PAGE, activity, allowanceBlock, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track});   // lib/jobs-handlers.js
+  registerJobsHandlers({DEMO, JOBS_PAGE, activity, aiGate, allowanceBlock: allowanceGate, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track});   // lib/jobs-handlers.js
   registerCloudHandlers({DEMO, cloud, dialog, handleImportant, ipcMain, needsNotion, restartTelegram, shell, storage, toWindow, getWindow: () => window});   // lib/cloud-handlers.js
-  registerJobActionsHandlers({DEMO, allowanceBlock, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter: () => recipeReporterRef, storage});   // lib/job-actions-handlers.js
+  registerJobActionsHandlers({DEMO, allowanceBlock: allowanceGate, cloud, dispatchCloud, dispatchNote, intelLib, ipcMain, log, needsNotion, getRecipeReporter: () => recipeReporterRef, storage});   // lib/job-actions-handlers.js
   const settingsDeps = settingsDepsFor(toWindow);   // lib/settings-deps.js
   registerSearchTuningHandlers({DEMO, activity, here, ipcMain, needsNotion, getRecipeReporter: () => recipeReporterRef, storage, toWindow});   // lib/search-tuning-handlers.js
   registerInterviewHandlers({appLog, calltap, cloud, DEMO, dialog, dispatchCloud, handleImportant, here, interviews, ipcMain, needsNotion, notify, reminders,
@@ -288,13 +288,13 @@ function handlers() {
   registerLeadsHandlers({DEMO, aiReady, app, clipboard, ipcMain, log, nativeImage, needsNotion, storage, toWindow});   // lib/leads-handlers.js
   registerSystemHandlers({DEMO, about, app, backupNow, dataJob, dialog, handleImportant, ipcMain, mediaAccess, getResetDone: () => resetDone, restartApp, shell, storage, getWindow: () => window});   // lib/system-handlers.js
   zoom.register(ipcMain); registerFocusHandlers({DEMO, aiReady, app, applyTheme, clearlyTechnical, here, ipcMain, log, needsNotion, settingsDeps, storage, toWindow, track});   // lib/focus-handlers.js
-  const {prepareKitFor, tailorCv} = registerKitHandlers({DEMO, allowanceBlock, app, cloud, dispatchCloud, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, track});   // lib/kit-handlers.js
+  const {prepareKitFor, tailorCv} = registerKitHandlers({DEMO, allowanceBlock: allowanceGate, app, cloud, dispatchCloud, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, track});   // lib/kit-handlers.js
   registerSessionHandlers({ipcMain, appLog, storage, getWindow: () => window, dialog, nativeImage, here,
     DEMO, extensionGate, apply, pipeline, review, server, notion, claudeConsent, getRecipeReporter: () => recipeReporterRef, version: app.getVersion()});
   registerAppMetaHandlers({DEMO, FROM_SOURCE, FROM_STORE, restartAfterQuitGuard: reason => restarter.restart(reason), app, betaOn, checkForUpdate, cloud, dialog, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track,
-    getLicense: () => license, getPlan, shell, getTelemetry: () => telemetry, getUpdateOffer, setUpdateOffer,
+    getLicense: () => license, getPlan, aiCaps, shell, getTelemetry: () => telemetry, getUpdateOffer, setUpdateOffer,
     getUpdateCheckedAt, getWindow: () => window, channels});   // lib/app-meta-handlers.js
-  const {showForm} = registerApplyHandlers({DEMO, extensionGate, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme, needsNotion, prepareKitFor, getRecipeReporter: () => recipeReporterRef, shell, startClaude, storage, toWindow, track});   // lib/apply-handlers.js
+  const {showForm} = registerApplyHandlers({DEMO, extensionGate, allowanceBlock: allowanceGate, claudeConsent, cloud, here, ipcMain, log, nativeTheme, needsNotion, prepareKitFor, getRecipeReporter: () => recipeReporterRef, shell, startClaude, storage, toWindow, track});   // lib/apply-handlers.js
   registerCvAndLettersHandlers({BrowserWindow, DEMO, cvOf, handleImportant, ipcMain, keepLook, openTailoredCv, printPdf, shell, storage, tailorCv, tailoring, toWindow});   // lib/cv-handlers.js
   registerCvBuildHandlers({dialog, getWindow: () => window, ipcMain, printPdf, shell, storage, syncCv});   // lib/cv-build-handlers.js
   registerExperienceHandlers({DEMO, dialog, getWindow: () => window, ipcMain, shell, storage});   // lib/experience-handlers.js
@@ -406,7 +406,7 @@ startWhenReady({app, firstCopy, getWindows: () => BrowserWindow.getAllWindows(),
   { const lost = (storage.secretsPresent(), storage.unreadableSecrets()); if (lost.length) appLog('secrets', 'unreadable on this computer: asked again', {names: lost}); }
   const firstStart = DEMO ? null : versionLine(storage, app.getVersion(), buildInfo ? `build ${buildInfo.build} · ${buildInfo.commit}` : '');
   if (firstStart) appLog('update', firstStart);
-  aiFree.apply(storage.settings()); if (!DEMO) aiFree.migrate(storage).then(() => aiFree.ensureTrialKey(storage)).then(() => trialServer.keepFresh(storage, license)).catch(() => {});  // Free AI, if on: the Anthropic SDK goes to our website; the old $1 credit moves over
+  aiFree.apply(storage.settings()); watchAiCaps(); if (!DEMO) aiFree.migrate(storage).then(() => aiFree.ensureTrialKey(storage)).then(() => trialServer.keepFresh(storage, license)).catch(() => {});  // Free AI, if on: the Anthropic SDK goes to our website; the old $1 credit moves over
   // Technical reports (lib/telemetry.js): on by default, off in Settings → Advanced; never in demo mode, and never
   // from a source checkout (npm start): its crashes are work in progress, not users' problems, and would open triage issues.
   license = licenseLib.create(storage, {appliedNow: () => viewCache.recall(storage, 'focus')?.result?.focus?.funnel?.steps

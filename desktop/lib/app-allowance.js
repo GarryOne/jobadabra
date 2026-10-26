@@ -6,6 +6,8 @@ import * as terminals from './terminals.js';
 import * as viewCache from './view-cache.js';
 import * as aiFree from './ai-free.js';
 import {createPlan} from './plan.js';
+import {createAiCaps} from './ai-caps.js';
+import {onRefused, setGate} from './ai/refusals.js';
 import {log as appLog} from './log.js';
 import {reportedEngine} from './ai/names.js';
 
@@ -19,8 +21,18 @@ export function createAppAllowance(ctx) {
   const licenseState = () => {
     const base = DEMO ? {licensed: false, license: null, keyProblem: '', used: 12, limit: 20, daysLeft: 41, ended: false} : getLicense().state();
     const plan = getPlan().state(), proMode = ['test', 'live'].includes(plan.mode) ? plan.mode : undefined;
-    if (!base.licensed && plan.plan === 'pro') return {...base, licensed: true, license: {id: 'pro', name: 'Pro', kind: 'pro', until: null}, ended: false, proMode, pro: {creditPercent: plan.hasCredit === false ? null : plan.creditPercent, warn: plan.warn, hasCredit: plan.hasCredit !== false, package: plan.package || null}};
+    if (!base.licensed && plan.plan === 'pro') return {...base, licensed: true, license: {id: 'pro', name: 'Pro', kind: 'pro', until: null}, ended: false, proMode, pro: {creditPercent: plan.hasCredit === false ? null : plan.creditPercent, warn: plan.warn, hasCredit: plan.hasCredit !== false, package: plan.package || null, ourAi: aiFree.isOn(getStorage().settings())}};   // ourAi: the sidebar bar is the credit left (renderer/license-chip.js)
     return {...base, proMode, offer: plan.offer};
+  };
+  // Free AI's lines for this install (lib/ai-caps.js): a line reached refuses new AI starts below; found after a run or a refused call, the window opens the top-up dialog.
+  const aiCaps = createAiCaps({getStorage, getPlan, onCapped: cap => toWindow('aiCap', cap), log: line => appLog('allowance', line)});
+  // Main calls it once: every run's end and every refused AI call ask the site which line was reached.
+  // An AI call on a known line is stopped before it goes out, and says so (the window opens the dialog, at most once in a while for steps nobody pressed).
+  const watchAiCaps = () => {
+    if (DEMO) return;
+    pipeline.onRunEnd(() => { aiCaps.check({force: true}).catch(() => {}); });
+    setGate(() => aiCaps.known());
+    onRefused(({cap}) => (cap ? toWindow('aiCap', cap) : aiCaps.heard()));
   };
   // Guard for what starts NEW work (Prepare kit, Fill in Chrome / Apply with Claude, manual searches): once the free allowance
   // is over and there is no key, the window says so and the action answers with why. Never used for what is already under way.
@@ -30,14 +42,30 @@ export function createAppAllowance(ctx) {
     if (loggedRefusal.why !== why || Date.now() - loggedRefusal.at > 60000) { appLog('allowance', `refused a new start: ${why}`); loggedRefusal = {why, at: Date.now()}; }
     return answer;
   };
-  function allowanceBlock() {
-    const state = licenseState();
+  // Our AI cannot take a new step: Pro's credit gone, or a Free AI line reached (also for what the trial never stops, e.g. Check mail). -> the refusal or null.
+  function aiBlock(state = licenseState()) {
     // Pro's credit is gone and our AI is the engine: no free fallback, top-up or own key (an application in progress finishes; this guards what starts new).
-    if (!DEMO && state.pro?.hasCredit === false && aiFree.isOn(getStorage().settings())) return refuse('no AI credit', {ok: false, credit: true, error: 'Our AI needs AI credit. Add credit, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
-    if (!DEMO && state.pro?.warn === 0 && aiFree.isOn(getStorage().settings())) return refuse('AI credit used up', {ok: false, credit: true, error: 'Your AI credit is used up. Add credit, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
+    if (!DEMO && state.pro?.hasCredit === false && aiFree.isOn(getStorage().settings())) return refuse('no AI credit', {ok: false, credit: true, error: 'Our AI needs AI credit. Top up, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
+    if (!DEMO && state.pro?.warn === 0 && aiFree.isOn(getStorage().settings())) return refuse('AI credit used up', {ok: false, credit: true, error: 'Your AI credit is used up. Top up, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
+    const cap = DEMO ? null : aiCaps.known();
+    if (cap) return refuse(`Free AI ${cap.capped} line reached`, {ok: false, credit: true, cap: cap.capped, resetsAt: cap.resetsAt, error: cap.message || 'Free AI is not available right now. Upgrade to Pro, or use your own AI key in Settings → Connections → AI.'});
+    return null;
+  }
+  function allowanceBlock() {
+    const state = licenseState(), ai = aiBlock(state);
+    if (ai) return ai;
     if (DEMO || !state.ended) return null;
     toWindow('allowance', state);
     return refuse('trial over', {ok: false, allowance: true, error: 'The free trial is over. See Settings → Plan.'});
+  }
+  // The same guard for a press, after asking the site where Free AI stands (at most once a minute, ~2 s at worst; offline: the last answer).
+  async function allowanceGate() {
+    if (!DEMO) await aiCaps.check({quiet: true});
+    return allowanceBlock();
+  }
+  async function aiGate() {
+    if (!DEMO) await aiCaps.check({quiet: true});
+    return aiBlock();
   }
   // Jobs read in Chrome that match the search are scored now, by a search started at once (owner, 7 Oct 2026: "Read 5 jobs, but my Jobs count
   // never grows": they waited for the next scheduled check). Pages read in Chrome stay on this Mac, so with Always on they wait for a local search.
@@ -78,5 +106,5 @@ export function createAppAllowance(ctx) {
       prepared: reached('Prepared'), applied: reached('Applied'), replies: reached('Human reply'), screenings: reached('Screening'),
       interviews: reached('Interviews'), offers: reached('Offer')};
   }
-  return {licenseState, allowanceBlock, readSites, scoreVisitJobs, healthOnce, getPlan};
+  return {licenseState, allowanceBlock, allowanceGate, aiGate, aiCaps, watchAiCaps, readSites, scoreVisitJobs, healthOnce, getPlan};
 }

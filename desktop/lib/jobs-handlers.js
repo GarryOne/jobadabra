@@ -18,7 +18,7 @@ import {hideJobsUntilSearched} from './demo-search.js';
 import {searchTrigger} from './search-steps.js';
 
 export function registerJobsHandlers(ctx) {
-  const {DEMO, JOBS_PAGE, activity, allowanceBlock, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track} = ctx;
+  const {DEMO, JOBS_PAGE, activity, aiGate = async () => null, allowanceBlock, app, cloud, dispatchCloud, here, ipcMain, log, needsNotion, shell, storage, toWindow, track} = ctx;
   let jobsLimit = JOBS_PAGE;   // how many rows the list sends; \"Show more\" raises it for the rest of this launch
   // The page the person opened (a name from a fixed list, nothing else): where people go, in order.
   ipcMain.handle('pageView', (_, name) => { if (analyticsLib.PAGES.includes(String(name))) track('page_view', {page: String(name)}); return true; });
@@ -38,7 +38,8 @@ export function registerJobsHandlers(ctx) {
     }
   });
 
-  ipcMain.handle('checkMail', () => (cloud()
+  // Check mail reads the e-mails with AI: refused while our AI cannot take a step (no credit, a Free AI line), never for the trial's end.
+  ipcMain.handle('checkMail', async () => (await aiGate()) || (cloud()
     ? dispatchCloud('Gmail check (Check now)', {}, 'mail.yml').then(result => (result.ok
       ? {ok: true, cloud: true} : {ok: false, error: result.error}))
     : pipeline.checkMail(storage, log, 'you').then(({ok, run}) => ({ok, run}))));
@@ -87,7 +88,7 @@ export function registerJobsHandlers(ctx) {
   ipcMain.handle('cached', (_, name) => (DEMO ? null : viewCache.recall(storage, name)));
   // why: a fixed reason from the window ({reason: 'rescore', count}), said on the run's row; never free text. {employers: true}: the finder runs too, whatever its day limit.
   ipcMain.handle('refresh', async (_, why = {}) => {
-    const blocked = allowanceBlock();
+    const blocked = await allowanceBlock();
     if (blocked) return blocked;
     const count = Math.max(0, Math.round(Number(why?.count) || 0));
     const note = why?.reason === 'rescore' && count ? `Re-scoring ${count} older score${count === 1 ? '' : 's'}` : '';

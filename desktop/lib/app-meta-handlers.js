@@ -14,7 +14,7 @@ import {log as appLog} from './log.js';
 import {joinProWaitlist} from './pro-waitlist.js';
 
 export function registerAppMetaHandlers(ctx) {
-  const {DEMO, FROM_SOURCE, FROM_STORE = false, restartAfterQuitGuard, app, betaOn, checkForUpdate, cloud, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track, getLicense, getPlan, shell, getTelemetry, getUpdateOffer, getUpdateCheckedAt, channels} = ctx;
+  const {DEMO, FROM_SOURCE, FROM_STORE = false, restartAfterQuitGuard, app, betaOn, checkForUpdate, cloud, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track, getLicense, getPlan, aiCaps = null, shell, getTelemetry, getUpdateOffer, getUpdateCheckedAt, channels} = ctx;
   // App updates (lib/updater.js): the latest stable release, offered in the menu; one click installs it.
   // Technical reports: the window's own errors come here; Settings shows the last ones sent and the switch.
   // Settings → Plan: where the user stands; a key from before 17 Oct 2026 is still checked offline and can be removed (no screen enters one any more).
@@ -38,7 +38,12 @@ export function registerAppMetaHandlers(ctx) {
     if (!['start', 'verify'].includes(step)) return {ok: false, error: 'Unknown step.'};
     return getPlan().signin(step, {email: String(body.email || '').slice(0, 200), code: String(body.code || '').slice(0, 12), ...(body.remove ? {remove: String(body.remove).slice(0, 64)} : {})});
   });
-  ipcMain.handle('planRedeem', async (_, code) => DEMO ? {ok: false, error: 'demo'} : getPlan().redeem(String(code || '').slice(0, 64)));   // a promo code: the site checks it
+  ipcMain.handle('planRedeem', async (_, code) => {   // a promo code: the site checks it; a credit code may open our AI again, so the lines are asked afresh
+    if (DEMO) return {ok: false, error: 'demo'};
+    const result = await getPlan().redeem(String(code || '').slice(0, 64));
+    if (result.ok && aiCaps) { aiCaps.forget(); await aiCaps.check({force: true, quiet: true}); }
+    return result;
+  });
   ipcMain.handle('licenseRemove', () => { const state = getLicense().remove(); return {...state, text: licenseLib.text(state)}; });
   ipcMain.handle('telemetryRecord', (_, kind, fields) => {
     // A window error also goes to app.log (type and message; the stack stays in the report): it was invisible there.

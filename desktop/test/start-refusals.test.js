@@ -16,9 +16,11 @@ const RUN_STARTS = Object.fromEntries(['refresh', 'checkMail', 'prepareKit', 'ap
 RUN_STARTS.ivReview = /(?:pilot\.interviews|\biv)\.review\(/;
 
 test('a refusal is read from the answer; a started or merely failed run is not one', () => {
-  const credit = {ok: false, credit: true, error: 'Our AI needs AI credit. Add credit, or use your own AI key.'};
+  const credit = {ok: false, credit: true, error: 'Our AI needs AI credit. Top up, or use your own AI key.'};
   assert.deepEqual(refusal(credit), {text: credit.error, credit: true, allowance: false});
-  assert.equal(refusalAction(refusal(credit)), 'Add credit');
+  assert.equal(refusalAction(refusal(credit)), 'Top up', 'Pro with no credit tops up');
+  const line = refusal({ok: false, credit: true, cap: 'day', resetsAt: '2026-10-28T00:00:00.000Z', error: "You reached today's Free AI use."});
+  assert.deepEqual([line.cap, line.resetsAt, refusalAction(line)], ['day', '2026-10-28T00:00:00.000Z', 'Upgrade to Pro'], 'the free tier upgrades (owner, 27 Oct 2026)');
   assert.equal(refusalAction(refusal({ok: false, allowance: true, error: 'The free trial is over.'})), 'See plans');
   assert.equal(refusal({ok: false, text: '⚠️ Connect Notion to track this.'}).text, 'Connect Notion to track this.');
   assert.equal(refusalAction(refusal({ok: false, error: 'Always on could not start it'})), '');
@@ -74,6 +76,6 @@ test('Actions → Find jobs (the run command) answers its own reason, not a fixe
     intelLib: {}, ipcMain: {handle: (name, fn) => { handlers[name] = fn; }}, log: () => {}, needsNotion: () => null, getRecipeReporter: () => null, storage: {}});
   const answer = await handlers.command({}, 'run');
   assert.equal(answer.text, '⚠️ Our AI needs AI credit.');
-  assert.equal(refusal(answer).credit, true, 'the window offers Add credit');
+  assert.equal(refusal(answer).credit, true, 'the window offers the top-up dialog');
   assert.equal(refusal(await handlers.command({}, 'kits')).text, 'Our AI needs AI credit.', 'Prepare top matches too');
 });

@@ -13,6 +13,7 @@ import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
 import {showFullReport} from './full-report.js';
 import {openSetting} from './settings.js';
+import {openTopupDialog} from './topup-dialog.js';
 import {refusalAction} from '../refusal.js';
 
 let signature = '', wasSearching = false, finishedHere = false, lastRuns = null;
@@ -106,7 +107,7 @@ function draw(model) {
   } else if (model.state === 'refused') {   // the press was refused before anything ran (no AI credit, trial over, Always on): why, and the way out
     const label = refusalAction(model);   // the compact "Find more jobs" card, its line the reason and its button the way out
     card.replaceChildren(findHead('Find jobs did not start', model, model.problem),
-      label ? button(label, () => openSetting('plan'), 'primary find-again') : again('Try again'));
+      label ? button(label, () => (refused?.credit ? openTopupDialog(refused, {action: 'Find jobs', retry: () => start()}) : openSetting('plan')), 'primary find-again') : again('Try again'));
   } else if (model.state === 'failed') {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button('Try again', () => start()));

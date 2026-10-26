@@ -16,7 +16,7 @@ export function registerJobActionsHandlers(ctx) {
   const prepareTopMatches = async () => {
     const gate = needsNotion('kits');
     if (gate) return gate;
-    const blocked = allowanceBlock();
+    const blocked = await allowanceBlock();
     if (blocked) return blocked;
     appLog('dispatch', 'prepare top matches', {where: cloud() ? 'github' : 'mac'});
     if (cloud()) {
@@ -31,7 +31,7 @@ export function registerJobActionsHandlers(ctx) {
   ipcMain.handle('command', async (_, name, arg = '') => {
     if (name === 'kits') return prepareTopMatches();
     if (!COMMANDS.includes(name)) return {text: 'Unknown command'};
-    const blocked = name === 'run' ? allowanceBlock() : null;   // its own reason (no AI credit, trial over), never a fixed "trial is over"
+    const blocked = name === 'run' ? await allowanceBlock() : null;   // its own reason (no AI credit, trial over), never a fixed "trial is over"
     if (blocked) return {...blocked, text: `⚠️ ${blocked.error}`};
     try { return await telegram.runCommand(storage, name, arg, log, undefined, dispatchNote); } catch (error) { return {text: `⚠️ ${error.message}`}; }
   });

@@ -10,6 +10,7 @@ import {openView, remembered} from './nav.js';
 import {PANEL_KEY, openActivity} from './activity.js';
 import {openSetting, settingsPage} from './settings.js';
 import {refusal, refusalAction} from '../refusal.js';
+import {openTopupDialog} from './topup-dialog.js';
 import {toDraft} from './strategy-review.js';
 import {openTarget} from './open-target.js';
 import {goStep} from './wizard.js';
@@ -39,11 +40,13 @@ export function toastMessage(title, body, hint) {
   return toast;
 }
 
-// A start button's run was refused (renderer/refusal.js): its reason in a pop-up, with Settings → Plan one press away when that fixes it.
+// A start button's run was refused (renderer/refusal.js): no AI credit or a Free AI line opens the top-up dialog (owner, 26 Oct 2026: "Blocking, but showing a topup
+// popup/dialog"; retry: the same press, run again after a promo code added credit); any other reason in a pop-up, Settings → Plan one press away when that fixes it.
 // -> the refusal, or null when the run started (then nothing is said here).
-export function sayRefused(title, result) {
+export function sayRefused(title, result, retry = null) {
   const why = refusal(result);
   if (!why) return null;
+  if (why.credit) { openTopupDialog(why, {action: title.replace(/ did not start$/, ''), retry}); return why; }
   const label = refusalAction(why);
   toastMessage({title, body: why.text, action: label ? {label, run: () => openSetting('plan')} : null});
   return why;
@@ -52,6 +55,8 @@ export function sayRefused(title, result) {
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
   applyAiNames();   // the static texts name the AI the user chose (renderer/ai-name.js)
+  // A Free AI line found after a run or a refused AI step (lib/ai-caps.js): the top-up dialog, at most once per half hour for steps nobody pressed.
+  window.pilot.onAiCap?.(cap => openTopupDialog({cap: cap.capped, resetsAt: cap.resetsAt, text: cap.message}));
   // ---------- start ----------
   // Set up: the app. Without Notion (Notion later) it is only trying, so it opens on Jobs; the pages that need Notion show a gate.
   if (shared.state.settings.setupDone) {

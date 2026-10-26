@@ -5,19 +5,24 @@
 // suites, weekly). A commit Windows already tested is not run again (the Mac looks at an unchanged commit up to three times; Windows once).
 //   node plan-windows.mjs     (GH_TOKEN, REPO, MAC_RUN, SHA, REVIEW from e2e.yml; or ONLY=<suites> for a run by hand) -> GITHUB_OUTPUT lines
 import {execFileSync} from 'node:child_process';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 
 const NOT_SUITES = new Set(['plan', 'promote', 'promote-dry-run', 'Windows follows']);
 
 // The Mac run's jobs -> the suites that ran there (not skipped or cancelled).
-export function macSuites(jobs) {
+// all: the suites that exist. Only those count: the Mac run's other jobs (HTML report, Telegram alert, Nothing tested, Code → suite map…) are not suites, and a list of
+// them to leave out fell behind (26 Oct 2026: "HTML report" and "Telegram alert" were planned as Windows suites).
+export function macSuites(jobs, all = null) {
   return [...new Set(jobs.filter(job => !NOT_SUITES.has(job.name) && !['skipped', 'cancelled'].includes(job.conclusion))
-    .map(job => suiteOfKey(job.name.replace(/ \(.*\)$/, ''))))].sort();   // a slice's job (recorded-2of4) is its suite: the Windows plan slices it again
+    .map(job => suiteOfKey(job.name.replace(/ \(.*\)$/, ''))))].filter(suite => !all?.length || all.includes(suite)).sort();   // a slice's job (recorded-2of4) is its suite: the Windows plan slices it again
 }
 
-// Earlier Windows runs (title "Windows <sha>") that already tested this commit: finished, not cancelled, with at least one suite run.
-export const testedBefore = (runs, sha, current) => runs.filter(run => String(run.id) !== String(current) && run.title === `Windows ${sha}`
+// The title e2e-windows.yml's run-name gives a run started after a Mac run. It was "Windows <sha>" until 7 Oct 2026; matching that old title meant a commit
+// already tested on Windows was never recognised (test/plan-windows.test.mjs reads the workflow's run-name).
+export const macRunTitle = sha => `E2E Windows · the Mac run's suites · ${sha}`;
+// Earlier Windows runs that already tested this commit: finished, not cancelled, with at least one suite run.
+export const testedBefore = (runs, sha, current) => runs.filter(run => String(run.id) !== String(current) && run.title === macRunTitle(sha)
   && ['success', 'failure'].includes(run.conclusion) && run.suitesRan > 0);
 
 export function plan({only = '', all = [], mac = null, sha = '', review = false, previous = []}) {
@@ -25,18 +30,19 @@ export function plan({only = '', all = [], mac = null, sha = '', review = false,
   if (only.trim()) return {suites: only.split(',').map(name => name.trim()).filter(Boolean), review};
   if (!mac) return {suites: all, review: false};
   if (previous.length) return {suites: [], review: false, why: `commit ${sha.slice(0, 7)} was already tested on Windows (run ${previous[0].id}): nothing new to run`};
-  return {suites: macSuites(mac.jobs || []), review};
+  return {suites: macSuites(mac.jobs || [], all), review};
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const gh = args => execFileSync('gh', args, {encoding: 'utf8'});
+  (await import('./lib/ensure-staged.mjs')).ensureStaged(fileURLToPath(new URL('..', import.meta.url)));   // before anything loads a suite: its own imports below too (test/ensure-staged.test.mjs)
   const all = JSON.parse(execFileSync(process.execPath, ['suite.mjs', '--list'], {encoding: 'utf8'})).include.map(item => item.suite);
   const {MAC_RUN: id, SHA: sha = '', REPO: repo} = process.env;
   let mac = null, previous = [];
   if (id && !process.env.ONLY) {
     mac = {jobs: JSON.parse(gh(['api', `repos/${repo}/actions/runs/${id}/jobs?per_page=100`, '--jq', '.jobs']))};
     const runs = JSON.parse(gh(['run', 'list', '--repo', repo, '--workflow', 'e2e-windows.yml', '--limit', '50', '--json', 'databaseId,displayTitle,conclusion']))
-      .filter(run => run.displayTitle === `Windows ${sha}` && String(run.databaseId) !== String(process.env.GITHUB_RUN_ID));
+      .filter(run => run.displayTitle === macRunTitle(sha) && String(run.databaseId) !== String(process.env.GITHUB_RUN_ID));
     previous = testedBefore(runs.map(run => ({id: run.databaseId, title: run.displayTitle, conclusion: run.conclusion,
       suitesRan: JSON.parse(gh(['api', `repos/${repo}/actions/runs/${run.databaseId}/jobs?per_page=100`, '--jq', '[.jobs[] | select(.name != "plan" and .conclusion != "skipped" and .conclusion != "cancelled")] | length']))})), sha, process.env.GITHUB_RUN_ID);
   }

@@ -4,6 +4,8 @@
 const name = process.argv[2];
 // The CI matrix is built from the suites that exist:   node suite.mjs --list
 if (name === '--list') {
+  const {default: path} = await import('node:path'), {fileURLToPath} = await import('node:url');
+  (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // suites/apply.mjs loads app code that needs the gitignored desktop/shared/: without it every Windows run on main died here (24-25 Oct 2026)
   const {SUITES: all} = await import('./lib/context.mjs');
   const {suitesFor, suitesNamed} = await import('./lib/plan.mjs');
   const option = flag => { const at = process.argv.indexOf(flag); return at < 0 ? null : process.argv[at + 1] || ''; };

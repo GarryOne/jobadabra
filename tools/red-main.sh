@@ -20,13 +20,22 @@ repo="${RED_MAIN_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 red_status() {
   command -v gh >/dev/null && command -v jq >/dev/null || { echo unknown; return 0; }
   git -C "$repo" rev-parse -q --verify origin/main >/dev/null || { echo unknown; return 0; }
-  runs="$(cd "$repo" && gh run list --branch main -L "${RED_MAIN_RUNS:-60}" --json workflowName,headSha,status,conclusion,databaseId,updatedAt,url 2>/dev/null)" && [ -n "$runs" ] || { echo unknown; return 0; }
+  # Only the counted workflows' runs (26 Oct 2026: 60 runs of every workflow reached back 20 minutes, too short to find the first refused push): 60 = 60 pushes.
+  runs="$(cd "$repo" && for w in "${RED_WORKFLOWS[@]}"; do gh run list --branch main --workflow "$w" -L "${RED_MAIN_RUNS:-60}" --json workflowName,headSha,status,conclusion,databaseId,updatedAt,url 2>/dev/null || echo FAILED; done)"
+  case "$runs" in ""|*FAILED*) echo unknown; return 0 ;; esac
+  runs="$(jq -sc 'add' <<<"$runs" 2>/dev/null)" && [ -n "$runs" ] || { echo unknown; return 0; }
   runs="$(jq -c 'map(.workflowName |= sub("^CI · Recorded pages"; "CI · Page cases"))' <<<"$runs")"   # the old name, until 28 Oct 2026 (renamed 14 Oct 2026)
   pick='[.[] | select(.headSha == $s and (.workflowName as $w | any($names[]; . as $n | $w | startswith($n))))]'
   tip="$(git -C "$repo" rev-parse origin/main 2>/dev/null)"
-  for sha in $(git -C "$repo" rev-list -n 20 origin/main 2>/dev/null); do
+  refused=""
+  for sha in $(git -C "$repo" rev-list -n "${RED_MAIN_WINDOW:-20}" origin/main 2>/dev/null); do
     mine="$(jq -c --arg s "$sha" --argjson names "$names_json" "$pick" <<<"$runs" 2>/dev/null)"
     [ -n "$mine" ] && [ "$mine" != "[]" ] || continue
+    # GitHub refused to start it (startup_failure: a workflow file it rejects; 26 Oct 2026, an hour of pushes ran no tests and this said "unknown"): red, and every later
+    # push is refused the same way, so the red is the OLDEST refused commit in a row (the one to fix or revert), found by reading on to the first commit that started.
+    row="$(jq -r '[.[] | select(.status == "completed" and .conclusion == "startup_failure")][0] // empty | "red|\(.headSha[0:7])|\(.workflowName) did not start (startup_failure)|\(.url)|\(.updatedAt)|\(.databaseId)"' <<<"$mine" 2>/dev/null)"
+    if [ -n "$row" ]; then refused="$row"; continue; fi
+    if [ -n "$refused" ]; then echo "$refused"; return 1; fi
     # a finished failure (a real failed job) or an unfinished run that already has a failed job: red
     for row in $(jq -r '.[] | select((.status == "completed" and (.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out")) or .status != "completed") | "\(.databaseId)|\(.status)|\(.conclusion)"' <<<"$mine"); do
       id="${row%%|*}"; rest="${row#*|}"; status="${rest%%|*}"
@@ -35,11 +44,21 @@ red_status() {
         jq -r --arg id "$id" '.[] | select((.databaseId | tostring) == $id) | "red|\(.headSha[0:7])|\(.workflowName)|\(.url)|\(.updatedAt)|\(.databaseId)"' <<<"$mine"; return 1
       fi
       # cancelled or never started: re-run, it blocks nobody; but only on the NEWEST commit: a push to main cancels the older commit's runs (15 Oct 2026), and re-running those would take the slots back
-      if [ "$status" = completed ] && [ "$sha" = "$tip" ]; then (cd "$repo" && gh run rerun "$id" --failed >/dev/null 2>&1) || true; fi
+      if [ "$status" = completed ] && [ "$sha" = "$tip" ] && [ "${RED_MAIN_NO_RERUN:-}" != 1 ]; then (cd "$repo" && gh run rerun "$id" --failed >/dev/null 2>&1) || true; fi   # RED_MAIN_NO_RERUN=1: a reader only (the per-prompt hook)
     done
     # every run of this commit finished green: main is green here; anything else (still going, or only cancelled) proves nothing: look further back
     if [ "$(jq -r --argjson names "$names_json" '. as $r | all($r[]; .status == "completed" and .conclusion == "success") and all($names[]; . as $n | any($r[]; .workflowName | startswith($n)))' <<<"$mine")" = true ]; then echo "green ${sha:0:7}"; return 0; fi
   done
+  if [ -n "$refused" ]; then   # the window ended inside a refused streak: follow it back (up to 200 commits) to its first commit, the one that started being refused
+    for sha in $(git -C "$repo" rev-list --skip "${RED_MAIN_WINDOW:-20}" -n 200 origin/main 2>/dev/null); do
+      mine="$(jq -c --arg s "$sha" --argjson names "$names_json" "$pick" <<<"$runs" 2>/dev/null)"
+      [ -n "$mine" ] && [ "$mine" != "[]" ] || continue
+      row="$(jq -r '[.[] | select(.status == "completed" and .conclusion == "startup_failure")][0] // empty | "red|\(.headSha[0:7])|\(.workflowName) did not start (startup_failure)|\(.url)|\(.updatedAt)|\(.databaseId)"' <<<"$mine" 2>/dev/null)"
+      [ -n "$row" ] || break
+      refused="$row"
+    done
+    echo "$refused"; return 1
+  fi
   echo unknown; return 0
 }
 

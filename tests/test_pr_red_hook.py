@@ -15,6 +15,7 @@ FAKE = """#!/bin/sh
 d="$FAKE_GH_DIR"; first="$1"; echo "$@" >> "$d/calls"; [ ! -f "$d/slow" ] || sleep 5
 expr=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && expr="$2"; shift; done
 if [ "$first" = issue ]; then [ -f "$d/issues.json" ] && jq -r "$expr" "$d/issues.json"; exit 0; fi
+if [ "$first" = api ]; then [ -f "$d/api.json" ] && jq -r "$expr" "$d/api.json"; exit 0; fi
 case "$FAKE_GH_VERB" in list) jq -r "$expr" "$d/list.json" ;; view) jq -r "$expr" "$d/view.json" ;; esac
 """
 FAKE_BIN = """#!/bin/sh
@@ -42,6 +43,9 @@ class PrRedHookTest(unittest.TestCase):
         self.env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.state), 'FAKE_GH_REAL': str(self.tmp / 'real-gh'),
                     'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '10'}
         self.env.pop('JOB_PILOTTO_SESSION', None)
+        red_main = self.tmp / 'red-main.sh'   # main's verdict (tools/red-main.sh) from a file: unknown unless a test writes one
+        red_main.write_text('#!/bin/sh\n[ "$RED_MAIN_NO_RERUN" = 1 ] || echo "rerun allowed" >> "$FAKE_GH_DIR/calls"\ncat "$FAKE_GH_DIR/red-main" 2>/dev/null || echo unknown\n')
+        self.env['PR_RED_MAIN_SCRIPT'] = str(red_main)
 
     def answer(self, prs, view=None):
         (self.state / 'list.json').write_text(json.dumps(prs))
@@ -65,6 +69,34 @@ class PrRedHookTest(unittest.TestCase):
         stop = self.run_hook(event='Stop')
         self.assertEqual(stop.returncode, 2, 'blocks the stop once, like a red PR')
         self.assertIn('cardstates', stop.stderr)
+
+    # 26 Oct 2026: build.yml's call asked for a permission it did not grant; GitHub refused "CI · Tests" on every push for an hour (startup_failure) and no session
+    # heard of it. The session whose PR broke it is told and stopped once; every other session is told at its prompts that main runs no tests.
+    REFUSED = 'red|771c9fe|CI · Tests did not start (startup_failure)|https://github.com/o/r/actions/runs/9|2026-10-26T04:59:26Z|9'
+
+    def test_a_refused_main_tells_the_session_whose_pr_broke_it_and_stops_it_once(self):
+        self.answer([])
+        (self.state / 'red-main').write_text(self.REFUSED + '\n')
+        (self.state / 'api.json').write_text(json.dumps([{'number': 2051, 'head': {'ref': 'feature'}}]))
+        out = self.run_hook()
+        self.assertIn("Main's CI · Tests did not start (startup_failure) since your PR #2051 (771c9fe)", out.stdout)
+        self.assertIn('https://github.com/o/r/actions/runs/9', out.stdout)
+        self.assertEqual(self.run_hook(event='Stop').returncode, 2)
+        self.assertNotIn('rerun allowed', (self.state / 'calls').read_text() if (self.state / 'calls').exists() else '', 'a hook never re-runs a CI run')
+
+    def test_a_refused_main_tells_every_other_session_at_its_prompt_only(self):
+        self.answer([])
+        (self.state / 'red-main').write_text(self.REFUSED + '\n')
+        (self.state / 'api.json').write_text(json.dumps([{'number': 2051, 'head': {'ref': 'other-branch'}}]))
+        out = self.run_hook()
+        self.assertIn("Main's CI · Tests did not start (startup_failure) since 771c9fe (PR #2051, branch other-branch): main runs no tests", out.stdout)
+        self.assertIn('tools/revert-red.sh 771c9fe', out.stdout)
+        self.assertEqual(self.run_hook(event='Stop').returncode, 0, 'not this session\'s to fix: its stop is not blocked')
+
+    def test_an_ordinary_red_main_is_left_to_ship_and_the_issues(self):
+        self.answer([])
+        (self.state / 'red-main').write_text('red|abc1234|CI · Tests|https://x/runs/1|2026-10-26T04:59:26Z|1\n')
+        self.assertEqual(self.run_hook().stdout, '')
 
     def test_no_red_main_issue_is_silent(self):
         self.answer([])

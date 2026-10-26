@@ -109,8 +109,8 @@ test('move 2, the worker: presses each spot for real (the opener, then the optio
     if (source.includes('__jobPilottoPressedNow')) return args[0] === 'menu';
     return null;
   };
-  const send = async (method, params) => { if (params.type === 'mousePressed') calls.push(`press ${params.x},${params.y}`); };
-  const result = await pressNotTakenForReal({ page, send, wait: async () => {} });
+  const mouse = async (x, y) => { calls.push(`press ${x},${y}`); };
+  const result = await pressNotTakenForReal({ page, mouse, wait: async () => {} });
   assert.deepEqual(result, { tried: 2, taken: 1 });
   assert.deepEqual(calls, ['mark 10,20', 'press 10,20', 'mark 11,60', 'press 11,60', 'mark 30,40', 'press 30,40']);
 });
@@ -118,7 +118,7 @@ test('move 2, the worker: presses each spot for real (the opener, then the optio
 test('move 2, the worker: a point the press floor refuses (a submit drawn there) is never pressed', async () => {
   const calls = [];
   const page = async (func) => { const source = String(func); if (source.includes('__jobPilottoPressSpots')) return [{ field: 'aria:g1', step: 'option', x: 1, y: 2 }]; if (source.includes('markAt')) return false; return false; };
-  const result = await pressNotTakenForReal({ page, send: async (method, params) => calls.push(params.type), wait: async () => {} });
+  const result = await pressNotTakenForReal({ page, mouse: async (x, y) => calls.push(`${x},${y}`), wait: async () => {} });
   assert.deepEqual(calls, []);
   assert.deepEqual(result, { tried: 1, taken: 0 });
 });

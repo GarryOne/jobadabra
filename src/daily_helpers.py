@@ -340,7 +340,7 @@ def downloaded_index():
               f"people doing {label} read it and never found a job there")
     if len(said) > 30:
         print(f'Employers: {len(said) - 30} more like that')
-    for_kind = employer_index.relevant(index, feeds.wanted_location, kinds)
+    for_kind = employer_index.relevant(index, feeds.wanted_location, kinds, countries=me.get('countries'))
     in_places = employer_index.relevant(index, feeds.wanted_location)
     if len(for_kind) < len(in_places):   # said once a run: which employers were left out, and why
         print(f'Employers: {len(for_kind)} of {len(in_places)} in your places hire for your kind of role; the others are left out.')

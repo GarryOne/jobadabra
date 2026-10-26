@@ -34,7 +34,7 @@ class KindTests(unittest.TestCase):
         self.assertEqual(role_kinds.mix(['Backend Engineer'] * 19 + ['Barista']), {'software': 0.95, 'hospitality': 0.05})
         self.assertEqual(role_kinds.mix(['Backend Engineer'] * 30 + ['Barista']), {'software': 0.97})
 
-    def test_employers_are_kept_for_the_users_kinds_or_when_unsure(self):
+    def test_employers_are_kept_for_the_users_kinds_only(self):
         wanted = role_kinds.of_search(PHOTOGRAPHER)
         index = [{'company': 'Datadog', 'places': ['Geneva'], 'kinds': {'software': 0.95}},
                  {'company': 'Manor', 'places': ['Geneva'], 'kinds': {'sales_retail': 0.6, 'logistics': 0.3}},
@@ -49,7 +49,8 @@ class KindTests(unittest.TestCase):
                  {'company': 'Watchmaker with boutiques', 'places': ['Geneva'], 'kinds': {'other': 0.5, 'sales_retail': 0.2, 'trades': 0.2, 'software': 0.1}}]
         geneva = lambda job: 'geneva' in job['location'].lower()
         kept = [f['company'] for f in employer_index.relevant(index, geneva, wanted)]
-        self.assertEqual(kept, ['Manor', 'Old entry', 'Unreadable titles', 'Watchmaker with boutiques'])
+        # 'Old entry' (no mix) and 'Unreadable titles' (an old mostly-'other' mix) were kept on a guess until 26 Oct 2026 (owner, audit PR 4)
+        self.assertEqual(kept, ['Manor', 'Watchmaker with boutiques'])
         self.assertEqual(len(employer_index.relevant(index, geneva)), 8, 'without kinds: places only, as before')
         self.assertEqual(len(employer_index.relevant(index, geneva, None)), 8, 'roles not known: nothing skipped by kind')
         sre = role_kinds.of_search({'role_keywords': ['site reliability', 'devops']})

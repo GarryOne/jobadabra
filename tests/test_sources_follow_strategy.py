@@ -85,7 +85,7 @@ LISTS = {'refused sites read in the browser': queue, 'refused sites read on Chec
          'Sites only you can open': sites_only_you_can_open, 'job boards read first': boards_read_first,
          'employers the search reads': employers_the_search_reads}
 FITS = {**{name: 'An Airline' for name in LISTS}, 'job boards read first': 'Crew Board'}   # per list, the site of the pilot search it must keep
-SIBLINGS = {'employer feeds with no kind mix yet (employer_index.relevant)': 'this audit, PR 4 (located kind counts)'}
+SIBLINGS = {}   # every list fits the current search; a gap found later is named here with its owner
 
 
 class SourcesFollowStrategyTest(unittest.TestCase):
@@ -135,7 +135,6 @@ class SourcesFollowStrategyTest(unittest.TestCase):
         kept = employer_index.relevant([bank, airline], lambda job: True, {'aviation_transport'})
         self.assertEqual([f['company'] for f in kept], ['An Airline'])
 
-    @unittest.expectedFailure   # SIBLINGS: PR 4 replaces "no mix: keep" with located kind counts; then this passes and the mark goes
     def test_an_index_employer_with_no_kind_mix_yet_is_not_read_on_a_guess(self):
         bank = {'company': 'maib', 'places': ['Chisinau']}
         self.assertEqual(employer_index.relevant([bank], lambda job: True, {'aviation_transport'}), [])

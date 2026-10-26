@@ -159,6 +159,13 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   Hence: the judge sees where a site was found, judges what an organisation does (never its name), and an automatic read leaves an unsure site
   out; a pass exists from the moment its sites are handed out and each site answers within 45 s or ends it with that reason.
   Guards: `tests/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/refused-reads-pass-timing.test.js`.
+- Employers from the shared list (audit PR 4): the pilot search read 763 index employers, none known to hire pilots: 494 with no kind mix yet and
+  269 with an old mix mostly "other" were kept on a guess, and a mix counted over all jobs worldwide spoke for one country. Owner: "Not read" for an
+  employer not judged yet, old mixes the same; the countries of job places judged "using any user's machine/installation (being it Pro/Free AI/
+  BYOK/subscription/API Key... whatever they use) but also using the central scout", never a one-off run on one machine.
+  Hence: the scout counts each employer's jobs per country and kind (`kind_counts`, `src/scout_kind_counts.py`), places from every install's shared
+  answers (`src/geo.py`, topic job-location-geo) and its own capped AI; an install judges an employer by its jobs in its countries
+  (`role_kinds.located`), and no mix means not read. Guard: `tests/test_kind_counts.py`.
 
 ## Browser reads start only from the person's button (26 Oct 2026)
 - Since 20 Oct the extension read refused sites by itself: an hourly timer (3 minutes after Chrome started), every Check for new jobs and every job

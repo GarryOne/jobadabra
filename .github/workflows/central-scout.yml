@@ -71,6 +71,7 @@ jobs:
           path: |
             data/jobs.sqlite
             data/cache
+            data/geo.json   # where each job place is, judged once by the AI (src/scout_kind_counts.py)
           key: central-scout-db-${{ github.run_id }}
           restore-keys: central-scout-db-
       - name: Install the AI library and the headless browser
@@ -92,6 +93,7 @@ jobs:
           path: |
             data/jobs.sqlite
             data/cache
+            data/geo.json   # where each job place is, judged once by the AI (src/scout_kind_counts.py)
           key: central-scout-db-early-${{ github.run_id }}
       - name: Scout and publish the index
         env:
@@ -125,4 +127,5 @@ jobs:
           path: |
             data/jobs.sqlite
             data/cache
+            data/geo.json   # where each job place is, judged once by the AI (src/scout_kind_counts.py)
           key: central-scout-db-${{ github.run_id }}

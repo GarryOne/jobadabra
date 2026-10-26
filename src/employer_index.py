@@ -183,6 +183,7 @@ def clean(feeds):
                         'places': [p for p in places if isinstance(p, str)] if isinstance(places, list) else None,
                         'fits': item.get('fits') if isinstance(item.get('fits'), dict) else None,
                         **({'kinds': role_kinds.valid(item.get('kinds'))} if role_kinds.valid(item.get('kinds')) else {}),
+                        **({'kind_counts': role_kinds.valid_counts(item.get('kind_counts'))} if role_kinds.valid_counts(item.get('kind_counts')) else {}),
                         **({'fresh': fresh_of(item.get('fresh'))} if fresh_of(item.get('fresh')) else {}),
                         **({'pool': {k: int(item['pool'].get(k) or 0) for k in ('installs', 'matched', 'applied', 'interview')}}
                            if isinstance(item.get('pool'), dict) else {}),
@@ -290,19 +291,21 @@ def merge(starter, index, skip=lambda company: False):
     return list(merged.values())
 
 
-def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=None, said=None):
+def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=None, said=None, countries=None):
     """Only feeds with roles in the user's own places (their search.json), so a worldwide index doesn't cost every
     crawl the time of feeds it would throw away. A feed with no place information (older index) is kept. With the kinds of role the user
     looks for (role_kinds.of_search), also only feeds that hire for one of them: a software company is skipped for a photographer
-    (6 Oct 2026); a feed without a published mix is kept. With `me` (this user's labels), also not a feed that many installs of their family
+    (6 Oct 2026), judged by its jobs in the user's `countries` (default: me's) when the scout counted them there (role_kinds.located); a feed
+    with no mix yet is not read (owner, 26 Oct 2026). With `me` (this user's labels), also not a feed that many installs of their family
     read fine and never found a job at (quiet_for, 7 Oct 2026): before QUIET_FROM only named (shadow mode), and never a company in `keep`
     (where this user already has a scored job). `said`, a list, gets one line per decision for the log: [(company, label, 'out'|'shadow')]."""
     out = []
     shadow = (today or datetime.now(timezone.utc).date().isoformat()) < QUIET_FROM
+    countries = countries if countries is not None else (me or {}).get('countries')
     for f in index:
         if f.get('places') and not any(wanted_location({'location': place}) for place in f['places']):
             continue
-        if not role_kinds.fits(f.get('kinds'), wanted_kinds, f.get('checked') or '') and not (wanted_kinds and role_kinds.UNKNOWN in wanted_kinds and f['company'] in keep):
+        if not role_kinds.fits(role_kinds.located(f, countries), wanted_kinds) and not (wanted_kinds and role_kinds.UNKNOWN in wanted_kinds and f['company'] in keep):
             continue   # an unknown kind still reads the companies where this user already has a scored job
         label = quiet_label(f, me) if me and f['company'] not in keep else ''
         if label and said is not None:

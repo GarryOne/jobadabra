@@ -163,7 +163,8 @@ class UnsureTests(unittest.TestCase):
                  {'company': 'Office firm', 'places': ['Zurich'], 'kinds': {'finance_admin': 1.0}, 'checked': '2026-10-27'},
                  {'company': 'Not counted yet', 'places': ['Zurich']}]
         zurich = lambda job: 'zurich' in job['location'].lower()
-        self.assertEqual([f['company'] for f in employer_index.relevant(index, zurich, wanted)], ['Airline', 'Old mix, other unjudged', 'Not counted yet'])
+        # owner, 26 Oct 2026 (audit PR 4): an old mostly-'other' mix and one not counted yet are guesses: not read, the scout counts them
+        self.assertEqual([f['company'] for f in employer_index.relevant(index, zurich, wanted)], ['Airline'])
 
     def test_some_words_placed_keep_their_kinds(self):
         answers = {'first officer': role_kinds.UNSURE, 'flight dispatcher': 'aviation_transport'}

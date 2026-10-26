@@ -12,7 +12,7 @@ from collections import Counter
 from . import read_methods
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
-from . import contribute, pool_tags, regions, role_kinds, scout_carry, scout_title_seed
+from . import contribute, pool_tags, regions, role_kinds, scout_carry, scout_kind_counts, scout_title_seed
 from .notion import cron_runs
 from .sources import ats, careers, feeds
 from .scout_core import OUTCOMES, ensure_tables, _get_text, clean_name, key_for, now
@@ -175,6 +175,9 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             kinds = role_kinds.mix([j.get('title') for j in jobs])   # what it hires for: installs skip one with nothing of their kind
             if kinds:
                 entry['kinds'] = kinds
+            counts = scout_kind_counts.kind_counts(jobs)   # the same per country of each job: installs judge an employer by its jobs in their countries
+            if counts:
+                entry['kind_counts'] = counts
             tags = fits(by_feed.get((system, slug), {}))
             pooled = pool_of(by_feed.get((system, slug), {}))
             if pooled:

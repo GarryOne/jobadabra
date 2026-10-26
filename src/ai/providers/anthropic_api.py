@@ -49,6 +49,19 @@ def for_api(params):
     return dict(params, output_config=dict(params['output_config'], format=dict(shape, schema=without_limits(shape['schema']))))
 
 
+def named_by_answer(response):
+    """Free AI answers with an open model (its Message names it, e.g. '@cf/qwen/...'); the SDK's usage never says who answered, so cost.py
+    would name and price the Claude model that was asked for. Put the answering model on the usage when it is not a Claude one (26 Oct 2026:
+    a Free AI run said "with claude-sonnet-5-5" and counted $0.30). An unpriced model counts as $0 in cost.PRICES."""
+    said, usage = getattr(response, 'model', ''), getattr(response, 'usage', None)
+    if isinstance(said, str) and said and not said.startswith('claude') and usage is not None:
+        try:
+            usage.model = said
+        except (AttributeError, TypeError, ValueError):
+            pass
+    return response
+
+
 class AnthropicApi(Adapter):
     name, family = 'api', 'claude'
     label = 'Anthropic API'
@@ -58,4 +71,5 @@ class AnthropicApi(Adapter):
         self.client = client if client is not None else sdk(action)   # made now, as before: a missing SDK says so at once
 
     def complete(self, request):
-        return self.client.messages.create(**for_api(request.params))
+        response = self.client.messages.create(**for_api(request.params))
+        return named_by_answer(response)

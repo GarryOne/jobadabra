@@ -666,7 +666,7 @@ jobs:
     if: needs.plan.outputs.tag != '' && needs.suite.result == 'success' && !inputs.release_run
     permissions:
       contents: write
-      actions: read
+      actions: write   # beta-approve.yml's release-stable.sh starts the Chrome Web Store publish
       issues: write
     uses: ./.github/workflows/beta-approve.yml
     with:

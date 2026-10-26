@@ -1,0 +1,102 @@
+name: Extension · Chrome Web Store publish
+# A stable release's extension goes to the Chrome Web Store (owner, 26 Oct 2026: "when we do the beta/stable release we should publish the newest extension
+# version in Chrome Web Store"; stable only). tools/release-stable.sh starts it with the tag once the release is stable; the store reviews it and Chrome
+# updates every copy by itself. Keyless: GitHub's OIDC token signs in to Google (project jobadabra-release, pool github, provider jobadabra-repo, this repo only)
+# as webstore-publisher@, which the Web Store dashboard lists as its service account. A PR that edits this file, or a by-hand run without a tag, only reads
+# the store's versions (proves the access). By hand: gh workflow run extension-store-publish.yml --ref main [-f tag=desktop-vX.Y.Z]
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/extension-store-publish.yml'
+      - 'tools/webstore-publish.mjs'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'A STABLE release tag to publish (desktop-vX.Y.Z); empty = only read the store'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write       # GitHub OIDC → Google, no stored key
+  actions: read         # the commit's runs and jobs, for the PR's verdict (the last step of each job)
+  pull-requests: read
+  statuses: write       # the PR's "All checks passed"
+
+concurrency:   # publishes run one at a time and finish (a second lane's run then finds the version submitted and skips); a PR's newest push wins
+  group: extension-store-publish-${{ github.event_name == 'pull_request' && github.head_ref || (inputs.tag != '' && 'publish' || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+  CWS_ITEM_ID: ${{ vars.CWS_ITEM_ID }}
+
+jobs:
+  check:
+    name: Read the store's versions
+    if: inputs.tag == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the version counts the extension's commits
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - id: google
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+      - name: What a publish would do (changes nothing)
+        env:
+          CWS_TOKEN: ${{ steps.google.outputs.access_token }}
+        run: node tools/webstore-publish.mjs check
+      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
+      - name: Write the PR's verdict
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
+          py=python3; "$py" -c 1 2>/dev/null || py=python
+          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"
+
+  publish:
+    name: Publish ${{ inputs.tag }} to the Chrome Web Store
+    if: inputs.tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Only a stable release goes to the store
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          pre=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)
+          if [ "$pre" != false ]; then echo "$TAG is not a stable release (isPrerelease=$pre): betas never go to the store (owner, 26 Oct 2026)." >&2; exit 1; fi
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}   # the extension exactly as that release ships it
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - id: google
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+      - name: Upload and submit for review (skips when the store has it)
+        env:
+          CWS_TOKEN: ${{ steps.google.outputs.access_token }}
+        run: node tools/webstore-publish.mjs publish

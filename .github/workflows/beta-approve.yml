@@ -31,7 +31,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write   # gh release edit (the approval line; release-stable.sh when the soak is off)
-      actions: read     # this run's artifacts, build.yml's verdict on the commit
+      actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       issues: write     # block-check.mjs reads the UI-loop issues; tools/sync_release_labels.py rewrites the pinned Release channels issue (read-only failed it, 3 Oct 2026)
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both platforms edit the same body

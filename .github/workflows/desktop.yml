@@ -905,7 +905,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
-      actions: read     # this run's artifacts, build.yml's verdict on the commit
+      actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
@@ -988,7 +988,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
-      actions: read     # this run's artifacts, build.yml's verdict on the commit
+      actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
       issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body

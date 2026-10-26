@@ -15,6 +15,7 @@ on:
       - 'CI · Harness tests'
       - 'CI · Hosted Always on cost probe (one-off)'
       - 'Proof · Which org the e2e AI keys belong to'
+      - 'Extension · Chrome Web Store publish'
       - 'Proof · LibreOffice add-on on Mac and Windows'
       - 'CI · Page cases (all cases, real extension, Linux)'
       - 'CI · Ready to send image'

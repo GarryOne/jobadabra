@@ -67,9 +67,19 @@ class BoardWebOnEveryInstall(Base):
         self.assertEqual(len(plan.asked), 1)
         made.assert_not_called()
 
-    def test_free_ai_alone_never_sends_a_web_search_it_cannot_run(self):
+    def test_free_ai_alone_sends_its_board_web_search_to_the_site_lane(self):
+        # owner, 26 Oct 2026: "Yes, $10/month cap": the site runs this one search on its own key (jobadabra-web shared/free-ai-web.js)
+        lane = Client([STAGE])
+        with env(FREE), mock.patch.object(web_search, '_claude_code', return_value=False), mock.patch('src.ai.engine.choice', return_value='api'), \
+                mock.patch('src.ai.engine.ready', return_value=True), mock.patch('src.ai.engine.client', return_value=lane) as made:
+            found = board_web.search(SEARCH, [board(1)], now=NOW)
+        self.assertEqual([b['host'] for b in found], ['buehnenjobs.example'])
+        made.assert_called_once_with(action='web_search')
+        self.assertEqual(lane.asked[0]['tools'][0]['type'], 'web_search_20250305')
+
+    def test_free_ai_alone_asks_no_other_web_search(self):
         with env(FREE), mock.patch.object(web_search, '_claude_code', return_value=False), mock.patch('src.ai.engine.client') as made:
-            self.assertEqual(board_web.search(SEARCH, [board(1)], now=NOW), [])
+            self.assertIsNone(web_search.plan_client(), 'who-hires and role searches stay on a plan or a key')
         made.assert_not_called()
 
     def test_an_own_api_key_still_searches_as_before(self):

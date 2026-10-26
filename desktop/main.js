@@ -114,7 +114,7 @@ const track = (event, props) => { analytics?.track(event, props); if (event !== 
 let recipeReporterRef = null;  // the batched, anonymous product counts (lib/recipes.js), made when the app is ready
 let license = null;  // the free allowance and license keys (lib/license.js), made once storage exists
 const zoom = createZoom({screen, getWindow: () => window, getStorage: () => storage, toWindow});   // the window's size, remembered (lib/zoom-handlers.js)
-const {getUpdateOffer, setUpdateOffer, getUpdateCheckedAt, FROM_SOURCE, betaOn, testerOn, testerLogsOn, checkForUpdate, buildMenu, trackSetup, installUpdate, channels} =
+const {getUpdateOffer, setUpdateOffer, getUpdateCheckedAt, FROM_SOURCE, FROM_STORE, betaOn, testerOn, testerLogsOn, checkForUpdate, buildMenu, trackSetup, installUpdate, channels} =
   createAppUpdates({zoom, Menu, app, dialog, isDemo: () => DEMO, getStorage: () => storage, getTelemetry: () => telemetry, toWindow, track, getWindow: () => window, openExternal: url => shell.openExternal(url)});   // lib/app-updates.js
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Demo mode (JOB_PILOTTO_DEMO=1, with JOB_PILOTTO_USER_DATA pointing at a copy of demo/): fictional
@@ -287,7 +287,7 @@ function handlers() {
   const {prepareKitFor, tailorCv} = registerKitHandlers({DEMO, allowanceBlock, app, cloud, dispatchCloud, ipcMain, keepLook, log, needsNotion, notify, openTailoredCv, pageImages, powerMonitor, printPdf, readCvPdf, renderDocx, shell, storage, track});   // lib/kit-handlers.js
   registerSessionHandlers({ipcMain, appLog, storage, getWindow: () => window, dialog, nativeImage, here,
     DEMO, extensionGate, apply, pipeline, review, server, notion, claudeConsent, getRecipeReporter: () => recipeReporterRef, version: app.getVersion()});
-  registerAppMetaHandlers({DEMO, FROM_SOURCE, restartAfterQuitGuard: reason => restarter.restart(reason), app, betaOn, checkForUpdate, cloud, dialog, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track,
+  registerAppMetaHandlers({DEMO, FROM_SOURCE, FROM_STORE, restartAfterQuitGuard: reason => restarter.restart(reason), app, betaOn, checkForUpdate, cloud, dialog, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track,
     getLicense: () => license, getPlan, shell, getTelemetry: () => telemetry, getUpdateOffer, setUpdateOffer,
     getUpdateCheckedAt, getWindow: () => window, channels});   // lib/app-meta-handlers.js
   const {showForm} = registerApplyHandlers({DEMO, extensionGate, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme, needsNotion, prepareKitFor, getRecipeReporter: () => recipeReporterRef, shell, startClaude, storage, toWindow, track});   // lib/apply-handlers.js

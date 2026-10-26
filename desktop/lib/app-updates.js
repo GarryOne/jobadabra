@@ -8,7 +8,7 @@ import {createUpdateChannel} from './update-channel.js';
 import {log as appLog, logFile} from './log.js';
 
 export function createAppUpdates(ctx) {
-  const {Menu, app, dialog, getStorage, getTelemetry, toWindow, track, getWindow, isDemo = () => false, openExternal = () => {}, zoom = null} = ctx;
+  const {Menu, app, dialog, getStorage, getTelemetry, toWindow, track, getWindow, isDemo = () => false, openExternal = () => {}, zoom = null, windowsStore = process.windowsStore} = ctx;
   const storage = {settings: () => getStorage().settings(), saveSettings: patch => getStorage().saveSettings(patch)};   // storage is made after this runs: every use goes through the getter
   let updateOffer = null;  // the newer stable release, when there is one (lib/updater.js)
   let updateCheckedAt = null;  // the last check that reached GitHub (Settings → Diagnostics shows it)
@@ -16,6 +16,9 @@ export function createAppUpdates(ctx) {
   // Running from source (npm start): never offer or install an update. It would quit the dev app and open the
   // downloaded one in its place. From source, updating is `git pull` + restart.
   const FROM_SOURCE = !app.isPackaged;
+  // Installed from the Microsoft Store (MSIX): the Store updates it. Our own .exe would put a second, non-Store copy beside it, the one SmartScreen warns about.
+  const FROM_STORE = !FROM_SOURCE && !!windowsStore;
+  const NO_SELF_UPDATE = FROM_SOURCE || FROM_STORE;
   const betaOn = () => storage.settings().betaChannel === true;   // opt-in, off by default (Settings → Diagnostics → Beta, or the menu's Update Channel)
   // A tester: the person switched the beta on (versions are plain X.Y.Z since 0.5: the channel says how proven a build is).
   const testOn = () => storage.settings().testChannel === true;   // opt-in, off by default (Settings → Diagnostics → Test builds): unchecked builds, newest first
@@ -26,6 +29,7 @@ export function createAppUpdates(ctx) {
   async function checkForUpdate(asked = false) {
     // From source there is nothing to update, except under the e2e's fake release server (JOB_PILOTTO_E2E_UPDATES_URL): the update flow is tested on the real check.
     if (FROM_SOURCE && !(process.env.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_UPDATES_URL)) return asked ? {ok: true, offer: null, current: app.getVersion(), fromSource: true} : null;
+    if (FROM_STORE) return asked ? {ok: true, offer: null, current: app.getVersion(), fromStore: true} : null;
     try {
       updateOffer = triedBefore(await updater.check(app.getVersion(), {channel: channel()}));
       updateCheckedAt = new Date().toISOString();
@@ -54,7 +58,7 @@ export function createAppUpdates(ctx) {
   }
   const parentWindow = () => (getWindow() && !getWindow().isDestroyed() ? getWindow() : undefined);
   // The channel switch shared by the menu and Settings → Diagnostics; a change redraws the menu's radio and tells the window to redraw its switches.
-  const channels = createUpdateChannel({app, dialog, storage, updater, isLocked: () => isDemo() || FROM_SOURCE, checkForUpdate: () => checkForUpdate(),
+  const channels = createUpdateChannel({app, dialog, storage, updater, isLocked: () => isDemo() || NO_SELF_UPDATE, checkForUpdate: () => checkForUpdate(),
     installUpdate: () => installUpdate(), setUpdateOffer: value => { updateOffer = value; }, parentWindow,
     onChange: () => { buildMenu(); toWindow('updateChannel', channels.current()); }});
   // Menu → Update Channel → a channel: switch (asked first), then the same answer as Check for Updates…, with Update now when a build is there.
@@ -66,7 +70,7 @@ export function createAppUpdates(ctx) {
   }
   function buildMenu() {
     Menu.setApplicationMenu(Menu.buildFromTemplate(appMenu.template({name: app.name, mac: process.platform === 'darwin',
-      checkForUpdates: checkForUpdatesNow, channel: getStorage() ? channels.current() : 'stable', pickChannel: FROM_SOURCE ? null : pickChannel,   // built once before storage exists, then again
+      checkForUpdates: checkForUpdatesNow, channel: getStorage() ? channels.current() : 'stable', pickChannel: NO_SELF_UPDATE ? null : pickChannel,   // built once before storage exists, then again
       sendFeedback: () => { if (getWindow() && !getWindow().isDestroyed()) { getWindow().show(); toWindow('openFeedback'); } },
       find: what => toWindow('find', what), zoom})));
   }
@@ -82,6 +86,7 @@ export function createAppUpdates(ctx) {
 
   async function installUpdate() {
     if (FROM_SOURCE) return {ok: false, text: 'Running from source (npm start): update with git pull, then restart.'};
+    if (FROM_STORE) return {ok: false, text: 'This copy comes from the Microsoft Store: the Store installs its updates.'};
     if (!updateOffer) return {ok: false, text: 'No update to install.'};
     if (updateOffer.failedBefore) {
       appLog('update', `install ${updateOffer.version}: failed before, sending the person to the download page`);
@@ -113,5 +118,5 @@ export function createAppUpdates(ctx) {
     if (result.manual && result.url) openExternal(result.url);
     if (!result.ok) dialog.showMessageBox(parent, {type: 'warning', message: 'The update didn\'t install', detail: result.text, buttons: ['OK']});
   }
-  return {getUpdateOffer: () => updateOffer, setUpdateOffer: value => { updateOffer = value; }, getUpdateCheckedAt: () => updateCheckedAt, FROM_SOURCE, betaOn, testerOn, testerLogsOn, checkForUpdate, buildMenu, trackSetup, installUpdate, checkForUpdatesNow, channels};
+  return {getUpdateOffer: () => updateOffer, setUpdateOffer: value => { updateOffer = value; }, getUpdateCheckedAt: () => updateCheckedAt, FROM_SOURCE, FROM_STORE, betaOn, testerOn, testerLogsOn, checkForUpdate, buildMenu, trackSetup, installUpdate, checkForUpdatesNow, channels};
 }

@@ -14,7 +14,7 @@ import {log as appLog} from './log.js';
 import {joinProWaitlist} from './pro-waitlist.js';
 
 export function registerAppMetaHandlers(ctx) {
-  const {DEMO, FROM_SOURCE, restartAfterQuitGuard, app, betaOn, checkForUpdate, cloud, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track, getLicense, getPlan, shell, getTelemetry, getUpdateOffer, getUpdateCheckedAt, channels} = ctx;
+  const {DEMO, FROM_SOURCE, FROM_STORE = false, restartAfterQuitGuard, app, betaOn, checkForUpdate, cloud, installUpdate, ipcMain, licenseState, log, storage, testerLogsOn, testerOn, track, getLicense, getPlan, shell, getTelemetry, getUpdateOffer, getUpdateCheckedAt, channels} = ctx;
   // App updates (lib/updater.js): the latest stable release, offered in the menu; one click installs it.
   // Technical reports: the window's own errors come here; Settings shows the last ones sent and the switch.
   // Settings → Plan: where the user stands; a key from before 17 Oct 2026 is still checked offline and can be removed (no screen enters one any more).
@@ -65,14 +65,14 @@ export function registerAppMetaHandlers(ctx) {
   ipcMain.handle('telemetrySet', (_, on) => { storage.saveSettings({telemetry: !!on}); if (!on) getTelemetry()?.flush(); return {on: !!on}; });
   ipcMain.handle('updateState', () => getUpdateOffer());
   ipcMain.handle('updateCheck', () => checkForUpdate(true));
-  ipcMain.handle('updateStatus', () => ({current: app.getVersion(), offer: getUpdateOffer(), checkedAt: getUpdateCheckedAt(), fromSource: FROM_SOURCE}));
+  ipcMain.handle('updateStatus', () => ({current: app.getVersion(), offer: getUpdateOffer(), checkedAt: getUpdateCheckedAt(), fromSource: FROM_SOURCE, fromStore: FROM_STORE}));
   ipcMain.handle('updateInstall', () => installUpdate());
   registerBuildHandlers({app, ipcMain, restartApp: restartAfterQuitGuard, FROM_SOURCE, repo: pipeline.REPO});   // which build runs, and Restart to get N fixes (lib/build-handlers.js)
   // Beta and Test builds (Settings → Diagnostics): asked and saved by lib/update-channel.js, the same switch as the menu's Update Channel.
   // Only a click on its native dialog turns one on, never a script in the window. "Back to stable" installs the latest stable release even though it is older.
   ipcMain.handle('betaState', async () => {
-    const stable = FROM_SOURCE ? null : await updater.stableRelease(app.getVersion()).catch(() => null);
-    return {on: betaOn(), test: storage.settings().testChannel === true, current: app.getVersion(), stable: stable?.version || '', ahead: !!stable?.ahead, fromSource: FROM_SOURCE};
+    const stable = FROM_SOURCE || FROM_STORE ? null : await updater.stableRelease(app.getVersion()).catch(() => null);
+    return {on: betaOn(), test: storage.settings().testChannel === true, current: app.getVersion(), stable: stable?.version || '', ahead: !!stable?.ahead, fromSource: FROM_SOURCE, fromStore: FROM_STORE};
   });
   ipcMain.handle('betaSet', (_, want) => channels.set('beta', want));
   ipcMain.handle('testSet', (_, want) => channels.set('test', want));

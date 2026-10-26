@@ -37,6 +37,7 @@ Why each rule exists: [why.md](why.md#change-loop).
 ## A by-hand beta with reds
 Let it run to the end, read every red job's log, name each cause (skill **fix-failing-e2e**), fix them together, then dispatch the next beta. Cancel only a beta that hangs or whose build failed.
 A flake is re-run once, named. Why: [why.md](why.md#a-red-beta-runs-to-the-end-24-oct-2026).
+**No beta while main's e2e is red** (gate G2, 26 Oct 2026): `tools/beta-release.sh` refuses (`tools/red-main-gate.sh`); when fixes landed since the red run it first re-runs only the red suites on main (the one by-hand e2e run a tool starts itself). `--force "<why>"` overrides; the reason shows in the beta run's summary. Why: beta 2 (25 Oct) started 1.5 h after main went red on the same suites.
 
 **Green means tested** (gate G7, 26 Oct 2026): a main e2e run that ran no suite ends grey (cancelled) with its reason, never green; on 25 Oct two skipped runs read as a green main 1 h after a red one.
 

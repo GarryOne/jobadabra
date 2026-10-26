@@ -36,6 +36,10 @@ on:
         description: 'A beta by hand, in one shot: always builds, then the same e2e gate as the nightly (every gate suite, unit suites green, no high-severity finding, additive Notion schema) approves it for beta testers. Empty = a build for trying, offered to nobody'
         type: boolean
         default: false
+      over_red_main:
+        description: 'Set by tools/beta-release.sh --force "<why>": main''s e2e was red and the beta starts anyway; the reason shows in this run''s summary (gate G2, 26 Oct 2026)'
+        type: string
+        default: ''
 
 permissions:
   contents: write      # create the release
@@ -69,6 +73,12 @@ jobs:
       actions: write    # a fresh build of main when this one can't be released
       issues: read      # the gate's plan reads the waiting UI findings (its AI review decision)
     steps:
+      - name: Started over a red main e2e
+        if: inputs.over_red_main != ''
+        env:
+          WHY: ${{ inputs.over_red_main }}   # free text: never inline in the script
+        run: |
+          echo "### ⚠️ Started while main's e2e was red (tools/beta-release.sh --force): $WHY" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0

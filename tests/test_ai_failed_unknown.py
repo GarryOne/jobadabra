@@ -67,7 +67,7 @@ class FailedAIIsUnknown(unittest.TestCase):
             self.assertEqual(decide.decide('link-kind', {f'w{page}-{i}': 'x' for i in range(3)}, ('a', 'b'), 'task', client, self.db), {})
         self.assertEqual(calls.call_count, 1, 'one failed call, then no more asks')
         self.assertEqual(decide.WAITING['n'], 15)
-        self.assertEqual(decide.items_waiting(), "Today's Free AI limit is reached: 15 items wait for tomorrow (or add your own key in Settings → AI engine)")
+        self.assertEqual(decide.items_waiting(), "Today's Free AI limit is reached: 15 items wait for tomorrow (or add your own key in Settings → Connections → AI)")
         self.assertEqual(decide.FAILED[0] > 0, True, 'callers that retry unjudged items can tell')
 
     def test_every_decide_caller_is_listed_with_how_it_treats_unknown(self):

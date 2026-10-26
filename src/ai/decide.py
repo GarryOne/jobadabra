@@ -53,9 +53,9 @@ def items_waiting():
         return ''
     why = STOPPED['why']
     if 'Free AI' in why:
-        return f"Today's Free AI limit is reached: {n} items wait for tomorrow (or add your own key in Settings → AI engine)"
+        return f"Today's Free AI limit is reached: {n} items wait for tomorrow (or add your own key in Settings → Connections → AI)"
     if why:
-        return f'The AI limit is reached: {n} items wait for the next run (or add your own key in Settings → AI engine)'
+        return f'The AI limit is reached: {n} items wait for the next run (or add your own key in Settings → Connections → AI)'
     return f'The AI could not judge {n} items this time; they wait for the next run'
 
 

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, WINDOWS_SMOKE} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, stepsCovering, stillWhole} from './lib/coverage-pick.mjs';
@@ -52,14 +52,33 @@ try {
     const covering = Object.fromEntries(Object.entries(picked).map(([suite, p]) => [suite, p.reason]));
     // A suite a changed file points at runs whole, unless the step map recorded that file for it (a watched src/ Python file): then its lines pick the steps.
     const pointing = {...facts, watches: watchesWithImports(facts.watches), uses: suitesUsing(here)};
-    const pointed = stillWhole(changedFiles, file => suitesFor([file], facts.all, pointing), map), hits = suitesExpecting(strings, sources);
+    // A changed file of steps (a suite, or a helper holding `ctx.run` steps: lib/apply-journeys.mjs) runs the steps the change touches, in each suite that runs them
+    // (owner, 26 Oct 2026: "a change to a suite runs that suite's affected steps (apply/applyflows included)"); a file several suites share goes by each suite's
+    // `ownsStep` (applyflows runs apply.mjs's 'flows' steps). A change outside a named step, or any other file (a plain helper, the extension, a watched file the map
+    // has not seen), runs its suites whole.
+    const added = newSideRanges(git(['diff', '-U0', `${base}...HEAD`, '--', 'suites/', 'lib/'])), users = suitesUsing(here), own = {}, byStep = new Set();
+    for (const file of changedFiles.filter(name => /^desktop\/e2e\/(suites|lib)\/[^/]+\.mjs$/.test(name))) {
+      const rel = file.slice('desktop/e2e/'.length), text = sources[rel] || '';
+      if (!stepCalls(text).length) continue;   // no steps here: a plain helper (suitesFor below)
+      const touched = stepsTouched(text, added[file] || []);
+      if (touched.whole) continue;
+      byStep.add(file);
+      const suites = [...new Set([...(rel.startsWith('suites/') ? [rel.slice(7, -4)] : []), ...(users[rel] || [])])].filter(name => facts.all.includes(name));
+      for (const suite of suites) {
+        const owns = (await import(`./suites/${suite}.mjs`)).ownsStep || (() => true);
+        const names = touched.steps.filter(name => owns(name));
+        if (names.length) (own[suite] ||= []).push(...names);
+      }
+    }
+    const pointedElse = stillWhole(changedFiles.filter(file => !byStep.has(file)), file => suitesFor([file], facts.all, pointing), map);
+    const pointed = [...new Set([...pointedElse, ...Object.keys(own)])], hits = suitesExpecting(strings, sources);
     const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence});
-    // Steps per suite: those its changed lines reach plus those that quote removed UI text. Whole: a suite its own files or the harness point at, a quote outside a
-    // named step, a line nobody ran.
+    // Steps per suite: those its changed lines reach, those that quote removed UI text, those its own file's change touches. Whole: a suite a helper, the extension
+    // or the harness points at, a change or a quote outside a named step, a line nobody ran.
     const quoting = stepsQuoting(hits, sources), byLines = stepNamesFor(picked), steps = {};
     for (const suite of plan.suites) {
-      if (pointed.includes(suite) || quoting[suite]?.whole || (picked[suite] && !byLines[suite])) continue;
-      const names = [...(byLines[suite] || []), ...(quoting[suite]?.steps || [])];
+      if (pointedElse.includes(suite) || quoting[suite]?.whole || (picked[suite] && !byLines[suite])) continue;
+      const names = [...(byLines[suite] || []), ...(quoting[suite]?.steps || []), ...(own[suite] || [])];
       const real = names.filter(name => name !== '(setup)');
       steps[suite] = real.length ? [...new Set(real)] : names;
     }

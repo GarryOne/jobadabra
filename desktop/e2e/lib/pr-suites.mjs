@@ -61,12 +61,13 @@ export function report({strings, hits, changedFiles, sources}) {
 
 // The suites to run ON the PR (they block its merge since 26 Oct 2026, gate G1a): the ones its files point at (plan.mjs suitesFor: a suite's own file, the extension, the harness),
 // the ones that quote removed UI text, and the ones that RUN the lines it changes (the coverage map, gate G1b: `covering`, {suite: reason}). Linux suites always; a macOS
-// suite only when it RAN the changed lines (owner, 26 Oct 2026: "Yes, mapped Mac suites too"; #1911 broke the Mac-only interactions with a CSS change). A line no suite
-// ran (reason "loads …": a file's top level, an unused rule) picks every suite that loads the file, on Linux only: the Free plan runs 5 macOS jobs at once.
-// No count cap since G1a: suites run in parallel, so the PR waits for the slowest one, not their sum.
+// suite when it RAN the changed lines (owner, 26 Oct 2026: "Yes, mapped Mac suites too"; #1911 broke the Mac-only interactions with a CSS change) or when the PR changes the
+// suite itself (its file, a helper it imports, the extension for apply/applyflows: owner's yes to the e2e audit, 26 Oct 2026; #2074, #2075 and #2091 changed apply and
+// it never ran: it had left PRs on 13 Oct, c6a6366, when it ran whole on every flow PR). A line no suite ran (reason "loads …": a file's top level, an unused rule) picks
+// every suite that loads the file, on Linux only: the Free plan runs 5 macOS jobs at once. No count cap since G1a: suites run in parallel.
 export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cadence = {}}) {
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (cadence[suite] || 'always') !== 'manual');
-  const run = wanted.filter(suite => linux(suite) || String(covering[suite] || '').startsWith('runs '));
+  const run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
 }
 
@@ -105,6 +106,38 @@ export function stepsQuoting(hits, sources) {
         placed = true;
       }
       if (!placed) entry.whole = true;
+    }
+  }
+  return out;
+}
+
+// The lines a diff adds or changes, on the NEW side, per file (git diff -U0): {path: [[from, to], ...]}; a pure deletion is the line after it.
+export function newSideRanges(diff) {
+  const out = {};
+  let file = '';
+  for (const line of String(diff || '').split('\n')) {
+    const header = /^\+\+\+ (?:b\/)?(.+)$/.exec(line);
+    if (header) { file = header[1] === '/dev/null' ? '' : header[1]; continue; }
+    const m = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
+    if (m && file) { const start = Number(m[1]), count = m[2] === undefined ? 1 : Number(m[2]); (out[file] ||= []).push(count === 0 ? [start + 1, start + 1] : [start, start + count - 1]); }
+  }
+  return out;
+}
+
+// The steps a change to a suite's OWN file touches: each changed line range inside a `ctx.run('<name>', ...)` picks that step; a line outside any literal step
+// (the suite's setup, a helper, an import) runs the whole suite. -> {steps: [names], whole: bool}
+export function stepsTouched(text, ranges) {
+  const lines = String(text).split('\n'), offset = [0];
+  for (const line of lines) offset.push(offset[offset.length - 1] + line.length + 1);
+  const calls = stepCalls(text), out = {steps: [], whole: false};
+  for (const [from, to] of ranges) {
+    for (let n = Math.max(from, 1); n <= Math.min(Math.max(to, from), lines.length); n++) {   // line by line: a range across two steps picks both
+      if (!lines[n - 1].trim() || /^\s*(\/\/|\/\*|\*)/.test(lines[n - 1])) continue;   // a blank or comment-only line changes no step (#1992: a header comment picked 17 suites)
+      const a = offset[n - 1] + lines[n - 1].search(/\S/), b = offset[n - 1] + lines[n - 1].replace(/\s+$/, '').length - 1;
+      // the innermost step holding the line; its own first line (`await ctx.run(...`) and its closing `});` count as inside it
+      const holder = calls.filter(call => call.start <= offset[n] - 1 && a <= call.end && b <= call.end + 1).sort((x, y) => (x.end - x.start) - (y.end - y.start))[0];
+      if (!holder?.name) out.whole = true;
+      else if (!out.steps.includes(holder.name)) out.steps.push(holder.name);
     }
   }
   return out;

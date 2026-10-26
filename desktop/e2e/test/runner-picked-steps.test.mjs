@@ -52,3 +52,17 @@ test("coverage is read at each run step's start and end, so a step's lines are i
   const {marks} = await suite(['Open Settings']);
   assert.deepEqual(marks, ['mark', 'step:Launch the app, with a comma', 'mark', 'step:Open Settings']);
 });
+
+// A step-sharded suite (apply, applyflows) runs a picked step in ONE slice; the other slice leaves it (`elsewhere`) and must not call it missing: before 26 Oct 2026 the
+// slice without the step went red ("no step is named …") and its second try ran the whole suite.
+test('a picked step another slice runs counts as found: the slice without it stays green and runs only the setup', async () => {
+  const before = process.env.E2E_STEP_NAMES;
+  process.env.E2E_STEP_NAMES = JSON.stringify(['Export the profile, with profile.md']);
+  try {
+    const runner = createRunner(() => ({}), {keepGoing: true}), ran = [];
+    await runner.run('Launch the app, with a comma', async () => { ran.push('launch'); }, {critical: true});
+    await runner.run('Export the profile, with profile.md', async () => { ran.push('export'); }, {elsewhere: true});
+    assert.deepEqual(ran, ['launch']);
+    assert.equal(runner.summary(), 0);
+  } finally { if (before === undefined) delete process.env.E2E_STEP_NAMES; else process.env.E2E_STEP_NAMES = before; }
+});

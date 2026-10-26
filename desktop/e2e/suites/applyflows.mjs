@@ -6,11 +6,12 @@
 //   - A Mac (`npm run flows`, the scenario matrix): the same proxy, a 10-minute budget (a first run builds the workspace with the wizard's path).
 //     `npm run live` (LIVE=1): the live run on a real posting instead of the journeys, on this Mac's Claude Code (lib/engine.mjs flowsEngine; LIVE_ENGINE overrides).
 // Its own Notion token either way (E2E_NOTION_TOKEN_APPLYFLOWS: a CI secret; Keychain job-pilotto.e2e.notion_token_applyflows on a Mac).
-import {runApply, stepNeeds as applyNeeds} from './apply.mjs';
+import {partOf, runApply, stepNeeds as applyNeeds} from './apply.mjs';
 import {flowsEngine} from '../lib/engine.mjs';
 
 const ci = !!process.env.CI;
-export const stepNeeds = applyNeeds;   // what a step needs when E2E_STEPS picks it (lib/runner.mjs wantedWords)
+export const stepNeeds = applyNeeds;
+export const ownsStep = name => ['flows', 'live', 'both'].includes(partOf(name));   // its steps live in apply.mjs: a PR that changes one runs this suite (pr-suites.mjs)   // what a step needs when E2E_STEPS picks it (lib/runner.mjs wantedWords)
 
 export const varies = true;
 export const minutes = 17;   // CI's job limit: a first attempt may use the default 7-minute budget and the retry ('once more, to tell flaky from real') another 7, plus setup (15 since 096c8fa cut a slow retry short; test/suite-retry-room.test.mjs)

@@ -36,7 +36,20 @@ test('the report warns about an untouched suite and says so plainly when nothing
 import {planPrSuites} from '../lib/pr-suites.mjs';
 
 test('the PR plan joins pointed and quoting suites, keeps every Linux one (no cap since G1a), drops manual ones', () => {
-  const plan = planPrSuites({pointed: ['settings', 'apply'], hits: {jobs: ['x'], quality: ['y'], personas: ['z'], strategy: ['w'], focus: ['v']}, linux: suite => suite !== 'apply', cadence: {personas: 'manual'}});
-  assert.deepEqual(plan.suites, ['settings', 'jobs', 'quality', 'strategy', 'focus'], 'a fifth suite still runs: a capped suite was one a PR could break unseen');
-  assert.deepEqual(plan.left, ['apply'], 'a Mac suite is left to the gate; a manual suite is not named at all');
+  const plan = planPrSuites({pointed: ['settings', 'apply'], hits: {jobs: ['x'], quality: ['y'], personas: ['z'], strategy: ['w'], focus: ['v'], wizard: ['u']}, linux: suite => !['apply', 'wizard'].includes(suite), cadence: {personas: 'manual'}});
+  assert.deepEqual(plan.suites, ['settings', 'apply', 'jobs', 'quality', 'strategy', 'focus'], 'a fifth suite still runs: a capped suite was one a PR could break unseen');
+  assert.deepEqual(plan.left, ['wizard'], 'a Mac suite the PR changes runs (apply); one that only quotes removed text is left to the gate; a manual suite is not named at all');
+});
+
+// e2e audit, owner's yes 26 Oct 2026: #2074 (extension/), #2075 and #2091 (suites/apply.mjs + its helpers) changed apply and it never ran on the PR.
+test('every macOS suite runs on a PR that changes it (its file, a helper it imports, the extension)', async () => {
+  const {suiteFacts} = await import('../plan-run.mjs');
+  const facts = await suiteFacts();
+  const mac = [];
+  for (const suite of facts.all) if ((await facts.os(suite)) !== 'ubuntu-24.04' && (facts.cadence[suite] || 'always') !== 'manual') mac.push(suite);
+  assert.ok(mac.includes('apply') && mac.includes('applyflows'), `positive control: the macOS suites are ${mac.join(', ')}`);
+  for (const suite of mac) {
+    const plan = planPrSuites({pointed: [suite], linux: name => name !== suite, cadence: facts.cadence});
+    assert.deepEqual(plan.suites, [suite], `${suite} changed by the PR must run on it`);
+  }
 });

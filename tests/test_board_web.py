@@ -3,7 +3,7 @@ owner's yes 19 Oct 2026, step 3 of the local-sources sketch). Fake AI client onl
 import json
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -59,24 +59,14 @@ class Base(unittest.TestCase):
 
 
 class SearchTests(Base):
-    def test_found_boards_join_the_proposal_and_the_search_waits_its_days(self):
+    def test_found_boards_join_the_proposal(self):
         client = Client([STAGE, {**board(1), 'search_url': 'https://b1.example/?q={role}'}, {'name': 'Broken', 'search_url': 'http://x'}])
         found = board_web.search(SEARCH, [board(1)], client=client, now=NOW)
         self.assertEqual([b['host'] for b in found], ['buehnenjobs.example'], 'new hosts only, validated')
         self.assertEqual(client.asked[0]['tools'][0]['type'], 'web_search_20250305')
         self.assertIn('Board 1', client.asked[0]['messages'][0]['content'], 'the known boards are named, so it looks past them')
         self.assertEqual([b['host'] for b in board_ideas.load()['ideas']['k1']], ['b1.example', 'buehnenjobs.example'])
-        self.assertEqual(board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=6)), [], 'searched this week: rests')
-        self.assertEqual(len(client.asked), 1)
-        board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=7))
-        self.assertEqual(len(client.asked), 2, 'its boards give nothing yet: weekly (owner, 26 Oct 2026)')
-        data = board_ideas.load()
-        data['boards'] = {'s1.example': {'source_kind': 'sector', 'state': 'ok', 'relevant': 4},
-                          's2.example': {'source_kind': 'regional', 'state': 'ok', 'relevant': 2}}
-        board_ideas.save(data)
-        self.assertEqual(board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=14 + 22)), [], 'working boards: monthly')
-        board_web.search(SEARCH, [board(1)], client=client, now=NOW + timedelta(days=7 + 30))
-        self.assertEqual(len(client.asked), 3)
+        # its cadence (next run while thin, weekly after TRIES, monthly once working): tests/test_board_web_thin.py
 
     def test_a_board_found_as_a_plain_page_gets_its_home_page_s_search_link(self):
         crew = {'name': 'Crew Board', 'search_url': 'https://crew.example/', 'countries': ['Germany'], 'kinds': ['creative_media'],

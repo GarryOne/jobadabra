@@ -22,7 +22,9 @@ dispatched = os.path.exists(os.path.join(state, 'dispatched'))
 if args[:2] == ['workflow', 'run']:
     open(os.path.join(state, 'dispatched'), 'w').write(' '.join(args)); sys.exit(0)
 endpoint = args[1]
-if 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint:
+if 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint and data.get('unreadable'):
+    sys.exit(1)
+elif 'workflows/e2e.yml/runs?branch=main&status=completed' in endpoint:
     runs = list(data['runs'])
     if dispatched and data.get('recheck') == 'success': runs.insert(0, {'id': 99, 'display_title': 'E2E Mac + Linux · x · main', 'conclusion': 'success', 'head_sha': data['head'], 'head_branch': 'main'})
     print(json.dumps(runs))
@@ -95,6 +97,17 @@ class RedMainGate(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn('--dry-run', out)
         self.assertEqual(dispatch, '')
+
+    def test_an_unreadable_main_is_not_green(self):
+        # 26 Oct 2026: gh failed, the state helper printed nothing and the gate said "no suite red", exit 0
+        for extra in ((), ('--status',)):
+            code, out, dispatch = gate({'unreadable': True, 'runs': [], 'jobs': {}, 'head': NEW_SHA}, *extra)
+            self.assertEqual(code, 1, out)
+            self.assertIn('unknown, not green', out)
+            self.assertNotIn('no suite red', out)
+            self.assertEqual(dispatch, '')
+        code, out, _ = gate({'unreadable': True, 'runs': [], 'jobs': {}, 'head': NEW_SHA}, '--force', 'owner said go')
+        self.assertEqual(code, 0, out)
 
     def test_status_only_reads(self):
         code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, '--status')

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # No beta while main's e2e is red (gate G2, owner's yes 26 Oct 2026). tools/beta-release.sh calls it before it dispatches a beta.
 #   main green (tools/main_e2e_state.py)                  → exit 0
+#   main's state unreadable (gh failed)                    → exit 1: unknown is never green (--force still goes on)
 #   red, and no commit on main since the red run           → exit 1: fix it first (the beta would show the same reds)
 #   red, commits landed since                              → re-runs ONLY the red suites on main now and waits: green → exit 0, red → exit 1
 #   --force "<why>" (as beta-release.sh's)                → exit 0 with the reds named; beta-release.sh puts the reason in the beta run's summary
@@ -19,7 +20,12 @@ esac
 here="$(cd "$(dirname "$0")" && pwd)"
 poll="${RED_MAIN_POLL:-30}" find_max="${RED_MAIN_FIND_S:-300}" wait_max="${RED_MAIN_WAIT_S:-3600}"
 
-reds="$(python3 "$here/main_e2e_state.py" --repo "$repo")"
+reds="$(python3 "$here/main_e2e_state.py" --repo "$repo")"; read_rc=$?
+if [ "$read_rc" -ne 0 ]; then   # unknown is not green (26 Oct 2026: a failed read said "no suite red")
+  echo "Could not read main's e2e state: unknown, not green."
+  if [ -n "$force" ]; then echo "Starting the beta anyway (--force): $force"; exit 0; fi
+  echo "No beta. Re-run, or --force \"<why>\"."; exit 1
+fi
 if [ -z "$reds" ]; then echo "Main's e2e: no suite red."; exit 0; fi
 echo "Main's e2e is red:"; awk -F'\t' '{ printf "  %s (since %s, %s)\n", $1, $2, $4 }' <<<"$reds"
 if [ -n "$status" ]; then exit 1; fi

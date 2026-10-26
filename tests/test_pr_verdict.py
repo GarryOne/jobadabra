@@ -4,6 +4,7 @@ queued for a runner after every check was green.
 Why (owner, 26 Oct 2026: "How could you design such a slow and inefficient method of checking PRs?"): on #1992 two jobs only waited (pr-gate's
 "Other workflows passed" and pr-suites' wait), 43 of 206 runner-minutes of one push, while its suite jobs queued up to 17.5 min for a runner.
 Also the 10-min budget: a CI change whose own checks take longer goes red (history: 781637a, bc585e3, a7a6a9f, 7083bb7 each slowed PRs, none said by how much)."""
+import datetime
 import importlib.util
 import json
 import os
@@ -213,8 +214,24 @@ class JobByJob(unittest.TestCase):
         jobs = {3: [job(30, 'plan'), job(31, 'settings', status='in_progress'), job(32, 'apply', status='queued', steps=[])]}
         state, why, _, _, target = pv.verdict([run('CI · Pull request'), e2e], jobs=jobs, now=NOW)
         self.assertEqual((state, target), ('pending', 3))
-        self.assertEqual(why, 'waiting 10 min: e2e settings, apply')
-        self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], now=NOW)[1], 'waiting 10 min: e2e settings,apply')
+        self.assertEqual(why, 'e2e settings, apply running since 04:02 Zurich')
+        self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], now=NOW)[1], 'e2e settings,apply running since 04:02 Zurich')
+
+    def test_a_waiting_text_is_true_whenever_it_is_read(self):
+        # 26 Oct 2026, the owner: "it stays like that: 'waiting 3 min: e2e quality' for more than 5 minutes. this is a bug". The status is written only when a job
+        # ends, so a minutes-so-far counter froze between writes. A pending or settling text names a clock time, never a count up to now.
+        e2e = run(E2E, status='in_progress', event='workflow_dispatch', title='E2E for PR · quality · b', id=3, at='2026-10-26T03:02:00Z')
+        settle = run(E2E, status='in_progress', event='workflow_dispatch', title='E2E for PR · settings · b', id=4)
+        cases = [([run('CI · Pull request'), e2e], {3: [job(30, 'plan'), job(31, 'quality', status='in_progress')]}),
+                 ([run('CI · Pull request'), e2e], None),
+                 ([run('CI · Pull request', status='in_progress')], None),
+                 ([run('CI · Pull request'), settle], {4: [job(40, 'plan')]})]
+        later = NOW + datetime.timedelta(minutes=17)
+        for runs, jobs in cases:
+            state, why, *_ = pv.verdict(runs, jobs=jobs, now=NOW)
+            self.assertIn(state, ('pending', 'settling'))
+            self.assertEqual(pv.verdict(runs, jobs=jobs, now=later)[1], why, f'{state}: the text changed with the clock')
+            self.assertNotRegex(why, r'\d+(\.\d+)? ?min', f'{state}: a counter freezes between writes: {why}')
 
     def test_a_merged_or_closed_pr_gets_nothing(self):
         # #2041: merged by override, then a late job wrote "All checks passed: failure" on the merged head

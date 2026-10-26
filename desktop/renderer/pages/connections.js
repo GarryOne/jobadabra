@@ -13,7 +13,7 @@ import {goStep} from './wizard.js';
 import {bindNotify} from './notify-settings.js';
 import {showClaudePrereqs} from './claude-prereqs.js';
 import {storeName} from '../store-words.js';
-import {bindExtension, showExtensionStatus} from './extension-setup.js';
+import {bindExtension, paintExtensionCardFirst, showExtensionStatus} from './extension-setup.js';
 
 export {showExtensionStatus};
 
@@ -242,6 +242,7 @@ function alertLine(name, text) { const line = document.querySelector(`[data-secr
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
+  paintExtensionCardFirst();   // the last known state at once; the live read below confirms or corrects it
   // No "Check again": the checklist refreshes by itself when you come back to the window (e.g. after installing
   // Claude Code or the Chrome extension), while the extras step is open.
   window.addEventListener('focus', () => { if (!document.querySelector('.step[data-step="extras"]')?.hidden || document.getElementById('claude-prereqs-settings')?.hidden === false) showClaudePrereqs(); });   // back from installing: checked again

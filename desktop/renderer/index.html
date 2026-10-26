@@ -1409,8 +1409,8 @@
         <div class="conn-head">
           <span class="ui-tile tone-info"><i data-icon="puzzle"></i></span>
           <div class="conn-head-text"><h3>Chrome extension</h3>
-            <p class="muted" id="ext-line">Already installed? Open Chrome. Connection is checked within 30 seconds.</p></div>
-          <span class="service-state" id="ext-status"></span>
+            <p class="muted" id="ext-line">Looking for it in Chrome…</p></div>
+          <span class="service-state is-checking" id="ext-status"><span class="spinner"></span>Checking…</span>
         </div>
         <p class="message" id="ext-message"></p>
         <div class="alert tone-warn" id="ext-stray" hidden>
@@ -1418,7 +1418,8 @@
           <div><strong id="ext-stray-title">A background Chrome is in the way</strong><p id="ext-stray-text"></p></div>
           <button class="secondary" id="ext-stray-quit">Quit it</button>
         </div>
-        <details class="conn-setup plain" id="ext-setup" open><summary>Install the extension</summary>
+        <!-- Folded until the state is known: the last known one paints at first frame (pages/extension-setup.js), the steps open only for a state that needs them. -->
+        <details class="conn-setup plain" id="ext-setup"><summary>Install the extension</summary>
           <ol class="conn-steps">
             <li><span class="conn-step-words"><b>Add it to Chrome</b>
               <span class="muted">From the Chrome Web Store. Edge and Brave install it from there too, and it updates itself.</span></span>
@@ -1430,7 +1431,7 @@
           </ol>
         </details>
         <div class="conn-details">
-          <details class="troubleshoot" id="ext-dev"><summary><i data-icon="folder"></i>For developers: load it from a folder</summary>
+          <details class="troubleshoot" id="ext-dev" data-dev-only hidden><summary><i data-icon="folder"></i>For developers: load it from a folder</summary>
             <ol class="conn-steps">
               <li><span class="conn-step-words"><b>Enable Developer mode</b>
                 <span class="muted">Open <button class="code-link" id="ext-open-page">chrome://extensions</button> in Chrome and turn on Developer mode.</span></span></li>
@@ -2026,7 +2027,7 @@
     <ul>
       <li><b>Why an extension:</b> only an extension can read and fill a form inside your browser.</li>
       <li><b>What it sees:</b> only the application pages Jobadabra opens for you. It never presses Submit: you do.</li>
-      <li><b>What it takes:</b> about a minute, three steps, once: turn on Developer mode, load the extension folder, connect it to this app.</li>
+      <li><b>What it takes:</b> about a minute, once: Add to Chrome from the Chrome Web Store, and it connects to this app by itself.</li>
     </ul>
     <p class="muted small">After installing, press Apply again.</p>
     <div class="actions">

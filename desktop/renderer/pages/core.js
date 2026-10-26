@@ -48,6 +48,8 @@ export async function init() {
   }
   for (const line of document.querySelectorAll('[data-version-title]')) line.title = `Version ${shared.state.about.label}`;
   // Running from source (npm start): a DEV tag next to the name, so it's never mistaken for the installed app.
+  // Developer-only blocks ("For developers: load it from a folder"): hidden in index.html, shown only in a run from source, never the beta or stable install.
+  for (const node of document.querySelectorAll('[data-dev-only]')) node.hidden = !shared.state.about.dev;
   if (shared.state.about.dev) for (const brand of document.querySelectorAll('.brand')) brand.append(Object.assign(document.createElement('span'), {className: 'dev-tag', textContent: shared.state.about.mark || 'DEV'}));
 
   document.addEventListener('click', event => {

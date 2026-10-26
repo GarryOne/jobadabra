@@ -1,11 +1,14 @@
 // Settings → Connections → Chrome extension (and the setup wizard's extras card): is it installed (the browser says so at once),
 // is it awake (its report), and the buttons that install and connect it. Moved from connections.js (26 Oct 2026, a pure move).
-// Guards: test/extension-store-setup.test.js, test/palette-every-action.test.js.
+// Guards: test/extension-store-setup.test.js, test/palette-every-action.test.js, test/extension-card-first-paint.test.js.
+// The first paint draws the last known state (owner, 26 Oct 2026: "We should see the status from beginning"), from the record settings.js keeps
+// for the Connections cards (one copy); the live read then confirms or corrects it. The install steps fold only when the state changes.
 import {$, message, osPick, osText, show} from './core.js';
-import {extensionState} from '../service-status.js';
+import {extensionFrom, extensionState, justStarted} from '../service-status.js';
+import {foldFollows} from '../fold-follows.js';
 import {lookedText} from '../extension-looked.js';
 import {inBrowser, retarget} from '../browser-words.js';
-import {noteCheck, stateLine} from './settings.js';
+import {keptExtension, noteCheck, stateLine} from './settings.js';
 import {toastMessage} from './startup.js';
 
 function showStray(entry) {
@@ -28,26 +31,44 @@ const EXT_LINE = {
 };
 let browserApp = 'Google Chrome';  // the browser the extension is (or will be) installed in, from the app
 
-export async function showExtensionStatus() {
-  const [seen, found] = await Promise.all([window.pilot.extensionSeen().catch(() => null), window.pilot.extensionInstall().catch(() => null)]);
-  const state = extensionState({known: !!found || !!seen, installed: found?.installed || [], seen, browserRunning: found?.browserUp ?? null});
+// One state drawn: the pill, its sentence, Connect, and the install steps (opened or closed only when the state changes: foldFollows).
+function drawCard(state) {
   const pill = stateLine(state.on, state.on && state.version ? `v${state.version}` : '', state.checking, state.words);
   pill.id = 'ext-status';
   $('ext-status').replaceWith(pill);
-  if (state.checking) { setTimeout(showExtensionStatus, 1500); return; }  // only until the first profile read lands
-  browserApp = found?.browser || browserApp;
-  for (const card of ['setting-extension', 'extras-extension']) retarget($(card), browserApp, '#ext-stray, #ext-looked, #ext-path, #ext-path-extras');  // Chrome's words become Edge's when that is where it is
+  for (const card of ['setting-extension', 'extras-extension']) retarget($(card), browserApp, '#ext-stray, #ext-looked, #ext-path');  // Chrome's words become Edge's when that is where it is
   $('ext-line').textContent = inBrowser(EXT_LINE[state.state] || EXT_LINE.absent, browserApp);
+  show($('ext-connect'), state.state === 'idle');
+  foldFollows($('ext-setup'), state.state, state.state !== 'connected');
+  const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: 'Install the extension'};
+  $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || 'Troubleshoot the connection';
+}
+
+// The window's first paint (connections.js init): the last known state at once; with nothing kept, index.html's Checking… stays.
+export function paintExtensionCardFirst() {
+  const record = keptExtension();
+  const state = extensionFrom(record);
+  if (state.checking) return;
+  browserApp = record.browser || browserApp;
+  drawCard(state);
+}
+
+let retrying = false;
+export async function showExtensionStatus() {
+  const [seen, found] = await Promise.all([window.pilot.extensionSeen().catch(() => null), window.pilot.extensionInstall().catch(() => null)]);
+  const state = extensionState({known: !!found || !!seen, installed: found?.installed || [], seen, browserRunning: found?.browserUp ?? null, justStarted: justStarted()});
+  if (state.checking) {   // the profile read, or the first report since the start, is a moment away: what is drawn stays until then
+    if (!retrying) { retrying = true; setTimeout(() => { retrying = false; showExtensionStatus(); }, 1500); }
+    return;
+  }
+  browserApp = found?.browser || browserApp;
+  drawCard(state);
   showStray((await window.pilot.strayChrome().catch(() => []))[0] || null);
-  $('ext-path').textContent = found?.folder || '';  // what Chrome's Load unpacked dialog wants pasted
+  $('ext-path').textContent = found?.folder || '';  // what Chrome's Load unpacked dialog wants pasted (developer runs only)
   const looked = lookedText(found?.looked);  // where we looked: the answer when the profile is somewhere we can't know
   $('ext-looked').textContent = looked;
   $('ext-looked').hidden = !looked;
-  show($('ext-connect'), state.state === 'idle');
-  $('ext-setup').open = state.state !== 'connected';
-  const SUMMARY = {connected: 'Reinstall or troubleshoot', absent: 'Install the extension'};
-  $('ext-setup').querySelector('summary').textContent = SUMMARY[state.state] || 'Troubleshoot the connection';
-  noteCheck({extension: {installed: found?.installed || [], seen, browserUp: found?.browserUp ?? null}});  // the cards above follow
+  noteCheck({extension: {installed: found?.installed || [], seen, browserUp: found?.browserUp ?? null, browser: found?.browser || '', at: Date.now()}});  // the cards above follow, and the next start paints it first
 }
 
 // The card's buttons, bound once at start (connections.js init).

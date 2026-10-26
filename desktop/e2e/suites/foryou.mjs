@@ -8,7 +8,7 @@ import path from 'node:path';
 import {DESKTOP, launch} from '../lib/app.mjs';
 import {appLogLines} from '../lib/app-log.mjs';
 import {LEAVE_DIALOG} from '../lib/leave-prompt.mjs';
-import {openRunsList} from '../lib/runs-list.mjs';
+import {backToList, openRunsList} from '../lib/runs-list.mjs';
 const BAR = '#strategy-bar-host .page-save-bar';   // Strategy's one save bar (renderer/pages/strategy-cards.js)
 
 export const name = 'foryou';
@@ -80,6 +80,7 @@ export async function run(ctx) {
       const rows = page.locator('#activity-recent li:not(.recent-group) button');
       let found = false;
       for (let i = 0; i < await rows.count() && !found; i++) {
+        await backToList(page);
         await rows.nth(i).click();
         found = await waitFor(() => page.locator('.run-card-help:visible').count().then(n => n > 0), 1500);
       }

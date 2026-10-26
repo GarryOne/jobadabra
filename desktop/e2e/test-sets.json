@@ -90,6 +90,7 @@
   "finder-scorecard.test.mjs",
   "fit.test.mjs",
   "fixed-close.test.mjs",
+  "flaky-proof.test.mjs",
   "flaky-rerun.test.mjs",
   "focus-data.test.mjs",
   "forget.test.mjs",

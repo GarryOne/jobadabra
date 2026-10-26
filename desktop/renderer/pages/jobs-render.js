@@ -181,7 +181,7 @@ export function renderJobs() {
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
       if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
-      else if (sayRefused('Apply did not start', result)) { /* why, in a pop-up (no AI credit, trial over, Notion): never "No link" */ } else if (button) button.textContent = 'No link';
+      else if (sayRefused('Apply did not start', result)) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.');
     };
     if (job.status !== 'applied' && job.url && (job.kit || job.ready)) {

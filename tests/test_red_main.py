@@ -22,6 +22,7 @@ CLASSIFIED = {
     'CI · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main its cases are a step of CI · Tests (one Linux job, 15 Oct 2026)',
     'CI · Pull request': 'ignored: runs on pull requests only, never on main; its checks gate the merge',
     'E2E · Bisect a red main suite': 'ignored: started by e2e.yml after a red main suite (gate G2b); it bisects, it never runs on a push to main',
+    'E2E · Weekly root causes': 'ignored: a Monday report (gate G6); it reads runs and writes one issue, never runs on a push to main',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'CI · Harness tests': 'ignored: pull requests that change the harness only (on: paths:)',

@@ -11,7 +11,7 @@ import {tracked} from './pipeline-queue.js';
 import {run} from './pipeline-run.js';
 import {searchSteps} from './search-steps.js';
 import {searchDone} from './search-report.js';
-import {readAllNow} from './refused-now.js';
+import {offer as offerBrowserReads} from './refused-offer.js';
 
 // note: what this search is for beyond a refresh ("Re-scoring 75 older scores"), shown on its row from queued to finished.
 export function refresh(storage, onLine, mode = 'run', trigger = 'you', {note = '', employers = false} = {}) {
@@ -78,12 +78,12 @@ export function task(storage, kind, args, onLine, trigger = 'you', {note = ''} =
   }, {args}, (record, log) => ({summary: taskSummary(kind, log), message: appMessage(log)}), {note});
 }
 function searchOnce(storage, onLine, mode, trigger = 'you', employers = false) {
-  if (trigger === 'you') readAllNow();   // Check for new jobs also reads the sites that refused the engine, now (lib/refused-now.js)
   return (async () => {
     const startedAt = new Date().toISOString();   // "Your search changed" compares with when a refresh began, not ended (renderer/search-changed.js)
     const {code, result} = await searchSteps(storage, onLine, mode, trigger, undefined, {employers});
     storage.saveSettings({lastSearchAt: new Date().toISOString(), lastSearchStartedAt: startedAt, lastSearchOk: code === 0});
-    searchDone({startedAt, ok: code === 0, stopped: code === null, trigger});   // the search report (lib/search-report.js), when Technical reports are on
+    searchDone({startedAt, ok: code === 0, stopped: code === null, trigger});
+    if (code !== null) offerBrowserReads(storage, run).catch(() => {});   // the run offers "Find jobs using your browser" for the sites that refused it; it never reads them (lib/refused-offer.js)   // the search report (lib/search-report.js), when Technical reports are on
     return {ok: code === 0, result};
   })();
 }

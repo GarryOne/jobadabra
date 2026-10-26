@@ -1,6 +1,6 @@
-// "Read refused sites in my browser" (owner, 19 Oct 2026; rule: CLAUDE.md, the opt-in exception to "never past a login wall"): once an hour the extension asks the app what is
-// due. The app answers unless the person turned the setting off (Settings → Advanced, on by default since 20 Oct 2026), and then lists sites that refused the app's own reading and were not
-// asked in the last 30 days. Each is fetched ONCE, one at a time, with a pause, WITHOUT cookies or logins (credentials omitted), and the page goes to the app, which keeps its jobs
+// Refused sites read in the person's browser (owner, 19 Oct 2026; rule: CLAUDE.md, the exception to "never past a login wall"). Only after the person pressed
+// "Find jobs using your browser" in the app (owner, 26 Oct 2026: "shouldn't start automatically in the background"): the one-minute look asks the app whether a
+// press waits, and only then the app lists the sites that refused its own reading and are due (no timer, no start by itself). Each is fetched ONCE, one at a time, with a pause, WITHOUT cookies or logins (credentials omitted), and the page goes to the app, which keeps its jobs
 // or the stop. Never LinkedIn, Indeed, Glassdoor, levels.fyi, Reddit (checked here too, whatever the app says); a refusal, bot check or login page is the app's stop, never retried and
 // never solved; a site that still refuses goes on to a real tab in an incognito window (refused-tab.js, no cookies). Not a flow file: nothing here touches an application. Guard: desktop/test/extension-refused-read.test.js.
 import {api, settings} from './flow.js';
@@ -8,9 +8,8 @@ import {ALL_SITES} from './site-allow.js';
 import {tabReader} from './refused-tab.js';
 import {show as showHeldCheck, look as lookAtHeldCheck} from './refused-held.js';
 
-export const ALARM = 'refused-reads';
-export const NOW_ALARM = 'refused-reads-now';   // every minute: has the app a Read now waiting? (one cheap call, the engine is not asked)
-export const PERIOD_MIN = 60;
+export const ALARM = 'refused-reads';   // the hourly timer of versions before 26 Oct 2026: cleared at start, never created
+export const NOW_ALARM = 'refused-reads-now';   // every minute: has the person pressed the button? (one cheap call, the engine is not asked)
 export const PAUSE_MS = [5000, 12000];   // between sites: gentle, one at a time
 export const MAX_SITES = 12;             // the app's own cap, kept here too
 export const MAX_BYTES = 3_000_000;
@@ -66,7 +65,7 @@ export async function pass({chrome = globalThis.chrome, call = api, config = nul
   } finally { running = false; }
 }
 
-// Read now: the app says one is waiting (a job opened, Check for new jobs); the pass then reads the due sites at once.
+// The person pressed "Find jobs using your browser": the app says a press waits; the pass then reads the due sites at once.
 export async function readNowIfAsked({chrome = globalThis.chrome, call = api, config = null} = {}) {
   if (running) return {read: 0, skipped: 'running'};
   const cfg = config || await settings();
@@ -79,10 +78,9 @@ export async function readNowIfAsked({chrome = globalThis.chrome, call = api, co
 }
 
 export function startRefusedReads({chrome = globalThis.chrome} = {}) {
-  chrome.alarms.create(ALARM, {delayInMinutes: 3, periodInMinutes: PERIOD_MIN});
+  chrome.alarms.clear(ALARM)?.catch?.(() => {});   // an older version's hourly read: gone (the app hands out nothing without a press anyway)
   chrome.alarms.create(NOW_ALARM, {delayInMinutes: 1, periodInMinutes: 1});
   chrome.alarms.onAlarm.addListener(alarm => {
-    if (alarm.name === ALARM) pass({chrome}).catch(() => {});
     if (alarm.name === NOW_ALARM) readNowIfAsked({chrome}).catch(() => {});
   });
 }

@@ -2,8 +2,11 @@
 // "0 of 1 · Airbase · Next" for 15 minutes). The extension reads the sites at once, while the pass's task may wait its turn behind Find jobs
 // (one task at a time, lib/pipeline-queue.js): the Airbase page came back at 02:32, the pass only started at 02:43 and waited for it.
 import assert from 'node:assert/strict';
-import {test} from 'node:test';
+import {beforeEach, test} from 'node:test';
 import {queue, outcome, passRunning} from '../lib/refused-reads.js';
+import * as now from '../lib/refused-now.js';
+
+beforeEach(() => now.press());   // a pass follows the person's press
 
 const storageWith = settings => { const kept = {...settings}; return {settings: () => kept, saveSettings: patch => Object.assign(kept, patch), kept}; };
 const SITE = {url: 'https://jobs.coop.ch', name: 'Coop', kind: 'employer'};
@@ -19,7 +22,7 @@ function laterTurn() {   // the task waits until go() is called: another task ho
 }
 
 test('a page that comes back before the pass gets its turn is kept, and the pass ends as soon as its turn comes', {timeout: 3000}, async () => {
-  const storage = storageWith({readRefusedSites: true}), lane = laterTurn();
+  const storage = storageWith({}), lane = laterTurn();
   await queue(storage, {run, work: lane.work});
   await outcome(storage, {url: SITE.url, status: 200, html: '<html></html>', title: 't'}, {run});
   lane.go();
@@ -30,7 +33,7 @@ test('a page that comes back before the pass gets its turn is kept, and the pass
 });
 
 test('a site the browser never answers for ends the pass with its reason, in seconds', {timeout: 3000}, async () => {
-  const storage = storageWith({readRefusedSites: true}), lane = laterTurn();
+  const storage = storageWith({}), lane = laterTurn();
   await queue(storage, {run, work: lane.work, siteMs: 30});
   lane.go();
   await new Promise(resolve => setTimeout(resolve, 120));

@@ -4,6 +4,7 @@ import {PROMISE} from '../pro-promise.js';
 import {SHOW_I_HAVE_PRO, creditWords} from '../plan-view.js';
 import {openQuestionReview} from './question-review.js';
 import {buttonEntry, reveal} from './palette-busy.js';
+import {paletteEntry as browserOfferEntry} from './browser-offer-rows.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, prepareActions, unqueue} from './activity.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
@@ -135,6 +136,9 @@ export function paletteCommands() {
   // An action card with its own handler (not a Telegram command): "Tailor CVs" costs minutes of AI, so its entry only brings you to the card.
   document.querySelectorAll('.action[data-palette]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
     labelOf(node.closest('.task-body')?.querySelector('.task-words .muted')), PALETTE_KEYWORDS[node.dataset.palette], () => openView('actions')));
+  // The finished Find jobs run's "Find jobs using your browser" (browser-offer.js): brings you to the button on its card.
+  const offer = browserOfferEntry({runs: lastActivity?.runs, settings: shared.state?.settings});
+  if (offer) add('Actions', offer.label, offer.hint, PALETTE_KEYWORDS.visits, () => { shared.selectedRun = offer.runId; openActivity(true); setTimeout(() => { const go = $('browser-offer-go'); if (go) reveal(go); }, 300); });
   // A task waiting its turn can be taken out of the queue from here too (activity.js unqueue).
   (lastActivity?.queued || []).forEach(run => add('Actions', `Remove ${KIND[kindOf(run)].name} from the queue`, 'It has not started: it will not run',
     'unqueue cancel queued waiting remove', () => unqueue(run)));

@@ -1817,7 +1817,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
   border: 1px solid var(--warn-line); border-radius: var(--r-md); background: var(--warn-soft); }
 .insight-next-icon { display: inline-flex; flex: none; color: var(--warn); }
 .insight-next-icon .icon { width: 20px; height: 20px; }
-#activity-next .insight-next-words > button { justify-self: start; margin-top: var(--sp-2); }   /* a search's "Find new employers": its own width, under the words */
+#activity-next .insight-next-words > button, #activity-browser-next .insight-next-words > button { justify-self: start; margin-top: var(--sp-2); }   /* a search's "Find new employers": its own width, under the words */
 .insight-next-words { display: grid; gap: var(--sp-1); min-width: 0; }
 .insight-next-words b { color: var(--signal-ink); }
 .insight-next-words p { margin: 0; color: var(--ink-2); }

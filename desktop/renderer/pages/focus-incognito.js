@@ -2,10 +2,10 @@
 // says how many and opens the extension's Chrome page. A strip of its own (focus.js is near its size limit); the app sets refusedIncognitoWaiting (lib/refused-reads.js). Guard: test/focus-incognito.test.js.
 import {el} from '../components.js';
 import {$} from './core.js';
-import {openSwitch} from './refused-read-setting.js';
 import {waitingOf, lineOf} from './incognito-rows.js';
 
-
+// The extension's one-minute look opens its own Chrome details page (lib/refused-reads.js takeOpenSwitch). Moved here from the removed Settings card (26 Oct 2026).
+export const openSwitch = () => window.pilot.saveSettings({refusedOpenSwitch: true});
 let strip = null;
 async function paint() {
   const count = waitingOf((await window.pilot.state().catch(() => null))?.settings), anchor = $('focus-up-title')?.closest('section');

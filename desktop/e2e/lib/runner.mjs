@@ -64,7 +64,9 @@ const pictureOf = async session => (session?.page ? Promise.race([session.page.s
 export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, stepNeeds = {}, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   let overBudget = false;
-  async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = STEP_LIMIT_MS} = {}) {
+  // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
+  async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = STEP_LIMIT_MS, elsewhere = false} = {}) {
+    if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);
     if (left <= 0) {
       if (!overBudget) console.log(`✗ the suite is over its ${Math.round(budgetMs / 60000)}-minute budget; slowest steps: ${slowest(results).join('; ')}`);

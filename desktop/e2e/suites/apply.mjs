@@ -61,6 +61,8 @@ const SHARED_STEPS = ['the app is seeded', 'the app has an applicant', 'through 
 const LIVE_STEPS = ['a real posting, watched live'];
 export const partOf = name => (LIVE_STEPS.some(head => name.startsWith(head)) ? 'live' : SHARED_STEPS.some(head => name.startsWith(head)) ? 'both' : CV_STEPS.some(head => name.startsWith(head)) ? 'cv' : FLOW_STEPS.some(head => name.startsWith(head)) ? 'flows' : 'forms');
 
+// Which steps of this file each suite runs (a PR that changes one runs that suite: desktop/e2e/pr-suites.mjs); applyflows runs the 'flows' part.
+export const ownsStep = name => ['forms', 'cv', 'both'].includes(partOf(name));
 export const run = ctx => runApply(ctx, ['forms', 'cv']);   // the CV steps use the form fixtures' jobs; with the journeys they put applycv over 7 minutes (beta 9 Oct 2026: 394 s of steps on Windows)
 export async function runApply(ctx, parts) {
   const {page, proxy, forms} = ctx;
@@ -75,7 +77,7 @@ export async function runApply(ctx, parts) {
   const takes = stepSlicer(live ? null : parseShard(process.env.JP_REPLAY_SHARD), {seconds: parts.includes('flows') ? flowSeconds : stepSeconds, needs: stepNeeds, setup: SETUP});
   ctx.run = (name, fn, options) => {
     if (!((partOf(name) === 'both' && !(live && name.startsWith('through all of it'))) || parts.includes(partOf(name)))) return undefined;
-    if (partOf(name) !== 'both' && !takes(name)) return undefined;
+    if (partOf(name) !== 'both' && !takes(name)) return all(name, fn, {...options, elsewhere: true});   // the other slice runs it (a PR's picked step is found there)
     return all(name, fn, options);
   };
   // The jobs this part seeds: the journeys use their own fixtures, the forms and the CV steps the form fixtures.

@@ -155,6 +155,7 @@
   "png-grid.test.mjs",
   "pr-suites.test.mjs",
   "windows-smoke-pick.test.mjs",
+  "owns-step.test.mjs",
   "pr-suites-steps.test.mjs",
   "runner-picked-steps.test.mjs",
   "plan-gate-real.test.mjs",

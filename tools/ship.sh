@@ -132,8 +132,15 @@ if [ "$queue" = 1 ]; then
   landing_acquire "$branch"
 fi
 step "rebasing $branch onto origin/main"
+before_rebase="$(git rev-parse HEAD)"
 rebase
-[ "$(git rev-list --count origin/main..HEAD)" -gt 0 ] || { echo "ship: nothing to push, $branch has no commits beyond origin/main"; finished=1; exit 0; }
+if [ "$(git rev-list --count origin/main..HEAD)" -eq 0 ]; then
+  # "Nothing to push" only when main has the branch's files as the branch had them: a rebase drops a merge commit, so an amend of main's merge commit vanished
+  # with "DONE nothing to push" (26 Oct 2026, jobadabra-web #160: the owner's sender change). Guard: tests/test_ship_dropped.py.
+  git merge-base --is-ancestor "$before_rebase" origin/main && lost="" || lost="$(git diff --name-only "$(git merge-base "$before_rebase" origin/main)" "$before_rebase" | while read -r file; do git diff --quiet "$before_rebase" origin/main -- "$file" || echo "$file"; done | head -5 | paste -sd ' ' -)"
+  [ -z "$lost" ] || { fail_reason="the rebase left $branch with no commits, but main lacks its change to: $lost. It is still in $before_rebase (git reflog): put it on a new branch from origin/main (git diff origin/main $before_rebase -- <file> | git apply)"; echo "ship: $fail_reason" >&2; exit 1; }
+  echo "ship: nothing to push, $branch has no commits beyond origin/main"; finished=1; exit 0
+fi
 
 ship_red_gate "before the checks"
 # The hook is a Claude Code hook, so a script's own `git push` never meets it: run its checks here as it would see the push (again after a refused push).

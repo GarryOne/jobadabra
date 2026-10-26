@@ -52,19 +52,18 @@ def within_places(config, search_config):
     """The Google Jobs block kept inside the user's own places (search.json `locations`). The setup AI drafts it separately and can miss:
     a French CV with no address got "France" and gl=fr for a search in Geneva (6 Oct 2026). Places in no country the user chose are
     dropped; with none left, each of the user's countries is searched in the drafted language. Places we can't place leave it as drafted."""
-    from ..ai import decide
-    from .aggregators import _countries
+    from .aggregators import _countries, place_countries
     countries = _countries(search_config)
     if not countries:
         return config
     name = lambda loc: loc if isinstance(loc, str) else str(loc.get('location', ''))
-    # Which country each drafted place is in, in any language (AI, kept per place); without AI the block stays as drafted.
-    found = decide.decide('place-country', {name(loc).lower(): name(loc) for loc in config['locations']}, (*COUNTRY_NAMES, 'other'),
-                          'A place name. Answer the code of the country it is in: ' + '; '.join(f'{c} = {n}' for c, n in COUNTRY_NAMES.items()))
-    if found is None:   # no AI: Switzerland, the first market, from its fixed table (a drafted "France" for a Geneva search is left out)
+    # Which country each drafted place is in, in any language (AI, kept per place); without AI the pack's patterns ("France" for a Geneva search is left out).
+    found = place_countries([name(loc) for loc in config['locations']])
+    if found is None:   # nothing known (no AI and no pattern, or the AI failed with nothing kept): Switzerland, the first market, from its fixed table
         from .. import places
         found = {name(loc).lower(): 'ch' for loc in config['locations'] if places.in_switzerland(name(loc))}
-    locations = [loc for loc in config['locations'] if found.get(name(loc).lower()) in countries]
+    # a place the AI has not placed yet (past its cap this run) is left as drafted: unknown, never dropped on a guess
+    locations = [loc for loc in config['locations'] if found.get(name(loc).lower(), countries[0]) in countries]
     if not locations and config['locations']:
         language = next((loc.get('language') for loc in config['locations'] if isinstance(loc, dict) and loc.get('language')), 'en')
         locations = [{'location': COUNTRY_NAMES[c], 'language': language} for c in countries]

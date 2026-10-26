@@ -265,14 +265,15 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     now = now or datetime.now(timezone.utc)
     db.execute(TABLE)
     for name, read in (readers if readers is not None else sources()):
-        if read_lately(db, name, now, search):
+        lately = read_lately(db, name, now, search)
+        if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
             continue
         try:
             if ahead is not None and name == boards_ahead.NAME:
                 found, matched = ahead.take(db, now)
             else:
                 if name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
-                    found = read(search)
+                    found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
                 else:
                     with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
                         found = read(search)

@@ -322,13 +322,14 @@ def _rendered(board, entry, proposed, page, search, fetch, show, judge):
     return None
 
 
-def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True):
+def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None):
     """Every job of the found boards for this search; each board's yield kept (jobs listed, relevant ones), boards marked browser or dropped
     by their history skipped, untried boards limited (board_yield.pick). early: the first-jobs slice; its jobs are kept for this search's
     full read, which asks the board in full and serves the pages the slice fetched from them instead of fetching them again. workers: boards
     read at once. spare: boards read, in their order, each in place of one that refuses automated reading, as soon as it refuses (owner,
     19 Oct 2026: a second wave after the first made Finance's first-jobs step wait 35 s; 4 of music's first 6 boards refused). web: a full
-    read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py)."""
+    read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
+    since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since)."""
     from ..ai import board_ideas
     # the headless browser, for the real web only: never a test's pages, and off with the page reader (tests turn it off: test_found_boards_ai.py)
     show = careers.renderer() if fetch in (None, careers.get_text) and careers.READER is not None else None
@@ -341,7 +342,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     retry, dropped = (lambda entry: _retry_due(entry, now)), (dead if dead is not None else _dead())
     searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
     proposed = boards if boards is not None else board_ideas.ideas(search)
-    todo = board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf'))   # web=False: these only
+    todo = board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
+                                      kept, since)   # web=False: these only
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
 
     def item(board):

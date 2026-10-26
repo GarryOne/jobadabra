@@ -48,15 +48,18 @@ class Ahead:
 
 
 def start(db, search, env=None, now=None):
-    """An Ahead reading the found boards now, when aggregators.scan would read them in this search; else None."""
+    """An Ahead reading the found boards now (within the scan's spacing, those not read since), when aggregators.scan would read them; else None."""
     from . import aggregators
     if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # the end-to-end fixture mode never reaches a live site (as aggregators.scan)
         return None
     read = dict(aggregators.sources(env)).get(NAME)
     if read is None:
         return None
-    if aggregators.read_lately(db, NAME, now, search):
-        return None
+    if aggregators.read_lately(db, NAME, now, search):   # the same search within the spacing: only the boards not read since (owner's pilot run, 26 Oct 2026)
+        import functools
+        from datetime import datetime, timedelta, timezone
+        since = (now or datetime.now(timezone.utc)) - timedelta(hours=aggregators.SPACING_HOURS)
+        read = functools.partial(read, since=since)
     return Ahead(search, read)
 
 

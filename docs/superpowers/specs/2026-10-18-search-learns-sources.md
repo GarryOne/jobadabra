@@ -77,7 +77,7 @@ and is shared; no AI planner per run). This list is B above, made concrete; the 
 - [x] 1 "Europe" is all its countries at equal weight: not Swiss, every country kept, the pool label all of them, the board proposal in equal slices (proof: tests/test_region_equal.py)
 - [x] 2 Free AI: the web search runs on the user's signed-in Claude Code / Codex (#1948)
 - [x] 3 the web search starts at second 0 beside the read (#1952; before the first jobs: this PR, the 26 Oct pilot check started it at 265 s)
-- [ ] 4 split 'Other' into real fields, the site's KINDS first (jobadabra-web), measured on the central titles
+- [x] 4 split 'Other' into real fields, the site's KINDS first (jobadabra-web), measured on the central titles (ff: #1964, jobadabra-web #130; an unsure kind reads no employer list, the web search takes over)
 - [x] 5 the web search is a source with its own yield in the queue (#1952: boards marked origin 'web')
 - [ ] 6 speed: relevant jobs per minute per source; a source with 0 relevant after ~1 min stops
 - [ ] 7 employers' yield shared per field × country, like boards
@@ -93,8 +93,9 @@ and is shared; no AI planner per run). This list is B above, made concrete; the 
 - [ ] 17 effort shifts mid-run: a strong board found is read at once; employers with 0 relevant after ~1 min stop; the AI judges relevance
 - [ ] 18 learned for next time: each field × place's sources ranked by relevant jobs, shared, the next search starts from what worked
 - [x] 19 no AI planner per run (owner's choice, 26 Oct 2026): measured yield decides the order
-- [ ] 20 terms gate for found boards: read when the terms allow, else a visit
-- [ ] 21 the employer read inside the search's time (owner, 26 Oct 2026: "it shouldn't just go brute force and check all the employers" / "Stop at 3 minutes and tell you what's left for the next run"): best first, the first 40 always, no new site after 2 minutes, the rest read first next time in source_rank.order (src/sources/read_budget.py, tests/test_read_budget.py)
+- [x] ~~20 terms gate for found boards~~ dropped: owner, 26 Oct 2026: "let's ignore robots.txt" (bd: #1973); login walls, captchas, 401/403/429 still stop
+- [x] 21 the employer read inside the search's time (owner, 26 Oct 2026: "it shouldn't just go brute force and check all the employers" / "Stop at 3 minutes and tell you what's left for the next run"): best first, the first 40 always, no new site after 2 minutes, the rest read first next time in source_rank.order (#1967; src/sources/read_budget.py, tests/test_read_budget.py)
+- [x] 22 the boards rest one by one: a search run again within 6 h reads the boards proposed or found since, and the web search says why it did not run (owner's pilot run 26 Oct 2026: a whole-read rest hid the aviation boards; tests/test_board_spacing.py)
 
 ### B · learned yield (jobadabra-46, owner's yes 26 Oct 2026)
 - explore = 1 slot in 5 in EVERY run (not 1 run in 5); proven after 1 install, dead after 3; best = local jobs per minute, 70+ as the tie-break

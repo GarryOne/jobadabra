@@ -58,6 +58,27 @@ class TitlesAiFirstTest(unittest.TestCase):
             feeds.triage(jobs)
         self.assertEqual(set(asked), {'Pilot A320', 'Captain B737', 'Cabin Crew'})
 
+    def test_a_failed_or_capped_ai_sort_leaves_a_title_unknown_never_a_words_guess(self):
+        """CLAUDE.md: a busy or failed AI leaves the item unknown; the words decide only with no AI at all. A role-word hit is still shown."""
+        jobs = [{'title': 'Pilot A320', 'location': 'Paris'}]
+        for why, decide in (('failed', mock.Mock(side_effect=RuntimeError('overloaded'))), ('past its cap', lambda titles, search, local=False: {})):
+            with self.subTest(why), mock.patch.object(feeds, 'TRIAGED', dict(JUDGED)), mock.patch.object(feeds, 'wanted_location', return_value=True), \
+                    mock.patch.object(feeds, 'in_my_place', return_value=True), mock.patch('src.ai.engine.ready', lambda *a, **k: True), \
+                    mock.patch.object(title_triage, 'decide', decide), mock.patch('builtins.print'):
+                self.assertTrue(feeds.wanted_title('Pilot A320'), 'before the sort runs: the words (no AI asked yet)')
+                feeds.triage(jobs)
+                self.assertFalse(feeds.wanted_title('Pilot A320'), 'the AI sort ran and did not judge it: not kept or counted, asked next run')
+                self.assertTrue(feeds.sure_title('Pilot A320'), 'still shown at once (owner: "Show at once, AI removes")')
+                self.assertFalse(feeds.wanted_title(PILOTE))
+                self.assertTrue(feeds.wanted_title('Senior First Officer'), "the AI's earlier answers still count")
+                with mock.patch.object(feeds, 'placing', return_value=False):
+                    self.assertTrue(feeds.keep_open({'title': 'Pilot A320', 'location': 'Paris'}), 'a shown job is closed only on an AI no')
+
+    def test_with_ai_turned_off_the_words_decide(self):
+        with mock.patch('src.ai.engine.ready', lambda *a, **k: False):
+            feeds.triage([{'title': 'Pilot A320', 'location': 'Paris'}])
+        self.assertTrue(feeds.wanted_title('Pilot A320'), 'no AI at all: the words are the floor')
+
 
 class LevelGoesToTheAiTest(unittest.TestCase):
     def test_the_level_is_its_own_field_not_ruled_out_words(self):

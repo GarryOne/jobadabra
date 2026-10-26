@@ -93,10 +93,19 @@ def apply(data, job=None):
     return data
 
 
+def _low(data, bar):
+    """A score to ask again: made before the search part existed and under the digest's bar, or a career change under SEARCH_ROLE_FIT
+    made before the title check lifted it (his 03:15 re-score, 26 Oct 2026: fit 0-30 on Free AI, stored with the part)."""
+    if 'search' not in data:
+        return int(data.get('score') or 0) < bar
+    return (data.get('search') or {}).get('career_change') is True and int(data.get('score') or 0) < SEARCH_ROLE_FIT
+
+
 def again_ids(jobs, rows, bar):
     """The jobs whose score was made before the search part existed, under the digest's bar, with a title the current search wants: scored
-    once more (owner's pick, 26 Oct 2026: "Low ones the search wants"). rows: {job id: its scores row}. The AI sorts their titles first, in
-    one batch (feeds.triage); a failed sort keeps none on words (src/sources/feeds.py wanted_title)."""
+    once more (owner's pick, 26 Oct 2026: "Low ones the search wants"); a career change under SEARCH_ROLE_FIT too (_low). rows: {job id: its
+    scores row}. The AI sorts their titles first, in one batch (feeds.triage); a failed sort keeps none on words (src/sources/feeds.py
+    wanted_title). Once only: the next answer for a wanted title is at SEARCH_ROLE_FIT at least (apply)."""
     import json
     low = []
     for job in jobs:
@@ -105,7 +114,7 @@ def again_ids(jobs, rows, bar):
             data = json.loads(row['data_json'] or '{}') if row else None
         except ValueError:
             data = None
-        if data is not None and 'search' not in data and int(data.get('score') or 0) < bar:
+        if data is not None and _low(data, bar):
             low.append(job)
     if not low:
         return set()

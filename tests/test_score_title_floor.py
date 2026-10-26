@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 from src import digest
-from src.ai import score_search
+from src.ai import score, score_search
 from tests import test_score_career_change as career   # the module, so its own tests are not loaded twice
 from tests.test_digest_counts import header
 
@@ -25,6 +25,23 @@ class TitleCheck(unittest.TestCase):
         self.assertEqual((one['score'], one['cv_fit'], one['tier']), (score_search.SEARCH_ROLE_FIT, 20, score_search.tier(score_search.SEARCH_ROLE_FIT)))
         self.assertEqual(one['reason'], f'Fits your search · Your CV: {GAP}')
         self.assertIn(f'{score_search.SEARCH_ROLE_FIT}/100 · Fits your search', digest.build_digest(self.db, seed=1, hide_unscored=True)[0][0])
+
+    def test_his_low_career_change_scores_made_before_the_title_check_are_scored_once_more(self):
+        """His 03:15 re-score (26 Oct 2026) stored the search part with fit 0-30: the again rule (no search part yet) would never pick
+        them, so they would stay under the digest's bar. A career change under SEARCH_ROLE_FIT whose title the check wants: once more."""
+        jobs = digest.eligible_jobs(self.db)[0]
+        low = {'score': 20, 'tier': 'C', 'reason': 'Unrelated', 'components': {}, 'strengths': [], 'gaps': [], 'confidence': 'high',
+               'search': {'fit': 0, 'career_change': True, 'cv_gap': GAP}}
+        for job in jobs:
+            score.save(self.db, job, 'm', {**low, 'search': {**low['search'], 'career_change': False}} if job['title'].endswith(' 2') else low, career.CV)
+        wanted = lambda title: not str(title).endswith(' 1')
+        with mock.patch('src.sources.feeds.wanted_title', side_effect=wanted), mock.patch('src.sources.feeds.triage'), \
+                mock.patch('src.sources.feeds.judged_title', return_value=True):
+            again = {job['title'] for job in score.pending_jobs(self.db, jobs, career.CV, 50)}
+            self.assertEqual(len(again), 11, 'not job 1 (title not wanted), not job 2 (the same field)')
+            score.run(self.db, jobs, career.CV, 'm', 50, client=FakeModel(search_fit=0, cv_fit=20))
+            self.assertEqual(score.pending_jobs(self.db, jobs, career.CV, 50), [], 'once only: now at the title check\'s fit')
+        self.assertEqual(header(self.db, hide_unscored=True)[1], 11)
 
     def test_a_title_the_check_rejects_or_has_not_judged_keeps_its_fit(self):
         for answer in (False, None):

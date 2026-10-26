@@ -13,6 +13,7 @@ import * as telegram from './telegram.js';
 import {cloudNextAt, nextAt, nextMailAt} from './schedule.js';
 import {log as appLog} from './log.js';
 import {runState} from './run-state.js';
+import {runTone, toneOf} from '../renderer/toast-tone.js';
 
 export function createAppNotify(ctx) {
   const {DEMO, Notification, app, getStorage, targets, toWindow, getWindow} = ctx;
@@ -25,10 +26,10 @@ export function createAppNotify(ctx) {
     const clean = targets.clean(target);
     if (clean) toWindow('openTarget', clean);
   }
-  function notify(title, body, target = null) {
+  function notify(title, body, target = null, tone = 'info') {   // tone: the window toast's kind (renderer/toast-tone.js); macOS notifications have none
     if (process.env.JOB_PILOTTO_SMOKE) return;
     const onClick = typeof target === 'function' ? target : () => openTarget(target);
-    const toast = hint => toWindow('toast', {title, body, hint, target: typeof target === 'function' ? null : targets.clean(target)});
+    const toast = hint => toWindow('toast', {title, body, hint, target: typeof target === 'function' ? null : targets.clean(target), tone: toneOf(tone)});
     if (!Notification.isSupported() || notificationsBlocked) { appLog('notify', 'window toast only', {title, blocked: notificationsBlocked}); toast(false); return; }
     const note = new Notification({title, body, silent: false});
     note.on('click', () => { getWindow()?.show(); getWindow()?.focus(); onClick(); });
@@ -77,7 +78,7 @@ export function createAppNotify(ctx) {
       if (getWindow()?.isFocused()) continue;
       if (run.kind === 'prepare' && run.where === 'mac') continue;  // prepareKit gives its own ("Press Apply…")
       const note = notCheckedNotice(run) || runHistory.notice(run);
-      if (note) notify(note.title, note.body, note.target);   // a click opens that run's result
+      if (note) notify(note.title, note.body, note.target, runTone(run));   // a click opens that run's result
     }
     nudgeFewJobs(runs);
   }
@@ -92,8 +93,8 @@ export function createAppNotify(ctx) {
     getStorage().saveSettings({fewJobsNudgedFor: found.runId, ...(what.telegram ? {fewJobsTelegramAt: Date.now()} : {})});
     const said = fewJobs.words(found);
     appLog('advice', 'few new jobs nudge', {run: found.runId, counts: found.counts.join(','), telegram: what.telegram, decidedBy: 'two weak checks in a row'});
-    if (getWindow()?.isFocused()) toWindow('toast', {title: said.title, body: said.body, target: {run: found.runId}});
-    else notify(said.title, said.body, {run: found.runId});
+    if (getWindow()?.isFocused()) toWindow('toast', {title: said.title, body: said.body, target: {run: found.runId}, tone: 'warn'});
+    else notify(said.title, said.body, {run: found.runId}, 'warn');
     toWindow('few-jobs', {runId: found.runId});
     const token = getStorage().secret('TELEGRAM_BOT_TOKEN'), chat = getStorage().settings().telegramChatId;
     if (what.telegram && !DEMO) notifyChannel.sendEmail(getStorage(), {subject: said.title, text: said.telegram}).catch(() => {});   // the e-mail form, when e-mail is chosen

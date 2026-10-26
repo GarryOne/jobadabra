@@ -49,12 +49,12 @@ function confirmRescore(count, outdated, reload) {
     drawOutdated(outdated, reload);
     try {
       const result = await window.pilot.rescoreOutdated().catch(error => ({ok: false, error: error.message}));
-      if (!result.ok) { toastMessage('Not re-scored', result.error, {view: 'strategy'}); return; }
+      if (!result.ok) { toastMessage('Not re-scored', result.error, {view: 'strategy'}, 'bad'); return; }
       const search = startSearch({reason: 'rescore', count: result.queued});   // resolves when the search ends; its row says "Re-scoring N older scores"
       // A refusal answers at once and startSearch says it (renderer/refusal.js): "Re-scoring now" only when it was not refused.
       if (refusal(await Promise.race([search, new Promise(resolve => setTimeout(resolve, 1500))]))) return;
       toastMessage({title: 'Re-scoring now', body: `${jobs(result.queued)} get a new score${result.queued > 60 ? ' (60 now, the rest in the next searches)' : ''}. ` +
-        'It shows in Recent activity as "Re-scoring".', target: null});
+        'It shows in Recent activity as "Re-scoring".', target: null, tone: 'info'});
       await search;
     } finally {
       busy = false;

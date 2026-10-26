@@ -14,7 +14,7 @@ export async function announceQueued(kind, {runs = () => window.pilot.runs(), to
   const state = startState(kind, {running: kindOf(data.running), queued: (data.queued || []).map(kindOf)});
   if (state !== 'queued') return null;
   const {title, body} = queuedToast(taskName(kind), taskName(kindOf(data.running)));
-  toast({title, body, action: {label: 'View queue', run: showRunsTab}});
+  toast({title, body, action: {label: 'View queue', run: showRunsTab}, tone: 'info'});
   return state;
 }
 

@@ -87,5 +87,5 @@ export async function nudgeMissingDetails() {
   const fromCv = (result?.proposals || []).filter(item => missing.includes(item.field)).length;
   toastMessage({title: 'Forms will ask for details you haven\'t given',
     body: `Missing: ${missing.map(key => USUAL[key]).join(', ')}.${fromCv ? ` ${fromCv} found in your CV: check and save them once.` : ' Add them once in your Profile.'}`,
-    target: {view: 'settings', section: 'profile'}});
+    target: {view: 'settings', section: 'profile'}, tone: 'warn'});
 }

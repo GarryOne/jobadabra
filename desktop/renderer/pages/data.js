@@ -90,7 +90,7 @@ export async function init() {
     if (result?.cancelled) { if (button.id === 'import-data') message('data-message', 'Import cancelled.', 'waiting'); return; }
     if (!result?.error) return;
     if (button.id === 'import-data') message('data-message', `Import failed: ${result.error}`, 'error');
-    else toastMessage('Import failed', result.error, {card: 'data'});
+    else toastMessage('Import failed', result.error, {card: 'data'}, 'bad');
   }));
   // ---------- clear my job list (src/clear_jobs.py): the counts first, then a backup and the clear ----------
   const clearBox = $('clear-jobs-confirm');
@@ -117,7 +117,7 @@ export async function init() {
     if (!result?.ok) { message('data-message', result?.error || 'Not cleared.', 'error'); return; }
     message('data-message', `Cleared ✓ ${result.cleared} job${result.cleared === 1 ? '' : 's'}, ${result.kept} kept. Your next search starts fresh.`, 'ok');
     shared.allJobs = [];
-    toastMessage('Job list cleared', `${result.cleared} removed, ${result.kept} kept. Run Check for new jobs to fill it again.`, {view: 'jobs'});
+    toastMessage('Job list cleared', `${result.cleared} removed, ${result.kept} kept. Run Check for new jobs to fill it again.`, {view: 'jobs'}, 'good');
   });
   showBackup();
   $('backup-now').addEventListener('click', async () => {
@@ -164,12 +164,12 @@ export async function init() {
     else if (!result?.ok) message('reset-message', 'Not reset.', 'waiting');
   });
   window.pilot.lastReset().then(done => {
-    if (done?.failed) toastMessage('Import or reset did not finish', `${done.failed}. Your data on this computer is as it was; try again.`, {card: 'data'});
-    else if (done?.imported) toastMessage('Data imported ✓', `Your previous data is in ${done.backup}.`, {card: 'data'});
+    if (done?.failed) toastMessage('Import or reset did not finish', `${done.failed}. Your data on this computer is as it was; try again.`, {card: 'data'}, 'bad');
+    else if (done?.imported) toastMessage('Data imported ✓', `Your previous data is in ${done.backup}.`, {card: 'data'}, 'good');
     // The backup's Profile and tracking are in its Notion workspace (lib/reset.js notionLeftBehind): say which one to connect, before a new one is made.
     if (done?.imported && done.notionElsewhere) toastMessage({title: 'Connect the same Notion workspace',
       body: 'Your Profile and job tracking are in the Notion workspace this backup used. Connect that workspace and pick your existing Jobadabra page: '
-        + 'a new workspace starts with an empty Profile.', target: {view: 'settings', section: 'connections'}});
-    else if (done?.deleted) toastMessage('Jobadabra was reset', 'Your previous data on this computer was deleted. Import your export to get it back.', {card: 'data'});
+        + 'a new workspace starts with an empty Profile.', target: {view: 'settings', section: 'connections'}, tone: 'warn'});
+    else if (done?.deleted) toastMessage('Jobadabra was reset', 'Your previous data on this computer was deleted. Import your export to get it back.', {card: 'data'}, 'info');
   });
 }

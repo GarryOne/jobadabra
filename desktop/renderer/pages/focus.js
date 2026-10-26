@@ -104,7 +104,7 @@ async function finishItem(item, save) {
     settled.delete(itemKey(item));
     keepHolds();
     if (lastFocus) renderFocus(lastFocus);
-    toastMessage('Not saved', done?.error || `${storeName()} could not save it. Try again.`, {view: 'focus'});
+    toastMessage('Not saved', done?.error || `${storeName()} could not save it. Try again.`, {view: 'focus'}, 'bad');
     return;
   }
   if (focusLoading) await focusLoading.catch(() => {});
@@ -210,7 +210,7 @@ function focusCard(item) {
   if (item.kind === 'feedback') more.push({label: 'Skip this request', run: async () => {
     dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it
     const result = await saveFeedbackAction(item, 'skip');
-    if (!result.ok) { releaseItem(item); toastMessage('Not saved', result.error, {view: 'focus'}); }
+    if (!result.ok) { releaseItem(item); toastMessage('Not saved', result.error, {view: 'focus'}, 'bad'); }
   }});
   if (item.notion_url) more.push({icon: 'layers', label: 'Open in Notion', run: event => openLink(item.notion_url, event)});
   if (item.job_url && item.job_url !== item.link && !/jobpilotto|mail\.google/.test(item.job_url)) more.push({icon: 'external', label: 'Open posting', run: () => window.pilot.openExternal(item.job_url)});
@@ -222,7 +222,7 @@ function focusCard(item) {
     run: () => dismissInterview(item, {onConfirmed: () => holdItem(item), onFail: () => releaseItem(item)})});
   if (prep && item.page_id) prep.more.forEach(entry => more.push({icon: entry.icon, label: entry.label, run: prepRun(entry.run)}));
   if (item.kind === 'apply') more.push({icon: 'target', label: 'Change the daily target', run: () => editTarget()});
-  if (item.detail) more.push({icon: 'info', label: 'Details', run: () => toastMessage(item.headline || item.title, item.detail, NO_PLACE.itself)});
+  if (item.detail) more.push({icon: 'info', label: 'Details', run: () => toastMessage(item.headline || item.title, item.detail, NO_PLACE.itself, 'info')});
   if (more.length) actions.append(moreButton(more, 'More'));
   li.append(round, body, actions);
   return li;
@@ -393,7 +393,7 @@ export async function saveDailyTarget(input) {
     .catch(error => ({ok: false, error: error.message}));
   input.disabled = false;
   input.title = ''; input.closest('label')?.removeAttribute('data-saving');
-  if (!result.ok) { toastMessage('Target not changed', result.error, {view: 'focus'}); return false; }
+  if (!result.ok) { toastMessage('Target not changed', result.error, {view: 'focus'}, 'bad'); return false; }
   for (const id of ['focus-target', 'set-target']) $(id).value = result.target;
   return true;
 }
@@ -440,6 +440,6 @@ export async function init() {
   window.addEventListener('pilot-outdated', () => {
     if (shared.outdatedShown) return;
     shared.outdatedShown = true;
-    toastMessage({title: 'Jobadabra was updated', body: 'Restart it to finish the update: some buttons won\'t work until then.', action: {label: 'Restart', run: relaunch}, target: NO_PLACE.app});
+    toastMessage({title: 'Jobadabra was updated', body: 'Restart it to finish the update: some buttons won\'t work until then.', action: {label: 'Restart', run: relaunch}, target: NO_PLACE.app, tone: 'warn'});
   });
 }

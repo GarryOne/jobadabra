@@ -39,7 +39,7 @@ export function setCv(storage, file, name, {client = null, key = '', look = null
     const message = String(error?.message || error).slice(0, 200);
     state('failed', {error: message});
     log('cv', 'CV not read at upload', {error: message});
-    toast({title: 'CV not read yet', body: 'Your CV is saved. It will be read again when you tailor a CV.', target: {card: 'cv'}});
+    toast({title: 'CV not read yet', body: 'Your CV is saved. It will be read again when you tailor a CV.', target: {card: 'cv'}, tone: 'warn'});
   });
   return {...set, done};
 }

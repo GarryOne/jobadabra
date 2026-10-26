@@ -81,7 +81,7 @@ export function bindExtension() {
       button.disabled = false;
       toastMessage(result?.opened ? 'Chrome Web Store opened' : 'Couldn\'t open Chrome',
         inBrowser(result?.opened ? 'Press Add to Chrome there. It connects to this app by itself within 30 seconds.'
-          : 'Open Chrome, then search the Chrome Web Store for Jobadabra.', browserApp), {card: 'extension'});
+          : 'Open Chrome, then search the Chrome Web Store for Jobadabra.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
   }
   $('ext-stray-quit').addEventListener('click', async event => {
@@ -90,7 +90,7 @@ export function bindExtension() {
     const result = await window.pilot.quitStrayChrome(Number(button.dataset.pid)).catch(() => null);
     button.disabled = false;
     toastMessage(result?.ok ? 'Background Chrome quit' : 'Couldn\'t quit it',
-      result?.ok ? 'Chrome\'s scripting now reaches your window — press the button again.' : (result?.error || 'Try again.'), {card: 'extension'});
+      result?.ok ? 'Chrome\'s scripting now reaches your window — press the button again.' : (result?.error || 'Try again.'), {card: 'extension'}, result?.ok ? 'good' : 'bad');
     showExtensionStatus();
   });
   // The step-1 chip: best effort at Chrome's page, and the URL on the clipboard so the paste always gets there.
@@ -111,7 +111,7 @@ export function bindExtension() {
       toastMessage(result?.opened ? 'Extension folder opened' : 'Couldn\'t open the folder',
         inBrowser(result?.opened ? osPick('Its path is on your clipboard: in Chrome press Load unpacked, then ⌘⇧G, ⌘V, Return.',
           'Its path is on your clipboard: in Chrome press Load unpacked, paste it into the folder box (Ctrl+V), and press Enter.')
-          : 'Open the extension folder by hand, then press Load unpacked in Chrome.', browserApp), {card: 'extension'});
+          : 'Open the extension folder by hand, then press Load unpacked in Chrome.', browserApp), {card: 'extension'}, result?.opened ? 'info' : 'bad');
     });
   }
   $('ext-connect').addEventListener('click', async () => {

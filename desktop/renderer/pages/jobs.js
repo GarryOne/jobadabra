@@ -110,7 +110,7 @@ async function askAboutLeftOpen() {
   if (!open.length) return;
   const answer = await window.pilot.sessionsLeftOpen(open.map(item => item.id));
   if (answer?.kept) toastMessage(`${answer.kept} application${answer.kept === 1 ? '' : 's'} restored`,
-    `${answer.kept === 1 ? 'Its form is' : 'Their forms are'} still open in Chrome: review and submit them there.`, {view: 'sessions'});
+    `${answer.kept === 1 ? 'Its form is' : 'Their forms are'} still open in Chrome: review and submit them there.`, {view: 'sessions'}, 'good');
 }
 let jobsLimit = 200;
 async function showMore() {
@@ -122,7 +122,7 @@ async function showMore() {
     const fresh = await writes.read({limit: jobsLimit});
     if (fresh) showJobsData(fresh);
   } catch (error) {
-    toastMessage('Could not load more jobs', error.message, {view: 'jobs'});
+    toastMessage('Could not load more jobs', error.message, {view: 'jobs'}, 'bad');
   }
   button.disabled = false;
   renderJobs();
@@ -152,7 +152,7 @@ export function showJobsData(data) {
   window.pilot.state().then(state => { shared.state = state; showSearchChanged(state.settings); }).catch(() => {});
   {
     for (const job of takenDown(shared.allJobs, data.jobs)) {
-      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`, jobPlace(job));
+      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`, jobPlace(job), 'warn');
     }
     shared.allJobs = data.jobs;
     markReady(data.jobs);   // the jobs the night filled, from the codes known so far
@@ -380,7 +380,7 @@ export async function init() {
       if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
       if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
         $('apply-dialog').close();
-        toastMessage('Applying with Claude', result.message, {view: 'sessions'});
+        toastMessage('Applying with Claude', result.message, {view: 'sessions'}, 'info');
         await refreshSessions();
         return;
       }

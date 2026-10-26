@@ -163,7 +163,7 @@ export function registerExtServerHandlers(ctx) {
   visits.onWaiting(() => {   // once a run: a notification that brings Chrome forward on click
     if (Date.now() - waitingSaid < 10 * 60000) return;
     waitingSaid = Date.now();
-    notify('Jobadabra is waiting for you in Chrome', 'Press "Allow on the sites the app opens" once: then it reads the sites by itself.', () => visits.focusBrowser());
+    notify('Jobadabra is waiting for you in Chrome', 'Press "Allow on the sites the app opens" once: then it reads the sites by itself.', () => visits.focusBrowser(), 'warn');
   });   // the extension waits on the person: said, not "reading"   // a tab the Actions task opened has been read
   server.setVisitHandler(async page => {
     const answer = await visits.read(storage, page);
@@ -201,7 +201,7 @@ export function registerExtServerHandlers(ctx) {
       appLog('review', `at submit: ${counts.map(c => `${c.n} ${c.reason}`).join(', ') || 'nothing missed'}`, {board});
     }
   });
-  server.setLearnedHandler(payload => learnedAnswers.save(storage, payload, {notify: (title, body, target) => toWindow('toast', {title, body, target}), contactSaved: contact => server.contactSaved(storage, contact)}));
+  server.setLearnedHandler(payload => learnedAnswers.save(storage, payload, {notify: (title, body, target, tone) => toWindow('toast', {title, body, target, tone}), contactSaved: contact => server.contactSaved(storage, contact)}));
   server.setTabsHandler(report => {
     const sessions = terminals.list();
     review.noteTabs(report, new Set(sessions.map(session => session.id)));

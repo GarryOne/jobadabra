@@ -13,6 +13,7 @@ import {CV_FILES} from '../cv-files.js';
 import {KIND, kindOf, capital, outcome, refreshGmailConnection} from './activity-basics.js';
 import {lastActivity, renderActivity} from './activity-render.js';
 import {mountInDrawer, pinDefault, runsTabShown, showRunsTab} from './runs-tab.js';
+import {runTone} from '../toast-tone.js';
 // The bar's action: hide the open panel, watch what's running, or see the details.
 export function barLabel() {
   $('activity-open').textContent = !$('activity-panel').hidden ? 'Hide activity ⌄' : lastActivity?.running ? 'View progress ↑' : 'Details ▴';
@@ -49,13 +50,13 @@ export function announceRuns({running, runs}) {
   if (running && running.id !== announced.running) {
     announced.running = running.id;
     const kind = KIND[kindOf(running)] || KIND.search;
-    if (running.trigger === 'schedule') toastMessage({title: `${kind.icon} ${kind.name} started`, body: `Scheduled${where(running)}`, target: {activity: true}});
+    if (running.trigger === 'schedule') toastMessage({title: `${kind.icon} ${kind.name} started`, body: `Scheduled${where(running)}`, target: {activity: true}, tone: 'info'});
   }
   for (const run of runs.filter(r => !announced.done.has(r.id))) {
     announced.done.add(run.id);
     if (Date.now() - Date.parse(run.endedAt || run.startedAt) > 3 * 60000) continue;  // history arriving (Notion), not news
     const kind = KIND[kindOf(run)] || KIND.search;
-    toastMessage({title: doneTitle(kind.name, run), body: `${capital(outcome(run))}${where(run)}`, target: {run: run.id}});   // a click opens this run's result
+    toastMessage({title: doneTitle(kind.name, run), body: `${capital(outcome(run))}${where(run)}`, target: {run: run.id}, tone: runTone(run)});   // a click opens this run's result
   }
 }
 

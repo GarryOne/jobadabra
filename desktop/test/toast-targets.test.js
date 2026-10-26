@@ -18,17 +18,21 @@ test('every toast and notification names where a click leads, or NO_PLACE with i
   // sayRefused(title, result, {place}): its options object names the place (or NO_PLACE.<reason> as place).
   const why = site => site.place ? (/\bplace\s*:/.test(topLevel(site.args)[2] || '') ? null : 'sayRefused needs {place: …} as its 3rd argument') : missing(site.args);
   const bad = sites().map(site => ({...site, why: why(site)})).filter(site => site.why);
-  assert.deepEqual(bad.map(site => `${site.where}: ${site.why}`), [], 'give each a target ({view, section, job, session, run, card}) or NO_PLACE.<reason>');
+  assert.deepEqual(bad.map(site => `${site.where}: ${site.why}`), [], 'give each a target ({view, section, job, session, run, card}) or NO_PLACE.<reason>, and a tone (bad | warn | good | info)');
 });
 
 test('the checker tells a target from none', () => {
   assert.equal(missing("'Saved', 'It is saved.'"), 'no target and no NO_PLACE reason');
-  assert.equal(missing("'Saved', 'It is saved.', {view: 'jobs', job: code}"), null);
-  assert.equal(missing("'Log copied', 'On the clipboard.', NO_PLACE.done"), null);
+  assert.equal(missing("'Saved', 'It is saved.', {view: 'jobs', job: code}"), 'no tone (bad | warn | good | info)');
+  assert.equal(missing("'Saved', 'It is saved.', {view: 'jobs', job: code}, 'good'"), null);
+  assert.match(missing("'Saved', 'x', {view: 'jobs'}, 'green'"), /not one of/);
+  assert.equal(missing("'Saved', 'x', {view: 'jobs'}, result.ok ? 'good' : 'bad'"), null);
+  assert.equal(missing("'Log copied', 'On the clipboard.', NO_PLACE.done, 'good'"), null);
   assert.match(missing("'x', 'y', NO_PLACE.nowhere"), /not one of/);
-  assert.equal(missing("{title: 'Moved', body: `${a, b}`, target: {view: 'jobs'}}"), null);
+  assert.equal(missing("{title: 'Moved', body: `${a, b}`, target: {view: 'jobs'}, tone: 'good'}"), null);
+  assert.equal(missing("{title: 'Moved', body: 'x', target: {view: 'jobs'}}"), 'no tone (bad | warn | good | info)');
   assert.equal(missing("{title: 'Moved', body: 'x', hint}"), 'no target and no NO_PLACE reason');
-  assert.equal(missing("{title: 'Saved', body: 'x', action: refreshAction}"), null);   // the click runs it
+  assert.equal(missing("{title: 'Saved', body: 'x', action: refreshAction, tone: 'good'}"), null);   // the click runs it
   assert.equal(missing('body'), null);
   assert.deepEqual(topLevel("'a, b', `c ${d, e}`, {f: 1, g: 2}"), ["'a, b'", '`c ${d, e}`', '{f: 1, g: 2}']);
 });

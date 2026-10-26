@@ -76,7 +76,7 @@ export function prepareActions() {
 // "Remove" on a queued row (and its ⌘K twin, nav.js): the task never starts; Recent activity is drawn again either way.
 export async function unqueue(run) {
   const result = await window.pilot.unqueueTask(run.id).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) toastMessage('Could not remove it', result.error || 'Try again.', {activity: true});
+  if (!result.ok) toastMessage('Could not remove it', result.error || 'Try again.', {activity: true}, 'bad');
   refreshActivity();
 }
 function removeLink(run) {

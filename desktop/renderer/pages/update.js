@@ -25,6 +25,6 @@ export async function init() {
     if (result.manual && result.url) window.pilot.openExternal(result.url);   // the automatic update failed before: the installer by hand
     button.disabled = false;
     $('nav-update-text').textContent = 'Update: try again';
-    toastMessage("Update didn't install", result.text || 'Try again, or download it from the website.', NO_PLACE.app);
+    toastMessage("Update didn't install", result.text || 'Try again, or download it from the website.', NO_PLACE.app, 'bad');
   });
 }

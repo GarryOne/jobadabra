@@ -90,7 +90,7 @@ export async function init() {
   window.pilot.onFewJobs?.(() => show($('strategy-dot'), true));
   document.querySelector('.nav[data-view=strategy]')?.addEventListener('click', () => show($('strategy-dot'), false));
   window.pilot.onVisitRead?.(answer => toastMessage(answer.fits === undefined ? `Read ${answer.jobs} jobs from ${answer.name}` : `Read ${answer.jobs} jobs from ${answer.name}, ${answer.fits} matching your search`,
-    answer.fits ? 'Your next jobs check scores the matching ones: those that fit your profile join your Jobs list.' : 'The reading works; none of these match your role words and places, so your Jobs list stays the same.', {view: 'jobs'}));
+    answer.fits ? 'Your next jobs check scores the matching ones: those that fit your profile join your Jobs list.' : 'The reading works; none of these match your role words and places, so your Jobs list stays the same.', {view: 'jobs'}, 'good'));
   for (const tab of document.querySelectorAll('.strategy-tabs [data-tab]')) tab.addEventListener('click', () => showTab(tab.dataset.tab));
   // One bar for every Strategy draft, "Save strategy changes" (owner, 18 Oct 2026, decision 4); leaving with a draft asks (Keep editing / Discard all / Save).
   const bar = strategyBar({redraw: renderCards, reload: loadStrategy, entriesOf: name => entriesOf(strategyState.lastStrategy, name)});

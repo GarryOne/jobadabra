@@ -48,7 +48,7 @@ function open({title, context, why = ''}) {
 export async function moveEmail(eventId, target, item = null) {
   if (item) holdItem(item);   // the question leaves Focus at once ("Saving…"); Notion takes seconds
   const result = await window.pilot.reassignEmail(eventId, target).catch(error => ({ok: false, text: error.message}));
-  toastMessage(result.ok ? 'Saved ✓' : 'Not changed', result.text || '', {view: 'focus'});
+  toastMessage(result.ok ? 'Saved ✓' : 'Not changed', result.text || '', {view: 'focus'}, result.ok ? 'good' : 'bad');
   if (result.ok) { loadFocus(); loadJobs(); } else if (item) releaseItem(item);
   return result.ok;
 }

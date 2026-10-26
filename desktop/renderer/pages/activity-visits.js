@@ -51,7 +51,7 @@ function claudeSiteEnded(url, said) {
 window.pilot?.onVisitClaudeDone?.(result => {
   claudeReadEnded(result.url, `Claude read ${result.jobs} job${result.jobs === 1 ? '' : 's'}${(result.urls || []).length > 1 ? ` from ${result.urls.length} sites` : ''}, ${result.fits} matching your search`);
   toastMessage(`Claude read ${result.jobs} jobs from ${result.name || 'the site'}, ${result.fits} matching your search`,
-    result.fits ? 'The matching ones are being scored now (about a minute): those that fit your profile join your Jobs list.' : 'None has your role words and places, so your Jobs list stays the same.', {view: 'jobs'});
+    result.fits ? 'The matching ones are being scored now (about a minute): those that fit your profile join your Jobs list.' : 'None has your role words and places, so your Jobs list stays the same.', {view: 'jobs'}, 'good');
 });
 window.pilot?.onSession?.((event, payload) => {   // a session that stopped without finishing (closed, failed)
   if (event === 'update' && payload?.kind === 'read' && ['ended', 'failed'].includes(payload.status)) claudeReadEnded(payload.url, `Claude's session ${payload.status === 'failed' ? 'stopped' : 'ended'} before it finished`);
@@ -94,7 +94,7 @@ export function viewJobsButton(site, text, since) {
   button.addEventListener('click', () => {
     const from = Date.parse(since || '') || 0;
     const urls = (shared.allJobs || []).filter(job => sameCompany(job.company, site.name) && (!from || Date.parse(job.first_seen_at) >= from - 60000)).map(job => job.url);
-    if (!urls.length) { toastMessage(`No new job from ${site.name} in Jobs`, `${fresh} were read, but none fit your search and profile, so none joined your Jobs list.`, {activity: true}); return; }
+    if (!urls.length) { toastMessage(`No new job from ${site.name} in Jobs`, `${fresh} were read, but none fit your search and profile, so none joined your Jobs list.`, {activity: true}, 'info'); return; }
     openActivity(false);
     openView('jobs');
     showJobsIn(`New from ${site.name}`, urls, 'activity');
@@ -145,7 +145,7 @@ export function renderVisitsCard(card, target = $('activity-card'), {list: withL
     presses.set(key, {...presses.get(key), idle});
     all.addEventListener('click', async () => {
       const started = await pressWhile(key, 'Starting Claude…', () => window.pilot.visitsWithClaude(stopped.map(site => ({url: site.url, name: site.name})))).catch(error => ({ok: false, error: error.message}));
-      if (!started?.ok) { setPress(key, {text: idle, error: started?.error || 'Claude could not start.'}); toastMessage('Claude did not start', started?.error || '', {activity: true}); return; }
+      if (!started?.ok) { setPress(key, {text: idle, error: started?.error || 'Claude could not start.'}); toastMessage('Claude did not start', started?.error || '', {activity: true}, 'bad'); return; }
       setPress(key, {done: true, text: `Claude is reading ${stopped.length} sites in Chrome`});
       claudeGroups.set(stopped[0].url, stopped.map(site => site.url));
       for (const site of stopped) setPress(`claude:${site.url}`, {done: true, text: 'Claude is reading in Chrome'});

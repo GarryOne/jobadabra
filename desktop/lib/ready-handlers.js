@@ -47,7 +47,7 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     const waiting = waitingOf(rows.jobs || []), night = rows.batch?.night;
     if (!waiting || !night || storage.settings().ready?.told === night) return;
     storage.saveSettings({ready: {...settings(), told: night}});
-    notify('Ready to send ✓', `${waiting.ready} form${waiting.ready === 1 ? '' : 's'} filled overnight${waiting.left ? `, ${waiting.left} need you` : ''}. Open Actions to press Submit.`, {view: 'actions'});
+    notify('Ready to send ✓', `${waiting.ready} form${waiting.ready === 1 ? '' : 's'} filled overnight${waiting.left ? `, ${waiting.left} need you` : ''}. Open Actions to press Submit.`, {view: 'actions'}, 'good');
   };
   // Which jobs the night filled and left ready to submit (ready-rows.js readyToSubmit): the Jobs list marks them. Light, no job read; a kept answer for 30 s.
   let codesAt = 0, codesKept = null;

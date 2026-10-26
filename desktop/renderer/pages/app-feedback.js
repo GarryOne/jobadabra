@@ -24,6 +24,6 @@ export async function init() {
     if (!result?.ok) { $('app-feedback-message').textContent = result?.error || 'Couldn\'t send it.'; return; }
     $('app-feedback-text').value = '';
     $('app-feedback-dialog').close();
-    toastMessage('Thank you!', 'Your feedback went straight to the maker. If you left a contact, expect a reply.', NO_PLACE.done);
+    toastMessage('Thank you!', 'Your feedback went straight to the maker. If you left a contact, expect a reply.', NO_PLACE.done, 'good');
   });
 }

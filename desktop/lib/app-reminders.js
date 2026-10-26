@@ -26,7 +26,7 @@ export function createAppReminders(ctx) {
     getStorage().saveSettings({lastFocusReminder: key});
     const text = await pipeline.focusReminder(getStorage(), true);
     appLog('focus', `reminder ${key}: ${text ? 'sent' : 'nothing worth saying'}`, {chars: text.length});
-    if (text) notify('Focus: what to do next', text, {view: 'focus'});
+    if (text) notify('Focus: what to do next', text, {view: 'focus'}, 'info');
   }
 
 
@@ -65,7 +65,7 @@ export function createAppReminders(ctx) {
       note.on('click', () => { getWindow()?.show(); getWindow()?.focus(); toWindow('session', 'open', {id: session.id}); });
       note.show();
     }
-    toWindow('toast', {title: `Needs your input · ${what}`, body: text, target: targets.clean({view: 'sessions', session: session.id})});   // a click opens its card
+    toWindow('toast', {title: `Needs your input · ${what}`, body: text, target: targets.clean({view: 'sessions', session: session.id}), tone: 'warn'});   // a click opens its card
     // Not on Telegram: a session waiting for you is answered in the app, and the pings added noise (1 Oct 2026).
   }
   return {skipUntilNotion, focusReminder, resumeQueue, sessionNeedsYou};

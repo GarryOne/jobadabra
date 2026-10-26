@@ -24,7 +24,7 @@ async function answer(reason) {
   await window.pilot.leaveReason({reason, text: $('why-text').value, mode}).catch(() => {});
   $('why-send').disabled = false;
   $('why-dialog').close();
-  if (mode === 'stuck' && reason) toastMessage('Thank you!', 'Got it. If you wrote something, the maker will read it today.', NO_PLACE.done);
+  if (mode === 'stuck' && reason) toastMessage('Thank you!', 'Got it. If you wrote something, the maker will read it today.', NO_PLACE.done, 'good');
 }
 
 export async function init() {

@@ -20,7 +20,7 @@ export function officeAddon(storage, {toWindow = () => {}, toast = () => {}, ins
       controller = new AbortController();
       const started = now(), signal = controller.signal;
       tell({step: 'download', share: 0, bytes: 0, total: 0, started});
-      toast({title: 'Getting LibreOffice for your Word CV', body: 'About 300 MB, only once. Follow it in Profile → CV.', target: {card: 'cv'}});
+      toast({title: 'Getting LibreOffice for your Word CV', body: 'About 300 MB, only once. Follow it in Profile → CV.', target: {card: 'cv'}, tone: 'info'});
       running = install(dir, {signal, onProgress: step => tell({...step, started})}).then(file => { tell({step: 'ready'}); return file; }, error => {
         tell(signal.aborted ? {step: 'cancelled'} : {step: 'failed', error: String(error?.message || error).slice(0, 200)});
         return null;

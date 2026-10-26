@@ -240,12 +240,11 @@ The fix goes first: `tools/ship.sh --fix` skips the landing queue, never waits f
 Everything above applies. Only the *automatic* checks are Claude Code's: `.claude/settings.json` hooks
 (`tools/pre-push-check.sh` before a Bash call, `tools/stop-test-check.sh` at the end of a turn) — they are not git
 hooks, so no other agent gets them (`.git/hooks/` holds only samples; the one git hook is `tools/githooks/commit-msg`, `core.hooksPath` set by `tools/worktree.sh` and `tools/ship.sh`: it checks the trailer values of a commit message, `COMMIT_TRAILERS_OK=1` skips). **Run them yourself,
-then say what passed** (learned 30 Sep 2026, each of these cost real time):
+then say what passed** (learned 30 Sep 2026, each of these cost real time). **In a session, only the files you changed** (owner, 26 Oct 2026: "It should run only on CI" / "and locally, only very isolated"; the hook `~/.claude/hooks/foreground-long-run.py` refuses the whole suites below); CI runs them on the PR:
 
 ```sh
-JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests
-cd worker && npm test
-cd desktop && npm test
+python3 -m unittest tests.test_<the module you changed>       # CI: JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests
+cd desktop && node --test test/<the file you changed>.test.js  # CI: cd desktop && npm test; cd worker && npm test
 ```
 
 - **`desktop/npm test` needs its `pretest`** (`scripts/stage.mjs`): in a fresh worktree, without staging, seven files
@@ -316,7 +315,7 @@ down — is the signal to add logging, not to move on. Add it in the same turn, 
 Desktop `npm test` runs ESLint first across `desktop/` and `extension/` (including tests and scripts). `no-undef` blocks failures; `no-unused-vars` is advisory. Use `cd desktop && npm run lint` for fast feedback. Fix the cause of lint errors; do not silence them by inventing globals. Browser, Node, preload and Chrome-extension globals are configured in `eslint.config.mjs`; generated build and shared files are excluded.
 
 ## Shared verification and checked desktop boundaries
-Use `tools/check.sh --fast` while editing, `tools/check.sh --area desktop` (or python/worker/site) for a full area suite, and `tools/check.sh --clean-install` before landing. The command selects Python 3.12+ and supported Node, stages desktop shared files, and reports setup problems without installing packages. CI and Claude hooks delegate to this same runner; it works from any directory and any agent.
+`tools/check.sh` is what CI and the push hook run (`--fast`, `--area desktop|python|worker|site`, `--clean-install`); in a session run the one test file you changed instead (owner, 26 Oct 2026: suites run on CI only). The command selects Python 3.12+ and supported Node, stages desktop shared files, and reports setup problems without installing packages. CI and Claude hooks delegate to this same runner; it works from any directory and any agent.
 
 Electron lifecycle callbacks are in `desktop/lib/lifecycle.js` with injected services; import them directly in tests. `main.js` supplies startup initialization and current app services. Session IPC channels must register through `sessionIpc` in `desktop/lib/session-contracts.js`; every exposed session channel has argument and response checks. Public terminal session views use that same contract. Add a channel's contract and tests before exposing it. Contracts cover the session bridge, not every IPC action yet. Contract failures log channel/direction/field names only, never argument values or session content.
 

@@ -153,3 +153,10 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - Hence: every list of sites a run reads or offers is judged by the AI for the CURRENT strategy, whichever search queued it; a site the person
   opened a job on is read anyway; when the AI fails, the automatic reads take none. Guard: `tests/test_sources_follow_strategy.py` (one loop over
   the lists; a new list joins it, a sibling in other work is named with its owner).
+
+## Suites run on CI only (26 Oct 2026)
+- The owner's Mac sat at load 89: session 8b ran `node --test` over a grep-built list of e2e harness tests (fill-overlay, panel-tailor… open Chrome for
+  Testing), and session 33 ran the full `python3 -m unittest discover` (the heavy-lock tests spawn processes and wait on clocks). Owner: "are now sessions
+  again required to run e2e tests locally? That loads my mac" / "I didn't want that" / "It should run only on CI" / "and locally, only very isolated".
+- Rule: in a session, one named test file or one e2e step; CI runs every suite on the PR. Gate: `~/.claude/hooks/foreground-long-run.py` refuses a whole-suite
+  command (background or not; cases in `foreground-long-run.cases.sh`); escape `E2E_LOCAL_OK=1` only on the owner's word.

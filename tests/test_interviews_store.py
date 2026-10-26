@@ -35,6 +35,8 @@ class OnThisMac(unittest.TestCase):
         os.environ.pop('NOTION_TOKEN', None)
         from src import run_log
         self.addCleanup(run_log._open.clear)   # a run these tests log in-process must not stay open for the next module in the shard (test_run_history raised BothLogs)
+        run_log._output.clear()   # lines an earlier module printed: a "Warning:" among them made this run's status Warnings (#1993's shard, 26 Oct 2026)
+        self.addCleanup(run_log._output.clear)
         self.stores = sqlite.open_store(self.env)
         self.job = self.stores.applications.create({'url': 'https://x.test/g-1', 'title': 'SRE', 'company': 'Grafana Labs',
                                                     'location': 'Zürich', 'next_interview': '2026-09-26T06:30:00Z'}, 'Interview scheduled')

@@ -82,7 +82,7 @@ test('the compact Find jobs cards (done, and "Find more jobs" when no search fin
   assert.match(js, /card\.replaceChildren\(head, again\('Find jobs again'\)\)/);
   assert.match(js, /findHead\('Find more jobs'[\s\S]*again\('Find jobs'\)/);
   assert.doesNotMatch(js, /show\(card, model\.state !== 'none'\)/, 'the none state draws the compact card');
-  assert.match(css, /\.find-card\.is-done, \.find-card\.is-none \{[^}]*justify-content: space-between/);
+  assert.match(css, /\.find-card\.is-done, \.find-card\.is-none(, \.find-card\.is-refused)? \{[^}]*justify-content: space-between/);
 });
 
 test('an empty state whose action says the AI does the work is marked ai: true (the wand + burst), in every caller and in the gallery', () => {

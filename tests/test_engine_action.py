@@ -1,4 +1,5 @@
 """Each AI step names itself to the relay that carries included AI (header x-jp-action), so what each step costs can be told apart."""
+import re
 import sys
 import types
 import unittest
@@ -43,8 +44,13 @@ class ActionHeaderTest(unittest.TestCase):
                 if 'engine.client(' in line and "action='" not in line:
                     missing.append(f'{path.relative_to(root)}:{number}')
         self.assertEqual(missing, [], 'every engine.client() call names its step: engine.client(action="score")')
-        used = {step for path in (root / 'src').rglob('*.py') for step in __import__('re').findall(r"engine\.client\(action='([a-z]+)'\)", path.read_text())}
-        self.assertTrue(used <= set(engine.ACTIONS), used - set(engine.ACTIONS))
+        # Every name a call can send, also one picked inside the call (`action='a' if ... else 'b'`); names have underscores (26 Oct 2026: `[a-z]+` missed
+        # 14 steps such as title_triage, so Free AI logged 517 calls as "other" on /admin/ai-cost).
+        used = {step for path in (root / 'src').rglob('*.py') for call in re.findall(r"engine\.client\(action=([^)]*)\)", path.read_text())
+                for step in re.findall(r"'([a-z_]+)'", call)}
+        self.assertGreater(len(used), 25)
+        self.assertEqual(sorted(used - set(engine.ACTIONS)), [], 'a step the engine does not name to Free AI: add it to ACTIONS (src/ai/providers/anthropic_api.py) '
+                         'and to shared/aicost.js ACTIONS in jobadabra-web (the site lands first)')
 
 
 if __name__ == '__main__':

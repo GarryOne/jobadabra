@@ -28,3 +28,8 @@ test('each IPC is handled, preloaded and blocked in demo mode', () => {
     assert.match(read('lib/demo.js'), new RegExp(`'${name}'`), `${name} blocked in demo`);
   }
 });
+
+test('From LinkedIn is shown but disabled with a "Coming soon" tooltip until LinkedIn approves sign-in (owner, 26 Oct 2026)', () => {
+  const tag = html.match(/<button[^>]*id="cv-linkedin"[^>]*>/)[0];
+  assert.match(tag, /\bdisabled\b/); assert.match(tag, /title="Coming soon"/); assert.doesNotMatch(tag, /\bhidden\b/);
+});

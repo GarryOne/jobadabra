@@ -40,6 +40,8 @@ def oracle(slug):
             data = ats._json(f'{base}/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true'
                              f'&expand=requisitionList.secondaryLocations&finder={finder}')
             items = (data.get('items') or [{}])[0].get('requisitionList') or []
+            if not term and page == 0:   # sorted newest first: the same top and total as last time is the same list
+                ats.first_page([j.get('Id') for j in items], (data.get('items') or [{}])[0].get('TotalJobsCount'))
             for j in items:
                 job_id = str(j.get('Id') or '')
                 if not job_id or job_id in seen:

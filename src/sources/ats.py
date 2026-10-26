@@ -7,6 +7,7 @@ Only documented public endpoints are used; they need no login.
 """
 import contextlib
 import functools
+import hashlib
 import html
 import json
 import os
@@ -60,6 +61,22 @@ def conditional_state():
     return getattr(_asking, 'state', None)
 
 
+HEAD = 'head:'   # a tag of our own for a paged site's newest page: never sent to a site as an ETag
+
+
+def first_page(ids, total):
+    """A paged reader's first page of its list sorted newest first, and the list's total. The same job ids and the same total as at the
+    last read mean no job was added (it would be on top) or removed (the total), so the other pages are not read: raises Unchanged.
+    Else the page's tag is kept for the next read (src/sources/feed_facts.py). No-op outside a conditional read or without a total."""
+    state = conditional_state()
+    if state is None or not isinstance(total, int):
+        return
+    tag = HEAD + hashlib.sha256(json.dumps([sorted(str(i) for i in ids), total]).encode()).hexdigest()[:16]
+    if state.ask == tag:
+        raise Unchanged('newest page and total as last time')
+    state.etag = tag
+
+
 def _get(url):
     fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
     if fixtures:
@@ -69,7 +86,7 @@ def _get(url):
     if state is not None:
         state.pages += 1
     headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json, text/xml'}
-    if first and state.ask:
+    if first and state.ask and not state.ask.startswith(HEAD):
         headers['If-None-Match'] = state.ask
     request = urllib.request.Request(url, headers=headers)
     try:
@@ -78,7 +95,7 @@ def _get(url):
                 state.etag = response.headers.get('ETag')
             return response.read()
     except urllib.error.HTTPError as error:
-        if error.code == 304 and first and state.ask:
+        if error.code == 304 and first and state.ask and not state.ask.startswith(HEAD):
             raise Unchanged(url) from None
         raise
 

@@ -216,6 +216,7 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None):
     matches it, the score is still current (only form sections were in it) and its hash is updated instead of scoring again."""
     db.executescript(SCORES_TABLE)
     done = {row['job_id']: row for row in db.execute('SELECT job_id, scorer_version, input_hash, data_json FROM scores')}
+    score_search.recheck_lifts(db, [job for job in candidates if job.get('description')], done)   # a title-only lift falls on the role check's no, scored now or not
     pending, again = [], score_search.again_ids([job for job in candidates if job.get('description')], done, RESCORE_MIN)
     for job in candidates:
         if not job.get('description'):

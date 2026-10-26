@@ -17,7 +17,8 @@ import {lookStrips} from './lib/png-grid.mjs';
 import {prune, questionKey, recall, remember} from './lib/review-cache.mjs';
 import {FREE_MODEL, askFree} from './lib/review-free.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
-import {MODEL, buildRequest, fingerprint, parseFindings, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
+import {MODEL, REVIEW_EFFORT, buildRequest, fingerprint, parseFindings, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
+import {checklistAsFindingsText, checklistRequest} from './lib/review-checklist.mjs';
 
 // E2E_REVIEW_ENGINE picks the reviewer: claude (CI's review job: Sonnet by Batch, owner 26 Oct 2026) or free; unset, Free AI when CI runs on it.
 const FREE = process.env.E2E_REVIEW_ENGINE ? process.env.E2E_REVIEW_ENGINE === 'free' : judgeFamily() === 'free';
@@ -25,6 +26,8 @@ const key = process.env.E2E_ANTHROPIC_KEY;
 const CONFIRM = FREE && process.env.E2E_REVIEW_CONFIRM === 'claude' && Boolean(key);   // the Claude second pass: the one switch, off until the owner funds Claude
 if (FREE ? !process.env.CI_FREE_AI_CF_TOKEN : !key) { console.error(FREE ? 'CI_FREE_AI_CF_TOKEN is needed (the review runs on Free AI).' : 'E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
 const REVIEW_MODEL = FREE ? FREE_MODEL : MODEL;
+// E2E_REVIEW_PROMPT=checklist (CI, owner 26 Oct 2026): Claude answers the 10-point checklist (lib/review-checklist.mjs: Haiku 5.5 saw 70% of the judged bugs with it, 49% without).
+const CHECKLIST = !FREE && process.env.E2E_REVIEW_PROMPT === 'checklist';
 const API = process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com';   // a test points this at a fake
 const HEADERS = {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'};
 const BATCH_WAIT_MS = Number(process.env.E2E_REVIEW_BATCH_WAIT_S || 360) * 1000;
@@ -46,7 +49,7 @@ const lessons = process.env.E2E_REVIEW_LESSONS === '0' ? [] : await fetchLessons
 let rejected = 0;
 // Which pages the AI really looked at, and which it could not (no credit, rate limit, an outage, a cut-off answer): ui-findings reads this. A page nobody reviewed is not a page that came back clean.
 const reviewed = [], unreviewed = [];
-const usage = {model: CONFIRM ? `${REVIEW_MODEL}, then ${MODEL} on what it flags` : REVIEW_MODEL, calls: 0, batched: 0, cached: 0, confirmed: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0, lessons: lessons.length};
+const usage = {model: CONFIRM ? `${REVIEW_MODEL}, then ${MODEL} on what it flags` : `${REVIEW_MODEL}${CHECKLIST ? ' (checklist)' : ''}`, calls: 0, batched: 0, cached: 0, confirmed: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0, lessons: lessons.length};
 // The pages the journey photographed, and the window at the moment a step failed (at most two): a failure screenshot shows the whole app, the sidebar and the bottom bar too.
 const jobs = DIRS.flatMap(dir => { const names = fs.readdirSync(dir); return [
   ...names.filter(name => /^ui-.+\.png$/.test(name)).sort().map(name => ({dir, view: name.slice(3, -4), png: name, factsFile: path.join(dir, `ui-${name.slice(3, -4)}.json`)})),
@@ -55,7 +58,7 @@ const jobs = DIRS.flatMap(dir => { const names = fs.readdirSync(dir); return [
     const facts = job.factsFile && fs.existsSync(job.factsFile) ? JSON.parse(fs.readFileSync(job.factsFile, 'utf8')) : null;
     const png = fs.readFileSync(path.join(job.dir, job.png));
     const ask = model => buildRequest({view: job.view, pngBase64: png.toString('base64'), rules, facts, lessons: lessonsText(lessonsFor(lessons, job.view)), model});
-    const request = ask(REVIEW_MODEL);
+    const request = CHECKLIST ? checklistRequest({view: job.view, pngBase64: png.toString('base64'), facts, lessons: lessonsText(lessonsFor(lessons, job.view)), model: REVIEW_MODEL, effort: REVIEW_EFFORT}) : ask(REVIEW_MODEL);
     let strips = null;
     try { strips = lookStrips(png); } catch { /* a picture we cannot read is asked every time */ }
     return {...job, id: `r${index}`, request, body: JSON.stringify(request), ask, key: questionKey(job.view, request), strips};
@@ -81,7 +84,8 @@ function answered(job, message, {batch = false, usd: freeUsd} = {}) {
   usage.input += u.input_tokens || 0; usage.cacheWrite += u.cache_creation_input_tokens || 0; usage.cacheRead += u.cache_read_input_tokens || 0; usage.output += u.output_tokens || 0;
   usage.usd += usd || 0;
   console.log(`  ${job.view}: ${u.input_tokens || 0} in, ${u.cache_read_input_tokens || 0} cache read, ${u.cache_creation_input_tokens || 0} cache write, ${u.output_tokens || 0} out${usd == null ? '' : ` = $${usd.toFixed(4)}`}${batch ? ' (batch)' : ''}`);
-  const text = (message.content || []).filter(block => block.type === 'text').map(block => block.text).join('');
+  const said = (message.content || []).filter(block => block.type === 'text').map(block => block.text).join('');
+  const text = CHECKLIST ? checklistAsFindingsText(said) : said;   // the checklist's yes answers, in the review's own findings shape
   if (message.stop_reason !== 'end_turn') {
     usage.cutOff++;
     console.log(`::warning::AI review of ${job.view} stopped early (${message.stop_reason}, ${u.output_tokens || 0} tokens): not reviewed, nothing filed or cleared for it`);

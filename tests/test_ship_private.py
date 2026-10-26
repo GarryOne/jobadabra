@@ -56,6 +56,18 @@ class ShipPrivateRepoTest(unittest.TestCase):
         self.assertIn('Generated with [Claude Code]', create)
         self.assertFalse((self.repo / 'tools').exists(), 'nothing was copied into the repo')
 
+    def test_its_log_is_named_after_its_repo_so_a_same_named_public_branch_never_shares_it(self):
+        # 26 Oct 2026: node24-actions shipped from both repos at once wrote one ship-node24-actions.log, and each watcher's events landed in the other's log.
+        summary = self.tmp / 'summary.md'; summary.write_text(SUMMARY)
+        self.state.write_text(json.dumps({'origin': str(self.origin)}))
+        temp = self.tmp / 'tmpdir'; temp.mkdir()
+        env = {**os.environ, 'TMPDIR': str(temp), 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0',
+               'SHIP_WATCH': '0', 'SHIP_PR_POLL': '0', 'SHIP_RED_POLL': '0', 'JOB_PILOTTO_SESSION': '', 'JP_SESSION': '', 'JP_SESSIONS_DIR': str(self.tmp / 'no-sessions')}
+        env.pop('SHIP_LOG', None)
+        result = subprocess.run(['bash', str(ROOT / 'tools' / 'ship.sh'), f'--body={summary}'], cwd=self.repo, capture_output=True, text=True, timeout=90, env=env)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(sorted(p.name for p in temp.glob('ship-*.log')), ['ship-origin-topic.log'], 'the repo (origin.git) names it')
+
     def test_a_repo_without_the_toolkit_cannot_open_a_pr_without_a_body(self):
         self.state.write_text(json.dumps({'origin': str(self.origin)}))
         env = {**os.environ, 'PATH': f'{self.bin}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_STATE': str(self.state), 'SHIP_MODE': 'pr', 'SHIP_REVIEW': '0', 'SHIP_WATCH': '0',

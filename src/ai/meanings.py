@@ -4,7 +4,7 @@ default named in each function), never an English guess: a keyword rule is kept 
 Tests: tests/test_decide.py."""
 import hashlib
 
-from . import decide
+from . import decide, engine
 
 ROUND_KINDS = ('recruiter_screen', 'technical', 'hiring_manager', 'other')
 
@@ -44,8 +44,11 @@ def labels(topic, texts, choices, task):
     if not texts:
         return []
     from . import meanings_pack
-    known = {t: meanings_pack.every(topic, t) for t in texts}   # every id the pack gives a text (the old lists + what the site learned)
+    late = meanings_pack.ai_first(topic)   # a kind of work: the keyword patterns only without AI (decide.py), the site's learned wordings first
+    known = {t: meanings_pack.every(topic, t, patterns=not late) for t in texts}   # every id the pack gives a text (the old lists + what the site learned)
     rest = [t for t in texts if not known[t]]
     named = '; '.join(f'{key} = {name}' for key, name in choices.items())
-    found = (decide.decide(topic, {t.lower(): t for t in rest}, (*choices, 'none'), f'{task} Ids: {named}; none = none of these.') or {}) if rest else {}
+    found = (decide.decide(topic, {t.lower(): t for t in rest}, (*choices, 'none'), f'{task} Ids: {named}; none = none of these.', floor=False) or {}) if rest else {}
+    if late and rest and not engine.ready():   # no AI at all: every id the old lists give ('many'), as before
+        known.update({t: meanings_pack.every(topic, t) for t in rest if t.lower() not in found})
     return sorted({a for answers in known.values() for a in answers if a in choices} | {a for a in found.values() if a != 'none'})

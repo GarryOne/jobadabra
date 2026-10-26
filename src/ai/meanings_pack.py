@@ -5,7 +5,8 @@ Two layers, both checked against config/meanings_schema.json (a topic and an ans
 - the seed (config/meanings_seed.json, tools/meanings_seed.py): the keyword lists the code used before, the offline floor;
 - the site's rows (data/meanings.json, written by the app from GET /api/packs/aliases, desktop/lib/aliases.js): learned wordings added,
   and seed rows the site switched off ('off') left out.
-Lookup order in src/ai/decide.py: this computer's own decisions -> this pack -> AI -> "don't know". Tests: tests/test_meanings_pack.py."""
+Lookup order in src/ai/decide.py: this computer's own decisions -> this pack -> AI -> "don't know"; an 'ai_first' topic's patterns answer
+only when there is no AI at all. Tests: tests/test_meanings_pack.py."""
 import json
 import re
 from functools import lru_cache
@@ -92,18 +93,26 @@ def patterns(topic, answer):
     return [rx.pattern for rx, found in tables()[0].get(topic, []) if found == answer]
 
 
-def every(topic, text):
-    """Every answer the pack gives this text ('many' topics): exact wordings first, then all matching patterns; [] when it knows nothing."""
-    patterns, exact = tables()
+def ai_first(topic):
+    """True when this topic's patterns are only the offline floor (config/meanings_schema.json 'ai_first'): the AI is asked first and the
+    patterns answer only when there is no AI at all."""
+    return bool(schema().get(topic, {}).get('ai_first'))
+
+
+def every(topic, text, patterns=True):
+    """Every answer the pack gives this text ('many' topics): exact wordings first, then all matching patterns (patterns=False: none);
+    [] when it knows nothing."""
+    rows, exact = tables()
     known = exact.get(topic, {}).get(_norm(text))
     found = [known] if known else []
-    found += [answer for rx, answer in patterns.get(topic, []) if rx.search(str(text or ''))]
+    if patterns:
+        found += [answer for rx, answer in rows.get(topic, []) if rx.search(str(text or ''))]
     return list(dict.fromkeys(found))
 
 
-def first(topic, text):
+def first(topic, text, patterns=True):
     """The pack's answer for this text: an exact wording, else the first matching pattern in order; None when it knows nothing."""
-    found = every(topic, text)
+    found = every(topic, text, patterns)
     return found[0] if found else None
 
 

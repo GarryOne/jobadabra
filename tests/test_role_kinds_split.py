@@ -101,7 +101,7 @@ class JudgedTests(unittest.TestCase):
         with mock.patch.object(decide, '_db', lambda: sqlite3.connect(path)), mock.patch.object(decide, 'MAX_CALLS_PER_RUN', 1), \
                 mock.patch.object(engine, 'ready', lambda: True), mock.patch.object(engine, 'client', lambda **k: Client()), \
                 mock.patch.object(cost, 'side', lambda *a: None), mock.patch.object(meanings_pack, 'queue', lambda *a: None), \
-                mock.patch.object(meanings_pack, 'first', lambda *a: None):
+                mock.patch.object(meanings_pack, 'first', lambda *a, **k: None):
             decide._calls['n'] = 0
             first = role_kinds.judged(titles, 'job-title-kind')
             decide._calls['n'] = 0   # the next run

@@ -24,7 +24,8 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
    keep it after landing (`tools/worktree.sh prune` tidies landed ones older than 7 days).
 2. Edit with anchored replacements: check the anchor exists (`assert old in s`). **Never cut code by index ranges**
    (`s[a:b]`) without printing the range first: it once deleted a whole render block.
-3. `tools/check.sh --fast` while editing; `tools/check.sh --area desktop` before landing (selects runtimes and stages `shared/`).
+3. While editing, `node --test test/<the file you changed>` (after `node scripts/stage.mjs --files-only` in a fresh worktree) and `npm run lint`; the whole
+   desktop suite runs on CI only (owner, 26 Oct 2026: "It should run only on CI"; the hook refuses `npm test` and `tools/check.sh` in a session).
 4. UI: `npm run shot -- jobs --select '<css>' --eval "(async()=>{…click…; await new Promise(r=>setTimeout(r,500)); return 'ok'})()"`
    then Read the printed PNG. Pages other than the first: reach them by clicking (`.nav[data-view=settings]`, `[data-settings-go=…]`).
    State instead of pixels: `--eval "…JSON.stringify(…)" --no-picture`.

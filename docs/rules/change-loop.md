@@ -7,8 +7,8 @@ Why each rule exists: [why.md](why.md#change-loop).
 1. A bug the owner saw: find the root cause and write a failing test before any fix.
 2. Tests first for new behaviour; watch the test fail for the right reason.
 3. UI from an owner mockup or request: confirm layout + behaviour in one message before code.
-4. "Done" = tests pass as CI runs them (`JOB_PILOTTO_DISABLE=mail,notion,telegram,google_jobs python3 -m unittest discover -s tests`, desktop
-   `npm ci` with dev deps); say what you verified and what you didn't.
+4. "Done" = the test files you changed pass locally, and CI's suites pass on the PR (CI runs `python3 -m unittest discover -s tests`, desktop
+   `npm ci` with dev deps; never locally: owner, 26 Oct 2026, "It should run only on CI"); say what you verified and what you didn't.
 5. **A feature or behaviour change updates the e2e step it breaks, in the same commit.** Before you push: `grep` the visible words, selectors and
    commands you changed in `desktop/e2e/` (`suites/`, `lib/`) and the unit tests; fix what you find, or say in the commit body which step is now
    stale. A new detector or plant needs its unit test page to carry what it checks (`test/recall.test.mjs`).

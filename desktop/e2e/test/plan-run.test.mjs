@@ -220,7 +220,8 @@ test('quality: the nightly runs it; a beta by hand only after a change it watche
   const nightly = await run('nightly', ['desktop/renderer/pages/jobs.js']);
   assert.ok(names(nightly).includes('quality'), 'the nightly always runs it');
   assert.ok(!nightly.windows_suites.split(',').includes('quality'), 'never on Windows');
-  assert.ok(nightly.windows_suites.split(',').includes('jobs'));
+  assert.ok(nightly.windows_suites.split(',').includes('apply'));
+  assert.ok(!nightly.windows_suites.split(',').includes('jobs'), 'Windows runs apply and the settings smoke only (the e2e audit)');
 });
 
 test('GATE_STORE_LEGS=one: the release run gets ONE Mac job per suite (its job copy never passes the leg\'s store, so a second leg was a duplicate)', async () => {

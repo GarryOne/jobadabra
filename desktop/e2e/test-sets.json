@@ -163,6 +163,7 @@
   "suite-cadence.test.mjs",
   "key-preflight.test.mjs",
   "plan-windows.test.mjs",
+  "windows-two.test.mjs",
   "import-graph.test.mjs",
   "plan.test.mjs",
   "planted.test.mjs",

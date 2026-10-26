@@ -12,17 +12,29 @@ cut() { timeout --kill-after=10 "$1" "${@:2}"; }   # a command, ended after $1 s
 # mirror, 16:13-16:22): a mirror that is down stays down for minutes, so the same mirror again rarely helps.
 apt_dir="${APT_DIR:-/etc/apt}"   # tests point it at a folder of their own
 other_mirror() {
-  for file in "$apt_dir"/sources.list "$apt_dir"/sources.list.d/*.sources; do
+  # GitHub's Ubuntu runners keep their mirrors in apt-mirrors.txt (the sources say mirror+file:): without it try 2 still fetched from azure (run 40389661253)
+  for file in "$apt_dir"/sources.list "$apt_dir"/sources.list.d/*.sources "$apt_dir"/apt-mirrors.txt; do
     [ -f "$file" ] && sudo perl -pi -e 's#https?://azure\.archive\.ubuntu\.com#http://archive.ubuntu.com#g' "$file"
   done
   echo "apt-install: try 2 on archive.ubuntu.com" >&2
 }
+buf=(); command -v stdbuf >/dev/null && buf=(stdbuf -oL)   # apt's lines reach the log as they come, so a cut try still shows its last one
+# One phase of a try: `apt-get update` (cut at 45 s) or `install` (90 s), -q so the log keeps apt's Hit/Get lines (-qq hid them: 26 Oct 2026,
+# three ~95 s stalls on main printed nothing). Sets `why` when it fails: cut at its limit, or apt's exit code.
+phase() {
+  local limit="$1" name="$2"; shift 2
+  cut "$limit" sudo ${buf[@]+"${buf[@]}"} apt-get "$name" -q "$@" >>"$log" 2>&1
+  local code=$?
+  case "$code" in 0) return 0 ;; 124|137) why="apt-get $name cut after $limit s" ;; *) why="apt-get $name failed (exit $code)" ;; esac
+  return 1
+}
 for attempt in 1 2; do
   [ "$attempt" = 2 ] && other_mirror
-  if cut 45 sudo apt-get update -qq && cut 90 sudo apt-get install -y -qq "$@" >/dev/null; then
-    echo "apt-install: $* ready (try $attempt)"; exit 0
+  log="$(mktemp)"; started=$SECONDS   # apt's own words: shown when a try fails, so a stall names its source (a mirror, a third-party list, a lock)
+  if phase 45 update && phase 90 install -y -o Dpkg::Use-Pty=0 "$@"; then
+    echo "apt-install: $* ready (try $attempt, $((SECONDS - started)) s)"; exit 0
   fi
-  echo "apt-install: try $attempt stalled or failed, ${attempt}/2" >&2; sleep 5
+  echo "apt-install: try $attempt: $why, ${attempt}/2; apt's last lines:" >&2; tail -n 15 "$log" >&2; sleep 5
 done
 echo "::error::apt-install: could not install $* after 2 tries, a package mirror stalled or is down; re-run the job" >&2
 exit 1

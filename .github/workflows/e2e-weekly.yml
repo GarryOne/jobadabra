@@ -1,0 +1,38 @@
+name: E2E · Weekly root causes
+# The week's e2e reds by root cause, as one GitHub issue (gate G6, owner's yes 26 Oct 2026: "GitHub issue now"): each red suite job of the betas, main checks and
+# Windows runs gets its cause from its log, a mass event (one cause, 5+ suites) counts once, and each row says which gate catches it now (G1 PR plan, G2a red main,
+# G4 Windows, G5 intermittent) or "nothing yet": the next gate to build (tools/e2e_weekly.py). By hand too: `gh workflow run e2e-weekly.yml` (no waiting for Monday).
+# Why: 26 Oct 2026, the owner: "why still we have problems with e2e? What's wrong in our process", "I want to emphasize on the root causes".
+on:
+  schedule:
+    - cron: '17 7 * * 1'   # Mondays 07:17 UTC
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many days back'
+        required: false
+        default: '7'
+
+permissions:
+  contents: read
+  actions: read   # runs, jobs and their logs
+  issues: write   # the weekly issue
+
+concurrency:
+  group: e2e-weekly
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Weekly root causes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: tools
+      - name: Read the week's reds and write the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days || '7' }}
+        run: python3 tools/e2e_weekly.py --days "$DAYS"

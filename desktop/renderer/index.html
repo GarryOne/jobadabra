@@ -250,10 +250,8 @@
           <button class="secondary" id="extras-notion" data-goto-settings="notion" data-connect="Connect with Notion">Connect with Notion</button></div>
         <div id="extras-extension" class="service-card is-row is-wide"><span class="ui-tile tone-signal"><i data-icon="puzzle"></i></span>
           <span class="service-text"><b>Chrome extension</b><span class="muted small">Fills application forms in Chrome in seconds. You review and submit.</span>
-            <span class="muted small"><span>In Chrome: open <code>chrome://extensions</code> → turn on <b>Developer mode</b> → <b>Load unpacked</b> → paste this folder. It connects itself within 30 seconds.</span></span>
-            <span class="path-line"><code id="ext-path-extras"></code><button class="link" data-copy="ext-path-extras">Copy</button>
-              <button class="link" data-show-extension-folder>Show folder</button></span></span>
-          <button class="secondary" data-goto-settings="extension">Set up</button></div>
+            <span class="muted small">From the Chrome Web Store, for Chrome, Edge or Brave. It connects itself within 30 seconds.</span></span>
+          <button class="secondary" data-add-extension>Add to Chrome</button></div>
         <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="send"></i></span>
           <span class="service-text"><b>Telegram</b><span class="muted small">Your best new matches on your phone after each search, with buttons to save, apply or dismiss.</span></span>
           <button class="secondary" data-goto-settings="telegram">Set up</button></div>
@@ -1375,23 +1373,30 @@
         </div>
         <details class="conn-setup plain" id="ext-setup" open><summary>Install the extension</summary>
           <ol class="conn-steps">
-            <li><span class="conn-step-words"><b>Enable Developer mode</b>
-              <span class="muted">Open <button class="code-link" id="ext-open-page">chrome://extensions</button> in Chrome and turn on Developer mode.</span></span></li>
-            <li><span class="conn-step-words"><b>Load the extension</b>
-              <span class="muted">In Chrome, choose <b>Load unpacked</b>, then select the extension folder.</span>
-              <span class="conn-pick">
-                <span class="pick-box"><i data-icon="folder"></i><code id="ext-path"></code>
-                  <button class="link" data-copy="ext-path"><i data-icon="copy"></i>Copy</button></span>
-                <button class="secondary is-signal" data-show-extension-folder>Show folder</button>
-              </span>
-              <span class="muted small" data-mac-only>Mac tip: in the folder picker, press <code>⌘⇧G</code>, paste the copied path, then press Return.</span></span></li>
-            <li><span class="conn-step-words"><b>Connect to Jobadabra</b>
-              <span class="muted">Keep this app open and connect from the extension's settings page.</span>
+            <li><span class="conn-step-words"><b>Add it to Chrome</b>
+              <span class="muted">From the Chrome Web Store. Edge and Brave install it from there too, and it updates itself.</span></span>
+              <button class="secondary is-signal" data-add-extension>Add to Chrome</button></li>
+            <li><span class="conn-step-words"><b>It connects by itself</b>
+              <span class="muted">Keep this app open: the extension shows here as connected within 30 seconds.</span>
               <span class="muted small">Autofill uses Settings → Your details and your CV.</span></span>
               <button class="secondary is-signal" id="ext-connect" hidden>Connect the extension</button></li>
           </ol>
         </details>
         <div class="conn-details">
+          <details class="troubleshoot" id="ext-dev"><summary><i data-icon="folder"></i>For developers: load it from a folder</summary>
+            <ol class="conn-steps">
+              <li><span class="conn-step-words"><b>Enable Developer mode</b>
+                <span class="muted">Open <button class="code-link" id="ext-open-page">chrome://extensions</button> in Chrome and turn on Developer mode.</span></span></li>
+              <li><span class="conn-step-words"><b>Load the extension</b>
+                <span class="muted">In Chrome, choose <b>Load unpacked</b>, then select the extension folder.</span>
+                <span class="conn-pick">
+                  <span class="pick-box"><i data-icon="folder"></i><code id="ext-path"></code>
+                    <button class="link" data-copy="ext-path"><i data-icon="copy"></i>Copy</button></span>
+                  <button class="secondary is-signal" data-show-extension-folder>Show folder</button>
+                </span>
+                <span class="muted small" data-mac-only>Mac tip: in the folder picker, press <code>⌘⇧G</code>, paste the copied path, then press Return.</span></span></li>
+            </ol>
+          </details>
           <details class="troubleshoot"><summary><i data-icon="link"></i>Connection troubleshooting</summary>
             <ul class="small">
               <li>Installed but the pill stays amber: open the extension (🧩 → ⋮ next to <b>Jobadabra</b> → <b>Options</b>) and press <b>Connect to the Jobadabra app</b>.</li>

@@ -72,6 +72,8 @@ export function registerBrowserHandlers(ctx) {
   // front of the user, and its path on the clipboard — the Load unpacked dialog then takes ⌘⇧G, ⌘V, Return.
   // The step-1 chip: try to open Chrome on its extensions page, and put the URL on the clipboard too — Chrome
   // ignores chrome:// URLs handed to it from outside often enough that the paste has to be the reliable half.
+  // "Add to Chrome": the extension's Chrome Web Store page, in the browser the extension is (or will be) in.
+  ipcMain.handle('extensionStore', async () => ({opened: await extensionInstall.openStorePage({browser: apply.extensionBrowser()})}));
   ipcMain.handle('extensionPage', async () => {
     const browser = apply.extensionBrowser();
     clipboard.writeText(extensionInstall.extensionsUrl(browser));

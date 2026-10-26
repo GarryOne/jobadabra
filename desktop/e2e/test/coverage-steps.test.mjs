@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {cssDeltaEntries, pythonCoverage, pythonSteps, SETUP, takeSetup, takeStep, WHOLE} from '../lib/coverage.mjs';
-import {hunksFromDiff, mergeMap, stepNamesFor, stepsCovering, stillWhole} from '../lib/coverage-pick.mjs';
+import {hunksFromDiff, mergeMap, stepNamesFor, steplessSuites, stepsCovering, stillWhole} from '../lib/coverage-pick.mjs';
 
 const lines = (...ranges) => ({loaded: true, lines: ranges});
 const MAP = {suites: {
@@ -43,6 +43,35 @@ test('a line no suite ran: every suite that loads the file, whole', () => {
 test('a suite recorded before steps were runs whole by its lines', () => {
   const old = {suites: {cardstates: {sha: 'S', files: {'desktop/renderer/app.js': lines([1, 40])}}}};
   assert.deepEqual(stepsCovering(old, {S: {'desktop/renderer/app.js': [[25, 25]]}}), {cardstates: {steps: [], setup: false, whole: true, reason: 'runs desktop/renderer/app.js:25'}});
+});
+
+test('a line more than MAX_USERS suites ran is shared code (launch, the server): only the settings smoke runs it (#2118, #2119 ran 20 suites whole)', () => {
+  const launch = {'desktop/lib/server.js': lines([40, 60])};
+  const stepless = name => [name, {sha: 'S', files: launch}];
+  const map = {suites: {...Object.fromEntries(['activity', 'apply', 'jobs', 'wander'].map(stepless)),
+    settings: {sha: 'S', files: launch, steps: {'Export the profile': {}, [SETUP]: launch}}}};
+  assert.deepEqual(stepNamesFor(stepsCovering(map, {S: {'desktop/lib/server.js': [[51, 51]]}})), {settings: [SETUP]}, 'its setup ran it: settings setup only');
+  const inSteps = {suites: {...map.suites, settings: {sha: 'S', files: launch, steps: {'Export the profile': launch, [SETUP]: {}}}}};
+  assert.deepEqual(stepNamesFor(stepsCovering(inSteps, {S: {'desktop/lib/server.js': [[51, 51]]}})), {settings: ['Export the profile']}, 'its steps ran it: those steps');
+  const noSmoke = {suites: Object.fromEntries(['activity', 'apply', 'jobs', 'wander'].map(stepless))};
+  assert.deepEqual(Object.keys(stepsCovering(noSmoke, {S: {'desktop/lib/server.js': [[51, 51]]}})), ['activity'], 'no smoke among them: one of them');
+  const few = {suites: Object.fromEntries(['activity', 'apply', 'jobs'].map(stepless))};
+  assert.deepEqual(Object.keys(stepsCovering(few, {S: {'desktop/lib/server.js': [[51, 51]]}})).sort(), ['activity', 'apply', 'jobs'], 'MAX_USERS or fewer: each of them, as before');
+});
+
+test('a line no suite ran, in a file more than MAX_USERS suites load: the settings smoke\'s setup proves it still loads (#2118\'s new import, #2119\'s unrun branch)', () => {
+  const loaded = {'desktop/lib/app-notify.js': lines([10, 20])};
+  const stepless = name => [name, {sha: 'S', files: loaded}];
+  const map = {suites: {...Object.fromEntries(['activity', 'apply', 'jobs', 'wander'].map(stepless)), settings: {sha: 'S', files: loaded, steps: {[SETUP]: loaded}}}};
+  assert.deepEqual(stepNamesFor(stepsCovering(map, {S: {'desktop/lib/app-notify.js': [[3, 3]]}})), {settings: [SETUP]});
+  const few = {suites: {jobs: {sha: 'S', files: loaded, steps: {[SETUP]: loaded}}, settings: map.suites.settings}};
+  assert.deepEqual(Object.values(stepsCovering(few, {S: {'desktop/lib/app-notify.js': [[3, 3]]}})).map(p => p.whole), [true, true], 'few loaders: each of them whole, as before');
+});
+
+test('the suites with no step data are named (the 26 Oct map: 19 of 20 were, and every pick was whole without a word)', () => {
+  const map = {suites: {jobs: {sha: '9892af1aaaa', at: '2026-10-26T02:29:00Z', files: {}}, settings: {sha: 'd96bc13', files: {}, steps: {}}}};
+  assert.deepEqual(steplessSuites(map), [{suite: 'jobs', sha: '9892af1', at: '2026-10-26T02:29'}]);
+  assert.deepEqual(steplessSuites({}), []);
 });
 
 test("a hunk of comments only changes nothing (#1992's header comment picked 17 suites)", () => {

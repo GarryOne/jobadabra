@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
-import {hunksFromDiff, mapShas, stepNamesFor, stepsCovering, stillWhole} from './lib/coverage-pick.mjs';
+import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWhole} from './lib/coverage-pick.mjs';
 import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -32,6 +32,7 @@ function loadMap() {
 // main moved on). -> {map, picked: {suite: {steps, setup, whole, reason}}} (lib/coverage-pick.mjs stepsCovering).
 function covered(changedFiles) {
   const map = loadMap(), bySha = {};
+  if (!changedFiles.length) return {map, picked: {}};   // `git diff <sha> HEAD --` with no path would diff the whole repo since the map's commit
   for (const sha of mapShas(map)) { try { bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles])); } catch { /* commit not here: that suite is not picked by lines */ } }
   return {map, picked: stepsCovering(map, bySha)};
 }
@@ -86,6 +87,8 @@ try {
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
+    const stepless = steplessSuites(map);
+    if (stepless.length) console.log(`Map: ${stepless.length} of ${Object.keys(map.suites).length} suites have no steps yet (${[...new Set(stepless.map(entry => `${entry.sha} ${entry.at}`))].join('; ')}): a line they ran picks them whole until a whole run of each records its steps`);
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${JSON.stringify(steps)}`);
     const ciText = windowsCiText(file => { try { return fs.readFileSync(path.join(here, '..', '..', file), 'utf8'); } catch { return null; } });
     const windows = windowsSmoke(changedFiles, ciText) ? JSON.stringify(WINDOWS_SMOKE.steps) : '';

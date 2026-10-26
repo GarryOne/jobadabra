@@ -218,8 +218,10 @@ def _went_up(entry, proposed):
 
 def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=None):
     """(jobs, state, relevant): the board's own section for the user's kind of work when it gives more relevant jobs than the list that gave few
-    (`before`), else `before`; asked once per proposed link and version of the ladder."""
+    (`before`), else `before`; asked once per proposed link and version of the ladder. No page is fetched past the read cut, as in _another_way
+    (26 Oct 2026, a proof run: a board with 3 relevant jobs read its section from 99 s to 190 s)."""
     entry['few_for'] = f'{proposed}|{LADDER}'
+    fetch, show = _until_cut(fetch), show and _until_cut(show)
     listed, section, scripted = _section(board, board_forms.home(board, fetch), search, fetch, judge, show)
     more = judge(listed) if listed else []
     if len(more) <= len(before[2]):
@@ -231,7 +233,7 @@ def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=N
 
 
 def _until_cut(fetch):
-    """The ladder's page reader: past the search's read cut it reads no page (the way's own error handling ends it at once)."""
+    """The page reader of a board's follow-up ways (_another_way, _fuller_section): past the search's read cut it reads no page (the way's own error handling ends it at once)."""
     def until(url, *args, **kwargs):
         if read_budget.past_cut():
             raise TimeoutError('past the search\'s read cut')

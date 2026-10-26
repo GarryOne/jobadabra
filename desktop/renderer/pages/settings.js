@@ -7,7 +7,7 @@ import {icon} from '../icons.js';
 import {betaText, testText, updateText} from '../update-text.js';
 import {shared} from './shared.js';
 import {$, aiReady, show} from './core.js';
-import {extensionState} from '../service-status.js';
+import {extensionFrom, justStarted} from '../service-status.js';
 import {openView, remembered} from './nav.js';
 import {profileBar} from './profile-save-bar.js';
 import {detailsChanged} from './details-drafts.js';
@@ -86,17 +86,19 @@ function statusFrom({extension, google}) {
   const checking = {google: !google, extension: extension.checking};
   return {on, detail, words, checking, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }
-// The extension's state, from both facts: what the browser recorded (whether it is installed, and on) and its last
-// report (whether it is awake). The profile read is instant, so nothing here waits a minute to decide.
-const extensionFrom = record => extensionState({known: !!record, installed: record?.installed || [], seen: record?.seen || null, browserRunning: record?.browserUp ?? null});
+// The extension's state: renderer/service-status.js extensionFrom (a kept record is judged at the time it was kept).
+// The extension card's first paint reads the same kept record (pages/extension-setup.js), so there is one copy.
+export const keptExtension = () => lastChecks()?.extension || null;
 // From what's known: the kept answer is shown at once, then the real checks land a moment later.
 const quickStatus = () => { const last = lastChecks(); return statusFrom({extension: extensionFrom(last?.extension), google: last?.google}); };
 async function serviceStatus() {
   const [google, seen, found] = await Promise.all([window.pilot.googleStatus().catch(() => ({})), window.pilot.extensionSeen().catch(() => null),
     window.pilot.extensionInstall().catch(() => null)]);
-  const record = {installed: found?.installed || [], seen, browserUp: found?.browserUp ?? null};
-  try { localStorage.setItem(SERVICE_CACHE, JSON.stringify({google: {connected: !!google.connected, email: google.email || ''}, extension: record})); } catch {}
-  return {...statusFrom({extension: extensionFrom(record), google}), folder: found?.folder || ''};
+  const record = {installed: found?.installed || [], seen, browserUp: found?.browserUp ?? null, browser: found?.browser || '', at: Date.now()};
+  const live = extensionFrom(record, {justStarted: justStarted()});   // no report yet since the start: the kept answer stays meanwhile
+  const kept = live.checking ? keptExtension() : record;
+  try { localStorage.setItem(SERVICE_CACHE, JSON.stringify({google: {connected: !!google.connected, email: google.email || ''}, extension: kept})); } catch {}
+  return {...statusFrom({extension: live.checking && kept ? extensionFrom(kept) : live, google}), folder: found?.folder || ''};
 }
 export function stateLine(on, detail = '', checking = false, words = '') {
   if (checking) {

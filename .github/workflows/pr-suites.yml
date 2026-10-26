@@ -1,7 +1,8 @@
-name: CI · E2E suites for a PR (report only)
-# The e2e suites a pull request points at (its UI text, its suite or harness files), started on the PR's own branch through e2e.yml, Linux suites only, at most 4 (owner's yes, 24 Oct 2026:
-# report only for 2 weeks, then it can become required). It does not wait: e2e.yml's run appears under Actions as "E2E Mac + Linux · <suites> · <branch>". A dispatched run is not a
-# pull_request run, so "All checks passed" (tools/all-checks-green.sh) does not wait for it. Why: 8 of ~10 e2e fixes in beta runs 5-11 were tests lagging the app, found a night late.
+name: CI · E2E suites for a PR
+# The e2e suites a pull request points at (its UI text, its suite or harness files), started on the PR's own branch through e2e.yml, Linux suites only. It WAITS for that run
+# and fails when it ends red (tools/pr-suites-wait.sh), so "All checks passed" (tools/all-checks-green.sh) holds the merge (gate G1a, owner's yes 26 Oct 2026: on 25 Oct two
+# run-view PRs saw cardstates red on their own run, merged, and beta 2 failed on it). A flaky suite (red, then green on the same commit) passes; red twice blocks.
+# Was report only from 24 Oct 2026, at most 4 suites. Why it exists: 8 of ~10 e2e fixes in beta runs 5-11 were tests lagging the app, found a night late.
 on:
   pull_request:
     branches: [main]
@@ -17,7 +18,7 @@ on:
 
 permissions:
   contents: read
-  actions: write   # start e2e.yml on the PR's branch
+  actions: write   # start e2e.yml on the PR's branch, then read its result
 
 concurrency:
   group: pr-suites-${{ github.event.pull_request.number }}
@@ -29,7 +30,7 @@ jobs:
     # A fork has no secrets: nothing to run there.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 80   # the plan, then the wait for the e2e run (tools/pr-suites-wait.sh gives up at 70 min)
     steps:
       - uses: actions/checkout@v5
         with:
@@ -57,9 +58,17 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           # The input made for this (e2e.yml): SQLite store, no screenshot review, no harness-test step. It runs the PR branch's own e2e.yml, so a branch cut before the input existed gets HTTP 422.
+          date -u -d '-5 seconds' +%Y-%m-%dT%H:%M:%SZ > "$RUNNER_TEMP/dispatched-at"   # the wait takes only a run started from here on
           if ! gh workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" 2>"$RUNNER_TEMP/dispatch.err"; then
             cat "$RUNNER_TEMP/dispatch.err"
             if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's e2e.yml is older than main's: rebase on main (tools/ship.sh does it), then push again." | tee -a "$GITHUB_STEP_SUMMARY"; fi
             exit 1
           fi
           echo "Started e2e.yml on \`$HEAD_REF\`: $SUITES. Left to the gate: ${LEFT:-none}. See https://github.com/$GITHUB_REPOSITORY/actions/workflows/e2e.yml" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Wait for them; a red suite blocks the merge
+        if: steps.plan.outputs.suites != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash tools/pr-suites-wait.sh "$GITHUB_REPOSITORY" "$HEAD_REF" "$HEAD_SHA" "$(cat "$RUNNER_TEMP/dispatched-at")"

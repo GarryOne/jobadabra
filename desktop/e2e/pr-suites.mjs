@@ -1,4 +1,4 @@
-// Report-only PR check: which e2e suites quote UI text this PR removes (lib/pr-suites.mjs). Prints a table for the job summary; always exits 0 (owner, 24 Oct 2026: report-only for 2 weeks).
+// Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites pr-suites.yml starts and waits for (they block the merge since 26 Oct 2026, gate G1a). Always exits 0: the e2e run decides.
 //   node pr-suites.mjs --base origin/main          the table
 //   node pr-suites.mjs --base origin/main --plan   also: `suites=a,b` for the PR run (workflow pr-suites.yml; needs the staged app files and installs, like e2e.yml's plan)
 import fs from 'node:fs';
@@ -28,7 +28,7 @@ try {
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\n`);
   }
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### E2E suites that quote removed UI text (report only)\n\n${out.text}\n`);
+  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### E2E suites that quote removed UI text\n\n${out.text}\n`);
 } catch (error) {
   console.log(`pr-suites: could not read the diff (${error.message.split('\n')[0]}); nothing reported`);
 }

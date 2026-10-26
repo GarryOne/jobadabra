@@ -80,6 +80,13 @@ def failed(what, error, n=1):
     _wait(None, n)
 
 
+def reset_run():
+    """A new run's state (tests simulate several runs in one process; the engine starts a fresh process per run)."""
+    STOPPED['why'] = ''
+    WAITING.update(n=0, said=False, calls={})
+    _calls['n'] = 0
+
+
 def stopped():
     """A spent limit already ended the AI for this run: callers outside decide() do not ask either."""
     return bool(STOPPED['why'])

@@ -95,6 +95,8 @@ class JudgedTests(unittest.TestCase):
         from types import SimpleNamespace
         from src.ai import cost, engine, meanings_pack
         asked = []
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
 
         class Client:
             class messages:   # noqa: N801 — the SDK's shape

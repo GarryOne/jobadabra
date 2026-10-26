@@ -17,7 +17,7 @@ def covered(search=None, cache=None, db=None):
     from .sources import feeds
     kinds = role_kinds.of_search(search if search is not None else load_search_config())
     index = employer_index._read(cache or employer_index.CACHE)
-    if not kinds or not index or not index['feeds']:
+    if not kinds or role_kinds.UNKNOWN in kinds or not index or not index['feeds']:   # unknown field: the scout looks
         return None
     have = sum(1 for feed in index['feeds'] if scout_cells.top_kind(feed) in kinds
                and any(feeds.wanted_location({'location': place}) for place in feed.get('places') or []))

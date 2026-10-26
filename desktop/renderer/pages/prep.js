@@ -67,7 +67,7 @@ async function build() {
     $('prep-open').textContent = current.notion_url ? $('prep-open').dataset.notionLabel : 'Open the prep kit';
     show($('prep-open'), !!(current.notion_url || jobUrl));
     $('prep-go').textContent = 'Build again';
-    toastMessage('Prep kit ready ✓', `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore('Notion page', 'page')}.`);
+    toastMessage('Prep kit ready ✓', `${current.company || current.via || ''} · ${current.job}: on the job's ${byStore('Notion page', 'page')}.`, {view: 'jobs', job: jobUrl || ''});
     loadFocus();
   }
 }

@@ -16,6 +16,7 @@ import {toastMessage} from './startup.js';
 import {showFormCard} from './session-form-card.js';
 import {storeName} from '../store-words.js';
 import {reasonFor} from '../reason-words.js';
+import {NO_PLACE, sessionPlace} from '../targets.js';
 
 // Something only you can do, with its most likely action one click away: a judgement call (Claude's proposed
 // answer, or another you saved for the same question) or an agreement (open the form to tick it).
@@ -227,15 +228,15 @@ export const staleState = item => !!(rowsOf(item.id).length || reviewStates.get(
 export async function reopenClosedTab(item, button) {
   const result = await window.pilot.sessionReopen(item.id, staleState(item));   // not 'Looking for the form tab…' under the question
   if (result?.cancelled) return result;   // Not now in the first-Apply dialog
-  if (result?.ok === false) { toastMessage('Could not open the form', result.error || 'Try again.'); return result; }
+  if (result?.ok === false) { toastMessage('Could not open the form', result.error || 'Try again.', sessionPlace(item)); return result; }
   if (result?.reset) {
     for (const key of rowsOf(item.id)) { handled.delete(key); syncedDone.delete(key); }
     keep();
     reviewStates.delete(item.id);
     batch.delete(item.id);
   }
-  if (result?.focused) toastMessage('Form tab found', 'The form is still open in Chrome (its address changed): showing it.');
-  else toastMessage('Form reopened', 'Opened the form in a new Chrome tab; the extension fills it from your kit.');
+  if (result?.focused) toastMessage('Form tab found', 'The form is still open in Chrome (its address changed): showing it.', NO_PLACE.outside);
+  else toastMessage('Form reopened', 'Opened the form in a new Chrome tab; the extension fills it from your kit.', NO_PLACE.outside);
   await refreshSessions();
   renderSessionPage();
   return result;
@@ -244,14 +245,14 @@ export async function reopenClosedTab(item, button) {
 export async function showInForm(item, label, button) {
   const result = await opening(button, () => window.pilot.reviewFocus(item.id, label, item.url, sessionCompany(item)));
   if (result?.taken) {
-    if (result.found === false) toastMessage('Not a field on this form', `"${label}" is not a label on the open form.`);
+    if (result.found === false) toastMessage('Not a field on this form', `"${label}" is not a label on the open form.`, sessionPlace(item));
     return;
   }
   if (result?.outdated) toastMessage('Reload the Chrome extension once', `Chrome still runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
-    'In Chrome open chrome://extensions and click ↻ on Jobadabra. Your open forms keep their answers; later updates load by themselves.');
+    'In Chrome open chrome://extensions and click ↻ on Jobadabra. Your open forms keep their answers; later updates load by themselves.', {card: 'extension'});
   else if (result?.went === 'none') await reopenClosedTab(item, button);
-  else if (result?.went !== 'tab') toastMessage('Opened the job in Chrome', `Find "${label}" in its form.`);
-  else toastMessage('Scroll to it yourself this time', `The form tab is open, but the extension could not attach to it. Look for "${label}" in the form.`);
+  else if (result?.went !== 'tab') toastMessage('Opened the job in Chrome', `Find "${label}" in its form.`, NO_PLACE.outside);
+  else toastMessage('Scroll to it yourself this time', `The form tab is open, but the extension could not attach to it. Look for "${label}" in the form.`, NO_PLACE.outside);
 }
 // Answers wait here until you send them all at once (owner, 8 Oct 2026: one answer sent at once made Claude reply, and its new
 // message redrew the list, so the other questions vanished before you could answer them). Each answer names its question.

@@ -201,7 +201,7 @@ export function registerExtServerHandlers(ctx) {
       appLog('review', `at submit: ${counts.map(c => `${c.n} ${c.reason}`).join(', ') || 'nothing missed'}`, {board});
     }
   });
-  server.setLearnedHandler(payload => learnedAnswers.save(storage, payload, {notify: (title, body) => toWindow('toast', {title, body}), contactSaved: contact => server.contactSaved(storage, contact)}));
+  server.setLearnedHandler(payload => learnedAnswers.save(storage, payload, {notify: (title, body, target) => toWindow('toast', {title, body, target}), contactSaved: contact => server.contactSaved(storage, contact)}));
   server.setTabsHandler(report => {
     const sessions = terminals.list();
     review.noteTabs(report, new Set(sessions.map(session => session.id)));

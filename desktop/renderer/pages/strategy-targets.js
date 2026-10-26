@@ -209,8 +209,8 @@ async function fixTypo(name, entry, suggestion, button) {
   const stored = entriesOf(strategyState.lastStrategy, name).find(item => item.label === entry);
   const edits = {[name]: {add: [suggestion], remove: stored ? [stored.fragment] : []}};
   const result = await withSaveProgress(words => { button.textContent = words; }, () => sink.editTargets(edits)).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { toastMessage('Not fixed', result.error || 'Try again.'); renderTargets(); return; }
-  toastMessage({title: `"${suggestion}" saved ✓`, body: 'Refresh your jobs to search with it.', action: refreshAction});
+  if (!result.ok) { toastMessage('Not fixed', result.error || 'Try again.', {card: 'strategy-advanced'}); renderTargets(); return; }
+  toastMessage({title: `"${suggestion}" saved ✓`, body: 'Refresh your jobs to search with it.', action: refreshAction, target: {card: 'strategy-advanced'}});
   await reloadTargets();
 }
 async function keepTypo(entry) {

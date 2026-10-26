@@ -2,6 +2,7 @@
 // the owner's Telegram). The user's own words; a contact only if they type one.
 import {$} from './core.js';
 import {toastMessage} from './startup.js';
+import {NO_PLACE} from '../targets.js';
 
 function open() {
   $('app-feedback-message').textContent = '';
@@ -23,6 +24,6 @@ export async function init() {
     if (!result?.ok) { $('app-feedback-message').textContent = result?.error || 'Couldn\'t send it.'; return; }
     $('app-feedback-text').value = '';
     $('app-feedback-dialog').close();
-    toastMessage('Thank you!', 'Your feedback went straight to the maker. If you left a contact, expect a reply.');
+    toastMessage('Thank you!', 'Your feedback went straight to the maker. If you left a contact, expect a reply.', NO_PLACE.done);
   });
 }

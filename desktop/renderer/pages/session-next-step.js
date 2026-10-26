@@ -21,6 +21,7 @@ import {pauseSession, removeSession, resumeSession, skipSession} from './session
 import {storeName} from '../store-words.js';
 import {INFORM_STUCK} from '../session-steps-list.js';
 import {openLog, refreshSessions, sessionCompany, sessionJob, sessionTail, ticking} from './sessions.js';
+import {NO_PLACE, sessionPlace} from '../targets.js';
 
 // Sessions whose form page has just failed to answer the app: only those are offered the "Reload the tab" repair
 // (it reloads a form page, so it must not sit in the row by default). Cleared when the page answers again.
@@ -57,7 +58,7 @@ const submittedButton = item => sessionButton('I submitted it', 'secondary', asy
   const button = event.currentTarget;
   button.disabled = true;
   const result = await window.pilot.setStatus(item.url, 'applied').catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { button.disabled = false; toastMessage('Not marked Applied', result.error || 'Try again.'); return; }
+  if (!result.ok) { button.disabled = false; toastMessage('Not marked Applied', result.error || 'Try again.', sessionPlace(item)); return; }
   jobsChanged(sessionJob(item), {stage: 'Applied', status: 'applied'});   // its Jobs row too, not only this button
   button.textContent = '✓ Marked Applied';
 }, 'check');
@@ -102,7 +103,7 @@ function renderSilent(item) {
   const button = sessionButton(starting ? 'Starting Chrome\u2026' : 'Open Chrome', 'primary', async event => {
     const result = await opening(event.currentTarget, () => window.pilot.extensionOptions());
     window.pilot.uiLog('sessions: Chrome not reporting, Open Chrome pressed', {opened: !!result?.opened, starting: !!result?.starting});
-    if (!result?.opened) { toastMessage('Chrome didn\'t open', 'Open Google Chrome yourself; the card updates once its Jobadabra extension reports.'); return; }
+    if (!result?.opened) { toastMessage('Chrome didn\'t open', 'Open Google Chrome yourself; the card updates once its Jobadabra extension reports.', NO_PLACE.outside); return; }
     shared.chromeStartedAt = result.since || Date.now();
     renderNextStep(item);
     setTimeout(() => { if (silentChrome(item)) renderNextStep(item); }, START_MS + 100);   // offered again, with the reason
@@ -221,7 +222,7 @@ export function renderNextStep(item) {
       panelDead.add(item.id);
       renderSessionPage();
       toastMessage('Form tab not found', osText('The form\'s page didn\'t answer, so the extension isn\'t attached to it. '
-        + 'Press Reload the tab — or ⌘R in that tab — then try again.'));
+        + 'Press Reload the tab — or ⌘R in that tab — then try again.'), sessionPlace(item));
     }, 'link'));
     // A form page whose panel died (the extension was uninstalled and installed again) can't answer the app: reload
     // that tab, which is what puts the extension back onto it — then the focus handshake works again. Offered only
@@ -232,12 +233,12 @@ export function renderNextStep(item) {
       if (result?.result === 'reloaded' || result?.result === 'reloaded-chrome') {
         panelDead.delete(item.id);
         renderSessionPage();
-        if (result.went !== 'tab') toastMessage('Reloaded, but no answer yet', 'The tab is fresh; give the extension a few seconds, then press Open filled form again.');
+        if (result.went !== 'tab') toastMessage('Reloaded, but no answer yet', 'The tab is fresh; give the extension a few seconds, then press Open filled form again.', NO_PLACE.outside);
         return;
       }
       if (result?.outdated) {
         toastMessage('Reload the Chrome extension once', `Chrome runs Jobadabra ${result.extension}; this app has ${result.latest}. ` +
-          'In Chrome open chrome://extensions and click ↻ on Jobadabra, then press again — it updates itself from then on.');
+          'In Chrome open chrome://extensions and click ↻ on Jobadabra, then press again — it updates itself from then on.', {card: 'extension'});
         return;
       }
       const why = {permission: 'macOS won\'t let Jobadabra control Chrome: System Settings → Privacy & Security → Automation → Jobadabra → Google Chrome. Or press ⌘R in that tab.',
@@ -249,7 +250,7 @@ export function renderNextStep(item) {
         // Chrome's scripting is macOS-only. Saying "Chrome isn't running" on Windows would be untrue, and the
         // generic advice names ⌘R, which isn't a key there.
         manual: 'Reloading a Chrome tab can only be asked of a Mac: press Ctrl+R in the form\'s tab.'}[result?.result];
-      toastMessage('Couldn\'t reload the form tab', why || osText('Press ⌘R in the form\'s tab instead.'));
+      toastMessage('Couldn\'t reload the form tab', why || osText('Press ⌘R in the form\'s tab instead.'), sessionPlace(item));
     }, 'refresh'));
     if (item.kind !== 'form') actions.push(submittedButton(item));  // you pressed Submit in Chrome: say so here too (a form session's submit is seen by the extension)
     if (live) actions.push(sessionButton('Skip this role', 'secondary', () => skipSession(item)));

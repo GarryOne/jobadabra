@@ -1,0 +1,87 @@
+name: E2E screenshot review
+description: >-
+  The AI review of one e2e lane's screenshots after its suites: every suite's pages in ONE Claude Sonnet Message Batch (half the price, same model and prompt),
+  a page that looks the same as the last one judged not asked again (desktop/e2e/lib/review-cache.mjs).
+# Owner, 26 Oct 2026: "I want to cut the costs in half, but to be close to the same quality as Claude". Each suite job used to review its own 1-10 pages, under the
+# batch's 20, so no run ever batched ("0 by batch"). Used by e2e.yml and e2e-windows.yml (a review job after the suites) and inside desktop.yml's Release jobs
+# (before their block check, which reads the findings; the release graph stays Build -> E2E -> Release). The findings go up as <prefix>review: one folder per
+# suite (named as the suite's artifact) beside the pictures they name; ui-findings.yml and block-check.mjs read them with the suites' own. Guard: tests/test_e2e_review_job.py.
+# The job needs a checkout of its own commit, Node 22, `issues: read` (the lessons) and `actions: read` (this run's artifacts).
+inputs:
+  lane:
+    description: 'mac (the Mac + Linux suites, artifacts e2e-artifacts-<key>) or windows (e2e-artifacts-windows-<key>)'
+    required: true
+  anthropic-key:
+    description: "CI's Anthropic key (secrets.E2E_ANTHROPIC_KEY); empty: nothing is reviewed and the step says so"
+    required: false
+    default: ''
+  publish-key:
+    description: 'secrets.AI_COST_PUBLISH_KEY: the cost goes to /ai-cost'
+    required: false
+    default: ''
+  github-token:
+    description: 'github.token: the run artifacts and the by-design lessons'
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: This lane's screenshots (a release run holds both lanes' artifacts)
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PREFIX: ${{ inputs.lane == 'windows' && 'e2e-artifacts-windows-' || 'e2e-artifacts-' }}
+      run: |
+        in="$GITHUB_WORKSPACE/.e2e-review/in"; rm -rf "$in"; mkdir -p "$in"
+        gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern "${PREFIX}*" --dir "$in" || echo "no suite artifacts to review"
+        find "$in" -mindepth 1 -maxdepth 1 -name '*-review' -exec rm -rf {} +   # an earlier attempt's own findings
+        if [ "$PREFIX" = e2e-artifacts- ]; then find "$in" -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
+        echo "E2E_REVIEW_DIRS=$(find "$in" -mindepth 1 -maxdepth 1 -type d | sort | paste -sd: -)" >> "$GITHUB_ENV"
+        echo "REVIEW_PREFIX=$PREFIX" >> "$GITHUB_ENV"
+        echo "$(find "$in" -name 'ui-*.png' | wc -l | tr -d ' ') page(s) from $(find "$in" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') suite(s) to review"
+        [ -d desktop/e2e/node_modules ] || (cd desktop/e2e && (npm ci --ignore-scripts || npm install --ignore-scripts))
+    - name: Earlier AI reviews (an unchanged screenshot is not asked again)
+      if: inputs.anthropic-key != ''
+      uses: actions/cache/restore@v5
+      with:
+        path: desktop/e2e/.review-cache
+        key: ai-review-batch-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ai-review-batch-${{ inputs.lane }}-
+    - name: AI review of the screenshots (Claude Sonnet, every page in one batch)
+      if: inputs.anthropic-key != ''
+      shell: bash
+      working-directory: desktop/e2e
+      env:
+        E2E_ANTHROPIC_KEY: ${{ inputs.anthropic-key }}
+        E2E_REVIEW_ENGINE: claude
+        E2E_REVIEW_BATCH_MIN: '1'   # the batch waits on a Linux runner after the suites, never inside a suite's Mac job
+        E2E_REVIEW_OUT: ${{ github.workspace }}/.e2e-review/out
+        E2E_ARTIFACTS: ${{ github.workspace }}/.e2e-review/usage
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: timeout 900 node review-ui.mjs   # a request we got wrong fails here, as it failed the suite job before
+    - name: Report the AI review's cost to /ai-cost
+      if: always() && inputs.anthropic-key != '' && hashFiles('.e2e-review/usage/ai-review-usage.json') != ''
+      shell: bash
+      env:
+        AI_COST_PUBLISH_KEY: ${{ inputs.publish-key }}
+      run: |
+        node -e 'const fs=require("fs"); const u=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); fs.writeFileSync(process.argv[2], JSON.stringify({job: "review", usd: Number(u.usd)||0, turns: Number(u.calls)||0, at: new Date().toISOString(), limit: false}))' .e2e-review/usage/ai-review-usage.json .e2e-review/ai-cost.json
+        node desktop/e2e/ai-cost-report.mjs --job e2e-screenshot-review --suffix "${{ inputs.lane }}" --file .e2e-review/ai-cost.json || true   # a report never decides a run
+    - uses: actions/upload-artifact@v6
+      if: always() && hashFiles('.e2e-review/ai-cost.json') != ''
+      with:
+        name: ai-cost-review-${{ inputs.lane }}
+        path: .e2e-review/ai-cost.json
+        if-no-files-found: ignore
+    - name: The findings, one folder per suite beside its pictures
+      if: always() && hashFiles('.e2e-review/out/**/ai-findings.json') != ''
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ env.REVIEW_PREFIX }}review
+        path: .e2e-review/out
+        overwrite: true
+    - name: Keep the AI reviews for the next run
+      if: always() && inputs.anthropic-key != '' && hashFiles('desktop/e2e/.review-cache/*.json') != ''
+      uses: actions/cache/save@v5
+      with:
+        path: desktop/e2e/.review-cache
+        key: ai-review-batch-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}

@@ -46,8 +46,9 @@ class FeedScanShowsEachSiteTest(unittest.TestCase):
         words = mock.patch.object(feeds, 'TITLES', re.compile('Reliability'))
         never = mock.patch.object(feeds, 'EXCLUDED_TITLES', re.compile(r'(?!x)x'))
         title = mock.patch.object(feeds, 'wanted_title', lambda t: by_words(t) or t == 'Platform Lead')   # 'Platform Lead': only the AI says yes
+        early = mock.patch.object(feeds, 'sure_title', by_words)   # while a site is read the AI has not judged 'Platform Lead' yet: the words show what they name
         place = mock.patch.object(feeds, 'wanted_location', lambda j: 'Zurich' in j['location'])
-        for patch in (words, never, title, place, mock.patch.object(feeds, 'triage', lambda jobs: None),
+        for patch in (words, never, title, early, place, mock.patch.object(feeds, 'triage', lambda jobs: None),
                       mock.patch.object(feeds, 'triage_places', lambda jobs: None)):
             patch.start()
             self.addCleanup(patch.stop)

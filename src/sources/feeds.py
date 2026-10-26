@@ -38,26 +38,33 @@ EXCLUDED_TITLES = keyword_regex(_SEARCH.get('title_exclude_keywords') or [r'(?!x
 TRIAGED = None   # {title: could fit} decided by Claude for this search (src/ai/title_triage.py), read once a run
 
 
-def wanted_title(title):
-    """A title we score: none of title_exclude_keywords, and a role keyword or, when the words miss it, Claude's "could fit" for this search
-    (src/ai/title_triage.py; owner, 7 Oct 2026: "Only the location should be strict")."""
-    if EXCLUDED_TITLES.search(title or '') or EXCLUDED_TITLES.search(plain(title)):
-        return False
-    if TITLES.search(title or '') or TITLES.search(plain(title)):
-        return True
-    return bool(_triaged().get(title_key(title)))
-
-
 def title_key(title):
     return ' '.join(str(title or '').lower().split())[:160]   # how the AI's answers for titles are kept
 
 
-def sure_title(title):
-    """A title your role words name (none of the excluded words): kept whatever the AI says later, so it can be shown before the AI sort
-    (src/sources/feed_scan.py shows each site's sure jobs as it is read)."""
+def judged_title(title):
+    """The AI's answer for this title in this search (src/ai/title_triage.py): True, False, or None when it has not judged it yet."""
+    return _triaged().get(title_key(title))
+
+
+def _words_title(title):
+    """The words' answer, for a title the AI has not judged (no AI, or not reached yet): none of title_exclude_keywords and a role keyword."""
     if EXCLUDED_TITLES.search(title or '') or EXCLUDED_TITLES.search(plain(title)):
         return False
     return bool(TITLES.search(title or '') or TITLES.search(plain(title)))
+
+
+def wanted_title(title):
+    """A title we score: the AI's answer when it judged it for this search (src/ai/title_triage.py; owner, 26 Oct 2026: "The AI decides"; a
+    role word kept "Pilote / Product Owner" for a pilot search, a level word dropped "Senior First Officer"); else the words (_words_title)."""
+    judged = judged_title(title)
+    return _words_title(title) if judged is None else judged
+
+
+def sure_title(title):
+    """A title shown at once, before the AI sort (src/sources/feed_scan.py): the same answer, so a role-word hit shows until the AI says no
+    (owner, 26 Oct 2026: "Show at once, AI removes"; keep_open closes one it later rejects)."""
+    return wanted_title(title)
 
 
 def _triaged_shared():
@@ -80,13 +87,12 @@ def _triaged():
 
 
 def triage(jobs):
-    """Ask Claude about the titles of these jobs that are in the user's places and that the role words miss (once per title and search).
+    """Ask Claude about the titles of these jobs that are in the user's places, the role and excluded words' hits too (once per title and search).
     Off without AI or with JOB_PILOTTO_DISABLE=title_triage: the exact words only."""
     from .. import features
     from ..ai import engine
     from ..time_budget import best_first   # your best places' titles first: a short search sorts them before the rest
-    asked = [job for job in jobs if job.get('title') and wanted_location(job) and not excluded_title(job['title'])
-             and not (TITLES.search(job['title']) or TITLES.search(plain(job['title'])))]
+    asked = [job for job in jobs if job.get('title') and wanted_location(job)]   # every title in your places, words or not (owner, 26 Oct 2026)
     titles = [job['title'] for job in best_first(asked)]   # sorted after the filter: a first search lists ~60,000 jobs, a few thousand are asked about
     if not titles or features.disabled('title_triage') or not engine.ready():
         return
@@ -268,6 +274,8 @@ def keep_open(job):
     """For the cleanup of jobs outside your places: an open job whose title fits and whose location Claude has not placed for these places
     yet stays open until it has (7 Oct 2026: after a change of places, the place words closed Carouge and Meyrin jobs for a Geneva search;
     place_open_jobs places the open jobs' locations first, so this waits a refresh or two, for the open jobs only)."""
+    if judged_title(job.get('title')) is False:
+        return False   # its title the AI judged not this search's (a role word had shown it at once): it leaves the list (owner, 26 Oct 2026)
     if placing() and job.get('title') and wanted_title(job['title']) and (job.get('location') or '').strip() and place_of(job) is None:
         return True
     return wanted_location(job)

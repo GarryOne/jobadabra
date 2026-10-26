@@ -150,6 +150,7 @@ def scan(db, api_key, config, opener=urllib.request.urlopen, now=None):
                 raise RuntimeError(data['error'])
             results = [normalise(r) for r in data.get('jobs_results', [])]
             matched = []
+            feeds.triage(results)   # titles judged by the AI first (owner, 26 Oct 2026: "The AI decides")
             with db:
                 for job in results:
                     if job['id'] in seen or not (feeds.wanted_title(job['title']) and feeds.wanted_location(job)):

@@ -1,4 +1,6 @@
-"""The PR's one required status, "All checks passed", is written by tools/pr-verdict.py when a PR workflow ends: no job holds a runner to poll for it.
+"""The PR's one required status, "All checks passed", is written by tools/pr-verdict.py as the last step of every PR job: no job holds or waits for a runner for it.
+#2042/#2044 (owner, 26 Oct 2026: "it shows green, but I cannot merge" / "again, why I cannot merge this PR?"): a separate verdict job, and e2e's HTML report, sat
+queued for a runner after every check was green.
 Why (owner, 26 Oct 2026: "How could you design such a slow and inefficient method of checking PRs?"): on #1992 two jobs only waited (pr-gate's
 "Other workflows passed" and pr-suites' wait), 43 of 206 runner-minutes of one push, while its suite jobs queued up to 17.5 min for a runner.
 Also the 10-min budget: a CI change whose own checks take longer goes red (history: 781637a, bc585e3, a7a6a9f, 7083bb7 each slowed PRs, none said by how much)."""
@@ -20,15 +22,15 @@ def run(name, status='completed', conclusion='success', event='pull_request', at
 
 class Verdict(unittest.TestCase):
     def test_green_when_every_pr_workflow_ended_green(self):
-        state, why, _ = pv.verdict([run('CI · Pull request'), run('CI · Tests · python', conclusion='skipped')])
+        state, why, *_ = pv.verdict([run('CI · Pull request'), run('CI · Tests · python', conclusion='skipped')])
         self.assertEqual(state, 'success', why)
         self.assertIn('4.0 min', why)
 
     def test_pending_while_one_runs_and_red_at_once_when_one_failed(self):
         self.assertEqual(pv.verdict([run('CI · Pull request'), run('CI · Tests · python', status='in_progress')])[0], 'pending')
-        state, why, _ = pv.verdict([run('CI · Tests · python', conclusion='failure'), run('CI · Tests · desktop', status='in_progress')])
+        state, why, *_ = pv.verdict([run('CI · Tests · python', conclusion='failure'), run('CI · Tests · desktop', status='in_progress')])
         self.assertEqual(state, 'failure')
-        self.assertIn('CI · Tests · python', why)
+        self.assertIn('Tests · python', why)
 
     def test_the_e2e_run_a_pr_started_counts_and_other_e2e_runs_do_not(self):
         # the owner rejected report only (26 Oct 2026): a red suite of the PR's own e2e run blocks the merge
@@ -51,7 +53,7 @@ class Verdict(unittest.TestCase):
     def test_a_ci_change_over_the_budget_goes_red_unless_its_commit_says_why(self):
         slow = [run('CI · Pull request', end='2026-10-26T03:14:00Z')]
         self.assertEqual(pv.verdict(slow, files=['desktop/renderer/app.js'])[0], 'success')
-        state, why, _ = pv.verdict(slow, files=['.github/workflows/e2e.yml'])
+        state, why, *_ = pv.verdict(slow, files=['.github/workflows/e2e.yml'])
         self.assertEqual(state, 'failure')
         self.assertIn('10-min budget', why)
         self.assertEqual(pv.verdict(slow, files=['tools/pr-suites.sh'], messages=['x\n\nCI-budget: one-off migration'])[0], 'success')
@@ -85,12 +87,122 @@ class Workflows(unittest.TestCase):
         self.assertNotIn('all-checks-green', gate, 'the required status comes from pr-verdict.yml, not a job that waits')
         self.assertNotRegex(gate, r'(?m)^    name: All checks passed$', 'a job of that name would satisfy the required check before the e2e run ends')
 
-    def test_the_pr_e2e_run_says_its_suites_in_its_title_and_turns_the_pr_red_at_its_first_red_suite(self):
+    def test_the_pr_e2e_run_says_its_suites_in_its_title(self):
         e2e = (WORKFLOWS / 'e2e.yml').read_text()
         self.assertIn("inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name)", e2e)
         self.assertEqual(pv.E2E_PR_TITLE, 'E2E for PR · ')
-        self.assertRegex(e2e, r"if: failure\(\) && inputs\.pr_suites != ''\n\s+env:[\s\S]{0,400}tools/pr-verdict\.py[^\n]*--red")
 
+    def test_every_pr_job_writes_the_verdict_as_its_last_step(self):
+        # The class: every job a PR can run. Exempt: report jobs (never decide), jobs only main runs, and e2e's plan (its suites need it: its step would see its
+        # run as ended before the suite jobs exist).
+        step_re = re.compile(r"      # The PR's one required status, written as this job ends[^\n]*\n      - name: " + re.escape(pv.STEP) + r"\n        if: always\(\) && (github\.event_name == 'pull_request'|inputs\.pr_suites != '')[^\n]*\n([\s\S]*?)\n(?=  [A-Za-z0-9_-]+:|\Z|\n)")
+        seen, exempt = 0, set()
+        for path in WORKFLOWS.glob('*.yml'):
+            text = path.read_text(); trigger = text.split('\njobs:')[0]
+            if not (re.search(r'(?m)^  pull_request:', trigger) or path.name == 'e2e.yml'):
+                continue
+            jobs = re.split(r'(?m)^(?=  [A-Za-z0-9_-]+:\s*(?:#.*)?$)', text.split('\njobs:\n', 1)[1])
+            needed = set()   # jobs a deciding job needs
+            for other in jobs:
+                other_name = re.search(r'(?m)^    name:\s*(.+?)\s*$', other)
+                other_if = re.search(r'(?m)^    if:\s*(.+)$', other)
+                if (other_name and other_name.group(1).strip('\'"') in pv.REPORT_JOBS) or '\n    steps:' not in other: continue
+                if other_if and ('refs/heads/main' in other_if.group(1) or "github.event_name == 'schedule'" in other_if.group(1)): continue   # main's jobs only
+                for need in re.findall(r'(?m)^    needs:\s*\[?([^\]\n#]+)', other): needed |= {n.strip() for n in need.split(',')}
+            for job in jobs:
+                key = job.split(':', 1)[0].strip(); name = re.search(r'(?m)^    name:\s*(.+?)\s*$', job); cond = re.search(r'(?m)^    if:\s*(.+)$', job)
+                if '\n    steps:' not in job or (name and name.group(1).strip('\'"') in pv.REPORT_JOBS) or key in needed:
+                    self.assertNotIn(pv.STEP, job, f'{path.name} {key}: a report job, or one a deciding job needs (it would see its run ended before them)')
+                    exempt.add((path.name, key)); continue
+                if cond and ('refs/heads/main' in cond.group(1) or "github.event_name == 'schedule'" in cond.group(1)):
+                    continue
+                with self.subTest(workflow=path.name, job=key):
+                    steps = re.findall(r'(?m)^      - (?:name|uses): *(.+)$', job)
+                    self.assertTrue(steps and steps[-1] == pv.STEP, f'last step is {steps[-1:]}: add the "{pv.STEP}" step (copy it from tests-python.yml)')
+                    self.assertIn('--job-status "$JOB_STATUS"', job)
+                    for perm in ('actions: read', 'statuses: write', 'pull-requests: read'):
+                        self.assertTrue(perm in job or perm in text.split('\njobs:')[0] or (perm == 'actions: read' and 'actions: write' in trigger), f'{perm} for the verdict')
+                    seen += 1
+        self.assertGreaterEqual(seen, 14, 'positive control: the PR jobs were found')
+        self.assertIn(('e2e.yml', 'plan'), exempt, 'positive control: e2e\'s plan is needed by its suites')
+        self.assertIn(('page-cases.yml', 'replay'), exempt, 'positive control: page-cases\' replays are needed by its report')
+        self.assertNotIn('Turn the PR red now', (WORKFLOWS / 'e2e.yml').read_text(), 'the suite job\'s verdict step turns it red as it ends')
+
+    def test_no_e2e_run_for_a_merged_or_closed_pr(self):
+        # #2041: an override merge deleted the branch; pr-suites' dispatch then failed (HTTP 422 "No ref found") and the merged head went red.
+        suites = (WORKFLOWS / 'pr-suites.yml').read_text()
+        self.assertRegex(suites, r'gh pr view "\$PR"[^\n]*--json state[^\n]*!= OPEN[^\n]*skipped=1[^\n]*exit 0')
+        self.assertIn("steps.start.outputs.skipped != '1'", suites)
+        self.assertLess(suites.index('!= OPEN'), suites.index('gh workflow run e2e.yml'))
+
+
+def job(id, name, status='completed', conclusion='success', steps=None, runner=''):
+    return {'id': id, 'name': name, 'status': status, 'conclusion': conclusion if status == 'completed' else None, 'runner_name': runner,
+            'steps': steps if steps is not None else [{'name': 'Run tests', 'status': 'completed', 'conclusion': 'success'}]}
+
+
+def ending(id, name, conclusion='success'):
+    """A job whose own work ended; only its verdict step and clean-up are left."""
+    return job(id, name, status='in_progress', steps=[{'name': 'Run tests', 'status': 'completed', 'conclusion': conclusion},
+                                                      {'name': pv.STEP, 'status': 'in_progress'}, {'name': 'Post Run actions/checkout@v5', 'status': 'queued'}])
+
+
+NOW = pv._at('2026-10-26T03:10:00Z')
+E2E = 'CI · End-to-end on Mac + Linux'
+
+
+class JobByJob(unittest.TestCase):
+    def test_the_job_writing_counts_itself_ended_with_its_status(self):
+        runs = [run('CI · Pull request'), run('CI · Tests · python', status='in_progress', id=2)]
+        jobs = {2: [job(20, 'python', status='in_progress', steps=[{'name': pv.STEP, 'status': 'in_progress'}], runner='r1')]}
+        state, why, _, finishing, _ = pv.verdict(runs, jobs=jobs, me=20, my_status='success', now=NOW)
+        self.assertEqual((state, finishing), ('success', []), why)
+        self.assertEqual(pv.verdict(runs, jobs=jobs, me=20, my_status='failure', now=NOW)[0], 'failure')
+        state, _, _, finishing, _ = pv.verdict(runs, jobs=jobs, now=NOW)
+        self.assertTrue(pv.leave_it(finishing, None), 'the backstop leaves it to the job ending')
+        jobs[2][0]['steps'] = [{'name': 'Run tests', 'status': 'in_progress'}, {'name': pv.STEP, 'status': 'queued'}]
+        self.assertEqual(pv.verdict(runs, jobs=jobs, now=NOW)[0], 'pending', 'its tests still run')
+
+    def test_44_a_report_job_queued_for_a_runner_never_holds_the_verdict(self):
+        # #2044: settings green at 04:36, e2e's "HTML report" queued for a runner, the PR could not merge
+        e2e = run(E2E, status='in_progress', event='workflow_dispatch', title='E2E for PR · settings · apply-split', id=3)
+        jobs = {3: [job(30, 'plan'), job(31, 'settings', status='in_progress', steps=[{'name': 'Run', 'status': 'completed', 'conclusion': 'success'}, {'name': pv.STEP, 'status': 'in_progress'}], runner='r9'),
+                    job(32, 'HTML report', status='queued', steps=[]), job(33, 'Telegram alert', conclusion='skipped')]}
+        self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], jobs=jobs, me=31, my_status='success', now=NOW)[0], 'success')
+        jobs[3][3] = job(33, 'HTML report', conclusion='failure')
+        self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], jobs={3: jobs[3][:2] + jobs[3][3:]}, me=31, my_status='success', now=NOW)[0], 'success')
+
+    def test_jobs_ending_together_the_highest_id_writes(self):
+        runs = [run('CI · Tests · python', status='in_progress', id=2), run('CI · Tests · worker', status='in_progress', id=4)]
+        jobs = {2: [ending(20, 'python')], 4: [ending(40, 'worker')]}
+        state, _, _, finishing, _ = pv.verdict(runs, jobs=jobs, me=40, my_status='success', now=NOW)
+        self.assertEqual((state, finishing), ('success', [20]))
+        self.assertFalse(pv.leave_it(finishing, 40), 'the highest waits for 20 to end, then writes')
+        self.assertTrue(pv.leave_it(pv.verdict(runs, jobs=jobs, me=20, my_status='success', now=NOW)[3], 20), '20 leaves it to 40')
+        self.assertTrue(pv.leave_it([20], None), 'the backstop leaves it to the jobs ending')
+        self.assertEqual(pv.verdict(runs, jobs={2: [ending(20, 'python', 'failure')], 4: jobs[4]}, me=40, my_status='success', now=NOW)[0], 'success',
+                         'a step that failed is not the job\'s end: it is read once the job ended')
+
+    def test_a_run_whose_jobs_ended_but_not_itself_is_waited_on(self):
+        # e2e between its plan and the suite jobs the plan's outputs create: never green then
+        e2e = run(E2E, status='in_progress', event='workflow_dispatch', title='E2E for PR · settings · b', id=3)
+        runs = [run('CI · Tests · python', status='in_progress', id=2), e2e]
+        jobs = {2: [job(20, 'python', status='in_progress', steps=[{'name': pv.STEP, 'status': 'in_progress'}], runner='r1')], 3: [job(30, 'plan')]}
+        self.assertEqual(pv.verdict(runs, jobs=jobs, me=20, my_status='success', now=NOW)[0], 'settling')
+
+    def test_pending_names_the_e2e_suites_running_and_links_that_run(self):
+        e2e = run(E2E, status='in_progress', event='workflow_dispatch', title='E2E for PR · settings,apply · b', id=3, at='2026-10-26T03:02:00Z')
+        jobs = {3: [job(30, 'plan'), job(31, 'settings', status='in_progress'), job(32, 'apply', status='queued', steps=[])]}
+        state, why, _, _, target = pv.verdict([run('CI · Pull request'), e2e], jobs=jobs, now=NOW)
+        self.assertEqual((state, target), ('pending', 3))
+        self.assertEqual(why, 'waiting 10 min: e2e settings, apply')
+        self.assertEqual(pv.verdict([run('CI · Pull request'), e2e], now=NOW)[1], 'waiting 10 min: e2e settings,apply')
+
+    def test_a_merged_or_closed_pr_gets_nothing(self):
+        # #2041: merged by override, then a late job wrote "All checks passed: failure" on the merged head
+        self.assertEqual(pv.open_pr([{'number': 2041, 'state': 'closed', 'merged_at': '2026-10-26T04:00:00Z'}]), ('', False))
+        self.assertEqual(pv.open_pr([{'number': 2044, 'state': 'open', 'merged_at': None}]), ('2044', True))
+        self.assertEqual(pv.open_pr([]), ('', True))
 
 if __name__ == '__main__':
     unittest.main()

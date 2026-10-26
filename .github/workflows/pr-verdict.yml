@@ -1,4 +1,5 @@
 name: CI · PR verdict
+# The BACKSTOP since 26 Oct 2026 (#2042/#2044: this job waited minutes for a runner): every PR job's last step, "Write the PR's verdict", writes the status as it ends.
 # Writes the one required status of a pull request, "All checks passed" (tools/pr-verdict.py), each time one of its workflows ends: pending while any runs, red at
 # the first red, green when all ended green. A job of seconds per event; nothing holds a runner to wait (owner, 26 Oct 2026: "How could you design such a slow and
 # inefficient method of checking PRs?"). Until 26 Oct pr-gate.yml's "Other workflows passed" and pr-suites.yml's wait each sat on a runner ~20 min per push.

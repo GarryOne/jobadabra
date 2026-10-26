@@ -27,7 +27,7 @@ class RecordedPagesWorkflow(unittest.TestCase):
         self.assertIn('JP_REPLAY: 1', WORKFLOW)
         self.assertIn('playwright', WORKFLOW)   # Chromium for the real extension
         self.assertNotIn('heavy-lock', WORKFLOW, 'a CI runner is its own machine: no lock')
-        self.assertNotIn('continue-on-error', WORKFLOW, 'a failing case fails the run')
+        self.assertEqual(WORKFLOW.count('continue-on-error'), WORKFLOW.count("name: Write the PR's verdict"), 'a failing case fails the run (only the verdict step may not)')
         self.assertIn('JP_REPLAY_TABS', WORKFLOW)
 
     def test_a_failing_run_is_seen_by_the_red_main_rule(self):

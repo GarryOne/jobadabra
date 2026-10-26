@@ -239,7 +239,9 @@ jobs:
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
-      statuses: write   # a pull request's red suite turns its "All checks passed" red at once (tools/pr-verdict.py --red)
+      statuses: write   # the PR's "All checks passed", written as the job ends (tools/pr-verdict.py)
+      actions: read     # the commit's runs and jobs, for that verdict
+      pull-requests: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -354,13 +356,6 @@ jobs:
             echo "Failed again on the same commit: a real failure." | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1   # red twice: the job (and the gate) fail
           fi
-      # A pull request's suite red (red twice, or its setup broke): the PR's "All checks passed" turns red now, not when the slowest suite ends (tools/pr-verdict.py;
-      # pr-verdict.yml writes the final state when the run ends). Nothing waits on a runner for this (26 Oct 2026).
-      - name: Turn the PR red now
-        if: failure() && inputs.pr_suites != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 lock-tools/tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "${{ github.sha }}" --red "e2e suite ${{ matrix.key }} red (run ${{ github.run_id }})"
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run
@@ -487,6 +482,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
+      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
+      - name: Write the PR's verdict
+        if: always() && inputs.pr_suites != ''   # the e2e run a PR started (pr-suites.yml)
+        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
+          py=python3; "$py" -c 1 2>/dev/null || py=python
+          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"
 
   # Nothing tested is never green (gate G7, owner's yes 26 Oct 2026). A scheduled run on main that planned no suite (a release run was testing, the commit's looks were
   # used up, nothing varies) used to end green: on 25 Oct the 23:33 and 23:47 runs skipped while beta 2 ran and read as a green main. It now says why and ends CANCELLED

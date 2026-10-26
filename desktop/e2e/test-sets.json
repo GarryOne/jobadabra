@@ -292,6 +292,7 @@
   "triage-cli.test.mjs",
   "triage-evidence.test.mjs",
   "triage-rank.test.mjs",
+  "triage-seen-again.test.mjs",
   "triage.test.mjs",
   "truth-data.test.mjs",
   "truth.test.mjs",

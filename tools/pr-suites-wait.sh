@@ -26,10 +26,24 @@ done
 url="https://github.com/${repo}/actions/runs/${id}"
 echo "Waiting for the PR's e2e run: ${url}" | tee -a "$summary"
 
+failed_jobs() { gh api "repos/${repo}/actions/runs/${id}/jobs?per_page=100" --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | paste -sd, - | sed 's/,/, /g'; }
+red_exit() {   # $1: the red jobs, $2: what the run did
+  {
+    echo "::error::The PR's e2e run ${2}: ${1:-see the run}."
+    echo "❌ E2E suites red on this PR (${1:-$2}): ${url}"
+    echo "Read the failed step's screenshot and log in that run (skill fix-failing-e2e), fix the test or the product, push again."
+  } | tee -a "$summary"
+  exit 1
+}
+
+# A suite job that ended red already decides (its second try ran inside the job): stop at once, never wait for the rest of the run.
+# Why: 26 Oct 2026, #1992's wander and quality were red at 02:12 and the PR waited 31 minutes for the other suites before it was blocked.
 state=
 while :; do
   state="$(gh api "repos/${repo}/actions/runs/${id}" --jq '"\(.status) \(.conclusion // "-")"' 2>/dev/null)"
   case "$state" in completed\ *) break ;; esac
+  red="$(failed_jobs)"
+  [ -n "$red" ] && red_exit "$red" "has a red suite, not waiting for the others"
   if [ $(( $(date +%s) - start )) -ge "$wait_max" ]; then
     echo "::error::The e2e run is still running after $(( wait_max / 60 )) min (a suite waiting on its lock?): ${url}" | tee -a "$summary"; exit 1
   fi
@@ -40,10 +54,4 @@ conclusion="${state#completed }"
 if [ "$conclusion" = success ] || [ "$conclusion" = skipped ]; then
   echo "✅ The PR's e2e suites passed: ${url}" | tee -a "$summary"; exit 0
 fi
-red="$(gh api "repos/${repo}/actions/runs/${id}/jobs?per_page=100" --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | paste -sd, - | sed 's/,/, /g')"
-{
-  echo "::error::The PR's e2e run ended ${conclusion}: ${red:-see the run}."
-  echo "❌ E2E suites red on this PR (${red:-$conclusion}): ${url}"
-  echo "Read the failed step's screenshot and log in that run (skill fix-failing-e2e), fix the test or the product, push again."
-} | tee -a "$summary"
-exit 1
+red_exit "$(failed_jobs)" "ended ${conclusion}"

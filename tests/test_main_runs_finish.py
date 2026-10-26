@@ -69,6 +69,9 @@ class NewestMainRunWins(unittest.TestCase):
 # 26 Oct 2026: 10 red suites started 10 bisects at once (group e2e-bisect-<suite>) and main checks had no group; the job queue held PR checks 20+ minutes.
 # A workflow that ANOTHER workflow starts (workflow_run, or a chain like the bisect) needs a group that cannot multiply: no run id, commit or input in it.
 MULTIPLIERS = re.compile(r'github\.(run_id|run_number|run_attempt|sha)|inputs\.')
+PER_COMMIT_OK = {   # may keep one run per commit: its trigger runs at most once a night, so it cannot fill the queue
+    'fix-verdicts.yml': 'starts only after the nightly offline site replay on main; each commit keeps its verdict (tests/test_fix_verdicts_workflow.py)',
+}
 CHAINS = {   # started by another workflow through `gh workflow run`, with their one group
     'e2e-bisect.yml': 'e2e-bisect',
 }
@@ -85,7 +88,8 @@ class NothingMultiplies(unittest.TestCase):
         for name, text in {**started, **{n: workflows()[n] for n in CHAINS}}.items():
             group, cancel = concurrency(text)
             self.assertTrue(group, f'{name}: no concurrency group: each start can add a run to the queue')
-            self.assertIsNone(MULTIPLIERS.search(group), f'{name}: group {group} has one run per run/commit/input: it multiplies')
+            if name not in PER_COMMIT_OK:
+                self.assertIsNone(MULTIPLIERS.search(group), f'{name}: group {group} has one run per run/commit/input: it multiplies')
             self.assertEqual(cancel, 'false', f'{name}: a started run finishes; the newest waits')
             if name in CHAINS: self.assertEqual(group, CHAINS[name], name)
 
@@ -94,6 +98,7 @@ class NothingMultiplies(unittest.TestCase):
         self.assertIn("&& 'e2e-main' ||", group or '', 'the Worker cron and the backup schedule wait in one group')
         self.assertIn('inputs.scheduled', group)
         self.assertIn("github.event_name == 'schedule' && github.workflow == 'CI · End-to-end on Mac + Linux'", group, 'the release run calling it never joins')
+        self.assertIn("inputs.bisect && 'e2e-bisect-step'", group, 'bisect steps (the runs cancelled by hand on 26 Oct 2026) wait in one line too')
         self.assertIn("format('e2e-{0}', github.run_id)", group, 'any other run is its own group')
         self.assertEqual(cancel, 'false')
 

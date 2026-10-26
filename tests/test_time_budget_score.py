@@ -1,29 +1,27 @@
-"""Scoring keeps its own minutes of a timed search, whatever the steps before it spent (src/time_budget.py score_own)."""
+"""Scoring keeps its part of a timed search, whatever the steps before it wanted (src/time_budget.py RESERVE). 18 Oct 2026, #1440: placing and
+sorting took ~165 of the 180 s and Cluj's first search scored 6 jobs instead of 57; then score_own gave scoring its own minutes past the
+deadline, and runs took 12-23 min (owner, 26 Oct 2026: "A find jobs session should take at most 3min"). Now titles stop 80 s before the
+one deadline and the reads at half of it, so scoring's part is kept inside the 3 minutes."""
 import unittest
 
 from src import time_budget
 
 
-class ScoreOwnTest(unittest.TestCase):
+class ScoringKeepsItsPartTest(unittest.TestCase):
     def tearDown(self):
         time_budget.start(0)
 
-    def test_scoring_gets_its_own_budget_after_the_other_steps_spent_the_clock(self):
-        # 18 Oct 2026, Cluj: 165 of 180 s gone before scoring; it scored the 3-job floor instead of ~55
-        for spent in (0, 60, 165, 179, 400):   # every way the steps before can use the budget, even past the deadline
-            with self.subTest(spent=spent):
-                time_budget.start(180, now=0)
-                time_budget.score_own(now=spent)
-                taken = time_budget.batch('score', 1000, now=spent, say=False)
-                self.assertGreaterEqual(taken, 50, f'scoring took {taken} of 1000 jobs after {spent} s')
+    def test_titles_stop_early_enough_for_scoring_to_take_a_real_batch(self):
+        time_budget.start(180, now=0)
+        stop = next(second for second in range(181) if time_budget.over('titles', now=second))
+        self.assertEqual(stop, 100)
+        self.assertGreaterEqual(time_budget.batch('score', 1000, now=stop, say=False), 20, 'scoring still has ~70 s at the titles\' stop')
 
-    def test_no_budget_stays_no_budget_and_a_longer_deadline_is_kept(self):
+    def test_no_budget_stays_no_budget(self):
         time_budget.start(0)
-        time_budget.score_own(now=5)
         self.assertIsNone(time_budget.DEADLINE)
-        time_budget.start(1000, now=0)
-        time_budget.score_own(now=10)
-        self.assertEqual(time_budget.DEADLINE, 1000)
+        self.assertFalse(time_budget.over('score'))
+        self.assertFalse(time_budget.ended())
 
 
 if __name__ == '__main__':

@@ -277,6 +277,10 @@ def auto_run(db, candidates, stores, model, max_jobs, min_score, client=None, op
     pending = pending_for_auto(db, candidates, min_score, max_jobs)
     if not pending:
         return '0 kit(s) auto-drafted', []
+    from .. import time_budget
+    if time_budget.ended():   # the search's time is up: the kits are drafted by the next search (tests/test_three_minutes.py)
+        time_budget.later('kits', len(pending), 'kits' if len(pending) != 1 else 'kit')
+        return '0 kit(s) auto-drafted', []
     if client is None:
         client = engine.client(action='kit')
     profile, answers = stores.texts.plain('profile'), standard_answers(stores)

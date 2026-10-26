@@ -123,6 +123,11 @@ def scan(db, api_key, config, opener=urllib.request.urlopen, now=None):
     """Run this turn's searches; return a feeds.scan-style report ({'jobs', 'sources'})."""
     now = now or datetime.now(timezone.utc).isoformat(timespec='seconds')
     report = {'jobs': [], 'sources': []}
+    from . import read_budget
+    if read_budget.past_cut():   # the run's read time is up: this turn's searches wait for the next search (tests/test_three_minutes.py)
+        from .. import time_budget
+        time_budget.later('Google Jobs', 1, 'turn of searches')
+        return report
     languages = places(config)
     if not languages or not config['queries']:
         print('Google Jobs skipped: no Google Jobs searches or places are set in your Search settings')

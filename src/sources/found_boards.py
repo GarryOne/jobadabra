@@ -17,9 +17,10 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from datetime import datetime, timezone
 
-from .. import run_counts
+from .. import run_counts, time_budget
 from ..progress import Ticker
 from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, read_budget
+from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
 FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up to this many (a board gave 3 jobs from 2 of the driver's 5, 18 Oct 2026)
@@ -235,9 +236,17 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
     (src/sources/board_forms.py), kept as the board's link (the pool share sends it, src/contribute.py); else the job list it declares
     itself (a feed, its home page's own data or the sitemap in robots.txt: board_routes, job pages naming the search words first), kept
     as its route (owner, 18 Oct 2026: Randstad listed warehouse jobs for "financial analyst" and has a job sitemap). Else `before`; the
-    board is not looked at again while the proposed link stays the same."""
+    board is not looked at again while the proposed link stays the same. The search's read cut stops it between two ways (cut): the board goes
+    up the ladder again next time (26 Oct 2026, a proof run: a ladder started at 77 s ran to 133 s, past the 90 s cut)."""
     entry['form_for'], entry['ladder'] = proposed, LADDER
-    refused = []   # a step whose page refused us or only scripts fill: the board ends as a visit, not as "0 jobs" (24 Oct 2026: a bot check behind the search form)
+    refused = []
+
+    def cut():   # past the search's read cut: no next way; not marked as gone up, so the next search tries it
+        if read_budget.past_cut():
+            entry.pop('form_for', None)
+            entry.pop('ladder', None)
+            return True
+        return False   # a step whose page refused us or only scripts fill: the board ends as a visit, not as "0 jobs" (24 Oct 2026: a bot check behind the search form)
 
     def stands(answer):
         return (answer[0], 'browser', answer[2]) if refused and answer[1] != 'ok' else answer
@@ -254,12 +263,16 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
             entry['search_url'] = bare
             print(f"Job boards found: {board['name']} read without the link's extra filters", flush=True)
             return again, state, relevant
+    if cut():
+        return stands(before)
     if before[0]:   # the rules read something that was no relevant job (a menu, a news search): the AI reads the page itself
         read = _read_by_ai(board, search, fetch)
         relevant = judge(read) if read else []
         if relevant:
             print(f"Job boards found: {board['name']} read by the AI page reader", flush=True)
             return read, 'ok', relevant
+    if cut():
+        return stands(before)
     page = board_forms.home(board, fetch)
     if show and page[1] and careers._shell(page[1]):   # a home page built by scripts: its search form exists only in the headless browser
         try:
@@ -267,6 +280,8 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         except Exception:  # noqa: BLE001 — refused or no browser: the plain home page stands
             pass
     for template in board_forms.home_templates(board, fetch, page):
+        if cut():
+            return stands(before)
         try:
             again, state, _ = read_board({**board, 'search_url': template}, search, fetch, None, show=show)
         except Exception:  # noqa: BLE001 — a form link that fails: the next one, or the proposed link's result
@@ -278,12 +293,16 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
             entry['form_url'] = entry['search_url'] = template
             print(f"Job boards found: {board['name']} read through its own search form", flush=True)
             return again, state, relevant
+    if cut():
+        return stands(before)
     listed, section, scripted = _section(board, page, search, fetch, judge, show)   # the board's own section for this kind of work (board_sections.py)
     if listed:
         entry['search_url'] = section
         entry['rendered'] = scripted or entry.get('rendered', False)
         print(f"Job boards found: {board['name']} read from its own section", flush=True)
         return listed, 'ok', judge(listed)
+    if cut():
+        return stands(before)
     try:
         listed, route = board_routes.discover(page[1], page[0], fetch, board, _terms(search, FULL_SEARCHES))
     except board_routes.Stop:   # its own list refused us: the search page's answer stands, the board is not marked for a visit
@@ -295,31 +314,9 @@ def _another_way(board, entry, proposed, search, fetch, judge, before, show=None
         entry['route'], entry['route_kind'] = route, route['kind']   # read_board follows it first from then on
         print(f"Job boards found: {board['name']} read from its own job list ({route['kind']})", flush=True)
         return listed, 'ok', relevant
+    if cut():
+        return stands(before)
     return _rendered(board, entry, proposed, page, search, fetch, show, judge) or stands(before)
-
-
-def _rendered(board, entry, proposed, page, search, fetch, show, judge):
-    """(jobs, 'ok', relevant) from the board's search page, else its home page, read after its scripts ran (headless browser), for a board whose
-    list is built by scripts although the page has text (owner, 24 Oct 2026: a Moldovan board's list page held 7 menu links, 36 jobs after the scripts);
-    kept as the board's way (entry['rendered']). None with no browser, a refusal or no relevant job. The job pages themselves are read as usual."""
-    if show is None:
-        return None
-    terms, places = _terms(search, 1), _places(search)
-    filled = proposed.replace('{role}', urllib.parse.quote_plus(terms[0] if terms else '')).replace('{place}', urllib.parse.quote_plus(places[0]))
-    for url in dict.fromkeys([filled, page[0]]):
-        try:
-            markup = show(url)
-            found = careers.jsonld_jobs(markup, url) or careers.read_page_from(markup, url, fetch)
-        except Exception as error:  # noqa: BLE001 — refused (401/403, a bot check), not allowed or no browser: the other answers stand
-            careers.note_refusal(url, error)
-            continue
-        shaped = _shaped(board, found) if found else []
-        relevant = judge(shaped) if shaped else []
-        if relevant:
-            entry['rendered'] = True
-            print(f"Job boards found: {board['name']} read after its scripts ran", flush=True)
-            return shaped, 'ok', relevant
-    return None
 
 
 def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None, early=False, workers=BOARD_WORKERS, spare=(), web=True, since=None):
@@ -329,7 +326,11 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     read at once. spare: boards read, in their order, each in place of one that refuses automated reading, as soon as it refuses (owner,
     19 Oct 2026: a second wave after the first made Finance's first-jobs step wait 35 s; 4 of music's first 6 boards refused). web: a full
     read with no trade or local board that gave a job asks one web search for them and reads what it finds (src/sources/board_web.py).
-    since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since)."""
+    since: the boards read since then are skipped (the same search within the scan's spacing, board_yield.not_read_since).
+    Past the search's read cut nothing is read, asked or tried another way: it waits for the next search (tests/test_three_minutes.py)."""
+    if read_budget.past_cut():
+        time_budget.later('job boards', len(boards) if boards is not None else 1, 'boards' if boards is not None and len(boards) != 1 else 'board read')
+        return []
     from ..ai import board_ideas
     # the headless browser, for the real web only: never a test's pages, and off with the page reader (tests turn it off: test_found_boards_ai.py)
     show = careers.renderer() if fetch in (None, careers.get_text) and careers.READER is not None else None
@@ -360,6 +361,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     spares = list(enumerate(item(board) for board in (board_yield.pick(spare, kept, retry, dropped, remember=False) if spare else [])
                             if board['host'] not in hosts))
     taken, lock = [], threading.Lock()   # taken: (spare order, item, result) of the boards read in place of one that refused
+    waiting = []   # boards whose read or other ways wait for the next search: the run's time is up (read_budget.past_cut)
 
     def one(read_item):   # one board's pages; what is kept of it is decided below, in the list's order, in this thread
         board, entry, pages, fetched, _ = read_item
@@ -416,13 +418,17 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             entry['last_read'] = stamp
             board_yield.record(entry, 0, 0, 'empty')
             return
-        if not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
+        late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
+        if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
+            waiting.append(board['name'])
+        elif not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
             from ..ai import decide
             failed = decide.FAILED[0]
             found, state, relevant = _another_way(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
             _retry_when_unjudged(entry, relevant, decide.FAILED[0] > failed)
         elif (0 < len(relevant) < FEW_RELEVANT and not (early or route) and state != 'browser' and (board.get('source_kind') or 'general') == 'general'
-              and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
+              and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed
+              and not late):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more
             found, state, relevant = _fuller_section(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})
@@ -443,11 +449,17 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     pool.shutdown(wait=not left, cancel_futures=True)
     if left:
         print(f"Job boards: {', '.join(left)} still being read at the search's time; read next time", flush=True)
+        waiting += left
     for _, spare_item, result in sorted(taken, key=lambda entry: entry[0]):   # after the others, in the spares' order: a replay sees one order
         keep(spare_item, result)
     more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
     board_ideas.save(data)
     board_employers.note(jobs, 'Job boards found')
+    if more and read_budget.past_cut():   # found too late for this search: kept with the web search's boards, read by the next one
+        waiting += [board['name'] for board in more]
+        more = []
+    if waiting:
+        time_budget.later('job boards', len(waiting), 'boards' if len(waiting) != 1 else 'board')
     if more:
         jobs.extend(read(search, more, fetch, now, is_relevant, dead, workers=workers, web=False))
     return jobs

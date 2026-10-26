@@ -181,7 +181,6 @@ def search(args, stores=None):
             try:
                 from . import time_budget
                 time_budget.score_first()   # the facts are read after scoring: scoring leaves them their time (src/time_budget.py)
-                time_budget.score_own()     # scoring has its own minutes: placing and sorting no longer spend them first
                 waiting = score.queue(db, to_score(db, hidden), read_profile())
                 taken = time_budget.batch('score', len(waiting))
                 batch, batch_started = {job['id'] for job in waiting[:taken]}, __import__('time').monotonic()

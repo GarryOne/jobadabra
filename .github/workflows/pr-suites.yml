@@ -17,6 +17,17 @@ on:
       - 'desktop/e2e/suites/**'
       - 'desktop/e2e/lib/**'
       - 'extension/**'
+      # The files suites watch (their `export const watches`; #2043 changed quality's score.py and never started this: tests/test_workflow_paths.py)
+      - 'src/ai/score.py'
+      - 'src/ai/enrich.py'
+      - 'src/ai/hints.py'
+      - 'src/ai/mail.py'
+      - 'src/ai/mail_inbox.py'
+      - 'src/ai/mail_read.py'
+      - 'src/ai/mail_triage.py'
+      - 'tools/mail_eval.py'
+      - 'tests/fixtures/mail_eval.json'
+      - 'desktop/e2e/fixtures/golden/**'
       - '.github/workflows/pr-suites.yml'
 
 permissions:

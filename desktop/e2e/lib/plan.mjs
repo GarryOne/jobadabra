@@ -9,9 +9,21 @@ const SMOKE = 'settings';   // AI-free, about 30 s: proof that the shared test c
 // A suite's cadence (its `cadence` export): 'always' (default) runs on every automatic run, 'nightly' only in the nightly release gate and on a push that touches
 // its own files or `watches`, 'watched' never in a schedule or the nightly gate but ONLY on a push that touches its own files or `watches` (a suite that
 // costs real AI money and judges one piece of code: the mail reading eval), 'manual' never by itself (a person names it). cadence: {suite: 'nightly'}; watches: {suite: ['src/ai/score.py', 'dir/']}.
-export function autoSuites(all, cadence = {}, alwaysOnly = false) {
-  return all.filter(suite => { const when = cadence[suite] || 'always'; return alwaysOnly ? when === 'always' : (when !== 'manual' && when !== 'watched'); });
+// 'slim' runs like 'always' (the night's schedule, every release gate, a push that touches it) but never in a release's repeats: the soak top-ups and the stable canary
+// (`repeat`). The e2e audit's keep 11 / slim 15 / drop 4 (owner's yes, 26 Oct 2026): no product bug caught in 30 days, so a night and a beta are enough.
+export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false) {
+  return all.filter(suite => {
+    const when = cadence[suite] || 'always';
+    if (when === 'slim') return !repeat;
+    return alwaysOnly ? when === 'always' : (when !== 'manual' && when !== 'watched');
+  });
 }
+
+// The slim suites, as one table here rather than a `cadence` export in each suite: a PR that edits a suite file runs that suite, so 15 exports would run 15 suites
+// on the PR that slims them. A dropped suite exports cadence 'manual' itself (a manual suite never runs on a PR). Guard: test/suite-cadence.test.mjs.
+export const SLIM = ['calendar', 'failuresnotion', 'focus', 'focusdismiss', 'interviews', 'jobs', 'recorded', 'storemove', 'stores', 'strategy', 'updates', 'visitread', 'visitsauto', 'wander', 'wizard'];
+// A suite's cadence from its module: the table's 'slim', else its own export. Every reader (plan-run.mjs suiteFacts, suite.mjs, run-all.mjs) goes through it.
+export const cadenceOf = (suite, module) => (SLIM.includes(suite) ? 'slim' : module.cadence);
 
 // A helper file under desktop/e2e (not a suite) also runs the suites that import it, when they are few: `uses` = {path under desktop/e2e: [suites]} (lib/import-graph.mjs).
 // One that nearly every suite imports (layout.mjs) stays the settings smoke: it would otherwise run them all.

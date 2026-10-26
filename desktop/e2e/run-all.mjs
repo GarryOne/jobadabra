@@ -9,7 +9,7 @@ import {execFileSync, spawn} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {autoSuites, suitesNamed} from './lib/plan.mjs';
+import {autoSuites, cadenceOf, suitesNamed} from './lib/plan.mjs';
 import {SKIPPED, summarize} from './lib/skip.mjs';
 import {heavy} from './lib/heavy.mjs';
 import {localRunRefused} from './lib/local-run.mjs';
@@ -84,7 +84,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // the suites load app code that needs desktop/shared/ (test/ensure-staged.test.mjs)
   const {SUITES} = await import('./lib/context.mjs');
   const cadence = {}, tokenOf = {};   // tokenOf: a suite that uses another's Notion token (notion-real) gets that Keychain item loaded
-  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (module.cadence) cadence[suite] = module.cadence; if (module.notionTokenOf) tokenOf[suite] = module.notionTokenOf; }
+  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.notionTokenOf) tokenOf[suite] = module.notionTokenOf; }
   const wrong = argProblems(process.argv.slice(2), SUITES);
   if (wrong.length) { console.error(`run-all: ${wrong.join('; ')}`); process.exit(2); }
   let suites;

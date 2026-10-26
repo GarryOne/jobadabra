@@ -1,7 +1,7 @@
 /* global window */
 // The one suite on REAL Notion (P7 step 5, spec docs/superpowers/specs/2026-10-09-store-adapters.md): what the in-memory stand-in cannot prove. An app on
 // this Mac's store with real-shaped data (lib/store_seed.py) connects a real test workspace, moves its data there, and the records, the kit, the application
-// record, the interview and the file read back from Notion's own pages; the screens show the same. Nightly release gate only.
+// record, the interview and the file read back from Notion's own pages; the screens show the same. Run by name only (cadence 'manual').
 // Isolation: the only suite that may pin store 'notion' (test/store.test.mjs); its token is a pre-P7 suite's, idle since that suite runs on the stand-in
 // (failuresnotion, owner's choice 9 Oct 2026); testRoot() refuses any workspace but "Job Pilotto 2" and any token that sees more than its one page. It writes
 // only under that page, starts from an emptied page (fresh) and empties it again at the end, asserting nothing is left. No AI: a dummy key, nothing scored.
@@ -17,7 +17,8 @@ export const store = 'notion';
 export const notionTokenOf = 'failuresnotion';   // its Keychain item and GitHub secret (a hyphen-free name: E2E_NOTION_TOKEN_FAILURESNOTION)
 export const notionPage = 'Job Pilotto E2E — Failures Notion';   // the one page it may empty (lib/context.mjs fails on any other)
 export const fresh = true;                       // the page starts empty: last night's workspace would make the move land in an existing one
-export const cadence = 'nightly';
+// No schedule, push or release gate runs it: the e2e audit dropped it (no catch in 30 days; owner's yes, 26 Oct 2026). Run it by name (cadence 'manual', lib/plan.mjs).
+export const cadence = 'manual';
 export const keepGoing = true;
 export const minutes = 15;
 

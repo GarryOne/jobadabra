@@ -9,6 +9,8 @@ import {python, pythonEnv} from '../lib/python.mjs';
 
 export const name = 'pool';
 export const minutes = 2;
+// No schedule, push or release gate runs it: the e2e audit dropped it (no catch in 30 days; owner's yes, 26 Oct 2026). Run it by name (cadence 'manual', lib/plan.mjs).
+export const cadence = 'manual';
 export const light = true;
 export const keepGoing = true;
 

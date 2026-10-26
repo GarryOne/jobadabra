@@ -160,6 +160,7 @@
   "pr-suites-steps.test.mjs",
   "runner-picked-steps.test.mjs",
   "plan-gate-real.test.mjs",
+  "suite-cadence.test.mjs",
   "key-preflight.test.mjs",
   "plan-windows.test.mjs",
   "import-graph.test.mjs",

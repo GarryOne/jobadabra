@@ -91,7 +91,7 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
         return []
     try:
         search = search_for(db, country)
-        proposed = (ideas or board_ideas.ideas)(search)[:MAX_BOARDS]
+        proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS]   # several kinds: no one field to ask for
         began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
         try:

@@ -34,9 +34,11 @@ function readTree(root, dir = '', out = {}) {
   return out;
 }
 
-// A suite's `watches` (plan.mjs) plus the Python files a watched .py file imports from its own folder, followed through: #2043 changed src/ai/schema_notes.py,
+// A suite's `watches` (plan.mjs) plus the Python files a watched .py file imports DIRECTLY from its own folder: #2043 changed src/ai/schema_notes.py,
 // which score.py (quality watches it) imports, and quality never ran. Only its own folder (src/ai/ for the prompts): followed into src/, score.py reaches 165
-// files through the store, and every engine change would run quality. `read(path)` -> the file's text, or null when there is none.
+// files through the store. Only one hop (26 Oct 2026 audit): followed through, mailreading's 4 files grew to 56 (all of src/ai: score, decide, interviews),
+// and 8 of 32 PRs ran mailreading on lines it never reads; a deeper change is picked by the code → suite map's Python lines instead. An imported package
+// (`from . import providers`) is watched as its folder. `read(path)` -> the file's text, or null when there is none.
 const PY_FROM = /^\s*from\s+(\.+|src\.)([\w.]*)\s+import\s+(\([^)]*\)|[^\n#]+)/gm;
 export function watchesWithImports(watches, read = file => { try { return fs.readFileSync(path.join(REPO, file), 'utf8'); } catch { return null; } }) {
   const moduleFile = base => [`${base}.py`, `${base}/__init__.py`].find(file => read(file) != null);
@@ -57,10 +59,10 @@ export function watchesWithImports(watches, read = file => { try { return fs.rea
   };
   const result = {};
   for (const [suite, paths] of Object.entries(watches || {})) {
-    const seen = new Set(paths), queue = paths.filter(file => file.endsWith('.py')).map(file => [file, path.posix.dirname(file) + '/']);
-    while (queue.length) {
-      const [file, home] = queue.pop();
-      for (const next of importsOf(file)) if (next.startsWith(home) && !seen.has(next)) { seen.add(next); queue.push([next, home]); }
+    const seen = new Set(paths);
+    for (const file of paths.filter(name => name.endsWith('.py'))) {
+      const home = path.posix.dirname(file) + '/';
+      for (const next of importsOf(file)) if (next.startsWith(home)) seen.add(next.endsWith('/__init__.py') ? next.slice(0, -'__init__.py'.length) : next);
     }
     result[suite] = [...seen];
   }

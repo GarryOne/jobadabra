@@ -102,6 +102,19 @@ class TheClass(unittest.TestCase):
                         missing.add(rel)
             self.assertEqual(sorted(missing), [], f'tests-{area}.yml: files its tests read but its paths never start on')
 
+    def test_every_file_a_suite_watches_starts_the_pr_suites(self):
+        # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; pr-suites.yml had no src/ path, so it never started
+        # and quality never ran on the PR it was meant to judge. A suite's `watches` (lib/plan.mjs) only works when the file also starts the workflow.
+        missing = []
+        for suite in sorted((ROOT / 'desktop' / 'e2e' / 'suites').glob('*.mjs')):
+            found = re.search(r'(?m)^export const watches = \[([^\]]*)\]', suite.read_text())
+            for path in re.findall(r"'([^']+)'", found.group(1)) if found else []:
+                probe = f'{path}x.js' if path.endswith('/') else path
+                if not starts('pr-suites.yml', [probe]):
+                    missing.append(f'{suite.stem}: {path}')
+        self.assertTrue(any('quality' in line for line in missing) or starts('pr-suites.yml', ['src/ai/score.py']), 'positive control')
+        self.assertEqual(missing, [], 'pr-suites.yml paths: add these files its suites watch')
+
     def test_ship_waits_for_every_check_the_pr_started(self):
         # With one required check, a "green" that read only them would hand the owner a PR whose suites still run.
         self.assertNotIn('--required', (ROOT / 'tools/ship-pr.sh').read_text())

@@ -155,6 +155,7 @@ function renderConnections(status) {
   showAlert('conn', missing, status);
   const card = service => {
     const box = el('div', 'service-card is-row');
+    box.dataset.service = service.id;   // ⌘K folds its Manage under its card (nav.js)
     const text = el('span', 'service-text');
     text.append(el('b', '', service.name), el('span', 'muted small', service.what));
     const button = el('button', on[service.id] ? 'secondary' : 'secondary is-signal', on[service.id] ? 'Manage' : service.connect || 'Connect');

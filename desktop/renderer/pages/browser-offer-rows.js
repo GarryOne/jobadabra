@@ -18,8 +18,9 @@ export function browserOffer(run, {runs = [], settings = {}} = {}) {
     text: `${plural(count, 'site')}${which} refused Jobadabra. Your browser can read ${count === 1 ? 'it' : 'them'}: one at a time, in a private window, without your logins.`};
 }
 
-// ⌘K: brings you to the button on that run's card (it does not press it), or null when nothing is offered.
+// ⌘K: brings you to the button on that run's card (it does not press it), or null when nothing is offered. Named apart from the Actions card
+// "Find jobs using your browser" (which picks any sites to read): two rows with one label in Actions read as a duplicate (owner, 27 Oct 2026).
 export function paletteEntry({runs = [], settings = {}} = {}) {
   const run = newestSearch(runs), offer = browserOffer(run, {runs, settings});
-  return offer ? {label: LABEL, hint: `Read the ${plural(offer.count, 'site')} that refused Jobadabra, in your browser`, runId: run.id} : null;
+  return offer ? {label: `Read the ${plural(offer.count, 'site')} that refused Jobadabra`, hint: `${LABEL}, from the last Find jobs run`, runId: run.id} : null;
 }

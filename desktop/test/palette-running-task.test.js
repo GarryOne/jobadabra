@@ -62,5 +62,5 @@ test('the palette draws the shared spinner on a running row and an "Enter to ope
   const palette = read('palette.js');
   assert.match(palette, /command\.running\) label\.append\(.*className: 'spinner small'/);
   assert.match(palette, /Enter to \$\{shown\[active\]\?\.enter \|\| 'run'\}/);
-  assert.match(read('pages/nav.js'), /\{enter: entry\.enter, running: entry\.running\}/);
+  assert.match(read('pages/nav.js'), /\{enter: entry\.enter, running: entry\.running[,}]/);
 });

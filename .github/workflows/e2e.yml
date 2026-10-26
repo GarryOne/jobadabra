@@ -98,10 +98,10 @@ on:
         value: ${{ jobs.plan.outputs.ref }}
 
 # Main checks (the Worker's on-time run, GitHub's backup schedule) share ONE group: one runs, the newest waits, a started one finishes (26 Oct 2026: main checks and
-# bisect steps queued 11 deep and held PR suites 20+ minutes). Every other run (a PR's suites, a bisect step, a gate, a run by hand, the release run's call) is
+# bisect steps queued 11 deep and held PR suites 20+ minutes). Bisect steps (e2e-bisect.yml) share another. Every other run (a PR's suites, a bisect step, a gate, a run by hand, the release run's call) is
 # its own group: a PR cancels its older run per job below. Called by desktop.yml, github.workflow is the caller's name, so the release run never joins e2e-main.
 concurrency:
-  group: ${{ (inputs.scheduled || github.event_name == 'schedule' && github.workflow == 'CI · End-to-end on Mac + Linux') && 'e2e-main' || format('e2e-{0}', github.run_id) }}
+  group: ${{ (inputs.scheduled || github.event_name == 'schedule' && github.workflow == 'CI · End-to-end on Mac + Linux') && 'e2e-main' || inputs.bisect && 'e2e-bisect-step' || format('e2e-{0}', github.run_id) }}
   cancel-in-progress: false
 
 permissions:

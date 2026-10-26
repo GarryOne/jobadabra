@@ -38,7 +38,7 @@ else:
 '''
 
 
-def run_wait(data, since='2026-10-25T13:00:00Z'):
+def run_wait(data, since='2026-10-25T13:00:00Z', wait_s=20):   # 20 s: each fake gh call starts python; 2 s timed out a green run on a busy Mac
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
@@ -48,7 +48,7 @@ def run_wait(data, since='2026-10-25T13:00:00Z'):
         (tmp / 'data.json').write_text(json.dumps(data))
         summary = tmp / 'summary.md'
         env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'FAKE_GH': str(tmp), 'SHA': SHA, 'SINCE': since,
-               'PR_SUITES_POLL': '0', 'PR_SUITES_FIND_S': '1', 'PR_SUITES_WAIT_S': '2', 'GITHUB_STEP_SUMMARY': str(summary)}
+               'PR_SUITES_POLL': '0', 'PR_SUITES_FIND_S': '1', 'PR_SUITES_WAIT_S': str(wait_s), 'GITHUB_STEP_SUMMARY': str(summary)}
         proc = subprocess.run(['bash', str(WAIT), 'GarryOne/jobadabra', 'compact-run-banner', SHA, since], env=env, capture_output=True, text=True, timeout=60)
         return proc.returncode, proc.stdout + proc.stderr, summary.read_text() if summary.exists() else ''
 
@@ -64,6 +64,16 @@ class PrSuitesWait(unittest.TestCase):
         self.assertNotIn('activity', summary.split('E2E suites red')[1])
         self.assertIn('actions/runs/40213000001', summary)
 
+    def test_the_first_red_suite_fails_at_once_without_waiting_for_the_rest(self):
+        # 26 Oct 2026, #1992: wander and quality were red at 02:12; the wait went on for the whole run (31 min) before blocking.
+        code, out, summary = run_wait({'runs': [{'id': 40257076325, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:05Z'}],
+                                       'status': ['in_progress -'],
+                                       'jobs': [{'name': 'wander', 'conclusion': 'failure'}, {'name': 'apply', 'conclusion': None}]})
+        self.assertEqual(code, 1, out)
+        self.assertNotIn('still running', out, 'it stops at the first red job, not at the time limit')
+        self.assertIn('wander', summary)
+        self.assertIn('not waiting for the others', summary)
+
     def test_green_run_passes(self):
         code, out, summary = run_wait({'runs': [{'id': 7, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:05Z'}],
                                        'status': ['queued -', 'in_progress -', 'completed success'], 'jobs': []})
@@ -77,7 +87,7 @@ class PrSuitesWait(unittest.TestCase):
         self.assertIn('No e2e run', out)
 
     def test_a_run_that_never_ends_fails_by_name(self):
-        code, out, _ = run_wait({'runs': [{'id': 8, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:01Z'}], 'status': ['in_progress -'], 'jobs': []})
+        code, out, _ = run_wait({'runs': [{'id': 8, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:01Z'}], 'status': ['in_progress -'], 'jobs': []}, wait_s=2)
         self.assertEqual(code, 1, out)
         self.assertIn('still running', out)
 

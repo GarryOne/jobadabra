@@ -1,5 +1,7 @@
 // Free AI: an Anthropic Messages request in, a Workers AI chat request out, and the answer back in Anthropic's shape, so both SDKs (the app's JS and the Python pipeline) keep working unchanged.
 // Pure functions; the PDF reader (env.AI.toMarkdown) is passed in. A block no open model here can read is refused in words, never dropped silently.
+import {temperatureFor} from './free-ai-models.js';
+
 export class Unsupported extends Error {}
 
 // Qwen3 and GLM think before they answer, and the thinking counts against max_tokens: a live call with max_tokens 200 came back empty (16 Oct 2026, ~450-550 tokens of thinking for a
@@ -8,8 +10,9 @@ export const REASONING_ROOM = 2000;
 
 const textOf = content => (typeof content === 'string' ? content : (content || []).map(block => (block?.type === 'text' ? block.text : '')).join(''));
 
-// -> {messages, response_format?, max_tokens}. `readPdf(base64) -> text` turns a document block into text.
-export async function toWorkersAi(body, readPdf) {
+// -> {messages, response_format?, max_tokens, temperature?}. `readPdf(base64) -> text` turns a document block into text; `action` is the step (the x-jp-action header):
+// a reading step answers at temperature 0 unless the caller set one (free-ai-models.js temperatureFor).
+export async function toWorkersAi(body, readPdf, action = '') {
   const messages = [];
   const system = textOf(body.system);
   if (system) messages.push({role: 'system', content: system});
@@ -26,7 +29,7 @@ export async function toWorkersAi(body, readPdf) {
   const schema = body.output_config?.format?.schema;
   return {messages, max_tokens: (body.max_tokens || 1024) + REASONING_ROOM,
     ...(schema ? {response_format: {type: 'json_schema', json_schema: {name: 'answer', schema}}} : {}),
-    ...(body.temperature != null ? {temperature: body.temperature} : {})};
+    ...((body.temperature ?? temperatureFor(action)) != null ? {temperature: body.temperature ?? temperatureFor(action)} : {})};
 }
 
 // Workers AI answers in the OpenAI chat shape (or {response} on older models). Reasoning text never reaches the caller.

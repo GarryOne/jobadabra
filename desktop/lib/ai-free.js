@@ -25,9 +25,13 @@ export function apply(settings, env = process.env) {
 
 // Turn Free AI on: mint this install's token, keep JPF1.<install>.<token> as the Anthropic key. -> {ok, error?}
 export async function start(storage, env = process.env, fetcher = globalThis.fetch) {
-  if (siteOffForUser()) return {ok: false, error: 'This is not a regular install, so Free AI is not asked.'};
-  const install = installId(storage);
-  try {
+  // The end-to-end journey on CI's Free AI relay (desktop/e2e, lib/engine.mjs freeAi): the relay hands its own JPF1 key, so the Free card is pressed as a person
+  // would, and the website is never asked. Never set for a user (the variable alone, without JOB_PILOTTO_E2E, changes nothing).
+  const relayKey = env.JOB_PILOTTO_E2E && isFreeKey(env.JOB_PILOTTO_E2E_FREE_AI_KEY) ? env.JOB_PILOTTO_E2E_FREE_AI_KEY : '';
+  if (relayKey) storage.setSecret('ANTHROPIC_API_KEY', relayKey);
+  else if (siteOffForUser()) return {ok: false, error: 'This is not a regular install, so Free AI is not asked.'};
+  else try {
+    const install = installId(storage);
     const token = await installToken(storage, install, 'ai', {base: FREE_BASE.replace(/\/api\/ai$/, ''), fetcher});
     if (!token) return {ok: false, error: 'Free AI could not start just now. Check your connection and try again.'};
     storage.setSecret('ANTHROPIC_API_KEY', `JPF1.${install}.${token}`);

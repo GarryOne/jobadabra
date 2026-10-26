@@ -69,6 +69,21 @@ test('the end-to-end journey sends the app\'s own AI calls to its test proxy, an
   assert.equal(real.ANTHROPIC_BASE_URL, undefined);
 });
 
+// 26 Oct 2026: CI runs on Free AI through a relay on the runner; the wizard e2e pressed "Check and save" with the relay's JPF1 key and the key field refuses
+// anything but sk-ant- (beta 40261885119, wizard red). The journey now presses the Free card, and the app takes the relay's key instead of asking the website.
+test('the end-to-end journey\'s Free card takes the relay\'s key and never asks the website; outside the journey the variable changes nothing', async () => {
+  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_FREE_AI_KEY: 'JPF1.ci-e2e-1.tok', JOB_PILOTTO_E2E_AI_BASE_URL: 'http://127.0.0.1:9'}, st = storage({aiEngine: 'cli'});
+  const asked = [];
+  assert.deepEqual(await start(st, env, async url => { asked.push(url); throw new Error('the website was asked'); }), {ok: true});
+  assert.deepEqual(asked, []);
+  assert.equal(st.secrets.ANTHROPIC_API_KEY, 'JPF1.ci-e2e-1.tok');
+  assert.equal(st.settings().aiFree, true); assert.equal(st.settings().aiEngine, 'api');
+  assert.equal(env.ANTHROPIC_BASE_URL, 'http://127.0.0.1:9');   // the journey's proxy, which forwards to the relay
+  const seen = [], real = storage();
+  assert.deepEqual(await start(real, {JOB_PILOTTO_E2E_FREE_AI_KEY: 'JPF1.ci-e2e-1.tok'}, site(seen)), {ok: true});   // no JOB_PILOTTO_E2E: a user's start
+  assert.equal(seen.length, 1); assert.match(real.secrets.ANTHROPIC_API_KEY, /\.tok123$/);
+});
+
 // #1017: Free is stored as engine 'api', so pressing the API key card changed nothing and chosen() stayed 'free'.
 test('leave: the API key card pressed on Free leaves it, forgets the Free token, and the chooser then shows the API key', async () => {
   const {chosen} = await import('../renderer/ai-engine-view.js');

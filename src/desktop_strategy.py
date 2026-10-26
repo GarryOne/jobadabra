@@ -6,7 +6,7 @@ import json
 import re
 import sys
 
-from . import digest, levels, target_roles
+from . import digest, levels, onsite_nature, target_roles
 from .ai import locations, score
 from .desktop_jobs import stage_status
 
@@ -219,6 +219,7 @@ def strategy(db, tracker=None, stores=None):
                               if isinstance(p, dict) and p.get('location')]},
         'digest_min_score': prefs.get('digest_min_score'),
         'remote_jobs': feeds_remote_wanted(search),
+        'onsite_note': _quietly(lambda: onsite_nature.note(search)),   # one line under Remote work when the roles are done on site
         'relocation': locations.places(search)['relocation'],   # Yes / No / Not specified are all answers (Locations, 17 Oct 2026)
         'goals': goals,
         'details': details,   # Your details' facts, shown read-only ("Edit in Your details")

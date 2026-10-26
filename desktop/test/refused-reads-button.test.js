@@ -84,6 +84,6 @@ test('the card: only the newest finished Find jobs run offers it; ⌘K brings yo
   assert.equal(browserOffer(runs[2], {runs, settings}), null, 'another kind of run');
   assert.equal(browserOffer(runs[0], {runs, settings: {}}), null, 'nothing refused');
   assert.equal(browserOffer(runs[0], {runs, settings: {...settings, refusedNeedsAllow: true}}).allow, true, 'says the extension\'s one Allow');
-  assert.deepEqual(paletteEntry({runs, settings}), {label: 'Find jobs using your browser', hint: 'Read the 5 sites that refused Jobadabra, in your browser', runId: 2});
+  assert.deepEqual(paletteEntry({runs, settings}), {label: 'Read the 5 sites that refused Jobadabra', hint: 'Find jobs using your browser, from the last Find jobs run', runId: 2});
   assert.equal(paletteEntry({runs, settings: {}}), null);
 });

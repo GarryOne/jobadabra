@@ -106,15 +106,19 @@ export const labelOf = node => {
   copy.querySelectorAll('.nav-badge, .nav-dot').forEach(child => child.remove());
   return copy.textContent.replace(/\s+/g, ' ').trim();
 };
+// A row's path, each step without its leading emoji ("💬 Telegram" → Telegram), a step equal to the one before it once (Settings → Plan, not Plan → Plan).
+const pathOf = (...steps) => steps.map(step => String(step || '').replace(/^\P{L}+/u, '').trim()).filter((step, i, all) => step && step !== all[i - 1]);
 export function paletteCommands() {
   const commands = [];
-  const add = (group, label, hint, keywords, run, more = {}) => { if (label) commands.push({group, label, hint, keywords, run, ...more}); };
+  // A row is a place (a page, card, section, Actions task) or a part of one (kind 'part': a button, a sub-heading); a part folds under its card in ⌘K
+  // (palette.js rank). A Settings row also carries its path ("Settings → Connections → Chrome extension"), shown instead of its label.
+  const add = (group, label, hint, keywords, run, more = {}) => { if (!label) return null; const command = {group, label, hint, keywords, run, ...more}; commands.push(command); return command; };
   // A button's ⌘K entry brings you to it and does not press it (owner, 18 Oct 2026: "I don't want necessarily to trigger the action, I just want you to focus
   // on it"): `open` shows its page, then the card scrolls into view, takes focus and pulses (palette-busy.js). A button off only because its task runs is listed too.
   // Every button entry goes through addNode.
-  const addNode = (node, group, label, hint, keywords, open) => {
+  const addNode = (node, group, label, hint, keywords, open, more = {}) => {
     const entry = buttonEntry(node, {group, label, hint, keywords, run: () => { open(); reveal(node); }});
-    if (entry) add(entry.group, entry.label, entry.hint, entry.keywords, entry.run, {enter: entry.enter, running: entry.running});
+    if (entry) add(entry.group, entry.label, entry.hint, entry.keywords, entry.run, {enter: entry.enter, running: entry.running, kind: 'part', ...more});
     if (entry?.label) commands[commands.length - 1].node = node;   // the probe in palette-every-action.test.js finds a button's entry by its node
   };
   // A button that starts a task an Actions card already offers is that card's twin: one entry per task (6 Oct 2026: "Refresh jobs" and
@@ -133,10 +137,10 @@ export function paletteCommands() {
     () => { shared.selectedRun = null; openActivity(true); });
   // A card whose Run is off because its task runs or waits (runs-page.js syncRunButtons) is still listed: its entry brings you to the card.
   document.querySelectorAll('.action[data-command]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
-    labelOf(node.querySelector('span')), PALETTE_KEYWORDS[node.dataset.command], () => openView('actions')));
+    labelOf(node.querySelector('span')), PALETTE_KEYWORDS[node.dataset.command], () => openView('actions'), {kind: 'place'}));
   // An action card with its own handler (not a Telegram command): "Tailor CVs" costs minutes of AI, so its entry only brings you to the card.
   document.querySelectorAll('.action[data-palette]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
-    labelOf(node.closest('.task-body')?.querySelector('.task-words .muted')), PALETTE_KEYWORDS[node.dataset.palette], () => openView('actions')));
+    labelOf(node.closest('.task-body')?.querySelector('.task-words .muted')), PALETTE_KEYWORDS[node.dataset.palette], () => openView('actions'), {kind: 'place'}));
   add('Profile', 'Build a CV with the AI', 'Answer a few questions and the AI writes your CV: edit it, then it becomes your CV', 'cv resume build create write new no cv from scratch', () => openBuild());
   // The finished Find jobs run's "Find jobs using your browser" (browser-offer.js): brings you to the button on its card.
   const offer = browserOfferEntry({runs: lastActivity?.runs, settings: shared.state?.settings});
@@ -223,12 +227,13 @@ export function paletteCommands() {
   document.querySelectorAll('[data-settings-go]').forEach(go => {
     if (pages.has(go.dataset.settingsGo)) return;
     pages.add(go.dataset.settingsGo);
-    add('Settings', `Open Settings: ${labelOf(go)}`, '', 'settings preferences', () => { openView('settings'); go.click(); });
+    add('Settings', `Open Settings: ${labelOf(go)}`, '', 'settings preferences', () => { openView('settings'); go.click(); }, {path: pathOf('Settings', labelOf(go))});
   });
   // Connections are drawn as service cards (settings.js renderConnections): each one's Manage or Connect.
   document.querySelectorAll('#conn-on .service-card, #conn-off .service-card').forEach(card => {
     const name = labelOf(card.querySelector('.service-text b')), node = card.querySelector('button');
-    if (name && node) addNode(node, 'Settings', `${name}: ${labelOf(node)}`, labelOf(card.querySelector('.service-text .muted')), 'settings connections connect', () => { openView('settings'); settingsPage('connections'); });
+    if (name && node) addNode(node, 'Settings', `${name}: ${labelOf(node)}`, labelOf(card.querySelector('.service-text .muted')), 'settings connections connect', () => { openView('settings'); settingsPage('connections'); },
+      {card: `setting-${card.dataset.service}`, part: labelOf(node)});   // a part of its connection's card (settings.js data-service), linked below
   });
   const hiddenAt = node => node.closest('[hidden]:not(.view):not([data-settings-page])');
   const shown = node => !hiddenAt(node);
@@ -241,14 +246,18 @@ export function paletteCommands() {
   const onClosedPanel = section => section.classList.contains('conn-panel') && !section.dataset.parked && hiddenAt(section) === section && !hiddenAt(section.parentElement);
   const reachable = (node, section) => shown(node) || ((onClosedTab(section) || onClosedPanel(section)) && hiddenAt(node) === section);
   document.querySelectorAll('[data-profile-tab]').forEach(tab => add('Settings', `Open Profile: ${labelOf(tab)}`, '', 'settings profile tab',
-    () => { openView('settings'); settingsPage('profile'); profileTab(tab.dataset.profileTab); }));
+    () => { openView('settings'); settingsPage('profile'); profileTab(tab.dataset.profileTab); }, {path: pathOf('Profile', labelOf(tab))}));
   // The Profile ⋯ menu's two actions (pages/profile-menu.js; UI redesign fix 10, 18 Oct 2026).
   add('Settings', 'Fill my details from my CV', 'Empty boxes in Profile → Your details, filled in for you to check', 'profile details contact cv fill empty phone address',
     () => { openView('settings'); settingsPage('profile'); fillFromCv(profileTab); });
-  if (shared.state?.notion?.NOTION_PROFILE_PAGE_ID) add('Notion', 'Profile: View source in Notion', '', 'notion profile page open source', () => openInNotion('NOTION_PROFILE_PAGE_ID'));   // about Notion
+  if (shared.state?.notion?.NOTION_PROFILE_PAGE_ID) add('Notion', 'Profile: View source in Notion', '', 'notion profile page open source', () => openInNotion('NOTION_PROFILE_PAGE_ID'), {kind: 'part'});   // about Notion
   const seen = new Set();
   // A Settings page's name: its side-menu button; Profile has none there (it is a page of the main menu), so it is named here.
   const pageName = page => page === 'profile' ? 'Profile' : labelOf(document.querySelector(`[data-settings-go="${page}"]`));
+  // Where a Settings row sits: Settings → its page (Profile → its tab) → its name.
+  const placeOf = (section, page) => page === 'profile'
+    ? ['Profile', labelOf(document.querySelector(`[data-profile-tab="${section?.dataset.profilePanel}"]`))] : ['Settings', pageName(page)];
+  const cards = new Map();
   document.querySelectorAll('[data-settings-page] .setting[id]').forEach(section => {
     // A summary's own heading, not its whole line; a card with none is named by its bold line (Current CV) or its page (Credentials, Logs).
     const title = labelOf(section.querySelector('h3') || section.querySelector('h4, summary') || section.querySelector('.cv-card-text b')) || pageName(section.closest('[data-settings-page]')?.dataset.settingsPage);
@@ -262,19 +271,20 @@ export function paletteCommands() {
       if (section.tagName === 'DETAILS') section.open = true;
       section.scrollIntoView({block: 'start'});
     };
-    add('Settings', title, '', `settings ${page} ${section.dataset.keywords || ''}`, open);   // data-keywords: the words a person types for it ("email" finds Notifications)
+    const place = add('Settings', title, '', `settings ${page}`, open, {alias: section.dataset.keywords || '', path: pathOf(...placeOf(section, page), title)});   // data-keywords: the words a person types for it ("email" finds Notifications)
+    cards.set(section.id, place);
     // The section's own sub-headings ("Chrome extension: manual connection" inside Developer options), each its own entry; never a field's value.
     section.querySelectorAll('h3, h4').forEach(heading => {
       const name = labelOf(heading);
       if (!name || seen.has(name) || !reachable(heading, section)) return;
       seen.add(name);
-      add('Settings', name, `Section · ${title}`, `settings ${page}`, () => { open(); reveal(heading); }, {node: heading});
+      add('Settings', name, `Section · ${title}`, `settings ${page}`, () => { open(); reveal(heading); }, {node: heading, kind: 'part', parent: place, path: [...place.path, name]});
     });
     const buttons = [...section.querySelectorAll('button[id]')].filter(node => reachable(node, section) && !twins.has(node));
     buttons.forEach(node => {
       const danger = !!node.closest('.danger-zone') || /danger/.test(node.className);
       if (danger && buttons.length === 1) return;   // a section's sole danger button lands where its own entry does: a duplicate row
-      addNode(node, 'Settings', `${title}: ${labelOf(node)}`, node.title, `settings ${page}`, open);
+      addNode(node, 'Settings', `${title}: ${labelOf(node)}`, node.title, `settings ${page}`, open, {parent: place, path: [...place.path, labelOf(node)]});
     });
   });
   // Headings on a Settings page that sit outside a section with an id (Overview's "Your setup", Connections' "Connected"): the page opens, the heading flashes.
@@ -282,9 +292,11 @@ export function paletteCommands() {
     const name = labelOf(heading), page = heading.closest('[data-settings-page]').dataset.settingsPage;
     if (!/\p{L}{2}/u.test(name) || seen.has(name) || heading.closest('.setting[id]') || hiddenAt(heading) || heading.closest('dialog, [role="dialog"]')) return;
     seen.add(name);
-    add('Settings', name, `Section · ${pageName(page)}`, `settings ${page}`, () => { openView('settings'); settingsPage(page); reveal(heading); }, {node: heading});
+    add('Settings', name, `Section · ${pageName(page)}`, `settings ${page}`, () => { openView('settings'); settingsPage(page); reveal(heading); }, {node: heading, path: pathOf(...placeOf(null, page), name)});
   });
-  document.querySelectorAll('#notion-links:not([hidden]) .notion-link').forEach(link => add('Notion', `Notion: ${labelOf(link)}`, '', 'open page database', () => link.click()));   // about Notion
+  // A connection card's Manage or Connect is a part of that connection's card (Settings → Connections → Chrome extension → Manage).
+  for (const command of commands) if (cards.has(command.card)) Object.assign(command, {parent: cards.get(command.card), path: [...cards.get(command.card).path, command.part]});
+  document.querySelectorAll('#notion-links:not([hidden]) .notion-link').forEach(link => add('Notion', `Notion: ${labelOf(link)}`, '', 'open page database', () => link.click(), {kind: 'part'}));   // about Notion: parts of Notion
   // Every other button a page shows (a Refresh, "Edit in Notion", "Fill now"): found by sweeping each page, so a new button is listed without being added here
   // (18 Oct 2026: Chrome extension was missing from ⌘K; palette-every-action.test.js fails on any button left out). Buttons in a dialog, hidden by their state
   // or already listed are skipped; Settings has its own sweep above.

@@ -77,16 +77,21 @@ def tier(value):
     return 'A' if value >= 85 else 'B' if value >= 50 else 'C'
 
 
+def _role_item(job, roles):
+    """The role check's (key, text) for a posting: its title and first lines with the search's roles; kept per key (decide)."""
+    import hashlib
+    lines = ' '.join(str(job.get('description') or '').split())[:FIRST_LINES]
+    text = f"Roles searched: {', '.join(roles)}\nPosting: {job['title']}\n{lines}"
+    return hashlib.sha1(f"{'|'.join(roles)}\n{job['title']}\n{job.get('url') or ''}".encode()).hexdigest()[:16], text
+
+
 def _role_check(job):
     """The AI's yes that this posting hires for one of the search's roles, read from its title and first lines (None or no: not a yes)."""
-    import hashlib
     from . import decide
     roles = _roles()
     if not roles:
         return False
-    lines = ' '.join(str(job.get('description') or '').split())[:FIRST_LINES]
-    text = f"Roles searched: {', '.join(roles)}\nPosting: {job['title']}\n{lines}"
-    key = hashlib.sha1(f"{'|'.join(roles)}\n{job['title']}\n{job.get('url') or ''}".encode()).hexdigest()[:16]
+    key, text = _role_item(job, roles)
     return decide.one(ROLE_TOPIC, key, text, ROLE_ANSWERS, ROLE_TASK) == 'yes'
 
 
@@ -140,6 +145,46 @@ def _low(data, bar):
         return int(data.get('score') or 0) < bar
     part = data.get('search') or {}
     return part.get('career_change') is True and 'asked' not in part and int(data.get('score') or 0) <= SEARCH_ROLE_FIT
+
+
+def _title_only_lift(data):
+    """A career change shown at SEARCH_ROLE_FIT by the title check alone, before the role check existed (no 'asked', its CV fit under it)."""
+    part, cv_fit = data.get('search') or {}, data.get('cv_fit')
+    return (part.get('career_change') is True and 'asked' not in part and int(data.get('score') or 0) == SEARCH_ROLE_FIT
+            and isinstance(cv_fit, int) and cv_fit < SEARCH_ROLE_FIT)
+
+
+def recheck_lifts(db, jobs, rows):
+    """Every title-only lift gets the role check now, in one batch, before any scoring: a no puts the job back at its CV fit at once. Its
+    full re-score (again_ids) still comes once, when the run's time allows (his 05:00 run, 26 Oct 2026: the cut scored 21 of 27 lifts and
+    the accounting and flight-controls jobs stayed 4th and 7th at 70). rows: {job id: its scores row}, updated in place. A failed or busy
+    AI changes nothing. Tests: tests/test_score_role_check.py."""
+    import json
+    from . import decide
+    lifted = {}
+    for job in jobs:
+        row = rows.get(job['id'])
+        try:
+            data = json.loads(row['data_json'] or '{}') if row else None
+        except ValueError:
+            data = None
+        if data and _title_only_lift(data) and job.get('title'):
+            lifted[job['id']] = (job, data)
+    roles = _roles() if lifted else []
+    if not roles:
+        return
+    items = {job_id: _role_item(job, roles) for job_id, (job, _) in lifted.items()}
+    answers = decide.decide(ROLE_TOPIC, dict(items.values()), ROLE_ANSWERS, ROLE_TASK) or {}
+    for job_id, (job, data) in lifted.items():
+        if answers.get(items[job_id][0]) != 'no':
+            continue
+        gap = (data.get('search') or {}).get('cv_gap') or ''
+        cv_fit = data.pop('cv_fit')
+        data.update(score=cv_fit, tier=tier(cv_fit), reason=f'Your CV: {gap}' if gap else str(data.get('reason') or '').replace('Fits your search · ', ''))
+        data['search'] = {**data['search'], 'fit': cv_fit}   # the AI's own fit to the search is not known; never shown above the CV's
+        db.execute('UPDATE scores SET data_json=? WHERE job_id=?', (json.dumps(data, ensure_ascii=False), job_id))
+        rows[job_id] = {**dict(rows[job_id]), 'data_json': json.dumps(data, ensure_ascii=False)}
+    db.commit()
 
 
 def again_ids(jobs, rows, bar):

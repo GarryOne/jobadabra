@@ -77,26 +77,36 @@ def remember(topic, found, answers, older_than='', db=None):
             db.close()
 
 
-def decide(topic, items, answers, instructions, client=None, db=None, since=''):
+def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
-    pack gave (items they don't know are left out), or None when they gave none."""
+    pack gave (items they don't know are left out), or None when they gave none. An 'ai_first' topic (meanings_pack.ai_first) asks the AI before the
+    pack's patterns, which answer only when there is no AI at all (floor=False: the caller applies its own); past the cap or on a failure an
+    item stays unknown, never a keyword's guess (26 Oct 2026: "office" read "First Officer" as finance_admin)."""
     items = {str(key): str(text or '')[:MAX_TEXT] for key, text in (items or {}).items()}
     if not items:
         return {}
     own = db is None
     db = _table(db or _db())
+    from . import meanings_pack   # then the pack (the old lists as seed + what the site learned): free, offline, never worse
+    late = meanings_pack.ai_first(topic)
+
+    def done(out, no_ai=False):   # without any AI: the ai_first topic's patterns, for what the cache and the site's wordings did not answer
+        if late and floor and no_ai:
+            for key in items:
+                if key not in out and (known := meanings_pack.first(topic, items[key])):
+                    out[key] = known
+        return out or None
     try:
         out = kept(topic, items, db, since)
-        from . import meanings_pack   # then the pack (the old lists as seed + what the site learned): free, offline, never worse
         for key in items:
-            if key not in out and (known := meanings_pack.first(topic, items[key])):
+            if key not in out and (known := meanings_pack.first(topic, items[key], patterns=not late)):
                 out[key] = known
         todo = [key for key in items if key not in out]
         if not todo:
             return out
         if client is None:
             if not engine.ready():
-                return out or None   # no AI: what the cache and the pack know, else None (the caller's rule)
+                return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)
             client = engine.client(action='decide')
         schema = {'type': 'object', 'additionalProperties': False, 'required': ['results'], 'properties': {'results': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['index', 'answer'],

@@ -60,7 +60,7 @@ export function jobFiles(job, root = ROOT) {
 // A replay workflow's files (owner, 14 Oct 2026: a PR that changed the recorder and the upload ran every page case, `desktop/e2e/**`): its job's files plus every script
 // its steps start with `node` (read from the workflow, in the step's working-directory). Its `on: pull_request: paths:` lists exactly these, as written by pathEntries.
 // The PR site replays too (owner, 14 Oct 2026: a PR that changes the replay machinery, e.g. net-record.mjs or replay-gate.mjs, starts them as well as the apply flow's code).
-export const WORKFLOW_JOB = {'page-cases.yml': 'replays', 'control-tests.yml': 'zoo'};
+export const WORKFLOW_JOB = {'page-cases.yml': 'replays'};   // control-tests.yml: off PRs since 26 Oct 2026 (no paths to keep)
 export function workflowFiles(workflow, root = ROOT) {
   const files = new Set(jobFiles(WORKFLOW_JOB[workflow], root));
   let dir = '';

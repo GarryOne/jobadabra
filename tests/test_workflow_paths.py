@@ -146,13 +146,13 @@ class TheShapes(unittest.TestCase):
         self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml'})
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
-        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'control-tests.yml', 'pr-suites.yml'})   # worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at
+        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'pr-suites.yml'})   # worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at
         self.assertNotIn('site-replays-pr.yml', self.started(['desktop/lib/server.js']), 'owner, 17 Oct 2026: site replays are off PRs, scheduled only')
         self.assertFalse((WORKFLOWS / 'site-replays-pr.yml').exists())
 
     def test_the_harness_code_starts_the_harness(self):
         started = self.started(['desktop/e2e/lib/forms.mjs'])
-        self.assertLessEqual({'harness.yml', 'tests-desktop.yml', 'page-cases.yml', 'control-tests.yml'}, started)
+        self.assertLessEqual({'harness.yml', 'tests-desktop.yml', 'page-cases.yml'}, started)
 
     def test_a_worker_change_starts_only_its_suite(self):
         self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml'})

@@ -43,11 +43,12 @@ async function call(storage, method, path, body, fetcher) {
 }
 
 // What the window shows: the choice, the address and whether it is confirmed (asked of the site; the cached address when offline).
+// unconfirmedStopped: the site stopped mail after 14 days without the confirm link (site api/mail-held.js); the confirm link starts it again.
 export async function state(storage, fetcher = globalThis.fetch) {
   const settings = storage.settings(), site = await call(storage, 'GET', '/api/account/email', null, fetcher);
   if (site.ok && site.email && site.email !== settings.notifyEmail) storage.saveSettings({notifyEmail: site.email});
   return {by: channelsOf(storage), chosen: Array.isArray(settings.notifyBy) ? settings.notifyBy : null, telegram: telegramReady(storage), email: site.ok ? site.email || '' : emailOf(storage),
-    confirmed: !!site.confirmed, sending: site.ok && typeof site.sending === 'boolean' ? site.sending : null, serviceOff: !!site.serviceOff, cadence: site.ok ? site.cadence || 'daily' : settings.notifyCadence || 'daily', marketing: site.ok ? !!site.marketing : settings.notifyMarketing !== false, reached: !!site.ok};
+    confirmed: !!site.confirmed, sending: site.ok && typeof site.sending === 'boolean' ? site.sending : null, serviceOff: !!site.serviceOff, unconfirmedStopped: !!site.unconfirmedStopped, cadence: site.ok ? site.cadence || 'daily' : settings.notifyCadence || 'daily', marketing: site.ok ? !!site.marketing : settings.notifyMarketing !== false, reached: !!site.ok};
 }
 
 // Saves the choice. A changed address or opt-in goes to the site first; the choice is kept only if it was accepted.

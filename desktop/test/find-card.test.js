@@ -20,9 +20,11 @@ test('a running search shows its steps, last lines in words and the counts; the 
   assert.deepEqual([card.looked, card.matches, card.scored], [612, 9, 1], 'this search only, never the list');
 });
 
-test('the steps move on: first jobs, then every employer, then the job boards, then more employers', () => {
+// The job boards are read beside the others since 19 Oct 2026 (src/sources/boards_ahead.py): their line starts their chip and moves no other one;
+// their own ✓ is tested in test/live-updates.test.js.
+test('the steps move on: first jobs, then every employer, the job boards beside them, then more employers', () => {
   const at = line => stepChips(['Finding your first jobs…', line]).map(c => c.state).join(',');
-  assert.equal(at('Searching job boards…'), 'done,done,active,pending');
+  assert.equal(at('Job boards: searching the web for trade and local boards (your plan)'), 'active,pending,active,pending');
   assert.equal(at('Growing your sources: finding more employers…'), 'done,done,done,active');
   assert.equal(stepChips(['Searching job boards…', 'Checking employer career pages…']).map(c => c.label).join('|'), 'Job boards|Employer sites|More employers');
 });

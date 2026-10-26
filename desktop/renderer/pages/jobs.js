@@ -4,6 +4,7 @@ import {setCount} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
 import {shared} from './shared.js';
+import {keepRunLine} from '../run-lines.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
 import {openActivity, refreshActivity, showSearchStatus} from './activity.js';
 import {renderFindCard, wireFindCard} from './jobs-find.js';
@@ -319,10 +320,7 @@ export async function init() {
     // A new run's first line starts a fresh live log. It does NOT clear the run you are looking at in Recent activity (6 Oct 2026: the Gmail check the app
     // starts by itself after launch switched the panel away from the run being read). Starting a run yourself clears it (Refresh, Check Gmail, View activity).
     if (shared.idleSeen || /^Searching job boards/.test(line)) { shared.logLines = []; shared.idleSeen = false; }
-    // "Still running · no new output for 1 min" and the wait for another run: only the newest of a row stays (lib/pipeline.js STATUS_LINE).
-    const status = /^(?:⏳ Still running|Another Jobadabra search is running)/;
-    if (status.test(line) && status.test(shared.logLines.at(-1) || '')) shared.logLines.pop();
-    shared.logLines.push(line);
+    keepRunLine(shared.logLines, line);   // as the app keeps it: the newest "Still running" of a row, the newest tick of each kind, every result
     refreshActivity();
     if (LIST_CHANGED.test(line)) reloadQuietly();
   });

@@ -1,6 +1,6 @@
-// Owns: reading the engine's output lines and the task catalog: TASKS and taskName, isDataLine, isProgressStep, STATUS_LINE,
+// Owns: reading the engine's output lines and the task catalog: TASKS and taskName, isDataLine, isProgressStep, STATUS_LINE, keepRunLine,
 // leadStepOf, HEARTBEAT_MS, quietText, and what a finished log yields (appMessage, taskSummary, failedLine).
-// Guarded by: test/progress-step.test.js, test/data-lines.test.js, test/live-status-line.test.js, test/run-kinds.test.js, test/engine-message-contract.test.js.
+// Guarded by: test/progress-step.test.js, test/data-lines.test.js, test/live-status-line.test.js, test/run-kinds.test.js, test/engine-message-contract.test.js, test/live-updates.test.js.
 // Split out of pipeline.js (a pure move); pipeline.js re-exports everything.
 import {readable} from './pipeline-env.js';
 import {CRASH_LINE} from './crash-line.js';
@@ -50,9 +50,8 @@ export function taskSummary(kind, log) {
 // (7 Oct 2026: "Claude Code haiku: answered in 146 s…" stood as the search's step for 10 min while it sorted job titles).
 export const isProgressStep = line => !/^\s|^Warning|^Cronjob run logged|^Claude Code \S+: answered in /.test(line) && line.length < 120 && !CRASH_LINE.test(line);
 
-// A line that says "still here" (the engine's wait for the run lock, or the app's own heartbeat): one in a row is kept, the newest, so a long
-// quiet stretch reads as one live line, not a wall of them (the window does the same, renderer/pages/jobs.js).
-export const STATUS_LINE = /^(?:⏳ Still running|Another Jobadabra search is running)/;
+// STATUS_LINE and keepRunLine: shared with the window's own live log (renderer/run-lines.js).
+export {STATUS_LINE, keepRunLine} from '../renderer/run-lines.js';
 // The Log box's live step for a line of engine output: a "⏳ …" step as written, or the wait for the run lock as a plain sentence
 // ("Waiting for a discover run started 14:27 to finish · 2 min"); null for anything else. 6 Oct 2026: a log sat on "Starting… 76 s" behind a
 // background search, because that wait line is not a "⏳" step.

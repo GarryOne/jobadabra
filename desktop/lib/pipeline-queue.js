@@ -6,7 +6,7 @@
 // Split out of pipeline.js (a pure move); pipeline.js re-exports the public names.
 import {awakeNow} from './awake.js';
 import {killTree} from './kill-tree.js';
-import {HEARTBEAT_MS, isDataLine, isProgressStep, quietText, STATUS_LINE, taskName} from './pipeline-lines.js';
+import {HEARTBEAT_MS, isDataLine, isProgressStep, keepRunLine, quietText, taskName} from './pipeline-lines.js';
 
 // Crawls share one SQLite file: run them one at a time, like the workflow's concurrency group. In order, except a task queued `first`
 // (7 Oct 2026: the light scoring run after Find jobs using your browser waited behind a 15-minute Find new employers queued before it).
@@ -139,8 +139,7 @@ export function tracked(storage, kind, trigger, onLine, work, resume, summarize,
     let lastAt = awakeNow();
     const tee = line => {
       if (isDataLine(line)) return;
-      if (STATUS_LINE.test(line) && STATUS_LINE.test(log.at(-1) || '')) log.pop();
-      log.push(line);
+      keepRunLine(log, line);   // a tick replaces the earlier one of its kind; results stay
       if (!line.startsWith('⏳ Still running')) lastAt = awakeNow();
       current = {...current, log: log.slice(-300)};   // the window can be reloaded (⌘R) without losing what the run said so far
       const rowUrl = /^Cronjob run logged: (\S+)/.exec(line)?.[1];
@@ -153,8 +152,7 @@ export function tracked(storage, kind, trigger, onLine, work, resume, summarize,
     ticket.tee = tee;
     keepLine = line => {
       if (isDataLine(line)) return;
-      if (STATUS_LINE.test(line) && STATUS_LINE.test(log.at(-1) || '')) log.pop();
-      log.push(line);
+      keepRunLine(log, line);
       current = {...current, log: log.slice(-300)};
     };
     let ok = false, result = null;

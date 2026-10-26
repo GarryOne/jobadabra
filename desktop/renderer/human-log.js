@@ -33,6 +33,8 @@ const RULES = [
   [/^Job Matches: .*\(so far\)$/, () => null],
   [/^Job Matches: (\d+) created, (\d+) updated/, m => (Number(m[1]) + Number(m[2]) ? `📒 Notion Job Matches: ${m[1]} added, ${m[2]} updated` : null)],   // about Notion
   [/^Time budget: this search stops its AI steps at (.+?);/, m => `⏱ ${aiName()} gets up to ${m[1]} this refresh; what is left waits for the next one`],
+  // One line per employer the role leaves out (src/sources/feeds.py): counted, one line per reason (the Find card's Live updates show it).
+  [/^Employers: (\S+) left out: (.+)$/, (m, state) => ({key: `left-out:${m[2]}`, text: `🏢 ${plural(state.count(`left-out:${m[2]}`), 'employer')} left out: ${m[2]}`})],
   [/^Checked: (.+)$/, (m, state) => ({key: 'checked', text: `🏢 Looked up ${plural(state.count('checked'), 'employer')} from the job boards`})],
   [/^Job board: (\S+) · (.+?) · (.+?)(?: · page \d+)? · (.+)$/, (m, state) => ({key: 'board', text: `🔎 Searched ${m[1]}: ${plural(state.count('board'), 'page')} read`})],
   [/^⏱ This refresh places (\d+) of (\d+) job locations.*?; (\d+) wait/, m => `📍 Asking ${aiName()} where ${m[1]} of ${m[2]} job locations are (${m[3]} next time)`],

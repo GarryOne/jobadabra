@@ -104,6 +104,20 @@ class AggregatorTests(unittest.TestCase):
         with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/tmp/fixtures'}):
             self.assertEqual(aggregators.scan(db, {}, now=NOW, readers=[])['jobs'], [])
 
+    def test_the_boards_step_says_when_it_is_done_with_what_it_kept(self):
+        # Owner, 26 Oct 2026: the Find card's "Job boards" chip showed ✓ before the boards a web search found were read; it now waits for
+        # this line (desktop/renderer/find-card-model.js stepChips), printed once every board and job API is read, also in the fixture mode.
+        import contextlib
+        import io
+        db = sqlite3.connect(':memory:')
+        db.row_factory = sqlite3.Row
+        jobs = [aggregators._job('x', 1, TITLE, 'Acme', PLACE, 'https://a.example/1')]
+        for env, readers in (({}, [('Arbeitnow', lambda search: jobs)]), ({'JOB_PILOTTO_FIXTURE_DIR': '/tmp/fixtures'}, None)):
+            out = io.StringIO()
+            with mock.patch.dict('os.environ', env), mock.patch.object(feeds, 'record', return_value='new'), contextlib.redirect_stdout(out):
+                report = aggregators.scan(db, {}, NOW, readers=readers)
+            self.assertEqual(out.getvalue().splitlines()[-1], f"Job boards: done, {len(report['jobs'])} job(s) for your search", env)
+
     def test_each_free_source_is_read_into_the_common_job_shape_with_its_own_address(self):
         pages = {'arbeitnow': {'data': [{'slug': 's1', 'company_name': 'Acme', 'title': TITLE, 'location': PLACE, 'url': 'https://arbeitnow.example/s1',
                                          'created_at': 1791028823, 'description': '<p>Kubernetes</p>', 'remote': False}]},

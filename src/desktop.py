@@ -33,6 +33,13 @@ from .desktop_strategy import (COMPONENTS, GOAL_ROWS, _goals, _quietly, _readabl
 STATUSES = ('unreviewed', 'saved', 'applied', 'dismissed')
 
 
+def _role_ideas_on():
+    """An AI is on for the role ideas: they carry the role suggestions, the fixed words none (src/coverage.py verdict by_ai)."""
+    from . import features
+    from .ai import engine
+    return not features.disabled('role_ideas') and engine.ready()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -97,7 +104,7 @@ def main(argv=None):
             search = load_search_config()
             places = search.get('locations') or {}
             said = coverage.verdict(coverage.load(), search.get('role_keywords') or [], [f for group in places.values() for f in group],
-                                    search.get('title_exclude_keywords') or [])
+                                    search.get('title_exclude_keywords') or [], by_ai=_role_ideas_on())
             if said is not None:
                 said['languages'] = coverage.language_drops()
             print(json.dumps(few_jobs.explain(said, search), ensure_ascii=False))
@@ -108,7 +115,8 @@ def main(argv=None):
             search = load_search_config()
             places = search.get('locations') or {}
             said = coverage.verdict(coverage.load(), search.get('role_keywords') or [],
-                                    [fragment for group in places.values() for fragment in group], search.get('title_exclude_keywords') or [])
+                                    [fragment for group in places.values() for fragment in group], search.get('title_exclude_keywords') or [],
+                                    by_ai=_role_ideas_on())
             if said is not None:
                 said['languages'] = coverage.language_drops()
                 said['visits'] = _visits(search)
@@ -119,7 +127,7 @@ def main(argv=None):
             from .ai import engine, role_ideas
             from .paths import load_search_config, local_profile
             asked = json.loads(Path(args.file).read_text()) if args.file else {}
-            if features.disabled('role_ideas') or not engine.ready():
+            if not _role_ideas_on():
                 print(json.dumps({'ok': True, 'ideas': []}))
                 return 0
             try:
@@ -129,7 +137,7 @@ def main(argv=None):
                     read = profile_source(open_run())
                     profile = read() if read else ''
                 found = role_ideas.ideas(profile or '', load_search_config(), (coverage.load() or {}).get('missed_titles') or [], asked.get('set_aside') or [])
-            except Exception as error:  # noqa: BLE001 — no ideas this time, said; the box shows the market's words as before
+            except Exception as error:  # noqa: BLE001 — no ideas this time, said; never the fixed words' guess instead (audit PR 6)
                 print(json.dumps({'ok': False, 'ideas': [], 'error': f'No role ideas this time ({type(error).__name__})'}))
                 return 0
             print(json.dumps({'ok': True, 'ideas': found}, ensure_ascii=False))

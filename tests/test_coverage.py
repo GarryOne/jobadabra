@@ -98,6 +98,15 @@ class VerdictTest(unittest.TestCase):
         self.assertAlmostEqual(said['share'], 164 / 3142)
         self.assertEqual([s['term'] for s in said['suggestions']], ['software engineer', 'backend', 'systems engineer', 'distributed systems'])
 
+    def test_with_an_ai_the_fixed_words_suggest_nothing_and_the_ais_role_ideas_carry_the_warning(self):
+        """Owner, 26 Oct 2026 (audit PR 6, "One AI row"): the 150 fixed words only with no AI at all; with one, "Explore related roles" (the AI's
+        ideas from the Profile) says how much your words catch, from `tight` (under NARROW_BELOW of the postings in your places)."""
+        said = coverage.verdict(self.SUMMARY, keywords=['\\bsre\\b', 'devops'], by_ai=True)
+        self.assertEqual((said['narrow'], said['suggestions'], said['local']), (False, [], False))
+        self.assertTrue(said['tight'])
+        self.assertEqual((said['matched'], said['in_places']), (164, 3142))
+        self.assertFalse(coverage.verdict(dict(self.SUMMARY, matched=800), keywords=[], by_ai=True)['tight'])
+
     def test_terms_already_in_your_keywords_are_not_suggested_again(self):
         said = coverage.verdict(self.SUMMARY, keywords=['backend', 'Software Engineer'])
         self.assertEqual([s['term'] for s in said['suggestions']], ['systems engineer', 'distributed systems'])

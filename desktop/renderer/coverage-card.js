@@ -99,11 +99,15 @@ export function placesCard(verdict, dismissedAt = '') {
 }
 
 // "Roles that fit you" (src/ai/role_ideas.py): the Profile's roles as chips, with the open jobs each would add; the ones set aside never shown.
-export function ideasCard(ideas, setAside = []) {
+// With an AI this is the one row of role suggestions (owner, 26 Oct 2026, audit PR 6): `narrow` says how much the role words catch when the
+// coverage check found them tight (under a tenth, src/coverage.py) and one idea adds 5 or more open jobs.
+export function ideasCard(ideas, setAside = [], verdict = null) {
   const hidden = new Set(setAside.map(word => String(word).toLowerCase()));
   const shown = (ideas || []).filter(idea => idea?.word && !hidden.has(idea.word.toLowerCase())).slice(0, 8);
   if (!shown.length) return null;
-  return {title: 'Roles that fit you', text: 'From your Profile: roles you could do but do not search for yet, with the open jobs each would add in your places. Adding one makes the next searches look for it:',
+  const narrow = verdict?.tight && shown.some(idea => (idea.count || 0) >= 5)
+    ? `Your role words catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places` : '';
+  return {narrow, title: 'Roles that fit you', text: 'From your Profile: roles you could do but do not search for yet, with the open jobs each would add in your places. Adding one makes the next searches look for it:',
     chips: shown.map(idea => ({term: idea.word, count: idea.count || 0, role: idea.role, why: idea.why, label: `+ ${idea.role} · ${idea.count || 0}`, title: `${idea.why}. Searched as "${idea.word}"; ${idea.count || 0} open job${idea.count === 1 ? '' : 's'} in your places now.`})),
     at: shown.map(idea => idea.word).join('|')};
 }

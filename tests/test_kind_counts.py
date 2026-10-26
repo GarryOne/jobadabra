@@ -16,7 +16,7 @@ def judged(titles, topic='role-kind'):
     return {t: KIND[t] for t in titles if t in KIND}
 
 
-class ScoutCountsTest(unittest.TestCase):
+class Fixtures(unittest.TestCase):
     def setUp(self):
         self.asked = []
 
@@ -32,6 +32,8 @@ class ScoutCountsTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
+
+class ScoutCountsTest(Fixtures):
     def test_jobs_are_counted_by_their_country_and_kind(self):
         jobs = [{'title': 'First Officer', 'location': 'Zurich'}, {'title': 'Cabin Crew', 'location': 'Zurich'},
                 {'title': 'Backend Engineer', 'location': 'Frankfurt'}, {'title': 'Accountant', 'location': 'Remote'},
@@ -57,6 +59,39 @@ class ScoutCountsTest(unittest.TestCase):
         workflow = (Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'central-scout.yml').read_text()
         self.assertEqual(workflow.count('data/geo.json'), workflow.count('data/jobs.sqlite') - workflow.count('--db data/jobs.sqlite'),
                          'every cache restore and save keeps the places the AI judged (asked once, ever)')
+
+
+class CentralCapAndSampleTest(Fixtures):
+    """Owner, 26 Oct 2026 ("Higher cap + sample"): after the recount only 9 of 2,517 employers had counts, the 60 calls a run shared by titles
+    and places. The central scout gets its own cap; a big employer is judged on a sample of its titles and the counts scaled to all its jobs."""
+    def test_the_central_scout_has_a_larger_cap_installs_keep_theirs(self):
+        from src import scout_core
+        self.assertEqual(decide.limit(), decide.MAX_CALLS_PER_RUN)
+        decide._calls['n'] = decide.MAX_CALLS_PER_RUN
+        with mock.patch.object(scout_core, 'CENTRAL', True):
+            self.assertEqual(decide.limit(), decide.CENTRAL_MAX_CALLS)
+            self.assertGreater(decide.CENTRAL_MAX_CALLS, decide.MAX_CALLS_PER_RUN)
+            jobs = [{'title': 'Backend Engineer', 'location': 'Frankfurt'}] * 5
+            self.assertEqual(scout_kind_counts.kind_counts(jobs), {'de': {'software': 5}}, "past an install's cap the central scout still asks")
+
+    def test_a_big_employer_is_judged_on_a_sample_and_counted_for_all_its_jobs(self):
+        asked = []
+        spy = lambda titles, topic='role-kind': asked.append(len(titles)) or judged(titles, topic)
+        jobs = [{'title': 'First Officer', 'location': 'Zurich'}, {'title': 'Backend Engineer', 'location': 'Frankfurt'}] * 300
+        with mock.patch.object(role_kinds, 'judged', spy):
+            kinds, counts = scout_kind_counts.of_jobs(jobs)
+        self.assertEqual(set(counts), {'ch', 'de'}, 'a sample sees both halves of a list that alternates')
+        self.assertEqual(counts['ch']['aviation_transport'] + counts['de']['software'], 600, 'scaled to all 600 jobs')
+        self.assertAlmostEqual(counts['ch']['aviation_transport'], 300, delta=60)
+        self.assertAlmostEqual(kinds['aviation_transport'], 0.5, delta=0.1)
+        self.assertEqual(scout_kind_counts.sample(jobs), scout_kind_counts.sample(jobs), 'the same jobs each run: kept answers are reused')
+        self.assertTrue(asked and max(asked) <= scout_kind_counts.SAMPLE, f'titles sent to the AI: {asked}')
+        self.assertEqual(len(scout_kind_counts.sample(jobs[:7])), 7, 'a small employer: every job')
+
+    def test_the_run_log_says_how_many_employers_have_counts(self):
+        from src.scout_index import published_line
+        line = published_line(2, [], [{'ats': 'lever', 'kind_counts': {'ch': {'software': 3}}}, {'ats': 'lever'}])
+        self.assertIn('Kind counts by country on 1 of 2 feeds', line)
 
 
 class ScoutKeepsClaudeTest(unittest.TestCase):

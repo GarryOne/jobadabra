@@ -226,6 +226,7 @@ export const staleState = item => !!(rowsOf(item.id).length || reviewStates.get(
 // held from the closed tab is cleared. No question (owner, 8 Oct 2026): the card already says it fills again from your kit.
 export async function reopenClosedTab(item, button) {
   const result = await window.pilot.sessionReopen(item.id, staleState(item));   // not 'Looking for the form tab…' under the question
+  if (result?.cancelled) return result;   // Not now in the first-Apply dialog
   if (result?.ok === false) { toastMessage('Could not open the form', result.error || 'Try again.'); return result; }
   if (result?.reset) {
     for (const key of rowsOf(item.id)) { handled.delete(key); syncedDone.delete(key); }

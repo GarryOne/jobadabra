@@ -1,5 +1,6 @@
 // Jobadabra desktop app: a local-first cockpit for the job search. Data and keys stay on this Mac.
 import {app, BrowserWindow, clipboard, crashReporter, Menu, desktopCapturer, dialog, ipcMain, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, screen, session, shell, systemPreferences} from 'electron';
+import {guard as applyChoiceGuard} from './lib/apply-choice-gate.js';
 import {aiNameOf, claudeFamily} from './lib/ai/names.js';
 import {takeoverOffered, takeoverOn} from './lib/claude-ready.js';
 import {SHOW_RESUME_CLAUDE} from './renderer/claude-help.js';
@@ -175,6 +176,7 @@ function handlers() {
   // Demo mode: what would reach outside or change this computer answers "demo" instead (lib/demo.js BLOCKED).
   if (DEMO) ipcMain.handle = demo.guard(ipcMain.handle.bind(ipcMain));
   // End-to-end run: log every call the window makes (the interaction probe reads it, see lib/e2e-ipc.js).
+  ipcMain.handle = applyChoiceGuard(ipcMain.handle.bind(ipcMain), () => storage, appLog);   // first Apply: choose how to apply first (lib/apply-choice-gate.js)
   if (process.env.JOB_PILOTTO_E2E) { globalThis.__jpIpc = []; ipcMain.handle = recordIpc(ipcMain.handle.bind(ipcMain), globalThis.__jpIpc); }
   // Notion later: without Notion the app only tries; a tracking action returns notionGate.needs(reason) and the window
   // opens the connect dialog (pages/core.js gated()). null = go on.

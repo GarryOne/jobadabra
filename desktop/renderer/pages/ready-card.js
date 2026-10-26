@@ -170,6 +170,7 @@ export async function initReadyCard() {
   const open = code => { const button = iconButton('external', 'Open in my browser', 'the real page in your own Chrome, filled as the night left it', 'browser', 'Open in Chrome');
     button.addEventListener('click', async () => { button.disabled = true; say('Opening the filled form in your browser…');
       const result = await window.pilot.readyOpen(code).catch(error => ({ok: false, error: errorLine(error)}));
+      if (result.cancelled) { button.disabled = false; return; }   // Not now in the first-Apply dialog (pages/apply-choice.js)
       button.disabled = false; say(result.ok ? 'Opened in your browser: check it, solve a bot check if there is one, and press Submit there yourself.' : (result.error || 'Could not open it.'), result.ok ? 'good' : 'bad'); });
     return button; };
   const act = {open, live: code => { const button = iconButton('pulse', 'Open live recording', 'the server\'s copy of this form, live; you finish it there', 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || 'Could not open it.', 'bad'); }); return button; },
@@ -200,6 +201,7 @@ export async function initReadyCard() {
   const sendTonight = async (options = {}) => {
     send.disabled = true; say('Handing tonight\'s jobs to the server to fill (nothing is submitted)…');
     const result = await window.pilot.readySend(options).catch(error => ({ok: false, error: errorLine(error)}));
+    if (result.cancelled) { say('Not sent: nothing changed on the server.'); return refresh(); }
     if (result.ask) { if (await confirmFill(result.ask)) return sendTonight({confirmed: true}); say('Not sent: nothing changed on the server.'); return refresh(); }
     say(result.ok ? `${result.queued} job${result.queued === 1 ? '' : 's'} will be filled on the server for the night of ${result.night}, not submitted${result.skipped?.length ? ` · ${result.skipped.length} left out (${result.skipped[0].why})` : ''}.` : (result.error || 'Could not send.'),
       result.ok ? 'good' : result.nothing ? 'warn' : 'bad');
@@ -211,6 +213,7 @@ export async function initReadyCard() {
   const fillNow = async (options = {}, preparing = false) => {
     phase = preparing ? 'preparing' : 'sending'; phaseError = ''; say(''); repaint();
     const result = await window.pilot.readyRun(options).catch(error => ({ok: false, error: errorLine(error)}));
+    if (result.cancelled) { phase = 'idle'; repaint(); return say('Not started: nothing was sent.'); }
     if (result.ask) {
       if (await confirmFill(result.ask)) return fillNow({...options, again: result.ask.again, confirmed: true}, preparing);
       phase = 'idle'; repaint(); return say('Not started: nothing was sent.');
@@ -236,6 +239,7 @@ export async function initReadyCard() {
     pending.add(code); say(''); repaint();
     const result = await window.pilot.readyAgain(code).catch(error => ({ok: false, error: errorLine(error)}));
     pending.delete(code);
+    if (result.cancelled) { repaint(); return say('Not started: nothing changed on the server.'); }
     if (!result.ok) { repaint(); return say(result.error || 'Could not start.', 'bad'); }
     started = true;
     say(result.joined ? `${name}: added to the night's line; it fills after the form filling now. Nothing is submitted.` : `${name}: the server is filling it again now. Nothing is submitted.`, 'good');

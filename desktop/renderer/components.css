@@ -191,6 +191,9 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 .settings-page-head p { margin: var(--sp-1) 0 0; }
 .settings-alert { align-items: center; margin: 0 0 var(--sp-2); }
 .settings-alert > div { flex: 1; }
+/* Settings → Apply (pages/apply-settings.js) and the first-Apply dialog (pages/apply-choice.js): the checks one per row, the dialog's cards spaced from its note. */
+.apply-checks { display: grid; gap: var(--sp-2); justify-items: start; }
+.apply-choice-dialog #apply-choice-modes { margin-bottom: var(--sp-3); }
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */
 .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
@@ -573,7 +576,8 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 #find-next .icon { transform: rotate(90deg); }
 /* Choice cards (choiceCards): side-by-side radio cards, the chosen one outlined with a check badge (the AI engine). */
 .ui-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
-.ui-choices.is-single { grid-template-columns: minmax(0, 1fr); }   /* one card on its own full-width row, e.g. Free under the engine cards */
+.ui-choices.is-single { grid-template-columns: minmax(0, 1fr); }   /* one card on its own full-width row, e.g. Free under the engine cards; a stacked list (Settings → Apply) */
+.ui-choice-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }   /* a title with its badge pill (choiceCards badge) */
 .ui-choices.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* two small cards side by side (the AI engine's Claude | OpenAI) */
 .ui-choice.is-hero { padding: var(--sp-5); align-items: center; }   /* the card that leads: bigger tile and words (the AI engine's Free) */
 .ui-choice.is-hero .ui-tile { width: 56px; height: 56px; }

@@ -594,9 +594,11 @@ jobs:
     # whatever this run's result. In the release run (release_run) the Windows gate is the release run's own "E2E · Windows" job: nothing to start here.
     name: Windows follows
     needs: [plan, suite]
-    # Windows only for the release gate, the schedule and a gate by hand (6 Oct 2026): a push run's Windows jobs held runner slots (20 at once, shared) while
-    # the next run's Mac + Linux suites waited. A Windows-only problem from a push is found at the next scheduled run or gate.
-    if: always() && needs.plan.outputs.count != '0' && !inputs.release_run && !inputs.canary && !inputs.soak && !inputs.mutant && (github.event_name == 'schedule' || inputs.gate_tag)
+    # Windows only for the release gate, a gate by hand and main's checks (6 Oct 2026): a push run's Windows jobs held runner slots (20 at once, shared) while
+    # the next run's Mac + Linux suites waited. Main's checks start Windows once a UTC day (gate G4, owner's yes 26 Oct 2026): the Worker's on-time runs
+    # (inputs.scheduled) are main's checks since 5 Oct, and this job looked only for GitHub's backup schedule, so from 17 Oct Windows ran only inside betas
+    # and beta 2 (25 Oct) met its Windows reds (cardstates, foryou) there first.
+    if: always() && needs.plan.outputs.count != '0' && !inputs.release_run && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.bisect && (github.event_name == 'schedule' || inputs.scheduled || inputs.gate_tag)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -606,7 +608,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           FULL: ''   # no paid AI judge on Windows: the Mac run judged the same screens (owner, 7 Oct 2026: "$30 a week")
+          GATE: ${{ inputs.gate_tag }}
         run: |
+          # A main check starts Windows once a UTC day: the first one that tested something. A gate always starts it.
+          if [ -z "$GATE" ]; then
+            today=$(date -u +%Y-%m-%d)
+            ran=$(gh run list --repo "${{ github.repository }}" --workflow e2e-windows.yml --branch main --limit 30 --json createdAt,displayTitle \
+              --jq "[.[] | select(.createdAt >= \"${today}T00:00:00Z\" and (.displayTitle | startswith(\"E2E Windows · the Mac run's suites · \")))] | length" || echo 0)
+            if [ "${ran:-0}" -gt 0 ]; then echo "Windows already followed a main check today ($today): the next one starts tomorrow." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          fi
           gh workflow run e2e-windows.yml --repo "${{ github.repository }}" --ref main \
             -f mac_run=${{ github.run_id }} -f sha=${{ needs.plan.outputs.ref }} -f review=${{ needs.plan.outputs.review }} -f full="$FULL" -f tag="${{ needs.plan.outputs.tag }}"
           echo "Windows run started for commit ${{ needs.plan.outputs.ref }} (it skips a commit Windows already tested)." >> "$GITHUB_STEP_SUMMARY"

@@ -17,7 +17,7 @@ from .ai import engine as _engine
 from .store_access import open_run
 from .sources import describe, feeds, google_jobs
 from .daily_helpers import (STALE_DAYS, crawl_counts, digest_note, downloaded_index, for_job_matches, left_out, log_crawl, new_cron_run, no_profile,
-                            new_job_lines, none_scored, profile_source, save_run, starter_sources, time_budget_on, to_score, top_new, url_stages)
+                            new_job_lines, none_scored, save_run, scoring_plan, starter_sources, time_budget_on, to_score, top_new, url_stages)
 
 
 def ai_ready():
@@ -42,6 +42,7 @@ def search(args, stores=None):
             budget.apply_caps(args, spend, run['warnings'])
         except Exception as error:
             print(f'Warning: budget check skipped: {type(error).__name__}: {error}')
+    read_profile = scoring_plan(args, stores)   # read once, before any site: the time plan knows the search scores (time_budget.score_first)
     hidden, saved, dismissed = frozenset(), frozenset(), frozenset()
     stages = None   # job URL -> Stage: also what the pool's outcome counts read (src/contribute.py outcomes)
     try:
@@ -79,7 +80,7 @@ def search(args, stores=None):
                         first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
                     except Exception as error:  # noqa: BLE001 — the full board read reads them
                         print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
-                if args.first_jobs and args.score_max and not args.only_visits and (read_first := profile_source(stores)):
+                if args.first_jobs and args.score_max and not args.only_visits and (read_first := read_profile):
                     try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
                         first_jobs.run(db, feed_db, feed_list, read_first(), hidden, sync=lambda: stores.matches.sync(
                             db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
@@ -176,11 +177,9 @@ def search(args, stores=None):
         # A refresh with a time budget takes one batch end to end (owner, 7 Oct 2026: "a batch should handle it from start to finish"): the new
         # jobs it can read and score in its time, best places first; the rest waits for the next refresh and is not listed until scored.
         batch, batch_started = None, None
-        read_profile = profile_source(stores) if args.score_max else None
         if time_budget_on() and args.score_max and read_profile:
             try:
                 from . import time_budget
-                time_budget.score_first()   # the facts are read after scoring: scoring leaves them their time (src/time_budget.py)
                 waiting = score.queue(db, to_score(db, hidden), read_profile())
                 taken = time_budget.batch('score', len(waiting))
                 batch, batch_started = {job['id'] for job in waiting[:taken]}, __import__('time').monotonic()

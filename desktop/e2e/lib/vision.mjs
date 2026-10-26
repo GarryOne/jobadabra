@@ -78,7 +78,8 @@ Reply with ONE JSON object and nothing else:
 
 export const MAX_TOKENS = 3000;
 
-export function buildRequest({view, pngBase64, rules = '', facts = null, model = MODEL}) {
+// lessons: the by-design lessons for this kind of page (lib/review-lessons.mjs), after the facts.
+export function buildRequest({view, pngBase64, rules = '', facts = null, lessons = '', model = MODEL}) {
   // The fixed part (instructions + design rules) comes first and is cached: every review in the 5 minutes after the first reads it at a tenth of the price.
   const system = [{type: 'text', text: SYSTEM}, ...(rules ? [{type: 'text', text: `The app's design rules (excerpt):\n${rules.slice(0, 3000)}`}] : [])];
   system.at(-1).cache_control = {type: 'ephemeral'};
@@ -87,7 +88,7 @@ export function buildRequest({view, pngBase64, rules = '', facts = null, model =
     model, max_tokens: MAX_TOKENS, system,   // no temperature: claude-sonnet-5-5 rejects it ("deprecated for this model", 400)
     messages: [{role: 'user', content: [
       {type: 'image', source: {type: 'base64', media_type: 'image/png', data: pngBase64}},
-      {type: 'text', text: `Page: ${view}\nExpected to show: ${expectedFor(view)}\n${facts ? `\nFACTS about the app's state when this was taken:\n${JSON.stringify(facts, null, 1)}\n` : ''}\nReview this screenshot.`},
+      {type: 'text', text: `Page: ${view}\nExpected to show: ${expectedFor(view)}\n${facts ? `\nFACTS about the app's state when this was taken:\n${JSON.stringify(facts, null, 1)}\n` : ''}${lessons ? `\n${lessons}\n` : ''}\nReview this screenshot.`},
     ]}],
   };
 }

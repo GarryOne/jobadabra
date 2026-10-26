@@ -509,6 +509,7 @@ jobs:
       E2E_FULL: ${{ (github.event_name == 'schedule' || inputs.nightly) && needs.changes.outputs.over != 'true' && '1' || '' }}   # the paid AI judge steps: the nightly beta only, under today's budget (7 Oct 2026)
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
+      issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
     steps:
       - uses: actions/checkout@v5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
@@ -649,6 +650,10 @@ jobs:
         if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.changes.outputs.review == '1'   # the costly part: only when the UI or its tests changed, or a finding waits
         working-directory: desktop/e2e
         timeout-minutes: 15   # the batch waits up to 6 min, then asks what is left directly
+        env:   # the review runs on Free AI (lib/review-free.mjs, CI's own Workers AI token) and reads the by-design lessons from the issues (lib/review-lessons.mjs)
+          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: node review-ui.mjs
       # Its cost, as the other AI jobs leave theirs (ai-cost artifacts): /self-heal sums them (desktop/e2e/selfheal-stats.mjs). It was the one AI cost not summed.
       - name: The AI review's cost
@@ -768,6 +773,7 @@ jobs:
       E2E_RUN_KIND: gate
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
+      issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
     steps:
       - uses: actions/checkout@v5
       # Waits for the suite's lock instead of queueing in a concurrency group (GitHub keeps ONE waiting job per group and cancels the older one: beta 14, 24 Oct 2026).
@@ -884,6 +890,10 @@ jobs:
         if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.changes.outputs.review == '1'   # only when the Mac run had it (the UI or its tests changed, or a finding waits)
         working-directory: desktop/e2e
         timeout-minutes: 15   # the batch waits up to 6 min, then asks what is left directly
+        env:   # the review runs on Free AI (lib/review-free.mjs, CI's own Workers AI token) and reads the by-design lessons from the issues (lib/review-lessons.mjs)
+          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: node review-ui.mjs
       # Its cost on /ai-cost, as the Mac lane reports it (7 Oct 2026: the Windows review, Sonnet with screenshots, was the one e2e AI cost never reported).
       - name: Report the AI review's cost to /ai-cost

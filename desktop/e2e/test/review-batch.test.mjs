@@ -38,7 +38,7 @@ async function review(api, extraEnv = {}) {
   const art = path.join(dir, 'art'); fs.mkdirSync(art);
   for (const view of ['jobs', 'settings']) fs.writeFileSync(path.join(art, `ui-${view}.png`), Buffer.from([137, 80, 78, 71, view.length]));
   const {stdout} = await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_REVIEW_BATCH_MIN: '2', E2E_ARTIFACTS: art,
-    E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', GITHUB_STEP_SUMMARY: '', ...extraEnv}});
+    E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', GITHUB_STEP_SUMMARY: '', E2E_JUDGE_FAMILY: 'claude', E2E_REVIEW_LESSONS: '0', ...extraEnv}});
   return {stdout, findings: JSON.parse(fs.readFileSync(path.join(art, 'ai-findings.json'), 'utf8')), usage: JSON.parse(fs.readFileSync(path.join(art, 'ai-review-usage.json'), 'utf8'))};
 }
 

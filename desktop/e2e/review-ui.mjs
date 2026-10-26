@@ -1,23 +1,29 @@
 // Reviews the journey's screenshots (artifacts/ui-<view>.png) with AI and writes artifacts/ai-findings.json.
-//   E2E_ANTHROPIC_KEY=… node review-ui.mjs        (about half a cent a page on Sonnet through the Batch API; the app itself runs on Haiku)
-// A request already answered (the same picture, facts, rules and model, byte for byte) is not asked again: its findings come from the
-// review cache (E2E_REVIEW_CACHE, kept between CI runs), so an unchanged page costs nothing and its issues are still "seen again".
-// The rest go direct, 4 at a time; 20 or more go as ONE Message Batches request (half the price, same model and prompt); whatever the batch has not answered within
+//   CI on Free AI (owner, 26 Oct 2026): a Workers AI vision model looks first (lib/review-free.mjs, CI_FREE_AI_CF_TOKEN, about $0.002 a page); Claude looks again
+//   only at the pages it flagged, and only with E2E_REVIEW_CONFIRM=claude (off until the owner funds Claude). Off Free AI: E2E_ANTHROPIC_KEY=… node review-ui.mjs (Sonnet).
+// A page that looks the same as the last one judged for the same question (lib/review-cache.mjs: the same prompt, facts and lessons, and lib/png-grid.mjs's
+// look) is not asked again: its findings come from the review cache (E2E_REVIEW_CACHE, kept between CI runs), so they are still "seen again".
+// Each page is asked with the by-design lessons of its kind of page (lib/review-lessons.mjs, from the closed issues; E2E_REVIEW_LESSONS=0 leaves them out).
+// Claude's pages go direct, 4 at a time; 20 or more go as ONE Message Batches request (half the price, same model and prompt); whatever the batch has not answered within
 // E2E_REVIEW_BATCH_WAIT_S (default 360 s) is cancelled and asked directly, so a slow batch never costs a review.
 // An answer cut off by the token cap is not a clean page: it is listed as not reviewed. Every call's tokens and cost are logged,
 // and the totals written to artifacts/ai-review-usage.json.
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {ARTIFACTS, DESKTOP} from './lib/app.mjs';
 import {judgeFamily} from './lib/engine.mjs';
-import {MODEL, buildRequest, fingerprint, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
+import {lookStrips} from './lib/png-grid.mjs';
+import {prune, questionKey, recall, remember} from './lib/review-cache.mjs';
+import {FREE_MODEL, askFree} from './lib/review-free.mjs';
+import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
+import {MODEL, buildRequest, fingerprint, parseFindings, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
 
-// CI on Free AI (owner, 26 Oct 2026: "Let's just switch to Free AI"): the relay reads no pictures, so the review waits for its Workers AI vision model instead of
-// failing on the Claude key (CI's Anthropic credit is out). E2E_JUDGE_FAMILY=claude brings it back.
-if (judgeFamily() === 'free') { console.log('Screenshot review: paused while CI runs on Free AI (the relay reads no pictures; the vision review comes next).'); process.exit(0); }
+// Free AI looks first whenever CI runs on it (E2E_JUDGE_FAMILY=claude brings Sonnet back); E2E_REVIEW_ENGINE=free asks it anywhere.
+const FREE = judgeFamily() === 'free' || process.env.E2E_REVIEW_ENGINE === 'free';
 const key = process.env.E2E_ANTHROPIC_KEY;
-if (!key) { console.error('E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
+const CONFIRM = FREE && process.env.E2E_REVIEW_CONFIRM === 'claude' && Boolean(key);   // the Claude second pass: the one switch, off until the owner funds Claude
+if (FREE ? !process.env.CI_FREE_AI_CF_TOKEN : !key) { console.error(FREE ? 'CI_FREE_AI_CF_TOKEN is needed (the review runs on Free AI).' : 'E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
+const REVIEW_MODEL = FREE ? FREE_MODEL : MODEL;
 const API = process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com';   // a test points this at a fake
 const HEADERS = {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'};
 const BATCH_WAIT_MS = Number(process.env.E2E_REVIEW_BATCH_WAIT_S || 360) * 1000;
@@ -25,29 +31,28 @@ const POLL_MS = Number(process.env.E2E_REVIEW_POLL_MS || 10000);
 const skill = path.resolve(DESKTOP, '..', '.claude', 'skills', 'ui-look-and-feel', 'SKILL.md');
 const rules = fs.existsSync(skill) ? fs.readFileSync(skill, 'utf8').replace(/^---[\s\S]*?---/, '') : '';
 const CACHE = process.env.E2E_REVIEW_CACHE || path.join(DESKTOP, 'e2e', '.review-cache');
-const CACHE_DAYS = 14;   // an answer older than this is asked again (and the file pruned): the reviewer's judgement may have moved on
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const all = [];
 // A skipped suite (no token yet) or a suite that stopped early leaves nothing to look at: that is not an error.
 if (!fs.existsSync(ARTIFACTS) || !fs.readdirSync(ARTIFACTS).some(name => /^(ui|failed)-.+\.png$/.test(name))) { console.log('No screenshots to review.'); process.exit(0); }
-fs.mkdirSync(CACHE, {recursive: true});
-for (const name of fs.readdirSync(CACHE)) {
-  const file = path.join(CACHE, name);
-  if (Date.now() - fs.statSync(file).mtimeMs > CACHE_DAYS * 86400000) fs.rmSync(file, {force: true});
-}
+prune(CACHE);
+const lessons = process.env.E2E_REVIEW_LESSONS === '0' ? [] : await fetchLessons();
 let rejected = 0;
 // Which pages the AI really looked at, and which it could not (no credit, rate limit, an outage, a cut-off answer): ui-findings reads this. A page nobody reviewed is not a page that came back clean.
 const reviewed = [], unreviewed = [];
-const usage = {model: MODEL, calls: 0, batched: 0, cached: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0};
+const usage = {model: CONFIRM ? `${REVIEW_MODEL}, then ${MODEL} on what it flags` : REVIEW_MODEL, calls: 0, batched: 0, cached: 0, confirmed: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0, lessons: lessons.length};
 const names = fs.readdirSync(ARTIFACTS);
 // The pages the journey photographed, and the window at the moment a step failed (at most two): a failure screenshot shows the whole app, the sidebar and the bottom bar too.
 const jobs = [...names.filter(name => /^ui-.+\.png$/.test(name)).sort().map(name => ({view: name.slice(3, -4), png: name, factsFile: path.join(ARTIFACTS, `ui-${name.slice(3, -4)}.json`)})),
   ...names.filter(name => /^failed-.+\.png$/.test(name)).sort().slice(0, 2).map(name => ({view: 'failure-screenshot', png: name, factsFile: ''}))]
   .map((job, index) => {
     const facts = job.factsFile && fs.existsSync(job.factsFile) ? JSON.parse(fs.readFileSync(job.factsFile, 'utf8')) : null;
-    const request = buildRequest({view: job.view, pngBase64: fs.readFileSync(path.join(ARTIFACTS, job.png)).toString('base64'), rules, facts});
-    const body = JSON.stringify(request);
-    return {...job, id: `r${index}`, request, body, cached: path.join(CACHE, `${crypto.createHash('sha256').update(body).digest('hex')}.json`)};
+    const png = fs.readFileSync(path.join(ARTIFACTS, job.png));
+    const ask = model => buildRequest({view: job.view, pngBase64: png.toString('base64'), rules, facts, lessons: lessonsText(lessonsFor(lessons, job.view)), model});
+    const request = ask(REVIEW_MODEL);
+    let strips = null;
+    try { strips = lookStrips(png); } catch { /* a picture we cannot read is asked every time */ }
+    return {...job, id: `r${index}`, request, body: JSON.stringify(request), ask, key: questionKey(job.view, request), strips};
   });
 
 // One failed call (HTTP, or a batch item's error): a request we got wrong fails the step; the key's own limit or a busy service is a warning.
@@ -64,8 +69,8 @@ function failed(job, status, detail) {
 }
 
 // One answered call: count its cost, keep a whole answer for next time, and say when it was cut off (then the page is not reviewed).
-function answered(job, message, {batch = false} = {}) {
-  const u = message.usage || {}, usd = usageCost(MODEL, u, {batch});
+function answered(job, message, {batch = false, usd: freeUsd} = {}) {
+  const u = message.usage || {}, usd = freeUsd !== undefined ? freeUsd : usageCost(MODEL, u, {batch});
   usage.calls++; if (batch) usage.batched++;
   usage.input += u.input_tokens || 0; usage.cacheWrite += u.cache_creation_input_tokens || 0; usage.cacheRead += u.cache_read_input_tokens || 0; usage.output += u.output_tokens || 0;
   usage.usd += usd || 0;
@@ -77,8 +82,15 @@ function answered(job, message, {batch = false} = {}) {
     unreviewed.push({view: job.view, why: `answer cut off (${message.stop_reason})`});
     return null;
   }
-  fs.writeFileSync(job.cached, JSON.stringify({view: job.view, model: MODEL, text}));
+  if (job.strips) remember(CACHE, job.key, {view: job.view, model: REVIEW_MODEL, strips: job.strips, text});
   return text;
+}
+
+// Free AI's first look (lib/review-free.mjs): the same accounting as a Claude call.
+async function free(job) {
+  const result = await askFree(job.request);
+  if (!result.ok) return failed(job, result.status, result.detail);
+  return answered(job, result.message, {usd: result.usd});
 }
 
 async function direct(job) {
@@ -135,17 +147,28 @@ async function batch(pending) {
 
 const answers = new Map(), fromCache = new Set(), droppedByShape = [];   // findings the AI raised that the shape rules dropped (lib/vision.mjs), with why
 for (const job of jobs) {
-  try {
-    const text = JSON.parse(fs.readFileSync(job.cached, 'utf8')).text;
-    if (typeof text === 'string') { answers.set(job.id, text); fromCache.add(job.id); usage.cached++; fs.utimesSync(job.cached, new Date(), new Date()); }   // still in use: keep it past CACHE_DAYS
-  } catch { /* not answered before */ }
+  const text = job.strips ? recall(CACHE, job.key, job.strips) : null;
+  if (typeof text === 'string') { answers.set(job.id, text); fromCache.add(job.id); usage.cached++; }
 }
 const pending = jobs.filter(job => !answers.has(job.id));
+const PARALLEL = 4;
+if (FREE) {
+  for (let at = 0; at < pending.length; at += PARALLEL) {
+    const slice = pending.slice(at, at + PARALLEL);
+    (await Promise.all(slice.map(job => free(job)))).forEach((answer, i) => answers.set(slice[i].id, answer));
+  }
+  // The Claude second pass, behind E2E_REVIEW_CONFIRM=claude: only the pages Free AI flagged this run; Claude's answer replaces Free AI's (and is remembered).
+  const flagged = CONFIRM ? pending.filter(job => typeof answers.get(job.id) === 'string' && parseFindings(answers.get(job.id), job.view).length) : [];
+  for (const job of flagged) {
+    const request = job.ask(MODEL), answer = await direct({...job, request, body: JSON.stringify(request)});
+    if (typeof answer === 'string') { answers.set(job.id, answer); usage.confirmed++; }
+  }
+}
 // A batch only for many pages (6 Oct 2026: 4 pages waited 3-6 min in a batch to save about a cent; the owner wants every suite job short). Fewer go direct, 4 at a time.
-const BATCH_MIN = Number(process.env.E2E_REVIEW_BATCH_MIN || 20), PARALLEL = 4;
-const fromBatch = pending.length >= BATCH_MIN && process.env.E2E_REVIEW_BATCH !== '0' ? await batch(pending) : new Map();
+const BATCH_MIN = Number(process.env.E2E_REVIEW_BATCH_MIN || 20);
+const fromBatch = !FREE && pending.length >= BATCH_MIN && process.env.E2E_REVIEW_BATCH !== '0' ? await batch(pending) : new Map();
 for (const [id, text] of fromBatch) answers.set(id, text);
-const left = pending.filter(job => !fromBatch.has(job.id));
+const left = FREE ? [] : pending.filter(job => !fromBatch.has(job.id));
 for (let at = 0; at < left.length; at += PARALLEL) {
   const slice = left.slice(at, at + PARALLEL);
   (await Promise.all(slice.map(job => direct(job)))).forEach((answer, i) => answers.set(slice[i].id, answer));
@@ -158,12 +181,12 @@ for (const job of jobs) {
   droppedByShape.push(...parsed.dropped);
   const found = parsed.kept.map(item => ({...item, id: fingerprint(item), file: job.png}));   // file: the picture the finding was seen on
   reviewed.push(job.view);
-  console.log(`${found.length ? '!' : '✓'} ${job.view}: ${found.length} finding(s)${fromCache.has(job.id) ? ' (unchanged since an earlier run: not asked again)' : ''}${found.map(item => `\n    [${item.severity}] ${item.title}: ${item.detail}`).join('')}`);
+  console.log(`${found.length ? '!' : '✓'} ${job.view}: ${found.length} finding(s)${fromCache.has(job.id) ? ' (looks the same as the last one judged: not asked again)' : ''}${found.map(item => `\n    [${item.severity}] ${item.title}: ${item.detail}`).join('')}`);
   all.push(...found);
 }
-fs.writeFileSync(path.join(ARTIFACTS, 'ai-findings.json'), JSON.stringify({model: MODEL, findings: all, reviewed, unreviewed, dropped: droppedByShape}, null, 2));
+fs.writeFileSync(path.join(ARTIFACTS, 'ai-findings.json'), JSON.stringify({model: usage.model, findings: all, reviewed, unreviewed, dropped: droppedByShape}, null, 2));
 fs.writeFileSync(path.join(ARTIFACTS, 'ai-review-usage.json'), JSON.stringify({...usage, usd: Number(usage.usd.toFixed(4))}, null, 2));
-const line = `AI review: ${usage.calls} call(s) (${usage.batched} by batch, half price), ${usage.cached} unchanged (not asked again), ${usage.failed} failed, ${usage.cutOff} cut off; ${usage.input} in + ${usage.cacheRead} cache read + ${usage.cacheWrite} cache write, ${usage.output} out = $${usage.usd.toFixed(4)} (${MODEL})`;
+const line = `AI review: ${usage.calls} call(s) (${usage.batched} by batch, half price), ${usage.cached} looked the same (not asked again), ${usage.confirmed} checked again by Claude, ${usage.failed} failed, ${usage.cutOff} cut off; ${usage.input} in + ${usage.cacheRead} cache read + ${usage.cacheWrite} cache write, ${usage.output} out = $${usage.usd.toFixed(4)} (${usage.model}; ${usage.lessons} by-design lesson(s))`;
 console.log(`\n${all.length} finding(s) written to ai-findings.json\n${line}${unreviewed.length ? `\nNOT reviewed (${unreviewed.map(item => `${item.view}: ${item.why}`).join(', ')}): no finding is filed or cleared for these pages from this run.` : ''}`);
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
 if (rejected) process.exit(1);

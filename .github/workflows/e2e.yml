@@ -238,6 +238,7 @@ jobs:
       E2E_FULL: ${{ needs.plan.outputs.over != 'true' && (inputs.gate_tag || (github.event_name == 'workflow_dispatch' && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.scheduled && !inputs.bisect)) && '1' || '' }}   # the paid AI judge steps: the nightly gate and manual runs only
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
+      issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
     steps:
       - uses: actions/checkout@v5
         with:
@@ -385,6 +386,10 @@ jobs:
         if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == ''   # the costly part: only when the UI or its tests changed, or a finding waits
         working-directory: desktop/e2e
         timeout-minutes: 15   # the batch waits up to 6 min, then asks what is left directly
+        env:   # the review runs on Free AI (lib/review-free.mjs, CI's own Workers AI token) and reads the by-design lessons from the issues (lib/review-lessons.mjs)
+          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
+          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: node review-ui.mjs
       # Its cost, as the other AI jobs leave theirs (ai-cost artifacts): /self-heal sums them (desktop/e2e/selfheal-stats.mjs). It was the one AI cost not summed.
       - name: The AI review's cost

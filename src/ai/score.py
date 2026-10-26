@@ -212,13 +212,13 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None):
     matches it, the score is still current (only form sections were in it) and its hash is updated instead of scoring again."""
     db.executescript(SCORES_TABLE)
     done = {row['job_id']: row for row in db.execute('SELECT job_id, scorer_version, input_hash, data_json FROM scores')}
-    pending = []
+    pending, again = [], score_search.again_ids([job for job in candidates if job.get('description')], done, RESCORE_MIN)
     for job in candidates:
         if not job.get('description'):
             continue
         row = done.get(job['id'])
         current = input_hash(job, job.get('ai'), profile)
-        if row and score_search.again(job, json.loads(row['data_json'] or '{}'), RESCORE_MIN):   # scored before the search part, low, wanted now
+        if job['id'] in again:   # scored before the search part, low, a title the search wants now
             pending.append(((1, 0), job))
             continue
         if row and row['scorer_version'] == SCORER_VERSION and row['input_hash'] == current:

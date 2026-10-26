@@ -71,9 +71,9 @@ class CareerChange(unittest.TestCase):
         self.assertEqual((one['score'], one['cv_fit'], one['search']['cv_gap']), (88, 15, GAP))
         self.assertEqual(one['tier'], 'A')
         self.assertEqual(one['gaps'][0], GAP, "first among the gaps (the drawer's match panel)")
+        self.assertEqual(one['reason'], f'Fits your search · Your CV: {GAP}', 'the one line the Jobs row, the drawer and Job Matches show')
         card = digest.build_digest(self.db, seed=1, hide_unscored=True)[0][0]
-        self.assertIn('88/100 · fits your search', card)
-        self.assertIn(f'<b>Your CV:</b> {GAP}', card)
+        self.assertIn(f'88/100 · Fits your search · Your CV: {GAP}', card)
 
     def test_the_same_field_keeps_its_fit_to_the_cv(self):
         fits = self.scored(FakeModel(career_change=False, search_fit=90, cv_fit=60))
@@ -86,17 +86,19 @@ class CareerChange(unittest.TestCase):
         for job in jobs:
             score.save(self.db, job, 'm', {**old, 'score': 70} if job['title'].endswith(' 2') else old, CV)
         wanted = lambda title: not str(title).endswith(' 1')   # the search's title check: job 1 is not wanted
-        with mock.patch('src.sources.feeds.wanted_title', side_effect=wanted):
+        with mock.patch('src.sources.feeds.wanted_title', side_effect=wanted), mock.patch('src.sources.feeds.triage') as sorted_by_ai:
             again = {job['title'] for job in score.pending_jobs(self.db, jobs, CV, 50)}
             self.assertEqual(len(again), 11, 'all low ones the search wants: not job 1 (not wanted), not job 2 (scored 70)')
             self.assertNotIn('First Officer A320 1', again)
+            self.assertEqual(len(sorted_by_ai.call_args_list[0][0][0]), 12, "the AI sorts the low ones' titles first, in one batch")
             score.run(self.db, jobs, CV, 'm', 50, client=FakeModel())
             self.assertEqual(score.pending_jobs(self.db, jobs, CV, 50), [], 'once only')
 
     def test_an_answer_without_the_search_part_is_never_asked_again(self):
         data = score_search.apply({'score': 15, 'tier': 'C'})
         self.assertEqual(data['search'], {})
-        self.assertFalse(score_search.again({'title': 'First Officer'}, data, 50))
+        row = {'data_json': json.dumps(data)}
+        self.assertEqual(score_search.again_ids([{'id': 1, 'title': 'First Officer'}], {1: row}, 50), set())
 
 
 if __name__ == '__main__':

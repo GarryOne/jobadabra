@@ -109,22 +109,10 @@ def apply(search, profile='', asker=None, stamp=None, save=None):
 
 
 def _publish(files):
-    """The three redrafted sections on the Notion search settings page (the page is the source of truth: a sync would bring the old words back).
-    Nothing to do without a page; an error is raised so the stamp stays and the next run redrafts again."""
+    """The redrafted sections on the Notion search settings page (the page is the source of truth: a sync would bring the old words back).
+    An error is raised so the stamp stays and the next run redrafts again."""
     from .notion import search_settings
-    if not search_settings.PAGE_ID:
-        return
-    from .notion.client import Tracker
-    tracker = Tracker.from_env()
-    if not tracker:
-        return
-    for heading, name, path, kind in search_settings.SECTIONS:
-        if path in DERIVED:
-            value = search_settings._get(files[name], path) or []
-            items = [search_settings.readable(v) if kind == 'match' else str(v) for v in value]
-            tracker.replace_after_heading(search_settings.PAGE_ID, heading, [
-                {'object': 'block', 'type': 'bulleted_list_item', 'bulleted_list_item': {'rich_text': [{'type': 'text', 'text': {'content': item}}]}}
-                for item in items])
+    search_settings.publish_sections(files, DERIVED)
 
 
 def refresh(asker=None, profile=None, publish=_publish):

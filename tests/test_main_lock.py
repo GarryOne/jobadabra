@@ -15,7 +15,7 @@ class RunLockTest(unittest.TestCase):
             yield
 
         module = mock.Mock(main=lambda: ran.append(1) or 0)
-        with mock.patch.object(sys, 'argv', ['src', *argv]), mock.patch('src.paths.run_lock', lock), \
+        with mock.patch.object(sys, 'argv', ['src', *argv]), mock.patch('src.paths.run_lock', lock), mock.patch('src.field_redraft.refresh_quietly'), \
                 mock.patch('importlib.import_module', return_value=module), \
                 mock.patch('src.notion.search_settings.sync_quietly'), mock.patch('src.places.refresh_quietly'), \
                 mock.patch('src.crash_reporting.install'):

@@ -11,7 +11,10 @@ export const STRONG_STEPS = new Set(['kit', 'prep', 'insight', 'interview', 'opp
 // Every other step reads or judges (a score, job facts, a mail, a title, a decision): it answers at temperature 0 (owner, 26 Oct 2026: "Reading + judging steps").
 // Measured 26 Oct 2026 (690 draws on CI's quality fixtures): at the model's default 0.6, 26% of score texts invented a fact; at 0, 11%. Writing keeps the default.
 // Guard: desktop/test/free-ai-temperature.test.js.
-export const temperatureFor = action => (STRONG_STEPS.has(String(action ?? '')) ? undefined : 0);
+// The interview review judges a call's notes for gaps and practice steps (owner, 26 Oct 2026: "Yes, temp 0 for interview"; beta 3's Windows run named no gap):
+// it keeps the stronger model when that is on, but answers at 0.
+const JUDGED_WRITING = new Set(['interview']);
+export const temperatureFor = action => (STRONG_STEPS.has(String(action ?? '')) && !JUDGED_WRITING.has(String(action ?? '')) ? undefined : 0);
 
 // Per step (owner, 16 Oct 2026: "Yes, that step only"): the rejection review ('review') runs on gpt-oss-120b, every other step on SMALL (or STRONG when STRONG_ON). STEP_MODELS=off puts it back on SMALL.
 export const STEP_MODELS = {review: OSS};

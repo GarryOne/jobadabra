@@ -8,8 +8,8 @@ import {toWorkersAi} from '../lib/free-ai-translate.js';
 const noPdf = async () => '';
 const ask = {max_tokens: 100, messages: [{role: 'user', content: 'Score this job.'}]};
 // Every step name the engine sends (src/ai/providers/anthropic_api.py ACTIONS) and the app's own; '' = a step that sends none.
-const READING = ['enrich', 'score', 'mail', 'inbox', 'added', 'import', 'scout', 'decide', 'web_search', ''];
-const WRITING = ['kit', 'prep', 'insight', 'interview', 'opportunity', 'review', 'tailor', 'cover_letter', 'job_cover_letter', 'answer', 'answer_review'];
+const READING = ['enrich', 'score', 'mail', 'inbox', 'added', 'import', 'scout', 'decide', 'web_search', 'interview', ''];   // interview: owner, 26 Oct 2026
+const WRITING = ['kit', 'prep', 'insight', 'opportunity', 'review', 'tailor', 'cover_letter', 'job_cover_letter', 'answer', 'answer_review'];
 
 test('every reading or judging step asks at temperature 0', async () => {
   for (const action of READING) {
@@ -24,6 +24,11 @@ test('every writing step keeps the model default (no temperature sent)', async (
     assert.equal(temperatureFor(action), undefined, action);
     assert.equal('temperature' in await toWorkersAi(ask, noPdf, action), false, action);
   }
+});
+
+test('the interview review answers at 0 but keeps the stronger model when that is on', () => {
+  assert.ok(STRONG_STEPS.has('interview'));
+  assert.equal(temperatureFor('interview'), 0);
 });
 
 test("a caller's own temperature wins", async () => {

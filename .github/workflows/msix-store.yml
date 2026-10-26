@@ -88,8 +88,13 @@ jobs:
     name: Submit ${{ inputs.tag }} to the Microsoft Store
     needs: msix
     if: inputs.tag != ''
-    runs-on: ubuntu-24.04
+    # msstore reconfigure stores the client secret in the OS keyring; a Linux runner has none unlocked, so it failed there (0.8.41, 26 Oct 2026).
+    # Microsoft's own example runs it on Windows (Credential Manager).
+    runs-on: windows-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     env:
       APP_ID: 9NW1JJ7Z90MP   # https://apps.microsoft.com/detail/9NW1JJ7Z90MP
       MS_STORE_TENANT_ID: ${{ secrets.MS_STORE_TENANT_ID }}
@@ -116,7 +121,7 @@ jobs:
         uses: microsoft/microsoft-store-apppublisher@v1.4
       - if: steps.connected.outputs.ready == 'true'
         name: Sign in to Partner Center
-        run: msstore reconfigure --tenantId "$MS_STORE_TENANT_ID" --sellerId "$MS_STORE_SELLER_ID" --clientId "$MS_STORE_CLIENT_ID" --clientSecret "$MS_STORE_CLIENT_SECRET" > /dev/null
+        run: msstore reconfigure --tenantId "$MS_STORE_TENANT_ID" --sellerId "$MS_STORE_SELLER_ID" --clientId "$MS_STORE_CLIENT_ID" --clientSecret "$MS_STORE_CLIENT_SECRET" --verbose   # its reason prints; GitHub masks the secrets
       - if: steps.connected.outputs.ready == 'true'
         name: A version still in Microsoft's review waits for the next release
         id: inflight

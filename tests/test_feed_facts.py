@@ -69,8 +69,9 @@ class FeedFactsTest(unittest.TestCase):
         self.assertIn('not read again', report['said'])
 
     def test_an_employer_with_a_title_still_waiting_for_the_ai_is_read_again(self):
-        self.lists['s1'] = [job(11, 'Kapitän der Lüfte')]   # no role word: the AI must judge it, and it has not
-        with mock.patch.object(feeds, 'triage', lambda jobs: None), mock.patch.object(feed_facts, '_triage_on', lambda: True):
+        self.lists['s1'] = [job(11, 'Kapitän der Lüfte')]   # the AI has not judged it yet; it judged the others (word hits wait for it too)
+        judge = lambda jobs: feeds._triaged().update({feeds.title_key(j['title']): True for j in jobs if 'Kapit' not in j['title']})
+        with mock.patch.object(feeds, 'TRIAGED', {}), mock.patch.object(feeds, 'triage', judge), mock.patch.object(feed_facts, '_triage_on', lambda: True):
             scan(self.db, Feeds(self.lists), self.t0)
             again = Feeds(self.lists)
             scan(self.db, again, self.t0 + timedelta(minutes=11))

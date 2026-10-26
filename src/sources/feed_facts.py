@@ -78,12 +78,11 @@ def _triage_on():
 
 
 def settled(job):
-    """Every answer this job needs for this search is there: its title (role words, or the AI's answer) and, for a title that fits, its place."""
+    """Every answer this job needs for this search is there: its title (the AI's answer; the words only with no AI) and, for a title that fits, its place."""
     from . import feeds
     title = job.get('title') or ''
-    if feeds.wanted_location(job) and not feeds.excluded_title(title) and not feeds.sure_title(title) and _triage_on() \
-            and feeds.title_key(title) not in feeds._triaged():
-        return False
+    if feeds.wanted_location(job) and _triage_on() and feeds.title_key(title) not in feeds._triaged():
+        return False   # every title in your places waits for the AI's answer, word hits too (owner, 26 Oct 2026: "The AI decides")
     return not (feeds.placing() and (job.get('location') or '').strip() and feeds.wanted_title(title) and feeds.place_of(job) is None)
 
 

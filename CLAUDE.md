@@ -50,6 +50,7 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
 ## Working rules
 - **Every fix works for any user, through the Desktop App:** a step done by hand (terminal, Keychain, `gh secret set`, a Notion edit) is a product
   bug: build it into the app and test it.
+- **Every site a run reads or offers fits the current search** (owner, 26 Oct 2026: "the websites being read should be relevant and in sync with my current strategy and jobs search"; a pilot search read Moldovan bank sites): employers, boards, web-search finds, refused-site reads and the visit list are judged by the AI for the CURRENT roles and places; a strategy change re-judges anything kept, queued or rested for an old one. Guard: `tests/test_sources_follow_strategy.py`.
 - **Wrong data is a bug:** fix the root cause with a regression test, then repair the owner's rows by hand via the Notion MCP. No one-off repair code.
 - **Data has one copy, behind the store interface** (`src/stores/`, SQLite default, Notion by choice; new data goes through every adapter). The
   employer index is product data, never in a user's store. Detail: [docs/rules/data-ownership.md](docs/rules/data-ownership.md).

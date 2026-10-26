@@ -1,0 +1,54 @@
+{
+ "shape": "a div combobox named by aria-labelledby, set straight in the form among other boxes, that opens only on a real mousedown and commits into a hidden input",
+ "origin": "hand-cut",
+ "why": "Widget zoo custom-select-1, 26 Oct 2026 (hybrid fill step 1, moves 1 and 2): the trigger sat in a form with other boxes, so the rule for a trigger beside its own real field skipped it and it was never read; and its list opens only on a real mousedown. Now read, and pressed for real (opener, then the option with the answer), through the debugger. Hand-made page",
+ "control": {
+  "build": "0.8.0",
+  "failed": "asked: Preferred language; filled: #lang"
+ },
+ "sample": "a hand-made custom dropdown (the zoo custom_select shape)",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/div-combobox-in-form-1/apply",
+   "file": "form.html"
+  }
+ ],
+ "cv": false,
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "jp-field-1",
+     "question": "Preferred language",
+     "value": "German",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "asked": [
+   "Preferred language"
+  ],
+  "filled": [
+   "#lang"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 30
+ },
+ "start": "panel"
+}

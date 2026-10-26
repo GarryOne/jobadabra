@@ -1,0 +1,54 @@
+{
+ "shape": "choice chips in a div named only by aria-labelledby (no role): their only state is a class, so a reader sees nothing change",
+ "origin": "hand-cut",
+ "why": "Widget zoo chips-no-aria-1, 26 Oct 2026 (hybrid fill step 1, move 1): the group had no role, so it was never read and its question never asked; a group named by a label link is now read, and a press that changes only the option class counts as chosen (never pressed again). Hand-made page",
+ "control": {
+  "build": "0.8.0",
+  "failed": "asked: Work model; present: .chip.is-on[data-v=remote]"
+ },
+ "sample": "a hand-made choice-chip question (the zoo checkbox_group shape)",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/choice-chips-named-by-label-1/apply",
+   "file": "form.html"
+  }
+ ],
+ "cv": false,
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "aria:g1",
+     "question": "Work model",
+     "value": "Remote",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "asked": [
+   "Work model"
+  ],
+  "present": [
+   ".chip.is-on[data-v=remote]"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 30
+ },
+ "start": "panel"
+}

@@ -27,6 +27,8 @@
     notTaken.delete(String(field));
     el?.removeAttribute('data-jobpilotto-nottaken');
   };
+  // Every noted control with the fill's answer, whatever its kind: the presses for real read it (page/press-real.js). -> [[field, answer]]
+  window.__jobPilottoNotTakenAll = () => [...notTaken];
   // -> [{field, x, y, text}] for each noted box that is typable and still does not hold its answer (at most 8), scrolled into view first.
   window.__jobPilottoNotTakenSpots = () => {
     const spots = [];

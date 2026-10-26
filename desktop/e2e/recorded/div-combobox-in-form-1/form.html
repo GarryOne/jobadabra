@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Apply: Example role</title></head>
+<body>
+<!-- Recorded page (hand-cut from the widget zoo): A div combobox whose options appear on mousedown and commit on an option mousedown into a hidden input. Hand-made, no real site, no personal data. -->
+<h1>Apply for Example role</h1>
+<form id="apply" onsubmit="return false">
+<label for="first">First name</label> <input id="first" name="first_name" type="text" required>
+<label for="last">Last name</label> <input id="last" name="last_name" type="text" required>
+<label for="mail">Email</label> <input id="mail" name="email" type="email" required>
+<label id="lang-label">Preferred language</label>
+<div class="select" role="combobox" aria-labelledby="lang-label" aria-expanded="false" aria-haspopup="listbox" tabindex="0"><span class="select-value">Select...</span></div>
+<ul class="menu" role="listbox" hidden></ul>
+<input type="hidden" id="lang" name="lang">
+</form>
+<script>
+const box = document.querySelector('.select'), menu = document.querySelector('.menu');
+box.addEventListener('mousedown', e => { e.preventDefault(); menu.innerHTML = ['English', 'German', 'French'].map(t => `<li role="option" aria-selected="false">${t}</li>`).join(''); menu.hidden = false; box.setAttribute('aria-expanded', 'true'); });
+menu.addEventListener('mousedown', e => { const li = e.target.closest('[role=option]'); if (!li) return; document.getElementById('lang').value = li.textContent; box.querySelector('.select-value').textContent = li.textContent; menu.hidden = true; box.setAttribute('aria-expanded', 'false'); });
+</script>
+</body></html>

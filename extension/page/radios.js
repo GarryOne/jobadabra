@@ -8,6 +8,9 @@
 //   - plain buttons (a question step, 15 Oct 2026: Aldi's application start, a sentence, two buttons with no aria state and a "Continue" switched off until one is chosen): a group ONLY while a control waits
 //     for an answer (a visible disabled button), 2-4 enabled <button type=button> children of one parent, outside a form, dialog or toolbar. This is a FLOOR, by structure, never the words Yes/No: the
 //     same buttons with nothing waiting are not a field (a card's two buttons). An option shows no state: a press is taken as the answer only when a waiting control comes alive (its effect).
+//   - a group named only by a label link (hybrid fill move 1, owner 26 Oct 2026; widget zoo chips-no-aria-1): an element with no role (or role=group) that aria-labelledby or a
+//     <label for> names, holding 2-8 visible focusable options with words and nothing else (no box, no link). Its options may show their state only by a class: a press that changes
+//     the option's class is taken as chosen (data-jobpilotto-chosen), so it is never pressed again (a second press would undo it).
 // Injected before page/fill.js (extension/flow.js), which passes its helpers in. Never picks a legal option (LEGAL, the fill's own floor).
 // Shape test: desktop/test/page-radios.test.js.
 (() => {
@@ -29,7 +32,7 @@
     };
     const groupOf = key => document.getElementById(key) || document.querySelector(`[data-jobpilotto-group="${CSS.escape(key)}"]`);
     // The options of a group: its role=radio elements, else (a pressable-button group) its aria-pressed buttons.
-    const pressables = group => (group?.dataset?.jobpilottoPlainGroup ? plainButtons(group)
+    const pressables = group => (group?.dataset?.jobpilottoPlainGroup ? plainButtons(group) : group?.dataset?.jobpilottoNamedGroup ? Array.from(group.children)
       : Array.from(group?.querySelectorAll('button[aria-pressed]') || []).filter(button => button.getAttribute('role') !== 'radio'));
     const plainButtons = group => window.__jobPilottoChoiceStep.optionsOf(group);
     const radiosOf = group => {
@@ -49,9 +52,11 @@
       const centre = box && box.width && box.height ? (point => point && option.contains(point) ? point : null)(document.elementFromPoint?.(box.left + box.width / 2, box.top + box.height / 2)) : null;
       const steps = [centre && centre !== option ? centre : null, option.querySelector?.('input[type=radio], input[type=checkbox]'), option];
       const waiting = plain(option) ? waitingControls() : [];   // a plain option shows no state of its own: its effect is what a person sees, the control that waited for an answer comes alive
+      const named = !!option.parentElement?.dataset?.jobpilottoNamedGroup && plain(option), classBefore = option.className;   // a named group's option may show its state only by a class
       for (const target of steps) {
         if (!target) continue;
         (globalThis.__jobPilottoPress?.(target) || target.click());
+        if (named && option.className !== classBefore) { for (const other of option.parentElement.children) delete other.dataset.jobpilottoChosen; option.dataset.jobpilottoChosen = '1'; return true; }
         if (waiting.length && waiting.some(control => !control.disabled && control.getAttribute('aria-disabled') !== 'true')) { option.dataset.jobpilottoChosen = '1'; return true; }
         if (isOn(option)) return true;
       }
@@ -89,7 +94,20 @@
         group.dataset.jobpilottoPlainGroup = '1';
         found.push(group);
       }
+      for (const group of namedGroups()) if (!found.includes(group)) { group.dataset.jobpilottoNamedGroup = '1'; found.push(group); }
       return found;
+    };
+    // Groups named only by a label link (see the head of this file): structure only, no words.
+    const CHOICE = 'button, [role=button], [role=option], [tabindex]:not([tabindex="-1"])';
+    const namedGroups = () => {
+      const named = new Set(document.querySelectorAll('[aria-labelledby]:not([role]), [aria-labelledby][role=group]'));
+      for (const label of document.querySelectorAll('label[for]')) { const el = document.getElementById(label.htmlFor); if (el && !label.control && (!el.getAttribute('role') || el.getAttribute('role') === 'group')) named.add(el); }
+      return [...named].filter(group => {
+        if (group.closest('nav, header, footer, dialog, [role=navigation], [role=menu], [role=menubar], [role=listbox], [role=tablist], [role=toolbar], [role=radiogroup]')) return false;
+        if (group.querySelector('input, select, textarea, a[href], [role=radio], [role=checkbox], [role=combobox], button[aria-pressed]')) return false;
+        const items = Array.from(group.children);
+        return items.length >= 2 && items.length <= 8 && items.every(item => item.matches(CHOICE) && !item.querySelector(CHOICE) && visible(item) && clean(item.textContent) && clean(item.textContent).length <= 80);
+      });
     };
     // Every visible ARIA radio group, and pressable-button group, as a field (a group gets a key it keeps for the fill that follows).
     const ariaFields = () => [...document.querySelectorAll('[role=radiogroup]'), ...pressableGroups()].flatMap(group => {
@@ -107,6 +125,8 @@
     // The described ARIA fields as audit rows (the audit reads inputs only), with their state now.
     const ariaRows = form => form.filter(row => String(row.field).startsWith('aria:'))
       .map(row => ({...row, filled: checked(radiosOf(groupOf(row.field.slice(5))))}));
-    return {nameOf, pickRadio, pickAriaRadio, ariaFields, ariaRows};
+    // The option of a group (its element) whose name is the answer, for a press for real (page/press-real.js); null for a legal question or no such option.
+    const optionOf = (group, answer) => { const match = group && optionFor(radiosOf(group), answer, nameOf); return match && !LEGAL.test(`${groupName(group, radiosOf(group))} ${nameOf(match)}`) ? match : null; };
+    return {nameOf, pickRadio, pickAriaRadio, ariaFields, ariaRows, optionOf, isOn};
   };
 })();

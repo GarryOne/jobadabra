@@ -22,7 +22,7 @@
    "eligible": true,
    "answers": [
     {
-     "field": "lang",
+     "field": "jp-field-1",
      "question": "Preferred language",
      "value": "German",
      "confidence": "high",

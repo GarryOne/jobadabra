@@ -4,7 +4,9 @@
 // (it sits in a heading, or names a region with aria-controls), and a closed <details>. Never a popup or menu (aria-haspopup, combobox, menuitem,
 // tab, switch), never inside navigation, a header, a footer or a dialog, never a link, never a submit control or anything that holds one, never a
 // toggle with no form control on the page at all. At most 20 a round, each once, a few rounds (a section can hold sections). Only the count is
-// logged, never a label. Called by fill-flow.js consider (before the page is judged) and flow.js fillTab (before the form is read).
+// logged, never a label. Hybrid fill move 3 (owner, 26 Oct 2026; widget zoo collapsed-section-1: an accordion head with no heading and no aria-controls, its body hidden right
+// after it): a head whose next sibling is its hidden body is a disclosure too; it is LOOKED INTO: the next round closes it again when its body drew nothing to fill, so a
+// toggle that only shows words is left as the page had it. Called by fill-flow.js consider (before the page is judged) and flow.js fillTab (before the form is read).
 // Guard: worker/test/page-sections.test.js; e2e step "a form with collapsed sections".
 import {decide} from './log.js';
 
@@ -15,6 +17,13 @@ export function openClosedSections() {
   const fenced = el => !!el.closest('nav, header, footer, dialog, [role=navigation], [role=banner], [role=contentinfo], [role=menu], [role=menubar], [role=listbox], [role=dialog], [role=alertdialog], [role=tablist]');
   const submits = el => el.matches('[type=submit], input[type=image]') || !!el.querySelector('[type=submit], input[type=image]');
   const heading = el => !!el.closest('h1, h2, h3, h4, h5, h6, [role=heading]');
+  const FIELD = 'input:not([type=hidden]), select, textarea, [role=radiogroup], [role=radio], [role=checkbox], [role=combobox], [role=listbox]';
+  const bodyAfter = el => (next => (next && (next.hidden || next.getClientRects().length === 0) ? next : null))(el.nextElementSibling);
+  // Looked into in an earlier round: kept open when its body drew something to fill, else closed again.
+  for (const el of document.querySelectorAll('[data-jobpilotto-opened="look"]')) {
+    el.setAttribute('data-jobpilotto-opened', 'looked');
+    if (el.getAttribute('aria-expanded') === 'true' && !el.nextElementSibling?.querySelector(FIELD)) (globalThis.__jobPilottoPress?.(el) || el.click());
+  }
   let opened = 0;
   for (const el of document.querySelectorAll('button[aria-expanded="false"], [role=button][aria-expanded="false"]')) {
     if (opened >= MAX) break;
@@ -24,8 +33,9 @@ export function openClosedSections() {
     if (el.tagName === 'A' || fenced(el) || submits(el)) continue;
     const controlled = (el.getAttribute('aria-controls') || '').split(/\s+/).map(id => (id ? document.getElementById(id) : null)).filter(Boolean);
     if (controlled.some(region => region.querySelector('[type=submit], input[type=image]'))) continue;
-    if (!heading(el) && controlled.length === 0) continue;   // not a disclosure: a button that happens to say "expanded false"
-    el.setAttribute('data-jobpilotto-opened', '1');
+    const look = !heading(el) && controlled.length === 0;
+    if (look && !bodyAfter(el)) continue;   // not a disclosure: a button that happens to say "expanded false"
+    el.setAttribute('data-jobpilotto-opened', look ? 'look' : '1');
     (globalThis.__jobPilottoPress?.(el) || el.click());
     opened++;
   }

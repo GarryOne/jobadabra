@@ -153,8 +153,11 @@
   window.__jobPilottoChosen = chosen;   // the name the audit and coverage.js call it by
   // Custom dropdowns that are no input (<div role=combobox>, <button aria-haspopup=listbox>): fields the form reader and the audit both list, shown and not wrapping a real control
   // (a combobox that holds its own input is read through the input). The list they open sits in the page, named by aria-controls or beside the trigger.
+  // The trigger's own wrapper holds its real field: one box beside it in a wrapper that is no form or fieldset (a trigger set straight in a form among its other boxes is the question
+  // itself: widget zoo custom-select-1, a div combobox named by aria-labelledby, was never read).
+  const ownField = el => { const up = el.parentElement; return !!up && !up.matches('form, fieldset') && up.querySelectorAll('input:not([type=hidden]), select, textarea').length === 1; };
   const customSelects = shown => [...document.querySelectorAll('div[role=combobox], button[role=combobox], button[aria-haspopup=listbox]')]
-    .filter(el => shown(el) && !el.disabled && !hiddenAway(el) && !el.querySelector('input:not([type=hidden]), select, textarea') && !el.parentElement?.querySelector('input:not([type=hidden]), select, textarea'));   // nor one whose own wrapper holds the real field (Workday's Phone Device Type button + its text input): that input is the question
+    .filter(el => shown(el) && !el.disabled && !hiddenAway(el) && !el.querySelector('input:not([type=hidden]), select, textarea') && !ownField(el));   // nor one whose own wrapper holds the real field (Workday's Phone Device Type button + its text input): that input is the question
   const choicesOf = el => {
     const list = (el.getAttribute('aria-controls') && document.getElementById(el.getAttribute('aria-controls'))) || el.parentElement?.parentElement?.querySelector('[role=listbox]');
     return Array.from(list?.querySelectorAll('[role=option]') || [], o => String(o.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 80);

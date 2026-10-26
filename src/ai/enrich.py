@@ -108,7 +108,7 @@ SCHEMA = {
         # the job's own work decides, not its title's team (e2e golden 3006: an "SRE, Customer Care" title on a phone helpdesk job).
         'role_family': {'type': 'string', 'enum': [*IT_FAMILIES, *(kind for kind in KINDS if kind not in IT_FAMILIES)],
                         'description': ROLE_FAMILIES},
-        'technologies': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Up to 8 key skills, tools, licences, certifications or topics the role names (any trade), short, in the posting\'s own language; [] when none'},
+        'technologies': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Up to 8 key skills, tools, licences, certifications or topics the role names (any trade), short, in the posting\'s own language: every tool, platform or licence the text names counts; [] only when it names none'},
         'responsibilities': {'type': 'array', 'items': {'type': 'string'},
                              'description': 'What the role involves day to day: up to 4 short plain sentences (under 110 characters each), in the posting\'s own terms; [] when it says nothing'},
         'on_call': {'type': 'string', 'enum': ['yes', 'no', 'unknown']},
@@ -142,7 +142,10 @@ visa_sponsorship is "offered" only when the posting explicitly says it sponsors 
 permits; "not_offered" only when it explicitly requires existing work authorization or says it does not \
 sponsor; "unknown" when the posting says nothing about it (do not infer this from the country).
 
-role_family: """ + ROLE_FAMILIES
+What each field means:
+""" + '\n'.join(f"{name}: {spec['description']}" for name, spec in SCHEMA['properties'].items() if spec.get('description'))
+# Every field's guidance is said here, not only in the schema: Free AI's model reads the prompt and skips schema descriptions
+# (E2E quality, 26 Oct 2026). Guard: tests/test_facts_prompt_fields.py.
 
 
 def description_hash(job):

@@ -75,22 +75,28 @@ https://claude.ai/artifact/G8YCgX65wGvK69PKsvd6Qq. Owner's design choice: "Paral
 and is shared; no AI planner per run). This list is B above, made concrete; the persona replay tape (0) measures it.
 - [x] 0a a changed search reads its boards at once: the 6-hour rest is per search (#1947)
 - [x] 1 "Europe" is all its countries at equal weight: not Swiss, every country kept, the pool label all of them, the board proposal in equal slices (proof: tests/test_region_equal.py)
-- [ ] 2 Free AI: the web search runs on the user's signed-in Claude Code / Codex (#1948)
-- [ ] 3 the web search starts at second 0 beside the read (with 15)
+- [x] 2 Free AI: the web search runs on the user's signed-in Claude Code / Codex (#1948)
+- [x] 3 the web search starts at second 0 beside the read (#1952; before the first jobs: this PR, the 26 Oct pilot check started it at 265 s)
 - [ ] 4 split 'Other' into real fields, the site's KINDS first (jobadabra-web), measured on the central titles
-- [ ] 5 the web search is a source with its own yield in the queue
+- [x] 5 the web search is a source with its own yield in the queue (#1952: boards marked origin 'web')
 - [ ] 6 speed: relevant jobs per minute per source; a source with 0 relevant after ~1 min stops
 - [ ] 7 employers' yield shared per field × country, like boards
 - [ ] 8 a new field: about 1 run in 5 explores
-- [ ] 9 the scout's "covered" judged by the search's own hits, not a kind count
-- [ ] 10 a field change redrafts the board words, Google queries and skill words
-- [ ] 11 a role that is on-site only says so when remote is on; asks for a place when "Remote" is the only one
-- [ ] 12 the paid site search for Free AI without a plan: waits for a measured cost per field × place, its terms, and the owner's yes
+- [x] 9 the scout's "covered" judged by the search's own hits, not a kind count (#1950)
+- [x] 10 a field change redrafts the board words, Google queries and skill words (#1953, #1956)
+- [-] 11 ~~a role that is on-site only says so when remote is on~~ dropped by the owner (26 Oct 2026: remote only adds jobs; #1955 reverted)
+- [ ] 12 the paid site search for Free AI without a plan: owner's yes 26 Oct 2026 ("Yes, $10/month cap"); prompt shared (#1954), site lane merged (jobadabra-web #132); left: the Worker key, the app sends web_search
 - [ ] 13 the no-seed proof: a fresh test install, "First Officer, Europe", fake applicant; its web search surfaces pilot boards (career.aero or alike) and airline career pages in the first minute, cost measured
 - [x] 14 the rule in docs/rules/data-ownership.md "Sources are found by the app, never named by the owner"
-- [ ] 15 every source starts at second 0 in parallel: index employers, known boards, the web search; nothing waits for another step
-- [ ] 16 the brakes go: the 30-day web rest and "only after a full board read found too few"; the one skip left: this field × place recently gave enough relevant jobs (measured)
+- [x] 15 every source starts at second 0 in parallel: index employers, known boards, the web search; nothing waits for another step
+- [x] 16 the brakes go: the 30-day web rest and "only after a full board read found too few"; the one skip left: this field × place recently gave enough relevant jobs (measured)
 - [ ] 17 effort shifts mid-run: a strong board found is read at once; employers with 0 relevant after ~1 min stop; the AI judges relevance
 - [ ] 18 learned for next time: each field × place's sources ranked by relevant jobs, shared, the next search starts from what worked
 - [x] 19 no AI planner per run (owner's choice, 26 Oct 2026): measured yield decides the order
 - [ ] 20 terms gate for found boards: read when the terms allow, else a visit
+- [ ] 21 the employer read inside the search's time (owner, 26 Oct 2026: "it shouldn't just go brute force and check all the employers" / "Stop at 3 minutes and tell you what's left for the next run"): best first, the first 40 always, no new site after 2 minutes, the rest read first next time (src/sources/read_budget.py, tests/test_read_budget.py); then in source_rank.order once #1960 lands
+
+### B · learned yield (jobadabra-46, owner's yes 26 Oct 2026)
+- explore = 1 slot in 5 in EVERY run (not 1 run in 5); proven after 1 install, dead after 3; best = local jobs per minute, 70+ as the tie-break
+- API: `source_rank.ranked_sources(search, countries, kinds=None)`, `source_rank.order(candidates, search, countries) -> (ordered, skipped)`; `source_yield.timed(kind, source, seconds)` (boards: 'job board' + host); web finds rank as boards (origin 'web')
+- [ ] site ranking served (jobadabra-web #131) · [ ] app side (#1960) · [ ] the run order calls order() (after #1960)

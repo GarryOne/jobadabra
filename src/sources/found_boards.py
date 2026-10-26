@@ -435,7 +435,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             ticker.tick(done, f" · {read_item[0]['name']}")
     for _, spare_item, result in sorted(taken, key=lambda entry: entry[0]):   # after the others, in the spares' order: a replay sees one order
         keep(spare_item, result)
-    more = board_web.finish(searching, proposed)   # its web search, started with the read: its boards are read now, in this run
+    more = board_web.finish(searching, proposed, data=data)   # its web search, started with the run or the read: its boards are read now, in this run
     board_ideas.save(data)
     board_employers.note(jobs, 'Job boards found')
     if more:

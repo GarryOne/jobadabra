@@ -27,3 +27,15 @@ export function channelLine({by = [], chosen: picked = null, connected = false, 
   if (!chosen.length) return {text: connected ? 'Telegram connected, not chosen' : 'Tell me by: app notifications only', dot: ''};
   return {text: `Tell me by: ${chosen.map(name => NAMES[name]).join(', ')}`, dot: 'is-on'};
 }
+
+// The Email card in Settings → Overview "Your setup" (owner, 26 Oct 2026: next to AI, Gmail and the extension, with its state). Shown when e-mail is chosen,
+// or when nothing else (Telegram) can tell the person anything; Telegram users are not nagged about it.
+export function emailCard(state) {
+  const by = state.by || [], chosen = state.chosen || [];
+  const shown = by.includes('email') || chosen.includes('email') || !by.includes('telegram');
+  if (!state.email) return {shown, on: false, text: 'Not set up'};
+  if (!state.reached) return {shown, on: true, text: `Saved · ${state.email}`};
+  if (state.sending === false) return {shown, on: false, text: 'Sending is off on our side'};
+  if (state.serviceOff) return {shown, on: false, text: 'You unsubscribed'};
+  return state.confirmed ? {shown, on: true, text: `Confirmed · ${state.email}`} : {shown, on: false, text: 'Waiting for the confirm link'};
+}

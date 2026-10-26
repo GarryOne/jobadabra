@@ -34,3 +34,9 @@ test('an answer not used for CACHE_DAYS is pruned', () => {
   prune(at, {now: Date.now() + (CACHE_DAYS + 1) * 86400000});
   assert.deepEqual(fs.readdirSync(at), []);
 });
+
+test('an answer given at one effort is never reused for another', () => {
+  const ask = effort => buildRequest({view: 'jobs', pngBase64: 'x', effort});
+  assert.notEqual(questionKey('jobs', ask('high')), questionKey('jobs', ask('low')));
+  assert.notEqual(questionKey('jobs', ask('high')), questionKey('jobs', ask('')));
+});

@@ -11,7 +11,7 @@ export const CACHE_DAYS = 14;   // an answer older than this is asked again (and
 
 // Everything the answer depends on except the picture: change a word of the prompt, a fact or a lesson and the page is asked again.
 export function questionKey(view, request) {
-  const words = [view, request.model || '', ...(request.system || []).map(block => block.text), ...request.messages[0].content.filter(block => block.type === 'text').map(block => block.text)];
+  const words = [view, request.model || '', ...(request.output_config?.effort ? [`effort ${request.output_config.effort}`] : []), ...(request.system || []).map(block => block.text), ...request.messages[0].content.filter(block => block.type === 'text').map(block => block.text)];
   return crypto.createHash('sha256').update(words.join('\u0000')).digest('hex');
 }
 

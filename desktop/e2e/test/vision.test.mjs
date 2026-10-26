@@ -135,3 +135,14 @@ test('the shape rules say what they dropped and why: malformed, no stated impact
 test('the reviewer is told the test-mode and by-design states of #1789-#1791, #1764 and #1730 are not findings', () => {
   for (const words of [/end-to-end journey/, /Technical log that stays open/, /No search yet/]) assert.match(SYSTEM, words);
 });
+
+// Owner, 26 Oct 2026: Haiku 5.5 at its default effort saw 49% of the judged bugs; E2E_REVIEW_EFFORT lets it think harder, with room for that thinking.
+test('an effort is sent to the model, and a high one gets room to think before the answer', () => {
+  const plain = buildRequest({view: 'jobs', pngBase64: 'x'});
+  assert.equal(plain.output_config, undefined);
+  assert.equal(plain.max_tokens, 3000);
+  const high = buildRequest({view: 'jobs', pngBase64: 'x', effort: 'high'});
+  assert.deepEqual(high.output_config, {effort: 'high'});
+  assert.ok(high.max_tokens >= 12000);
+  assert.equal(buildRequest({view: 'jobs', pngBase64: 'x', effort: 'low'}).max_tokens, 3000);
+});

@@ -77,15 +77,19 @@ Reply with ONE JSON object and nothing else:
 {"findings":[{"severity":"high|medium|low","kind":"layout|text|error-shown|empty-state|consistency|functionality|wrong-result","title":"<8 words>","detail":"<what you see and where>","workaround":"<only for high that is not a blocked task: what the person must do to get past it>","impact":"<one sentence: what the person loses, gets wrong or has to do because of this>","suggestion":"<the smallest fix, in plain words>"}]}`;
 
 export const MAX_TOKENS = 3000;
+// E2E_REVIEW_EFFORT (low|medium|high|xhigh|max): how hard the model thinks before it answers (owner, 26 Oct 2026: Haiku 5.5 at its default saw 49% of the judged bugs).
+// Unset: the model's own default. A higher effort thinks longer, so its answer gets more room before the cap cuts it off.
+export const REVIEW_EFFORT = process.env.E2E_REVIEW_EFFORT || '';
+const roomFor = effort => (['high', 'xhigh', 'max'].includes(effort) ? 12000 : MAX_TOKENS);
 
 // lessons: the by-design lessons for this kind of page (lib/review-lessons.mjs), after the facts.
-export function buildRequest({view, pngBase64, rules = '', facts = null, lessons = '', model = MODEL}) {
+export function buildRequest({view, pngBase64, rules = '', facts = null, lessons = '', model = MODEL, effort = REVIEW_EFFORT}) {
   // The fixed part (instructions + design rules) comes first and is cached: every review in the 5 minutes after the first reads it at a tenth of the price.
   const system = [{type: 'text', text: SYSTEM}, ...(rules ? [{type: 'text', text: `The app's design rules (excerpt):\n${rules.slice(0, 3000)}`}] : [])];
   system.at(-1).cache_control = {type: 'ephemeral'};
   return {
     // 3000: Sonnet thinks before it answers and the thinking counts here; at 1200, 6 of 23 reviews on 3 Oct 2026 were cut off before the answer.
-    model, max_tokens: MAX_TOKENS, system,   // no temperature: claude-sonnet-5-5 rejects it ("deprecated for this model", 400)
+    model, max_tokens: roomFor(effort), system, ...(effort ? {output_config: {effort}} : {}),   // no temperature: claude-sonnet-5-5 rejects it ("deprecated for this model", 400)
     messages: [{role: 'user', content: [
       {type: 'image', source: {type: 'base64', media_type: 'image/png', data: pngBase64}},
       {type: 'text', text: `Page: ${view}\nExpected to show: ${expectedFor(view)}\n${facts ? `\nFACTS about the app's state when this was taken:\n${JSON.stringify(facts, null, 1)}\n` : ''}${lessons ? `\n${lessons}\n` : ''}\nReview this screenshot.`},

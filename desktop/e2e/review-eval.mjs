@@ -15,7 +15,7 @@ import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const OUT = arg('out');
 if (!OUT) { console.error('usage: node review-eval.mjs --out <dir> [--models a,b] [--lessons both|on|off] [--limit n]'); process.exit(2); }
-const MODELS = arg('models', FREE_MODEL).split(',');
+const MODELS = arg('models', FREE_MODEL).split(',');   // a claude-* model may carry its effort: claude-haiku-5-5:high
 const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infinity;
 const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
 const REPO = process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
@@ -80,7 +80,9 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     const pngBase64 = await shot(item);
     if (!pngBase64) { run.rows.push({...item, gone: true}); continue; }
     const extra = withLessons ? lessonsText(lessonsFor(lessons, item.view, {exclude: item.number})) : '';
-    const answer = await ask(buildRequest({view: item.view, pngBase64, rules, lessons: extra, model}), {model});
+    const [name, effort = ''] = model.split(':').length === 2 && model.startsWith('claude-') ? model.split(':') : [model];
+    const answer = await ask(buildRequest({view: item.view, pngBase64, rules, lessons: extra, model: name, effort}), {model: name});
+    if (answer.ok && answer.message.stop_reason === 'max_tokens') { run.usd += answer.usd || 0; run.rows.push({...item, failed: 'cut off'}); console.log(`  #${item.number} ${model}: cut off`); continue; }
     if (!answer.ok) { run.rows.push({...item, failed: `${answer.status} ${answer.detail}`.slice(0, 160)}); console.log(`  #${item.number} ${model}: failed ${answer.status}`); continue; }
     const findings = parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
@@ -103,4 +105,5 @@ for (const run of runs) {
   const s = score(run);
   console.log(`| ${run.model.replace(/^@cf\//, '')}${run.lessons ? ' + lessons' : ''} | ${s.seen}/${s.fixed} (${pct(s.seen, s.fixed)}) | ${s.again}/${s.design} | ${s.precision == null ? '-' : pct(s.seen, s.seen + s.again)} | ${s.findings.toFixed(1)} | $${run.usd.toFixed(3)} |`);
 }
+for (const run of runs) { const missed = run.rows.filter(row => row.failed); if (missed.length) console.log(`${run.model}: ${missed.length} screenshot(s) not scored (${[...new Set(missed.map(row => row.failed.slice(0, 40)))].join('; ')})`); }
 fs.writeFileSync(path.join(OUT, 'review-eval.json'), JSON.stringify({at: new Date().toISOString(), judge: JUDGE, runs: runs.map(run => ({...run, score: score(run)}))}, null, 2));

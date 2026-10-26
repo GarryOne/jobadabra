@@ -1,6 +1,7 @@
 // The app's notifications and Recent activity (moved out of main.js, 8 Oct 2026): a notification (macOS, or a toast in the window when macOS won't show it), the run list
 // merged from Notion and this Mac, announcing finished runs, and the nudge after two weak job checks. The window and storage are passed as getters.
 // Guards: the notify-watch, run-history, few-jobs and activity tests in desktop/test.
+import * as critical from './critical.js';
 import * as fewJobs from './few-jobs.js';
 import * as github from './github.js';
 import * as notifyChannel from './notify-channel.js';
@@ -58,7 +59,8 @@ export function createAppNotify(ctx) {
     const cloud = cloudNextAt(settings);  // Always on: GitHub's schedule (the Mac's own is off then)
     return {runs, running: pipeline.running() || cloudStop(live), queued: pipeline.queued(), lastSearchAt: settings.lastSearchAt || null,
       nextSearchAt: nextAt(settings) ?? cloud.search, nextMailAt: nextMailAt(settings) ?? cloud.mail, nextScoutAt: cloud.scout,
-      cloud: !!settings.cloud?.repo, historyLoaded: !!runState.notionRuns};  // false until the run history was read from Notion
+      cloud: !!settings.cloud?.repo, historyLoaded: !!runState.notionRuns,  // false until the run history was read from Notion
+      busy: critical.labels()};  // the app's own work under way (the start-up move into Notion…): its engine steps take the run lock too
   }
 
   // While the app is open, every finished job is a notification, wherever it ran (this Mac, GitHub, a Telegram

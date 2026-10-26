@@ -15,7 +15,7 @@ export const RUNS_DB = 'Cronjob Runs';
 export const runsData = page => page.evaluate(async () => {
   const data = await window.pilot.runs();
   return {running: data.running ? {kind: data.running.kind || '', step: data.running.step || '', live: !!data.running.live, where: data.running.where || 'mac'} : null,
-    queued: (data.queued || []).map(item => ({kind: item.kind})), historyLoaded: !!data.historyLoaded,
+    queued: (data.queued || []).map(item => ({kind: item.kind})), historyLoaded: !!data.historyLoaded, busy: data.busy || [],
     runs: (data.runs || []).map(run => ({id: run.id, kind: run.kind, ok: run.ok, off: !!run.off, warned: !!run.warned, trigger: run.trigger, where: run.where, result: run.result || '',
       summary: run.summary || '', problem: run.problem || '', log: run.log || [], notionUrl: run.notionUrl || '', startedAt: run.startedAt, endedAt: run.endedAt || ''}))};
 });
@@ -176,12 +176,13 @@ export async function quiet(ctx, {forMs, maxMs}) {
   let since = null, data;
   while (Date.now() - started < maxMs) {
     data = await runsData(ctx.page);
-    const idle = !data.running && !data.queued.length && data.historyLoaded;
+    // busy: the app's own start-up work (the move into Notion): its engine steps take the run lock, so a run started now would wait for them (beta 3, 26 Oct 2026).
+    const idle = !data.running && !data.queued.length && data.historyLoaded && !data.busy.length;
     since = idle ? since ?? Date.now() : null;
     if (since && Date.now() - since >= forMs) return data;
     await sleep(ctx.page, 2000);
   }
-  throw new Error(`the app was still busy after ${Math.round(maxMs / 1000)} s of waiting for quiet: running=${JSON.stringify(data?.running)} queued=${data?.queued.length} historyLoaded=${data?.historyLoaded}`);
+  throw new Error(`the app was still busy after ${Math.round(maxMs / 1000)} s of waiting for quiet: running=${JSON.stringify(data?.running)} queued=${data?.queued.length} historyLoaded=${data?.historyLoaded} busy=${JSON.stringify(data?.busy)}`);
 }
 
 

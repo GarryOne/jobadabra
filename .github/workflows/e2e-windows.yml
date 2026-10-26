@@ -308,6 +308,14 @@ jobs:
           name: e2e-artifacts-windows-${{ matrix.key }}
           path: e2e-artifacts-windows/${{ matrix.key }}
           if-no-files-found: ignore
+      # The Edge pass keeps its own folder (apply-edge); without this upload its app log and screenshots reached no one (beta 40281407461, 26 Oct 2026).
+      - name: The Edge pass's screenshots and logs
+        if: always() && matrix.suite == 'apply'
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-artifacts-windows-${{ matrix.key }}-edge
+          path: e2e-artifacts-windows/apply-edge
+          if-no-files-found: ignore
       - name: The App token to give the lock back (the first one may have expired)
         id: lock_app_end
         if: always() && inputs.pr_steps == ''

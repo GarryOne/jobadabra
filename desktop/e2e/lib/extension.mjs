@@ -125,6 +125,14 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
     close: async () => { stopped = true; await watcher.catch(() => {}); await context.close().catch(() => {}); }};
 }
 
+// The tab showing a form the app opened: the harness's first pick while it shows that address, else the newest open tab that does (beta 40281407461, Edge:
+// the extension's install tab raced the reuse of a blank tab and the form loaded in another one). Nothing shows it yet: the first pick, still loading.
+export function formTab(browser, url) {
+  const address = String(url).split('#')[0], shows = page => !page?.isClosed?.() && String(page?.url?.() || '').split('#')[0] === address;
+  const picked = browser.pages[address];
+  return shows(picked) ? picked : browser.context.pages().filter(shows).at(-1) || picked;
+}
+
 // The form as the page holds it now: field id (or name) -> {type, value, checked, files: [{name, size}], ai}. `ai` is the extension's own marker on an
 // answer the AI wrote. Hidden fields are included (a step the person has not reached must not be filled).
 export const readForm = page => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('input, select, textarea')]

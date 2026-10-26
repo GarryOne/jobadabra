@@ -91,7 +91,10 @@ export function choiceCards(choices, {selected = null, onPick = () => {}, label 
     card.setAttribute('role', 'radio');
     card.setAttribute('aria-checked', String(choice.id === selected));
     const text = el('span', 'ui-choice-text');
-    text.append(el('b', '', choice.title), el('span', 'muted small', choice.text));
+    // badge: [text, tone], a pill beside the title (Settings → Apply's "Best quality" / "More applications, lower quality").
+    const title = choice.badge ? el('span', 'ui-choice-title') : el('b', '', choice.title);
+    if (choice.badge) title.append(el('b', '', choice.title), pill(...choice.badge));
+    text.append(title, el('span', 'muted small', choice.text));
     if (choice.note) text.append(el('span', 'ui-choice-note small', choice.note));
     const check = el('span', 'ui-choice-check');
     check.append(icon('tick'));

@@ -12,6 +12,15 @@ const call = name => (...args) => ipcRenderer.invoke(name, ...args).then(result 
   if (result && result.needsMove) { need = {name, args, reason: result.reason}; window.dispatchEvent(new CustomEvent('pilot-needs-move', {detail: {reason: result.reason, text: result.text}})); }
   // Apply with no Chrome extension to fill the form (lib/extension-gate.js): the window explains why and guides the install.
   if (result && result.needsExtension) window.dispatchEvent(new CustomEvent('pilot-needs-extension', {detail: {state: result.state, text: result.text}}));
+  // First Apply (lib/apply-choice-gate.js): the pressed action waits while the window asks how to apply (renderer/pages/apply-choice.js), then runs
+  // again; Not now answers {cancelled}. Plain events both ways: nothing crosses the bridge but the event's name.
+  if (result && result.needsApplyChoice) return new Promise(resolve => {
+    const done = again => { window.removeEventListener('pilot-apply-chosen', yes); window.removeEventListener('pilot-apply-not-chosen', no); resolve(again ? call(name)(...args) : {ok: false, cancelled: true, error: ''}); };
+    const yes = () => done(true), no = () => done(false);
+    window.addEventListener('pilot-apply-chosen', yes);
+    window.addEventListener('pilot-apply-not-chosen', no);
+    window.dispatchEvent(new Event('pilot-needs-apply-choice'));
+  });
   return result;
 }, error => {
   if (/No handler registered/.test(String(error?.message))) {

@@ -950,6 +950,7 @@
         <nav class="settings-nav" aria-label="Settings sections">
           <button data-settings-go="overview" class="is-active"><i data-icon="columns"></i>Overview</button>
           <button data-settings-go="automation"><i data-icon="clock"></i>Automation</button>
+          <button data-settings-go="apply"><i data-icon="send"></i>Apply</button>
           <button data-settings-go="connections"><i data-icon="link"></i>Connections<span class="nav-dot" id="connections-dot" hidden></span></button>
           <button data-settings-go="data"><i data-icon="database"></i>Data &amp; backup</button>
           <button data-settings-go="appearance"><i data-icon="sun"></i>Appearance</button>
@@ -1288,9 +1289,39 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="settings-page" data-settings-page="apply" hidden>
+          <div class="settings-page-head has-action"><div><h2>Apply</h2><p class="muted">How Jobadabra fills and sends your applications.</p></div>
+            <p class="muted small save-state">Changes save automatically</p></div>
+          <div class="alert tone-info settings-alert" id="apply-confirm-bar" hidden>
+            <i data-icon="info"></i>
+            <div><strong>Confirm how Jobadabra applies for you</strong><p>The job you pressed goes on after you confirm.</p></div>
+            <button class="secondary" id="apply-confirm-cancel" type="button">Not now</button>
+            <button class="primary" id="apply-confirm-go" type="button">Confirm</button>
+          </div>
+          <div class="setting panel" id="setting-apply-mode">
+            <div class="summary-head"><i data-icon="send"></i><h3>How applying works</h3></div>
+            <div id="apply-modes"></div>
+            <p class="muted small" id="apply-mode-today" hidden></p>
+          </div>
+          <div class="setting panel" id="setting-apply-answers">
+            <div class="summary-head"><i data-icon="chat"></i><h3>Answers</h3></div>
+            <p class="muted panel-lead">Questions your saved facts don't answer.</p>
+            <div class="assistant-mode">
+              <div class="segmented" role="group" aria-label="Answers">
+                <button data-apply-answers="facts">Only from my saved facts</button><button data-apply-answers="ai">Let the AI guess the rest</button>
+              </div>
+              <p class="muted small" id="apply-answers-text"></p>
+            </div>
+          </div>
+          <div class="setting panel" id="setting-consent">
+            <div class="panel-top"><div class="summary-head"><i data-icon="check"></i><h3>Consent boxes</h3></div>
+              <label class="switch-row"><input type="checkbox" id="consent-tick"><span>Tick</span></label></div>
+            <p class="panel-lead">Tick consent and data-notice boxes (privacy notices, data storage, terms) on a form for you: a formality. Anything else stays your choice. Off: each form shows “Tick these for me”.</p>
+          </div>
           <div class="setting panel" id="setting-claude">
-            <div class="summary-head"><i data-icon="zap"></i><h3>Application assistant</h3></div>
-            <p class="muted panel-lead">Jobadabra takes each application up to its Submit button. You check it and press Submit.</p>
+            <div class="summary-head"><i data-icon="user"></i><h3>Employer accounts</h3></div>
+            <p class="muted panel-lead">What Jobadabra does on an employer's own site: accounts, their terms and the codes they send.</p>
             <div class="assistant-mode">
               <div class="segmented" role="group" aria-label="How much Jobadabra does">
                 <button data-assistant-mode="full">Do it for me</button><button data-assistant-mode="assist">Let me check each step</button>
@@ -1305,6 +1336,11 @@
             <ul class="prereqs" id="claude-prereqs-settings" hidden></ul>
             <p class="muted small" id="claude-how-text" hidden>Its Claude Code windows then work without asking before each step, so they can run on their own.
               They never click Submit; any other command runs without asking, so watch the window while it works.</p>
+          </div>
+          <div class="setting panel" id="setting-apply-auto" data-keywords="full automation submit checks fit limit wait stop">
+            <div class="summary-head"><i data-icon="shield"></i><h3>Full automation checks</h3></div>
+            <p class="muted panel-lead">In Full automation, Jobadabra presses Submit only for forms that pass every check. A captcha, a code or an account page always waits for you.</p>
+            <div class="apply-checks" id="apply-auto-checks"></div>
           </div>
         </div>
         <div class="settings-page" data-settings-page="connections" hidden>
@@ -1563,11 +1599,6 @@
               <dt>Updates</dt><dd id="diag-update" class="diag-update"><span id="diag-update-text"></span><button class="link" id="diag-update-check">Check now</button></dd>
               <dt>Beta</dt><dd id="diag-beta" class="diag-update"><span id="diag-beta-text"></span><span class="diag-actions"><button class="link" id="diag-beta-toggle"></button><button class="link" id="diag-beta-back" hidden>Back to stable</button></span></dd>
               <dt>Test builds</dt><dd id="diag-test" class="diag-update"><span id="diag-test-text"></span><span class="diag-actions"><button class="link" id="diag-test-toggle"></button></span></dd></dl>
-          </div>
-          <div class="setting panel" id="setting-consent">
-            <div class="panel-top"><div class="summary-head"><i data-icon="check"></i><h3>Consent boxes</h3></div>
-              <label class="switch-row"><input type="checkbox" id="consent-tick"><span>Tick</span></label></div>
-            <p class="panel-lead">Tick consent and data-notice boxes (privacy notices, data storage, terms) on a form for you: a formality. Anything else stays your choice, and you always press Submit yourself. Off: each form shows “Tick these for me”.</p>
           </div>
           <div class="setting panel" id="setting-telemetry">
             <div class="panel-top"><div class="summary-head"><i data-icon="shield"></i><h3>Technical reports</h3></div>
@@ -1975,6 +2006,19 @@
   <div class="dialog-foot"><button class="secondary" id="save-close" hidden>Close</button><button class="primary" id="save-retry" hidden>Try again</button></div>
 </dialog>
 
+<dialog id="apply-choice-dialog" class="save-dialog panel-dialog apply-choice-dialog">
+  <form method="dialog">
+    <h2>How should Jobadabra apply for you?</h2>
+    <div id="apply-choice-modes"></div>
+    <p class="muted small" id="apply-choice-today" hidden></p>
+    <p class="muted small">You can change this any time in Settings → Apply.</p>
+    <div class="actions">
+      <button class="link" id="apply-choice-later" type="button">Not now</button>
+      <button class="secondary" id="apply-choice-adjust" type="button">Adjust settings…</button>
+      <button class="primary" id="apply-choice-go" type="button">Continue with this job</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="extension-needed-dialog" class="save-dialog panel-dialog">
   <form method="dialog">
     <h2 id="extension-needed-title">Install the Chrome extension first</h2>

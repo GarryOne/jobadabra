@@ -44,6 +44,8 @@ import {init as update} from './pages/update.js';
 import {init as build} from './pages/build.js';
 import {init as telemetry} from './pages/telemetry.js';
 import {init as consentSetting} from './pages/consent-setting.js';
+import {init as applySettings} from './pages/apply-settings.js';   // Settings → Apply
+import {init as applyChoice} from './pages/apply-choice.js';   // the first-Apply dialog
 import {init as find} from './pages/find.js';
 import {init as poolShare} from './pages/pool.js';
 import {init as reportForm} from './pages/report-form.js';
@@ -83,6 +85,7 @@ await update();
 await build();
 await telemetry();
 consentSetting();
+applySettings(); applyChoice();
 await find();
 await poolShare();
 await reportForm();

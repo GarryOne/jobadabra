@@ -180,7 +180,7 @@ export function renderJobs() {
     // Chrome opens the job's form and the extension fills it at once from the kit.
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
-      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else if (result.needsExtension) { /* the install dialog is open (extension-needed.js) */ } else if (button) button.textContent = 'No link';
+      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.');
     };
     if (job.status !== 'applied' && job.url && (job.kit || job.ready)) {
@@ -204,6 +204,7 @@ export function renderJobs() {
         fill.addEventListener('click', async () => {
           if (!job.ready) return fillInChrome(fill);
           const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
+          if (result.cancelled) return;
           if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else toastMessage('Could not open the filled form', result.error || 'Try again from Actions → Ready to send.');
         });
         box.append(fill);
@@ -215,6 +216,7 @@ export function renderJobs() {
               'if it asks (password saved in your Keychain) and fills every page from your kit. You solve CAPTCHAs, tick the terms and submit.',
             run: async () => {
               const result = await window.pilot.applyWithClaude(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
+              if (result.cancelled) return;
               if (result.ok) { claudeStarted.add(pageKey(job.url)); if (result.session) await refreshSessions(); renderJobs(); return; }
               // The list said there was a kit but Notion has none (removed or redrafting): Apply drafts it again.
               if (/kit/i.test(result.error || '')) { toastMessage('Kit not found', 'Press Apply to draft it again.'); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.');

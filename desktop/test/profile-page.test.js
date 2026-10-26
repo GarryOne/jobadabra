@@ -52,8 +52,8 @@ test('fix 10: Fill from my CV and the one View source in Notion are in a quiet â
   assert.match(nav, /add\('Notion', 'Profile: View source in Notion'/);
 });
 
-test('fix 5: the assistant is on Automation, the old password only in Credentials', () => {
-  assert.match(page('automation'), /id="setting-claude"/);
+test('fix 5: the assistant is on Settings â†’ Apply (moved there 26 Oct 2026, hybrid fill step 2), the old password only in Credentials', () => {
+  assert.match(page('apply'), /id="setting-claude"/);
   assert.ok(!page('profile').includes('setting-claude'));
   assert.ok(!html.includes('site-password-line'), 'the copy on Your details is gone');
   assert.match(page('credentials'), /id="credentials-shared-show"/);

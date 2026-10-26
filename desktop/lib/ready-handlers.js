@@ -18,6 +18,7 @@ import * as site from './ready-site.js';
 import * as handoffs from './ready-handoff.js';
 import {setVisitRoute} from './server-hooks.js';
 import {readyToSubmit, waitingOf} from '../renderer/pages/ready-rows.js';
+import {applyChosen} from '../renderer/apply-settings-model.js';   // nothing is sent by itself before the first-Apply choice (lib/apply-choice-gate.js)
 
 // What the AI may answer a form from: the same texts the normal Apply gives it (Profile, standard answers, search settings, the CV's facts).
 async function facts(storage) {
@@ -77,8 +78,8 @@ export function registerReadyHandlers({ipcMain, notify = () => {}, shell, storag
     return sent.ok ? {ok: true, queued: sent.queued, night: batch.night, skipped} : sent;
   };
   // Sent by itself when tonight's list changes and before the laptop goes off (lib/ready-auto.js); only on the owner's install (its owner key).
-  // The twin shares the owner's install: it never sends by itself (it would replace his night); nor do demo, test, CI and smoke runs.
-  const ownApp = () => !isTwin() && !['JOB_PILOTTO_DEMO', 'JOB_PILOTTO_E2E', 'JOB_PILOTTO_SMOKE', 'CI'].some(name => process.env[name]) && !!site.ownerSecret(storage);
+  // Not before the person chose how Jobadabra applies (the first-Apply dialog). The twin shares the owner's install: it never sends by itself (it would replace his night); nor do demo, test, CI and smoke runs.
+  const ownApp = () => applyChosen(storage.settings()) && !isTwin() && !['JOB_PILOTTO_DEMO', 'JOB_PILOTTO_E2E', 'JOB_PILOTTO_SMOKE', 'CI'].some(name => process.env[name]) && !!site.ownerSecret(storage);
   const autoSend = createAutoSend({storage, eligible: ownApp, tonightCodes: () => pickToSend(cached(), settings()).map(job => job.code),
     sendNow: sendTonight, log: (message, extra) => appLog('ready', message, extra)});
   startAutoSend(autoSend.check, {app, powerMonitor});

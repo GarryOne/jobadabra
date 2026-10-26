@@ -361,13 +361,13 @@ export async function init() {
     message('apply-message', `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`, 'waiting');
     try {
       const result = await window.pilot.apply({n, mode});
+      if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
       if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
         $('apply-dialog').close();
         toastMessage('Applying with Claude', result.message);
         await refreshSessions();
         return;
       }
-      if (result.needsExtension) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js)
       message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
     } finally {
       $('apply-go').disabled = false;

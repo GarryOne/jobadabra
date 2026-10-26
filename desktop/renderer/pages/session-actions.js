@@ -60,6 +60,7 @@ export async function restartSession(item) {
 // Claude again, in this session's conversation (the app was closed, or the session stopped). The log opens to show it.
 export async function resumeSession(item) {
   const result = await window.pilot.sessionResume(item.id);
+  if (result?.cancelled) return;   // Not now in the first-Apply dialog
   if (!result?.ok) { toastMessage('Not resumed', result?.error || 'Claude could not be started.'); return; }
   logChoice[item.id] = true;
   shared.termShownFor = null;

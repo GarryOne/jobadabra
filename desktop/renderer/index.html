@@ -252,6 +252,9 @@
           <span class="service-text"><b>Chrome extension</b><span class="muted small">Fills application forms in Chrome in seconds. You review and submit.</span>
             <span class="muted small">From the Chrome Web Store, for Chrome, Edge or Brave. It connects itself within 30 seconds.</span></span>
           <button class="secondary" data-add-extension>Add to Chrome</button></div>
+        <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="mail"></i></span>
+          <span class="service-text"><b>Email</b><span class="muted small">New matches, reminders and answers in your inbox, also while your Mac is off. Telegram, email or both: you choose.</span></span>
+          <button class="secondary" data-goto-settings="notify">Set up</button></div>
         <div class="service-card is-row"><span class="ui-tile tone-signal"><i data-icon="send"></i></span>
           <span class="service-text"><b>Telegram</b><span class="muted small">Your best new matches on your phone after each search, with buttons to save, apply or dismiss.</span></span>
           <button class="secondary" data-goto-settings="telegram">Set up</button></div>
@@ -457,7 +460,7 @@
             <div class="focus-reminder">
               <span class="focus-round"><i data-icon="bell"></i></span>
               <div><span class="muted small">Remind me at</span><b>11:00 · 15:00 · 19:00</b></div>
-              <label class="switch" title="Notifications and Telegram when someone waits for you or you're behind the target"><input type="checkbox" id="focus-remind"><span></span></label>
+              <label class="switch" title="A notification (app, email or Telegram, as you chose) when someone waits for you or you're behind the target"><input type="checkbox" id="focus-remind"><span></span></label>
             </div>
           </section>
           <section class="card focus-summary">
@@ -1204,19 +1207,19 @@
                 <span class="muted small" id="tz-note"></span></div>
             </div>
           </div>
-          <div class="setting panel" id="setting-notify">
+          <div class="setting panel" id="setting-notify" data-keywords="email telegram tell me notify alerts digest">
             <h3>Notifications</h3>
-            <p class="muted panel-lead">Tell me by: new matches, reminders and answers go where you choose. New matches come as one email per search; the rest in one digest.</p>
+            <p class="muted panel-lead">Tell me by: email, Telegram or both. New matches, reminders and answers go where you choose, also from Always on while this Mac is off.</p>
             <div class="run-mode-main">
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-email" aria-label="Tell me by email"><span></span></span>
-                <span><span>Email</span><span class="muted small" id="notify-email-note">The same cards as Telegram, in your inbox.</span></span></div>
+                <span><span>Email</span><span class="muted small" id="notify-email-note">New matches, reminders and answers in your inbox.</span></span></div>
               <label class="inline-field">Email address<input type="email" id="notify-address" placeholder="you@example.com" autocomplete="email"></label>
               <label class="inline-field">Everything except new matches<select id="notify-cadence"><option value="daily">One email a day</option><option value="weekly">One email a week (Mondays)</option></select></label>
               <label class="check-row"><input type="checkbox" id="notify-marketing"><span><span>Also send me product news and the Pro launch offer (unsubscribe in one click)</span></span></label>
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-app" aria-label="Tell me by app notifications"><span></span></span>
                 <span><span>App notifications</span><span class="muted small">A notification on this computer while the app is open.</span></span></div>
               <div class="switch-row"><span class="switch"><input type="checkbox" id="notify-telegram" aria-label="Tell me by Telegram"><span></span></span>
-                <span><span>Telegram</span><span class="muted small" id="notify-telegram-note">Your own bot. Connect it in Settings → Connections.</span></span></div>
+                <span><span>Telegram</span><span class="muted small"><span id="notify-telegram-note">Your own bot. Connect it first:</span> <button type="button" class="link small" id="notify-telegram-connect" hidden>Connect Telegram</button></span></span></div>
               <p class="message" id="notify-message"></p>
             </div>
           </div>
@@ -1247,7 +1250,7 @@
                 <div class="inline" id="cloud-choose" hidden><select id="cloud-repo"></select><button class="secondary" id="cloud-use">Use this repository</button></div>
                 <details class="troubleshoot" id="cloud-howto"><summary>How it works</summary>
                   <p class="muted small">Jobadabra sets up a <b>private</b> repository in your free GitHub account that does its work on the schedule
-                    above (searches, application kits, insights, new sources, mail) and sends results to Telegram and <span data-about-notion>Notion</span>, even when this Mac is asleep or off. Jobadabra gets access to that one repository only, nothing else on your GitHub.
+                    above (searches, application kits, insights, new sources, mail) and tells you by email or Telegram (Notifications, above) and keeps results in <span data-about-notion>Notion</span>, even when this Mac is asleep or off. Jobadabra gets access to that one repository only, nothing else on your GitHub.
                     Your keys are stored there as encrypted secrets.</p>
                 </details>
               </div>

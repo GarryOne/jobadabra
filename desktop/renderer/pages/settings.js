@@ -15,6 +15,7 @@ import {profileTab, showContact} from './profile.js';
 import {startDefault} from '../tab-choice.js';
 import {byStore} from '../store-words.js';
 import {offered} from '../key-sources.js';
+import {telegramRequired} from '../notify-words.js';
 
 // ---------- Settings: sub-pages (Overview, Application profile, Automation, Connections, Data & backup, Advanced) ----------
 let pageNow = '';
@@ -82,8 +83,8 @@ const ALL_SERVICES = [
     why: 'Replies, interviews and recruiter emails are tracked from Gmail.'},
   {id: 'extension', name: 'Chrome extension', icon: 'puzzle', what: 'Application form filling', required: true,
     why: 'It fills application forms with your details and CV.'},
-  {id: 'telegram', name: 'Telegram', icon: 'send', what: 'Digests and reminders', required: true,
-    why: 'Daily digests and reminders need a bot connection.'},
+  {id: 'telegram', name: 'Telegram', icon: 'send', what: 'Digests and reminders', required: () => telegramRequired(shared.state.notifyBy, shared.state.settings.notifyBy) || !!shared.state.settings.telegramChatId,   // optional with e-mail unless chosen; listed while connected
+    why: 'Digests and reminders need a bot connection, or email: Settings → Automation → Notifications.'},
   {id: 'serpapi', name: 'Google Jobs (SerpApi)', icon: 'search', what: 'Additional job results', connect: 'Add key'},
   {id: 'brave', name: 'Web search (Brave)', icon: 'search', what: 'Finds employers\' own job sites', connect: 'Add key'},
   {id: 'aggregators', name: 'Adzuna & Jooble', icon: 'search', what: 'More job results (free keys)', connect: 'Add keys'},
@@ -91,7 +92,7 @@ const ALL_SERVICES = [
   {id: 'tg-cloud', name: 'Cloudflare · Telegram buttons', icon: 'zap', what: 'Your bot answers buttons with the Mac off', connect: 'Set up',
     shown: () => !!shared.state.settings.cloud?.repo},  // it starts runs in the GitHub repository, so only with Always on
 ];
-const SERVICES = ALL_SERVICES.filter(service => offered(service.id));
+const SERVICES = ALL_SERVICES.filter(service => offered(service.id)), isRequired = service => (typeof service.required === 'function' ? service.required() : !!service.required);
 // Each service's state. Keys are known at once (this Mac); Google (a Python check) and the extension answer later, so
 // their last answer is remembered here and shown meanwhile ("Checking…" the very first time).
 const SERVICE_CACHE = 'serviceChecks';
@@ -99,13 +100,13 @@ const lastChecks = () => { try { return JSON.parse(localStorage.getItem(SERVICE_
 function statusFrom({extension, google}) {
   const on = {ai: aiReady(), notion: !!shared.state.secrets.NOTION_TOKEN, serpapi: !!shared.state.secrets.SERPAPI_API_KEY, brave: !!shared.state.secrets.BRAVE_SEARCH_API_KEY,
     aggregators: !!((shared.state.secrets.ADZUNA_APP_ID && shared.state.secrets.ADZUNA_APP_KEY) || shared.state.secrets.JOOBLE_API_KEY), cloud: !!shared.state.settings.cloud?.repo, 'tg-cloud': !!shared.state.settings.telegramCloud,
-    telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), google: !!google?.connected, extension: extension.on};
+    telegram: !!(shared.state.secrets.TELEGRAM_BOT_TOKEN && shared.state.settings.telegramChatId), notify: !!shared.state.notifyBy?.includes('email'), google: !!google?.connected, extension: extension.on};
   const detail = {ai: aiReady() && ({cli: 'Claude Code · your plan', codex: 'Codex · your plan', openai: 'OpenAI API key'}[shared.state.settings.aiEngine] || 'Anthropic API key'), google: google?.connected && google.email, extension: extension.on && extension.version && `v${extension.version}`,
-    telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`,
+    telegram: on.telegram && shared.state.settings.telegramBot && `@${shared.state.settings.telegramBot}`, notify: on.notify && shared.state.settings.notifyEmail,
     cloud: shared.state.settings.cloud?.repo, 'tg-cloud': shared.state.settings.telegramCloud?.url?.replace('https://', '')};
   const words = {extension: extension.on || extension.checking ? '' : extension.words};
   const checking = {google: !google, extension: extension.checking};
-  return {on, detail, words, checking, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => service.required && !on[service.id] && !checking[service.id]) || null};
+  return {on, detail, words, checking, extensionIdle: extension.state === 'idle', missing: SERVICES.find(service => isRequired(service) && !on[service.id] && !checking[service.id]) || null};
 }
 // The extension's state, from both facts: what the browser recorded (whether it is installed, and on) and its last
 // report (whether it is awake). The profile read is instant, so nothing here waits a minute to decide.
@@ -252,7 +253,7 @@ function renderServices(status) {
   renderUpdate();
   renderBeta();
   showAlert('ov', missing, status);
-  $('ov-services').replaceChildren(...SERVICES.filter(service => service.required).map(service => {
+  $('ov-services').replaceChildren(...SERVICES.filter(isRequired).map(service => {
     const card = Object.assign(document.createElement('button'), {type: 'button', className: 'service-card', title: `Open ${service.name}`});
     const text = el('span', 'service-text');
     text.append(el('b', '', service.name), stateLine(on[service.id], detail[service.id], checking[service.id], words[service.id]));

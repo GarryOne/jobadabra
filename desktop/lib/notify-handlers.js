@@ -4,7 +4,7 @@ import * as channel from './notify-channel.js';
 
 export function registerNotifyHandlers({ipcMain, storage, DEMO, log}) {
   ipcMain.handle('notifyState', async () => {
-    if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: false, email: 'alex@example.com', confirmed: true, marketing: true, cadence: 'daily', reached: true};
+    if (DEMO) return {by: ['email', 'app'], chosen: ['email', 'app'], telegram: channel.telegramReady(storage), email: 'alex@example.com', confirmed: true, marketing: true, cadence: 'daily', reached: true};
     return channel.state(storage);
   });
   ipcMain.handle('notifySave', async (_, choice) => {

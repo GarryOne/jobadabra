@@ -3,7 +3,7 @@
 # Its log is public: employer names and counts only. Runs the PUBLIC engine's source scout once a day with no user's data (no Notion,
 # no Telegram), verifies every known feed and uploads the employer index to the website worker
 # (PUT https://www.jobpilotto.workers.dev/api/index). Apps and Always-on runs download it (GET /api/index).
-# Secrets: CENTRAL_SCOUT_ANTHROPIC_KEY (Keychain job-pilotto.anthropic.internal_key), CI_APP_ID/CI_APP_PRIVATE_KEY (read of the private repo), INDEX_PUBLISH_KEY (= the website worker's secret of the same name; Keychain job-pilotto.site.index_publish_key).
+# Secrets: CENTRAL_SCOUT_ANTHROPIC_KEY (Keychain job-pilotto.anthropic.internal_key), CI_APP_CLIENT_ID (variable)/CI_APP_PRIVATE_KEY (read of the private repo), INDEX_PUBLISH_KEY (= the website worker's secret of the same name; Keychain job-pilotto.site.index_publish_key).
 # The large-scale discovery is private and lives here (3 Oct 2026): every job board Common Crawl has seen (discovery/commoncrawl.py) and the
 # queue ranked by each source's measured yield (discovery/priorities.py). With ANTHROPIC_API_KEY, the public engine's AI steps also run here,
 # once for everyone: ideas for new employers (every third day) and reading careers pages the rules cannot (capped per run); the recipes they
@@ -46,7 +46,7 @@ jobs:
         id: ops_token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: GarryOne
           repositories: jobadabra-lab

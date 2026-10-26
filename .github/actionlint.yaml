@@ -1,0 +1,8 @@
+# actionlint's built-in list of action inputs (1.7.12, the newest on 26 Oct 2026) predates actions/create-github-app-token@v3's `client-id` input,
+# which the action itself asks for ("Input 'app-id' has been deprecated... Use 'client-id'"). Only these two messages, only for that action.
+# Remove once actionlint knows client-id. Guard: tests/test_workflow_app_client_id.py.
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'input "client-id" is not defined in action "actions/create-github-app-token@v3"'
+      - 'missing input "app-id" which is required by action "actions/create-github-app-token@v3"'

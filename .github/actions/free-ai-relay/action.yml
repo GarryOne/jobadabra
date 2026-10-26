@@ -10,7 +10,7 @@ description: The site's Free AI handler on this runner, for the e2e suites
 inputs:
   cf-token: {description: 'secrets.CI_FREE_AI_CF_TOKEN', required: false, default: ''}
   cf-account: {description: 'secrets.CI_FREE_AI_CF_ACCOUNT_ID', required: false, default: ''}
-  app-id: {description: 'secrets.CI_APP_ID (the CI App reads jobadabra-web)', required: false, default: ''}
+  client-id: {description: 'vars.CI_APP_CLIENT_ID (the CI App reads jobadabra-web)', required: false, default: ''}
   app-key: {description: 'secrets.CI_APP_PRIVATE_KEY', required: false, default: ''}
   port: {description: 'the relay port on this runner', required: false, default: '8787'}
   public-tree: {description: "the public tree the relay runs in, relative to the workspace: '.' or the workflow's own commit checked out beside an older one under test (a bisect)", required: false, default: '.'}
@@ -18,21 +18,21 @@ runs:
   using: composite
   steps:
     - name: No Free AI token here
-      if: inputs.cf-token == '' || inputs.app-id == ''
+      if: inputs.cf-token == '' || inputs.client-id == ''
       shell: bash
       run: |
         echo "Free AI relay: no CI_FREE_AI_CF_TOKEN or CI App here (a fork): the suites run on the Claude/OpenAI keys as before."
     - name: Read access to the site (the CI App)
-      if: inputs.cf-token != '' && inputs.app-id != ''
+      if: inputs.cf-token != '' && inputs.client-id != ''
       id: site_token
       uses: actions/create-github-app-token@v3
       with:
-        app-id: ${{ inputs.app-id }}
+        client-id: ${{ inputs.client-id }}
         private-key: ${{ inputs.app-key }}
         owner: GarryOne
         repositories: jobadabra-web
     - name: The site's Free AI handler
-      if: inputs.cf-token != '' && inputs.app-id != ''
+      if: inputs.cf-token != '' && inputs.client-id != ''
       uses: actions/checkout@v5
       with:
         repository: GarryOne/jobadabra-web
@@ -40,7 +40,7 @@ runs:
         path: .free-ai-site
         persist-credentials: false
     - name: Start the relay
-      if: inputs.cf-token != '' && inputs.app-id != ''
+      if: inputs.cf-token != '' && inputs.client-id != ''
       shell: bash
       env:
         FREE_AI_LOCAL_CF_AI_TOKEN: ${{ inputs.cf-token }}

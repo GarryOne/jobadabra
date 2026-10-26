@@ -108,7 +108,9 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
 
 
 def gh(*args):
-    return subprocess.run(['gh', *args], check=True, capture_output=True, text=True).stdout
+    # UTF-8 always: on a Windows runner text=True alone decodes as cp1252, "E2E for PR · " no longer matched, and #2062's Windows job wrote a false green
+    # while the Linux e2e run still ran.
+    return subprocess.run(['gh', *args], check=True, capture_output=True, encoding='utf-8').stdout
 
 
 def leave_it(finishing, me):
@@ -135,6 +137,7 @@ def read(repo, sha, my_run):
 
 
 def main():
+    sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
     ap.add_argument('--repo', required=True); ap.add_argument('--sha', required=True)
     ap.add_argument('--job-status', default='', help="the status so far of the job this step ends (${{ job.status }}); empty: the workflow_run backstop")
@@ -170,7 +173,7 @@ def main():
     print(f'{CONTEXT}: {state}: {why}')
     summary = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary:
-        with open(summary, 'a') as out: out.write(f'**{CONTEXT}** on `{a.sha[:7]}`: {state}: {why}\n')
+        with open(summary, 'a', encoding='utf-8') as out: out.write(f'**{CONTEXT}** on `{a.sha[:7]}`: {state}: {why}\n')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')

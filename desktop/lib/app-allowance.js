@@ -24,14 +24,20 @@ export function createAppAllowance(ctx) {
   };
   // Guard for what starts NEW work (Prepare kit, Fill in Chrome / Apply with Claude, manual searches): once the free allowance
   // is over and there is no key, the window says so and the action answers with why. Never used for what is already under way.
+  // Each refusal is logged (once a minute per reason), so a press that started nothing can be told from one that never arrived (26 Oct 2026: no line at all).
+  let loggedRefusal = {why: '', at: 0};
+  const refuse = (why, answer) => {
+    if (loggedRefusal.why !== why || Date.now() - loggedRefusal.at > 60000) { appLog('allowance', `refused a new start: ${why}`); loggedRefusal = {why, at: Date.now()}; }
+    return answer;
+  };
   function allowanceBlock() {
     const state = licenseState();
     // Pro's credit is gone and our AI is the engine: no free fallback, top-up or own key (an application in progress finishes; this guards what starts new).
-    if (!DEMO && state.pro?.hasCredit === false && aiFree.isOn(getStorage().settings())) return {ok: false, credit: true, error: 'Our AI needs AI credit. Add credit, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'};
-    if (!DEMO && state.pro?.warn === 0 && aiFree.isOn(getStorage().settings())) return {ok: false, credit: true, error: 'Your AI credit is used up. Add credit, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'};
+    if (!DEMO && state.pro?.hasCredit === false && aiFree.isOn(getStorage().settings())) return refuse('no AI credit', {ok: false, credit: true, error: 'Our AI needs AI credit. Add credit, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
+    if (!DEMO && state.pro?.warn === 0 && aiFree.isOn(getStorage().settings())) return refuse('AI credit used up', {ok: false, credit: true, error: 'Your AI credit is used up. Add credit, or use your own AI key in Settings → Connections → AI (your own key is unlimited).'});
     if (DEMO || !state.ended) return null;
     toWindow('allowance', state);
-    return {ok: false, allowance: true, error: 'The free trial is over. See Settings → Plan.'};
+    return refuse('trial over', {ok: false, allowance: true, error: 'The free trial is over. See Settings → Plan.'});
   }
   // Jobs read in Chrome that match the search are scored now, by a search started at once (owner, 7 Oct 2026: "Read 5 jobs, but my Jobs count
   // never grows": they waited for the next scheduled check). Pages read in Chrome stay on this Mac, so with Always on they wait for a local search.

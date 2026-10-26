@@ -34,10 +34,10 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-live[open] > .run-card-rows { margin-top: var(--sp-3); }
 /* Every step's result stays in the fold until the run ends (owner, 26 Oct 2026); a long run's list scrolls inside it, at its newest line. */
 .find-live > .run-card-rows { max-height: 28rem; overflow-y: auto; overscroll-behavior: contain; }
-/* The compact cards (a done search, "Find more jobs"): the words on the left, one button on the right, centred on the card (owner, 25 Oct 2026). */
-.find-card.is-done, .find-card.is-none { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
-.find-card.is-done .find-head-box, .find-card.is-none .find-head-box { flex: 1; min-width: 0; }
-.find-card.is-done .find-scope, .find-card.is-none .find-scope { display: none; }
+/* The compact cards (a done search, "Find more jobs", a refused press): the words on the left, one button on the right, centred on the card (owner, 25 Oct 2026). */
+.find-card.is-done, .find-card.is-none, .find-card.is-refused { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.find-card.is-done .find-head-box, .find-card.is-none .find-head-box, .find-card.is-refused .find-head-box { flex: 1; min-width: 0; }
+.find-card.is-done .find-scope, .find-card.is-none .find-scope, .find-card.is-refused .find-scope { display: none; }
 .find-again { flex: none; }
 /* The skeleton in the card's place until its state is known (index.html, renderer/late-blocks.js): the compact card's own title and lead lines
    hold its height, a shimmer bar in each, and its button. */

@@ -12,11 +12,20 @@ import {keepBlock, keptBlock} from '../late-blocks.js';
 import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
 import {showFullReport} from './full-report.js';
+import {openSetting} from './settings.js';
+import {refusalAction} from '../refusal.js';
 
 let signature = '', wasSearching = false, finishedHere = false, lastRuns = null;
 let start = () => {};
+let refused = null;   // the last press's refusal (renderer/refusal.js), shown on the card until the next press or search
 let liveOpen = true, liveFollow = true, liveShown = new Set();   // the fold: open, following its newest line, the lines drawn last time
 export const wireFindCard = startSearch => { start = startSearch; };
+// The press's refusal (renderer/refusal.js), or null to clear it (a new press). -> whether the card is on screen to say it (else the caller says it in a pop-up).
+export function showFindRefused(why) {
+  refused = why || null;
+  renderFindCard();
+  return !!$('find-card') && $('find-card').offsetParent !== null;
+}
 
 const button = (text, handler, className = 'primary') => Object.assign(el('button', className, text), {type: 'button', onclick: handler});
 
@@ -94,6 +103,10 @@ function draw(model) {
   } else if (model.state === 'none') {   // a full list and no search finished here: the same compact card, one button (owner, 25 Oct 2026: "Find more jobs")
     const head = findHead('Find more jobs', model, 'Reads your employers and job boards again, and adds what is new.');
     card.replaceChildren(head, again('Find jobs'));
+  } else if (model.state === 'refused') {   // the press was refused before anything ran (no AI credit, trial over, Always on): why, and the way out
+    const label = refusalAction(model);   // the compact "Find more jobs" card, its line the reason and its button the way out
+    card.replaceChildren(findHead('Find jobs did not start', model, model.problem),
+      label ? button(label, () => openSetting('plan'), 'primary find-again') : again('Try again'));
   } else if (model.state === 'failed') {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button('Try again', () => start()));
@@ -121,11 +134,13 @@ export function renderFindCard(runsNow = lastRuns) {
   const model = findCard({running: runsNow.running, last: (runsNow.runs || []).find(run => (run.kind || 'search') === 'search') || null,
     lastSearchAt: runsNow.lastSearchAt, listed: runsNow.listed ?? counts.total, finishedHere});   // runsNow.listed: only the screenshots set it
   if (waitsForList(model, runsNow.listed != null || !!jobsState.lastJobsData || !!jobsState.jobsRead)) return;   // the kept paint or the skeleton stays
-  const key = JSON.stringify(model);
+  if (searching) refused = null;
+  const shown = refused ? {state: 'refused', problem: refused.text, credit: refused.credit, allowance: refused.allowance} : model;
+  const key = JSON.stringify(shown);
   if (key === signature) return;
   signature = key;
-  draw(model);
-  keepBlock('find-card', keptFindCard(model));
+  draw(shown);
+  if (!refused) keepBlock('find-card', keptFindCard(model));   // a refusal is this launch's news, never the next start's first paint
 }
 
 // The Find jobs card is showing its searching state: the rows without a score say Scoring… instead of Not scored.

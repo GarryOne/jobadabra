@@ -8,6 +8,7 @@ import {$, message, show} from './core.js';
 import {showOnTab} from './tab-part.js';
 import {loadCvSetting} from './profile.js';
 import {byStore} from '../store-words.js';
+import {sayRefused} from './startup.js';
 
 // ---------- a replaced CV: what follows it (suggested Profile edits, tailoring base, unsent kits), never a rebuild ----------
 let cvSuggestions = [];
@@ -74,6 +75,7 @@ export async function openCvChange() {
         redraft.textContent = 'Redrafting…';
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
         redraft.textContent = result.ok ? '✓ Redrafted' : 'Retry';
+        sayRefused('Redraft did not start', result);   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
         redraft.disabled = !!result.ok;
       });
       const name = el('div');

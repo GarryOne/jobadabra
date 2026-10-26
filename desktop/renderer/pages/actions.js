@@ -15,6 +15,7 @@ import {initReadyCard} from './ready-card.js';
 import {initFocusReady} from './focus-ready.js';
 import {initFocusIncognito} from './focus-incognito.js';
 import {initFocusCheck} from './focus-check.js';
+import {refusal} from '../refusal.js';
 
 // A pressed task button is held off (syncRunButtons in runs-page.js turns it on again when its task ends); a refusal releases it at once.
 const hold = button => { button.disabled = true; button.dataset.runBusy = '1'; };
@@ -46,10 +47,11 @@ export async function init() {
     }
     if (command === 'status') { showStatusCard(); return; }
     hold(button);
-    const result = await window.pilot.command(command);
-    if (task && !/^⚠️/.test(result?.text || '')) { refreshActivity(); show($('command-answer'), false); return; }   // a started task keeps its button off until it ends (syncRunButtons)
+    const result = await window.pilot.command(command).catch(error => ({ok: false, error: error.message}));
+    const refused = refusal(result);   // no AI credit, trial over, Notion (renderer/refusal.js): said here, never taken for a started task
+    if (task && !refused && !/^⚠️/.test(result?.text || '')) { refreshActivity(); show($('command-answer'), false); return; }   // a started task keeps its button off until it ends (syncRunButtons)
     release(button);  // its row, then its result, show in Recent activity
-    answer(result.text + (result.telegram ? '\n\n(Also sent to Telegram.)' : ''));
+    answer(refused ? `⚠️ ${refused.text}` : result.text + (result.telegram ? '\n\n(Also sent to Telegram.)' : ''));
   }));
   // Tailor CVs for top matches: a tracked task like the others, so the banner, Recent activity and the result follow it; only a refusal (Notion, allowance, nothing to do) is answered here.
   $('tailor-top').addEventListener('click', async event => {

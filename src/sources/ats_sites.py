@@ -56,6 +56,8 @@ def workday(slug):
                 with host_pace.open(request, TIMEOUT) as response:
                     data = json.loads(response.read())
             postings = data.get('jobPostings') or []
+            if not term and page == 0:   # newest first: the same top and total as last time is the same list (src/sources/ats.py first_page)
+                ats.first_page([j.get('externalPath') for j in postings], data.get('total'))
             for j in postings:
                 path = j.get('externalPath') or ''
                 if path in seen or not path:

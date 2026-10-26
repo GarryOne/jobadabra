@@ -49,8 +49,12 @@ def ask(fact):
 
 
 def tag_of(state):
-    """The site's tag for this read, kept only when the read took one request: a paged list's first page says nothing about the others."""
-    return state.etag if state is not None and state.pages == 1 else None
+    """The site's tag for this read, kept only when the read took one request (a paged list's first page says nothing about the others),
+    or a paged site's newest-page tag (ats.first_page)."""
+    if state is None or not state.etag:
+        return None
+    from .ats import HEAD
+    return state.etag if state.etag.startswith(HEAD) or state.pages == 1 else None   # a paged site's own tag is its newest page
 
 
 def ids_of(jobs):

@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 from .. import paths as _paths  # noqa: F401 (import side effect: loads .env before getenv below)
 from .. import run_counts, store
-from . import cost, engine, hints, locations, score_not_a_job
+from . import cost, engine, hints, locations, score_not_a_job, score_search
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 
@@ -88,6 +88,7 @@ SCHEMA = {
         'confidence': {'type': 'string', 'enum': ['high', 'medium', 'low']},
     },
 }
+SCHEMA = score_search.extend(SCHEMA)   # + the fit to the person's search, apart from the CV (src/ai/score_search.py)
 
 SYSTEM = """You rank job postings for one candidate. The candidate's profile follows. \
 Score each posting for fit, using only the profile and the posting.
@@ -125,7 +126,7 @@ nothing important is missing. Tier A.
   30-49: mostly another kind of role; only some skills carry over. C.
   0-29: unrelated work, level or place. C.
   An unknown (no salary, no stated level) neither adds nor subtracts. The overall score is not the average of the components.
-- reason: one line under 90 characters, plain words, no hype.
+- reason: one line under 90 characters, plain words, no hype.""" + score_search.RULE + """
 
 Candidate profile:
 """
@@ -217,6 +218,9 @@ def pending_jobs(db, candidates, profile, limit, full_profile=None):
             continue
         row = done.get(job['id'])
         current = input_hash(job, job.get('ai'), profile)
+        if row and score_search.again(job, json.loads(row['data_json'] or '{}'), RESCORE_MIN):   # scored before the search part, low, wanted now
+            pending.append(((1, 0), job))
+            continue
         if row and row['scorer_version'] == SCORER_VERSION and row['input_hash'] == current:
             continue
         if row and full_profile and row['scorer_version'] == SCORER_VERSION and row['input_hash'] == input_hash(job, job.get('ai'), full_profile):
@@ -302,7 +306,7 @@ def _ask(client, model, job, profile, effort, note, schema):
         model=model,
         max_tokens=4000,
         # The profile is identical for every job, so it is cached across requests.
-        system=[{'type': 'text', 'text': SYSTEM + profile + locations.block_now() + hints.text(hints.load()), 'cache_control': {'type': 'ephemeral'}}],
+        system=[{'type': 'text', 'text': SYSTEM + profile + score_search.block() + locations.block_now() + hints.text(hints.load()), 'cache_control': {'type': 'ephemeral'}}],
         messages=[{'role': 'user', 'content': (
             f"Title: {job['title']}\nCompany: {job['company']}\nLocation: {job.get('location') or ''}\n"
             f"Extracted facts (stage 1): {facts}\n\nPosting:\n{job['description']}{note}")}],
@@ -316,7 +320,7 @@ def _ask(client, model, job, profile, effort, note, schema):
     data['score'] = clamp(data['score'])
     data['components'] = {k: None if v is None else clamp(v) for k, v in data['components'].items()}
     data['strengths'], data['gaps'] = data['strengths'][:3], data['gaps'][:3]
-    return data, response.usage
+    return score_search.apply(data), response.usage
 
 
 def save(db, job, model, data, profile):

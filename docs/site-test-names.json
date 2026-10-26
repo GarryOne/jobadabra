@@ -1,0 +1,9 @@
+{
+ "_about": "The test file names the private site repo (jobadabra-web) owns in each test folder it shares with this repo. CI joins the two trees, and a site file at the path of a public one REPLACES it (24 Oct 2026 test_workflow_pipefail, web#151, 26 Oct 2026 web#163: main red only after both sides merged). Here no tracked file in a folder starts with one of its prefixes (tests/test_names_kept_for_the_site.py); in the site every tracked file there must (its tools/site-guards.sh). An empty prefix = the whole folder is the site's; no prefix = the site keeps no file there.",
+ "folders": {
+  "tests": ["test_site_"],
+  "desktop/test": ["media-", "web-"],
+  "desktop/e2e/test": [],
+  "test": [""]
+ }
+}

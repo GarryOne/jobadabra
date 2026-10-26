@@ -19,6 +19,7 @@ Owner: "Stop the cross-repo reds: for a change that touches both repos, the site
 
 ## What it means for your change
 - **A new route the app calls**: the Worker route in the private repo first (it lands as "site ahead": told, not failed), then here: list it in `docs/site-routes.json` and call it (the public test fails until it is listed; the private test fails until the Worker answers it).
+- **Test file names are split by repo** (`docs/site-test-names.json`; 3 clashes 24-26 Oct 2026, web main red only after both sides merged): the site's tests in a shared folder start with its prefix (`tests/test_site_*`, `desktop/test/media-*` or `web-*`, all of `test/`), public's never do (`tests/test_names_kept_for_the_site.py`; the site's `tools/site-guards.sh` checks its side).
 - **A test that reads a `site/` file** uses `tests/site_private.py` (`@needs_site`) or `desktop/test/site-private.js` (`siteTest`): it is skipped here and runs in the private repo's CI (daily against the newest public main too).
 - **Shared tables** the public pool and eval tools need live here: `desktop/e2e/lib/platform.mjs`, `applying-status.mjs`, `desktop/lib/free-ai-models.js`, `free-ai-translate.js`, `desktop/test/fixtures/host-cases.json`. The site re-exports them.
 - **Reading the admin tools** from here (needs-fix-causes and friends): `~/jobadabra-web/tools/site-run.sh node jobs/needs-fix-causes.mjs`.

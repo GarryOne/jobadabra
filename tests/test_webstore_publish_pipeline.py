@@ -68,6 +68,17 @@ class MicrosoftStoreOnStable(unittest.TestCase):
         for state in ('CommitStarted', 'PreProcessing', 'Certification', 'Release', 'Publishing'):
             self.assertIn(state, submit)
 
+    def test_sign_in_runs_where_msstore_can_keep_its_secret_and_prints_why_it_failed(self):
+        # 26 Oct 2026, 0.8.41: "Sign in to Partner Center" ended in "Ops, something doesn't seem to be right!" on ubuntu-24.04. The token was fine:
+        # msstore reconfigure then stores the client secret in the OS keyring (libsecret on Linux, none unlocked on a runner) and that write failed.
+        # The reason went to > /dev/null. Microsoft's own example runs it on windows-latest (Credential Manager).
+        submit = self.job('submit')
+        self.assertRegex(submit, r'runs-on: windows-', 'msstore keeps its secret in the OS keyring; a Linux runner has none unlocked')
+        self.assertRegex(submit, r'defaults:\s*\n\s*run:\s*\n\s*shell: bash', 'the steps are bash; Windows runs pwsh by default')
+        signin = next(line for line in submit.splitlines() if 'run: msstore reconfigure' in line)
+        self.assertNotIn('/dev/null', signin, 'a failed sign-in prints its reason (GitHub masks the secrets)')
+        self.assertIn('--verbose', signin, 'without it msstore hides the exception behind "Ops"')
+
     def test_the_credentials_are_only_secrets_never_echoed(self):
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$\{\{ *secrets\.')
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$MS_STORE_CLIENT_SECRET')

@@ -1,18 +1,20 @@
 {
- "_doc": "The meanings pack's skeleton: each topic and the only answers it may have (src/ai/meanings_pack.py, api/meanings.js, desktop/lib/aliases.js). 'share': the wording comes from a public page (a posting's location, a form's question, a button), so an install's AI answer may go to the site; never for the user's own words (their places, roles, interview names: only fixed ids leave the machine) or anything from their mail or calendar. 'many': a text may name several answers (every matching pattern counts); otherwise the first match in order wins. 'ai_first': the seed's keyword patterns are only the offline floor for this topic (no AI at all), never in front of the AI: a kind of work is the AI's judgement (26 Oct 2026: 'office' in the old list read \"First Officer\" as finance_admin and a pilot search read 1,107 office employers).",
+ "_doc": "The meanings pack's skeleton: each topic and the only answers it may have (src/ai/meanings_pack.py, api/meanings.js, desktop/lib/aliases.js). 'share': the wording comes from a public page (a posting's location, a form's question, a button), so an install's AI answer may go to the site; never for the user's own words (their places, roles, interview names: only fixed ids leave the machine) or anything from their mail or calendar. 'many': a text may name several answers (every matching pattern counts); otherwise the first match in order wins. 'ai_first': the seed's keyword patterns are only the offline floor for this topic (no AI at all), never in front of the AI: a kind of work, an interview, a booking ask or an interview round is the AI's judgement (26 Oct 2026: 'office' in the old list read \"First Officer\" as finance_admin and a pilot search read 1,107 office employers).",
  "calendar-event": {
   "answers": [
    "job_interview",
    "other"
   ],
-  "share": false
+  "share": false,
+  "ai_first": true
  },
  "asks-to-book": {
   "answers": [
    "asks_to_book",
    "other"
   ],
-  "share": false
+  "share": false,
+  "ai_first": true
  },
  "interview-round": {
   "answers": [
@@ -21,7 +23,8 @@
    "hiring_manager",
    "other"
   ],
-  "share": false
+  "share": false,
+  "ai_first": true
  },
  "pool-country": {
   "answers": [

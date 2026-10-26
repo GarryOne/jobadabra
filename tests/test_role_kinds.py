@@ -74,6 +74,12 @@ class KindTests(unittest.TestCase):
 
 
 class RestTests(unittest.TestCase):
+    def setUp(self):   # each scan here is a read: the 6-hour "unchanged" skip (src/sources/feed_facts.py) is off
+        from src.sources import feed_facts
+        patch = mock.patch.object(feed_facts, 'FRESH_HOURS', 0)
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def db(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)

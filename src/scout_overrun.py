@@ -30,15 +30,17 @@ def disarm():
 
 
 def leave_if_stuck(grace_s=LEAVE_GRACE_S):
-    """Everything is saved and published: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every thread
-    before it exits, so the job would sit until its cancel. Leaves at once when one is still running after grace_s: a pool shut with wait=False
-    keeps its idle workers alive a moment, and those end by themselves (26 Oct 2026: counted as stuck, they ended a unittest run halfway)."""
+    """Everything is saved and published: a check given up on (scout.run, CHECK_LIMIT_S) may still hold its thread, and Python waits for every
+    non-daemon thread before it exits, so the job would sit until its cancel. Leaves at once when one is still running after grace_s.
+    Daemon threads never hold the exit and are not counted; a pool shut with wait=False keeps its idle workers alive a moment, and those end
+    by themselves (26 Oct 2026: both counted as stuck checks, a test's leftover heartbeat threads ended a unittest shard halfway with exit 0)."""
     until = time.monotonic() + grace_s
-    for thread in threading.enumerate():
-        if thread is not threading.current_thread():
-            thread.join(max(0, until - time.monotonic()))
-    if threading.active_count() > 1:
-        print(f'scout: {threading.active_count() - 1} check thread(s) still running after the run; leaving without them', flush=True)
+    held = [t for t in threading.enumerate() if t is not threading.current_thread() and not t.daemon]
+    for thread in held:
+        thread.join(max(0, until - time.monotonic()))
+    stuck = [t for t in held if t.is_alive()]
+    if stuck:
+        print(f'scout: {len(stuck)} check thread(s) still running after the run; leaving without them', flush=True)
         sys.stdout.flush()
         sys.stderr.flush()
         os._exit(0)

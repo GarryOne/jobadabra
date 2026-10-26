@@ -230,16 +230,26 @@ def _fuller_section(board, entry, proposed, search, fetch, judge, before, show=N
     return listed, 'ok', more
 
 
+def _until_cut(fetch):
+    """The ladder's page reader: past the search's read cut it reads no page (the way's own error handling ends it at once)."""
+    def until(url, *args, **kwargs):
+        if read_budget.past_cut():
+            raise TimeoutError('past the search\'s read cut')
+        return fetch(url, *args, **kwargs)
+    return until
+
+
 def _another_way(board, entry, proposed, search, fetch, judge, before, show=None):
     """(jobs, state, relevant) for a board whose proposed link gave no relevant job: when its rules read something (a menu, a news search),
     the AI page reader reads its search page (_read_by_ai); else through the search form on its home page
     (src/sources/board_forms.py), kept as the board's link (the pool share sends it, src/contribute.py); else the job list it declares
     itself (a feed, its home page's own data or the sitemap in robots.txt: board_routes, job pages naming the search words first), kept
     as its route (owner, 18 Oct 2026: Randstad listed warehouse jobs for "financial analyst" and has a job sitemap). Else `before`; the
-    board is not looked at again while the proposed link stays the same. The search's read cut stops it between two ways (cut): the board goes
-    up the ladder again next time (26 Oct 2026, a proof run: a ladder started at 77 s ran to 133 s, past the 90 s cut)."""
+    board is not looked at again while the proposed link stays the same. The search's read cut stops it between two ways (cut), and inside one:
+    no page is fetched past it (_until_cut); the board goes up the ladder again next time (26 Oct 2026, proof runs: a ladder started at 77 s
+    ran to 133 s, past the 90 s cut; then one way alone, started before the cut, fetched pages to 138 s)."""
     entry['form_for'], entry['ladder'] = proposed, LADDER
-    refused = []
+    refused, fetch, show = [], _until_cut(fetch), show and _until_cut(show)
 
     def cut():   # past the search's read cut: no next way; not marked as gone up, so the next search tries it
         if read_budget.past_cut():
@@ -423,19 +433,25 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             entry['last_read'] = stamp
             board_yield.record(entry, 0, 0, 'empty')
             return
+        def wait(answer):   # not stamped read: the next search goes up its ladder from this page, not a second read
+            waiting.append(board['name'])
+            late_reads.keep('board', board['host'], [answer[0], answer[1], route])
+            print(f"Job boards found: {board['name']} {len(answer[0])} job(s), 0 relevant; its other ways wait for the next search", flush=True)
+            run_counts.looked(answer[0])
+            jobs.extend(answer[0])
         late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
         if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
-            waiting.append(board['name'])   # not stamped read: the next search goes up its ladder from this page, not a second read
-            late_reads.keep('board', board['host'], [found, state, route])
-            print(f"Job boards found: {board['name']} {len(found)} job(s), 0 relevant; its other ways wait for the next search", flush=True)
-            run_counts.looked(found)
-            jobs.extend(found)
-            return
+            return wait((found, state))
         elif not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
             from ..ai import decide
             failed = decide.FAILED[0]
+            before = (found, state)
             found, state, relevant = _another_way(board, entry, proposed, search, fetch, judge, (found, state, relevant), show=show)
             _retry_when_unjudged(entry, relevant, decide.FAILED[0] > failed)
+            if not early and not relevant and state != 'browser' and read_budget.past_cut():   # the cut came mid-ladder: the rest waits too
+                entry.pop('form_for', None)
+                entry.pop('ladder', None)
+                return wait(before)
         elif (0 < len(relevant) < FEW_RELEVANT and not (early or route) and state != 'browser' and (board.get('source_kind') or 'general') == 'general'
               and entry.get('few_for') != f'{proposed}|{LADDER}' and not entry.get('form_url') and entry.get('search_url', proposed) == proposed
               and not late):   # a list with few relevant jobs, on the proposed link (not one it learned): its own section may hold more

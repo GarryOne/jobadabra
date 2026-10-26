@@ -166,6 +166,46 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
         self.assertEqual((got, fetched), (before, []), 'no page asked past the cut')
         self.assertFalse(found_boards._went_up(entry, board(0)['search_url']), 'the next search goes up the ladder')
 
+    def test_a_way_that_reads_many_pages_stops_at_the_cut(self):
+        # 26 Oct 2026, a second proof run: one board's ladder way, started before the 90 s cut, kept fetching to 138 s (cut() ran only between ways)
+        late, fetched = [False], []
+
+        def discover(markup, address, fetch, board_, terms):   # a job list of 10 pages, each asked on its own (a sitemap)
+            for n in range(10):
+                try:
+                    fetch(f'https://b0.test/jobs/{n}')
+                except Exception:  # noqa: BLE001 — as board_routes does: a page that fails, the next one
+                    pass
+                late[0] = True   # the cut passes while the first page is read
+            return [], None
+        with mock.patch.object(read_budget, 'past_cut', side_effect=lambda: late[0]), \
+                mock.patch.object(found_boards.board_forms, 'home', return_value=('https://b0.test/', '<html></html>')), \
+                mock.patch.object(found_boards.board_forms, 'home_templates', return_value=[]), \
+                mock.patch.object(found_boards, '_section', return_value=([], '', False)), \
+                mock.patch.object(found_boards.board_routes, 'discover', side_effect=discover), redirect_stdout(io.StringIO()):
+            found_boards._another_way(board(0), {}, board(0)['search_url'], {'role_keywords': ['first officer']},
+                                      lambda url: fetched.append(url) or '', lambda found: [], ([], 'ok', []))
+        self.assertEqual(fetched, ['https://b0.test/jobs/0'], 'no page fetched past the cut')
+
+    def test_a_board_cut_mid_ladder_waits_for_the_next_search(self):
+        """Not stamped read (the next search would skip it for hours): its page is kept and the next search goes on up its ladder."""
+        late = [False]
+
+        def another_way(board_, entry, proposed, search, fetch, judge, before, show=None):
+            late[0] = True   # the cut passes while its ladder runs
+            return before
+        with mock.patch.object(read_budget, 'past_cut', side_effect=lambda: late[0]), \
+                mock.patch.object(found_boards, 'read_board', side_effect=lambda b, *a, **k: ([job(b['host'])], 'ok', None)), \
+                mock.patch.object(found_boards, '_another_way', side_effect=another_way), \
+                mock.patch.object(board_web, 'start', return_value=None), mock.patch.object(board_web, 'finish', return_value=[]), \
+                mock.patch('src.ai.board_ideas.save') as save, redirect_stdout(io.StringIO()) as log:
+            time_budget.start(BUDGET)
+            found_boards.read({'role_keywords': ['first officer']}, [board(0)], fetch=lambda url: '', is_relevant=lambda found: [], dead=set())
+        self.assertIn('its other ways wait for the next search', log.getvalue())
+        from src.sources import late_reads
+        self.assertIsNotNone(late_reads.take('board', 'b0.test'), 'its page is kept for the next search')
+        self.assertNotIn('last_read', save.call_args[0][0]['boards']['b0.test'], 'not stamped read')
+
     def test_no_floor_starts_an_ai_call_in_the_runs_last_seconds(self):
         # 26 Oct 2026, a proof run at Free AI's pace (12 s a call): local-title calls started at 179 s ended the run at 188 s
         time_budget.start(180, now=0)

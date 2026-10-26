@@ -293,8 +293,9 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
     } else if (existing.state === 'OPEN' && !(existing.comments || []).some(comment => (comment.body || '').includes(runUrl))) {
       const comment = seenAgainComment(runUrl, picture, build);
       gh(['issue', 'comment', String(existing.number), '--body', comment]);
+      existing.comments = [...(existing.comments || []), {body: comment}];   // a second finding of this run on the same issue sees it: one "Seen again" per run (#1711)
       // Seen on a second commit (one sighting per commit, lib/triage.mjs): labelled, so the list shows what is reproduced and what is a one-off.
-      if (sightings({...existing, comments: [...(existing.comments || []), {body: comment}]}) >= SIGHTINGS_NEEDED && !(existing.labels || []).some(item => (item.name || item) === SEEN_AGAIN)) {
+      if (sightings(existing) >= SIGHTINGS_NEEDED && !(existing.labels || []).some(item => (item.name || item) === SEEN_AGAIN)) {
         gh(['label', 'create', SEEN_AGAIN, '--force', '--color', '5319E7', '--description', 'Seen on two or more commits: reproduced, not a one-off']);
         gh(['issue', 'edit', String(existing.number), '--add-label', SEEN_AGAIN]);
       }

@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 from .. import paths as _paths  # noqa: F401 (import side effect: loads .env before getenv below)
 from .. import run_counts, store
-from . import cost, engine, hints, locations, score_not_a_job, score_search
+from . import cost, engine, hints, locations, schema_notes, score_not_a_job, score_search
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 
@@ -127,6 +127,9 @@ nothing important is missing. Tier A.
   0-29: unrelated work, level or place. C.
   An unknown (no salary, no stated level) neither adds nor subtracts. The overall score is not the average of the components.
 - reason: one line under 90 characters, plain words, no hype.""" + score_search.RULE + """
+
+What each field means:
+""" + schema_notes.text(SCHEMA) + """
 
 Candidate profile:
 """

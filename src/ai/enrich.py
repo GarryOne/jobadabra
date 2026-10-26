@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .. import store
 from ..paths import JOBS_DB
-from . import cost, engine
+from . import cost, engine, schema_notes
 from .seniority import settle
 from ..role_kinds import KINDS, WORK
 from .models import SMALL_MODEL
@@ -143,9 +143,7 @@ permits; "not_offered" only when it explicitly requires existing work authorizat
 sponsor; "unknown" when the posting says nothing about it (do not infer this from the country).
 
 What each field means:
-""" + '\n'.join(f"{name}: {spec['description']}" for name, spec in SCHEMA['properties'].items() if spec.get('description'))
-# Every field's guidance is said here, not only in the schema: Free AI's model reads the prompt and skips schema descriptions
-# (E2E quality, 26 Oct 2026). Guard: tests/test_facts_prompt_fields.py.
+""" + schema_notes.text(SCHEMA)   # every field's guidance in the prompt too: Free AI's model skips schema descriptions
 
 
 def description_hash(job):

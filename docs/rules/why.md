@@ -23,6 +23,14 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   runner with in-memory KV and D1, production's caps ($0.50 a draw + 2 web searches), and the draws' own Anthropic workspace for web search. What they do
   share is the account's Workers AI bill; the account is on Workers Paid since 16 Oct 2026 (`workers/www/wrangler.toml`, `FREE_AI_NEURONS = "off"`), so
   draw neurons are billed, never refused to users (the 16 Oct incident was a used-up shared free allocation). Do not "fix" this back without the owner.
+  **Extended to CI's tests** (owner, 26 Oct 2026, verbatim: "where would you recommend to Free AI (CloudFlare) and where to keep Claude?"; on the sketch
+  https://claude.ai/artifact/M7j1LeEnrs5HZaen4xtwSa he chose "Yes, own token", "Check out the site handler", "Free AI + 1 smoke each" and, for screenshot
+  review, "Move it now"). CI's AI steps that test the product (the app under test in the e2e, desktop and Windows suites, the draws, the digest, the
+  changelog) and the e2e screenshot review run on Workers AI with CI's own Workers AI-only token (secrets `CI_FREE_AI_CF_*`), on the same terms as the draws:
+  the site's handler on the runner (a CI-only checkout of jobadabra-web, as central-scout reads the lab), never production's `/api/ai`, Worker, KV or alerts.
+  Claude keeps the code-writing agents, the other judges and web search. Later the same day CI's Anthropic credit ran out and the owner said (relayed by
+  the coordinator, verbatim): "Let's sjust switch to Free AI (CloudFlare workers AI). I don't want to top up anymore" / "I'm tired of spending": so the
+  Claude smoke suite per lane is parked until he funds Claude again.
 
 ## Meaning and pages
 - **Meaning comes from AI, never keyword lists** (owner, 8 Oct 2026: "AI should interpret mails"): an English-only subject-word Gmail search never

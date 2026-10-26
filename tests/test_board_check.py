@@ -121,9 +121,10 @@ class ReadTests(unittest.TestCase):
         self.assertEqual(board_yield.pick([board(1), board(2)], self.data['boards']), [])
 
     def test_the_board_step_says_what_a_board_that_is_none_is(self):
+        from datetime import datetime, timezone
         self.read([board(1), board(2)])
         with mock.patch.object(board_ideas, 'ideas', return_value=[board(1), board(2)]), mock.patch.object(found_boards, 'read'), \
-                mock.patch.object(board_yield, '_read_by_the_search', return_value=True):
+                mock.patch.object(board_yield, '_read_since', return_value=datetime(2000, 1, 1, tzinfo=timezone.utc)):   # this search read them
             lines = board_yield.step(SEARCH)
         self.assertEqual([line['status'] for line in lines], ["one employer's own site: added to your employers", "can't be reached"])
 

@@ -22,7 +22,7 @@ export const floorClicks = source => source.split('\n').flatMap((line, i) => {
 // routed). ROUTED: the file's presses ask the floor first, and the marker proves it (markAt = the point's control is checked, false = no click; refused = the element is checked; searchSubmit = only a search-shaped form is sent).
 export const OPEN = {};
 export const ROUTED = {
-  'extension/fill-verify.js': /markAt\([^)]*\)[^\n]*=== false/, 'extension/flow.js': /markAt\([^)]*\)[^\n]*=== false/, 'extension/ladder/fill-climb.js': /markAt\([^)]*\)[^\n]*\.result === false|result === false/,
+  'extension/fill-verify.js': /markAt\([^)]*\)[^\n]*=== false/, 'extension/press-real.js': /markAt\([^)]*\)[^\n]*=== false/, 'extension/flow.js': /markAt\([^)]*\)[^\n]*=== false/, 'extension/ladder/fill-climb.js': /markAt\([^)]*\)[^\n]*\.result === false|result === false/,
   'extension/visit-page.js': /^(?=[\s\S]*const searchSubmit = form =>)(?=[\s\S]*__jobPilottoSubmitPress\?\.refused\(option\))/,
 };
 const OPEN_PRESS = /Input\.dispatchMouseEvent|dispatchEvent\(new (?:Mouse|Pointer)Event|\.requestSubmit\??\.?\(/;

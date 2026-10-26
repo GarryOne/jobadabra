@@ -7,7 +7,7 @@
 // each point against the press floor too. Values stay in the page. Guard: worker/test/hybrid-moves.test.js; the widget zoo's radio-trusted-only-1 and custom-select-1.
 (() => {
   if (window.__jobPilottoPressSpots) return;
-  const norm = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  const norm = text => window.__jobPilottoFold(text).replace(/[^\p{L}\p{N}]/gu, '');   // the shared accent-blind fold (page/fold-text.js): "Zurich" finds "Zürich"
   const shown = el => !!el && !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden';
   const TRIGGER = 'div[role=combobox], button[role=combobox], button[aria-haspopup=listbox], [role=button][aria-haspopup=listbox]';
   const ops = () => window.__jobPilottoFillKit?.radioOps;

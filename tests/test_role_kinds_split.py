@@ -59,6 +59,14 @@ class CopiesTests(unittest.TestCase):
                 self.assertEqual(got, want)
 
 
+    def test_the_job_facts_ai_is_told_what_each_family_means(self):
+        """26 Oct 2026, e2e quality: "Senior Site Reliability Engineer, Customer Care" was filed as customer_service (call-centre work)."""
+        family = enrich.SCHEMA['properties']['role_family']
+        self.assertIn("not the team, product or customers it serves", family['description'])
+        for kind in set(role_kinds.KINDS) - {'software'}:
+            self.assertIn(f'{kind} = {role_kinds.WORK[kind]}', family['description'])
+
+
 class JudgedTests(unittest.TestCase):
     def test_a_title_nobody_judged_is_left_out_of_the_mix(self):
         """26 Oct 2026: past the scout's 60 AI calls a run, every other title counted as 'other'; Other held 42% of the index."""

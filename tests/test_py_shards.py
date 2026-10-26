@@ -1,6 +1,10 @@
 """tools/py-shards.py (9 Oct 2026): the Python suite split across parallel processes. The split must never drop or duplicate a test module."""
+import contextlib
 import importlib.util
+import io
+import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -86,6 +90,29 @@ class EndedTests(unittest.TestCase):
 
     def test_a_shard_that_exited_non_zero_failed(self):
         self.assertIn('exit 1', shards.ended_badly('Ran 3 tests in 1.0s\n\nFAILED (failures=1)\n', 1))
+
+
+class NonBlockingOutputTests(unittest.TestCase):
+    """26 Oct 2026, #2136: a shard exited 120 with every test passed. Its output was a pipe shared by the processes its tests start; one of them
+    (Node does this) left the pipe non-blocking, so decide's exit line met a full pipe: BlockingIOError, and Python could not flush at exit.
+    A shard writes to a file now, which never answers "try again"."""
+    LOUD = (
+        'import atexit, os, stat, sys, unittest\n'
+        'def _loud():\n'
+        '    os.set_blocking(2, False)\n'
+        "    print('x' * 4_000_000, file=sys.stderr, flush=True)\n"
+        'atexit.register(_loud)\n'
+        'class T(unittest.TestCase):\n'
+        '    def test_the_output_is_not_a_pipe(self):\n'   # the race above fails about one run in two; this fails every time
+        '        self.assertFalse(stat.S_ISFIFO(os.fstat(1).st_mode))\n')
+
+    def test_a_shard_whose_output_turned_non_blocking_still_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, 'test_boot.py').write_text('import unittest\nclass B(unittest.TestCase):\n    def test_b(self):\n        pass\n', encoding='utf-8')
+            Path(tmp, 'test_loud.py').write_text(self.LOUD, encoding='utf-8')
+            with mock.patch.multiple(shards, ROOT=Path(tmp), TESTS=Path(tmp), BOOTSTRAP='test_boot'), contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(shards.main(['--jobs', '1', 'test_loud']), 0)
 
 
 if __name__ == '__main__':

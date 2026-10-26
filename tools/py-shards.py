@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -145,12 +146,19 @@ def main(argv=None):
     env['PYTHONPATH'] = os.pathsep.join([str(TESTS), env.get('PYTHONPATH', '')]).rstrip(os.pathsep)
     started = time.monotonic()
     # test_0_notion_ids sets the fake IDs the whole suite imports against; discovery loads it first, so every shard does too.
+    # Each shard writes to a file, never a pipe: a process a test starts (Node does this) can leave a shared pipe non-blocking, and a print meeting a
+    # full pipe then raises BlockingIOError and Python exits 120 with every test passed (#2136, 26 Oct 2026). Guard: tests/test_py_shards.py.
+    shard_list = split(modules, args.jobs)
+    logs = [tempfile.TemporaryFile() for _ in shard_list]
     procs = [(shard, subprocess.Popen([sys.executable, '-m', 'unittest', '-q', '-b', *DURATIONS, BOOTSTRAP, *[m for m in shard if m != BOOTSTRAP]], cwd=ROOT, env=env,
-                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True))
-             for shard in split(modules, args.jobs)]
+                                      stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT))
+             for shard, log in zip(shard_list, logs)]
     results = [None] * len(procs)
     def collect(i, proc):   # each shard's own end time, said the moment it ends (a live CI log is not blank until the last shard)
-        out, _ = proc.communicate()
+        proc.wait()
+        logs[i].seek(0)
+        out = logs[i].read().decode('utf-8', 'replace').replace('\r\n', '\n')
+        logs[i].close()
         results[i] = (out, time.monotonic() - started)
         shard = procs[i][0]
         print(f'py-shards: shard {"FAILED" if ended_badly(out, proc.returncode) else "done"} {results[i][1]:.1f}s, {len(shard)} modules ({", ".join(shard[:3])}{", ..." if len(shard) > 3 else ""})', flush=True)

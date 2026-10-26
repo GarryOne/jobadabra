@@ -7,7 +7,7 @@ import random
 import re
 
 from . import store, tgcard
-from .ai import enrich, score
+from .ai import enrich, score, score_search
 from .notion import client as notion
 from .paths import CONFIG, keyword_regex, load_search_config, place_regex
 
@@ -271,7 +271,8 @@ def _job_block(index, job):
     fit = job.get('fit')
     if fit:
         why = f" · {fit['reason'][:110]}" if fit.get('reason') else ''
-        lines.append(tgcard.fact('Fit', f"{fit['score']}/100{why}"))
+        lines.append(tgcard.fact('Fit', f"{fit['score']}/100{' · fits your search' if score_search.gap(fit) else ''}{why}"))
+        lines.append(tgcard.fact('Your CV', score_search.gap(fit)))   # a career change: what the CV lacks (src/ai/score_search.py)
     # The visa flag is a rule on your places and work rights, not an AI finding: it shows without AI facts too.
     signals = _ai_badges(ai, job) if ai else (['🔴 visa sponsorship needed'] if needs_sponsorship(job) else [])
     if signals:

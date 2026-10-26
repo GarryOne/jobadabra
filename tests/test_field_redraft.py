@@ -59,3 +59,46 @@ class FieldRedraftTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class EveryRunTest(unittest.TestCase):
+    """Whatever changed the roles, the next jobs check redrafts (src/__main__.py runs field_redraft.refresh_quietly before every check)."""
+    OLD = {'target_roles': [{'title': 'developer'}, {'title': 'software engineer'}], 'board_discovery_keywords': ['software', 'developer'],
+           'quality_stack_keywords': ['python', 'react'], 'google_jobs': {'queries': ['software developer iasi'], 'country': 'ro'},
+           'locations': {'top_tier': [], 'country_wide': ['europe'], 'abroad': []}}
+
+    def ways(self):
+        from src.notion import search_settings
+        roles = [{'title': 'first officer'}, {'title': 'pilot'}]
+        return {
+            'the Strategy page or Telegram (the settings written with new roles)': lambda files: search_settings.apply({('search', ('target_roles',)): ['first officer', 'pilot']}, files),
+            'the Notion page (parsed values)': lambda files: search_settings.apply(search_settings.parse('## Target roles\n- first officer\n- pilot\n'), files),
+            'setup or an import (the file written directly)': lambda files: (search_settings.CONFIG / 'search.json').write_text(json.dumps({**files['search'], 'target_roles': roles})),
+        }
+
+    def test_every_way_the_roles_change_gives_the_new_field_one_run_later(self):
+        import tempfile
+        from pathlib import Path
+        from src.notion import search_settings
+        for name, change in self.ways().items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as folder, mock.patch.object(search_settings, 'CONFIG', Path(folder)), \
+                    mock.patch.object(field_redraft, 'STAMP', Path(folder) / 'stamp.json'), mock.patch.object(field_redraft, 'DATA', Path(folder)), \
+                    mock.patch.object(field_redraft.role_kinds, 'kinds_of', lambda words, **k: {w: KINDS.get(w, 'other') for w in words}):
+                (Path(folder) / 'search.json').write_text(json.dumps(self.OLD))
+                self.assertFalse(field_redraft.refresh(asker=lambda *a: ANSWER, profile='', publish=lambda files: None))   # the first run stamps developer
+                change(search_settings.load_cached())
+                published = []
+                self.assertTrue(field_redraft.refresh(asker=lambda *a: ANSWER, profile='', publish=published.append))
+                search = search_settings.load_cached()['search']
+                for path in field_redraft.DERIVED:
+                    words = search[path[0]] if len(path) == 1 else search[path[0]][path[1]]
+                    old = self.OLD[path[0]] if len(path) == 1 else self.OLD[path[0]][path[1]]
+                    self.assertTrue(words and not {w.lower() for w in words} & {w.lower() for w in old}, path)
+                self.assertEqual(search['google_jobs']['country'], 'ro')
+                self.assertEqual(len(published), 1)
+                self.assertFalse(field_redraft.refresh(asker=lambda *a: 1 / 0, profile='', publish=published.append))   # stamped: not asked again
+
+    def test_every_jobs_check_runs_it_before_the_search(self):
+        text = (Path(__file__).resolve().parent.parent / 'src' / '__main__.py').read_text()
+        self.assertLess(text.index('search_settings.sync_quietly()'), text.index('field_redraft.refresh_quietly()'))
+        self.assertLess(text.index('field_redraft.refresh_quietly()'), text.index('return importlib.import_module(commands[name]).main() or 0\n        except LockTimeout'))

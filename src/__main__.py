@@ -49,6 +49,8 @@ def main():
                 search_settings.sync_quietly()
                 from . import target_roles
                 target_roles.migrate_quietly()   # an old file's roles and searches become one list (AI groups the short forms once)
+                from . import field_redraft
+                field_redraft.refresh_quietly()   # roles in another field: the words drawn from the old one are redrafted (src/field_redraft.py)
                 from . import places
                 places.refresh_quietly()   # "Germany", "Asia": the cities they stand for, worked out once and kept (src/places.py)
                 return importlib.import_module(commands[name]).main() or 0

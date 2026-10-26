@@ -12,6 +12,7 @@ says one plain line at its end (items_waiting).
 The text sent is untrusted page/email text, and the model is told so; nothing it writes is used except the chosen answer.
 Tests: tests/test_decide.py."""
 import atexit
+import contextlib
 import json
 import sqlite3
 import sys
@@ -31,7 +32,8 @@ MAX_CALLS_PER_RUN = 60   # model calls per process: a crawl never turns into a b
 # "2,000 calls" (~$0.65 a run while the counts fill, about 2 days; kept answers make later runs cheap). Tests: tests/test_kind_counts.py.
 CENTRAL_MAX_CALLS = 2000
 _calls = {'n': 0}
-_own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), outside limit()
+_own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), or per own_allowance() scope, outside limit()
+SCOPE = {'name': None, 'n': 0}   # own_allowance(): the calls inside count against this, not the run's cap
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 
 STOPPED = {'why': ''}   # a spent limit: no more asks this run (every page would fail the same way)
@@ -82,6 +84,19 @@ def failed(what, error, n=1):
         STOPPED['why'] = f'{error_facts(error)} {error}'
     detail(what, error)
     _wait(None, n)
+
+
+@contextlib.contextmanager
+def own_allowance(name, n):
+    """Every model call inside (without its own allowance=) counts against `name`'s n calls a run instead of the run's cap: a step that
+    runs after the others spent the cap (the central scout's board pass: places, kinds of work, a board's country) still gets answers
+    (owner, 26 Oct 2026, "Own 15-call allowance", then the whole pass; tests/test_board_pass_allowance.py)."""
+    before = dict(SCOPE)
+    SCOPE.update(name=name, n=n)
+    try:
+        yield
+    finally:
+        SCOPE.update(before)
 
 
 def reset_run():
@@ -202,11 +217,12 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
         stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
         for start in range(0, len(todo), BATCH):
-            used, cap = (_own.get(topic, 0), allowance) if allowance is not None else (_calls['n'], limit())
+            pool, cap = (topic, allowance) if allowance is not None else (SCOPE['name'], SCOPE['n'])
+            used, cap = (_own.get(pool, 0), cap) if pool else (_calls['n'], limit())
             if not budget_tape.within('decide', f'{topic} {todo[start]}', used, cap):
                 return _wait(out, len(todo) - start)
-            if allowance is not None:
-                _own[topic] = used + 1
+            if pool:
+                _own[pool] = used + 1
             else:
                 _calls['n'] += 1
             WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1

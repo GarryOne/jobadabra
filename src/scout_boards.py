@@ -14,6 +14,7 @@ MIN_LOCAL = 3           # local jobs a board needs before it is published (the s
 FACT_DAYS = 30          # a fact not measured again within this long is no longer published (the site drops it too)
 MAX_BOARDS = 12         # boards read per country and run
 BUDGET_S = 240          # the pass gives up starting new boards after this long
+PASS_CALLS = 2 * MAX_BOARDS   # the board pass's own AI calls a run (places and kinds of work, batched), outside the scout's cap
 KINDS_PER_COUNTRY = 3   # the roles asked for: software and the country's thinnest kinds
 RECENT = 4              # countries done lately wait their turn
 RESERVE_S = 5 * 60      # the feed checks stop this long before the publish deadline, so the pass (a few minutes) always has its time
@@ -84,7 +85,7 @@ def measure(board, jobs, country, local=None):
 
 def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None, google=None, country_of=None):
     """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
-    from .ai import board_ideas
+    from .ai import board_ideas, decide
     from .sources import careers, found_boards
     ensure(db)
     if until is not None and clock() >= until:
@@ -101,21 +102,25 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
         proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
         began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
+        # every AI answer the reads need (places, kinds of work) on the pass's own calls: title sorting spends the scout's cap first (run 40384536845:
+        # posao.hr 40/37 local, no fact, its kinds of work never asked)
         try:
-            for board in proposed:
-                if clock() - began > BUDGET_S:
-                    break
-                jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
-                local, placeless = local_of(jobs, country), [job for job in jobs if not str(job.get('location') or '').strip()]
-                # a list with no places (they are on each job's page): the AI names the board's country; only 'this country' counts them
-                whole = bool(placeless) and len(local) < MIN_LOCAL and (country_of or _country_of)(board, country) == 'this country'
-                fact = measure(board, jobs, country, local + placeless if whole else local)
-                counts.append(f"{board['host']} {len(jobs)}/{len(local) + (len(placeless) if whole else 0)}"
-                              + (' (no places; the AI: this country)' if whole else ''))
-                if fact:
-                    kept.append(fact)
-                elif state in ('empty', 'browser'):
-                    unread.append(board['host'])
+            with decide.own_allowance('central scout board pass', PASS_CALLS):
+                for board in proposed:
+                    if clock() - began > BUDGET_S:
+                        break
+                    jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
+                    local, placeless = local_of(jobs, country), [job for job in jobs if not str(job.get('location') or '').strip()]
+                    # a list with no places (they are on each job's page): the AI names the board's country; only 'this country' counts them
+                    whole = bool(placeless) and len(local) < MIN_LOCAL and (country_of or _country_of)(board, country) == 'this country'
+                    fact = measure(board, jobs, country, local + placeless if whole else local)
+                    counted = len(local) + (len(placeless) if whole else 0)
+                    counts.append(f"{board['host']} {len(jobs)}/{counted}" + (' (no places; the AI: this country)' if whole else '')
+                                  + (' (no kinds of work from the AI: not kept)' if not fact and counted >= MIN_LOCAL else ''))
+                    if fact:
+                        kept.append(fact)
+                    elif state in ('empty', 'browser'):
+                        unread.append(board['host'])
         finally:
             careers.READER = reader
         stamp = datetime.now(timezone.utc).date().isoformat()

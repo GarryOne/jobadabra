@@ -30,6 +30,7 @@ class Fake:
         if url.endswith('account.json'):
             return {'plan_name': 'Free Plan', 'total_searches_left': self.left}
         self.asked.append(params['q'])
+        self.params = params
         return {'organic_results': RESULTS, 'search_metadata': {'id': 'x'}}
 
 
@@ -48,6 +49,7 @@ class GoogleBoards(unittest.TestCase):
     def test_only_field_boards_join_with_the_result_address_and_the_ai_judges_each_new_site(self):
         fake = Fake()
         kept = self.boards(fake)
+        self.assertEqual(fake.params['gl'], 'at', "Google as seen from the country (run 40384536845: Croatia's searches gave US sites)")
         self.assertEqual(fake.asked, ['pilots jobs Austria', 'pilots job board Austria', 'cabin crew jobs Austria', 'cabin crew job board Austria',
                                       'air traffic jobs Austria', 'air traffic job board Austria'])
         self.assertEqual([(b['host'], b['search_url'], b['source_kind'], b['kinds']) for b in kept],

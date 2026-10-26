@@ -166,6 +166,8 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   Hence: the scout counts each employer's jobs per country and kind (`kind_counts`, `src/scout_kind_counts.py`), places from every install's shared
   answers (`src/geo.py`, topic job-location-geo) and its own capped AI; an install judges an employer by its jobs in its countries
   (`role_kinds.located`), and no mix means not read. Guard: `tests/test_kind_counts.py`.
+- The scout keeps Claude (owner, 26 Oct 2026: "keep claude for the scout"): its answers decide which employers every install reads, a wrong one hides an
+  employer from every user of that kind; it costs ~$0.09 a run (~$11 a month). Guard: `tests/test_kind_counts.py` ScoutKeepsClaudeTest.
 
 ## Browser reads start only from the person's button (26 Oct 2026)
 - Since 20 Oct the extension read refused sites by itself: an hourly timer (3 minutes after Chrome started), every Check for new jobs and every job

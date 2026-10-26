@@ -59,6 +59,15 @@ class ScoutCountsTest(unittest.TestCase):
                          'every cache restore and save keeps the places the AI judged (asked once, ever)')
 
 
+class ScoutKeepsClaudeTest(unittest.TestCase):
+    def test_the_central_scout_judges_with_claude_never_free_ai(self):
+        """Owner, 26 Oct 2026: "keep claude for the scout": its kinds and places decide which employers every install reads (~$11 a month)."""
+        from pathlib import Path
+        workflow = (Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'central-scout.yml').read_text()
+        self.assertIn('ANTHROPIC_API_KEY: ${{ secrets.CENTRAL_SCOUT_ANTHROPIC_KEY }}', workflow)
+        self.assertNotRegex(workflow, r'(?i)free_ai|JOB_PILOTTO_AI_ENGINE', 'the scout never switches to Free AI or another engine')
+
+
 class LocatedFitTest(unittest.TestCase):
     PILOT = {'aviation_transport'}
 

@@ -98,7 +98,7 @@ jobs:
       - name: Scout and publish the index
         env:
           INDEX_PUBLISH_KEY: ${{ secrets.INDEX_PUBLISH_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.CENTRAL_SCOUT_ANTHROPIC_KEY }}   # the Internal workspace's key (own spend limit), not this repo's ANTHROPIC_API_KEY
+          ANTHROPIC_API_KEY: ${{ secrets.CENTRAL_SCOUT_ANTHROPIC_KEY }}   # the Internal workspace's key (own spend limit), not this repo's ANTHROPIC_API_KEY; Claude, never Free AI (owner, 26 Oct 2026: "keep claude for the scout"; tests/test_kind_counts.py)
           BATCH: ${{ inputs.batch || '500' }}
           SCOUT_TITLE_KINDS: ops/config/title_kinds.json.gz   # titles judged on the owner's Claude plan (tools/recount_title_kinds.py); absent: nothing changes
           SCOUT_BOARD_COUNTRY: ${{ inputs.country }}

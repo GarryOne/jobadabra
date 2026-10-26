@@ -343,6 +343,26 @@ def upgrade(tracker=None, page_id=PAGE_ID):
     return render(cached)
 
 
+def publish_sections(files, paths, tracker=None, page_id=PAGE_ID):
+    """Write these settings' sections (by path) to the Notion page, each under its heading; nothing without a page or Notion."""
+    if not page_id:
+        return
+    tracker = tracker or Tracker_from_env()
+    if not tracker:
+        return
+    for heading, name, path, kind in SECTIONS:
+        if path in paths:
+            items = [readable(v) if kind == 'match' else str(v) for v in _get(files[name], path) or []]
+            tracker.replace_after_heading(page_id, heading, [
+                {'object': 'block', 'type': 'bulleted_list_item', 'bulleted_list_item': {'rich_text': [{'type': 'text', 'text': {'content': item}}]}}
+                for item in items])
+
+
+def Tracker_from_env():
+    from .client import Tracker
+    return Tracker.from_env()
+
+
 def sync_quietly():
     try:
         sync()

@@ -15,7 +15,8 @@ KINDS = {'developer': 'software', 'software engineer': 'software', 'first office
 
 def run(search, stamp, answer=ANSWER):
     saved = []
-    with mock.patch.object(field_redraft.role_kinds, 'kinds_of', lambda words, **k: {w: KINDS.get(w, 'other') for w in words}):
+    with mock.patch.object(field_redraft.role_kinds, 'kinds_of', lambda words, **k: {w: KINDS.get(w, 'other') for w in words}), \
+            mock.patch.object(field_redraft, '_stamp', lambda: None):   # never this machine's real stamp
         out = field_redraft.apply(search, stamp=stamp, asker=lambda *a: answer, save=saved.append)
     return out, saved
 

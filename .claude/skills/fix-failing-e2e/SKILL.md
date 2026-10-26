@@ -13,6 +13,7 @@ Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were t
    - **Test drift**: the app's words, roles or timing changed. Fix the test to read the app's own name (a shared constant), never a new copy.
    - **Product bug**: the app is wrong. Fix the app, add the test first.
    - **Infra**: the key's credit ("credit balance is too low"), a runner, a lock. Do not touch tests.
+     A job "cancelled" with 0 steps, no log and no runner name never started: read its annotations (`gh api repos/<r>/check-runs/<job>/annotations`); "not acquired by Runner" = GitHub's capacity, not a timeout (beta 3, 26 Oct 2026). `rerun-not-acquired.yml` re-runs it once when nothing else is red.
    - **Flake**: red on timing or the test's environment (a wait that ran out, a dropped connection), then green on the same code. Name the timing assumption and make it a ratio or a wait on a state, not a longer sleep.
    - **Intermittent** (gate G5, 26 Oct 2026): red on a wrong value, then green on the same code. Not a flake: a race in the product or the test, a bug that shows sometimes (#1897: row "Completed" vs panel "Completed with warnings"). CI keeps the job red and triage labels it `intermittent` (`lib/flaky-proof.mjs`); find the race, never "re-run until green".
 3. **List the siblings.** `node desktop/e2e/pr-suites.mjs --base origin/main` names every suite that quotes the text you changed; fix them in the same change (a suite stops at its first red step, so the next layer is likely there).

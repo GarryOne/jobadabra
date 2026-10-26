@@ -126,7 +126,7 @@ export async function run(ctx) {
       await page.click('[data-tab=strategy-suggestions]');
       if (await page.locator('#strategy-ideas [data-review]').getAttribute('aria-expanded') !== 'true') await page.click('#strategy-ideas [data-review]');
       await page.locator('#ideas-chips .option-row button').first().click();
-      const next = page.locator('#toasts .toast .toast-action', {hasText: 'Find jobs'});
+      const next = page.locator('#toasts .toast.toast-link .toast-next', {hasText: 'Find jobs'});   // no button: the pop-up's click runs it (owner, 27 Oct 2026)
       if (!await waitFor(() => next.count().then(n => n > 0), 8000)) throw new Error(`no Find jobs in the pop-up: ${await text(page, '#toasts')}`);
     });
 

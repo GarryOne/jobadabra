@@ -87,10 +87,13 @@ class WebSearchSaysWhy(unittest.TestCase):
         careers.READER = None
 
     def search(self, due=True, client=None):
+        from datetime import timedelta
+        data = {'boards': {}, 'web': {'k': (NOW - timedelta(hours=1)).isoformat()}} if not due else {'boards': {}}
         with mock.patch('src.ai.board_ideas.asked_for', return_value=('k', ['Austria'], ['first officer'], [], ['europe'])), \
-                mock.patch.object(board_web, '_due', return_value=due), mock.patch.object(board_web, '_searcher', return_value=client), \
+                mock.patch.object(board_web, '_next_search', return_value=None if due else NOW + timedelta(days=7)), \
+                mock.patch.object(board_web, '_searcher', return_value=client), \
                 mock.patch.object(board_web, 'disabled', return_value=False), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''}):
-            return lines(lambda: board_web.search(PILOT, [], now=NOW, data={'boards': {}}))
+            return lines(lambda: board_web.search(PILOT, [], now=NOW, data=data))
 
     def test_no_ai_that_searches_the_web_is_said(self):
         found, said = self.search()
@@ -99,7 +102,8 @@ class WebSearchSaysWhy(unittest.TestCase):
 
     def test_not_due_is_said(self):
         _, said = self.search(due=False)
-        self.assertIn('Job boards: no web search: searched lately', said)
+        self.assertIn('Job boards: no web search: searched ', said)
+        self.assertIn(', next after ', said, 'the rest says when it searches next (the web search chip reads both dates)')
 
     def test_the_start_names_its_lane(self):
         with mock.patch('src.sources.web_search._claude_code', return_value=False), mock.patch('src.ai.engine.choice', return_value='api'), \

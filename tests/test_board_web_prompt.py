@@ -39,12 +39,15 @@ class TheCallUsesTheFile(Base):
 
 class UnknownKindIsThin(Base):
     def test_an_unknown_kind_searches_weekly_even_with_working_boards(self):
-        working = {'s1.example': {'source_kind': 'sector', 'state': 'ok', 'relevant': 4},
-                   's2.example': {'source_kind': 'regional', 'state': 'ok', 'relevant': 2}}
-        data = {'web': {'k': NOW.isoformat()}}
+        from src import places
+        from tests.test_board_web_thin import kept
+        working = {**kept('s1.example', 'creative_media'), **kept('s2.example', 'creative_media', source_kind='regional')}
+        data = {'web': {'k': NOW.isoformat()}, 'web_thin': {'k': board_web.TRIES}}
         later = NOW + timedelta(days=board_web.RECENT)
-        self.assertFalse(board_web._due(data, 'k', later, working, SEARCH), 'a known kind with working boards: monthly')
-        with mock.patch.object(role_kinds, 'UNKNOWN', 'unknown', create=True), mock.patch.object(role_kinds, 'of_search', return_value='unknown'):
+        with mock.patch.object(role_kinds, 'of_search', return_value={'creative_media'}), mock.patch.object(places, 'countries', return_value=['Germany']):
+            self.assertFalse(board_web._due(data, 'k', later, working, SEARCH), 'a known kind with working boards: monthly')
+        with mock.patch.object(role_kinds, 'UNKNOWN', 'unknown', create=True), mock.patch.object(role_kinds, 'of_search', return_value={'unknown'}), \
+                mock.patch.object(places, 'countries', return_value=['Germany']):
             self.assertTrue(board_web._due(data, 'k', later, working, SEARCH))
             self.assertTrue(board_web.needed(working, [{'host': host, **entry} for host, entry in working.items()], SEARCH))
 

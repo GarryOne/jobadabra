@@ -1,16 +1,17 @@
 """Specialist and local job boards found with a web search, as a source of the run from its start (owner, 26 Oct 2026: "It should not read the
 web search last. It should probably start with that."; first built 19 Oct 2026, step 3 of the local-sources sketch, after a full board read).
 early() starts it with the run, before the first jobs; start() hands it to the full read beside the proposal (or starts it there); finish() hands its new boards to the same read. Its one skip: this search was searched
-in the last RECENT days, or its boards are working (WANT sector or regional boards gave relevant jobs) and it was searched in the last DAYS.
+in the last DAYS while its boards work (WANT sector or regional boards gave relevant jobs for THIS search's field and places), else it searches again on
+the very next run, told what it found before, up to TRIES thin searches in a row, then every RECENT days (owner via the coordinator, 26 Oct 2026).
 The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
 Anthropic API key (about $0.03 a search), or for Free AI alone the site's capped web search lane. Only boards whose address the search showed; each is marked origin 'web'
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
 (src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOB_PILOTTO_DISABLE=web_search.
-Tests: tests/test_board_web.py, tests/test_web_first.py."""
+Tests: tests/test_board_web.py, tests/test_board_web_thin.py, tests/test_web_first.py."""
 import json
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from ..features import disabled
@@ -18,7 +19,8 @@ from . import careers
 
 WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
-RECENT = 7      # a thin search (its boards do not work yet) is searched again after this many days
+RECENT = 7      # a thin search (its boards do not work yet) that already searched TRIES times in a row: searched again after this many days
+TRIES = 3       # thin searches in a row, each on the next run, before the weekly rest (owner, 26 Oct 2026: search again while it found too little)
 ENGINES = ('cli', 'codex', 'api')   # engines whose AI can search the web (Free AI through the site's lane; OpenAI's API: not here, a signed-in plan beside it can)
 LOCAL_KINDS = ('sector', 'regional')
 # The instruction, search cap and answer form, shared with the site relay that runs this search for Free AI without a plan (one text, public).
@@ -71,15 +73,38 @@ def needed(kept, boards, search_config=None):
     return len(working) < WANT
 
 
-def _due(data, key, now, kept=None, search_config=None):
-    """Never searched: due. Then weekly while the search's boards do not work or its kind is unknown (needed), monthly once they do."""
+def _working(kept, search_config):
+    """The kept sector or regional boards that gave relevant jobs for THIS search's field and places (src/sources/board_yield.py working):
+    a board kept for an earlier search (a software board, another country) never counts. [] when the role's kind is unknown."""
+    from . import board_yield
     try:
-        last = datetime.fromisoformat((data.get('web') or {})[key])
+        return [board for board in board_yield.working(search_config or {}, kept or {}) if board['source_kind'] in LOCAL_KINDS]
+    except Exception:  # noqa: BLE001 — boards we cannot judge are not working ones
+        return []
+
+
+def _last(data, key):
+    try:
+        return datetime.fromisoformat((data.get('web') or {})[key])
     except (KeyError, TypeError, ValueError):
-        return True
-    days = (now - last).days
-    thin = needed(kept or {}, [{'host': host, **entry} for host, entry in (kept or {}).items()], search_config)
-    return days >= (RECENT if thin else DAYS)
+        return None
+
+
+def _next_search(data, key, kept=None, search_config=None):
+    """When this search's web search is due next: None when never searched (due now); the last search's own time (the very next run) while it
+    left fewer than WANT working boards and fewer than TRIES thin searches ran in a row; else RECENT days after it; DAYS once its boards work."""
+    last = _last(data, key)
+    if last is None:
+        return None
+    if len(_working(kept, search_config)) >= WANT:
+        return last + timedelta(days=DAYS)
+    return last if int((data.get('web_thin') or {}).get(key) or 0) < TRIES else last + timedelta(days=RECENT)
+
+
+def _due(data, key, now, kept=None, search_config=None):
+    """Never searched, or its next search time has come (_next_search)."""
+    due = _next_search(data, key, kept, search_config)
+    return due is None or now >= due
 
 
 _early = {}   # {search key: (Future, its own copy of found_boards.json)}: started before the first jobs, taken by the full read (start)
@@ -151,6 +176,7 @@ def start(search_config, data, fetch=None, now=None):
 def _merge(into, copy):
     """What a search run on its own copy recorded (when it searched, the boards it found), into the read's found_boards.json."""
     into.setdefault('web', {}).update(copy.get('web') or {})
+    into.setdefault('web_thin', {}).update(copy.get('web_thin') or {})
     for key, boards in (copy.get('ideas') or {}).items():
         have = into.setdefault('ideas', {}).setdefault(key, [])
         hosts = {board['host'] for board in have}
@@ -199,23 +225,36 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     now = now or datetime.now(timezone.utc)
     asked = board_ideas.asked_for(search_config)
     own, data = data is None, board_ideas.load() if data is None else data
-    if not asked or not _due(data, asked[0], now, data.get('boards'), search_config):
-        print(f"Job boards: no web search: {'this search names no places or roles' if not asked else 'searched lately, its boards are kept'}", flush=True)
+    if not asked:
+        print('Job boards: no web search: this search names no places or roles', flush=True)
         return []
     key, countries, roles, kinds, places = asked
+    kept, last, due = data.get('boards') or {}, _last(data, key), _next_search(data, key, data.get('boards'), search_config)
+    if due is not None and now < due:   # the dates in this form: the app's web search chip reads them (session 89, 26 Oct 2026)
+        print(f"Job boards: no web search: searched {last.isoformat(timespec='minutes')}, next after {due.isoformat(timespec='minutes')}; "
+              'its boards are kept', flush=True)
+        return []
+    working, tries = _working(kept, search_config), int((data.get('web_thin') or {}).get(key) or 0)
+    before = {}
+    if last is not None and len(working) < WANT:   # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
+        print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "
+              f'working boards for this search; try {tries + 1} of {TRIES}, with other words', flush=True)
+        before = {'searched before': {'times': tries, 'boards found then': [board.get('name') or board['host'] for board in
+                                                                            (data.get('ideas') or {}).get(key) or [] if board.get('origin') == 'web']}}
     if client is None:
         client = _searcher()
         if client is None:   # said, never silent (owner's pilot run, 26 Oct 2026: no line told why no board was searched for)
             print('Job boards: no web search: no AI here searches the web (a signed-in Claude Code or Codex, an API key, or Free AI)', flush=True)
             return []
-    data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per RECENT/DAYS, even when it fails
+    data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per due time, even when it fails
+    data.setdefault('web_thin', {})[key] = tries + 1 if len(working) < WANT else 0   # thin searches in a row (TRIES, then weekly)
     if own:
         board_ideas.save(data)
     try:
         response = client.messages.create(
             model=SMALL_MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
             messages=[{'role': 'user', 'content': json.dumps({'countries': countries, 'places': places, 'roles': roles, 'kinds': kinds,
-                                                              'known boards': [board['name'] for board in known]}, ensure_ascii=False)}],
+                                                              'known boards': [board['name'] for board in known], **before}, ensure_ascii=False)}],
             tools=[{'type': 'web_search_20250305', 'name': 'web_search', 'max_uses': MAX_USES}],
             output_config=engine.structured(board_ideas.SCHEMA, SMALL_MODEL, 'low'))
         cost.side(SMALL_MODEL, response.usage)

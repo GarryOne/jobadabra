@@ -76,13 +76,17 @@ class WebSearchFirst(Base):
 class OneSkip(unittest.TestCase):
     def test_due_never_searched_weekly_while_thin_monthly_once_working(self):
         from datetime import timedelta
-        data = {'web': {'k': NOW.isoformat()}}
-        working = {'a.example': {'source_kind': 'sector', 'state': 'ok', 'relevant': 3}, 'b.example': {'source_kind': 'regional', 'state': 'ok', 'relevant': 1}}
-        self.assertTrue(board_web._due({}, 'k', NOW, {}))
-        self.assertFalse(board_web._due(data, 'k', NOW + timedelta(days=board_web.RECENT - 1), {}))
-        self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=board_web.RECENT), {}))
-        self.assertFalse(board_web._due(data, 'k', NOW + timedelta(days=board_web.DAYS - 1), working))
-        self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=board_web.DAYS), working))
+
+        from tests.test_board_web_thin import kept
+        data = {'web': {'k': NOW.isoformat()}, 'web_thin': {'k': board_web.TRIES}}   # thin searches before: tests/test_board_web_thin.py
+        working = {**kept('a.example', 'creative_media'), **kept('b.example', 'creative_media', source_kind='regional')}
+        search = {'role_keywords': ['Tontechniker']}
+        with mock.patch('src.role_kinds.of_search', return_value={'creative_media'}), mock.patch('src.places.countries', return_value=['Germany']):
+            self.assertTrue(board_web._due({}, 'k', NOW, {}, search))
+            self.assertFalse(board_web._due(data, 'k', NOW + timedelta(days=board_web.RECENT - 1), {}, search))
+            self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=board_web.RECENT), {}, search))
+            self.assertFalse(board_web._due(data, 'k', NOW + timedelta(days=board_web.DAYS - 1), working, search))
+            self.assertTrue(board_web._due(data, 'k', NOW + timedelta(days=board_web.DAYS), working, search))
 
 
 if __name__ == '__main__':

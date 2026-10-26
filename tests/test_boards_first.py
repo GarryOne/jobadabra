@@ -52,6 +52,8 @@ def by_card(n):   # job cards with a slug link each (an aviation CV board)
 
 
 PAGES = {'crew-board.test': by_id(8), 'cv-board.test': by_card(6), 'quiet-board.test': f'<html><body><h1>Jobs</h1>{INTRO}<p>No jobs today.</p>{FOOTER}</body></html>'}
+BAD = {'boards': [{'name': host, 'search_url': f'https://{host}/jobs?q={{role}}', 'countries': ['Austria'], 'kinds': ['any'], 'source_kind': 'sector'}
+                  for host in ('quiet-board.test', 'refusing-board.test')]}   # the owner's 01:45 run: 2 boards, no job
 ANSWER = {'boards': [{'name': host, 'search_url': f'https://{host}/jobs?q={{role}}', 'countries': ['Austria'], 'kinds': ['any'], 'source_kind': 'sector'}
                      for host in PAGES]}
 
@@ -73,8 +75,8 @@ def fetch(url):
 
 
 class FakeClient:
-    def __init__(self, delay=0.0):
-        self.delay = delay
+    def __init__(self, delay=0.0, answer=None):
+        self.delay, self.answer = delay, answer or ANSWER
 
     @property
     def messages(self):
@@ -82,7 +84,7 @@ class FakeClient:
 
     def create(self, **kwargs):
         time.sleep(self.delay)
-        return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(ANSWER))], usage=None)
+        return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(self.answer))], usage=None)
 
 
 class OldState(unittest.TestCase):
@@ -102,11 +104,14 @@ class OldState(unittest.TestCase):
         self.db.execute(aggregators.TABLE)
         self.db.execute('INSERT INTO aggregator_runs VALUES (?, ?)', (boards_ahead.NAME, read))
         wanted = lambda title: 'first officer' in str(title or '').lower()
-        fake_careers = SimpleNamespace(READER=object(), get_text=fetch)   # the web search's own check only; the page reader stays off
+        fake_careers = SimpleNamespace(READER=object(), get_text=fetch)
+        aviation = {'aviation_transport'}   # "First Officer"'s kind (tests/test_kind_seed_floor.py)   # the web search's own check only; the page reader stays off
         for patch in (mock.patch('src.paths.DATA', self.data), mock.patch('src.ai.board_ideas.asked_for', return_value=ASKED),
                       mock.patch.object(board_web, 'careers', fake_careers), mock.patch.object(board_web, 'disabled', return_value=False),
                       mock.patch('src.ai.cost.side'), mock.patch.object(found_boards.careers, 'get_text', fetch),
                       mock.patch.object(feeds, 'wanted_title', wanted), mock.patch.object(feeds, 'wanted_location', lambda job: True),
+                      mock.patch('src.role_kinds.of_search', side_effect=lambda search: set(aviation)),
+                      mock.patch('src.places.countries', return_value=['Austria', 'Germany']),
                       mock.patch.object(found_boards.board_employers, 'note'), mock.patch.object(aggregators.board_employers, 'note'),
                       mock.patch.object(aggregators.board_employers, 'fill_missing'), mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': ''})):
             patch.start()
@@ -124,12 +129,12 @@ class OldState(unittest.TestCase):
         left = [thread.name for thread in threading.enumerate() if thread.name.startswith('board-web') and thread.is_alive()]
         self.assertEqual(left, [], 'a web search thread outlived its test')
 
-    def run_first(self, delay=0.0, wait=boards_first.WEB_WAIT):
+    def run_first(self, delay=0.0, wait=boards_first.WEB_WAIT, answer=None):
         shown = []
-        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(delay)):
-            searching = board_web.early(SEARCH, fetch=fetch)
+        with mock.patch.object(board_web, '_searcher', return_value=FakeClient(delay, answer)):
             began = time.monotonic()
             with redirect_stdout(io.StringIO()) as out:
+                searching = board_web.early(SEARCH, fetch=fetch)
                 matched = boards_first.run(self.db, SEARCH, lambda jobs: shown.append((time.monotonic() - began, jobs)), wait=wait)
             with redirect_stdout(io.StringIO()):   # a web search still searching ends inside this test: its line never lands in another test's output
                 searching.exception(timeout=10)
@@ -166,11 +171,48 @@ class OldState(unittest.TestCase):
         self.assertIn('the web search is still searching', log)
         self.assertEqual(len(board_web._early), 1, 'the full read takes it')
 
-    def test_no_web_search_this_run_reads_nothing_first(self):
+    def test_no_web_search_this_run_and_no_working_board_reads_nothing_first(self):
         shown = []
         with redirect_stdout(io.StringIO()):
             self.assertEqual(boards_first.run(self.db, SEARCH, shown.append), [])
         self.assertEqual(shown, [])
+
+    def search_again(self):
+        """A later run: the web search is due again (its stamp gone) and the board scan's rest has passed."""
+        data = json.loads((self.data / 'found_boards.json').read_text())
+        data['web'] = {}
+        data['boards']['itjobs.test'] = {'name': 'IT Jobs Moldova', 'search_url': 'https://itjobs.test/?q={role}', 'state': 'ok', 'relevant': 9,
+                                         'countries': ['Moldova'], 'kinds': ['software_it'], 'paid_for': ['software_it']}   # an earlier search's board
+        (self.data / 'found_boards.json').write_text(json.dumps(data))
+        self.db.execute('DELETE FROM feed_jobs')
+
+    def test_a_second_run_reads_the_boards_that_worked_when_its_web_search_finds_only_bad_ones(self):
+        """The owner's 01:45 run (26 Oct 2026): the web search found 2 boards that give no job; the boards that list First Officer jobs were
+        never read again. Fails on the old code: it read only what that run's web search found (0 jobs)."""
+        self.run_first()
+        self.search_again()
+        matched, shown, log = self.run_first(answer=BAD)
+        self.assertEqual(len(matched), 14, log)
+        self.assertTrue(shown and shown[0][0] < 60, 'on screen within 60 s')
+        self.assertIn('that gave you jobs in this field before', log)
+        self.assertNotIn('IT Jobs Moldova', log, "an earlier search's board is never read for this one (owner: in sync with the current search)")
+
+    def test_without_a_web_search_the_boards_that_worked_are_read_first(self):
+        self.run_first()
+        self.search_again()
+        board_web._early.clear()
+        shown = []
+        with redirect_stdout(io.StringIO()) as out:
+            matched = boards_first.run(self.db, SEARCH, shown.append)
+        self.assertEqual(len(matched), 14, out.getvalue())
+        self.assertTrue(shown)
+
+    def test_a_board_that_worked_for_another_field_is_not_read_first(self):
+        self.run_first()
+        self.search_again()
+        board_web._early.clear()
+        with mock.patch('src.role_kinds.of_search', return_value={'health_care'}), redirect_stdout(io.StringIO()):
+            self.assertEqual(boards_first.run(self.db, SEARCH, lambda jobs: None), [])
 
 
 class RunOrder(unittest.TestCase):

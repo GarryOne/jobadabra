@@ -61,6 +61,32 @@ def remembered(boards, kept):
             and served & set(entry.get('countries') or [])]
 
 
+def paid(entry, relevant, search):
+    """Keep the role kinds this board gave relevant jobs for (entry['paid_for']): the working boards of a field are known per install, whatever
+    the next web search finds (owner's pilot run, 26 Oct 2026: it found 2 unreadable boards, the 3 that list First Officer jobs were not read)."""
+    if not relevant:
+        return
+    from ..role_kinds import UNKNOWN, of_search
+    kinds = (of_search(search) or set()) - {UNKNOWN}
+    if kinds:
+        entry['paid_for'] = sorted(set(entry.get('paid_for') or []) | kinds)
+
+
+def working(search, kept, skip=()):
+    """The boards that gave this install relevant jobs in this search's field and places on their last read (paid), best first, for the
+    boards read first (src/sources/boards_first.py); not the ones in skip. A board kept before paid_for existed counts by its own kinds."""
+    from .. import places
+    from ..role_kinds import UNKNOWN, of_search
+    kinds, countries = (of_search(search) or set()) - {UNKNOWN}, set(places.countries(search, limit=None) or [])
+    if not kinds:
+        return []
+    fits = lambda entry: kinds & set(entry.get('paid_for') or entry.get('kinds') or []) and countries & set(entry.get('countries') or [])
+    good = [(int(entry.get('relevant') or 0), host, entry) for host, entry in kept.items()
+            if host not in skip and entry.get('state') == 'ok' and int(entry.get('relevant') or 0) > 0 and entry.get('search_url') and fits(entry)]
+    return [{'name': entry.get('name') or host, 'host': host, 'search_url': entry['search_url'], 'countries': entry.get('countries') or [],
+             'kinds': entry.get('kinds') or [], 'source_kind': entry.get('source_kind') or 'sector'} for _, host, entry in sorted(good, key=lambda g: -g[0])]
+
+
 def not_a_board(entry):
     """A proposed board its check found is none (src/sources/board_check.py): one employer's site or something else at once, no address
     on two days (a Mac that was offline for one search is not a dead board)."""

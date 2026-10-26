@@ -1,0 +1,530 @@
+{
+ "run": 40341958250,
+ "note": "Beta 3 (26 Oct 2026): interactions never got a macOS runner; steps = the count of steps each job ran",
+ "jobs": [
+  {
+   "conclusion": "success",
+   "id": 121638735120,
+   "name": "Anything new?",
+   "runner_name": "GitHub Actions 1000063092",
+   "steps": 13
+  },
+  {
+   "conclusion": "success",
+   "id": 121639032576,
+   "name": "Build \u00b7 Mac",
+   "runner_name": "GitHub Actions 1000063156",
+   "steps": 18
+  },
+  {
+   "conclusion": "success",
+   "id": 121639032634,
+   "name": "AI key ready?",
+   "runner_name": "GitHub Actions 1000063094",
+   "steps": 5
+  },
+  {
+   "conclusion": "success",
+   "id": 121639032732,
+   "name": "Build \u00b7 Windows",
+   "runner_name": "GitHub Actions 1000063093",
+   "steps": 19
+  },
+  {
+   "conclusion": "success",
+   "id": 121643563960,
+   "name": "E2E \u00b7 Windows \u00b7 applyflows-2of2",
+   "runner_name": "GitHub Actions 1000063134",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564012,
+   "name": "E2E \u00b7 Windows \u00b7 apply-2of2",
+   "runner_name": "GitHub Actions 1000063128",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564016,
+   "name": "E2E \u00b7 Windows \u00b7 cardstates",
+   "runner_name": "GitHub Actions 1000063129",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564023,
+   "name": "E2E \u00b7 Windows \u00b7 employers",
+   "runner_name": "GitHub Actions 1000063135",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564026,
+   "name": "E2E \u00b7 Windows \u00b7 focus",
+   "runner_name": "GitHub Actions 1000063136",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564033,
+   "name": "E2E \u00b7 Windows \u00b7 activityfailures",
+   "runner_name": "GitHub Actions 1000063130",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564050,
+   "name": "E2E \u00b7 Windows \u00b7 apply-1of2",
+   "runner_name": "GitHub Actions 1000063165",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564059,
+   "name": "E2E \u00b7 Windows \u00b7 calendar",
+   "runner_name": "GitHub Actions 1000063140",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564071,
+   "name": "E2E \u00b7 Windows \u00b7 recorded-3of5",
+   "runner_name": "GitHub Actions 1000063181",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564081,
+   "name": "E2E \u00b7 Windows \u00b7 activity",
+   "runner_name": "GitHub Actions 1000063166",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564090,
+   "name": "E2E \u00b7 Windows \u00b7 storemove",
+   "runner_name": "GitHub Actions 1000063148",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564091,
+   "name": "E2E \u00b7 Windows \u00b7 focusdismiss",
+   "runner_name": "GitHub Actions 1000063137",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564093,
+   "name": "E2E \u00b7 Windows \u00b7 updates",
+   "runner_name": "GitHub Actions 1000063131",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564095,
+   "name": "E2E \u00b7 Windows \u00b7 jobs",
+   "runner_name": "GitHub Actions 1000063132",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564105,
+   "name": "E2E \u00b7 Windows \u00b7 visitread",
+   "runner_name": "GitHub Actions 1000063127",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564112,
+   "name": "E2E \u00b7 Windows \u00b7 applyflows-1of2",
+   "runner_name": "GitHub Actions 1000063138",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564116,
+   "name": "E2E \u00b7 Windows \u00b7 pool",
+   "runner_name": "GitHub Actions 1000063133",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564130,
+   "name": "E2E \u00b7 Windows \u00b7 stores",
+   "runner_name": "GitHub Actions 1000063139",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564137,
+   "name": "E2E \u00b7 Windows \u00b7 interactions",
+   "runner_name": "GitHub Actions 1000063155",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564147,
+   "name": "E2E \u00b7 Windows \u00b7 recorded-2of5",
+   "runner_name": "GitHub Actions 1000063157",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564160,
+   "name": "E2E \u00b7 Windows \u00b7 foryou",
+   "runner_name": "GitHub Actions 1000063141",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564163,
+   "name": "E2E \u00b7 Windows \u00b7 strategy",
+   "runner_name": "GitHub Actions 1000063167",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564176,
+   "name": "E2E \u00b7 Windows \u00b7 failuresnotion",
+   "runner_name": "GitHub Actions 1000063199",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564235,
+   "name": "E2E \u00b7 Windows \u00b7 failureschannels",
+   "runner_name": "GitHub Actions 1000063210",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564268,
+   "name": "E2E \u00b7 Windows \u00b7 recorded-5of5",
+   "runner_name": "GitHub Actions 1000063203",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564296,
+   "name": "E2E \u00b7 Windows \u00b7 recorded-1of5",
+   "runner_name": "GitHub Actions 1000063184",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564299,
+   "name": "E2E \u00b7 Windows \u00b7 settings",
+   "runner_name": "GitHub Actions 1000063187",
+   "steps": 34
+  },
+  {
+   "conclusion": "failure",
+   "id": 121643564336,
+   "name": "E2E \u00b7 Windows \u00b7 interviews",
+   "runner_name": "GitHub Actions 1000063215",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564459,
+   "name": "E2E \u00b7 Windows \u00b7 recorded-4of5",
+   "runner_name": "GitHub Actions 1000063211",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564538,
+   "name": "E2E \u00b7 Windows \u00b7 wander",
+   "runner_name": "GitHub Actions 1000063217",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564686,
+   "name": "E2E \u00b7 Windows \u00b7 wizard",
+   "runner_name": "GitHub Actions 1000063216",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121643564745,
+   "name": "E2E \u00b7 Windows \u00b7 visitsauto",
+   "runner_name": "GitHub Actions 1000063218",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226015,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 focus",
+   "runner_name": "GitHub Actions 1000063280",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226023,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 activity",
+   "runner_name": "GitHub Actions 1000063295",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226034,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 employers",
+   "runner_name": "GitHub Actions 1000063268",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226055,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 settings",
+   "runner_name": "GitHub Actions 1000063223",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226056,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 failuresnotion",
+   "runner_name": "GitHub Actions 1000063269",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226072,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 apply-1of2",
+   "runner_name": "GitHub Actions 1000063339",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226073,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 recorded-3of5",
+   "runner_name": "GitHub Actions 1000063229",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226087,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 recorded-2of5",
+   "runner_name": "GitHub Actions 1000063293",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226089,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 storemove",
+   "runner_name": "GitHub Actions 1000063282",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226094,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 apply-2of2",
+   "runner_name": "GitHub Actions 1000063222",
+   "steps": 34
+  },
+  {
+   "conclusion": "failure",
+   "id": 121650226101,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 activityfailures",
+   "runner_name": "GitHub Actions 1000063236",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226106,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 cardstates",
+   "runner_name": "GitHub Actions 1000063294",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226108,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 updates",
+   "runner_name": "GitHub Actions 1000063221",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226117,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 jobs",
+   "runner_name": "GitHub Actions 1000063262",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226118,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 recorded-4of5",
+   "runner_name": "GitHub Actions 1000063251",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226126,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 focusdismiss",
+   "runner_name": "GitHub Actions 1000063256",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226132,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 visitread",
+   "runner_name": "GitHub Actions 1000063234",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226145,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 recorded-1of5",
+   "runner_name": "GitHub Actions 1000063253",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226167,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 wizard",
+   "runner_name": "GitHub Actions 1000063226",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226168,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 foryou",
+   "runner_name": "GitHub Actions 1000063265",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226184,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 stores",
+   "runner_name": "GitHub Actions 1000063241",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226192,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 applyflows-1of2",
+   "runner_name": "GitHub Actions 1000063250",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226201,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 visitsauto",
+   "runner_name": "GitHub Actions 1000063302",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226207,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 recorded-5of5",
+   "runner_name": "GitHub Actions 1000063296",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226225,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 pool",
+   "runner_name": "GitHub Actions 1000063318",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226227,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 failureschannels",
+   "runner_name": "GitHub Actions 1000063304",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226292,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 interviews",
+   "runner_name": "GitHub Actions 1000063283",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226330,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 wander",
+   "runner_name": "GitHub Actions 1000063308",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226415,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 strategy",
+   "runner_name": "GitHub Actions 1000063307",
+   "steps": 34
+  },
+  {
+   "conclusion": "cancelled",
+   "id": 121650226452,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 interactions",
+   "runner_name": "",
+   "steps": 0
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226543,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 calendar",
+   "runner_name": "GitHub Actions 1000063309",
+   "steps": 34
+  },
+  {
+   "conclusion": "success",
+   "id": 121650226561,
+   "name": "E2E \u00b7 Mac + Linux \u00b7 applyflows-2of2",
+   "runner_name": "GitHub Actions 1000063260",
+   "steps": 34
+  },
+  {
+   "conclusion": "failure",
+   "id": 121655894317,
+   "name": "Release \u00b7 Windows beta",
+   "runner_name": "GitHub Actions 1000063324",
+   "steps": 13
+  },
+  {
+   "conclusion": "failure",
+   "id": 121667392330,
+   "name": "Release \u00b7 Mac beta",
+   "runner_name": "GitHub Actions 1000063409",
+   "steps": 13
+  },
+  {
+   "conclusion": "skipped",
+   "id": 121667394587,
+   "name": "Gate ran?",
+   "runner_name": null,
+   "steps": 0
+  },
+  {
+   "conclusion": "success",
+   "id": 121669765380,
+   "name": "Clean up old builds",
+   "runner_name": "GitHub Actions 1000063430",
+   "steps": 7
+  }
+ ],
+ "annotations": {
+  "121650226452": [
+   {
+    "annotation_level": "failure",
+    "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+   },
+   {
+    "annotation_level": "notice",
+    "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+   },
+   {
+    "annotation_level": "notice",
+    "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+   },
+   {
+    "annotation_level": "notice",
+    "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+   }
+  ]
+ }
+}

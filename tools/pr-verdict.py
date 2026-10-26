@@ -33,10 +33,17 @@ STEP = "Write the PR's verdict"   # the last step of every PR job (tests/test_pr
 REPORT_JOBS = {'HTML report', 'Windows HTML report', 'AI review of the screenshots'}   # never decide a PR (page-cases' report does: its fill time vs main; it gets the verdict step). The review: after the suites, on main and release runs only (.github/actions/e2e-review)
 RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required', 'stale'}
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
+# The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
+# the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
+# Guard: tests/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
+PR_WORKFLOWS = {'beta-approve.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'harness.yml', 'hosted-probe.yml', 'key-org-proof.yml',
+                'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'tests-desktop-windows.yml',
+                'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 
 
 def ci_change(files):
-    return any(CI_FILES.match(file) for file in files)
+    workflow = re.compile(r'^\.github/workflows/([^/]+)$')
+    return any(CI_FILES.match(file) and (not workflow.match(file) or workflow.match(file).group(1) in PR_WORKFLOWS) for file in files)
 
 
 def _at(text):

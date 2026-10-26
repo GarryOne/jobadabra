@@ -320,7 +320,7 @@ def _ask(client, model, job, profile, effort, note, schema):
     data['score'] = clamp(data['score'])
     data['components'] = {k: None if v is None else clamp(v) for k, v in data['components'].items()}
     data['strengths'], data['gaps'] = data['strengths'][:3], data['gaps'][:3]
-    return score_search.apply(data), response.usage
+    return score_search.apply(data, job), response.usage
 
 
 def save(db, job, model, data, profile):

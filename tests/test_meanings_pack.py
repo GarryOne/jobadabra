@@ -132,6 +132,17 @@ class Seed(unittest.TestCase):
         run = subprocess.run([sys.executable, 'tools/meanings_seed.py', '--check'], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
+    def test_the_site_may_be_ahead_of_the_seed_never_behind(self):
+        sys.path.insert(0, str(ROOT / 'tools'))
+        import meanings_seed
+        seed = [{'topic': 'page-words', 'pattern': 'jobs', 'answer': 'job_host', 'source': 'x'}]
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / '0042_meanings_seed.sql').write_text(meanings_seed.sql(seed))
+            self.assertTrue(meanings_seed.sql_known(seed, Path(folder)))
+            (Path(folder) / '0111_meanings_seed.sql').write_text(meanings_seed.sql([{**seed[0], 'pattern': 'stellen'}]))   # the site reseeded first
+            self.assertTrue(meanings_seed.sql_known(seed, Path(folder)), 'the site lands first: an older seed it holds still counts')
+            self.assertFalse(meanings_seed.sql_known([{**seed[0], 'pattern': 'karriere'}], Path(folder)), 'a seed the site lacks is red')
+
     def test_every_seed_row_fits_the_schema(self):
         rows = json.loads((ROOT / 'config' / 'meanings_seed.json').read_text())['patterns']
         self.assertTrue(rows)

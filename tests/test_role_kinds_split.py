@@ -60,7 +60,7 @@ class CopiesTests(unittest.TestCase):
 
 
     def test_the_job_facts_ai_is_told_what_each_family_means(self):
-        """26 Oct 2026, e2e quality: "Senior Site Reliability Engineer, Customer Care" was filed as customer_service (call-centre work)."""
+        """The role family names each kind's work, so a new kind is chosen for what it means (e2e golden 3006: a helpdesk job is customer_service)."""
         family = enrich.SCHEMA['properties']['role_family']
         self.assertIn("not the team, product or customers it serves", family['description'])
         for kind in set(role_kinds.KINDS) - {'software'}:

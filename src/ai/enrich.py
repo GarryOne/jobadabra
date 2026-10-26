@@ -91,8 +91,8 @@ SCHEMA = {
             },
         },
         # IT families, then the kinds of role of every other trade (src/role_kinds.py KINDS, read from there): 6 Oct 2026, a photographer's shop
-        # and warehouse jobs could only be 'other'. 26 Oct 2026: with customer_service added, "Senior Site Reliability Engineer, Customer Care"
-        # was filed as call-centre work: the description says each family's work and that the job's own work decides, not the team it serves.
+        # and warehouse jobs could only be 'other'. 26 Oct 2026, 8 kinds split out of 'other': the description says each family's work, and that
+        # the job's own work decides, not its title's team (e2e golden 3006: an "SRE, Customer Care" title on a phone helpdesk job).
         'role_family': {'type': 'string', 'enum': [*IT_FAMILIES, *(kind for kind in KINDS if kind not in IT_FAMILIES)],
                         'description': "The job's own kind of work, not the team, product or customers it serves. IT work: "
                                        + ', '.join(IT_FAMILIES) + ' (support_it = IT support and help desk). Other work: '

@@ -559,18 +559,27 @@ jobs:
   # The code → suite map (gate G1b, owner's yes 26 Oct 2026): after a main check, the suites' coverage files are laid over the previous map (a suite this run did
   # not test keeps its entry) and kept as the artifact e2e-coverage-map, which a PR's plan downloads (desktop/e2e/pr-suites.mjs). Why: on 25 Oct #1911 changed
   # menu.css and broke interactions, #1913 changed the run views and broke cardstates; neither PR ran that suite, because file names do not say which suite runs a line.
+  # After each merge too (owner's yes 26 Oct 2026, "keep it fresh after each merge"): an after-merge run refreshes the steps it ran and moves the others to its
+  # commit by the git diff (lib/coverage-pick.mjs mergeMap), so the full history is fetched (trees and blobs on demand). One at a time: two would each read the same
+  # previous map and the later upload would drop the other's steps.
   coverage-map:
     name: Code → suite map
     needs: [plan, suite]
-    if: always() && needs.plan.outputs.count != '0' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.scheduled)
+    if: always() && needs.plan.outputs.count != '0' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.scheduled || inputs.after_merge != '')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    concurrency:
+      group: e2e-coverage-map
+      cancel-in-progress: false
     permissions:
       actions: read   # the previous map
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: desktop/e2e
+          fetch-depth: 0
+          filter: blob:none
       - uses: actions/download-artifact@v7
         with:
           pattern: e2e-coverage-*
@@ -586,7 +595,7 @@ jobs:
         run: |
           set -o pipefail
           prev=(); [ -f "$GITHUB_WORKSPACE/previous/coverage-map.json" ] && prev=(--previous "$GITHUB_WORKSPACE/previous/coverage-map.json")
-          node coverage-map.mjs --artifacts "$GITHUB_WORKSPACE/coverage" "${prev[@]}" --out "$GITHUB_WORKSPACE/map/coverage-map.json"
+          node coverage-map.mjs --artifacts "$GITHUB_WORKSPACE/coverage" "${prev[@]}" --repo "$GITHUB_WORKSPACE" --out "$GITHUB_WORKSPACE/map/coverage-map.json"
       - uses: actions/upload-artifact@v6
         with:
           name: e2e-coverage-map

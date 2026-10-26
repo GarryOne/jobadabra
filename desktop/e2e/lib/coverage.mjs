@@ -184,6 +184,12 @@ export async function takeSetup(handle, next = SETUP, env = process.env) {
   pythonStep(next, env);
 }
 
+// A run of some steps only (E2E_STEPS words, or E2E_STEP_NAMES: an after-merge or PR run): the map lays its steps over the old ones (lib/coverage-pick.mjs mergeMap).
+function someSteps(env) {
+  if (String(env.E2E_STEPS || '').trim()) return true;
+  try { const names = JSON.parse(env.E2E_STEP_NAMES || '[]'); return Array.isArray(names) && names.length > 0; } catch { return false; }
+}
+
 // Before the app exits: write what this session ran, per step and in all. `dir`: the suite's artifacts.
 export async function saveCoverage(handle, dir, env = process.env) {
   if (!handle) return null;
@@ -194,7 +200,7 @@ export async function saveCoverage(handle, dir, env = process.env) {
   const suite = env.E2E_SUITE || 'default';
   const file = path.join(dir, `coverage-${suite}-${handle.number}.json`);
   fs.mkdirSync(dir, {recursive: true});
-  fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
+  fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps, partial: someSteps(env)}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
   console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).filter(name => name !== SETUP && name !== WHOLE).length} step(s), ${python} Python process(es) → ${path.basename(file)}`);
   return file;
 }

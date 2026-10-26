@@ -143,6 +143,7 @@ def scan(db, google, client, now=None):
                     continue
                 read.append((message_id, len(jobs)))
                 found += jobs
+            feeds.triage([{'title': j['title'], 'location': j['location']} for j in found if j.get('title')])   # titles judged by the AI first (owner, 26 Oct 2026)
             # An email is marked read in the same transaction as its jobs: never one without the other.
             with db:
                 for message_id, count in read:

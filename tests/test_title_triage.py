@@ -43,11 +43,12 @@ class TriageTest(unittest.TestCase):
         other = title_triage.known({'role_keywords': ['engineer']})
         self.assertEqual(other, {}, 'another search decides afresh')
 
-    def test_the_gate_passes_what_claude_kept_and_never_an_excluded_title(self):
+    def test_the_gate_passes_what_claude_kept_and_the_words_decide_only_what_it_did_not_judge(self):
+        # owner, 26 Oct 2026 ("The AI decides"): the AI's answer wins over the role and excluded words; they decide a title it has not judged
         with mock.patch.object(feeds, 'TRIAGED', {'client advisor': True, 'head of growth': False, 'marketing intern': True}), \
                 mock.patch.object(feeds, 'EXCLUDED_TITLES', feeds.keyword_regex([r'\bintern\b'])), mock.patch.object(feeds, 'TITLES', feeds.keyword_regex(['vendeur'])):
-            self.assertEqual([feeds.wanted_title(t) for t in ('Client Advisor', 'Head of Growth', 'Marketing Intern', 'Vendeur 80%', 'Unknown title')],
-                             [True, False, False, True, False])
+            self.assertEqual([feeds.wanted_title(t) for t in ('Client Advisor', 'Head of Growth', 'Marketing Intern', 'Vendeur 80%', 'Unknown title', 'Vendeur intern')],
+                             [True, False, True, True, False, False])
 
     def test_says_how_many_batches_and_each_one_done(self):
         client = Client(['advisor'])

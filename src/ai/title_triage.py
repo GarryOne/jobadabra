@@ -26,7 +26,10 @@ SYSTEM = """You sort job titles for one job seeker. You get their search (the ro
 numbered list of job titles, in any language. Answer with the numbers of the titles that could be the kind of job they look for: the same \
 work under another name or in another language counts ("Client Advisor" or "Collaborateur Magasin" for a shop seller; "Content Creator - \
 Photo" for a photographer), and so does a close neighbour of their work at a similar level. Leave out other kinds of work (software, \
-finance, marketing management, legal…), and titles with a word they ruled out. When unsure, include it: a later step scores each job."""
+finance, marketing management, legal…), and titles of the work their ruled-out words name (the same word in another sense is no reason). \
+A level, when given, is the seniority they want: leave out a title plainly far from it (an internship for a lead); a rank that only sounds like \
+a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
+Owner" is no pilot). When unsure, include it: a later step scores each job."""
 
 
 def _key(search):
@@ -69,14 +72,17 @@ def decide(titles, search, client=None, local=False):
         return decided
     client = client or engine.client(action='title_triage')
     from ..notion.search_settings import terms
-    words = {'role_words': terms(search.get('role_keywords'))[:20], 'words_ruled_out': terms(search.get('title_exclude_keywords'))[:20]}
+    from .. import levels   # the level is said as a level: its skip words (src/levels.py) are the no-AI floor, never words the AI must obey
+    skips, level = set(terms(levels.title_skips(search.get('level')))), levels.level_of(search.get('level'))
+    words = {'role_words': terms(search.get('role_keywords'))[:20], 'words_ruled_out': [w for w in terms(search.get('title_exclude_keywords')) if w not in skips][:20],
+             **({'level': level} if level else {})}
     from . import cost
     from ..progress import Ticker
     from concurrent.futures import ThreadPoolExecutor
     batches = [ask[start:start + BATCH] for start in range(0, len(ask), BATCH)]
     # Said before the first answer, then after each batch with the time left (owner, 7 Oct 2026: 6 batches ran ~2 min each with only
     # "Still running · no new output" on screen). Batches run side by side; Claude Code still takes engine.PARALLEL at a time.
-    print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) your role words miss, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
+    print(f'Titles: asking {providers.who()} about {len(ask)} job title(s) in your places, in {len(batches)} batch(es) of up to {BATCH}', flush=True)
     ticker, lock, sorted_ = Ticker('Sorting job titles with AI', len(ask), every=0), threading.Lock(), [0]
 
     late = [0]   # titles of batches not started: the search's time was up (src/time_budget.py); the next search asks about them

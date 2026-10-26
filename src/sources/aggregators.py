@@ -240,6 +240,7 @@ def kept(db, name, found, now=None):
     """One reader's jobs in your roles and places, in the report's shape, each recorded in the seen history; their employer named
     (board_employers). Also the first-jobs slice's proven boards (src/first_jobs.py)."""
     now, matched = now or datetime.now(timezone.utc), []
+    feeds.triage(found)   # their titles judged by the AI first, the role words' hits too (owner, 26 Oct 2026: "The AI decides")
     with db:
         for job in found:
             if not (job.get('url') and feeds.wanted_title(job['title']) and feeds.wanted_location(job)):

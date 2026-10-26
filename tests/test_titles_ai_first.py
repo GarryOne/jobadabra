@@ -1,0 +1,95 @@
+"""The AI decides which job titles fit a search; the role, excluded and level words only show a job at once and decide without AI (owner, 26 Oct
+2026: "The AI decides"; "Show at once, AI removes"). Before, a role-word hit was kept "whatever the AI says" ("Pilote / Product Owner Agentic AI"
+at EY was a new job for a pilot search), and an excluded or level word dropped a title before any AI ("Senior First Officer", a pilot rank, for a
+junior search). Tests: this file; the old gate test in tests/test_title_triage.py."""
+import json
+import pathlib
+import re
+import tempfile
+import unittest
+from types import SimpleNamespace
+from unittest import mock
+
+from src import levels
+from src.ai import title_triage
+from src.sources import feeds
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+PILOTE = 'Pilote / Product Owner Agentic AI Microsoft Expérimenté H/F'
+JUDGED = {' '.join(PILOTE.lower().split())[:160]: False, 'senior first officer': True}
+
+
+class TitlesAiFirstTest(unittest.TestCase):
+    def setUp(self):
+        self.patches = [mock.patch.object(feeds, 'TRIAGED', dict(JUDGED)), mock.patch.object(feeds, 'TITLES', feeds.keyword_regex([r'\bpilot(e)?\b', 'first officer'])),
+                        mock.patch.object(feeds, 'EXCLUDED_TITLES', feeds.keyword_regex([r'\bsenior\b', r'\bcaptain\b']))]
+        for patch in self.patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in self.patches:
+            patch.stop()
+
+    def test_the_ais_answer_wins_over_every_word(self):
+        self.assertFalse(feeds.wanted_title(PILOTE), 'a role word in the title, the AI said no: not a job of this search')
+        self.assertTrue(feeds.wanted_title('Senior First Officer'), 'an excluded or level word, the AI said yes: a job of this search')
+
+    def test_a_title_the_ai_has_not_judged_is_decided_by_the_words(self):
+        self.assertTrue(feeds.wanted_title('Pilot A320'))
+        self.assertFalse(feeds.wanted_title('Captain B737'), 'an excluded word without an AI answer')
+        self.assertFalse(feeds.wanted_title('Cabin Crew'), 'no role word and no AI answer')
+
+    def test_a_role_word_hit_shows_at_once_until_the_ai_says_no(self):
+        self.assertTrue(feeds.sure_title('Pilot A320'), 'shown in the first seconds, before the AI sort')
+        self.assertFalse(feeds.sure_title(PILOTE), 'the AI said no: never shown again')
+        self.assertTrue(feeds.sure_title('Senior First Officer'), 'the AI said yes: shown at once too')
+
+    def test_an_open_job_the_ai_rejected_leaves_the_list_at_the_searchs_end(self):
+        with mock.patch.object(feeds, 'wanted_location', return_value=True), mock.patch.object(feeds, 'placing', return_value=False):
+            self.assertFalse(feeds.keep_open({'title': PILOTE, 'location': 'Paris'}))
+            self.assertTrue(feeds.keep_open({'title': 'Pilot A320', 'location': 'Paris'}), 'not judged: kept by its place, as before')
+
+    def test_the_ai_sort_is_asked_about_role_word_and_excluded_word_titles_too(self):
+        asked = []
+        decide = lambda titles, search, local=False: asked.extend(titles) or {}
+        jobs = [{'title': t, 'location': 'Paris'} for t in ('Pilot A320', 'Captain B737', 'Cabin Crew')]
+        with mock.patch.object(feeds, 'wanted_location', return_value=True), mock.patch.object(feeds, 'in_my_place', return_value=True), \
+                mock.patch('src.ai.engine.ready', lambda *a, **k: True), mock.patch.object(title_triage, 'decide', decide):
+            feeds.triage(jobs)
+        self.assertEqual(set(asked), {'Pilot A320', 'Captain B737', 'Cabin Crew'})
+
+
+class LevelGoesToTheAiTest(unittest.TestCase):
+    def test_the_level_is_its_own_field_not_ruled_out_words(self):
+        sent = []
+
+        class Client:
+            messages = SimpleNamespace(create=lambda **kw: sent.append(kw['messages'][0]['content']) or SimpleNamespace(
+                content=[SimpleNamespace(type='text', text=json.dumps({'fit': [1]}))], usage=SimpleNamespace(input_tokens=1, output_tokens=1)))
+        skips = levels.title_skips('junior')
+        self.assertTrue(skips, 'the junior level skips senior titles without AI')
+        search = {'role_keywords': ['pilot'], 'level': 'junior', 'title_exclude_keywords': [r'\bcargo\b', *skips]}
+        with mock.patch.object(title_triage, 'STORE', pathlib.Path(tempfile.mkdtemp()) / 't.json'):
+            title_triage.decide(['Senior First Officer'], search, Client())
+        words = json.loads(sent[0].split('The search (JSON): ', 1)[1].split('\nThe titles:', 1)[0])
+        self.assertEqual(words.get('level'), 'junior')
+        self.assertEqual(words['words_ruled_out'], ['cargo'], 'the level skips stay the no-AI floor, never words the AI must obey')
+
+
+class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
+    EXEMPT = {'src/sources/feeds.py': 'the gate itself', 'src/scout_probe.py': 'the scout judge, its own PR (audit item 6)'}
+
+    def test_each_file_that_keeps_jobs_by_title_runs_the_ai_sort_on_them_first(self):
+        missing = []
+        for path in sorted((ROOT / 'src').rglob('*.py')):
+            rel = path.relative_to(ROOT).as_posix()
+            text = path.read_text()
+            if rel in self.EXEMPT or not re.search(r'\bwanted_title\(', text):
+                continue
+            if not re.search(r'\btriage\(', text):
+                missing.append(rel)
+        self.assertEqual(missing, [], 'these keep jobs by feeds.wanted_title without feeds.triage: the role words alone decide there')
+
+
+if __name__ == '__main__':
+    unittest.main()

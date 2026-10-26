@@ -196,6 +196,9 @@ def _in_calls(step, wanted, size, parallel, now, noun):
         return wanted
     per_round = size * max(1, parallel)
     rounds = _batch(step, -(-wanted // per_round), now, False)
+    at = now if now is not None else time.monotonic()
+    if not rounds and not _scorings(at + max(0.5, _paces().get(step, PACE[step]))):
+        rounds = 1   # one round that ends before scoring's share (26 Oct 2026: places' share never covered one 28 s round, so no timed search placed a location nor measured the pace again)
     n = min(wanted, rounds * per_round)
     if not n:
         print(f'⏱ No time left in this refresh for these: {wanted} {noun} wait for the next one', flush=True)

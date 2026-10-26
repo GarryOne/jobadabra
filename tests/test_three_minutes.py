@@ -224,5 +224,27 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
                     self.assertTrue(self.work(stage), stage)
 
 
+class EveryRoundStepGetsOneRoundWhenItFits(unittest.TestCase):
+    """A step that asks the AI in rounds (time_budget.in_calls) takes at least one round when that round ends before scoring's share
+    (26 Oct 2026, proofs on a copy of the owner's data: places' share of the time left, 15%, never covered one 28 s round, so no place was
+    asked in any timed search, and its pace was never measured again). A new in_calls step goes in time_budget.SHARE and is looped here."""
+
+    def setUp(self):
+        time_budget.score_first()
+        self.addCleanup(time_budget.score_first, False)
+        self.addCleanup(time_budget.start, 0)
+        time_budget.start(180, now=0)
+
+    def test_one_round_when_it_ends_before_scorings_share(self):
+        steps = [step for step in time_budget.SHARE if step.endswith('_rounds') or step in ('place_vague', 'place_reading')]
+        self.assertEqual(set(steps), {'place_rounds', 'place_vague', 'place_reading', 'title_rounds'})
+        window = 180 - time_budget.reserve('score') - time_budget.part(time_budget.SCORING)   # scoring's share starts here
+        for step in steps:
+            with self.subTest(step), mock.patch.object(time_budget, '_paces', return_value={step: 28.0}), redirect_stdout(io.StringIO()):
+                self.assertEqual(time_budget.in_calls(step, 1, 60, 2, now=48), 1, 'one round fits before scoring: it is asked')
+                self.assertEqual(time_budget.in_calls(step, 500, 60, 2, now=48), 120, 'one round of 2 calls of 60')
+                self.assertEqual(time_budget.in_calls(step, 1, 60, 2, now=window - 27), 0, 'a round that would run into scoring waits')
+
+
 if __name__ == '__main__':
     unittest.main()

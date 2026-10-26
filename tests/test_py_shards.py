@@ -76,5 +76,17 @@ class SlowestTests(unittest.TestCase):
         self.assertEqual(shards.DURATIONS, ['--durations', '0'] if sys.version_info >= (3, 12) else [])
 
 
+
+class EndedTests(unittest.TestCase):
+    """26 Oct 2026: a test reached the scout's os._exit(0); the unittest process ended halfway with exit 0 and no summary, and the shard passed."""
+    def test_a_shard_without_unittests_summary_failed_even_with_exit_0(self):
+        self.assertIsNone(shards.ended_badly('...\nRan 12 tests in 1.0s\n\nOK (skipped=1)\n', 0))
+        self.assertIn('summary', shards.ended_badly('Published 1 feeds\nscout: 3 check thread(s) still running; leaving without them\n', 0))
+        self.assertIn('summary', shards.ended_badly('Ran 12 tests in 1.0s\n', 0))
+
+    def test_a_shard_that_exited_non_zero_failed(self):
+        self.assertIn('exit 1', shards.ended_badly('Ran 3 tests in 1.0s\n\nFAILED (failures=1)\n', 1))
+
+
 if __name__ == '__main__':
     unittest.main()

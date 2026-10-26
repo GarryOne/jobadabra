@@ -1,6 +1,7 @@
 """The central scout's overrun watchdog writes thread stacks when the run outlives its budget, and stays silent when it ends in time."""
 import io
 import tempfile
+import threading
 import time
 import unittest
 from unittest import mock
@@ -38,6 +39,24 @@ class OverrunTest(unittest.TestCase):
         with mock.patch.object(scout_overrun.os, '_exit') as leave, mock.patch.object(scout_overrun.threading, 'active_count', return_value=1):
             scout_overrun.leave_if_stuck()
         leave.assert_not_called()
+
+    def test_a_thread_that_ends_in_the_grace_is_waited_for_and_a_hung_one_is_left(self):
+        # 26 Oct 2026: a pool shut with wait=False keeps its idle workers alive a moment; counted as stuck checks, os._exit(0) ended the
+        # unittest run halfway with exit 0 (1 run in 5 of tests/test_scout*.py), so the tests after it never ran and the run looked green.
+        hang = threading.Event()
+        quick = threading.Thread(target=lambda: time.sleep(0.05), daemon=True)
+        quick.start()
+        with mock.patch.object(scout_overrun.os, '_exit') as leave:
+            scout_overrun.leave_if_stuck(grace_s=1)
+        leave.assert_not_called()
+        stuck = threading.Thread(target=hang.wait, daemon=True)
+        stuck.start()
+        try:
+            with mock.patch.object(scout_overrun.os, '_exit') as leave:
+                scout_overrun.leave_if_stuck(grace_s=0.2)
+            leave.assert_called_once_with(0)
+        finally:
+            hang.set()
 
 
 if __name__ == '__main__':

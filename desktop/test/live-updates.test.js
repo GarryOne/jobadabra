@@ -116,3 +116,13 @@ test('"no web search: searched in this run" changes neither the chip nor Live up
   assert.equal(webSearchChip(['Job boards: searching the web for x', 'Job boards: no web search: searched in this run']).state, 'active');
   assert.deepEqual(liveLines(again), liveLines(first));
 });
+
+// The run's clock stops a stage (3f's #2034, src/time_budget.py): "⏱ Time is up (<m> min <ss> s) for <stage>: <n> <noun> wait for the next
+// search", once per stage. Each stays in Live updates like any result.
+test('each stage\'s "Time is up" line stays in Live updates through the ticks', () => {
+  const log = ['⏱ Time is up (0 min 36 s) for employer sites: 422 sites wait for the next search', ...ticks(0),
+    '⏱ Time is up (2 min 33 s) for free job APIs: 4 sources wait for the next search', ...ticks(200)];
+  const lines = liveLines(log.reduce(keepRunLine, []));
+  assert.ok(lines.includes('⏱ Time is up (0 min 36 s) for employer sites: 422 sites wait for the next search'), lines.join(' | '));
+  assert.ok(lines.includes('⏱ Time is up (2 min 33 s) for free job APIs: 4 sources wait for the next search'), lines.join(' | '));
+});

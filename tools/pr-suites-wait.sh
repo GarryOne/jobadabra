@@ -26,7 +26,12 @@ done
 url="https://github.com/${repo}/actions/runs/${id}"
 echo "Waiting for the PR's e2e run: ${url}" | tee -a "$summary"
 
-failed_jobs() { gh api "repos/${repo}/actions/runs/${id}/jobs?per_page=100" --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | paste -sd, - | sed 's/,/, /g'; }
+jobs_json() { gh api "repos/${repo}/actions/runs/${id}/jobs?per_page=100" 2>/dev/null || echo '{"jobs":[]}'; }
+# The jobs of e2e.yml that are not a suite (they run before or after the suites and gate nothing): the verdict is the suites'.
+# Guard: tests/test_pr_suites_wait.py AfterSuiteJobs reads e2e.yml, so a new job there must be named here.
+NOT_SUITES='["plan","Nothing tested","HTML report","Code → suite map","Telegram alert","promote","Windows follows"]'
+suites() { jq -c --argjson ns "$NOT_SUITES" '[.jobs[] | select(.name as $n | $ns | index($n) | not)]' <<<"$1"; }
+failed_jobs() { jq -r '[.[] | select(.conclusion == "failure") | .name] | join(", ")' <<<"$1"; }
 red_exit() {   # $1: the red jobs, $2: what the run did
   {
     echo "::error::The PR's e2e run ${2}: ${1:-see the run}."
@@ -38,13 +43,32 @@ red_exit() {   # $1: the red jobs, $2: what the run did
 
 # A suite job that ended red already decides (its second try ran inside the job): stop at once, never wait for the rest of the run.
 # Why: 26 Oct 2026, #1992's wander and quality were red at 02:12 and the PR waited 31 minutes for the other suites before it was blocked.
-state=
+# Every poll says what it waits for (owner, 26 Oct 2026, at 12 minutes of a silent wait: "Why its waiting? For what? I see no logs, no updates"):
+# each suite as it ends, then one line with the count, the running suites and their minutes, and the ones still waiting for a runner.
+state= last= said=0 done_names=
 while :; do
   state="$(gh api "repos/${repo}/actions/runs/${id}" --jq '"\(.status) \(.conclusion // "-")"' 2>/dev/null)"
-  case "$state" in completed\ *) break ;; esac
-  red="$(failed_jobs)"
+  s_json="$(suites "$(jobs_json)")"
+  red="$(failed_jobs "$s_json")"
   [ -n "$red" ] && red_exit "$red" "has a red suite, not waiting for the others"
-  if [ $(( $(date +%s) - start )) -ge "$wait_max" ]; then
+  now=$(date +%s)
+  while IFS=$'\t' read -r name mins; do
+    [ -z "$name" ] && continue
+    case ",$done_names," in *",$name,"*) continue ;; esac
+    done_names="${done_names},${name}"; echo "✓ ${name} (${mins})"
+  done < <(jq -r '.[] | select(.status == "completed") | [.name, (if .started_at and .completed_at then "\(((.completed_at|fromdateiso8601) - (.started_at|fromdateiso8601)) / 60 | floor) min" else "-" end)] | @tsv' <<<"$s_json")
+  line="$(jq -r --argjson now "$now" '
+    (map(select(.status == "completed" and (.conclusion == "success" or .conclusion == "skipped"))) | length) as $ok
+    | (map(select(.status == "in_progress") | "\(.name) (\(if .started_at then (($now - (.started_at|fromdateiso8601)) / 60 | floor) else 0 end) min)") | join(", ")) as $run
+    | (map(select(.status == "queued" or .status == "waiting" or .status == "pending") | .name) | join(", ")) as $wait
+    | "⏳ \($ok) of \(length) suites passed" + (if $run != "" then " · running: " + $run else "" end) + (if $wait != "" then " · waiting for a runner: " + $wait else "" end)' <<<"$s_json")"
+  if [ "$line" != "$last" ] || [ $(( now - said )) -ge 120 ]; then echo "${line} · ${url}"; last="$line"; said=$now; fi
+  # All suites green: pass now, without waiting for the jobs after them (the report, an alert). Why: #2017 waited 5 minutes for "HTML report".
+  if jq -e 'length > 0 and all(.[]; .status == "completed" and (.conclusion == "success" or .conclusion == "skipped"))' <<<"$s_json" >/dev/null; then
+    echo "✅ The PR's e2e suites passed ($(jq length <<<"$s_json") of $(jq length <<<"$s_json")): ${url}" | tee -a "$summary"; exit 0
+  fi
+  case "$state" in completed\ *) break ;; esac
+  if [ $(( now - start )) -ge "$wait_max" ]; then
     echo "::error::The e2e run is still running after $(( wait_max / 60 )) min (a suite waiting on its lock?): ${url}" | tee -a "$summary"; exit 1
   fi
   sleep "$poll"
@@ -54,4 +78,4 @@ conclusion="${state#completed }"
 if [ "$conclusion" = success ] || [ "$conclusion" = skipped ]; then
   echo "✅ The PR's e2e suites passed: ${url}" | tee -a "$summary"; exit 0
 fi
-red_exit "$(failed_jobs)" "ended ${conclusion}"
+red_exit "$(failed_jobs "$(suites "$(jobs_json)")")" "ended ${conclusion}"

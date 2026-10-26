@@ -25,8 +25,9 @@ if 'workflows/e2e.yml/runs' in endpoint:
         if run['head_sha'] == os.environ['SHA'] and run['created_at'] >= os.environ['SINCE']:
             print(run['id'])
 elif endpoint.endswith('/jobs?per_page=100'):
-    for job in data['jobs']:
-        if job['conclusion'] == 'failure': print(job['name'])
+    jobs = [{'status': 'completed' if j.get('conclusion') else 'in_progress', 'started_at': '2026-10-26T02:54:04Z',
+             'completed_at': '2026-10-26T02:57:10Z' if j.get('conclusion') else None, **j} for j in data['jobs']]
+    print(json.dumps({'jobs': jobs}))
 elif '/actions/runs/' in endpoint:
     count_file = os.path.join(state, 'calls')
     n = int(open(count_file).read()) if os.path.exists(count_file) else 0
@@ -94,6 +95,45 @@ class PrSuitesWait(unittest.TestCase):
     def test_cancelled_is_not_green(self):
         code, out, _ = run_wait({'runs': [{'id': 9, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:01Z'}], 'status': ['completed cancelled'], 'jobs': []})
         self.assertEqual(code, 1, out)
+
+
+    def test_all_suites_green_passes_without_waiting_for_the_report_job(self):
+        # 26 Oct 2026, #2017: every suite was green at 03:01; the check waited to 03:06 for "HTML report", which gates nothing.
+        code, out, summary = run_wait({'runs': [{'id': 40261336581, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:05Z'}],
+                                       'status': ['in_progress -'],
+                                       'jobs': [{'name': 'plan', 'conclusion': 'success'}, {'name': 'jobs', 'conclusion': 'success'},
+                                                {'name': 'activity', 'conclusion': 'success'}, {'name': 'HTML report', 'conclusion': None, 'status': 'queued'}]})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn('still running', out)
+        self.assertIn('2 of 2 suites passed', out)
+
+    def test_it_says_what_it_waits_for(self):
+        # 26 Oct 2026, the owner at 12 minutes: "Why I cannot see what's happening? Why its waiting? For what? I see no logs, no updates".
+        code, out, _ = run_wait({'runs': [{'id': 41, 'head_sha': SHA, 'created_at': '2026-10-25T13:00:05Z'}],
+                                 'status': ['in_progress -'],
+                                 'jobs': [{'name': 'plan', 'conclusion': 'success'}, {'name': 'jobs', 'conclusion': 'success'},
+                                          {'name': 'quality', 'conclusion': None, 'status': 'in_progress'},
+                                          {'name': 'stores', 'conclusion': None, 'status': 'queued', 'started_at': None}]}, wait_s=2)
+        self.assertEqual(code, 1, out)   # the fake run never ends
+        self.assertIn('1 of 3 suites passed', out)
+        self.assertIn('✓ jobs', out)
+        self.assertRegex(out, r'running: quality')
+        self.assertRegex(out, r'waiting for a runner: stores')
+        self.assertIn('actions/runs/41', out)
+
+
+class AfterSuiteJobs(unittest.TestCase):
+    def test_every_job_that_is_not_a_suite_is_named_in_the_script(self):
+        # The wait judges suites only; a new job in e2e.yml (a report, an alert) must be listed or it would count as a suite.
+        import re
+        names = set()
+        for block in re.split(r'\n  (?=[a-z][a-z0-9_-]*:\n)', (ROOT / '.github/workflows/e2e.yml').read_text().split('\njobs:\n', 1)[1]):
+            job_id = block.split(':', 1)[0].strip()
+            if job_id == 'suite': continue
+            m = re.search(r'^    name: (.+)$', block, re.M)
+            names.add(m.group(1).strip() if m else job_id)
+        listed = set(json.loads(re.search(r"NOT_SUITES='(\[.*?\])'", WAIT.read_text()).group(1)))
+        self.assertEqual(names, listed)
 
 
 class Workflow(unittest.TestCase):

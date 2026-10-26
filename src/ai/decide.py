@@ -30,6 +30,7 @@ MAX_CALLS_PER_RUN = 60   # model calls per process: a crawl never turns into a b
 # (owner, 26 Oct 2026: "Higher cap + sample", ~$0.0008 a call, about $0.40 a run while the counts fill). Tests: tests/test_kind_counts.py.
 CENTRAL_MAX_CALLS = 600
 _calls = {'n': 0}
+_own = {}   # model calls per topic that has its own allowance (decide(allowance=n)), outside limit()
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 
 STOPPED = {'why': ''}   # a spent limit: no more asks this run (every page would fail the same way)
@@ -85,6 +86,7 @@ def reset_run():
     STOPPED['why'] = ''
     WAITING.update(n=0, said=False, calls={})
     _calls['n'] = 0
+    _own.clear()
 
 
 def stopped():
@@ -157,12 +159,13 @@ def remember(topic, found, answers, older_than='', db=None):
             db.close()
 
 
-def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True, ask=True):
+def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True, ask=True, allowance=None):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
     pack gave (items they don't know are left out), or None when they gave none. An 'ai_first' topic (meanings_pack.ai_first) asks the AI before the
     pack's patterns, which answer only when there is no AI at all (floor=False: the caller applies its own); past the cap or on a failure an
     item stays unknown, never a keyword's guess (26 Oct 2026: "office" read "First Officer" as finance_admin). ask=False: the cache and the pack
-    only, no model call (a caller past its own cap, src/sources/one_posting.py)."""
+    only, no model call (a caller past its own cap, src/sources/one_posting.py). allowance=n: this topic's own n calls a run, outside limit()
+    (owner, 26 Oct 2026: the central scout's board check got none left after title sorting spent the 600; tests/test_scout_google_boards.py)."""
     items = {str(key): str(text or '')[:MAX_TEXT] for key, text in (items or {}).items()}
     if not items:
         return {}
@@ -196,9 +199,13 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             'properties': {'index': {'type': 'integer'}, 'answer': {'type': 'string', 'enum': list(answers)}}}}}}
         stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
         for start in range(0, len(todo), BATCH):
-            if not budget_tape.within('decide', f'{topic} {todo[start]}', _calls['n'], limit()):
+            used, cap = (_own.get(topic, 0), allowance) if allowance is not None else (_calls['n'], limit())
+            if not budget_tape.within('decide', f'{topic} {todo[start]}', used, cap):
                 return _wait(out, len(todo) - start)
-            _calls['n'] += 1
+            if allowance is not None:
+                _own[topic] = used + 1
+            else:
+                _calls['n'] += 1
             WAITING['calls'][topic] = WAITING['calls'].get(topic, 0) + 1
             chunk = todo[start:start + BATCH]
             text = f'Task: {instructions}\nAllowed answers: {", ".join(answers)}\n\n' + '\n\n'.join(
@@ -228,7 +235,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             db.close()
 
 
-def one(topic, key, text, answers, instructions, client=None, db=None):
+def one(topic, key, text, answers, instructions, client=None, db=None, allowance=None):
     """decide() for a single item: its answer, or None (unknown; decide.no_ai() tells no AI at all, where a rule may answer)."""
-    found = decide(topic, {key: text}, answers, instructions, client, db)
+    found = decide(topic, {key: text}, answers, instructions, client, db, allowance=allowance)
     return (found or {}).get(str(key))

@@ -131,7 +131,11 @@ def _google(db, country, kinds, out):
     """The field boards Google's results name for these kinds in this country (src/scout_google_boards.py), each page judged by the AI."""
     from . import scout_google_boards
     from .sources import board_check, careers
-    return scout_google_boards.boards(db, country, kinds, lambda board, roles: board_check.field_kind(board, careers.get_text, roles), out=out)
+    from .ai import decide
+
+    def ask(*question):   # its own allowance: title sorting spends the scout's 600 first (owner, 26 Oct 2026, "Own 15-call allowance")
+        return decide.one(*question, allowance=scout_google_boards.MAX_JUDGED)
+    return scout_google_boards.boards(db, country, kinds, lambda board, roles: board_check.field_kind(board, careers.get_text, roles, ask=ask), out=out)
 
 
 def facts(db, today=None):

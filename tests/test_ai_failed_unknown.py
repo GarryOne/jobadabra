@@ -23,6 +23,7 @@ CALLERS = {
     'src/geo.py': 'its own batches', 'src/role_kinds.py': 'unknown = no kind, left out of a mix',
     'src/scout_kind_counts.py': 'cap shared', 'src/scout_title_seed.py': 'remember only',
     'src/sources/aggregators.py': 'unknown place = left out', 'src/sources/board_check.py': 'unknown = the board stands as found',
+    'src/scout_boards.py': 'unknown = the Google site waits for the next run (scout_google_boards TRIES)',
     'src/sources/board_sections.py': 'unknown = retried (found_boards, FAILED)', 'src/sources/found_boards.py': 'FAILED retry',
     'src/sources/google.py': 'unknown = no code / no link, polled again', 'src/sources/one_posting.py': 'unknown = not one posting, asked next run',
     'src/sources/refused_state.py': 'unknown = None (the tab stops as refused); words only with no AI', 'src/target_roles.py': 'unknown = not set',

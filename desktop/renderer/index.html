@@ -173,7 +173,11 @@
         </ul>
         <div class="cv-file" id="cv-file" hidden><i data-icon="file-text"></i><b id="cv-name">No CV chosen yet</b><span class="muted small" id="cv-meta"></span></div>
         <p class="fine cv-kinds"><i data-icon="shield"></i><span>Stays on this Mac<span data-notion-only> and in your Notion</span></span><span id="cv-kinds"></span></p>
-        <button class="primary magic-go" id="cv-choose" title="Only the AI reads it, when building your strategy."><span id="cv-choose-label">Choose your CV…</span></button>
+        <div class="cv-ways">
+          <button class="secondary cv-way" id="cv-linkedin" type="button" hidden><i data-icon="link"></i><span>From LinkedIn</span></button>
+          <button class="primary magic-go" id="cv-choose" title="Only the AI reads it, when building your strategy."><span id="cv-choose-label">Choose your CV…</span></button>
+          <button class="secondary cv-way" id="cv-build" type="button" data-wand title="Answer a few questions and the AI writes your CV"><i data-icon="sparkle"></i><span>Build one with AI</span></button>
+        </div>
       </div>
       <div class="actions">
         <button class="ghost" data-back>Back</button>
@@ -1001,7 +1005,8 @@
               <span class="small muted">Tailoring reads it with your Profile; form filling uses it too <span id="cv-state"></span></span>
               <p class="message" id="cv-message"></p><a href="#" class="link" id="cv-limit-link" hidden>Add credit, then read again ↗</a><p class="message" id="strategy-message"></p></div>
             <div class="cv-card-actions inline"><button class="secondary with-icon" id="cv-view"><i data-icon="eye"></i><span>Preview CV</span></button>
-              <button class="secondary" id="replace-cv">Replace CV</button><span id="cv-more"></span></div>
+              <button class="secondary" id="replace-cv">Replace CV</button>
+              <button class="secondary with-icon" id="cv-build-profile" type="button" data-wand title="Answer a few questions and the AI writes your CV"><i data-icon="sparkle"></i><span>Build with AI</span></button><span id="cv-more"></span></div>
             <div data-office-progress hidden></div>
           </div>
           <div class="setting panel roomy cvc" id="setting-cvcheck" data-profile-panel="cv">
@@ -1803,6 +1808,68 @@
       <button class="primary" id="replace-go" value="default" disabled>Apply selected</button>
     </div>
   </form>
+</dialog>
+
+<!-- Build a CV with the AI (pages/cv-build.js, lib/cv-build.js): a short form, the AI's draft to edit, then it becomes the main CV -->
+<dialog id="cvb-dialog" class="save-dialog panel-dialog cv-dialog">
+  <div class="dialog-head"><span class="dialog-icon"><i data-icon="sparkle"></i></span>
+    <div class="cv-head"><h2 id="cvb-title">Build your CV</h2><p class="dialog-lead" id="cvb-lead">Answer what you can. The AI writes the wording; your employers, titles and dates stay exactly as you type them.</p></div>
+    <button class="ghost icon-btn" id="cvb-close" aria-label="Close" title="Close"><i data-icon="close"></i></button></div>
+  <div id="cvb-form">
+    <div class="form-grid edit-aligned">
+      <label>Your name<input id="cvb-name" type="text" autocomplete="name"></label>
+      <label>Where you live<input id="cvb-location" type="text" placeholder="City, country"></label>
+      <label>The role you want<input id="cvb-role" type="text" placeholder="e.g. Nurse, Electrician, Sales manager"></label>
+      <label>Years of experience<input id="cvb-years" type="text" inputmode="numeric"></label>
+    </div>
+      <details class="cvb-job" open><summary>Job 1</summary>
+        <div class="form-grid edit-aligned">
+          <label>Employer<input data-cvb="company" type="text"></label>
+          <label>Your title<input data-cvb="title" type="text"></label>
+          <label>From<input data-cvb="from" type="text" placeholder="Mar 2021"></label>
+          <label>To<input data-cvb="to" type="text" placeholder="Leave empty if it is your current job"></label>
+          <label>Place<input data-cvb="place" type="text" placeholder="City or Remote"></label>
+          <label>What you did<textarea data-cvb="did" rows="3" placeholder="In your own words: tasks, tools, results"></textarea></label>
+        </div></details>
+      <details class="cvb-job"><summary>Job 2 (optional)</summary>
+        <div class="form-grid edit-aligned">
+          <label>Employer<input data-cvb="company" type="text"></label>
+          <label>Your title<input data-cvb="title" type="text"></label>
+          <label>From<input data-cvb="from" type="text" placeholder="Mar 2021"></label>
+          <label>To<input data-cvb="to" type="text" placeholder="Leave empty if it is your current job"></label>
+          <label>Place<input data-cvb="place" type="text" placeholder="City or Remote"></label>
+          <label>What you did<textarea data-cvb="did" rows="3" placeholder="In your own words: tasks, tools, results"></textarea></label>
+        </div></details>
+      <details class="cvb-job"><summary>Job 3 (optional)</summary>
+        <div class="form-grid edit-aligned">
+          <label>Employer<input data-cvb="company" type="text"></label>
+          <label>Your title<input data-cvb="title" type="text"></label>
+          <label>From<input data-cvb="from" type="text" placeholder="Mar 2021"></label>
+          <label>To<input data-cvb="to" type="text" placeholder="Leave empty if it is your current job"></label>
+          <label>Place<input data-cvb="place" type="text" placeholder="City or Remote"></label>
+          <label>What you did<textarea data-cvb="did" rows="3" placeholder="In your own words: tasks, tools, results"></textarea></label>
+        </div></details>
+    <div class="form-grid edit-aligned">
+      <label>Skills<input id="cvb-skills" type="text" placeholder="Separated by commas"></label>
+      <label>School<input id="cvb-school" type="text"></label>
+      <label>Degree or course<input id="cvb-degree" type="text"></label>
+      <label>Years there<input id="cvb-eduperiod" type="text" placeholder="2014 – 2018"></label>
+      <label>Languages<input id="cvb-languages" type="text" placeholder="Romanian, English (B2)"></label>
+    </div>
+    <p class="muted small" id="cvb-cost"><i data-icon="info"></i> One AI call writes the draft.</p>
+  </div>
+  <div id="cvb-draft" hidden>
+    <div class="form-grid edit-aligned"><label>Summary<textarea id="cvb-summary" rows="3"></textarea></label></div>
+    <div id="cvb-roles"></div>
+    <div class="form-grid edit-aligned"><label>Skills<input id="cvb-draft-skills" type="text"></label></div>
+  </div>
+  <p class="message" id="cvb-message"></p>
+  <div class="dialog-foot">
+    <button class="secondary" id="cvb-back" hidden>Back to my answers</button>
+    <button class="secondary" id="cvb-download" hidden><span>Save PDF…</span></button>
+    <button class="secondary" id="cvb-cancel">Cancel</button>
+    <button class="primary" id="cvb-go" data-wand>Write my CV</button>
+  </div>
 </dialog>
 
 <!-- A replaced CV after setup: what follows it (lib/cv-change.js) -->

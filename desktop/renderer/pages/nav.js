@@ -1,5 +1,6 @@
 // Navigation: pages, ⌘R memory, the ⌘K palette.
 import {openPalette} from '../palette.js';
+import {openBuild} from './cv-build.js';
 import {PROMISE} from '../pro-promise.js';
 import {SHOW_I_HAVE_PRO, creditWords} from '../plan-view.js';
 import {openQuestionReview} from './question-review.js';
@@ -136,6 +137,7 @@ export function paletteCommands() {
   // An action card with its own handler (not a Telegram command): "Tailor CVs" costs minutes of AI, so its entry only brings you to the card.
   document.querySelectorAll('.action[data-palette]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
     labelOf(node.closest('.task-body')?.querySelector('.task-words .muted')), PALETTE_KEYWORDS[node.dataset.palette], () => openView('actions')));
+  add('Profile', 'Build a CV with the AI', 'Answer a few questions and the AI writes your CV: edit it, then it becomes your CV', 'cv resume build create write new no cv from scratch', () => openBuild());
   // The finished Find jobs run's "Find jobs using your browser" (browser-offer.js): brings you to the button on its card.
   const offer = browserOfferEntry({runs: lastActivity?.runs, settings: shared.state?.settings});
   if (offer) add('Actions', offer.label, offer.hint, PALETTE_KEYWORDS.visits, () => { shared.selectedRun = offer.runId; openActivity(true); setTimeout(() => { const go = $('browser-offer-go'); if (go) reveal(go); }, 300); });

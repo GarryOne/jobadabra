@@ -29,7 +29,8 @@ test('every [data-magic] card holds one real button with the next-step hook, cov
   const cards = [...html.matchAll(/<div[^>]*\bdata-magic\b[^>]*>([\s\S]*?<\/button>)\s*<\/div>/g)];
   assert.ok(cards.length >= 1, 'found the magic cards');
   for (const [tag, body] of cards) {
-    assert.equal((body.match(/<button\b/g) || []).length, 1, `one button in ${tag.slice(0, 60)}`);
+    // The CV step's two other ways in (.cv-way, pages/cv-build.js) are small side buttons above the card-wide one; the card still has exactly one stretched button.
+    assert.equal((body.match(/<button\b(?![^>]*\bcv-way\b)/g) || []).length, 1, `one button in ${tag.slice(0, 60)}`);
     assert.match(body, /<button[^>]*class="[^"]*magic-go[^"]*"/, 'the stretched button');
   }
   assert.match(css, /\.magic-go::after\s*\{[^}]*inset:\s*0/, 'the button covers the whole card');
@@ -70,4 +71,8 @@ test('the small cards\' buttons are tinted, not plain white', () => {
 test('the shared part is loaded by the window and started by the wizard', () => {
   assert.match(html, /<link rel="stylesheet" href="magic\.css">/);
   assert.match(read('pages/wizard.js'), /initMagic\(/);
+});
+
+test('the CV step\'s side buttons sit above the card-wide button so they can be pressed', () => {
+  assert.match(css, /\.cv-way\s*\{[^}]*z-index:\s*4/, 'above .magic-go::after (z-index 3)');
 });

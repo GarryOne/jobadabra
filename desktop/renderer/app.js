@@ -5,6 +5,7 @@ import {init as core} from './pages/core.js';
 import {shared} from './pages/shared.js';
 import {sessionList} from './pages/sessions.js';
 import {init as wizard} from './pages/wizard.js';
+import {init as cvBuild} from './pages/cv-build.js';
 import {init as demo} from './pages/demo.js';
 import {init as activity} from './pages/activity.js';
 import {init as strategyReview} from './pages/strategy-review.js';
@@ -61,6 +62,7 @@ notionConnect();
 extensionNeeded();
 saveProgress();   // Search settings saves say how far they are (save-progress.js)
 await wizard();
+cvBuild();   // Build a CV with the AI: its dialog and buttons (pages/cv-build.js)
 await demo();
 await activity();
 await strategyReview();

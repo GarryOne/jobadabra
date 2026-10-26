@@ -97,6 +97,7 @@ and is shared; no AI planner per run). This list is B above, made concrete; the 
 - [x] 21 the employer read inside the search's time (owner, 26 Oct 2026: "it shouldn't just go brute force and check all the employers" / "Stop at 3 minutes and tell you what's left for the next run"): best first, the first 40 always, no new site after 2 minutes, the rest read first next time in source_rank.order (#1967; src/sources/read_budget.py, tests/test_read_budget.py)
 - [x] 22 the boards rest one by one: a search run again within 6 h reads the boards proposed or found since, and the web search says why it did not run (owner's pilot run 26 Oct 2026: a whole-read rest hid the aviation boards; tests/test_board_spacing.py)
 - [x] 23 no read holds a run past its cut (2 min + 30 s from the start): employer sites, job boards, the web search's boards, the web search; open sites are left for next time (owner's run d4561921e533: 5 min 37 s; tests/test_read_cut.py)
+- [x] 24 the web search's boards first: waited for up to 45 s, read at once in parallel before the first-jobs slice and the employer sites, their jobs on screen; 10+ jobs from them keep the employer read to its best 40 (owner, 26 Oct 2026: "START A JOB SEARCH WITH SEARCHING ON GOOGLE!"; tests/test_boards_first.py)
 
 ### B · learned yield (jobadabra-46, owner's yes 26 Oct 2026)
 - explore = 1 slot in 5 in EVERY run (not 1 run in 5); proven after 1 install, dead after 3; best = local jobs per minute, 70+ as the tie-break

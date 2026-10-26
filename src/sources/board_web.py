@@ -110,6 +110,34 @@ def early(search_config, fetch=None, now=None):
     return future
 
 
+def found_first(search_config, wait):
+    """The boards the web search started with the run found (kept in found_boards.json), waited for up to `wait` seconds and never past the
+    search's cut; [] when none was started or it is still searching (the full read then takes it, start)."""
+    from concurrent.futures import TimeoutError as Late
+
+    from ..ai import board_ideas
+    from . import read_budget
+    asked = board_ideas.asked_for(search_config)
+    with _lock:
+        started = _early.get(asked[0]) if asked else None
+    if started is None:
+        return []
+    left = read_budget.seconds_left(read_budget.cut_at())
+    try:
+        started[0].result(timeout=wait if left is None else min(wait, left))
+    except Late:
+        print('Job boards: the web search is still searching; its boards are read with the others', flush=True)
+        return []
+    except Exception:  # noqa: BLE001 — the search failed: the proposal's boards stand
+        pass
+    with _lock:
+        _early.pop(asked[0], None)
+    data = board_ideas.load()
+    found = finish(started, [], data=data)
+    board_ideas.save(data)
+    return found
+
+
 def start(search_config, data, fetch=None, now=None):
     """The web search beside the board proposal and the reads: the one started with the run (early) for this search, else one started now,
     in its own thread. A (Future of its boards, the found_boards.json it records into) pair; the read saves its own after finish()."""

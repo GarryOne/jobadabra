@@ -8,7 +8,7 @@ from contextlib import redirect_stdout
 from datetime import timedelta
 from unittest import mock
 
-from src import places, role_kinds
+from src import places, role_kinds, time_budget
 from src.ai import board_ideas
 from src.sources import board_web
 from tests.test_board_web import NOW, SEARCH, STAGE, Base, Client, board, setUpModule, tearDownModule  # noqa: F401 — page reader off
@@ -27,9 +27,9 @@ class ThinSearch(Base):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def search(self, client, at):
-        out = io.StringIO()
-        with redirect_stdout(out):
+    def search(self, client, at, run=None):
+        out = io.StringIO()   # run: the search clock's start (time_budget.BEGAN); None: no run clock, as in the other tests
+        with redirect_stdout(out), mock.patch.object(time_budget, 'BEGAN', run):
             found = board_web.search(SEARCH, [board(1)], client=client, now=at)
         return found, out.getvalue()
 
@@ -53,6 +53,17 @@ class ThinSearch(Base):
         self.assertIn('next after 2026-10-26T11:00', said, 'and when it searches next')
         self.search(client, NOW + timedelta(hours=2, days=board_web.RECENT))
         self.assertEqual(len(client.asked), board_web.TRIES + 1)
+
+    def test_one_run_searches_the_web_once_even_when_its_full_read_asks_again(self):
+        """Live on a copy of the owner's state (26 Oct 2026): the first-jobs search at 53 s, then the full read searched again at 170 s
+        ("try 2 of 3") in the same run: two of the three thin tries spent in one run."""
+        client = Client([STAGE])
+        self.search(client, NOW, run=1.0)
+        _, said = self.search(client, NOW + timedelta(minutes=2), run=1.0)
+        self.assertEqual(len(client.asked), 1, 'the same run never searches the web twice for one search')
+        self.assertIn('Job boards: no web search: searched in this run', said)
+        self.search(client, NOW + timedelta(minutes=30), run=1800.0)
+        self.assertEqual(len(client.asked), 2, 'the next run searches again')
 
     def test_boards_that_work_for_this_search_rest_a_month_and_another_search_s_boards_never_count(self):
         data = {'web': {'k1': NOW.isoformat()}, 'web_thin': {'k1': 1}}

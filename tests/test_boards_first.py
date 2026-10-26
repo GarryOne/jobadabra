@@ -200,6 +200,7 @@ class OldState(unittest.TestCase):
                                          'countries': ['Moldova'], 'kinds': ['software_it'], 'paid_for': ['software_it']}   # an earlier search's board
         (self.data / 'found_boards.json').write_text(json.dumps(data))
         self.db.execute('DELETE FROM feed_jobs')
+        time_budget.start(180)   # a new run: its own search clock (one web search per run, src/sources/board_web.py _run)
 
     def test_a_second_run_reads_the_boards_that_worked_when_its_web_search_finds_only_bad_ones(self):
         """The owner's 01:45 run (26 Oct 2026): the web search found 2 boards that give no job; the boards that list First Officer jobs were

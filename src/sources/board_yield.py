@@ -108,10 +108,11 @@ def pick(boards, kept, retry_due=lambda entry: False, dropped=frozenset(), remem
     return tried + (untried[:MAX_UNTRIED] if total_relevant(kept) < enough else [])
 
 
-def not_read_since(boards, kept, since):
+def not_read_since(boards, kept, since, handed=()):
     """The boards not read since `since`: a search run again within the board scan's spacing (src/sources/aggregators.py read_lately) reads the
     boards proposed or found since its last read, not none (owner's pilot run, 26 Oct 2026: a 6-hour rest of the whole board read hid the
-    aviation boards proposed after it and the web search). since None: all of them."""
+    aviation boards proposed after it and the web search). since None: all of them. handed: the boards whose first pages this run read early
+    (found_boards._early): their next pages are still to read."""
     if since is None:
         return list(boards)
     def read_after(entry):
@@ -119,7 +120,7 @@ def not_read_since(boards, kept, since):
             return datetime.fromisoformat((entry or {})['last_read']) >= since
         except (KeyError, TypeError, ValueError):
             return False
-    fresh = [board for board in boards if not read_after(kept.get(board['host']))]
+    fresh = [board for board in boards if board['host'] in handed or not read_after(kept.get(board['host']))]
     from .aggregators import SPACING_HOURS
     print(f'Job boards: {len(boards) - len(fresh)} read in the last {SPACING_HOURS} h skipped; reading {len(fresh)} new ones', flush=True)
     return fresh

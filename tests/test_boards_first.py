@@ -37,11 +37,12 @@ INTRO = ('<p>Every flying job on one page: airlines, charter and business aviati
 FOOTER = '<footer><p>About us · Contact · Privacy · Terms · Cookie settings · Advertise a job · Newsletter for pilots and cabin crew</p></footer>'
 
 
-def by_id(n):   # a list of job links by id (a crew board)
+def by_id(n, first=0, more=''):   # a list of job links by id (a crew board); more: its next page's link
     rows = ''.join(f'<li class="job-row"><a href="/site/de/job/show/id/{100 + i}">First Officer A320 (m/w/d) {i}</a> <span class="company">Example Air {i}</span> '
                    f'<span class="place">Vienna, Austria</span> <span class="date">posted 2 days ago</span> <span class="type">full time, base Vienna</span></li>'
-                   for i in range(n))
-    return f'<html><body><header><nav>Jobs · Companies · Pilot career</nav></header><h1>Pilot jobs</h1>{INTRO}<ul class="jobs">{rows}</ul>{FOOTER}</body></html>'
+                   for i in range(first, first + n))
+    nav = f'<a rel="next" href="{more}">Next page</a>' if more else ''
+    return f'<html><body><header><nav>Jobs · Companies · Pilot career</nav></header><h1>Pilot jobs</h1>{INTRO}<ul class="jobs">{rows}</ul>{nav}{FOOTER}</body></html>'
 
 
 def by_card(n):   # job cards with a slug link each (an aviation CV board)
@@ -51,7 +52,8 @@ def by_card(n):   # job cards with a slug link each (an aviation CV board)
     return f'<html><body><header><nav>Aviation jobs · Employers · CV</nav></header><h1>Aviation jobs</h1>{INTRO}<section>{cards}</section>{FOOTER}</body></html>'
 
 
-PAGES = {'crew-board.test': by_id(8), 'cv-board.test': by_card(6), 'quiet-board.test': f'<html><body><h1>Jobs</h1>{INTRO}<p>No jobs today.</p>{FOOTER}</body></html>'}
+PAGE_TWO = 'https://crew-board.test/jobs?q=first+officer&page=2'
+PAGES = {'crew-board.test': by_id(8, more=PAGE_TWO), 'cv-board.test': by_card(6), 'quiet-board.test': f'<html><body><h1>Jobs</h1>{INTRO}<p>No jobs today.</p>{FOOTER}</body></html>'}
 BAD = {'boards': [{'name': host, 'search_url': f'https://{host}/jobs?q={{role}}', 'countries': ['Austria'], 'kinds': ['any'], 'source_kind': 'sector'}
                   for host in ('quiet-board.test', 'refusing-board.test')]}   # the owner's 01:45 run: 2 boards, no job
 ANSWER = {'boards': [{'name': host, 'search_url': f'https://{host}/jobs?q={{role}}', 'countries': ['Austria'], 'kinds': ['any'], 'source_kind': 'sector'}
@@ -67,11 +69,15 @@ def job_page(url):   # each job's own page: its heading is the title, as on the 
             f'on type. Full time, permanent contract.</p>{INTRO}{FOOTER}</body></html>')
 
 
+FETCHED = []
+
+
 def fetch(url):
+    FETCHED.append(url)
     host = url.split('/')[2]
     if host not in PAGES:
         raise OSError(f'not a fixture: {url}')
-    return job_page(url) if '/job/' in url else PAGES[host]
+    return job_page(url) if '/job/' in url else by_id(3, first=50) if url == PAGE_TWO else PAGES[host]
 
 
 class FakeClient:
@@ -118,6 +124,9 @@ class OldState(unittest.TestCase):
             self.addCleanup(patch.stop)
         board_web._early.clear()
         self.addCleanup(board_web._early.clear)
+        found_boards._early.clear()
+        self.addCleanup(found_boards._early.clear)
+        FETCHED.clear()
         self.addCleanup(read_budget.short, False)
         self.addCleanup(time_budget.start, 0)
         time_budget.start(180)
@@ -152,18 +161,24 @@ class OldState(unittest.TestCase):
         self.run_first()
         self.assertEqual(read_budget.deadline(now=50.0), 50.0, 'no employer site past the floor')
 
-    def test_the_full_board_read_does_not_read_them_again(self):
+    def test_the_full_board_read_reads_their_next_pages_from_the_pages_fetched_first(self):
+        """Page 1 first (on screen at once), the next pages beside the employer sites: the owner's pilot run read one board's 5 pages, each
+        judged by the AI before the next, and showed its jobs at 163 s. The full read runs within the boards' 6-hour rest (since)."""
+        matched, _, _ = self.run_first()
+        self.assertNotIn('First Officer A320 (m/w/d) 50', [job['title'] for job in matched], 'page 2 is not read before the jobs are shown')
+        page_one = [url for url in FETCHED if url.startswith('https://crew-board.test/jobs')]
+        with mock.patch.object(board_web, 'start', return_value=None), redirect_stdout(io.StringIO()):
+            jobs = found_boards.read(SEARCH, [{'name': h, 'host': h, 'search_url': f'https://{h}/jobs?q={{role}}'} for h in PAGES],
+                                     fetch=fetch, dead=set(), since=datetime.now(timezone.utc) - timedelta(hours=6))
+        self.assertIn('First Officer A320 (m/w/d) 50', [job['title'] for job in jobs], 'the full read reads page 2')
+        self.assertEqual([url for url in FETCHED if url.startswith('https://crew-board.test/jobs')], page_one + [PAGE_TWO], 'page 1 is not fetched again')
+
+    def test_the_boards_that_worked_are_on_screen_before_the_web_search_answers(self):
         self.run_first()
-        data = json.loads((self.data / 'found_boards.json').read_text())
-        data['boards']['stepstone.test'] = {'name': 'stepstone.test', 'state': 'ok', 'relevant': 1,
-                                           'last_read': (datetime.now(timezone.utc) - timedelta(hours=8)).isoformat(timespec='seconds')}
-        (self.data / 'found_boards.json').write_text(json.dumps(data))
-        read = []
-        with mock.patch.object(found_boards, 'read_board', side_effect=lambda board, *a, **k: read.append(board['host']) or ([], 'empty', None)), \
-                mock.patch.object(board_web, 'start', return_value=None), redirect_stdout(io.StringIO()):
-            found_boards.read(SEARCH, [{'name': h, 'host': h, 'search_url': f'https://{h}/?q={{role}}'} for h in [*PAGES, 'stepstone.test']],
-                              fetch=fetch, is_relevant=lambda jobs: jobs, dead=set())
-        self.assertEqual(read, ['stepstone.test'])
+        self.search_again()
+        matched, shown, log = self.run_first(delay=2.0, answer=BAD)
+        self.assertTrue(shown and shown[0][0] < 1.5, f'shown at {shown and shown[0][0]} s, the web search answers at 2 s')
+        self.assertLess(log.index('that gave you jobs in this field before'), log.index('a web search found'))
 
     def test_a_web_search_still_searching_is_left_to_the_full_read(self):
         matched, shown, log = self.run_first(delay=1.0, wait=0.2)

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 from .. import run_counts
 from ..progress import Ticker
-from . import board_check, board_employers, board_forms, boards_first, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, read_budget
+from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, read_budget
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
 FULL_SEARCHES = 5     # and in the full read: every query the strategy has, up to this many (a board gave 3 jobs from 2 of the driver's 5, 18 Oct 2026)
@@ -343,8 +343,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
     searching = board_web.start(search, data, fetch=fetch, now=now) if web and not early else None   # at second 0, beside the rest (owner, 26 Oct 2026)
     proposed = boards if boards is not None else board_ideas.ideas(search)
     todo = board_yield.not_read_since(board_yield.pick(proposed, kept, retry, dropped, remember=web, enough=board_yield.ENOUGH if web else float('inf')),
-                                      kept, since)   # web=False: these only
-    todo = todo if early else [board for board in todo if board['host'] not in boards_first.taken()]   # read first in this run (boards_first)
+                                      kept, since, handed=set(_early))   # web=False: these only; a board read early in this run reads on
     ticker = Ticker('Reading job boards', len(todo), every=0)   # the driver persona's board read was silent for 7 minutes (18 Oct 2026)
 
     def item(board):

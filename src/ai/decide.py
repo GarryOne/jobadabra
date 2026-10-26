@@ -77,11 +77,12 @@ def remember(topic, found, answers, older_than='', db=None):
             db.close()
 
 
-def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True):
+def decide(topic, items, answers, instructions, client=None, db=None, since='', floor=True, ask=True):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
     pack gave (items they don't know are left out), or None when they gave none. An 'ai_first' topic (meanings_pack.ai_first) asks the AI before the
     pack's patterns, which answer only when there is no AI at all (floor=False: the caller applies its own); past the cap or on a failure an
-    item stays unknown, never a keyword's guess (26 Oct 2026: "office" read "First Officer" as finance_admin)."""
+    item stays unknown, never a keyword's guess (26 Oct 2026: "office" read "First Officer" as finance_admin). ask=False: the cache and the pack
+    only, no model call (a caller past its own cap, src/sources/one_posting.py)."""
     items = {str(key): str(text or '')[:MAX_TEXT] for key, text in (items or {}).items()}
     if not items:
         return {}
@@ -102,8 +103,8 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             if key not in out and (known := meanings_pack.first(topic, items[key], patterns=not late)):
                 out[key] = known
         todo = [key for key in items if key not in out]
-        if not todo:
-            return out
+        if not todo or not ask:
+            return out or None
         if client is None:
             if not engine.ready():
                 return done(out, no_ai=True)   # no AI: what the cache and the pack know, else None (the caller's rule)

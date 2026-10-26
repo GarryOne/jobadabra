@@ -1,6 +1,6 @@
 """Specialist and local job boards found with a web search, as a source of the run from its start (owner, 26 Oct 2026: "It should not read the
 web search last. It should probably start with that."; first built 19 Oct 2026, step 3 of the local-sources sketch, after a full board read).
-start() asks it beside the board proposal and the reads; finish() hands its new boards to the same read. Its one skip: this search was searched
+early() starts it with the run, before the first jobs; start() hands it to the full read beside the proposal (or starts it there); finish() hands its new boards to the same read. Its one skip: this search was searched
 in the last RECENT days, or its boards are working (WANT sector or regional boards gave relevant jobs) and it was searched in the last DAYS.
 The search runs on the user's own plan (Claude Code, Codex: the engine, or signed in beside Free AI or a key: web_search.plan_client) or an
 Anthropic API key (about $0.03 a search); never on Free AI alone. Only boards whose address the search showed; each is marked origin 'web'
@@ -9,6 +9,7 @@ Anthropic API key (about $0.03 a search); never on Free AI alone. Only boards wh
 Tests: tests/test_board_web.py, tests/test_web_first.py."""
 import json
 import os
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,7 +46,7 @@ def _unknown_kind(search_config):
     if unknown is None or not search_config:
         return False
     try:
-        return role_kinds.of_search(search_config) == unknown
+        return unknown in (role_kinds.of_search(search_config) or ())   # a set of kinds; UNKNOWN among them when the AI could not place the role
     except Exception:  # noqa: BLE001 — a kind we cannot tell is not a reason to search more
         return False
 
@@ -71,9 +72,11 @@ def _due(data, key, now, kept=None, search_config=None):
     return days >= (RECENT if thin else DAYS)
 
 
-def start(search_config, data, fetch=None, now=None):
-    """The web search started now, in its own thread, beside the board proposal and the reads (a Future of its boards), or None when it is
-    not due or cannot run. It records into `data` (the read's found_boards.json), which the read saves after finish()."""
+_early = {}   # {search key: (Future, its own copy of found_boards.json)}: started before the first jobs, taken by the full read (start)
+_lock = threading.Lock()
+
+
+def _submit(search_config, data, fetch, now):
     from concurrent.futures import ThreadPoolExecutor
     known = [{'name': entry.get('name') or host, 'host': host} for host, entry in (data.get('boards') or {}).items()]
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-web')
@@ -82,14 +85,52 @@ def start(search_config, data, fetch=None, now=None):
     return future
 
 
-def finish(started, proposed, timeout=None):
-    """The started search's boards that the proposal does not already hold, each marked origin 'web'; [] when none or it failed."""
+def early(search_config, fetch=None, now=None):
+    """The web search started with the run, before the first jobs (owner, 26 Oct 2026: "It should probably start with that"; 26 Oct, the pilot
+    check: started by the full read it began at 265 s, after a first-jobs step of 15 employers and 6 general boards). It runs on its own copy of
+    found_boards.json; the full read takes it (start) and keeps what it found (finish). None when this search has nothing to ask."""
+    from ..ai import board_ideas
+    asked = board_ideas.asked_for(search_config)
+    if not asked:
+        return None
+    copy = board_ideas.load()
+    future = _submit(search_config, copy, fetch, now)
+    with _lock:
+        _early[asked[0]] = (future, copy)
+    return future
+
+
+def start(search_config, data, fetch=None, now=None):
+    """The web search beside the board proposal and the reads: the one started with the run (early) for this search, else one started now,
+    in its own thread. A (Future of its boards, the found_boards.json it records into) pair; the read saves its own after finish()."""
+    from ..ai import board_ideas
+    asked = board_ideas.asked_for(search_config)
+    with _lock:
+        taken = _early.pop(asked[0], None) if asked else None
+    return taken if taken else (_submit(search_config, data, fetch, now), data)
+
+
+def _merge(into, copy):
+    """What a search run on its own copy recorded (when it searched, the boards it found), into the read's found_boards.json."""
+    into.setdefault('web', {}).update(copy.get('web') or {})
+    for key, boards in (copy.get('ideas') or {}).items():
+        have = into.setdefault('ideas', {}).setdefault(key, [])
+        hosts = {board['host'] for board in have}
+        have.extend(board for board in boards if board.get('origin') == 'web' and board['host'] not in hosts)
+
+
+def finish(started, proposed, timeout=None, data=None):
+    """The started search's boards that the proposal does not already hold, each marked origin 'web'; [] when none or it failed.
+    data: the read's found_boards.json, given what a search started with the run recorded on its own copy."""
     if started is None:
         return []
+    future, copy = started if isinstance(started, tuple) else (started, None)
     try:
-        found = started.result(timeout=timeout) or []
+        found = future.result(timeout=timeout) or []
     except Exception:  # noqa: BLE001 — the proposal's boards stand
         return []
+    if data is not None and copy is not None and copy is not data:
+        _merge(data, copy)
     hosts = {board['host'] for board in proposed}
     return [{**board, 'origin': 'web'} for board in found if board['host'] not in hosts]
 

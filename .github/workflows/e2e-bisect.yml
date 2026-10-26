@@ -1,6 +1,6 @@
 name: E2E · Bisect a red main suite
-# A red e2e suite on main gets an owner (gate G2b, owner's yes 26 Oct 2026). Started by e2e.yml's alert job (tools/e2e_bisect.py after-run) for each red suite with no
-# open `red-main` issue: finds the last main check where the suite was green, runs it on the commits in between (e2e.yml, titled "Bisect <suite> <sha>"), then names
+# A red e2e suite on main gets an owner (gate G2b, owner's yes 26 Oct 2026). Started by e2e.yml's alert job (tools/e2e_bisect.py after-run) for the first red suite with no
+# open `red-main` issue whose cause is not the test environment (key, AI service, network), one per main check: finds the last main check where the suite was green, runs it on the commits in between (e2e.yml, titled "Bisect <suite> <sha>"), then names
 # the breaking PR in a `red-main` issue and on the PR; the session that shipped it reads it at its next prompt (tools/pr-red-check.sh).
 # Why: 25 Oct 2026, main went red at 21:47 on three suites and no session was told; beta 2 started on them 1.5 h later.
 on:
@@ -23,8 +23,8 @@ permissions:
   issues: write         # the red-main issue
   pull-requests: write  # tell the breaking PR
 
-concurrency:
-  group: e2e-bisect-${{ inputs.suite }}
+concurrency:   # ONE bisect at a time for all suites: one runs, the newest waits (26 Oct 2026: a group per suite ran 10 at once and filled the job queue; tests/test_e2e_bisect.py)
+  group: e2e-bisect
   cancel-in-progress: false
 
 jobs:

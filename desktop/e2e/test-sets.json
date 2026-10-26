@@ -33,6 +33,7 @@
   "test-sets.test.mjs"
  ],
  "daily": [
+  "coverage-merge.test.mjs",
   "coverage-steps.test.mjs",
   "a11y.test.mjs",
   "activity.test.mjs",

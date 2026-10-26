@@ -49,6 +49,7 @@ on:
       - 'tests/fixtures/opportunity_origin.json'
       - 'tests/fixtures/run-result.json'
       - 'tests/fixtures/target_roles_cases.json'
+      - 'tests/fixtures/warning_lines.json'
       - 'tests/fixtures/stores/conversation.json'
       - 'tests/fixtures/stores/kit-section.md'
       - 'tools/claim-shape.mjs'

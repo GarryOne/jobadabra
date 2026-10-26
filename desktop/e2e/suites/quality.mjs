@@ -10,6 +10,7 @@ import {execFileSync} from 'node:child_process';
 import {python, pythonEnv} from '../lib/python.mjs';
 import {fileURLToPath} from 'node:url';
 import {sample, watch} from '../lib/activity.mjs';
+import {fresh} from '../lib/ai-meter.mjs';
 import {failures, judge} from '../lib/factjudge.mjs';
 import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf, rewriteTextLines} from '../lib/seed-texts.mjs';
@@ -46,7 +47,7 @@ export async function run(ctx) {
   const candidate = fs.readFileSync(path.join(GOLDEN, 'candidate.txt'), 'utf8');
   const postings = truth.filter(item => !item.duplicateOf);
   const summary = {facts: {exact: 0, total: 0}, ranking: 'not checked', invented: 0, stable: 'not checked'};
-  let rows = [], appJobs = [];
+  let rows = [], appJobs = [], firstTexts = {};   // firstTexts: the first scoring's texts, judged too (both scorings: 18 texts)
   ctx.findings = [];
   await ensureSetUp(ctx);
   // Set up through the wizard (the stand-in: standInFromWizard; or an empty test page), the wizard run presses Find jobs (e2e/lib/wizard.mjs): the Jobs checks below wait for that first search to end.
@@ -198,12 +199,13 @@ export async function run(ctx) {
 
     await soft(() => ctx.run('scoring the same jobs again gives the same scores (within 8 points)', async () => {
       const first = scoresOf();
+      firstTexts = Object.fromEntries(Object.entries(matchRows(truth, rows).byId).map(([id, list]) => [id, list[0].props]));
       // Ask for every score again, the way "Re-score" does (an empty input hash: no shortcut), then run the check once more.
       const database = path.join(ctx.profile, 'data', 'jobs.sqlite');
       if (!fs.existsSync(database)) throw new Error(`the jobs database is not where expected: ${database}`);
       execFileSync(python(), ['-c', 'import sqlite3,sys; db=sqlite3.connect(sys.argv[1]); db.execute("UPDATE scores SET input_hash=\'\'"); db.commit()', database], {env: pythonEnv({}, {home: ctx.profile})});
-      await check('second Jobs check');
-      await read2();
+      // Fresh answers: replayed, the second scoring got the first one's answers back and always read ±0 (26 Oct 2026; lib/ai-meter.mjs fresh).
+      await fresh(async () => { await check('second Jobs check'); await read2(); });
       const second = scoresOf();
       const spread = Object.keys(first).filter(id => second[id] != null).map(id => Math.abs(first[id] - second[id]));
       summary.stable = `within ±${Math.max(0, ...spread)}`;
@@ -230,17 +232,17 @@ export async function run(ctx) {
       // the seeded Profile did not (#350: jobs 3001, 3002, 3010 on 11 and 12 Oct 2026).
       const profile = `THE PROFILE\n${persona ? fs.readFileSync(path.join(GOLDEN, 'profile.md'), 'utf8') : await plainTextOf(ctx, 'profile').catch(() => '')}`.slice(0, 30000) + placesNote(JSON.parse(fs.readFileSync(path.join(ctx.profile, 'config', 'search.json'), 'utf8')).locations);   // the places the scorer read (lib/quality-places.mjs)
       const verdicts = [], problems = [];
-      const todo = postings.filter(item => byId[item.id]);
+      // Both scorings' texts when the second ran (18 for 9 jobs; at most one in six may slip, lib/quality.mjs judgeVerdict), else the one there is.
+      const todo = postings.filter(item => byId[item.id]).flatMap(item => [{item, p: byId[item.id][0].props}, ...(firstTexts[item.id] ? [{item, p: firstTexts[item.id], first: true}] : [])]);
       for (let i = 0; i < todo.length; i += 4) {
-        await Promise.all(todo.slice(i, i + 4).map(async item => {
-          const p = byId[item.id][0].props;
+        await Promise.all(todo.slice(i, i + 4).map(async ({item, p, first}) => {
           const produced = [p.Reason, p.Strengths && `Strengths: ${p.Strengths}`, p.Gaps && `Gaps: ${p.Gaps}`];
           const facts = Object.fromEntries(['Seniority', 'Work mode', 'Languages', 'Salary', 'Role family', 'Technologies', 'Recruiter'].map(column => [column, p[column]]));
           // The employer is on every posting the app read (fixtures/golden/sources.json): without it the judge called the company's own name invented (Windows run 37150232804, job 3008).
           const verdict = await judge({key: ctx.judgeKey, posting: {...item, company: item.company || read('sources.json')[0].company}, profile, produced, facts});
-          verdicts.push({id: item.id, title: item.title, produced, verdict});
+          verdicts.push({id: item.id, title: item.title, scoring: first ? 'first' : 'second', produced, verdict});
           const bad = failures(verdict);
-          if (bad.length) problems.push(`"${item.title}" ${bad.join(' and ')}: ${verdict.why} [text: ${produced.filter(Boolean).join(' / ')}]`);
+          if (bad.length) problems.push(`"${item.title}"${first ? ' (first scoring)' : ''} ${bad.join(' and ')}: ${verdict.why} [text: ${produced.filter(Boolean).join(' / ')}]`);
         }));
       }
       summary.invented = verdicts.filter(v => v.verdict.invents_facts).length;

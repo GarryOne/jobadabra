@@ -332,6 +332,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
+      - name: Fresh AI answers for quality once a day (the night's first main check)
+        # Owner, 26 Oct 2026: "Fresh daily + rate gate". Replayed answers hid that Free AI's scores moved and invented facts (sketch "Free AI score stability");
+        # the night's first main check (21:47 UTC) asks the model for every answer, about $0.06 of Free AI; the other runs replay, except quality's second scoring.
+        if: matrix.suite == 'quality' && !inputs.gate_tag && (github.event_name == 'schedule' || inputs.scheduled)
+        run: |
+          case "$(date -u +%H)" in
+            21|22) echo "E2E_AI_REPLAY=0" >> "$GITHUB_ENV"; echo "The day's fresh quality run: every AI answer is asked, none replayed" ;;
+            *) echo "Not the night's first main check: answers seen before are replayed" ;;
+          esac
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         # A red first run is not the verdict (owner, 6 Oct 2026): the step below runs the suite once more on the same commit and decides. Flaky (red, then green)

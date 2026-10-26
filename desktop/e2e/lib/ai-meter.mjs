@@ -77,6 +77,13 @@ export function requestKey(url, body) {
 
 const cacheDir = (env = process.env) => env.E2E_AI_CACHE || '';
 export const replaying = (env = process.env) => env.E2E_AI_REPLAY === '1' && !!cacheDir(env);
+// Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
+// second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.
+export async function fresh(fn, env = process.env) {
+  const saved = env.E2E_AI_REPLAY;
+  env.E2E_AI_REPLAY = '0';
+  try { return await fn(); } finally { if (saved === undefined) delete env.E2E_AI_REPLAY; else env.E2E_AI_REPLAY = saved; }   // process.env turns undefined into 'undefined'
+}
 
 // A kept answer is replayed for MAX_AGE_DAYS after it was paid for, then asked again live and kept fresh (owner, 7 Oct 2026): replayed forever, a change in
 // the model's own behaviour (a model update) would never reach the suites. An answer kept before this rule has no date: it is asked again once.

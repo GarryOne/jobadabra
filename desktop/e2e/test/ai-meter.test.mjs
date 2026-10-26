@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import {count, priceName, requestKey, resetUsage, usage, usageOf, writeUsage} from '../lib/ai-meter.mjs';
+import {count, fresh, priceName, requestKey, resetUsage, usage, usageOf, writeUsage} from '../lib/ai-meter.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
 
@@ -228,4 +228,19 @@ test('OpenAI runs are metered too: usage plain and streamed, its own cached pric
     assert.equal(usage().app.calls, 0, 'never counted as Claude');
     assert.ok(usage()['app-openai'].usd > 0);
   } finally { await proxy.close(); server.close(); resetUsage(); }
+});
+
+test('fresh() asks the model for everything inside it, and replay comes back after, also when it throws', async () => {
+  // The quality suite's second scoring: replayed, it got the first answers back and always read ±0 (26 Oct 2026).
+  const saved = process.env.E2E_AI_REPLAY;
+  process.env.E2E_AI_REPLAY = '1';
+  try {
+    assert.equal(await fresh(async () => process.env.E2E_AI_REPLAY), '0');
+    assert.equal(process.env.E2E_AI_REPLAY, '1');
+    await assert.rejects(fresh(async () => { throw new Error('boom'); }), /boom/);
+    assert.equal(process.env.E2E_AI_REPLAY, '1');
+    delete process.env.E2E_AI_REPLAY;
+    await fresh(async () => {});
+    assert.equal('E2E_AI_REPLAY' in process.env, false);   // never the string 'undefined'
+  } finally { process.env.E2E_AI_REPLAY = saved ?? ''; }
 });

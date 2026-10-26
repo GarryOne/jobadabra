@@ -25,6 +25,7 @@ Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64
 2. **When the build finishes**, `e2e.yml` runs **every suite on the build's own commit** (`desktop/e2e/plan-run.mjs`; only for the nightly build: one made by hand is for trying).
 3. **When all suites pass and `build.yml` is green on that commit**, its `promote` job runs `tools/release-stable.sh` (the Windows installer must be the build's own). Friends get the update by morning.
    Then it starts `extension-store-publish.yml`: the extension goes to the **Chrome Web Store** for review when its version is newer than the store's (betas never; keyless sign-in to Google; `node tools/webstore-publish.mjs check` reads the store). Chrome updates every store copy by itself once it is live.
+   And `msix-store.yml`: the Windows app goes to the **Microsoft Store** (built from the tag, submitted with the owner's Entra app; a version still in review waits for the next stable). The Store copy updates only from the Store.
 4. **A red suite, a red `build.yml`, a failed Windows job, or no build:** nothing is promoted; stable stays; the next night's build carries the fixes.
 There is **no waiting period** and no telemetry check: the end-to-end journey is the gate. Dry run of step 3 for a release: `gh workflow run promote-dry-run.yml -f tag=<tag>`.
 

@@ -20,6 +20,7 @@ RUNTIME = {
     'actions/create-github-app-token': 3,
     'actions/attest-build-provenance': 0,
     'anthropics/claude-code-action': 0,
+    'microsoft/microsoft-store-apppublisher': (1, 4),   # its v1 tag is still node16; v1.4 is node24 (checked 26 Oct 2026)
     'google-github-actions/auth': 3,   # node24 since v3 (checked 26 Oct 2026)
 }
 USES = re.compile(r"^\s*(?:-\s+)?uses:\s*['\"]?([^'\"\s#]+)", re.M)
@@ -43,11 +44,12 @@ def problems(found):
         if action not in RUNTIME:
             bad.append(f'{file}: {action}@{ref} is not in RUNTIME: check its action.yml runs.using and add it')
             continue
-        major = re.match(r'v(\d+)', ref)
-        if not major:
+        version = re.match(r'v(\d+)(?:\.(\d+))?', ref)
+        need = RUNTIME[action] if isinstance(RUNTIME[action], tuple) else (RUNTIME[action], 0)   # (major, minor): an action whose major tag lags its minors
+        if not version:
             bad.append(f'{file}: {action}@{ref} is not pinned to a major (vN)')
-        elif int(major.group(1)) < RUNTIME[action]:
-            bad.append(f'{file}: {action}@{ref} runs on Node 20: use v{RUNTIME[action]} or later')
+        elif (int(version.group(1)), int(version.group(2) or 0)) < need:
+            bad.append(f'{file}: {action}@{ref} runs on an old Node: use v{".".join(map(str, need)) if need[1] else need[0]} or later')
     return bad
 
 
@@ -60,6 +62,8 @@ class Node24Actions(unittest.TestCase):
     def test_a_node_20_major_or_an_unchecked_action_is_caught(self):
         self.assertEqual(len(problems([('x.yml', 'actions/create-github-app-token', 'v2'), ('x.yml', 'someone/new-action', 'v1'),
                                        ('x.yml', 'actions/checkout', 'main'), ('x.yml', 'actions/checkout', 'v5')])), 3)
+        self.assertEqual(len(problems([('x.yml', 'microsoft/microsoft-store-apppublisher', 'v1'), ('x.yml', 'microsoft/microsoft-store-apppublisher', 'v1.4')])), 1,
+                         'a major tag that still points at node16 is caught; the node24 minor passes')
 
     def test_our_own_actions_are_composite(self):
         for path in (ROOT / '.github' / 'actions').rglob('action.y*ml'):

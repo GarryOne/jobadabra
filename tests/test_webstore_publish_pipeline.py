@@ -1,4 +1,4 @@
-"""Every stable release sends its extension to the Chrome Web Store (owner, 26 Oct 2026: "when we do the beta/stable release we should publish the newest
+"""Every stable release goes to the stores: its extension to the Chrome Web Store, its Windows app to the Microsoft Store (#2134 made the Store copy update only from there), (owner, 26 Oct 2026: "when we do the beta/stable release we should publish the newest
 extension version in Chrome Web Store"; stable only). The class: every path that makes a release stable goes through tools/release-stable.sh, which starts
 extension-store-publish.yml; each job that runs it may start a workflow. The publisher itself: desktop/test/webstore-publish.test.js."""
 import re
@@ -11,12 +11,13 @@ CALL = re.compile(r'(?m)^\s+(?:[A-Z0-9_]+=\S+ )*(?:tools/release-stable\.sh |(?:
 
 
 class StorePublishOnStable(unittest.TestCase):
-    def test_release_stable_starts_the_store_publish_after_promoting_and_never_in_a_dry_run(self):
+    def test_release_stable_starts_each_store_publish_after_promoting_and_never_in_a_dry_run(self):
         script = (ROOT / 'tools' / 'release-stable.sh').read_text()
         promote = script.index('--prerelease=false --latest')
-        start = script.index('gh workflow run extension-store-publish.yml')
-        self.assertGreater(start, promote, 'started after the release is stable')
         self.assertLess(script.index('DRY_RUN'), promote, 'a dry run ends before it')
+        for flow in ('extension-store-publish.yml', 'msix-store.yml'):
+            with self.subTest(flow=flow):
+                self.assertGreater(script.index(f'gh workflow run {flow}'), promote, 'started after the release is stable')
 
     def test_every_job_that_promotes_may_start_a_workflow(self):
         callers = {}
@@ -40,6 +41,36 @@ class StorePublishOnStable(unittest.TestCase):
         self.assertIn('webstore-publish.mjs publish', publish)
         self.assertNotIn('webstore-publish.mjs publish', check)
         self.assertNotIn('secrets.', flow, 'keyless: GitHub OIDC to Google, no stored key')
+
+
+class MicrosoftStoreOnStable(unittest.TestCase):
+    FLOW = (WORKFLOWS / 'msix-store.yml').read_text()
+
+    def job(self, name):
+        return self.FLOW[self.FLOW.index(f'\n  {name}:'):]
+
+    def test_the_package_is_built_from_the_stable_tag_and_a_beta_is_refused(self):
+        build = self.FLOW[self.FLOW.index('\n  msix:'):self.FLOW.index('\n  submit:')]
+        self.assertIn('ref: ${{ inputs.tag', build, 'the app exactly as that release ships it')
+        self.assertIn('isPrerelease', build, 'betas never go to the Store (owner, 26 Oct 2026: stable only)')
+
+    def test_submit_runs_only_for_a_release_and_waits_for_the_owners_credentials(self):
+        submit = self.job('submit')
+        self.assertIn("if: inputs.tag != ''", submit)
+        self.assertRegex(submit, r'MS_STORE_CLIENT_SECRET[^\n]*\n(?:.*\n)*?.*not connected', 'without the Entra app it says so and ends green')
+        self.assertIn('msstore publish', submit)
+        self.assertIn('--appId 9NW1JJ7Z90MP', submit)
+
+    def test_a_version_still_in_review_waits_for_the_next_release(self):
+        # A Store update is certified in hours to days; a nightly stable can come first. publish would fail on the submission in flight.
+        submit = self.job('submit')
+        self.assertIn('msstore submission status 9NW1JJ7Z90MP', submit)
+        for state in ('CommitStarted', 'PreProcessing', 'Certification', 'Release', 'Publishing'):
+            self.assertIn(state, submit)
+
+    def test_the_credentials_are_only_secrets_never_echoed(self):
+        self.assertNotRegex(self.FLOW, r'echo[^\n]*\$\{\{ *secrets\.')
+        self.assertNotRegex(self.FLOW, r'echo[^\n]*\$MS_STORE_CLIENT_SECRET')
 
 
 if __name__ == '__main__':

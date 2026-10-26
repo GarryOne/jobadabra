@@ -1,18 +1,31 @@
 name: Build · Windows Store package (MSIX)
 
-# By hand only (gh workflow run msix-store.yml -f version=0.9.270): builds the unsigned .msix the owner uploads to Partner Center.
+# Builds the unsigned .msix the Microsoft Store takes, and on a stable release submits it (owner, 26 Oct 2026: "Automate", stable only).
 # Why (owner, 25 Oct 2026: "Let's start this", Microsoft Store listing for Jobadabra): the Store re-signs the package with Microsoft's own
-# certificate, so installs from it never show SmartScreen. The identity values are the owner's Partner Center product identity (public, not secrets).
-# The spike (msix-spike.yml, run 40140735592) proved this package type installs and starts; the logos are in desktop/build/appx/.
+# certificate, so installs from it never show SmartScreen; since #2134 the Store copy updates only from the Store, so each stable must reach it.
+# Started by tools/release-stable.sh with the tag once the release is stable; by hand: gh workflow run msix-store.yml --ref main -f tag=desktop-vX.Y.Z,
+# or -f version=X.Y.Z for a package only (the owner uploads it in Partner Center). The identity values are the owner's Partner Center product identity
+# (public, not secrets). The spike (msix-spike.yml, run 40140735592) proved this package type installs and starts; the logos are in desktop/build/appx/.
+# Submitting needs the owner's Entra app (Partner Center → User management → Microsoft Entra applications, Manager role): secrets MS_STORE_TENANT_ID,
+# MS_STORE_SELLER_ID, MS_STORE_CLIENT_ID, MS_STORE_CLIENT_SECRET. Until they exist the submit job says so and ends green.
 on:
   workflow_dispatch:
     inputs:
+      tag:
+        description: 'A STABLE release tag (desktop-vX.Y.Z): build it and submit it to the Microsoft Store'
+        required: false
+        default: ''
       version:
-        description: 'App version for the package, three numbers (the Store wants each submission higher than the last)'
-        required: true
+        description: 'Package only, no submission: app version, three numbers (the Store wants each submission higher than the last)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
+
+concurrency:   # one Store submission at a time, and it finishes; a package-only run is its own group
+  group: msix-store-${{ inputs.tag != '' && 'submit' || github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   msix:
@@ -22,9 +35,26 @@ jobs:
     defaults:
       run:
         shell: bash
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
+      - name: Which version (a stable tag, or the version given)
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$TAG" ]; then
+            pre=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)
+            if [ "$pre" != false ]; then echo "$TAG is not a stable release (isPrerelease=$pre): betas never go to the Microsoft Store (owner, 26 Oct 2026)." >&2; exit 1; fi
+            VERSION=${TAG#desktop-v}
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Give a stable tag (desktop-vX.Y.Z) or a version X.Y.Z, not '$VERSION'." >&2; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.tag || github.ref }}   # the app exactly as that release ships it
           fetch-depth: 0   # stage.mjs counts the extension's commits and refuses a shallow clone
       - uses: actions/setup-node@v5
         with:
@@ -41,7 +71,7 @@ jobs:
       - name: Compile · build the MSIX with the Store identity
         working-directory: desktop
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
           npx electron-builder --win appx --publish never \
@@ -53,3 +83,53 @@ jobs:
           name: Jobadabra-store-package
           path: desktop/dist/*.appx
           if-no-files-found: error
+
+  submit:
+    name: Submit ${{ inputs.tag }} to the Microsoft Store
+    needs: msix
+    if: inputs.tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      APP_ID: 9NW1JJ7Z90MP   # https://apps.microsoft.com/detail/9NW1JJ7Z90MP
+      MS_STORE_TENANT_ID: ${{ secrets.MS_STORE_TENANT_ID }}
+      MS_STORE_SELLER_ID: ${{ secrets.MS_STORE_SELLER_ID }}
+      MS_STORE_CLIENT_ID: ${{ secrets.MS_STORE_CLIENT_ID }}
+      MS_STORE_CLIENT_SECRET: ${{ secrets.MS_STORE_CLIENT_SECRET }}
+    steps:
+      - name: Is the Store connected (the owner's Entra app)
+        id: connected
+        run: |
+          if [ -z "$MS_STORE_TENANT_ID" ] || [ -z "$MS_STORE_SELLER_ID" ] || [ -z "$MS_STORE_CLIENT_ID" ] || [ -z "$MS_STORE_CLIENT_SECRET" ]; then
+            echo "::notice::Microsoft Store not connected yet (no MS_STORE_* secrets): upload the package artifact in Partner Center by hand, or add the Entra app's values."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.connected.outputs.ready == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: Jobadabra-store-package
+          path: package
+      - if: steps.connected.outputs.ready == 'true'
+        name: Set up the Microsoft Store CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.4
+      - if: steps.connected.outputs.ready == 'true'
+        name: Sign in to Partner Center
+        run: msstore reconfigure --tenantId "$MS_STORE_TENANT_ID" --sellerId "$MS_STORE_SELLER_ID" --clientId "$MS_STORE_CLIENT_ID" --clientSecret "$MS_STORE_CLIENT_SECRET" > /dev/null
+      - if: steps.connected.outputs.ready == 'true'
+        name: A version still in Microsoft's review waits for the next release
+        id: inflight
+        run: |
+          status=$(msstore submission status 9NW1JJ7Z90MP 2>&1 || true)
+          echo "$status" | tail -5
+          if echo "$status" | grep -qE 'CommitStarted|PreProcessing|Certification|Release|PendingPublication|Publishing' && ! echo "$status" | grep -qE 'Failed'; then
+            echo "::notice::A submission is still in Microsoft's review: ${{ needs.msix.outputs.version }} goes with the next stable release."
+            echo "busy=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.connected.outputs.ready == 'true' && steps.inflight.outputs.busy != 'true'
+        name: Submit the package (Microsoft certifies it, then the Store updates every copy)
+        run: |
+          file=$(find package -name '*.appx' | head -1)
+          echo "Submitting $file (version ${{ needs.msix.outputs.version }})"
+          msstore publish package --inputFile "$file" --appId 9NW1JJ7Z90MP

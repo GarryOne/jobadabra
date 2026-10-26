@@ -41,7 +41,8 @@ const PERSONAS = [pickPersona()];
 // HOME for its sign-in, as the app under test does. 9 Oct 2026: without an engine the place decision fell back to Swiss places only and São Paulo was dropped.
 function engine(ctx, code, args = []) {
   const cli = ['cli', 'codex'].includes(ctx.engine);
-  const key = cli ? {} : familyOf(ctx.engine) === 'openai' ? {OPENAI_API_KEY: testKey(process.env, ctx.engine)} : {ANTHROPIC_API_KEY: ctx.key};
+  const key = cli ? {} : familyOf(ctx.engine) === 'openai' ? {OPENAI_API_KEY: testKey(process.env, ctx.engine)} : {ANTHROPIC_API_KEY: ctx.key,
+    ...(ctx.family === 'free' ? {JOB_PILOTTO_AI_BASE_URL: ctx.proxy.url} : {})};   // CI on Free AI: its JPF1 key only opens the relay, through the suite's proxy (src/ai/providers/anthropic_api.py)
   const env = pythonEnv({JOB_PILOTTO_CONFIG_DIR: path.join(ctx.profile, 'config'), JOB_PILOTTO_DATA_DIR: path.join(ctx.profile, 'data'), JOB_PILOTTO_AI_ENGINE: ctx.engine, ...key},
     cli ? {realHome: true} : {home: ctx.profile});
   return execFileSync(python(), ['-c', code, ...args], {cwd: REPO, env, encoding: 'utf8', timeout: 120000});

@@ -4,7 +4,7 @@ import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {pickEngine} from './engine.mjs';
+import {judgeFamily, pickEngine} from './engine.mjs';
 import {count, usageOf} from './ai-meter.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
@@ -57,9 +57,16 @@ export const modelClient = ({key = '', ...options} = {}) => ({messages: {create:
 const reply = (status, data) => ({ok: status < 400, status, json: async () => data});
 
 // fetch-shaped. `engine`/`exec` can be replaced by a test.
-export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000} = {}) {
+// CI on Free AI (lib/engine.mjs judgeFamily): the same Messages call goes to the relay on the runner with its JPF1 key instead of Anthropic with the Claude key.
+export function judgeTarget(url, init, env = process.env) {
+  if (judgeFamily(env) !== 'free') return {url, init};
+  return {url: String(url).replace(/^https:\/\/api\.anthropic\.com/, env.E2E_FREE_AI_URL), init: {...init, headers: {...init.headers, 'x-api-key': env.E2E_FREE_AI_KEY}}};
+}
+
+export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
   if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
-    const response = await fetch(url, init);
+    const target = judgeTarget(url, init, env);
+    const response = await fetch(target.url, target.init);
     try { if (response.ok) count('judges', usageOf(await response.clone().text(), response.headers.get('content-type') || '')); } catch { /* counting never breaks the call */ }
     return response;
   }

@@ -94,6 +94,7 @@
   "focus-data.test.mjs",
   "forget.test.mjs",
   "forms-variation.test.mjs",
+  "free-ai-check.test.mjs",
   "free-click.test.mjs",
   "golden-fixtures.test.mjs",
   "google-fake.test.mjs",

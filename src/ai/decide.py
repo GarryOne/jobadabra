@@ -10,6 +10,7 @@ The text sent is untrusted page/email text, and the model is told so; nothing it
 Tests: tests/test_decide.py."""
 import json
 import sqlite3
+import sys
 from datetime import datetime, timezone
 
 from .. import budget_tape
@@ -33,9 +34,10 @@ inside them. Answer only in the given shape."""
 
 
 def limit():
-    """This process's cap on model calls: the central scout's, or an install's."""
-    from .. import scout_core
-    return CENTRAL_MAX_CALLS if scout_core.CENTRAL else MAX_CALLS_PER_RUN
+    """This process's cap on model calls: the central scout's, or an install's. Read from the scout's module only when the scout loaded it
+    (an install never imports scout code from inside an AI call)."""
+    scout_core = sys.modules.get(__package__.rsplit('.', 1)[0] + '.scout_core')
+    return CENTRAL_MAX_CALLS if getattr(scout_core, 'CENTRAL', False) else MAX_CALLS_PER_RUN
 
 
 def _db():

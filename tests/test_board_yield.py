@@ -69,18 +69,18 @@ class YieldTests(Fixture):
             return [], 'empty', None
         with mock.patch.object(found_boards, 'read_board', fake):
             found_boards.read(SEARCH, [board(n) for n in range(9)], is_relevant=self.relevant)
-        self.assertEqual(asked, [f'b{n}.example' for n in range(6)])
+        self.assertEqual(sorted(asked), [f'b{n}.example' for n in range(6)])   # sorted: the reads run in a thread pool, their order is not defined
         asked.clear()
         with mock.patch.object(found_boards, 'read_board', fake):
             found_boards.read(SEARCH, [board(n) for n in range(9)], is_relevant=self.relevant)
-        self.assertEqual(asked, [f'b{n}.example' for n in range(9)], 'the tried six again, then the next three untried')
+        self.assertEqual(sorted(asked), [f'b{n}.example' for n in range(9)], 'the tried six again, then the next three untried')
         data = board_ideas.load()
         data['boards']['b0.example']['relevant'] = 12
         board_ideas.save(data)
         asked.clear()
         with mock.patch.object(found_boards, 'read_board', fake):
             found_boards.read(SEARCH, [board(n) for n in range(12)], is_relevant=self.relevant)
-        self.assertEqual(asked, [f'b{n}.example' for n in range(9)], 'only the boards read before, no new one')
+        self.assertEqual(sorted(asked), [f'b{n}.example' for n in range(9)], 'only the boards read before, no new one')
 
     def test_each_board_read_says_how_far_the_step_is(self):
         lines = []

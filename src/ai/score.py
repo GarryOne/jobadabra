@@ -103,13 +103,14 @@ distances. A role that needs the office several days a week in another city than
 gap, never "close" or "no relocation".
 - Every figure, place and requirement you write must appear in the posting, the extracted facts or the profile. \
 Credit the candidate only with skills, tools and experience the profile names: a related tool is not the same tool, \
-and never say a posting's level matches a level the profile does not state.
+and never say a posting's level matches a level the profile does not state. What the posting leaves out is an unknown, said as such \
+("growth scope not stated"), never a judgment of it ("growth opportunities limited").
 - Compensation: compare only an advertised salary with the target. If no salary is stated, give null (shown as N/A) \
 and list it as a gap; the overall score then ignores pay entirely, as if it were not a factor. Never invent a figure or a net amount. The profile's minimum and the target are different \
-figures: say which one you compare with. A salary in another currency than the profile's is still a stated salary: give a number from the posting's own figures. \
-Do not compute percentages or convert currencies; say "below your \
-minimum" or "above your target" and quote the posting's own numbers. Call a salary "in the target range" only \
-when it lies between the profile's own figures.
+figures: say which one you compare with. Do not compute percentages or convert currencies; in the same currency as the profile, \
+say "below your minimum" or "above your target" and quote the posting's own numbers. Call a salary "in the target range" only \
+when it lies between the profile's own figures. A salary in another currency than the profile's is still a stated salary: give a \
+number from the posting's own figures, quote them in the text with their currency, and never say it is below or above your figures.
 - Growth covers scope, technical depth and seniority relative to the candidate's level. If the posting gives no basis \
 (no scope or level you can read), give null (shown as N/A), never a middling number; the overall score then ignores it.
 - Risk rises for recruiter listings, vague employers, junior or unrelated roles, heavy on-call, \

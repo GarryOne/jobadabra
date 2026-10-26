@@ -81,8 +81,9 @@ SCHEMA = {
         },
         'seniority': {
             'type': 'object', 'additionalProperties': False, 'required': ['value', 'evidence'],
-            'description': 'The level the title or text states: junior (entry level, up to about 2 years), mid (about 3 to 5 years), senior, '
-                           'staff_principal, lead_manager (leads people); unknown when neither says it',
+            'description': 'The level the title or text gives, by a level word or by the years of experience it asks: junior (entry level, up to '
+                           'about 2 years), mid (about 3 to 5 years), senior (more, or senior in the title), staff_principal, lead_manager (leads '
+                           'people); unknown only when it gives neither',
             'properties': {
                 'value': {'type': 'string', 'enum': ['junior', 'mid', 'senior', 'staff_principal', 'lead_manager', 'unknown']},
                 'evidence': _evidence,

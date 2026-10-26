@@ -62,12 +62,14 @@ def items_waiting():
 
 
 def _say_waiting():
+    # stderr: these print after a command's answer, and a JSON command's answer is its last stdout line (desktop/lib/pipeline-commands.js; #2118's
+    # PR run, 26 Oct 2026: Focus said "Could not read your Notion" after a read that asked the AI). The run log and the Notion row read stderr too.
     line = items_waiting()
     if line and not WAITING['said']:
         WAITING['said'] = True
-        print(f'Warning: {line}', flush=True)
+        print(f'Warning: {line}', file=sys.stderr, flush=True)
     if WAITING['calls']:
-        print('AI decide calls: ' + ', '.join(f'{t} {n}' for t, n in sorted(WAITING['calls'].items())), flush=True)
+        print('AI decide calls: ' + ', '.join(f'{t} {n}' for t, n in sorted(WAITING['calls'].items())), file=sys.stderr, flush=True)
 
 
 atexit.register(_say_waiting)

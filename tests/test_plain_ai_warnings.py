@@ -3,7 +3,7 @@ import io
 import re
 import sys
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -31,7 +31,7 @@ class PlainAiWarningTests(unittest.TestCase):
             decide.reset_run()
             self.addCleanup(decide.reset_run)
             out = io.StringIO()
-            with redirect_stdout(out):
+            with redirect_stderr(out):   # stderr since 26 Oct 2026: a JSON command's answer stays its last stdout line (tests/test_decide_exit_lines.py)
                 decide.decide('pool-region', {'a': 'x'}, ('yes', 'no'), 'task', Failing(error), sqlite3.connect(':memory:'))
                 decide._say_waiting()   # the one plain line a run says, at its end
             warnings = [line for line in out.getvalue().splitlines() if line.startswith('Warning:')]

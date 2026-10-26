@@ -68,7 +68,7 @@ class PickTests(unittest.TestCase):
 
 class ReadTests(unittest.TestCase):
     def read(self, pages, decide, home=NAV):
-        with mock.patch.object(board_pages, 'allowed', return_value=True):
+        with mock.patch.object(board_pages, 'PAUSE_S', 0):
             return board_sections.read(home, HOME, 'software engineer', fetcher(pages), decide, lambda jobs: jobs)
 
     def test_a_static_section_page_gives_its_jobs(self):
@@ -106,7 +106,7 @@ class ReadTests(unittest.TestCase):
 
     def test_a_section_built_by_scripts_is_read_in_the_browser_and_marked(self):
         rendered, shown = [], []
-        with mock.patch.object(board_pages, 'allowed', return_value=True):
+        with mock.patch.object(board_pages, 'PAUSE_S', 0):
             jobs, url = board_sections.read(NAV, HOME, 'software engineer', fetcher({'https://jobs.example/it': SHELL}), decider({'Tech și programare': 'best'}),
                                             lambda jobs: jobs, show=lambda page: shown.append(page) or SECTION, rendered=rendered)
         self.assertEqual((len(jobs), url, rendered, shown), (3, 'https://jobs.example/it', ['https://jobs.example/it'], ['https://jobs.example/it']))
@@ -117,7 +117,7 @@ class ReadTests(unittest.TestCase):
 
         def show(page):
             return cards
-        with mock.patch.object(board_pages, 'allowed', return_value=True):
+        with mock.patch.object(board_pages, 'PAUSE_S', 0):
             plain_menu = fetcher({'https://jobs.example/it': menu})
             plain_cards = fetcher({'https://jobs.example/it': cards})
             self.assertEqual(board_sections._ways('https://jobs.example/it', plain_menu, show), (show, plain_menu))
@@ -126,15 +126,19 @@ class ReadTests(unittest.TestCase):
 
     def test_a_static_section_does_not_open_the_browser(self):
         shown, rendered = [], []
-        with mock.patch.object(board_pages, 'allowed', return_value=True):
+        with mock.patch.object(board_pages, 'PAUSE_S', 0):
             board_sections.read(NAV, HOME, 'software engineer', fetcher({'https://jobs.example/it': SECTION}), decider({'Tech și programare': 'best'}),
                                 lambda jobs: jobs, show=lambda page: shown.append(page) or SHELL, rendered=rendered)
         self.assertEqual((shown, rendered), ([], []))
 
-    def test_a_section_robots_txt_forbids_is_not_fetched(self):
-        with mock.patch.object(board_pages, 'allowed', return_value=False):
-            self.assertEqual(board_sections.read(NAV, HOME, 'x', fetcher({'https://jobs.example/it': SECTION}), decider({'Tech și programare': 'best'}),
-                                                 lambda jobs: jobs), ([], None))
+    def test_a_section_is_read_whatever_robots_txt_says(self):
+        pages = {'https://jobs.example/robots.txt': 'User-agent: *\nDisallow: /', 'https://jobs.example/it': SECTION}
+        asked = []
+        def fetch(url):
+            asked.append(url)
+            return pages[url]
+        board_sections.read(NAV, HOME, 'x', fetch, decider({'Tech și programare': 'best'}), lambda jobs: jobs)
+        self.assertIn('https://jobs.example/it', asked)
 
 
 class WiredTests(unittest.TestCase):
@@ -143,7 +147,7 @@ class WiredTests(unittest.TestCase):
         search = {'jobs_board_search_queries': 'software engineer'}
         careers.READER = 'auto'
         try:
-            with mock.patch.object(board_pages, 'allowed', return_value=True), mock.patch('src.ai.decide.decide', decider({'Tech și programare': 'best'})):
+            with mock.patch('src.ai.decide.decide', decider({'Tech și programare': 'best'})):
                 entry = {}
                 jobs, state, relevant = found_boards._another_way(board, entry, board['search_url'], search, fetcher({HOME: NAV, HOME + 'it': SECTION}),
                                                                   lambda found: found, ([], 'empty', []))
@@ -157,7 +161,7 @@ class WiredTests(unittest.TestCase):
         before = ([{'title': 'a'}], 'ok', [{'title': 'a'}])
         careers.READER = 'auto'
         try:
-            with mock.patch.object(board_pages, 'allowed', return_value=True), mock.patch('src.ai.decide.decide', decider({'Tech și programare': 'best'})):
+            with mock.patch('src.ai.decide.decide', decider({'Tech și programare': 'best'})):
                 entry = {}
                 got = found_boards._fuller_section(board, entry, board['search_url'], search, fetcher({HOME: NAV, HOME + 'it': SECTION}), lambda found: found, before)
                 none = found_boards._fuller_section(board, {}, board['search_url'], search, fetcher({HOME: NAV}), lambda found: found, before)

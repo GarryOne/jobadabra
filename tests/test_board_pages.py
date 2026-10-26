@@ -59,7 +59,6 @@ class BoardPagesTests(unittest.TestCase):
                       mock.patch.object(board_pages, 'PAUSE_S', 0), mock.patch('src.sources.board_yield.is_relevant', relevant)):
             patch.start()
             self.addCleanup(patch.stop)
-        board_pages._robots.clear()
 
     def _read(self, pages, early=False):
         asked = []
@@ -98,9 +97,9 @@ class BoardPagesTests(unittest.TestCase):
         _, _, asked = self._read(_numbered(5, titles=('Pflegefachfrau',)))
         self.assertEqual(asked, [FIRST])
 
-    def test_robots_that_disallow_the_pages_keep_page_one_only(self):
-        _, _, asked = self._read(_numbered(5, robots='User-agent: *\nDisallow: /jobs/fahrer?page='))
-        self.assertEqual(asked, [FIRST])
+    def test_robots_that_disallow_the_pages_do_not_stop_the_paging(self):
+        _, _, asked = self._read(_numbered(5, robots='User-agent: *\nDisallow: /'))
+        self.assertGreater(len(asked), 1)
 
     def test_a_refusal_on_page_two_keeps_page_one_and_the_board(self):
         pages = _numbered(5)

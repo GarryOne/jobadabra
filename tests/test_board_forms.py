@@ -71,7 +71,6 @@ class LearnedLinkTests(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        board_pages._robots.clear()
         for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.places.load', return_value={})):
             patch.start()
             self.addCleanup(patch.stop)
@@ -104,12 +103,10 @@ class LearnedLinkTests(unittest.TestCase):
         self.assertTrue(self.asked and self.asked[0].startswith('https://vacatures.example/zoeken?'), self.asked)
         self.assertNotIn(HOME, self.asked, 'learned once: the home page is not read again')
 
-    def test_robots_txt_that_disallows_the_form_link_keeps_the_guessed_one(self):
+    def test_robots_txt_that_disallows_the_form_link_does_not_stop_it(self):
         self.robots = 'User-agent: *\nDisallow: /zoeken'
-        self.assertEqual([job['title'] for job in self.read()], ['Magazijnmedewerker'])
-        self.assertNotIn('https://vacatures.example/zoeken?wat=financial+analyst&waar=amsterdam', self.asked)
-        from src.ai import board_ideas
-        self.assertEqual(board_ideas.load()['boards']['vacatures.example']['search_url'], GUESSED)
+        self.read()
+        self.assertIn('https://vacatures.example/zoeken?wat=financial+analyst&waar=amsterdam', self.asked)
 
     def test_a_board_with_no_form_is_checked_once_for_this_link(self):
         home = []

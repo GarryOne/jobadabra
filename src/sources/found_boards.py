@@ -428,6 +428,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         entry.update({'last_read': stamp, 'countries': board.get('countries') or [], 'kinds': board.get('kinds') or [],
                       'source_kind': board.get('source_kind') or 'general', **({'origin': board['origin']} if board.get('origin') else {})})
         board_yield.record(entry, len(found), len(relevant), state)
+        board_yield.paid(entry, len(relevant), search)   # read first by the next search in this field (boards_first)
         print(f"Job boards found: {board['name']} {len(found)} job(s), {len(relevant)} relevant{'' if state != 'browser' else ' (refuses automated reading: offered as a visit)'}", flush=True)
         run_counts.looked(found)
         run_counts.matched(relevant)

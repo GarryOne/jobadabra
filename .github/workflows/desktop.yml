@@ -529,7 +529,7 @@ jobs:
         with:
           cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
           cf-account: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
         run: |
@@ -565,7 +565,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (it owns one Notion page; waits, never dropped)
@@ -682,7 +682,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Give the suite's lock back
@@ -758,7 +758,7 @@ jobs:
         with:
           cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
           cf-account: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           app-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
       - name: Record which commit this run tested (ui-findings.yml names it in every issue)
         run: |
@@ -791,7 +791,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Take the suite's lock (it owns one Notion page; waits, never dropped)
@@ -884,7 +884,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the workflow token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
       - name: Give the suite's lock back

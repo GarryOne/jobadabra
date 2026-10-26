@@ -114,7 +114,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the old secret, never a red job
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: GarryOne
           repositories: jobadabra-lab
@@ -212,7 +212,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the old secret, never a red job
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: GarryOne
           repositories: jobadabra-lab
@@ -295,7 +295,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the old secret, never a red job
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: GarryOne
           repositories: jobadabra-lab
@@ -397,7 +397,7 @@ jobs:
         continue-on-error: true   # a failed mint falls back to the old secret, never a red job
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CI_APP_ID }}
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: GarryOne
           repositories: jobadabra-lab

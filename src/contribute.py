@@ -14,7 +14,7 @@ import re
 import urllib.request
 
 from .paths import DATA, load_search_config
-from . import contribute_candidates, pool_served
+from . import contribute_candidates, contribute_yield, pool_served
 from .sources import ats
 
 URL = 'https://www.jobpilotto.top/api/contribute'
@@ -269,7 +269,7 @@ def payload(feed_list, report, stores=None, install=None, search=None, db=None, 
     from . import scout
     matched = {s['company'] for s in report.get('sources', []) if s.get('ok') and s.get('matches')}
     read = {s['company']: s for s in report.get('sources', [])}
-    found = found_here(db)
+    found, given = found_here(db), contribute_yield.employer_counts(db)   # jobs located in your places per feed (api/source-ranking.js)
     own = set()
     if stores:
         try:
@@ -287,6 +287,7 @@ def payload(feed_list, report, stores=None, install=None, search=None, db=None, 
             feeds.append({'ats': system, 'slug': slug, 'company': source['company'][:120], 'matched': is_matched, 'own': is_own,
                           'how': (here or {}).get('how') or ('own' if is_own else 'index'), 'site': (here or {}).get('site'),
                           **({'jobs': int(seen.get('total') or 0), 'hits': int(seen.get('matches') or 0)} if seen.get('ok') else {}),
+                          **(contribute_yield.feed_counts(given, source['company'], seen) if given is not None else {}),
                           'failed': bool(seen) and not seen.get('ok')})
     feeds.sort(key=lambda f: (not (f['matched'] or f['own'] or f['how'] != 'index'), -(f.get('hits') or 0), -(f.get('jobs') or 0)))
     if stages is None and stores:

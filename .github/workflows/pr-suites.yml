@@ -1,5 +1,6 @@
 name: CI · E2E suites for a PR
-# The e2e suites a pull request points at (its UI text, its suite or harness files), started on the PR's own branch through e2e.yml, Linux suites only. It WAITS for that run
+# The e2e suites a pull request points at (its UI text, its suite or harness files, and since gate G1b the suites that RUN the lines it changes: the code → suite map from
+# main's coverage, e2e.yml's coverage-map job), started on the PR's own branch through e2e.yml: Linux suites, plus a macOS suite the map says ran the changed lines. It WAITS for that run
 # and fails when it ends red (tools/pr-suites-wait.sh), so "All checks passed" (tools/all-checks-green.sh) holds the merge (gate G1a, owner's yes 26 Oct 2026: on 25 Oct two
 # run-view PRs saw cardstates red on their own run, merged, and beta 2 failed on it). A flaky suite (red, then green on the same commit) passes; red twice blocks.
 # Was report only from 24 Oct 2026, at most 4 suites. Why it exists: 8 of ~10 e2e fixes in beta runs 5-11 were tests lagging the app, found a night late.
@@ -18,7 +19,7 @@ on:
 
 permissions:
   contents: read
-  actions: write   # start e2e.yml on the PR's branch, then read its result
+  actions: write   # start e2e.yml on the PR's branch, then read its result (and the coverage map artifact)
 
 concurrency:
   group: pr-suites-${{ github.event.pull_request.number }}
@@ -44,6 +45,8 @@ jobs:
           (cd desktop && npm ci --omit=dev --ignore-scripts)
       - name: Plan
         id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}   # reads the newest code → suite map artifact (desktop/e2e/pr-suites.mjs)
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           git fetch -q origin main

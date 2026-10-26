@@ -34,10 +34,11 @@ export const DEFAULT_PORT = 47111;
 export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOB_PILOTTO_PORT || '') && Number(env.JOB_PILOTTO_PORT) > 0 && Number(env.JOB_PILOTTO_PORT) < 65536 ? Number(env.JOB_PILOTTO_PORT) : DEFAULT_PORT);
 export const PORT = portFrom();
 // The extension's IDs. /extension/pair hands the connection token only to a request from this extension; web pages can't send its Origin.
-// The first is the primary (the app opens its pages): the copy loaded from the app's folder (the public "key" in extension/manifest.json). The Chrome Web Store
-// gives its own ID (owner, 24 Oct 2026): it is added here once the store item exists, and the folder's old ID stays so installed copies keep working.
-export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk'];
+// The first is the copy loaded from the app's folder (the public "key" in extension/manifest.json); the second the Chrome Web Store item's
+// (owner, 26 Oct 2026: nmbnjhmpofifgcdalfefddbiihccogoi). Guard: test/extension-store-id.test.js.
+export const EXTENSION_IDS = ['gpffoneapcfceflfmfgedkcfbommgcfk', 'nmbnjhmpofifgcdalfefddbiihccogoi'];
 export const EXTENSION_ID = EXTENSION_IDS[0];
+// The ID whose pages the app opens (wake.html): the copy that last checked in, else the folder's. A store user has no folder copy.
 // The request's Origin when it is one of our extensions' (else ''), to echo back in Access-Control-Allow-Origin.
 export const ownOrigin = origin => (EXTENSION_IDS.some(id => origin === `chrome-extension://${id}`) ? origin : '');
 
@@ -49,6 +50,7 @@ const tabRuns = new Map();   // browser (else boot) → {urls: Set, at}
 let seen = null;
 let devCopy = null;   // a development copy: when the extension started, and whether "reload it" was said (server-env.js extensionChangedNote)
 export const extensionSeen = () => seen;
+export const extensionIdNow = () => seen?.id || EXTENSION_ID;
 export const openTabs = (now = Date.now()) => {
   for (const [boot, run] of tabRuns) if (now - run.at > 90 * 1000) tabRuns.delete(boot);
   return [...new Set([...tabRuns.values()].flatMap(run => [...run.urls]))];
@@ -134,7 +136,7 @@ export function start(storage, onError = () => {}) {
             const why = !seen ? 'first since the app started' : seen.version !== version ? `version ${seen.version || '?'} → ${version}`
               : at - seen.at > 90 * 1000 ? `after ${Math.round((at - seen.at) / 1000)} s of silence` : '';
             if (why) appLog('extension', `checked in: ${why}`, {version, tabs: (report.urls || []).length});
-            seen = {at, version};
+            seen = {at, version, id: ownOrigin(req.headers.origin).slice('chrome-extension://'.length) || seen?.id || ''};
             if (developmentCopy()) {
               const changed = extensionChangedNote({boot: String(report.boot || report.worker || ''), version, at}, devCopy, {latest: latestExtension(), newest: newestExtensionFile});
               devCopy = changed.state;

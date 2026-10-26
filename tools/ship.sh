@@ -46,6 +46,14 @@ main="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
 [ "$branch" != main ] || { echo "ship: this is the main checkout. Work in a worktree (tools/worktree.sh <topic>), then run this there." >&2; exit 2; }
 if ! git diff --quiet || ! git diff --cached --quiet; then echo "ship: uncommitted changes in tracked files: commit them first" >&2; exit 2; fi
 
+# The PR description first (26 Oct 2026, c5: 139 s of push checks and a push, then "no Before/After table"): a bad --body stops here in about a second, before
+# any check, rebase or push. Once per landing: the background child skips it (SHIP_BODY_CHECKED). tests/test_ship_pr.py "a bad body stops ship".
+if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools/pr-body.sh" ]; then
+  body_err="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY" 2>&1 >/dev/null)" || {
+    echo "ship: the PR description is not laid out ($SHIP_PR_BODY), nothing was pushed:" >&2; echo "$body_err" >&2
+    echo "ship: fix the file (template: tools/pr-body-template.md), then run ship again" >&2; exit 2; }
+  export SHIP_BODY_CHECKED=1
+fi
 log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${branch//\//-}.log}"
 [ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || session_name() { echo "${JOB_PILOTTO_SESSION:-?}"; }
 if [ "$background" = 1 ]; then

@@ -85,7 +85,8 @@ test('a run that tested nothing (ended cancelled by "Nothing tested") is neither
 });
 
 test('a bisect step, a canary or a mutant on main\'s name never makes main\'s head "tested" (gate G2b)', async () => {
-  for (const displayTitle of [`Bisect cardstates ${OLD}`, 'Stable canary desktop-v1', 'Mutant raw-http-error']) {
+  // A PR's run (another branch) and the steps run after a merge (a few steps, not a look) neither: the nightly full run stays (PR 4, owner 26 Oct 2026).
+  for (const displayTitle of [`Bisect cardstates ${OLD}`, 'Stable canary desktop-v1', 'Mutant raw-http-error', 'E2E for PR · settings · some-branch', 'E2E after merge · aaaaaaa · settings']) {
     const out = await plan({EVENT: 'schedule', SHA: HEAD}, {runs: [sched(1, {event: 'workflow_dispatch', displayTitle}), {event: 'schedule', headSha: OLD, conclusion: 'success'}], files: ['desktop/lib/x.js']});
     assert.match(out.why, /a new commit/, displayTitle);
   }

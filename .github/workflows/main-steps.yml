@@ -1,0 +1,65 @@
+name: CI · E2E steps after a merge
+# After each merge, main runs the e2e steps that merge touched (PR 4 of the PR-checks plan, owner's yes 26 Oct 2026): the same plan a PR gets (desktop/e2e/pr-suites.mjs, the
+# code → step map from main's coverage), from this push's own diff, started through e2e.yml on main as "E2E after merge · <sha> · <suites>". A red names its commit:
+# e2e.yml's alert job tells Telegram and files it on the merged PR (tools/e2e_bisect.py after-merge), and the beta gate counts it (tools/main_e2e_state.py). A green
+# clears nothing (a few steps are not the suite). One job per suite runs at a time; a newer merge's job replaces the one waiting (e2e.yml's job concurrency). The nightly
+# full run stays. This job only plans and starts: nothing here waits for the suites.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/renderer/**'
+      - 'desktop/lib/**'
+      - 'desktop/main.js'
+      - 'desktop/e2e/suites/**'
+      - 'desktop/e2e/lib/**'
+      - 'extension/**'
+      # The files suites watch (their `export const watches`; #2043 changed quality's score.py and never started this: tests/test_workflow_paths.py)
+      - 'src/ai/**'   # and what those import from their folder (lib/import-graph.mjs watchesWithImports: #2043's schema_notes.py, imported by score.py)
+      - 'tools/mail_eval.py'
+      - 'tests/fixtures/mail_eval.json'
+      - 'desktop/e2e/fixtures/golden/**'
+      - '.github/workflows/main-steps.yml'
+
+concurrency:
+  group: main-steps-${{ github.sha }}   # one merge, one plan: never cancelled by the next merge (it would drop this merge's steps)
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write   # start e2e.yml on main (and read the coverage map artifact)
+
+jobs:
+  start:
+    name: Start the steps this merge touched
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install what the plan loads
+        run: |
+          (cd desktop/e2e && npm ci)
+          (cd desktop && npm ci --omit=dev --ignore-scripts)
+      - name: Plan
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}   # reads the newest code → step map artifact
+          BEFORE: ${{ github.event.before }}   # main before this push: its diff is the merge's own
+        run: |
+          set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
+          node desktop/e2e/pr-suites.mjs --base "$BEFORE" --plan | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Start them
+        if: steps.plan.outputs.suites != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUITES: ${{ steps.plan.outputs.suites }}
+          STEPS: ${{ steps.plan.outputs.steps }}
+          MERGED: ${{ github.sha }}
+        run: |
+          gh workflow run e2e.yml --ref main -f pr_suites="$SUITES" -f pr_steps="$STEPS" -f after_merge="${MERGED:0:7}"
+          echo "Started e2e.yml on main for ${MERGED:0:7}: $SUITES. See https://github.com/$GITHUB_REPOSITORY/actions/workflows/e2e.yml" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -52,6 +52,18 @@ class MainE2eState(unittest.TestCase):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)
         self.assertEqual(self.state['foryou']['conclusion'], 'success')
 
+    def test_a_run_after_a_merge_can_make_a_suite_red_but_never_green(self):
+        # PR 4 of the PR-checks plan (owner's yes, 26 Oct 2026): after each merge main runs only the steps it touched. Its red names that commit;
+        # its green says nothing about the suite's other steps, so it never clears a red the nightly found.
+        after = [run(9, 'E2E after merge · 1234567 · cardstates', conclusion='success', sha='9' * 40),
+                 run(8, 'E2E after merge · 7654321 · foryou', sha='8' * 40)]
+        jobs = {**JOBS, 9: [{'name': 'cardstates', 'conclusion': 'success'}], 8: [{'name': 'foryou', 'conclusion': 'failure'}]}
+        st = m.state(after + RUNS, lambda rid: jobs.get(rid, []))
+        self.assertEqual(st['cardstates']['url'], 'u2', 'the green after a merge does not hide the scheduled red')
+        self.assertEqual((st['foryou']['conclusion'], st['foryou']['sha']), ('failure', '8' * 40), 'its red names the merged commit')
+        self.assertFalse(m.counts_green(after[0]))
+        self.assertTrue(m.is_main_check(after[1]))
+
 
 if __name__ == '__main__':
     unittest.main()

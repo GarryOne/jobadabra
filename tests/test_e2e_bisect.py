@@ -90,6 +90,41 @@ class AfterRun(unittest.TestCase):
         self.assertEqual(self.started(), [], 'every red is the environment: no bisect')
 
 
+class AfterMerge(AfterRun):
+    """The steps run after a merge (PR 4, owner's yes 26 Oct 2026): a red already names its commit, so no bisect; a green of a few steps closes nothing."""
+    def setUp(self):
+        super().setUp()
+        self.saved_pr = (b.pr_of, b.report)
+        self.reports = []
+        b.pr_of = lambda sha: {'number': 2057, 'branch': 'ci-steps', 'title': 'Run only the steps'} if sha == 'a' * 40 else None
+        b.report = lambda suite, body, pr: self.reports.append((suite, body, pr))
+
+    def tearDown(self):
+        b.pr_of, b.report = self.saved_pr
+        super().tearDown()
+
+    def test_a_red_names_the_merged_pr_without_a_bisect_and_a_green_closes_nothing(self):
+        b.after_merge('9')
+        self.assertEqual(self.started(), [], 'no bisect: the merge is the only commit in range')
+        self.assertEqual([c for c in self.calls if c[:2] == ('issue', 'close')], [], 'cardstates green on a few steps: its issue stays open')
+        self.assertEqual([suite for suite, _, _ in self.reports], ['interactions', 'recorded'], 'settings already has an issue')
+        suite, body, pr = self.reports[0]
+        self.assertEqual(pr['number'], 2057)
+        self.assertRegex(body, r'Breaking PR: #2057 \(branch `ci-steps`\)')
+
+    def test_an_environment_red_is_not_filed(self):
+        self.logs[2] = CREDIT
+        b.after_merge('9')
+        self.assertEqual([suite for suite, _, _ in self.reports], ['recorded'])
+
+    def test_its_green_is_never_the_bisect_s_last_green(self):
+        runs = [{'id': 5, 'head_sha': '5' * 40, 'head_branch': 'main', 'conclusion': 'success', 'display_title': 'E2E after merge · 5555555 · interactions'},
+                {'id': 4, 'head_sha': '4' * 40, 'head_branch': 'main', 'conclusion': 'success', 'display_title': 'E2E check · on time (Worker cron)'}]
+        b.gh_json = lambda *args: runs if 'runs?' in args[1] else None
+        b.jobs_of = lambda rid: [{'name': 'interactions', 'conclusion': 'success'}]
+        self.assertEqual(b.last_green('interactions', 'f' * 40, lambda a, c: True), '4' * 40)
+
+
 class Workflows(unittest.TestCase):
     def test_bisect_runs_are_never_main_checks_nor_filed(self):
         e2e = (ROOT / '.github/workflows/e2e.yml').read_text()

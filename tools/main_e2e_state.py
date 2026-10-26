@@ -3,7 +3,8 @@
 
 A suite's state is its newest finished job (green or red) in a run that checks main's own code: the scheduled runs ("E2E check · ...") and runs by hand on
 main ("E2E Mac + Linux · <suites> · main"). Not: mutation tests (red on purpose), RC soaks, the stable canary, release gates and bisect runs (they test other
-commits). A by-hand re-run of one suite clears that suite only. Used by tools/beta-release.sh: no beta starts while main is red.
+commits). A by-hand re-run of one suite clears that suite only. The steps run after a merge ("E2E after merge · <sha> · <suites>", main-steps.yml) count
+for red only: their red names that commit; their green covers a few steps, never the suite, so it clears nothing. Used by tools/beta-release.sh: no beta starts while main is red.
 Why: 25 Oct 2026, main's 21:47 run was red on cardstates, interactions and settings; beta 2 started 1.5 h later on the same reds and nobody was told.
 
   tools/main_e2e_state.py [--repo o/r] [--json]     prints the red suites (one line each), or JSON; exit 0 either way
@@ -19,6 +20,7 @@ REPO = 'GarryOne/jobadabra'
 NOT_MAIN_CHECK = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect) ')
 # Jobs of e2e.yml that are not a suite.
 NOT_SUITE = {'plan', 'HTML report', 'promote', 'Telegram alert', 'Windows follows', 'Nothing tested'}
+AFTER_MERGE = 'E2E after merge · '   # e2e.yml run-name for the steps main-steps.yml starts after a merge
 MAX_RUNS = 15   # main-check runs read, newest first (two days of schedule plus re-runs)
 
 
@@ -29,6 +31,11 @@ def suite_of(job_name):
 
 def is_main_check(run):
     return run.get('head_branch') == 'main' and run.get('conclusion') in ('success', 'failure') and not NOT_MAIN_CHECK.match(run.get('display_title') or '')
+
+
+def counts_green(run):
+    """A main check whose green clears a suite: not the few steps run after a merge."""
+    return is_main_check(run) and not (run.get('display_title') or '').startswith(AFTER_MERGE)
 
 
 def state(runs, jobs_of):
@@ -43,6 +50,8 @@ def state(runs, jobs_of):
             suite = suite_of(job['name'])
             slices[suite] = 'failure' if job['conclusion'] == 'failure' or slices.get(suite) == 'failure' else 'success'
         for suite, conclusion in slices.items():
+            if conclusion == 'success' and not counts_green(run):
+                continue
             out.setdefault(suite, {'conclusion': conclusion, 'sha': run['head_sha'], 'url': run.get('html_url', ''), 'at': run.get('created_at', '')})
     return out
 

@@ -3,6 +3,8 @@
 
   after-run <run id>        e2e.yml's alert job, after a scheduled main run: closes the `red-main` issue of each suite this run passed, and starts
                             e2e-bisect.yml for ONE red suite with no open issue whose cause is not the test environment (the next check starts the next)
+  after-merge <run id>      e2e.yml's alert job, after the steps run after a merge (main-steps.yml): files each new red suite on the merged commit's
+                            PR at once (no bisect: it is the one commit in range); closes nothing (a few green steps are not the suite)
   bisect <suite> <bad sha>  e2e-bisect.yml: finds the last main check where <suite> was green, runs <suite> on the commits in between (e2e.yml with
                             target_ref + bisect: titled "Bisect <suite> <sha>", never counted as a main check or filed by the Finder), then names the
                             first red commit's PR in a `red-main` issue ("Breaking PR: #n (branch `b`)") and on the PR itself. The session that
@@ -20,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.e2e_causes import ENVIRONMENT_CAUSES, classify  # noqa: E402
-from tools.main_e2e_state import NOT_SUITE, is_main_check, suite_of  # noqa: E402
+from tools.main_e2e_state import NOT_SUITE, counts_green, suite_of  # noqa: E402
 
 REPO = os.environ.get('GITHUB_REPOSITORY', 'GarryOne/jobadabra')
 LABEL = 'red-main'
@@ -132,10 +134,27 @@ def after_run(run_id):
             started = suite
 
 
+def after_merge(run_id):
+    """The steps a merge touched went red: that merge broke them (or they were red already and have an issue). Every new product red is filed on its PR."""
+    run = gh_json('api', f'repos/{REPO}/actions/runs/{run_id}')
+    jobs = jobs_of(run_id)
+    issues = {i['title'] for i in open_issues()}
+    for suite, result in sorted(suite_results(jobs).items()):
+        if result != 'failure' or issue_title(suite) in issues:
+            continue
+        cause = red_cause(jobs, suite)
+        if cause in ENVIRONMENT_CAUSES:
+            print(f'{suite}: red on the test environment ({cause}): not filed, no PR broke it')
+            continue
+        bad = run['head_sha']
+        pr = pr_of(bad)
+        report(suite, issue_body(suite, bad, run['html_url'], found=bad, pr=pr) + '\n\nFound by the steps run after this merge (main-steps.yml): no bisect needed.', pr)
+
+
 def last_green(suite, bad, is_ancestor):
     runs = gh_json('api', f'repos/{REPO}/actions/workflows/e2e.yml/runs?branch=main&status=completed&per_page=100', '--jq', '.workflow_runs') or []
     for run in runs:
-        if not is_main_check(run) or run['head_sha'] == bad or not is_ancestor(run['head_sha'], bad):
+        if not counts_green(run) or run['head_sha'] == bad or not is_ancestor(run['head_sha'], bad):
             continue
         if suite_results(jobs_of(run['id'])).get(suite) == 'success':
             return run['head_sha']
@@ -201,6 +220,8 @@ def run_bisect(suite, bad, run_url):
 def main(argv):
     if argv[:1] == ['after-run'] and len(argv) == 2:
         after_run(argv[1])
+    elif argv[:1] == ['after-merge'] and len(argv) == 2:
+        after_merge(argv[1])
     elif argv[:1] == ['bisect'] and len(argv) >= 3:
         run_bisect(argv[1], argv[2], argv[3] if len(argv) > 3 else '')
     else:

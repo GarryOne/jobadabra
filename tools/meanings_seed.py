@@ -8,6 +8,7 @@ table (db/migrations) and shipped with the app as the offline floor; the site's 
 """
 import ast
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +67,38 @@ def searches(rev, path, function):
     raise KeyError(f'{function} not in {rev}:{path}')
 
 
+NAMED_HOST = re.compile(r'[a-z0-9]\\\.[a-z]{2,}')   # an escaped address in a pattern: abaservices\.ch
+
+
+def _alternatives(pattern):
+    """A pattern's top-level | parts (a | inside a group or a class stays in its part)."""
+    parts, depth, klass, start, i = [], 0, False, 0, 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == '\\':
+            i += 2
+            continue
+        if klass:
+            klass = c != ']'
+        elif c == '[':
+            klass = True
+        elif c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        elif c == '|' and depth == 0:
+            parts.append(pattern[start:i])
+            start = i + 1
+        i += 1
+    return parts + [pattern[start:]]
+
+
+def without_named_hosts(pattern):
+    """The pattern without its parts that name one site's address (owner, 26 Oct 2026: no site names in the floor; the AI and the shared
+    pack judge hosts): jobs.acme.ch still matches by its job word, a named job site does not."""
+    return '|'.join(part for part in _alternatives(pattern) if not NAMED_HOST.search(part))
+
+
 def rows():
     out = []
     add = lambda topic, pattern, answer, source: out.append({'topic': topic, 'pattern': pattern, 'answer': answer, 'source': source})
@@ -84,7 +117,7 @@ def rows():
     add('job-region', assigned(PLACES, 'src/contribute.py', 'REMOTE'), 'remote', 'contribute.py REMOTE')
     # Careers pages and job sites: each list whole, as one row, so the crawl reads them exactly as before; the site may add more rows.
     for path, name, answer in [('src/sources/careers.py', 'CAREER_WORDS', 'careers_link'), ('src/sources/careers.py', 'JOB_PATH', 'job_path'), ('src/sources/careers.py', 'NO_JOBS', 'no_jobs'), ('src/sources/careers.py', 'STRONG_WORDS', 'strong_jobs'), ('src/sources/careers.py', 'JOB_HOST', 'job_host'), ('src/sources/careers.py', 'NOT_JOBS', 'not_jobs'), ('src/sources/careers.py', 'TITLE_LIKE', 'job_title'), ('src/sources/careers.py', 'NOT_A_JOB', 'not_a_job'), ('src/sources/boards.py', 'CAREER', 'board_careers_link'), ('src/sources/visits.py', 'JOBLIST', 'job_list'), ('src/sources/visits.py', 'NOT_A_LIST', 'not_a_list')]:
-        add('page-words', assigned(PAGES, path, name), answer, f'{path.rsplit("/", 1)[1]} {name}')
+        add('page-words', without_named_hosts(assigned(PAGES, path, name)), answer, f'{path.rsplit("/", 1)[1]} {name}')
     for answer, name in (('senior', 'SENIOR'), ('entry', 'ENTRY')):   # titles that plainly name a level (levels.py): skipped for another level
         for pattern in assigned(KINDS, 'src/levels.py', name):
             add('title-level', pattern, answer, f'levels.py {name}')

@@ -469,7 +469,12 @@ class ReadMoreSitesTests(unittest.TestCase):
 
     def test_swiss_job_portals_built_by_scripts_count_as_careers_links(self):
         home = '<a href="https://app.jobportal.abaservices.ch/job-overview/x/de">Offene Stellen</a><a href="https://direktlink.prospective.ch/?view=1">Jobs</a>'
-        self.assertEqual(len(careers.careers_links(home, 'https://acme.ch')), 2)
+        from src.ai import decide, page_words
+        named = lambda topic, items, *a, **k: {key: 'careers_page' if 'site address' in key or 'stellen' in key or 'jobs' in key else 'other' for key in items}
+        with mock.patch.object(page_words, 'ai_on', return_value=True), mock.patch.object(decide, 'decide', named):
+            self.assertEqual(len(careers.careers_links(home, 'https://acme.ch')), 2, 'the AI names both hosts for jobs')
+        # No AI at all: the floor knows a host by its job word only, never by a list of sites (owner, 26 Oct 2026)
+        self.assertEqual(careers.careers_links(home, 'https://acme.ch'), ['https://app.jobportal.abaservices.ch/job-overview/x/de'])
 
 
 class HeadingTests(unittest.TestCase):

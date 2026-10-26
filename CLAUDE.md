@@ -42,6 +42,7 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
   fingerprint, alias meaning, recipe, noticing the miss) and is tested on a fixture shape. Guard: `tools/hardcoded-page-words.mjs`.
 - **Ask before spending money on AI** (a new model or large re-runs); show the measured cost. **Evals never share the production AI account**
   (16 Oct 2026: an eval used up the shared Workers AI daily allowance and Free AI answered "busy" to every user; `tools/free-ai-eval.mjs` refuses it).
+  **Exception: the random draws** (owner, 26 Oct 2026: "Same account if possible, jsut different workspace/token/worker"): their own Workers AI token, never production's Worker, KV or keys; why: `docs/rules/why.md`.
 
 ## Working rules
 - **Every fix works for any user, through the Desktop App:** a step done by hand (terminal, Keychain, `gh secret set`, a Notion edit) is a product

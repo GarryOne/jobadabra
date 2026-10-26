@@ -29,8 +29,14 @@ def deadline(now=None):
 
 
 def over(at, index, now=None):
-    """True when the site at `index` (0-based, in read order) must wait for the next run."""
-    return at is not None and index >= READ_FLOOR and (now if now is not None else time.monotonic()) >= at
+    """True when the site at `index` (0-based, in read order) must wait for the next run. On a search tape the answer is the recorded one
+    (src/budget_tape.py), so a replay reads the same sites as the recording on any machine."""
+    if at is None or index < READ_FLOOR:
+        return False
+    if now is not None:
+        return now >= at
+    from .. import budget_tape
+    return budget_tape.decide('read_over', [index], lambda: time.monotonic() >= at)
 
 
 def _left(now=None):
@@ -42,6 +48,23 @@ def _left(now=None):
     if ((now or datetime.now(timezone.utc)) - at).days >= LEFT_DAYS:
         return []
     return [key for key in kept.get('keys') or [] if isinstance(key, str)]
+
+
+def ranked(sources):
+    """A timed search's sites in the shared ranking's order (src/source_rank.py order: the proven best first, 1 slot in 5 for one not tried,
+    the proven dead left out and said); as given without a budget, without a ranking for this search, or when the ranking cannot be read."""
+    if time_budget.DEADLINE is None or not sources:
+        return list(sources)
+    try:
+        from .. import places, source_rank
+        search = paths.load_search_config(matching=False)
+        ordered, skipped = source_rank.order(sources, search, places.countries(search, places.load(), limit=None))
+    except Exception as error:  # noqa: BLE001 — the read goes on in the list's own order
+        print(f'Warning: employer ranking not used ({type(error).__name__})', flush=True)
+        return list(sources)
+    if skipped:
+        print(f'Employers: {len(skipped)} left out: other installs read them for this kind of role in your countries and found no local job.', flush=True)
+    return ordered
 
 
 def left_first(sources, key, now=None):

@@ -46,7 +46,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
         db.execute(feeds.REST_TABLE)
         rest = {} if os.getenv('JOB_PILOTTO_FIXTURE_DIR') else feeds.resting(db, now)
     rested = [source for source in sources if key(source) in rest]
-    sources = read_budget.left_first([source for source in sources if key(source) not in rest], key)   # what the last timed read left, read first
+    sources = read_budget.left_first(read_budget.ranked([source for source in sources if key(source) not in rest]), key)   # best first, then what the last timed read left
     total = len(sources)
     if rested:   # said every run, so a short list is never a mystery
         print(f'Employers resting: {len(rested)} gave no match for your roles in your places {feeds.REST_AFTER} checks in a row; checked again after '
@@ -71,12 +71,12 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
         feeds.run_counts.looked(got[0] or [])   # this search's own number, each job once (src/run_counts.py)
         return got
     downloads, shown = [None] * len(sources), {}
-    stop, started = read_budget.deadline(), [0]   # a timed search starts no new site past its read's time (src/sources/read_budget.py)
+    stop, begun = read_budget.deadline(), [0]   # a timed search starts no new site past its read's time (src/sources/read_budget.py)
     with ThreadPoolExecutor(max_workers=feeds.FETCH_WORKERS) as pool:   # a few hundred feeds must fit in the job's time
         def submit():   # the next site, in read order, unless its time is up: sites are started as others end, never all at once
-            if started[0] < len(sources) and not read_budget.over(stop, started[0]):
-                pending[pool.submit(fetch, sources[started[0]])] = started[0]
-                started[0] += 1
+            if begun[0] < len(sources) and not read_budget.over(stop, begun[0]):
+                pending[pool.submit(fetch, sources[begun[0]])] = begun[0]
+                begun[0] += 1
         pending = {}
         for _ in range(feeds.FETCH_WORKERS * 2):
             submit()
@@ -89,8 +89,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
                     feeds.run_counts.matched(found)   # counted as each site is read; the full pass after the AI sort adds the rest, never takes one back
                     on_jobs(found)
                 submit()
-    read_budget.keep_left(sources[started[0]:], key, started[0], total)
-    sources, downloads = sources[:started[0]], downloads[:started[0]]
+    read_budget.keep_left(sources[begun[0]:], key, begun[0], total)
+    sources, downloads = sources[:begun[0]], downloads[:begun[0]]
     from .. import time_budget
     time_budget.restart()   # downloading is not AI time: the places, titles and scoring after it get the whole budget (src/time_budget.py)
     report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested)}

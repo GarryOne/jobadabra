@@ -116,6 +116,7 @@ CI runs `python3 -m unittest discover -s tests`, `cd worker && npm test`, `cd de
   Otherwise (the direct push) the pre-push hook (`.claude/settings.json` → `tools/pre-push-check.sh`) runs the suites of the areas the push touches on a clean checkout
   (`PUSH_FULL=1`: all), lints workflows, proves `npm ci` when a lock file changed, and blocks a push on a red main (AGENTS.md "Red main").
   The e2e harness's own unit tests (`desktop/e2e` npm test) run on CI only (owner, 11 Oct 2026); `JP_E2E_UNIT=1` runs them before a push.
+- **A PR runs only the e2e steps its changes reach** (owner, 26 Oct 2026: "We should be crystal precise and running only the one or more e2e suite that got affected by changes. Or not even an entire e2e suite, but just few tests/sceanrios/cases from that suite"; #1992 started 16 of 33 suites and waited 15-60 min for runners, with waiting jobs holding runners): pick steps from what the changed files reach, never whole suites by default; no job holds a runner only to wait. Guard: built by the CI test-selection session.
 - The Stop hook (`tools/stop-test-check.sh`) runs no suite by default since 13 Oct 2026 (owner): CI runs them on the PR before the owner merges; `STOP_CHECK_SUITES=1` runs the ones your changes touch.
 - The gate reuses a suite pass on identical inputs (`tools/gate-cache.sh`; `GATE_CACHE=0` off, `PUSH_FULL=1` re-runs); a fail is never cached.
   Each step's time is logged (`<git common dir>/gate-timing.log`, `GATE_TIMING=0` off).

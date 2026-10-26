@@ -403,52 +403,6 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Earlier AI reviews (an unchanged screenshot is not asked again)
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == ''
-        uses: actions/cache/restore@v5
-        with:
-          path: desktop/e2e/.review-cache
-          key: ai-review-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-review-${{ matrix.key }}-
-      - name: AI review of the screenshots
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == ''   # the costly part: only when the UI or its tests changed, or a finding waits
-        working-directory: desktop/e2e
-        timeout-minutes: 15   # the batch waits up to 6 min, then asks what is left directly
-        env:   # the review runs on Free AI (lib/review-free.mjs, CI's own Workers AI token) and reads the by-design lessons from the issues (lib/review-lessons.mjs)
-          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
-          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node review-ui.mjs
-      # Its cost, as the other AI jobs leave theirs (ai-cost artifacts): /self-heal sums them (desktop/e2e/selfheal-stats.mjs). It was the one AI cost not summed.
-      - name: The AI review's cost
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == '' && hashFiles('e2e-artifacts/**/ai-review-usage.json') != ''
-        run: |
-          node -e 'const fs=require("fs"); const u=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); fs.writeFileSync(process.argv[2], JSON.stringify({job: "review", usd: Number(u.usd)||0, turns: Number(u.calls)||0, at: new Date().toISOString(), limit: false}))' "$E2E_ARTIFACTS/ai-review-usage.json" "$RUNNER_TEMP/ai-cost.json"
-      - name: Reporting tools from main (a soak tests an older tag, whose code may predate them; the workflow's own tooling must match the workflow)
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == ''
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.sha }}
-          path: tools-main
-          sparse-checkout: desktop/e2e
-      - name: Report the AI cost to /ai-cost
-        continue-on-error: true   # a report never decides a run
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == '' && hashFiles('e2e-artifacts/**/ai-review-usage.json') != ''
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: node tools-main/desktop/e2e/ai-cost-report.mjs --job e2e-screenshot-review --suffix "${{ matrix.key }}" --file "$RUNNER_TEMP/ai-cost.json"
-      - uses: actions/upload-artifact@v6
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == '' && hashFiles('e2e-artifacts/**/ai-review-usage.json') != ''
-        with:
-          name: ai-cost-review-${{ matrix.key }}
-          path: ${{ runner.temp }}/ai-cost.json
-          if-no-files-found: ignore
-      - name: Keep the AI reviews for the next run
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && inputs.mutant == '' && hashFiles('desktop/e2e/.review-cache/*.json') != ''
-        uses: actions/cache/save@v5
-        with:
-          path: desktop/e2e/.review-cache
-          key: ai-review-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6
@@ -515,6 +469,29 @@ jobs:
   # Nothing tested is never green (gate G7, owner's yes 26 Oct 2026). A scheduled run on main that planned no suite (a release run was testing, the commit's looks were
   # used up, nothing varies) used to end green: on 25 Oct the 23:33 and 23:47 runs skipped while beta 2 ran and read as a green main. It now says why and ends CANCELLED
   # (grey). plan-run.mjs counts only green or red runs as tested, so the next scheduled run tests this commit. Never in a gate (gate_tag): there it would cancel a release.
+  # The AI screenshot review: every suite's pages in ONE Claude batch, after the suites (.github/actions/e2e-review; owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude").
+  review:
+    name: AI review of the screenshots
+    needs: [plan, suite]
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.count != '0' && needs.plan.outputs.review == '1' && inputs.mutant == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20   # the batch waits up to 6 min, then asks what is left directly
+    permissions:
+      contents: read
+      issues: read    # the by-design lessons come from the closed issues (lib/review-lessons.mjs)
+      actions: read   # this run's suite artifacts
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/e2e-review
+        with:
+          lane: mac
+          anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          github-token: ${{ github.token }}
+
   nothing-tested:
     name: Nothing tested
     needs: plan

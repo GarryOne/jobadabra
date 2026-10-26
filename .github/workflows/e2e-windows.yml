@@ -267,37 +267,6 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Earlier AI reviews (an unchanged screenshot is not asked again)
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1'
-        uses: actions/cache/restore@v5
-        with:
-          path: desktop/e2e/.review-cache
-          key: ai-review-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-review-windows-${{ matrix.key }}-
-      - name: AI review of the screenshots
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1'   # only when the Mac run had it (the UI or its tests changed, or a finding waits)
-        working-directory: desktop/e2e
-        timeout-minutes: 15   # the batch waits up to 6 min, then asks what is left directly
-        env:   # the review runs on Free AI (lib/review-free.mjs, CI's own Workers AI token) and reads the by-design lessons from the issues (lib/review-lessons.mjs)
-          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
-          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node review-ui.mjs
-      # Its cost on /ai-cost, as the Mac lane reports it (7 Oct 2026: the Windows review, Sonnet with screenshots, was the one e2e AI cost never reported).
-      - name: Report the AI review's cost to /ai-cost
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && hashFiles('e2e-artifacts-windows/**/ai-review-usage.json') != ''
-        continue-on-error: true   # a report never decides a run
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: |
-          node -e 'const fs=require("fs"); const u=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); fs.writeFileSync(process.argv[2], JSON.stringify({job: "review", usd: Number(u.usd)||0, turns: Number(u.calls)||0, at: new Date().toISOString(), limit: false}))' "$E2E_ARTIFACTS/ai-review-usage.json" "$RUNNER_TEMP/ai-cost.json"
-          node desktop/e2e/ai-cost-report.mjs --job e2e-screenshot-review --suffix "windows-${{ matrix.key }}" --file "$RUNNER_TEMP/ai-cost.json"
-      - name: Keep the AI reviews for the next run
-        if: always() && env.E2E_ANTHROPIC_KEY != '' && needs.plan.outputs.review == '1' && hashFiles('desktop/e2e/.review-cache/*.json') != ''
-        uses: actions/cache/save@v5
-        with:
-          path: desktop/e2e/.review-cache
-          key: ai-review-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6
@@ -342,6 +311,29 @@ jobs:
 
   # One Playwright HTML report for the run (6 Oct 2026): every suite wrote a blob (desktop/e2e/report/playwright.config.mjs); merged here, uploaded as e2e-report
   # (uncompressed: the owner's site serves its files straight from the artifact, admin/e2e-report.js) and linked on the run's Summary page.
+
+  # The AI screenshot review: every suite's pages in ONE Claude batch, after the suites (.github/actions/e2e-review; owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude").
+  review:
+    name: AI review of the screenshots
+    needs: [plan, suite]
+    if: always() && needs.plan.result == 'success' && needs.plan.outputs.review == '1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20   # the batch waits up to 6 min, then asks what is left directly
+    permissions:
+      contents: read
+      issues: read    # the by-design lessons come from the closed issues (lib/review-lessons.mjs)
+      actions: read   # this run's suite artifacts
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - uses: ./.github/actions/e2e-review
+        with:
+          lane: windows
+          anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
+          github-token: ${{ github.token }}
 
   report:
     name: Windows HTML report

@@ -1,6 +1,7 @@
 // Reviews the journey's screenshots (artifacts/ui-<view>.png) with AI and writes artifacts/ai-findings.json.
-//   CI on Free AI (owner, 26 Oct 2026): a Workers AI vision model looks first (lib/review-free.mjs, CI_FREE_AI_CF_TOKEN, about $0.002 a page); Claude looks again
-//   only at the pages it flagged, and only with E2E_REVIEW_CONFIRM=claude (off until the owner funds Claude). Off Free AI: E2E_ANTHROPIC_KEY=… node review-ui.mjs (Sonnet).
+//   CI (owner, 26 Oct 2026: "cut the costs in half, but close to the same quality as Claude"): .github/actions/e2e-review runs it once per lane after the suites,
+//   with E2E_REVIEW_DIRS (every suite's folder) and E2E_REVIEW_ENGINE=claude, so all its pages go to Sonnet as one batch at half the price. E2E_REVIEW_ENGINE=free asks
+//   Workers AI instead (lib/review-free.mjs); E2E_REVIEW_CONFIRM=claude then asks Claude again about what it flagged. Locally: E2E_ANTHROPIC_KEY=… node review-ui.mjs.
 // A page that looks the same as the last one judged for the same question (lib/review-cache.mjs: the same prompt, facts and lessons, and lib/png-grid.mjs's
 // look) is not asked again: its findings come from the review cache (E2E_REVIEW_CACHE, kept between CI runs), so they are still "seen again".
 // Each page is asked with the by-design lessons of its kind of page (lib/review-lessons.mjs, from the closed issues; E2E_REVIEW_LESSONS=0 leaves them out).
@@ -18,8 +19,8 @@ import {FREE_MODEL, askFree} from './lib/review-free.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 import {MODEL, buildRequest, fingerprint, parseFindings, parseFindingsDetailed, usageCost} from './lib/vision.mjs';
 
-// Free AI looks first whenever CI runs on it (E2E_JUDGE_FAMILY=claude brings Sonnet back); E2E_REVIEW_ENGINE=free asks it anywhere.
-const FREE = judgeFamily() === 'free' || process.env.E2E_REVIEW_ENGINE === 'free';
+// E2E_REVIEW_ENGINE picks the reviewer: claude (CI's review job: Sonnet by Batch, owner 26 Oct 2026) or free; unset, Free AI when CI runs on it.
+const FREE = process.env.E2E_REVIEW_ENGINE ? process.env.E2E_REVIEW_ENGINE === 'free' : judgeFamily() === 'free';
 const key = process.env.E2E_ANTHROPIC_KEY;
 const CONFIRM = FREE && process.env.E2E_REVIEW_CONFIRM === 'claude' && Boolean(key);   // the Claude second pass: the one switch, off until the owner funds Claude
 if (FREE ? !process.env.CI_FREE_AI_CF_TOKEN : !key) { console.error(FREE ? 'CI_FREE_AI_CF_TOKEN is needed (the review runs on Free AI).' : 'E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
@@ -33,21 +34,26 @@ const rules = fs.existsSync(skill) ? fs.readFileSync(skill, 'utf8').replace(/^--
 const CACHE = process.env.E2E_REVIEW_CACHE || path.join(DESKTOP, 'e2e', '.review-cache');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const all = [];
+// The folders to review: one suite's (E2E_ARTIFACTS), or every suite's at once (E2E_REVIEW_DIRS, CI's review job after the suites: all pages in one batch, half the price).
+// E2E_REVIEW_OUT: each folder's findings go to OUT/<folder name>/ beside the pictures they name (the issue filer reads them there); unset, into the folder itself.
+const shots = dir => (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter(name => /^(ui|failed)-.+\.png$/.test(name));
+const DIRS = (process.env.E2E_REVIEW_DIRS ? process.env.E2E_REVIEW_DIRS.split(path.delimiter).filter(Boolean) : [ARTIFACTS]).filter(dir => shots(dir).length);
+const OUT = process.env.E2E_REVIEW_OUT || '';
 // A skipped suite (no token yet) or a suite that stopped early leaves nothing to look at: that is not an error.
-if (!fs.existsSync(ARTIFACTS) || !fs.readdirSync(ARTIFACTS).some(name => /^(ui|failed)-.+\.png$/.test(name))) { console.log('No screenshots to review.'); process.exit(0); }
+if (!DIRS.length) { console.log('No screenshots to review.'); process.exit(0); }
 prune(CACHE);
 const lessons = process.env.E2E_REVIEW_LESSONS === '0' ? [] : await fetchLessons();
 let rejected = 0;
 // Which pages the AI really looked at, and which it could not (no credit, rate limit, an outage, a cut-off answer): ui-findings reads this. A page nobody reviewed is not a page that came back clean.
 const reviewed = [], unreviewed = [];
 const usage = {model: CONFIRM ? `${REVIEW_MODEL}, then ${MODEL} on what it flags` : REVIEW_MODEL, calls: 0, batched: 0, cached: 0, confirmed: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0, lessons: lessons.length};
-const names = fs.readdirSync(ARTIFACTS);
 // The pages the journey photographed, and the window at the moment a step failed (at most two): a failure screenshot shows the whole app, the sidebar and the bottom bar too.
-const jobs = [...names.filter(name => /^ui-.+\.png$/.test(name)).sort().map(name => ({view: name.slice(3, -4), png: name, factsFile: path.join(ARTIFACTS, `ui-${name.slice(3, -4)}.json`)})),
-  ...names.filter(name => /^failed-.+\.png$/.test(name)).sort().slice(0, 2).map(name => ({view: 'failure-screenshot', png: name, factsFile: ''}))]
+const jobs = DIRS.flatMap(dir => { const names = fs.readdirSync(dir); return [
+  ...names.filter(name => /^ui-.+\.png$/.test(name)).sort().map(name => ({dir, view: name.slice(3, -4), png: name, factsFile: path.join(dir, `ui-${name.slice(3, -4)}.json`)})),
+  ...names.filter(name => /^failed-.+\.png$/.test(name)).sort().slice(0, 2).map(name => ({dir, view: 'failure-screenshot', png: name, factsFile: ''}))]; })
   .map((job, index) => {
     const facts = job.factsFile && fs.existsSync(job.factsFile) ? JSON.parse(fs.readFileSync(job.factsFile, 'utf8')) : null;
-    const png = fs.readFileSync(path.join(ARTIFACTS, job.png));
+    const png = fs.readFileSync(path.join(job.dir, job.png));
     const ask = model => buildRequest({view: job.view, pngBase64: png.toString('base64'), rules, facts, lessons: lessonsText(lessonsFor(lessons, job.view)), model});
     const request = ask(REVIEW_MODEL);
     let strips = null;
@@ -65,7 +71,7 @@ function failed(job, status, detail) {
   if (ours) { console.log(`::error::AI review of ${job.view} was rejected (${status}): ${detail}`); rejected++; }
   else console.log(`::warning::AI review of ${job.view} failed (${status}): ${String(detail).slice(0, 160)}; skipped`);
   console.log(`- ${job.view}: review failed (${status})`);
-  unreviewed.push({view: job.view, why: billing ? 'no credit' : String(status)});
+  unreviewed.push({dir: job.dir, view: job.view, why: billing ? 'no credit' : String(status)});
 }
 
 // One answered call: count its cost, keep a whole answer for next time, and say when it was cut off (then the page is not reviewed).
@@ -79,7 +85,7 @@ function answered(job, message, {batch = false, usd: freeUsd} = {}) {
   if (message.stop_reason !== 'end_turn') {
     usage.cutOff++;
     console.log(`::warning::AI review of ${job.view} stopped early (${message.stop_reason}, ${u.output_tokens || 0} tokens): not reviewed, nothing filed or cleared for it`);
-    unreviewed.push({view: job.view, why: `answer cut off (${message.stop_reason})`});
+    unreviewed.push({dir: job.dir, view: job.view, why: `answer cut off (${message.stop_reason})`});
     return null;
   }
   if (job.strips) remember(CACHE, job.key, {view: job.view, model: REVIEW_MODEL, strips: job.strips, text});
@@ -178,13 +184,21 @@ for (const job of jobs) {
   const answer = answers.get(job.id);
   if (typeof answer !== 'string') continue;   // failed or cut off: already listed as not reviewed
   const parsed = parseFindingsDetailed(answer, job.view);
-  droppedByShape.push(...parsed.dropped);
-  const found = parsed.kept.map(item => ({...item, id: fingerprint(item), file: job.png}));   // file: the picture the finding was seen on
-  reviewed.push(job.view);
+  droppedByShape.push(...parsed.dropped.map(item => ({...item, dir: job.dir})));
+  const found = parsed.kept.map(item => ({...item, id: fingerprint(item), file: job.png, dir: job.dir}));   // file: the picture the finding was seen on
+  reviewed.push({dir: job.dir, view: job.view});
   console.log(`${found.length ? '!' : '✓'} ${job.view}: ${found.length} finding(s)${fromCache.has(job.id) ? ' (looks the same as the last one judged: not asked again)' : ''}${found.map(item => `\n    [${item.severity}] ${item.title}: ${item.detail}`).join('')}`);
   all.push(...found);
 }
-fs.writeFileSync(path.join(ARTIFACTS, 'ai-findings.json'), JSON.stringify({model: usage.model, findings: all, reviewed, unreviewed, dropped: droppedByShape}, null, 2));
+// Each folder's own findings file, in the shape it always had (no dir fields); with E2E_REVIEW_OUT, a copy of each picture a finding or a review names goes beside it.
+for (const dir of DIRS) {
+  const mine = list => list.filter(item => item.dir === dir).map(({dir: _dir, ...item}) => item);
+  const to = OUT ? path.join(OUT, path.basename(dir)) : dir;
+  fs.mkdirSync(to, {recursive: true});
+  if (OUT) for (const job of jobs.filter(item => item.dir === dir)) fs.copyFileSync(path.join(dir, job.png), path.join(to, job.png));
+  fs.writeFileSync(path.join(to, 'ai-findings.json'), JSON.stringify({model: usage.model, findings: mine(all), reviewed: mine(reviewed).map(item => item.view), unreviewed: mine(unreviewed), dropped: mine(droppedByShape)}, null, 2));
+}
+fs.mkdirSync(ARTIFACTS, {recursive: true});
 fs.writeFileSync(path.join(ARTIFACTS, 'ai-review-usage.json'), JSON.stringify({...usage, usd: Number(usage.usd.toFixed(4))}, null, 2));
 const line = `AI review: ${usage.calls} call(s) (${usage.batched} by batch, half price), ${usage.cached} looked the same (not asked again), ${usage.confirmed} checked again by Claude, ${usage.failed} failed, ${usage.cutOff} cut off; ${usage.input} in + ${usage.cacheRead} cache read + ${usage.cacheWrite} cache write, ${usage.output} out = $${usage.usd.toFixed(4)} (${usage.model}; ${usage.lessons} by-design lesson(s))`;
 console.log(`\n${all.length} finding(s) written to ai-findings.json\n${line}${unreviewed.length ? `\nNOT reviewed (${unreviewed.map(item => `${item.view}: ${item.why}`).join(', ')}): no finding is filed or cleared for these pages from this run.` : ''}`);

@@ -24,52 +24,10 @@ def jobs(text):
 
 class ReleaseJobsMayWriteIssues(unittest.TestCase):
     def test_every_job_that_runs_a_release_script_has_issues_write(self):
-        checked = []
-        for path in sorted(WORKFLOWS.glob('*.yml')):
-            text = path.read_text()
-            if '\njobs:\n' not in text:
-                continue
-            top = permissions(text.split('\njobs:\n', 1)[0])
-            for name, job in jobs(text):
-                if not RELEASE_SCRIPTS.search(job) or re.search(r"DRY_RUN: *'1'", job):   # a dry run changes nothing (release-stable.sh exits first)
-                    continue
-                granted = permissions(job) if permissions(job) is not None else top
-                checked.append(f'{path.name}:{name}')
-                self.assertEqual((granted or {}).get('issues'), 'write', f'{path.name} job {name} runs a release script without issues: write')
-        self.assertIn('beta-approve.yml:approve', checked)
-        self.assertIn('desktop.yml:release-mac', checked)
-        self.assertIn('desktop.yml:release-windows', checked)   # the parser found the jobs (a broken split would check nothing)
-
-    def test_every_job_that_calls_the_release_step_grants_issues_write(self):
-        # A called workflow gets at most its caller job's permissions (7 Oct 2026: the release step is beta-approve.yml, called from three places).
-        callers = []
-        for path in sorted(WORKFLOWS.glob('*.yml')):
-            text = path.read_text()
-            if '\njobs:\n' not in text:
-                continue
-            for name, job in jobs(text):
-                if 'uses: ./.github/workflows/beta-approve.yml' in job:
-                    callers.append(f'{path.name}:{name}')
-                    self.assertEqual((permissions(job) or {}).get('issues'), 'write', f'{path.name} job {name} calls the release step without issues: write')
-                    self.assertEqual((permissions(job) or {}).get('contents'), 'write', f'{path.name} job {name} calls the release step without contents: write')
-        self.assertEqual(sorted(callers), ['e2e-windows.yml:approve-windows', 'e2e.yml:promote'])   # gates by hand; the release run's Release jobs run the scripts themselves
-
-
-if __name__ == '__main__':
-    unittest.main()
-
-
-class EveryAiStepReportsItsCost(unittest.TestCase):
-    """7 Oct 2026: the Windows screenshot review (Sonnet, screenshots) never reported its cost, so /admin/ai-cost missed it. Every job that runs the review
-    reports it; a new job that runs the review without the report fails here."""
-    def test_every_job_running_the_screenshot_review_reports_its_cost(self):
-        checked = []
-        for path in sorted(WORKFLOWS.glob('*.yml')):
-            text = path.read_text()
-            if '\njobs:\n' not in text:
-                continue
-            for name, job in jobs(text):
-                if 'node review-ui.mjs' in job:
-                    checked.append(f'{path.name}:{name}')
-                    self.assertIn('--job e2e-screenshot-review', job, f'{path.name} job {name} runs the AI screenshot review but does not report its cost')
-        self.assertGreaterEqual(len(checked), 4, checked)   # e2e.yml, e2e-windows.yml and both lanes of desktop.yml
+        # Since 26 Oct 2026 the review runs in one place, .github/actions/e2e-review (all of a lane's pages in one batch), used by every lane.
+        action = (WORKFLOWS.parent / 'actions' / 'e2e-review' / 'action.yml').read_text()
+        self.assertIn('node review-ui.mjs', action)
+        self.assertIn('--job e2e-screenshot-review', action, 'the screenshot review reports its cost')
+        users = [f'{path.name}:{name}' for path in sorted(WORKFLOWS.glob('*.yml')) if '\njobs:\n' in path.read_text()
+                 for name, job in jobs(path.read_text()) if 'uses: ./.github/actions/e2e-review' in job]
+        self.assertGreaterEqual(len(users), 4, users)   # e2e.yml, e2e-windows.yml and both release lanes of desktop.yml

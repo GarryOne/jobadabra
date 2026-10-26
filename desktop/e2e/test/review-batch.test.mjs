@@ -81,3 +81,27 @@ test('a few pages skip the batch and are asked directly', async () => {
     assert.deepEqual(findings.reviewed, ['jobs', 'settings']);
   } finally { api.close(); }
 });
+
+// 26 Oct 2026 (owner: "cut the costs in half, but close to the same quality as Claude"): each suite job reviewed its own 1-10 pages, under the batch's 20, so no run
+// ever batched. CI's review job now reviews every suite's folder at once: one batch for all, each folder's findings in OUT/<folder>/ beside the pictures they name.
+test('every suite\'s folder in one batch; each folder\'s findings and pictures land in its own folder under the output', async () => {
+  const api = await fakeApi({batchEnds: true}), dir = fs.mkdtempSync(path.join(os.tmpdir(), 'review-many-'));
+  try {
+    const dirs = ['e2e-artifacts-jobs', 'e2e-artifacts-settings'].map(name => { const at = path.join(dir, 'in', name); fs.mkdirSync(at, {recursive: true}); return at; });
+    fs.writeFileSync(path.join(dirs[0], 'ui-jobs.png'), Buffer.from([137, 80, 78, 71, 4]));
+    fs.writeFileSync(path.join(dirs[1], 'ui-settings.png'), Buffer.from([137, 80, 78, 71, 8]));
+    const out = path.join(dir, 'out'), usageDir = path.join(dir, 'usage');
+    await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_REVIEW_BATCH_MIN: '1', E2E_ARTIFACTS: usageDir,
+      E2E_REVIEW_DIRS: [...dirs, path.join(dir, 'in', 'empty')].join(path.delimiter), E2E_REVIEW_OUT: out, E2E_REVIEW_ENGINE: 'claude', E2E_JUDGE_FAMILY: 'free',
+      E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_POLL_MS: '20', GITHUB_STEP_SUMMARY: '', E2E_REVIEW_LESSONS: '0'}});
+    assert.equal(api.seen.batches, 1, 'one batch for both suites');
+    assert.deepEqual(api.seen.ids, ['r0', 'r1']);
+    const jobs = JSON.parse(fs.readFileSync(path.join(out, 'e2e-artifacts-jobs', 'ai-findings.json'), 'utf8'));
+    const settings = JSON.parse(fs.readFileSync(path.join(out, 'e2e-artifacts-settings', 'ai-findings.json'), 'utf8'));
+    assert.deepEqual([jobs.reviewed, jobs.findings.length, jobs.findings[0].file, 'dir' in jobs.findings[0]], [['jobs'], 1, 'ui-jobs.png', false]);
+    assert.deepEqual([settings.reviewed, settings.unreviewed], [[], [{view: 'settings', why: 'answer cut off (max_tokens)'}]]);
+    assert.ok(fs.existsSync(path.join(out, 'e2e-artifacts-jobs', 'ui-jobs.png')), 'the picture beside its findings');
+    assert.ok(!fs.existsSync(path.join(dirs[0], 'ai-findings.json')), 'the suite\'s own folder is left as it came');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(usageDir, 'ai-review-usage.json'), 'utf8')).batched, 2);
+  } finally { api.close(); }
+});

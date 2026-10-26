@@ -148,6 +148,14 @@ class Seed(unittest.TestCase):
             self.assertTrue(meanings_pack.valid({**row, 'kind': 'pattern', 'wording': row['pattern']}), row)
             re.compile(row['pattern'])
 
+    def test_no_seed_row_names_a_site(self):
+        """Universal first (owner, 26 Oct 2026): a host is a job site by its job word, or by the AI and the shared pack, never by a list of sites."""
+        sys.path.insert(0, str(ROOT / 'tools'))
+        import meanings_seed
+        rows = json.loads((ROOT / 'config' / 'meanings_seed.json').read_text())['patterns']
+        self.assertEqual([row['source'] for row in rows if row['topic'] == 'page-words' and meanings_seed.NAMED_HOST.search(row['pattern'])], [])
+        self.assertEqual(meanings_seed.without_named_hosts(r'(?:^|[.-])jobs?(?:[.-]|$)|(?:^|\.)(?:acme\.ch|b\.com)$'), r'(?:^|[.-])jobs?(?:[.-]|$)')
+
 
 if __name__ == '__main__':
     unittest.main()

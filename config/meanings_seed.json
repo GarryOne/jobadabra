@@ -939,7 +939,7 @@
   },
   {
    "topic": "page-words",
-   "pattern": "(?:^|[.-])(?:jobs?|stellen|karriere|careers?|jobportal|recruiting|bewerbung|emploi)(?:[.-]|$)|(?:^|\\.)(?:abaservices\\.ch|prospective\\.ch|dualoo\\.com|jobdesk\\.ch|refline\\.ch|hr4you\\.org)$",
+   "pattern": "(?:^|[.-])(?:jobs?|stellen|karriere|careers?|jobportal|recruiting|bewerbung|emploi)(?:[.-]|$)",
    "answer": "job_host",
    "source": "careers.py JOB_HOST"
   },

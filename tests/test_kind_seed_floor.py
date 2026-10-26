@@ -96,6 +96,39 @@ class EveryPathTests(AiFirst):
         self.assertEqual(self.client.calls, 0)
 
 
+class AnInstallWithStateTests(AiFirst):
+    """The owner's install on 26 Oct 2026 (rows shaped like his, made up here): no role-kind row, pool-role "pilot first officer -> none",
+    a few job-title-kind rows, and an answer kept before the kinds grew. The search must come out as aviation and read no office firm."""
+    def test_the_pilot_search_with_old_kept_answers_reads_aviation_employers_only(self):
+        from src import employer_index
+        import tempfile
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = Path(folder.name) / 'jobs.sqlite'
+        db = decide._table(sqlite3.connect(path))
+        db.executemany('INSERT INTO decisions (topic, key, answer, at) VALUES (?, ?, ?, ?)', [
+            ('pool-role', 'pilot first officer', 'none', '2026-10-25T22:48:00+00:00'),
+            ('pool-family', 'pilot first officer', 'none', '2026-10-25T22:48:00+00:00'),
+            ('role-kind', 'first officer', 'finance_admin', '2026-10-20T09:00:00+00:00'),   # before the kinds grew: asked again
+            ('job-title-kind', 'accountant', 'finance_admin', '2026-10-26T01:00:00+00:00')])
+        db.commit()
+        db.close()
+        with mock.patch.object(decide, '_db', lambda: sqlite3.connect(path)):
+            search = {'role_keywords': ['First Officer', 'pilot first officer'], 'locations': {}}
+            wanted = role_kinds.of_search(search)
+            roles, _ = contribute.tags(search)
+        self.assertEqual(wanted, {'aviation_transport'})
+        self.assertNotIn('finance_admin', roles)
+        index = [{'company': 'Office firm', 'places': ['Zurich'], 'kinds': {'finance_admin': 1.0}, 'checked': '2026-10-27'},
+                 {'company': 'Airline', 'places': ['Zurich'], 'kinds': {'aviation_transport': 0.3, 'other': 0.7}, 'checked': '2026-10-27'},
+                 {'company': 'Not counted yet', 'places': ['Zurich']}]
+        zurich = lambda job: 'zurich' in job['location'].lower()
+        self.assertEqual([f['company'] for f in employer_index.relevant(index, zurich, wanted)], ['Airline', 'Not counted yet'])
+        with sqlite3.connect(path) as db:
+            kept = dict(db.execute("SELECT key, answer FROM decisions WHERE topic = 'role-kind'").fetchall())
+        self.assertEqual(kept['first officer'], 'aviation_transport', 'the AI answer replaces the old one and is kept')
+
+
 class WithoutTheAiTests(AiFirst):
     def test_with_no_ai_at_all_the_old_lists_are_the_floor(self):
         with mock.patch.object(decide.engine, 'ready', return_value=False):

@@ -73,6 +73,7 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   "Suisse" was only proposed: the identity floor compared words. The floor now compares the country, for a listed option only.
 
 ## Desktop UI
+- **Large optional parts download on first use** (owner, 26 Oct 2026, on the hybrid-fill research: "we don't want to include the chromium in the installation size. it should be downloaded separately, when the user needs it for the first time. Just like for the interview audio recording, or for the libreoffice docx support. We should show the user a progress/downloading bar. We should give him feedback what's happening under the hood"). Measured then: Playwright's Chromium is 170 MB compressed, 360 MB on disk (mac arm64); the installer had been cut from 208 to 129 MB by moving transcription to a first-use download.
 - **A new feature looks like the old ones** (5 Oct 2026): "Prepare top matches" shipped as raw Telegram text while every other task had a card;
   four cards had drifted from the engine's message format, hence the message contract test.
 - **Confirm a mockup before code** (28 Sep 2026): Profile moved and back, Settings saving changed twice, Actions redesigned 3× in one day.

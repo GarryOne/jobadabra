@@ -199,7 +199,7 @@ def technical_search(search):
 def sources(env=None):
     """[(name, reader)] of the aggregators this install may use now (free ones always; keyed ones when their keys are set)."""
     env = os.environ if env is None else env
-    from ..features import disabled
+    from ..features import disabled, off
     found = [] if disabled('aggregators', env) else [('Arbeitnow', lambda search: arbeitnow()), ('Himalayas', lambda search: himalayas()),
                                                       ('Jobicy', lambda search: jobicy() if technical_search(search) else [])]   # its tags are IT ones
     if not disabled('aggregators', env) and not disabled('jobsch', env):
@@ -207,9 +207,9 @@ def sources(env=None):
     if not disabled('aggregators', env) and not disabled('found_boards', env):   # boards found for your countries (src/sources/found_boards.py)
         from . import found_boards
         found.append(('Job boards found', found_boards.read))
-    if env.get('ADZUNA_APP_ID') and env.get('ADZUNA_APP_KEY') and not disabled('adzuna', env):
+    if env.get('ADZUNA_APP_ID') and env.get('ADZUNA_APP_KEY') and not off('adzuna', env):   # parked (src/features.py PARKED): the key stays saved, unused
         found.append(('Adzuna', adzuna))
-    if env.get('JOOBLE_API_KEY') and not disabled('jooble', env):
+    if env.get('JOOBLE_API_KEY') and not off('jooble', env):
         found.append(('Jooble', jooble))
     return found
 

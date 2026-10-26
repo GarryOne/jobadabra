@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {keySources, KEY_SOURCE_IDS, offered} from '../renderer/key-sources.js';
+import {keySources, KEY_SOURCE_IDS, offered, shownLists} from '../renderer/key-sources.js';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const CARDS = ['activity-render.js', 'activity-run-card.js', 'activity-few-jobs.js', 'activity-basics.js'].map(name => [name, read(`renderer/pages/${name}`)]);
@@ -28,6 +28,17 @@ test('the three API-key sources are offered nowhere while the flag is off, and P
   for (const id of KEY_SOURCE_IDS) assert.equal(offered(id), false);
   assert.match(read('../src/coverage.py'), /^KEY_SOURCES_OFFERED = False$/m);
   assert.match(read('renderer/pages/settings.js'), /ALL_SERVICES\.filter\(service => offered\(service\.id\)\)/);
+});
+
+test('Strategy draws no Google Jobs searches or places while Google Jobs is parked, and keeps them once it is back', () => {
+  const lists = [['finders', 'Words that find new employers'], ['gqueries', 'Google Jobs searches'], ['gplaces', 'Google Jobs places']];
+  assert.deepEqual(shownLists(lists).map(([name]) => name), ['finders']);
+  const targets = read('renderer/pages/strategy-targets.js'), skeleton = read('renderer/pages/strategy.js');
+  assert.match(targets, /of shownLists\(lists\)/, 'the open editor');
+  assert.match(targets, /offered\('serpapi'\) \? \[row\('search', 'Google Jobs searches'/, 'the read view');
+  assert.match(skeleton, /of shownLists\(lists\)/, 'the loading skeleton');
+  keySources.offered = true;
+  try { assert.equal(shownLists(lists).length, 3); } finally { keySources.offered = false; }
 });
 
 test('a coverage answer that still carries the key sources draws no row for them', async () => {

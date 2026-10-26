@@ -124,7 +124,9 @@ class ChecksTest(unittest.TestCase):
         self.assertIn('on: discover, telegram, notion, scout', check.detail)
         self.assertIn('not set up: enrich', check.detail)
         self.assertIn('switched off: google_jobs', check.detail)
-        self.assertIn('parked: job_alerts', doctor.check_features({'GOOGLE_REFRESH_TOKEN': 'set', 'ANTHROPIC_API_KEY': 'set'}).detail)
+        parked = doctor.check_features({'GOOGLE_REFRESH_TOKEN': 'set', 'ANTHROPIC_API_KEY': 'set'}).detail.split('parked: ')[1]
+        for name in ('job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'):
+            self.assertIn(name, parked)
         self.assertEqual(doctor.check_features({'JOB_PILOTTO_DISABLE': 'all'}).state, INFO)
 
     def test_no_kits_points_to_prepare_top(self):

@@ -10,6 +10,7 @@ import {$, show} from './core.js';
 import {openView} from './nav.js';
 import {searchLevel} from '../goal-kinds.js';
 import {toastMessage} from './startup.js';
+import {offered, shownLists} from '../key-sources.js';
 import {titleCase} from './strategy-review.js';
 import {showSearchChanged, wireSearchChanged} from '../search-changed.js';
 import {exclusionGroups, withTyped} from '../strategy-parts.js';
@@ -42,6 +43,7 @@ export const TARGET_CARDS = [
     ['gplaces', 'Google Jobs places: "City,Region,Country · language"', 'Add a place, e.g. Zurich,Zurich,Switzerland · de']]],
 ];
 export const TARGET_LISTS = ['roles', ...TARGET_CARDS.flatMap(([, , , lists]) => lists.map(([name]) => name))];
+export {shownLists};
 // Advanced search settings: one column of full-width cards (owner, 25 Oct 2026: "2 columns with very different heights, let's better have 1 column, and
 // full rows cards"; they hold lists that grow with the user's data, so each is .is-wide in the shared .card-grid).
 export const ADVANCED = ['stack', 'languages', 'search'];
@@ -165,7 +167,7 @@ function targetCard([key, glyph, title, lists]) {
   card.append(cardHeader(key, glyph, CARD_TONE[key] || 'neutral', title, LEADS[key] || '', card));
   if (key === 'places') card.append(...[coverageLine(reloadTargets)].filter(Boolean));   // visible in both modes, Advanced or not
   if (!open) { const read = el('div', 'card-read'); read.append(...VIEWS[key]()); card.append(read); return card; }
-  for (const [name, label, placeholder] of lists) {
+  for (const [name, label, placeholder] of shownLists(lists)) {
     // Relocation is a value (Yes / No / Not specified); its places are asked only for Yes, and kept whatever the mode.
     if (name === 'abroad') { card.append(el('p', 'sub', 'Relocation'), relocationChoice(renderTargets)); if (relocationNow(strategyState.lastStrategy, drafts().targetEdits) !== 'yes') continue; }
     const box = listChips(name, placeholder);
@@ -249,8 +251,8 @@ const VIEWS = {
     };
     return [readRows([{icon: 'user', label: 'Your level', value: levelChoice()}, {icon: 'target', label: 'Minimum fit score for the digest', value: minScoreInput()},
       row('close', 'Job titles to skip', 'titleSkip', 'None'), row('building', 'Companies to skip', 'skip', 'None'), row('globe', 'Remote jobs: regions to skip', 'remoteSkip', 'None'),
-      row('sparkle', 'Words that find new employers', 'finders', 'None'), row('search', 'Google Jobs searches', 'gqueries', 'None: Google Jobs is not searched'),
-      row('pin', 'Google Jobs places', 'gplaces', 'None')], {lined: true})];
+      row('sparkle', 'Words that find new employers', 'finders', 'None'),
+      ...(offered('serpapi') ? [row('search', 'Google Jobs searches', 'gqueries', 'None: Google Jobs is not searched'), row('pin', 'Google Jobs places', 'gplaces', 'None')] : [])], {lined: true})];
   },
   languages() {
     const data = strategyState.lastStrategy, {languages, hide, lower} = exclusionGroups({...data, texts: {...data?.texts, languages: labelsOf('languages')}});

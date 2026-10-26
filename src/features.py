@@ -44,10 +44,12 @@ FEATURES = (
             'paid', 'JOB_PILOTTO_AUTO_KIT_MAX=5 (plus the AI key and Notion)'),
     Feature('insights', 'Daily insight + weekly report', (AI, 'JOB_PILOTTO_INSIGHT_MODEL', 'NOTION_TOKEN'),
             'paid', 'JOB_PILOTTO_INSIGHT_MODEL=claude-sonnet-5-5 (plus the AI key and Notion)'),
-    Feature('web_search', "Web search for an employer's own job site (Brave Search, else SerpApi's Google)", (('BRAVE_SEARCH_API_KEY', 'SERPAPI_API_KEY'),), 'free tier',
-            'The plan engine\'s own web search first (Claude Code or Codex, when it is the AI engine); then BRAVE_SEARCH_API_KEY (brave.com/search/api, free 2,000/month), then SERPAPI_API_KEY'),
+    Feature('web_search', "Web search for an employer's own job site: the user's own plan (Claude Code or Codex), else the Brave or SerpApi key while not parked", (('BRAVE_SEARCH_API_KEY', 'SERPAPI_API_KEY'),), 'free tier',
+            'The plan engine\'s own web search first (Claude Code or Codex, when it is the AI engine or signed in); the Brave key (brave_search) and the SerpApi key (google_jobs) are parked'),
+    Feature('brave_search', 'Brave Search API for the web search when no plan search is there', ('BRAVE_SEARCH_API_KEY',), 'free tier',
+            'parked: JOB_PILOTTO_ENABLE=brave_search with BRAVE_SEARCH_API_KEY (brave.com/search/api, free 2,000/month)'),
     Feature('google_jobs', 'Google Jobs via SerpApi', ('SERPAPI_API_KEY',), 'free tier',
-            'SERPAPI_API_KEY from serpapi.com (free plan: 250 searches/month)'),
+            'parked: JOB_PILOTTO_ENABLE=google_jobs with SERPAPI_API_KEY from serpapi.com (free plan: 250 searches/month)'),
     Feature('transcribe', 'Interview recordings -> transcript with speakers (on this machine)', (), 'free',
             'pip install -r requirements-transcribe.txt (the app installs it on the first recording, ~115 MB); models download once (~520 MB)'),
     Feature('focus', 'Focus: what to do next, and reminders against a daily target', ('NOTION_TOKEN',), 'free',
@@ -78,8 +80,8 @@ FEATURES = (
     Feature('found_boards', 'Job boards found for your countries and roles: the AI proposes them once, their public search pages are read', (AI,), 'paid',
             'on with the AI key (one main-model call when your places or roles change); JOB_PILOTTO_DISABLE=found_boards turns it off'),
     Feature('adzuna', 'Adzuna job search (19 countries incl. Switzerland)', ('ADZUNA_APP_ID', 'ADZUNA_APP_KEY'), 'free tier',
-            'free keys from developer.adzuna.com'),
-    Feature('jooble', 'Jooble job search', ('JOOBLE_API_KEY',), 'free tier', 'a free key from jooble.org/api/about'),
+            'parked: JOB_PILOTTO_ENABLE=adzuna with free keys from developer.adzuna.com'),
+    Feature('jooble', 'Jooble job search', ('JOOBLE_API_KEY',), 'free tier', 'parked: JOB_PILOTTO_ENABLE=jooble with a free key from jooble.org/api/about'),
     Feature('job_alerts', 'Jobs from your own job-alert emails (LinkedIn, jobs.ch, jobup.ch, Indeed, Glassdoor) in Gmail', ('GOOGLE_REFRESH_TOKEN', AI), 'paid',
             'parked: JOB_PILOTTO_ENABLE=job_alerts with Gmail connected and job alerts switched on at those sites; a fraction of a cent per alert email'),
 )
@@ -87,8 +89,11 @@ BY_NAME = {f.name: f for f in FEATURES}
 
 # Parked: off for everyone, and hidden in the app (index.html data-parked="<name>"), until listed in JOB_PILOTTO_ENABLE.
 # job_alerts (owner, 26 Oct 2026): "let's park/disable/hid this functionality for now. It's too advanced."
+# adzuna, jooble, google_jobs, brave_search (owner, 26 Oct 2026, the Adzuna and Jooble card): "let's hide/disable this functionality for noow. Is to
+# hadr to use for my users." Each asks the user to register for an API key; a key already saved stays in the Keychain, unused. Web search itself is
+# not parked: without a key it runs on the user's own plan (src/sources/web_search.py provider); only its Brave and SerpApi key paths are.
 # Guard: tests/test_parked_features.py (off, and no visible entry in the app, for every name here).
-PARKED = frozenset({'job_alerts'})
+PARKED = frozenset({'job_alerts', 'adzuna', 'jooble', 'google_jobs', 'brave_search'})
 
 
 def disabled_names(env=None):
@@ -106,6 +111,11 @@ def parked(name, env=None):
     """True for a parked feature not listed in JOB_PILOTTO_ENABLE (comma-separated)."""
     env = os.environ if env is None else env
     return name in PARKED and name not in {n.strip().lower() for n in (env.get('JOB_PILOTTO_ENABLE') or '').split(',')}
+
+
+def off(name, env=None):
+    """True when the feature is switched off (JOB_PILOTTO_DISABLE) or parked: the one check a source makes before it uses its key."""
+    return disabled(name, env) or parked(name, env)
 
 
 def _has(env, need):

@@ -134,11 +134,16 @@ def finish(started, proposed, timeout=None, data=None):
     data: the read's found_boards.json, given what a search started with the run recorded on its own copy."""
     if started is None:
         return []
+    from . import read_budget
     future, copy = started if isinstance(started, tuple) else (started, None)
-    try:
-        found = future.result(timeout=timeout) or []
+    try:   # never past the search's cut (src/sources/read_budget.py cut_at)
+        found = future.result(timeout=timeout) if timeout is not None else read_budget.result(future, read_budget.cut_at())
     except Exception:  # noqa: BLE001 — the proposal's boards stand
         return []
+    if found is read_budget.LEFT:
+        print("Job boards: the web search did not answer in the search's time; it is asked again next time", flush=True)
+        return []
+    found = found or []
     if data is not None and copy is not None and copy is not data:
         _merge(data, copy)
     hosts = {board['host'] for board in proposed}

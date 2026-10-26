@@ -72,6 +72,12 @@ def candidates():
 def fill_missing(jobs, fetch=None):
     """Set the company of jobs that have none from their job page's hiringOrganization; at most MAX_LOOKUPS pages, refusals left alone."""
     fetch = fetch or globals()['fetch']
+    from . import read_budget
+    if read_budget.past_cut():   # past the search's read cut no page is read: the next search names them (tests/test_three_minutes.py)
+        waiting = min(MAX_LOOKUPS, sum(1 for job in jobs if missing(job.get('company')) and job.get('url')))
+        from .. import time_budget
+        time_budget.later('employer names', waiting, 'job pages' if waiting != 1 else 'job page')
+        return
     asked = 0
     for job in jobs:
         if not missing(job.get('company')) or not job.get('url'):

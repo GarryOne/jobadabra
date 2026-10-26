@@ -20,10 +20,12 @@ PLANNED = 180   # the app's budget, which the seconds below are planned for (par
 RESERVE = {'titles': 70, 'enrich': 40, 'score': 0}   # seconds kept for the AI steps that come after this one
 FACTS = 25   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
 TAIL = 15    # no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)
+SCORING = 45   # seconds before scoring's own stop where the title floor (LOCAL_TITLES) starts no call: scoring keeps them (26 Oct 2026, a proof
+#                on a copy of the owner's data: the floor's title calls held the board read to 136 s and a search scored only its 3 floor jobs)
 SCORE_FIRST = False
 # Every stage that reads or calls the AI after the budget starts (tests/test_three_minutes.py loops over them; a new one goes here and there).
 STAGES = ('web search', 'job boards', 'employer sites', 'free job APIs', 'Google Jobs', 'job-alert emails', 'descriptions', 'places',
-          'title sorting', 'scoring', 'job facts', 'kits')
+          'title sorting', 'scoring', 'job facts', 'kits', 'employer names')
 _said = set()   # the stages that said their time-up line in this search (later)
 FLOOR = 3     # the first jobs of a search are scored whatever the clock says (owner, 18 Oct 2026: "Yes, always 3"): a new user sees fits in press 1
 _scored = [0]  # scores started in this search (may_score)
@@ -76,12 +78,17 @@ def local_titles(wanted):
     """How many of `wanted` titles located in the user's own places are sorted whatever the clock says (and counted): the search's first
     LOCAL_TITLES. 24 Oct 2026, Chisinau: ~750 worldwide-remote titles spent the 3 minutes, and a Moldovan board's titles (the only local jobs)
     were left "for the next refresh" at 158 s."""
-    if ended():   # the floor beats the titles' reserve, never the run's end
+    if ended() or _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING)
         return 0
     with _lock:
         n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
         _local[0] += n
         return n
+
+
+def _scorings(now=None):
+    """Scoring's own share has begun: SCORING seconds before scoring stops (reserve('score'))."""
+    return DEADLINE is not None and (now if now is not None else time.monotonic()) >= DEADLINE - reserve('score') - part(SCORING)
 
 
 def may_score(now=None):

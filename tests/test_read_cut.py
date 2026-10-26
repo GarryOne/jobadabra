@@ -80,7 +80,8 @@ class NoReadHoldsTheRun(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch.object(read_budget, 'READ_SECONDS', CUT / 2),
+        for patch in (mock.patch('src.paths.DATA', Path(tmp.name)), mock.patch('src.paths.JOBS_DB', Path(tmp.name) / 'jobs.sqlite'),   # decide's cache
+                      mock.patch.object(read_budget, 'READ_SECONDS', CUT / 2),
                       mock.patch.object(read_budget, 'READ_GRACE', CUT / 2, create=True)):
             patch.start()
             self.addCleanup(patch.stop)
@@ -90,13 +91,16 @@ class NoReadHoldsTheRun(unittest.TestCase):
         for name, (read, expected) in READERS.items():
             with self.subTest(name):
                 (paths.DATA / late_reads.FILE).unlink(missing_ok=True)   # each reader its own run: no page kept from the one before (late_reads)
-                hang = threading.Event()
+                hang, threads = threading.Event(), threading.active_count()
                 time_budget.start(180)
                 began = time.monotonic()
                 with redirect_stdout(io.StringIO()):
                     got = read(hang)
                 took = time.monotonic() - began
                 hang.set()
+                end = time.monotonic() + 5
+                while threading.active_count() > threads and time.monotonic() < end:   # the left read ends and keeps its page before the next reader
+                    time.sleep(0.02)
                 self.assertLess(took, CUT + 1.5, f'{name}: waited {took:.1f} s for a site that hangs (the old code waited for it)')
                 self.assertTrue(expected(got), f'{name}: {got}')
 

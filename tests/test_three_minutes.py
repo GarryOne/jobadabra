@@ -142,6 +142,9 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
             from src.ai import kit
             with mock.patch.object(kit, 'pending_for_auto', return_value=[{'id': 1}]), mock.patch.object(kit.engine, 'client', side_effect=spy):
                 kit.auto_run(self.db, [], mock.Mock(), 'model', 3, 70)
+        elif stage == 'employer names':
+            from src.sources import board_employers
+            board_employers.fill_missing([{'company': 'Unknown employer', 'url': 'https://x.test/1'}], fetch=spy)
         else:
             raise AssertionError(f'{stage}: no check here; add one')
 
@@ -176,7 +179,7 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
     def test_before_the_cut_the_stages_work(self):
         time_budget.start(BUDGET)
         with redirect_stdout(io.StringIO()):
-            for stage in ('employer sites', 'title sorting', 'scoring', 'job facts'):
+            for stage in ('employer sites', 'title sorting', 'scoring', 'job facts', 'employer names'):
                 with self.subTest(stage):
                     self.assertTrue(self.work(stage), stage)
 

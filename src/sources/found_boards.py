@@ -358,6 +358,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         return (board, entry, handed[1] if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 and not early else {}, {}, proposed)
     reads = [item(board) for board in todo]
     late_pages = {} if early else {board['host']: page for board in todo if (page := late_reads.take('board', board['host'])) is not None}
+    if late_pages:
+        print(f"Job boards: {len(late_pages)} read after the last search's time taken from it, not read again", flush=True)
     hosts = {board['host'] for board in todo}
     spares = list(enumerate(item(board) for board in (board_yield.pick(spare, kept, retry, dropped, remember=False) if spare else [])
                             if board['host'] not in hosts))

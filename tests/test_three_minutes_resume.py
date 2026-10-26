@@ -173,6 +173,9 @@ class ARunResumesWhereTheLastOneStopped(Isolated):
     def stage_kits(self):
         return self.queued_only('kits')
 
+    def stage_employer_names(self):
+        return self.queued_only('employer names')
+
     def ai_runs(self, ask, client, k):
         """Run 1 cut after `k` AI calls (its in-flight calls end and are kept), run 2 with its own time: (asked in 1, asked in 2)."""
         calls = []

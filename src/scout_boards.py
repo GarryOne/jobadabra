@@ -72,9 +72,9 @@ def local_of(jobs, country):
     return [job for job in jobs if where.get(str(job.get('location') or ''))]
 
 
-def measure(board, jobs, country):
-    """The fact for one board's read: jobs whose place is in `country` (their role families by title), or None under MIN_LOCAL."""
-    local = local_of(jobs, country)
+def measure(board, jobs, country, local=None):
+    """The fact for one board's read: jobs whose place is in `country` (or `local`, when given), their role families by title; None under MIN_LOCAL."""
+    local = local_of(jobs, country) if local is None else local
     if len(local) < MIN_LOCAL:
         return None
     titles = list(dict.fromkeys(str(job.get('title') or '') for job in local if job.get('title')))[:40]
@@ -82,7 +82,7 @@ def measure(board, jobs, country):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None, google=None):
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None, google=None, country_of=None):
     """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
     from .ai import board_ideas
     from .sources import careers, found_boards
@@ -106,8 +106,12 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
                 if clock() - began > BUDGET_S:
                     break
                 jobs, state, _ = (read_board or found_boards.read_board)(board, search, careers.get_text)
-                fact = measure(board, jobs, country)
-                counts.append(f"{board['host']} {len(jobs)}/{len(local_of(jobs, country)) if jobs else 0}")
+                local, placeless = local_of(jobs, country), [job for job in jobs if not str(job.get('location') or '').strip()]
+                # a list with no places (they are on each job's page): the AI names the board's country; only 'this country' counts them
+                whole = bool(placeless) and len(local) < MIN_LOCAL and (country_of or _country_of)(board, country) == 'this country'
+                fact = measure(board, jobs, country, local + placeless if whole else local)
+                counts.append(f"{board['host']} {len(jobs)}/{len(local) + (len(placeless) if whole else 0)}"
+                              + (' (no places; the AI: this country)' if whole else ''))
                 if fact:
                     kept.append(fact)
                 elif state in ('empty', 'browser'):
@@ -137,6 +141,16 @@ def _google(db, country, kinds, out):
     def ask(*question):   # its own allowance: title sorting spends the scout's 600 first (owner, 26 Oct 2026, "Own 15-call allowance")
         return decide.one(*question, allowance=scout_google_boards.MAX_JUDGED)
     return scout_google_boards.boards(db, country, kinds, lambda board, roles: board_check.field_kind(board, careers.get_text, roles, ask=ask), out=out)
+
+
+def _country_of(board, country):
+    """The AI's answer to which country's jobs this board lists (src/sources/board_check.py lists_country), on the board pass's own allowance."""
+    from .ai import decide
+    from .sources import board_check, careers
+
+    def ask(*question):
+        return decide.one(*question, allowance=MAX_BOARDS)
+    return board_check.lists_country(board, careers.get_text, pool_tags.COUNTRIES.get(country, country), ask=ask)
 
 
 def facts(db, today=None):

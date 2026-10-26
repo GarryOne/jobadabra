@@ -133,3 +133,28 @@ def field_kind(board, fetch, roles, ask=None):
     text = f"Looking for work as: {', '.join(roles)}\n{digest(page)}"
     answer = ask(FIELD_TOPIC, urllib.parse.urlsplit(address).hostname, text, FIELD_KINDS, FIELD_INSTRUCTIONS)
     return answer if answer in FIELD_KINDS else None
+
+
+COUNTRY_ANSWERS = ('this country', 'several countries or remote', 'another country')
+COUNTRY_TOPIC = 'job board country'
+COUNTRY_INSTRUCTIONS = ("A job board's page and the country named first. Say where the job offers it lists are: 'this country' when they are in "
+                        "that country (a national or local board of it), 'several countries or remote' when they span countries or are remote "
+                        "jobs, 'another country' when they are in one other country.")
+
+
+def lists_country(board, fetch, country_name, ask=None):
+    """'this country', 'several countries or remote' or 'another country' for the jobs this board's page lists; None when unknown (no page,
+    no AI answer). The central scout counts a board's place-less jobs in a country only on 'this country' (src/scout_boards.py; owner,
+    26 Oct 2026, "AI names the board's country"). Tests: tests/test_board_country.py."""
+    address = home(board) if '{' in board['search_url'] else board['search_url']
+    try:
+        page = str(fetch(address) or '')
+    except Exception:  # noqa: BLE001 — a refusal or a passing error: unknown
+        return None
+    if not page.strip():
+        return None
+    if ask is None:
+        from ..ai import decide
+        ask = decide.one
+    answer = ask(COUNTRY_TOPIC, urllib.parse.urlsplit(address).hostname, f'Country: {country_name}\n{digest(page)}', COUNTRY_ANSWERS, COUNTRY_INSTRUCTIONS)
+    return answer if answer in COUNTRY_ANSWERS else None

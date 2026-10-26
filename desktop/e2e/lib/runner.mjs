@@ -61,8 +61,12 @@ export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)
 // faultTally: () => the fakes' {armed, failed} counters (lib/faults.mjs), to check that a step's fault fired.
 // report (the Playwright HTML report, lib/suite-main.mjs): each step runs as a Playwright step, with a screenshot of the window when it ends (the failure's, if it failed).
 const pictureOf = async session => (session?.page ? Promise.race([session.page.screenshot().catch(() => null), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
-export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, stepNeeds = {}, faultTally = null, report = null} = {}) {
+// stepNeeds null: the suite declares none, so its steps may build on every earlier one (quality's checks read the rows its Jobs check wrote, after the step that loads
+// the golden postings): a picked run then runs every step up to the last picked one and skips only the rest (#2108, 26 Oct 2026). Declared (even {}): the precise pick.
+export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, stepNeeds = null, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
+  const buildsOn = stepNeeds == null && picked.length > 0 && !String(process.env.E2E_STEPS || '').trim();
+  const allFound = () => picked.every(name => name === PICK_SETUP || found.has(name));
   let overBudget = false;
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
   async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = STEP_LIMIT_MS, elsewhere = false} = {}) {
@@ -77,9 +81,10 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
     }
     const fn = () => withLimit(Promise.resolve().then(rawFn), Math.min(limitMs, left), name, getSession, left < limitMs ? budgetMs : 0);   // faults: the step breaks things on purpose, so a broken answer is the product's to handle: never retried, never "environment"
     // E2E_STEPS=tailor,seeded runs only the steps whose name contains one of these words (and the critical setup): a quick way to re-run one step of a long suite.
-    const only = wantedWords([...(process.env.E2E_STEPS || '').split(',').map(word => word.trim()).filter(Boolean), ...picked], stepNeeds);
+    const only = wantedWords([...(process.env.E2E_STEPS || '').split(',').map(word => word.trim()).filter(Boolean), ...picked], stepNeeds || {});
+    const doneBefore = allFound();
     if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase());
-    if (only.length && !critical && !only.some(word => name.toLowerCase().includes(word))) return;
+    if (buildsOn ? !critical && doneBefore : only.length && !critical && !only.some(word => name.toLowerCase().includes(word))) return;
     const missing = needs.filter(item => !item.value);
     if (missing.length) { results.push({name, status: 'skipped'}); console.log(`- ${name}: skipped (needs ${missing.map(item => item.name).join(', ')})`); await report?.skipStep(name).catch(() => {}); return; }
     const started = Date.now(), before = faultTally?.();

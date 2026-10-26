@@ -43,7 +43,7 @@ export function notionToken(suite, {own: ownOnly = false, env = process.env} = {
 
 // browser: the suite drives a real Chromium with the extension (lib/extension.mjs): the fixture forms are served, and the app's `open` reaches that browser.
 // engine: a suite whose steps the AI proxy answers pins 'api' (a placeholder key on a Mac); otherwise a Mac uses Claude Code, CI the API key (lib/engine.mjs).
-export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, stepNeeds = {}, report = null} = {}) {
+export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});

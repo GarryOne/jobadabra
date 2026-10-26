@@ -7,10 +7,11 @@ import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
 import {openActivity, refreshActivity, showSearchStatus} from './activity.js';
-import {paintFindCardFirst, renderFindCard, wireFindCard} from './jobs-find.js';
+import {paintFindCardFirst, renderFindCard, showFindRefused, wireFindCard} from './jobs-find.js';
 import {$, message, savedAgo} from './core.js';
 import {refreshSessions, sessionJob, sessionList} from './sessions.js';
-import {toastMessage} from './startup.js';
+import {sayRefused, toastMessage} from './startup.js';
+import {refusal} from '../refusal.js';
 import {hostStats, snapshot} from '../intel.js';
 import {searchSelect} from '../search-select.js';
 import {jobsState, MORE, fullKey} from './jobs-state.js';
@@ -199,14 +200,22 @@ export function showJobsIn(label, urls, from = '') {
 // Refresh jobs, from any button that starts one (Refresh, "score the unscored", Strategy's Re-score them now): the header status
 // shows "Refreshing jobs →", the run joins Recent activity, the list reloads after. Resolves when the search ends.
 // why: what this refresh is for beyond finding jobs ({reason: 'rescore', count}), said on its row in Recent activity (main.js refresh).
+// Every Find jobs press (the card, Refresh, Strategy, Re-score, Find employers, search changed) comes here. A refusal (no AI credit, trial over,
+// Always on could not start it) is said on the Find jobs card, or in a pop-up when the card is not on screen (26 Oct 2026: the press was silent).
+// -> the main process's answer.
 export async function startSearch(why = undefined) {
   refreshBusy(true);   // "Your search changed": this refresh applies it
   $('refresh').disabled = true;
+  showFindRefused(null);
   renderJobs();   // the empty list stops offering "Refresh jobs" while one runs
   shared.selectedRun = null;
   setTimeout(() => { showSearchStatus(); refreshActivity(); window.pilot.runs().then(renderFindCard).catch(() => {}); }, 300);
+  let result = null;
   try {
-    await window.pilot.refresh(why);
+    result = await window.pilot.refresh(why).catch(error => ({ok: false, error: error.message}));
+    const refused = refusal(result);
+    if (refused && !showFindRefused(refused)) sayRefused(why?.reason === 'rescore' ? 'Re-score did not start' : why?.employers ? 'Find employers did not start' : 'Find jobs did not start', result);
+    return result;
   } finally {
     $('refresh').disabled = false;
     loadJobs();

@@ -29,7 +29,9 @@ test('the re-score starts only from the dialog, once at a time, until its search
   assert.equal((screen.match(/window\.pilot\.rescoreOutdated\(\)/g) || []).length, 1);
   assert.match(screen, /if \(dialog\.returnValue !== 'go' \|\| busy\) return;/);
   assert.match(screen, /go\.disabled = busy;/);
-  assert.match(screen, /await startSearch\(\{reason: 'rescore', count: result\.queued\}\);[^\n]*resolves when the search ends/);
+  assert.match(screen, /const search = startSearch\(\{reason: 'rescore', count: result\.queued\}\);[^\n]*resolves when the search ends/);
+  assert.match(screen, /\n\s*await search;/, 'busy until its search ends');
+  assert.match(screen, /if \(refusal\(await Promise\.race\(\[search, /, '"Re-scoring now" only when the search was not refused (test/start-refusals.test.js)');
   assert.match(screen, /finally \{\s*busy = false;/);
 });
 

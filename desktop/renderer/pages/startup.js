@@ -8,7 +8,8 @@ import {$, show} from './core.js';
 import {loadJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
 import {PANEL_KEY, openActivity} from './activity.js';
-import {settingsPage} from './settings.js';
+import {openSetting, settingsPage} from './settings.js';
+import {refusal, refusalAction} from '../refusal.js';
 import {toDraft} from './strategy-review.js';
 import {openTarget} from './open-target.js';
 import {goStep} from './wizard.js';
@@ -36,6 +37,16 @@ export function toastMessage(title, body, hint) {
   $('toasts').append(toast);
   setTimeout(() => toast.remove(), hint || action ? 20000 : 8000);   // a step to take stays long enough to take it
   return toast;
+}
+
+// A start button's run was refused (renderer/refusal.js): its reason in a pop-up, with Settings → Plan one press away when that fixes it.
+// -> the refusal, or null when the run started (then nothing is said here).
+export function sayRefused(title, result) {
+  const why = refusal(result);
+  if (!why) return null;
+  const label = refusalAction(why);
+  toastMessage({title, body: why.text, action: label ? {label, run: () => openSetting('plan')} : null});
+  return why;
 }
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).

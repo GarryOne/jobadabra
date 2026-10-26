@@ -14,7 +14,7 @@ import {openActivity} from './activity.js';
 import {$, show} from './core.js';
 import {openSession} from './session-log.js';
 import {SESSION_PILL, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
-import {toastMessage} from './startup.js';
+import {sayRefused, toastMessage} from './startup.js';
 import {openFeedback} from './feedback.js';
 import {outcomeChoices, reopenable} from '../outcome-tap.js';
 import {scoreBucket} from '../intel.js';
@@ -180,7 +180,8 @@ export function renderJobs() {
     // Chrome opens the job's form and the extension fills it at once from the kit.
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
-      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ } else if (button) button.textContent = 'No link';
+      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
+      else if (sayRefused('Apply did not start', result)) { /* why, in a pop-up (no AI credit, trial over, Notion): never "No link" */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.');
     };
     if (job.status !== 'applied' && job.url && (job.kit || job.ready)) {
@@ -239,7 +240,7 @@ export function renderJobs() {
         // On GitHub (Always on): the row says so; the list reloads when it's done, and the form is not opened for you.
         if (result.cloud) preparing.set(job.code, 'cloud');
         else if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
-        else preparing.set(job.code, 'failed');
+        else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });
       box.append(prepare);

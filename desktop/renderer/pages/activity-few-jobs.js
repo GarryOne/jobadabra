@@ -10,6 +10,7 @@ import {reviewSuggestion} from './strategy.js';
 import {keepPress, setPress, pressedButton, pressWhile} from './activity-visits.js';
 import {openActivity} from './activity-panel.js';
 import {startSearch} from './jobs.js';
+import {sayRefused} from './startup.js';
 
 // A jobs check with few new jobs: why, and what would bring more, as buttons on the card itself (owner, 6 Oct 2026). The actions come from the
 // coverage answer (renderer/coverage-actions.js), least effort first; "Explain with AI" asks Claude only when clicked (src/ai/few_jobs.py).
@@ -127,6 +128,7 @@ export function withFewJobsHelp(runId) {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));
         if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', '✓ Reading in Chrome'); return; }
         onScreen('read-sites').title = result?.text || read.title;
+        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || 'Try again.'});   // said, not only in the button's tooltip (renderer/refusal.js)
       });
       items.push(row('external', 'Browse sites manually', [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
     }

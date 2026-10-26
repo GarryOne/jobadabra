@@ -11,7 +11,7 @@ import {showFullReport} from './full-report.js';
 import {renderSessionPage} from './session-log.js';
 import {renderDock} from './sessions.js';
 import {CHECK_MS} from '../session-state.js';
-import {toastMessage} from './startup.js';
+import {sayRefused, toastMessage} from './startup.js';
 import {stopRunning} from '../stop-task.js';
 import {showSearchStatus} from './activity-basics.js';
 import {renderFindCard} from './jobs-find.js';
@@ -110,7 +110,8 @@ export async function init() {
     $('check-mail').disabled = true;
     shared.selectedRun = null;
     try {
-      const result = await window.pilot.checkMail();
+      const result = await window.pilot.checkMail().catch(error => ({ok: false, error: error.message}));
+      sayRefused('Gmail check did not start', result);   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
       if (result.cloud) toastMessage('Gmail check started in your GitHub repo', 'Results arrive in Notion and Telegram in a few minutes.');   // about Notion
     } finally {
       $('check-mail').disabled = false;

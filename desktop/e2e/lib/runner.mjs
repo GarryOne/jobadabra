@@ -33,12 +33,20 @@ export function wantedWords(words, stepNeeds = {}) {
   for (let grew = true; grew;) {
     grew = false;
     for (const [step, needs] of Object.entries(stepNeeds)) {
-      if (![...wanted].some(word => step.toLowerCase().includes(word))) continue;
+      if (![...wanted].some(word => step.toLowerCase().includes(word) || word.includes(step.toLowerCase()))) continue;   // a word of it, or a full step name (E2E_STEP_NAMES) that contains it
       for (const need of needs) if (!wanted.has(need.toLowerCase())) { wanted.add(need.toLowerCase()); grew = true; }
     }
   }
   return [...wanted];
 }
+
+// E2E_STEP_NAMES (a JSON list of exact step names): the steps a pull request's changed lines reach (pr-suites.mjs, from the per-step coverage map), plus their
+// stepNeeds and the critical setup. "(setup)" alone: only the critical setup (the change ran only at launch or between steps). A picked name that matches no step
+// (renamed since the map was recorded) fails the suite, never a quiet green: e2e.yml's second try then runs the whole suite.
+export function pickedNames(env = process.env) {
+  try { const names = JSON.parse(env.E2E_STEP_NAMES || '[]'); return Array.isArray(names) ? names.map(name => String(name).toLowerCase()) : []; } catch { return []; }
+}
+export const PICK_SETUP = '(setup)';
 
 // A whole suite has a budget too (owner, 6 Oct 2026: no suite over 5-7 minutes). Past it, the steps left are recorded as not run and the suite fails, naming its
 // slowest steps; a running step is cut at the budget's end. A suite that truly needs more says so (`export const budgetMinutes`): a manual suite, or the recorded replay (it grows a case at a time; sharded in page-cases.yml and, by its `shards`, in the gates: lib/suite-shards.mjs).
@@ -54,7 +62,7 @@ export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)
 // report (the Playwright HTML report, lib/suite-main.mjs): each step runs as a Playwright step, with a screenshot of the window when it ends (the failure's, if it failed).
 const pictureOf = async session => (session?.page ? Promise.race([session.page.screenshot().catch(() => null), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
 export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, stepNeeds = {}, faultTally = null, report = null} = {}) {
-  const results = [], suiteStarted = Date.now();
+  const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   let overBudget = false;
   async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = STEP_LIMIT_MS} = {}) {
     const left = budgetMs - (Date.now() - suiteStarted);
@@ -67,13 +75,15 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
     }
     const fn = () => withLimit(Promise.resolve().then(rawFn), Math.min(limitMs, left), name, getSession, left < limitMs ? budgetMs : 0);   // faults: the step breaks things on purpose, so a broken answer is the product's to handle: never retried, never "environment"
     // E2E_STEPS=tailor,seeded runs only the steps whose name contains one of these words (and the critical setup): a quick way to re-run one step of a long suite.
-    const only = wantedWords((process.env.E2E_STEPS || '').split(',').map(word => word.trim()).filter(Boolean), stepNeeds);
+    const only = wantedWords([...(process.env.E2E_STEPS || '').split(',').map(word => word.trim()).filter(Boolean), ...picked], stepNeeds);
+    if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase());
     if (only.length && !critical && !only.some(word => name.toLowerCase().includes(word))) return;
     const missing = needs.filter(item => !item.value);
     if (missing.length) { results.push({name, status: 'skipped'}); console.log(`- ${name}: skipped (needs ${missing.map(item => item.name).join(', ')})`); await report?.skipStep(name).catch(() => {}); return; }
     const started = Date.now(), before = faultTally?.();
     const unfired = () => faultCheck(before, faultTally?.(), {faults});
     let retried = '';
+    await getSession()?.coverageMark?.();   // what ran since the last step is setup, not this step's (lib/coverage.mjs)
     const attempt = async () => {
       await getSession()?.traceGroup?.(name);   // the step's actions sit under its name in the trace (lib/app.mjs), and in the report's step
       try {
@@ -109,9 +119,12 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       console.log(`✗ ${name}: ${note}`);
       if (keepGoing && !critical) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;
-    } finally { await getSession()?.traceGroupEnd?.(); }
+    } finally { await getSession()?.coverageStep?.(name); await getSession()?.traceGroupEnd?.(); }
   }
   const summary = () => {
+    const lost = picked.filter(name => name !== PICK_SETUP && !found.has(name));
+    if (lost.length) { results.push({name: 'steps picked for this PR', status: 'failed', note: `no step is named ${lost.map(name => `"${name}"`).join(', ')} (renamed since the coverage map was recorded): the whole suite runs next`}); console.log(`✗ picked step(s) not found: ${lost.join('; ')}`); }
+    else if (picked.length) console.log(`(ran only the ${picked.filter(name => name !== PICK_SETUP).length} step(s) this PR's changes reach, their needs and the setup: E2E_STEP_NAMES)`);
     const count = status => results.filter(result => result.status === status).length;
     console.log(`\n${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped`);
     for (const line of sharedCauseLines(results)) console.log(line);   // gate G3: six reds on one locator read as one cause, not six bugs

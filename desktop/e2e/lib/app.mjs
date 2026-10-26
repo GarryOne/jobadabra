@@ -15,7 +15,7 @@ export const DESKTOP = path.resolve(E2E, '..');
 import {createRequire} from 'node:module';
 import {appLogText} from './app-log.mjs';
 import {keepRunLogs} from './run-logs.mjs';
-import {saveCoverage, startCoverage} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session ran (gate G1b)
+import {saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
 import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 const electronPath = () => {
   if (process.platform !== 'win32') return path.join(DESKTOP, 'node_modules', '.bin', 'electron');
@@ -66,7 +66,9 @@ export async function launch({env = {}, executablePath, args, profile: again, la
     } catch { /* logs are a help, never a reason to fail */ }
   };
   // close({keepTrace}): the trace is written only when asked (a step failed); otherwise it is dropped unwritten.
+  // coverageMark/coverageStep: the runner's reads at a step's start and end (lib/runner.mjs); a no-op without E2E_COVERAGE=1.
   return {app, page, profile, shot, keepLogs, traceGroup: trace.group, traceGroupEnd: trace.groupEnd,
+    coverageMark: () => takeSetup(coverage).catch(() => {}), coverageStep: name => takeStep(coverage, name).catch(() => {}),
     close: async ({keepTrace = false} = {}) => { await keepLogs().catch(() => {}); await saveCoverage(coverage, ARTIFACTS).catch(() => {}); await trace.stop(keepTrace); await closeApp(app); }};
 }
 

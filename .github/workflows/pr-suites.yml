@@ -18,13 +18,7 @@ on:
       - 'desktop/e2e/lib/**'
       - 'extension/**'
       # The files suites watch (their `export const watches`; #2043 changed quality's score.py and never started this: tests/test_workflow_paths.py)
-      - 'src/ai/score.py'
-      - 'src/ai/enrich.py'
-      - 'src/ai/hints.py'
-      - 'src/ai/mail.py'
-      - 'src/ai/mail_inbox.py'
-      - 'src/ai/mail_read.py'
-      - 'src/ai/mail_triage.py'
+      - 'src/ai/**'   # and what those import from their folder (lib/import-graph.mjs watchesWithImports: #2043's schema_notes.py, imported by score.py)
       - 'tools/mail_eval.py'
       - 'tests/fixtures/mail_eval.json'
       - 'desktop/e2e/fixtures/golden/**'
@@ -73,6 +67,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SUITES: ${{ steps.plan.outputs.suites }}
           LEFT: ${{ steps.plan.outputs.left }}
+          STEPS: ${{ steps.plan.outputs.steps }}   # {suite: [step names]}: only the steps this PR's changed lines reach (desktop/e2e/pr-suites.mjs)
           HEAD_REF: ${{ github.head_ref }}   # a branch name is untrusted text: never inline in the script
           PR: ${{ github.event.pull_request.number }}
         run: |
@@ -80,7 +75,7 @@ jobs:
           # Merged or closed while this job waited for a runner (an override merge deletes the branch: #2041 went red on HTTP 422 "No ref found"): nothing to test.
           if [ "$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state -q .state)" != OPEN ]; then echo "PR #$PR is merged or closed: no e2e run." | tee -a "$GITHUB_STEP_SUMMARY"; echo "skipped=1" >> "$GITHUB_OUTPUT"; exit 0; fi
           # The input made for this (e2e.yml): SQLite store, no screenshot review, no harness-test step. It runs the PR branch's own e2e.yml, so a branch cut before the input existed gets HTTP 422.
-          if ! gh workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" 2>"$RUNNER_TEMP/dispatch.err"; then
+          if ! gh workflow run e2e.yml --ref "$HEAD_REF" -f pr_suites="$SUITES" -f pr_steps="${STEPS:-}" 2>"$RUNNER_TEMP/dispatch.err"; then
             cat "$RUNNER_TEMP/dispatch.err"
             if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's e2e.yml is older than main's: rebase on main (tools/ship.sh does it), then push again." | tee -a "$GITHUB_STEP_SUMMARY"; fi
             exit 1

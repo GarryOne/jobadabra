@@ -264,7 +264,8 @@ class CliClientTests(unittest.TestCase):
 
     def test_enrich_runs_unchanged_on_claude_code(self):
         fake = FakeClaude(self, 'text')
-        facts = {'languages': [], 'english_is_enough': {'value': 'yes', 'evidence': ''}}
+        facts = {'languages': [], 'english_is_enough': {'value': 'yes', 'evidence': ''}, 'seniority': {'value': 'senior', 'evidence': 'Senior'},
+                 'work_mode': {'value': 'hybrid', 'remote_scope': '', 'evidence': 'hybrid'}, 'technologies': ['Kubernetes']}   # all filled: one call
         with mock.patch.dict(os.environ, {'FAKE_CLAUDE_MODE': 'text'}), \
                 mock.patch.object(engine.CliClient, '_answer', staticmethod(lambda data, schema: json.dumps(facts))), \
                 mock.patch('src.ai.providers.cli_base.problems', lambda value, schema, where='$': []):

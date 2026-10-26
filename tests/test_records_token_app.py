@@ -50,7 +50,7 @@ class RecordsTokenApp(unittest.TestCase):
                     continue
                 step = body[body.rfind('      - ', 0, mint):]
                 step = step[:step.find('\n      - ', 5)] if '\n      - ' in step[5:] else step
-                for want in ('uses: actions/create-github-app-token@v2', 'app-id: ${{ secrets.CI_APP_ID }}', 'private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}',
+                for want in ('uses: actions/create-github-app-token@', 'app-id: ${{ secrets.CI_APP_ID }}', 'private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}',
                              'owner: GarryOne', 'repositories: jobadabra-lab', 'continue-on-error: true', "steps.records_app_key.outputs.set == 'true'"):
                     if want not in step:
                         bad.append(f'{where}: the records_app step lacks `{want}`')

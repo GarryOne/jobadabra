@@ -107,6 +107,10 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     return 'success', f'{len(live)} workflow(s) green in {minutes:.1f} min', live, finishing, None
 
 
+def gh(*args):
+    return subprocess.run(['gh', *args], check=True, capture_output=True, text=True).stdout
+
+
 def leave_it(finishing, me):
     """Jobs ending together: the one with the highest id writes (it waits for the others' ends); the backstop (me None) leaves it to them."""
     return bool(finishing) and (me is None or max(finishing) > me)

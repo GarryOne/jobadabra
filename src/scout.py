@@ -34,7 +34,7 @@ from .paths import CONFIG, JOBS_DB, load_search_config
 from .sources import ats, careers, feeds  # noqa: F401 -- `feeds` is also reached as scout.feeds by tests
 from .scout_candidates import counts_when_covered, harvest, harvest_met, skipped_origins, starter_list
 from .scout_core import DEFAULT_BATCH, RECHECK_DAYS, SEEDS, TABLES, TIER1_MIN_RELEVANT, batch_for, ensure_tables, key_for, now, pending_count
-from .scout_index import board_stats, build_index, central_stats, dead_ends, run_record, fetch_boards, fetch_contributions, market_coverage, publish_index, publish_summary, record_unread, run_headline
+from .scout_index import board_stats, build_index, central_stats, dead_ends, run_record, fetch_boards, fetch_contributions, market_coverage, publish_index, publish_summary, published_line, record_unread, run_headline
 from .scout_notion import active_sources, export_sources, mark_synced, not_updated, sync_employers, synced_key, write_employer
 from .scout_probe import READERS, find_feed, next_batch, quality, skipping
 from .scout_core import (  # noqa: F401 -- re-exported: other modules and tests use `scout.<name>`
@@ -475,7 +475,7 @@ def main():
             print(publish_summary(feeds_out, contributions, boards))
             print('Feeds by system: ' + ', '.join(f'{system} {n}' for system, n in Counter(f['ats'] for f in feeds_out).most_common()))
             print('Market coverage (our index / jobs.ch): ' + ', '.join(f"{m['term']} {m['ours']}/{m['jobsch']}" for m in stats['market']))
-            print(f'Published {count} feeds to the employer index ({len(failed)} did not answer)')
+            print(published_line(count, failed, feeds_out))
     from .ai import cost as ai_cost
     if ai_cost.SIDE:   # AI ideas, link picks and page reads of this scout run: logged like any AI step
         log['sources'] = dict(ai_cost.SIDE)

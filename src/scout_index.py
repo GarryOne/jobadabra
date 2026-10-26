@@ -108,6 +108,24 @@ def publish_summary(feeds, contributions, boards):
             f"{len(boards)} boards with stats{f' | quiet for {first}' if first else ''}")
 
 
+BROKEN_MIN, BROKEN_SHARE = 5, 0.4   # one same error in at least this many feeds and this share of a system's feeds: its reader, not the feeds
+
+
+def published_line(count, failed, feeds_out):
+    """The publish's last lines: what did not answer, by system, and a warning for a system whose feeds mostly failed with one same error, a
+    broken reader rather than dead feeds (26 Oct 2026: JOIN changed its page, 66 of the owner's 70 JOIN employers failed on every search, and
+    the log said only "N did not answer"). Carried feeds are in `feeds_out` too, so a fully broken system with carry shows at 50%."""
+    by_system = Counter(f['ats'] for f in failed)
+    listed = Counter(f['ats'] for f in feeds_out)
+    lines = [f'Published {count} feeds to the employer index ({len(failed)} did not answer'
+             + (': ' + ', '.join(f'{system} {n}' for system, n in by_system.most_common()) if failed else '') + ')']
+    for system, n in by_system.most_common():
+        kind, same = Counter(re.sub(r'\d+', 'N', str(f.get('error') or ''))[:80] for f in failed if f['ats'] == system).most_common(1)[0]
+        if same >= BROKEN_MIN and same >= BROKEN_SHARE * (n + listed[system]):
+            lines.append(f'::warning::Scout: the {system} reader looks broken: {same} of its {n + listed[system]} feeds failed with "{kind}"')
+    return '\n'.join(lines)
+
+
 def fetch_boards(base_url, key, get=None):
     """The pool's per-board totals (`GET /api/contributions?part=boards`); [] when unavailable."""
     def default_get(request):

@@ -141,7 +141,9 @@ class TheShapes(unittest.TestCase):
                          {'page-cases.yml'})
 
     def test_docs_and_tools_start_python_only(self):
-        self.assertEqual(self.started(['docs/HOW-IT-RUNS.md', 'tools/ship.sh', 'CLAUDE.md']), {'tests-python.yml'})
+        self.assertEqual(self.started(['docs/HOW-IT-RUNS.md', 'CLAUDE.md']), {'tests-python.yml'})
+        # a shell script starts the PR planner too, which runs the Windows check only for a script CI runs (lib/pr-suites.mjs windowsSmoke): not tools/ship.sh
+        self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml'})
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
         self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'control-tests.yml', 'pr-suites.yml'})   # worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at

@@ -109,3 +109,10 @@ export function stepsQuoting(hits, sources) {
   }
   return out;
 }
+
+// One short Windows check on a PR that changes CI plumbing or shell (PR 3 of the PR-checks plan, owner's yes 26 Oct 2026): #1997's relay tar read "D:\a\_temp" as
+// a host and every Windows suite went red, seen only by the next beta. The app launch, the relay and one settings step, on SQLite (no Notion lock to wait for).
+export const WINDOWS_SMOKE = {suite: 'settings', steps: ['every Settings section renders']};
+// A shell script counts only when CI runs it (`ci`: the text of the workflows and actions): tools/ship.sh runs on the Mac, tools/e2e-lock.sh on every runner.
+const SHELL = /^(tools|desktop\/scripts)\/[^/]+\.sh$/;
+export const windowsSmoke = (files, ci = '') => files.some(file => file.startsWith('.github/') || (SHELL.test(file) && ci.includes(file)));

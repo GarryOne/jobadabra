@@ -19,7 +19,7 @@ from .scout_core import SMALL_GUESS, _SEARCH, ensure_tables, now
 # probed while the readers were wrong stayed skipped). A fingerprint of that code only (src/sources/readers.py): the reader modules and the
 # functions here that judge a site, without comments, docstrings or print lines, so a wording change elsewhere in this file wakes no one.
 READER_FILES = ('sources/ats.py', 'sources/careers.py', 'sources/web_search.py', 'sources/render.py', 'scout_probe.py')
-JUDGES = ('belongs_to', 'job_hosts', 'find_feed', 'counted', 'quality', 'relevant_roles', 'job_places')
+JUDGES = ('belongs_to', 'job_hosts', 'find_feed', 'counted_jobs', 'quality', 'relevant_roles', 'job_places')
 
 
 def readers_version():
@@ -159,15 +159,30 @@ def find_feed(candidate, probe=ats.probe, discover=careers.discover, note=None, 
     return None
 
 
-def counted(title):
-    """Whether a job title counts for the judges below: the search's roles for an install's own scout; any job for the central scout, which
-    serves every role across Europe (owner, 19 Oct 2026: its example search's data-analyst titles judged care homes and hauliers "low")."""
-    return bool(title) if scout_core.CENTRAL else bool(feeds.TITLES.search(title or ''))
+def counted_jobs(jobs):
+    """The jobs that count for the judges below. The central scout: every job (it serves every role across Europe; owner, 19 Oct 2026: its
+    example search's data-analyst titles judged care homes and hauliers "low"). An install's own scout: jobs whose title the AI judged one of the
+    search's kinds of work (role_kinds, job-title-kind: shared and kept, mostly answered already), or for a search no kind fits, whose title the
+    AI's title sort kept; a title the AI has not judged (past its cap) counts for nothing, and only with no AI at all do the search's role words
+    decide (owner, 26 Oct 2026: "The AI decides"; audit PR 5: a pilot search's words missed "Erster Offizier" and counted "Pilot Project Manager")."""
+    jobs = [job for job in jobs if job.get('title')]
+    if scout_core.CENTRAL:
+        return jobs
+    from . import role_kinds
+    from .ai import engine
+    if not engine.ready():
+        return [job for job in jobs if feeds.TITLES.search(job['title'])]
+    kinds = role_kinds.of_search(_SEARCH)
+    if not kinds or role_kinds.UNKNOWN in kinds:
+        feeds.triage(jobs)
+        return [job for job in jobs if feeds.judged_title(job['title'])]
+    judged = role_kinds.judged([job['title'] for job in jobs], 'job-title-kind')
+    return [job for job in jobs if judged.get(str(job['title']).strip()) in kinds]
 
 
 def quality(jobs):
     """Deterministic 0-100 score of how useful a feed is for this search, with its evidence."""
-    relevant = [j for j in jobs if counted(j['title'])]
+    relevant = counted_jobs(jobs)
     preferred = [j for j in relevant if feeds.wanted_location(j)]
     swiss = [j for j in preferred if SWISS_OR_ZURICH.search(j['location'] or '')]
     stack = [j for j in relevant if STACK.search(j.get('description') or '')]
@@ -212,13 +227,13 @@ def workday_url(slug):
 
 
 def relevant_roles(jobs):
-    """Open engineering / IT roles of a feed by the central definition, each title counted once (the same role listed for
-    several cities is one role): the honest number for the website, since `jobs` counts every posting of every kind."""
-    return len({(j.get('title') or '').strip().lower() for j in jobs if feeds.wanted_title(j.get('title'))})
+    """A feed's open roles that count (counted_jobs: every role for the central scout, the search's kinds for an install's), each title once
+    (the same role listed for several cities is one role): the honest number for the website, since `jobs` counts every posting."""
+    return len({str(j['title']).strip().lower() for j in counted_jobs(jobs)})
 
 
 def job_places(jobs, limit=40):
     """Where a feed has matching roles: its most common location strings, so a client can skip feeds with none in
     its own places without downloading them."""
-    counts = Counter((j.get('location') or '').strip()[:60] for j in jobs if counted(j['title']))
+    counts = Counter((j.get('location') or '').strip()[:60] for j in counted_jobs(jobs))
     return [place for place, _ in counts.most_common(limit + 1) if place][:limit]

@@ -293,7 +293,8 @@ class RelevantRolesTest(unittest.TestCase):
         jobs = [job('Senior Backend Engineer'), job('Senior Backend Engineer'), job('Site Reliability Engineer'),
                 job('Account Executive'), job('Head of Global Total Rewards'), job('Sales Engineer')]
         wanted = lambda title: bool(re.search('engineer', title or '', re.I)) and not re.search('sales', title or '', re.I)  # noqa: E731
-        with mock.patch.object(scout.feeds, 'wanted_title', side_effect=wanted):
+        from src import scout_probe   # what counts is the scout's judge (AI kinds since 26 Oct 2026, tests/test_scout_judge_kinds.py)
+        with mock.patch.object(scout_probe, 'counted_jobs', lambda jobs: [j for j in jobs if wanted(j['title'])]):
             self.assertEqual(scout.relevant_roles(jobs), 2)   # the repeated title is one role; sales and HR titles are not engineering
 
 

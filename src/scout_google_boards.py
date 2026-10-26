@@ -89,10 +89,14 @@ def boards(db, country, kinds, judge, key=None, get=_get, account=None, now=None
         done.add(f'{kind}|{country}')
         scout_cells._set(db, 'serp_pairs', sorted(done))
         db.commit()
-    kept = []
+    kept, said = [], {}
     for board in list(found.values())[:MAX_JUDGED]:
-        if judge(board, [role_kinds.WORK.get(board['kinds'][0], board['kinds'][0])]) == 'field board':
+        answer = judge(board, [role_kinds.WORK.get(board['kinds'][0], board['kinds'][0])]) or 'no answer'
+        said.setdefault(answer, []).append(board['host'])
+        if answer == 'field board':
             kept.append({**board, 'name': board['host']})
+    verdicts = '; '.join(f"{answer}: {', '.join(hosts)}" for answer, hosts in sorted(said.items(), key=lambda item: item[0] != 'field board'))
     out(f"Board pass, Google results: {name}: {searched} searches ({used + searched} of {MONTH_CAP} this month), {len(found)} sites, "
-        f"{len(kept)} field boards" + (f": {', '.join(board['host'] for board in kept)}" if kept else ''))
+        f"{len(kept)} field boards" + (f"; judged {verdicts}" if verdicts else '')
+        + (f"; not judged (over {MAX_JUDGED}): {len(found) - MAX_JUDGED}" if len(found) > MAX_JUDGED else ''))
     return kept

@@ -51,7 +51,18 @@ class GoogleBoards(unittest.TestCase):
         self.assertEqual([host for host, _ in self.judged], ['pilot-board.example', 'an-airline.example'],
                          'each new site judged once; a portal and a plain-http page never reach the judge')
         self.assertIn('pilots, cabin crew', self.judged[0][1][0], 'judged for the kind of work searched')
-        self.assertIn('Board pass, Google results: Austria: 6 searches (6 of 200 this month), 2 sites, 1 field boards: pilot-board.example', self.out)
+        self.assertIn('Board pass, Google results: Austria: 6 searches (6 of 200 this month), 2 sites, 1 field boards; '
+                      'judged field board: pilot-board.example; one employer: an-airline.example', self.out,
+                      "every site's answer is said (26 Oct 2026: the first live run said only '32 sites, 0 field boards')")
+
+    def test_a_site_without_an_answer_and_the_ones_past_the_judge_cap_are_said(self):
+        many = [{'title': f'Site {n}', 'link': f'https://site{n}.example/jobs'} for n in range(google.MAX_JUDGED + 3)]
+        fake = Fake()
+        fake.get = lambda url, params: ({'total_searches_left': 240} if url.endswith('account.json') else {'organic_results': many})
+        self.boards(fake)
+        line = self.out[-1]
+        self.assertIn('judged no answer: site0.example, site1.example', line)
+        self.assertIn(f'not judged (over {google.MAX_JUDGED}): 3', line)
 
     def test_a_kind_and_country_is_searched_once(self):
         fake = Fake()

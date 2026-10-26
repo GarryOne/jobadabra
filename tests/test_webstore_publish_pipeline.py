@@ -79,6 +79,15 @@ class MicrosoftStoreOnStable(unittest.TestCase):
         self.assertNotIn('/dev/null', signin, 'a failed sign-in prints its reason (GitHub masks the secrets)')
         self.assertIn('--verbose', signin, 'without it msstore hides the exception behind "Ops"')
 
+    def test_publish_gets_an_msix_path_it_accepts(self):
+        # 0.8.41's second try: "Unrecognized command or argument '--inputFile'". msstore publish takes the package path as its argument and only
+        # .msix/.msixbundle/.msixupload (exact case); the build makes .appx, the same format under the old name, so the step copies it to .msix.
+        submit = self.job('submit')
+        publish = next(line for line in submit.splitlines() if 'msstore publish' in line and not line.strip().startswith('#'))
+        self.assertNotIn('--inputFile', publish, 'not an msstore option')
+        self.assertRegex(publish, r'msstore publish "\$msix"', 'the .msix file is the argument')
+        self.assertRegex(submit, r'msix="\$\{file%\.appx\}\.msix"', 'msstore refuses an .appx: copy it to .msix')
+
     def test_the_credentials_are_only_secrets_never_echoed(self):
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$\{\{ *secrets\.')
         self.assertNotRegex(self.FLOW, r'echo[^\n]*\$MS_STORE_CLIENT_SECRET')

@@ -136,5 +136,8 @@ jobs:
         name: Submit the package (Microsoft certifies it, then the Store updates every copy)
         run: |
           file=$(find package -name '*.appx' | head -1)
-          echo "Submitting $file (version ${{ needs.msix.outputs.version }})"
-          msstore publish package --inputFile "$file" --appId 9NW1JJ7Z90MP
+          # msstore publish takes only .msix/.msixbundle/.msixupload; an .appx is the same package format under the old name.
+          msix="${file%.appx}.msix"
+          cp "$file" "$msix"
+          echo "Submitting $msix (version ${{ needs.msix.outputs.version }})"
+          msstore publish "$msix" --appId 9NW1JJ7Z90MP --verbose

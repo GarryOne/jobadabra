@@ -14,7 +14,8 @@ from types import SimpleNamespace
 from unittest import mock
 
 from src import employer_index, role_kinds
-from src.sources import host_pace, refused_reads, visits
+from src.ai import board_ideas
+from src.sources import board_yield, host_pace, refused_reads, visits
 
 NOW = datetime(2026, 10, 26, 1, 0, tzinfo=timezone.utc)
 SEARCH = {'role_keywords': ['First Officer', 'pilot'], 'locations': {'top_tier': ['Europe'], 'country_wide': []}}
@@ -22,7 +23,11 @@ OLD = [('maib - liderul sectorului bancar din Moldova', 'https://www.maib.md/car
        ('Moldtelecom', 'https://www.moldtelecom.md/jobs')]
 FIT = ('An Airline', 'https://careers.airline.test')
 OFF = ('maib', 'Premier Energy', 'Moldtelecom', 'IT Jobs Moldova')   # what the earlier search queued: nothing of these may be read or offered
-BOARDS = {'boards': {'itjobs.md': {'name': 'IT Jobs Moldova', 'search_url': 'https://www.itjobs.md/search?q={role}', 'state': 'browser'}}}
+BOARDS = {'boards': {'itjobs.md': {'name': 'IT Jobs Moldova', 'search_url': 'https://www.itjobs.md/search?q={role}', 'state': 'browser'},
+                     'rabota.md': {'name': 'IT Jobs Moldova list', 'search_url': 'https://rabota.md/?q={role}', 'state': 'ok', 'relevant': 3,
+                                   'countries': ['Moldova'], 'paid_for': ['software']},   # paid an earlier software search in Moldova
+                     'crew.test': {'name': 'Crew Board', 'search_url': 'https://crew.test/?q={role}', 'state': 'ok', 'relevant': 5,
+                                   'countries': ['Austria'], 'paid_for': ['aviation_transport']}}}
 
 
 class Judge:
@@ -52,10 +57,14 @@ def sites_only_you_can_open():   # the "Sites only you can open" list with its "
     return visits.visit_list(SEARCH, {'aviation_transport'}, now=NOW)
 
 
+def boards_read_first():   # the boards a run reads first (src/sources/boards_first.py, #1994): ones that paid this field in these places
+    return board_yield.working(SEARCH, board_ideas.load()['boards'])
+
+
 LISTS = {'refused sites read in the browser': queue, 'refused sites read on Check for new jobs': queue_on_check,
-         'Sites only you can open': sites_only_you_can_open}
-FITS = {name: 'An Airline' for name in LISTS}   # per list, the site that fits the pilot search and must still be read or offered (a board list names a board)
-SIBLINGS = {'job boards the run reads (found_boards, board_web)': 'jobadabra-33 [c2ad9c], its open boards-first work',
+         'Sites only you can open': sites_only_you_can_open, 'job boards read first': boards_read_first}
+FITS = {**{name: 'An Airline' for name in LISTS}, 'job boards read first': 'Crew Board'}   # per list, the site of the pilot search it must keep
+SIBLINGS = {'employers the search reads (feeds.scan over employer_index.relevant, with an old search\'s rest and facts)': 'jobadabra-c5, after its feed_rest PR',
             'employer feeds with no kind mix yet (employer_index.relevant)': 'this audit, PR 4 (located kind counts)'}
 
 
@@ -71,7 +80,9 @@ class SourcesFollowStrategyTest(unittest.TestCase):
                         mock.patch.object(visits, 'portals', lambda *a, **k: []),
                         mock.patch.object(host_pace, 'FILE', Path(self.tmp.name) / 'host_pace.json'),
                         mock.patch('src.ai.engine.ready', lambda *a, **k: True),
-                        mock.patch('src.ai.engine.client', lambda *a, **k: self.judge)]
+                        mock.patch('src.ai.engine.client', lambda *a, **k: self.judge),
+                        mock.patch('src.places.countries', lambda *a, **k: ['Austria']),   # the pilot search's countries (places' AI, stood in)
+                        mock.patch('src.role_kinds.of_search', lambda *a, **k: {'aviation_transport'})]
         for patch in self.patches:
             patch.start()
         for name, url in [*OLD, FIT]:

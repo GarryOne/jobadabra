@@ -366,9 +366,10 @@ READERS = _readers()
 
 
 def _search_digest(search=None):
-    """What a rest depends on: the roles and places searched, and the readers that found nothing (either changing starts over)."""
+    """What a rest (and an unchanged list, src/sources/feed_facts.py) depends on: the whole strategy and the readers that found nothing; any
+    change starts over (owner, 26 Oct 2026: the sites read must follow the current strategy; it was the role words and places only)."""
     search = search or _SEARCH
-    return hashlib.sha256(json.dumps([search.get('role_keywords'), search.get('locations'), READERS], sort_keys=True, default=str).encode()).hexdigest()[:12]
+    return hashlib.sha256(json.dumps([search, READERS], sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
 def resting(db, now, search=None):

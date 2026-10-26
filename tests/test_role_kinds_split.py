@@ -70,9 +70,11 @@ class CopiesTests(unittest.TestCase):
         """26 Oct 2026, e2e quality on Free AI (PR #1992): 5 SRE and platform jobs came back 'engineering': the IT families were bare names
         ("sre, platform, …") beside described trades. Every family in the list, a new one too, says its work."""
         family = enrich.SCHEMA['properties']['role_family']
-        for name in family['enum']:
-            with self.subTest(name):
-                self.assertRegex(family['description'], rf'(^|[\s:;(]){re.escape(name)} = \w')
+        # in the system prompt too: a second run on Free AI still said 'engineering' with the words only in the schema (its descriptions may go unread)
+        for where, text in (('schema', family['description']), ('system prompt', enrich.SYSTEM)):
+            for name in family['enum']:
+                with self.subTest(where=where, family=name):
+                    self.assertRegex(text, rf'(^|[\s:;(]){re.escape(name)} = \w')
 
 
 class JudgedTests(unittest.TestCase):

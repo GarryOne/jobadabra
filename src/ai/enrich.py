@@ -48,6 +48,11 @@ IT_WORK = {'sre': 'site reliability: keeping production services up, incidents, 
            'cloud_infrastructure': 'cloud, servers, networks and data-centre infrastructure',
            'software': 'building software and applications', 'data': 'data engineering, analytics, data science, machine learning',
            'security': 'IT and cyber security', 'support_it': 'IT support and help desk'}
+# The role families in words, in the system prompt AND the schema: 26 Oct 2026 (PR #1992), with them only in the schema's description Free AI's
+# open model still answered 'engineering' for SRE and platform jobs (a schema there fixes the answer's shape; its descriptions may go unread).
+ROLE_FAMILIES = ("The job's own kind of work, not the team, product or customers it serves. IT work (an engineer in software or IT is one of these, "
+                 "not engineering): " + '; '.join(f'{family} = {IT_WORK[family]}' for family in IT_FAMILIES) + '. Other work: '
+                 + '; '.join(f'{kind} = {WORK[kind]}' for kind in KINDS if kind not in IT_FAMILIES) + '.')
 SCHEMA = {
     'type': 'object',
     'additionalProperties': False,
@@ -102,9 +107,7 @@ SCHEMA = {
         # and warehouse jobs could only be 'other'. 26 Oct 2026, 8 kinds split out of 'other': the description says each family's work, and that
         # the job's own work decides, not its title's team (e2e golden 3006: an "SRE, Customer Care" title on a phone helpdesk job).
         'role_family': {'type': 'string', 'enum': [*IT_FAMILIES, *(kind for kind in KINDS if kind not in IT_FAMILIES)],
-                        'description': "The job's own kind of work, not the team, product or customers it serves. IT work (an engineer in software or "
-                                       "IT is one of these, not engineering): " + '; '.join(f'{family} = {IT_WORK[family]}' for family in IT_FAMILIES) + '. Other work: '
-                                       + '; '.join(f'{kind} = {WORK[kind]}' for kind in KINDS if kind not in IT_FAMILIES) + '.'},
+                        'description': ROLE_FAMILIES},
         'technologies': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Up to 8 key skills, tools, licences, certifications or topics the role names (any trade), short, in the posting\'s own language; [] when none'},
         'responsibilities': {'type': 'array', 'items': {'type': 'string'},
                              'description': 'What the role involves day to day: up to 4 short plain sentences (under 110 characters each), in the posting\'s own terms; [] when it says nothing'},
@@ -137,7 +140,9 @@ employer_type is "recruiter" when the advertiser hires on behalf of an unnamed o
 
 visa_sponsorship is "offered" only when the posting explicitly says it sponsors work visas or relocation \
 permits; "not_offered" only when it explicitly requires existing work authorization or says it does not \
-sponsor; "unknown" when the posting says nothing about it (do not infer this from the country)."""
+sponsor; "unknown" when the posting says nothing about it (do not infer this from the country).
+
+role_family: """ + ROLE_FAMILIES
 
 
 def description_hash(job):

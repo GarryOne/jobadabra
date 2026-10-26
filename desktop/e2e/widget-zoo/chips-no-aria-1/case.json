@@ -22,7 +22,7 @@
    "eligible": true,
    "answers": [
     {
-     "field": "model",
+     "field": "aria:g1",
      "question": "Work model",
      "value": "Remote",
      "confidence": "high",

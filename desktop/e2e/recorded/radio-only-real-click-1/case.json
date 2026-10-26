@@ -1,0 +1,54 @@
+{
+ "shape": "role=radio options that ignore a scripted click (event.isTrusted false): only a real click selects",
+ "origin": "hand-cut",
+ "why": "Widget zoo radio-trusted-only-1, 26 Oct 2026 (hybrid fill step 1, move 2): the scripted press did nothing and nothing pressed again; a choice that did not take its answer is now pressed for real through the debugger on the option with the answer. Hand-made page",
+ "control": {
+  "build": "0.8.0",
+  "failed": "chosen: [role=radio][data-v=no]"
+ },
+ "sample": "a hand-made Yes/No radio group (the zoo trusted_click_only shape)",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/radio-only-real-click-1/apply",
+   "file": "form.html"
+  }
+ ],
+ "cv": false,
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "aria:g1",
+     "question": "Are you willing to relocate?",
+     "value": "No",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "asked": [
+   "Are you willing to relocate?"
+  ],
+  "chosen": [
+   "[role=radio][data-v=no]"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 30
+ },
+ "start": "panel"
+}

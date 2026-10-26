@@ -1,0 +1,54 @@
+{
+ "shape": "an accordion head with no heading and no aria-controls, its body hidden right after it and drawn only when opened",
+ "origin": "hand-cut",
+ "why": "Widget zoo collapsed-section-1, 26 Oct 2026 (hybrid fill step 1, move 3): the head was not taken for a disclosure (no heading, no aria-controls), so its question was never on the page; a head whose next sibling is its hidden body is now opened, and closed again when it drew nothing to fill. Hand-made page",
+ "control": {
+  "build": "0.8.0",
+  "failed": "asked: Main programming language; filled: #skill"
+ },
+ "sample": "a hand-made accordion section (the zoo collapsed_section shape)",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/accordion-body-after-head-1/apply",
+   "file": "form.html"
+  }
+ ],
+ "cv": false,
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "skill",
+     "question": "Main programming language",
+     "value": "Python",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  }
+ },
+ "expect": {
+  "asked": [
+   "Main programming language"
+  ],
+  "filled": [
+   "#skill"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 30
+ },
+ "start": "panel"
+}

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Apply: Example role</title></head>
+<body>
+<!-- Recorded page (hand-cut from the widget zoo): Choice chips whose only state is a class: no aria-checked, no input, so a reader sees nothing change. Hand-made, no real site, no personal data. -->
+<h1>Apply for Example role</h1>
+<form id="apply" onsubmit="return false">
+<label for="first">First name</label> <input id="first" name="first_name" type="text" required>
+<label for="last">Last name</label> <input id="last" name="last_name" type="text" required>
+<label for="mail">Email</label> <input id="mail" name="email" type="email" required>
+<label id="model-label">Work model</label>
+<div class="chips" aria-labelledby="model-label"><span class="chip" data-v="office" tabindex="0">Office</span><span class="chip" data-v="hybrid" tabindex="0">Hybrid</span><span class="chip" data-v="remote" tabindex="0">Remote</span></div>
+</form>
+<script>
+for (const c of document.querySelectorAll('.chip')) c.addEventListener('click', () => c.classList.toggle('is-on'));
+</script>
+</body></html>

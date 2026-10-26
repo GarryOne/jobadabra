@@ -5,6 +5,8 @@
 // one debugger at a time (the caller passes the turn it shares with the dropdown clicks). Counts only leave this file, never a value. Guard: worker/test/fill-verify.test.js.
 import {attachDebugger, detachDebugger} from './stop-state.js';
 import {driving} from './input-gap.js';
+import {decide} from './log.js';
+import {hasPressSpots, pressNotTakenForReal} from './press-real.js';
 const SETTLE_MS = 300;
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -30,12 +32,20 @@ export async function typeNotTakenForReal({page, send}) {
   return {tried: Math.min(spots.length, 8), taken};
 }
 
-// The worker's call: attaches the debugger only when the page lists a box. tabId -> {tried, taken}
+// The worker's call: attaches the debugger only when the page lists a box to type or a choice to press (press-real.js, the hybrid fill's move 2, same turn).
+// tabId -> {tried, taken} of the boxes typed (flow.js says them), plus pressed: {tried, taken} (logged here).
 export async function typeNotTakenOnTab(tabId) {
   const page = (func, args = []) => chrome.scripting.executeScript({target: {tabId}, world: 'MAIN', func, args}).then(([r]) => r?.result);
-  if (!((await page(() => window.__jobPilottoNotTakenSpots?.() || []).catch(() => [])) || []).length) return {tried: 0, taken: 0};
-  const target = {tabId};
+  const boxes = ((await page(() => window.__jobPilottoNotTakenSpots?.() || []).catch(() => [])) || []).length > 0;
+  if (!boxes && !(await hasPressSpots(page))) return {tried: 0, taken: 0};
+  const target = {tabId}, send = (method, params) => chrome.debugger.sendCommand(target, method, params);
   await attachDebugger(tabId);
-  try { return await driving(tabId, () => typeNotTakenForReal({page, send: (method, params) => chrome.debugger.sendCommand(target, method, params)})); }
-  finally { await detachDebugger(tabId); }
+  try {
+    return await driving(tabId, async () => {
+      const typed = boxes ? await typeNotTakenForReal({page, send}) : {tried: 0, taken: 0};
+      const pressed = await pressNotTakenForReal({page, send});
+      if (pressed.tried) decide('fill', 'pressed for real a choice that did not take its answer', {tab: tabId, tried: pressed.tried, taken: pressed.taken}).catch(() => {});
+      return {...typed, pressed};
+    });
+  } finally { await detachDebugger(tabId); }
 }

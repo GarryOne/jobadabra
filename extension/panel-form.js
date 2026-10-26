@@ -83,14 +83,15 @@
     // An ARIA radio group (role=radiogroup > role=radio, a hidden aria-hidden input inside each option): one question, however the options are drawn. The loop above skips the
     // aria-hidden inputs (react-select's helpers), so without this row the fill sees the question and the panel never counts it (Starling, 17 Oct 2026: 4 required Yes/No left,
     // panel "4 left" against 8). Filled when an option reads as on; required as the group or an option says, or its title shows the mark.
-    for (const box of document.querySelectorAll('[role=radiogroup]')) {
-      const options = [...box.querySelectorAll('[role=radio]')].filter(option => option.tagName !== 'INPUT' && visible(option));
+    // A group named only by a label link is the same question (the fill's reader marks it, page/radios.js namedGroups; hybrid fill move 1): its options are its children, on by an aria state or the fill's chosen mark.
+    for (const box of document.querySelectorAll('[role=radiogroup], [data-jobpilotto-named-group]')) {
+      const options = [...(box.matches('[role=radiogroup]') ? box.querySelectorAll('[role=radio]') : box.children)].filter(option => option.tagName !== 'INPUT' && visible(option));
       if (options.length < 2 || !visible(box) || [...groups.values()].some(entry => entry.el === box || box.contains(entry.el))) continue;
       const named = window.__jobPilottoOwnName?.(box) || window.__jobPilottoGroupTitle?.(box);
       if (!named) continue;
       groups.set(box, {el: box, label: clean(named.text), ai: box.hasAttribute('data-jobpilotto-ai'), byUs: box.hasAttribute('data-jobpilotto-filled'), suggested: box.dataset.jobpilottoSuggested || '', guess: !!box.dataset.jobpilottoGuess, options: box.dataset.jobpilottoOptions || '',
         required: box.getAttribute('aria-required') === 'true' || options.some(option => option.getAttribute('aria-required') === 'true') || (!!named.el && window.__jobPilottoRequired.has(named.el)),
-        filled: options.some(option => option.getAttribute('aria-checked') === 'true' || !!option.querySelector('input[type=radio]:checked'))});
+        filled: options.some(option => option.getAttribute('aria-checked') === 'true' || option.getAttribute('aria-pressed') === 'true' || option.dataset.jobpilottoChosen === '1' || !!option.querySelector('input[type=radio]:checked'))});
     }
     const known = [...groups.values()];
     for (const {el} of window.__jobPilottoSkeleton?.widgets(document, visible) || []) {

@@ -8,10 +8,32 @@ import {fileURLToPath} from 'node:url';
 import {removedStrings, suitesExpecting, report, planPrSuites} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing} from './lib/import-graph.mjs';
+import {hunksFromDiff, mapShas, suitesCovering} from './lib/coverage-pick.mjs';
+import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const base = process.argv[process.argv.indexOf('--base') + 1] || 'origin/main';
 const git = args => execFileSync('git', args, {cwd: here, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024});
+// The code → suite map (gate G1b): --map <file>, else the newest `e2e-coverage-map` artifact (e2e.yml's coverage-map job after a scheduled main run). None yet: {}.
+function loadMap() {
+  const file = process.argv.includes('--map') ? process.argv[process.argv.indexOf('--map') + 1] : '';
+  try {
+    if (file) return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const repo = process.env.GITHUB_REPOSITORY;
+    if (!repo) return {};
+    const run = execFileSync('gh', ['api', `repos/${repo}/actions/artifacts?name=e2e-coverage-map&per_page=1`, '--jq', '.artifacts[0].workflow_run.id // ""'], {encoding: 'utf8'}).trim();
+    if (!run) return {};
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-coverage-'));
+    execFileSync('gh', ['run', 'download', run, '-R', repo, '-n', 'e2e-coverage-map', '-D', dir], {stdio: 'ignore'});
+    return JSON.parse(fs.readFileSync(path.join(dir, 'coverage-map.json'), 'utf8'));
+  } catch (error) { console.log(`pr-suites: no coverage map (${error.message.split('\n')[0]}): the other picks only`); return {}; }
+}
+// The suites whose recorded lines this PR changes: the diff from each suite's recorded commit to the PR's head, for the files the PR changes (a superset when main moved on).
+function covered(changedFiles) {
+  const map = loadMap(), bySha = {};
+  for (const sha of mapShas(map)) { try { bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles])); } catch { /* commit not here: that suite is not picked by lines */ } }
+  return suitesCovering(map, bySha);
+}
 try {
   const changedFiles = git(['diff', '--name-only', `${base}...HEAD`]).split('\n').filter(Boolean);
   const strings = removedStrings(git(['diff', '-U0', `${base}...HEAD`, '--', '../']));
@@ -24,7 +46,10 @@ try {
     const facts = await suiteFacts();
     const linux = {};
     for (const suite of facts.all) linux[suite] = (await facts.os(suite)) === 'ubuntu-24.04';
-    const plan = planPrSuites({pointed: suitesFor(changedFiles, facts.all, {...facts, uses: suitesUsing(here)}), hits: suitesExpecting(strings, sources), linux: suite => linux[suite], cadence: facts.cadence});
+    const covering = Object.fromEntries(Object.entries(covered(changedFiles)).filter(([suite]) => facts.all.includes(suite)));   // a suite removed since the map was made: gone
+    const plan = planPrSuites({pointed: suitesFor(changedFiles, facts.all, {...facts, uses: suitesUsing(here)}), hits: suitesExpecting(strings, sources), covering, linux: suite => linux[suite], cadence: facts.cadence});
+    const why = Object.entries(covering).map(([suite, reason]) => `| \`${suite}\` | ${reason} |`).join('\n');
+    if (why) console.log(`\n### Suites that run the lines this PR changes (coverage map)\n\n| Suite | Why |\n|---|---|\n${why}\n`);
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\n`);
   }

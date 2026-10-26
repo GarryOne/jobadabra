@@ -223,6 +223,11 @@ jobs:
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       JOB_PILOTTO_E2E_EXPECTS_FAILURES: ${{ inputs.mutant && '1' || '' }}   # a mutant run breaks the app on purpose: its crash reports are tagged expected, so the Sentry loop ignores them
       E2E_SEED: ${{ (inputs.fixed || inputs.canary || inputs.soak || inputs.gate_tag || inputs.mutant) && '0' || github.run_id }}   # a different path in every scheduled, top-up or manual run; the release gate, the soak top-ups (their three green runs must be comparable) and the stable canary walk the fixed one (lib/variation.mjs)
+      # Which app lines the suite runs (gate G1b, owner's yes 26 Oct 2026; lib/coverage.mjs): main checks, a PR's suites and runs by hand of the newest code, never a release,
+      # mutant or bisect (an old commit, timing that matters). Only main's scheduled runs feed the map a PR's plan reads (the coverage-map job below); a PR's files are kept
+      # 7 days to compare with main's (pr-suites.mjs --map) and to measure what recording costs.
+      E2E_COVERAGE: ${{ !inputs.gate_tag && !inputs.release_run && !inputs.mutant && !inputs.target_ref && !inputs.canary && !inputs.soak && !inputs.bisect && '1' || '' }}
+      E2E_COVERAGE_SHA: ${{ needs.plan.outputs.ref }}   # the commit the suite ran: a PR's diff is taken from it
       E2E_FULL: ${{ needs.plan.outputs.over != 'true' && (inputs.gate_tag || (github.event_name == 'workflow_dispatch' && !inputs.canary && !inputs.soak && !inputs.mutant && !inputs.scheduled && !inputs.bisect)) && '1' || '' }}   # the paid AI judge steps: the nightly gate and manual runs only
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
@@ -401,6 +406,14 @@ jobs:
             e2e-artifacts/${{ matrix.key }}/trace-*.zip
           compression-level: 0
           if-no-files-found: ignore
+      - name: Which app lines the suite ran (the code → suite map)
+        if: always() && env.E2E_COVERAGE == '1'
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-coverage-${{ matrix.key }}
+          path: e2e-artifacts/${{ matrix.key }}/coverage-*.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Screenshots and timings
         if: always()
         uses: actions/upload-artifact@v6
@@ -485,6 +498,43 @@ jobs:
       - name: The link on the run's Summary page
         if: steps.merge.outputs.made == '1'
         run: echo "## 📊 [Open the HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)" >> "$GITHUB_STEP_SUMMARY"
+
+  # The code → suite map (gate G1b, owner's yes 26 Oct 2026): after a main check, the suites' coverage files are laid over the previous map (a suite this run did
+  # not test keeps its entry) and kept as the artifact e2e-coverage-map, which a PR's plan downloads (desktop/e2e/pr-suites.mjs). Why: on 25 Oct #1911 changed
+  # menu.css and broke interactions, #1913 changed the run views and broke cardstates; neither PR ran that suite, because file names do not say which suite runs a line.
+  coverage-map:
+    name: Code → suite map
+    needs: [plan, suite]
+    if: always() && needs.plan.outputs.count != '0' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.scheduled)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read   # the previous map
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: desktop/e2e
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: e2e-coverage-*
+          path: coverage
+      - name: The previous map
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=e2e-coverage-map&per_page=1" --jq '.artifacts[0].workflow_run.id // empty' || true)
+          if [ -n "$id" ]; then gh run download "$id" -n e2e-coverage-map -D previous || echo "previous map not read: starting a new one"; else echo "no map yet: starting one"; fi
+      - name: Merge this run's coverage into the map
+        working-directory: desktop/e2e
+        run: |
+          set -o pipefail
+          prev=(); [ -f "$GITHUB_WORKSPACE/previous/coverage-map.json" ] && prev=(--previous "$GITHUB_WORKSPACE/previous/coverage-map.json")
+          node coverage-map.mjs --artifacts "$GITHUB_WORKSPACE/coverage" "${prev[@]}" --out "$GITHUB_WORKSPACE/map/coverage-map.json" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: e2e-coverage-map
+          path: map/coverage-map.json
+          retention-days: 30
 
   # Telegram (owner, 14 Oct 2026): a scheduled or gate run that failed sends 🔴 with the failed suites; the first green one after a failure sends 🟢
   # (desktop/e2e/ci-alert.mjs, bot @jobpilotto_ci_alerts_bot). Not for runs by hand of other kinds (a mutant, a canary, a soak).

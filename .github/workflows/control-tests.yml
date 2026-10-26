@@ -12,6 +12,7 @@ on:
       - 'desktop/e2e/lib/apply-fixtures.mjs'
       - 'desktop/e2e/lib/capture-page.mjs'
       - 'desktop/e2e/lib/chrome-lean.mjs'
+      - 'desktop/e2e/lib/coverage.mjs'
       - 'desktop/e2e/lib/engine.mjs'
       - 'desktop/e2e/lib/extension.mjs'
       - 'desktop/e2e/lib/launch-guard.mjs'

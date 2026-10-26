@@ -15,6 +15,7 @@ export const DESKTOP = path.resolve(E2E, '..');
 import {createRequire} from 'node:module';
 import {appLogText} from './app-log.mjs';
 import {keepRunLogs} from './run-logs.mjs';
+import {saveCoverage, startCoverage} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session ran (gate G1b)
 import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 const electronPath = () => {
   if (process.platform !== 'win32') return path.join(DESKTOP, 'node_modules', '.bin', 'electron');
@@ -52,6 +53,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   page.on('requestfailed', request => { if (/^file:/.test(request.url()) && !/ERR_ABORTED/.test(request.failure()?.errorText || '')) journey.failedLoads.push(request.url().replace(/^.*\/desktop\//, 'desktop/')); });
   await confirmQuiet(profile);
   const trace = await startTrace(app);
+  const coverage = await startCoverage(app, page).catch(() => null);
   const shot = name => page.screenshot({path: path.join(ARTIFACTS, `${name}.png`)}).catch(() => {});
   // Copy the app's own logs next to the screenshots (the test profile holds only fictional data, and the logs never contain keys), and print the engine's last lines.
   const keepLogs = async () => {
@@ -65,7 +67,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   };
   // close({keepTrace}): the trace is written only when asked (a step failed); otherwise it is dropped unwritten.
   return {app, page, profile, shot, keepLogs, traceGroup: trace.group, traceGroupEnd: trace.groupEnd,
-    close: async ({keepTrace = false} = {}) => { await keepLogs().catch(() => {}); await trace.stop(keepTrace); await closeApp(app); }};
+    close: async ({keepTrace = false} = {}) => { await keepLogs().catch(() => {}); await saveCoverage(coverage, ARTIFACTS).catch(() => {}); await trace.stop(keepTrace); await closeApp(app); }};
 }
 
 // A Playwright trace of each app session (6 Oct 2026): every action with its screenshot strip, the page before and after (DOM snapshots), console and network, each step

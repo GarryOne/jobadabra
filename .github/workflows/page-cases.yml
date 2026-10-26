@@ -18,6 +18,7 @@ on:
       - 'desktop/e2e/lib/applying-report.mjs'
       - 'desktop/e2e/lib/capture-page.mjs'
       - 'desktop/e2e/lib/chrome-lean.mjs'
+      - 'desktop/e2e/lib/coverage.mjs'
       - 'desktop/e2e/lib/cookie-layer-left.mjs'
       - 'desktop/e2e/lib/end-shot.mjs'
       - 'desktop/e2e/lib/engine.mjs'

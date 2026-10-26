@@ -8,7 +8,7 @@ import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {ensureStaged} from './lib/ensure-staged.mjs';
 import {suitesUsing} from './lib/import-graph.mjs';
-import {autoSuites, cadenceOf, exploreDecision, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, waitingFindings} from './lib/plan.mjs';
+import {autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, waitingFindings} from './lib/plan.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 
@@ -97,8 +97,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
   for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite)});
-  // Windows runs the same suites, less those that judge what is the same on every OS (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
-  const windows = suites.filter(suite => !sameOnEveryOs.includes(suite));
+  // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
+  // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
+  const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));
   return {matrix: JSON.stringify({include}), count: String(include.length), suites: suites.join(','), windows_suites: windows.join(','), windows_matrix: JSON.stringify(windowsMatrix(windows, shards)), ref, tag, review: review ? '1' : '0', why};
 }
 

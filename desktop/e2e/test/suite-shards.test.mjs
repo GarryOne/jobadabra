@@ -37,12 +37,14 @@ test('every slice of a sharded suite fits its budget on Windows (the slower lane
 
 test('a sharded suite becomes one job per slice on both lanes; the others stay one job each', async () => {
   const gh = args => (args[0] === 'run' || args[0] === 'issue' ? '[]' : args.join(' ').includes('commits/') ? 'a'.repeat(40) : '');
-  const out = await planRun({env: {REPO: 'o/r', EVENT: 'gate', GATE_TAG: 'desktop-v1.0.0', TARGET_REF: 'desktop-v1.0.0', GATE_STORE_LEGS: 'one'}, gh, all: ['jobs', 'recorded'],
-    minutes: () => 15, shards: {recorded: 3}});
+  const out = await planRun({env: {REPO: 'o/r', EVENT: 'gate', GATE_TAG: 'desktop-v1.0.0', TARGET_REF: 'desktop-v1.0.0', GATE_STORE_LEGS: 'one'}, gh, all: ['apply', 'jobs', 'recorded'],
+    minutes: () => 15, shards: {apply: 2, recorded: 3}});
   const include = JSON.parse(out.matrix).include;
-  assert.deepEqual(include.map(item => [item.suite, item.key, item.shard]), [['jobs', 'jobs', ''], ['recorded', 'recorded-1of3', '1/3'], ['recorded', 'recorded-2of3', '2/3'], ['recorded', 'recorded-3of3', '3/3']]);
-  assert.deepEqual(JSON.parse(out.windows_matrix).include.map(item => item.key), ['jobs', 'recorded-1of3', 'recorded-2of3', 'recorded-3of3']);
-  assert.equal(out.suites, 'jobs,recorded');   // the suites are still named once (the summary, the Windows gate's input)
+  assert.deepEqual(include.map(item => [item.suite, item.key, item.shard]), [['apply', 'apply-1of2', '1/2'], ['apply', 'apply-2of2', '2/2'], ['jobs', 'jobs', ''],
+    ['recorded', 'recorded-1of3', '1/3'], ['recorded', 'recorded-2of3', '2/3'], ['recorded', 'recorded-3of3', '3/3']]);
+  // Windows runs apply and the settings smoke only (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026); a sliced one is sliced there too
+  assert.deepEqual(JSON.parse(out.windows_matrix).include.map(item => item.key), ['apply-1of2', 'apply-2of2']);
+  assert.equal(out.suites, 'apply,jobs,recorded');   // the suites are still named once (the summary, the Windows gate's input)
 });
 
 test('a gate with both store legs keeps them apart from the slices', async () => {

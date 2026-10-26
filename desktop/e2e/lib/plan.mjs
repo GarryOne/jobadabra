@@ -109,3 +109,9 @@ export const reviewNeeded = ({files, waiting, known}) => !known || waiting > 0 |
 // Where a suite runs in CI (6 Oct 2026, the 5-minute e2e): Linux by default (20 runner slots, about twice as fast as a Mac); macOS only for a suite that needs the Mac
 // itself (Keychain, `open` to Chrome and the extension, pixels and fonts), which exports `macos = true` with its reason. The Free plan runs at most 5 macOS jobs at once.
 export const runnerOf = module => (module.macos ? 'macos-latest' : 'ubuntu-24.04');
+
+// What Windows runs, outside a run by hand that names its suites: apply (the fill, where Windows' own product reds came from: #2074's night fill) and the settings
+// smoke (the app launches and draws). The e2e audit (owner's yes, 26 Oct 2026): Windows was 38% of e2e runner-minutes, ~14,200 a month, and its other reds were CI
+// or test timing. Read by plan-run.mjs (the release run's Windows matrix) and plan-windows.mjs (after main's checks, a gate by hand). Guard: test/windows-two.test.mjs.
+export const WINDOWS = ['apply', 'settings'];
+export const onWindows = suites => suites.filter(suite => WINDOWS.includes(suite));

@@ -89,6 +89,34 @@ class ReadInTime(Base):
         self.assertNotIn('next time', log)
 
 
+class RankedFirst(Base):
+    def test_a_timed_read_follows_the_shared_ranking_and_leaves_its_dead_out(self):
+        from src import source_rank
+        given = sites(50)
+        best = [given[i] for i in (7, 3, 9)]
+        dead = [given[0], given[1]]
+
+        def order(candidates, search, countries):
+            rest = [c for c in candidates if c not in best and c not in dead]
+            return best + rest, dead
+        time_budget.start(180)
+        with mock.patch.object(source_rank, 'order', side_effect=order) as ranked, mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['pilot']}), \
+                mock.patch('src.places.countries', return_value=['Austria']), mock.patch('src.places.load', return_value={}):
+            _, read, _, log = self.scan(given, slow_from=50)
+        self.assertEqual(read[:3], [7, 3, 9], 'the proven best first')
+        self.assertNotIn(0, read)
+        self.assertNotIn(1, read)
+        self.assertIn('2 left out', log)
+        ranked.assert_called_once()
+
+    def test_an_untimed_read_never_asks_the_ranking(self):
+        from src import source_rank
+        time_budget.start(0)
+        with mock.patch.object(source_rank, 'order') as ranked:
+            self.scan(sites(5), slow_from=5)
+        ranked.assert_not_called()
+
+
 class WebSearchWithTheRun(unittest.TestCase):
     def test_the_full_read_takes_the_search_started_with_the_run_and_keeps_what_it_found(self):
         from src.ai import board_ideas

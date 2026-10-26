@@ -4,9 +4,9 @@
 #   tools/pr-settings.sh            show the calls         tools/pr-settings.sh --apply   make them
 # No "require up to date": parallel PRs merge at once; CI on main (build.yml, page-cases.yml) still catches a rare clash and the red-main rule applies as before.
 # The repository admin role bypasses the ruleset only through a pull request (bypass_mode "pull_request", 12 Oct 2026, once every worktree had the PR ship): nobody pushes to main.
-# ONE required check since 15 Oct 2026 (owner): "All checks passed", the one job of pr-gate.yml, which starts on EVERY pull request. Its steps: "Fast checks", "PR description laid out", "Core flow files up to date with main",
-# "New test pages fail on the old build" (a recorded case the PR brings must fail on the old code; a follow-up names its fix with "Fix-commit: <sha>"), "Other workflows passed" (every other PR workflow's
-# result: tools/all-checks-green.sh). Before, four required jobs took four runner slots per PR.
+# ONE required check since 15 Oct 2026 (owner): "All checks passed". Since 26 Oct 2026 a commit status that pr-verdict.yml writes in seconds each time a PR workflow ends
+# (tools/pr-verdict.py: every run of the PR's head green; a CI change over its 10-min budget red). Before, a job of pr-gate.yml waited for the others on a runner, up to 60 min.
+# No integration is pinned on the context, so the status satisfies it. Before 15 Oct, four required jobs took four runner slots per PR.
 # (owner, 14 Oct 2026: "drop your shared pick logic, rely fully on gh workflow paths"). Every other PR workflow starts only when GitHub's `on: paths:` says the PR changed its area, and a workflow
 # that paths skip never reports, so none of them can be required; their red shows on the PR. Main runs them all on every push (tests/test_workflow_paths.py).
 set -euo pipefail

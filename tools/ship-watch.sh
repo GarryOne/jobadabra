@@ -15,12 +15,15 @@ echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees 
 trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
 say() { echo "ship: $*" >> "$log"; }
 fixer="${SHIP_WATCH_FIX:-$(cd "$(dirname "$0")" && pwd)/pr-conflict-fix.sh}"
-# GREEN only when the checks of the PR's CURRENT head sha exist, all concluded, and the required "All checks passed" job succeeded: right after a push the PR's
+# GREEN only when the checks of the PR's CURRENT head sha exist, all concluded green, and the required "All checks passed" is green on that head: right after a push the PR's
 # rollup still shows the old head's checks (18 Oct 2026, #1476: GREEN 2 s after a push, RED minutes later). No head, no repo or no answer: not green.
+# "All checks passed" is a commit status written by pr-verdict.yml since 26 Oct 2026 (before: a job of pr-gate.yml, still read for a PR whose runs predate it).
 head_checks_passed() {
   local repo; repo="$(jq -r '.url // empty' <<<"$1" | sed -E 's#^https?://[^/]+/([^/]+/[^/]+)/pull/.*#\1#')"
   [ -n "$repo" ] && [ -n "$2" ] || return 1
-  gh api "repos/$repo/commits/$2/check-runs?per_page=100" --jq '.check_runs | length > 0 and all(.[]; .status == "completed" and (.conclusion | IN("success","skipped","neutral"))) and any(.[]; .name == "All checks passed" and .conclusion == "success")' 2>/dev/null | grep -qx true
+  local runs; runs="$(gh api "repos/$repo/commits/$2/check-runs?per_page=100" --jq '.check_runs | if length > 0 and all(.[]; .status == "completed" and (.conclusion | IN("success","skipped","neutral"))) then (if any(.[]; .name == "All checks passed" and .conclusion == "success") then "gate" else "green" end) else "no" end' 2>/dev/null)"
+  case "$runs" in gate) return 0 ;; green) ;; *) return 1 ;; esac
+  gh api "repos/$repo/commits/$2/status" --jq '[.statuses[]? | select(.context == "All checks passed")][0].state == "success"' 2>/dev/null | grep -qx true
 }
 waited=0; red=""; green=""; conflict=""; lasthead=""
 while :; do

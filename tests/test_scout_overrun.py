@@ -32,32 +32,28 @@ class OverrunTest(unittest.TestCase):
             out.seek(0)
             self.assertEqual(out.read(), '')
 
-    def test_a_central_run_with_a_thread_left_over_leaves_at_once_and_one_without_does_not(self):
-        with mock.patch.object(scout_overrun.os, '_exit') as leave, mock.patch.object(scout_overrun.threading, 'active_count', return_value=3):
-            scout_overrun.leave_if_stuck()
-        leave.assert_called_once_with(0)
-        with mock.patch.object(scout_overrun.os, '_exit') as leave, mock.patch.object(scout_overrun.threading, 'active_count', return_value=1):
-            scout_overrun.leave_if_stuck()
-        leave.assert_not_called()
-
-    def test_a_thread_that_ends_in_the_grace_is_waited_for_and_a_hung_one_is_left(self):
-        # 26 Oct 2026: a pool shut with wait=False keeps its idle workers alive a moment; counted as stuck checks, os._exit(0) ended the
-        # unittest run halfway with exit 0 (1 run in 5 of tests/test_scout*.py), so the tests after it never ran and the run looked green.
-        hang = threading.Event()
-        quick = threading.Thread(target=lambda: time.sleep(0.05), daemon=True)
-        quick.start()
+    def test_a_central_run_leaves_at_once_only_while_a_check_thread_still_runs(self):
+        # 26 Oct 2026: counting every thread, os._exit(0) ended a unittest shard halfway with exit 0: a just-shut pool's idle workers
+        # (1 run in 5 of tests/test_scout*.py) and other tests' daemon heartbeat threads (CI, PR #1979) looked like stuck checks.
         with mock.patch.object(scout_overrun.os, '_exit') as leave:
-            scout_overrun.leave_if_stuck(grace_s=1)
+            scout_overrun.leave_if_stuck(grace_s=0.2)
         leave.assert_not_called()
-        stuck = threading.Thread(target=hang.wait, daemon=True)
-        stuck.start()
+        hang = threading.Event()
+        heartbeat = threading.Thread(target=hang.wait, daemon=True, name='run-row-heartbeat')   # never holds the exit
+        quick = threading.Thread(target=lambda: time.sleep(0.05))   # an idle pool worker: ends in the grace
+        heartbeat.start()
+        quick.start()
         try:
+            with mock.patch.object(scout_overrun.os, '_exit') as leave:
+                scout_overrun.leave_if_stuck(grace_s=1)
+            leave.assert_not_called()
+            stuck = threading.Thread(target=hang.wait)   # a check given up on: Python would wait for it
+            stuck.start()
             with mock.patch.object(scout_overrun.os, '_exit') as leave:
                 scout_overrun.leave_if_stuck(grace_s=0.2)
             leave.assert_called_once_with(0)
         finally:
             hang.set()
-
 
 if __name__ == '__main__':
     unittest.main()

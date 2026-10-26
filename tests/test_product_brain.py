@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
 
 class SiteLogTest(unittest.TestCase):
-    """Every brain message also goes to the site's log (POST /api/brain/log -> D1 brain_messages, /admin/brain)."""
+    """Every brain message also goes to the site's log (POST /api/brain/log -> D1 brain_messages, /admin/intelligence/brain)."""
 
     def setUp(self):
         self.logged, self.saved = [], {k: getattr(brain, k) for k in ('notion', 'telegram', 'site_log', 'DATABASE')}

@@ -7,7 +7,7 @@ description: Work through the open GitHub issues of GarryOne/jobadabra - validat
 
 The Finder (the UI loop: layout checks, AI screenshot review, interaction probe, failed test steps, AI code review) files GitHub issues
 labelled `auto-ui`; people file others. This skill: **validate → adopt the real ones → reject the false ones → score the Finder → propose
-improvements.** It drives the loop's own tools, so every closure counts in `/admin/self-healing`, the weekly Finder review and the
+improvements.** It drives the loop's own tools, so every closure counts in `/admin/operations/self-healing`, the weekly Finder review and the
 lessons the judges learn from (`desktop/e2e/lib/reversals.mjs`). Never invent a second way to label or close.
 
 **The goal (owner, 9 Oct 2026):** the Finder reports as many meaningful, accurate, valuable bugs as possible and as few false positives as
@@ -81,9 +81,9 @@ For each issue, oldest high-severity first:
 ## 3. Score the Finder: consult everything collected
 1. **The scorecard:** `node desktop/e2e/finder-scorecard.mjs --post` (repo root, ~5 s). Per detector: filed / real / false / open, precision,
    the false-positive causes (`resolution:` labels), how often a judge changed the filed severity, the change since the last scorecard
-   (posted on the pinned `finder-scorecard` issue). It counts like `/admin/self-healing` (same `classify()`, noise register included).
+   (posted on the pinned `finder-scorecard` issue). It counts like `/admin/operations/self-healing` (same `classify()`, noise register included).
 2. **The /self-heal page** (all the loop's collected data), read as the owner:
-   `curl -sL -H "Authorization: Bearer $(security find-generic-password -s job-pilotto.site.api_key -w)" https://www.jobpilotto.top/admin/self-healing -o <scratch>/selfheal.html`,
+   `curl -sL -H "Authorization: Bearer $(security find-generic-password -s job-pilotto.site.api_key -w)" https://www.jobpilotto.top/admin/operations/self-healing -o <scratch>/selfheal.html`,
    then strip the tags. Read every section, not only the totals:
    - **The loop, live**: its age (published every 3 h by `self-heal-stats.yml`; older than ~6 h = the publisher is broken) and its cutoff.
    - **Recall** (planted bugs caught; which were missed) and **Mutation catch rate** (planted code bugs).

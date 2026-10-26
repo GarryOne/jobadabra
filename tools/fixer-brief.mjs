@@ -33,7 +33,7 @@ export function buildBrief(groups, cause, listing, {oneLine = ''} = {}) {
   const text = [
     `You are session ${session} (Job Pilotto), one fixer for ONE cause, started by the coordinator job-pilotto-cc on the owner's paste. Report to job-pilotto-cc when each step lands.`,
     ...(oneLine ? ['', 'Coordinator\'s judgment: ' + oneLine] : []),
-    '', `CAUSE: "${group.label}" (${group.count} row${group.count === 1 ? '' : 's'}, ${group.claimed} claimed). Rows, as /admin/lab-form-filling shows them:`,
+    '', `CAUSE: "${group.label}" (${group.count} row${group.count === 1 ? '' : 's'}, ${group.claimed} claimed). Rows, as /admin/form-filling/lab shows them:`,
     ...rowBlocks, '',
     'TARGET: rows of this cause Confirmed by a pool run (two clean runs by the pool owner on main). You land after the live row (step 3) and go idle; you never queue for the batch.', '',
     'Start with: tools/worktree.sh ' + slug + '; read .claude/skills/fix-recorded-sites/SKILL.md (section 0a) and docs/rules/rounds.md. Say the tier and the test method first. One fix for the shape of the cause, never a site (no site names, hosts or word lists).', '',

@@ -1,5 +1,5 @@
 // The e2e suites' daily AI budget (owner, 7 Oct 2026: "$30 a week" in a busy week, $10 in a quiet one). Reads what the e2e jobs reported today (the site's
-// /ai-cost/data, the same rows /admin/ai-cost shows) and says whether today's budget is spent: then the run skips what is paid and optional, the paid AI judge
+// /ai-cost/data, the same rows /admin/intelligence/ai-cost shows) and says whether today's budget is spent: then the run skips what is paid and optional, the paid AI judge
 // steps (E2E_FULL) and the AI screenshot review. The app under test still asks the model what it has not seen (replayed answers cost nothing).
 //   node ai-spend.mjs >> "$GITHUB_OUTPUT"     (env: AI_COST_PUBLISH_KEY; E2E_DAILY_BUDGET in USD, default 5) -> over=true|false, spent=<usd>
 // Never fails a run: an unreadable figure counts as under budget, and says so.

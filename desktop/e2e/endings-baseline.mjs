@@ -1,7 +1,7 @@
 // node endings-baseline.mjs <reports folder>... [--platforms <admin/applying?json file>] [--json <out>]: the outcome contract's baseline from pool reports that ALREADY exist
 // (spec 2026-10-12-one-next-move.md, phase 1a; no new run). Every row run of each folder's day reports (record-sites.mjs `<day>.json`; a CI artifact's own run's rows only), classified by
 // lib/ending.mjs with the row's app log when it was kept (`<day>-<row>.app.log`). Prints the unresolved rows first (the work list, each with its cause), the rows held by the test
-// (not measured), the endings, and the resolution share raw and weighted by real demand (each platform's match share on /admin/lab-form-filling's scorecard, from --platforms).
+// (not measured), the endings, and the resolution share raw and weighted by real demand (each platform's match share on /admin/form-filling/lab's scorecard, from --platforms).
 import fs from 'node:fs';
 import path from 'node:path';
 import {ENDINGS} from '../../extension/ladder/endings.js';

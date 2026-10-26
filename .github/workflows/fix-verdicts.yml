@@ -1,7 +1,7 @@
 # "Confirmed offline" (owner, 14 Oct 2026): each landed fix and each row that got less far is judged by replaying a pool row's recording offline, at $0 and without waiting for by-hand
 # pool runs. A fix: the recording made BEFORE it, replayed on main twice, after a control (the recording on its own build must come out as live did). A regression: the newest recording
 # replayed on the older build that got further ("Our build") or not ("Site changed"). verify-plan.mjs picks the rows, verify-row.mjs replays one, lib/verify-judge.mjs judges, verify-report.mjs
-# sends the verdicts to /admin/lab-form-filling (its own word on the Fixed tab: "Confirmed offline"). Starts after the nightly offline replay on main and by hand; never on a PR, never a required check.
+# sends the verdicts to /admin/form-filling/lab (its own word on the Fixed tab: "Confirmed offline"). Starts after the nightly offline replay on main and by hand; never on a PR, never a required check.
 name: CI · Fix verdicts (offline replays)
 run-name: Confirmed offline
 
@@ -194,7 +194,7 @@ jobs:
         with:
           pattern: verify-*-${{ github.run_id }}*
           path: ${{ runner.temp }}/in
-      - name: Send the verdicts to /admin/lab-form-filling (main only)
+      - name: Send the verdicts to /admin/form-filling/lab (main only)
         if: github.ref == 'refs/heads/main'
         working-directory: desktop/e2e
         env:

@@ -97,11 +97,11 @@ test('each filled form counts for its board and goes in the same batch; nothing 
   reporter.fill('ashby'); reporter.fill('ashby'); reporter.fill('h:0123456789'); reporter.fill('bad board!'); reporter.fill('');
   assert.deepEqual(await reporter.flush(), {sent: 2});
   assert.deepEqual(sent[0].exposure, [{board: 'ashby', n: 2}, {board: 'h:0123456789', n: 1}]);
-  // With the required questions each form had (the denominator of /admin/real-form-filling's rates), summed per board.
+  // With the required questions each form had (the denominator of /admin/form-filling/real-users's rates), summed per board.
   reporter.fill('ashby', 9); reporter.fill('ashby', 3); reporter.fill('lever', 'x');
   await reporter.flush();
   assert.deepEqual(sent[1].exposure, [{board: 'ashby', n: 2, required: 12}, {board: 'lever', n: 1}]);
-  // And the labels the page marks with a "*", counted apart from the rule: the cross-check (site /admin/real-form-filling, "Required marks").
+  // And the labels the page marks with a "*", counted apart from the rule: the cross-check (site /admin/form-filling/real-users, "Required marks").
   reporter.fill('recruitingapp-662.umantis.com', 0, 6); reporter.fill('recruitingapp-662.umantis.com', 0, 6); reporter.fill('ashby', 4, 'x');
   await reporter.flush();
   assert.deepEqual(sent[2].exposure, [{board: 'recruitingapp-662.umantis.com', n: 2, starred: 12}, {board: 'ashby', n: 1, required: 4}]);

@@ -66,7 +66,7 @@ export const sightings = issue => Math.max(1, sightingKeys(issue).size);
 export const REGRESSION = 'regression', FLAKY = 'flaky';
 const FIXED = /^(?:Closed: commit [0-9a-f]+ says it fixes this|Fixed by https?:\/\/)/;
 // Closed by a fix: the label `resolution:fixed` (the loop's own word since 5 Oct 2026, set by the fixer, a person and the triage-github-open-issues skill), or one of the two older closing comments.
-// Until 9 Oct 2026 only the comments counted, so /admin/self-healing said "no defect closed by a fix yet" over 42 issues labelled fixed.
+// Until 9 Oct 2026 only the comments counted, so /admin/operations/self-healing said "no defect closed by a fix yet" over 42 issues labelled fixed.
 export const closedByFix = issue => issue.state === 'CLOSED' && issue.stateReason !== 'NOT_PLANNED' && (resolutionOf(issue) === 'fixed' || (issue.comments || []).some(comment => FIXED.test(comment.body || '')));
 export const fixedBefore = (finding, issues) => matchExisting(finding, (issues || []).filter(closedByFix), 0.3, 'CLOSED');
 // The commits a failed-step issue was seen failing on (its body and its "Seen again" comments).

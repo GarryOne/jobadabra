@@ -75,7 +75,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     try { gh(['release', 'view', TAG, '-R', REPO]); } catch { gh(['release', 'create', TAG, '-R', REPO, '--prerelease', '--title', 'Pool network records (encrypted)', '--notes', 'Encrypted pool network records for the PR replay (desktop/e2e/records-publish.mjs). Not an app build.']); }
     uploadBundle(file => gh(['release', 'upload', TAG, '-R', REPO, file]), path.join(work, BUNDLE), path.join(work, KEY));   // the key last; each file retried (HTTP 404 once on 15 Oct 2026, group 3)   // added, never --clobber: other bundles stay
     console.log(`records-publish: ${publish.length} rows added to ${REPO} release ${TAG} as ${BUNDLE}`);
-    // New recordings: main's replay runs again at once, so /admin/lab-form-filling shows them (the workflow publishes from main only).
+    // New recordings: main's replay runs again at once, so /admin/form-filling/lab shows them (the workflow publishes from main only).
     const dispatch = dispatchGh();   // the run's own token: the write token only reaches the private records repo
     try { execFileSync('gh', ['workflow', 'run', 'CI · Site replays · all (offline)', '--ref', 'main', ...dispatch.repoArgs], {cwd: here, env: dispatch.env, stdio: ['ignore', 'pipe', 'inherit']}); console.log('records-publish: replay on main started'); } catch { console.log('records-publish: start the replay on main by hand (gh workflow run "CI · Site replays · all (offline)" --ref main)'); }
     process.exitCode = refusedExit;

@@ -34,7 +34,7 @@ class StatsTests(unittest.TestCase):
         self.assertEqual((stats['recipes'], stats['page_reads']), (0, 0), 'tables this scout never made count as 0')
 
     def test_each_source_counts_the_employers_it_found_by_their_main_kind(self):
-        """Owner, 19 Oct 2026: /admin/scouting must show where we are strong or weak, so which source fills which kind of role."""
+        """Owner, 19 Oct 2026: /admin/job-search/scouting must show where we are strong or weak, so which source fills which kind of role."""
         db = sqlite3.connect(':memory:')
         db.row_factory = sqlite3.Row
         scout.harvest(db, {'excluded': []}, [lambda: [dict(name='Care', origin='Wikidata healthcare: PL', priority=55),

@@ -14,7 +14,7 @@ test('the suggested hosts come from the site with the owner key, and only plain,
   const fetcher = async (url, init) => { calls.push([url, init.headers.Authorization]); return answer([site('careers.acme.md'), site('www.linkedin.com'), site('acme.md/jobs?x=1'), site('jobs.indeed.com'), site('hr.unic.md')]); };
   const got = await fetchWanted({env: {}, key: 'k', fetcher});
   assert.deepEqual(got.hosts.map(item => item.host), ['careers.acme.md', 'hr.unic.md']);
-  assert.deepEqual(calls, [['https://www.jobpilotto.top/admin/lab-form-filling?json', 'Bearer k']]);
+  assert.deepEqual(calls, [['https://www.jobpilotto.top/admin/form-filling/lab?json', 'Bearer k']]);
 });
 
 test('nothing is asked on CI, a control run or without a key', async () => {

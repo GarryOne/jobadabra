@@ -45,7 +45,7 @@ class ActionHeaderTest(unittest.TestCase):
                     missing.append(f'{path.relative_to(root)}:{number}')
         self.assertEqual(missing, [], 'every engine.client() call names its step: engine.client(action="score")')
         # Every name a call can send, also one picked inside the call (`action='a' if ... else 'b'`); names have underscores (26 Oct 2026: `[a-z]+` missed
-        # 14 steps such as title_triage, so Free AI logged 517 calls as "other" on /admin/ai-cost).
+        # 14 steps such as title_triage, so Free AI logged 517 calls as "other" on /admin/intelligence/ai-cost).
         used = {step for path in (root / 'src').rglob('*.py') for call in re.findall(r"engine\.client\(action=([^)]*)\)", path.read_text())
                 for step in re.findall(r"'([a-z_]+)'", call)}
         self.assertGreater(len(used), 25)

@@ -1,4 +1,4 @@
-"""Publish one finished local search check to /admin/lab-job-search "Session checks" so other sessions read it (owner, 24 Oct 2026).
+"""Publish one finished local search check to /admin/job-search/lab "Session checks" so other sessions read it (owner, 24 Oct 2026).
 Usage: python3 tools/persona-search/publish-session-check.py <out dir> <case> --session <name> --label "Nurse, Zagreb" --country Croatia --role nurse --mode full|quick
            --build <sha> [--local-jobs N] [--broke "..."] [--conclusion "..."] [--prs "#1825 #1835"] [--dry]
 <out dir>/<case>/presses.jsonl and run-1.log are run.mjs's output. The key is the Keychain item job-pilotto.site.session_checks_key (its own key, never the CI one); never print it.

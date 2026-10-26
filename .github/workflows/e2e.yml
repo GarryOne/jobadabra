@@ -566,7 +566,7 @@ jobs:
           npm ci || npm install
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           bash "$GITHUB_WORKSPACE/tools/merge-e2e-report.sh" "$GITHUB_WORKSPACE/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
-          if grep -q "^made=1" "$GITHUB_OUTPUT"; then echo "HTML report (admins): https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report"; fi
+          if grep -q "^made=1" "$GITHUB_OUTPUT"; then echo "HTML report (admins): https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report"; fi
       - uses: actions/upload-artifact@v6
         if: steps.merge.outputs.made == '1'
         with:

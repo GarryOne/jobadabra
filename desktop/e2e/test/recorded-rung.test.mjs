@@ -1,4 +1,4 @@
-// A recorded case may name the AI-ladder rung it guards (an integer 0 to 6, optional): the loader passes it on and /admin/lab-form-filling shows it as "Rung guarded".
+// A recorded case may name the AI-ladder rung it guards (an integer 0 to 6, optional): the loader passes it on and /admin/form-filling/lab shows it as "Rung guarded".
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

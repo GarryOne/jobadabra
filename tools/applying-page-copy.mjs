@@ -1,11 +1,11 @@
-// A saved local copy of /admin/lab-form-filling's ?json for the session tools (needs-fix-causes, needs-fix-order): fetched at most every 15 minutes, `--refresh` forces a fetch
+// A saved local copy of /admin/form-filling/lab's ?json for the session tools (needs-fix-causes, needs-fix-order): fetched at most every 15 minutes, `--refresh` forces a fetch
 // (every live fetch costs the site's D1 budget, 11 Oct 2026). The owner key comes from the Keychain (job-pilotto.site.api_key), never printed. Guard: test/needs-fix-causes.test.js.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const SITE = 'https://www.jobpilotto.top/admin/lab-form-filling?json';
+const SITE = 'https://www.jobpilotto.top/admin/form-filling/lab?json';
 export const MAX_AGE_MS = 15 * 60000;
 export const COPY = path.join(os.tmpdir(), 'job-pilotto-applying-page.json');
 

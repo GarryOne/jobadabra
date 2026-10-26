@@ -24,7 +24,7 @@ const HOW = 'Add to a commit message of the push:\n  Rung: <0-6 | router | judge
 export const poolRowProblem = (messages, pool = {names: [], complete: false}) => {
   const values = messages.flatMap(message => [...String(message).matchAll(/^Pool-row:[ \t]*(.*)$/gm)].map(found => found[1].trim()));
   const bad = values.filter(name => !name || name.length > 120 || /[?=@]|:\/\/|https?:/i.test(name));
-  if (bad.length) return `"Pool-row: ${bad[0]}" must be a pool row's name as /admin/lab-form-filling shows it: no address, no query string, at most 120 characters`;
+  if (bad.length) return `"Pool-row: ${bad[0]}" must be a pool row's name as /admin/form-filling/lab shows it: no address, no query string, at most 120 characters`;
   return values.filter(name => !/^none\s+\S/i.test(name)).map(name => rowNameProblem(name, pool, 'Pool-row: ')).find(Boolean) || '';   // "none <why>": a hand-made case no row showed
 };
 

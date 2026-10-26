@@ -7,7 +7,7 @@
   decision --id <page>           a decision as text (the explore step's input)
   plan     --id <page> --file plan.md   the explored plan -> the decision's page, Telegram: ✅ Approve / ✖ Drop
   status   --id <page> --status <name> [--note text]   a button's answer, recorded (and acknowledged in Telegram)
-  sync                           every Decisions row -> the site's log (D1 brain_messages, /admin/brain); safe to re-run:
+  sync                           every Decisions row -> the site's log (D1 brain_messages, /admin/intelligence/brain); safe to re-run:
                                  rows it already has are skipped. Filled the log once; re-run if a log write was missed.
 
 post, plan and status also write each message to that log (POST /api/brain/log); a failed log write is said, never fatal.
@@ -80,7 +80,7 @@ def telegram(text: str, buttons: list[list[dict]] | None = None) -> int | None:
 
 
 def site_log(messages: list[dict]) -> int:
-    """Messages -> the site's log (D1 brain_messages, read by /admin/brain). Never fails the step: Notion stays the record."""
+    """Messages -> the site's log (D1 brain_messages, read by /admin/intelligence/brain). Never fails the step: Notion stays the record."""
     key = os.environ.get('JOB_PILOTTO_TELEMETRY_KEY')
     if not key or not messages:
         print('Brain log: not written (JOB_PILOTTO_TELEMETRY_KEY missing).' if not key else 'Brain log: nothing to write.', file=sys.stderr)

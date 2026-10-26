@@ -92,7 +92,7 @@ export async function decidePageKind(storage, body, {decide = pageKind, client} 
     const dropped = forgetPageKind(kindCache, {url: body?.url, controls: body?.controls});
     if (shapeOf && ladderMiss(learnt, shapeOf)) appLog('extension', 'ladder: learned answer dropped (one miss)', {shape: shapeOf});
     appLog('extension', `page kind forgotten: ${String(body.reason || 'contradicted by the page').slice(0, 80)}`, {shape: dropped || '(nothing kept)', was: String(body.kind || '').slice(0, 20)});
-    appLog('extension', ladderLine({rung: 1, signal: 'contradicted'}), {shape: dropped || '(nothing kept)'});   // the kept answer (rung 1) the page contradicted: the line /admin/lab-form-filling reads
+    appLog('extension', ladderLine({rung: 1, signal: 'contradicted'}), {shape: dropped || '(nothing kept)'});   // the kept answer (rung 1) the page contradicted: the line /admin/form-filling/lab reads
     return {ok: true, forgotten: !!dropped};
   }
   if (body?.why === 'other') {   // the ladder ended with no usable answer: the shape is counted and logged, never its text (lib/ladder/other.js)

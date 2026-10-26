@@ -59,7 +59,7 @@ test('the recording run names its visit kind (by hand) and keeps no visit back f
   assert.match(smoke, /JOB_PILOTTO_SITE_LIMIT: '2'/);
 });
 
-// Owner, 14 Oct 2026: the CI workflow's one job is recording, so its rows move /admin/lab-form-filling (main only, the narrow key); it sends no "proven live" record any more.
+// Owner, 14 Oct 2026: the CI workflow's one job is recording, so its rows move /admin/form-filling/lab (main only, the narrow key); it sends no "proven live" record any more.
 test('the recording run sends its ladder moves, endings and (main only) its rows with the narrow key, on that step only, never the site key', () => {
   const smoke = workflows['record-sites.yml'];
   const step = smoke.match(/- name: The ladder moves, the rows' endings[^\n]*\n(?: {8}.*\n)+/)?.[0] || '';
@@ -73,8 +73,8 @@ test('the recording run sends its ladder moves, endings and (main only) its rows
   assert.doesNotMatch(smoke, /STATS_API_KEY|STATS_KEY|site\.api_key/);
 });
 
-// Owner, 12 Oct 2026 (cost safety): live CI has its own Anthropic key with its own limit; the Tests key until it exists. Every run reports its spend to /admin/ai-cost.
-test('the pool run passes its live keys to the engine rule (which picks one, else the Tests key, and names it), and reports its spend to /admin/ai-cost without ever failing', () => {
+// Owner, 12 Oct 2026 (cost safety): live CI has its own Anthropic key with its own limit; the Tests key until it exists. Every run reports its spend to /admin/intelligence/ai-cost.
+test('the pool run passes its live keys to the engine rule (which picks one, else the Tests key, and names it), and reports its spend to /admin/intelligence/ai-cost without ever failing', () => {
   const smoke = workflows['record-sites.yml'];
   for (const name of ['E2E_ANTHROPIC_KEY', 'LIVE_POOL_ANTHROPIC_KEY']) assert.match(smoke, new RegExp(`\\b${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`), `${name} reaches the run; lib/engine.mjs picks one`);
   assert.doesNotMatch(smoke, /AI_KEY_NAME|secrets\.LIVE_ANTHROPIC_KEY/, 'the choice is the engine rule\'s alone (lib/engine.mjs liveKeyName)');
@@ -116,7 +116,7 @@ test('the daily watch list: picker without AI, recording only when the month has
   assert.match(record, /JOB_PILOTTO_SITE_LIMIT: '2'/, 'at most 2 visits a host a day');
   assert.match(record, /JP_APPLICANT: thin/);
   assert.match(record, /JP_TEST_ACCOUNTS: \$\{\{ secrets\.POOL_TEST_ACCOUNTS \}\}/, 'test accounts only, from the secret');
-  assert.match(record, /AI_COST_JOB: pool-watch/, 'its spend has its own line on /admin/ai-cost');
+  assert.match(record, /AI_COST_JOB: pool-watch/, 'its spend has its own line on /admin/intelligence/ai-cost');
   assert.match(record, /POOL_WAIT_WORKFLOWS: record-sites\.yml,watch-live\.yml/, 'one pool run at a time across both');
   assert.match(record, /for workflow in record-sites\.yml watch-live\.yml/, 'the site ledger counts both workflows');
   assert.match(workflows['record-sites.yml'], /for workflow in record-sites\.yml \S+ watch-live\.yml/, 'and the batch counts the watch');

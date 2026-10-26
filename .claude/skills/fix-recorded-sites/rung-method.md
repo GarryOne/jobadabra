@@ -7,7 +7,7 @@ Non-negotiables (the ladder designer's, job-pilotto-cc): the rung map first; the
 `npm run ladder-score` live and `--offline`; the baseline updated only with `--update-baseline "<why>"` (never edit an expectation to pass); a recorded page that fails on the old build; the commit trailers `Rung: <n>` and `Fixture: <id>`.
 
 ### R1. Find the rung that decided wrong (5 min, no edits)
-- `/admin/lab-form-filling` pool table "Rung" column, or `logs/app.log`: `page kind: <kind> by ai|remembered`, `structure rule`, `closer look`, `takeover`.
+- `/admin/form-filling/lab` pool table "Rung" column, or `logs/app.log`: `page kind: <kind> by ai|remembered`, `structure rule`, `closer look`, `takeover`.
 - Map: by `ai` = rung 2, `remembered` = 1, structure rule = 0 (after unsure or no AI), digest = 3 (read its own answer: verb, numbers, what the app DROPPED), closer look = 4, takeover = 5.
 - Say in one line: "decided at rung N, said X, truth is Y, because <the sketch shows / lacks Z>".
 - Look at the sketch the rung really saw: `cd desktop && node e2e/ladder-capture.mjs --dir <scratch dir with one fixture json>` (read-only GET, bare Chromium) or the fixture of that shape in `desktop/e2e/ladder-fixtures/`.

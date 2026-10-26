@@ -15,6 +15,6 @@ export async function uploadFillVideo(name, video, ctx = {}, {env = process.env,
       headers: {Authorization: `Bearer ${env.REPLAYS_PUBLISH_KEY}`, 'Content-Type': 'video/webm', 'X-Caller': 'fill-video-upload'}, body: fs.readFileSync(video.path), signal: AbortSignal.timeout(60000)});
     const body = await answer.json().catch(() => ({}));
     if (answer.ok) fs.rmSync(video.path, {force: true});
-    return answer.ok ? `fill video: sent to /admin/lab-form-filling (${Math.round(video.bytes / 1024)} KB)` : `fill video: refused (${answer.status} ${body.error || ''})`;
+    return answer.ok ? `fill video: sent to /admin/form-filling/lab (${Math.round(video.bytes / 1024)} KB)` : `fill video: refused (${answer.status} ${body.error || ''})`;
   } catch (error) { return `fill video: not sent (${String(error?.message || error).slice(0, 80)})`; }
 }

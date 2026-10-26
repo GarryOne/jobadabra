@@ -168,7 +168,7 @@ test('the fields line the app writes (far longer than 230 characters) becomes on
   assert.deepEqual(fieldLines('fill: fields: 4 filled, 8 left {"fields":[{"label":"Full name","type"'), []);   // a cut line gives none, never a wrong one
 });
 
-// The AI ladder (docs/flows/ladder.md): the rung that made the run's last decision, read from the log; /admin/lab-form-filling shows it as "Rung" (rung 0 to 6, signal unsure|contradicted|stalled|failed).
+// The AI ladder (docs/flows/ladder.md): the rung that made the run's last decision, read from the log; /admin/form-filling/lab shows it as "Rung" (rung 0 to 6, signal unsure|contradicted|stalled|failed).
 const rungOf = text => { const {rung, signal} = parseLive(text); return [rung, signal]; };
 test('parseLive: the rung of the last decision comes from how the page kind was decided', () => {
   assert.deepEqual(rungOf('x [extension] page kind: posting {"by":"ai"}'), [2, null]);
@@ -415,7 +415,7 @@ test('a fill held by a dialog nothing closes: a needs-fix reason, never ready', 
 test('a row on the CI key reports its AI spend, and a privacy tripwire hit is kept on the row (lib/pool-ci.mjs sums the one, turns the job red on the other)', () => {
   const run = parseLive('Apply pressed on u\n[extension] page kind: form {}\nlive: AI spend $0.0312 on the CI key (7 calls, 21000 in / 3900 out tokens)\n[extension] fill: fields: 4 filled, 2 left');
   assert.equal(run.usd, 0.0312);
-  assert.equal(run.aiCalls, 7, 'the calls too: /admin/ai-cost counts them (pool-ai-cost.mjs)');
+  assert.equal(run.aiCalls, 7, 'the calls too: /admin/intelligence/ai-cost counts them (pool-ai-cost.mjs)');
   assert.equal(run.tripped, undefined);
   assert.equal(parseLive('Apply pressed on u').usd, undefined, 'a Mac run (the plan) has no spend line and no usd');
   assert.equal(parseLive('live: privacy tripwire: email typed into "Email"; the run\'s saved files (screenshots included) were deleted and those fields cleared').tripped, true);

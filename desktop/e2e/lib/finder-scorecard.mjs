@@ -1,5 +1,5 @@
 // The Finder's scorecard for the triage-github-open-issues skill (.claude/skills/triage-github-open-issues): per detector, how many findings were real, false (and why), and how often the filed severity
-// was wrong; plus the change since the last scorecard. Builds on lib/selfheal-stats.mjs (the same classify(), so /admin/self-healing and this agree). Pure; finder-scorecard.mjs runs it.
+// was wrong; plus the change since the last scorecard. Builds on lib/selfheal-stats.mjs (the same classify(), so /admin/operations/self-healing and this agree). Pure; finder-scorecard.mjs runs it.
 import {detectorOf, summarize} from './selfheal-stats.mjs';
 import {resolutionOf} from './resolution.mjs';
 

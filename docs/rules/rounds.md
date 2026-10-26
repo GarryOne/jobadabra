@@ -1,15 +1,15 @@
 # A fix round: how the coordinator runs one (owner, 11 Oct 2026)
 
-A round = several sessions fixing the applying flow's failing pool rows. Judged by ONE number: **rows "Confirmed" on `/admin/lab-form-filling`** (a pool run
+A round = several sessions fixing the applying flow's failing pool rows. Judged by ONE number: **rows "Confirmed" on `/admin/form-filling/lab`** (a pool run
 cleared them), per hour. 11 Oct 2026: ~3 h, 6+ sessions, 2 rows confirmed; 75 of 131 commits were tooling, and the coordinator had told the owner
 the wrong cause for the waiting ([why.md](why.md)).
 
 ## Start of a round (the coordinator, in this order, a few minutes)
 1. **The Mac first:** `uptime`, `sysctl vm.swapusage`. Swap over ~70% or load far above the core count: it is memory, not CPU (11 Oct: UTM 3 GB + 8
    sessions ~2.5 GB, load 31). Ask the owner to quit the VM; list the finished sessions they can close (each ~400 MB). Do not add parallel runs on a swapping Mac.
-2. **Read the By cause tab** (`/admin/lab-form-filling`, or `~/jobadabra-web/tools/site-run.sh node jobs/needs-fix-causes.mjs --rows`). Rows in **Run first** (never run, or no run since their fix)
+2. **Read the By cause tab** (`/admin/form-filling/lab`, or `~/jobadabra-web/tools/site-run.sh node jobs/needs-fix-causes.mjs --rows`). Rows in **Run first** (never run, or no run since their fix)
    go to the pool owner for a run BEFORE any fixer starts: 10 of 29 rows were never-run shapes, not failures.
-3. **Weigh by real demand before choosing a cause** (owner, 11 Oct 2026): `/admin/lab-form-filling`'s scorecard gives each platform's share of users' matched jobs
+3. **Weigh by real demand before choosing a cause** (owner, 11 Oct 2026): `/admin/form-filling/lab`'s scorecard gives each platform's share of users' matched jobs
    ("Of matched jobs"; 11 Oct: Greenhouse 55%, Ashby 34%, everything else 0-3%). A cause on a 0-3% platform waits unless its fix is generic and cheap; a
    platform with a high share and a low real fill ("Blind spot": Ashby real forms filled 57%) comes first even when no pool row is red. Success of the round
    is also the real-use fill share of the big platforms, not only pool rows confirmed.

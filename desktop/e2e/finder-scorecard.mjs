@@ -8,7 +8,7 @@ import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 const args = process.argv.slice(2), at = name => (args.includes(name) ? args[args.indexOf(name) + 1] : '');
 const gh = list => execFileSync('gh', list, {encoding: 'utf8', maxBuffer: 100 * 1024 * 1024});
 const issues = JSON.parse(gh(['issue', 'list', '--label', 'auto-ui', '--state', 'all', '--limit', '1000', '--json', 'number,state,stateReason,labels,comments,createdAt,body']));
-// Plus what was judged noise before filing (the noise register), as /admin/self-healing counts it: still a false positive of its detector.
+// Plus what was judged noise before filing (the noise register), as /admin/operations/self-healing counts it: still a false positive of its detector.
 let judged = [];
 try { judged = asIssues(registerEntries(JSON.parse(gh(REGISTER_LIST))[0]?.body)); } catch { judged = []; }
 issues.push(...judged);

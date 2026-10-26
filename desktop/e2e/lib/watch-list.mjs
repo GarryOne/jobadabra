@@ -52,7 +52,7 @@ export function judgeWatch(report = {}, picked = [], previous = {}, failedJourne
 }
 
 // ONE message a run, only when a flow got worse than its previous live run. '' otherwise (day 1 sends nothing).
-export function telegramText({day, judged, usd = 0, monthSpent = 0, monthCap = MONTH_CAP_USD, labUrl = 'https://www.jobpilotto.top/admin/lab-form-filling'}) {
+export function telegramText({day, judged, usd = 0, monthSpent = 0, monthCap = MONTH_CAP_USD, labUrl = 'https://www.jobpilotto.top/admin/form-filling/lab'}) {
   if (!judged.worse.length) return '';
   return [`📉 Daily watch ${day}: ${judged.worse.length} of ${judged.measured.length} flows worse than the last live run`,
     ...judged.worse.map(item => `• ${item.shape}: ${item.why}`),

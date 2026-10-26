@@ -25,7 +25,7 @@ export function endingOfStuck(why, needs = '') {
   return UNRESOLVED;   // other (the ladder ended with nothing to say), incomplete (nothing filled, required fields left), anything not listed
 }
 
-// Why a row ended where it did, in fixed words (the Resolution table of /admin/lab-form-filling shows them; the run uploads only the word, never page text). A stuck reason
+// Why a row ended where it did, in fixed words (the Resolution table of /admin/form-filling/lab shows them; the run uploads only the word, never page text). A stuck reason
 // (STUCK_REASONS) is its own word. The held ones are the test's own holds. Plain meanings, in the order the legend shows them.
 export const CAUSES = {
   ready: 'the form is reached; what is left is yours', 'field-missed': 'a required field we left empty', 'ai-miss': 'a required field the AI declined or was unsure about',

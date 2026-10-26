@@ -9,7 +9,7 @@
 # Never a fork PR: the key is never given to it. Never every PR. Refill runs take their turn one at a time (pool-ci-wait.mjs), so two never publish the same rows.
 # On main the publish works in groups of 3 rows (records-publish.mjs refuses more at once), one runner per group, and a failed or cap-refused run tells the owner on Telegram (ci-alert.mjs).
 # Key: REPLAY_REFILL_ANTHROPIC_KEY, its own workspace and spend limit, NO fallback to ANTHROPIC_API_KEY or any other key: missing = the job says so and stops (lib/refill.mjs).
-# Money: the estimate is printed first (pick job), above max_asks (default 40) or $3 the run does not start, a row stops at 30 paid calls, each row's spend is in the job log and on /admin/ai-cost (job replay-refill).
+# Money: the estimate is printed first (pick job), above max_asks (default 40) or $3 the run does not start, a row stops at 30 paid calls, each row's spend is in the job log and on /admin/intelligence/ai-cost (job replay-refill).
 # The tree: main's tools + the PR's head merged on the runner (tools/refill-merge-main.sh; a branch older than this workflow still runs; one that conflicts with main stops with "rebase it").
 # Needs also: NET_RECORD_KEY, NET_RECORDS_READ_TOKEN (as the replay), NET_RECORDS_WRITE_TOKEN (contents:write on the private jobadabra-lab: only the publish job reads it), AI_COST_PUBLISH_KEY.
 # Guard: tests/test_refill_workflow.py, desktop/e2e/test/refill.test.mjs. Never posts a Replay-accept line.
@@ -177,7 +177,7 @@ jobs:
           node refill-pick.mjs "$RUNNER_TEMP/pins.json" "$RUNNER_TEMP/step4" $all --max-asks "$MAX_ASKS" > "$RUNNER_TEMP/pick.json"
           { echo "### Replay refill: PR $PR"; echo; echo '```'; jq -r .line "$RUNNER_TEMP/pick.json"; echo '```'; }
           [ -z "$(jq -r .refused "$RUNNER_TEMP/pick.json")" ] || { echo "::error::the estimate is above the cap: nothing was asked"; jq -r .refused "$RUNNER_TEMP/pick.json" > "$RUNNER_TEMP/auto-why.txt"; exit 1; }
-          if [ "$AUTO" = true ] && [ "$(jq '.rows | length' "$RUNNER_TEMP/pick.json")" != 0 ]; then   # the month's $5 (/admin/ai-cost, job replay-refill), read here: the PR's job holds no key
+          if [ "$AUTO" = true ] && [ "$(jq '.rows | length' "$RUNNER_TEMP/pick.json")" != 0 ]; then   # the month's $5 (/admin/intelligence/ai-cost, job replay-refill), read here: the PR's job holds no key
             if AI_COST_PUBLISH_KEY="$COST_KEY" node refill-auto.mjs cap "$(jq .usd "$RUNNER_TEMP/pick.json")" > "$RUNNER_TEMP/auto-why.txt"; then cat "$RUNNER_TEMP/auto-why.txt"
             else cat "$RUNNER_TEMP/auto-why.txt"; echo "::error::the automatic refill is over its cap: nothing was asked"; exit 1; fi
           fi
@@ -442,7 +442,7 @@ jobs:
           name: yellow-${{ github.run_id }}-g${{ matrix.group }}
           path: ${{ runner.temp }}/yellow-g${{ matrix.group }}.json
   finish:
-    # Once, after every group: the spend (job log and /admin/ai-cost) and, for a PR run, the PR's gate again.
+    # Once, after every group: the spend (job log and /admin/intelligence/ai-cost) and, for a PR run, the PR's gate again.
     needs: [pick, refill, publish]
     if: always() && needs.pick.result == 'success' && needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
@@ -471,7 +471,7 @@ jobs:
           node desktop/e2e/refill-yellow.mjs "$RUNNER_TEMP/yellow-merged.json" "${lists[@]}" || true
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Spend (job log and /admin/ai-cost)
+      - name: Spend (job log and /admin/intelligence/ai-cost)
         if: always() && steps.packs.outputs.packs != '0'
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}

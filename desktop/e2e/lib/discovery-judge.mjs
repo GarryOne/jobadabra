@@ -40,7 +40,7 @@ export function judgeBatch(report = {}, picked = []) {
 const hostOf = url => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
 // Telegram: ONE message a run, only when something new failed. -> '' when nothing did.
-export function telegramText({day, judged = [], usd = 0, weekSpent = 0, weekCap = 3, labUrl = 'https://www.jobpilotto.top/admin/lab-form-filling'}) {
+export function telegramText({day, judged = [], usd = 0, weekSpent = 0, weekCap = 3, labUrl = 'https://www.jobpilotto.top/admin/form-filling/lab'}) {
   const failed = judged.filter(item => FAILURES.includes(item.verdict));
   if (!failed.length) return '';
   const fine = judged.filter(item => item.verdict === 'fine'), unmeasured = judged.filter(item => item.verdict === 'not-measured');

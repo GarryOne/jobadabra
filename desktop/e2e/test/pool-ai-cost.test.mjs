@@ -1,4 +1,4 @@
-// A CI pool run's AI spend goes to /admin/ai-cost like every scheduled AI job (owner, 12 Oct 2026, cost safety): pool-ai-cost.mjs reads THIS run's spend and calls from the
+// A CI pool run's AI spend goes to /admin/intelligence/ai-cost like every scheduled AI job (owner, 12 Oct 2026, cost safety): pool-ai-cost.mjs reads THIS run's spend and calls from the
 // day report into the file ai-cost-report.mjs --file sends. Never fails the job.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';

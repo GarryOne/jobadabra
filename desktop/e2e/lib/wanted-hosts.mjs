@@ -1,5 +1,5 @@
 // Usage-weighted pool, step 3 (private spec jobadabra-lab:docs/specs/2026-10-10-usage-weighted-pool.md): the hosts real users apply on that the smoke pool lacks ("Next sites to add" on
-// /admin/lab-form-filling, k >= 3 installs each) become discovery candidates: postings on those hosts, from the loaded profile's jobs, are tried first. Everything stays on this Mac
+// /admin/form-filling/lab, k >= 3 installs each) become discovery candidates: postings on those hosts, from the loaded profile's jobs, are tried first. Everything stays on this Mac
 // (discover writes the repo's pool list, desktop/e2e/smoke-sites.json); a suggested host with no posting among the jobs is listed in the report, not skipped silently.
 // Guard: test/wanted-hosts.test.mjs.
 import {execFileSync} from 'node:child_process';

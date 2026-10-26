@@ -81,8 +81,8 @@ jobs:
           JP_REPLAY_RESULTS: replay-results-1.json
         run: |
           node --test --test-concurrency=1 test/recorded-pages.test.mjs || { echo "::error title=Suite failed::page cases: the job fails at \"Every suite passed\""; exit 1; }
-      # /admin/lab-form-filling's Fixed-site replays show CI on main only: this build's results, ONE PUT with its sha (desktop/e2e/replays-report.mjs). Also when a case failed.
-      - name: Send the page cases to /admin/lab-form-filling
+      # /admin/form-filling/lab's Fixed-site replays show CI on main only: this build's results, ONE PUT with its sha (desktop/e2e/replays-report.mjs). Also when a case failed.
+      - name: Send the page cases to /admin/form-filling/lab
         id: pages-report
         continue-on-error: true
         working-directory: desktop/e2e

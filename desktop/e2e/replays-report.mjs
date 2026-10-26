@@ -1,4 +1,4 @@
-// CI's report job of .github/workflows/page-cases.yml: every shard's replay results (JP_REPLAY_RESULTS files) sent to /admin/lab-form-filling's Fixed-site replays in
+// CI's report job of .github/workflows/page-cases.yml: every shard's replay results (JP_REPLAY_RESULTS files) sent to /admin/form-filling/lab's Fixed-site replays in
 // ONE PUT with the build's sha, on a push to main only (lib/applying-report.mjs uploadReplays). A case without its control is held back (uploadable). A missing shard
 // sends nothing: a partial run would drop its cases from the table. The ladder moves the passing cases confirmed go to the site's learning, marked source 'replay', on the same rule
 // (lib/ladder-moves.mjs). Run: node replays-report.mjs <expected shard count> <results file>...

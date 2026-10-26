@@ -13,7 +13,7 @@ COUNTRIES = {
     'us': 'United States', 'ca': 'Canada', 'au': 'Australia', 'sg': 'Singapore', 'in': 'India', 'ae': 'United Arab Emirates',
     'il': 'Israel', 'br': 'Brazil', 'mx': 'Mexico', 'jp': 'Japan', 'bg': 'Bulgaria', 'hr': 'Croatia', 'ee': 'Estonia', 'hu': 'Hungary',
 }
-# The European ones: the columns of the central list's kind × country coverage (/admin/scouting). Every country the Lab's draws use
+# The European ones: the columns of the central list's kind × country coverage (/admin/job-search/scouting). Every country the Lab's draws use
 # (tools/persona-search/draws.json) is here; tests/test_pool_tags.py checks it.
 EUROPE = ('ch', 'de', 'at', 'fr', 'it', 'gb', 'ie', 'nl', 'be', 'lu', 'es', 'pt', 'se', 'dk', 'no', 'fi', 'pl', 'cz', 'ro', 'md', 'gr', 'bg', 'hr', 'ee', 'hu')
 METROS = {

@@ -108,6 +108,14 @@ def pick(boards, kept, retry_due=lambda entry: False, dropped=frozenset(), remem
     return tried + (untried[:MAX_UNTRIED] if total_relevant(kept) < enough else [])
 
 
+def _read_after(entry, since):
+    """The board's last read is at or after `since` (None: never)."""
+    try:
+        return since is not None and datetime.fromisoformat((entry or {})['last_read']) >= since
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 def not_read_since(boards, kept, since, handed=()):
     """The boards not read since `since`: a search run again within the board scan's spacing (src/sources/aggregators.py read_lately) reads the
     boards proposed or found since its last read, not none (owner's pilot run, 26 Oct 2026: a 6-hour rest of the whole board read hid the
@@ -115,32 +123,29 @@ def not_read_since(boards, kept, since, handed=()):
     (found_boards._early): their next pages are still to read."""
     if since is None:
         return list(boards)
-    def read_after(entry):
-        try:
-            return datetime.fromisoformat((entry or {})['last_read']) >= since
-        except (KeyError, TypeError, ValueError):
-            return False
-    fresh = [board for board in boards if board['host'] in handed or not read_after(kept.get(board['host']))]
+    fresh = [board for board in boards if board['host'] in handed or not _read_after(kept.get(board['host']), since)]
     from .aggregators import SPACING_HOURS
     print(f'Job boards: {len(boards) - len(fresh)} read in the last {SPACING_HOURS} h skipped; reading {len(fresh)} new ones', flush=True)
     return fresh
 
 
-def _read_by_the_search():
-    """The found boards were read by a search within the board scan's spacing (src/sources/aggregators.py read_lately)."""
+def _read_since():
+    """When this search read the found boards within the board scan's spacing (src/sources/aggregators.py read_lately), else None."""
     from contextlib import closing
     from ..paths import DATA, load_search_config
     from . import aggregators, boards_ahead, feeds
     try:
         with closing(feeds.database(DATA / 'jobs.sqlite')) as db:
-            return aggregators.read_lately(db, boards_ahead.NAME, search=load_search_config()) is not None
-    except Exception:  # noqa: BLE001 — unknown: the step reads them
-        return False
+            return aggregators.read_lately(db, boards_ahead.NAME, search=load_search_config())
+    except Exception:  # noqa: BLE001 — unknown: the step reads them all
+        return None
 
 
 def step(search, is_relevant=is_relevant):
     """The 'Searching job boards' step for the found boards: reads them for any country and says in one line per board what it gave; boards a
-    search read within the board scan's spacing are not read again, their last read is said. Returns the sources lines (src/sources/boards.py main)."""
+    search read within the board scan's spacing are not read again, their last read is said; the others are read (the First Officer draws, 26 Oct
+    2026: ~30 boards proposed, the first-jobs slice had read a few, and the whole step was skipped: 0 boards read). Returns the sources lines
+    (src/sources/boards.py main)."""
     from ..ai import board_ideas
     from . import found_boards
     found = board_ideas.ideas(search)
@@ -150,16 +155,13 @@ def step(search, is_relevant=is_relevant):
     found = found + remembered(found, board_ideas.load().get('boards') or {})   # boards that paid before stay, whatever this proposal says
     print('Job boards: ' + ', '.join(board['name'] for board in found), flush=True)
     before = {host: entry.get('last_read') for host, entry in (board_ideas.load().get('boards') or {}).items()}
-    if _read_by_the_search():   # 19 Oct 2026: a first search read the same boards again right after its digest, ~60-90 s, jobs unused
-        print('Job boards: already read by this search; read again in a few hours', flush=True)
-        before = {}   # what that read gave
-    else:
-        found_boards.read(search, found, is_relevant=is_relevant)
+    since = _read_since()   # 19 Oct 2026: a first search read the same boards again right after its digest: those are skipped, one by one
+    found_boards.read(search, found, is_relevant=is_relevant, since=since)
     kept, out = board_ideas.load().get('boards') or {}, []
     for board in found:
         entry = kept.get(board['host']) or {}
-        if not entry.get('last_read') or entry['last_read'] == before.get(board['host']):
-            continue   # not read this time (dropped, or an untried board over the cap)
+        if not entry.get('last_read') or (entry['last_read'] == before.get(board['host']) and not _read_after(entry, since)):
+            continue   # not read this time nor by this search's slice (dropped, or an untried board over the cap)
         if entry.get('site_kind') in ('gone', 'one employer', 'other'):   # its check found it is no board (src/sources/board_check.py)
             out.append({'source': board['name'], 'status': {'gone': "can't be reached", 'one employer': "one employer's own site: added to your employers",
                                                               'other': 'not a job board'}[entry['site_kind']]})

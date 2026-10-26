@@ -89,22 +89,27 @@ class SpareTests(unittest.TestCase):
 class OnceTests(unittest.TestCase):
     """The app's 'Searching job boards' step after a first search (desktop/lib/search-steps.js) does not read the boards that search read."""
     def step(self, read_lately):
-        reads = []
+        from datetime import datetime, timezone
+        calls = []
         kept = {'b1.example': {'name': 'Board 1', 'last_read': '2026-10-19T00:05:00+00:00', 'jobs': 38, 'relevant': 14, 'state': 'ok'}}
-        with mock.patch.object(board_ideas, 'ideas', return_value=[board(1)]), mock.patch.object(board_ideas, 'load', return_value={'boards': kept}), \
-                mock.patch.object(found_boards, 'read', lambda *a, **k: reads.append(1) or []), \
-                mock.patch.object(board_yield, '_read_by_the_search', return_value=read_lately):
+        since = datetime(2026, 10, 19, 0, 0, tzinfo=timezone.utc) if read_lately else None
+        with mock.patch.object(board_ideas, 'ideas', return_value=[board(1), board(2)]), mock.patch.object(board_ideas, 'load', return_value={'boards': kept}), \
+                mock.patch.object(found_boards, 'read', lambda search, boards, **k: calls.append(([b['host'] for b in boards], k.get('since'))) or []), \
+                mock.patch.object(aggregators, 'read_lately', return_value=since), mock.patch('src.paths.load_search_config', return_value=SEARCH), \
+                mock.patch('src.sources.feeds.database', side_effect=lambda path: sqlite3.connect(':memory:')):   # the clock the slice's read set
             lines = board_yield.step(SEARCH)
-        return reads, lines
+        return calls, lines, since
 
-    def test_boards_the_search_read_are_not_read_again(self):
-        reads, lines = self.step(read_lately=True)
-        self.assertEqual(reads, [])
-        self.assertEqual(lines, [{'source': 'Board 1', 'status': '38 listed, 14 relevant (your roles, your places)'}], 'what that read gave')
+    def test_a_first_search_reads_the_proposed_boards_its_slice_did_not_read(self):
+        """Fails on the old code: the First Officer draws (26 Oct 2026, runs 40266913617 / 40266916879) proposed ~30 boards for Europe, the
+        first-jobs slice had read a few, and the step said "already read by this search" and read none: 0 boards read."""
+        calls, lines, since = self.step(read_lately=True)
+        self.assertEqual(calls, [(['b1.example', 'b2.example'], since)], 'every proposed board goes to the read, which skips those read since then')
+        self.assertEqual(lines, [{'source': 'Board 1', 'status': '38 listed, 14 relevant (your roles, your places)'}], 'what the slice read gave')
 
     def test_boards_not_read_lately_are_read(self):
-        reads, _ = self.step(read_lately=False)
-        self.assertEqual(reads, [1])
+        calls, _, _ = self.step(read_lately=False)
+        self.assertEqual(calls, [(['b1.example', 'b2.example'], None)])
 
     def test_read_lately_follows_the_board_scans_spacing(self):
         from datetime import datetime, timedelta, timezone

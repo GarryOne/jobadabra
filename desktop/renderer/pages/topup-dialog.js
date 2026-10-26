@@ -45,7 +45,7 @@ export async function openTopupDialog(why = {}, {action = '', retry = null} = {}
   link.type = 'button';
   const openField = () => {
     const field = el('input', '', ''), go = el('button', 'secondary', 'Redeem'), answer = el('p', 'message', ''), row = el('div', 'inline', '');
-    Object.assign(field, {type: 'text', id: 'topup-code', placeholder: 'Enter your code', autocomplete: 'off', spellcheck: false, maxLength: 64});
+    Object.assign(field, {id: 'topup-code', placeholder: 'Enter your code', autocomplete: 'off', spellcheck: false, maxLength: 64});
     go.type = 'button';
     const redeem = async () => {
       if (!field.value.trim()) { answer.textContent = 'Enter your code.'; answer.className = 'message warn'; return; }

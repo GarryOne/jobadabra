@@ -74,6 +74,14 @@ class TitlesAiFirstTest(unittest.TestCase):
                 with mock.patch.object(feeds, 'placing', return_value=False):
                     self.assertTrue(feeds.keep_open({'title': 'Pilot A320', 'location': 'Paris'}), 'a shown job is closed only on an AI no')
 
+    def test_an_unchanged_list_is_read_again_until_the_ai_judged_its_word_hit_titles(self):
+        from src.sources import feed_facts
+        with mock.patch.object(feeds, 'wanted_location', return_value=True), mock.patch.object(feeds, 'placing', return_value=False), \
+                mock.patch.object(feed_facts, '_triage_on', return_value=True):
+            self.assertFalse(feed_facts.settled({'title': 'Pilot A320', 'location': 'Paris'}), 'a role-word hit still waits for the AI')
+            self.assertFalse(feed_facts.settled({'title': 'Captain B737', 'location': 'Paris'}), 'an excluded-word title too')
+            self.assertTrue(feed_facts.settled({'title': 'Senior First Officer', 'location': 'Paris'}), 'the AI answered')
+
     def test_with_ai_turned_off_the_words_decide(self):
         with mock.patch('src.ai.engine.ready', lambda *a, **k: False):
             feeds.triage([{'title': 'Pilot A320', 'location': 'Paris'}])
@@ -98,7 +106,8 @@ class LevelGoesToTheAiTest(unittest.TestCase):
 
 
 class EveryTitleFilterAsksTheAiTest(unittest.TestCase):
-    EXEMPT = {'src/sources/feeds.py': 'the gate itself', 'src/scout_probe.py': 'the scout judge, its own PR (audit item 6)'}
+    EXEMPT = {'src/sources/feeds.py': 'the gate itself', 'src/scout_probe.py': 'the scout judge, its own PR (audit item 6)',
+              'src/sources/feed_facts.py': 'only which places still wait for an answer, after feed_scan sorted the titles'}
 
     def test_each_file_that_keeps_jobs_by_title_runs_the_ai_sort_on_them_first(self):
         missing = []

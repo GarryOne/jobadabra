@@ -62,6 +62,7 @@ class BatchOrderTest(unittest.TestCase):
                       mock.patch('builtins.print')):
             patch.start()
             self.addCleanup(patch.stop)
+        self.addCleanup(self.fresh)   # no judged titles left for the next test file (they mark that the AI sort ran)
         self.tape = Tape()
         patch = mock.patch.object(engine, 'client', lambda **kw: self.tape)
         patch.start()

@@ -23,11 +23,21 @@ def _file():
     return paths.DATA / FILE
 
 
+_short = [False]   # the boards read first gave enough jobs: only the best READ_FLOOR employer sites (src/sources/boards_first.py)
+
+
+def short(on=True):
+    """From now, a timed search's employer read keeps only its floor (on), or its whole time again (off)."""
+    _short[0] = on
+
+
 def deadline(now=None):
     """The monotonic time after which no new site starts, or None when the search has no budget."""
     if time_budget.DEADLINE is None:
         return None
     started = now if now is not None else time.monotonic()
+    if _short[0]:
+        return started
     return min(started + READ_SECONDS, max(time_budget.DEADLINE, started))
 
 

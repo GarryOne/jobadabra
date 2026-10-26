@@ -72,6 +72,13 @@ def search(args, stores=None):
                     from .sources import board_web
                     board_web.early(load_search_config())
                 so_far = jobs_so_far.SoFar(db)   # each source's jobs in the list as soon as it is read, not all at the end (owner, 18 Oct 2026); before the slice, so its jobs stay "new" in the count
+                first_boards = []
+                if args.mode in ('scheduled', 'run') and not args.only_visits:   # the web search's boards read before any employer site (src/sources/boards_first.py)
+                    from .sources import boards_first
+                    try:
+                        first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
+                    except Exception as error:  # noqa: BLE001 — the full board read reads them
+                        print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
                 if args.first_jobs and args.score_max and not args.only_visits and (read_first := profile_source(stores)):
                     try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
                         first_jobs.run(db, feed_db, feed_list, read_first(), hidden, sync=lambda: stores.matches.sync(
@@ -81,6 +88,7 @@ def search(args, stores=None):
                         print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
                 from .sources import boards_ahead   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
                 report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'))
+                report['jobs'] += first_boards
                 crawl_funnel = report.get('funnel')   # not `funnel`: that name is the Notion funnel module used further down
                 if crawl_funnel:   # the same fixed-list tags the pool uses (src/contribute.py): all that ever describes this search to the product
                     crawl_funnel['roles'], crawl_funnel['regions'] = contribute.tags()

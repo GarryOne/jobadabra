@@ -239,7 +239,16 @@
    "finance_admin",
    "education",
    "trades",
-   "other"
+   "engineering",
+   "business_ops",
+   "manufacturing",
+   "science",
+   "customer_service",
+   "legal",
+   "aviation_transport",
+   "public_security",
+   "other",
+   "unsure"
   ],
   "share": false
  },
@@ -255,6 +264,14 @@
    "finance_admin",
    "education",
    "trades",
+   "engineering",
+   "business_ops",
+   "manufacturing",
+   "science",
+   "customer_service",
+   "legal",
+   "aviation_transport",
+   "public_security",
    "other"
   ],
   "share": true

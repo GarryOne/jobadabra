@@ -41,14 +41,15 @@ def _table(db):
     return db
 
 
-def kept(topic, keys, db=None):
-    """The answers already kept for these keys (no AI): {key: answer}."""
+def kept(topic, keys, db=None, since=''):
+    """The answers already kept for these keys (no AI): {key: answer}. With `since` (an ISO time), only answers kept from then on: the caller's
+    answer list changed then, so older answers are asked again (role_kinds.SINCE, 26 Oct 2026: 'pilot' was kept as finance_admin)."""
     own = db is None
     db = _table(db or _db())
     try:
         out = {}
         for key in keys:
-            row = db.execute('SELECT answer FROM decisions WHERE topic = ? AND key = ?', (topic, str(key))).fetchone()
+            row = db.execute('SELECT answer FROM decisions WHERE topic = ? AND key = ? AND at >= ?', (topic, str(key), since)).fetchone()
             if row:
                 out[key] = row[0]
         return out
@@ -57,7 +58,7 @@ def kept(topic, keys, db=None):
             db.close()
 
 
-def decide(topic, items, answers, instructions, client=None, db=None):
+def decide(topic, items, answers, instructions, client=None, db=None, since=''):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
     pack gave (items they don't know are left out), or None when they gave none."""
     items = {str(key): str(text or '')[:MAX_TEXT] for key, text in (items or {}).items()}
@@ -66,7 +67,7 @@ def decide(topic, items, answers, instructions, client=None, db=None):
     own = db is None
     db = _table(db or _db())
     try:
-        out = kept(topic, items, db)
+        out = kept(topic, items, db, since)
         from . import meanings_pack   # then the pack (the old lists as seed + what the site learned): free, offline, never worse
         for key in items:
             if key not in out and (known := meanings_pack.first(topic, items[key])):

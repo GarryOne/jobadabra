@@ -5,7 +5,9 @@ import {LEVELS, splitPermit, splitSalary} from './question-values.js';
 
 // src/role_kinds.py KINDS, in words. A role the engine did not label (an older read) is "Other roles".
 export const KIND_LABELS = {software: 'Software', sales_b2b: 'Business sales', sales_retail: 'Retail', logistics: 'Logistics', hospitality: 'Hospitality',
-  healthcare: 'Healthcare', creative_media: 'Creative & media', finance_admin: 'Office & finance', education: 'Education', trades: 'Trades', other: 'Other roles'};
+  healthcare: 'Healthcare', creative_media: 'Creative & media', finance_admin: 'Office & finance', education: 'Education', trades: 'Trades',
+  engineering: 'Engineering', business_ops: 'Business & operations', manufacturing: 'Manufacturing', science: 'Science & research',
+  customer_service: 'Customer service', legal: 'Legal', aviation_transport: 'Aviation & transport', public_security: 'Public service & security', other: 'Other roles'};
 
 // Roles grouped by family, in the order the user listed them: [{kind, label, entries}]. A single family keeps its own name too.
 export function roleFamilies(entries) {

@@ -11,7 +11,7 @@ import {log as appLog} from './log.js';
 // Every field a search report may carry, with the test its value must pass. Anything else is dropped.
 const count = v => Number.isInteger(v) && v >= 0 && v < 1e6;
 const oneOf = list => v => list.includes(v);
-export const FAMILIES = ['software', 'sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare', 'creative_media', 'finance_admin', 'education', 'trades', 'other'];   // src/role_kinds.py KINDS (test keeps them equal)
+export const FAMILIES = ['software', 'sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare', 'creative_media', 'finance_admin', 'education', 'trades', 'engineering', 'business_ops', 'manufacturing', 'science', 'customer_service', 'legal', 'aviation_transport', 'public_security', 'other'];   // src/role_kinds.py KINDS (test keeps them equal)
 export const READ_METHODS = ['feed_api', 'plain_page', 'ai_board', 'browser', 'extension_tab'], READ_MEASURES = ['sources', 'jobs', 's', 'ai_cents'];   // src/read_methods.py (test keeps them equal)
 export const FIELDS = {
   family: oneOf(FAMILIES),

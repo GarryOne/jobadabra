@@ -640,6 +640,38 @@
               "color": "green"
             },
             {
+              "name": "engineering",
+              "color": "gray"
+            },
+            {
+              "name": "business_ops",
+              "color": "brown"
+            },
+            {
+              "name": "manufacturing",
+              "color": "orange"
+            },
+            {
+              "name": "science",
+              "color": "yellow"
+            },
+            {
+              "name": "customer_service",
+              "color": "green"
+            },
+            {
+              "name": "legal",
+              "color": "blue"
+            },
+            {
+              "name": "aviation_transport",
+              "color": "purple"
+            },
+            {
+              "name": "public_security",
+              "color": "pink"
+            },
+            {
               "name": "other",
               "color": "default"
             }

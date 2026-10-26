@@ -127,8 +127,8 @@ def boards_read(report, feed_names):
 ROLES = {'software': 'software development (backend, frontend, full stack, web)', 'sre_devops': 'SRE, DevOps, platform, cloud, infrastructure, systems',
          'data': 'data, analytics, BI, machine learning, AI', 'security': 'security', 'mobile': 'mobile (iOS, Android)', 'qa': 'QA, testing',
          'management': 'engineering management, tech lead, CTO, director'}
-# And the kinds of role of every other trade (src/role_kinds.py KINDS), sent by name: the site accepts this same list (site/src/pool.js ROLES).
-TRADE_ROLES = ['sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare', 'creative_media', 'finance_admin', 'education', 'trades']
+# And the kinds of role of every other trade (src/role_kinds.py KINDS), sent by name: the site accepts this same list (jobadabra-web shared/pool-labels.js ROLES).
+TRADE_ROLES = ['sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare', 'creative_media', 'finance_admin', 'education', 'trades', 'engineering', 'business_ops', 'manufacturing', 'science', 'customer_service', 'legal', 'aviation_transport', 'public_security']
 REGIONS = {'europe': 'Europe (EU, EMEA, UK, Switzerland, ...)', 'north_america': 'North America', 'latin_america': 'Latin America',
            'asia_pacific': 'Asia-Pacific', 'middle_east_africa': 'Middle East and Africa'}
 # Which of these a role or place word is, in any language, is decided by AI (src/ai/meanings.py labels); without AI: none (8 Oct 2026).
@@ -167,8 +167,8 @@ def tags(search=None):
     from .ai import meanings
     roles = set(meanings.labels('pool-role', [_plain(k) for k in search.get('role_keywords', [])], ROLES, 'A role a job seeker looks for. Answer its tech area.'))
     # The other trades by the role kinds (src/role_kinds.py), so a shop or warehouse search is not just 'other' (6 Oct 2026). Fixed names.
-    from .role_kinds import of_search
-    roles |= (of_search(search) or set()) - {'software', 'other'}
+    from .role_kinds import UNKNOWN, of_search
+    roles |= (of_search(search) or set()) - {'software', 'other', UNKNOWN}
     places = [_plain(p) for group in ('top_tier', 'country_wide', 'abroad') for p in search.get('locations', {}).get(group, [])]
     regions = set(meanings.labels('pool-region', places, REGIONS, 'A place a job seeker searches in. Answer its region.'))
     return sorted(roles) or ['other'], sorted(regions)

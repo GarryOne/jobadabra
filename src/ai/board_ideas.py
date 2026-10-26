@@ -9,6 +9,7 @@ import json
 import re
 import urllib.parse
 
+from ..role_kinds import KINDS as ROLE_KINDS
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 
@@ -30,10 +31,10 @@ public job service first (the state's own), then the general boards, then boards
 LinkedIn, Indeed, Glassdoor and levels.fyi. For each, its public search page as a template: https, the board's own address, {role} where \
 the keywords go and {place} where the place goes (no {place} when the board has no place search). Only boards you are confident exist with \
 that search address; fewer is better than a guess. kinds: from software, sales_b2b, sales_retail, logistics, hospitality, healthcare, \
-creative_media, finance_admin, education, trades, any."""
+creative_media, finance_admin, education, trades, engineering, business_ops, manufacturing, science, customer_service, legal, aviation_transport, \
+public_security, other, any."""
 SOURCE_KINDS = ('public_service', 'general', 'sector', 'regional', 'agency')
-KINDS = ('software', 'sales_b2b', 'sales_retail', 'logistics', 'hospitality', 'healthcare', 'creative_media', 'finance_admin', 'education',
-         'trades', 'any')
+KINDS = (*ROLE_KINDS, 'any')   # src/role_kinds.py KINDS, plus a board for every kind
 
 
 def _host(url):

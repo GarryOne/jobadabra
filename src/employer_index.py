@@ -302,8 +302,8 @@ def relevant(index, wanted_location, wanted_kinds=None, me=None, keep=(), today=
     for f in index:
         if f.get('places') and not any(wanted_location({'location': place}) for place in f['places']):
             continue
-        if not role_kinds.fits(f.get('kinds'), wanted_kinds):
-            continue
+        if not role_kinds.fits(f.get('kinds'), wanted_kinds, f.get('checked') or '') and not (wanted_kinds and role_kinds.UNKNOWN in wanted_kinds and f['company'] in keep):
+            continue   # an unknown kind still reads the companies where this user already has a scored job
         label = quiet_label(f, me) if me and f['company'] not in keep else ''
         if label and said is not None:
             said.append((f['company'], label, 'shadow' if shadow else 'out'))

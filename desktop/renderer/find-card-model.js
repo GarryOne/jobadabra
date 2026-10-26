@@ -127,3 +127,15 @@ export function findCard({running = null, last = null, lastSearchAt = '', listed
   if (!lastSearchAt && !listed) return {state: 'empty'};
   return {state: 'none'};
 }
+
+// "empty" (no jobs yet) and "failed" (with none listed) depend on the list's count: before the list is read, the card keeps its first paint
+// (never the big empty card over a full list for a moment).
+export const waitsForList = (model, listKnown) => !listKnown && (model.state === 'empty' || model.state === 'failed');
+
+// What the next start paints first (renderer/late-blocks.js): the card as drawn, but a search done in this window is "Find more jobs" in the next one
+// (finishedHere starts false there), and a running search keeps only its shape, not its lines.
+export function keptFindCard(model) {
+  if (model.state === 'done') return {state: 'none'};
+  if (model.state === 'searching') return {...model, lines: model.lines.slice(-3)};
+  return model;
+}

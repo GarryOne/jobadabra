@@ -32,7 +32,7 @@ export const NOTION_PARITY = {
   'pages/interviews.js showRow': {view: 'pages/interviews.js openReview'},
   'pages/interviews.js renderSaved': {view: 'pages/interviews.js openReview'},   // its job link: the job panel
   'pages/job-panel.js footer': JOB,                                // the panel itself; "Open in Notion" is the Notion user's extra
-  'pages/jobs-render.js renderTalking': JOB,
+  'pages/jobs-talking.js renderTalking': JOB,
   'pages/jobs-render.js renderJobs': JOB,
   'pages/notion-connect.js openInNotion': {none: 'helper: its callers are rows of their own (index.html ids)'},
   'pages/prep.js init': PREP,

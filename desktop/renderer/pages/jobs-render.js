@@ -1,4 +1,4 @@
-// Jobs page, the list: renderJobs (rows, filters, row actions), In conversation, the stuck banner, loading state, kit label. Guarded by: test/count-flash.test.js.
+// Jobs page, the list: renderJobs (rows, filters, row actions), the stuck banner, loading state, kit label. Guarded by: test/count-flash.test.js.
 import {ai} from '../ai-name.js';
 import {closeMenu, el, isInteractiveTarget, moreButton, pill, tag} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
@@ -8,7 +8,7 @@ import {looksLikeLink, matches} from '../filter.js';
 import {fitRing} from '../fit-ring.js';
 import {searchingNow} from './jobs-find.js';
 import {icon} from '../icons.js';
-import {ago, avatar, band, byStat, inConversation, talkingBar, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
+import {ago, avatar, band, byStat, isStuck, fitTooltip, matchLabel, openMatches, PLACE_UNCLEAR, placeAndMode, prepareState, preparing, shortPlace, sorted, statPressed, statusPill, tags, unscoredWhy, workMode} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {openActivity} from './activity.js';
 import {$, show} from './core.js';
@@ -28,6 +28,7 @@ import {openJobPanel, panelUrl} from './job-panel.js';
 import {jobsChanged, loadJobs, showJobsData} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
+import {renderTalking} from './jobs-talking.js';
 import {boardIds, hasViewOption, inFilters, inFiltersLoose, soleFilter} from '../jobs-filters.js';
 
 // Applying, with no session open for it: one to settle (banner on Jobs).
@@ -47,46 +48,6 @@ const claudeStarted = new Set();
 
 document.addEventListener('sessions-loaded', () => renderStuck());
 const COUNTS_ALL = new Set(['applied', 'waiting', 'interviews', 'closed']);
-// In conversation: the opportunities that found you and are still open, one Focus-style row each; a click opens the
-// job in Notion (⌘-click: in a Jobadabra window), or its link when it has no page.
-// It gives way to the list whenever the list is narrowed to something (a counter or Focus step clicked, the Inbound or
-// Everything menu choice, words typed): the same jobs would show twice.
-// Folded by default; open if you last left it open (a click on the bar).
-export const TALKING_OPEN = 'jobsTalkingOpen';
-export function renderTalkingBar() {
-  const bar = talkingBar(inConversation(shared.allJobs), $('jobs-talking').open);
-  $('jobs-talking-title').textContent = bar.title;
-  $('jobs-talking-count').textContent = bar.detail;
-}
-function renderTalking(narrowed = false) {
-  const talking = inConversation(shared.allJobs);
-  show($('jobs-talking'), talking.length > 0 && !narrowed);
-  const found = talking.filter(isInbound).length;
-  renderTalkingBar();
-  const mixed = found > 0 && found < talking.length;  // a tag per row only tells something when both kinds are listed
-  $('jobs-talking-list').replaceChildren(...talking.map(job => {
-    const li = Object.assign(el('li', 'focus-item tone-info'), {tabIndex: 0, role: 'button',
-      title: job.notion_url ? 'Open in Notion' : 'Open its page'});
-    const round = el('span', 'focus-round');
-    round.append(icon('chat'));
-    const top = el('div', 'focus-top');
-    top.append(el('span', 'focus-headline', job.title || 'Role'), pill(job.stage || 'Recruiter lead', 'info', {dot: true}));
-    const meta = el('div', 'focus-meta muted small');
-    const who = [job.company, job.via && job.via !== job.company ? `via ${job.via}` : ''].filter(Boolean).join(' ');
-    [who, mixed ? (isInbound(job) ? 'Inbound' : 'Outbound') : '', job.next_step ? `Next: ${job.next_step}` : ''].filter(Boolean).forEach((part, i) => {
-      if (i) meta.append(el('span', 'sep', '·'));
-      meta.append(el('span', '', part));
-    });
-    const body = el('div', 'focus-body');
-    body.append(top, meta);
-    li.append(round, body);
-    // Its Notion page when the store has one, else the job's page here (pages/job-panel.js): the conversation, its messages and history.
-    const open = event => (job.notion_url ? window.pilot.openNotion(job.notion_url, event.metaKey) : openJobPanel(job));
-    li.addEventListener('click', open);
-    li.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(event); } });
-    return li;
-  }));
-}
 export function renderJobs() {
   closeMenu(document.querySelector('.view[data-view="jobs"]'));   // only a menu on this page
   const filters = jobsState.filters;

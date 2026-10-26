@@ -39,3 +39,6 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-card.is-done .find-head-box, .find-card.is-none .find-head-box { flex: 1; min-width: 0; }
 .find-card.is-done .find-scope, .find-card.is-none .find-scope { display: none; }
 .find-again { flex: none; }
+/* The skeleton in the card's place until its state is known (index.html, renderer/late-blocks.js): the compact card's own title and lead lines
+   hold its height, a shimmer bar in each, and its button. */
+.find-card.is-loading .find-title .skeleton, .find-card.is-loading .find-lead .skeleton { display: inline-block; vertical-align: middle; }

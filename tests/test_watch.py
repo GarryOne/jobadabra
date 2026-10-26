@@ -1,13 +1,20 @@
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.sources import feed_facts  # noqa: E402
 from src.sources.feeds import database, scan, render
 
 
 class WatchTests(unittest.TestCase):
+    def setUp(self):   # each scan here is a read: the 6-hour "unchanged" skip (src/sources/feed_facts.py) is off
+        patch = mock.patch.object(feed_facts, 'FRESH_HOURS', 0)
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def test_dedup_changes_and_source_failures(self):
         sources = [{"company": "A", "board": "a"}, {"company": "B", "ats": "lever", "slug": "b"}]
         job = {"id": "1", "title": "Site Reliability Engineer", "location": "Zurich", "url": "https://example.com/1",

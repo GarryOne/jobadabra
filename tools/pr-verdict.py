@@ -63,6 +63,15 @@ def job_state(job, me=None, my_status=''):
     return 'finishing' if any(st.get('name') == STEP for st in steps) and not left else 'running'
 
 
+def clock(at):
+    """'07:04 Zurich' (the owner's time); 'HH:MM UTC' where Python has no time-zone data (Windows runners)."""
+    try:
+        from zoneinfo import ZoneInfo
+        return at.astimezone(ZoneInfo('Europe/Zurich')).strftime('%H:%M Zurich')
+    except Exception:   # zoneinfo missing, or no tz database (ZoneInfoNotFoundError)
+        return at.astimezone(timezone.utc).strftime('%H:%M UTC')
+
+
 def label(r, running_jobs=()):
     """How the status names a run it waits for: the PR's e2e run by its suites (the run is not in the PR's checks list), others by workflow."""
     title = str(r.get('displayTitle', ''))
@@ -98,9 +107,11 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     if settling and not running:
         return 'settling', f'{short(label(r) for r in settling)} ending', live, [], None
     if running:
-        waited = (now - min(_at(r['createdAt']) for r in live)).total_seconds() / 60
+        # A clock time, never minutes so far: the status is written only when a job ends, so a counter froze between writes (26 Oct 2026, the owner: "it stays
+        # like that: 'waiting 3 min: e2e quality' for more than 5 minutes. this is a bug").
+        since = clock(min(_at(r['createdAt']) for r, _ in running))
         first = next((r for r, _ in running if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)), running[0][0])
-        return 'pending', f'waiting {waited:.0f} min: {short(label(r, names) for r, names in running)}'[:140], live, [], first.get('databaseId')
+        return 'pending', f'{short(label(r, names) for r, names in running)} running since {since}'[:140], live, [], first.get('databaseId')
     minutes = (max(_at(r['updatedAt']) if r.get('status') == 'completed' else now for r in live) - min(_at(r['createdAt']) for r in live)).total_seconds() / 60
     if minutes > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
         return 'failure', f'checks took {minutes:.1f} min, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")', live, finishing, None

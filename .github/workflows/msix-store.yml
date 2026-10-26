@@ -76,7 +76,9 @@ jobs:
           npm version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null
           npx electron-builder --win appx --publish never \
             -c.appx.identityName=IgorMardari.Jobadabra -c.appx.publisher=CN=0D77B925-8A8E-4E89-A698-35A1E48A4789 \
-            "-c.appx.publisherDisplayName=Igor Mardari" -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra
+            "-c.appx.publisherDisplayName=Igor Mardari" -c.appx.displayName=Jobadabra -c.appx.applicationId=Jobadabra \
+            -c.appx.minVersion=10.0.17763.0 -c.appx.maxVersionTested=10.0.26100.0
+          # The Store refuses an .msix for Windows 10.0.17134 or older (electron-builder's default is 14316); 17763 = Windows 10 1809.
           ls -la dist/*.appx
       - uses: actions/upload-artifact@v6
         with:

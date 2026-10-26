@@ -12,7 +12,7 @@ from collections import Counter
 from . import read_methods
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
-from . import contribute, pool_tags, regions, role_kinds, scout_carry, scout_kind_counts, scout_title_seed
+from . import contribute, pool_tags, regions, scout_carry, scout_kind_counts, scout_title_seed
 from .notion import cron_runs
 from .sources import ats, careers, feeds
 from .scout_core import OUTCOMES, ensure_tables, _get_text, clean_name, key_for, now
@@ -118,7 +118,9 @@ def published_line(count, failed, feeds_out):
     by_system = Counter(f['ats'] for f in failed)
     listed = Counter(f['ats'] for f in feeds_out)
     lines = [f'Published {count} feeds to the employer index ({len(failed)} did not answer'
-             + (': ' + ', '.join(f'{system} {n}' for system, n in by_system.most_common()) if failed else '') + ')']
+             + (': ' + ', '.join(f'{system} {n}' for system, n in by_system.most_common()) if failed else '') + ')',
+             # installs read only counted employers: 26 Oct 2026, 9 of 2,517 had counts and no line said so (src/scout_kind_counts.py)
+             f"Kind counts by country on {sum(1 for f in feeds_out if f.get('kind_counts'))} of {len(feeds_out)} feeds"]
     for system, n in by_system.most_common():
         kind, same = Counter(re.sub(r'\d+', 'N', str(f.get('error') or ''))[:80] for f in failed if f['ats'] == system).most_common(1)[0]
         if same >= BROKEN_MIN and same >= BROKEN_SHARE * (n + listed[system]):
@@ -172,10 +174,9 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
                      'jobs': len(jobs), 'relevant': relevant_roles(jobs), 'checked': today, 'places': job_places(jobs),
                      'regions': contribute.regions_of([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else []))}
             entry['countries'] = pool_tags.countries(entry['places'])   # where its jobs are, as fixed ids: /admin/scouting's kind × country coverage
-            kinds = role_kinds.mix([j.get('title') for j in jobs])   # what it hires for: installs skip one with nothing of their kind
+            kinds, counts = scout_kind_counts.of_jobs(jobs)   # what it hires for, and per country: installs read one with jobs of their kind there
             if kinds:
                 entry['kinds'] = kinds
-            counts = scout_kind_counts.kind_counts(jobs)   # the same per country of each job: installs judge an employer by its jobs in their countries
             if counts:
                 entry['kind_counts'] = counts
             tags = fits(by_feed.get((system, slug), {}))

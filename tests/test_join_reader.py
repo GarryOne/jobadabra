@@ -62,7 +62,7 @@ class BrokenReaderLineTest(unittest.TestCase):
         self.assertIn('(72 did not answer: join 66, greenhouse 6)', line)
         self.assertIn("::warning::Scout: the join reader looks broken: 66 of its 136 feeds failed with \"KeyError: 'initialState'\"", line)
         self.assertNotIn('greenhouse reader', line, '6 dead boards among 226 are dead feeds, not a broken reader')
-        self.assertEqual(published_line(10, [], [{'ats': 'join'}]), 'Published 10 feeds to the employer index (0 did not answer)')
+        self.assertEqual(published_line(10, [], [{'ats': 'join'}]), 'Published 10 feeds to the employer index (0 did not answer)\nKind counts by country on 0 of 1 feeds')
 
 
 if __name__ == '__main__':

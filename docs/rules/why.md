@@ -184,3 +184,11 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   again required to run e2e tests locally? That loads my mac" / "I didn't want that" / "It should run only on CI" / "and locally, only very isolated".
 - Rule: in a session, one named test file or one e2e step; CI runs every suite on the PR. Gate: `~/.claude/hooks/foreground-long-run.py` refuses a whole-suite
   command (background or not; cases in `foreground-long-run.cases.sh`); escape `E2E_LOCAL_OK=1` only on the owner's word.
+
+## The central scout's own AI cap, and a sample per employer (26 Oct 2026)
+- After the recount (#2061, "Not judged yet = not read"), a pilot search read 0 shared-list employers (299 before, on guesses): the new index had
+  counts per country on 9 of 2,517 employers. decide's 60 calls a run, meant so an install's crawl never turns into a bill, were shared by title
+  kinds and places in the central scout, and a count needed half of every title judged (thousands for a big employer). No log line said so.
+- Owner: "Higher cap + sample" (~$0.0008 a call, about $0.40 a run while the counts fill). Hence: the central scout's cap is `decide.CENTRAL_MAX_CALLS`
+  (installs keep 60); an employer is judged on a fixed sample of 60 jobs, its counts scaled to all; the run log says "Kind counts by country on N of M feeds".
+  Guard: `tests/test_kind_counts.py` (CentralCapAndSampleTest). Lesson: after a run that publishes a new field, count how many entries carry it.

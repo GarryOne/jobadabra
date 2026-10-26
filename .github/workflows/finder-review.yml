@@ -93,16 +93,16 @@ jobs:
         run: |
           changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v '^\.finder-review/' || true)
           if [ -z "$changed" ]; then
-            { echo "## Finder self-review: no changes proposed"; cat .finder-review/summary.md 2>/dev/null || echo "Claude made no edits."; } >> "$GITHUB_STEP_SUMMARY"
+            { echo "## Finder self-review: no changes proposed"; cat .finder-review/summary.md 2>/dev/null || echo "Claude made no edits."; }
             exit 0
           fi
           bad=$(echo "$changed" | grep -v -E '^desktop/e2e/(lib/[a-z0-9-]+\.mjs|test/[a-z0-9-]+\.test\.mjs|[a-z-]+-prompt\.md)$' || true)
           if [ -n "$bad" ]; then
-            { echo "## Finder self-review: refused"; echo "Edits outside the Finder's files:"; echo '```'; echo "$bad"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            { echo "## Finder self-review: refused"; echo "Edits outside the Finder's files:"; echo '```'; echo "$bad"; echo '```'; }
             exit 1
           fi
           if ! (cd desktop/e2e && npm test > ../../.finder-review/test.log 2>&1); then
-            { echo "## Finder self-review: its change failed the e2e unit tests, no PR"; echo '```'; tail -40 .finder-review/test.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            { echo "## Finder self-review: its change failed the e2e unit tests, no PR"; echo '```'; tail -40 .finder-review/test.log; echo '```'; }
             exit 1
           fi
           [ -s .finder-review/pr-body.md ] || echo "Finder: weekly self-review changes" > .finder-review/pr-body.md
@@ -119,7 +119,7 @@ jobs:
             --unblocks='a Finder that finds more real bugs and fewer false ones, once the owner merges' --label='Finder' --before='the Finder as it was' --after='the Finder with this change' \
             --rate='Tests & harness=🟡 Medium|the Finder and its unit tests' --detail=.finder-review/body.md > .finder-review/laid-out.md
           url=$(GH_TOKEN="${PR_TOKEN:-$GH_TOKEN}" gh pr create --repo "$REPO" --base main --head "$branch" --title "$title" --body-file .finder-review/laid-out.md)
-          { echo "## Finder self-review: PR opened"; echo "$url"; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "## Finder self-review: PR opened"; echo "$url"; }
 
   # The verdict pass's measured accuracy: five random verdicts of the week in one issue to tick right or wrong; last week's audit is closed with its score. No AI.
   audit:

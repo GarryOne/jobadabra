@@ -1,6 +1,6 @@
 // node discovery-report.mjs <smoke reports dir> <picked.json> <out dir> <states dir>: after the batch's recording, the verdict per row (lib/discovery-judge.mjs), ONE Telegram message when
 // something new failed (Build Log bot; none when nothing did), this run's state file for the next runs (<out dir>/discovery.json: rows, spend, the week the cap alert went), the rows that
-// reached a new shape for the pool PR (<out dir>/pool-add.json), and the job summary. Never fails the job on a Telegram problem. Guard: e2e/test/discovery-cli.test.mjs.
+// reached a new shape for the pool PR (<out dir>/pool-add.json), and the job log. Never fails the job on a Telegram problem. Guard: e2e/test/discovery-cli.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -31,7 +31,6 @@ export async function main(argv = process.argv.slice(2), env = process.env, send
     ...judged.map(item => `discovery: ${item.host || item.shape}: ${verdictWord(item.verdict)}${item.detail ? ` (${item.detail})` : ''}`), `discovery: ${additions.length} new shape(s) for the pool`];
   console.log(lines.join('\n'));
   try { console.log(`discovery: ${await send(text, {env})}`); } catch (error) { console.log(`discovery: telegram failed (${String(error?.message || error).slice(0, 80)})`); }
-  if (env.GITHUB_STEP_SUMMARY) fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `### Discovery batch verdicts\n| Site | Source | Verdict |\n|---|---|---|\n${judged.map(item => `| ${item.host || item.shape} | ${item.source} | ${verdictWord(item.verdict)}${item.detail ? ` (${item.detail})` : ''} |`).join('\n')}\n`);
   return 0;
 }
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) process.exit(await main());

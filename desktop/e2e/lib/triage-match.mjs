@@ -226,7 +226,7 @@ export function pickCandidates(issues, {openBranches = [], now = Date.now(), max
   return out;
 }
 
-// The fixer's job summary: how many findings are open, which are ready, why each other one was passed over, and the rules.
+// The fixer's job log: how many findings are open, which are ready, why each other one was passed over, and the rules.
 export function readinessSummary(issues, {openBranches = [], now = Date.now(), candidate = null} = {}) {
   const open = issues.filter(issue => notReadyReason(issue, {openBranches, now}) !== 'not-loop');
   const byReason = {};

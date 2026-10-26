@@ -82,7 +82,7 @@ if (JOURNEY) fs.writeFileSync(path.join(out, 'journey-steps.json'), `${JSON.stri
 fs.writeFileSync(path.join(out, 'replay.json'), `${JSON.stringify(summary, null, 1)}\n`);
 for (const one of wrong?.wrong || []) console.log(`replay-net: WRONG ${one.layer} ${one.field}: holds "${one.held}", answer "${one.answer}"`);
 console.log(`replay-net: done ${JSON.stringify({...summary, missLines: undefined})}`);
-// The refill's own spend, from the API's usage figures (lib/ai-meter.mjs): the workflow sums these files into the job summary and /admin/ai-cost.
+// The refill's own spend, from the API's usage figures (lib/ai-meter.mjs): the workflow sums these files into the job log and /admin/ai-cost.
 if (FILL && process.env.CI) {
   const spent = usage().app, broke = outOfCredits(apiErrors());
   fs.writeFileSync(path.join(out, 'refill-spend.json'), JSON.stringify({usd: spent.usd, calls: spent.calls, input: spent.input, output: spent.output, filled: filled.length, outOfCredits: broke}));

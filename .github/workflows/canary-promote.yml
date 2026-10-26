@@ -58,15 +58,15 @@ jobs:
           body=$(gh release view "$FORCE_TAG" -R "$REPO" --json body -q .body)
           gh release edit "$FORCE_TAG" -R "$REPO" --notes "$(printf '%s\n\nPromoted by hand, soak and end-to-end gate skipped: %s' "$body" "$FORCE_REASON")"
           SKIP_E2E=1 tools/release-stable.sh "$FORCE_TAG"
-          echo "HOT PATH: $FORCE_TAG is stable (soak skipped: $FORCE_REASON)" >> "$GITHUB_STEP_SUMMARY"
+          echo "HOT PATH: $FORCE_TAG is stable (soak skipped: $FORCE_REASON)"
       - name: End-to-end top-up on the candidate
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
         run: |
           tag=$(python3 tools/canary_promote.py --candidate)
-          [ -n "$tag" ] || { echo "No canary build: nothing to soak." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          [ -n "$tag" ] || { echo "No canary build: nothing to soak."; exit 0; }
           sha=$(gh api "repos/$REPO/commits/$tag" -q .sha)
           # only for a build the gate approved, and not more often than every 7 hours (a run takes about 15 minutes of paid macOS time)
-          gh release view "$tag" -R "$REPO" --json body -q .body | grep -q '^Beta-approved:' || { echo "$tag is not beta-approved yet: no top-up." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          gh release view "$tag" -R "$REPO" --json body -q .body | grep -q '^Beta-approved:' || { echo "$tag is not beta-approved yet: no top-up."; exit 0; }
           # a top-up is a run NAMED "RC soak <tag>" (it runs main's workflow file on the tag's commit), or a run whose own commit is the tag's
           recent=$(gh run list -R "$REPO" --workflow=e2e.yml -L 40 --json createdAt,status,conclusion,headSha,displayTitle \
             -q "[.[] | select(.headSha == \"$sha\" or .displayTitle == \"RC soak $tag\" or .displayTitle == \"Gate $sha\" or .displayTitle == \"Beta E2E tests $sha\") | select(.status != \"completed\" or .conclusion == \"success\" or .conclusion == \"failure\") | select((.createdAt | fromdateiso8601) > (now - 25200))] | length")
@@ -74,8 +74,8 @@ jobs:
           gated=$(gh run list -R "$REPO" --workflow=desktop.yml -L 20 --json createdAt,headSha,displayTitle \
             -q "[.[] | select(.headSha == \"$sha\") | select(.displayTitle | startswith(\"Build only\") | not) | select((.createdAt | fromdateiso8601) > (now - 25200))] | length")
           recent=$(( ${recent:-0} + ${gated:-0} ))
-          if [ "${recent:-0}" = 0 ]; then gh workflow run e2e.yml -R "$REPO" --ref main -f soak=true -f target_ref="$tag"; echo "Top-up end-to-end run started on $tag." >> "$GITHUB_STEP_SUMMARY"
-          else echo "$tag had an end-to-end run in the last 7 hours: no top-up." >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ "${recent:-0}" = 0 ]; then gh workflow run e2e.yml -R "$REPO" --ref main -f soak=true -f target_ref="$tag"; echo "Top-up end-to-end run started on $tag."
+          else echo "$tag had an end-to-end run in the last 7 hours: no top-up."; fi
       - name: Decide (and promote when switched on)
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.force_tag != '') }}
         env:
@@ -95,7 +95,7 @@ jobs:
           status=0
           out=$(python3 tools/canary_promote.py "${args[@]}" 2>&1) || status=$?
           echo "$out"
-          { echo "### Promote to stable"; echo; echo "$note"; echo; echo '```'; echo "$out"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "### Promote to stable"; echo; echo "$note"; echo; echo '```'; echo "$out"; echo '```'; }
           echo "$out" > decision.txt
           exit "$status"
       - name: A canary that stays unproven for 5 days needs a person

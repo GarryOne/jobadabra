@@ -57,13 +57,13 @@ jobs:
           else find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
           status=0
           node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
-          cat block.txt | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$status" != 0 ]; then echo "$TAG is not offered on $PLATFORM: a real high-severity finding in its end-to-end suites." >> "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          cat block.txt
+          if [ "$status" != 0 ]; then echo "$TAG is not offered on $PLATFORM: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh "$TAG" "$REF" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to this platform's beta testers (Mac with the soak off, stable)
         env:
           E2E_ALREADY_GREEN: '1'   # every suite of this platform passed on this commit, in this run
@@ -71,11 +71,11 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           if [ "$PLATFORM" = windows ]; then
-            tools/beta-approve.sh --windows "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+            tools/beta-approve.sh --windows "$TAG"
           elif [ "$SOAK" = on ]; then
             tools/beta-approve.sh "$TAG"
-            echo "Beta-approved: $TAG (unit suites and every end-to-end suite passed on its commit). It becomes stable through canary-promote.yml: more end-to-end runs, no blocking finding, then healthy beta use." >> "$GITHUB_STEP_SUMMARY"
+            echo "Beta-approved: $TAG (unit suites and every end-to-end suite passed on its commit). It becomes stable through canary-promote.yml: more end-to-end runs, no blocking finding, then healthy beta use."
           else
             tools/release-stable.sh "$TAG"
-            echo "Stable: $TAG (every suite passed on its commit)" >> "$GITHUB_STEP_SUMMARY"
+            echo "Stable: $TAG (every suite passed on its commit)"
           fi

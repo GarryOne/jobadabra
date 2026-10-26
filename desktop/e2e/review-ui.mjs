@@ -206,5 +206,4 @@ fs.mkdirSync(ARTIFACTS, {recursive: true});
 fs.writeFileSync(path.join(ARTIFACTS, 'ai-review-usage.json'), JSON.stringify({...usage, usd: Number(usage.usd.toFixed(4))}, null, 2));
 const line = `AI review: ${usage.calls} call(s) (${usage.batched} by batch, half price), ${usage.cached} looked the same (not asked again), ${usage.confirmed} checked again by Claude, ${usage.failed} failed, ${usage.cutOff} cut off; ${usage.input} in + ${usage.cacheRead} cache read + ${usage.cacheWrite} cache write, ${usage.output} out = $${usage.usd.toFixed(4)} (${usage.model}; ${usage.lessons} by-design lesson(s))`;
 console.log(`\n${all.length} finding(s) written to ai-findings.json\n${line}${unreviewed.length ? `\nNOT reviewed (${unreviewed.map(item => `${item.view}: ${item.why}`).join(', ')}): no finding is filed or cleared for these pages from this run.` : ''}`);
-if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
 if (rejected) process.exit(1);

@@ -22,6 +22,5 @@ if (args.includes('--prepare')) {
   const result = scoreExam(items, parseVerdicts(text, items.map(item => item.id)));
   fs.writeFileSync(at('--out'), JSON.stringify(result, null, 2));
   const line = `Judge exam: ${result.right} of ${result.total} right (${result.dismissed} real bug(s) dismissed, ${result.believed} false alarm(s) believed, ${result.missing} unanswered).`;
-  console.log(line);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n${result.rows.map(row => `- ${row.right ? '✅' : '❌'} ${row.id}: expected ${row.expect}, got ${row.got}`).join('\n')}\n`);
+  console.log(`${line}\n${result.rows.map(row => `- ${row.right ? '✅' : '❌'} ${row.id}: expected ${row.expect}, got ${row.got}`).join('\n')}\n`);
 } else console.log('usage: node judge-exam.mjs --prepare <dir> | --score --verdicts <file> --out <file>');

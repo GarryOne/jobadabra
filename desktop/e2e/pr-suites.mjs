@@ -70,7 +70,6 @@ try {
     if (windows) console.log(`\nWindows: ${WINDOWS_SMOKE.suite} · ${WINDOWS_SMOKE.steps.join(', ')} (this PR changes CI plumbing or shell)`);
     if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${JSON.stringify(steps)}\nwindows=${windows}\n`);
   }
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### E2E suites that quote removed UI text\n\n${out.text}\n`);
 } catch (error) {
   console.log(`pr-suites: could not read the diff (${error.message.split('\n')[0]}); nothing reported`);
 }

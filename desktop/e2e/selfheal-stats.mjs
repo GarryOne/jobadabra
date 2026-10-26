@@ -102,7 +102,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const data = await collect();
   const line = `Self-heal stats: ${data.totals.filed} issues, ${data.totals.real} real (${data.totals.fixed} fixed, ${data.totals.queued} queued), ${data.totals.falsePositive} false positives, precision ${data.totals.precision}%; AI cost $${data.cost.usd} over ${data.cost.runs} runs; recall ${data.recall ? `${data.recall.caught}/${data.recall.planted}` : 'n/a'}; ${Object.entries(data.quality || {}).map(([key, value]) => `${key} ${value.rate === null ? 'n/a' : `${value.rate}%`}`).join(', ')}.`;
   console.log(line);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
   if (process.argv.includes('--publish')) {
     const key = process.env.SELFHEAL_PUBLISH_KEY;
     if (!key) { console.log('::warning::SELFHEAL_PUBLISH_KEY is not set: nothing published.'); process.exit(0); }

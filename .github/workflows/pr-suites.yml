@@ -63,7 +63,7 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           git fetch -q origin main
-          node desktop/e2e/pr-suites.mjs --base origin/main --plan | tee -a "$GITHUB_STEP_SUMMARY"
+          node desktop/e2e/pr-suites.mjs --base origin/main --plan
       - name: Start them
         id: start
         if: steps.plan.outputs.suites != '' || steps.plan.outputs.windows != ''
@@ -78,12 +78,12 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           # Merged or closed while this job waited for a runner (an override merge deletes the branch: #2041 went red on HTTP 422 "No ref found"): nothing to test.
-          if [ "$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state -q .state)" != OPEN ]; then echo "PR #$PR is merged or closed: no e2e run." | tee -a "$GITHUB_STEP_SUMMARY"; echo "skipped=1" >> "$GITHUB_OUTPUT"; exit 0; fi
-          started() { echo "$1" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          if [ "$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state -q .state)" != OPEN ]; then echo "PR #$PR is merged or closed: no e2e run."; echo "skipped=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          started() { echo "$1"; }
           dispatch() {   # a branch whose workflow file predates the input gets HTTP 422 "Unexpected inputs"
             if ! gh workflow run "$@" 2>"$RUNNER_TEMP/dispatch.err"; then
               cat "$RUNNER_TEMP/dispatch.err"
-              if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's $1 is older than main's: rebase on main (tools/ship.sh does it), then push again." | tee -a "$GITHUB_STEP_SUMMARY"; fi
+              if grep -q 'Unexpected inputs' "$RUNNER_TEMP/dispatch.err"; then echo "This branch's $1 is older than main's: rebase on main (tools/ship.sh does it), then push again."; fi
               exit 1
             fi
           }
@@ -108,7 +108,7 @@ jobs:
           listed() {   # $1: the workflow file; its run for this PR is titled "E2E for PR · ..."
             for _ in $(seq 1 24); do
               id="$(gh run list -R "$GITHUB_REPOSITORY" --workflow "$1" --commit "$HEAD_SHA" -L 20 --json databaseId,displayTitle -q '[.[] | select(.displayTitle | startswith("E2E for PR · "))][0].databaseId // empty')"
-              [ -n "$id" ] && { echo "$1 for this PR: https://github.com/$GITHUB_REPOSITORY/actions/runs/$id" | tee -a "$GITHUB_STEP_SUMMARY"; return 0; }
+              [ -n "$id" ] && { echo "$1 for this PR: https://github.com/$GITHUB_REPOSITORY/actions/runs/$id"; return 0; }
               sleep 5
             done
             echo "::error::no \"E2E for PR\" run of $1 for $HEAD_SHA after 2 min: this branch's $1 is older than main's (its runs are titled otherwise). Rebase on main (tools/ship.sh does it) and push again."; return 1

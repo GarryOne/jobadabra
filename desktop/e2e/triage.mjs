@@ -103,7 +103,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
     const flaky = read(path.join(dir, 'flaky.json'))?.rerun === 'passed';
     suiteFailures.push({...items[0], also: items.slice(1).map(item => item.step), ...(flaky ? {flaky: true} : {})});
   }
-  const dropped = [];   // what the filters cut this run, with why (shown in the run's summary)
+  const dropped = [];   // what the filters cut this run, with why (shown in the run's log)
   for (const file of found['ai-findings.json']) for (const item of (read(file) || {}).dropped || []) dropped.push({...item, source: 'ai-review', why: `AI answer: ${item.why}`});
   const findings = normalize({dropped, ui: found['ui-findings.json'].flatMap(file => withDir(file, read(file) || [])), ai: found['ai-findings.json'].flatMap(file => withDir(file, (read(file) || {}).findings || [])),
     suite: suiteFailures});
@@ -252,7 +252,7 @@ export function triage({artifacts, runUrl, gh = realGh, publish = publishFiles, 
         dropped.push({view: finding.view, severity: finding.severity, title: finding.title, source: finding.source, why: `stale sighting: the fix ${stale.fix.slice(0, 7)} of #${closedBefore.number} is newer than the tested build ${testedSha(build)}`});
         continue;
       }
-      // About code that has changed since the tested build: not filed now, filed by the next run on a newer build if it is still there (counted in the run summary).
+      // About code that has changed since the tested build: not filed now, filed by the next run on a newer build if it is still there (counted in the run log).
       const held = holdFinding(finding, {suite, behind, changed: changedSince()});
       if (held.hold) {
         out.held = [...(out.held || []), {id: finding.id, files: held.files}];
@@ -399,7 +399,7 @@ export function chooseCandidate({gh = realGh, now = Date.now()} = {}) {
   return candidate && {...candidate, siblings: issues.filter(issue => issue.number !== candidate.number && issue.state === 'OPEN' && kindOf(issue) === kindOf(candidate)).map(issue => `#${issue.number} ${issue.title}`)};
 }
 
-// The fixer's job summary: open findings, which are ready, and why each other one was passed over (readinessSummary).
+// The fixer's job log: open findings, which are ready, and why each other one was passed over (readinessSummary).
 export function fixerSummary({gh = realGh, now = Date.now(), candidate = null} = {}) {
   const issues = JSON.parse(gh(['issue', 'list', '--label', LABEL, '--state', 'open', '--limit', '300', '--json', 'number,state,stateReason,labels,body,comments,title,createdAt']));
   const branches = JSON.parse(gh(['pr', 'list', '--state', 'open', '--limit', '100', '--json', 'headRefName'])).map(pr => pr.headRefName);
@@ -485,5 +485,4 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   if (result.dropped?.length) lines.push(droppedTable(result.dropped));
   fs.writeFileSync(path.join(outDir, 'run-summary.json'), JSON.stringify(runSummary(result, {runUrl: option('run-url'), build: option('build'), incomplete})));
   console.log(lines.join('\n'));
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
 }

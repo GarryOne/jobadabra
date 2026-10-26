@@ -182,9 +182,6 @@ def main():
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
     print(f'{CONTEXT}: {state}: {why}')
-    summary = os.environ.get('GITHUB_STEP_SUMMARY')
-    if summary:
-        with open(summary, 'a', encoding='utf-8') as out: out.write(f'**{CONTEXT}** on `{a.sha[:7]}`: {state}: {why}\n')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:
         gh('api', f'repos/{a.repo}/statuses/{a.sha}', '-f', f'state={state}', '-f', f'context={CONTEXT}', '-f', f'description={why}', '-f', f'target_url={url}')

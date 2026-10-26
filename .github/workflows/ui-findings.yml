@@ -66,7 +66,7 @@ jobs:
           if [ -n "$PLANT" ]; then
             if [ "$GITHUB_REF" = refs/heads/main ]; then echo "A planted finding is only allowed off main." >&2; exit 1; fi
             printf '%s' "$PLANT" > e2e-artifacts/ui-findings.json
-            echo "DRY RUN on $BASE: triaging a planted finding." >> "$GITHUB_STEP_SUMMARY"
+            echo "DRY RUN on $BASE: triaging a planted finding."
           elif [ -n "$RUN_ID" ]; then
             gh run download "$RUN_ID" --repo "$REPO" --pattern 'e2e-artifacts-*' --dir e2e-artifacts || echo "No artifacts for run $RUN_ID"   # one folder per suite
             # Only this platform's suites (the release run has both: e2e-artifacts-<suite> and e2e-artifacts-windows-<suite>).
@@ -131,7 +131,7 @@ jobs:
           incomplete=""
           if [ -n "$RUN_ID" ]; then incomplete=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs -q '[.jobs[] | select(.conclusion == "cancelled" or .conclusion == "timed_out") | .name | sub("^.* / "; "") | sub("^E2E · [^·]+ · "; "") | sub(" \\(Windows\\)$"; "")] | join(",")' 2>/dev/null || true); fi
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --file-only --build "$BUILD" --platform "$PLATFORM" --incomplete "$incomplete" "${judged[@]}"
-      # What this run filed, dropped and called stale, kept as numbers for /self-heal (desktop/e2e/lib/run-summary.mjs): the reasons findings were dropped were only in the step summary.
+      # What this run filed, dropped and called stale, kept as numbers for /self-heal (desktop/e2e/lib/run-summary.mjs): the reasons findings were dropped were once only in the step summary.
       - uses: actions/upload-artifact@v6
         if: always() && hashFiles('.heal/run-summary.json') != ''
         with:

@@ -19,7 +19,7 @@ The Finder is judged by its **yield**: real bugs found per day should go **up** 
 the goal. A Finder that files nothing has perfect precision and is useless (7-9 Oct 2026: 0 real bugs in three days, because the noise
 breaker had paused the AI screenshot review, the detector that found 21 of 29 real bugs on 3-5 Oct).
 - **Real bugs first, money second.** A gate that saves tokens by switching a detector off (a budget, a breaker, a "only when the UI changed"
-  rule) is a suspect whenever the yield falls. Find it in the run's plan (`desktop/e2e/plan-run.mjs` `why`, the e2e run summary) before
+  rule) is a suspect whenever the yield falls. Find it in the run's plan (`desktop/e2e/plan-run.mjs` `why`, the e2e run log) before
   blaming the product or the prompt.
 - **Never a permanent pause.** Every gate must let a detector earn its way back (a sliding window, a probe run). A rule that can only
   be undone by a person is a bug.

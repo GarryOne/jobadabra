@@ -52,9 +52,9 @@ jobs:
           Set-Content (Join-Path $dir 'sub\nested.txt') 'seeded-nested'
           New-Item -ItemType Directory -Force (Join-Path $env:APPDATA 'ControlUntouched') | Out-Null
           Set-Content (Join-Path $env:APPDATA 'ControlUntouched\c.txt') 'control'
-          "real APPDATA before install: $((Get-ChildItem $env:APPDATA -Directory | ForEach-Object Name) -join ', ')" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "real APPDATA before install: $((Get-ChildItem $env:APPDATA -Directory | ForEach-Object Name) -join ', ')"
           New-Item -ItemType Directory -Force 'C:\spike-out' | Out-Null
-          "seeded: $dir" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "seeded: $dir"
       - name: Install · sign with a test certificate and install the package
         shell: pwsh
         working-directory: desktop
@@ -101,17 +101,17 @@ jobs:
           `$env:ELECTRON_RUN_AS_NODE = '1'
           & '$exe' C:\spike-out\case.js node '$legacy'
           "@ | Set-Content C:\spike-out\run.ps1
-          if (-not (Get-Command Invoke-CommandInDesktopPackage -ErrorAction SilentlyContinue)) { "Invoke-CommandInDesktopPackage is not available on this runner" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append; exit 1 }
+          if (-not (Get-Command Invoke-CommandInDesktopPackage -ErrorAction SilentlyContinue)) { "Invoke-CommandInDesktopPackage is not available on this runner"; exit 1 }
           Invoke-CommandInDesktopPackage -PackageFamilyName $pkg.PackageFamilyName -AppId $appId -Command 'powershell.exe' -Args '-NoProfile -ExecutionPolicy Bypass -File C:\spike-out\run.ps1' -PreventBreakaway
           Start-Sleep -Seconds 15
-          "--- result as the packaged app saw it ---" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          if (Test-Path C:\spike-out\node.txt) { Get-Content C:\spike-out\node.txt | Tee-Object $env:GITHUB_STEP_SUMMARY -Append } else { "no result file: the packaged app could not run the script as node" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append }
-          "--- the real disk, seen from outside the package ---" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          "real APPDATA after: $((Get-ChildItem $env:APPDATA -Directory -Force | ForEach-Object Name) -join ', ')" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          "real folder 'Job Pilotto' exists: $(Test-Path (Join-Path $env:APPDATA 'Job Pilotto'))  'Jobadabra' exists: $(Test-Path (Join-Path $env:APPDATA 'Jobadabra'))  control exists: $(Test-Path (Join-Path $env:APPDATA 'ControlUntouched\c.txt'))" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "--- result as the packaged app saw it ---"
+          if (Test-Path C:\spike-out\node.txt) { Get-Content C:\spike-out\node.txt } else { "no result file: the packaged app could not run the script as node" }
+          "--- the real disk, seen from outside the package ---"
+          "real APPDATA after: $((Get-ChildItem $env:APPDATA -Directory -Force | ForEach-Object Name) -join ', ')"
+          "real folder 'Job Pilotto' exists: $(Test-Path (Join-Path $env:APPDATA 'Job Pilotto'))  'Jobadabra' exists: $(Test-Path (Join-Path $env:APPDATA 'Jobadabra'))  control exists: $(Test-Path (Join-Path $env:APPDATA 'ControlUntouched\c.txt'))"
           $cache = Join-Path $env:LOCALAPPDATA "Packages\$($pkg.PackageFamilyName)\LocalCache"
-          "package cache: $cache" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          Get-ChildItem $cache -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "  cache: $($_.FullName.Substring($cache.Length))" } | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "package cache: $cache"
+          Get-ChildItem $cache -Recurse -ErrorAction SilentlyContinue | ForEach-Object { "  cache: $($_.FullName.Substring($cache.Length))" }
       - name: Smoke · the packaged app starts and stays up
         shell: pwsh
         run: |
@@ -119,12 +119,12 @@ jobs:
           $manifest = [xml](Get-Content (Join-Path $pkg.InstallLocation 'AppxManifest.xml'))
           $appId = $manifest.Package.Applications.Application.Id
           $exe = $manifest.Package.Applications.Application.Executable
-          "manifest: app id $appId, executable $exe" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "manifest: app id $appId, executable $exe"
           Get-ChildItem $pkg.InstallLocation -Recurse -Filter *.exe -Depth 2 | Select-Object -First 8 -ExpandProperty FullName
           Start-Process explorer.exe "shell:AppsFolder\$($pkg.PackageFamilyName)!$appId"
           Start-Sleep -Seconds 25
           $running = Get-Process | Where-Object { $_.Path -like '*WindowsApps*Jobadabra.Spike*' }
-          "processes from the package after 25 s: $(@($running).Count) ($((@($running) | ForEach-Object Name | Sort-Object -Unique) -join ', '))" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
-          "local listeners: $(@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '127.0.0.1' }).Count)" | Tee-Object $env:GITHUB_STEP_SUMMARY -Append
+          "processes from the package after 25 s: $(@($running).Count) ($((@($running) | ForEach-Object Name | Sort-Object -Unique) -join ', '))"
+          "local listeners: $(@(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -eq '127.0.0.1' }).Count)"
           Get-WinEvent -LogName 'Microsoft-Windows-AppXDeploymentServer/Operational','Application' -MaxEvents 15 -ErrorAction SilentlyContinue | Where-Object { $_.LevelDisplayName -in 'Error','Warning' } | Select-Object -First 8 | Format-List TimeCreated, ProviderName, Message
           if (-not $running) { Write-Error 'The packaged app did not start'; exit 1 }

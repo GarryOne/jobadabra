@@ -1,6 +1,6 @@
 // Judge BEFORE filing (5 Oct 2026): the verdict pass used to read a finding only after its issue was open, so every false positive still cost an issue, a
 // notification and a place in the statistics. Now the run's NEW findings (at most PREJUDGE_MAX) are judged first, in one Claude session: `false-positive` and
-// `harness` are never filed (listed in the run's summary and remembered in the pinned noise register, so the same noise is not judged again), `real` is filed
+// `harness` are never filed (listed in the run's log and remembered in the pinned noise register, so the same noise is not judged again), `real` is filed
 // already `confirmed`, `needs-human` is filed parked. A finding over the cap, or a run without AI, is filed as before and judged later (ui-verdict.yml). Pure.
 import {checkEvidence, parse, verdictComment} from './verdict-comment.mjs';
 import {FALSE_POSITIVE, labelFor} from './triage.mjs';

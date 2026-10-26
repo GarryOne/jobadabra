@@ -29,4 +29,4 @@ jobs:
         with:
           node-version: '22'
       - name: The on-time starts, and the issue that says which are missing
-        run: node worker/scripts/watchdog.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node worker/scripts/watchdog.mjs || true

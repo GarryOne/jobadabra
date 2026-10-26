@@ -20,14 +20,13 @@ const verdicts = results.length ? cases.map((item, index) => verdictOf(item, res
 const notRun = harnessLine(verdicts, cases.length, startError);
 if (notRun) {
   console.log(notRun);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `**${notRun}**\n`);
   process.exit(1);
 }
 const summary = summarizeZoo(verdicts);
 
 const pad = (text, width) => String(text).padEnd(width).slice(0, width);
 const lines = [];
-const say = line => { lines.push(line); console.log(line); };   // the table also goes to CI's step summary (GITHUB_STEP_SUMMARY), without the decision lines REPLAY_LOG=1 prints
+const say = line => { lines.push(line); console.log(line); };
 say(`control tests: ${summary.total} pages, read ${summary.read}, committed ${summary.committed}, truthful ${summary.truthful}`);   // truthful: the fill's record, the panel and the judge say what the page holds
 for (const one of verdicts) say(`  ${pad(one.name, 26)} ${pad(one.widget, 19)} read ${one.read ? 'yes' : 'NO '}  committed ${one.committed ? 'yes' : 'NO '}  truthful ${one.truthful ? 'yes' : 'NO '}  bounded ${one.bounded ? 'yes' : 'NO '}${one.failures.length ? `  (${one.failures.join('; ').slice(0, 160)})` : ''}`);
 say('Per widget (committed / pages):');
@@ -36,7 +35,6 @@ if (args.includes('--model')) {
   say('Fill check in shadow (the real model; per page, the controls it named):');
   for (const item of cases) { const host = new URL(item.pages[0].url).hostname, found = shadow.get(host); say(`  ${pad(item.name, 26)} ${found ? found.map(row => `${row.label.slice(0, 22)}=${row.verdict}${row.reason ? `/${row.reason}` : ''}`).join(', ') || '(no miss named)' : '(not asked)'}`); }
 }
-if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\`\`\`\n${lines.join('\n')}\n\`\`\`\n`);
 if (jsonOut) fs.writeFileSync(jsonOut, `${JSON.stringify({summary, verdicts}, null, 1)}\n`);
 const broken = verdicts.filter(one => one.failures.some(line => /^(error|isolation)\b/.test(line)));
 if (summary.unsafe.length) console.error(`UNSAFE: a submit was pressed on ${summary.unsafe.join(', ')}`);

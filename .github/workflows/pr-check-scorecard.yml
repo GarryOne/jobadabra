@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: '22'
       - name: Count the last window's PR runs
-        run: node tools/pr-check-scorecard.mjs --days "${{ inputs.days || 30 }}" --out "$RUNNER_TEMP/scorecard.json" --message "$RUNNER_TEMP/message.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: node tools/pr-check-scorecard.mjs --days "${{ inputs.days || 30 }}" --out "$RUNNER_TEMP/scorecard.json" --message "$RUNNER_TEMP/message.txt" || true
       - name: Post it to Telegram
         run: |
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then

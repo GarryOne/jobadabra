@@ -46,7 +46,7 @@ jobs:
         run: |
           set -o pipefail
           node review-eval.mjs --out "$RUNNER_TEMP/review-eval" --models "$MODELS" --lessons "$LESSONS" 2>&1 | tee "$RUNNER_TEMP/review-eval.log"
-          grep -E '^\|' "$RUNNER_TEMP/review-eval.log" >> "$GITHUB_STEP_SUMMARY" || true
+          grep -E '^\|' "$RUNNER_TEMP/review-eval.log" || true
       - uses: actions/upload-artifact@v6
         if: always()
         with:

@@ -2,10 +2,9 @@
 
 The action's log hides the error ("full output hidden for security"), so four runs on 21-24 Oct 2026 failed with
 is_error:true, 0 turns, $0 and no reason. The text is in the execution file on the runner; this prints it as an
-annotation and a step-summary line. Tests: tests/test_claude_failure_reason.py.
+annotation. Tests: tests/test_claude_failure_reason.py.
 """
 import json
-import os
 import re
 import sys
 
@@ -36,10 +35,6 @@ def main(argv):
         return 0
     msg = f"Claude did not run; the API said: {line}"
     print(f"::error::{msg}")
-    summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary:
-        with open(summary, "a", encoding="utf-8") as f:
-            f.write(msg + "\n")
     return 0
 
 

@@ -95,4 +95,4 @@ jobs:
         run: |
           set -euo pipefail
           # Comment, severity, labels, close: one script, shared with the triage-github-open-issues skill (desktop/e2e/apply-verdict.sh).
-          desktop/e2e/apply-verdict.sh "$NUMBER" .heal/verdict.md "$REPO" >> "$GITHUB_STEP_SUMMARY"
+          desktop/e2e/apply-verdict.sh "$NUMBER" .heal/verdict.md "$REPO"

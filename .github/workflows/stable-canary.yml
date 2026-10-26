@@ -32,13 +32,13 @@ jobs:
         id: stable
         run: |
           tag=$(gh release list -R "$REPO" -L 20 --json tagName,isPrerelease,isDraft -q '[.[] | select(.isDraft | not) | select(.isPrerelease | not)][0].tagName')
-          [ -n "$tag" ] || { echo "No stable release yet." >> "$GITHUB_STEP_SUMMARY"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; }
+          [ -n "$tag" ] || { echo "No stable release yet."; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; }
           sha=$(gh api "repos/$REPO/commits/$tag" -q .sha)
           # the release gate's own run counts too: it is named "Beta E2E tests <sha>" ("Gate <sha>" before 6 Oct 2026) (its own commit is main's, the tested one is in the name)
           fresh=$(gh run list -R "$REPO" --workflow=e2e.yml --status success -L 40 --json createdAt,headSha,displayTitle \
             -q "[.[] | select(.headSha == \"$sha\" or .displayTitle == \"Gate $sha\" or .displayTitle == \"Beta E2E tests $sha\") | select((.createdAt | fromdateiso8601) > (now - 72000))] | length")
           echo "tag=$tag" >> "$GITHUB_OUTPUT"; echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          if [ "${fresh:-0}" != 0 ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "$tag: its own e2e run passed in the last 20 hours; nothing to check today." >> "$GITHUB_STEP_SUMMARY"; else echo "skip=0" >> "$GITHUB_OUTPUT"; fi
+          if [ "${fresh:-0}" != 0 ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "$tag: its own e2e run passed in the last 20 hours; nothing to check today."; else echo "skip=0" >> "$GITHUB_OUTPUT"; fi
       - name: Run the journey on the stable tag and wait for it
         id: run
         if: steps.stable.outputs.skip == '0'
@@ -70,14 +70,14 @@ jobs:
           gh label create stable-canary -R "$REPO" --force --color B60205 --description "The stable release fails the end-to-end journey" > /dev/null
           open=$(gh issue list -R "$REPO" --label stable-canary --state open --json number -q '.[0].number // empty')
           if [ "$RESULT" = harness ]; then
-            echo "The canary could not test \`$TAG\`: the run's plan job failed before any suite ran on it (main's harness, not the stable build): $RUN" >> "$GITHUB_STEP_SUMMARY"; exit 1
+            echo "The canary could not test \`$TAG\`: the run's plan job failed before any suite ran on it (main's harness, not the stable build): $RUN"; exit 1
           fi
           if [ "$RESULT" = red ]; then
             note="The stable build \`$TAG\` (\`${SHA:0:7}\`) FAILED the end-to-end journey: $RUN"
             if [ -n "$open" ]; then gh issue comment "$open" -R "$REPO" --body "Still failing. $note"
             else gh issue create -R "$REPO" --label stable-canary --title "Stable $TAG fails the end-to-end journey" \
               --body "$note"$'\n\nIt passed the release gate, so something outside the build changed (Notion, a job site, a certificate) or the gate missed it. Decide: fix forward, or promote the previous build (tools/release-stable.sh <tag>). Open the run for the failing suite and its screenshots.'; fi
-            echo "$note" >> "$GITHUB_STEP_SUMMARY"; exit 1
+            echo "$note"; exit 1
           fi
-          echo "Stable $TAG passes: $RUN" >> "$GITHUB_STEP_SUMMARY"
+          echo "Stable $TAG passes: $RUN"
           if [ -n "$open" ]; then gh issue comment "$open" -R "$REPO" --body "Passing again on \`$TAG\`: $RUN"; gh issue close "$open" -R "$REPO" --reason completed; fi

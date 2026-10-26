@@ -12,7 +12,7 @@ import {autoSuites, exploreDecision, runnerOf, noiseTripped, reviewNeeded, suite
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
 
-const realGh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe']});   // gh's own error text stays out of the step summary (a failed call falls back below)
+const realGh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe']});   // gh's own error text stays out of the log (a failed call falls back below)
 
 // all: every suite; cadence / watches: what each suite exports (lib/plan.mjs says what they mean).
 export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}}) {

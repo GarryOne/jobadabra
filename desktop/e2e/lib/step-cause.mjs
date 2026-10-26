@@ -2,7 +2,7 @@
 // Why: in beta 1 (25 Oct 2026) six cardstates steps failed on "locator.click: Timeout 30000ms exceeded." and every summary showed only that line, six times.
 // The locator sat in a multi-line call log: all six clicked `#activity-recent li:not(.recent-group) button` (only .first()/.nth(n) differed), one cause that
 // hid the five real failures beta 2 then showed, a 45-minute beta later. Now the summary says the cause once: "one cause, 6 steps: click on <locator>".
-// Used by lib/runner.mjs (each failed result gets `cause`; the suite's end lists shared causes) and lib/step-summary.mjs (the run's Summary page).
+// Used by lib/runner.mjs (each failed result gets `cause`; the suite's end lists shared causes).
 // Tests: test/step-cause.test.mjs
 
 const ACTION = /^(?:[\w.]+\.)?(\w+): Timeout (\d+)\s?ms exceeded/;   // Playwright: "locator.click: Timeout 30000ms exceeded." / "page.waitForSelector: …"
@@ -51,6 +51,6 @@ export function sharedCauses(results = []) {
   return [...groups.values()].filter(group => group.steps.length > 1).sort((a, b) => b.steps.length - a.steps.length);
 }
 
-// One line per shared cause, for the log and the Summary page.
+// One line per shared cause, for the log.
 export const sharedCauseLines = results => sharedCauses(results).map(({cause, steps}) =>
   `⚠ one cause, ${steps.length} steps: ${cause}. Fix it first: these steps stopped there, so their own checks never ran.`);

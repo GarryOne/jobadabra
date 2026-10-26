@@ -57,7 +57,7 @@ test('with E2E_REVIEW_PROMPT=checklist the review asks the checklist and writes 
   fs.writeFileSync(path.join(art, 'ui-jobs.png'), Buffer.from([137, 80, 78, 71, 1]));
   try {
     await promisify(execFile)(process.execPath, [new URL('../review-ui.mjs', import.meta.url).pathname], {env: {...process.env, E2E_ANTHROPIC_KEY: 'k',
-      E2E_ANTHROPIC_URL: `http://127.0.0.1:${server.address().port}`, E2E_ARTIFACTS: art, E2E_REVIEW_CACHE: path.join(dir, 'cache'), GITHUB_STEP_SUMMARY: '',
+      E2E_ANTHROPIC_URL: `http://127.0.0.1:${server.address().port}`, E2E_ARTIFACTS: art, E2E_REVIEW_CACHE: path.join(dir, 'cache'),
       E2E_REVIEW_ENGINE: 'claude', E2E_REVIEW_MODEL: 'claude-haiku-5-5', E2E_REVIEW_PROMPT: 'checklist', E2E_REVIEW_LESSONS: '0'}});
     assert.equal(asked.length, 1);
     assert.equal(asked[0].system[0].text, CHECK_SYSTEM);

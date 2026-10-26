@@ -44,7 +44,7 @@ jobs:
         env:
           NET_RECORD_KEY: ${{ secrets.NET_RECORD_KEY }}
         run: |
-          if [ -z "$NET_RECORD_KEY" ]; then echo "replay-offline: key not set (NET_RECORD_KEY): nothing replayed" | tee -a "$GITHUB_STEP_SUMMARY"; echo "ok=0" >> "$GITHUB_OUTPUT"; else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+          if [ -z "$NET_RECORD_KEY" ]; then echo "replay-offline: key not set (NET_RECORD_KEY): nothing replayed"; echo "ok=0" >> "$GITHUB_OUTPUT"; else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v5
         if: steps.key.outputs.ok == '1'
         with:
@@ -67,7 +67,7 @@ jobs:
           records=$(gh release view net-records -R "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].updatedAt] | max // ""' 2>/dev/null || true)
           if git cat-file -e "$sha" 2>/dev/null && git diff --quiet "$sha" HEAD -- desktop extension worker/src .github/workflows/site-replays.yml ':!desktop/test' ':!desktop/e2e/test' \
              && { [ -z "$records" ] || [[ "$records" < "$at" ]]; } && { [ -z "$ci" ] || [[ "$ci" < "$at" ]]; }; then
-            echo "replay-offline: nothing changed since the last green replay (${sha::7}, $at): nothing to do" | tee -a "$GITHUB_STEP_SUMMARY"; echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "replay-offline: nothing changed since the last green replay (${sha::7}, $at): nothing to do"; echo "skip=1" >> "$GITHUB_OUTPUT"
           else echo "replay-offline: changed since ${sha::7}: replaying"; fi
   refill-wait:
     # A refill in progress finishes first (owner, 15 Oct 2026: a replay started by the records publish ran on the not-yet-refilled answers and put "3 of 77 same as live" on /admin, replacing 21 / 13 of 16).
@@ -187,7 +187,7 @@ jobs:
           JP_REPLAY_SHARD: ${{ matrix.shard }}/5
         run: |
           set -o pipefail
-          node replay-records.mjs "$GITHUB_WORKSPACE/records" "$GITHUB_WORKSPACE/replay-out" | tee -a "$GITHUB_STEP_SUMMARY"
+          node replay-records.mjs "$GITHUB_WORKSPACE/records" "$GITHUB_WORKSPACE/replay-out"
       # The late-answer pass (owner, 15 Oct 2026: moved here from the PR check, "edge-case or costly checks will be caught hours later on the scheduled runs"): this shard's rows again with
       # every kept answer delayed 4 s; judged only by "no answer lost" (lib/lost-answers.mjs), never against live. A row that lost them alerts like a drop (the gate job).
       - name: Late-answer pass (answers delayed 4 s)
@@ -197,7 +197,7 @@ jobs:
           JOB_PILOTTO_MODEL_MEMO_LATENCY_PAD_MS: '4000'
         run: |
           node replay-records.mjs "$GITHUB_WORKSPACE/records" "$GITHUB_WORKSPACE/replay-late" > /dev/null || true
-          node replay-late.mjs "$GITHUB_WORKSPACE/replay-late/replays" | tee "$GITHUB_WORKSPACE/replay-out/late.md" | tee -a "$GITHUB_STEP_SUMMARY"
+          node replay-late.mjs "$GITHUB_WORKSPACE/replay-late/replays" | tee "$GITHUB_WORKSPACE/replay-out/late.md"
           # the late pass's own app logs ride with the shard (16 Oct 2026: a lost-answers row could not be read afterwards, only the normal pass's log was kept)
           mkdir -p "$GITHUB_WORKSPACE/replay-out/late-logs"; for d in "$GITHUB_WORKSPACE"/replay-late/replays/*/; do [ -f "$d/app.log" ] && cp "$d/app.log" "$GITHUB_WORKSPACE/replay-out/late-logs/$(basename "$d").log"; done; true
       - name: This shard's rows (for the gate; no record, no key)
@@ -340,7 +340,7 @@ jobs:
           for base in $(for wf in site-replays.yml replay-offline.yml; do gh run list -R "$GITHUB_REPOSITORY" --workflow "$wf" --branch main --status success --limit 20 --json databaseId --jq ".[] | select(.databaseId != $GITHUB_RUN_ID) | .databaseId"; done); do   # replay-offline.yml: the old file name, read until 28 Oct 2026
             if gh run download "$base" -R "$GITHUB_REPOSITORY" --name "replay-results-linux-$base" --dir "$out/baseline" >/dev/null 2>&1; then baseline="$out/baseline/results.json"; echo "baseline: run $base"; break; fi
           done
-          [ "$baseline" = - ] && echo "baseline: none yet on Linux (the macOS-made baseline is not used: another runner kind): this run becomes the first" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$baseline" = - ] && echo "baseline: none yet on Linux (the macOS-made baseline is not used: another runner kind): this run becomes the first"
           # the owner's accept: a PR merged since the baseline, labeled replay-accepted, with a "Replay-accept: <reason>" comment (replay-accepts.mjs)
           if [ -n "$TEST_ACCEPTS" ]; then printf '%s' "$TEST_ACCEPTS" > "$out/fake-prs.json"; export REPLAY_ACCEPTS_FAKE="$out/fake-prs.json"; fi
           node replay-accepts.mjs "$baseline" "$out/accepts.json"
@@ -348,13 +348,13 @@ jobs:
           set +e
           node replay-gate.mjs "$out/step4" "$baseline" "$out/results.json" "${retry[@]}" --accepts "$out/accepts.json" --pinned replay-faithful.json > "$out/gate.md"; code=$?
           set -e
-          cat "$out/gate.md" | tee -a "$GITHUB_STEP_SUMMARY"
+          cat "$out/gate.md"
           # a pinned row that passed only on a retry 3+ times in 7 days (the dates ride in each row of results.json): named in the run, not left pinned on luck
           flaky=$(node -e 'const rows=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).rows;console.log(Object.entries(rows).filter(([,row])=>(row.noiseAt||[]).length>=3).map(([name])=>name).join("; "))' "$out/results.json")
           [ -z "$flaky" ] || echo "::warning::flaky pinned rows (passed only on a retry 3+ times in 7 days): $flaky"
           # the late-answer pass of each shard (late.md): a row that lost Claude's answers is red like a drop, and named in the alert
           : > "$out/late-lost.txt"; for d in "$RUNNER_TEMP"/shards/*/; do grep '^- ' "$d"late.md >> "$out/late-lost.txt" 2>/dev/null || true; done
-          [ -s "$out/late-lost.txt" ] && { code=1; echo "### Late answers: rows that lost Claude's answers" | tee -a "$GITHUB_STEP_SUMMARY"; cat "$out/late-lost.txt" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          [ -s "$out/late-lost.txt" ] && { code=1; echo "### Late answers: rows that lost Claude's answers"; cat "$out/late-lost.txt"; }
           { echo "red=$([ "$code" = 0 ] && echo 0 || echo 1)"; echo "what<<EOF"; grep -E '\| worse \|' "$out/gate.md" | head -10 | sed -E 's/^\| ([^|]+) \| worse \| ([^|]+) \|$/\1: \2/'; sed -E 's/^- /late answers lost: /' "$out/late-lost.txt" | head -10; echo EOF; echo "merged=$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).merged||[];console.log(m.map(p=>"#"+p.number).join(", "))' "$out/accepts.json")"; } >> "$GITHUB_OUTPUT"
       - name: Keep this run's results (the next run's baseline when green)
         if: always() && steps.gate.outcome == 'success'

@@ -78,7 +78,7 @@ jobs:
         env:
           WHY: ${{ inputs.over_red_main }}   # free text: never inline in the script
         run: |
-          echo "### ⚠️ Started while main's e2e was red (tools/beta-release.sh --force): $WHY" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ⚠️ Started while main's e2e was red (tools/beta-release.sh --force): $WHY"
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -160,7 +160,7 @@ jobs:
           git fetch -q origin main
           if [ "$(git ls-remote --tags origin "refs/tags/$tag" | cut -f1)" != "$GITHUB_SHA" ] && ! git diff --quiet "$GITHUB_SHA" origin/main -- .github/workflows; then
             echo "::warning::Workflows changed on main during this build: not released; a new build of main starts."
-            echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main during the build)." >> "$GITHUB_STEP_SUMMARY"
+            echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main during the build)."
             # what this run was, as below: a beta stays a beta, a nightly a nightly
             gh workflow run desktop.yml --ref main -f beta=${{ inputs.beta && 'true' || 'false' }} -f nightly=${{ (inputs.nightly || github.event_name == 'schedule') && 'true' || 'false' }}
             echo "released=false" >> "$GITHUB_OUTPUT"
@@ -191,7 +191,7 @@ jobs:
               echo "::warning::Release refused (403) after main moved: not released; a new build of main starts."
               # Keep what this build was (6 Oct 2026: a beta by hand came back as a plain build, which no gate approves): a beta stays a beta, a nightly a nightly.
               gh workflow run desktop.yml --ref main -f beta=${{ inputs.beta && 'true' || 'false' }} -f nightly=${{ (inputs.nightly || github.event_name == 'schedule') && 'true' || 'false' }}
-              echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main)." >> "$GITHUB_STEP_SUMMARY"
+              echo "### ⚠️ ${version} not released: superseded by a new build of main (workflows changed on main)."
               echo "released=false" >> "$GITHUB_OUTPUT"
               gh run cancel "$GITHUB_RUN_ID" || true   # ends cancelled, never "success" (see above)
               exit 0
@@ -207,7 +207,7 @@ jobs:
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_DAILY_BUDGET: ${{ vars.E2E_DAILY_BUDGET }}
-        run: node ai-spend.mjs 2>> "$GITHUB_STEP_SUMMARY" >> "$GITHUB_OUTPUT"
+        run: node ai-spend.mjs >> "$GITHUB_OUTPUT"
       # The gate's plan, once for both lanes (desktop/e2e/plan-run.mjs, GATE_TAG): the same suites on Mac + Linux and on Windows, and whether the AI screenshot
       # review runs. A build by hand ("Build only") is not tested.
       - name: Plan the E2E suites for both lanes
@@ -227,7 +227,7 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
           npm ci || npm install
-          node plan-run.mjs 2>> "$GITHUB_STEP_SUMMARY" | { if [ "$OVER" = true ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"
+          node plan-run.mjs | { if [ "$OVER" = true ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"
           # windows_matrix (from plan-run.mjs): its suites less those the same on every OS (quality), a sharded one as one entry per slice (lib/suite-shards.mjs)
           echo "gate=true" >> "$GITHUB_OUTPUT"
 
@@ -266,7 +266,7 @@ jobs:
           for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
           status=0
           # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
-          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines go to the run's Summary page.
+          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
           for entry in $pids; do
             area="${entry%%:*}"
             if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
@@ -275,7 +275,7 @@ jobs:
             if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
             else echo "::error::The $area unit tests failed"; cat "unit-$area.log"; fi
           done
-          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
           exit $status
       - name: Add the shared Google app client
         env:
@@ -377,7 +377,7 @@ jobs:
           for area in $UNIT_AREAS; do bash tools/check.sh --area "$area" > "unit-$area.log" 2>&1 & pids="$pids $area:$!"; done
           status=0
           # The answer on top, the detail one click away (owner, 10 Oct 2026: "human readable, without scrolling a lot"): a passing suite is ONE line here and its per-file log
-          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines go to the run's Summary page.
+          # is collapsed; a failing suite prints its log in full, whose first lines are the failing tests and their errors. The same lines are the step's log.
           for entry in $pids; do
             area="${entry%%:*}"
             if wait "${entry#*:}"; then result=passed; else result=FAILED; status=1; fi
@@ -386,7 +386,7 @@ jobs:
             if [ "$result" = passed ]; then echo "✔ $area: ${line}"; echo "::group::$area · every test file"; cat "unit-$area.log"; echo "::endgroup::"
             else echo "::error::The $area unit tests failed"; cat "unit-$area.log"; fi
           done
-          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "### Unit tests · desktop app"; echo; echo "| Suite | Result | Summary |"; echo "|---|---|---|"; cat unit-table.md; }
           exit $status
       - name: Add the shared Google app client
         env:
@@ -582,7 +582,7 @@ jobs:
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11: lib/runner.mjs) with its evidence, by force 3 min later (suite.mjs); this catches only a suite that cannot
         run: |
           # A run on an older commit (target_ref: the stable canary, a release candidate) plans with main's suite list; a suite added since does not exist in that build.
-          if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs ${{ matrix.suite }}; else node suite.mjs ${{ matrix.suite }}; fi
       # Flaky or real? A red suite runs once more on the same commit (6 Oct 2026); red twice fails the job. A pass the second time passes it only with proof (gate G5,
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
@@ -594,18 +594,18 @@ jobs:
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
           first="$E2E_ARTIFACTS"
-          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1   # its step table says "second try" (lib/step-summary.mjs)
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1   # a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           if again ${{ matrix.suite }}; then
             echo '{"rerun": "passed"}' > "$first/flaky.json"
             # "Flaky" needs proof (gate G5): a first-try failure on a wrong value, not timing, is a bug that shows sometimes; the job stays red (lib/flaky-proof.mjs).
-            if node flaky-proof.mjs "$first/suite-failures.json" | tee -a "$GITHUB_STEP_SUMMARY"; then
-              echo "Passed on the second try, and every failure of the first was timing or the test's environment: flaky (labelled by triage)." | tee -a "$GITHUB_STEP_SUMMARY"
+            if node flaky-proof.mjs "$first/suite-failures.json"; then
+              echo "Passed on the second try, and every failure of the first was timing or the test's environment: flaky (labelled by triage)."
             else
               exit 1
             fi
           else
-            echo "Failed again on the same commit: a real failure." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "Failed again on the same commit: a real failure."
             exit 1   # red twice: the job (and the gate) fail
           fi
       - name: What the suite spent on Free AI (the relay's own meter)
@@ -614,7 +614,7 @@ jobs:
         shell: bash
         run: |
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
-          echo "Free AI (Workers AI) this suite: $spent" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
@@ -792,7 +792,7 @@ jobs:
         working-directory: desktop/e2e
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11), and by force 3 min later (suite.mjs)
         run: |
-          if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           node suite.mjs ${{ matrix.suite }}
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
         if: matrix.suite == 'apply'
@@ -808,7 +808,7 @@ jobs:
         shell: bash
         run: |
           spent="$(curl -s -m 10 "${E2E_FREE_AI_URL%/api/ai}/__report" || echo '{}')"
-          echo "Free AI (Workers AI) this suite: $spent" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Free AI (Workers AI) this suite: $spent"
           echo "$spent" > "$E2E_ARTIFACTS/free-ai-spend.json" || true
       - name: Report what the suite paid for AI to /ai-cost (the app under test and the judges)
         if: always() && env.E2E_ANTHROPIC_KEY != ''
@@ -910,7 +910,7 @@ jobs:
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           rm -f "$RUNNER_TEMP/made.txt"; GITHUB_OUTPUT="$RUNNER_TEMP/made.txt" bash ../../tools/merge-e2e-report.sh "$PWD/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
-              echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)" >> "$GITHUB_STEP_SUMMARY"
+              echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
       - uses: actions/upload-artifact@v6
         if: hashFiles('e2e-report/index.html') != ''
@@ -929,7 +929,7 @@ jobs:
       - name: Not released on Mac, an E2E suite failed
         if: needs.test-mac.result != 'success'
         run: |
-          echo "### ❌ $TAG is not offered to Mac beta testers: an E2E suite failed (see the report above)." >> "$GITHUB_STEP_SUMMARY"
+          echo "### ❌ $TAG is not offered to Mac beta testers: an E2E suite failed (see the report above)."
           exit 1
       - name: No real high-severity finding in the Mac suites
         working-directory: desktop/e2e
@@ -939,13 +939,13 @@ jobs:
           find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
           status=0
           node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
-          cat block.txt | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites." >> "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          cat block.txt
+          if [ "$status" != 0 ]; then echo "$TAG is not offered on Mac: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh "$TAG" "$REF" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Mac beta testers
         env:
           E2E_ALREADY_GREEN: '1'   # every Mac suite passed on this commit, in this run
@@ -953,10 +953,10 @@ jobs:
         run: |
           if [ "$SOAK" = on ]; then
             tools/beta-approve.sh "$TAG"
-            echo "Beta-approved: $TAG (unit suites and every end-to-end suite passed on its commit). It becomes stable through canary-promote.yml: more end-to-end runs, no blocking finding, then healthy beta use." >> "$GITHUB_STEP_SUMMARY"
+            echo "Beta-approved: $TAG (unit suites and every end-to-end suite passed on its commit). It becomes stable through canary-promote.yml: more end-to-end runs, no blocking finding, then healthy beta use."
           else
             tools/release-stable.sh "$TAG"
-            echo "Stable: $TAG (every suite passed on its commit)" >> "$GITHUB_STEP_SUMMARY"
+            echo "Stable: $TAG (every suite passed on its commit)"
           fi
 
   # RELEASE: the lane's HTML report (always), then, only when every E2E suite of the lane passed: no real high-severity finding, the shared release checks, and the
@@ -993,7 +993,7 @@ jobs:
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           rm -f "$RUNNER_TEMP/made.txt"; GITHUB_OUTPUT="$RUNNER_TEMP/made.txt" bash ../../tools/merge-e2e-report.sh "$PWD/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
-              echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)" >> "$GITHUB_STEP_SUMMARY"
+              echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
       - uses: actions/upload-artifact@v6
         if: hashFiles('e2e-report/index.html') != ''
@@ -1012,7 +1012,7 @@ jobs:
       - name: Not released on Windows, an E2E suite failed
         if: needs.test-windows.result != 'success'
         run: |
-          echo "### ❌ $TAG is not offered to Windows beta testers: an E2E suite failed (see the report above)." >> "$GITHUB_STEP_SUMMARY"
+          echo "### ❌ $TAG is not offered to Windows beta testers: an E2E suite failed (see the report above)."
           exit 1
       - name: No real high-severity finding in the Windows suites
         working-directory: desktop/e2e
@@ -1022,20 +1022,20 @@ jobs:
           find ../../e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-*' ! -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
           status=0
           node block-check.mjs --artifacts ../../e2e-artifacts > block.txt || status=$?
-          cat block.txt | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites." >> "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          cat block.txt
+          if [ "$status" != 0 ]; then echo "$TAG is not offered on Windows: a real high-severity finding in its end-to-end suites."; exit 1; fi
       - name: The shared release checks (unit suites green on the commit; soak on, the Notion schema additive over stable)
         env:
           JOB_PILOTTO_SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-        run: tools/release-checks.sh "$TAG" "$REF" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Windows beta testers
         env:
           E2E_ALREADY_GREEN: '1'   # every Windows suite passed on this commit, in this run
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         run: |
           set -o pipefail   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
-          tools/beta-approve.sh --windows "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+          tools/beta-approve.sh --windows "$TAG"
 
   # Keep the release list short: stable releases stay, plus the newest 3 test builds (tools/prune-releases.sh) and each platform's newest beta. After both lanes, so
   # tonight's approvals are already written when it decides what to keep.
@@ -1048,7 +1048,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - run: |
-          echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?. Or the AI key was refused: see 'AI key ready?'." >> "$GITHUB_STEP_SUMMARY"
+          echo "### ❌ The E2E gate was planned but did not run: no build was tested or approved. See the 'Plan the E2E suites' step of Anything new?. Or the AI key was refused: see 'AI key ready?'."
           echo "::error::The E2E gate was skipped after a green build."
           exit 1
 

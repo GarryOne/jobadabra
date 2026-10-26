@@ -52,7 +52,7 @@ jobs:
           BEFORE: ${{ github.event.before }}   # main before this push: its diff is the merge's own
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
-          node desktop/e2e/pr-suites.mjs --base "$BEFORE" --plan | tee -a "$GITHUB_STEP_SUMMARY"
+          node desktop/e2e/pr-suites.mjs --base "$BEFORE" --plan
       - name: Start them
         if: steps.plan.outputs.suites != ''
         env:
@@ -62,4 +62,4 @@ jobs:
           MERGED: ${{ github.sha }}
         run: |
           gh workflow run e2e.yml --ref main -f pr_suites="$SUITES" -f pr_steps="$STEPS" -f after_merge="${MERGED:0:7}"
-          echo "Started e2e.yml on main for ${MERGED:0:7}: $SUITES. See https://github.com/$GITHUB_REPOSITORY/actions/workflows/e2e.yml" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Started e2e.yml on main for ${MERGED:0:7}: $SUITES. See https://github.com/$GITHUB_REPOSITORY/actions/workflows/e2e.yml"

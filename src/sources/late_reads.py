@@ -4,6 +4,7 @@ answer goes to data/late_reads.json (an employer site's jobs, a job board's page
 asking the site again. A board whose other ways were cut keeps its page result here too, so the next search goes up its ladder from it.
 An answer older than MAX_HOURS is dropped (the site may have changed). Tests: tests/test_three_minutes_resume.py."""
 import json
+import os
 import threading
 from datetime import datetime, timedelta, timezone
 
@@ -26,6 +27,12 @@ def _load():
         return {}
 
 
+def _write(data):   # whole or not at all: the process may end while a late read writes (src/run_exit.py)
+    part = _file().with_suffix('.part')
+    part.write_text(json.dumps(data, ensure_ascii=False, default=str))
+    os.replace(part, _file())
+
+
 def keep(kind, key, answer, now=None):
     """Keep `answer` (JSON) for the next search's read of `key` (kind: 'employer' or 'board'). Called from the reading thread itself."""
     at = (now or datetime.now(timezone.utc)).isoformat(timespec='seconds')
@@ -34,7 +41,7 @@ def keep(kind, key, answer, now=None):
         data.setdefault(kind, {})[key] = {'at': at, 'answer': answer}
         try:
             _file().parent.mkdir(parents=True, exist_ok=True)
-            _file().write_text(json.dumps(data, ensure_ascii=False, default=str))
+            _write(data)
         except OSError:
             pass
 
@@ -47,7 +54,7 @@ def take(kind, key, now=None):
         if kept is None:
             return None
         try:
-            _file().write_text(json.dumps(data, ensure_ascii=False, default=str))
+            _write(data)
         except OSError:
             pass
     try:

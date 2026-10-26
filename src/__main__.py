@@ -61,4 +61,5 @@ def main():
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    from . import run_exit
+    raise SystemExit(run_exit.finish(main()))   # a timed search ends at its deadline, not when its last late read does

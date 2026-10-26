@@ -1,6 +1,7 @@
 // Settings → connections: Apply with Claude, the extension, how often, Always on.
 import {aiFamily} from '../ai-name.js';
 import {notionConnected, openNotionConnect} from './notion-connect.js';
+import {signInWait} from '../sign-in-wait.js';
 import {shared} from './shared.js';
 import {$, message, osPick, osText, show} from './core.js';
 import {pill} from '../components.js';
@@ -400,6 +401,9 @@ export async function init() {
   });
   $('auto-search').addEventListener('change', () => window.pilot.setAutomation({autoSearch: $('auto-search').checked}));
   $('open-login').addEventListener('change', () => window.pilot.setAutomation({openAtLogin: $('open-login').checked}));
+  // While a sign-in waits (Google's page closed, "Back to safety"), the same button is Cancel sign-in: never stuck, never a second sign-in.
+  const waitGoogle = signInWait($('google-connect'), () => window.pilot.googleConnectCancel());
+  const waitNotion = signInWait($('set-notion-oauth'), () => window.pilot.notionOAuthCancel());
   // Google calls the app unverified: say so before the browser opens, with the three clicks that get through it.
   $('google-connect').addEventListener('click', () => $('google-warning-dialog').showModal());
   // The job-alert guide: each site's own page, in the browser (fixed addresses in index.html).
@@ -409,20 +413,16 @@ export async function init() {
   });
   $('google-warning-go').addEventListener('click', async () => {
     $('google-warning-dialog').close();
-    $('google-connect').disabled = true;
-    message('google-message', 'Finish the sign-in in your browser: on Google\'s warning page press Advanced, then Go to Jobadabra (unsafe).');
-    const result = await window.pilot.googleConnect({only: googleOnly});
-    $('google-connect').disabled = false;
-    message('google-message', result.ok ? 'Connected ✓' : result.error, result.ok ? 'ok' : 'error');
+    message('google-message', 'Finish the sign-in in your browser: on Google\'s warning page press Advanced, then Go to Jobadabra (unsafe). Closed that page? Press Cancel sign-in here.');
+    const result = await waitGoogle(() => window.pilot.googleConnect({only: googleOnly}));
+    message('google-message', result.ok ? 'Connected ✓' : result.error, result.ok ? 'ok' : result.cancelled ? '' : 'error');
     showGoogle();
   });
   $('set-notion-oauth').addEventListener('click', async () => {
     // Not connected yet (Notion later): the same prompt as everywhere, with the advantages.
     if (!notionConnected()) { openNotionConnect({reason: 'none', where: 'settings', from: 'settings', then: () => loadSettings()}); return; }
-    $('set-notion-oauth').disabled = true;
-    message('set-notion-message', 'Waiting for Notion: approve in your browser, then come back here…', 'waiting');
-    const result = await window.pilot.notionOAuth({from: 'settings-reconnect'});
-    $('set-notion-oauth').disabled = false;
+    message('set-notion-message', 'Waiting for Notion: approve in your browser, then come back here. Press Cancel sign-in to stop.');
+    const result = await waitNotion(() => window.pilot.notionOAuth({from: 'settings-reconnect'}));
     message('set-notion-message', result.ok ? 'Reconnected ✓' : result.error || 'Not connected.', result.ok ? 'ok' : 'error');
     if (result.ok) { shared.state = await window.pilot.state(); loadSettings(); }
   });

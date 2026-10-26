@@ -9,6 +9,7 @@ import * as profileAccounts from './profile-accounts.js';
 import * as extensionInstall from './extension-install.js';
 import * as github from './github.js';
 import * as pipeline from './pipeline.js';
+import {killTree} from './kill-tree.js';
 import * as questions from './questions.js';
 import * as questionLists from './question-lists.js';
 import * as detailsReview from './details-review.js';
@@ -202,13 +203,20 @@ export function registerApplyHandlers(ctx) {
     if (DEMO) return process.env.JOB_PILOTTO_DEMO_GOOGLE === 'off' ? {connected: false} : {connected: true, email: 'alex.morgan@example.com'};
     try { return await googleStatus(); } catch { return {connected: false}; }
   });
+  let googleSignIn = null;   // the sign-in waiting for Google's redirect (up to 5 minutes): its child, so Cancel ends exactly this one
+  ipcMain.handle('googleConnectCancel', () => { if (googleSignIn) { googleSignIn.cancelled = true; killTree(googleSignIn.child); } });
   ipcMain.handle('googleConnect', async (_event, {only} = {}) => {
     const gate = needsNotion('gmail');
     if (gate) return gate;
+    if (googleSignIn) return {ok: false, error: 'A Google sign-in is already waiting.'};
+    const mine = googleSignIn = {child: null, cancelled: false};
     const lines = [];
     // The browser's "connected" page follows the app's theme; `only` (gmail|calendar) is a reconnect asking just for the part left unticked.
     const args = ['src.sources.google', 'auth', '--theme', nativeTheme.shouldUseDarkColors ? 'dark' : 'light', ...(['gmail', 'calendar'].includes(only) ? ['--only', only] : [])];
-    const {code} = await pipeline.run(storage, args, line => lines.push(line));
+    let code;
+    try { ({code} = await pipeline.run(storage, args, line => lines.push(line), {}, {onChild: child => { mine.child = child; }})); }
+    finally { googleSignIn = null; }
+    if (mine.cancelled) return {ok: false, cancelled: true, error: 'Sign-in cancelled.'};
     googleStatus.forget();   // the next status asks again, so the new account shows at once
     // Always on: the new sign-in goes to the GitHub repo too, so the Gmail check there can use it.
     if (code === 0 && cloud()) github.updateRepo(storage).catch(error => log(`Google sign-in not sent to GitHub: ${error.message}`));

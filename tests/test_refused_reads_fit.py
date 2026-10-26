@@ -81,3 +81,33 @@ class RefusedReadsFitTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class NameOnlyTest(RefusedReadsFitTest):
+    """26 Oct 2026, 02:09 and 02:31: the judge kept "Airbase" (spend-management software, from a tech firms' list an earlier software search
+    picked) for the pilot search: it saw only the name and the address, a name that sounds like flying, and was told "When unsure, keep it"."""
+    PICK = {'name': 'Skyport', 'url': 'https://www.skyport.test/careers', 'origin': 'hiring-without-whiteboards'}
+
+    def test_the_judge_sees_where_each_site_was_found_and_an_unsure_one_is_not_read(self):
+        with mock.patch.object(visits, 'unread_picks', lambda *a, **k: [dict(self.PICK)]):
+            refused_reads.queue(now=NOW, everything=True)
+        asked = self.judge.asked[-1]
+        sites = asked['messages'][0]['content'].split('The sites:\n', 1)[1]
+        self.assertIn('Skyport (https://www.skyport.test/careers) [employer] found in: hiring-without-whiteboards', sites)
+        system = asked['system'][0]['text']
+        self.assertIn('not by its name', system)
+        self.assertIn('When unsure, leave it out', system, 'an automatic browser read of a site nobody is sure of is not made')
+
+    def test_the_visit_list_still_keeps_an_unsure_site_for_the_person_to_choose(self):
+        visits.relevant([{'name': 'Skyport', 'url': self.PICK['url'], 'kind': 'employer'}], SEARCH, label='Visit list')
+        self.assertIn('When unsure, keep it', self.judge.asked[-1]['system'][0]['text'])
+
+    def test_an_answer_kept_before_the_judge_saw_this_is_asked_again(self):
+        item = {'name': 'Skyport', 'url': self.PICK['url'], 'kind': 'employer'}
+        import hashlib
+        old = hashlib.sha256(json.dumps([[item['url']], sorted(['First Officer', 'pilot']), ['Europe']], ensure_ascii=False).encode()).hexdigest()[:12]
+        data = visits._load()
+        data['relevant'] = {old: [item['url']]}   # the 02:09 answer that kept it
+        visits._save(data)
+        visits.relevant([item], SEARCH, label='Refused sites', failed=[], unsure='leave')
+        self.assertEqual(len(self.judge.asked), 1, 'asked again, not the old answer')

@@ -76,16 +76,16 @@ def portals(search=None, kinds=None):
 
 def unread_picks(db_path=None, limit=30):
     """Employers the scout picked for THIS search (its AI ideas and the user's own lists, never the old tech seed lists) that ended with no
-    readable job site, with an address to open: [{name, url}], best first. Owner, 7 Oct 2026: "for a photographer or store manager, start with
+    readable job site, with an address to open: [{name, url, origin}], best first. Owner, 7 Oct 2026: "for a photographer or store manager, start with
     H&M, Manor… the sites we cannot read ourselves that are relevant for such a candidate", not only LinkedIn and Glassdoor."""
     import sqlite3
     from ..paths import JOBS_DB
     try:
         with sqlite3.connect(db_path or JOBS_DB) as db:
-            rows = db.execute("""SELECT name, COALESCE(NULLIF(careers, ''), website) FROM scout_candidates
+            rows = db.execute("""SELECT name, COALESCE(NULLIF(careers, ''), website), origin FROM scout_candidates
                 WHERE status IN ('none', 'watch') AND COALESCE(NULLIF(careers, ''), website, '') LIKE 'http%'
                 AND origin NOT LIKE 'Tier 1%' AND origin NOT LIKE 'Seed%' ORDER BY priority DESC, checked_at DESC LIMIT ?""", (limit,)).fetchall()
     except sqlite3.Error:
         return []
-    return [{'name': name, 'url': url} for name, url in rows]
+    return [{'name': name, 'url': url, 'origin': origin or ''} for name, url, origin in rows]   # origin: which list or search named it
 

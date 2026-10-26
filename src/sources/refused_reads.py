@@ -80,7 +80,8 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
         host = visits.host_of(pick['url'])
         if allowed(pick['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
             seen.add(host)
-            out.append({'url': pick['url'], 'name': pick['name'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download'})
+            out.append({'url': pick['url'], 'name': pick['name'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download',
+                        **({'found': pick['origin']} if pick.get('origin') else {})})
     out.sort(key=lambda item: elsewhere(visits.host_of(item['url'])) != 'opened')   # opened in another install's browser: asked first
     search = search_config()
     for board in (board_ideas.load().get('boards') or {}).values():
@@ -97,7 +98,7 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
     # the AI fails this time, none of the others is read (asked again next time); with no AI at all every site is read, as before.
     asked = [item for item in out if visits.host_of(item['url']).lower().removeprefix('www.') not in force]
     if asked:
-        fit = {item['url'] for item in visits.relevant(asked, search, label='Refused sites', failed=[])}
+        fit = {item['url'] for item in visits.relevant(asked, search, label='Refused sites', failed=[], unsure='leave')}
         out = [item for item in out if item not in asked or item['url'] in fit]
     return out[:limit]
 

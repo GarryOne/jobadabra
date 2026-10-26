@@ -192,3 +192,4 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - Owner: "Higher cap + sample" (~$0.0008 a call, about $0.40 a run while the counts fill). Hence: the central scout's cap is `decide.CENTRAL_MAX_CALLS`
   (installs keep 60); an employer is judged on a fixed sample of 60 jobs, its counts scaled to all; the run log says "Kind counts by country on N of M feeds".
   Guard: `tests/test_kind_counts.py` (CentralCapAndSampleTest). Lesson: after a run that publishes a new field, count how many entries carry it.
+- The first run at 600 calls: counts on 190 of 4,513 employers, $0.205 for 652 calls (the cap still bound). Owner: "2,000 calls" (~$0.65 a run while filling).

@@ -27,8 +27,9 @@ BATCH = 50
 MAX_TEXT = 600
 MAX_CALLS_PER_RUN = 60   # model calls per process: a crawl never turns into a bill
 # The central scout's: its answers (title kinds, places) serve every install, and 60 shared by both gave 9 of 2,517 employers their counts
-# (owner, 26 Oct 2026: "Higher cap + sample", ~$0.0008 a call, about $0.40 a run while the counts fill). Tests: tests/test_kind_counts.py.
-CENTRAL_MAX_CALLS = 600
+# (owner, 26 Oct 2026: "Higher cap + sample"). 600 gave 190 of 4,513 employers counts in a run for $0.205 (652 calls); the owner then chose
+# "2,000 calls" (~$0.65 a run while the counts fill, about 2 days; kept answers make later runs cheap). Tests: tests/test_kind_counts.py.
+CENTRAL_MAX_CALLS = 2000
 _calls = {'n': 0}
 FAILED = [0]   # AI calls that failed in this process: a caller whose answer came out empty can tell "judged: no" from "not judged"
 

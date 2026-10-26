@@ -3,7 +3,7 @@
 // Guards renderer/find-card-model.js (liveLines, stepChips) and lib/pipeline-lines.js keepRunLine (the run's log the window gets).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {findCard, liveLines, stepChips} from '../renderer/find-card-model.js';
+import {findCard, liveLines, stepChips, webSearchChip} from '../renderer/find-card-model.js';
 import {keepRunLine} from '../lib/pipeline-lines.js';
 
 // Each step's result line the engine prints (src/sources/board_web.py, board_yield.py, found_boards.py, aggregators.py, src/sources/feeds.py),
@@ -106,4 +106,13 @@ test('the employer read says the jobs that match so far, and where it stopped wh
   assert.equal(liveLines(log).at(-1), '⏳ Reading employer job sites: 43 of 608 · 1,221 jobs listed · taking longer than expected · 13 match your search so far');
   const card = findCard({running: {kind: 'search', log: [...log, 'Employers: read 78 of 608 sites in the time, best first; the other 530 are read first next time.']}});
   assert.deepEqual(card.employers, {done: 78, total: 608, stopped: true}, 'the bar ends where the read ended, not at the last tick');
+});
+
+// A second web search ask in the same run (33's #2031, 26 Oct 2026) says "searched in this run": no news, so the chip keeps what the first one showed.
+test('"no web search: searched in this run" changes neither the chip nor Live updates', () => {
+  const first = ['Job boards: searching the web for trade and local boards (your plan)', 'Job boards: a web search found Aero Board (Pilot jobs)'];
+  const again = [...first, 'Job boards: no web search: searched in this run'];
+  assert.deepEqual(webSearchChip(again), webSearchChip(first));
+  assert.equal(webSearchChip(['Job boards: searching the web for x', 'Job boards: no web search: searched in this run']).state, 'active');
+  assert.deepEqual(liveLines(again), liveLines(first));
 });

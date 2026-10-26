@@ -109,11 +109,6 @@ export function listChips(name, placeholder) {
   }
   return box;
 }
-// One line under Remote work when every role is done on site (src/onsite_nature.py): remote adds jobs, it never removes the ones in your places.
-function onsiteNote(strategy = strategyState.lastStrategy) {
-  return strategy?.onsite_note?.text && strategy.remote_jobs !== false ? el('p', 'muted small onsite-note', strategy.onsite_note.text) : null;
-}
-const wrap = (...nodes) => { const box = el('div', ''); box.append(...nodes); return box; };
 const wholeWords = {};   // the "Whole word only" box per list while editing
 // Remote jobs (Search settings "Remote jobs"): a place of its own, or only jobs in your places.
 function remoteChoice() {
@@ -178,7 +173,7 @@ function targetCard([key, glyph, title, lists]) {
     if (label) card.append(el('p', 'sub', label));
     card.append(box);
   }
-  if (key === 'places') card.append(el('p', 'sub', 'Remote work'), remoteChoice(), ...[onsiteNote()].filter(Boolean));
+  if (key === 'places') card.append(el('p', 'sub', 'Remote work'), remoteChoice());
   if (key === 'search') card.append(el('p', 'sub', 'Your level'), levelChoice(), el('p', 'sub', 'Minimum fit score for the digest'), minScoreInput());
   return card;
 }
@@ -231,7 +226,6 @@ const VIEWS = {
     // The goal "Work mode" (what you accept) and Remote work (where remote jobs are searched) read as a contradiction side by side (owner, 7 Oct 2026):
     // said on the row's hover, never as a footnote under the card (owner, 18 Oct 2026: no floating footnotes).
     const remote = remoteChoice();
-    const note = onsiteNote();
     remote.title = 'Work mode (in Main goals) is the kind of job you accept; Remote work is whether jobs you could do from where you can work count.';
     const preferred = places.length ? withHints('places', chipsOf) : none('None');
     preferred.title = 'Ranked first';
@@ -239,7 +233,7 @@ const VIEWS = {
       {icon: 'globe', label: 'Acceptable locations', value: regions.length ? withHints('country', labels => folded(labels, 10, 'Show all')) : none('None selected')},
       mode === 'yes' && abroad.length ? {icon: 'send', label: 'Places you would relocate to', value: folded(abroad.map(entry => entry.label), 10, 'Show all')}
         : {icon: 'send', label: 'Relocation', value: relocationWords(mode, abroad)},
-      {icon: 'building', label: 'Remote work', value: note ? wrap(remote, note) : remote},
+      {icon: 'building', label: 'Remote work', value: remote},
       {icon: 'shield', label: 'Work rights', value: rights.length ? withHints('rights', chipsOf) : pill('Not set', 'warn', {title: 'Jobs abroad are flagged "visa sponsorship needed"'})}],
     {lined: true})];
   },

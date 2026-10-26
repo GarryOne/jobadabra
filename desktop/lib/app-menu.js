@@ -32,6 +32,7 @@ const view = zoom => ({label: 'View', submenu: [{role: 'reload'}, {role: 'forceR
 
 // What "Check for Updates…" answers: {message, detail, buttons, install?}.
 export function answer(result, current) {
+  if (result?.fromStore) return {type: 'info', message: 'Updated by the Microsoft Store', detail: `Jobadabra ${current} came from the Microsoft Store, which installs new versions by itself.`, buttons: ['OK']};
   if (result?.fromSource) return {type: 'info', message: 'Running from source (npm start)', detail: 'Updates are for the installed app. Here, update with git pull and restart.', buttons: ['OK']};
   if (!result?.ok) return {type: 'warning', message: 'Couldn\'t check for updates', detail: result?.text || 'Try again later.', buttons: ['OK']};
   if (!result.offer) return {type: 'info', message: 'You\'re up to date', buttons: ['OK'],

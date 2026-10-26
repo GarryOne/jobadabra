@@ -309,6 +309,7 @@ async function renderUpdate() {
   const {latest, text} = updateText(status);
   $('diag-update-text').replaceChildren(icon(latest ? 'check' : 'info'), ` ${text}`);
   $('diag-update-text').className = `service-state${latest ? ' is-on' : ''}`;
+  $('diag-update-check').hidden = !!status.fromStore;   // the Store copy: the Store checks, ours never would
 }
 
 // Beta: opt-in, off by default. Joining asks in a native dialog (main.js); "Back to stable" shows while this install is ahead of the stable version.

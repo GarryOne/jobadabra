@@ -50,7 +50,8 @@ IT_WORK = {'sre': 'site reliability: keeping production services up, incidents, 
            'security': 'IT and cyber security', 'support_it': 'IT support and help desk'}
 # The role families in words, in the system prompt AND the schema: 26 Oct 2026 (PR #1992), with them only in the schema's description Free AI's
 # open model still answered 'engineering' for SRE and platform jobs (a schema there fixes the answer's shape; its descriptions may go unread).
-ROLE_FAMILIES = ("The job's own kind of work, not the team, product or customers it serves. IT work (an engineer in software or IT is one of these, "
+ROLE_FAMILIES = ("The job's own kind of work, not the team, product or customers it serves; when the title names a kind of work below "
+                 "(site reliability, platform, DevOps, cloud ...), that is its family, and software is only for building the product's own software. IT work (an engineer in software or IT is one of these, "
                  "not engineering): " + '; '.join(f'{family} = {IT_WORK[family]}' for family in IT_FAMILIES) + '. Other work: '
                  + '; '.join(f'{kind} = {WORK[kind]}' for kind in KINDS if kind not in IT_FAMILIES) + '.')
 SCHEMA = {

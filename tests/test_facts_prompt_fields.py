@@ -34,6 +34,10 @@ class FieldGuidanceInPrompt(unittest.TestCase):
         self.assertEqual(unexplained, [])
         self.assertIn('a plus', enrich.SCHEMA['properties']['english_is_enough']['description'])
 
+    def test_a_title_that_names_its_work_decides_the_family(self):
+        # 26 Oct 2026, #2056's quality run: "Senior Site Reliability Engineer" came back "software" on Free AI.
+        self.assertIn('when the title names a kind of work below', enrich.SYSTEM)
+
     def test_the_scorer_is_told_when_growth_may_stay_unknown(self):
         self.assertIn('components.growth: 0-100, or null when the posting gives no basis', score.SYSTEM)
         self.assertIn('basis.level_stated: ', score.SYSTEM)

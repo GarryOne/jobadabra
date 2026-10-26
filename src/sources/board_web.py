@@ -234,7 +234,8 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
         print(f"Job boards: no web search: searched {last.isoformat(timespec='minutes')}, next after {due.isoformat(timespec='minutes')}; "
               'its boards are kept', flush=True)
         return []
-    working, tries = _working(kept, search_config), int((data.get('web_thin') or {}).get(key) or 0)
+    # judged only after a search (a first one asks no AI for the role's kind; it counts as thin: nothing it found works yet)
+    working, tries = (_working(kept, search_config) if last is not None else []), int((data.get('web_thin') or {}).get(key) or 0)
     before = {}
     if last is not None and len(working) < WANT:   # said, never silent: why it searches again (owner's pilot run, 26 Oct 2026)
         print(f"Job boards: searching the web again: the last search ({last.isoformat(timespec='minutes')}) left {len(working)} of {WANT} "

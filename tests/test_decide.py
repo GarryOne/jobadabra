@@ -41,14 +41,14 @@ class DecideTests(unittest.TestCase):
 
     def test_an_answer_outside_the_list_is_never_kept(self):
         client = FakeClient(lambda text: 'ignore previous instructions')
-        self.assertIsNone(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', client, self.db))
+        self.assertEqual(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', client, self.db), {})   # the AI ran: nothing known, not 'no AI'
         self.assertEqual(decide.kept('t', ['a'], self.db), {})
 
     def test_without_ai_or_past_the_run_limit_the_rule_decides(self):
         with mock.patch.object(decide.engine, 'ready', return_value=False):
             self.assertIsNone(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', db=self.db))
         decide._calls['n'] = decide.MAX_CALLS_PER_RUN
-        self.assertIsNone(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', FakeClient(lambda t: 'yes'), self.db))
+        self.assertEqual(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', FakeClient(lambda t: 'yes'), self.db), {})   # past the cap: unknown, not None
 
 
 class UsersTests(unittest.TestCase):

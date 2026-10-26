@@ -15,7 +15,7 @@ import urllib.parse
 from datetime import datetime, timezone
 
 from .. import budget_tape
-from . import cost, engine, page_words
+from . import cost, decide, engine, page_words
 from ..sources import ats, careers
 from .models import SMALL_MODEL
 
@@ -147,15 +147,21 @@ def read(url, markup, client=None, db=None, careers_page=False):
             return clean(json.loads(row[1]), url)
         if not budget_tape.within('page read', f'{counter} {url}', _reads.get(counter, 0), limit):
             return clean(json.loads(row[1]), url) if row else None
-        client = client or engine.client(action='scout')
-        _reads[counter] = _reads.get(counter, 0) + 1
-        response = client.messages.create(
-            model=MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
-            messages=[{'role': 'user', 'content': f'Careers page: {url}\n\n{text}'}], output_config=engine.structured(SCHEMA, MODEL, 'low'))
-        cost.side(MODEL, response.usage)
-        if response.stop_reason != 'end_turn':
-            raise RuntimeError(f'stopped with {response.stop_reason}')
-        answer = json.loads(next(block.text for block in response.content if block.type == 'text'))
+        if decide.stopped():   # today's limit is spent: unknown, read again next run
+            return clean(json.loads(row[1]), url) if row else None
+        try:
+            client = client or engine.client(action='scout')
+            _reads[counter] = _reads.get(counter, 0) + 1
+            response = client.messages.create(
+                model=MODEL, max_tokens=MAX_TOKENS, system=[{'type': 'text', 'text': SYSTEM}],
+                messages=[{'role': 'user', 'content': f'Careers page: {url}\n\n{text}'}], output_config=engine.structured(SCHEMA, MODEL, 'low'))
+            cost.side(MODEL, response.usage)
+            if response.stop_reason != 'end_turn':
+                raise RuntimeError(f'stopped with {response.stop_reason}')
+            answer = json.loads(next(block.text for block in response.content if block.type == 'text'))
+        except Exception as error:  # noqa: BLE001 — a busy or failed AI leaves the page unread; the run goes on
+            decide.failed('page read', error)
+            return clean(json.loads(row[1]), url) if row else None
         found = answer['jobs'][:MAX_JOBS]
         db.execute('INSERT OR REPLACE INTO page_reads (url, digest, jobs_json, read_at) VALUES (?, ?, ?, ?)',
                    (url, digest, json.dumps(found, ensure_ascii=False), datetime.now(timezone.utc).isoformat(timespec='seconds')))
@@ -205,16 +211,22 @@ def choose_links(site, markup, client=None, db=None):
             picked = json.loads(row[1])
         elif not budget_tape.within('page read', f'links {site}', _reads['n'], reads_limit()):
             return []
+        elif decide.stopped():
+            return []
         else:
-            client = client or engine.client(action='scout')
-            _reads['n'] += 1
-            response = client.messages.create(
-                model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': CHOOSE_SYSTEM}],
-                messages=[{'role': 'user', 'content': f'Home page: {site}\n\n{listing}'}], output_config=engine.structured(CHOOSE_SCHEMA, MODEL, 'low'))
-            cost.side(MODEL, response.usage)
-            if response.stop_reason != 'end_turn':
-                raise RuntimeError(f'stopped with {response.stop_reason}')
-            picked = json.loads(next(block.text for block in response.content if block.type == 'text'))['links'][:3]
+            try:
+                client = client or engine.client(action='scout')
+                _reads['n'] += 1
+                response = client.messages.create(
+                    model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': CHOOSE_SYSTEM}],
+                    messages=[{'role': 'user', 'content': f'Home page: {site}\n\n{listing}'}], output_config=engine.structured(CHOOSE_SCHEMA, MODEL, 'low'))
+                cost.side(MODEL, response.usage)
+                if response.stop_reason != 'end_turn':
+                    raise RuntimeError(f'stopped with {response.stop_reason}')
+                picked = json.loads(next(block.text for block in response.content if block.type == 'text'))['links'][:3]
+            except Exception as error:  # noqa: BLE001 — a busy or failed AI leaves the links unchosen; the run goes on
+                decide.failed('link choice', error)
+                return []
             db.execute('INSERT OR REPLACE INTO link_choices (site, digest, links_json, read_at) VALUES (?, ?, ?, ?)',
                        (site, digest, json.dumps(picked), datetime.now(timezone.utc).isoformat(timespec='seconds')))
             db.commit()

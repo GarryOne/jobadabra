@@ -146,12 +146,12 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   ctx.relaunch = async (extra = {}, between) => { const profile = session.profile; await session.close({keepTrace: failed()}); await between?.(profile); adopt(await launch({env: {...env, ...extra}, profile, lang: ctx.place?.locale || ''})); };
   // Some actions end with the app's OWN exit (a reset, an import): it finishes its work first (a reset disconnects the Gmail sign-in through a Python call since 645cef9), so a
   // relaunch straight after the click closes the app half way and nothing was reset (10 Oct 2026, settings suite on Mac and Windows). Wait for that exit, then relaunch.
-  ctx.waitForExit = (timeout = 60000) => new Promise((resolve, reject) => {
+  ctx.waitForExit = (timeout = 60000) => { const mainPid = ctx.app.process().pid; return new Promise((resolve, reject) => {
     const child = ctx.app.process();
     if (child.exitCode !== null || child.signalCode) return resolve();
     const timer = setTimeout(() => reject(new Error(`the app did not exit by itself within ${timeout / 1000} s`)), timeout);
     child.once('exit', () => { clearTimeout(timer); resolve(); });
-  }).then(() => process.platform === 'win32' && session?.profile ? waitForFolderFree(session.profile) : null);   // Windows: the app's own children may still hold the folder
+  }).then(() => process.platform === 'win32' && session?.profile ? waitForFolderFree(session.profile, {mainPid}) : null); };   // Windows: the app's own children may still hold the folder; its main pid names their tree
   ctx.expectStep = async (name, timeout = 20000) => {
     await ctx.page.waitForFunction(wanted => [...document.querySelectorAll('.step')].find(el => !el.hidden && el.offsetParent !== null)?.dataset.step === wanted, name, {timeout})
       .catch(async () => { throw new Error(`expected the "${name}" step, the app shows "${await step(ctx.page)}"`); });

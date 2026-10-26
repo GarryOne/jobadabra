@@ -1,5 +1,6 @@
 // Settings → Profile → Experience: the sources of what tailoring knows about the person (the main CV, other CV versions) and, per job,
 // the facts they add. Data and AI match: lib/experience.js (IPC experienceGet / AddCv / Remove / Rematch). Guarded by test/experience-page.test.js.
+import {plainError} from '../run-warnings.js';
 import {el, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {$, message, runWhen} from './core.js';
@@ -86,7 +87,7 @@ export function changeLines(answer) {
   const c = answer.changes || {}, lines = [], list = items => items.slice(0, 8).join(', ') + (items.length > 8 ? `, +${items.length - 8} more` : '');
   const done = (answer.results || []).filter(r => r.ok).map(r => r.name), failed = (answer.results || []).filter(r => !r.ok);
   if (done.length) lines.push([`Added ${done.length === 1 ? `“${done[0]}”` : plural(done.length, 'version')}`, 'good']);
-  for (const r of failed) lines.push([`Could not add “${r.name}”: ${r.error}`, 'bad']);
+  for (const r of failed) lines.push([`Could not add “${r.name}”: ${plainError(r.error)}`, 'bad']);
   if (answer.removed) lines.push([`Removed “${answer.removed}”`, 'neutral']);
   if (c.details > 0) lines.push([`Tailoring has ${plural(c.details, 'more detail')} to choose from`, 'good']);
   if (c.details < 0) lines.push([`Tailoring has ${plural(-c.details, 'detail')} fewer to choose from`, 'neutral']);

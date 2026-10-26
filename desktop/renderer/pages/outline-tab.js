@@ -3,6 +3,7 @@
 // changes per text, saved through the page's one save bar (save-bar.js; owner, 18 Oct 2026: one bar per page, no bar of its own since D's swap);
 // a tab only draws and calls change(name, change).
 // A change to the same block replaces the earlier one. Guarded by test/profile-tabs-render.test.js.
+import {plainError} from '../run-warnings.js';
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
 import {pageSaveBar} from '../save-bar.js';
@@ -61,7 +62,7 @@ export function outlineTab(id, names, body, draw, {onReset = () => {}, onChange 
       }, {
         loading: () => body.replaceChildren(loadingCard('Reading it from your store…')),
         paint: (answer, kept) => settle(answer.results, kept),
-        fail: failed => body.replaceChildren(el('p', 'message error', `Couldn't read it: ${failed.error}`)),
+        fail: failed => body.replaceChildren(el('p', 'message error', `Couldn't read it: ${plainError(failed.error)}`)),
       });
     },
     redraw: () => redraw(),

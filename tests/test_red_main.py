@@ -25,6 +25,7 @@ CLASSIFIED = {
     'CI · PR verdict': 'ignored: writes a pull request\'s "All checks passed" status when its workflows end; it runs on main\'s copy but judges PR commits only',
     'E2E · Bisect a red main suite': 'ignored: started by e2e.yml after a red main suite (gate G2b); it bisects, it never runs on a push to main',
     'E2E · Weekly root causes': 'ignored: a Monday report (gate G6); it reads runs and writes one issue, never runs on a push to main',
+    'CI · E2E steps after a merge': 'ignored: it only plans and starts e2e.yml on main; that run\'s red is filed on the merged PR and counted by the beta gate (tools/main_e2e_state.py), not a block on every landing',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'CI · Harness tests': 'ignored: pull requests that change the harness only (on: paths:)',
@@ -98,9 +99,9 @@ class RedMainTest(unittest.TestCase):
     def green_at(self, commit):
         self.run_at(commit, TESTS); self.run_at(commit, PAGES)
 
-    def state(self):
+    def state(self, **extra):
         (self.tmp / 'gh' / 'runs.json').write_text(json.dumps(list(reversed(self.runs))))   # gh lists the newest first
-        env = {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo)}
+        env = {'PATH': f'{self.bin.as_posix()}:{__import__("os").environ["PATH"]}', 'RED_MAIN_REPO': str(self.repo), **extra}
         result = subprocess.run(['bash', str(SCRIPT)], capture_output=True, text=True, env=env, timeout=60)
         return result.stdout.strip(), result.returncode
 
@@ -118,6 +119,28 @@ class RedMainTest(unittest.TestCase):
         out, code = self.state()
         self.assertEqual(code, 1)
         self.assertRegex(out, rf'^red\|{self.shas[4][:7]}\|CI · Tests\|https://\S+/runs/\d+\|2026-10-11T15:04:00Z\|\d+$')
+
+    def test_a_run_github_refused_to_start_is_red_and_names_the_first_refused_commit(self):
+        # 26 Oct 2026: build.yml's call asked for a permission it did not grant; "CI · Tests" was startup_failure on every push for an hour, main ran no tests,
+        # and this said "unknown". Every later push is refused too: the red is the FIRST refused commit (the one to fix or revert), never the tip.
+        self.green_at(1)
+        self.run_at(2, TESTS, conclusion='startup_failure'); self.run_at(3, TESTS, conclusion='startup_failure'); self.run_at(5, TESTS, conclusion='startup_failure')
+        out, code = self.state()
+        self.assertEqual(code, 1)
+        self.assertRegex(out, rf'^red\|{self.shas[2][:7]}\|CI · Tests did not start \(startup_failure\)\|https://\S+/runs/\d+\|2026-10-11T15:02:00Z\|\d+$')
+        self.assertFalse((self.tmp / 'gh' / 'reruns').exists(), 'a refused workflow file fails the same way again: no re-run')
+
+    def test_a_refused_streak_longer_than_the_window_still_names_its_first_commit(self):
+        # 26 Oct 2026, live: the streak grew past the 20 commits read and the named commit moved 771c9fe -> fd3c7fc -> 2281de4 as merges landed.
+        self.green_at(0)
+        for commit in (1, 2, 3, 4, 5): self.run_at(commit, TESTS, conclusion='startup_failure')
+        out, code = self.state(RED_MAIN_WINDOW='2')
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith(f'red|{self.shas[1][:7]}|'), out)
+
+    def test_a_refused_run_fixed_by_a_later_green_commit_blocks_nobody(self):
+        self.green_at(1); self.run_at(2, TESTS, conclusion='startup_failure'); self.green_at(4)
+        self.assertEqual(self.state(), (f'green {self.shas[4][:7]}', 0))
 
     def test_a_fix_still_building_on_top_of_a_red_commit_does_not_unblock_anyone(self):
         # 11 Oct 2026: b6dd70e (a fix attempt) was building when others pushed; it ended red

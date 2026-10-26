@@ -3,7 +3,7 @@
 #   UserPromptSubmit: prints "PR #n is red: <checks> <job url>; fix it now" (and "PR #n conflicts with main: rebase now", GitHub's `mergeable` = CONFLICTING; UNKNOWN is silent) into the context.   Stop: the same on stderr + exit 2, once per stop chain (stop_hook_active).
 # Which PRs: the open PR of the branch of the session's cwd and of every worktree it ran tools/ship.sh from. Red = a check FAILURE / TIMED_OUT (a cancelled check is no red:
 # a push cancels the older run). `tools/pr-red-ack.sh <n> "<why>"` says "blocked for real": silent until the set of red checks changes. No answer from gh in ~2 s, no gh, no PR: silent.
-# One look per branch per 60 s (cache in the git dir). PR_RED_CHECK=0 off; PR_RED_DIR / PR_RED_TTL / PR_RED_WAIT (tenths of a second) for tests. 18 Oct 2026: #1321 sat red
+# One look per branch per 60 s (cache in the git dir). PR_RED_CHECK=0 off; PR_RED_DIR / PR_RED_TTL / PR_RED_WAIT (tenths of a second) / PR_RED_MAIN_SCRIPT for tests. 18 Oct 2026: #1321 sat red
 # on two desktop jobs for hours and nobody reacted until the owner asked; #1356, #1362 and #1350 then sat CONFLICTING. Guard: tests/test_pr_red_hook.py.
 set -uo pipefail
 [ "${PR_RED_CHECK:-1}" != 0 ] || exit 0
@@ -59,7 +59,26 @@ red_main() {
   [ -z "$out" ] || printf '%s\n' "$out"
 }
 
-messages=""; seen=" "
+# GitHub refuses main's counted workflow (tools/red-main.sh: "<workflow> did not start (startup_failure)", 26 Oct 2026: an hour of pushes ran no tests and no session heard
+# of it). Prints "<sha>\t<workflow>\t<run url>\t<pr>\t<branch>"; cached for $ttl seconds; a slow answer is not killed: it lands in the cache for the next prompt.
+red_main_sh="${PR_RED_MAIN_SCRIPT:-$(cd "$(dirname "$0")" && pwd)/red-main.sh}"
+refused_main() {
+  local file="$dir/refused-main.look" now stamp i=0
+  now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
+  if [ -z "$stamp" ] || ! [ "$((now - stamp))" -ge 0 ] 2>/dev/null || [ "$((now - stamp))" -ge "$ttl" ]; then
+    ( state="$(RED_MAIN_REPO="$cwd" RED_MAIN_NO_RERUN=1 bash "$red_main_sh" 2>/dev/null)"; row=""
+      case "$state" in red\|*"did not start"*)
+        IFS='|' read -r _ sha wf url _ <<<"$state"
+        pr="$(cd "$cwd" && gh api "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[0] // empty | "\(.number)\t\(.head.ref)"' 2>/dev/null)"
+        row="$sha"$'\t'"$wf"$'\t'"$url"$'\t'"${pr:-?$'\t'?}" ;;
+      esac
+      { date +%s; [ -z "$row" ] || printf '%s\n' "$row"; } > "$file.$$" && mv -f "$file.$$" "$file" ) >/dev/null 2>&1 &
+    while [ "$(head -n 1 "$file" 2>/dev/null)" = "$stamp" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
+  fi
+  tail -n +2 "$file" 2>/dev/null
+}
+
+messages=""; others=""; seen=" "
 for d in "${dirs[@]}"; do
   branch="$(git -C "$d" symbolic-ref --short -q HEAD 2>/dev/null)" || continue
   case "$branch" in main|HEAD|"") continue ;; esac
@@ -84,8 +103,18 @@ if [ -n "$reds_main" ]; then
     done <<<"$reds_main"
   done
 fi
-[ -n "$messages" ] || exit 0
+refused="$(refused_main)"
+if [ -n "$refused" ]; then
+  IFS=$'\t' read -r rsha rwf rurl rpr rbr <<<"$refused"
+  case "$seen" in
+    *" $rbr "*) messages="${messages}Main's ${rwf} since your PR #${rpr} (${rsha}): GitHub refuses the workflow, so main runs no tests (${rurl}); fix it now (the run page names the error), push through tools/ship.sh --background
+" ;;
+    *) others="Main's ${rwf} since ${rsha} (PR #${rpr}, branch ${rbr}): main runs no tests and every landing waits (${rurl}); that PR's session fixes it; nobody within 5 min: tools/revert-red.sh ${rsha}
+" ;;   # told at each prompt; not this session's to fix, so its stop is not blocked
+  esac
+fi
+[ -n "$messages$others" ] || exit 0
 case "$event" in
-  Stop) [ "$again" = true ] && exit 0; printf '%s' "$messages" >&2; exit 2 ;;   # blocks once per stop chain: a second stop in the chain goes through
-  *) printf '%s' "$messages"; exit 0 ;;
+  Stop) [ "$again" = true ] || [ -z "$messages" ] && exit 0; printf '%s' "$messages" >&2; exit 2 ;;   # blocks once per stop chain: a second stop in the chain goes through
+  *) printf '%s' "$messages$others"; exit 0 ;;
 esac

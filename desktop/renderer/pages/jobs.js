@@ -32,6 +32,7 @@ import {soleFilter} from '../jobs-filters.js';
 import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
+import {jobPlace} from '../targets.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -109,7 +110,7 @@ async function askAboutLeftOpen() {
   if (!open.length) return;
   const answer = await window.pilot.sessionsLeftOpen(open.map(item => item.id));
   if (answer?.kept) toastMessage(`${answer.kept} application${answer.kept === 1 ? '' : 's'} restored`,
-    `${answer.kept === 1 ? 'Its form is' : 'Their forms are'} still open in Chrome: review and submit them there.`);
+    `${answer.kept === 1 ? 'Its form is' : 'Their forms are'} still open in Chrome: review and submit them there.`, {view: 'sessions'});
 }
 let jobsLimit = 200;
 async function showMore() {
@@ -121,7 +122,7 @@ async function showMore() {
     const fresh = await writes.read({limit: jobsLimit});
     if (fresh) showJobsData(fresh);
   } catch (error) {
-    toastMessage('Could not load more jobs', error.message);
+    toastMessage('Could not load more jobs', error.message, {view: 'jobs'});
   }
   button.disabled = false;
   renderJobs();
@@ -151,7 +152,7 @@ export function showJobsData(data) {
   window.pilot.state().then(state => { shared.state = state; showSearchChanged(state.settings); }).catch(() => {});
   {
     for (const job of takenDown(shared.allJobs, data.jobs)) {
-      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`);
+      toastMessage('Posting taken down', `${job.company ? `${job.company} · ` : ''}${job.title || job.url}: its job board no longer lists it, so it moved to Closed. Your kit is kept.`, jobPlace(job));
     }
     shared.allJobs = data.jobs;
     markReady(data.jobs);   // the jobs the night filled, from the codes known so far
@@ -219,7 +220,7 @@ export async function startSearch(why = undefined) {
     result = await window.pilot.refresh(why).catch(error => ({ok: false, error: error.message}));
     const refused = refusal(result);
     // On the card when it is in view; elsewhere a pop-up. No AI credit or a Free AI line also opens the top-up dialog, which can press it again.
-    if (refused && (!showFindRefused(refused) || refused.credit)) sayRefused(why?.reason === 'rescore' ? 'Re-score did not start' : why?.employers ? 'Find employers did not start' : 'Find jobs did not start', result, () => startSearch(why));
+    if (refused && (!showFindRefused(refused) || refused.credit)) sayRefused(why?.reason === 'rescore' ? 'Re-score did not start' : why?.employers ? 'Find employers did not start' : 'Find jobs did not start', result, {place: {view: 'jobs'}, retry: () => startSearch(why)});
     return result;
   } finally {
     $('refresh').disabled = false;
@@ -379,7 +380,7 @@ export async function init() {
       if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
       if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
         $('apply-dialog').close();
-        toastMessage('Applying with Claude', result.message);
+        toastMessage('Applying with Claude', result.message, {view: 'sessions'});
         await refreshSessions();
         return;
       }

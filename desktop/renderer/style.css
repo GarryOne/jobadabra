@@ -284,7 +284,7 @@ table.runs tr.run:hover, table.runs tr.run.open { background: var(--surface-2); 
 .row-actions { flex-wrap: wrap; }
 .head-actions button { white-space: nowrap; }
 .toasts { position: fixed; top: 16px; right: 16px; z-index: 50; display: grid; gap: 8px; width: 340px; }
-.toast { background: var(--navy); color: var(--on-accent); border-radius: var(--r-md); padding: 12px 14px; box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / .3); display: grid; gap: 4px; cursor: pointer; font-size: var(--fs-md); }
+.toast { background: var(--toast-bg); border: 1px solid var(--toast-line); color: var(--on-accent); border-radius: var(--r-md); padding: 12px 14px; box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / .3); display: grid; gap: 4px; cursor: pointer; font-size: var(--fs-md); }
 .toast-link { cursor: pointer; }
 .toast b { font-size: var(--fs-base); } .toast small { color: var(--on-navy-2); }
 .toast .toast-action { justify-self: start; margin-top: var(--sp-1); padding: 4px 12px; font-size: var(--fs-sm); }
@@ -435,9 +435,9 @@ button.with-icon .icon { width: 15px; height: 15px; }
 .job-list { display: grid; gap: 8px; }
 .job-row { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; transition: border-color .15s, box-shadow .15s; }
 /* The row a notification's click scrolled to (pages/open-target.js): a brief outline, none for people who ask for less motion. */
-.job-row.flash { outline: 2px solid var(--signal-edge); outline-offset: 2px; animation: row-flash 2.2s ease-out; }
+.job-row.flash, .board-card.flash { outline: 2px solid var(--signal-edge); outline-offset: 2px; animation: row-flash 2.2s ease-out; }
 @keyframes row-flash { from { background: color-mix(in srgb, var(--signal) 14%, var(--surface)); } to { background: var(--surface); } }
-@media (prefers-reduced-motion: reduce) { .job-row.flash { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .job-row.flash, .board-card.flash { animation: none; } }
 .job-row { cursor: pointer; }   /* a click anywhere on it opens the job's drawer (pages/job-panel.js); its own controls and the open analysis keep theirs */
 .job-row .fit-detail { cursor: default; }
 .job-row:hover { border-color: var(--line-strong); box-shadow: 0 3px 12px rgb(var(--shadow-rgb) / .06); }

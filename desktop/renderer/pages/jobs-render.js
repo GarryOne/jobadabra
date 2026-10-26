@@ -15,6 +15,7 @@ import {$, show} from './core.js';
 import {openSession} from './session-log.js';
 import {SESSION_PILL, refreshSessions, sessionFor, sessionList, sessionsLoaded} from './sessions.js';
 import {sayRefused, toastMessage} from './startup.js';
+import {jobPlace} from '../targets.js';
 import {openFeedback} from './feedback.js';
 import {outcomeChoices, reopenable} from '../outcome-tap.js';
 import {scoreBucket} from '../intel.js';
@@ -170,7 +171,7 @@ export function renderJobs() {
     // Notion is the source of truth: if it can't be written, nothing changes and the user is told.
     const setStatus = next => async () => {
       const result = await window.pilot.setStatus(job.url, next).catch(error => ({ok: false, error: error.message}));
-      if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.'); return; }
+      if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job)); return; }
       const stage = result.stage || job.stage;   // what Notion now holds (a dismissed job in process becomes Closed)
       jobsChanged(job, {status: next, stage: next === 'applied' && stage === 'Applying' ? 'Applied' : stage});
       if (next === 'dismissed' && jobsState.statFilter?.urls) jobsState.statFilter.urls.delete(fullKey(job.url));   // a counter's list is a fixed set of jobs: it must let the dismissed one go
@@ -181,8 +182,8 @@ export function renderJobs() {
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
       if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
-      else if (sayRefused('Apply did not start', result)) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
-      else toastMessage('Could not open the job', 'It has no link.');
+      else if (sayRefused('Apply did not start', result, jobPlace(job))) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
+      else toastMessage('Could not open the job', 'It has no link.', jobPlace(job));
     };
     if (job.status !== 'applied' && job.url && (job.kit || job.ready)) {
       // Stays "Opened" for the session (until marked applied); a click opens it again.
@@ -206,7 +207,7 @@ export function renderJobs() {
           if (!job.ready) return fillInChrome(fill);
           const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
           if (result.cancelled) return;
-          if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else toastMessage('Could not open the filled form', result.error || 'Try again from Actions → Ready to send.');
+          if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else toastMessage('Could not open the filled form', result.error || 'Try again from Actions → Ready to send.', jobPlace(job));
         });
         box.append(fill);
         if (jobsState.claudeReady && resumeOffered()) {
@@ -220,7 +221,7 @@ export function renderJobs() {
               if (result.cancelled) return;
               if (result.ok) { claudeStarted.add(pageKey(job.url)); startedApplying(job); if (result.session) await refreshSessions(); renderJobs(); return; }
               // The list said there was a kit but Notion has none (removed or redrafting): Apply drafts it again.
-              if (/kit/i.test(result.error || '')) { toastMessage('Kit not found', 'Press Apply to draft it again.'); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.');
+              if (/kit/i.test(result.error || '')) { toastMessage('Kit not found', 'Press Apply to draft it again.', jobPlace(job)); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.', jobPlace(job));
             }});
         }
       }
@@ -240,7 +241,7 @@ export function renderJobs() {
         // On GitHub (Always on): the row says so; the list reloads when it's done, and the form is not opened for you.
         if (result.cloud) preparing.set(job.code, 'cloud');
         else if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
-        else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
+        else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result, jobPlace(job)); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });
       box.append(prepare);
@@ -273,14 +274,14 @@ export function renderJobs() {
         title: `Draft the kit again from your current CV, Profile and standard answers (~20 s); replaces it in ${storeName()}`, run: () =>
         background('↻ Redrafting kit…', async () => {
           const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-          if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Redraft failed', result.error || 'Try again.');
+          if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Redraft failed', result.error || 'Try again.', jobPlace(job));
         })});
     }
     if (!job.kit && job.code && job.url && job.status !== 'applied' && !prepareState(job)) {
       menu.push({icon: 'layers', wand: true, label: 'Prepare only', title: 'Draft the kit (about 20 s) without opening the form: read it first, then Apply', run: () =>
         background('Preparing kit…', async () => {
           const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
-          if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Prepare failed', result.error || 'Try again.');
+          if (result.cloud) openActivity(true); else if (result.ok) loadJobs(); else toastMessage('Prepare failed', result.error || 'Try again.', jobPlace(job));
         })});
     }
     if (job.page_id) menu.push({icon: 'chat', label: 'Add employer feedback', run: () => openFeedback({...job, job: job.title}, 'receive')});
@@ -295,7 +296,7 @@ export function renderJobs() {
         title: ai('{AI} reviews this application: presentation, hard skills, soft skills, or not on you (~20 s)'),
         run: () => background('🔎 Reviewing the rejection…', async () => {
           const result = await window.pilot.reviewRejection(job.url);
-          toastMessage(result.ok ? 'Rejection reviewed' : 'Review failed', result.text);
+          toastMessage(result.ok ? 'Rejection reviewed' : 'Review failed', result.text, jobPlace(job));
           if (result.ok) loadJobs();
         })});
     }
@@ -303,7 +304,7 @@ export function renderJobs() {
       // A CV tailored to this posting (reworded, reordered bullets from your own CV; the extension uploads it here).
       const tailorNow = () => background('✂️ Tailoring CV…', async () => {
         const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`);
-        if (result.ok) job.tailored = true; else toastMessage('Tailoring failed', result.error || 'Try again.');
+        if (result.ok) job.tailored = true; else toastMessage('Tailoring failed', result.error || 'Try again.', jobPlace(job));
       });
       menu.push({icon: 'scissors', wand: true, label: job.tailored ? 'Re-tailor CV + cover letter' : 'Tailor CV + cover letter',
         title: 'Make a version of your CV and a cover letter for this job: bullets reordered and reworded toward the posting, only from facts in your CV (about 1–2 min)',
@@ -321,9 +322,9 @@ export function renderJobs() {
       for (const choice of choices) {
         menu.push({icon: choice.icon, label: choice.label, title: choice.title, run: async () => {
           const result = await window.pilot.markOutcome({url: job.url, outcome: choice.outcome, appliedOn: job.applied_on, bucket: scoreBucket(job.fit)}).catch(error => ({ok: false, error: error.message}));
-          if (!result.ok) { toastMessage('Not saved', result.error || 'Try again.'); return; }
+          if (!result.ok) { toastMessage('Not saved', result.error || 'Try again.', jobPlace(job)); return; }
           jobsChanged(job, choice.outcome !== 'reply' ? {stage: result.stage} : {});   // a reply is an event only: the stage stays where it is
-          toastMessage('Saved', `${choice.label.replace(/^(Heard back|No answer): /, '')} — recorded in ${storeName()}.`);
+          toastMessage('Saved', `${choice.label.replace(/^(Heard back|No answer): /, '')} — recorded in ${storeName()}.`, jobPlace(job));
           renderJobs();
         }});
       }
@@ -335,7 +336,7 @@ export function renderJobs() {
       menu.push({icon: 'tick', label: 'I submitted it', run: setStatus('applied'), title: `Mark it Applied in ${storeName()}`});
       menu.push({icon: 'undo', label: 'Not submitted', title: 'Back to Kit ready', run: async () => {
         const result = await window.pilot.unapplyJob(job.url).catch(error => ({ok: false, error: error.message}));
-        if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.'); return; }
+        if (!result.ok) { toastMessage('Status not changed', result.error || 'Something went wrong.', jobPlace(job)); return; }
         jobsChanged(job, {stage: 'Kit ready'});
         renderJobs();
       }});
@@ -346,9 +347,9 @@ export function renderJobs() {
         if (!confirm(`Mark this as not submitted? It goes back to Applying and the Applied date and event are removed from ${storeName()}.\n\n`
           + 'Use this when Jobadabra marked it Applied by itself and no application was sent.')) return;
         const result = await window.pilot.notSubmitted(job.url).catch(error => ({ok: false, error: error.message}));
-        if (!result.ok) { toastMessage('Not changed', result.error || 'Something went wrong.'); return; }
+        if (!result.ok) { toastMessage('Not changed', result.error || 'Something went wrong.', jobPlace(job)); return; }
         jobsChanged(job, {stage: 'Applying', status: 'applied'});
-        toastMessage('Back to Applying', `The Applied record was removed${result.events ? ` (${result.events} ${byStore('Notion ', '')}event${result.events === 1 ? '' : 's'})` : ''}.`);
+        toastMessage('Back to Applying', `The Applied record was removed${result.events ? ` (${result.events} ${byStore('Notion ', '')}event${result.events === 1 ? '' : 's'})` : ''}.`, jobPlace(job));
         renderJobs();
       }});
     if (reopenable(job.stage)) menu.push({icon: 'undo', label: 'Reopen', run: setStatus('applied'), title: `Back to Applied: waiting for a reply again (recorded in ${storeName()})`});
@@ -358,12 +359,12 @@ export function renderJobs() {
       run: async () => {
         if (!confirm(`Delete "${job.title}" at ${job.company}?\n\n${byStore('Its Notion pages go to Notion\'s trash (restorable there for 30 days), and searches will not show it again.', 'It is removed from Jobadabra, and searches will not show it again.')}`)) return;
         const result = await window.pilot.deleteJob(job.url).catch(error => ({ok: false, error: error.message}));
-        if (!result?.ok) { toastMessage('Not deleted', result?.error || 'Something went wrong.'); return; }
+        if (!result?.ok) { toastMessage('Not deleted', result?.error || 'Something went wrong.', jobPlace(job)); return; }
         const left = shared.allJobs.filter(other => other !== job);
         shared.allJobs = left;
         // The header and counters are counted from loaded data (showJobsData): counted again now, one job fewer.
         if (jobsState.lastJobsData) showJobsData({...jobsState.lastJobsData, jobs: left, total: jobsState.lastJobsData.total == null ? jobsState.lastJobsData.total : jobsState.lastJobsData.total - 1});
-        toastMessage('Deleted', result.trashed ? byStore('Its Notion pages are in the trash.', 'It is deleted.') : 'It will not come back.');
+        toastMessage('Deleted', result.trashed ? byStore('Its Notion pages are in the trash.', 'It is deleted.') : 'It will not come back.', {view: 'jobs'});
         renderJobs();
       }});
     box.append(moreButton(menu, 'More: save, dismiss, kit, posting, tailor CV'));

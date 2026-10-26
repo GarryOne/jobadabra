@@ -3,6 +3,7 @@
 import {$, show} from './core.js';
 import {toastMessage} from './startup.js';
 import {updateLabel, updateTooltip} from '../update-label.js';
+import {NO_PLACE} from '../targets.js';
 
 function offer(update) {
   if (!update) return;
@@ -24,6 +25,6 @@ export async function init() {
     if (result.manual && result.url) window.pilot.openExternal(result.url);   // the automatic update failed before: the installer by hand
     button.disabled = false;
     $('nav-update-text').textContent = 'Update: try again';
-    toastMessage("Update didn't install", result.text || 'Try again, or download it from the website.');
+    toastMessage("Update didn't install", result.text || 'Try again, or download it from the website.', NO_PLACE.app);
   });
 }

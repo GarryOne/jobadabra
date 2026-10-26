@@ -8,6 +8,7 @@ import {jobsState} from './jobs-state.js';
 import {openProGate} from './pro-upgrade-dialog.js';
 import {exportState} from '../pro-gate.js';
 import {toastMessage} from './startup.js';
+import {NO_PLACE} from '../targets.js';
 
 const plural = n => `${n} job${n === 1 ? '' : 's'}`;
 export {exportState};
@@ -15,8 +16,8 @@ export {exportState};
 export async function exportJobs(options) {
   const answer = await window.pilot.exportJobs(options);
   if (answer?.pro) openProGate();
-  else if (answer?.ok) toastMessage(`Saved ${plural(answer.count)}`, answer.file);
-  else if (answer?.error) toastMessage('Could not save the job list', answer.error);
+  else if (answer?.ok) toastMessage(`Saved ${plural(answer.count)}`, answer.file, NO_PLACE.outside);
+  else if (answer?.error) toastMessage('Could not save the job list', answer.error, {view: 'jobs'});
 }
 
 export function renderExport() {

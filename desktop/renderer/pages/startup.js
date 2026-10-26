@@ -13,10 +13,13 @@ import {refusal, refusalAction} from '../refusal.js';
 import {openTopupDialog} from './topup-dialog.js';
 import {toDraft} from './strategy-review.js';
 import {openTarget} from './open-target.js';
+import {clean} from '../targets.js';
 import {goStep} from './wizard.js';
 
-export function toastMessage(title, body, hint) {
-  let target = null, action = null;
+// toastMessage(title, body, target) or toastMessage({title, body, target, action, hint}). target: where a click leads (renderer/targets.js),
+// or a NO_PLACE reason when there is none (test/toast-targets.test.js checks every call names one).
+export function toastMessage(title, body, target = null) {
+  let hint = false, action = null;
   // action: {label, run}, the next step as a button in the pop-up (owner, 7 Oct 2026: "Role added" said nothing about what to do next).
   if (typeof title === 'object') ({title, body, hint, target = null, action = null} = title);
   // The same message twice (a double click, two checks finding the same thing) replaces the first instead of stacking.
@@ -28,27 +31,29 @@ export function toastMessage(title, body, hint) {
     window.pilot.platform === 'win32' ? 'Windows notifications are off for this app: Settings → System → Notifications → Jobadabra → On.'
       : 'macOS notifications are off for this app: System Settings → Notifications → Electron (or Jobadabra) → Allow notifications.'}));
   // A pop-up that is news about something opens it on a click (renderer/targets.js); the others just close.
-  if (target) { toast.classList.add('toast-link'); toast.title = 'Click to open'; }
+  const place = clean(target);   // a NO_PLACE reason (a string) is no place
+  if (place) { toast.classList.add('toast-link'); toast.title = 'Click to open'; }
   if (action) {
     const next = Object.assign(document.createElement('button'), {type: 'button', className: 'secondary toast-action', textContent: action.label});
     next.addEventListener('click', event => { event.stopPropagation(); toast.remove(); action.run(); });
     toast.append(next);
   }
-  toast.addEventListener('click', () => { toast.remove(); if (target) openTarget(target); });
+  toast.addEventListener('click', () => { toast.remove(); if (place) openTarget(place); });
   $('toasts').append(toast);
   setTimeout(() => toast.remove(), hint || action ? 20000 : 8000);   // a step to take stays long enough to take it
   return toast;
 }
 
 // A start button's run was refused (renderer/refusal.js): no AI credit or a Free AI line opens the top-up dialog (owner, 26 Oct 2026: "Blocking, but showing a topup
-// popup/dialog"; retry: the same press, run again after a promo code added credit); any other reason in a pop-up, Settings → Plan one press away when that fixes it.
+// popup/dialog"; retry: the same press, run again after a promo code added credit); any other reason in a pop-up whose click opens Settings → Plan's card
+// when Plan fixes it, else place (what the press was about: a job's row, Recent activity).
 // -> the refusal, or null when the run started (then nothing is said here).
-export function sayRefused(title, result, retry = null) {
+export function sayRefused(title, result, {place = null, retry = null} = {}) {
   const why = refusal(result);
   if (!why) return null;
   if (why.credit) { openTopupDialog(why, {action: title.replace(/ did not start$/, ''), retry}); return why; }
   const label = refusalAction(why);
-  toastMessage({title, body: why.text, action: label ? {label, run: () => openSetting('plan')} : null});
+  toastMessage({title, body: why.text, action: label ? {label, run: () => openSetting('plan')} : null, target: label ? {card: 'license'} : place});
   return why;
 }
 

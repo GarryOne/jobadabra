@@ -85,7 +85,7 @@ function warn(plan) {
   if (JSON.stringify(said) === JSON.stringify(shared.state?.settings?.planWarned || [])) return;
   window.pilot.saveSettings({planWarned: said}).catch(() => {});
   if (shared.state?.settings) shared.state.settings.planWarned = said;
-  if (say !== null) toastMessage(say === 0 ? 'AI credit used up' : `AI credit at ${say}%`, NOTES[say]);
+  if (say !== null) toastMessage(say === 0 ? 'AI credit used up' : `AI credit at ${say}%`, NOTES[say], {card: 'license'});
 }
 
 // onChange: what shows the license state again (the counter and the plan line follow the site's answer).

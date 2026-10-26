@@ -206,7 +206,7 @@ async function learnFromRun(storage, run, job) {
   if (!notes.length) return;
   await knowledge.add(storage, notes);
   proposalReporter(learn.proposalsOf(notes));  // label wording + profile field only, counted by the site (3+ people) before it is even a candidate
-  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}${costVisible(storage) && usd > 0 ? `, $${usd.toFixed(3)}` : ''}). Only you can see them.`);   // about Notion
+  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}${costVisible(storage) && usd > 0 ? `, $${usd.toFixed(3)}` : ''}). Only you can see them.`, {view: 'settings', section: 'profile'});   // about Notion
 }
 
 // A note that has left its field empty three fills in a row is not working: drop it from the Notion page and let the field be studied again.

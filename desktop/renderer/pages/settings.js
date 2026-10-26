@@ -43,6 +43,7 @@ export function openSetting(id) {
   if (view && view !== 'settings') {  // a card on another page (Profile: CV, details, links, assistant)
     openView(view);
     setTimeout(() => card.scrollIntoView({behavior: 'smooth', block: 'start'}), 50);
+    arrived(card);   // the same glow as on Settings, so a pop-up's click shows which card it meant
     return;
   }
   // Called from another page (the sidebar's allowance counter, a dialog's button): show Settings first, else only its inner page changed
@@ -123,8 +124,8 @@ export async function connectExtension({auto = false} = {}) {
   try {
     const result = await window.pilot.extensionOptions().catch(() => null);
     const {toastMessage} = await import('./startup.js');  // dynamic: startup.js imports this file
-    if (result?.opened) toastMessage('Connecting the Chrome extension', auto ? 'Its settings page opened and connects by itself. You can close that tab.' : 'Its settings page is open and connects by itself. You can close that tab.');
-    else if (!auto) { toastMessage('Couldn\'t open the extension', 'Open it from Chrome: 🧩 → ⋮ next to Jobadabra → Options.'); openSetting('extension'); }
+    if (result?.opened) toastMessage('Connecting the Chrome extension', auto ? 'Its settings page opened and connects by itself. You can close that tab.' : 'Its settings page is open and connects by itself. You can close that tab.', {card: 'extension'});
+    else if (!auto) { toastMessage('Couldn\'t open the extension', 'Open it from Chrome: 🧩 → ⋮ next to Jobadabra → Options.', {card: 'extension'}); openSetting('extension'); }
     for (const wait of [3000, 8000]) setTimeout(() => import('./connections.js').then(page => page.showExtensionStatus()), wait);
   } finally { connecting = false; }
 }

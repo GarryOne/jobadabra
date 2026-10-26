@@ -9,27 +9,28 @@ import {openJobPanel} from './job-panel.js';
 import {toastMessage} from './startup.js';
 import {jobsChanged} from './jobs.js';
 import {openFromBoard} from './jobs-views.js';
+import {jobPlace} from '../targets.js';
 
 let dragged = null;   // the job being dragged (dataTransfer is unreadable during dragover)
 
 export async function moveJob(job, stage) {
   const move = dropFor(job, stage);
   if (move.none) return;
-  if (move.refused) { toastMessage('Not moved', move.refused); return; }
+  if (move.refused) { toastMessage('Not moved', move.refused, jobPlace(job)); return; }
   const before = job.stage;
   const result = await window.pilot[move.call](job.url, move.arg).catch(error => ({ok: false, error: error.message}));
-  if (!result?.ok) { toastMessage('Not moved', result?.error || 'Try again.'); return; }
+  if (!result?.ok) { toastMessage('Not moved', result?.error || 'Try again.', jobPlace(job)); return; }
   // The store's answer is the truth: Saved or Dismissed never replace a real stage (rules.mark), so the card may stay.
   const landed = result.stage || (move.call === 'setStage' ? stage : before);
-  if (landed === before) toastMessage('Kept', `${job.title || 'This job'} stays at ${before}: ${stage} never replaces an application stage.`);
-  else toastMessage('Moved', `${job.title || 'This job'}: ${landed}.`);
+  if (landed === before) toastMessage('Kept', `${job.title || 'This job'} stays at ${before}: ${stage} never replaces an application stage.`, jobPlace(job));
+  else toastMessage('Moved', `${job.title || 'This job'}: ${landed}.`, jobPlace(job));
   jobsChanged(job, {stage: landed});
   document.dispatchEvent(new CustomEvent('jobs-rerender'));
 }
 
 function card(job) {
   const item = Object.assign(el('li', 'focus-item board-card'), {tabIndex: 0, draggable: true, title: 'Drag to another stage, or click to open'});
-  item.dataset.url = job.url || '';
+  Object.assign(item.dataset, {code: job.code || '', url: job.url || ''});   // a pop-up's click finds it (pages/open-target.js focusJob)
   const body = el('div', 'focus-body');
   body.append(el('span', 'focus-headline', job.title || 'Role'), el('div', 'focus-meta muted small', job.company || ''));
   if (job.fit != null) body.append(el('div', 'muted small', `${job.fit} · ${matchLabel(job.fit)}`));   // a narrow column: one fact a line

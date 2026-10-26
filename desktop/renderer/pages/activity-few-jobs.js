@@ -128,7 +128,7 @@ export function withFewJobsHelp(runId) {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));
         if (result?.started) { adviceEvent('taken', 'visit', 'few-jobs'); markDone('read-sites', '✓ Reading in Chrome'); return; }
         onScreen('read-sites').title = result?.text || read.title;
-        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || 'Try again.'});   // said, not only in the button's tooltip (renderer/refusal.js)
+        sayRefused('Reading did not start', {ok: false, error: result?.text || result?.error || 'Try again.'}, {activity: true});   // said, not only in the button's tooltip (renderer/refusal.js)
       });
       items.push(row('external', 'Browse sites manually', [`${names.length} site${names.length === 1 ? '' : 's'} need${names.length === 1 ? 's' : ''} to be opened in Chrome`, shown], read));
     }

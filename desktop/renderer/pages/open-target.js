@@ -5,13 +5,13 @@ import {$} from './core.js';
 import {lastActivity, openActivity, renderActivity} from './activity.js';
 import {openView} from './nav.js';
 import {openSession} from './session-log.js';
-import {settingsPage} from './settings.js';
+import {openSetting, settingsPage} from './settings.js';
 
 const FLASH_MS = 2200;
 
-// Scroll to a job's row (its code, else its address) and flash it; the page may still be drawing, so look a few times.
+// Scroll to a job's row or Board card (its code, else its address) and flash it; the page may still be drawing, so look a few times.
 export function focusJob(key, tries = 12) {
-  const rows = [...document.querySelectorAll('.job-row')];
+  const rows = [...document.querySelectorAll('.job-row, .board-card')];   // the list, or the Board's card
   const row = rows.find(r => r.dataset.code === key || r.dataset.url === key);
   if (row) {
     row.scrollIntoView({block: 'center', behavior: 'smooth'});
@@ -32,5 +32,6 @@ export function openTarget(target) {
     else if (kind === 'section') settingsPage(value);
     else if (kind === 'job') focusJob(value);
     else if (kind === 'session') openSession(value);
+    else if (kind === 'card') openSetting(value);   // its page, scrolled to, the card glows (.is-arrived)
   }
 }

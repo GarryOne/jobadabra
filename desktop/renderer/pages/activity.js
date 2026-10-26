@@ -111,8 +111,8 @@ export async function init() {
     shared.selectedRun = null;
     try {
       const result = await window.pilot.checkMail().catch(error => ({ok: false, error: error.message}));
-      sayRefused('Gmail check did not start', result);   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
-      if (result.cloud) toastMessage('Gmail check started in your GitHub repo', 'Results arrive in Notion and Telegram in a few minutes.');   // about Notion
+      sayRefused('Gmail check did not start', result, {activity: true});   // Always on could not start it (renderer/refusal.js); a check that ran shows in Recent activity
+      if (result.cloud) toastMessage('Gmail check started in your GitHub repo', 'Results arrive in Notion and Telegram in a few minutes.', {activity: true});   // about Notion
     } finally {
       $('check-mail').disabled = false;
       refreshActivity();

@@ -3,6 +3,7 @@
 // The state comes from main (lib/build-handlers.js); it is asked again every minute and when the window gets focus. Its command is in ⌘K (pages/nav.js).
 import {$, show} from './core.js';
 import {toastMessage} from './startup.js';
+import {NO_PLACE} from '../targets.js';
 
 let state = {ahead: 0, label: '', restart: ''};
 
@@ -14,7 +15,7 @@ async function restart() {
   if (result.ok) return;   // the app quits and opens again on the new code
   button.disabled = false;
   $('nav-restart-text').textContent = state.restart;
-  toastMessage("Couldn't restart", result.text || 'Quit the app and open it again.');
+  toastMessage("Couldn't restart", result.text || 'Quit the app and open it again.', NO_PLACE.app);
 }
 
 function paint(next) {

@@ -15,8 +15,8 @@ export function coverageLine(reload) {
   reset.addEventListener('click', async () => {
     reset.disabled = true;
     const result = await sink.editTargets(resetCoverage(now)).catch(error => ({ok: false, error: error.message}));
-    if (!result.ok) { reset.disabled = false; toastMessage('Not reset', result.error || 'Try again.'); return; }
-    toastMessage('Search coverage reset ✓', 'Searches use your preferred and acceptable locations again.');
+    if (!result.ok) { reset.disabled = false; toastMessage('Not reset', result.error || 'Try again.', {card: 'strategy-locations'}); return; }
+    toastMessage('Search coverage reset ✓', 'Searches use your preferred and acceptable locations again.', {card: 'strategy-locations'});
     await reload();
   });
   const words = el('div', 'setting-body');

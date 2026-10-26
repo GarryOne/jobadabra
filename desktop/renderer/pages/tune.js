@@ -60,7 +60,7 @@ async function apply() {
   countTicked();
   if (!result?.ok) { message('tune-message', result?.error || 'Nothing changed. Try again.', 'bad'); return; }
   $('tune-dialog').close();
-  toastMessage(`Strategy tuned: ${result.changed.length} change${result.changed.length === 1 ? '' : 's'}. The next search uses ${result.changed.length === 1 ? 'it' : 'them'}.`);
+  toastMessage(`Strategy tuned: ${result.changed.length} change${result.changed.length === 1 ? '' : 's'}. The next search uses ${result.changed.length === 1 ? 'it' : 'them'}.`, '', {view: 'strategy'});
 }
 
 export function init() {

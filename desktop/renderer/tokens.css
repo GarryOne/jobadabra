@@ -24,6 +24,9 @@
   --navy-hover: #1a2d46;
   --navy-active: #1f3552;
   --navy-line: #3b5170;
+  /* Pop-ups (.toast): their own surface and a 1 px edge, so one never melts into the card under it (owner, 27 Oct 2026). */
+  --toast-bg: var(--navy);
+  --toast-line: var(--navy-line);
   --on-navy: #e3ebf5;
   --on-navy-muted: #93a4ba;  /* secondary text on navy (the session log's times and steps) */
   --on-navy-2: #b9c8dc;
@@ -144,6 +147,9 @@
     --navy-hover: #16202b;
     --navy-active: #1b2735;
     --navy-line: #2f3f51;
+    /* Dark: lifted above the cards (--surface #121a23), with the fields' clear edge (3.7:1 on the card). */
+    --toast-bg: var(--navy-active);
+    --toast-line: var(--field-line);
 
     --signal: #ffb224;        /* links and accents on the dark card: 9.7:1 */
     --signal-edge: #ffb224;

@@ -66,3 +66,21 @@ test('a picked step another slice runs counts as found: the slice without it sta
     assert.equal(runner.summary(), 0);
   } finally { if (before === undefined) delete process.env.E2E_STEP_NAMES; else process.env.E2E_STEP_NAMES = before; }
 });
+
+// A suite that declares no stepNeeds (null): its steps may build on every earlier one, so a picked step runs after all the steps before it and only the steps after
+// the last picked one are skipped (#2108, 26 Oct 2026: quality's picked "a Jobs check on the golden postings" ran without the step that loads those postings and
+// found no rows). A suite that declares stepNeeds (even {}) keeps the precise pick above.
+test('no stepNeeds declared: a picked step runs with every step before it; the steps after the last picked one are skipped', async () => {
+  const {ran, code} = await suite(['Export the profile, with profile.md'], {stepNeeds: null});
+  assert.deepEqual(ran, ['launch', 'settings', 'export']);
+  assert.equal(code, 0);
+  assert.deepEqual((await suite(['Open Settings'], {stepNeeds: null})).ran, ['launch', 'settings']);
+  assert.deepEqual((await suite([PICK_SETUP], {stepNeeds: null})).ran, ['launch'], '"(setup)" alone: still only the critical setup');
+  assert.deepEqual((await suite([], {stepNeeds: null})).ran, ['launch', 'settings', 'export', 'jobs'], 'no pick: every step');
+});
+
+test('no stepNeeds declared and a picked name no step has: every step runs, and the suite still fails for the lost name', async () => {
+  const {ran, code} = await suite(['Export the profile (renamed since)'], {stepNeeds: null});
+  assert.deepEqual(ran, ['launch', 'settings', 'export', 'jobs']);
+  assert.equal(code, 1);
+});

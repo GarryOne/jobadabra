@@ -49,7 +49,8 @@ class PlaceCountryDecidesTest(unittest.TestCase):
             return {'job boards': boards.swiss_place_word(self.SEARCH) is not None,
                     'aggregator countries': 'ch' in aggregators._countries(self.SEARCH),
                     'pool tags': 'ch' in pool_tags.places(['altdorf'])[0],
-                    'google jobs': 'Altdorf' in google_jobs.within_places({'locations': ['Altdorf'], 'country': ''}, self.SEARCH)['locations']}
+                    # Google Jobs searches Switzerland (gl=ch kept); an unplaced "Altdorf" itself stays as drafted (unknown, never dropped on a guess)
+                    'google jobs': google_jobs.within_places({'locations': ['Altdorf'], 'country': 'ch'}, self.SEARCH)['country'] == 'ch'}
 
     def test_a_place_the_ai_put_in_another_country_is_not_swiss_anywhere(self):
         known = {'altdorf': {'kind': 'city', 'countries': ['Germany']}, 'nürnberg': {'kind': 'city', 'countries': ['Germany']}}

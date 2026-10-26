@@ -41,6 +41,18 @@ class PrRunsCancel(unittest.TestCase):
             
         self.assertEqual(offenders, [])
 
+    def test_a_run_started_for_a_pr_cancels_that_pr_s_older_run_too(self):
+        # pr-suites.yml starts e2e.yml and e2e-windows.yml for a PR (workflow_dispatch, so the check above never read them). 26 Oct 2026: the Windows smoke shared ONE
+        # group with every Windows run and never cancelled: a PR's newer push queued behind betas, and GitHub dropped a second waiter in that group.
+        dispatched = set(re.findall(r'(?:gh workflow run|dispatch) ([\w.-]+\.yml)', (WORKFLOWS / 'pr-suites.yml').read_text(encoding='utf-8')))
+        self.assertTrue({'e2e.yml', 'e2e-windows.yml'} <= dispatched, dispatched)
+        for name in sorted(dispatched):
+            text = (WORKFLOWS / name).read_text(encoding='utf-8')
+            groups, cancels = re.findall(r'group:\s*([^\n#]+)', text), re.findall(r'cancel-in-progress:\s*([^\n#]+)', text)
+            pr = lambda value: 'inputs.pr_suites' in value or 'inputs.pr_steps' in value
+            self.assertTrue(any(pr(g) and 'github.ref' in g for g in groups), f'{name}: no group per PR branch for a PR run')
+            self.assertTrue(any(pr(c) for c in cancels), f'{name}: a PR run never cancels its older one')
+
     def test_the_called_suites_keep_a_group_per_commit_inside_the_caller(self):
         # build.yml (CI · Tests) is the one group on main (ci-tests-main, a started run finishes; only the waiting one is replaced); the suites it calls only need a group of their own
         for name in ('tests-python.yml', 'tests-worker.yml', 'tests-desktop.yml', 'tests-desktop-windows.yml'):

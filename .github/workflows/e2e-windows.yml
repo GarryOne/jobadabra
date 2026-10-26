@@ -76,9 +76,11 @@ permissions:
 
 # One Windows run at a time, whole: two Mac runs close together started two Windows runs whose jobs cancelled each other in the shared
 # per-suite groups (runs 37170683571 and 37171347525, 4 Oct 2026). A newer waiting run replaces an older waiting one: Windows tests the latest.
+# A PR's smoke (pr-suites.yml, pr_steps set) is its own group per branch, and a newer push cancels it (26 Oct 2026: it queued behind every Windows run;
+# tests/test_pr_runs_cancel.py).
 concurrency:
-  group: e2e-windows
-  cancel-in-progress: false
+  group: ${{ inputs.pr_steps != '' && format('e2e-windows-pr-{0}', github.ref) || 'e2e-windows' }}
+  cancel-in-progress: ${{ inputs.pr_steps != '' }}
 
 
 jobs:

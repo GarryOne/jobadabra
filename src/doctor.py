@@ -194,11 +194,11 @@ def check_features(env=None):
     on = [f.name for f, state, _ in rows if state == 'on']
     off = [f.name for f, state, _ in rows if state == 'off']
     switched = [f.name for f, state, _ in rows if state == 'disabled']
+    parked = [f.name for f, state, _ in rows if state == 'parked']
     detail = f"on: {', '.join(on) or 'core only'}"
-    if off:
-        detail += f"; not set up: {', '.join(off)}"
-    if switched:
-        detail += f"; switched off: {', '.join(switched)}"
+    for words, names in (('not set up', off), ('switched off', switched), ('parked', parked)):
+        if names:
+            detail += f"; {words}: {', '.join(names)}"
     return Check('Pipeline', 'Features', OK if on else INFO, f'{detail} (from {where})',
                  'Optional — README → Optional features lists what each needs and costs')
 

@@ -27,7 +27,7 @@ test('the three API-key sources are offered nowhere while the flag is off, and P
   assert.equal(keySources.offered, false);
   for (const id of KEY_SOURCE_IDS) assert.equal(offered(id), false);
   assert.match(read('../src/coverage.py'), /^KEY_SOURCES_OFFERED = False$/m);
-  assert.match(read('renderer/pages/settings.js'), /ALL_SERVICES\.filter\(service => offered\(service\.id\)\)/);
+  assert.match(read('renderer/pages/services-list.js'), /ALL_SERVICES\.filter\(service => offered\(service\.id\)\)/);
 });
 
 test('Strategy draws no Google Jobs searches or places while Google Jobs is parked, and keeps them once it is back', () => {

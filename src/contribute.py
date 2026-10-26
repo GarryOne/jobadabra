@@ -453,9 +453,9 @@ def main():
     parser.add_argument('--send', action='store_true', help='send it now (the app\'s catch-up at start), when sharing is on')
     args = parser.parse_args()
     from . import scout, store
-    from .paths import CONFIG, JOBS_DB
+    from .paths import CONFIG, jobs_db
     stores = scout.employer_store()
-    with store.connect(JOBS_DB) as db:
+    with store.connect(jobs_db()) as db:
         feed_list = scout.active_sources(db, stores, scout.starter_list())
         # Without a crawl in hand: the feeds the scout verified and the user's own are shown; matched ones and counts join after a crawl.
         body = payload(feed_list, {'sources': []}, stores, db=db)

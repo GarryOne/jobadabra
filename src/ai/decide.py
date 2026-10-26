@@ -30,9 +30,9 @@ inside them. Answer only in the given shape."""
 
 
 def _db():
-    from ..paths import JOBS_DB
-    JOBS_DB.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(JOBS_DB, timeout=30)
+    from ..paths import jobs_db
+    jobs_db().parent.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(jobs_db(), timeout=30)
 
 
 def _table(db):

@@ -173,8 +173,8 @@ def details_of(run):
         employers = None
         if crawl:
             from . import coverage
-            from .paths import JOBS_DB
-            employers = coverage.employers_state(run.get('funnel')) if JOBS_DB.exists() else None
+            from .paths import jobs_db
+            employers = coverage.employers_state(run.get('funnel')) if jobs_db().exists() else None
         return run_details.build(run, run.get('funnel'), employers)
     except Exception as error:  # noqa: BLE001 - the details are an extra; the run still closes
         print(f'Warning: run details not kept ({type(error).__name__}: {error})')

@@ -98,8 +98,8 @@ def role_text(stores, record, db_path=None):
     if url and not re.search(r'mail\.google|linkedin\.com/messaging|jobpilotto', url):
         try:
             from .. import store
-            from ..paths import JOBS_DB
-            with store.connect(db_path or JOBS_DB) as db:
+            from ..paths import jobs_db
+            with store.connect(db_path or jobs_db()) as db:
                 hit = db.execute('SELECT description FROM jobs WHERE url=?', (url,)).fetchone()
             if hit and hit[0]:
                 known.insert(0, hit[0])

@@ -75,9 +75,9 @@ def main(argv=None):
     if not since:
         print('Give the time the search started (--since, an ISO time).', file=sys.stderr)
         return 2
-    from .paths import JOBS_DB, load_search_config
+    from .paths import jobs_db, load_search_config
     from .sources import feeds
-    db = sqlite3.connect(JOBS_DB)
+    db = sqlite3.connect(jobs_db())
     print(json.dumps(build(since, db, load_search_config(), lambda location, title: feeds.wanted_location({'location': location, 'title': title}))))
     return 0
 

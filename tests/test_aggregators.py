@@ -15,12 +15,21 @@ from src.sources import careers  # noqa: E402
 _READER = careers.READER
 
 
+_DATA = []   # this file's own data folder: nothing it writes lands in the checkout's data/ (tests/test_jobs_db_follows_data.py)
+
+
 def setUpModule():   # no test here reaches a real model through a page read (guard: tests/test_found_boards_ai.py)
     careers.READER = None
+    import tempfile
+    _DATA.append(tempfile.TemporaryDirectory())
+    _DATA.append(mock.patch('src.paths.DATA', Path(_DATA[0].name)))
+    _DATA[1].start()
 
 
 def tearDownModule():
     careers.READER = _READER
+    _DATA[1].stop()
+    _DATA[0].cleanup()
 
 
 NOW = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)

@@ -131,9 +131,9 @@ def _ready(db):
 def _db(db=None):
     if db is not None:
         return _ready(db), False
-    from ..paths import JOBS_DB
-    JOBS_DB.parent.mkdir(parents=True, exist_ok=True)   # a fresh checkout or runner has no data/ folder yet
-    return _ready(sqlite3.connect(JOBS_DB, timeout=30)), True
+    from ..paths import jobs_db
+    jobs_db().parent.mkdir(parents=True, exist_ok=True)   # a fresh checkout or runner has no data/ folder yet
+    return _ready(sqlite3.connect(jobs_db(), timeout=30)), True
 
 
 def mark_broken(url, db=None):

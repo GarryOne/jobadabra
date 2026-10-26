@@ -79,9 +79,9 @@ def unread_picks(db_path=None, limit=30):
     readable job site, with an address to open: [{name, url, origin}], best first. Owner, 7 Oct 2026: "for a photographer or store manager, start with
     H&M, Manor… the sites we cannot read ourselves that are relevant for such a candidate", not only LinkedIn and Glassdoor."""
     import sqlite3
-    from ..paths import JOBS_DB
+    from ..paths import jobs_db
     try:
-        with sqlite3.connect(db_path or JOBS_DB) as db:
+        with sqlite3.connect(db_path or jobs_db()) as db:
             rows = db.execute("""SELECT name, COALESCE(NULLIF(careers, ''), website), origin FROM scout_candidates
                 WHERE status IN ('none', 'watch') AND COALESCE(NULLIF(careers, ''), website, '') LIKE 'http%'
                 AND origin NOT LIKE 'Tier 1%' AND origin NOT LIKE 'Seed%' ORDER BY priority DESC, checked_at DESC LIMIT ?""", (limit,)).fetchall()

@@ -2,7 +2,7 @@
 // Moved out of sessions.js (which re-exports them). Guarded by test/terminals.test.js and test/form-tab-closed.test.js.
 import {isLive} from '../session-state.js';
 import {shared} from './shared.js';
-import {jobsChanged, renderJobs} from './jobs.js';
+import {jobsChanged, renderJobs, startedApplying} from './jobs.js';
 import {openSession} from './session-log.js';
 import {toastMessage} from './startup.js';
 import {logChoice, refreshSessions, sessionJob} from './sessions.js';  // cycle by design: used inside functions only
@@ -54,6 +54,7 @@ export async function restartSession(item) {
   const result = await window.pilot.sessionRestart(item.id);
   if (result?.cancelled || result?.needsExtension) return;   // needsExtension: the install dialog is open (extension-needed.js)
   if (!result?.ok) { toastMessage('Not started again', result?.error || 'Try again.'); await refreshSessions(); return; }
+  startedApplying(sessionJob(item));
   await refreshSessions();
   if (result.session?.id) openSession(result.session.id);
 }

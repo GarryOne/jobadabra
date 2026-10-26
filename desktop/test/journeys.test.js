@@ -443,3 +443,14 @@ test('scenario: a popup pick kept before the closes_only floor (no effect on rec
   assert.equal(sent.length, 2, 'asked again');
   assert.deepEqual(await pickDismiss(storage, popup, {client: claude('x', sent)}), {button: '', how: 'kept'}, 'a kept "none" needs no effect');
 });
+
+test('scenario: Apply answers after its job is marked Applying: a list read asked then is a fresh one, so the Jobs chips count it (#1737, 24 Oct 2026)', async () => {
+  terminals._reset();
+  const jobs = sharedRead('jobs', () => new Promise(() => {}));   // a read that began before the press, still running
+  const running = jobs();
+  const run = () => new Promise(resolve => setTimeout(() => resolve({}), 10));   // the engine's Stage write takes a moment
+  const result = await apply.applyOne({}, 'https://jobs.example.test/apply-1737', {company: 'E2E'}, {open: () => ({unref() {}}), term: terminals, run, id: () => 'j1737', focus: () => {}});
+  assert.equal(result.ok, true);
+  assert.notEqual(jobs(), running, 'Apply answered while its Applying write was still running: the window re-read the old stage');
+  terminals._reset();
+});

@@ -37,6 +37,10 @@ import {jobWrites} from '../job-writes.js';
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
 const writes = jobWrites({read: options => window.pilot.jobs(options), paint: fresh => { showJobsData(fresh); renderJobs(); }});
 export const jobsChanged = (job = null, patch = {}) => writes.changed(job, patch);
+// An application started (Apply, a night's form, Start again, a batch): main marked its job Applying before answering, so the row says so at once
+// and the list is read again (#1737: eight forms open, the chips said "Applying 0"). Guarded by test/apply-starts-reread.test.js.
+const BEFORE_APPLYING = new Set(['', 'Saved', 'Kit ready']);
+export const startedApplying = (job = null) => jobsChanged(job, job && BEFORE_APPLYING.has(job.stage || '') ? {stage: 'Applying'} : {});
 
 // Sites that often show a sign-in page instead of the posting (src/notion/ledger.py WALLED): read like any page, with fields for the text in case.
 // After "Add a job" / "Applied elsewhere" worked: the result line gets an "Open job" link that closes the dialog and opens that job's drawer.
@@ -370,6 +374,7 @@ export async function init() {
     message('apply-message', `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`, 'waiting');
     try {
       const result = await window.pilot.apply({n, mode});
+      if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
       if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
       if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
         $('apply-dialog').close();

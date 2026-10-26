@@ -160,3 +160,20 @@ test('a page with a bot check in front says what the person must do, on the card
   const reads = fs.readFileSync(new URL('../../extension/page-reads.js', import.meta.url), 'utf8');   // pageSketchOf (moved out of fill-flow.js)
   assert.match(reads, /frames: \[\.\.\.new Set\(frames\)\]\.slice\(0, 5\)/, 'the sketch carries the visible frames\' hosts');
 });
+
+// #1737 (24 Oct 2026): eight forms open and the Jobs chips still counted "Applying 0", "Kit ready 11": Apply answered before its Stage write, so the
+// window had nothing to read again. Apply answers once the job is marked Applying (a failed mark still opens the form).
+test('Apply answers only after the job is marked Applying, and a failed mark still answers ok', async () => {
+  const {options} = harness();
+  let release, marked = false;
+  const run = () => new Promise(resolve => { release = () => { marked = true; resolve({}); }; });
+  const answer = apply.applyOne({}, URL1, {company: 'OpenAI'}, {...options, run});
+  let answered = false; answer.then(() => { answered = true; });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(answered, false, 'Apply answered before the job was marked Applying');
+  release();
+  assert.equal((await answer).ok, true);
+  assert.equal(marked, true);
+  const failed = await apply.applyOne({}, `${URL1}-2`, {company: 'OpenAI'}, {...harness().options, run: async () => { throw new Error('store down'); }, id: () => 'f9'});
+  assert.equal(failed.ok, true);
+});

@@ -118,7 +118,8 @@ export async function applyOne(storage, url, details = {}, {open = spawn, term =
     location: details?.location || '', workMode: details?.workMode || ''});
   const opened = openOne(url, {session: session.id, open, focus, reuse: true});
   if (!opened.ok) { if (fresh) term.remove(session.id); return opened; }
-  if (fresh) run(storage, ['src.ai.apply_batch', '--mark-applying', url.split('#')[0]]).then(readsChanged).catch(() => {});   // a stage write: reads after it start their own
+  // A stage write, done before Apply answers: the window then reads the list again and counts the job as Applying (#1737); reads after it start their own.
+  if (fresh) await run(storage, ['src.ai.apply_batch', '--mark-applying', url.split('#')[0]]).then(readsChanged).catch(() => {});
   return {ok: true, session};
 }
 

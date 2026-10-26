@@ -25,7 +25,7 @@ import {renderExport} from './jobs-export.js';
 import {byStore, storeName} from '../store-words.js';
 import {fitDetail} from './jobs-fit.js';
 import {openJobPanel, panelUrl} from './job-panel.js';
-import {jobsChanged, loadJobs, showJobsData} from './jobs.js';
+import {jobsChanged, loadJobs, showJobsData, startedApplying} from './jobs.js';
 import {paintViews} from './jobs-views.js';
 import {renderFilterMenu} from './jobs-filter-menu.js';
 import {renderTalking} from './jobs-talking.js';
@@ -180,7 +180,7 @@ export function renderJobs() {
     // Chrome opens the job's form and the extension fills it at once from the kit.
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
-      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
+      if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
       else if (sayRefused('Apply did not start', result)) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.');
     };
@@ -206,7 +206,7 @@ export function renderJobs() {
           if (!job.ready) return fillInChrome(fill);
           const result = await window.pilot.readyOpen(job.code).catch(error => ({ok: false, error: error.message}));
           if (result.cancelled) return;
-          if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); renderJobs(); } else toastMessage('Could not open the filled form', result.error || 'Try again from Actions → Ready to send.');
+          if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else toastMessage('Could not open the filled form', result.error || 'Try again from Actions → Ready to send.');
         });
         box.append(fill);
         if (jobsState.claudeReady && resumeOffered()) {
@@ -218,7 +218,7 @@ export function renderJobs() {
             run: async () => {
               const result = await window.pilot.applyWithClaude(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
               if (result.cancelled) return;
-              if (result.ok) { claudeStarted.add(pageKey(job.url)); if (result.session) await refreshSessions(); renderJobs(); return; }
+              if (result.ok) { claudeStarted.add(pageKey(job.url)); startedApplying(job); if (result.session) await refreshSessions(); renderJobs(); return; }
               // The list said there was a kit but Notion has none (removed or redrafting): Apply drafts it again.
               if (/kit/i.test(result.error || '')) { toastMessage('Kit not found', 'Press Apply to draft it again.'); loadJobs(); } else toastMessage('Claude could not start', result.error || 'Try again.');
             }});

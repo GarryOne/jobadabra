@@ -171,6 +171,7 @@ export async function initReadyCard() {
     button.addEventListener('click', async () => { button.disabled = true; say('Opening the filled form in your browser…');
       const result = await window.pilot.readyOpen(code).catch(error => ({ok: false, error: errorLine(error)}));
       if (result.cancelled) { button.disabled = false; return; }   // Not now in the first-Apply dialog (pages/apply-choice.js)
+      if (result.ok) import('./jobs.js').then(jobs => jobs.startedApplying()).catch(() => {});   // the job is Applying now: the Jobs list is read again (loaded on use: the card also runs without the Jobs page)
       button.disabled = false; say(result.ok ? 'Opened in your browser: check it, solve a bot check if there is one, and press Submit there yourself.' : (result.error || 'Could not open it.'), result.ok ? 'good' : 'bad'); });
     return button; };
   const act = {open, live: code => { const button = iconButton('pulse', 'Open live recording', 'the server\'s copy of this form, live; you finish it there', 'live'); button.addEventListener('click', async () => { const result = await window.pilot.readyLive(code).catch(error => ({ok: false, error: errorLine(error)})); if (!result.ok) say(result.error || 'Could not open it.', 'bad'); }); return button; },

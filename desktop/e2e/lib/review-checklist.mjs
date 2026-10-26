@@ -40,3 +40,27 @@ export function checklistRequest({view, pngBase64, facts = null, lessons = '', m
     messages: [{role: 'user', content: [{type: 'image', source: {type: 'base64', media_type: 'image/png', data: pngBase64}},
       {type: 'text', text: `Page: ${view}\nExpected to show: ${expectedFor(view)}\n${facts ? `\nFACTS about the app's state when this was taken:\n${JSON.stringify(facts, null, 1)}\n` : ''}${lessons ? `\n${lessons}\n` : ''}\nGo through every check.`}]}]};
 }
+
+// What each check means for a person, in the review's findings shape (lib/vision.mjs parseFindingsDetailed: kind, severity, title, detail, impact).
+export const CHECK_SHAPE = {
+  'contradiction': {kind: 'consistency', impact: 'The person cannot tell which of the two statements is true and may act on the wrong one.'},
+  'count-mismatch': {kind: 'wrong-result', impact: 'The person is shown a number that does not match what is there, so they misjudge their search.'},
+  'facts-contradiction': {kind: 'wrong-result', impact: 'The screen claims a state the app is not in, so the person trusts something that is not so.'},
+  'raw-technical': {kind: 'text', impact: 'The person sees technical text they cannot understand or act on.'},
+  'no-reason-or-fix': {kind: 'error-shown', impact: 'The person is told something failed but not why or what to do next.'},
+  'cut-off': {kind: 'layout', impact: 'Part of the text is lost, so the person cannot read what it says.'},
+  'broken-layout': {kind: 'layout', impact: 'The page looks broken, which hides content and costs the person trust.'},
+  'empty-or-placeholder': {kind: 'empty-state', impact: 'The person sees placeholders where real information should be.'},
+  'duplicated-or-inconsistent': {kind: 'consistency', impact: 'The same thing is said twice or two ways, which confuses the person.'},
+  'missing-key-info': {kind: 'functionality', impact: 'The person lacks what they need to act on this item.'},
+};
+
+// A checklist answer -> the review's own JSON answer ({"findings": [...]}), so the cache, the issue filer and the block check read it as before.
+// Severity is medium: the checklist asks whether, not how bad; at most 6 per page, as parseFindingsDetailed keeps.
+export function checklistAsFindingsText(text) {
+  const findings = checksToFindings(text).map(found => {
+    const shape = CHECK_SHAPE[found.title.split(':')[0]] || {kind: 'consistency', impact: 'The person may be misled by what this part of the screen shows.'};
+    return {severity: 'medium', kind: shape.kind, title: found.title.slice(0, 80), detail: found.detail.slice(0, 400), impact: shape.impact, suggestion: ''};
+  });
+  return JSON.stringify({findings: findings.slice(0, 6)});
+}

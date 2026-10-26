@@ -46,14 +46,15 @@ runs:
         path: desktop/e2e/.review-cache
         key: ai-review-batch-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: ai-review-batch-${{ inputs.lane }}-
-    - name: AI review of the screenshots (Claude Haiku 5.5, every page in one batch)
+    - name: AI review of the screenshots (Claude Haiku 5.5 with the checklist, every page in one batch)
       if: inputs.anthropic-key != ''
       shell: bash
       working-directory: desktop/e2e
       env:
         E2E_ANTHROPIC_KEY: ${{ inputs.anthropic-key }}
         E2E_REVIEW_ENGINE: claude
-        E2E_REVIEW_MODEL: claude-haiku-5-5   # owner, 26 Oct 2026: about $1 a month (1/20 of Sonnet's price); review-eval.yml scores it on the judged issues
+        E2E_REVIEW_MODEL: claude-haiku-5-5   # owner, 26 Oct 2026: about $2 a month with the checklist (1/20 of Sonnet's price); review-eval.yml scores it on the judged issues
+        E2E_REVIEW_PROMPT: checklist   # the 10-point checklist: Haiku 5.5 saw 70% of the judged bugs with it, 49% without (review-eval.yml run 40278427028)
         E2E_REVIEW_BATCH_MIN: '1'   # the batch waits on a Linux runner after the suites, never inside a suite's Mac job
         E2E_REVIEW_OUT: ${{ github.workspace }}/.e2e-review/out
         E2E_ARTIFACTS: ${{ github.workspace }}/.e2e-review/usage

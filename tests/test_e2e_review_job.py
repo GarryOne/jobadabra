@@ -50,7 +50,7 @@ class EveryLaneHasTheBatchReview(unittest.TestCase):
         self.assertIn("inputs.lane == 'windows' && 'e2e-artifacts-windows-' || 'e2e-artifacts-'", review)
         self.assertIn('name: ${{ env.REVIEW_PREFIX }}review', review, 'its findings go up as an e2e-artifacts-* artifact')
         # Owner, 26 Oct 2026: Haiku 5.5 by batch (~$1 a month), not Sonnet (~$18) or Free AI (~$31 in Workers AI neurons).
-        for needed in ('E2E_REVIEW_ENGINE: claude', 'E2E_REVIEW_MODEL: claude-haiku-5-5', "E2E_REVIEW_BATCH_MIN: '1'", 'run: timeout 900 node review-ui.mjs', '--job e2e-screenshot-review'):
+        for needed in ('E2E_REVIEW_ENGINE: claude', 'E2E_REVIEW_MODEL: claude-haiku-5-5', 'E2E_REVIEW_PROMPT: checklist', "E2E_REVIEW_BATCH_MIN: '1'", 'run: timeout 900 node review-ui.mjs', '--job e2e-screenshot-review'):
             self.assertIn(needed, review)
         # The release's block check reads the findings: the review comes before it, and before the step that stops a red lane (so a red lane's pages are reviewed too).
         desktop = (WORKFLOWS / 'desktop.yml').read_text()

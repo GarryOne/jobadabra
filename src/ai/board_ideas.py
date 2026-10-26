@@ -21,7 +21,8 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['boards'
     'type': 'object', 'additionalProperties': False, 'required': ['name', 'search_url', 'countries', 'kinds', 'source_kind'],
     'properties': {'name': {'type': 'string'},
                    'search_url': {'type': 'string', 'description': 'Its public search page, https, with {role} where the keywords go and {place} '
-                                                                   'where the place goes (left out when the board takes no place)'},
+                                                                   'where the place goes (left out when the board takes no place); a board '
+                                                                   "of this field (sector) with no search page: its page that lists this field's jobs, else its home page"},
                    'countries': {'type': 'array', 'items': {'type': 'string'}, 'description': 'English country names it serves'},
                    'kinds': {'type': 'array', 'items': {'type': 'string'}},
                    'source_kind': {'type': 'string', 'enum': ['public_service', 'general', 'sector', 'regional', 'agency']}}}}}}
@@ -29,8 +30,8 @@ SYSTEM = """You know the job boards people really use to find work in each count
 List 8 to 16 job boards (at least 8 when the country has them; not company career sites) where jobs for these roles in these places are posted: the country's \
 public job service first (the state's own), then the general boards, then boards for these kinds of role (a developer board for developers, a hospitality board for chefs), then regional boards for these places and staffing agencies' boards. source_kind: public_service, general, sector, regional or agency. Leave out \
 LinkedIn, Indeed, Glassdoor and levels.fyi. For each, its public search page as a template: https, the board's own address, {role} where \
-the keywords go and {place} where the place goes (no {place} when the board has no place search). Only boards you are confident exist with \
-that search address; fewer is better than a guess. kinds: from software, sales_b2b, sales_retail, logistics, hospitality, healthcare, \
+the keywords go and {place} where the place goes (no {place} when the board has no place search); a board of this field with no search \
+page: its page that lists this field's jobs, else its home page. Only boards you are confident exist with that address; fewer is better than a guess. kinds: from software, sales_b2b, sales_retail, logistics, hospitality, healthcare, \
 creative_media, finance_admin, education, trades, engineering, business_ops, manufacturing, science, customer_service, legal, aviation_transport, \
 public_security, other, any."""
 SOURCE_KINDS = ('public_service', 'general', 'sector', 'regional', 'agency')
@@ -46,12 +47,16 @@ def _host(url):
 
 def valid(board, listing=False):
     """The board in the shape the code reads, or None: https on its own host, {role} in it, nothing but the two placeholders. listing: a board the
-    pool serves may be a page that lists the jobs (a section of the board, measured by the scout), so {role} is not required."""
+    pool serves may be a page that lists the jobs (a section of the board, measured by the scout), so {role} is not required. A board the AI
+    marked as one of the field's own (source_kind 'sector') may come as its category page or its home page, with no {role}: some field boards
+    list their jobs only by category, and the read finds the field's section from the home page (src/sources/board_sections.py; owner's yes,
+    26 Oct 2026; tests/test_board_category_pages.py). A general board's page without {role} is every job, not the field's: still dropped."""
     if not isinstance(board, dict):
         return None
     url, name = str(board.get('search_url') or '').strip(), re.sub(r'\s+', ' ', str(board.get('name') or '')).strip()[:60]
     host = _host(url.replace('{role}', 'x').replace('{place}', 'x'))
-    if not (name and url.startswith('https://') and len(url) <= 300 and ('{role}' in url or listing) and host and '.' in host):
+    category = board.get('source_kind') == 'sector' and '{place}' not in url
+    if not (name and url.startswith('https://') and len(url) <= 300 and ('{role}' in url or listing or category) and host and '.' in host):
         return None
     if set(re.findall(r'\{(\w*)\}', url)) - {'role', 'place'} or any(p in host for p in PORTALS) or any(host.endswith(o) for o in OWN_READERS):
         return None

@@ -77,8 +77,10 @@ class SearchTests(Base):
                  'https://noform.example/': '<p>Jobs</p>'}
         with mock.patch('src.sources.board_pages.PAUSE_S', 0):
             found = board_web.search(SEARCH, [board(1)], client=Client([crew, bare]), now=NOW, fetch=lambda url: pages.get(url, ''))
-        self.assertEqual([(b['host'], b['search_url']) for b in found], [('crew.example', 'https://crew.example/jobs?was={role}&wo={place}')],
-                         'a page with no search form is not a board we can search')
+        self.assertEqual([(b['host'], b['search_url']) for b in found], [('crew.example', 'https://crew.example/jobs?was={role}&wo={place}'),
+                                                                         ('noform.example', 'https://noform.example/jobs')],
+                         "a search form makes the search link; a field board with none is read by the page the search showed "
+                         "(tests/test_board_category_pages.py)")
 
     def test_off_with_the_page_reader_off_or_an_engine_that_cannot_search(self):
         careers.READER = None

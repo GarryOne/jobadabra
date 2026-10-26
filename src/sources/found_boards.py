@@ -71,7 +71,8 @@ def _read(board, search, fetch, route, early, show=None):
     except board_routes.Stop:
         return [], 'browser', None
     seen, idle = set(), 0
-    for number, term in enumerate(_terms(search, MAX_SEARCHES if early else FULL_SEARCHES)):
+    terms = _terms(search, MAX_SEARCHES if early else FULL_SEARCHES)
+    for number, term in enumerate(terms if '{role}' in board['search_url'] else terms[:1]):   # a category page is the same page for every word
         if not early and number >= MAX_SEARCHES and idle >= IDLE_STOP:   # a board that stopped giving new jobs is not asked again
             break
         for place in (_places(search) if '{place}' in board['search_url'] else ['']):

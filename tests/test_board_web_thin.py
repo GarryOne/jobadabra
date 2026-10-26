@@ -48,11 +48,21 @@ class ThinSearch(Base):
         self.search(client, NOW + timedelta(hours=2))
         self.assertEqual(len(client.asked), board_web.TRIES)
         found, said = self.search(client, NOW + timedelta(hours=3))
-        self.assertEqual((found, len(client.asked)), ([], board_web.TRIES), f'{board_web.TRIES} thin searches in a row: then weekly')
+        self.assertEqual((found, len(client.asked)), ([], board_web.TRIES), f'{board_web.TRIES} thin searches in a row: then a rest')
         self.assertIn('searched 2026-10-19T11:00', said, 'the rest names when it searched last')
-        self.assertIn('next after 2026-10-26T11:00', said, 'and when it searches next')
-        self.search(client, NOW + timedelta(hours=2, days=board_web.RECENT))
+        self.assertIn('next after 2026-10-20T11:00', said, 'and when it searches next: a day later, not a week')
+        self.search(client, NOW + timedelta(hours=2, days=1))
         self.assertEqual(len(client.asked), board_web.TRIES + 1)
+
+    def test_a_search_that_stays_thin_rests_longer_each_time_up_to_a_week(self):
+        """The owner's pilot search (26 Oct 2026): three thin tries at 03:40, 03:41 and 03:48 UTC, then 'rested until 2 Nov'."""
+        data = {'web': {'k1': NOW.isoformat()}}
+        rests = []
+        for tries in range(board_web.TRIES + 5):
+            data['web_thin'] = {'k1': tries}
+            rests.append((board_web._next_search(data, 'k1', {}, SEARCH) - NOW).days)
+        self.assertEqual(rests, [0] * board_web.TRIES + [1, 2, 4, board_web.RECENT, board_web.RECENT],
+                         'the next run while under TRIES, then 1, 2, 4 days, never more than RECENT')
 
     def test_one_run_searches_the_web_once_even_when_its_full_read_asks_again(self):
         """Live on a copy of the owner's state (26 Oct 2026): the first-jobs search at 53 s, then the full read searched again at 170 s

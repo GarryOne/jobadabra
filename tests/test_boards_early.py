@@ -129,7 +129,10 @@ class BesideTests(unittest.TestCase):
         self.board_reads = 0
         self.board_read = threading.Event()
 
-        def read(search):
+        self.since = []
+
+        def read(search, since=None):
+            self.since.append(since)
             self.board_reads += 1
             self.board_read.set()
             return [{'title': 'Tontechniker'}]
@@ -172,10 +175,14 @@ class BesideTests(unittest.TestCase):
         self.assertEqual(self.board_reads, 0)
 
     def test_boards_read_in_the_last_hours_are_not_read_again(self):
+        """Within the rest the read still starts, for the boards not read since (owner's pilot run, 26 Oct 2026; tests/test_board_spacing.py)."""
         self.db.execute(aggregators.TABLE)
-        from datetime import datetime, timezone
-        self.db.execute('INSERT INTO aggregator_runs VALUES (?, ?)', (boards_ahead.NAME, datetime.now(timezone.utc).isoformat()))
-        self.assertIsNone(boards_ahead.start(self.db, SEARCH))
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        self.db.execute('INSERT INTO aggregator_runs VALUES (?, ?)', (boards_ahead.NAME, now.isoformat()))
+        ahead = boards_ahead.start(self.db, SEARCH, now=now)
+        ahead.wait()
+        self.assertEqual(self.since, [now - timedelta(hours=aggregators.SPACING_HOURS)])
         with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/x'}):
             self.assertIsNone(boards_ahead.start(sqlite3.connect(':memory:'), SEARCH), 'the fixture mode never reaches a live site')
 

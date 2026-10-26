@@ -34,12 +34,19 @@ def _searcher():
     from ..ai import engine
     from . import web_search
     if web_search._claude_code():
-        return web_search.plan_client()
+        return _said('your plan', web_search.plan_client())
     if engine.choice() not in ENGINES or not engine.ready():
         return None
     if web_search.free_ai():   # Free AI without a plan: the site runs this one search on its own capped key (owner, 26 Oct 2026: "Yes, $10/month cap")
-        return engine.client(action='web_search')
-    return engine.client(action='scout')
+        return _said("Free AI's web search on the site", engine.client(action='web_search'))
+    return _said('your API key', engine.client(action='scout'))
+
+
+def _said(lane, client):
+    """The client, with one line saying the search starts and through what (the log shows when the web search began)."""
+    if client is not None:
+        print(f'Job boards: searching the web for trade and local boards ({lane})', flush=True)
+    return client
 
 
 def _unknown_kind(search_config):
@@ -160,11 +167,13 @@ def search(search_config, known, client=None, now=None, fetch=None, data=None):
     asked = board_ideas.asked_for(search_config)
     own, data = data is None, board_ideas.load() if data is None else data
     if not asked or not _due(data, asked[0], now, data.get('boards'), search_config):
+        print(f"Job boards: no web search: {'this search names no places or roles' if not asked else 'searched lately, its boards are kept'}", flush=True)
         return []
     key, countries, roles, kinds, places = asked
     if client is None:
         client = _searcher()
-        if client is None:
+        if client is None:   # said, never silent (owner's pilot run, 26 Oct 2026: no line told why no board was searched for)
+            print('Job boards: no web search: no AI here searches the web (a signed-in Claude Code or Codex, an API key, or Free AI)', flush=True)
             return []
     data.setdefault('web', {})[key] = now.isoformat(timespec='seconds')   # asked once per RECENT/DAYS, even when it fails
     if own:

@@ -3,7 +3,7 @@ lists (spec docs/superpowers/specs/2026-10-18-search-learns-sources.md, PR 2). A
 read up to 3 a run while fewer than 10 relevant jobs are found; the 'Searching job boards' step reads the found boards in any country.
 The count kept in found_boards.json is this read's only (it decides within the run); a board's history over runs is the source_yield table
 (src/source_yield.py, one copy): "dead" is read there (PR 6, 18 Oct 2026). Tests: tests/test_board_yield.py, tests/test_proven_boards.py."""
-from datetime import date
+from datetime import date, datetime
 
 from .careers_parse import registrable
 
@@ -80,6 +80,23 @@ def pick(boards, kept, retry_due=lambda entry: False, dropped=frozenset(), remem
             continue
         (tried if entry and entry.get('last_read') else untried).append(board)
     return tried + (untried[:MAX_UNTRIED] if total_relevant(kept) < enough else [])
+
+
+def not_read_since(boards, kept, since):
+    """The boards not read since `since`: a search run again within the board scan's spacing (src/sources/aggregators.py read_lately) reads the
+    boards proposed or found since its last read, not none (owner's pilot run, 26 Oct 2026: a 6-hour rest of the whole board read hid the
+    aviation boards proposed after it and the web search). since None: all of them."""
+    if since is None:
+        return list(boards)
+    def read_after(entry):
+        try:
+            return datetime.fromisoformat((entry or {})['last_read']) >= since
+        except (KeyError, TypeError, ValueError):
+            return False
+    fresh = [board for board in boards if not read_after(kept.get(board['host']))]
+    from .aggregators import SPACING_HOURS
+    print(f'Job boards: {len(boards) - len(fresh)} read in the last {SPACING_HOURS} h skipped; reading {len(fresh)} new ones', flush=True)
+    return fresh
 
 
 def _read_by_the_search():

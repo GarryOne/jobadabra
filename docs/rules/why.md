@@ -160,6 +160,15 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   out; a pass exists from the moment its sites are handed out and each site answers within 45 s or ends it with that reason.
   Guards: `tests/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/refused-reads-pass-timing.test.js`.
 
+## Browser reads start only from the person's button (26 Oct 2026)
+- Since 20 Oct the extension read refused sites by itself: an hourly timer (3 minutes after Chrome started), every Check for new jobs and every job
+  opened from such a site; the passes showed up in Recent activity as "Find jobs using your browser" runs nobody started. Owner: ""Find jobs using
+  your browser" shouldn't start automatically in the backgruond. It should be suggested to the user as an action button"; "there should be a button
+  on the card where the "find jobs" finished"; "I don't think we should have a switch at all".
+- Hence: one gate (`desktop/lib/refused-now.js`): the app hands the extension sites only after the press; a finished Find jobs run counts the due
+  sites and its card offers the button (also ⌘K); the Settings switch is gone. Guard: `desktop/test/refused-reads-button.test.js` (loops over every
+  path that used to start reads; press() has one caller).
+
 ## Suites run on CI only (26 Oct 2026)
 - The owner's Mac sat at load 89: session 8b ran `node --test` over a grep-built list of e2e harness tests (fill-overlay, panel-tailor… open Chrome for
   Testing), and session 33 ran the full `python3 -m unittest discover` (the heavy-lock tests spawn processes and wait on clocks). Owner: "are now sessions

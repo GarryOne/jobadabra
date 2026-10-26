@@ -157,7 +157,7 @@ if (chrome.webNavigation) {
   chrome.tabs.onRemoved.addListener(tabId => { chrome.storage.session.remove(`readmark:${tabId}`).catch(() => {}); });
   chrome.permissions.onAdded.addListener(() => { startWaiting(); resumeFillWaiting({decide}); });
   watchUnallowedFillTabs({decide});
-  startRefusedReads();   // asks the app once an hour what refused sites are due; the app answers only when its setting is on (extension/refused-read.js)
+  startRefusedReads();   // reads refused sites only after the person's press in the app, seen by a one-minute look (extension/refused-read.js)
   chrome.webNavigation.onCommitted.addListener(async details => {
     if (details.frameId !== 0) return;
     retireFill(details.tabId);   // a new document: the fill running here belongs to the old one (extension/one-fill.js)

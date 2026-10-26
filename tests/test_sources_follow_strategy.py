@@ -49,7 +49,7 @@ def queue():
     return refused_reads.queue(now=NOW)
 
 
-def queue_on_check():   # "Check for new jobs" (desktop/lib/refused-now.js readAllNow): every refused site, due or resting
+def queue_on_check():   # the engine's refused-queue --all: every refused site, due or resting (the app stopped using it on 26 Oct 2026: only the button reads, due sites)
     return refused_reads.queue(now=NOW, everything=True)
 
 

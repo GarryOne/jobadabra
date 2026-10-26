@@ -10,6 +10,7 @@ import {hasFullReport} from '../searches-view.js';
 import {cardText, emptyResult, markFallback, newJobsShown, parseRunMessage, plainMessage} from '../run-cards.js';
 import {parseSiteRows, parseVisits} from '../visits-card.js';
 import {employersAdvice} from '../onboarding.js';
+import {drawBrowserOffer} from './browser-offer.js';
 import {settleQuestion} from '../mail-report.js';
 import {parseInsight} from '../insight-card.js';
 import {parseWeekly} from '../weekly-card.js';
@@ -361,6 +362,7 @@ export function renderActivity(fresh) {
     $('activity-next').replaceChildren(el('span', 'insight-next-icon', icon('building')), words);
   }
   show($('activity-next'), !!advice);
+  drawBrowserOffer($('activity-next'), run && {...run, kind: kindOf(run)}, {runs: lastActivity?.runs, settings: shared.state?.settings});   // the sites that refused it: read in the browser on a press
   const plain = !run?.live && !card && !mail && !insight && !weekly && !review && !kits && !sites && run?.message;
   $('activity-message').textContent = plain ? plainMessage(plain) : '';
   show($('activity-message'), !!plain && !reading);

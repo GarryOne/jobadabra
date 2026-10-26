@@ -71,7 +71,7 @@ def main(argv=None):
     refused = sub.add_parser('refused-queue')
     refused.add_argument('--now', action='append', default=[])   # a site to read at once (the person opened a job there)
     refused.add_argument('--all', action='store_true')   # Check for new jobs: every refused site, resting or not
-    # refused-queue: refused employer sites and boards the extension may read when due (src/sources/refused_reads.py); the app asks only when the setting is on
+    # refused-queue: refused employer sites and boards due now (src/sources/refused_reads.py); the app asks to count them after a Find jobs run and to hand them out after the person's press
     sub.add_parser('refused-judge').add_argument('file')   # what a page in the real tab is now (JSON: url, status, html, title, final): page, passive_check, captcha, login or refused
     sub.add_parser('refused-outcome').add_argument('file')   # what the extension's fetch of one of them brought (JSON: url, status, html, title, final)
     sub.add_parser('visit-understand').add_argument('file')   # a page outline the extension could not read: Claude's recipe, kept per site

@@ -10,12 +10,11 @@ import fs from 'node:fs';
 import {log as appLog} from './log.js';
 import {registerRefusedReadsHandlers} from './refused-reads-handlers.js';
 import {demoPath} from './demo.js';
-import {readNow} from './refused-now.js';
 
 export function registerVisitsHandlers(ctx) {
   const {DEMO, allowanceBlock, here, ipcMain, log, readSites, shell, storage} = ctx;
-  registerRefusedReadsHandlers({allowanceBlock, log, storage});   // "Read refused sites in my browser": the extension's own calls, lib/refused-reads.js
-  ipcMain.handle('openExternal', (_, url) => { readNow(url); return shell.openExternal(url); });   // opening a job from a site that refused the engine reads that site now (lib/refused-now.js)
+  registerRefusedReadsHandlers({allowanceBlock, log, storage});   // refused sites read in the browser after the person's press: lib/refused-reads.js
+  ipcMain.handle('openExternal', (_, url) => shell.openExternal(url));   // opening a job reads nothing in the browser: only the button does (lib/refused-now.js)
   ipcMain.handle('openVisit', (_, url) => visits.openYourself(url));   // the tab you already have for the site, else a new one
   ipcMain.handle('focusBrowser', () => visits.focusBrowser());
   ipcMain.handle('visitShowTab', (_, url) => visits.showTab(url));   // Find jobs using your browser' rows (Recent activity): the tab reading this site

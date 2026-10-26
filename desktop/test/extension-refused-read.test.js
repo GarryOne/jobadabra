@@ -1,4 +1,4 @@
-// The extension's side of "Read refused sites in my browser" (owner, 19 Oct 2026): nothing unless the app lists sites (it does so only when the setting is on), every fetch
+// The extension's side of refused sites read in the browser (owner, 19 Oct 2026): nothing unless the app lists sites (it does so only after the person's press), every fetch
 // without cookies, one at a time, never a login-wall site even if the app lists one, and every page or failure goes back to the app.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -57,7 +57,7 @@ test('a login-wall site the app lists is never fetched, a failed fetch is report
   assert.equal(ALARM, 'refused-reads');
 });
 
-test('Read now: the extension looks every minute and only reads when the app says one is waiting', async () => {
+test('the extension looks every minute and only reads when the app says the person pressed the button', async () => {
   assert.notEqual(NOW_ALARM, ALARM);
   for (const [pending, reads] of [[true, 1], [false, 0]]) {
     const paths = [];
@@ -65,7 +65,7 @@ test('Read now: the extension looks every minute and only reads when the app say
     const fetchPage = async url => ({status: 200, url, text: async () => '<html></html>'});
     const answer = await readNowIfAsked({chrome: chromeWith(true), call, config: {}, fetchPage, pause: async () => {}});
     assert.equal(answer.read, reads);
-    assert.equal(paths.includes('/extension/refused-queue'), pending, 'the engine is only asked when a Read now waits');
+    assert.equal(paths.includes('/extension/refused-queue'), pending, 'the engine is only asked when a press waits');
   }
 });
 

@@ -16,7 +16,10 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
 5. New file: start it with a one-line comment (docstring in Python) saying what it's for (at least 25 characters): the code map reads it.
 
 ## Safety rules (never relaxed without the owner)
-- **Never Submit an application, never auto-apply.** The kit drafts, the owner submits. We never solve a captcha or bot check and never use an SMS code (a captcha is the person's to solve, see below); never past a login wall
+- **The app submits only in Full automation, which the person turns on** (owner, 26 Oct 2026, replacing "Never Submit, never auto-apply"). By default the kit drafts and the person submits.
+  In Settings → Apply the person may turn on Full automation; then the app submits only forms that pass that person's checks (defaults: no required field empty, answers from saved facts,
+  fit 80+, at most 20 a day and 1 per employer, a 10-minute wait with Stop; each is the person's to change, AI-guessed answers too). Not built yet: until it ships, nothing submits.
+  Tests, the pool, the twin, Ready's night and our own sessions never submit. We never disguise a browser as a person. We never solve a captcha or bot check and never use an SMS code (a captcha is the person's to solve, see below); never past a login wall
   (LinkedIn, Glassdoor, Indeed, levels.fyi, Reddit: only through the user's own visit; 401/403/429 is a no; one slower retry of a 403 right after our own burst, owner 22 Oct 2026).
   **One exception** (owner, 19 Oct 2026; named on the privacy page; no Settings switch since 26 Oct 2026: "I don't think we should have a switch at all"): the extension reads a public
   employer careers page or job board that refused the engine, one site at a time, **without cookies or logins**, never the sites above or any login wall, up the ladder: engine, a Chrome download, then a **real tab** (owner, 20 Oct 2026: "step 2 real tab", "step 3 user solves captcha"; not faked fingerprints, solving services, proxies or a hidden browser posing as a person).

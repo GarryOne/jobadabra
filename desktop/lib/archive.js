@@ -52,8 +52,12 @@ function throttled(onProgress) {
   };
 }
 
+// GNU tar exits 1, not 0, when a file changed while it was read ("file changed as we read it": the app's own log or database moved on during a backup of its live data folder),
+// and still writes the whole archive: that is a finished backup, not a failure (the settings suite, main's 21:47 run on 25 Oct 2026: a backup due at start failed on it). Any other code fails.
+export const tarFinished = (code, tail = '') => code === 0 || (code === 1 && /file changed as we read it/i.test(tail) && !/(?:cannot|can't|error|fatal)/i.test(String(tail).replace(/file changed as we read it/gi, '')));
+
 // Waits for the child; rejects with tar's own last words when it fails, or CANCELLED when `signal` fired.
-function finish(child, signal, label) {
+function finish(child, signal, label, {tolerateChange = false} = {}) {
   return new Promise((resolve, reject) => {
     let tail = '';
     const keep = chunk => { tail = (tail + chunk).slice(-400); };
@@ -61,7 +65,7 @@ function finish(child, signal, label) {
     child.on('error', reject);
     child.on('close', code => {
       if (signal?.aborted) reject(Object.assign(new Error(CANCELLED), {code: CANCELLED}));
-      else if (code === 0) resolve();
+      else if (tolerateChange ? tarFinished(code, tail) : code === 0) resolve();
       else reject(new Error(`${label} failed (${code}): ${tail.trim().split('\n').pop()}`));
     });
   });
@@ -77,7 +81,7 @@ export async function pack(dir, file, {names, excludes = [], onProgress, signal}
   const count = chunk => { done += String(chunk).split('\n').length - 1; tell(Math.min(done, total), total); };
   child.stdout.on('data', count);   // GNU tar lists the entries on stdout, bsdtar on stderr
   child.stderr.on('data', count);
-  try { await finish(child, signal, 'tar'); } catch (error) { fs.rmSync(file, {force: true}); throw error; }
+  try { await finish(child, signal, 'tar', {tolerateChange: true}); } catch (error) { fs.rmSync(file, {force: true}); throw error; }
   tell(total, total, true);
 }
 

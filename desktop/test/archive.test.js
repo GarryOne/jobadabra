@@ -135,3 +135,13 @@ test('a cancelled import leaves the data folder as it was and nothing staged', a
   assert.equal(fs.existsSync(`${dir} (import)`), false);
   fs.rmSync(base, {recursive: true, force: true});
 });
+
+// GNU tar's exit 1 for "file changed as we read it" is a finished backup of a live folder; every other failure still fails (settings suite, main 21:47 on 25 Oct 2026).
+test('a pack whose files changed while it was read is finished; a real tar failure is not', async () => {
+  const {tarFinished} = await import('../lib/archive.js');
+  assert.equal(tarFinished(0, ''), true);
+  assert.equal(tarFinished(1, 'tar: data: file changed as we read it'), true);
+  assert.equal(tarFinished(1, 'tar: data/x: Cannot open: Permission denied\ntar: data: file changed as we read it'), false);
+  assert.equal(tarFinished(1, 'tar: x: Cannot stat: No such file or directory'), false);
+  assert.equal(tarFinished(2, 'tar: data: file changed as we read it'), false);
+});

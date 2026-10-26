@@ -19,3 +19,13 @@ test('a test candidate\'s Profile reaches the engine only in a test run, and nev
   assert.equal(pipeline.pipelineEnv(storage, {PATH: '/usr/bin', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_PROFILE_FILE: file}).JOB_PILOTTO_PROFILE_FILE, undefined);
   assert.equal(pipeline.pipelineEnv(storage, {PATH: '/usr/bin', JOB_PILOTTO_E2E: '1'}).JOB_PILOTTO_PROFILE_FILE, undefined);
 });
+
+test('the e2e Python step map\'s recorder reaches the engine only in a test run that records it', () => {
+  const recorder = {E2E_PY_COVERAGE_DIR: '/tmp/pycov-x', PYTHONPATH: '/repo/desktop/e2e/lib/pycov'};
+  const env = pipeline.pipelineEnv(storage, {PATH: '/usr/bin', JOB_PILOTTO_E2E: '1', ...recorder});
+  assert.deepEqual([env.E2E_PY_COVERAGE_DIR, env.PYTHONPATH], [recorder.E2E_PY_COVERAGE_DIR, recorder.PYTHONPATH]);
+  for (const parent of [{PATH: '/usr/bin', ...recorder}, {PATH: '/usr/bin', JOB_PILOTTO_E2E: '1', PYTHONPATH: '/somewhere'}]) {
+    const off = pipeline.pipelineEnv(storage, parent);
+    assert.deepEqual([off.E2E_PY_COVERAGE_DIR, off.PYTHONPATH], [undefined, undefined], 'a user\'s PYTHONPATH never reaches the engine');
+  }
+});

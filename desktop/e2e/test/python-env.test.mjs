@@ -83,3 +83,16 @@ test('mailreading\'s eval env: only its own key, no shell token, temp data; the 
     assert.equal(cli.JOB_PILOTTO_FOLLOW_APP, '0');
   } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
 });
+
+test('a coverage run hands the Python step map\'s recorder to the engine it runs; otherwise no PYTHONPATH gets through', () => {
+  const saved = {...process.env};
+  try {
+    Object.assign(process.env, {PYTHONPATH: '/somewhere'});
+    delete process.env.E2E_PY_COVERAGE_DIR;
+    assert.deepEqual([pythonEnv().PYTHONPATH, pythonEnv().E2E_PY_COVERAGE_DIR], [undefined, undefined]);
+    Object.assign(process.env, {E2E_PY_COVERAGE_DIR: '/tmp/pycov-x', PYTHONPATH: '/repo/desktop/e2e/lib/pycov'});
+    const env = pythonEnv();
+    assert.deepEqual([env.E2E_PY_COVERAGE_DIR, env.PYTHONPATH], ['/tmp/pycov-x', '/repo/desktop/e2e/lib/pycov']);
+    assert.equal(env.E2E_PY_COVERAGE_ROOT, path.resolve(import.meta.dirname, '..', '..', '..'), 'src/ lines are named from the repo, whatever folder the step runs in');
+  } finally { for (const name of Object.keys(process.env)) if (!(name in saved)) delete process.env[name]; Object.assign(process.env, saved); }
+});

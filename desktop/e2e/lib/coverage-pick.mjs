@@ -4,7 +4,7 @@
 // Pick: a changed line inside lines a suite ran → that suite. A changed line no suite ran (a file's top level, a function never called, a CSS rule never used)
 // → every suite that loaded the file: a change nobody measured runs everyone who loads it, never no one.
 // Tests: test/coverage.test.mjs
-import {mergeRanges, SETUP} from './coverage.mjs';
+import {mergeRanges, SETUP, WHOLE} from './coverage.mjs';
 
 // Coverage files of one run (each {suite, sha, files}) laid over the previous map: a suite this run recorded replaces its old entry; the others keep theirs.
 export function mergeMap(previous, coverageFiles, at = new Date().toISOString()) {
@@ -21,7 +21,7 @@ export function mergeMap(previous, coverageFiles, at = new Date().toISOString())
 
 // `git diff -U0 <from> <to>` → {path: [[from, to], ...]} on the <from> side: the lines changed or removed, and for a pure insertion the two lines around it.
 // A hunk whose changed lines are all comments or blank changes no behaviour: left out (#1992's header-comment edit picked 17 suites, 26 Oct 2026).
-const COMMENT = /^\s*$|^\s*(\/\/|\/\*|\*|<!--|-->)/;
+const COMMENT = /^\s*$|^\s*(\/\/|\/\*|\*|<!--|-->)/, PY_COMMENT = /^\s*(#|$)/;
 export function hunksFromDiff(diff) {
   const out = {};
   let file = '', hunk = null;
@@ -38,7 +38,7 @@ export function hunksFromDiff(diff) {
       hunk = {file, range: count === 0 ? [start, start + 1] : [start, start + count - 1], code: false};
       continue;
     }
-    if (hunk && /^[-+]/.test(line) && !COMMENT.test(line.slice(1))) hunk.code = true;
+    if (hunk && /^[-+]/.test(line) && !(hunk.file.endsWith('.py') ? PY_COMMENT : COMMENT).test(line.slice(1))) hunk.code = true;
   }
   close();
   return out;
@@ -86,7 +86,8 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings'} = {}) {
       if (!entry.files[file]) continue;
       for (const range of ranges) {
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }
-        const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && ran(files[file]?.lines, range)).map(([name]) => name);
+        if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} at import or across steps`); continue; }   // Python (lib/coverage.mjs WHOLE)
+        const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && name !== WHOLE && ran(files[file]?.lines, range)).map(([name]) => name);
         for (const step of steps) pick(suite, {step}, `runs ${file}:${range[0]} in "${step}"`);
         if (steps.length) continue;
         if (ran(entry.steps[SETUP]?.[file]?.lines, range)) { setupOnly.push({suite, key: `${file}:${range[0]}`}); continue; }
@@ -103,6 +104,14 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings'} = {}) {
     pick(chosen, {setup: true}, `runs ${key} at launch (one suite's setup)`);
   }
   return out;
+}
+
+// The suites a PR's files point at (pointsAt(file) -> suites: its own suite file, the harness, a suite's `watches`, lib/plan.mjs suitesFor) that still run whole.
+// A watched file the step map recorded for that suite (the engine's Python since 26 Oct 2026) no longer does: its changed lines pick the steps (stepsCovering).
+export function stillWhole(changedFiles, pointsAt, map) {
+  const out = new Set();
+  for (const file of changedFiles) for (const suite of pointsAt(file)) if (!map?.suites?.[suite]?.files?.[file]) out.add(suite);
+  return [...out];
 }
 
 // E2E_STEP_NAMES per suite for e2e.yml (pr_steps): a whole suite gets none; setup only: ["(setup)"].

@@ -113,6 +113,8 @@ export function pipelineEnv(storage, parent = process.env) {
     if (parent.JOB_PILOTTO_E2E_GOOGLE_BASE_URL) for (const name of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN']) if (parent[name]) env[name] = parent[name];
     // A fictional candidate's Profile (the quality suite's personas, desktop/e2e/fixtures/golden-*): a file the engine scores against instead of the test page's Profile. Test runs only.
     if (parent.JOB_PILOTTO_E2E_PROFILE_FILE) env.JOB_PILOTTO_PROFILE_FILE = parent.JOB_PILOTTO_E2E_PROFILE_FILE;
+    // The e2e Python step map (desktop/e2e/lib/pycov, main's coverage runs): the recorder rides in on PYTHONPATH. A user's own PYTHONPATH never gets through.
+    if (parent.E2E_PY_COVERAGE_DIR && parent.PYTHONPATH) Object.assign(env, {E2E_PY_COVERAGE_DIR: parent.E2E_PY_COVERAGE_DIR, PYTHONPATH: parent.PYTHONPATH});
   }
   // The AI engine the user chose (lib/claude-code.js): their own Claude Code or Codex on this Mac, or an API key (Anthropic or OpenAI).
   Object.assign(env, claudeCode.pipelineVariables(settings, !!env.ANTHROPIC_API_KEY, !!env.OPENAI_API_KEY));

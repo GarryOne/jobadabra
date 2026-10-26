@@ -40,6 +40,8 @@ export function pythonEnv(extra = {}, {home = '', realHome = false} = {}) {
   // With the real HOME the engine's data and config folders are temp ones unless the caller gives its own (asserted below).
   const scratch = realHome ? fs.mkdtempSync(path.join(os.tmpdir(), 'jp-engine-data-')) : '';
   Object.assign(env, {PYTHONUTF8: '1', JOB_PILOTTO_FOLLOW_APP: '0', JOB_PILOTTO_NO_DOTENV: '1'},
-    realHome ? {JOB_PILOTTO_DATA_DIR: path.join(scratch, 'data'), JOB_PILOTTO_CONFIG_DIR: path.join(scratch, 'config')} : {}, extra);
+    realHome ? {JOB_PILOTTO_DATA_DIR: path.join(scratch, 'data'), JOB_PILOTTO_CONFIG_DIR: path.join(scratch, 'config')} : {},
+    // A coverage run (lib/coverage.mjs pythonCoverage): the Python step map's recorder, which names src/ lines from the repo; never the shell's own PYTHONPATH.
+    process.env.E2E_PY_COVERAGE_DIR ? {E2E_PY_COVERAGE_DIR: process.env.E2E_PY_COVERAGE_DIR, E2E_PY_COVERAGE_ROOT: repo, PYTHONPATH: process.env.PYTHONPATH} : {}, extra);
   return assertIsolated(env, {allowed: Object.keys(extra), realHome});
 }

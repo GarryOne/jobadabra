@@ -3,16 +3,22 @@ SerpApi's free 250 searches a month, only result addresses kept, each new site j
 and country searched once. Fake SerpApi and a fake judge only: no network, no AI."""
 import sqlite3
 import unittest
+import json
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 from src import scout_boards, scout_cells, scout_google_boards as google
+from src.ai import decide
 
 NOW = datetime(2026, 10, 26, 8, tzinfo=timezone.utc)
 RESULTS = [{'title': 'Pilot Jobs Today', 'link': 'https://pilot-board.example/jobs/category/pilot_jobs.html', 'snippet': 'x'},
            {'title': 'An Airline careers', 'link': 'https://an-airline.example/careers'},
            {'title': 'People hiring', 'link': 'https://www.linkedin.com/jobs/pilot'},
            {'title': 'A wiki', 'link': 'http://plain.example/pilot'}]
+RESULTS_AS_BOARDS = [{'name': 'Pilot Jobs Today', 'host': 'pilot-board.example', 'search_url': 'https://pilot-board.example/jobs', 'countries': ['Austria'],
+                      'kinds': ['aviation_transport'], 'source_kind': 'sector'}]
 JUDGED = {'pilot-board.example': 'field board', 'an-airline.example': 'one employer'}
 
 
@@ -120,6 +126,46 @@ class GoogleBoards(unittest.TestCase):
         workflow = (Path(__file__).resolve().parent.parent / '.github/workflows/central-scout.yml').read_text()
         self.assertIn(f'{google.KEY_ENV}: ${{{{ secrets.CENTRAL_SCOUT_SERPAPI_KEY }}}}', workflow)
         self.assertNotIn('SERPAPI_API_KEY:', workflow, "that name turns on the role searches' SerpApi lane, outside the month cap")
+
+
+    def test_a_site_not_judged_waits_for_the_next_run_and_is_never_searched_again(self):
+        fake, answers = Fake(), {}
+        self.judge = lambda board, roles: self.judged.append((board['host'], roles)) or answers.get(board['host'])
+        self.assertEqual(self.boards(fake), [], '26 Oct 2026, Finland: the AI was not asked; nothing is lost')
+        self.assertIn('2 wait for the next run', self.out[-1])
+        answers['pilot-board.example'] = 'field board'
+        self.judged.clear()
+        kept = self.boards(fake)
+        self.assertEqual(len(fake.asked), google.PER_PAIR, 'the next run judges what is waiting, without a new search')
+        self.assertEqual([board['host'] for board in kept], ['pilot-board.example'])
+        self.assertNotIn('tries', kept[0])
+        self.assertIn('0 searches (6 of 200 this month), 2 sites (2 from earlier runs), 1 field boards', self.out[-1])
+        for _ in range(google.TRIES):
+            self.boards(fake)
+        self.assertEqual(scout_cells._meta(self.db, 'serp_waiting', {}).get('at'), [], f'a site with no answer in {google.TRIES} runs is let go')
+
+    def test_the_board_check_has_its_own_ai_allowance_past_the_scout_s_cap(self):
+        decide.reset_run()
+        self.addCleanup(decide.reset_run)
+        decide._calls['n'] = decide.CENTRAL_MAX_CALLS   # 26 Oct 2026, run 40345621178: title sorting spent the 600 before the board pass
+        db, calls = sqlite3.connect(':memory:'), []
+
+        class Client:
+            messages = SimpleNamespace(create=lambda **kw: calls.append(kw) or SimpleNamespace(
+                stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps({'results': [{'index': 0, 'answer': 'yes'}]}))]))
+        with mock.patch('src.ai.cost.side'), mock.patch('src.ai.meanings_pack.queue'):
+            self.assertIsNone(decide.one('t', 'a', 'x', ('yes', 'no'), 'task', Client(), db), 'the shared cap is spent')
+            self.assertEqual([decide.one('t', key, 'x', ('yes', 'no'), 'task', Client(), db, allowance=2) for key in 'bcd'], ['yes', 'yes', None])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(decide._calls['n'], decide.CENTRAL_MAX_CALLS, "the allowance's calls are not the shared cap's")
+
+    def test_the_scout_s_board_check_asks_with_that_allowance(self):
+        asked = []
+        with mock.patch('src.ai.decide.one', lambda *question, **options: asked.append(options) or 'field board'), \
+                mock.patch('src.sources.careers.get_text', lambda url: '<title>Pilot Jobs</title>'), \
+                mock.patch.object(google, 'boards', lambda db, country, kinds, judge, out: [judge(board, ['pilots']) for board in RESULTS_AS_BOARDS]):
+            self.assertEqual(scout_boards._google(self.db, 'at', ['aviation_transport'], self.out.append), ['field board'])
+        self.assertEqual(asked, [{'allowance': google.MAX_JUDGED}])
 
 
 if __name__ == '__main__':

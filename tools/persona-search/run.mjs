@@ -5,7 +5,11 @@
 // Keychain, Notion or Telegram; telemetry and pool sharing are off.
 //   python3 tools/persona-search/personas.py <out>            (the CVs: <out>/<name>/cv.pdf)
 //   node tools/persona-search/run.mjs <name> <out> [--presses 5] [--tag before] [--fresh] [--draft <draft.json>]
-//        [--tape <folder> --record | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only]
+//        [--tape <folder> --record | --replay [--wait-scale 1] [--no-live]] [--judge] [--first-only] [--note <file>] [--change-field <file>]
+// --note: the wizard's "What should the AI know?" text (e.g. "First Officer jobs anywhere in Europe"), given to the strategy draft as a person types it.
+// --change-field: a JSON list of role titles; before press 2 they replace the roles through the Strategy page's own edit (lib/strategy-edit.js editLists,
+//   which redrafts the old field's words), and the search is marked changed: the owner's path, a field change on an existing install then Find jobs again (26 Oct 2026).
+// Each press's row also has its funnel (funnel.py: employers picked, sites and boards read, web searches, jobs listed) for the search robot's alarm.
 // --first-only: stop after the first-jobs step (boards read, local jobs listed; ~6 min instead of 20-25): the discover, light run and scout steps are skipped (24 Oct 2026, the beyond-Moldova checks).
 // --judge: after each press, how many of the top 10 are right for the persona (judge.py, plan engine only; never on --engine api).
 // Writes <out>/<name>/draft.json, run-<press>.log and presses.jsonl (one JSON line per press: tools/persona-search/metrics.py + time).
@@ -47,6 +51,7 @@ const {ensureConfig, python} = await lib('pipeline-env.js');
 const {searchSteps} = await lib('search-steps.js');
 const {run: searchRun} = await lib('pipeline-run.js');
 const strategy = await lib('strategy.js');
+const {titlesOf} = await lib('target-roles.js');
 const claudeCode = await lib('claude-code.js');
 const {realClaude} = await import(path.join(ROOT, 'desktop', 'e2e', 'lib', 'real-claude.mjs'));
 const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});   // its own folder: nothing reaches the Keychain
@@ -71,9 +76,20 @@ function judged() {
   } catch (error) { console.log(`${name}: top 10 not judged: ${String(error.message).split('\n')[0]}`); return null; }
 }
 
+// The Strategy page's roles edit (lib/search-tuning-handlers.js 'editTargets'): the old titles out, the new ones in, the search marked changed. -> {from, to}
+async function changeField(titles) {
+  const before = titlesOf(JSON.parse(storage.readText('config/search.json') || '{}'));
+  const notion = () => { throw new Error('a persona install has no Notion'); };
+  const result = await strategy.editLists(storage, {roles: {add: titles, remove: before}}, {run: searchRun, ensurePage: notion, writePage: notion});
+  if (result.changed?.length) storage.saveSettings({searchChangedAt: new Date().toISOString()});
+  console.log(`${name}: field changed from ${before.slice(0, 3).join(', ')} to ${titles.slice(0, 3).join(', ')}`);
+  return {from: before.length, to: titles.length};
+}
+
 if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's own draft from the CV, kept as the review's "Save" does without Notion
   const started = Date.now(), kept = option('--draft', '');
-  const draft = kept ? JSON.parse(fs.readFileSync(kept, 'utf8')) : await strategy.draft(storage, {}, apiKey, api ? null : claudeCode.client(storage));
+  const note = option('--note', '') ? fs.readFileSync(option('--note', ''), 'utf8').trim() : '';
+  const draft = kept ? JSON.parse(fs.readFileSync(kept, 'utf8')) : await strategy.draft(storage, note ? {anything_else: note} : {}, apiKey, api ? null : claudeCode.client(storage));
   if (!kept || path.resolve(kept) !== path.join(out, 'draft.json')) fs.writeFileSync(path.join(out, 'draft.json'), JSON.stringify(draft, null, 2));
   strategy.keepLocally(storage, draft);
   storage.saveSettings({setupDone: true, cvName: 'cv.pdf'});
@@ -81,7 +97,9 @@ if (!storage.settings().setupDone) {   // the wizard's strategy step: the app's 
 }
 const failed = [];
 const done = fs.existsSync(path.join(out, 'presses.jsonl')) ? fs.readFileSync(path.join(out, 'presses.jsonl'), 'utf8').trim().split('\n').filter(Boolean).length : 0;
+const fieldFile = option('--change-field', '');
 for (let press = done + 1; press <= presses; press++) {
+  const changed = press === 2 && fieldFile ? await changeField(JSON.parse(fs.readFileSync(fieldFile, 'utf8'))) : null;
   const started = Date.now(), log = fs.createWriteStream(path.join(out, `run-${press}.log`));
   const firstOnly = process.argv.includes('--first-only');
   let calls = 0;
@@ -89,7 +107,8 @@ for (let press = done + 1; press <= presses; press++) {
   const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you', exec);
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
-  const row = {press, code, crashes, seconds: Math.round((Date.now() - started) / 1000), ...metrics(),
+  const row = {press, code, crashes, seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
+    ...(changed ? {field_changed: changed} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);
   const verdict = process.argv.includes('--judge') && !api ? judged() : null;   // its own AI call, off the tape: a replay neither records nor needs it

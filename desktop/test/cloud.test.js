@@ -144,6 +144,7 @@ test('not installed yet: it says so, with the two setup links', async () => {
   await assert.rejects(github.connect(userStorage(), 't', {fetcher: gh.fetcher}), error => error.needsRepo === true);
   assert.match(github.CREATE_URL, /template_name=job-pilotto-starter.*visibility=private/);
   assert.match(github.INSTALL_URL, /github\.com\/apps\/.+\/installations\/new/);
+  if (!process.env.JOB_PILOTTO_GITHUB_APP) assert.equal(github.INSTALL_URL, 'https://github.com/apps/jobadabra/installations/new', 'the app is named Jobadabra on GitHub since 26 Oct 2026; apps/job-pilotto answers 404');
 });
 
 test('installed on several repositories: the user chooses one; the choice is used', async () => {

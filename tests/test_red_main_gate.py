@@ -89,6 +89,19 @@ class RedMainGate(unittest.TestCase):
         self.assertEqual(dispatch, '')
 
 
+    def test_an_unknown_flag_starts_nothing(self):
+        # 26 Oct 2026: the coordinator ran it with --dry-run to read the state; the flag was ignored and main's red suites were re-run on CI
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, '--dry-run')
+        self.assertEqual(code, 2, out)
+        self.assertIn('--dry-run', out)
+        self.assertEqual(dispatch, '')
+
+    def test_status_only_reads(self):
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, '--status')
+        self.assertEqual(code, 1, out)
+        self.assertIn('cardstates', out)
+        self.assertEqual(dispatch, '', '--status never starts a re-check')
+
 class BetaRelease(unittest.TestCase):
     def test_beta_release_runs_the_gate_first_and_passes_a_force_reason_on(self):
         text = (ROOT / 'tools/beta-release.sh').read_text()

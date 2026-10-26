@@ -12,8 +12,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 HOOK, ACK = ROOT / 'tools' / 'pr-red-check.sh', ROOT / 'tools' / 'pr-red-ack.sh'
 FAKE = """#!/bin/sh
-d="$FAKE_GH_DIR"; echo "$@" >> "$d/calls"; [ ! -f "$d/slow" ] || sleep 5
+d="$FAKE_GH_DIR"; first="$1"; echo "$@" >> "$d/calls"; [ ! -f "$d/slow" ] || sleep 5
 expr=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && expr="$2"; shift; done
+if [ "$first" = issue ]; then [ -f "$d/issues.json" ] && jq -r "$expr" "$d/issues.json"; exit 0; fi
 case "$FAKE_GH_VERB" in list) jq -r "$expr" "$d/list.json" ;; view) jq -r "$expr" "$d/view.json" ;; esac
 """
 FAKE_BIN = """#!/bin/sh
@@ -49,6 +50,26 @@ class PrRedHookTest(unittest.TestCase):
     def run_hook(self, event='UserPromptSubmit', again=False, env=None, cwd=None, extra=None):
         payload = {'cwd': str(cwd or self.repo), 'hook_event_name': event, 'stop_hook_active': again, **(extra or {})}
         return subprocess.run(['bash', str(HOOK)], input=json.dumps(payload), capture_output=True, text=True, env={**self.env, **(env or {})}, timeout=30)
+
+    # Gate G2b (26 Oct 2026): a red-main issue names the breaking PR's branch; the session on that branch is told, others are not.
+    def test_red_main_issue_tells_the_session_whose_branch_broke_it(self):
+        self.answer([])
+        body = 'Main\'s `cardstates` e2e suite is red since fdc31ca.\nBreaking PR: #1914 (branch `feature`)\nBisect: ...'
+        (self.state / 'issues.json').write_text(json.dumps([{'number': 1970, 'title': 'Red main: cardstates', 'body': body},
+                                                           {'number': 1971, 'title': 'Red main: settings', 'body': 'Breaking PR: #1900 (branch `other-branch`)'},
+                                                           {'number': 1972, 'title': 'Red main: foryou', 'body': 'no PR found: the range is in the issue'}]))
+        out = self.run_hook()
+        self.assertIn("Main's e2e suite cardstates went red with your PR #1914 (issue #1970)", out.stdout)
+        self.assertNotIn('settings', out.stdout)
+        self.assertNotIn('foryou', out.stdout)
+        stop = self.run_hook(event='Stop')
+        self.assertEqual(stop.returncode, 2, 'blocks the stop once, like a red PR')
+        self.assertIn('cardstates', stop.stderr)
+
+    def test_no_red_main_issue_is_silent(self):
+        self.answer([])
+        (self.state / 'issues.json').write_text('[]')
+        self.assertEqual(self.run_hook().stdout, '')
 
     # --- the case table: (name, PR answer, expected text in the message or None for silence)
     def test_cases(self):

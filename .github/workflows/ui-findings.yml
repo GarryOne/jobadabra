@@ -34,7 +34,7 @@ jobs:
   findings:
     # Scheduled, chained or by hand only; a push-triggered e2e run (a change to the tests themselves) is not evidence about the product.
     # The daily stable canary (stable-canary.yml) names its runs "Stable canary …": it alarms by itself and never files into the backlog.
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event != 'push' && !startsWith(github.event.workflow_run.display_title, 'Stable canary') && !startsWith(github.event.workflow_run.display_title, 'Mutant'))   # a mutation test breaks the app on purpose: never filed
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event != 'push' && !startsWith(github.event.workflow_run.display_title, 'Stable canary') && !startsWith(github.event.workflow_run.display_title, 'Mutant') && !startsWith(github.event.workflow_run.display_title, 'Bisect '))   # a bisect step tests an old commit on purpose (gate G2b)   # a mutation test breaks the app on purpose: never filed
     runs-on: ubuntu-24.04
     timeout-minutes: 35   # 15 for filing, up to 15 more for judging before filing (its own step limit below)
     # The release run tested both platforms in one run: Mac + Linux first, then Windows, one after the other (both write issues). Any other run: one platform.

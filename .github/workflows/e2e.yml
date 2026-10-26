@@ -12,7 +12,7 @@ name: CI · End-to-end on Mac + Linux
 #     The AI review of screenshots (the costly part) runs when the UI or its tests changed, a finding waits, or the run is exploring. A push to main runs NO e2e (decided: e2e never runs on commit); by hand: gh workflow run e2e.yml -f suite=jobs,activity.
 # All of it is decided in desktop/e2e/plan-run.mjs (tested). The test key's AI credit is shared and small: see desktop/e2e/README.md.
 # Secrets (Settings → Secrets → Actions): E2E_ANTHROPIC_KEY, and one E2E_NOTION_TOKEN_<SUITE> per suite (a connection that sees only that suite's test page).
-run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026). Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
+run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.target_ref) || inputs.scheduled && 'E2E check · on time (Worker cron)' || inputs.mutant && format('Mutant {0}', inputs.mutant) || inputs.canary && format('Stable canary {0}', inputs.target_ref) || inputs.soak && format('RC soak {0}', inputs.target_ref) || inputs.gate_tag && format('Beta E2E tests {0}', inputs.gate_tag) || github.event_name == 'schedule' && 'E2E check · GitHub schedule (backup)' || inputs.pr_suites && format('E2E for PR · {0} · {1}', inputs.pr_suites, github.ref_name) || format('E2E Mac + Linux · {0} · {1}', inputs.suite || 'all suites', github.ref_name) }}   # a run by hand says which suites (owner, 7 Oct 2026); a PR's run says its suites (it read "all suites" until 26 Oct 2026), and pr-verdict.yml finds it by "E2E for PR · ". Both name the release they test: ui-findings.yml ignores 'Stable canary'; canary_promote.py counts 'RC soak <tag>' for gate 4. Called by the release run (desktop.yml), this run-name is not used: the jobs show as "E2E · Mac + Linux / <job>"
 
 on:
   workflow_dispatch:
@@ -239,6 +239,7 @@ jobs:
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
+      statuses: write   # a pull request's red suite turns its "All checks passed" red at once (tools/pr-verdict.py --red)
     steps:
       - uses: actions/checkout@v5
         with:
@@ -353,6 +354,13 @@ jobs:
             echo "Failed again on the same commit: a real failure." | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1   # red twice: the job (and the gate) fail
           fi
+      # A pull request's suite red (red twice, or its setup broke): the PR's "All checks passed" turns red now, not when the slowest suite ends (tools/pr-verdict.py;
+      # pr-verdict.yml writes the final state when the run ends). Nothing waits on a runner for this (26 Oct 2026).
+      - name: Turn the PR red now
+        if: failure() && inputs.pr_suites != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 lock-tools/tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "${{ github.sha }}" --red "e2e suite ${{ matrix.key }} red (run ${{ github.run_id }})"
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run

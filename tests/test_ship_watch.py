@@ -1,5 +1,5 @@
 """tools/ship-watch.sh (18 Oct 2026): after `ship: REVIEW` a detached watcher adds MERGED / CLOSED / RED / WATCH ENDED to ship's log, so a session learns of the owner's merge.
-A fake `gh` reads its answers from files: state.txt (OPEN|MERGED|CLOSED, then an optional sha) and checks.txt (the failing check name or empty); a script of steps may rewrite them between looks."""
+A fake `gh` reads its answers from files: state.txt (OPEN|MERGED|CLOSED, then an optional sha) and checks.txt (the failing check name or empty); a script of steps may rewrite them between looks.\nverdicts: the \"All checks passed\" status per look (pending, else green; pr-verdict.yml since 26 Oct 2026); runs: the head's check-runs (none, running, gate = the old job, else green)."""
 import os
 import shutil
 import signal
@@ -18,7 +18,8 @@ case "$1 $2" in
              m=$(sed -n "${n}p" "$d/mergeables" 2>/dev/null); [ -n "$m" ] || m=MERGEABLE
              set -- $s; if [ "$1" = MERGED ]; then echo "{\\"headRefOid\\":\\"new1\\",\\"url\\":\\"https://github.com/o/r/pull/7\\",\\"state\\":\\"MERGED\\",\\"mergeable\\":\\"$m\\",\\"mergeCommit\\":{\\"oid\\":\\"$2\\"}}"; else echo "{\\"headRefOid\\":\\"new1\\",\\"url\\":\\"https://github.com/o/r/pull/7\\",\\"state\\":\\"$1\\",\\"mergeable\\":\\"$m\\",\\"mergeCommit\\":null}"; fi ;;
   "api repos/o/r/commits/new1/check-runs?per_page=100") r=$(sed -n "${n}p" "$d/runs" 2>/dev/null); [ -n "$r" ] || r=ok
-             case "$r" in none) echo false;; running) echo false;; *) echo true;; esac ;;
+             case "$r" in none|running) echo no;; gate) echo gate;; *) echo green;; esac ;;
+  "api repos/o/r/commits/new1/status") v=$(sed -n "${n}p" "$d/verdicts" 2>/dev/null); [ "$v" = pending ] && echo false || echo true ;;
   "pr checks") c=$(sed -n "${n}p" "$d/checks" 2>/dev/null); if [ "$c" = pending ]; then echo '[{"name":"x","bucket":"pending"}]'; elif [ -n "$c" ]; then echo "[{\\"name\\":\\"$c\\",\\"bucket\\":\\"fail\\"}]"; else echo '[{"name":"x","bucket":"pass"}]'; fi ;;
 esac
 """
@@ -37,12 +38,13 @@ class ShipWatchTest(unittest.TestCase):
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
         self.log.write_text('ship: [3s] opened the pull request: https://example.test/pull/7\n')
 
-    def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs=''):
+    def watch(self, states, checks='', cap=60, poll=0, mergeables='', runs='', verdicts=''):
         (self.tmp / 'states').write_text(states)
         (self.tmp / 'mergeables').write_text(mergeables)
         (self.tmp / 'fixes').write_text('')
         (self.tmp / 'checks').write_text(checks)
         (self.tmp / 'runs').write_text(runs)
+        (self.tmp / 'verdicts').write_text(verdicts)
         (self.tmp / 'looks').write_text('0')
         env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'SHIP_WATCH_POLL': str(poll), 'SHIP_WATCH_CAP': str(cap), 'SHIP_WATCH_FIX': str(self.tmp / 'fix.sh')}
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile)], env=env, timeout=30, check=True)
@@ -73,6 +75,15 @@ class ShipWatchTest(unittest.TestCase):
         lines = self.watch('OPEN\nOPEN\nOPEN\nOPEN\nMERGED fff0000\n', runs='none\nrunning\nok\nok\n')
         self.assertEqual(lines, ['ship: GREEN #7', 'ship: MERGED #7 fff0000'])
         self.assertEqual((self.tmp / 'looks').read_text().strip(), '5')
+
+    def test_green_waits_for_the_all_checks_passed_status(self):
+        """26 Oct 2026: "All checks passed" is a status pr-verdict.yml writes when the PR's workflows end; every check-run green is not enough while it is pending."""
+        lines = self.watch('OPEN\nOPEN\nOPEN\nMERGED fff0000\n', verdicts='pending\npending\n')
+        self.assertEqual(lines, ['ship: GREEN #7', 'ship: MERGED #7 fff0000'])
+        self.assertEqual((self.tmp / 'looks').read_text().strip(), '4', 'green only at the third look, when the status is green')
+
+    def test_a_pr_whose_runs_predate_the_status_is_green_by_the_old_gate_job(self):
+        self.assertEqual(self.watch('OPEN\nMERGED fff0000\n', runs='gate\n', verdicts='pending\n'), ['ship: GREEN #7', 'ship: MERGED #7 fff0000'])
 
     def test_no_green_while_the_new_heads_checks_are_missing_or_running(self):
         self.assertEqual(self.watch('OPEN\nOPEN\nCLOSED\n', runs='none\nrunning\n'), ['ship: CLOSED #7 (unmerged)'])

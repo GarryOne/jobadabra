@@ -50,17 +50,16 @@ def required():
 
 
 class TheClass(unittest.TestCase):
-    def test_every_required_check_is_a_job_of_a_workflow_with_no_paths(self):
+    def test_the_one_required_check_is_written_on_every_pr_and_no_paths_workflow_claims_it(self):
         checks = required()
-        self.assertEqual(checks, ['All checks passed'], 'one required job (15 Oct 2026): four jobs took four runner slots per PR')
-        gate = (WORKFLOWS / 'pr-gate.yml').read_text()
-        self.assertIsNone(pr_paths('pr-gate.yml'), 'the required checks start on every pull request')
-        for check in checks:
-            self.assertRegex(gate, rf'(?m)^    name: {re.escape(check)}$', check)
+        self.assertEqual(checks, ['All checks passed'], 'one required check (15 Oct 2026): four jobs took four runner slots per PR')
+        self.assertIsNone(pr_paths('pr-gate.yml'), 'the gate starts on every pull request, so the verdict always has a run to read')
+        verdict = (ROOT / 'tools' / 'pr-verdict.py').read_text()
+        self.assertRegex(verdict, r"(?m)^CONTEXT = 'All checks passed'$", 'pr-verdict.yml writes it as a status (26 Oct 2026: no job waits on a runner for it)')
+        self.assertRegex((WORKFLOWS / 'pr-verdict.yml').read_text(), r"(?m)^  workflow_run:", 'written when a PR workflow ends')
         for name in pr_workflows():
-            if pr_paths(name) is not None:
-                text = (WORKFLOWS / name).read_text()
-                self.assertEqual([c for c in checks if re.search(rf'(?m)^    name: {re.escape(c)}', text)], [], f'{name}: a required check in a workflow paths can skip')
+            text = (WORKFLOWS / name).read_text()
+            self.assertEqual([c for c in checks if re.search(rf'(?m)^    name: {re.escape(c)}$', text)], [], f'{name}: a job of that name would pass the required check before the others end')
 
     def test_the_gate_runs_again_when_a_pr_is_retargeted_and_never_skips_its_job(self):
         gate = (WORKFLOWS / 'pr-gate.yml').read_text()

@@ -1,0 +1,53 @@
+name: CI · PR verdict
+# Writes the one required status of a pull request, "All checks passed" (tools/pr-verdict.py), each time one of its workflows ends: pending while any runs, red at
+# the first red, green when all ended green. A job of seconds per event; nothing holds a runner to wait (owner, 26 Oct 2026: "How could you design such a slow and
+# inefficient method of checking PRs?"). Until 26 Oct pr-gate.yml's "Other workflows passed" and pr-suites.yml's wait each sat on a runner ~20 min per push.
+# workflow_run runs main's copy of this file. Every workflow a pull request starts must be listed below (tests/test_pr_verdict.py), plus the e2e run pr-suites.yml starts.
+on:
+  workflow_run:
+    types: [completed]
+    workflows:
+      - 'CI · Pull request'
+      - 'CI · E2E suites for a PR'
+      - 'CI · End-to-end on Mac + Linux'
+      - 'CI · Control tests (measure, not required)'
+      - 'CI · Harness tests'
+      - 'CI · Hosted Always on cost probe (one-off)'
+      - 'Proof · Which org the e2e AI keys belong to'
+      - 'Proof · LibreOffice add-on on Mac and Windows'
+      - 'CI · Page cases (all cases, real extension, Linux)'
+      - 'CI · Ready to send image'
+      - 'CI · Tests · desktop (Windows)'
+      - 'CI · Tests · desktop'
+      - 'CI · Tests · python'
+      - 'CI · Tests · worker'
+
+permissions:
+  contents: read
+
+# One verdict per commit at a time; a newer event replaces a queued one (it reads the newer state anyway).
+concurrency:
+  group: pr-verdict-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  verdict:
+    name: Write the PR's verdict
+    # Only runs of a pull request, or the e2e run one started: main's schedules and bisects end here at once.
+    if: github.event.workflow_run.event == 'pull_request' || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read          # the commit's workflow runs
+      pull-requests: read    # the PR's files and commits (the CI change budget)
+      statuses: write        # the "All checks passed" status
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: tools/pr-verdict.py
+          sparse-checkout-cone-mode: false
+      - name: All checks passed?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: python3 tools/pr-verdict.py --repo "$GITHUB_REPOSITORY" --sha "$SHA"

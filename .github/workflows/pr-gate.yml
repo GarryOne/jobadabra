@@ -1,9 +1,10 @@
 name: CI · Pull request
 # The pure checks a change must pass before it merges (owner, 12 Oct 2026: landing through pull requests, tools/ship.sh). The suites are CI · Tests (build.yml) and the
 # recorded-page replays (page-cases.yml), which start by `on: paths:`.
-# ONE required check on main, "All checks passed" (owner, 15 Oct 2026: four required jobs took four runner slots per PR and GitHub's queue was the wait): one job, five named
-# steps. Same list in tools/pr-settings.sh. The job always starts (a required workflow that never starts blocks the PR forever); a step that does not apply ends in seconds.
-# A red step does not hide the next ones (`!cancelled()`), so one run names every red; the last step waits for the other workflows and runs only when the steps before it passed.
+# ONE required status on main, "All checks passed" (owner, 15 Oct 2026: four required jobs took four runner slots per PR and GitHub's queue was the wait). Since 26 Oct 2026
+# pr-verdict.yml writes it, in seconds, each time a PR workflow ends (tools/pr-verdict.py); this job is one of the workflows it reads. This job used to BE the required
+# check and wait up to 60 min for the others on a runner ("Other workflows passed"): with pr-suites.yml's wait, two runners per PR push only waited (owner: "How could you
+# design such a slow and inefficient method of checking PRs?"). The job always starts; a step that does not apply ends in seconds; a red step does not hide the next ones (`!cancelled()`).
 # `edited` (owner, 17 Oct 2026): a PR retargeted to main (its base edited from another branch) runs the gate, so no rebase is needed to get the required check. It runs the same
 # job, never a skipped one: a skipped required job would count as green and hide an earlier red.
 on:
@@ -21,13 +22,12 @@ concurrency:
 
 jobs:
   required:
-    name: All checks passed
+    name: Pull request checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 80
+    timeout-minutes: 30   # the replay of a recorded case a PR brings is the long part (#501: 503 s)
     permissions:
       contents: read
       pull-requests: read   # the open PRs on the same flow files (tools/flow-fresh.mjs)
-      actions: read         # the workflow runs of this commit
     steps:
       - uses: actions/checkout@v5
         with:
@@ -93,11 +93,3 @@ jobs:
         run: |
           [ -n "${{ steps.which.outputs.cases }}" ] || { echo "no recorded case in this PR: nothing to replay"; exit 0; }
           node tools/recorded-fails-on-old.mjs --base origin/main
-      # Every other PR workflow starts by `on: paths:` (the suites, the harness, the replays, the replay gate), so none can be required itself (owner, 14 Oct 2026:
-      # "why is the PR mergeable if replay gate is still running?"). This step collects them: green only when every workflow of the commit ended green.
-      - name: Other workflows passed
-        if: ${{ success() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: bash tools/all-checks-green.sh "$GITHUB_REPOSITORY" "$HEAD_SHA" "$GITHUB_RUN_ID"

@@ -12,8 +12,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from src import time_budget
-from src.sources import board_web, careers, feeds, found_boards, read_budget
+from src import paths, time_budget
+from src.sources import board_web, careers, feeds, found_boards, late_reads, read_budget
 
 TABLE = 'CREATE TABLE feed_jobs (board TEXT, id TEXT, fingerprint TEXT, first_seen TEXT, last_seen TEXT, PRIMARY KEY(board, id))'
 CUT = 0.6   # seconds from the test's start
@@ -89,6 +89,7 @@ class NoReadHoldsTheRun(unittest.TestCase):
     def test_every_reader_leaves_a_hanging_site_at_the_cut(self):
         for name, (read, expected) in READERS.items():
             with self.subTest(name):
+                (paths.DATA / late_reads.FILE).unlink(missing_ok=True)   # each reader its own run: no page kept from the one before (late_reads)
                 hang = threading.Event()
                 time_budget.start(180)
                 began = time.monotonic()

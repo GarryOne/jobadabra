@@ -209,14 +209,30 @@ def finish(started, proposed, timeout=None, data=None):
         found = future.result(timeout=timeout) if timeout is not None else read_budget.result(future, read_budget.cut_at())
     except Exception:  # noqa: BLE001 — the proposal's boards stand
         return []
-    if found is read_budget.LEFT:
-        print("Job boards: the web search did not answer in the search's time; it is asked again next time", flush=True)
+    if found is read_budget.LEFT:   # not killed: when it answers, its boards are kept for the next search, not asked again (_keep_late)
+        print("Job boards: the web search did not answer in the search's time; the boards it finds are read by the next search", flush=True)
+        future.add_done_callback(lambda done: _keep_late(done, copy, data))
         return []
     found = found or []
     if data is not None and copy is not None and copy is not data:
         _merge(data, copy)
     hosts = {board['host'] for board in proposed}
     return [{**board, 'origin': 'web'} for board in found if board['host'] not in hosts]
+
+
+def _keep_late(done, copy, data):
+    """A web search that answered after the read cut: what it recorded on its own copy (when it searched, the boards it found) goes into
+    the read's found_boards.json and the saved file, so the next search reads those boards and does not search again (owner, 26 Oct 2026:
+    "next one to continue/start properly without redoing the same job"). Tests: tests/test_three_minutes_resume.py."""
+    from ..ai import board_ideas
+    if done.exception() is not None or copy is None:
+        return
+    with _lock:
+        if data is not None and data is not copy:
+            _merge(data, copy)
+        saved = board_ideas.load()
+        _merge(saved, copy)
+        board_ideas.save(saved)
 
 
 def _with_search(item, fetch):

@@ -93,8 +93,8 @@ def _read(board, search, fetch, route, early, show=None):
                     declared, found_route = board_routes.discover(page, url, fetch, board, _terms(search))
                 except board_routes.Stop:
                     return jobs, 'browser', None
-                if declared:
-                    return declared, 'ok', found_route
+                if declared and (careers.READER is None or found_route['kind'] not in ('feed', 'json') or board_yield.is_relevant(declared)):   # a feed of news, not of jobs (26 Oct 2026: a pilot
+                    return declared, 'ok', found_route   # board's RSS gave 10 articles and became its route): none the search wants, the page reader reads the page
                 if careers._shell(page):   # a page built by scripts, with no route: the headless browser reads it, else a visit does
                     if show is None:
                         return jobs, 'browser', None

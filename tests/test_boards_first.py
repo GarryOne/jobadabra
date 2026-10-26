@@ -1,7 +1,8 @@
 """Acceptance: "First Officer · Europe" on an install with old state gets First Officer jobs from the boards its web search found, on screen
 before any employer site (src/sources/boards_first.py; owner, 26 Oct 2026: "START A JOB SEARCH WITH SEARCHING ON GOOGLE!"). Old state = the
 boards rested less than 6 h ago, an old board list read for another search. Offline: the web search's answer is a fixed fake, the boards are
-fixture pages in two shapes seen on real boards (job links by id, job cards by slug), fake jobs only; no model, no network."""
+fixture pages in two shapes seen on real boards (job links by id, job cards by slug), fake jobs only; no model, no network.
+The role kind on old state ("First Officer" -> aviation_transport): tests/test_kind_seed_floor.py AnInstallWithStateTests."""
 import io
 import json
 import sqlite3
@@ -88,6 +89,7 @@ class OldState(unittest.TestCase):
     """The owner's install as his pilot runs found it: boards read 37 minutes ago for an older search, no search key kept."""
 
     def setUp(self):
+        self.addCleanup(self.no_search_thread_left)   # runs last
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.data = Path(tmp.name)
@@ -115,13 +117,22 @@ class OldState(unittest.TestCase):
         self.addCleanup(time_budget.start, 0)
         time_budget.start(180)
 
+    def no_search_thread_left(self):
+        """No web search thread outlives its test (26 Oct 2026: one printed into test_desktop_tracker_commands' output on CI)."""
+        for thread in [t for t in threading.enumerate() if t.name.startswith('board-web')]:
+            thread.join(2)   # a worker ends just after its last answer
+        left = [thread.name for thread in threading.enumerate() if thread.name.startswith('board-web') and thread.is_alive()]
+        self.assertEqual(left, [], 'a web search thread outlived its test')
+
     def run_first(self, delay=0.0, wait=boards_first.WEB_WAIT):
         shown = []
         with mock.patch.object(board_web, '_searcher', return_value=FakeClient(delay)):
-            board_web.early(SEARCH, fetch=fetch)
+            searching = board_web.early(SEARCH, fetch=fetch)
             began = time.monotonic()
             with redirect_stdout(io.StringIO()) as out:
                 matched = boards_first.run(self.db, SEARCH, lambda jobs: shown.append((time.monotonic() - began, jobs)), wait=wait)
+            with redirect_stdout(io.StringIO()):   # a web search still searching ends inside this test: its line never lands in another test's output
+                searching.exception(timeout=10)
         return matched, shown, out.getvalue()
 
     def test_first_officer_jobs_from_the_found_boards_are_on_screen_first(self):

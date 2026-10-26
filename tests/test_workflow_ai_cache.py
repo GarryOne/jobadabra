@@ -6,7 +6,6 @@ from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parent.parent / '.github/workflows'
 FILES = ('e2e.yml', 'desktop.yml', 'e2e-windows.yml')
-PREFIX = 'ai-answers-v2-'   # v1 held bad draws (26 Oct 2026); bump again to drop what a cache holds without deleting it
 
 
 def steps(text):
@@ -25,12 +24,13 @@ class AiAnswerCacheTests(unittest.TestCase):
                         self.assertNotIn('always()', step)
         self.assertGreaterEqual(saved, 4, 'a save step moved: update this test')
 
-    def test_every_workflow_uses_the_current_cache_prefix(self):
+    def test_mailreadings_poisoned_entries_never_restore(self):
+        # Only mailreading held a bad draw (26 Oct 2026); bumping every suite made the quality suite draw fresh from Free AI and fail on its own instability.
         for name in FILES:
             text = (WORKFLOWS / name).read_text()
             with self.subTest(file=name):
-                self.assertNotRegex(text, r'ai-answers-(?!v2-)')
-                self.assertIn(PREFIX, text)
+                self.assertNotIn('ai-answers-v2-', text)
+                self.assertIn("matrix.key == 'mailreading' && '-v2'", text)
 
     def test_every_second_try_draws_fresh_answers(self):
         for name in ('e2e.yml', 'desktop.yml'):

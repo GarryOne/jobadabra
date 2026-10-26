@@ -557,8 +557,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-v2-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-v2-${{ matrix.key }}-
+          key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -640,7 +640,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-v2-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6
@@ -774,8 +774,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-v2-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-v2-windows-${{ matrix.key }}-
+          key: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -834,7 +834,7 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-v2-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-windows-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6

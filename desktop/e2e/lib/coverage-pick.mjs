@@ -5,6 +5,7 @@
 // → every suite that loaded the file: a change nobody measured runs everyone who loads it, never no one.
 // Tests: test/coverage.test.mjs
 import {mergeRanges, SETUP, WHOLE} from './coverage.mjs';
+import {MAX_USERS} from './plan.mjs';
 
 // Coverage files of one run (each {suite, sha, files, steps, partial}) laid over the previous map: a suite this run recorded whole replaces its old entry; the others keep theirs.
 // A suite this run recorded only some steps of (an after-merge run, E2E_STEP_NAMES; owner's yes 26 Oct 2026: "keep it fresh after each merge") is laid over its old
@@ -152,16 +153,31 @@ export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(e
 //    suite already runs for this PR;
 //  - a line nobody ran (a file's top level, a function never called) → every suite that loads the file, whole: a change nobody measured runs everyone who loads it;
 //  - a suite recorded before steps were (no `steps`) → by its lines, whole, as suitesCovering.
-export function stepsCovering(map, hunksBySha, {smoke = 'settings'} = {}) {
+export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS} = {}) {
   const out = {}, setupOnly = [];
   const suites = Object.entries(map?.suites || {});
   const pick = (suite, patch, reason) => { const now = out[suite] ||= {steps: [], setup: false, whole: false, reason}; if (patch.step && !now.steps.includes(patch.step)) now.steps.push(patch.step); if (patch.setup) now.setup = true; if (patch.whole) now.whole = true; };
   const ran = (lines, range) => overlaps(lines || [], range);
+  // A changed line more than `maxUsers` suites ran is shared code (the app's launch, the local server, the notifier: every suite runs it), as a helper nearly
+  // every suite imports is (lib/plan.mjs MAX_USERS): ONE suite runs it, the settings smoke when it ran it (its steps that did, else its setup), else the first.
+  // #2118 (app-notify.js:61) and #2119 (server.js:51) ran all 20 suites whole on 26 Oct 2026.
+  // A line NO suite ran (a new import, a branch never taken) in a file more than `maxUsers` suites load: that suite's setup proves the file still loads; running
+  // every loader whole would not run the line either. -> {suite, loadOnly} or null.
+  const runner = (file, range) => {
+    const mine = name => hunksBySha[map.suites[name].sha]?.[file];   // that suite's recorded commit has a diff for the file
+    const users = suites.filter(([name, entry]) => ran(entry.files[file]?.lines, range) && mine(name)).map(([name]) => name);
+    const loaders = users.length ? users : suites.filter(([name, entry]) => entry.files[file] && mine(name)).map(([name]) => name);
+    if (loaders.length <= maxUsers) return null;
+    return {suite: loaders.includes(smoke) ? smoke : [...loaders].sort()[0], loadOnly: !users.length};
+  };
   for (const [suite, entry] of suites) {
     const hunks = hunksBySha[entry.sha] || {};
     for (const [file, ranges] of Object.entries(hunks)) {
       if (!entry.files[file]) continue;
       for (const range of ranges) {
+        const shared = runner(file, range);
+        if (shared && shared.suite !== suite) continue;
+        if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }
         if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} at import or across steps`); continue; }   // Python (lib/coverage.mjs WHOLE)
         const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && name !== WHOLE && ran(files[file]?.lines, range)).map(([name]) => name);
@@ -190,6 +206,10 @@ export function stillWhole(changedFiles, pointsAt, map) {
   for (const file of changedFiles) for (const suite of pointsAt(file)) if (!map?.suites?.[suite]?.files?.[file]) out.add(suite);
   return [...out];
 }
+
+// The map's suites with no step data (recorded before per-step coverage, 26 Oct 2026, and not run whole since: a run of a few steps keeps an old entry as it was):
+// they can only be picked whole. pr-suites.mjs names them, so "0 picked steps" is never silent. -> [{suite, sha, at}]
+export const steplessSuites = map => Object.entries(map?.suites || {}).filter(([, entry]) => !entry.steps).map(([suite, entry]) => ({suite, sha: String(entry.sha || '').slice(0, 7), at: String(entry.at || '').slice(0, 16)}));
 
 // E2E_STEP_NAMES per suite for e2e.yml (pr_steps): a whole suite gets none; setup only: ["(setup)"].
 export function stepNamesFor(picked) {

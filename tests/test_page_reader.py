@@ -117,9 +117,8 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(page_reader._reads.get('n', 0), 0)
         self.assertIsNotNone(page_reader.read('https://acme.ch/k', PAGE, FakeClient(), self.db))   # a page with your role is still read
 
-    def test_a_cut_off_answer_raises_and_nothing_is_cached(self):
-        with self.assertRaises(RuntimeError):
-            page_reader.read('https://acme.ch/k', PAGE, FakeClient(stop='max_tokens'), self.db)
+    def test_a_cut_off_answer_is_unread_and_nothing_is_cached(self):
+        self.assertIsNone(page_reader.read('https://acme.ch/k', PAGE, FakeClient(stop='max_tokens'), self.db))   # the run goes on
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM page_reads').fetchone()[0], 0)
 
 

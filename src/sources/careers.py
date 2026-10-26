@@ -79,7 +79,8 @@ def _places():
 
 def job_from_page(markup, url):
     """A job from a page with no job data: the main heading is the title, the page text the description, the place is any of your places
-    the text names. Rough on purpose: the crawl's title filter keeps only the roles you look for, and a page that is not a job is dropped by it."""
+    the text names. Rough on purpose: read_page_from asks the AI whether the page is one posting (one_posting.py; the title filter alone kept a
+    board's "3,531 Assistant Psychology jobs" category, 26 Oct 2026), and the crawl's title filter keeps only the roles you look for."""
     heading = re.search(r'<h1[^>]*>(.*?)</h1>', markup, re.S | re.I)
     title = ats.plain(heading.group(1) if heading else (re.search(r'<title[^>]*>(.*?)</title>', markup, re.S | re.I) or [None, ''])[1])
     title = re.split(r'\s+[|\u2013\u2014-]\s+', title)[0].strip()
@@ -290,15 +291,21 @@ def discover(website, fetch_page=get_text):
 
 
 def read_page_from(markup, url, fetch_page):
-    """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings."""
+    """read_page for a page already fetched: the data of the job pages it links to, or (a page of plain text) the pages' own headings, kept only
+    when the AI judges the page one posting (src/sources/one_posting.py: a site's "About Us" or a "3,531 ... jobs" category is not)."""
     def one(link):
         try:
             page = fetch_page(link)
         except Exception:  # noqa: BLE001
-            return []
-        return jsonld_jobs(page, link) or [job for job in [job_from_page(page, link)] if job]
+            return [], []
+        declared = jsonld_jobs(page, link)
+        return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])
     with ThreadPoolExecutor(max_workers=6) as pool:
-        found = [job for result in pool.map(one, job_links(markup, url)) for job in result]
+        read = list(pool.map(one, job_links(markup, url)))
+    from . import one_posting
+    headed = list({job['url']: job for _, jobs in read for job in jobs}.values())
+    postings = {job['url'] for job in one_posting.kept(headed, reader() is not None)}
+    found = [job for declared, jobs in read for job in declared + [job for job in jobs if job['url'] in postings]]
     return list({job['url']: job for job in found}.values())
 
 

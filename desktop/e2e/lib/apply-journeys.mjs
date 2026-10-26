@@ -7,7 +7,7 @@ import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {fillState, launchBrowser, readForm} from './extension.mjs';
+import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
 
@@ -45,7 +45,7 @@ export async function runJourneys(ctx, h) {
       if (state?.state === 'done' || state?.state === 'error') break;
       await pause(500);
     }
-    if (state?.state !== 'done') throw new Error(`the form was reached but not filled (state: ${JSON.stringify(state)})`);
+    if (state?.state !== 'done') throw new Error(`the form was reached but not filled (${fillNote(state, 90)})`);
     const actual = await readForm(tab);
     fail([...fillProblems({expected: {first_name: CONTACT.first_name, last_name: CONTACT.last_name, email: CONTACT.email, question_3001: '7'}, actual}), ...cvProblems(actual, cv),
       ...submitProblems(forms.fired, CHAIN.path), ...submitProblems(forms.fired, CHAIN.formPath)]);
@@ -81,7 +81,7 @@ export async function runJourneys(ctx, h) {
     for (const [tab, job, answer] of [[scripted, SCRIPTED, '9'], [chain, CHAIN, '7']]) {
       let state = null;
       for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
-      if (state?.state !== 'done') { problems.push(`${job.company}: its form was reached but not filled (state: ${JSON.stringify(state)})`); continue; }
+      if (state?.state !== 'done') { problems.push(`${job.company}: its form was reached but not filled (${fillNote(state, 90)})`); continue; }
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? "");
       if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}", its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
     }
@@ -99,7 +99,7 @@ export async function runJourneys(ctx, h) {
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
     const problems = [...submitProblems(forms.fired, LATE.formPath)];
-    if (state?.state !== 'done') problems.push(`the form was not filled once its fields came (state: ${JSON.stringify(state)})`);
+    if (state?.state !== 'done') problems.push(`the form was not filled once its fields came (${fillNote(state, 90)})`);
     else {
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
       if (value !== '5') problems.push(`Kubernetes years "${value}", the kit says 5`);
@@ -132,10 +132,10 @@ export async function runJourneys(ctx, h) {
     await tab.fill('#signup_username', 'e2e-person');
     await tab.fill('#signup_password', 'Fictional-Pass-1234');
     await ticked(tab, '#robot');   // each waits for the overlay again and retries a click it swallowed (lib/free-click.mjs)
-    await pressed(tab, '#create_account');
+    await pressed(tab, '#create_account', {landed: () => tab.url().startsWith(SIGNUP.formUrl)});   // counted only when the form behind it loads
     let state = null;
     for (let waited = 0; waited < 60000; waited += 500) { if (tab.url().startsWith(SIGNUP.formUrl)) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; } await pause(500); }
-    if (state?.state !== 'done') problems.push(`the application form after the sign-up was not filled (at ${tab.url()}, state ${JSON.stringify(state)})`);
+    if (state?.state !== 'done') problems.push(`the application form after the sign-up was not filled (at ${tab.url()}, ${fillNote(state, 60)})`);
     else {
       // The fill's last pass (the read-back after the page settled, ~0.8 s) can commit the box just after "done" is written (13 Oct 2026, flow e2e on #558: read 50 ms
       // before it): the value has 5 s to land, and a wait is said, so a slower fill stays visible.
@@ -188,7 +188,7 @@ export async function runJourneys(ctx, h) {
     else if (!presses[0].email || !presses[0].password) problems.push(`"Sign in" was pressed with the wrong ${!presses[0].email ? 'email' : 'password'} (the saved one for this site was not used)`);
     let state = null;
     for (let waited = 0; waited < 60000 && presses.length; waited += 500) { if (tab.url().startsWith(SIGNIN.formUrl)) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; } await pause(500); }
-    if (presses.length && state?.state !== 'done') problems.push(`the form after signing in was not filled (at ${tab.url()}, state ${JSON.stringify(state)})`);
+    if (presses.length && state?.state !== 'done') problems.push(`the form after signing in was not filled (at ${tab.url()}, ${fillNote(state, 60)})`);
     else if (presses.length) {
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
       if (value !== '4') problems.push(`the form after signing in has Kubernetes years "${value}", its kit says 4`);
@@ -265,7 +265,7 @@ export async function runJourneys(ctx, h) {
       if (!tab) throw new Error(`${fixture.title} never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
       let state = null;
       for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
-      if (state?.state !== 'done') problems.push(`${fixture.title}: the fill did not finish (${JSON.stringify(state)})`);
+      if (state?.state !== 'done') problems.push(`${fixture.title}: the fill did not finish (${fillNote(state, 90)})`);
       return tab;
     };
     const menuOf = async (tab, within) => {
@@ -304,7 +304,7 @@ export async function runJourneys(ctx, h) {
     if (!tab) throw new Error(`the notice-period form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
-    if (state?.state !== 'done') throw new Error(`the fill did not finish (${JSON.stringify(state)})`);
+    if (state?.state !== 'done') throw new Error(`the fill did not finish (${fillNote(state, 90)})`);
     if (await tab.locator('#notice_period').inputValue() !== '') problems.push(`the fill put "${await tab.locator('#notice_period').inputValue()}" in a menu where no choice means "3 months"`);
     await page.click('.nav[data-view="sessions"]');
     await page.locator('.view[data-view="sessions"]').getByText(PROPOSE.company).first().click({timeout: 15000}).catch(() => { throw new Error(`no session for ${PROPOSE.company} on the Sessions page`); });
@@ -349,7 +349,7 @@ export async function runJourneys(ctx, h) {
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
     const problems = [];
-    if (state?.state !== 'done') problems.push(`the fill did not finish (${JSON.stringify(state)})`);
+    if (state?.state !== 'done') problems.push(`the fill did not finish (${fillNote(state, 90)})`);
     let got = null;
     for (let waited = 0; waited < 10000 && !got; waited += 500) { got = await tab.evaluate(() => window.got?.cv_plus || null).catch(() => null); await pause(500); }
     if (!got) problems.push('the + slot never received a file (its input appears only after the + is pressed)');
@@ -370,7 +370,7 @@ export async function runJourneys(ctx, h) {
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
     const problems = [];
-    if (state?.state !== 'done') problems.push(`the fill did not finish (${JSON.stringify(state)})`);
+    if (state?.state !== 'done') problems.push(`the fill did not finish (${fillNote(state, 90)})`);
     const read = await readForm(tab);
     if (String(read.email?.value ?? read.email ?? '') !== CONTACT.email) problems.push('the e-mail inside the closed "profile" section was not filled');
     if (String(read.question_4001?.value ?? read.question_4001 ?? '') !== '6') problems.push('the question inside the closed "job" section is not the kit\'s 6');
@@ -389,7 +389,7 @@ export async function runJourneys(ctx, h) {
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error' || state?.state === 'account') break; await pause(500); }
     const problems = [];
-    if (state?.state !== 'done') problems.push(`the one-page form was not filled as the application (state: ${JSON.stringify(state)}): a CV upload beside the password makes it the form`);
+    if (state?.state !== 'done') problems.push(`the one-page form was not filled as the application (${fillNote(state, 90)}): a CV upload beside the password makes it the form`);
     else {
       const actual = await readForm(tab);
       const value = id => String(actual[id]?.value ?? actual[id] ?? '');
@@ -490,7 +490,7 @@ export async function runJourneys(ctx, h) {
     }
     if (!/page kind corrected: a posting with no Apply but a form's fields/.test(log)) problems.push('the wrong kind was not corrected (no "page kind corrected" line)');
     if (!/page kind forgotten/.test(log)) problems.push('the app never dropped the kept kind (no "page kind forgotten" line)');
-    if (state?.state !== 'done') problems.push(`the form was not filled after the correction (state: ${JSON.stringify(state)})`);
+    if (state?.state !== 'done') problems.push(`the form was not filled after the correction (${fillNote(state, 90)})`);
     else {
       const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
       if (value !== '4') problems.push(`Kubernetes years "${value}", its kit says 4`);

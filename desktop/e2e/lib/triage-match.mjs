@@ -189,7 +189,7 @@ export const NOT_READY = {
   unconfirmed: {why: 'A logic finding (a wrong result, a crash) not confirmed yet', next: 'The verdict pass or a person labels it confirmed; then the fixer takes it'},
 };
 // A failed suite step that is only a wait running out (a view that stayed hidden, an app that did not go quiet): the verdict pass reads its logs and says whether the product or the test is at fault.
-export const TIMEOUT_FAILURE = /Unexpected token '<'|is not valid JSON|ECONNRESET|ETIMEDOUT|fetch failed|Timeout \d+\s?ms exceeded|waitForSelector|waiting for locator|still busy after|did not (?:appear|finish|go quiet) within/i;
+export const TIMEOUT_FAILURE = /Unexpected token '<'|is not valid JSON|ECONNRESET|ETIMEDOUT|fetch failed|Timeout \d+\s?ms exceeded|waitForSelector|waiting for locator|still busy after|did not (?:appear|finish|go quiet) within|budget ran out|over its \d+-minute budget/i;   // the last two: the suite's own budget cut the step short (lib/runner.mjs), never a value
 export function notReadyReason(issue, {openBranches = [], now = Date.now()} = {}) {
   const labels = (issue.labels || []).map(label => label.name || label);
   const id = labels.find(name => name.startsWith('fp:'));

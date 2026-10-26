@@ -31,6 +31,17 @@ test('timing and the test environment are proof', () => {
   assert.equal(flakyProof('').flaky, false, 'no message proves nothing');
 });
 
+// Beta 40275152602 (26 Oct 2026): the suite's own budget cut a step short and the steps after it never ran; G5 called them "a wrong value" and kept the job red.
+// A fill still running when its wait ran out says so in timing words (lib/extension.mjs fillNote). The sign-up step's eaten click (state null) stays intermittent: a race.
+test('a step the suite budget cut short, one it never ran, and a fill still running at its wait are timing; a page that never moved is not', async () => {
+  const {fillNote} = await import('../lib/extension.mjs');
+  assert.equal(flakyProof('the suite\'s 7-minute budget ran out during this step (the suite is too long: split it): the window answers, the main process answers').flaky, true);
+  assert.equal(flakyProof('not run: the suite was over its 7-minute budget').flaky, true);
+  assert.equal(flakyProof(`the one-page form was not filled as the application (${fillNote({state: 'running'}, 90)}): a CV upload beside the password makes it the form`).flaky, true);
+  assert.equal(flakyProof(`the application form after the sign-up was not filled (at https://e2e.wd3.myworkdayjobs.com/e2e/signup, ${fillNote(null, 60)})`).flaky, false);
+  assert.equal(flakyProof(`the fill did not finish (${fillNote({state: 'error', error: 'x'}, 90)})`).flaky, false, 'an error is a value');
+});
+
 test('the CLI keeps the job red on an intermittent step, green when every step was timing', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flaky-proof-'));
   const write = (name, failures) => { const file = path.join(dir, name); fs.writeFileSync(file, JSON.stringify(failures)); return file; };

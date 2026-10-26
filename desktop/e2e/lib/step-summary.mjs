@@ -1,6 +1,7 @@
 // A suite's steps as a table on the GitHub run's Summary page (6 Oct 2026, owner: "looking at the logs in GitHub Actions there is not much I can understand"): every
 // step ✓/✗/skipped, its time, a failure in plain words and the screenshot it left, and where the trace is (lib/app.mjs keeps it only when a step failed). Pure.
 import {shotName} from './runner.mjs';
+import {causeOf, sharedCauseLines} from './step-cause.mjs';
 
 const cell = text => String(text || '').replace(/\s+/g, ' ').replace(/\|/g, '\\|').trim();
 const cut = (text, max) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
@@ -15,11 +16,13 @@ export function stepSummary(suite, results = [], {traces = [], artifact = '', ru
   const lines = [`### ${verdict} ${suite}${os ? ` (${os})` : ''}${rerun ? ', second try' : ''}: ${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped, ${Math.round(total)} s`, '',
     ...(reportUrl && !rerun ? [`📊 [Open the HTML report](${reportUrl}): each step with its screenshot, the failure and its trace`, ''] : [])];
   if (!results.length) return [...lines, 'No step ran (the suite stopped before its first step: see the log).', ''].join('\n');
+  const shared = sharedCauseLines(results);   // gate G3: one cause behind several reds is said once, first (lib/step-cause.mjs)
+  if (shared.length) lines.push(...shared.map(line => `> ${line}`), '');
   lines.push('| | Step | Time | What happened |', '|---|---|---:|---|');
   for (const result of results) {
     const time = result.seconds ? `${Math.round(Number(result.seconds))} s` : '';
     let what = '';
-    if (result.status === 'failed') what = `${cut(cell(result.note), 300)}${result.budget ? '' : ` · screenshot \`${shotName(result.name)}.png\``}`;
+    if (result.status === 'failed') what = `${cut(cell((result.cause || causeOf(result.note)).text), 300)}${result.budget ? '' : ` · screenshot \`${shotName(result.name)}.png\``}`;
     else if (result.status === 'skipped') what = 'skipped: a secret it needs is missing';
     else if (result.retried) what = `passed after one retry (the environment failed: ${cut(cell(result.retried), 120)})`;
     else if (result.faultNeverFired) what = '⚠️ passed, but its planted fault never fired: it may test nothing';

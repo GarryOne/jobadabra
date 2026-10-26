@@ -252,6 +252,7 @@
   "staged-worker.test.mjs",
   "stale-selectors.test.mjs",
   "stall-note.test.mjs",
+  "step-cause.test.mjs",
   "step-limit.test.mjs",
   "step-needs.test.mjs",
   "step-shots.test.mjs",

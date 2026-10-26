@@ -8,7 +8,7 @@ description: How to fix a red e2e suite (a beta gate, a nightly, a PR's suite ru
 Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were tests lagging the app; each was proved by a whole beta (30-50 min), and a suite stops at its first red step, so each beta showed one more layer.
 
 ## The loop
-1. **Read before you run.** `suite-failures.json`, the suite's step table (`steps.json`), the run log, the screenshot (`gh run download <run> -n e2e-artifacts-<suite>`). A failure that says only `""` or "not found" is missing evidence: add the log line first.
+1. **Read before you run.** `suite-failures.json`, the suite's step table (`steps.json`), the run log, the screenshot (`gh run download <run> -n e2e-artifacts-<suite>`). A failure that says only `""` or "not found" is missing evidence: add the log line first. **A "⚠ one cause, N steps" line comes first** (the log's end and the run's Summary page, gate G3, 26 Oct 2026): those reds are one fix (e.g. a click on one locator that was not visible), and their own checks never ran, so expect a next layer after it: fix the cause, then read the run on your PR before calling the suite fixed.
 2. **Name the cause in one line, from this list** (the /admin/operations/e2e page uses the same words):
    - **Test drift**: the app's words, roles or timing changed. Fix the test to read the app's own name (a shared constant), never a new copy.
    - **Product bug**: the app is wrong. Fix the app, add the test first.

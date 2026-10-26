@@ -4,6 +4,7 @@ import {ARTIFACTS} from './app.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
+import {causeOf, sharedCauseLines} from './step-cause.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
 // (5 Oct 2026: one outdated step hid fifteen, twice). A step marked `critical` (the setup the others need) still stops the suite.
@@ -104,7 +105,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       // The AI refusing every call (a spend limit) is the cause, whatever symptom the step saw: say it first, and it is the test environment's failure, never a product bug (lib/ai-refused.mjs).
       const refused = faults ? '' : refusalNote(getSession()?.profile);
       const note = refused ? `${refused}; the step then failed: ${base}` : base;
-      results.push({name, status: 'failed', note, ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
+      results.push({name, status: 'failed', note, cause: causeOf(note), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
       console.log(`✗ ${name}: ${note}`);
       if (keepGoing && !critical) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;
@@ -113,6 +114,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
   const summary = () => {
     const count = status => results.filter(result => result.status === status).length;
     console.log(`\n${count('passed')} passed, ${count('failed')} failed, ${count('skipped')} skipped`);
+    for (const line of sharedCauseLines(results)) console.log(line);   // gate G3: six reds on one locator read as one cause, not six bugs
     return count('failed') ? 1 : 0;
   };
   return {run, results, summary, ARTIFACTS};

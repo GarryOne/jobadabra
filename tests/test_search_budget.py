@@ -18,22 +18,22 @@ class BudgetTests(unittest.TestCase):
 
     def test_each_step_keeps_time_for_the_ones_after_it(self):
         budget.start(180, now=0)
-        self.assertFalse(budget.over('titles', now=99))
-        self.assertTrue(budget.over('titles', now=100), 'titles stop 80 s early: reading and scoring still get time')
-        self.assertFalse(budget.over('enrich', now=129))
-        self.assertTrue(budget.over('enrich', now=130))
-        self.assertFalse(budget.over('score', now=169))
-        self.assertTrue(budget.over('score', now=170), 'no call starts in the last 10 s: one running ends by 180 s')
+        self.assertFalse(budget.over('titles', now=94))
+        self.assertTrue(budget.over('titles', now=95), 'titles stop 85 s early: reading and scoring still get time')
+        self.assertFalse(budget.over('enrich', now=124))
+        self.assertTrue(budget.over('enrich', now=125))
+        self.assertFalse(budget.over('score', now=164))
+        self.assertTrue(budget.over('score', now=165), 'no call starts in the last 15 s: one running ends by 180 s')
 
     def test_a_refresh_that_scores_first_leaves_the_facts_their_time(self):
         # 10 Oct 2026: scoring took all 180 s, the facts started with "Time is up", and 0 of 103 jobs ever had them.
         budget.start(180, now=0)
         budget.score_first()
-        self.assertFalse(budget.over('score', now=144))
-        self.assertTrue(budget.over('score', now=145), 'scoring stops 35 s early (25 s of facts, the last 10 kept)')
-        self.assertFalse(budget.over('enrich', now=169), 'the facts run to the end of the budget')
-        self.assertTrue(budget.over('enrich', now=170))
-        self.assertEqual(budget.batch('score', 1000, now=0), int((180 - 35) * 1.0 / budget.PACE['score']), 'the batch is sized without their 35 s')
+        self.assertFalse(budget.over('score', now=139))
+        self.assertTrue(budget.over('score', now=140), 'scoring stops 40 s early (25 s of facts, the last 15 kept)')
+        self.assertFalse(budget.over('enrich', now=164), 'the facts run to the end of the budget')
+        self.assertTrue(budget.over('enrich', now=165))
+        self.assertEqual(budget.batch('score', 1000, now=0), int((180 - 40) * 1.0 / budget.PACE['score']), 'the batch is sized without their 40 s')
         budget.start(180, now=0)
         self.assertTrue(budget.over('enrich', now=145), 'a fresh budget is back to reading first')
 
@@ -132,13 +132,13 @@ class SizedBatchTests(unittest.TestCase):
     def test_each_step_takes_its_share_at_its_own_measured_pace(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch('src.paths.DATA', pathlib.Path(tmp)), contextlib.redirect_stdout(io.StringIO()) as out:
             budget.start(180, now=0)
-            self.assertEqual(budget.batch('score', 60, now=120), 16, '50 s left (the last 10 kept) at 3 s a job')
+            self.assertEqual(budget.batch('score', 60, now=120), 15, '45 s left (the last 15 kept) at 3 s a job')
             budget.record('score', 60, 30)   # this Mac scores at 2 s a job: the pace moves halfway there
-            self.assertEqual(budget.batch('score', 60, now=120), 20, '50 s left at 2.5 s a job')
+            self.assertEqual(budget.batch('score', 60, now=120), 18, '45 s left at 2.5 s a job')
             self.assertEqual(budget.in_calls('title_rounds', 300, 30, 2, now=60), 120, '20% of 120 s at 10 s a round: 2 rounds of 2 calls of 30')
             self.assertEqual(budget.batch('enrich', 5, now=0), 5, 'a small batch is taken whole, nothing said')
-        self.assertIn('This refresh scores 16 of 60 jobs', out.getvalue())
-        self.assertIn('44 wait for the next refresh, best places and closest jobs first', out.getvalue())
+        self.assertIn('This refresh scores 15 of 60 jobs', out.getvalue())
+        self.assertIn('45 wait for the next refresh, best places and closest jobs first', out.getvalue())
 
 
 class PlaceCallsTests(unittest.TestCase):

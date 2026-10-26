@@ -14,16 +14,17 @@ class FloorTests(unittest.TestCase):
         budget.start(0)
 
     def test_scorings_spent_share_still_takes_and_starts_the_first_three(self):
-        budget.start(180, now=0)   # 175 s: scoring's time is spent (it keeps TAIL), the run's is not
-        self.assertEqual(budget.batch('score', 10, now=175), 3, 'the batch keeps 3 when the time is up')
-        self.assertEqual(budget.batch('score', 2, now=175), 2)
-        self.assertEqual([budget.may_score(now=175) for _ in range(5)], [True, True, True, False, False])
+        budget.start(180, now=0)
+        budget.score_first()   # 150 s: scoring's time is spent (it keeps the facts' 25 s and the last 15), the run's is not
+        self.assertEqual(budget.batch('score', 10, now=150), 3, 'the batch keeps 3 when the time is up')
+        self.assertEqual(budget.batch('score', 2, now=150), 2)
+        self.assertEqual([budget.may_score(now=150) for _ in range(5)], [True, True, True, False, False])
 
     def test_the_floor_never_passes_the_runs_end(self):
         # owner, 26 Oct 2026: "A find jobs session should take at most 3min" (tests/test_three_minutes.py)
-        budget.start(180, now=0)
-        self.assertEqual(budget.batch('score', 10, now=180), 0)
-        self.assertFalse(budget.may_score(now=180))
+        budget.start(180, now=0)   # the last 15 s: a call started now would end past 180 s
+        self.assertEqual(budget.batch('score', 10, now=165), 0)
+        self.assertFalse(budget.may_score(now=165))
         self.assertEqual(budget.batch('score', 10, now=500), 0, 'the floor is used: the rest waits for the next search')
 
     def test_scores_started_in_time_count_toward_the_floor(self):
@@ -33,10 +34,12 @@ class FloorTests(unittest.TestCase):
 
     def test_the_floor_is_per_search(self):
         budget.start(180, now=0)
-        budget.may_score(now=175)
-        self.assertEqual(budget.batch('score', 10, now=176), 2)
+        budget.score_first()
+        budget.may_score(now=150)
+        self.assertEqual(budget.batch('score', 10, now=151), 2)
         budget.start(180, now=0)   # a new search
-        self.assertEqual(budget.batch('score', 10, now=176), 3)
+        budget.score_first()
+        self.assertEqual(budget.batch('score', 10, now=151), 3)
 
     def test_without_a_budget_every_score_starts(self):
         budget.start(0)
@@ -59,7 +62,8 @@ class ScoreRunTests(unittest.TestCase):
             store.import_watch_report(db, report)
             from src.daily_helpers import to_score
             import time
-            budget.start(180, now=time.monotonic() - 176)   # scoring's time is spent, the run's last seconds are not
+            budget.start(180, now=time.monotonic() - 150)   # scoring's time is spent (it keeps the facts' time), the run's is not
+            budget.score_first()
             stats = {}
             score.run(db, to_score(db, frozenset()), 'Profile v1', 'm', 50, client=ModelClient({'m': lambda title: 70}), stats=stats, workers=1)
             self.assertEqual(len(score.load(db)), 3, 'the first 3, the others wait for the next search')

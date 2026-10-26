@@ -96,7 +96,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
     try:
         search = search_for(db, country)
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS]   # several kinds: no one field to ask for
-        found = (google or _google)(db, country, kinds_for(db, country), out)   # boards only Google's results name, judged by the AI first
+        thin = [kind for kind in kinds_for(db, country) if kind != 'software']   # the few free searches: the thinnest kinds, never the strongest
+        found = (google or _google)(db, country, thin, out)   # boards only Google's results name, judged by the AI first
         proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
         began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)

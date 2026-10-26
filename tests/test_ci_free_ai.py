@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / '.github' / 'workflows'
 ACTION = ROOT / '.github' / 'actions' / 'free-ai-relay' / 'action.yml'
-RELAY_STEP = 'uses: ./.github/actions/free-ai-relay'
+RELAY_STEP = re.compile(r'uses: \./(?:\.ci-relay/)?\.github/actions/free-ai-relay')   # from the workflow's own commit (.ci-relay) or the workspace's
 
 # Jobs that see E2E_ANTHROPIC_KEY but start no relay, each with its reason.
 NO_RELAY = {
@@ -36,17 +36,18 @@ class CiFreeAiTests(unittest.TestCase):
             for name, text in jobs(path.read_text()).items():
                 if 'E2E_ANTHROPIC_KEY: ${{' not in text or (path.name, name) in NO_RELAY:
                     continue
-                if RELAY_STEP not in text:
+                if not RELAY_STEP.search(text):
                     missing.append(f'{path.name} {name}')
         self.assertEqual(missing, [], 'start the Free AI relay in these jobs (or add them to NO_RELAY with the reason)')
 
     def test_the_relay_starts_after_node_and_before_the_suites_run(self):
         for path in sorted(WORKFLOWS.glob('*.yml')):
             for name, text in jobs(path.read_text()).items():
-                if RELAY_STEP not in text:
+                relay = RELAY_STEP.search(text)
+                if not relay:
                     continue
                 node = text.find('actions/setup-node@')
-                self.assertTrue(0 <= node < text.find(RELAY_STEP), f'{path.name} {name}: Node 22 first (the relay uses node:sqlite)')
+                self.assertTrue(0 <= node < relay.start(), f'{path.name} {name}: Node 22 first (the relay uses node:sqlite)')
                 self.assertIn('secrets.CI_FREE_AI_CF_TOKEN', text, f'{path.name} {name}')
 
     def test_the_gate_checks_the_free_ai_token(self):
@@ -72,6 +73,34 @@ class CiFreeAiTests(unittest.TestCase):
                         self.assertIn(needed, step, f'{path.name} {name}: the screenshot review step')
                     self.assertRegex(text, r'(?m)^      issues: read', f'{path.name} {name}: the lessons are read from the issues')
         self.assertGreaterEqual(reviews, 4)
+
+    def test_no_job_loads_a_local_action_from_another_commit(self):
+        """A job that checks out the commit under test (a bisect, a soak, a gate tag) must load its local actions from the workflow's own commit.
+
+        26 Oct 2026: every "Bisect a red main suite" run failed at "Free AI relay" ("Can't find 'action.yml'"): the bisect checked out a commit older than
+        the relay, and `uses: ./.github/actions/free-ai-relay` reads the action from that checkout."""
+        own = {'', '${{ github.sha }}', '${{ github.workflow_sha }}'}
+        # Reusable workflows run from a user's private repo: there github.sha is the caller's commit, and the action ships with the code version the user runs.
+        same_version_on_purpose = {('daily.yml', 'run'), ('scout.yml', 'scout')}
+        wrong = []
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            for name, text in jobs(path.read_text()).items():
+                if (path.name, name) in same_version_on_purpose:
+                    continue
+                refs = {}   # checkout path ('' = the workspace root) -> its ref
+                for step in text.split('\n      - '):
+                    if 'uses: actions/checkout@' in step:
+                        where = re.search(r'(?m)^\s+path:\s*(\S+)', step)
+                        ref = re.search(r'(?m)^\s+ref:\s*(\$\{\{[^}]*\}\}|\S+)', step)
+                        refs[where.group(1).removeprefix('./').rstrip('/') if where else ''] = ref.group(1) if ref else ''
+                    for local in re.findall(r'(?m)uses:\s*\./(\S+)/action\.yml|uses:\s*\./(\S+)', step):
+                        target = (local[0] or local[1]).strip('/')
+                        if target.startswith('.github/workflows/'):
+                            continue   # a reusable workflow is read from the workflow's own commit by GitHub itself
+                        root = next((p for p in sorted(refs, key=len, reverse=True) if p and target.startswith(p + '/')), '')
+                        if refs.get(root, '') not in own:
+                            wrong.append(f'{path.name} {name}: ./{target} comes from a checkout of {refs.get(root)}')
+        self.assertEqual(wrong, [], 'check out the workflow\'s own commit (ref: ${{ github.sha }}) into a side path and use the action from there')
 
     def test_every_job_left_out_still_exists(self):
         for (workflow, name), why in NO_RELAY.items():

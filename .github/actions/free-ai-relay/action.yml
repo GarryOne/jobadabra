@@ -3,7 +3,8 @@
 # never production's /api/ai, Worker or counters; docs/rules/why.md) and hands the job E2E_FREE_AI_URL and a throwaway JPF1 key (E2E_FREE_AI_KEY, masked).
 # desktop/e2e/lib/engine.mjs then runs the app under test and the judges on it. No token (a fork): nothing starts and the job runs as before.
 # The relay runs inside the joined tree the site is built in (the public tree with the site's files laid over it, as its tools/overlay.sh does), built here with
-# git archive so it works on Linux, Mac and Windows runners. Needs Node 22 set up first (node:sqlite). Guarded by tests/test_ci_free_ai.py.
+# git archive so it works on Linux, Mac and Windows runners. A job testing an older commit (a bisect) checks out its own commit beside it and passes
+# public-tree, so the relay (this file and the code it runs) is always the workflow's own version. Needs Node 22 set up first (node:sqlite). Guarded by tests/test_ci_free_ai.py.
 name: Free AI relay
 description: The site's Free AI handler on this runner, for the e2e suites
 inputs:
@@ -12,6 +13,7 @@ inputs:
   app-id: {description: 'secrets.CI_APP_ID (the CI App reads jobadabra-web)', required: false, default: ''}
   app-key: {description: 'secrets.CI_APP_PRIVATE_KEY', required: false, default: ''}
   port: {description: 'the relay port on this runner', required: false, default: '8787'}
+  public-tree: {description: "the public tree the relay runs in, relative to the workspace: '.' or the workflow's own commit checked out beside an older one under test (a bisect)", required: false, default: '.'}
 runs:
   using: composite
   steps:
@@ -44,10 +46,11 @@ runs:
         FREE_AI_LOCAL_CF_AI_TOKEN: ${{ inputs.cf-token }}
         FREE_AI_LOCAL_CF_ACCOUNT_ID: ${{ inputs.cf-account }}
         PORT: ${{ inputs.port }}
+        PUBLIC_TREE: ${{ inputs.public-tree }}
       run: |
         set -euo pipefail
         tree="$RUNNER_TEMP/free-ai-tree"; rm -rf "$tree"; mkdir -p "$tree"
-        git -C "$GITHUB_WORKSPACE" archive HEAD | tar -x -C "$tree"
+        git -C "$GITHUB_WORKSPACE/$PUBLIC_TREE" archive HEAD | tar -x -C "$tree"
         git -C "$GITHUB_WORKSPACE/.free-ai-site" archive HEAD | tar -x -C "$tree"
         site="$(git -C "$GITHUB_WORKSPACE/.free-ai-site" rev-parse --short HEAD)"
         rm -rf "$GITHUB_WORKSPACE/.free-ai-site"   # nothing private stays in the workspace the suites and their artifacts see

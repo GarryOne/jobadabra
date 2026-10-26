@@ -167,9 +167,18 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
-        uses: ./.github/actions/free-ai-relay
+      # The relay comes from this workflow's own commit: a bisect or a soak checks out an older commit above, which may have no relay (26 Oct 2026: every bisect
+      # failed with "Can't find 'action.yml'"). Guard: tests/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit.
+      - name: The Free AI relay from this workflow's own commit
+        uses: actions/checkout@v5
         with:
+          ref: ${{ github.sha }}
+          path: .ci-relay
+          persist-credentials: false
+      - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
+        uses: ./.ci-relay/.github/actions/free-ai-relay
+        with:
+          public-tree: .ci-relay
           cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
           cf-account: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}
           app-id: ${{ secrets.CI_APP_ID }}

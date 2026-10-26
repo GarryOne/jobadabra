@@ -33,6 +33,8 @@ test('the window state carries whether our sender is on and whether the person u
   const answer = body => async () => ({json: async () => body});
   const off = await state(s, answer({ok: true, email: 'a@b.co', confirmed: true, sending: false, serviceOff: true}));
   assert.deepEqual([off.sending, off.serviceOff], [false, true]);
+  const stopped = await state(s, answer({ok: true, email: 'a@b.co', confirmed: false, unconfirmedStopped: true}));
+  assert.equal(stopped.unconfirmedStopped, true, '14 days unconfirmed: the site stopped the mail, the window must know');
   const old = await state(s, answer({ok: true, email: 'a@b.co'}));
   assert.equal(old.sending, null, 'a site without the flag: unknown, nothing claimed');
 });
@@ -44,6 +46,7 @@ test('each reason a switch does nothing is said in words, and a save error survi
   assert.equal(notes(base, 'Enter your email address to be told by email.').message, 'Enter your email address to be told by email.');
   assert.match(notes({...base, email: 'a@b.co', sending: false}).email, /not switched on/i);
   assert.match(notes({...base, email: 'a@b.co', confirmed: true, serviceOff: true}).email, /stopped these emails/);
+  assert.match(notes({...base, email: 'a@b.co', confirmed: false, unconfirmedStopped: true}).email, /stopped.*confirm/i, 'mail stopped after 14 unconfirmed days: said, with the way back');
   assert.match(notes({...base, email: 'a@b.co', confirmed: true}).email, /confirmed/);
   assert.match(notes({...base, reached: false}).message, /Offline/);
 });
@@ -93,6 +96,7 @@ test('the Email card in "Your setup" shows each state, and only when e-mail is c
   assert.deepEqual(emailCard({...base, confirmed: false}), {shown: true, on: false, text: 'Waiting for the confirm link'});
   assert.deepEqual(emailCard({...base, serviceOff: true}), {shown: true, on: false, text: 'You unsubscribed'});
   assert.deepEqual(emailCard({...base, sending: false}), {shown: true, on: false, text: 'Sending is off on our side'});
+  assert.deepEqual(emailCard({...base, confirmed: false, unconfirmedStopped: true}), {shown: true, on: false, text: 'Mail stopped: confirm your email'});
   assert.deepEqual(emailCard({...base, reached: false}), {shown: true, on: true, text: 'Saved · a@b.co'});
   assert.deepEqual(emailCard({...base, by: ['app'], email: ''}), {shown: true, on: false, text: 'Not set up'}, 'no way to be told: suggested');
   assert.equal(emailCard({...base, by: ['telegram', 'app'], email: ''}).shown, false, 'Telegram users are not nagged');

@@ -8,7 +8,9 @@ export function notes(state, error = '') {
   const email = !state.email ? 'New matches, reminders and answers in your inbox. Add your address below.'
     : state.sending === false ? `To ${state.email}. Email is not switched on on our side yet: your choice is kept and mail starts when it is.`
       : state.serviceOff ? `You stopped these emails with the link in one of them. Turn them on again with "Email settings" at the bottom of any of our emails.`
-        : state.confirmed ? `To ${state.email} (confirmed).` : `To ${state.email}. Confirm it with the link in your first email.`;
+        : state.confirmed ? `To ${state.email} (confirmed).`
+          : state.unconfirmedStopped ? `To ${state.email}. Mail stopped: the address was not confirmed in 14 days. Press the confirm link in your first email to start it again.`
+            : `To ${state.email}. Confirm it with the link in your first email.`;
   const telegram = state.telegram ? 'Your own bot: digests and reminders, with buttons.' : 'Your own bot. Connect it first:';
   const lostBot = (state.chosen || []).includes('telegram') && !state.telegram;   // chosen, then the bot was lost: said, never dropped in silence
   const message = error || (lostBot ? 'Telegram is chosen but not connected, so nothing goes there. Connect it, or turn it off.' : '')
@@ -37,5 +39,6 @@ export function emailCard(state) {
   if (!state.reached) return {shown, on: true, text: `Saved · ${state.email}`};
   if (state.sending === false) return {shown, on: false, text: 'Sending is off on our side'};
   if (state.serviceOff) return {shown, on: false, text: 'You unsubscribed'};
+  if (!state.confirmed && state.unconfirmedStopped) return {shown, on: false, text: 'Mail stopped: confirm your email'};
   return state.confirmed ? {shown, on: true, text: `Confirmed · ${state.email}`} : {shown, on: false, text: 'Waiting for the confirm link'};
 }

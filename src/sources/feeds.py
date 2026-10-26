@@ -54,17 +54,24 @@ def _words_title(title):
     return bool(TITLES.search(title or '') or TITLES.search(plain(title)))
 
 
+ASKED = '\x00asked'   # a key in the run's judged titles: the AI title sort ran this run (reset with them)
+
+
 def wanted_title(title):
-    """A title we score: the AI's answer when it judged it for this search (src/ai/title_triage.py; owner, 26 Oct 2026: "The AI decides"; a
-    role word kept "Pilote / Product Owner" for a pilot search, a level word dropped "Senior First Officer"); else the words (_words_title)."""
+    """A title we keep and score: the AI's answer for this search (src/ai/title_triage.py; owner, 26 Oct 2026: "The AI decides"; a role word
+    kept "Pilote / Product Owner" for a pilot search, a level word dropped "Senior First Officer"). One the AI sort did not judge though it
+    ran (failed, busy, past its cap) is unknown, not kept: asked next run (CLAUDE.md: never a keyword's guess); no AI at all: the words."""
     judged = judged_title(title)
-    return _words_title(title) if judged is None else judged
+    if judged is not None:
+        return judged
+    return False if _triaged().get(ASKED) else _words_title(title)
 
 
 def sure_title(title):
-    """A title shown at once, before the AI sort (src/sources/feed_scan.py): the same answer, so a role-word hit shows until the AI says no
-    (owner, 26 Oct 2026: "Show at once, AI removes"; keep_open closes one it later rejects)."""
-    return wanted_title(title)
+    """A title shown at once, before the AI sort (src/sources/feed_scan.py): the AI's answer, else the words, so a role-word hit shows until
+    the AI says no (owner, 26 Oct 2026: "Show at once, AI removes"; keep_open closes one it later rejects). Shown only, never counted."""
+    judged = judged_title(title)
+    return _words_title(title) if judged is None else judged
 
 
 def _triaged_shared():
@@ -94,7 +101,10 @@ def triage(jobs):
     from ..time_budget import best_first   # your best places' titles first: a short search sorts them before the rest
     asked = [job for job in jobs if job.get('title') and wanted_location(job)]   # every title in your places, words or not (owner, 26 Oct 2026)
     titles = [job['title'] for job in best_first(asked)]   # sorted after the filter: a first search lists ~60,000 jobs, a few thousand are asked about
-    if not titles or features.disabled('title_triage') or not engine.ready():
+    if features.disabled('title_triage') or not engine.ready():
+        return
+    _triaged()[ASKED] = True   # from here on a title it leaves unjudged is unknown, never the words' guess
+    if not titles:
         return
     here = [job['title'] for job in best_first(asked) if in_my_place(job)]   # located in your places: asked first, and past the clock (time_budget.local_titles)
     try:
@@ -102,7 +112,7 @@ def triage(jobs):
         _triaged().update(title_triage.decide(here, _SEARCH, local=True) if here else {})
         _triaged().update(title_triage.decide(titles, _SEARCH))
     except Exception as error:  # noqa: BLE001 — not sorted this run: the exact words only, said
-        print(f'Warning: job titles not sorted by {providers.who()} ({reason(error)}): only your role words match this run')
+        print(f'Warning: job titles not sorted by {providers.who()} ({reason(error)}): asked again next run, role-word hits only shown meanwhile')
         detail('sources', error)
 
 

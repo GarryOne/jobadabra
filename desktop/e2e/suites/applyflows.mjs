@@ -13,7 +13,7 @@ const ci = !!process.env.CI;
 export const stepNeeds = applyNeeds;   // what a step needs when E2E_STEPS picks it (lib/runner.mjs wantedWords)
 
 export const varies = true;
-export const minutes = 15;   // CI's job limit: a first attempt may use the default 7-minute budget and the retry ('once more, to tell flaky from real') another 7, plus setup
+export const minutes = 17;   // CI's job limit: a first attempt may use the default 7-minute budget and the retry ('once more, to tell flaky from real') another 7, plus setup (15 since 096c8fa cut a slow retry short; test/suite-retry-room.test.mjs)
 export const budgetMinutes = ci ? 0 : 10;   // a Mac's first run builds the workspace once with the wizard's path (10); CI: the default 7, each of its two slices takes ~3.5 min (24 Oct 2026: the whole suite took ~6 of 7 and its retry ran out)
 export const shards = 2;   // the journeys take turns across two gate jobs (JP_REPLAY_SHARD, suites/apply.mjs runApply); a Mac run is the whole suite
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)

@@ -3,7 +3,8 @@
 // person's to decide, and never submits. Starts from a set-up install; writes and removes only its own jobs in its Notion page. The forms are local
 // (lib/forms.mjs, behind the real job-site host names), the AI answer is canned, so the suite costs nothing and no employer site is contacted.
 import fs from 'node:fs';
-import {parseShard, shardTurn} from '../lib/replay-shard.mjs';
+import {parseShard} from '../lib/replay-shard.mjs';
+import {stepSlicer} from '../lib/step-slices.mjs';
 import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
 import {CHAIN, FORMS, HOSTS, LATE, REAL_FORMS, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED, realFieldId} from '../lib/forms.mjs';
@@ -21,13 +22,22 @@ import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, pause, tailoredFrom}
 export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
 export const varies = true;
 export const minutes = 20;   // the job's limit: a first attempt may use the suite's 7-minute budget and the retry ('once more, to tell flaky from real') another 7, plus setup (12 Oct 2026: 12 cancelled the retry)
+export const shards = 2;   // the forms and CV steps split across two gate jobs (JP_REPLAY_SHARD, runApply below); the setup and the final checks run in both. 26 Oct 2026: one job
+// took 6-6.5 min of its 7 and ran over on a slow attempt (beta 40155147300 too, 25 Oct): the same steps vary 2-4x between runners (real forms 46-122 s)
+export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)
+// The split's weights: each step's seconds on a slow attempt (beta, 26 Oct 2026, Notion leg), a step's followers counted in it (multi-step + the session page,
+// cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).
+export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
+  'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'the form\'s panel offers a tailored CV': 23, 'the person submits a form': 21,
+  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11};
 export const browser = true;
 export const engine = 'api';   // the form's open question is answered by the AI proxy, which needs the API engine
 export const macos = true;   // runs on a macOS runner: the real Chrome extension, opened through `open` as on a Mac (lib/plan.mjs runnerOf)
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
-  'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP]};
+  'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
+  'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
 export const name = 'apply';
@@ -56,12 +66,11 @@ export async function runApply(ctx, parts) {
   await ensureSetUp(ctx);   // before the filter below: a new Notion page is built by the wizard's own steps
   const all = ctx.run;
   const live = parts.includes('live') ? livePosting() : null;   // the live run: one real posting, read from this Mac's job list; the fixture checks do not apply to it
-  // A slice of the journeys (applyflows `shards`, JP_REPLAY_SHARD=i/n): the shared steps run in every slice, the journey steps take turns (lib/replay-shard.mjs shardTurn).
-  const slice = parts.includes('flows') && !live ? parseShard(process.env.JP_REPLAY_SHARD) : null;
-  let turn = 0;
+  // A slice (the suite's `shards`, JP_REPLAY_SHARD=i/n): the shared steps run in every slice; the others split by weight, take turns, or follow a step they need (lib/step-slices.mjs).
+  const takes = stepSlicer(live ? null : parseShard(process.env.JP_REPLAY_SHARD), {seconds: parts.includes('flows') ? {} : stepSeconds, needs: stepNeeds, setup: SETUP});
   ctx.run = (name, fn, options) => {
     if (!((partOf(name) === 'both' && !(live && name.startsWith('through all of it'))) || parts.includes(partOf(name)))) return undefined;
-    if (slice && partOf(name) === 'flows' && !shardTurn(turn++, slice)) return undefined;
+    if (partOf(name) !== 'both' && !takes(name)) return undefined;
     return all(name, fn, options);
   };
   // The jobs this part seeds: the journeys use their own fixtures, the forms and the CV steps the form fixtures.

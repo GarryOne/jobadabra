@@ -5,6 +5,7 @@ import {$} from './core.js';
 import {shared} from './shared.js';
 import {notes} from '../notify-words.js';
 import {openSetting} from './settings.js';
+import {forgetEmailState} from './setup-email-card.js';
 
 const BOXES = {email: 'notify-email', app: 'notify-app', telegram: 'notify-telegram'};
 let busy = false;
@@ -35,6 +36,7 @@ export function bindNotify({savedToast, updateRepo}) {
       const by = Object.entries(BOXES).filter(([, id]) => $(id).checked).map(([name]) => name);
       const result = await window.pilot.notifySave({by, email: $('notify-address').value, marketing: $('notify-marketing').checked, cadence: $('notify-cadence').value});
       error = result.ok ? '' : result.error;
+      forgetEmailState();   // Overview's Email card asks again
       if (result.ok) { savedToast('Saved ✓', `Tell me by: ${by.join(', ') || 'nothing'}`); updateRepo(); }
     } finally { busy = false; }
     await showNotify(error);

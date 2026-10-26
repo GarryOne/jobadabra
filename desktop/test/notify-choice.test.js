@@ -8,7 +8,7 @@ import {test} from 'node:test';
 import * as github from '../lib/github.js';
 import {state} from '../lib/notify-channel.js';
 import {createStorage} from '../lib/storage.js';
-import {channelLine, notes, telegramRequired} from '../renderer/notify-words.js';
+import {channelLine, emailCard, notes, telegramRequired} from '../renderer/notify-words.js';
 
 const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 function repoStorage(settings = {}) {
@@ -84,4 +84,18 @@ test('Telegram chosen but not connected warns on the card, in Connections and on
   const settings = read('renderer/pages/services-list.js'), runs = read('renderer/pages/runs-page.js');
   assert.match(settings, /telegramRequired\(shared\.state\.notifyBy, shared\.state\.settings\.notifyBy\)/);
   assert.match(runs, /chosen: shared\.state\.settings\.notifyBy/);
+});
+
+// Owner, 26 Oct 2026 (via 6e): "Add it, small follow-up": an Email card in Settings → Overview "Your setup", next to AI, Gmail and the extension, with its state.
+test('the Email card in "Your setup" shows each state, and only when e-mail is chosen or no other way to be told is', () => {
+  const base = {by: ['email', 'app'], email: 'a@b.co', confirmed: true, reached: true, sending: true};
+  assert.deepEqual(emailCard(base), {shown: true, on: true, text: 'Confirmed · a@b.co'});
+  assert.deepEqual(emailCard({...base, confirmed: false}), {shown: true, on: false, text: 'Waiting for the confirm link'});
+  assert.deepEqual(emailCard({...base, serviceOff: true}), {shown: true, on: false, text: 'You unsubscribed'});
+  assert.deepEqual(emailCard({...base, sending: false}), {shown: true, on: false, text: 'Sending is off on our side'});
+  assert.deepEqual(emailCard({...base, reached: false}), {shown: true, on: true, text: 'Saved · a@b.co'});
+  assert.deepEqual(emailCard({...base, by: ['app'], email: ''}), {shown: true, on: false, text: 'Not set up'}, 'no way to be told: suggested');
+  assert.equal(emailCard({...base, by: ['telegram', 'app'], email: ''}).shown, false, 'Telegram users are not nagged');
+  const settings = read('renderer/pages/settings.js');
+  assert.match(settings, /emailSetupCard\(/, 'Overview draws it');
 });

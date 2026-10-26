@@ -15,6 +15,7 @@ import {profileTab, showContact} from './profile.js';
 import {startDefault} from '../tab-choice.js';
 import {byStore} from '../store-words.js';
 import {SERVICES, isRequired} from './services-list.js';
+import {emailSetupCard} from './setup-email-card.js';
 
 // ---------- Settings: sub-pages (Overview, Application profile, Automation, Connections, Data & backup, Advanced) ----------
 let pageNow = '';
@@ -238,6 +239,7 @@ function renderServices(status) {
     card.addEventListener('click', () => openSetting(service.id));
     return card;
   }));
+  emailSetupCard($('ov-services'), openSetting).catch(error => console.error('Settings · email card:', error));
 }
 // Overview's summaries. What this Mac knows is shown at once; the rest fills in as it answers.
 function renderKnown() {

@@ -74,10 +74,14 @@ SCHEMA = {
         },
         'english_is_enough': {
             'type': 'object', 'additionalProperties': False, 'required': ['value', 'evidence'],
+            'description': 'yes when English alone is enough to get and do the job: the working language is English and every other language '
+                           'is at most a plus; no when the posting requires another language; unknown when it says nothing about languages',
             'properties': {'value': {'type': 'string', 'enum': ['yes', 'no', 'unknown']}, 'evidence': _evidence},
         },
         'seniority': {
             'type': 'object', 'additionalProperties': False, 'required': ['value', 'evidence'],
+            'description': 'The level the title or text states: junior (entry level, up to about 2 years), mid (about 3 to 5 years), senior, '
+                           'staff_principal, lead_manager (leads people); unknown when neither says it',
             'properties': {
                 'value': {'type': 'string', 'enum': ['junior', 'mid', 'senior', 'staff_principal', 'lead_manager', 'unknown']},
                 'evidence': _evidence,
@@ -85,6 +89,8 @@ SCHEMA = {
         },
         'work_mode': {
             'type': 'object', 'additionalProperties': False, 'required': ['value', 'remote_scope', 'evidence'],
+            'description': 'onsite = at the workplace every working day; hybrid = some days at home, some at the workplace; remote = from home '
+                           '(remote_scope says where from); unknown when the posting does not say',
             'properties': {
                 'value': {'type': 'string', 'enum': ['onsite', 'hybrid', 'remote', 'unknown']},
                 'remote_scope': {'type': 'string', 'description': 'Where remote work is allowed, e.g. "one country", "EMEA", "worldwide", or ""'},

@@ -26,6 +26,14 @@ class FieldGuidanceInPrompt(unittest.TestCase):
             with self.subTest(where):
                 self.assertEqual([name for name, note in described(schema['properties']) if note not in prompt], [])
 
+    def test_every_fact_with_a_judged_value_says_what_it_means(self):
+        # 26 Oct 2026: "English is the working language; French is a plus" came back english_is_enough = no; the field had no words at all.
+        unexplained = [name for name, spec in enrich.SCHEMA['properties'].items()
+                       if spec.get('type') == 'object' and 'value' in spec.get('properties', {}) and not spec.get('description')
+                       and f'{name} ' not in enrich.SYSTEM and f'{name}:' not in enrich.SYSTEM]
+        self.assertEqual(unexplained, [])
+        self.assertIn('a plus', enrich.SCHEMA['properties']['english_is_enough']['description'])
+
     def test_the_scorer_is_told_when_growth_may_stay_unknown(self):
         self.assertIn('components.growth: 0-100, or null when the posting gives no basis', score.SYSTEM)
         self.assertIn('basis.level_stated: ', score.SYSTEM)

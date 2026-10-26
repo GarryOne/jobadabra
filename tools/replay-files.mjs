@@ -102,6 +102,7 @@ const [flag, value] = process.argv.slice(2);
 const MAIN = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;   // run directly (a file URL, so Windows paths compare too)
 const entries = workflow => pathEntries(workflowFiles(workflow));
 if (MAIN && flag === '--job') console.log([...jobFiles(value)].sort().join('\n'));
+if (MAIN && flag === '--workflows') console.log(Object.keys(WORKFLOW_JOB).join('\n'));   // the replay workflows whose PR paths the push gate checks
 // --check <workflow>: the workflow's first step (owner, 14 Oct 2026: "wouldn't we miss newly added modules?"). A new file loads only through an edit to a
 // listed one, which starts the workflow, which then checks its own list: missing or extra entries fail with the line to run.
 if (MAIN && flag === '--check') {

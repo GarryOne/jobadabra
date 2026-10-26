@@ -155,7 +155,7 @@ fi
 # A new file a replay workflow loads must be in that workflow's `pull_request` paths (20 Oct 2026: #1638 opened red on "control tests" and "page cases" because worker/src/answer-declarations.js was
 # missing): the same check the workflows run (tools/replay-files.mjs --check), seconds, before the PR exists. Any push, any area.
 if command -v node >/dev/null && [ -f "$repo/tools/replay-files.mjs" ]; then
-  for wf in control-tests.yml page-cases.yml; do
+  for wf in $(cd "$repo" && node tools/replay-files.mjs --workflows); do   # the one list (WORKFLOW_JOB): control-tests.yml left PRs on 26 Oct 2026 and this loop still checked it
     [ -f "$repo/.github/workflows/$wf" ] || continue
     drift="$(cd "$repo" && timed "workflow paths $wf" node tools/replay-files.mjs --check "$wf" 2>&1)" || { echo "Push blocked: $drift" >&2; exit 2; }
   done

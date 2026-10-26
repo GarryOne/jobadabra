@@ -10,9 +10,9 @@ if (name === '--list') {
   const {suitesFor, suitesNamed} = await import('./lib/plan.mjs');
   const option = flag => { const at = process.argv.indexOf(flag); return at < 0 ? null : process.argv[at + 1] || ''; };
   // --changed: the changed files, one per line on stdin (a push); --only a,b: a manual run's choice; neither: every suite.
-  const {autoSuites} = await import('./lib/plan.mjs');
+  const {autoSuites, cadenceOf} = await import('./lib/plan.mjs');
   const cadence = {}, watches = {};
-  for (const suite of all) { const module = await import(`./suites/${suite}.mjs`); if (module.cadence) cadence[suite] = module.cadence; if (module.watches) watches[suite] = module.watches; }
+  for (const suite of all) { const module = await import(`./suites/${suite}.mjs`); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; }
   const named = option('--only');
   const chosen = process.argv.includes('--changed') ? suitesFor((await import('node:fs')).readFileSync(0, 'utf8').split('\n'), all, {watches, cadence}) : named ? suitesNamed(named, all) : autoSuites(all, cadence);
   const include = [];

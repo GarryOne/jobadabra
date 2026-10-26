@@ -5,7 +5,12 @@ Why (owner, 26 Oct 2026: "How could you design such a slow and inefficient metho
 "Other workflows passed" and pr-suites' wait), 43 of 206 runner-minutes of one push, while its suite jobs queued up to 17.5 min for a runner.
 Also the 10-min budget: a CI change whose own checks take longer goes red (history: 781637a, bc585e3, a7a6a9f, 7083bb7 each slowed PRs, none said by how much)."""
 import importlib.util
+import json
+import os
 import re
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -203,6 +208,55 @@ class JobByJob(unittest.TestCase):
         self.assertEqual(pv.open_pr([{'number': 2041, 'state': 'closed', 'merged_at': '2026-10-26T04:00:00Z'}]), ('', False))
         self.assertEqual(pv.open_pr([{'number': 2044, 'state': 'open', 'merged_at': None}]), ('2044', True))
         self.assertEqual(pv.open_pr([]), ('', True))
+
+FAKE_GH = r"""#!/usr/bin/env python3
+import json, os, sys
+a = sys.argv[1:]; d = os.environ['FAKE_DIR']
+def out(name): sys.stdout.write(open(os.path.join(d, name)).read())
+if a[:2] == ['run', 'list']: out('runs.json')
+elif a[0] == 'api' and a[1].endswith('/pulls') and '/commits/' in a[1]: out('pulls.json')
+elif a[0] == 'api' and '/pulls/' in ' '.join(a) and '/files' in ' '.join(a): print('desktop/renderer/app.js')
+elif a[0] == 'api' and '/commits?' in a[1]: print('["Fix a thing"]')
+elif a[0] == 'api' and '/jobs' in a[1]: out('jobs-' + a[1].split('/runs/')[1].split('/')[0] + '.json')
+elif a[0] == 'api' and '/statuses/' in a[1]: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
+else: sys.exit('fake gh: no answer for ' + repr(a))
+"""
+
+
+class TheScriptAsAJobRunsIt(unittest.TestCase):
+    """The script end to end, as the step runs it (a file copied out of the repo, the real `gh` replaced): #2051 shipped with gh() deleted, every job's step
+    crashed with NameError, continue-on-error hid it and only the backstop wrote the status. The unit tests above never ran main()."""
+
+    def run_step(self, pulls, job_status='success'):
+        d = tempfile.mkdtemp()
+        bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
+        gh = os.path.join(bin_dir, 'gh'); open(gh, 'w').write(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
+        runs = [run('CI · Pull request', id=1), run('CI · Tests · python', status='in_progress', id=2)]
+        json.dump(runs, open(os.path.join(d, 'runs.json'), 'w')); json.dump(pulls, open(os.path.join(d, 'pulls.json'), 'w'))
+        json.dump([{'id': 20, 'name': 'python', 'status': 'in_progress', 'conclusion': None, 'runner_name': 'r1',
+                    'steps': [{'name': 'Run tests', 'status': 'completed', 'conclusion': 'success'}, {'name': pv.STEP, 'status': 'in_progress'}]}],
+                  open(os.path.join(d, 'jobs-2.json'), 'w'))
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='2', RUNNER_NAME='r1', GITHUB_STEP_SUMMARY='')
+        script = os.path.join(d, 'pr-verdict.py'); open(script, 'w').write((ROOT / 'tools' / 'pr-verdict.py').read_text())   # as the step does: a copy, no repo around it
+        done = subprocess.run([sys.executable, script, '--repo', 'o/r', '--sha', 'abc1234', '--job-status', job_status], env=env, capture_output=True, text=True, timeout=60)
+        written = open(os.path.join(d, 'written')).read() if os.path.exists(os.path.join(d, 'written')) else ''
+        return done, written
+
+    def test_the_last_job_writes_green_from_its_own_step(self):
+        done, written = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}])
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('"state=success"', written, done.stdout + done.stderr)
+        self.assertIn('context=All checks passed', written)
+
+    def test_its_own_red_is_written_at_once(self):
+        done, written = self.run_step([{'number': 7, 'state': 'open', 'merged_at': None}], job_status='failure')
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('"state=failure"', written)
+
+    def test_a_merged_pr_gets_nothing(self):
+        done, written = self.run_step([{'number': 7, 'state': 'closed', 'merged_at': '2026-10-26T04:59:23Z'}])
+        self.assertEqual((done.returncode, written), (0, ''), done.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

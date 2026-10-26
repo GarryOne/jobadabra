@@ -44,7 +44,8 @@ class Isolated(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.data = Path(tmp.name)
-        for patch in (mock.patch('src.paths.DATA', self.data), mock.patch('src.ai.board_ideas.load', return_value={'boards': {}}),
+        for patch in (mock.patch('src.paths.DATA', self.data), mock.patch('src.paths.JOBS_DB', self.data / 'jobs.sqlite'),   # the AI answers' cache (decide._db)
+                      mock.patch('src.ai.board_ideas.load', return_value={'boards': {}}),
                       mock.patch('src.ai.board_ideas.save'), mock.patch.object(found_boards.board_employers, 'note')):
             patch.start()
             self.addCleanup(patch.stop)

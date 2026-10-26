@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 from .. import run_counts, time_budget
 from ..progress import Ticker
-from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, read_budget
+from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
 
 MAX_SEARCHES = 2      # the user's board searches per board in the first-jobs slice (fast)
@@ -357,6 +357,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         handed = _early.pop(board['host'], None)
         return (board, entry, handed[1] if handed and time.monotonic() - handed[0] < EARLY_MINUTES * 60 and not early else {}, {}, proposed)
     reads = [item(board) for board in todo]
+    late_pages = {} if early else {board['host']: page for board in todo if (page := late_reads.take('board', board['host'])) is not None}
     hosts = {board['host'] for board in todo}
     spares = list(enumerate(item(board) for board in (board_yield.pick(spare, kept, retry, dropped, remember=False) if spare else [])
                             if board['host'] not in hosts))
@@ -373,6 +374,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             if early:
                 fetched[url] = page
             return page
+        if board['host'] in late_pages:   # read after the last search's cut, or its ladder was cut: that page, not a second read
+            return tuple(late_pages.pop(board['host']))
         result = read_board(board, search, through, entry.get('route'), early=early, show=show)
         if not result[0] and result[1] != 'browser' and entry.get('site_kind') in (None, 'gone'):   # nothing read: a board at all? (board_check)
             site, page = board_check.kind(board, fetch)
@@ -420,7 +423,12 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
             return
         late = read_budget.past_cut()   # its other ways are tried next time: _went_up is not marked
         if late and not early and not relevant and not route and state != 'browser' and not _went_up(entry, proposed):
-            waiting.append(board['name'])
+            waiting.append(board['name'])   # not stamped read: the next search goes up its ladder from this page, not a second read
+            late_reads.keep('board', board['host'], [found, state, route])
+            print(f"Job boards found: {board['name']} {len(found)} job(s), 0 relevant; its other ways wait for the next search", flush=True)
+            run_counts.looked(found)
+            jobs.extend(found)
+            return
         elif not (early or relevant or route) and state != 'browser' and not _went_up(entry, proposed):   # once per proposed link and version of the ladder
             from ..ai import decide
             failed = decide.FAILED[0]
@@ -443,6 +451,8 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         result = read_budget.result(future, cut)   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         if result is read_budget.LEFT:
             left.append(read_item[0]['name'])
+            if not early:   # not killed: its page result, when it ends, is the next search's (late_reads)
+                late_reads.when_done(future, 'board', read_item[0]['host'], lambda got: list(got) if got and got[1] not in REPLACED else None)
             continue
         keep(read_item, result)
         ticker.tick(done, f" · {read_item[0]['name']}")

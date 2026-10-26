@@ -6,7 +6,7 @@ import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
-from . import ats, feed_facts, feeds, read_budget
+from . import ats, feed_facts, feeds, late_reads, read_budget
 from .. import read_methods, source_yield
 
 
@@ -62,7 +62,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
         started = time.monotonic()
         with read_methods.reading(key(source), 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
             with ats.conditional(feed_facts.ask(facts.get(key(source)))) as asked[key(source)]:   # a 304 comes back as ats.Unchanged
-                got = feeds._fetched(fetcher, source)
+                late = late_reads.take('employer', key(source))   # read after the last search's cut: its answer, not a second read
+                got = (late, None) if late is not None else feeds._fetched(fetcher, source)
             counted.failed = got[1] is not None   # a failed read is not a source read
             counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
         took[key(source)] = round(time.monotonic() - started, 1)
@@ -90,6 +91,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
             finished, _ = wait(pending, timeout=read_budget.seconds_left(cut), return_when=FIRST_COMPLETED)
             if not finished:   # the cut: the sites still open are left for the next run (src/sources/read_budget.py cut_at)
                 cut_off[0] = True
+                for open_read, index in pending.items():   # not killed: what they read when they end is the next search's (late_reads)
+                    late_reads.when_done(open_read, 'employer', key(sources[index]), lambda got: got[0] if got[1] is None and got[0] is not None else None)
                 break
             for done in finished:   # the database work stays in this thread, one site at a time
                 index = pending.pop(done)

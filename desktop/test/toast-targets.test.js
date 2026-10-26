@@ -13,7 +13,9 @@ test('the scanner finds the toast calls (a positive control: the count only grow
 });
 
 test('every toast and notification names where a click leads, or NO_PLACE with its reason', () => {
-  const bad = sites().map(site => ({...site, why: missing(site.args)})).filter(site => site.why);
+  // sayRefused(title, result, {place}): its options object names the place (or NO_PLACE.<reason> as place).
+  const why = site => site.place ? (/\bplace\s*:/.test(topLevel(site.args)[2] || '') ? null : 'sayRefused needs {place: …} as its 3rd argument') : missing(site.args);
+  const bad = sites().map(site => ({...site, why: why(site)})).filter(site => site.why);
   assert.deepEqual(bad.map(site => `${site.where}: ${site.why}`), [], 'give each a target ({view, section, job, session, run, card}) or NO_PLACE.<reason>');
 });
 

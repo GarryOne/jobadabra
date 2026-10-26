@@ -63,7 +63,7 @@ export function missing(args) {
 // a toast sent to the window, and the toast callbacks lib modules are given.
 const CALLS = [
   {dirs: ['renderer'], pattern: /\btoastMessage\(/g, skip: /export function toastMessage\(/},
-  {dirs: ['renderer'], pattern: /\bsayRefused\(/g, skip: /export function sayRefused\(/},   // (title, result, place)
+  {dirs: ['renderer'], pattern: /\bsayRefused\(/g, skip: /export function sayRefused\(/, place: true},   // (title, result, {place})
   {dirs: ['lib'], files: ['main.js'], pattern: /(?<![.\w])notify\(/g, skip: /function notify\(/},
   {dirs: ['lib'], files: ['main.js'], pattern: /toWindow\('toast',/g},
   {dirs: ['lib'], files: ['main.js'], pattern: /(?<![.\w])toast\(\{/g},
@@ -71,7 +71,7 @@ const CALLS = [
 
 export function sites() {
   const found = [];
-  for (const {dirs, files = [], pattern, skip} of CALLS) {
+  for (const {dirs, files = [], pattern, skip, place} of CALLS) {
     for (const file of [...files, ...dirs.flatMap(jsFiles)]) {
       const source = fs.readFileSync(path.join(DESKTOP, file), 'utf8');
       for (const match of source.matchAll(pattern)) {
@@ -79,7 +79,7 @@ export function sites() {
         if (skip?.test(line) || /^\s*(\/\/|\*)/.test(line)) continue;
         const from = match.index + match[0].length - (match[0].endsWith('{') ? 1 : 0);
         const args = callArgs(source, from).trim();
-        found.push({where: `${file}:${source.slice(0, match.index).split('\n').length}`, args});
+        found.push({where: `${file}:${source.slice(0, match.index).split('\n').length}`, args, place});
       }
     }
   }

@@ -182,7 +182,7 @@ export function renderJobs() {
     const fillInChrome = async button => {
       const result = await window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: job.location, workMode: job.work_mode});
       if (result.ok) { shared.openedInChrome.add(pageKey(job.url)); startedApplying(job); renderJobs(); } else if (result.needsExtension || result.cancelled) { /* the install dialog is open (extension-needed.js), or Not now in the first-Apply dialog */ }
-      else if (sayRefused('Apply did not start', result, jobPlace(job))) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
+      else if (sayRefused('Apply did not start', result, {place: jobPlace(job)})) { /* why, in a pop-up (no AI credit, trial over, no store): never "No link" */ } else if (button) button.textContent = 'No link';
       else toastMessage('Could not open the job', 'It has no link.', jobPlace(job));
     };
     if (job.status !== 'applied' && job.url && (job.kit || job.ready)) {
@@ -241,7 +241,7 @@ export function renderJobs() {
         // On GitHub (Always on): the row says so; the list reloads when it's done, and the form is not opened for you.
         if (result.cloud) preparing.set(job.code, 'cloud');
         else if (result.ok) { preparing.delete(job.code); for (const item of shared.allJobs) if (item.code === job.code) item.kit = true; job.kit = true; await fillInChrome(); return; }
-        else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result, jobPlace(job)); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
+        else { preparing.set(job.code, 'failed'); sayRefused('Apply did not start', result, {place: jobPlace(job)}); }   // a refusal says why (renderer/refusal.js); a draft that failed is notified by main
         renderJobs();
       });
       box.append(prepare);

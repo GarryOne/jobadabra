@@ -76,7 +76,7 @@ export async function openCvChange() {
         redraft.textContent = 'Redrafting…';
         const result = await window.pilot.prepareKit(job.code, `${job.title} · ${job.company}`);
         redraft.textContent = result.ok ? '✓ Redrafted' : 'Retry';
-        sayRefused('Redraft did not start', result, jobPlace(job));   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
+        sayRefused('Redraft did not start', result, {place: jobPlace(job)});   // no AI credit, trial over (renderer/refusal.js): why, not a bare Retry
         redraft.disabled = !!result.ok;
       });
       const name = el('div');

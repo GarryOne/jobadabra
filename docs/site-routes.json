@@ -327,6 +327,13 @@
    "kind": "ci"
   },
   {
+   "path": "/search-lab/real-gaps",
+   "methods": [
+    "GET"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/search-lab/rows",
    "methods": [
     "PUT"

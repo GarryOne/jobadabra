@@ -14,18 +14,23 @@ import {openTopupDialog} from './topup-dialog.js';
 import {toDraft} from './strategy-review.js';
 import {openTarget} from './open-target.js';
 import {clean} from '../targets.js';
+import {TONES, toneOf} from '../toast-tone.js';
+import {icon} from '../icons.js';
 import {goStep} from './wizard.js';
 
-// toastMessage(title, body, target) or toastMessage({title, body, target, action, hint}). target: where a click leads (renderer/targets.js),
-// or a NO_PLACE reason when there is none (test/toast-targets.test.js checks every call names one).
-export function toastMessage(title, body, target = null) {
+// toastMessage(title, body, target, tone) or toastMessage({title, body, target, tone, action, hint}). target: where a click leads (renderer/targets.js),
+// or a NO_PLACE reason when there is none; tone: bad | warn | good | info, its colour and icon (renderer/toast-tone.js). test/toast-targets.test.js
+// checks every call names both.
+export function toastMessage(title, body, target = null, tone = 'info') {
   let hint = false, action = null;
   // action: {label, run}, the next step, run by a click on the pop-up itself (owner, 7 Oct 2026: "Role added" said nothing about what to do next;
   // 27 Oct 2026: "The toast notifications shouldn't really have a button, but just clicking them, should produce an action"). No button in a pop-up.
-  if (typeof title === 'object') ({title, body, hint, target = null, action = null} = title);
+  if (typeof title === 'object') ({title, body, hint, target = null, action = null, tone = 'info'} = title);
   // The same message twice (a double click, two checks finding the same thing) replaces the first instead of stacking.
   for (const old of $('toasts').children) if (old.dataset.key === `${title}\n${body}`) old.remove();
-  const toast = Object.assign(document.createElement('div'), {className: 'toast'});
+  const kind = toneOf(tone);
+  const toast = Object.assign(document.createElement('div'), {className: `toast tone-${kind}`});
+  toast.append(icon(TONES[kind], 'icon toast-icon'));
   toast.dataset.key = `${title}\n${body}`;
   toast.append(Object.assign(document.createElement('b'), {textContent: title}), Object.assign(document.createElement('span'), {textContent: body}));
   if (hint) toast.append(Object.assign(document.createElement('small'), {textContent:
@@ -51,7 +56,7 @@ export function sayRefused(title, result, {place = null, retry = null} = {}) {
   if (!why) return null;
   if (why.credit) { openTopupDialog(why, {action: title.replace(/ did not start$/, ''), retry}); return why; }
   const label = refusalAction(why);
-  toastMessage({title, body: why.text, target: label ? {card: 'license'} : place});   // the click opens Settings → Plan's card (no button)
+  toastMessage({title, body: why.text, target: label ? {card: 'license'} : place, tone: 'warn'});   // the click opens Settings → Plan's card (no button)
   return why;
 }
 

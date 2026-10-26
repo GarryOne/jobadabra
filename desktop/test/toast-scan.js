@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {NO_PLACE} from '../renderer/targets.js';
+import {TONES} from '../renderer/toast-tone.js';
 
 export const DESKTOP = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const jsFiles = dir => fs.readdirSync(path.join(DESKTOP, dir), {withFileTypes: true}).flatMap(entry =>
@@ -46,7 +47,7 @@ export function topLevel(args) {
 }
 
 // -> null when the call names its place, else why not.
-export function missing(args) {
+export function missingPlace(args) {
   if (/\bNO_PLACE\.(\w+)/.test(args)) {
     const reason = args.match(/\bNO_PLACE\.(\w+)/)[1];
     return NO_PLACE[reason] ? null : `NO_PLACE.${reason} is not one of ${Object.keys(NO_PLACE).join(', ')}`;
@@ -58,6 +59,21 @@ export function missing(args) {
   if (parts.length >= 3 && !parts[0].startsWith('{')) return null;   // (title, body, target)
   return 'no target and no NO_PLACE reason';
 }
+
+// -> null when the call names its kind (owner, 27 Oct 2026: "warning=yellow, success=green, error=red, info=light blue"): (title, body, target, tone)
+// or {…, tone}; a literal must be one of TONES (renderer/toast-tone.js).
+export function missingTone(args) {
+  const parts = topLevel(args);
+  if (parts.length === 1 && /^[A-Za-z_$][\w$]*$/.test(parts[0])) return null;   // a forward, as above
+  const tone = parts.length === 1 && parts[0].startsWith('{') ? (parts[0].match(/[{,]\s*tone\s*:\s*([^,}]+)/) || [])[1]
+    : parts.length === 1 && parts[0].startsWith('{') ? undefined : parts[3];
+  if (parts.length === 1 && parts[0].startsWith('{') && !tone && !/[{,]\s*tone\s*[,}]/.test(parts[0])) return 'no tone (bad | warn | good | info)';
+  if (parts.length > 1 && !tone) return 'no tone (bad | warn | good | info)';
+  for (const word of String(tone || '').match(/'[^']*'/g) || []) if (!Object.hasOwn(TONES, word.slice(1, -1))) return `tone ${word} is not one of ${Object.keys(TONES).join(', ')}`;
+  return null;
+}
+
+export const missing = args => missingPlace(args) || missingTone(args);
 
 // The calls that raise a pop-up or a notification: in the window toastMessage; in main notify (a macOS notification, or a toast when macOS blocks it),
 // a toast sent to the window, and the toast callbacks lib modules are given.

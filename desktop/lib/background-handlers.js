@@ -111,7 +111,7 @@ export function registerBackgroundHandlers(ctx) {
       const next = {...sent};
       for (const item of items) {
         const words = reminders.text(item);
-        notify(words.title, words.body, () => toWindow('openInterviews'));
+        notify(words.title, words.body, () => toWindow('openInterviews'), 'info');
         for (const key of item.keys) next[key] = true;
       }
       storage.saveSettings({reminded: Object.fromEntries(Object.entries(next).slice(-200))});
@@ -151,7 +151,7 @@ export function registerBackgroundHandlers(ctx) {
       search: () => pipeline.refresh(storage, log, 'scheduled', 'schedule'),
       mail: () => (notionGate.tracking(storage) ? pipeline.checkMail(storage, log, 'schedule') : skipUntilNotion('mail')),
       scout: () => pipeline.scout(storage, log, 'schedule'),
-    }, powerMonitor, {soon: () => notify('Searching for new jobs in 1 minute', 'Your scheduled search for new jobs is about to run.', {activity: true})});
+    }, powerMonitor, {soon: () => notify('Searching for new jobs in 1 minute', 'Your scheduled search for new jobs is about to run.', {activity: true}, 'info')});
     setInterval(announceRuns, 5000);
     scheduleResume(pipeline, storage, {cloud: !!storage.settings().cloud?.repo, begin: resumeQueue, delayMs: resumeDelay()});  // after the schedule's own catch-up check has queued what's due; the queue is read now, not then
   }

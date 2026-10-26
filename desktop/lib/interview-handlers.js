@@ -77,7 +77,7 @@ export function registerInterviewHandlers(ctx) {
   ipcMain.handle('ivPrefetch', () => (DEMO ? {ok: true} : interviews.prefetch(storage, step => toWindow('ivProgress', step))));
   handleImportant('ivTranscribe', 'Transcribing an interview', async (_, id, options) => {
     const meta = await interviews.transcribe(storage, id, options, step => toWindow('ivProgress', step));
-    if (meta.status === 'ready') notify('Transcript ready', `${meta.title}: ${meta.pageId ? byStore(storage, 'already in your Notion; ', 'already saved; ') : ''}name the speakers, pick the job, then Save.`, {view: 'interviews'});
+    if (meta.status === 'ready') notify('Transcript ready', `${meta.title}: ${meta.pageId ? byStore(storage, 'already in your Notion; ', 'already saved; ') : ''}name the speakers, pick the job, then Save.`, {view: 'interviews'}, 'good');
     return meta;
   });
   ipcMain.handle('ivSaveDraft', (_, id, patch) => (DEMO ? true : interviews.saveDraft(storage, id, patch)));

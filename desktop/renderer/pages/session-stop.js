@@ -12,7 +12,7 @@ export function init() {
     try {
       const result = await window.pilot.sessionsStopExtension();
       toastMessage(result?.ok === false ? 'Could not stop' : 'Stopped', result?.ok === false ? (result.error || 'Turn the extension off in chrome://extensions.')
-        : 'The extension is told to stop everything, on every tab. It does nothing until you press Reopen form on an application.', {view: 'sessions'});
+        : 'The extension is told to stop everything, on every tab. It does nothing until you press Reopen form on an application.', {view: 'sessions'}, result?.ok === false ? 'bad' : 'good');
       await refreshSessions();
     } finally { button.disabled = false; }
   });

@@ -191,7 +191,7 @@ const hideItem = (kind, id, key, at) => ({label: 'Hide until the next search', i
 // While a draft changes the same list, applying waits: reviewing is fine, the change itself asks for Save or Discard first (owner, 7 Oct 2026).
 const widen = (kind, act, done, list = '') => async button => {
   if (list && dirty().has(list)) {
-    toastMessage('Save or discard your changes first', `This changes your ${LIST_WORDS[list]}, which you are editing now. Save or discard that draft, then add it.`, {view: 'strategy'});
+    toastMessage('Save or discard your changes first', `This changes your ${LIST_WORDS[list]}, which you are editing now. Save or discard that draft, then add it.`, {view: 'strategy'}, 'warn');
     const bar = strategyBarNow()?.node;
     if (bar) { bar.classList.remove('is-nudged'); void bar.offsetWidth; bar.classList.add('is-nudged'); }
     return;
@@ -201,9 +201,9 @@ const widen = (kind, act, done, list = '') => async button => {
   const result = await withSaveProgress(words => { button.textContent = words; }, act).catch(error => ({ok: false, error: error.message}));
   button.textContent = label;
   if (result.ok) adviceEvent('taken', kind, 'strategy');
-  if (!result.ok) { toastMessage('Not added', result.error, {view: 'strategy'}); button.disabled = false; return; }
+  if (!result.ok) { toastMessage('Not added', result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
   // The next step with it: a refresh searches with the change (7 Oct 2026: the pop-up said only "Search widened").
-  toastMessage({title: 'Search widened', body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}});
+  toastMessage({title: 'Search widened', body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
   loadStrategy();   // the cards show it at once, not after the next visit (it re-reads the suggestions too)
 };
 
@@ -253,8 +253,8 @@ const paintCoverage = verdict => {
     const openPage = chip => async () => {
       adviceEvent('taken', 'visit', 'strategy');
       const opened = await readSiteInChrome(window.pilot, chip.url);
-      if (opened.started) toastMessage('Reading in Chrome', `Jobadabra reads its jobs there by itself; follow it in Recent activity.${chip.note ? ` ${chip.note}.` : ''}`, {activity: true});
-      else toastMessage(opened.ok ? 'Opened in Chrome' : 'Not opened', opened.ok ? opened.why || 'It could not start the read.' : opened.error, NO_PLACE.outside);
+      if (opened.started) toastMessage('Reading in Chrome', `Jobadabra reads its jobs there by itself; follow it in Recent activity.${chip.note ? ` ${chip.note}.` : ''}`, {activity: true}, 'info');
+      else toastMessage(opened.ok ? 'Opened in Chrome' : 'Not opened', opened.ok ? opened.why || 'It could not start the read.' : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
     };
     // By company (owner mockup, 7 Oct 2026): a letter tile, the name, how many pages, each page's own link (its real address), Open for the first.
     const TINTS = ['info', 'teal', 'violet', 'good'];

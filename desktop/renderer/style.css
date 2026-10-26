@@ -284,10 +284,10 @@ table.runs tr.run:hover, table.runs tr.run.open { background: var(--surface-2); 
 .row-actions { flex-wrap: wrap; }
 .head-actions button { white-space: nowrap; }
 .toasts { position: fixed; top: 16px; right: 16px; z-index: 50; display: grid; gap: 8px; width: 340px; }
-.toast { background: var(--toast-bg); border: 1px solid var(--toast-line); color: var(--on-accent); border-radius: var(--r-md); padding: 12px 14px; box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / .3); display: grid; gap: 4px; cursor: pointer; font-size: var(--fs-md); }
-.toast-link { cursor: pointer; }
-.toast b { font-size: var(--fs-base); } .toast small { color: var(--on-navy-2); }
-.toast .toast-next { margin-top: var(--sp-1); color: var(--on-accent); font-weight: 600; }   /* what a click does (no button in a pop-up) */
+:where(.toast) { --tone: var(--info); --tone-soft: var(--info-soft); --tone-line: var(--info-line); }   /* a pop-up's kind (renderer/toast-tone.js): .tone-bad / -warn / -good / -info win (owner, 27 Oct 2026) */
+.toast { background: var(--tone-soft); border: 1px solid var(--tone-line); color: var(--ink); border-radius: var(--r-md); padding: 12px 14px; box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / .3); display: grid; gap: 4px; cursor: pointer; font-size: var(--fs-md); }
+.toast:has(> .toast-icon) { grid-template-columns: 20px 1fr; column-gap: var(--sp-3); } .toast:has(> .toast-icon) > :not(.toast-icon) { grid-column: 2; } .toast > .toast-icon { grid-row: 1 / span 4; width: 20px; height: 20px; color: var(--tone); margin-top: 1px; }
+.toast.tone-bad { --tone-line: var(--bad-line); } .toast.tone-warn { --tone-line: var(--warn-line); } .toast.tone-good { --tone-line: color-mix(in srgb, var(--good) 35%, transparent); } .toast b { font-size: var(--fs-base); } .toast small { color: var(--ink-2); } .toast .toast-next { margin-top: var(--sp-1); color: var(--tone); font-weight: 600; }
 /* Row main button: one colour per step, so the next action stands out. */
 .row-actions .row-main { border-radius: var(--r-md); font-weight: 700; border: 1.5px solid transparent; }
 .row-actions .state-prepare { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }

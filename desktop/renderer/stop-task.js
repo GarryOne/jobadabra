@@ -18,6 +18,6 @@ export async function stopRunning(button) {
     delete button.dataset.stopping;
     button.disabled = false;
     button.textContent = 'Stop';
-    toastMessage('Could not stop it', result.error || 'Try again.', {activity: true});
+    toastMessage('Could not stop it', result.error || 'Try again.', {activity: true}, 'bad');
   }
 }

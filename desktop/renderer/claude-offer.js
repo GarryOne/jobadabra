@@ -26,7 +26,7 @@ export function offerParts(item, {rerender, after = async () => {}}) {
   if (view === 'hidden') return {buttons: [], notes: []};
   const start = async consent => {
     const result = await window.pilot.takeOverClaude(item.url, {title: item.title, company: item.company, location: item.location, workMode: item.workMode}, consent).catch(() => null);
-    if (result?.ok === false) { toastMessage(result.refused ? 'Claude already worked on this application' : 'Claude could not start', result.refused ? 'Open its session to continue, or finish the page yourself.' : (result.error || 'Try again.'), result.refused ? {view: 'sessions'} : jobPlace(item)); return; }
+    if (result?.ok === false) { toastMessage(result.refused ? 'Claude already worked on this application' : 'Claude could not start', result.refused ? 'Open its session to continue, or finish the page yourself.' : (result.error || 'Try again.'), result.refused ? {view: 'sessions'} : jobPlace(item), result.refused ? 'warn' : 'bad'); return; }
     if (consent) shared.state.settings = {...shared.state.settings, claudeConsent: new Date().toISOString()};
     asking.delete(item.id);
     await after(result);

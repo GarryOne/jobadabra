@@ -135,7 +135,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       submitted(job.url);
       appliedHook({how: 'extension'});
       const where = notionGate.notionInUse(storage) ? 'in your Notion' : 'in Jobadabra';   // about Notion
-      notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url});
+      notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url}, 'good');
       return {ok: true, message: `Marked Applied ${where}.`};
     },
     NOTION_KNOWLEDGE_PAGE: ids.NOTION_KNOWLEDGE_PAGE || '',
@@ -166,12 +166,12 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       const added = await questions.collect(storage, run, job?.company || '', undefined, async labels => verdicts.judge(storage, labels, {facts: await factsOf(storage), answered: await verdicts.answeredOf(storage, await questions.standardAnswers(storage)),
         company: job?.company || '', url: run.url, host: learn.siteOf(run.url), ai: claudeAi(storage)}),
         labels => verdicts.record(storage, labels, {url: run.url, company: job?.company || ''}),
-        labels => notify('Remembered for future forms', `${labels.length} answer${labels.length > 1 ? 's' : ''} you gave before, asked again by ${job?.company || 'a second employer'}: kept as standard answers. Undo in the job's drawer.`, {view: 'jobs'})).catch(error => {
+        labels => notify('Remembered for future forms', `${labels.length} answer${labels.length > 1 ? 's' : ''} you gave before, asked again by ${job?.company || 'a second employer'}: kept as standard answers. Undo in the job's drawer.`, {view: 'jobs'}, 'good')).catch(error => {
         console.error('Open questions:', error.message);
         return 0;
       });
       if (added) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
-      if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'});
+      if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'}, 'warn');
       learnFromRun(storage, run, job).catch(error => console.error('Form knowledge:', error.message));
       reports.send(storage, run, undefined, sharedLogger, {latest: latestExtension()}).then(report => {  // each field also shows in the app reports (/telemetry)
         // A fill that failed while Chrome ran an older copy than this app ships is explained first, as its own
@@ -206,7 +206,7 @@ async function learnFromRun(storage, run, job) {
   if (!notes.length) return;
   await knowledge.add(storage, notes);
   proposalReporter(learn.proposalsOf(notes));  // label wording + profile field only, counted by the site (3+ people) before it is even a candidate
-  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}${costVisible(storage) && usd > 0 ? `, $${usd.toFixed(3)}` : ''}). Only you can see them.`, {view: 'settings', section: 'profile'});   // about Notion
+  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}${costVisible(storage) && usd > 0 ? `, $${usd.toFixed(3)}` : ''}). Only you can see them.`, {view: 'settings', section: 'profile'}, 'good');   // about Notion
 }
 
 // A note that has left its field empty three fills in a row is not working: drop it from the Notion page and let the field be studied again.

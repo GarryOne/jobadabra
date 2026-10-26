@@ -16,8 +16,8 @@ export {exportState};
 export async function exportJobs(options) {
   const answer = await window.pilot.exportJobs(options);
   if (answer?.pro) openProGate();
-  else if (answer?.ok) toastMessage(`Saved ${plural(answer.count)}`, answer.file, NO_PLACE.outside);
-  else if (answer?.error) toastMessage('Could not save the job list', answer.error, {view: 'jobs'});
+  else if (answer?.ok) toastMessage(`Saved ${plural(answer.count)}`, answer.file, NO_PLACE.outside, 'good');
+  else if (answer?.error) toastMessage('Could not save the job list', answer.error, {view: 'jobs'}, 'bad');
 }
 
 export function renderExport() {

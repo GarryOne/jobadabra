@@ -43,8 +43,8 @@ export function registerKitHandlers(ctx) {
       pipeline.triggerEnv('you'));
     const ineligible = lines.map(line => line.replace(/<[^>]+>/g, '')).find(line => line.includes('Not eligible:'));
     if (quiet) { if (exit === 0) track('kit_prepared', {}); return {ok: exit === 0}; }  // an Apply batch: it reports once at the end
-    if (exit !== 0) notify('Kit not prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code});
-    else notify('Application kit ready ✓', ineligible ? `${name}. ${ineligible.trim()}` : `${name}. Press Apply to fill the form.`, {view: 'jobs', job: code});
+    if (exit !== 0) notify('Kit not prepared', `${name}: ${lines.filter(Boolean).slice(-1)[0] || 'something went wrong'}`, {view: 'jobs', job: code}, 'bad');
+    else notify('Application kit ready ✓', ineligible ? `${name}. ${ineligible.trim()}` : `${name}. Press Apply to fill the form.`, {view: 'jobs', job: code}, 'good');
     if (exit === 0) track('kit_prepared', {});
     return {ok: exit === 0, ineligible: ineligible || ''};
   };
@@ -113,11 +113,11 @@ export function registerKitHandlers(ctx) {
         appLog('cv', kept ? 'tailored CV kept on the job' : 'tailored CV not on a job yet', {code});
       } catch (error) { appLog('cv', 'tailored CV not kept on the job', {code, error: error.message}); }
       if (!quiet) notify('Tailored CV + cover letter ready ✓', `${name}: ${result.changes.length} changes${applied.warnings.length ? `, ${applied.warnings.length} to check` : ''}${letter.ok ? ', cover letter made' : `. The cover letter was not made: ${String(letter.error || '').slice(0, 80)}`}.`
-        + (!notionStore ? '' : inNotion ? ' Saved in Notion too.' : ' On this Mac only: save the job (☆) to keep it in Notion.'), {view: 'jobs', job: code});   // about Notion
+        + (!notionStore ? '' : inNotion ? ' Saved in Notion too.' : ' On this Mac only: save the job (☆) to keep it in Notion.'), {view: 'jobs', job: code}, 'good');   // about Notion
       if (show) openTailoredCv(code);   // from the form's panel the window stays behind: the person is on the form, the notification says it is ready
       return {ok: true, usd: Math.round(cost * 100) / 100, letter: letter.ok};
     } catch (error) {
-      if (!quiet) notify('CV not tailored', `${name}: ${error.message}`, {view: 'jobs', job: code});
+      if (!quiet) notify('CV not tailored', `${name}: ${error.message}`, {view: 'jobs', job: code}, 'bad');
       return {ok: false, error: error.message};
     }
   };

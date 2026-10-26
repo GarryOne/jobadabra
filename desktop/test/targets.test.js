@@ -59,6 +59,6 @@ test('a session target opens that session\'s card, and every application notific
   // The class: a notification about filling a form, or a session needing you, carries its session (a window toast too).
   const fs = await import('node:fs');
   const server = fs.readFileSync(new URL('../lib/server.js', import.meta.url), 'utf8'), main = mainSource();
-  for (const title of ['Filling the application…', 'Form filled: a few things left for you']) assert.match(server.slice(server.indexOf(title), server.indexOf(title) + 400), /, target\)/, title);
-  assert.match(main, /toWindow\('toast', \{title: `Needs your input · \$\{what\}`, body: text, target: targets\.clean\(\{view: 'sessions', session: session\.id\}\)\}\)/);
+  for (const title of ['Filling the application…', 'Form filled: a few things left for you']) assert.match(server.slice(server.indexOf(title), server.indexOf(title) + 400), /, target(, [^)]+)?\)/, title);   // the tone may follow
+  assert.match(main, /toWindow\('toast', \{title: `Needs your input · \$\{what\}`, body: text, target: targets\.clean\(\{view: 'sessions', session: session\.id\}\), tone: 'warn'\}\)/);
 });

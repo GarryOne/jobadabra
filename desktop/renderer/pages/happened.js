@@ -29,12 +29,12 @@ export function openHappened(item, answer) {
 // A few lines of notes: Claude reviews them like a transcript (the same review as a recording), in the background.
 async function review(pageId, item) {
   if (!aiReady()) {
-    toastMessage('Saved ✓', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get a review of your notes (Interviews → Review).', {card: 'ai'});
+    toastMessage('Saved ✓', 'Choose your AI in Settings (Claude Code, Codex or an API key) to get a review of your notes (Interviews → Review).', {card: 'ai'}, 'good');
     return;
   }
-  toastMessage('Saved ✓', `${aiName()} is reviewing your notes on ${who(item)} (about a minute).`, {view: 'interviews'});
+  toastMessage('Saved ✓', `${aiName()} is reviewing your notes on ${who(item)} (about a minute).`, {view: 'interviews'}, 'good');
   const result = await window.pilot.interviews.review(pageId).catch(error => ({ok: false, error: error.message}));
-  toastMessage(result.ok ? 'Interview reviewed' : 'Review failed', result.ok ? result.summary : result.error || 'Try again from Interviews.', {view: 'interviews'});
+  toastMessage(result.ok ? 'Interview reviewed' : 'Review failed', result.ok ? result.summary : result.error || 'Try again from Interviews.', {view: 'interviews'}, result.ok ? 'good' : 'bad');
   loadFocus();
   loadJobs();
 }
@@ -59,7 +59,7 @@ async function save() {
   $('happened-dialog').close();
   if (kind === 'held' && result.review && result.id) review(result.id, item);
   else toastMessage('Saved ✓', {held: `${who(item)}: marked as held${result.stage ? `, now ${result.stage}` : ''}.`,
-    moved: `${who(item)}: the interview is on the new date.`, cancelled: `${who(item)}: logged as cancelled.`}[kind], {view: 'interviews'});
+    moved: `${who(item)}: the interview is on the new date.`, cancelled: `${who(item)}: logged as cancelled.`}[kind], {view: 'interviews'}, 'good');
   loadFocus();
   loadJobs();
   return true;
@@ -72,8 +72,8 @@ export async function dismissInterview({page_id, company, via}, {onConfirmed = (
   if (!confirm(`Dismiss the interview with ${name}?\n\nIt leaves Up next and the calendar and is logged as cancelled in ${storeName()}. The job itself stays as it is.`)) return false;
   onConfirmed();   // the row leaves the list at once; Notion takes seconds
   const result = await window.pilot.interviewHappened(page_id, 'cancelled', {}).catch(error => ({ok: false, error: error.message}));
-  if (!result.ok) { onFail(); toastMessage('Not saved', result.error || `${storeName()} could not save it. Try again.`, {view: 'interviews'}); return false; }
-  toastMessage('Dismissed ✓', `${name}: the interview is logged as cancelled.`, {view: 'interviews'});
+  if (!result.ok) { onFail(); toastMessage('Not saved', result.error || `${storeName()} could not save it. Try again.`, {view: 'interviews'}, 'bad'); return false; }
+  toastMessage('Dismissed ✓', `${name}: the interview is logged as cancelled.`, {view: 'interviews'}, 'good');
   onDone();
   loadFocus();
   loadJobs();

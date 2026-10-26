@@ -12,14 +12,14 @@ export function createTakeOver({startClaude, storage, appLog, toWindow, onStarte
     if (event.consent && !storage.settings().claudeConsent) storage.saveSettings({claudeConsent: new Date().toISOString()});   // the panel's "Continue" line is the consent
     if (took.has(key)) {
       appLog('extension', 'take over with Claude refused: Claude already took over this application (one per application)', {host: event.host});
-      toWindow('toast', {title: 'Claude already worked on this application', body: 'Open its session to continue, or finish the page yourself.', target: {view: 'sessions'}});
+      toWindow('toast', {title: 'Claude already worked on this application', body: 'Open its session to continue, or finish the page yourself.', target: {view: 'sessions'}, tone: 'warn'});
       return {ok: false, refused: true};
     }
     took.add(key);
     const result = await startClaude(String(event.url || ''), job ? {title: job.title, company: job.company, location: job.location, workMode: job.work_mode} : null);
     if (result?.ok) { onStarted(String(event.url || '')); if (result.session?.id) toWindow('session', 'open', {id: result.session.id}); } else {
       took.delete(key);   // it did not start: the person may ask again
-      toWindow('toast', {title: 'Claude could not start', body: result?.error || 'Try again from the Applying page.', target: {view: 'sessions'}});
+      toWindow('toast', {title: 'Claude could not start', body: result?.error || 'Try again from the Applying page.', target: {view: 'sessions'}, tone: 'bad'});
     }
     return result;
   };

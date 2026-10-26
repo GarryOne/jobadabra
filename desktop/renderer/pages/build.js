@@ -15,7 +15,7 @@ async function restart() {
   if (result.ok) return;   // the app quits and opens again on the new code
   button.disabled = false;
   $('nav-restart-text').textContent = state.restart;
-  toastMessage("Couldn't restart", result.text || 'Quit the app and open it again.', NO_PLACE.app);
+  toastMessage("Couldn't restart", result.text || 'Quit the app and open it again.', NO_PLACE.app, 'bad');
 }
 
 function paint(next) {

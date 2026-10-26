@@ -102,7 +102,7 @@ export function start(storage, onError = () => {}) {
         const local = req.method === 'POST' && req.headers['x-job-pilotto'] === 'launcher' && !req.headers.origin;
         const form = new URLSearchParams(body?.toString() || '');
         const message = form.get('message')?.slice(0, 300);
-        if (local && message) notify(`Jobadabra · ${form.get('job')?.slice(0, 120) || 'Application'}`, message, {view: 'sessions'});
+        if (local && message) notify(`Jobadabra · ${form.get('job')?.slice(0, 120) || 'Application'}`, message, {view: 'sessions'}, 'info');
         res.writeHead(local && message ? 200 : 403, {'Content-Type': 'application/json'});
         res.end(JSON.stringify({ok: !!(local && message)}));
         return;
@@ -282,10 +282,10 @@ export function start(storage, onError = () => {}) {
           if (event.type === 'ai-failed') formIssue({type: 'ai', site: String(event.host || '').slice(0, 80), reason: String(event.why || '').slice(0, 160)});
           // A click opens this application's session (the newest one open on this job), not just the list.
           const target = {view: 'sessions', ...(sessionOfJob(event.url) ? {session: sessionOfJob(event.url)} : {})};
-          if (event.type === 'fill-started') notify('Filling the application…', `${jobName(job)}. Check every field before you submit.`, target);
+          if (event.type === 'fill-started') notify('Filling the application…', `${jobName(job)}. Check every field before you submit.`, target, 'info');
           if (event.type === 'fill-done') {
             notify(event.left ? 'Form filled: a few things left for you' : 'Form filled ✓',
-              `${jobName(job)}: ${event.filled} field(s) filled${event.left ? `, ${event.left} left (listed on the page)` : ''}. Review, then submit.`, target);
+              `${jobName(job)}: ${event.filled} field(s) filled${event.left ? `, ${event.left} left (listed on the page)` : ''}. Review, then submit.`, target, event.left ? 'warn' : 'good');
           }
         }
         return;

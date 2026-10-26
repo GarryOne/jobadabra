@@ -80,7 +80,7 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
       else app.quit();
       return;
     }
-    notify('Jobadabra will quit when done', dialog.detail, NO_PLACE.app);
+    notify('Jobadabra will quit when done', dialog.detail, NO_PLACE.app, 'info');
     Promise.all([pipeline.whenIdle(), critical.whenDone()]).then(() => app.quit());
   };
   app.on('before-quit', beforeQuit);

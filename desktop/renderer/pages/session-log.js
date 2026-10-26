@@ -237,7 +237,7 @@ export async function init() {
   $('ss-copy').addEventListener('click', async () => {
     const text = (await window.pilot.sessionOutput(shared.openSessionId)).replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
     await navigator.clipboard.writeText(text);
-    toastMessage('Log copied', 'The session\'s output is on the clipboard.', NO_PLACE.done);
+    toastMessage('Log copied', 'The session\'s output is on the clipboard.', NO_PLACE.done, 'good');
   });
   // The whole header bar opens and closes the log (Copy log does its own thing).
   $('ss-log-head').addEventListener('click', event => { if (!event.target.closest('#ss-copy')) openLog($('ss-log-body').hidden); });

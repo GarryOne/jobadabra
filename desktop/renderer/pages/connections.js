@@ -65,7 +65,7 @@ let repoTimer = null;
 let lastToast = null;
 function savedToast(title, body = '') {
   lastToast?.remove();
-  const toast = lastToast = toastMessage(title, body, {view: 'settings', section: 'automation'});
+  const toast = lastToast = toastMessage(title, body, {view: 'settings', section: 'automation'}, 'good');
   setTimeout(() => toast.remove(), 3000);
 }
 const saveState = text => { $('automation-state').textContent = text || 'Changes save automatically'; };
@@ -77,7 +77,7 @@ function updateRepo() {
     const result = await window.pilot.cloudConnect();
     saveState('');
     if (result.ok) savedToast('GitHub updated ✓', `${result.repo} follows the new settings.`);
-    else toastMessage('GitHub not updated', `${result.error} Your change is saved on this Mac; change a setting again to retry.`, {card: 'cloud'});
+    else toastMessage('GitHub not updated', `${result.error} Your change is saved on this Mac; change a setting again to retry.`, {card: 'cloud'}, 'bad');
   }, REPO_DELAY);
 }
 async function saveSchedule(select) {

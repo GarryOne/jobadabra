@@ -200,9 +200,9 @@ def join(slug):
     while page <= 20:
         markup = _get(f'https://join.com/companies/{slug}?page={page}').decode('utf-8', 'replace')
         found = re.search(r'__NEXT_DATA__[^>]*>(.*?)</script>', markup, re.S)
-        props = json.loads(found.group(1))['props']['pageProps'] if found else {}
+        data = json.loads(found.group(1))['props']['pageProps'] if found else {}
         # The jobs sit under initialState (older pages) or pageData (since ~Oct 2026); neither is a failed read, never "no jobs".
-        state = (props.get('initialState') or props.get('pageData') or {})['jobs'] if found else {}
+        state = (data.get('initialState') or data.get('pageData') or {})['jobs'] if found else {}
         for j in state.get('items') or []:
             city = j.get('city') or {}
             where = ', '.join(part for part in (city.get('cityName'), city.get('countryName')) if part)

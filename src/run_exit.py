@@ -16,7 +16,7 @@ def _open():
 def finish(code):
     """`code`, after the open reads ended or the run's deadline came; past the deadline the process exits here with `code`."""
     from . import time_budget
-    deadline = time_budget.DEADLINE
+    deadline = time_budget.end()   # a step with its share of the press ends at its stage, not at the press's deadline
     if deadline is None or not _open():
         return code
     for thread in _open():

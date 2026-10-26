@@ -34,7 +34,9 @@ export function dailyArgs(storage, inputs = {}) {
   // A search's AI steps stop at 3 minutes (owner, 7 Oct 2026: "never more than 2-3 minutes"); what is left waits for the next search (src/budget.py).
   // Every mode that runs AI steps has it: the first run's follow-up (mode today) had none from 16 Oct, so on a big market it sorted 600 titles and
   // placed 277 places for 15 minutes before the first jobs were scored (Cluj, 18 Oct 2026: first 70+ match after 23 minutes).
-  if (ai && AI_MODES.includes(mode)) args.push('--budget', String(SEARCH_BUDGET_S));
+  // budget: the seconds a Find jobs press gives this run (lib/search-steps.js: one deadline for the press), with or without AI.
+  if (inputs.budget) args.push('--budget', String(inputs.budget));
+  else if (ai && AI_MODES.includes(mode)) args.push('--budget', String(SEARCH_BUDGET_S));
   const {insights, kits} = cadence(storage.settings());
   if (ai && mode === 'scheduled' && insights !== 'off') args.push('--insight');
   if (ai && kits > 0 && AI_MODES.includes(mode)) args.push('--auto-kit-max', String(kits));

@@ -124,6 +124,13 @@ CONFIG = (Path(os.environ['JOB_PILOTTO_CONFIG_DIR']) if os.getenv('JOB_PILOTTO_C
 DATA = Path(os.environ['JOB_PILOTTO_DATA_DIR']) if os.getenv('JOB_PILOTTO_DATA_DIR') else ROOT / 'data'
 REPORTS = DATA / 'reports' if os.getenv('JOB_PILOTTO_DATA_DIR') else ROOT / 'reports'
 JOBS_DB = DATA / 'jobs.sqlite'
+_JOBS_DB = JOBS_DB
+
+
+def jobs_db():
+    """The job database as it is now: JOBS_DB when something set it (a test's patch), else DATA's, so a patched DATA moves it too
+    (26 Oct 2026: JOBS_DB is fixed at import and ~9 test files wrote data/jobs.sqlite into the checkout; tests/test_jobs_db_follows_data.py)."""
+    return JOBS_DB if JOBS_DB != _JOBS_DB else DATA / 'jobs.sqlite'
 
 
 def _holder(handle):

@@ -6,6 +6,7 @@ the full search reads the found boards beside the employer sites, not after them
 import sqlite3
 import threading
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from src import first_jobs
@@ -16,12 +17,21 @@ from src.sources import careers
 _READER = careers.READER
 
 
+_DATA = []   # this file's own data folder: nothing it writes lands in the checkout's data/ (tests/test_jobs_db_follows_data.py)
+
+
 def setUpModule():   # no test here reaches a real model through a page read (guard: tests/test_found_boards_ai.py)
     careers.READER = None
+    import tempfile
+    _DATA.append(tempfile.TemporaryDirectory())
+    _DATA.append(mock.patch('src.paths.DATA', Path(_DATA[0].name)))
+    _DATA[1].start()
 
 
 def tearDownModule():
     careers.READER = _READER
+    _DATA[1].stop()
+    _DATA[0].cleanup()
 
 SEARCH = {'role_keywords': ['tontechniker'], 'locations': {'top_tier': ['berlin'], 'country_wide': [], 'abroad': []}}
 

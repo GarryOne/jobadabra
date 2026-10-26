@@ -177,10 +177,10 @@ def main(argv=None):
             print(f'Cronjob run logged: {url}')
 
     try:
-        from ..paths import JOBS_DB
+        from ..paths import jobs_db
         from . import added  # jobs tracked from an email get facts and a fit score, like found ones
         print(run(None, google, days=args.days, send=sender, calendar=not args.no_calendar, dry_run=args.dry_run,
-                  stats=stats, on_new=added.hook(stores, JOBS_DB, log),
+                  stats=stats, on_new=added.hook(stores, jobs_db(), log),
                   always_report=args.always_report, stores=stores))
         if logged:
             log_check()

@@ -248,10 +248,10 @@ def employers_state(summary, db_path=None):
     """{'read', 'matched', 'pending', 'last_scout', 'runway'} for the "Your employers" meter: the last check's employer feeds read and with a match
     (src/sources/feeds.py), and the scout's candidates not checked yet with its last check. Missing parts are None."""
     import sqlite3
-    from .paths import JOBS_DB
+    from .paths import jobs_db
     state = dict((summary or {}).get('employers') or {})
     try:
-        with sqlite3.connect(db_path or JOBS_DB) as db:
+        with sqlite3.connect(db_path or jobs_db()) as db:
             if db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'scout_candidates'").fetchone():
                 state['pending'] = db.execute("SELECT COUNT(*) FROM scout_candidates WHERE status = 'pending'").fetchone()[0]
                 state['last_scout'] = db.execute('SELECT MAX(checked_at) FROM scout_candidates').fetchone()[0]
@@ -286,9 +286,9 @@ def language_drops(db=None):
     """[{language, count, examples}]: open jobs in the cache that a language in the user's "languages that rule a job out" hides (the
     AI read it as required), most first. 6 Oct 2026: a photographer's preferences ruled out English, German, Italian and Spanish."""
     from . import digest, store
-    from .paths import JOBS_DB
+    from .paths import jobs_db
     try:
-        db = db or store.connect(JOBS_DB)
+        db = db or store.connect(jobs_db())
         _, hidden = digest.eligible_jobs(db)
     except Exception:  # noqa: BLE001 — no cache yet: nothing to say
         return []

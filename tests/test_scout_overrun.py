@@ -32,6 +32,16 @@ class OverrunTest(unittest.TestCase):
             out.seek(0)
             self.assertEqual(out.read(), '')
 
+    def test_it_never_leaves_when_the_run_was_not_armed(self):
+        # 26 Oct 2026: test_scout_publish_path stubs arm(), so _before stayed empty; leave_if_stuck counted another test's leftover thread as
+        # a stuck check and os._exit(0) ended the CI shard halfway (#2060, #2062, #2063, #2065 red). Only a run that armed may leave early.
+        import subprocess
+        import sys
+        code = ('import threading, time\nfrom src import scout_overrun\nthreading.Thread(target=time.sleep, args=(3,)).start()\n'
+                'scout_overrun.leave_if_stuck(grace_s=0.1)\nprint("still here", flush=True)\n')
+        done = subprocess.run([sys.executable, '-c', code], cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True, timeout=30)
+        self.assertIn('still here', done.stdout, done.stdout + done.stderr)
+
     def test_a_central_run_leaves_at_once_only_while_a_check_thread_still_runs(self):
         # 26 Oct 2026: counting every thread, os._exit(0) ended a unittest shard halfway with exit 0: a just-shut pool's idle workers
         # (1 run in 5 of tests/test_scout*.py) and other tests' leftover threads (CI, PR #1979) looked like stuck checks.

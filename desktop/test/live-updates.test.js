@@ -52,7 +52,7 @@ test('per-employer and per-item lines are not results; the employers left out re
 });
 
 test('Job boards shows ✓ only once the engine says the boards are read, also when they are read beside the employer sites', () => {
-  const states = log => stepChips(log).map(chip => `${chip.label}:${chip.state}`).join(' ');
+  const states = log => stepChips(log).filter(chip => !chip.label.startsWith('Web search')).map(chip => `${chip.label}:${chip.state}`).join(' ');   // its own test below
   const reading = ['Job boards: searching the web for trade and local boards (your plan)', '⏳ Reading employer job sites: 419 of 1057',
     'Job boards: a web search found Aero Board'];
   assert.equal(states(reading), 'Job boards:active Employer sites:active More employers:pending', 'boards found mid-run are still to read');
@@ -66,4 +66,44 @@ test('Job boards shows ✓ only once the engine says the boards are read, also w
   const first = ['Finding your first jobs…', 'First jobs: 9 scored in 20 s', '⏳ Reading employer job sites: 40 of 900'];
   assert.equal(states(first), 'First jobs:done All employers:active Job boards:active More employers:pending');
   assert.equal(states([...first, 'Job boards: done, 0 job(s) for your search']), 'First jobs:done All employers:active Job boards:done More employers:pending');
+});
+
+// The owner on run fe63a974c5d9 (26 Oct 2026): "is the 41/608 employers checked progress/status correct? … from the logs, it does totally
+// different"; "why I don't see here a chip with Web Search?"; the panel said Free AI where the log said Claude.
+const chip = (log, label) => stepChips(log).find(c => c.label.startsWith(label));
+
+test('the web search has its own chip, with its state in words', () => {
+  assert.equal(chip([], 'Web search').state, 'pending');
+  assert.equal(chip(['Job boards: searching the web for trade and local boards (your plan)'], 'Web search').state, 'active');
+  const found = chip(['Job boards: a web search found Aero Board (Pilot jobs, Europe), Wing Jobs (via a recruiter)'], 'Web search');
+  assert.deepEqual([found.state, found.label], ['done', 'Web search · 2 boards found']);
+  assert.equal(chip(['Job boards: a web search found no trade or local board'], 'Web search').label, 'Web search · none found');
+  const rested = chip(['Job boards: no web search: searched 2026-10-26T01:45+00:00, next after 2026-11-02T01:45+00:00; its boards are kept'], 'Web search');
+  assert.equal(rested.state, 'skipped');
+  assert.match(rested.label, /^Web search · rested until \d{1,2} Nov$/);
+  assert.match(rested.note, /^Searched \d{1,2} Oct, \d\d:\d\d; searches again after \d{1,2} Nov$/);
+  assert.match(liveLines(['Job boards: no web search: searched 2026-10-26T01:45+00:00, next after 2026-11-02T01:45+00:00; its boards are kept'])[0],
+    /^🔎 Web search rested: last searched \d{1,2} Oct, \d\d:\d\d, next after \d{1,2} Nov; its boards are kept$/, 'dates in words in Live updates too');
+  const off = chip(['Job boards: no web search: no AI here searches the web (a signed-in Claude Code or Codex, an API key, or Free AI)'], 'Web search');
+  assert.deepEqual([off.state, off.label], ['skipped', 'Web search · off']);
+  assert.match(off.note, /no AI here searches the web/);
+  assert.equal(chip(['Job boards: the web search for trade and local boards did not answer (TimeoutError)'], 'Web search').state, 'failed');
+  assert.deepEqual(stepChips([]).map(c => c.label.split(' ·')[0]), ['Web search', 'Job boards', 'Employer sites', 'More employers']);
+  assert.deepEqual(stepChips(['Finding your first jobs…']).map(c => c.label.split(' ·')[0]), ['First jobs', 'Web search', 'All employers', 'Job boards', 'More employers']);
+});
+
+test('the AI\'s title and place checks add up in one line each, named as the engine named the AI', () => {
+  const log = ['Titles: Free AI sorted 2 new title(s) in your places; 0 could fit your search', 'Titles: Free AI sorted 21 new title(s) in your places; 1 could fit your search',
+    'Places: Free AI placed 4 location(s); 3 are in your places', 'Titles: Free AI sorted 3 new title(s) in your places; 0 could fit your search',
+    'Places: Free AI placed 2 location(s); 0 are in your places'];
+  const lines = liveLines(log);
+  assert.deepEqual(lines.filter(line => /job titles/.test(line)), ['🏷️ Free AI checked 26 job titles: 1 could fit you']);
+  assert.deepEqual(lines.filter(line => /locations?/.test(line)), ['📍 Free AI placed 6 locations: 3 in your places']);
+});
+
+test('the employer read says the jobs that match so far, and where it stopped when time ran out', () => {
+  const log = ['⏳ Reading employer job sites: 43 of 608 · 1,221 jobs listed · taking longer than expected', 'Run counts: looked=1201 matches=13 scored=0 good=0'];
+  assert.equal(liveLines(log).at(-1), '⏳ Reading employer job sites: 43 of 608 · 1,221 jobs listed · taking longer than expected · 13 match your search so far');
+  const card = findCard({running: {kind: 'search', log: [...log, 'Employers: read 78 of 608 sites in the time, best first; the other 530 are read first next time.']}});
+  assert.deepEqual(card.employers, {done: 78, total: 608, stopped: true}, 'the bar ends where the read ended, not at the last tick');
 });

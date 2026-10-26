@@ -12,10 +12,11 @@ export const FIRST = /^(Finding your first jobs|First jobs:)/;
 const EMPLOYERS = /^(Checking employer|Reading employer|⏳ Reading employer|Titles:|Places:|⏳ Scoring|Scored |Added |Job Matches)/;
 const BOARDS = {label: 'Job boards', match: /^(Searching job boards|Job boards( found| first)?:|⏳ Reading job boards)/, done: /^Job boards: done\b/, beside: true};
 const MORE = /^(Growing your sources|Source scout|🔭)/;
+const WEB = {label: 'Web search', web: true, beside: true};   // its own chip, beside the others (webSearchChip)
 const SLICE_END = /^First jobs: (\d+ scored|\d+ found, none to score)/;
 const STEPS = {
-  first: [{label: 'First jobs', match: FIRST}, {label: 'All employers', match: EMPLOYERS}, BOARDS, {label: 'More employers', match: MORE}],
-  usual: [BOARDS, {label: 'Employer sites', match: EMPLOYERS}, {label: 'More employers', match: MORE}],
+  first: [{label: 'First jobs', match: FIRST}, WEB, {label: 'All employers', match: EMPLOYERS}, BOARDS, {label: 'More employers', match: MORE}],
+  usual: [WEB, BOARDS, {label: 'Employer sites', match: EMPLOYERS}, {label: 'More employers', match: MORE}],
 };
 
 export function stepChips(log = []) {
@@ -31,8 +32,32 @@ export function stepChips(log = []) {
   }
   const employers = order.findIndex(step => step.match === EMPLOYERS);
   const state = i => (i < active ? 'done' : i === active ? 'active' : 'pending');
-  return steps.map(step => ({label: step.label, state: !step.beside ? state(order.indexOf(step))
-    : boardsDone || active === order.length - 1 ? 'done' : boardsSeen || active >= employers ? 'active' : 'pending'}));
+  const web = webSearchChip(log), last = active === order.length - 1;   // a search that never said a word about it, at its last step: not run
+  return steps.map(step => (step.web ? (web.state === 'pending' && last ? {label: 'Web search · not run', state: 'skipped'} : web) : {label: step.label, state: !step.beside ? state(order.indexOf(step))
+    : boardsDone || last ? 'done' : boardsSeen || active >= employers ? 'active' : 'pending'}));
+}
+
+// The web search's own chip (owner, 26 Oct 2026: "why I don't see here a chip with Web Search?"), its state in words from the engine's lines
+// (src/sources/board_web.py): searching, the boards it found, rested until its next date (when it last searched in the note), off (why in the
+// note) or no answer. Guarded by: test/live-updates.test.js.
+const day = iso => new Date(iso).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+const clock = iso => new Date(iso).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+const boardCount = names => names.replace(/\([^)]*\)/g, '').split(',').filter(name => name.trim()).length;   // "A (x, y), B" is 2 boards
+export function webSearchChip(log = []) {
+  let chip = {label: 'Web search', state: 'pending'}, m;
+  for (const raw of log) {
+    const line = String(raw);
+    if (/^Job boards: (searching the web|the web search is still searching)/.test(line)) chip = {label: 'Web search', state: 'active'};
+    else if ((m = /^Job boards: a web search found (.+)$/.exec(line))) {
+      const n = /^no trade or local board/.test(m[1]) ? 0 : boardCount(m[1]);
+      chip = {label: `Web search · ${n ? `${n} board${n === 1 ? '' : 's'} found` : 'none found'}`, state: 'done', note: m[1]};
+    } else if ((m = /^Job boards: no web search: searched (\S+), next after (\S+?);/.exec(line))) {
+      chip = {label: `Web search · rested until ${day(m[2])}`, state: 'skipped', note: `Searched ${day(m[1])}, ${clock(m[1])}; searches again after ${day(m[2])}`};
+    } else if ((m = /^Job boards: no web search: (.+)$/.exec(line))) {
+      chip = {label: /^searched lately/.test(m[1]) ? 'Web search · rested' : 'Web search · off', state: 'skipped', note: m[1]};
+    } else if (/^Job boards: the web search .*did not answer/.test(line)) chip = {label: 'Web search · no answer', state: 'failed', note: line.replace(/^Job boards: /, '')};
+  }
+  return chip;
 }
 
 // Live updates (owner, 26 Oct 2026: "Keep each step's result visible: 'web search found…', 'boards read', 'employers stopped'"): every step's
@@ -42,11 +67,15 @@ export function stepChips(log = []) {
 const RESULT = /^((First jobs|Job boards|Job boards found|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready)/;
 export function liveLines(log = []) {
   const results = [], tick = [];
+  let matches = 0;
   for (const raw of log) {
     const line = String(raw);
     if (/^⏳ (?!Still running)/.test(line)) tick[0] = line;
     else if (RESULT.test(line)) results.push(line);
+    else if (COUNTS.test(line)) matches = Number(COUNTS.exec(line)[2]);
   }
+  // the tick says the jobs that match so far (owner, 26 Oct 2026: "13 pilot jobs found" showed nowhere while 1,221 listings were read)
+  if (tick[0] && matches) tick[0] += ` · ${matches.toLocaleString('en-US')} match your search so far`;
   return readableLog([...results, ...tick]);
 }
 
@@ -68,8 +97,11 @@ export function addedSoFar(log = []) {
 export const addedWords = n => (n ? `${n.toLocaleString('en-US')} job${n === 1 ? '' : 's'} added to your list` : 'No jobs added to your list');
 
 // The employer read as progress: the latest "Reading employer job sites: 1953 of 2251" ticker line (src/progress.py), or null before it starts.
+// When time ran out, the engine's "Employers: read 78 of 608 sites in the time" ends the bar there, not at the last tick (owner, 26 Oct 2026).
 export function employersRead(log = []) {
   for (let i = log.length - 1; i >= 0; i--) {
+    const stopped = /^Employers: read (\d+) of (\d+) sites in the time/.exec(String(log[i]));
+    if (stopped) return {done: Number(stopped[1]), total: Number(stopped[2]), stopped: true};
     const found = /Reading employer job sites: (\d+) of (\d+)/.exec(String(log[i]));
     if (found) return {done: Number(found[1]), total: Number(found[2])};
   }

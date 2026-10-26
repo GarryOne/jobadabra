@@ -6,6 +6,8 @@ import {aiName} from './ai-name.js';
 const SLOW_S = 20, WAITED_S = 30;   // a Claude answer this slow, or a wait for a free slot this long, is worth a line
 
 const host = url => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } };
+const when = (iso, time = false) => { const at = new Date(iso); return Number.isNaN(at.getTime()) ? iso
+  : at.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + (time ? `, ${at.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}` : ''); };
 const plural = (n, word) => `${n} ${word}${Number(n) === 1 ? '' : 's'}`;
 
 // "job(s)" as the number before it says ("1 job", "3 jobs"); with no number before it, the plural. Every line passes through here, known or not.
@@ -24,8 +26,8 @@ const RULES = [
   [/^Job boards: .+? \(Swiss place word: .*$/, m => m.input.replace(/ \(Swiss place word: .*?\)*(; developer boards left out.*)?$/, '$1')],
   [/^Claude Code (\w+): answered in (\d+) s.*?(?:waited (\d+) s for a free slot)?;/, (m) => {
     const took = Number(m[2]), waited = Number(m[3] || 0);
-    if (waited >= WAITED_S) return `⏳ Waited ${waited} s for ${aiName()}: it answers two things at a time`;
-    if (took >= SLOW_S) return `🐢 ${aiName()} was slow: ${took} s for one answer`;
+    if (waited >= WAITED_S) return `⏳ Waited ${waited} s for Claude Code: it answers two things at a time`;   // the line is Claude Code's own, whatever the chosen engine
+    if (took >= SLOW_S) return `🐢 Claude Code was slow: ${took} s for one answer`;
     return null;
   }],
   [/^Run counts: /, () => null],   // the Find jobs card's numbers (find-card-model.js runCounts), not a line to read
@@ -35,14 +37,19 @@ const RULES = [
   [/^Time budget: this search stops its AI steps at (.+?);/, m => `⏱ ${aiName()} gets up to ${m[1]} this refresh; what is left waits for the next one`],
   // One line per employer the role leaves out (src/sources/feeds.py): counted, one line per reason (the Find card's Live updates show it).
   [/^Employers: (\S+) left out: (.+)$/, (m, state) => ({key: `left-out:${m[2]}`, text: `🏢 ${plural(state.count(`left-out:${m[2]}`), 'employer')} left out: ${m[2]}`})],
+  // The web search resting (src/sources/board_web.py): its dates in the reader's own time, not ISO (owner, 26 Oct 2026: "rested: searched at 01:45, next at …").
+  [/^Job boards: no web search: searched (\S+), next after (\S+?); (.+)$/, m => `🔎 Web search rested: last searched ${when(m[1], true)}, next after ${when(m[2])}; ${m[3]}`],
   [/^Checked: (.+)$/, (m, state) => ({key: 'checked', text: `🏢 Looked up ${plural(state.count('checked'), 'employer')} from the job boards`})],
   [/^Job board: (\S+) · (.+?) · (.+?)(?: · page \d+)? · (.+)$/, (m, state) => ({key: 'board', text: `🔎 Searched ${m[1]}: ${plural(state.count('board'), 'page')} read`})],
   [/^⏱ This refresh places (\d+) of (\d+) job locations.*?; (\d+) wait/, m => `📍 Asking ${aiName()} where ${m[1]} of ${m[2]} job locations are (${m[3]} next time)`],
-  [/^Places: asking \S+ where/, () => null],   // the engine's name (src/ai/providers engine_name): Claude, OpenAI or Codex
-  [/^Places: \S+ placed (\d+) location\(s\); (\d+) are in your places/, m => `📍 ${aiName()} placed ${plural(m[1], 'location')}: ${m[2]} in your places`],
+  [/^Places: asking .+? where/, () => null],   // the engine's name (src/ai/providers who()): Claude, OpenAI, Codex or Free AI (two words)
+  // The AI as the engine named the one that ran (owner, 26 Oct 2026: the panel said Free AI, the log Claude); every check of a run adds up in one line.
+  [/^Places: (.+?) placed (\d+) location\(s\); (\d+) are in your places/, (m, state) => ({key: 'places',
+    text: `📍 ${m[1]} placed ${plural(state.sum('places', m[2]), 'location')}: ${state.sum('places-in', m[3])} in your places`})],
   [/^⏱ This refresh sorts (\d+) of (\d+) job titles/, m => `🏷️ Asking ${aiName()} about ${m[1]} of ${m[2]} job titles your role words miss`],
-  [/^Titles: asking \S+/, () => null],
-  [/^Titles: \S+ sorted (\d+) new title\(s\) in your places; (\d+) could fit/, m => `🏷️ ${aiName()} checked ${plural(m[1], 'job title')}: ${m[2]} could fit you`],
+  [/^Titles: asking /, () => null],
+  [/^Titles: (.+?) sorted (\d+) new title\(s\) in your places; (\d+) could fit/, (m, state) => ({key: 'titles',
+    text: `🏷️ ${m[1]} checked ${plural(state.sum('titles', m[2]), 'job title')}: ${state.sum('titles-fit', m[3])} could fit you`})],
   [/^First jobs: reading (\d+) of (\d+)/, m => `⚡ Reading ${m[1]} of ${plural(m[2], 'employer site')} first`],
   [/^First jobs: (\d+) found$/, m => `⚡ ${plural(m[1], 'job')} found in the first sites`],
   [/^First jobs: (\d+) found, none to score/, () => null],
@@ -90,7 +97,7 @@ const PROGRESS = /^⏳ ([^:·]+?)(?::| ·)/;
 export function readableLog(lines = []) {
   const out = [], at = new Map(), counts = new Map();
   let inMessage = false;
-  const state = {count: key => { counts.set(key, (counts.get(key) || 0) + 1); return counts.get(key); }};
+  const state = {count: key => state.sum(key, 1), sum: (key, n) => { counts.set(key, (counts.get(key) || 0) + Number(n)); return counts.get(key); }};
   const put = (key, text) => {
     if (key && at.has(key)) { out[at.get(key)] = text; return; }
     if (key) at.set(key, out.length);

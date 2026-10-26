@@ -14,7 +14,7 @@ test('a running search shows its steps, last lines in words and the counts; the 
   const log = ['Finding your first jobs…', 'First jobs: reading 15 of 212 employer sites first', 'First jobs: 9 found', 'Scored 1 of 3 job(s)'];
   const card = findCard({running: run([...log, 'Run counts: looked=612 matches=9 scored=1']), listed: 300});
   assert.equal(card.state, 'searching');
-  assert.deepEqual(card.chips.map(c => c.state), ['active', 'pending', 'pending', 'pending']);
+  assert.deepEqual(card.chips.map(c => c.state), ['active', 'pending', 'pending', 'pending', 'pending'], 'first jobs, web search, all employers, job boards, more employers');
   assert.equal(card.chips[0].label, 'First jobs');
   assert.ok(card.lines.some(line => /9 jobs found in the first sites/.test(line)), card.lines.join('|'));
   assert.deepEqual([card.looked, card.matches, card.scored], [612, 9, 1], 'this search only, never the list');
@@ -24,9 +24,9 @@ test('a running search shows its steps, last lines in words and the counts; the 
 // their own ✓ is tested in test/live-updates.test.js.
 test('the steps move on: first jobs, then every employer, the job boards beside them, then more employers', () => {
   const at = line => stepChips(['Finding your first jobs…', line]).map(c => c.state).join(',');
-  assert.equal(at('Job boards: searching the web for trade and local boards (your plan)'), 'active,pending,active,pending');
-  assert.equal(at('Growing your sources: finding more employers…'), 'done,done,done,active');
-  assert.equal(stepChips(['Searching job boards…', 'Checking employer career pages…']).map(c => c.label).join('|'), 'Job boards|Employer sites|More employers');
+  assert.equal(at('Job boards: searching the web for trade and local boards (your plan)'), 'active,active,pending,active,pending', 'the web search and the boards start');
+  assert.equal(at('Growing your sources: finding more employers…'), 'done,skipped,done,done,active', 'a web search the run never spoke of: not run');
+  assert.equal(stepChips(['Searching job boards…', 'Checking employer career pages…']).map(c => c.label).join('|'), 'Web search|Job boards|Employer sites|More employers');
 });
 
 test('a search that ended here is done, or failed with its reason; a failure on an empty list stays', () => {

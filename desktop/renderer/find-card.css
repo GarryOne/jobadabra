@@ -33,7 +33,7 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-live[open] > summary::after { transform: rotate(-135deg); }
 .find-live[open] > .run-card-rows { margin-top: var(--sp-3); }
 /* Every step's result stays in the fold until the run ends (owner, 26 Oct 2026); a long run's list scrolls inside it, at its newest line. */
-.find-live > .run-card-rows { max-height: 16rem; overflow-y: auto; overscroll-behavior: contain; }
+.find-live > .run-card-rows { max-height: 28rem; overflow-y: auto; overscroll-behavior: contain; }
 /* The compact cards (a done search, "Find more jobs"): the words on the left, one button on the right, centred on the card (owner, 25 Oct 2026). */
 .find-card.is-done, .find-card.is-none { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
 .find-card.is-done .find-head-box, .find-card.is-none .find-head-box { flex: 1; min-width: 0; }

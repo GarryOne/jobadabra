@@ -61,7 +61,11 @@ def spec(env=None):
 def who(env=None):
     """Who answers, in words the user reads: 'Claude' (Anthropic key or Claude Code), 'OpenAI' or 'Codex'. Every engine-written line that names
     the AI says this word (tests/test_engine_words.py), never a hard-coded "Claude"; Claude-only features (Apply with Claude) keep theirs."""
-    return spec(env).who
+    env = os.environ if env is None else env
+    chosen = spec(env)
+    # Free AI is the API engine on the app's install key (JPF1.…, our relay): named "Free AI", as the app does (desktop/renderer/ai-name.js);
+    # 26 Oct 2026, the log said "Titles: Claude sorted 21" where the panel said "Free AI checked 21".
+    return 'Free AI' if chosen.name == 'api' and (env.get('ANTHROPIC_API_KEY') or '').startswith('JPF1.') else chosen.who
 
 
 def fallback_allowed(env=None):

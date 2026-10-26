@@ -39,7 +39,8 @@ function readProgress(model) {
   const head = el('div', 'progress-head'), bar = el('div', progress.kind === 'count' ? 'bar' : 'bar is-sliding'), fill = el('span');
   if (progress.kind === 'count') fill.style.width = `${progress.percent}%`;
   bar.append(fill);
-  head.append(el('span', '', 'Employers checked'), el('span', 'muted', progress.kind === 'count' ? `${n(progress.done)} / ${n(progress.total)}` : 'Starting…'));
+  const count = progress.kind === 'count' ? `${n(progress.done)} / ${n(progress.total)}${model.employers.stopped ? ' · time up, the rest is read first next search' : ''}` : 'Starting…';
+  head.append(el('span', '', 'Employers checked'), el('span', 'muted', count));
   box.append(head, bar);
   return box;
 }
@@ -63,7 +64,9 @@ function draw(model) {
   } else if (model.state === 'searching') {
     const chips = el('div', 'chip-row find-steps');
     chips.append(...model.chips.map(chip => {
-      const node = pill(chip.label, chip.state === 'active' ? 'signal' : chip.state === 'done' ? 'good' : 'neutral', {dot: chip.state === 'active'});
+      // skipped: decided not to run (the web search rested or off), said in its label, why in its tooltip; failed: it ran and gave no answer
+      const tone = {active: 'signal', done: 'good', failed: 'warn'}[chip.state] || 'neutral';
+      const node = pill(chip.label, tone, {dot: chip.state === 'active', title: chip.note || ''});
       node.classList.add('find-step', `is-${chip.state}`);   // the active step pulses, a finished one shows a tick, a waiting one a clock (find-card.css)
       if (chip.state === 'pending') node.prepend(icon('clock'));
       return node;

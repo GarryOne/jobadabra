@@ -21,6 +21,6 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 export const browser = true;
 export const keepGoing = true;   // as `apply`: a failed journey never hides the others; the setup step is critical (suites/apply.mjs)
 export const engine = flowsEngine();   // the proxy answers the app's AI calls (CI and the matrix); LIVE=1: this Mac's Claude Code; LIVE_ENGINE overrides (lib/engine.mjs)
-export const macos = true;   // runs on a macOS runner: the real Chrome extension, opened through `open` as on a Mac (lib/plan.mjs runnerOf)
+export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 export const name = 'applyflows';
 export const run = ctx => runApply(ctx, process.env.LIVE ? ['live'] : ['flows']);   // LIVE=1: the live run on a real posting (npm run live), not the journeys

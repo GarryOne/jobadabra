@@ -96,7 +96,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite)});
+  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));
@@ -110,7 +110,7 @@ export async function suiteFacts() {
   const cadence = {}, watches = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {};
   for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); if (module.notion === false || module.light || module.store) storeless.push(suite); }   // storeless: no store to vary (no Notion part, a model-only eval, or a store of its own)
   return {all: SUITES, cadence, watches, varies, sameOnEveryOs, storeless, shards, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
-    os: async suite => runnerOf(await import(`./suites/${suite}.mjs`))};
+    os: async (suite, options) => runnerOf(await import(`./suites/${suite}.mjs`), options)};
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {

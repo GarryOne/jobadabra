@@ -10,7 +10,6 @@ A skipped employer's open jobs stay seen (keep_seen), so the 7-day expiry never 
 Used by src/sources/feed_scan.py. Tests: tests/test_feed_facts.py.
 """
 import hashlib
-import json
 from datetime import datetime, timedelta, timezone
 
 FRESH_HOURS = 6
@@ -23,9 +22,9 @@ def _now():
 
 
 def search_digest():
-    """The whole search (roles, places, exclusions, remote) and the job readers: a change of either judges every list again."""
+    """The whole search (roles, places, exclusions, remote) and the job readers: a change of either judges every list again. The rest's key."""
     from . import feeds
-    return hashlib.sha256(json.dumps([feeds._SEARCH, feeds.READERS], sort_keys=True, default=str).encode()).hexdigest()[:12]
+    return feeds._search_digest()
 
 
 def load(db):

@@ -114,6 +114,18 @@ class FeedFactsTest(unittest.TestCase):
         self.assertEqual(store.close_stale(canonical, 7, now=self.t0 + timedelta(hours=7)), 0, 'unchanged lists still list these jobs')
 
 
+class StrategyTest(unittest.TestCase):
+    def test_any_change_of_the_strategy_wakes_rested_employers_and_drops_kept_facts(self):
+        # Owner, 26 Oct 2026: "the websites being read should be relevant and in sync with my current strategy". The rest was keyed by
+        # role words and places only: a new exclusion or remote choice kept employers resting that were judged under the old one.
+        same_words = {'role_keywords': ['pilot'], 'locations': {'top_tier': ['europe']}}
+        for change in ({'title_exclude_keywords': ['contract']}, {'remote_jobs': ['No']}, {'target_roles': [{'title': 'first officer'}]}):
+            with self.subTest(change=change):
+                self.assertNotEqual(feeds._search_digest(same_words), feeds._search_digest({**same_words, **change}))
+        with mock.patch.object(feeds, '_SEARCH', same_words):
+            self.assertEqual(feed_facts.search_digest(), feeds._search_digest(), 'one key: the rest and the unchanged facts')
+
+
 class ConditionalGetTest(unittest.TestCase):
     def test_a_304_raises_unchanged_and_a_single_page_keeps_its_tag(self):
         class Response:

@@ -9,7 +9,7 @@ import re
 import sys
 
 from . import role_kinds
-from .paths import CONFIG, DATA, load_search_config
+from .paths import DATA
 
 STAMP = DATA / 'field_stamp.json'
 DERIVED = (('board_discovery_keywords',), ('quality_stack_keywords',), ('google_jobs', 'queries'))   # every list drafted from the roles
@@ -108,20 +108,58 @@ def apply(search, profile='', asker=None, stamp=None, save=None):
     return redrafted(search, answer), True
 
 
-def main():
-    """Redraft config/search.json's derived lists when the roles moved to another field; prints {"redrafted": bool}."""
+def _publish(files):
+    """The three redrafted sections on the Notion search settings page (the page is the source of truth: a sync would bring the old words back).
+    Nothing to do without a page; an error is raised so the stamp stays and the next run redrafts again."""
+    from .notion import search_settings
+    if not search_settings.PAGE_ID:
+        return
+    from .notion.client import Tracker
+    tracker = Tracker.from_env()
+    if not tracker:
+        return
+    for heading, name, path, kind in search_settings.SECTIONS:
+        if path in DERIVED:
+            value = search_settings._get(files[name], path) or []
+            items = [search_settings.readable(v) if kind == 'match' else str(v) for v in value]
+            tracker.replace_after_heading(search_settings.PAGE_ID, heading, [
+                {'object': 'block', 'type': 'bulleted_list_item', 'bulleted_list_item': {'rich_text': [{'type': 'text', 'text': {'content': item}}]}}
+                for item in items])
+
+
+def refresh(asker=None, profile=None, publish=_publish):
+    """Before every jobs check, whatever changed the roles (the Strategy page, the Notion page, Telegram, setup, an import: they all end in the cached
+    settings): redraft the derived lists when the roles' field moved since the stamp, keep them, put them on the Notion page, then stamp. True when it did."""
+    from . import target_roles
+    from .notion import search_settings
     from .paths import local_profile
-    path = CONFIG / 'search.json'
-    raw = json.loads(path.read_text())
-    new, changed = apply(load_search_config(matching=False), local_profile() or '')   # the merged config: role_keywords come from target_roles
-    if changed:
-        for name, *rest in DERIVED:
-            if rest:
-                raw.setdefault(name, {})[rest[0]] = new[name][rest[0]]
-            else:
-                raw[name] = new[name]
-        path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + '\n')
-    print(json.dumps({'redrafted': changed}))
+    files = search_settings.load_cached()
+    new, changed = apply(target_roles.with_derived(files['search']), local_profile() or '' if profile is None else profile, asker=asker, save=lambda value: None)
+    if not changed:
+        stamp = field_of(new)   # an unchanged field with a changed stamp (first run, a role added in the same field): keep the stamp current
+        if _stamp() != stamp and not moved(_stamp(), stamp):
+            STAMP.parent.mkdir(parents=True, exist_ok=True)
+            STAMP.write_text(json.dumps(stamp))
+        return False
+    search_settings.apply({('search', path): (new[path[0]] if len(path) == 1 else new[path[0]][path[1]]) for path in DERIVED}, files)
+    publish(search_settings.load_cached())
+    STAMP.parent.mkdir(parents=True, exist_ok=True)
+    STAMP.write_text(json.dumps(field_of(new)))
+    print('Field change: your roles moved to another field, so the employer-finding words, skills and Google Jobs searches were redrafted for it.', flush=True)
+    return True
+
+
+def refresh_quietly(**kwargs):
+    try:
+        return refresh(**kwargs)
+    except Exception as error:  # noqa: BLE001 — the search goes on with the lists it has; the next run tries again
+        print(f'Field change: the words were not redrafted ({type(error).__name__}).', file=sys.stderr)
+        return False
+
+
+def main():
+    """`python -m src.field_redraft apply` (the Strategy page's roles edit): prints {"redrafted": bool}."""
+    print(json.dumps({'redrafted': refresh_quietly()}))
     return 0
 
 

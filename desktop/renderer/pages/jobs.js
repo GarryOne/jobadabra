@@ -7,7 +7,7 @@ import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
 import {refreshBusy, showSearchChanged, wireSearchChanged} from '../search-changed.js';
 import {openActivity, refreshActivity, showSearchStatus} from './activity.js';
-import {renderFindCard, wireFindCard} from './jobs-find.js';
+import {paintFindCardFirst, renderFindCard, wireFindCard} from './jobs-find.js';
 import {$, message, savedAgo} from './core.js';
 import {refreshSessions, sessionJob, sessionList} from './sessions.js';
 import {toastMessage} from './startup.js';
@@ -15,7 +15,8 @@ import {hostStats, snapshot} from '../intel.js';
 import {searchSelect} from '../search-select.js';
 import {jobsState, MORE, fullKey} from './jobs-state.js';
 import {openJobPanel} from './job-panel.js';
-import {TALKING_OPEN, renderJobs, renderTalkingBar, renderStuck, showLoading} from './jobs-render.js';
+import {renderJobs, renderStuck, showLoading} from './jobs-render.js';
+import {TALKING_OPEN, paintTalkingFirst, renderTalkingBar} from './jobs-talking.js';
 export {renderJobs} from './jobs-render.js';
 window.addEventListener('claude-help', () => renderJobs());   // Settings' Claude switch: the job menus follow it (claude-help.js)
 export {pageKey, fullKey} from './jobs-state.js';
@@ -82,6 +83,8 @@ export async function loadJobs() {
     $('jobs-stats').textContent = `Couldn't read your jobs: ${error.message}`;
   }
   jobsState.jobsLoading = false;
+  jobsState.jobsRead = true;   // read or failed: the Find jobs card stops waiting for the count
+  renderFindCard();
   renderJobs();
   if (freshJobs) {
     askAboutLeftOpen();
@@ -137,6 +140,7 @@ function reloadQuietly() {
 }
 export function showJobsData(data) {
   jobsState.lastJobsData = data;
+  renderFindCard();   // its count decides "empty" (no jobs yet)
   // "Your search changed" until a refresh has finished: the settings as they are now (a refresh that just ended set lastSearchAt).
   wireSearchChanged();
   window.pilot.state().then(state => { shared.state = state; showSearchChanged(state.settings); }).catch(() => {});
@@ -215,6 +219,7 @@ export async function init() {
   searchSelect($('lead-target'));
   try { $('jobs-talking').open = talkingStartsOpen(localStorage.getItem(TALKING_OPEN)); } catch {}
   $('jobs-talking').addEventListener('toggle', event => { try { localStorage.setItem(TALKING_OPEN, event.target.open ? '1' : '0'); } catch {} renderTalkingBar(); });
+  paintTalkingFirst();
   $('jobs-stuck-show').addEventListener('click', () => {
     jobsState.statFilter = 'stuck';
     setFilters(['all']);
@@ -334,6 +339,7 @@ export async function init() {
   });
   $('refresh').addEventListener('click', () => startSearch());
   wireFindCard(() => startSearch());
+  paintFindCardFirst();
 
   $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
   $('apply-open').addEventListener('click', () => {

@@ -398,7 +398,10 @@
         </div>
       </div>
       <!-- The Find jobs card sits where the list appears (owner, 24 Oct 2026): the big card on a first run, the live search above the list as it fills. -->
-      <section class="card find-card" id="find-card" aria-live="polite" hidden></section>
+      <!-- In the first paint (renderer/late-blocks.js): the card as last drawn, else this skeleton of the compact card holds its place until the runs answer. -->
+      <section class="card find-card is-none is-loading" id="find-card" aria-live="polite" aria-busy="true">
+        <div class="find-head-box"><div class="find-head"><h3 class="find-title"><span class="skeleton tall w-name"></span></h3></div><p class="muted find-lead"><span class="skeleton w-60"></span></p></div><span class="skeleton button"></span>
+      </section>
       <div class="job-list-head" id="jobs-head" aria-hidden="true"><span>Fit</span><span>Role</span><span>Company</span><span>Location</span><span>Status</span><span>Actions</span></div>
       <div class="board shows-scrollbar" id="jobs-board" hidden></div>
       <div class="job-split" id="jobs-split">

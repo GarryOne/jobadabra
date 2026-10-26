@@ -152,7 +152,7 @@ export async function init() {
   // Close it with Escape, its ✕, or the bar ("Hide activity").
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('activity-panel').hidden) openActivity(false); });
   window.addEventListener('focus-updated', () => { if (!$('activity-panel').hidden && lastActivity) renderActivity(lastActivity); });
-  window.pilot.runs().then(renderActivity).catch(() => {});  // at once, not after the first 2 s tick
+  window.pilot.runs().then(runsNow => { renderActivity(runsNow); renderFindCard(runsNow); }).catch(() => {});  // at once, not after the first 2 s tick: the Find jobs card too (it came 2-3 s late, 26 Oct 2026)
   // Which session tabs are open, at once too: until it is known the session cards say they are checking (CHECK_MS at most).
   window.pilot.formsOpen().then(forms => { shared.formsOpen = forms; renderSessionPage(); renderDock(); }).catch(() => {});
   setTimeout(() => { renderSessionPage(); renderDock(); }, CHECK_MS + 100);

@@ -12,7 +12,7 @@ test('Interviews find their job by the store\'s id too', () => {
 });
 
 test('In conversation opens the job\'s page; a mail card\'s job and a ready prep kit open it too', () => {
-  assert.match(read('jobs-render.js'), /job\.notion_url \? window\.pilot\.openNotion\(job\.notion_url, event\.metaKey\) : openJobPanel\(job\)\)/);
+  assert.match(read('jobs-talking.js'), /job\.notion_url \? window\.pilot\.openNotion\(job\.notion_url, event\.metaKey\) : openJobPanel\(job\)\)/);
   const mail = read('activity-mail.js');
   assert.match(mail, /if \(kitReady\.has\(id\)\) return \{label: 'Open prep kit', run: event => \(found\.notion_url \? .* : \(openView\('jobs'\), openJobPanel\(found, 'prep'\)\)\)\}/);
   assert.match(mail, /else if \(found\.page_id\) \{ openView\('jobs'\); openJobPanel\(found\); \}/);

@@ -7,6 +7,7 @@ export const jobsState = {
   claudeReady: false,
   benchmarkText: {},   // url -> the board's typical reply line (lib/benchmarks.js), refreshed with the jobs list
   lastJobsData: null,   // the list as last loaded: a deleted job is recounted from it at once
+  jobsRead: false,   // the first read of the list ended (read or failed): the Find jobs card's "empty" waits for it
   filters: ['open'],   // the ticked filters of the one Show menu (jobs-filters.js): a job shows when any of them holds it
   mode: 'list',   // 'list' or 'board' (pages/jobs-views.js, remembered on this computer)
 };

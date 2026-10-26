@@ -1,16 +1,19 @@
 // Jobs page, the "Find jobs" card on top (owner, 16 Oct 2026; centered magic card + moving searching card 24 Oct 2026): a big card on an empty first run, then the live progress of the search (steps, last
 // lines, counts) with the list growing below it, then a one-line result; a failure says what to do. Built from the shared header, number strip, pills and
 // rows (no new look). Data: renderer/find-card-model.js. Guarded by: test/find-card.test.js.
+// It is in the page's first paint (owner, 26 Oct 2026: it came 2-3 s late and pushed the list down): as last drawn (renderer/late-blocks.js), else
+// index.html's skeleton in its place; activity.js draws the real state with its first runs answer, not 2 s later. Guarded by: test/late-blocks.test.js.
 import {cardHead, el, liveRows, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
 import {wand, wire} from '../magic.js';
 import {jobCounts} from '../jobs-view.js';
-import {findCard, readProgressModel} from '../find-card-model.js';
+import {findCard, keptFindCard, readProgressModel, waitsForList} from '../find-card-model.js';
+import {keepBlock, keptBlock} from '../late-blocks.js';
 import {jobsState} from './jobs-state.js';
 import {$, show} from './core.js';
 import {showFullReport} from './full-report.js';
 
-let signature = '', wasSearching = false, finishedHere = false;
+let signature = '', wasSearching = false, finishedHere = false, lastRuns = null;
 let start = () => {};
 let liveOpen = true, liveFollow = true, liveShown = new Set();   // the fold: open, following its newest line, the lines drawn last time
 export const wireFindCard = startSearch => { start = startSearch; };
@@ -95,13 +98,21 @@ function draw(model) {
     card.replaceChildren(cardHead('Search stopped', 'The search did not finish', {subtitles: [model.problem || 'Nothing is lost. Try again; if it keeps stopping, check your AI settings.']}),
       button('Try again', () => start()));
   }
+  card.removeAttribute('aria-busy');
   show(card, true);
   document.body.dataset.findCard = model.state;
 }
 
-// Called every 2 s with the runs state, and after the list loads.
-export function renderFindCard(runsNow) {
+// The first paint (pages/jobs.js init): the card as it was last drawn; with nothing kept, index.html's skeleton stays until the runs answer.
+export function paintFindCardFirst() {
+  const kept = keptBlock('find-card');
+  if (kept?.state && $('find-card')) draw(kept);
+}
+
+// Called with the window's first runs answer and every 2 s after (pages/activity.js), and when the job list is read (pages/jobs.js: its count).
+export function renderFindCard(runsNow = lastRuns) {
   if (!$('find-card') || !runsNow) return;
+  lastRuns = runsNow;
   const searching = !!runsNow.running && (runsNow.running.kind || 'search') === 'search';
   if (wasSearching && !searching) finishedHere = true;
   if (searching) finishedHere = false;
@@ -109,10 +120,12 @@ export function renderFindCard(runsNow) {
   const counts = jobCounts(jobsState.lastJobsData);   // the same numbers as the counters below (jobs-view.js)
   const model = findCard({running: runsNow.running, last: (runsNow.runs || []).find(run => (run.kind || 'search') === 'search') || null,
     lastSearchAt: runsNow.lastSearchAt, listed: runsNow.listed ?? counts.total, finishedHere});   // runsNow.listed: only the screenshots set it
+  if (waitsForList(model, runsNow.listed != null || !!jobsState.lastJobsData || !!jobsState.jobsRead)) return;   // the kept paint or the skeleton stays
   const key = JSON.stringify(model);
   if (key === signature) return;
   signature = key;
   draw(model);
+  keepBlock('find-card', keptFindCard(model));
 }
 
 // The Find jobs card is showing its searching state: the rows without a score say Scoring… instead of Not scored.

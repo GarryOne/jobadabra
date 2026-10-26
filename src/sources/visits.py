@@ -87,7 +87,7 @@ def visit_list(search=None, kinds=None, now=None, picks=None):
         if host_of(pick['url']) not in have and (not last or last < stale):
             have.add(host_of(pick['url']))
             out.append({'name': pick['name'], 'url': pick['url'], 'kind': 'employer', 'why': 'picked for your search, no job list we can read', 'last_read': last,
-                        'note': 'Opens their site: if it is not their job list, go to it, then click the Jobadabra icon'})
+                        'note': 'Opens their site: if it is not their job list, go to it, then click the Jobadabra icon', **({'found': pick['origin']} if pick.get('origin') else {})})
     for portal in portals(search, kinds):
         last = (read.get(host_of(portal['url'])) or {}).get('at')
         if not last or last < stale:
@@ -132,24 +132,29 @@ KEEP_LISTS = 8   # answers kept, one per list of sites, roles and places
 RELEVANT_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['keep'], 'properties': {'keep': {
     'type': 'array', 'items': {'type': 'integer'}, 'description': 'Numbers of the sites likely to have jobs of their kinds in their places'}}}
 RELEVANT_SYSTEM = """You get a job seeker's roles and places, and numbered sites to read jobs from (an employer's name and address, or a job \
-portal). Answer the numbers of the sites likely to have jobs of their kinds of role in their places: an employer that runs shops, studios, \
-warehouses or offices there where such people work, or a portal that lists such jobs. Leave out sites whose jobs are of other kinds (a \
-private bank for a shop seller, a tech salary site for a photographer) or that have no presence in their places. When unsure, keep it."""
+portal; "found in" says which list or search first named it). Answer the numbers of the sites likely to have jobs of their kinds of role in \
+their places: an employer that runs shops, studios, warehouses, fleets or offices there where such people work, or a portal that lists such jobs. \
+Judge an employer by what the organisation does, not by its name: a name that sounds like their field is not enough (a software firm can be \
+called after aircraft or ships). Leave out sites whose jobs are of other kinds (a private bank for a shop seller, a tech salary site for a \
+photographer) or that have no presence in their places."""
+RELEVANT_UNSURE = {'keep': 'When unsure, keep it.',   # the visit list: the person sees it and chooses
+                   'leave': 'When unsure, leave it out.'}   # an automatic browser read (src/sources/refused_reads.py): only sites likely to fit
+RELEVANT_VERSION = 2   # in the kept answers' key: answers given before the judge saw where a site was found are asked again (26 Oct 2026)
 
 
-def relevant(items, search, client=None, label='Visit list', failed=None):
+def relevant(items, search, client=None, label='Visit list', failed=None, unsure='keep'):
     """The sites worth your browser's time for these roles and places, by Claude once per list (7 Oct 2026: Cornèr Bank, Geneva Freeport and
     levels.fyi were read for a photographer and shop seller); all of them without AI. Claude sees site names and addresses, roles and places.
     One judge for the visit list and the refused sites' browser reads (src/sources/refused_reads.py queue); the last KEEP_LISTS answers are kept,
     so the two lists never push each other's answer out. When the AI call fails: `failed` if given (the automatic reads pass [], so an
-    unjudged site is never read), else every site."""
+    unjudged site is never read), else every site. `unsure`: 'leave' for the automatic reads, so a site the AI is not sure fits is not read."""
     from ..notion.search_settings import terms
     search = search or load_search_config(matching=False)
     roles = terms(search.get('role_keywords'))[:40]
     places = terms([*(search.get('locations') or {}).get('top_tier', []), *(search.get('locations') or {}).get('country_wide', [])])[:12]
     if not items or not roles:
         return items
-    key = hashlib.sha256(json.dumps([sorted(i['url'] for i in items), sorted(roles), places], ensure_ascii=False).encode()).hexdigest()[:12]
+    key = hashlib.sha256(json.dumps([sorted(i['url'] for i in items), sorted(roles), places, RELEVANT_VERSION, unsure], ensure_ascii=False).encode()).hexdigest()[:12]
     data = _load()
     kept = (data.get('relevant') or {}).get(key)
     if kept is None:
@@ -158,8 +163,8 @@ def relevant(items, search, client=None, label='Visit list', failed=None):
             if not engine.ready():
                 return items
             client = client or engine.client(action='visit_relevant')
-            listed = '\n'.join(f"{n}. {i['name']} ({i['url']}) [{i['kind']}]" for n, i in enumerate(items, 1))
-            response = client.messages.create(model=RELEVANT_MODEL, max_tokens=1500, system=[{'type': 'text', 'text': RELEVANT_SYSTEM}],
+            listed = '\n'.join(f"{n}. {i['name']} ({i['url']}) [{i['kind']}]" + (f" found in: {i['found']}" if i.get('found') else '') for n, i in enumerate(items, 1))
+            response = client.messages.create(model=RELEVANT_MODEL, max_tokens=1500, system=[{'type': 'text', 'text': f'{RELEVANT_SYSTEM} {RELEVANT_UNSURE[unsure]}'}],
                                               messages=[{'role': 'user', 'content': f'Their roles: {json.dumps(roles, ensure_ascii=False)}\nTheir places: '
                                                                                     f'{json.dumps(places, ensure_ascii=False)}\nThe sites:\n{listed}'}],
                                               output_config=engine.structured(RELEVANT_SCHEMA, RELEVANT_MODEL, 'low'))

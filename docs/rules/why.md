@@ -153,6 +153,12 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - Hence: every list of sites a run reads or offers is judged by the AI for the CURRENT strategy, whichever search queued it; a site the person
   opened a job on is read anyway; when the AI fails, the automatic reads take none. Guard: `tests/test_sources_follow_strategy.py` (one loop over
   the lists; a new list joins it, a sibling in other work is named with its owner).
+- The same night, after that fix (owner: "it hangs. its stuck"): the judge kept "Airbase" (spend-management software, from a tech firms' list an
+  earlier search picked) for the pilot search: it saw only a name that sounds like flying and was told "When unsure, keep it". And the pass sat on
+  "0 of 1 · Airbase · Next" for 15 minutes: the extension read the site at once, but the pass's task waited behind Find jobs and missed the answer.
+  Hence: the judge sees where a site was found, judges what an organisation does (never its name), and an automatic read leaves an unsure site
+  out; a pass exists from the moment its sites are handed out and each site answers within 45 s or ends it with that reason.
+  Guards: `tests/test_refused_reads_fit.py` (NameOnlyTest), `desktop/test/refused-reads-pass-timing.test.js`.
 
 ## Suites run on CI only (26 Oct 2026)
 - The owner's Mac sat at load 89: session 8b ran `node --test` over a grep-built list of e2e harness tests (fill-overlay, panel-tailor… open Chrome for

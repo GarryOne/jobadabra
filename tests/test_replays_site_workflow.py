@@ -1,6 +1,6 @@
 """The offline replay of the pool rows (.github/workflows/site-replays.yml; owner, 14 Oct 2026): never on a PR, started on time by the Worker (GitHub's schedule as
 the backup, which stops on a commit already replayed), compared with the last green run (replay-gate.mjs, with a retry), its results kept as the next baseline,
-red when a counted row got worse, Telegram on failure, only main updates /admin/lab-form-filling, and it never asks an AI."""
+red when a counted row got worse, Telegram on failure, only main updates /admin/form-filling/lab, and it never asks an AI."""
 import re
 import unittest
 from pathlib import Path

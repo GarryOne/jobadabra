@@ -18,7 +18,7 @@ test('one PUT with the narrow key from CI on main; a branch, a Mac, a missing ke
   assert.match(await uploadFillVideo('A row', video, ctx, {env: {...ci, JP_CI_ROWS_DRY: '1'}, fetcher}), /dry run/);
   assert.match(await uploadFillVideo('A row', null, ctx, {env: ci, fetcher}), /no video/);
   assert.equal(calls.length, 0);
-  assert.match(await uploadFillVideo('A row', video, ctx, {env: ci, fetcher}), /sent to \/admin\/lab-form-filling/);
+  assert.match(await uploadFillVideo('A row', video, ctx, {env: ci, fetcher}), /sent to \/admin\/form-filling\/lab/);
   assert.equal(calls[0].init.method, 'PUT');
   assert.equal(calls[0].init.headers.Authorization, 'Bearer k');
   assert.equal(calls[0].init.headers['Content-Type'], 'video/webm');

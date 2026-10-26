@@ -66,7 +66,7 @@ export function pickEngine({env = process.env, suiteEngine = '', installed = cla
 export const familyOf = engine => (engine === 'openai' || engine === 'codex' ? 'openai' : 'claude');
 export const keySecret = engine => (familyOf(engine) === 'openai' ? 'E2E_OPENAI_KEY' : 'E2E_ANTHROPIC_KEY');
 export const familySecret = (family, engine = 'api') => (family === 'free' ? 'E2E_FREE_AI_KEY' : keySecret(engine));
-// Live runs on real sites ask on their own Anthropic keys, so each one's cost shows apart in the Console and on /admin/ai-cost (owner, 12 Oct 2026): a CI recording
+// Live runs on real sites ask on their own Anthropic keys, so each one's cost shows apart in the Console and on /admin/intelligence/ai-cost (owner, 12 Oct 2026): a CI recording
 // run by hand (JOB_PILOTTO_VISIT_KIND=hand) on LIVE_POOL_ANTHROPIC_KEY; until the owner has set one, the Tests key. -> the NAME
 // the key comes from (for the job log), never its value. The one place that picks it (e2e/test/no-local-key.test.mjs).
 export const LIVE_KEYS = {hand: 'LIVE_POOL_ANTHROPIC_KEY'};

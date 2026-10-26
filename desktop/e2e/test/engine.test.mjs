@@ -64,7 +64,7 @@ test('the AI family alternates per CI run (odd: OpenAI, even: Claude), never wit
   assert.throws(() => pickFamily({E2E_AI_FAMILY: 'gpt'}), /claude, openai, free or rotate/);
 });
 
-// Owner, 12 Oct 2026: each live run's AI cost shows apart in the Console and on /admin/ai-cost: the CI recording by hand asks on its own key (the PR key went on 15 Oct 2026).
+// Owner, 12 Oct 2026: each live run's AI cost shows apart in the Console and on /admin/intelligence/ai-cost: the CI recording by hand asks on its own key (the PR key went on 15 Oct 2026).
 test('live runs ask on their own key (a recording run by hand), the Tests key until it is set; the name is said, never the value', async () => {
   const {liveKeyName, testKey} = await import('../lib/engine.mjs');
   const env = {CI: 'true', E2E_ANTHROPIC_KEY: 'tests', LIVE_POOL_ANTHROPIC_KEY: 'pool'};

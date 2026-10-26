@@ -1,4 +1,4 @@
-// Sends the verdicts of "Confirmed offline" to /admin/lab-form-filling in ONE PUT (site/src/applying-verify.js): the plan's own (rows answered without a replay) and each row job's verdict.json.
+// Sends the verdicts of "Confirmed offline" to /admin/form-filling/lab in ONE PUT (site/src/applying-verify.js): the plan's own (rows answered without a replay) and each row job's verdict.json.
 // Bearer REPLAYS_PUBLISH_KEY from the environment, never printed. A row job that died sends nothing for its row: the old verdict stays. Main only (the workflow). 
 // Run: node verify-report.mjs <plan.json> <folder with verdict.json files> [--dry]. Guard: e2e/test/verify-report.test.mjs.
 import fs from 'node:fs';

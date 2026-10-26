@@ -26,7 +26,7 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
    `--dry` prints the plan and starts nothing.
 3. On the result lines (`Time to first job`, `Jobs in your places`, `Scored`, `Scoring 70+`) tell the owner, in a small table, each number **beside the earlier local runs' median**
    (the script prints it from `~/jp-search-check/history.jsonl`; first run: "no earlier local run").
-4. Put them next to the live picture: open `/admin/lab-job-search` (Random draws, Real installs; read it with the Bearer from Keychain `job-pilotto.site.api_key`, memory *reference-owner-pages-access*)
+4. Put them next to the live picture: open `/admin/job-search/lab` (Random draws, Real installs; read it with the Bearer from Keychain `job-pilotto.site.api_key`, memory *reference-owner-pages-access*)
    and quote the latest Random draw's numbers and the real installs' medians for the same role family. One line: better / same / worse, and the weakest number.
 5. A FAILED row (a step crashed) is shown as FAILED with its step, never as numbers.
 
@@ -41,7 +41,7 @@ candidate through the app's own path (CV → strategy → first "Find jobs"), on
    (scout_cells.totals), and its board measure counts jobs resolved through pool_tags.countries (AI labels); same rule (local only, never worldwide remote), different unit and resolver.
 7. **Thin country: check first that board facts were served for it.** Board seeding is inert until a central scout run has printed `Board pass: <country>: N boards proposed, M with 3+ local jobs`
    (stored as site facts `central-scout-<cc>`). Say in the report whether they were served and from which run; if not, "no boards" is the cause, not the search. Scout-side checks: skill `check-central-scout-locally`.
-8. **Publish every finished check** so other sessions read it on `/admin/lab-job-search` tab "Session checks" (owner, 24 Oct 2026): before running a check, read that tab for the same case;
+8. **Publish every finished check** so other sessions read it on `/admin/job-search/lab` tab "Session checks" (owner, 24 Oct 2026): before running a check, read that tab for the same case;
    after it, `python3 tools/persona-search/publish-session-check.py <out> <case> --session <your short name> --label "Nurse, Zagreb" --country Croatia --role nurse --mode full|quick --build <sha> --broke "<what broke>" --conclusion "<what it shows>" --prs "#n"`
    (`--dry` prints the row; the key is the Keychain item `job-pilotto.site.session_checks_key`; counts and board names only, no job titles or companies).
 9. The full check only for the final number. Never edit or switch the checkout a check runs from while it runs (it reads src/ per step): run checks from their own worktree.

@@ -174,10 +174,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
-  # /admin/lab-form-filling's Fixed-site replays show CI on main only (12 Oct 2026: local runs of work-in-progress branches showed main as broken): every shard's results, ONE PUT
+  # /admin/form-filling/lab's Fixed-site replays show CI on main only (12 Oct 2026: local runs of work-in-progress branches showed main as broken): every shard's results, ONE PUT
   # with the build's sha (desktop/e2e/replays-report.mjs). Also when a case failed (that is the point). On a PR it is a dry run: it proves the step, sends nothing.
   report:
-    name: page cases to /admin/lab-form-filling
+    name: page cases to /admin/form-filling/lab
     needs: replay
     if: always() && needs.replay.result != 'cancelled'
     runs-on: ubuntu-24.04

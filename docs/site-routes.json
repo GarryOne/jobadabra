@@ -186,16 +186,26 @@
    "kind": "ci"
   },
   {
+   "path": "/admin/operations/e2e/report/",
+   "prefix": true,
+   "kind": "ci"
+  },
+  {
    "path": "/admin/e2e/run/",
    "prefix": true,
    "kind": "ci"
   },
   {
-   "path": "/admin/real-form-filling/digest.json",
+   "path": "/admin/operations/e2e/run/",
+   "prefix": true,
    "kind": "ci"
   },
   {
-   "path": "/admin/real-form-filling/digest.md",
+   "path": "/admin/form-filling/real-users/digest.json",
+   "kind": "ci"
+  },
+  {
+   "path": "/admin/form-filling/real-users/digest.md",
    "kind": "ci"
   },
   {
@@ -396,7 +406,7 @@
    "kind": "page"
   },
   {
-   "path": "/admin/lab-form-filling/video",
+   "path": "/admin/form-filling/lab/video",
    "methods": [
     "GET"
    ],

@@ -6,7 +6,7 @@ name: Product brain · Daily brief
 #   ✅ Approve plan -> step approve: marked Approved (building it is a normal session, with the owner)
 #   ⏭ / ✖           -> step skip: Not now      🔁 -> step another: Not now + a different recommendation
 # Sundays: step review, a 30-day strategy review (Opus, web research) that proposes Compass changes; ✅ writes them in.
-# Every message and tap is also logged in the site's D1 (brain_messages) for /admin/brain; step sync copies Notion's rows there.
+# Every message and tap is also logged in the site's D1 (brain_messages) for /admin/intelligence/brain; step sync copies Notion's rows there.
 # Buttons: the bot's webhook is the website (api/brain.js). Plumbing: tools/product_brain.py, tools/site-shots.mjs.
 # Secrets: ANTHROPIC_API_KEY, NOTION_BRAIN_TOKEN (Notion connection "Job Pilotto Brain": the Decisions database and
 # the pages the owner shares with it), BRAIN_BOT_TOKEN, BRAIN_CHAT_ID, JOB_PILOTTO_TELEMETRY_KEY; variable BRAIN_DATABASE_ID.
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       step:
-        description: brief, explore, approve, skip, another, review or sync (Notion rows -> /admin/brain's log)
+        description: brief, explore, approve, skip, another, review or sync (Notion rows -> /admin/intelligence/brain's log)
         type: choice
         options: [brief, explore, approve, skip, another, review, sync]
         default: brief
@@ -67,7 +67,7 @@ jobs:
             *)       python tools/product_brain.py status --id "$DECISION" --status 'Not now' ;;
           esac
 
-      - name: Copy the Decisions rows into the site's log (/admin/brain)
+      - name: Copy the Decisions rows into the site's log (/admin/intelligence/brain)
         if: env.STEP == 'sync'
         run: python tools/product_brain.py sync
 

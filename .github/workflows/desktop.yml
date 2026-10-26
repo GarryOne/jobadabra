@@ -929,7 +929,7 @@ jobs:
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           rm -f "$RUNNER_TEMP/made.txt"; GITHUB_OUTPUT="$RUNNER_TEMP/made.txt" bash ../../tools/merge-e2e-report.sh "$PWD/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
-              echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
+              echo "## 📊 [Open the Mac HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
       - uses: actions/upload-artifact@v6
         if: hashFiles('e2e-report/index.html') != ''
@@ -1012,7 +1012,7 @@ jobs:
           # A report never decides the run: a corrupt blob is left out and named, a failed merge is said, the job stays green (tools/merge-e2e-report.sh)
           rm -f "$RUNNER_TEMP/made.txt"; GITHUB_OUTPUT="$RUNNER_TEMP/made.txt" bash ../../tools/merge-e2e-report.sh "$PWD/blob-reports" "$GITHUB_WORKSPACE/e2e-report"
           if grep -q made=1 "$RUNNER_TEMP/made.txt" 2>/dev/null; then
-              echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
+              echo "## 📊 [Open the Windows HTML report](https://www.jobpilotto.top/admin/operations/e2e/run/${{ github.run_id }}/report?os=windows) · every suite, its steps with a screenshot each, the failure and its trace (admins)"
           fi
       - uses: actions/upload-artifact@v6
         if: hashFiles('e2e-report/index.html') != ''

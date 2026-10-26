@@ -242,7 +242,7 @@ def wikidata_industry_candidates(db, kinds, countries, get=_get_json, cache=None
 
 def industry_countries(countries):
     """The countries to ask Wikidata about: the search's own; for the central scout every European one, as ISO codes (pool_tags.EUROPE,
-    the columns of /admin/scouting's kind x country coverage)."""
+    the columns of /admin/job-search/scouting's kind x country coverage)."""
     if scout_core.CENTRAL:
         from .pool_tags import EUROPE
         return [code.upper() for code in EUROPE]

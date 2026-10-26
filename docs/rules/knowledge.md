@@ -10,7 +10,7 @@ Owner, 11 Oct 2026 ("yes, let's follow this method, way of working"). Linked fro
 | 2 | a hard rule | a gate or hook + one CLAUDE.md line |
 | 3 | how to do a kind of task | a skill step (+ its `lessons.md`) |
 | 4 | the owner's preferences and decisions | memory (auto-loaded) and the Decision Log (the why, read on demand) |
-| 5 | what is in flight | spec checklists (`/report-progress`), claims (`tools/claim-shape.mjs`), the `/admin/lab-form-filling` Fixed tab, the open-work memory |
+| 5 | what is in flight | spec checklists (`/report-progress`), claims (`tools/claim-shape.mjs`), the `/admin/form-filling/lab` Fixed tab, the open-work memory |
 | 6 | what the code does | the code, its header comment, `node desktop/scripts/codemap.mjs <words>` |
 
 **A note alone is the weakest form.** The Run Log and the Session Handoff rotted: 2 of 56 sessions in a week read the Handoff (62 KB, a week stale).

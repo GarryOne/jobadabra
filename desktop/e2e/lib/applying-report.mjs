@@ -1,4 +1,4 @@
-// Uploads a run of the recorded pages (layer 2) or of the nightly smoke (layer 3) to the site's /admin/lab-form-filling (site/src/applying.js), with the owner key from
+// Uploads a run of the recorded pages (layer 2) or of the nightly smoke (layer 3) to the site's /admin/form-filling/lab (site/src/applying.js), with the owner key from
 // the Keychain (never printed). Fixed words and hosts only: never a posting's address, never applicant data. Never from CI, nor from a control run against an
 // old build (REAL_EXTENSION_DIR: its failures are on purpose). The recorded replays are the other way round: only CI on a push to main sends them (uploadReplays,
 // replays-report.mjs), never a local run. Guard: e2e/test/applying-report.test.mjs.
@@ -7,7 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {stampedAt} from '../../scripts/extension-stamp.mjs';
 
-export const SITE = 'https://www.jobpilotto.top/admin/lab-form-filling';
+export const SITE = 'https://www.jobpilotto.top/admin/form-filling/lab';
 export const REPLAYS = 'https://www.jobpilotto.top/applying/replays';
 // desktop/e2e (not imported from app.mjs: that pulls playwright-core into the desktop unit job, which does not install it; main was red 11 Oct 2026).
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -32,7 +32,7 @@ export function ownerKey(key) {
   try { return execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; }
 }
 
-// A recorded case uploads only with its control (owner, 10 Oct 2026: a case that passed on the old build reached /admin/lab-form-filling as a pass). case.json `control` is
+// A recorded case uploads only with its control (owner, 10 Oct 2026: a case that passed on the old build reached /admin/form-filling/lab as a pass). case.json `control` is
 // {build: <the older extension version it was seen failing on>, failed: <the check that failed>}, or {guard: <why it cannot fail on an old build>}. -> '' or why not.
 const parts = text => (/^\d+(\.\d+)*$/.test(text || '') ? text.split('.').map(Number) : null);
 const older = (a, b) => { for (let i = 0; i < Math.max(a.length, b.length); i++) { if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) < (b[i] || 0); } return false; };
@@ -63,11 +63,11 @@ export async function upload(kind, rows, {env = process.env, key, fetcher = fetc
     const answer = await fetcher(SITE, {method: 'POST', headers: {Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Caller': 'applying-upload'},
       body: JSON.stringify({kind, day, version: extensionVersion(), onMain: onMain(), rows, ...(full ? {full: true} : {})}), signal: AbortSignal.timeout(20000)});
     const body = await answer.json().catch(() => ({}));
-    return answer.ok ? `applying report: ${body.stored ?? 0} ${kind} row(s) sent to /admin/lab-form-filling` : `applying report: refused (${answer.status} ${body.error || ''})`;
+    return answer.ok ? `applying report: ${body.stored ?? 0} ${kind} row(s) sent to /admin/form-filling/lab` : `applying report: refused (${answer.status} ${body.error || ''})`;
   } catch (error) { return `applying report: not sent (${String(error?.message || error).slice(0, 80)})`; }
 }
 
-// A site starts or ends its run ("start" | "end"): /admin/lab-form-filling shows a spinner on its row while it runs. Only the site's name and a fixed word; never throws, so a run never fails on it.
+// A site starts or ends its run ("start" | "end"): /admin/form-filling/lab shows a spinner on its row while it runs. Only the site's name and a fixed word; never throws, so a run never fails on it.
 export const ping = (name, state, options = {}) => upload('running', [{name, state}], options).catch(() => '');
 
 // The pool as the site lists it ("The pool" table, site/src/applying.js): every site of the pool, also one never run, with its start host and, when a run showed it,

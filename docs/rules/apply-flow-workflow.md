@@ -6,7 +6,7 @@
 | # | Step | Who / what | Live? | Cost |
 |---|---|---|---|---|
 | 1 | **Record** a new site once, all the way to the form; re-record only on a signal | skill `record-applying-sites`; `record-sites.yml`, whose single job is recording | ✅ the only live step | cents per row |
-| 2 | **Detect**: a small daily replay (~7 rows, one per kind of form users meet) | CI: `site-replays.yml` once a day, never on a PR → `/admin/lab-form-filling`; Telegram only on a worse outcome | no | $0 |
+| 2 | **Detect**: a small daily replay (~7 rows, one per kind of form users meet) | CI: `site-replays.yml` once a day, never on a PR → `/admin/form-filling/lab`; Telegram only on a worse outcome | no | $0 |
 | 3 | **Fix** the top 🔴 row | skill `/fix-recorded-sites` | no | $0 + the fix session |
 | 4 | **Verify** the fix | CI after merge: "Confirmed offline" on the Fixed tab (2 agreeing replays) | no | $0 |
 | 5 | **Benchmark** (occasional) | bake-off: the extension vs other agents on the same forms (repo job-pilotto-bakeoff) | yes | dollars: owner's OK |
@@ -30,7 +30,7 @@
   Cap **$3 a calendar week**, counted from the batch's own spend lines (`discovery-state-<run>` artifacts); at the cap no run and one Telegram note. The AI judge marks each row
   (fields left / wrong / stopped early; `lib/discovery-judge.mjs`), ONE Telegram message per run and only when something new failed, and rows that reached a new shape join
   `smoke-sites.json` by a PR the owner merges. The batch is the only signal-less start: a replay that changed is our build, never a reason to re-record.
-- **Fix (3):** a 🔴 row on `/admin/lab-form-filling` → Fixes → Needs a fix (one status per row: 🟢 works · 🟣 held on purpose · ⚪ site problem · 🔴 needs a fix).
+- **Fix (3):** a 🔴 row on `/admin/form-filling/lab` → Fixes → Needs a fix (one status per row: 🟢 works · 🟣 held on purpose · ⚪ site problem · 🔴 needs a fix).
   A "regression" row says whether it is **Our build** or **Site changed** (the same recording replayed on two builds).
 - **Verify (4):** a merge. "Needs a recording" means the fix took a route the recording never had: re-record that row with the full journey (step 1).
 
@@ -68,7 +68,7 @@ with a test in `desktop/test/app-scenarios.test.js`. The twin (docs/live-test.md
 
 ## Refilling answers a prompt change made stale (15 Oct 2026)
 - A merge that changes what the app asks the AI turns pinned rows "ask changed" / "out of date" in the daily site replays. There is no refill after each merge: the daily run starts `CI · Replay refill` itself for just the rows it flags (`only`), or run it by hand (`gh workflow run replay-refill.yml -f only=<row names>`); never from a PR (no PR-started workflow may reach an AI key). A row whose re-record will not reproduce is dropped, not chased.
-- Its own key `REPLAY_REFILL_ANTHROPIC_KEY` (no fallback), a cap (40 asks, $3), the estimate first, the spend in the job log and on /admin/ai-cost (`replay-refill`). Old answers are never changed. `npm run fill-memo` stays for one row on the Mac.
+- Its own key `REPLAY_REFILL_ANTHROPIC_KEY` (no fallback), a cap (40 asks, $3), the estimate first, the spend in the job log and on /admin/intelligence/ai-cost (`replay-refill`). Old answers are never changed. `npm run fill-memo` stays for one row on the Mac.
 
 <details><summary>Gaps being closed (14 Oct 2026) and where</summary>
 
@@ -90,7 +90,7 @@ with a test in `desktop/test/app-scenarios.test.js`. The twin (docs/live-test.md
 
 ## Daily watch list (owner, 17 Oct 2026)
 - **What:** one pool row per multi-step platform (rows of `smoke-sites.json` with `"stage": "watch"`; the batch adds a row when it finds a new platform) recorded LIVE every day at 05:00 UTC by `.github/workflows/watch-live.yml`: test applicant, held, never Submit, ≤2 visits a host a day (the site ledger is shared with `record-sites.yml`), one pool run at a time.
-- **Cap:** its own $25 a calendar month from its `watch-state` artifacts, apart from the batch's $3 a week; spend reported as `pool-watch` on /admin/ai-cost. At the cap: no run, one Telegram note a month.
+- **Cap:** its own $25 a calendar month from its `watch-state` artifacts, apart from the batch's $3 a week; spend reported as `pool-watch` on /admin/intelligence/ai-cost. At the cap: no run, one Telegram note a month.
 - **Judge:** each fresh recording gets the discovery judge and the journey check (`journey-run.mjs --watch`), then is compared with the row's last live run (`lib/watch-list.mjs`). ONE Telegram message, only when a flow got worse; the first run sends nothing.
 - **Held, not failed:** a row without a test account (secret `POOL_TEST_ACCOUNTS`), a bot wall or a gone posting is never worse and never the next baseline.
 - **Debugging copy:** the fresh recording (`net-records-<run>`) is the row's copy: no refill, and the daily offline replay skips watch rows (a row still pinned in `replay-faithful.json` stays until the owner's Replay-accept removes the pin).

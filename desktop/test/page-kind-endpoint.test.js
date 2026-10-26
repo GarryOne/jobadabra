@@ -76,7 +76,7 @@ test('the account judgment and the closer look answer with the same fixed rung a
   assert.equal('signal' in feedback, false, 'a feedback body is not a decision');
 });
 
-test('the log says which rung answered for a page shape, and a kept answer the page contradicts logs the signal "contradicted" (what /admin/lab-form-filling reads)', async () => {
+test('the log says which rung answered for a page shape, and a kept answer the page contradicts logs the signal "contradicted" (what /admin/form-filling/lab reads)', async () => {
   const {logTo, logFile} = await import('../lib/log.js');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-kind-log-'));
   logTo(path.join(dir, 'logs'));

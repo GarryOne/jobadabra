@@ -40,7 +40,7 @@ export const whereOf = (record, dir) => (['mac', 'ci'].includes(record.where) ? 
 // The rows put aside on purpose, by name -> reason (desktop/e2e/replay-deferred.json, edited in a PR: the owner's call, 14 Oct 2026).
 export const deferredRows = (file = new URL('./replay-deferred.json', import.meta.url)) => json(file, {}).rows || {};
 
-// One row's replay -> its "Replay vs live" record (the shape /admin/lab-form-filling reads: site/src/applying-fidelity.js).
+// One row's replay -> its "Replay vs live" record (the shape /admin/form-filling/lab reads: site/src/applying-fidelity.js).
 export function fidelityRecord({name, dir = '', record}, replay, {sha = '', branch = '', at = new Date().toISOString(), deferred = {}, pins = pinnedRows(loadPins())} = {}) {
   const host = new URL(record.url).host.replace(/^www\./, '');
   const own = (replay?.counts?.notRecorded || []).filter(line => { try { return new URL(line.split(' ')[1]).host.endsWith(host); } catch { return false; } }).length;

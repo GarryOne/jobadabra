@@ -57,7 +57,7 @@ class ThinCellTest(unittest.TestCase):
         self.assertEqual((nurse['role_keywords'][0], nurse['locations']['country_wide']), ('nursing', ['Poland']))
         self.assertIs(scout_ideas.ideas_system(nurse), scout_ideas.IDEAS_SYSTEM_GENERAL)
         self.assertEqual(self.db.execute("SELECT value FROM scout_meta WHERE key = 'ideas_cell'").fetchone()[0], f'{label}|ch',
-                         'plain text: central_stats sends it to /admin/scouting as it is')
+                         'plain text: central_stats sends it to /admin/job-search/scouting as it is')
 
     def test_the_central_scout_asks_the_ideas_for_the_cell_and_tags_their_origin(self):
         scout_cells.keep(self.db, [])

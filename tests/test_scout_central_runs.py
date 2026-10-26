@@ -1,5 +1,5 @@
 """The central scout's runs after the Europe scouting steps (20 Oct 2026): 2 of 4 runs were cancelled at the job's 75 minutes and published
-nothing; the AI ideas failed with "database is locked"; /admin/scouting's run log stayed empty. One test per cause. No network."""
+nothing; the AI ideas failed with "database is locked"; /admin/job-search/scouting's run log stayed empty. One test per cause. No network."""
 import os
 import re
 import sys

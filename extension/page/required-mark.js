@@ -80,7 +80,7 @@
   };
   // An independent count for the learning loop (no personal data, a number only): how many short label-like texts on the page carry a "*"
   // anywhere, except a legend sentence ("Mit * markierte Felder…": the star between two words). It does not use `has`, so when the rule above
-  // misses a layout the page still shows starred > required on /admin/insights and /admin/lab-form-filling, and a recorded page can be added.
+  // misses a layout the page still shows starred > required on /admin/intelligence/insights and /admin/form-filling/lab, and a recorded page can be added.
   const LEGEND = new RegExp(`\\S\\s+${STAR}\\s+\\S`);
   const starred = doc => {
     let n = 0;

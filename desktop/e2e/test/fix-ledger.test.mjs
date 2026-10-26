@@ -1,4 +1,4 @@
-// The fix ledger (lib/fix-ledger.mjs) behind /admin/lab-form-filling's Fixed tab: built from commit trailers and desktop/e2e/pool-fixes.json, only a site name, a short hash,
+// The fix ledger (lib/fix-ledger.mjs) behind /admin/form-filling/lab's Fixed tab: built from commit trailers and desktop/e2e/pool-fixes.json, only a site name, a short hash,
 // a version, a rung and ids leave the Mac (never an address, a query, a session name), claims are names and since, nothing is sent from CI.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';

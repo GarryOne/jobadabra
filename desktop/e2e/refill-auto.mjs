@@ -7,7 +7,7 @@ import {autoRefusal} from './lib/refill.mjs';
 import {send} from './ci-alert.mjs';
 
 const SITE = 'https://www.jobpilotto.top';
-// The month's spend of the refill job as /admin/ai-cost has it, or NaN when it cannot be read (then nothing is asked).
+// The month's spend of the refill job as /admin/intelligence/ai-cost has it, or NaN when it cannot be read (then nothing is asked).
 export async function monthSpend({key, fetcher = fetch, now = new Date()} = {}) {
   if (!key) return NaN;
   try {

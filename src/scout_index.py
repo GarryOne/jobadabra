@@ -173,7 +173,7 @@ def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contribu
             entry = {'company': clean_name(meta['company']) or meta['company'], 'ats': system, 'slug': slug, 'kind': kind, 'tier': meta['tier'], 'quality': score,
                      'jobs': len(jobs), 'relevant': relevant_roles(jobs), 'checked': today, 'places': job_places(jobs),
                      'regions': contribute.regions_of([j.get('location') or '' for j in jobs] + (['remote'] if any(j.get('remote') for j in jobs) else []))}
-            entry['countries'] = pool_tags.countries(entry['places'])   # where its jobs are, as fixed ids: /admin/scouting's kind × country coverage
+            entry['countries'] = pool_tags.countries(entry['places'])   # where its jobs are, as fixed ids: /admin/job-search/scouting's kind × country coverage
             kinds, counts = scout_kind_counts.of_jobs(jobs)   # what it hires for, and per country: installs read one with jobs of their kind there
             if kinds:
                 entry['kinds'] = kinds
@@ -312,7 +312,7 @@ def record_unread(db, unread):
 
 def source_kinds(db, feeds_out):
     """{source: {kind: employers}}: which kind of source found the employers of each kind in this list (by the main kind of their jobs), so
-    /admin/scouting shows which source fills which gap (owner, 19 Oct 2026). Feeds no scout candidate led to: 'starter or installs'."""
+    /admin/job-search/scouting shows which source fills which gap (owner, 19 Oct 2026). Feeds no scout candidate led to: 'starter or installs'."""
     from .ai import scout_ideas
     from .scout_cells import top_kind
     origin = {(row[0], str(row[1]).lower()): row[2] for row in db.execute("SELECT ats, slug, origin FROM scout_candidates WHERE ats IS NOT NULL AND slug IS NOT NULL")}
@@ -325,7 +325,7 @@ def source_kinds(db, feeds_out):
 
 
 def run_record(summary, results, at=None):
-    """One central run, for /admin/scouting's run history: when, the cell its ideas aimed at, names added, employers checked and found."""
+    """One central run, for /admin/job-search/scouting's run history: when, the cell its ideas aimed at, names added, employers checked and found."""
     return {'at': (at or now()).strftime('%Y-%m-%dT%H:%M'),   # no '+00:00': the site keeps runs by this exact shape (src/scouting.js)
             'added': summary.get('harvested', 0), 'checked': summary.get('checked', 0),
             'found': sum(1 for _, outcome in results if outcome.get('status') == 'found'), 'reads': read_methods.snapshot()}

@@ -1,5 +1,5 @@
 {
-  "about": "Fixes landed before commits carried a 'Pool-row:' trailer: commit -> the pool row it fixed, as /admin/lab-form-filling shows the row. Read by lib/fix-ledger.mjs (the Fixed tab). A new fix puts 'Pool-row: <row>' in its commit message instead of a line here. Only fix commits: no skill, version or log commits.",
+  "about": "Fixes landed before commits carried a 'Pool-row:' trailer: commit -> the pool row it fixed, as /admin/form-filling/lab shows the row. Read by lib/fix-ledger.mjs (the Fixed tab). A new fix puts 'Pool-row: <row>' in its commit message instead of a line here. Only fix commits: no skill, version or log commits.",
   "fixes": [
     {"commit": "fdbdc23", "site": "Hornbach SuccessFactors"},
     {"commit": "f5975be", "site": "Hornbach SuccessFactors"},

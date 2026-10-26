@@ -75,14 +75,14 @@ function liveRun(posting, seconds, captureDir = '', engine = smokeEngine()) {
   });
 }
 
-// The whole pool to /admin/lab-form-filling, also sites never run: each shape's newest known flow signature (this run, else the last report, else the one stored with it).
+// The whole pool to /admin/form-filling/lab, also sites never run: each shape's newest known flow signature (this run, else the last report, else the one stored with it).
 const sendPool = (shapes, reports, results = {}) => upload('pool', poolRows(shapes, {...Object.fromEntries(shapes.filter(item => item.signature).map(item => [item.shape, item.signature])),
   ...Object.fromEntries(Object.entries(lastSeen(reports)).map(([shape, item]) => [shape, item.signature])), ...Object.fromEntries(Object.entries(results).map(([shape, item]) => [shape, item.signature]))}), {full: true});   // `shapes` is the whole pool list, not this run's share: the site drops the names it lacks
 
 function droppedBoards() {
   try {
     const key = execFileSync('security', ['find-generic-password', '-s', 'job-pilotto.site.api_key', '-w'], {encoding: 'utf8'}).trim();   // never printed
-    const json = execFileSync('curl', ['-s', '--max-time', '20', '-H', `Authorization: Bearer ${key}`, '-H', 'X-Caller: smoke-dropped-boards', 'https://www.jobpilotto.top/admin/real-form-filling/digest.json'], {encoding: 'utf8'});
+    const json = execFileSync('curl', ['-s', '--max-time', '20', '-H', `Authorization: Bearer ${key}`, '-H', 'X-Caller: smoke-dropped-boards', 'https://www.jobpilotto.top/admin/form-filling/real-users/digest.json'], {encoding: 'utf8'});
     return (JSON.parse(json).boards || []).filter(board => board.dropped).map(board => ({board: board.board, earlier: board.earlierFilledShare, recent: board.recentFilledShare}));
   } catch { return null; }   // no key or no network: the report says the fleet was not read
 }
@@ -135,7 +135,7 @@ async function main() {
   const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')).shapes || []; } catch { return []; } };
   const shapes = poolShapes(read(POOL_SITES), read(LOCAL_SITES));
   const day = new Date().toISOString().slice(0, 10), results = {}, earlierList = earlierReports(REPORTS, day), previous = lastSeen(earlierList);
-  // Each site is saved to the day's report and sent to /admin/lab-form-filling the moment it ends, so stopping a run loses only the site in progress (lib/record-sites-record.mjs).
+  // Each site is saved to the day's report and sent to /admin/form-filling/lab the moment it ends, so stopping a run loses only the site in progress (lib/record-sites-record.mjs).
   const finish = async shape => {
     const appLog = (() => { try { return fs.readFileSync(path.join(REPORTS, `${day}-${shape.replace(/\W+/g, '-')}.app.log`), 'utf8'); } catch { return ''; } })();
     const ended = endingOf(results[shape], appLog, {ci: isCi()});   // the outcome contract's ending (lib/ending.mjs): in the day's report, the CI summary and the upload

@@ -363,7 +363,7 @@ jobs:
           name: replay-results-linux-${{ github.run_id }}
           path: replay-out/results.json
           retention-days: 90
-      - name: Send the rows to /admin/lab-form-filling "Replay vs live" (main only)
+      - name: Send the rows to /admin/form-filling/lab "Replay vs live" (main only)
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         working-directory: desktop/e2e
         env:

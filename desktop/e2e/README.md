@@ -111,9 +111,9 @@ Both live in GitHub (Settings → Secrets → Actions) and, for local runs, in t
 - **The Playwright HTML report** (owner's choice, 6 Oct 2026): every suite runs inside Playwright's test runner (`lib/report.mjs` → `report/suite.spec.mjs`, the suite's logic
   in `lib/suite-main.mjs`); each step is a report step with a screenshot when it ends, the failure's screenshot, the trace (opens inline) and `app.log`/`engine.log`.
   Local: `artifacts/<suite>/report/` (`npx playwright show-report artifacts/<suite>/report`). CI: a blob per suite, merged by the workflow's `report` job into the
-  `e2e-report` artifact; the `report` job's log prints its link, `/admin/e2e/run/<run>/report` (the site serves it, `admin/e2e-report.js`).
+  `e2e-report` artifact; the `report` job's log prints its link, `/admin/operations/e2e/run/<run>/report` (the site serves it, `admin/e2e-report.js`).
   Exit codes are the suite's own (skip 3, fail 1). `E2E_REPORT=0` runs a suite directly, without Playwright's runner.
-- The runs page `/admin/e2e` was dropped on 15 Oct 2026 (it redirects to `/admin/self-healing`); only the report links above stay. Each suite still uploads an `e2e-view-<suite>` artifact (`steps.json` + traces) for download.
+- The runs page `/admin/e2e` was dropped on 15 Oct 2026 (it redirects to `/admin/operations/self-healing`); only the report links above stay. Each suite still uploads an `e2e-view-<suite>` artifact (`steps.json` + traces) for download.
 - **No step summaries** (owner, 26 Oct 2026: "let's remove all the summaries"): a run's page shows only jobs, annotations and artifacts; each suite's log ends with its steps and their shared cause (`lib/runner.mjs`). Guard: `tests/test_no_step_summaries.py`.
 - **A failed suite keeps a Playwright trace**, `trace-<suite>.zip` in its `e2e-artifacts-<suite>` artifact (`-2` after a relaunch): every action with a screenshot strip,
   the page before and after (inspect it like DevTools), console and network, grouped by step. Unzip the artifact, drag the trace onto https://trace.playwright.dev (runs in

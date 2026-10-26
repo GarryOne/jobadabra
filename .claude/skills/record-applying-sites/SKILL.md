@@ -1,6 +1,6 @@
 ---
 name: record-applying-sites
-description: Record, grow and coordinate the pool of real sites the applying flow is tested on: record a NEW site once to its form, re-record only on a signal (never a schedule), discover new flow shapes, read real use (what installs' fills miss), the report on /admin/lab-form-filling, and the hand-off of failing shapes to fix-recorded-sites. Use when the owner says "record sites", "run the smoke pool", "grow the pool", "run discovery", "improve filling", "review extension failures", or when taking over the applying test pool from another session.
+description: Record, grow and coordinate the pool of real sites the applying flow is tested on: record a NEW site once to its form, re-record only on a signal (never a schedule), discover new flow shapes, read real use (what installs' fills miss), the report on /admin/form-filling/lab, and the hand-off of failing shapes to fix-recorded-sites. Use when the owner says "record sites", "run the smoke pool", "grow the pool", "run discovery", "improve filling", "review extension failures", or when taking over the applying test pool from another session.
 ---
 
 # Record the applying sites (the pool)
@@ -39,7 +39,7 @@ Whoever owns the pool and its run queue writes its own session name into `~/Libr
   - **Publish the Mac's records:** `node desktop/e2e/records-publish.mjs <dir>` (the newest per row, encrypted with `net-record.pub.pem`, ADDED to the pre-release `net-records` as its own bundle; the other bundles stay, the newest record per row wins); the PR job reads it first. Publish only your new records: no need to fetch the set first.
   - **Decrypting the set** (only to edit a record, e.g. its kept answers): the private key is the Keychain item `job-pilotto.capture.key` (account `job-pilotto`); write it to a temp file for the openssl step and delete it at once; never print it.
   - A row not "same as live": find its cause BEFORE re-recording, in the spec table "Why a row does not replay as live" (`docs/superpowers/specs/2026-10-13-replay-by-network.md`: the first missed ask via `JOB_PILOTTO_MODEL_MEMO_MISSES`, then 9 known causes, 14 Oct 2026). Re-record only when the table says so (an old recorder, a live run cut short); a build that really got worse is the product's bug, and the replay is its cheapest reproducer. A new cause goes into that table.
-  - A row whose Fixed-tab verdict is "Needs a recording" or whose regression verdict is "Site changed" (`/admin/lab-form-filling`, "Confirmed offline") is what the pool should re-record or run live next: the offline replay could not say.
+  - A row whose Fixed-tab verdict is "Needs a recording" or whose regression verdict is "Site changed" (`/admin/form-filling/lab`, "Confirmed offline") is what the pool should re-record or run live next: the offline replay could not say.
 - **The pool is ONE list in the repo:** `desktop/e2e/smoke-sites.json` (owner, 12 Oct 2026: job postings are public pages, so every row lives here and CI runs it;
   the old rule "never commit a posting taken from a profile" is RETIRED). What stays private is the owner's own details, CV and answers: no run ever holds them
   (fake applicant, privacy tripwire), and they never enter a commit, an artifact or a log. A posting address carries no query part that could carry a person
@@ -48,7 +48,7 @@ Whoever owns the pool and its run queue writes its own session name into `~/Libr
 - **Reports:** `~/Library/Application Support/Job Pilotto QA/smoke-reports/<day>.json` + one `.log` per run + `discover-<day>.json`. They name real postings: they stay on the Mac.
 - **Evidence bundle** (11 Oct 2026): every finished run keeps `smoke-reports/evidence/<day>/<shape>/` = `evidence.md` (the four lines that matter: page kind with frames and the digest flag, the digest's validated answer, what was pressed, where the page went), `run.log`, `app.log`, `ai-calls.json`; the day's report quotes the same lines under `results.<shape>.lines`. **A run that was killed or cut short (no end of the watch) records and uploads nothing.** Read the bundle first when you say which blocker a fix is for; `lib/evidence-bundle.mjs`, `test/evidence-bundle.test.mjs`.
 - **End picture of every local run** (owner, 11 Oct 2026: a must, where the extension STOPPED; local only, never uploaded; a tripwire hit deletes it; a run that cannot take one says `no end screenshot: <why>`, an error in its verdict). **Look at it first.** **Full page, one per step** (owner, 11 Oct 2026): every picture is the whole page (also a panel that scrolls inside it; a cap says `cut at <n> px`), with the extension's own panel in it as the person sees it. Each new page or step also gets `step-01-<kind>.png`, `step-02-<kind>.png`, … (at most 12, beside `end.png`; a replay's are `replay-step-NN-<kind>.png`; printed as `live: N step picture(s) kept in <dir>` / `row: step picture: <path>`; a missing step shot is only a warning). **Look at `step-*.png` in order, then `end.png`.** Where: pool recording `smoke-reports/evidence/<day>/<row>/end.png`; `node e2e/live.mjs` / the Electron live run `<capture dir>/end.png` (path printed: `live: end screenshot kept`); a saved capture `replay-candidates/<day>/<row>/end.png` (the live run's) beside the replay's `end-replay.png`; an offline replay (`npm run row`, `rows`) `<capture dir>/end-replay.png` (printed as `row: end screenshot: <path>`), to set beside the live `end.png`. A run whose form judge said `blocked` prints `BLOCKED (dialog|error|overlay|gone)` and is a needs-fix, never a success (`parseLive` `blocked`).
-- **/admin/lab-form-filling** (owner-only QA page, not `/admin/real-form-filling`, which is real users): tiles, fixed-site replays, "The pool" table (platform from the END host,
+- **/admin/form-filling/lab** (owner-only QA page, not `/admin/form-filling/real-users`, which is real users): tiles, fixed-site replays, "The pool" table (platform from the END host,
   flow words), the runs. Bearer = Keychain `job-pilotto.site.api_key` (memory `reference-owner-pages-access`). Uploads carry hosts, site names and signatures only,
   never a posting address (`applying-report.mjs`; a test fails on a path, query or token); never uploaded from CI or control runs (`REAL_EXTENSION_DIR`).
 - **Other layers** it sits beside: journey scenarios (`desktop/test/journeys.test.js`), recorded pages (`desktop/e2e/recorded/`, `npm run recorded`), the fleet digest (`boards[].dropped`).
@@ -61,7 +61,7 @@ Whoever owns the pool and its run queue writes its own session name into `~/Libr
 | The whole pool (~55 x 2 min; least tested first, so a stopped pass is resumed by running it again) | `npm run record-sites -- --all` |
 | Find new flow shapes from the loaded profile's jobs (a few per host, more from boards) | `npm run record-sites -- --discover --limit 30` (~45 min) |
 
-`--discover` also asks /admin/lab-form-filling for "Next sites to add" (hosts real users apply on that the pool lacks, each used by >= 3 installs; `lib/wanted-hosts.mjs`, owner key from the Keychain) and tries postings on those hosts first; a suggested host with no posting among the profile's jobs is printed and put in the discover report (`noPosting`), never skipped silently. A shape discovery finds goes into the repo's `smoke-sites.json` (commit it so CI runs it; test guard). The site list is empty until 3 installs share a host.
+`--discover` also asks /admin/form-filling/lab for "Next sites to add" (hosts real users apply on that the pool lacks, each used by >= 3 installs; `lib/wanted-hosts.mjs`, owner key from the Keychain) and tries postings on those hosts first; a suggested host with no posting among the profile's jobs is printed and put in the discover report (`noPosting`), never skipped silently. A shape discovery finds goes into the repo's `smoke-sites.json` (commit it so CI runs it; test guard). The site list is empty until 3 installs share a host.
 
 `--discover` names a new shape by the posting's employer and, when the same host has a shape that was never run, fills that one instead of adding a row (474c641).
 Longer waits: `RECORD_SECONDS` (default 90). The settings were `SMOKE_*` until 15 Oct 2026; the old names still work with one warning (`tools/record-env.mjs`). A posting gone (HTTP 404/410) is noted and replaced, never a regression. Exit 1 = a shape reached less than ITS last run.
@@ -103,12 +103,12 @@ A row that stops at the posting keeps no folder (nothing to replay). A capture m
    give every one its own worktree and scratch folder (global rule "Several agents at once"), and the flow core goes to one session at a time (claim message).
    A shape that needs the owner's accounts or Gmail goes to the twin, on demand (docs/live-test.md).
    **Landed fixes come back to you:** a fixer hands you "landed <hash>, extension <version>, run <shape>". Update the runner to that build, run just that shape (held, Monitor), upload it, and send the fixer the step
-   reached, the page-kind lines and the app.log path. A row clears on `/admin/lab-form-filling` only through such an uploaded run (the pool is only ever started by hand); a recorded page passing does not clear it.
+   reached, the page-kind lines and the app.log path. A row clears on `/admin/form-filling/lab` only through such an uploaded run (the pool is only ever started by hand); a recorded page passing does not clear it.
 5. **Grow the pool** (when asked or after a profile change): `--discover`; read what it added to `desktop/e2e/smoke-sites.json` and why (the new signature), then commit it. A gone posting (HTTP 404/410, "posting gone", never red): replace its url with a posting of the same shape (discover lists candidates from the profile's jobs).
 6. **Report to the owner:** counts (run, reached form / posting / bot, regressions, new shapes), what moved since the last report, what was handed to whom. Say "done" to the peers.
 
 ## Reading real use: "Next sites to add" and the platform scorecard (10 Oct 2026)
-`/admin/lab-form-filling` also says where real users apply and how it goes (`?json` has `next` and `scorecard`; the owner key from the Keychain, never printed). Read both at the start of a round, then act:
+`/admin/form-filling/lab` also says where real users apply and how it goes (`?json` has `next` and `scorecard`; the owner key from the Keychain, never printed). Read both at the start of a round, then act:
 
 | Scorecard verdict | It means | Do | Skill |
 |---|---|---|---|
@@ -144,7 +144,7 @@ Every extension fill writes a record (Notion "Job Apply — Agent Runs", Agent =
 - The live harness's stall dump is capped (12 buttons): a missing button in it is not evidence; look at the frames, and check the frames folder belongs to YOUR run (the next site overwrites it).
 - A removed worktree's results are dropped by the Stop hook (fixed); a name that already exists in `desktop/e2e` (`lib/replay.mjs`) was overwritten once: grep before naming a file.
 
-- The `/admin/lab-form-filling` pool count changes only when a run ENDS (`sendPool` at the end of smoke or discover); the Mac's own list changes at once. A half-finished run shows nothing there.
+- The `/admin/form-filling/lab` pool count changes only when a run ENDS (`sendPool` at the end of smoke or discover); the Mac's own list changes at once. A half-finished run shows nothing there.
 - Never `git checkout` in the primary checkout: other sessions and uncommitted changes live there. Work in your own worktree.
 
 ## When a row must be captured again (12 Oct 2026)

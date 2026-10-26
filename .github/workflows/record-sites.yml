@@ -13,7 +13,7 @@
 #   confirmed (desktop/e2e/pool-moves.mjs: fixed values per page shape, marked source 'ci' so they never pose as a user's; spec 2026-10-12-one-next-move.md).
 # - AI: the app's own API engine on the Tests key (E2E_ANTHROPIC_KEY, the Tests workspace's $20 limit), through the harness's metering proxy (lib/live-row.mjs).
 #   Hard caps per run, here: MAX_ROWS rows and MAX_USD dollars (the run stops between rows once its spend reaches it). Its own key, so its cost shows apart:
-#   LIVE_POOL_ANTHROPIC_KEY by hand (lib/engine.mjs liveKeyName), else the Tests key; the summary names the one used. Every run reports its spend to /admin/ai-cost (pool-live).
+#   LIVE_POOL_ANTHROPIC_KEY by hand (lib/engine.mjs liveKeyName), else the Tests key; the summary names the one used. Every run reports its spend to /admin/intelligence/ai-cost (pool-live).
 # - Site limit: CI's own ledger per UTC day, at most 2 visits per host across ALL CI runs, a host that showed a block page rests the day;
 #   a by-hand run may use both (no PR proof keeps one back since 15 Oct 2026).
 #   Each run uploads a small state artifact (its ledger and rows); the next run reads them all (GitHub's cache is per branch: a PR's visits would be unseen).
@@ -224,17 +224,17 @@ jobs:
         run: |
           set -o pipefail
           node pool-ci-summary.mjs "$RECORD_REPORTS" "$GITHUB_WORKSPACE/record-sites-out/baseline.json"
-      - name: The ladder moves, the rows' endings, and (on main only) the rows' results for /admin/lab-form-filling
+      - name: The ladder moves, the rows' endings, and (on main only) the rows' results for /admin/form-filling/lab
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}   # the narrow key: it writes only the replays, test-source ladder moves, the rows' endings and (main only) the rows' results
         run: |
           node desktop/e2e/pool-moves.mjs "$RECORD_REPORTS" || true   # the moves per row: the one-next-move spec's phase-1 proof
-          node desktop/e2e/pool-endings.mjs "$RECORD_REPORTS"   # each row's ending: main's feed /admin/lab-form-filling's Resolution tile (phase 1a)
+          node desktop/e2e/pool-endings.mjs "$RECORD_REPORTS"   # each row's ending: main's feed /admin/form-filling/lab's Resolution tile (phase 1a)
           # A recording run is how the pool's table moves (owner, 14 Oct 2026): the site refuses any branch but main (admin/applying-ci-rows.js).
           [ "$GITHUB_REF" = "refs/heads/main" ] && node desktop/e2e/pool-ci-rows.mjs "$RECORD_REPORTS" || echo "ci rows report: not sent (not a run on main)"
-      - name: Report the run's AI spend to /admin/ai-cost (never fails the job)
+      - name: Report the run's AI spend to /admin/intelligence/ai-cost (never fails the job)
         if: always()
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}

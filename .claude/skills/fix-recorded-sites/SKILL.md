@@ -1,6 +1,6 @@
 ---
 name: fix-recorded-sites
-description: Fix the applying flow's failing or low-reaching shapes one at a time, offline, from each site's recording. Take the top cause on /admin/lab-form-filling "Needs a fix", reproduce it by replaying the row's network record (no site visit, $0), say which part of the self-improving mechanism the fix improves, fix it for every site, add a recorded page that fails on the old build, land with tools/ship.sh, and read "Confirmed offline". Use when the owner says "fix recorded sites", "fix failing forms", "fix the pool's worst sites" or names a shape that stops early. Also for a page stopped at "posting"/"no-form", with no apply route, or classified wrong (the rung method).
+description: Fix the applying flow's failing or low-reaching shapes one at a time, offline, from each site's recording. Take the top cause on /admin/form-filling/lab "Needs a fix", reproduce it by replaying the row's network record (no site visit, $0), say which part of the self-improving mechanism the fix improves, fix it for every site, add a recorded page that fails on the old build, land with tools/ship.sh, and read "Confirmed offline". Use when the owner says "fix recorded sites", "fix failing forms", "fix the pool's worst sites" or names a shape that stops early. Also for a page stopped at "posting"/"no-form", with no apply route, or classified wrong (the rung method).
 ---
 
 # Fix recorded sites: one shape at a time, offline
@@ -11,7 +11,7 @@ if the recording lacks the route your fix needs, ask `record-applying-sites` to 
 Detail moved to files here: [reproduce.md](reproduce.md) (decisions made, how to reproduce), [rung-method.md](rung-method.md) (a page judged wrong), [lessons.md](lessons.md) (read once at the start).
 
 ## 0. Pick the work (one line each to the owner)
-- **The list is "Needs a fix" on `/admin/lab-form-filling`** (owner-only; Bearer = Keychain `job-pilotto.site.api_key`, memory `reference-owner-pages-access`; the same rows are in `?json`).
+- **The list is "Needs a fix" on `/admin/form-filling/lab`** (owner-only; Bearer = Keychain `job-pilotto.site.api_key`, memory `reference-owner-pages-access`; the same rows are in `?json`).
   Worst first: regressions, the earliest stop, the least filled form. A form reached with under half its asked fields filled is a **shortfall**. A code or bot check is a documented hold, not on the list.
 - **Take a CAUSE, not a row** (owner, 11 Oct 2026; `docs/rules/rounds.md`): the **By cause** tab, or `~/jobadabra-web/tools/site-run.sh node jobs/needs-fix-causes.mjs --rows`. A row "Run first" (never recorded, or not since its fix) is the recorder's, not a fix.
   Weigh by demand (the scorecard's "Of matched jobs"); a "Blind spot" platform (real fills worse than the tests) goes first: its signal is in `record-applying-sites` "Reading real use".
@@ -37,7 +37,7 @@ Detail moved to files here: [reproduce.md](reproduce.md) (decisions made, how to
 1. **Read the evidence before any hypothesis:** write ASKED (the sketch), ANSWERED (`page kind:`, `digest:`), DONE (what was pressed, where the page went) from the row's evidence and `step-*.png`. Detail: [reproduce.md](reproduce.md).
 2. **Replay the row's network record:** `cd desktop/e2e && node replay-net.mjs <record dir> <out dir>` (the site's own scripts and replies, the recording's kept AI answers; no site, no model call); fetch records with `net-records-fetch.sh`.
    - **A row the gate marks 🖥 "ask changed"** (your fix changed what the app asks; its first miss differs in a `user:*` part): fill the memo on the Mac, once per changed ask: `cd desktop/e2e && npm run fill-memo -- <records dir> "<row>"` (plan `claude -p` for the missed asks only, about $0.06 an ask, fake applicant, tripwire on; say the cost to cc first), then `node records-publish.mjs <full fetched set>` (it REPLACES the whole release: fetch it first, `--dry` first). The network record is never touched.
-   Its numbers count only for a row whose replay is "same as live" (/admin/lab-form-filling "Replay vs live"); a row that is not: read the spec table "Why a row does not replay as live"
+   Its numbers count only for a row whose replay is "same as live" (/admin/form-filling/lab "Replay vs live"); a row that is not: read the spec table "Why a row does not replay as live"
    (`docs/superpowers/specs/2026-10-13-replay-by-network.md`) first. It may be your build's regression (then the replay is your reproducer) or a recording out of date (then ask for a re-record).
 3. **Prove the repro:** the SAME signature as the failure (the same `page kind:`/`ladder:` lines); the stub really called; the case FAILS on the old build (`REAL_EXTENSION_DIR=<old extension/>`). Debug with the network replay (step 2); `npm run row -- "<row>"` only for a row without a network record, and then as a differential only (owner, 15 Oct 2026).
 4. **Time box:** 10 minutes on a probe, 30 on one proof step with no yes or no: stop, land what is tested, tell the coordinator.

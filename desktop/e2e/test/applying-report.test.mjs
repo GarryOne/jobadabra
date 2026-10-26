@@ -65,7 +65,7 @@ test('the running ping: a site starts or ends its run, sent as fixed words and t
   await ping('Lever form', 'start', {env: {}, key: 'K', fetcher: async () => { throw new Error('offline'); }});   // must not throw
 });
 
-// A recorded case is uploaded only with its control (10 Oct 2026: a case that passed on the old build reached /admin/lab-form-filling as a pass): `control: {build, failed}` names the
+// A recorded case is uploaded only with its control (10 Oct 2026: a case that passed on the old build reached /admin/form-filling/lab as a pass): `control: {build, failed}` names the
 // older extension version it was seen failing on and the check that failed, or `control: {guard}` says why it cannot fail on an old build. No control, nothing uploads.
 test('a recorded case uploads only with a control seen on an older build, or a stated guard', async () => {
   const {controlProblem, uploadable} = await import('../lib/applying-report.mjs');

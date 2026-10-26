@@ -1,5 +1,5 @@
 {
- "about": "Pool rows put aside from the offline replay on purpose, by row name -> the reason (a few words, no address). replay-records.mjs sends it with each row to /admin/lab-form-filling \"Replay vs live\" (Next: Deferred). Remove a row when its work resumes. Each row also has an owner and a re-check date in \"watch\" (a row without them fails test/replay-records.test.mjs): a deferral is a dated promise, not a parking lot.",
+ "about": "Pool rows put aside from the offline replay on purpose, by row name -> the reason (a few words, no address). replay-records.mjs sends it with each row to /admin/form-filling/lab \"Replay vs live\" (Next: Deferred). Remove a row when its work resumes. Each row also has an owner and a re-check date in \"watch\" (a row without them fails test/replay-records.test.mjs): a deferral is a dated promise, not a parking lot.",
  "rows": {
   "jobs.ch -> Deloitte: email-first account, email code, CV choice step": "Replay timing: first ask lands before or after a late section loads (3/4 then 1/4); not the page clock (14 Oct)",
   "Datadog careers (Greenhouse behind its own site)": "Which nav-menu links are visible at the first page question varies run to run (same DOM, same page kind); the extension is right either way (14 Oct)"

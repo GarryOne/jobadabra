@@ -1,7 +1,7 @@
 # DAILY WATCH LIST (owner, 17 Oct 2026, "Live check, ~10 platforms"; sketch https://claude.ai/artifact/7kf3B1QjWXNYXMDwbyHAfY): one pool row per multi-step platform (the rows of desktop/e2e/smoke-sites.json
 # with "stage": "watch", the Daily watch stage of the pool life cycle; the discovery batch adds a row when it finds a new platform) recorded LIVE every day at 05:00 UTC by the same recorder
 # (record-sites.mjs: the thin test applicant, HELD, never Submit, no captcha, test accounts only from the POOL_TEST_ACCOUNTS secret: a row without one stays 'held', never a failure).
-# - Cost: its own cap, $25 a calendar month counted from its own spend lines (watch-state artifacts), apart from the discovery batch's $3 a week; both are reported on /admin/ai-cost
+# - Cost: its own cap, $25 a calendar month counted from its own spend lines (watch-state artifacts), apart from the discovery batch's $3 a week; both are reported on /admin/intelligence/ai-cost
 #   (job pool-watch here, pool-live for the batch). At the cap: no run, one Telegram note a month.
 # - Site limit: the same ledger as record-sites.yml (at most 2 visits a host a day across both workflows; each reads the other's state), one pool run at a time (pool-ci-wait.mjs).
 # - Judge: each fresh recording is judged by the discovery judge AND gets the journey check (journey-run.mjs --watch: the card and the panel at every step), then compared with the row's
@@ -174,7 +174,7 @@ jobs:
           path: record-sites-out/state/state.json
           retention-days: 14
           if-no-files-found: warn
-      - name: Report the run's AI spend to /admin/ai-cost (never fails the job)
+      - name: Report the run's AI spend to /admin/intelligence/ai-cost (never fails the job)
         if: always()
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}

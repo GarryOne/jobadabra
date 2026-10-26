@@ -1,4 +1,4 @@
-"""Source scout, thin cells: the central list's employers per kind of role × European country (what /admin/scouting draws), kept after each
+"""Source scout, thin cells: the central list's employers per kind of role × European country (what /admin/job-search/scouting draws), kept after each
 publish, and the thin cell the central scout's AI ideas aim at next (owner, 19 Oct 2026: "Scout where the list is thin"; the ideas had been
 asked for the example search's data-analyst roles and answered "scale-ups and SaaS or fintech engineering hubs").
 Tests: tests/test_scout_cells.py.
@@ -112,7 +112,7 @@ def search_for(kind, country):
 
 
 def aim(db, search):
-    """(search, label) for the central scout's ideas: the next thin cell's search and its kind, remembered for /admin/scouting
+    """(search, label) for the central scout's ideas: the next thin cell's search and its kind, remembered for /admin/job-search/scouting
     ('ideas_cell'); the given search and '' when no cell is thin or counted yet."""
     cell = next_cell(db)
     if not cell:

@@ -8,7 +8,7 @@ import {stepSlicer} from '../lib/step-slices.mjs';
 import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
 import {CHAIN, FORMS, HOSTS, LATE, REAL_FORMS, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED, realFieldId} from '../lib/forms.mjs';
-import {launchBrowser, readForm, readPanel, fillState} from '../lib/extension.mjs';
+import {formTab, launchBrowser, readForm, readPanel, fillState} from '../lib/extension.mjs';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {appLogLines, appLogText} from '../lib/app-log.mjs';
@@ -169,9 +169,11 @@ export async function runApply(ctx, parts) {
     if (ctx.browser.opened.length !== opened) {
       const url = ctx.browser.opened.at(-1);
       if (!/#jobpilotto-fill=[A-Za-z0-9_-]+$/.test(url)) throw new Error(`Apply opened ${url} without the fill marker that names its session (every tab the app opens carries one: lib/session-tab.js)`);
-      tab = ctx.browser.pages[url.split('#')[0]];
+      tab = formTab(ctx.browser, url);
     }
+    const openedUrl = ctx.browser.opened.length !== opened ? ctx.browser.opened.at(-1) : '';
     for (let waited = 0; waited < 90000; waited += 500) {
+      if (openedUrl) tab = formTab(ctx.browser, openedUrl);   // the tab that shows the form now (lib/extension.mjs formTab)
       const state = await fillState(tab).catch(() => null);
       if (state?.state === 'done' || state?.state === 'error') return {tab, state};
       await pause(500);

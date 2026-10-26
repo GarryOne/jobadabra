@@ -1,7 +1,7 @@
 // E2E_BROWSER=msedge runs the extension in Edge; anything else keeps Playwright's Chromium.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {browserChannel} from '../lib/extension.mjs';
+import {browserChannel, formTab} from '../lib/extension.mjs';
 
 test('the apply suite uses Edge only when asked', () => {
   assert.deepEqual(browserChannel({E2E_BROWSER: 'msedge'}), {channel: 'msedge'});
@@ -23,4 +23,18 @@ test('only a real browser counts its visits in the site ledger', async () => {
     const days = Object.values(JSON.parse(fs.readFileSync(path.join(dir, 'ledger.json'), 'utf8')));
     assert.equal(days[0]?.['jobs.lever.co']?.visits?.length, 1, 'a real browser\'s visit was not counted');
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+// Beta 40281407461 (26 Oct 2026), Windows apply-1of2 in Edge: the extension's install opened its settings tab while the harness reused a blank tab for the
+// app's first form; the form loaded in another tab (319271653, opened from the first) and the test watched the first pick for 90 s ("state: null").
+test('the form tab is the one that shows the form\'s address, not the harness\'s first pick', () => {
+  const page = url => ({url: () => url, isClosed: () => false});
+  const url = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobpilotto-fill=2ce1ef73';
+  const picked = page('about:blank'), real = page(url);
+  const browser = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': picked}, context: {pages: () => [picked, real]}};
+  assert.equal(formTab(browser, url), real);
+  const shown = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': real}, context: {pages: () => [page(url), real]}};
+  assert.equal(formTab(shown, url), real, 'the first pick wins while it shows the form');
+  const loading = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': picked}, context: {pages: () => [picked]}};
+  assert.equal(formTab(loading, url), picked, 'nothing shows it yet: the first pick, still loading');
 });

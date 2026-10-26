@@ -20,6 +20,12 @@ def facts(**overrides):
     return data
 
 
+def full(**overrides):
+    """An answer with every fact a reader needs filled: no second ask (src/ai/enrich.py ASK_AGAIN)."""
+    return facts(**{'seniority': {'value': 'senior', 'evidence': 'Senior'}, 'work_mode': {'value': 'hybrid', 'remote_scope': '', 'evidence': 'hybrid'},
+                    'technologies': ['Kubernetes'], **overrides})
+
+
 class FakeClient:
     """Stands in for anthropic.Anthropic; records requests and returns canned JSON."""
     def __init__(self, data):
@@ -46,7 +52,7 @@ class EnrichTests(unittest.TestCase):
                 seed(db, [{'title': 'SRE'}, {'title': 'No text', 'description': ''}])
                 pending = enrich.pending_jobs(db, 10)
                 self.assertEqual([j['title'] for j in pending], ['SRE'])
-                data, _ = enrich.extract(FakeClient(facts()), 'claude-opus-5', pending[0])
+                data, _ = enrich.extract(FakeClient(full()), 'claude-opus-5', pending[0])
                 enrich.save(db, pending[0], 'claude-opus-5', data)
                 self.assertEqual(enrich.pending_jobs(db, 10), [])
                 seed(db, [{'title': 'SRE', 'description': 'Now also on-call.'}])
@@ -56,7 +62,7 @@ class EnrichTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with job_store.connect(Path(tmp) / 'jobs.sqlite') as db:
                 seed(db, [{'title': f'SRE {i}'} for i in range(12)])
-                client = FakeClient(facts())
+                client = FakeClient(full())
                 stats = {}
                 summary = enrich.run(db, 'claude-haiku-4-5', 50, client=client, workers=4, stats=stats)
                 self.assertIn('Enriched 12 of 12', summary)
@@ -70,7 +76,7 @@ class EnrichTests(unittest.TestCase):
 
     def test_request_uses_json_schema_and_effort_only_where_supported(self):
         job = {'title': 'SRE', 'company': 'Example', 'location': 'Zurich', 'description': 'text'}
-        client = FakeClient(facts())
+        client = FakeClient(full())
         enrich.extract(client, 'claude-opus-5', job)
         enrich.extract(client, 'claude-haiku-4-5', job)
         self.assertEqual(client.requests[0]['output_config']['format']['type'], 'json_schema')
@@ -112,7 +118,7 @@ class TimeBudgetTopUpTests(unittest.TestCase):
             seed(db, [{'title': f'SRE {i}'} for i in range(10)])
             time_budget.start(seconds, now=now)
             first = time_budget.batch('enrich', 10, say=False)
-            client, out, stats = FakeClient(facts()), io.StringIO(), {}
+            client, out, stats = FakeClient(full()), io.StringIO(), {}
             with contextlib.redirect_stdout(out):
                 summary = enrich.run(db, 'claude-haiku-4-5', 50, client=client, workers=4, stats=stats)
             return first, summary, out.getvalue(), stats, len(client.requests)

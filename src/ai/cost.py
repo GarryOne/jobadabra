@@ -40,6 +40,14 @@ def answered(model, usage):
     return getattr(usage, 'model', '') or model
 
 
+def combined(first, second):
+    """Two calls for one item (an answer asked again) as one usage: tokens summed, and who answered and how it was paid kept (model, provider,
+    billing), so the run's cost and "Billed to" stay right. Guard: tests/test_enrich_ask_again.py."""
+    from types import SimpleNamespace
+    keep = {name: getattr(first, name) for name in ('model', 'provider', 'billing', 'server_tool_use') if getattr(first, name, None) is not None}
+    numbers = ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')
+    return SimpleNamespace(**keep, **{name: (getattr(first, name, 0) or 0) + (getattr(second, name, 0) or 0) for name in numbers})
+
 def add(stats, model, usage):
     """Accumulate one call's tokens and cost into a stage's stats dict (no-op when stats is None)."""
     if stats is None:

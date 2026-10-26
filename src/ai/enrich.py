@@ -175,24 +175,49 @@ def pending_jobs(db, limit):
     return best_first(sorted(pending, key=lambda j: j['first_seen_at'], reverse=True))[:limit]
 
 
+# The judged facts a reader needs (columns the app promises) that a posting usually gives: left empty, they are asked once more, alone, and the second
+# look decides (owner, 26 Oct 2026: "Ask again when empty"; Free AI left "5 years of sales experience" at seniority unknown). Guard: tests/test_enrich_ask_again.py.
+ASK_AGAIN = {'seniority': lambda data: (data.get('seniority') or {}).get('value', 'unknown') == 'unknown',
+             'work_mode': lambda data: (data.get('work_mode') or {}).get('value', 'unknown') == 'unknown',
+             'technologies': lambda data: not data.get('technologies')}
+AGAIN = ("\n\nYour last answer left {fields} empty. Read the posting again and give each when it gives any basis for it: seniority from a level word "
+         "or the years of experience it asks; work_mode from where the work happens (the workplace, home, or both); technologies from the tools, "
+         "skills, licences or topics it names. Answer unknown (or []) only when it gives none.")
+
+
 def extract(client, model, job):
-    """Return (data, usage) for one job via a schema-constrained response."""
-    params = dict(
+    """Return (data, usage) for one job via a schema-constrained response; an empty fact a reader needs is asked once more, alone."""
+    data, usage = _ask(client, model, job, SCHEMA)
+    data['seniority'] = settle(job['title'], data.get('seniority'))   # the title's own level word, where it decides (ai/seniority.py)
+    empty = [field for field, is_empty in ASK_AGAIN.items() if is_empty(data)]
+    if empty:
+        again, more = _ask(client, model, job, _only(empty), AGAIN.format(fields=', '.join(empty)))
+        data.update({field: again[field] for field in empty if field in again})
+        data['seniority'] = settle(job['title'], data.get('seniority'))
+        usage = cost.combined(usage, more)
+    return data, usage
+
+
+def _ask(client, model, job, schema, note=''):
+    response = client.messages.create(
         model=model,
         max_tokens=2000,
         system=SYSTEM,
         messages=[{'role': 'user', 'content': (
             f"Title: {job['title']}\nCompany: {job['company']}\nLocation: {job.get('location') or ''}\n\n"
-            f"Posting:\n{job['description']}")}],
-        output_config=engine.structured(SCHEMA, model, 'low'),   # extraction is routine; low effort keeps thinking short
+            f"Posting:\n{job['description']}{note}")}],
+        output_config=engine.structured(schema, model, 'low'),   # extraction is routine; low effort keeps thinking short
     )
-    response = client.messages.create(**params)
     if response.stop_reason != 'end_turn':
         raise RuntimeError(f'stopped with {response.stop_reason}')
-    text = next(block.text for block in response.content if block.type == 'text')
-    data = json.loads(text)
-    data['seniority'] = settle(job['title'], data.get('seniority'))   # the title's own level word, where it decides (ai/seniority.py)
-    return data, response.usage
+    return json.loads(next(block.text for block in response.content if block.type == 'text')), response.usage
+
+
+def _only(fields):
+    """SCHEMA narrowed to the given facts."""
+    return {'type': 'object', 'additionalProperties': False, 'required': list(fields),
+            'properties': {field: SCHEMA['properties'][field] for field in fields}}
+
 
 
 def save(db, job, model, data):

@@ -233,7 +233,7 @@ class ARunResumesWhereTheLastOneStopped(Isolated):
 
     def stage_job_facts(self):
         from src.ai import enrich
-        from tests.test_enrich import facts
+        from tests.test_enrich import full as facts
         db = self.scored_db(6)
         client = Counting(lambda lines: facts())
         first, second = self.ai_runs(lambda: enrich.run(db, 'claude-haiku-4-5', 50, client=client, workers=1), client, 2)

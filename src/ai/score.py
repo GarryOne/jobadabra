@@ -283,18 +283,13 @@ def score_one(client, model, job, profile, effort=None):
                            f"{'it' if len(missing) == 1 else 'them'} (a stated salary in another currency is still a stated salary: judge it from the "
                            f"posting's own figures, without converting). Give a whole number 0-100 for {'it' if len(missing) == 1 else 'each'}.",
                            _whole(missing))
-        usage = _sum_usage(usage, again)
+        usage = cost.combined(usage, again)
     if not score_not_a_job.is_one_job(data):   # a verdict that zeroes a job is never kept as sure: ask again once, with the question narrowed (two real Greenhouse postings were zeroed, 22 Oct 2026)
         again_data, again = _ask(client, model, job, profile, effort, score_not_a_job.RECHECK, SCHEMA)
-        usage = _sum_usage(usage, again)
+        usage = cost.combined(usage, again)
         if score_not_a_job.is_one_job(again_data):
             data = again_data
     return score_not_a_job.mark(data), usage
-
-
-def _sum_usage(first, second):
-    fields = ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')
-    return SimpleNamespace(**{f: (getattr(first, f, 0) or 0) + (getattr(second, f, 0) or 0) for f in fields})
 
 
 def _whole(parts):

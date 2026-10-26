@@ -167,25 +167,26 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
         self.assertFalse(found_boards._went_up(entry, board(0)['search_url']), 'the next search goes up the ladder')
 
     def test_a_way_that_reads_many_pages_stops_at_the_cut(self):
-        # 26 Oct 2026, a second proof run: one board's ladder way, started before the 90 s cut, kept fetching to 138 s (cut() ran only between ways)
-        late, fetched = [False], []
+        """Every follow-up way keep() runs after a board's first read (its other ways, its own section for more): no page past the cut. 26 Oct
+        2026, proof runs: a ladder way started before the 90 s cut fetched to 138 s; then a board with 3 relevant jobs read its section to 190 s."""
+        for way in (found_boards._another_way, found_boards._fuller_section):
+            late, fetched = [False], []
 
-        def discover(markup, address, fetch, board_, terms):   # a job list of 10 pages, each asked on its own (a sitemap)
-            for n in range(10):
-                try:
-                    fetch(f'https://b0.test/jobs/{n}')
-                except Exception:  # noqa: BLE001 — as board_routes does: a page that fails, the next one
-                    pass
-                late[0] = True   # the cut passes while the first page is read
-            return [], None
-        with mock.patch.object(read_budget, 'past_cut', side_effect=lambda: late[0]), \
-                mock.patch.object(found_boards.board_forms, 'home', return_value=('https://b0.test/', '<html></html>')), \
-                mock.patch.object(found_boards.board_forms, 'home_templates', return_value=[]), \
-                mock.patch.object(found_boards, '_section', return_value=([], '', False)), \
-                mock.patch.object(found_boards.board_routes, 'discover', side_effect=discover), redirect_stdout(io.StringIO()):
-            found_boards._another_way(board(0), {}, board(0)['search_url'], {'role_keywords': ['first officer']},
-                                      lambda url: fetched.append(url) or '', lambda found: [], ([], 'ok', []))
-        self.assertEqual(fetched, ['https://b0.test/jobs/0'], 'no page fetched past the cut')
+            def section(board_, page, search, fetch, judge, show=None):   # the board's own section: 10 pages, each asked on its own
+                for n in range(10):
+                    try:
+                        fetch(f'https://b0.test/jobs/{n}')
+                    except Exception:  # noqa: BLE001 — as board_sections does: a page that fails, the next one
+                        pass
+                    late[0] = True   # the cut passes while the first page is read
+                return [], '', False
+            with self.subTest(way.__name__), mock.patch.object(read_budget, 'past_cut', side_effect=lambda: late[0]), \
+                    mock.patch.object(found_boards.board_forms, 'home', return_value=('https://b0.test/', '<html></html>')), \
+                    mock.patch.object(found_boards.board_forms, 'home_templates', return_value=[]), \
+                    mock.patch.object(found_boards, '_section', side_effect=section), redirect_stdout(io.StringIO()):
+                way(board(0), {}, board(0)['search_url'], {'role_keywords': ['first officer']},
+                    lambda url: fetched.append(url) or '', lambda found: [], ([], 'ok', []))
+                self.assertEqual(fetched, ['https://b0.test/jobs/0'], 'no page fetched past the cut')
 
     def test_a_board_cut_mid_ladder_waits_for_the_next_search(self):
         """Not stamped read (the next search would skip it for hours): its page is kept and the next search goes on up its ladder."""

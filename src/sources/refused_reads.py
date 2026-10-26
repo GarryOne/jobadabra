@@ -81,23 +81,24 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
         if allowed(pick['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
             seen.add(host)
             out.append({'url': pick['url'], 'name': pick['name'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download'})
-    # Only the employers that could hire for this search, by the visit list's AI judge (owner, 26 Oct 2026: "The AI decides"; that night a pilot
-    # search's checks read a bank, an energy and a telecom company 4 times, 0 jobs matching). A site the person opened a job on is read anyway.
-    asked = [item for item in out if visits.host_of(item['url']).lower().removeprefix('www.') not in force]
-    if asked:
-        fit = {item['url'] for item in visits.relevant(asked, search_config(), label='Refused sites')}
-        out = [item for item in out if item not in asked or item['url'] in fit]
     out.sort(key=lambda item: elsewhere(visits.host_of(item['url'])) != 'opened')   # opened in another install's browser: asked first
-    search = None
+    search = search_config()
     for board in (board_ideas.load().get('boards') or {}).values():
         if board.get('state') != 'browser':
             continue
-        search = search or search_config()
         url = _board_url(board, search)
         host = visits.host_of(url or '')
         if url and allowed(url) and host not in seen and due(host):
             seen.add(host)
             out.append({'url': url, 'name': board.get('name') or host, 'kind': 'board', 'step': (kept.get(host) or {}).get('step') or 'download'})
+    # Only sites that could have jobs for the CURRENT search, employers and boards alike, whichever search queued them: the visit list's AI judge
+    # (owner, 26 Oct 2026: "the websites being read should be relevant and in sync with my current strategy and jobs search"; a pilot search's
+    # checks read Moldovan bank, energy and telecom sites an earlier search had queued). A site the person opened a job on is read anyway; when
+    # the AI fails this time, none of the others is read (asked again next time); with no AI at all every site is read, as before.
+    asked = [item for item in out if visits.host_of(item['url']).lower().removeprefix('www.') not in force]
+    if asked:
+        fit = {item['url'] for item in visits.relevant(asked, search, label='Refused sites', failed=[])}
+        out = [item for item in out if item not in asked or item['url'] in fit]
     return out[:limit]
 
 

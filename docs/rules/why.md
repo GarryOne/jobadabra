@@ -144,3 +144,12 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - 6 Oct (2f586ca): the owner dropped robots.txt checks ("if they block us, they block"). 18-24 Oct they came back in the board readers (84a97fe board_pages, 6d2bcb3 board_forms, 2d1bd00 board_sections), unnoticed: a regression of his decision.
 - 26 Oct: two pilot boards (career.aero, latestpilotjobs.com) were called unreadable because of robots.txt and terms. Owner: "let's ignore robots.txt, nobody cares about that, our users just want to search/find jobs".
 - Rule: no reader refuses a public job page for robots.txt or a site's terms (Sitemap: lines stay as discovery). `tests/test_robots_not_consulted.py` fails on a new `robotparser`/`can_fetch`. The Remotive exclusion (aggregators.py) is an API-terms choice, left as it is.
+
+## Sites read follow the current strategy (26 Oct 2026)
+- Owner: "the websites being read should be relevant and in sync with my current strategy and jobs search". After a first officer's "Find jobs",
+  the browser's refused-site reads read and offered maib (a Moldovan bank), Premier Energy, Moldtelecom, Airtable and others that an earlier
+  software search in Moldova had queued: 49 reads that night, 13 sites 4 times each, 0 matching jobs ("Totally irrelevant. This is a bug.").
+  The refused-site queue never asked whether a site fits the search; the visit list beside it did (`visits.relevant`).
+- Hence: every list of sites a run reads or offers is judged by the AI for the CURRENT strategy, whichever search queued it; a site the person
+  opened a job on is read anyway; when the AI fails, the automatic reads take none. Guard: `tests/test_sources_follow_strategy.py` (one loop over
+  the lists; a new list joins it, a sibling in other work is named with its owner).

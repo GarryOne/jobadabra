@@ -4,16 +4,28 @@
 #   Windows: Build · Windows -> E2E · Windows (the same suites) -> Release · Windows beta ("Beta-approved (Windows):")
 #   then Clean up old builds
 # Each platform is approved on its own. A red gate leaves that platform's testers on their current beta. Never call tools/beta-approve.sh by hand: it skips the gate.
-#   tools/beta-release.sh [--no-watch]
+#   tools/beta-release.sh [--no-watch] [--force "<why>"]
+# No beta while main's e2e is red (gate G2, 26 Oct 2026; tools/red-main-gate.sh): fixes landed since → only the red suites re-run on main first; --force "<why>" starts it
+# anyway and the reason shows in the beta run's summary. Why: beta 2 (25 Oct) started 1.5 h after main went red on the same suites.
 set -euo pipefail
 repo=GarryOne/jobadabra
-gh workflow run desktop.yml -R "$repo" --ref main -f beta=true
+watch=1 force=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-watch) watch=0 ;;
+    --force) force="${2:?--force needs a reason}"; shift ;;
+    *) echo "unknown option: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+if [ -n "$force" ]; then bash "$(dirname "$0")/red-main-gate.sh" "$repo" --force "$force"; else bash "$(dirname "$0")/red-main-gate.sh" "$repo" || exit 1; fi
+gh workflow run desktop.yml -R "$repo" --ref main -f beta=true ${force:+-f over_red_main="$force"}
 sleep 5
 run=$(gh run list -R "$repo" --workflow desktop.yml --event workflow_dispatch -L 5 --json databaseId,displayTitle,url \
   -q '[.[] | select(.displayTitle == "Beta by hand")][0] | "\(.databaseId) \(.url)"')
 echo "Beta by hand started: ${run#* }"
 # Watched to the end (7 Oct 2026: a refused release went unnoticed): which version it published, and which platforms approved it. --no-watch returns at once.
-if [ "${1:-}" = "--no-watch" ]; then
+if [ "$watch" = 0 ]; then
   echo "Build, then both gates, in that one run (about 45 minutes); a pass adds 'Beta-approved:' (Mac) and 'Beta-approved (Windows):' to the release notes."
   exit 0
 fi

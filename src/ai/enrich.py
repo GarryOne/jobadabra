@@ -185,6 +185,11 @@ AGAIN = ("\n\nYour last answer left {fields} empty. Read the posting again and g
          "skills, licences or topics it names. Answer unknown (or []) only when it gives none.")
 
 
+# An IT job's role family is asked once more, as its own small question, and that answer decides (owner, 26 Oct 2026: "Ask role alone"; Free AI put a
+# different plain SRE posting in "software" on each quality run, inside the 16-fact answer). A narrow question is where small models answer best.
+ROLE_SYSTEM = "You name one job's own kind of work for a job-search tool, from its title and posting.\n\nrole_family: " + ROLE_FAMILIES
+
+
 def extract(client, model, job):
     """Return (data, usage) for one job via a schema-constrained response; an empty fact a reader needs is asked once more, alone."""
     data, usage = _ask(client, model, job, SCHEMA)
@@ -195,14 +200,18 @@ def extract(client, model, job):
         data.update({field: again[field] for field in empty if field in again})
         data['seniority'] = settle(job['title'], data.get('seniority'))
         usage = cost.combined(usage, more)
+    if data.get('role_family') in IT_FAMILIES:
+        again, more = _ask(client, model, job, _only(['role_family']), system=ROLE_SYSTEM)
+        data['role_family'] = again.get('role_family') or data['role_family']
+        usage = cost.combined(usage, more)
     return data, usage
 
 
-def _ask(client, model, job, schema, note=''):
+def _ask(client, model, job, schema, note='', system=SYSTEM):
     response = client.messages.create(
         model=model,
         max_tokens=2000,
-        system=SYSTEM,
+        system=system,
         messages=[{'role': 'user', 'content': (
             f"Title: {job['title']}\nCompany: {job['company']}\nLocation: {job.get('location') or ''}\n\n"
             f"Posting:\n{job['description']}{note}")}],

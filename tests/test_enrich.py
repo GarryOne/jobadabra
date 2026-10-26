@@ -21,8 +21,8 @@ def facts(**overrides):
 
 
 def full(**overrides):
-    """An answer with every fact a reader needs filled: no second ask (src/ai/enrich.py ASK_AGAIN)."""
-    return facts(**{'seniority': {'value': 'senior', 'evidence': 'Senior'}, 'work_mode': {'value': 'hybrid', 'remote_scope': '', 'evidence': 'hybrid'},
+    """An answer with every fact a reader needs filled and a non-IT role: no second ask (src/ai/enrich.py ASK_AGAIN, ROLE_SYSTEM)."""
+    return facts(**{'role_family': 'sales_b2b', 'seniority': {'value': 'senior', 'evidence': 'Senior'}, 'work_mode': {'value': 'hybrid', 'remote_scope': '', 'evidence': 'hybrid'},
                     'technologies': ['Kubernetes'], **overrides})
 
 

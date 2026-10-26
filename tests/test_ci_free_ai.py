@@ -61,6 +61,18 @@ class CiFreeAiTests(unittest.TestCase):
         self.assertIn('::add-mask::', action, 'the throwaway key is masked in the log')
         self.assertIn('rm -rf "$GITHUB_WORKSPACE/.free-ai-site"', action, 'nothing private stays in the workspace')
 
+    def test_every_screenshot_review_runs_on_free_ai_with_its_lessons(self):
+        """The review (desktop/e2e/review-ui.mjs) asks Workers AI with CI's token and reads the by-design lessons from the closed issues."""
+        reviews = 0
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            for name, text in jobs(path.read_text()).items():
+                for step in (part for part in text.split('\n      - ') if 'run: node review-ui.mjs' in part):
+                    reviews += 1
+                    for needed in ('CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}', 'CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}', 'GITHUB_TOKEN: ${{ github.token }}'):
+                        self.assertIn(needed, step, f'{path.name} {name}: the screenshot review step')
+                    self.assertRegex(text, r'(?m)^      issues: read', f'{path.name} {name}: the lessons are read from the issues')
+        self.assertGreaterEqual(reviews, 4)
+
     def test_every_job_left_out_still_exists(self):
         for (workflow, name), why in NO_RELAY.items():
             self.assertIn(name, jobs((WORKFLOWS / workflow).read_text()), f'{workflow} {name} is gone: drop it from NO_RELAY ({why})')

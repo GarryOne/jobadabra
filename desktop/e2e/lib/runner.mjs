@@ -83,7 +83,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
     const started = Date.now(), before = faultTally?.();
     const unfired = () => faultCheck(before, faultTally?.(), {faults});
     let retried = '';
-    await getSession()?.coverageMark?.();   // what ran since the last step is setup, not this step's (lib/coverage.mjs)
+    await getSession()?.coverageMark?.(name);   // what ran since the last step is setup, not this step's (lib/coverage.mjs)
     const attempt = async () => {
       await getSession()?.traceGroup?.(name);   // the step's actions sit under its name in the trace (lib/app.mjs), and in the report's step
       try {

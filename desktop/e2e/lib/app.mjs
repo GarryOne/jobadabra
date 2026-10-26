@@ -15,7 +15,7 @@ export const DESKTOP = path.resolve(E2E, '..');
 import {createRequire} from 'node:module';
 import {appLogText} from './app-log.mjs';
 import {keepRunLogs} from './run-logs.mjs';
-import {saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
+import {pythonCoverage, saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
 import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 const electronPath = () => {
   if (process.platform !== 'win32') return path.join(DESKTOP, 'node_modules', '.bin', 'electron');
@@ -35,6 +35,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   fs.mkdirSync(ARTIFACTS, {recursive: true});
   // The test app is a stranger to the product: no technical reports, no employer-pool sharing, nothing it learns leaves this computer.
   if (!again) fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({telemetry: false, shareEmployers: false, ...settings}));
+  pythonCoverage();   // E2E_COVERAGE=1: the engine's Python records its lines per step too (lib/coverage.mjs)
   // Linux (CI runners, 6 Oct 2026): no keyring there, so Chromium's basic password store keeps the app's keys (test keys only, a throwaway profile).
   const app = await electron.launch({
     executablePath: executablePath || electronPath(),
@@ -68,7 +69,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   // close({keepTrace}): the trace is written only when asked (a step failed); otherwise it is dropped unwritten.
   // coverageMark/coverageStep: the runner's reads at a step's start and end (lib/runner.mjs); a no-op without E2E_COVERAGE=1.
   return {app, page, profile, shot, keepLogs, traceGroup: trace.group, traceGroupEnd: trace.groupEnd,
-    coverageMark: () => takeSetup(coverage).catch(() => {}), coverageStep: name => takeStep(coverage, name).catch(() => {}),
+    coverageMark: name => takeSetup(coverage, name).catch(() => {}), coverageStep: name => takeStep(coverage, name).catch(() => {}),
     close: async ({keepTrace = false} = {}) => { await keepLogs().catch(() => {}); await saveCoverage(coverage, ARTIFACTS).catch(() => {}); await trace.stop(keepTrace); await closeApp(app); }};
 }
 

@@ -4,6 +4,7 @@
 // and #1913 changed the run views and broke cardstates; neither PR ran the suite. Never a reason to fail: a session that cannot record is only logged.
 // Tests: test/coverage.test.mjs
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -96,6 +97,40 @@ export function cssDeltaEntries(usage, sheets) {
 // the runner calls takeStep; each read of V8's precise coverage resets its counters, and CSS.takeCoverageDelta gives the rules used since the last read, so what one
 // read returns is that step's. Lines read outside any step (launch, between steps, the close) go to SETUP. The suite's `files` stay the union (the suite pick).
 export const SETUP = '(setup)';
+// Python (owner's yes, 26 Oct 2026: scoring PRs ran the whole quality suite): lib/pycov/sitecustomize.py, on PYTHONPATH, records the src/ lines each engine process
+// ran into E2E_PY_COVERAGE_DIR, tagged with the step named in its `step` file. Lines a process ran across steps, and lines run at import (they reach every step),
+// go to WHOLE: a change there runs the suite whole (lib/coverage-pick.mjs).
+export const WHOLE = '(whole)';
+const PYCOV = path.join(path.dirname(fileURLToPath(import.meta.url)), 'pycov');
+// Before the app starts (lib/app.mjs): the folder, the recorder on PYTHONPATH and the step file in `env`, once per suite process. -> the folder, '' when not recording.
+export function pythonCoverage(env = process.env) {
+  if (!on(env)) return '';
+  if (env.E2E_PY_COVERAGE_DIR) return env.E2E_PY_COVERAGE_DIR;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-pycov-'));
+  fs.writeFileSync(path.join(dir, 'step'), SETUP);
+  Object.assign(env, {E2E_PY_COVERAGE_DIR: dir, PYTHONPATH: [PYCOV, env.PYTHONPATH].filter(Boolean).join(path.delimiter)});
+  return dir;
+}
+const pythonStep = (name, env) => { if (env.E2E_PY_COVERAGE_DIR) try { fs.writeFileSync(path.join(env.E2E_PY_COVERAGE_DIR, 'step'), name); } catch { /* the folder is gone: nothing to tag */ } };
+// The recorder's files ({start, end, files: {path: {body, load}}}) into a session's steps.
+export function pythonSteps(steps, records) {
+  const into = (step, file, lines) => { if (!lines?.length) return; const target = steps[step] ||= {}; const now = target[file] || {loaded: true, lines: []}; target[file] = {loaded: true, lines: mergeRanges([...now.lines, ...lines])}; };
+  for (const {start, end, files} of records) {
+    const step = start !== end ? WHOLE : start || SETUP;
+    for (const [file, {body = [], load = []}] of Object.entries(files || {})) { into(step, file, body); into(WHOLE, file, load); }
+  }
+  return steps;
+}
+function takePython(handle, env) {
+  const dir = env.E2E_PY_COVERAGE_DIR;
+  if (!dir || !fs.existsSync(dir)) return 0;
+  const records = [];
+  for (const name of fs.readdirSync(dir).filter(name => /^py-\d+\.json$/.test(name))) {
+    try { records.push(JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'))); fs.rmSync(path.join(dir, name)); } catch { /* a file still being written: the next session's */ }
+  }
+  pythonSteps(handle.steps, records);
+  return records.length;
+}
 async function windowRecorder(app, page) {
   const cdp = await page.context().newCDPSession(page);
   const sheets = {};
@@ -137,22 +172,29 @@ export async function startCoverage(app, page, env = process.env) {
 }
 
 // The runner, at a step's end: what this step ran. Lines read before it (launch, the gap since the last step) go to SETUP first.
-export async function takeStep(handle, name) {
+// Python processes started from here on are tagged SETUP until the next step starts.
+export async function takeStep(handle, name, env = process.env) {
+  pythonStep(SETUP, env);
   if (!handle || (!handle.window && !handle.main)) return;
   addInto(handle.steps[name] ||= {}, await readDelta(handle));
 }
-export async function takeSetup(handle) { if (handle) addInto(handle.steps[SETUP] ||= {}, await readDelta(handle)); }
+// At a step's start (`next`: its name, for the Python processes it starts).
+export async function takeSetup(handle, next = SETUP, env = process.env) {
+  if (handle) addInto(handle.steps[SETUP] ||= {}, await readDelta(handle));
+  pythonStep(next, env);
+}
 
 // Before the app exits: write what this session ran, per step and in all. `dir`: the suite's artifacts.
 export async function saveCoverage(handle, dir, env = process.env) {
   if (!handle) return null;
-  await takeSetup(handle);
+  await takeSetup(handle, SETUP, env);
+  const python = takePython(handle, env);
   const files = {};
   for (const stepFiles of Object.values(handle.steps)) addInto(files, stepFiles);
   const suite = env.E2E_SUITE || 'default';
   const file = path.join(dir, `coverage-${suite}-${handle.number}.json`);
   fs.mkdirSync(dir, {recursive: true});
   fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
-  console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).length - (handle.steps[SETUP] ? 1 : 0)} step(s) → ${path.basename(file)}`);
+  console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).filter(name => name !== SETUP && name !== WHOLE).length} step(s), ${python} Python process(es) → ${path.basename(file)}`);
   return file;
 }

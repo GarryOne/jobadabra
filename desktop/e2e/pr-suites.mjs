@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, WINDOWS_SMOKE} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
-import {hunksFromDiff, mapShas, stepNamesFor, stepsCovering} from './lib/coverage-pick.mjs';
+import {hunksFromDiff, mapShas, stepNamesFor, stepsCovering, stillWhole} from './lib/coverage-pick.mjs';
 import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -29,11 +29,11 @@ function loadMap() {
   } catch (error) { console.log(`pr-suites: no coverage map (${error.message.split('\n')[0]}): the other picks only`); return {}; }
 }
 // The suites and STEPS whose recorded lines this PR changes: the diff from each suite's recorded commit to the PR's head, for the files the PR changes (a superset when
-// main moved on). -> {suite: {steps, setup, whole, reason}} (lib/coverage-pick.mjs stepsCovering).
+// main moved on). -> {map, picked: {suite: {steps, setup, whole, reason}}} (lib/coverage-pick.mjs stepsCovering).
 function covered(changedFiles) {
   const map = loadMap(), bySha = {};
   for (const sha of mapShas(map)) { try { bySha[sha] = hunksFromDiff(git(['-C', '../..', 'diff', '-U0', sha, 'HEAD', '--', ...changedFiles])); } catch { /* commit not here: that suite is not picked by lines */ } }
-  return stepsCovering(map, bySha);
+  return {map, picked: stepsCovering(map, bySha)};
 }
 try {
   const changedFiles = git(['diff', '--name-only', `${base}...HEAD`]).split('\n').filter(Boolean);
@@ -47,9 +47,12 @@ try {
     const facts = await suiteFacts();
     const linux = {};
     for (const suite of facts.all) linux[suite] = (await facts.os(suite)) === 'ubuntu-24.04';
-    const picked = Object.fromEntries(Object.entries(covered(changedFiles)).filter(([suite]) => facts.all.includes(suite)));   // a suite removed since the map was made: gone
+    const {map, picked: all} = covered(changedFiles);
+    const picked = Object.fromEntries(Object.entries(all).filter(([suite]) => facts.all.includes(suite)));   // a suite removed since the map was made: gone
     const covering = Object.fromEntries(Object.entries(picked).map(([suite, p]) => [suite, p.reason]));
-    const pointed = suitesFor(changedFiles, facts.all, {...facts, watches: watchesWithImports(facts.watches), uses: suitesUsing(here)}), hits = suitesExpecting(strings, sources);
+    // A suite a changed file points at runs whole, unless the step map recorded that file for it (a watched src/ Python file): then its lines pick the steps.
+    const pointing = {...facts, watches: watchesWithImports(facts.watches), uses: suitesUsing(here)};
+    const pointed = stillWhole(changedFiles, file => suitesFor([file], facts.all, pointing), map), hits = suitesExpecting(strings, sources);
     const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence});
     // Steps per suite: those its changed lines reach plus those that quote removed UI text. Whole: a suite its own files or the harness point at, a quote outside a
     // named step, a line nobody ran.

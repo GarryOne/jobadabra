@@ -1,9 +1,11 @@
 // A pull request runs the e2e STEPS its changed lines reach (PR 2 of the PR-checks plan; owner, 26 Oct 2026: "Or not even an entire e2e suite, but just few
 // tests/scenarios/cases from that suite"): per-step coverage (lib/coverage.mjs) merged per suite, picked per changed line (lib/coverage-pick.mjs stepsCovering).
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {test} from 'node:test';
-import {cssDeltaEntries, SETUP} from '../lib/coverage.mjs';
-import {hunksFromDiff, mergeMap, stepNamesFor, stepsCovering} from '../lib/coverage-pick.mjs';
+import {cssDeltaEntries, pythonCoverage, pythonSteps, SETUP, takeSetup, takeStep, WHOLE} from '../lib/coverage.mjs';
+import {hunksFromDiff, mergeMap, stepNamesFor, stepsCovering, stillWhole} from '../lib/coverage-pick.mjs';
 
 const lines = (...ranges) => ({loaded: true, lines: ranges});
 const MAP = {suites: {
@@ -64,4 +66,53 @@ test('CSS coverage delta → the used rules of each app sheet', () => {
   const sheets = {s1: {url: 'file:///r/desktop/renderer/menu.css', text: '.a{}\n.b{}\n'}, s2: {url: '', text: 'inline'}};
   const usage = [{styleSheetId: 's1', startOffset: 5, endOffset: 9, used: true}, {styleSheetId: 's1', startOffset: 0, endOffset: 4, used: false}, {styleSheetId: 's2', startOffset: 0, endOffset: 3, used: true}];
   assert.deepEqual(cssDeltaEntries(usage, sheets), [{url: 'file:///r/desktop/renderer/menu.css', text: '.a{}\n.b{}\n', ranges: [{start: 5, end: 9}]}]);
+});
+
+// Python (owner's yes, 26 Oct 2026: scoring PRs ran the whole quality suite, 10-22 min): lib/pycov/sitecustomize.py records the src/ lines each engine process ran.
+const PY = {suites: {quality: {sha: 'S', files: {'src/ai/score.py': lines([1, 120])},
+  steps: {'a Jobs check scores them': {'src/ai/score.py': lines([40, 60])}, [WHOLE]: {'src/ai/score.py': lines([1, 12], [30, 30])}}}}};
+
+test('Python: a function line picks its steps; a line run at import runs the suite whole; a comment changes nothing', () => {
+  assert.deepEqual(stepNamesFor(stepsCovering(PY, {S: {'src/ai/score.py': [[45, 46]]}})), {quality: ['a Jobs check scores them']});
+  const atImport = stepsCovering(PY, {S: {'src/ai/score.py': [[30, 30]]}});
+  assert.equal(atImport.quality.whole, true);
+  assert.deepEqual(stepNamesFor(atImport), {});
+  assert.deepEqual(hunksFromDiff('diff --git a/src/ai/score.py b/src/ai/score.py\n--- a/src/ai/score.py\n+++ b/src/ai/score.py\n@@ -45 +45 @@\n-    # old\n+    # new\n'), {});
+  assert.deepEqual(Object.keys(hunksFromDiff('--- a/desktop/x.css\n+++ b/desktop/x.css\n@@ -4 +4 @@\n-#menu { color: red }\n+#menu { color: blue }\n')), ['desktop/x.css'], 'a CSS rule on an id is code');
+});
+
+test('Python records join the step map: one step -> that step; across steps or at import -> the whole suite', () => {
+  const steps = pythonSteps({}, [
+    {start: 'Score', end: 'Score', files: {'src/a.py': {body: [[10, 12]], load: [[1, 3]]}}},
+    {start: 'Score', end: 'Open a job', files: {'src/b.py': {body: [[5, 6]], load: []}}},
+    {start: SETUP, end: SETUP, files: {'src/c.py': {body: [[7, 7]], load: []}}},
+    {start: '', end: '', files: {'src/d.py': {body: [[8, 8]], load: []}}}]);
+  assert.deepEqual(steps.Score, {'src/a.py': lines([10, 12])});
+  assert.deepEqual(steps[WHOLE], {'src/a.py': lines([1, 3]), 'src/b.py': lines([5, 6])});
+  assert.deepEqual(steps[SETUP], {'src/c.py': lines([7, 7]), 'src/d.py': lines([8, 8])});
+});
+
+test('the step a Python process sees: the running step\'s name, setup between steps; nothing without coverage', async () => {
+  const env = {E2E_COVERAGE: '1', PYTHONPATH: '/elsewhere'};
+  const dir = pythonCoverage(env);
+  assert.equal(env.E2E_PY_COVERAGE_DIR, dir);
+  const [hook, rest] = env.PYTHONPATH.split(path.delimiter);
+  assert.ok(fs.existsSync(path.join(hook, 'sitecustomize.py')));
+  assert.equal(rest, '/elsewhere');
+  assert.equal(pythonCoverage(env), dir, 'once per suite process');
+  const step = () => fs.readFileSync(path.join(dir, 'step'), 'utf8');
+  assert.equal(step(), SETUP);
+  await takeSetup(null, 'Score the jobs', env); assert.equal(step(), 'Score the jobs');
+  await takeStep(null, 'Score the jobs', env); assert.equal(step(), SETUP);
+  const off = {};
+  assert.equal(pythonCoverage(off), '');
+  assert.deepEqual(off, {});
+});
+
+test('a file a suite watches runs it whole only until the step map has recorded that file for it', () => {
+  const pointsAt = file => ({'src/ai/score.py': ['quality'], 'src/ai/new.py': ['quality'], 'desktop/e2e/suites/quality.mjs': ['quality']})[file] || [];
+  assert.deepEqual(stillWhole(['src/ai/score.py'], pointsAt, PY), [], 'its lines decide');
+  assert.deepEqual(stillWhole(['src/ai/score.py', 'src/ai/new.py'], pointsAt, PY), ['quality'], 'a file no run recorded');
+  assert.deepEqual(stillWhole(['desktop/e2e/suites/quality.mjs'], pointsAt, PY), ['quality'], 'its own file');
+  assert.deepEqual(stillWhole(['src/ai/score.py'], pointsAt, {}), ['quality'], 'no map yet: as before');
 });

@@ -10,6 +10,13 @@ import {waitForRunLock, waitedForLock} from '../lib/run-lock.mjs';
 import {finish, snap} from '../lib/layout.mjs';
 import {LABEL, appReady, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, runTask, runsData, setFeed, sleep} from '../lib/activity-steps.mjs';
 
+// Where the list's and the panel's pills got their words when they disagree (betas 13, 19, 20, 25 Oct 2026): the record's flags and what each log holds.
+const warnLine = line => /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached/i.test(String(line));
+const disagreement = (mine, opened, run) => {
+  const panelLines = String(opened.log || '').split('\n');
+  return `the list says "${mine?.pill}" and the panel "${opened.status}" (record: ok=${run.ok} warned=${run.warned} problem="${run.problem || ''}", ${(run.log || []).length} log line(s), ${(run.log || []).filter(warnLine).length} warning-like; panel log: ${panelLines.length} line(s), ${panelLines.filter(warnLine).length} warning-like; panel box "${opened.warningsTitle}"; app: ${JSON.stringify(opened.state?.activity ?? null).slice(0, 300)})`;
+};
+
 export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
 export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
 export const name = 'activityfailures';
@@ -55,12 +62,7 @@ export async function runParts(ctx, parts) {
           const bad = badSummary(mine?.result);
           if (bad) problems.push(`the list's words are wrong: ${bad}`);
           if (/Completed$/.test(opened.status) && !opened.warnings && !opened.warningList) problems.push('the run says plain "Completed" with no warning, though the AI refused every call');
-          if (/warning/i.test(opened.status) !== /warning/i.test(mine?.pill || '')) {
-            // Where the two pills got their words (beta 13, 19, 20: the record says warned=false; the list and the panel derive "warnings" from log lines): what each holds.
-            const warnLine = line => /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached/i.test(String(line));
-            const panelLines = String(opened.log || '').split('\n');
-            problems.push(`the list says "${mine?.pill}" and the panel "${opened.status}" (record: ok=${run.ok} warned=${run.warned} problem="${run.problem || ''}", ${(run.log || []).length} log line(s), ${(run.log || []).filter(warnLine).length} warning-like; panel log: ${panelLines.length} line(s), ${panelLines.filter(warnLine).length} warning-like; panel box "${opened.warningsTitle}"; app: ${JSON.stringify(opened.state?.activity ?? null).slice(0, 300)})`);
-          }
+          if (/warning/i.test(opened.status) !== /warning/i.test(mine?.pill || '')) problems.push(disagreement(mine, opened, run));
           if (/no line about them/i.test(`${opened.warnings} ${opened.warningList}`)) problems.push('the panel warns but gives no reason ("the run recorded warnings, with no line about them")');
           if (!/Failed|warning|Needs/i.test(`${opened.status} ${mine?.pill}`)) problems.push(`neither the panel ("${opened.status}") nor the list ("${mine?.pill}") says it did not fully work`);
           const shownWords = `${opened.warnings} ${opened.warningList} ${opened.result} ${opened.message} ${mine?.result}`;
@@ -116,7 +118,7 @@ export async function runParts(ctx, parts) {
         const bad = badSummary(mine?.result);
         if (bad) problems.push(`the list's words are wrong: ${bad}`);
         if (!fault.recovers && /Completed$/.test(opened.status) && !opened.warnings && !opened.warningList) problems.push('the run says plain "Completed" though its results never reached Notion');
-        if (/warning/i.test(opened.status) !== /warning/i.test(mine?.pill || '')) problems.push(`the list says "${mine?.pill}" and the panel "${opened.status}"`);
+        if (/warning/i.test(opened.status) !== /warning/i.test(mine?.pill || '')) problems.push(disagreement(mine, opened, fresh[0]));
         if (problems.length) throw new Error(problems.join('; '));
         await noRowStaysRunning(ctx);
       }, {needs: ctx.needs, faults: true});

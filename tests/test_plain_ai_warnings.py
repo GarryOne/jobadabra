@@ -28,10 +28,12 @@ class Failing:
 class PlainAiWarningTests(unittest.TestCase):
     def test_decide_warning_names_neither_topic_nor_exception(self):
         for error in (AiLimit('limit'), AiUnavailable('busy'), RuntimeError('boom')):
-            decide._calls['n'] = 0
+            decide.reset_run()
+            self.addCleanup(decide.reset_run)
             out = io.StringIO()
             with redirect_stdout(out):
                 decide.decide('pool-region', {'a': 'x'}, ('yes', 'no'), 'task', Failing(error), sqlite3.connect(':memory:'))
+                decide._say_waiting()   # the one plain line a run says, at its end
             warnings = [line for line in out.getvalue().splitlines() if line.startswith('Warning:')]
             self.assertEqual(len(warnings), 1, out.getvalue())
             self.assertIsNone(LEAK.search(warnings[0]), warnings[0])

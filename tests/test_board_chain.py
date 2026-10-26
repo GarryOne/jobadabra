@@ -63,7 +63,7 @@ class ChainTests(unittest.TestCase):
             return [job for job in jobs if feeds.wanted_title(job['title']) and feeds.wanted_location(job)]
         board = {'name': 'Example', 'host': 'jobs.example', 'search_url': HOME + 'q?w={role}', 'countries': ['Moldova'], 'kinds': ['any']}
         search = {'jobs_board_search_queries': ['software engineer']}
-        patches = (mock.patch.object(board_pages, 'allowed', return_value=True), mock.patch('src.ai.decide.decide', decide),
+        patches = (mock.patch('src.ai.decide.decide', decide),
                    mock.patch.object(feeds, 'PLACE', re.compile('moldova|chi.in', re.I)), mock.patch.object(feeds, 'place_of', return_value=None),
                    mock.patch.object(feeds, 'wanted_title', return_value=True))
         for patch in patches:

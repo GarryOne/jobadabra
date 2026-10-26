@@ -92,7 +92,7 @@ class HomeFormTests(Base):
         shown = {'https://empregos.example/': form}
         judge = lambda jobs: [job for job in jobs if job['title'] in TITLES]   # noqa: E731
         entry = {}
-        with mock.patch('src.sources.board_pages.allowed', return_value=True):
+        with mock.patch('src.sources.board_pages.PAUSE_S', 0):
             jobs, state, relevant = found_boards._another_way(BOARD, entry, BOARD['search_url'], SEARCH, lambda url: SHELL, judge, ([], 'empty', []),
                                                               show=lambda url: self.shown.append(url) or shown.get(url, TEXT))
         self.assertEqual(sorted(job['title'] for job in relevant), sorted(TITLES))

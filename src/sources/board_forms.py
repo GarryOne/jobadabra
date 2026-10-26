@@ -72,8 +72,7 @@ def home(board, fetch):
 
 
 def home_templates(board, fetch, page=None):
-    """The search links the board's home page forms make (page: home()'s answer, fetched once), the ones its robots.txt lets us read."""
-    from . import board_pages
+    """The search links the board's home page forms make (page: home()'s answer, fetched once)."""
     address, markup = page or home(board, fetch)
     found = templates(markup, address) if markup else []
-    return [url for url in found if url != board['search_url'] and board_pages.allowed(url.replace('{role}', 'x').replace('{place}', 'x'), fetch)]
+    return [url for url in found if url != board['search_url']]

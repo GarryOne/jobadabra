@@ -120,3 +120,8 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 ## A red beta runs to the end (24 Oct 2026)
 - Betas 13-20 took eight 45-minute runs to reach one green: a suite stops at its first red, the beta is the only place all 66 jobs run, and betas 18 and 19 were cancelled at their first reds, so the reds behind them never showed. Each fix then cost a PR, the owner's merge and a new beta, and main took 19 commits between betas 17 and 20. Owner: "why we need so many iterations".
 - Rule: a by-hand beta with reds runs to the end; every red is read, named and fixed in one batch before the next beta; cancel only a hang or a failed build (CLAUDE.md working rules). Merges to main are not held (the owner did not choose that part).
+
+## robots.txt is not consulted (6 + 26 Oct 2026)
+- 6 Oct (2f586ca): the owner dropped robots.txt checks ("if they block us, they block"). 18-24 Oct they came back in the board readers (84a97fe board_pages, 6d2bcb3 board_forms, 2d1bd00 board_sections), unnoticed: a regression of his decision.
+- 26 Oct: two pilot boards (career.aero, latestpilotjobs.com) were called unreadable because of robots.txt and terms. Owner: "let's ignore robots.txt, nobody cares about that, our users just want to search/find jobs".
+- Rule: no reader refuses a public job page for robots.txt or a site's terms (Sitemap: lines stay as discovery). `tests/test_robots_not_consulted.py` fails on a new `robotparser`/`can_fetch`. The Remotive exclusion (aggregators.py) is an API-terms choice, left as it is.

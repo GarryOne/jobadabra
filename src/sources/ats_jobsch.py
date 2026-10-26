@@ -82,7 +82,7 @@ def jobsch_find(name, key, get=None):
 def jobsch(slug):
     """One employer's jobs on jobs.ch ('27602-manor-ag'), for an employer whose own job site we cannot read (6 Oct 2026: Manor's careers site
     is a script app, coop.ch refuses automated visitors; both post every job on jobs.ch). The board's public search for its name, keeping
-    only the postings of its company page (the id), page by page until a short page. robots.txt allows these pages."""
+    only the postings of its company page (the id), page by page until a short page."""
     company, _, words = slug.partition('-')
     out, seen = [], set()
     for page in range(1, JOBSCH_PAGES + 1):

@@ -130,7 +130,7 @@ def jooble(search, get=_get):
 
 def jobsch(search, get=None):
     """jobs.ch, Switzerland's biggest job board, for any profession: the search pages' own job listing (schema.org data), for the user's job-board searches. Only for a search
-    with Swiss places. Its robots.txt allows the search pages and disallows the job detail pages, so only the search pages are read (the same ones the employer discovery in
+    with Swiss places. Only the search pages are read (the job detail pages are not needed) (the same ones the employer discovery in
     boards.py reads, 0.35 s apart, kept 6 hours); a job's own jobs.ch address goes with it and the user opens it in the browser. The listing carries a short description only."""
     from . import boards
     if not boards.swiss_places(search):

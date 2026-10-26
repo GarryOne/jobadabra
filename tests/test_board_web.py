@@ -84,7 +84,7 @@ class SearchTests(Base):
         bare = {**crew, 'name': 'No Form', 'search_url': 'https://noform.example/jobs'}
         pages = {'https://crew.example/': '<form action="/jobs" method="get"><input name="was"><input name="wo"></form>',
                  'https://noform.example/': '<p>Jobs</p>'}
-        with mock.patch('src.sources.board_pages.allowed', return_value=True):
+        with mock.patch('src.sources.board_pages.PAUSE_S', 0):
             found = board_web.search(SEARCH, [board(1)], client=Client([crew, bare]), now=NOW, fetch=lambda url: pages.get(url, ''))
         self.assertEqual([(b['host'], b['search_url']) for b in found], [('crew.example', 'https://crew.example/jobs?was={role}&wo={place}')],
                          'a page with no search form is not a board we can search')

@@ -95,10 +95,21 @@ def _countries(search):
     cache = places.load()
     if any(places.in_switzerland(w, cache) for w in words) and 'Switzerland' not in names:
         names = ['Switzerland', *names]   # the first market from its fixed table, before (or without) the AI's answer
-    from ..ai import meanings_pack
     codes = [code for name in names for code, country in ADZUNA_COUNTRIES.items() if country == name]
-    codes += [code for w in words for code in meanings_pack.every('place-country', w)]   # the pack: the old lists + what the site learned
+    codes += list((place_countries(words) or {}).values())   # the AI's country for each place word (kept per word); its words only without AI
     return list(dict.fromkeys(c for c in codes if c in ADZUNA_COUNTRIES))[:4]
+
+
+PLACE_COUNTRY_TASK = 'A place name. Answer the code of the country it is in: ' + '; '.join(f'{c} = {n}' for c, n in ADZUNA_COUNTRIES.items())
+
+
+def place_countries(words):
+    """{place word lowercased: country code or 'other'} by the AI (topic place-country, ai_first: a word in the text is not the place,
+    "London, Ontario" is not in the UK); the pack's patterns only with no AI at all; a place past the AI's cap is left out (unknown).
+    None when nothing is known. Shared with Google Jobs (src/sources/google_jobs.py within_places), so each place is asked once."""
+    from ..ai import decide
+    items = {str(w).lower(): str(w) for w in words if str(w or '').strip()}
+    return decide.decide('place-country', items, (*ADZUNA_COUNTRIES, 'other'), PLACE_COUNTRY_TASK) if items else {}
 
 
 def adzuna(search, get=_get):

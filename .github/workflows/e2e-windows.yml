@@ -221,8 +221,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-windows-${{ matrix.key }}-
+          key: ai-answers-v2-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-v2-windows-${{ matrix.key }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -279,11 +279,11 @@ jobs:
       - name: Keep the AI answers for the next run
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-v2-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6

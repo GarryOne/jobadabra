@@ -557,8 +557,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-${{ matrix.key }}-
+          key: ai-answers-v2-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-v2-${{ matrix.key }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -596,7 +596,7 @@ jobs:
         run: |
           set -o pipefail   # flaky-proof.mjs | tee: the proof's exit decides (tests/test_workflow_pipefail.py)
           first="$E2E_ARTIFACTS"
-          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1   # a second try writes no HTML report (report/playwright.config.mjs)
+          export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=0   # fresh answers, never the first try's (a replayed bad draw proves nothing); a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
           if again ${{ matrix.suite }}; then
             echo '{"rerun": "passed"}' > "$first/flaky.json"
@@ -636,11 +636,11 @@ jobs:
       - name: Keep the AI answers for the next run
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-v2-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6
@@ -774,8 +774,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: ai-answers-windows-${{ matrix.key }}-
+          key: ai-answers-v2-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ai-answers-v2-windows-${{ matrix.key }}-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -830,11 +830,11 @@ jobs:
       - name: Keep the AI answers for the next run
         if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         run: find desktop/e2e/.ai-cache -name '*.json' -mtime +7 -delete   # an answer not replayed for a week is dropped (a replay touches it)
-      - if: always() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+      - if: success() && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.ai-cache
-          key: ai-answers-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: ai-answers-v2-windows-${{ matrix.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6

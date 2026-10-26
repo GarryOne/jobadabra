@@ -77,4 +77,7 @@ echo "Stable: $tag (friends' apps offer it within 10 minutes, or at their next s
 gh workflow run extension-store-publish.yml -R "$repo" --ref main -f tag="$tag" \
   && echo "Chrome Web Store: publishing its extension (Extension · Chrome Web Store publish; the store reviews it, then Chrome updates every copy)" \
   || echo "(Chrome Web Store publish not started: gh workflow run extension-store-publish.yml -R $repo --ref main -f tag=$tag)"   # best effort, never fails a promotion
+gh workflow run msix-store.yml -R "$repo" --ref main -f tag="$tag" \
+  && echo "Microsoft Store: building and submitting its Windows package (Build · Windows Store package; Microsoft certifies it, then the Store updates every copy)" \
+  || echo "(Microsoft Store submission not started: gh workflow run msix-store.yml -R $repo --ref main -f tag=$tag)"   # best effort, never fails a promotion
 python3 "$here/sync_release_labels.py" || echo "(release labels not refreshed: run tools/sync_release_labels.py)"   # the list says STABLE / BETA / Build; best effort, never fails a promotion

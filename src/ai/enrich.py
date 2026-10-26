@@ -40,6 +40,14 @@ CREATE TABLE IF NOT EXISTS enrichments (
 LANGUAGES = ['English', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Dutch', 'Other']
 _evidence = {'type': 'string', 'description': 'Short verbatim quote from the posting, or "" if none'}
 IT_FAMILIES = ('sre', 'platform', 'devops', 'cloud_infrastructure', 'software', 'data', 'security', 'support_it')   # the IT role families before the trades
+# Each IT family's work, said like the trades' (src/role_kinds.py WORK): 26 Oct 2026, on Free AI's open model 5 SRE and platform jobs came back
+# 'engineering' while these were bare names (e2e quality, PR #1992). Guarded by: tests/test_role_kinds_split.py.
+IT_WORK = {'sre': 'site reliability: keeping production services up, incidents, on-call, monitoring',
+           'platform': 'internal platforms and developer infrastructure, e.g. Kubernetes and CI/CD for other teams',
+           'devops': 'build, release and deployment automation, infrastructure as code',
+           'cloud_infrastructure': 'cloud, servers, networks and data-centre infrastructure',
+           'software': 'building software and applications', 'data': 'data engineering, analytics, data science, machine learning',
+           'security': 'IT and cyber security', 'support_it': 'IT support and help desk'}
 SCHEMA = {
     'type': 'object',
     'additionalProperties': False,
@@ -94,8 +102,8 @@ SCHEMA = {
         # and warehouse jobs could only be 'other'. 26 Oct 2026, 8 kinds split out of 'other': the description says each family's work, and that
         # the job's own work decides, not its title's team (e2e golden 3006: an "SRE, Customer Care" title on a phone helpdesk job).
         'role_family': {'type': 'string', 'enum': [*IT_FAMILIES, *(kind for kind in KINDS if kind not in IT_FAMILIES)],
-                        'description': "The job's own kind of work, not the team, product or customers it serves. IT work: "
-                                       + ', '.join(IT_FAMILIES) + ' (support_it = IT support and help desk). Other work: '
+                        'description': "The job's own kind of work, not the team, product or customers it serves. IT work (an engineer in software or "
+                                       "IT is one of these, not engineering): " + '; '.join(f'{family} = {IT_WORK[family]}' for family in IT_FAMILIES) + '. Other work: '
                                        + '; '.join(f'{kind} = {WORK[kind]}' for kind in KINDS if kind not in IT_FAMILIES) + '.'},
         'technologies': {'type': 'array', 'items': {'type': 'string'}, 'description': 'Up to 8 key skills, tools, licences, certifications or topics the role names (any trade), short, in the posting\'s own language; [] when none'},
         'responsibilities': {'type': 'array', 'items': {'type': 'string'},

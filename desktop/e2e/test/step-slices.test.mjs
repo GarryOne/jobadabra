@@ -17,7 +17,7 @@ const ORDER = (() => {
 })();
 const stepsOf = parts => ORDER.filter(name => parts.includes(apply.partOf(name)));
 const needsOf = name => Object.entries(apply.stepNeeds).filter(([word]) => name.includes(word)).flatMap(([, list]) => list).filter(word => word !== SETUP);
-const SUITES = {apply: {parts: ['forms', 'cv'], seconds: apply.stepSeconds}, applyflows: {parts: ['flows'], seconds: {}}};
+const SUITES = {apply: {parts: ['forms', 'cv'], seconds: apply.stepSeconds}, applyflows: {parts: ['flows'], seconds: apply.flowSeconds}};
 
 test('every sliced step of apply and applyflows runs in exactly one slice, and where the step it needs runs', async () => {
   for (const [suite, {parts, seconds}] of Object.entries(SUITES)) {
@@ -47,4 +47,14 @@ test('without a slice every step runs; a step nobody weighed takes turns', () =>
   const first = stepSlicer({index: 1, count: 2}), second = stepSlicer({index: 1, count: 2});
   assert.deepEqual(['a', 'b', 'c'].map(first), [true, false, true]);
   assert.deepEqual(['a', 'b', 'c'].map(second), [true, false, true]);
+});
+
+// 26 Oct 2026, beta 40275152602: applyflows took turns, one slice drew the heavy journeys and ran out of its 7 minutes; it is weighed like apply now.
+test('every journey of applyflows is weighed or follows one, no weight names a gone step, and its halves are near equal', () => {
+  const steps = stepsOf(['flows']), heads = Object.keys(apply.flowSeconds);
+  assert.deepEqual(steps.filter(name => !heads.some(head => name.startsWith(head)) && !needsOf(name).length), [], 'weigh the new journey in suites/apply.mjs flowSeconds');
+  assert.deepEqual(heads.filter(head => !steps.some(name => name.startsWith(head))), []);
+  for (const name of steps) assert.ok(heads.filter(head => name.startsWith(head)).length <= 1, `"${name.slice(0, 50)}" matches two weights`);
+  const owner = weighedSlices(apply.flowSeconds, 2), load = [1, 2].map(index => Object.entries(apply.flowSeconds).filter(([head]) => owner[head] === index).reduce((sum, [, s]) => sum + s, 0));
+  assert.ok(Math.abs(load[0] - load[1]) / (load[0] + load[1]) < 0.1, `halves ${load.join(' vs ')} s`);
 });

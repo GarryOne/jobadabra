@@ -3,81 +3,16 @@ name: CI · Control tests (measure, not required)
 # extension, offline. It MEASURES how many pages the fill reads and keeps committed; a miss never fails it (pages that fail today are the fill ladder's found bugs). It fails only when the
 # replay broke or a page pressed a submit. NOT a required check: a page moves to desktop/e2e/recorded/ (the required replay shards) only once it passes.
 on:
-  pull_request:   # GitHub's paths decide on a pull request (owner, 14 Oct 2026: "rely fully on gh workflow paths"); not required (a skipped workflow never reports); main runs it as a step of build.yml (CI · Tests), as a warning only
-    branches: [main]
-    paths:
-      # Exactly what this workflow loads (tools/replay-files.mjs --paths control-tests.yml prints it; desktop/test/replay-workflow-paths.test.js fails when it drifts), plus its install files.
-      - 'desktop/e2e/lib/app-log.mjs'
-      - 'desktop/e2e/lib/app.mjs'
-      - 'desktop/e2e/lib/apply-fixtures.mjs'
-      - 'desktop/e2e/lib/capture-page.mjs'
-      - 'desktop/e2e/lib/chrome-lean.mjs'
-      - 'desktop/e2e/lib/coverage.mjs'
-      - 'desktop/e2e/lib/engine.mjs'
-      - 'desktop/e2e/lib/extension.mjs'
-      - 'desktop/e2e/lib/launch-guard.mjs'
-      - 'desktop/e2e/lib/forms.mjs'
-      - 'desktop/e2e/lib/journey.mjs'
-      - 'desktop/e2e/lib/ladder-fixtures.mjs'
-      - 'desktop/e2e/lib/ladder-moves.mjs'
-      - 'desktop/e2e/lib/ladder-score-path.mjs'
-      - 'desktop/e2e/lib/ladder-score.mjs'
-      - 'desktop/e2e/lib/owner-guard-env.mjs'
-      - 'desktop/e2e/lib/page-replay.mjs'
-      - 'desktop/e2e/lib/privacy-tripwire.mjs'
-      - 'desktop/e2e/lib/test-accounts.mjs'
-      - 'desktop/e2e/lib/real-claude.mjs'
-      - 'desktop/e2e/lib/real-extension.mjs'
-      - 'desktop/e2e/lib/recorded-false-readings.mjs'
-      - 'desktop/e2e/lib/replay-browser.mjs'
-      - 'desktop/e2e/lib/replay-lines.mjs'
-      - 'desktop/e2e/lib/replay-time.mjs'
-      - 'desktop/e2e/lib/replay-truth.mjs'
-      - 'desktop/e2e/lib/run-logs.mjs'
-      - 'desktop/e2e/lib/site-ledger.mjs'
-      - 'desktop/e2e/lib/widget-zoo-model.mjs'
-      - 'desktop/e2e/lib/widget-zoo.mjs'
-      - 'desktop/e2e/widget-zoo.mjs'
-      - 'desktop/e2e/widget-zoo/**'
-      - 'desktop/lib/**'
-      - 'desktop/renderer/countries.js'
-      - 'desktop/renderer/question-kind.js'
-      - 'desktop/scripts/extension-stamp.mjs'
-      - 'desktop/scripts/stage.mjs'
-      - 'extension/**'
-      - 'worker/src/ai-prices.js'
-      - 'worker/src/ai.js'
-      - 'worker/src/answer-declarations.js'
-      - 'worker/src/answer-examples.js'
-      - 'worker/src/answer-facts.js'
-      - 'worker/src/country-names.js'
-      - 'worker/src/pay-convert.js'
-      - 'worker/src/written-answer.js'
-      - 'worker/src/writing-rules.js'
-      - 'worker/src/answer-missing.js'
-      - 'worker/src/cv-facts.js'
-      - 'worker/src/extension-log.js'
-      - 'worker/src/extension-run-record.js'
-      - 'worker/src/extension.js'
-      - 'worker/src/job-answers.js'
-      - 'worker/src/owner-guard.js'
-      - 'desktop/e2e/package.json'
-      - 'desktop/e2e/package-lock.json'
-      - 'desktop/package.json'
-      - 'desktop/package-lock.json'
-      - '.github/workflows/control-tests.yml'
-      - '.github/actions/playwright-browser/**'
+  # Not on pull requests (owner, 26 Oct 2026: "no control tests" on PRs: ~20 jobs ran at once, 28 waited): it measures and is not required, so main runs it as a
+  # step of build.yml (CI · Tests) on every push, as a warning only; by hand here.
   workflow_dispatch:
 
-concurrency:   # newest wins (owner, 15 Oct 2026): a newer push replaces the PR's older run, and a newer push to main cancels the older commit's run (the newest commit's run decides); a by-hand run is its own group and never cancelled
-  group: widget-zoo-${{ github.event_name == 'pull_request' && github.head_ref || github.event_name == 'push' && 'main' || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+concurrency:   # a by-hand run is its own group and never cancelled
+  group: widget-zoo-${{ github.run_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  actions: read         # the commit's runs and jobs, for the PR's verdict (the last step of each job)
-  pull-requests: read
-  statuses: write       # the PR's "All checks passed"
 
 jobs:
   zoo:
@@ -86,8 +21,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - name: The PR paths list everything this workflow loads
-        run: node tools/replay-files.mjs --check control-tests.yml
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -117,16 +50,3 @@ jobs:
           name: widget-zoo
           path: desktop/e2e/widget-zoo.json
           if-no-files-found: ignore
-      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
-      - name: Write the PR's verdict
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
-          py=python3; "$py" -c 1 2>/dev/null || py=python
-          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"

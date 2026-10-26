@@ -1,5 +1,4 @@
-"""The widget zoo runs on a pull request only when GitHub's `paths:` says it changed what the zoo loads (owner, 14 Oct 2026: "drop your shared pick logic, rely fully
-on gh workflow paths"); it is not a required check (a skipped workflow never reports); main runs it on every push."""
+"""The widget zoo (control tests) runs on main's every push inside build.yml, and by hand; never on a pull request (owner, 26 Oct 2026)."""
 import unittest
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
@@ -12,12 +11,13 @@ class WidgetZooWorkflowTests(unittest.TestCase):
     def setUp(self):
         self.text = WORKFLOW.read_text()
 
-    def test_a_pull_request_runs_it_only_for_its_paths_and_main_always(self):
-        # Since #883 (15 Oct 2026) main runs the zoo as a step of build.yml's one Linux job, not as its own push run.
+    def test_main_runs_it_and_a_pull_request_never_does(self):
+        # Since #883 (15 Oct 2026) main runs the zoo as a step of build.yml's one Linux job. Off PRs since 26 Oct 2026 (owner: "no control tests"; it measures,
+        # it is not required, and PRs waited on runners: ~20 jobs at once, 28 queued).
         on = self.text[self.text.index('\non:'):self.text.index('\nconcurrency:')]
-        for path in ('extension/**', 'desktop/e2e/widget-zoo/**', 'desktop/e2e/widget-zoo.mjs'):
-            self.assertIn(f"- '{path}'", on)
+        self.assertNotIn('\n  pull_request', on)
         self.assertNotIn('\n  push:', on, 'main runs it inside CI · Tests, not as a push run of its own')
+        self.assertIn('\n  workflow_dispatch:', on)
         self.assertIn('widget-zoo.mjs', (ROOT / '.github' / 'workflows' / 'build.yml').read_text(), 'main runs the zoo on every push, in build.yml')
 
     def test_no_shared_pick(self):

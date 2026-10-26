@@ -34,6 +34,11 @@ class FieldGuidanceInPrompt(unittest.TestCase):
         self.assertEqual(unexplained, [])
         self.assertIn('a plus', enrich.SCHEMA['properties']['english_is_enough']['description'])
 
+    def test_years_asked_give_the_level(self):
+        # 26 Oct 2026, #2056's run: "5 years of enterprise sales experience" with no level word came back seniority unknown (so Growth empty)
+        # after #2052 said "the level the title or text states".
+        self.assertIn('the years of experience it asks', enrich.SYSTEM)
+
     def test_a_title_that_names_its_work_decides_the_family(self):
         # 26 Oct 2026, #2056's quality run: "Senior Site Reliability Engineer" came back "software" on Free AI.
         self.assertIn('when the title names a kind of work below', enrich.SYSTEM)

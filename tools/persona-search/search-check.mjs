@@ -1,5 +1,5 @@
 // One live job search of a fictional candidate on demand, on this Mac's Claude plan ($0, never an API key): the engine behind the skill check-job-search-locally.
-//   node tools/persona-search/search-check.mjs <finance|music|driver|sre|cluj|chisinau|random> [--seed <text>] [--dry] [--quick]
+//   node tools/persona-search/search-check.mjs <finance|music|driver|sre|cluj|chisinau|pilot|random> [--seed <text>] [--dry] [--quick]
 // --quick: only the first-jobs step (~6 min): boards and local jobs, no light run, no scout (run.mjs --first-only).
 // A throwaway install (run.mjs: its own folder under the OS temp folder, no Keychain, Notion or Telegram; claude is the real install, never a wrapper that carries the owner's
 // identity: desktop/e2e/lib/real-claude.mjs). Prints the numbers of the first "Find jobs" and sets them next to this candidate's earlier local runs (~/jp-search-check/history.jsonl,
@@ -11,7 +11,7 @@ import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
-export const CANDIDATES = ['finance', 'music', 'driver', 'sre', 'cluj', 'chisinau'];
+export const CANDIDATES = ['finance', 'music', 'driver', 'sre', 'cluj', 'chisinau', 'pilot'];
 export const HISTORY = path.join(os.homedir(), 'jp-search-check', 'history.jsonl');
 // Every variable that would put an API account or a Lab upload behind the run.
 export const FORBIDDEN_ENV = ['ANTHROPIC_API_KEY', 'LAB_HEAL_ANTHROPIC_KEY', 'RANDOM_DRAWS_ANTHROPIC_KEY', 'OPENAI_API_KEY', 'REPLAYS_PUBLISH_KEY', 'NET_RECORD_KEY'];
@@ -55,6 +55,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   let step;
   try { step = plan(process.argv.slice(2)); } catch (error) { console.error(error.message); process.exit(2); }
   if (process.argv.includes('--dry')) { console.log(JSON.stringify({...step, engine: 'cli (the Claude plan)', env_removed: FORBIDDEN_ENV}, null, 2)); process.exit(0); }
+  // A worktree has no desktop/shared until it is staged (26 Oct 2026: the pilot check died at "Cannot find module desktop/shared/worker/ai.js")
+  if (!fs.existsSync(path.join(ROOT, 'desktop', 'shared', 'worker', 'ai.js'))) execFileSync('node', ['scripts/stage.mjs'], {cwd: path.join(ROOT, 'desktop'), stdio: 'inherit'});
   const env = {...cleanEnv(process.env), JOB_PILOTTO_NO_DOTENV: '1'};
   console.log(`Check: ${step.who}${step.seed ? ` (seed ${step.seed})` : ''}, folder ${step.out}, on the Claude plan; takes about 5-12 minutes`);
   fs.mkdirSync(step.out, {recursive: true});

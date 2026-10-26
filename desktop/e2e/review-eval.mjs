@@ -10,12 +10,13 @@ import path from 'node:path';
 import {DESKTOP} from './lib/app.mjs';
 import {buildRequest, parseFindings, usageCost} from './lib/vision.mjs';
 import {FREE_MODEL, askFree} from './lib/review-free.mjs';
+import {checklistRequest, checksToFindings} from './lib/review-checklist.mjs';
 import {fetchLessons, lessonsFor, lessonsText} from './lib/review-lessons.mjs';
 
 const arg = (name, fallback) => { const at = process.argv.indexOf(`--${name}`); return at > 0 ? process.argv[at + 1] : fallback; };
 const OUT = arg('out');
 if (!OUT) { console.error('usage: node review-eval.mjs --out <dir> [--models a,b] [--lessons both|on|off] [--limit n]'); process.exit(2); }
-const MODELS = arg('models', FREE_MODEL).split(',');   // a claude-* model may carry its effort: claude-haiku-5-5:high
+const MODELS = arg('models', FREE_MODEL).split(',');   // a claude-* model may carry its effort and the checklist prompt: claude-haiku-5-5:high, claude-haiku-5-5+checklist
 const LESSONS = arg('lessons', 'both'), LIMIT = Number(arg('limit', 0)) || Infinity;
 const JUDGE = process.env.E2E_REVIEW_EVAL_JUDGE || '@cf/qwen/qwen3-30b-a3b-fp8';
 const REPO = process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
@@ -80,11 +81,12 @@ for (const model of MODELS) for (const withLessons of LESSONS === 'both' ? [fals
     const pngBase64 = await shot(item);
     if (!pngBase64) { run.rows.push({...item, gone: true}); continue; }
     const extra = withLessons ? lessonsText(lessonsFor(lessons, item.view, {exclude: item.number})) : '';
-    const [name, effort = ''] = model.split(':').length === 2 && model.startsWith('claude-') ? model.split(':') : [model];
-    const answer = await ask(buildRequest({view: item.view, pngBase64, rules, lessons: extra, model: name, effort}), {model: name});
+    const checklist = model.startsWith('claude-') && model.includes('+checklist');
+    const [name, effort = ''] = model.startsWith('claude-') ? model.replace('+checklist', '').split(':') : [model];
+    const answer = await ask(checklist ? checklistRequest({view: item.view, pngBase64, lessons: extra, model: name, effort}) : buildRequest({view: item.view, pngBase64, rules, lessons: extra, model: name, effort}), {model: name});
     if (answer.ok && answer.message.stop_reason === 'max_tokens') { run.usd += answer.usd || 0; run.rows.push({...item, failed: 'cut off'}); console.log(`  #${item.number} ${model}: cut off`); continue; }
     if (!answer.ok) { run.rows.push({...item, failed: `${answer.status} ${answer.detail}`.slice(0, 160)}); console.log(`  #${item.number} ${model}: failed ${answer.status}`); continue; }
-    const findings = parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
+    const findings = checklist ? checksToFindings(answer.message.content[0].text) : parseFindings(answer.message.content[0].text, item.view), judged = await same(item, findings);
     run.usd += (answer.usd || 0) + judged.usd;
     run.rows.push({number: item.number, resolution: item.resolution, view: item.view, findings: findings.length, same: judged.same});
     console.log(`  #${item.number} ${item.resolution.slice(11).padEnd(9)} ${String(findings.length).padStart(2)} finding(s)${judged.same ? ', the same problem again' : ''}${judged.failed ? ' (judge failed)' : ''}`);

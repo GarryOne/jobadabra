@@ -546,7 +546,6 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 /* Stacked variant: the status sentence takes the full width next to the tile; the buttons sit on their own rows under it, aligned with the text. */
 .aon-row.aon-stack > .aon-actions { grid-column: 2 / -1; flex-wrap: wrap; }
 .aon-row.aon-stack > .aon-actions:not(:has(:not([hidden]))) { display: none; }
-.aon-links button { padding-left: 0; padding-right: var(--sp-3); }
 .aon-title { display: flex; align-items: center; gap: var(--sp-3); }
 .aon-text p { margin: var(--sp-1) 0 0; overflow-wrap: anywhere; }
 .aon-actions { display: flex; align-items: center; gap: var(--sp-2); }

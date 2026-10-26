@@ -5,6 +5,7 @@ import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';
 import {goStep} from './wizard.js';
 import {shared} from './shared.js';
+import {openSetting} from './settings.js';
 import {HELPER, NAME, NEWS, NEWS_HINT, STORED, SUBTITLE, model} from '../hosted-words.js';
 import {alwaysOnCard} from '../hosted-step-parts.js';
 
@@ -46,6 +47,8 @@ export function mountStep() {
   news.append(switchRow('hosted-news', NEWS, true, NEWS_HINT));
   step.append(head, search, news, el('p', 'muted small', STORED), note, actions);
   document.querySelector('.step[data-step="extras"]').before(step);
+  // The address and news choice already kept (the setup's Email step, Notifications): shown here, so the person types it once (#1711).
+  window.pilot.notifyState?.().then(kept => { if (kept?.email && !$('hosted-email').value) $('hosted-email').value = kept.email; if (kept && typeof kept.marketing === 'boolean') $('hosted-news').checked = kept.marketing; }).catch(() => {});
   const item = el('li', '', 'Always on'); item.dataset.step = 'hosted';
   document.querySelector('#step-list li[data-step="extras"]').before(item);
   $('hosted-skip').addEventListener('click', async () => { await window.pilot.hostedOff(); goStep('extras'); });
@@ -65,26 +68,27 @@ export function mountCard() {
   const card = el('div', 'setting panel'); card.id = 'setting-hosted';
   const head = el('div', 'summary-head'), title = el('span'); title.id = 'hosted-pill';
   head.append(el('h3', '', NAME), title);
-  // Rows, never one squeezed line (owner, 17 Oct 2026): 1 icon + status at full width, 2 the main button, 3 the small links.
+  // Rows, never one squeezed line (owner, 17 Oct 2026): 1 icon + status at full width, 2 the buttons. All solid, in one row: a text-only link under a button looked
+  // misaligned and broken (owner, 27 Oct 2026: "let's have always just solid buttons in the app"; docs/rules/desktop-ui.md).
   const row = el('div', 'aon-row aon-stack'), info = el('div', 'aon-text'), status = el('p', 'muted small'); status.id = 'hosted-status';
   info.append(status);
   const main = el('div', 'aon-actions');
-  main.append(button('hosted-turn-on', 'Turn on Always on', 'secondary'), button('hosted-resume', 'Resume Always on', 'secondary'));
-  const links = el('div', 'aon-actions aon-links');
-  links.append(button('hosted-turn-off', 'Turn off', 'ghost'), button('hosted-download', 'Download my data', 'ghost'));
-  row.append(tile('cloud'), info, main, links);
-  const ask = el('div'); ask.id = 'hosted-ask';
-  ask.append(emailField('hosted-set-email', 'Your email'), switchRow('hosted-set-news', NEWS, true));
+  main.append(button('hosted-turn-on', 'Turn on Always on', 'secondary'), button('hosted-resume', 'Resume Always on', 'secondary'),
+    button('hosted-change-email', 'Change e-mail', 'secondary'), button('hosted-turn-off', 'Turn off', 'secondary'), button('hosted-download', 'Download my data', 'secondary'));
+  row.append(tile('cloud'), info, main);
+  // No e-mail field of its own (#1711, owner 27 Oct 2026: one shared e-mail): the address and the news choice are Notifications', a button goes there.
   const msg = el('p', 'message'); msg.id = 'hosted-set-message';
   const result = el('div', 'step-field', msg);   // .step-field hides its empty message: no blank space under the card
-  card.append(head, el('p', 'muted panel-lead', `${SUBTITLE}. ${STORED}`), row, ask, result);
+  card.append(head, el('p', 'muted panel-lead', `${SUBTITLE}. ${STORED}`), row, result);
   $('setting-cloud').after(card);
   const turnOn = async () => {
-    const done = await window.pilot.hostedOn({email: $('hosted-set-email').value, marketing: $('hosted-set-news').checked});
+    const done = await window.pilot.hostedOn({});   // main uses the Notifications address and news choice (lib/hosted-email.js)
     message('hosted-set-message', done.ok ? 'Always on ✓' : done.error || 'Could not turn it on just now.', done.ok ? 'ok' : 'bad');
     refresh();
   };
-  $('hosted-turn-on').addEventListener('click', turnOn);
+  const toNotify = () => { openSetting('notify'); setTimeout(() => $('notify-address')?.focus(), 120); };
+  $('hosted-turn-on').addEventListener('click', () => (shared.hosted && !hostedAddress(shared.hosted) ? toNotify() : turnOn()));
+  $('hosted-change-email').addEventListener('click', toNotify);
   $('hosted-resume').addEventListener('click', turnOn);
   $('hosted-turn-off').addEventListener('click', async () => { const done = await window.pilot.hostedOff(); message('hosted-set-message', done.ok ? 'Always on is off. Everything we held is deleted.' : done.error || 'Could not turn it off just now.', done.ok ? 'ok' : 'bad'); refresh(); });
   $('hosted-download').addEventListener('click', async () => { const done = await window.pilot.hostedExport(); if (!done.cancelled) message('hosted-set-message', done.ok ? 'Saved ✓' : done.error || 'Could not save it just now.', done.ok ? 'ok' : 'bad'); });
@@ -96,18 +100,18 @@ export function mountCard() {
 export function draw(view, email = '') {
   $('hosted-pill').replaceChildren(pill(view.pill[0], view.pill[1], {dot: true}));
   $('hosted-status').textContent = view.line;
-  show($('hosted-ask'), view.asksEmail);
-  $('hosted-turn-on').textContent = view.button === 'save' ? 'Save email' : 'Turn on Always on';
-  show($('hosted-turn-on'), view.button === 'on' || view.button === 'save');
+  $('hosted-turn-on').textContent = view.button === 'email' ? 'Add your e-mail' : 'Turn on Always on';
+  show($('hosted-turn-on'), view.button === 'on' || view.button === 'email');
   show($('hosted-resume'), view.button === 'resume');
+  show($('hosted-change-email'), !!email && view.button !== 'email');
   show($('hosted-turn-off'), view.off); show($('hosted-download'), view.download);
-  if (email && !$('hosted-set-email').value) $('hosted-set-email').value = email;
 }
+const hostedAddress = now => now.email || now.shared || '';
 
 export async function refresh() {
   const now = await window.pilot.hostedState();
   shared.hosted = now;
-  if ($('hosted-status')) draw(model(now, now.schedule), now.email);
+  if ($('hosted-status')) draw(model(now, now.schedule, new Date(), now.shared), hostedAddress(now));
 }
 
 export function init() { mountStep(); mountCard(); }

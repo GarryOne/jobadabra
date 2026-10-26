@@ -2,13 +2,15 @@
 // main.js passes in the services they share. Guard: test/hosted-search.test.js and test/ipc.test.js.
 import * as hosted from './hosted-search.js';
 import * as pipeline from './pipeline.js';
+import {emailOf} from './notify-channel.js';
+import {turnOnShared} from './hosted-email.js';
 
 export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, storage, toWindow}) {
   const engine = args => pipeline.run(storage, args);
-  ipcMain.handle('hostedState', async () => ({...hosted.state(storage), available: !DEMO, schedule: !DEMO && hosted.state(storage).on ? await hosted.schedule(storage) : null}));
+  ipcMain.handle('hostedState', async () => ({...hosted.state(storage), shared: DEMO ? 'alex@example.com' : emailOf(storage), available: !DEMO, schedule: !DEMO && hosted.state(storage).on ? await hosted.schedule(storage) : null}));
   ipcMain.handle('hostedOn', async (_, given) => {
     if (DEMO) return {ok: true};
-    const done = await hosted.turnOn(storage, given || {});
+    const done = await turnOnShared(storage, given || {});   // the Notifications address (#1711); one typed in the setup step becomes it
     if (done.ok) hosted.pullInbox(storage, engine).then(pulled => { if (pulled.added) toWindow('hostedArrived', pulled); }).catch(() => {});
     return done;
   });

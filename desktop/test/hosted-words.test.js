@@ -7,11 +7,14 @@ import {NAME, model, when} from '../renderer/hosted-words.js';
 const now = new Date(2026, 9, 17, 9, 0);   // local time
 const tomorrow7 = new Date(2026, 9, 18, 7, 0).toISOString();
 
-test('a trial install that did not press Skip shows ON; without an e-mail it asks for it first', () => {
+test('a trial install that did not press Skip shows ON; without an e-mail it sends you to Notifications to add one (#1711: one shared e-mail)', () => {
   const fresh = model({}, null, now);
-  assert.deepEqual([fresh.state, fresh.pill, fresh.asksEmail, fresh.button], ['needs-email', ['On', 'good'], true, 'save']);
-  assert.match(fresh.line, /Add your email to get the matches/);
+  assert.deepEqual([fresh.state, fresh.pill, fresh.asksEmail, fresh.button], ['needs-email', ['On', 'good'], true, 'email']);
+  assert.match(fresh.line, /Add your e-mail in Notifications/);
   assert.equal(fresh.off, false);
+  const ready = model({}, null, now, 'n@example.com');   // the Notifications address is the one it uses: no second field
+  assert.deepEqual([ready.state, ready.asksEmail, ready.button], ['ready', false, 'on']);
+  assert.match(ready.line, /n@example\.com/);
 });
 
 test('on with an e-mail: the badge, the address, the next run time and Turn off', () => {
@@ -22,8 +25,10 @@ test('on with an e-mail: the badge, the address, the next run time and Turn off'
 });
 
 test('off only after Skip or turning it off, and then the button turns it on', () => {
-  const off = model({skipped: true, on: false}, null, now);
+  const off = model({skipped: true, on: false}, null, now, 'n@example.com');
   assert.deepEqual([off.state, off.pill[0], off.button, off.off], ['off', 'Off', 'on', false]);
+  assert.match(off.line, /n@example\.com/);
+  assert.deepEqual([model({skipped: true, on: false}, null, now).button, model({skipped: true, on: false}, null, now).pill[0]], ['email', 'Off'], 'off and no address: add one first');
   assert.equal(model({skipped: true, on: true, email: 'a@example.com'}, null, now).state, 'on');   // turned on again since
 });
 

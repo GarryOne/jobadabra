@@ -66,3 +66,14 @@ class EngineWordsTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class FreeAiNamed(unittest.TestCase):
+    def test_free_ai_is_named_free_ai_not_claude(self):
+        """26 Oct 2026, owner's run fe63a974c5d9: the panel said "Free AI checked 21 job titles", the log "Titles: Claude sorted 21": Free AI is
+        the Anthropic API engine on the app's install key (JPF1.…), and the engine named it Claude (desktop/renderer/ai-name.js says Free AI)."""
+        from src.ai import providers
+        self.assertEqual(providers.who({'JOB_PILOTTO_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'JPF1.install.token'}), 'Free AI')
+        self.assertEqual(providers.who({'ANTHROPIC_API_KEY': 'JPF1.install.token'}), 'Free AI', 'the default engine is the API one')
+        self.assertEqual(providers.who({'JOB_PILOTTO_AI_ENGINE': 'api', 'ANTHROPIC_API_KEY': 'sk-ant-x'}), 'Claude')
+        self.assertEqual(providers.who({'JOB_PILOTTO_AI_ENGINE': 'cli', 'ANTHROPIC_API_KEY': 'JPF1.install.token'}), 'Claude', 'Claude Code answers itself')

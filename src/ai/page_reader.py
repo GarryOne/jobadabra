@@ -15,7 +15,7 @@ import urllib.parse
 from datetime import datetime, timezone
 
 from .. import budget_tape
-from . import cost, engine
+from . import cost, engine, page_words
 from ..sources import ats, careers
 from .models import SMALL_MODEL
 
@@ -87,7 +87,7 @@ def clean(items, base):
             continue
         link = urllib.parse.urljoin(base, str(item.get('link') or '').strip()) if item.get('link') else base
         parts = urllib.parse.urlsplit(link)
-        own = careers.registrable(parts.hostname) == home or bool(careers.JOB_HOST.search(parts.hostname or ''))
+        own = careers.registrable(parts.hostname) == home or bool(page_words.host_named([parts.hostname]).get((parts.hostname or '').lower()))
         if parts.scheme not in ('http', 'https') or not own:
             link = base
         key = (title.lower(), link)
@@ -133,7 +133,7 @@ def read(url, markup, client=None, db=None, careers_page=False):
     # Worth a call when the page names a role you look for, or reads like a list of jobs (the role and place filters decide afterwards).
     # The central scout has only an example search's roles (tech): a hospital's or hotel's careers page would be rationed to the small
     # any-language allowance while pages naming those roles read freely (21 Oct 2026). Its careers pages are all worth reading.
-    worth = (careers_page and central()) or wanted_text().search(text) or len(careers.STRONG_WORDS.findall(text)) + len(careers.TITLE_LIKE.findall(text)) >= 3
+    worth = (careers_page and central()) or wanted_text().search(text) or sum(1 for link, _ in careers.links(markup, url) if careers.JOB_ID.search(urllib.parse.urlsplit(link).path.rstrip('/'))) >= 3   # structure, not words: 3+ links ending in a job id
     if not (worth or careers_page):
         return None
     # A page only careers_page lets in has its own allowance: the reads that found your roles before 8 Oct 2026 keep all of theirs.

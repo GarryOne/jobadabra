@@ -11,7 +11,7 @@ import urllib.parse
 
 from . import ats
 from .. import country_codes
-from ..ai import meanings_pack
+from ..ai import meanings_pack, page_words
 
 MAX_JOB_PAGES = 40       # job pages read when the listing carries no data itself
 CAREER_WORDS = meanings_pack.matcher('page-words', 'careers_link')   # the meanings pack: the old list (seed) + rows the site adds
@@ -80,24 +80,31 @@ def careers_links(markup, base):
     """Links that look like the company's list of jobs, best first: a job system's address, a "jobs / open positions" link, then a general
     "careers" link. On the company's own site (any subdomain), or on a host that is named like a job site (stellen.lu.ch, jobs.acme.com)."""
     host = urllib.parse.urlsplit(base).hostname or ''
-    scored = []
+    found = []   # structure picks the candidates; the AI says what each link's wording means (ai/page_words.py), words only with no AI at all
     for url, text in links(markup, base):
         parts = urllib.parse.urlsplit(url)
-        if parts.scheme not in ('http', 'https') or re.search(r'\.(pdf|jpe?g|png|zip|docx?)$', parts.path, re.I):
+        if parts.scheme in ('http', 'https') and not re.search(r'\.(pdf|jpe?g|png|zip|docx?)$', parts.path, re.I):
+            found.append((url, text, parts))
+    named = page_words.host_named(parts.hostname for url, text, parts in found if not ats.detect(url) and registrable(parts.hostname) != registrable(host))
+    mine = [(url, text, parts) for url, text, parts in found if ats.detect(url) or registrable(parts.hostname) == registrable(host)
+            or named.get((parts.hostname or '').lower())]
+    words = page_words.link_words((text, parts.path) for url, text, parts in mine)
+    scored = []
+    for url, text, parts in mine:
+        now = words[(str(text or ''), str(parts.path or ''))]
+        if now is None:   # not judged yet: left for a later run
             continue
         if ats.detect(url):
-            if CAREER_WORDS.search(text):   # a job system link counts when it is worded as the careers link, not as any partner or widget
+            if now.weak_text:   # a job system link counts when it is worded as the careers link, not as any partner or widget
                 scored.append((0, url))
             continue
         own = registrable(parts.hostname) == registrable(host)
-        named = bool(JOB_HOST.search(parts.hostname or ''))
-        if not (own or named) or NOT_JOBS.search(parts.path):
+        job_host = bool(named.get((parts.hostname or '').lower()))
+        if not (own or job_host) or now.not_jobs:
             continue
-        strong = STRONG_WORDS.search(text) or STRONG_WORDS.search(parts.path) or (named and not own)
-        weak = CAREER_WORDS.search(text) or CAREER_WORDS.search(parts.path) or named
-        if strong:
+        if now.strong or (job_host and not own):
             scored.append((1, url))
-        elif weak:
+        elif now.weak or job_host:
             scored.append((2, url))
     ordered = [url for _, url in sorted(dict.fromkeys(scored), key=lambda item: item[0])]
     return list(dict.fromkeys(ordered))[:5]
@@ -203,9 +210,11 @@ def _job_paths(markup, base):
     host = (urllib.parse.urlsplit(base).hostname or '').removeprefix('www.')
     own = urllib.parse.urlsplit(base).path.rstrip('/')
     out = []
-    for url, _ in links(markup, base):
-        parts = urllib.parse.urlsplit(url)
-        if (parts.hostname or '').removeprefix('www.') == host and JOB_PATH.search(parts.path) and parts.path.rstrip('/') != own:
+    same = [(url, text, urllib.parse.urlsplit(url)) for url, text in links(markup, base)]
+    same = [(url, text, parts) for url, text, parts in same if (parts.hostname or '').removeprefix('www.') == host and parts.path.rstrip('/') != own]
+    words = page_words.link_words((text, parts.path) for url, text, parts in same)
+    for url, text, parts in same:
+        if (words[(str(text or ''), str(parts.path or ''))] or page_words.Words(False, False, False, False)).job_path:
             out.append(url.split('#')[0])
     out = list(dict.fromkeys(out))
     return host, own, out, [url for url in out if JOB_ID.search(urllib.parse.urlsplit(url).path.rstrip('/'))]

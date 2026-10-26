@@ -309,7 +309,29 @@
    "job_list",
    "not_a_list"
   ],
-  "share": false
+  "share": false,
+  "_doc": "The old keyword lists of careers-page reading, now only the offline floor (no AI at all). Each answer is placed in src/ai/page_words.py PLACED: link-kind, title-kind or the page reader."
+ },
+ "link-kind": {
+  "_doc": "A same-site link (text + path) or a host: job list, careers page, job page, not jobs (src/ai/page_words.py). AI first; the page-words patterns are the floor.",
+  "answers": [
+   "job_list",
+   "careers_page",
+   "job_page",
+   "not_jobs",
+   "other"
+  ],
+  "share": false,
+  "ai_first": true
+ },
+ "title-kind": {
+  "_doc": "A found careers-page entry: a job title or a page heading (src/ai/page_words.py). AI first; the page-words patterns are the floor.",
+  "answers": [
+   "job_title",
+   "heading"
+  ],
+  "share": false,
+  "ai_first": true
  },
  "job-location-geo": {
   "_doc": "A posting's location placed on the map (src/geo.py encode): kind, ISO country, lat/lon to 0.1 degree, radius to 5 km; never a user's own place word.",

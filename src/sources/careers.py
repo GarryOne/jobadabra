@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from . import ats, host_pace
 
 MAX_BYTES = 2_000_000
-from ..ai import meanings_pack
+from ..ai import meanings_pack, page_words
 from .careers_parse import (MAX_JOB_PAGES, CAREER_WORDS, JOB_PATH, JOB_ID, COUNTRIES, AGGREGATORS, own_site, encode, decode, links,  # noqa: F401
                             NO_JOBS, STRONG_WORDS, JOB_HOST, NOT_JOBS, registrable, careers_links, _walk, _words, jsonld_jobs, job_links,
                             MAX_LIST_PAGES, PAGE_PAUSE_S, page_links)
@@ -151,19 +151,25 @@ TITLE_LIKE = meanings_pack.matcher('page-words', 'job_title')   # the meanings p
 NOT_A_JOB = meanings_pack.matcher('page-words', 'not_a_job')   # the meanings pack: the old list (seed) + rows the site adds
 
 
+def _titles(jobs):
+    """{title: 'job_title' | 'heading' | None} for these jobs' titles: the AI's kind of each (ai/page_words.py), the two word lists only with no AI."""
+    return page_words.title_kinds(job['title'] for job in jobs)
+
+
 def _heading(title):
-    """A career page's own heading or menu entry, never a job: it uses those words and has no role noun. "Senior Search Engineer",
-    "Site Reliability Engineer, Europe" and "Graduate Software Engineer" are jobs (#110, 3 Oct 2026: NOT_A_JOB alone dropped them)."""
-    return bool(NOT_A_JOB.search(title)) and not TITLE_LIKE.search(title)
+    """A career page's own heading or menu entry, never a job. "Senior Search Engineer", "Site Reliability Engineer, Europe" and "Graduate
+    Software Engineer" are jobs (#110, 3 Oct 2026). An entry not judged yet is not known to be a heading."""
+    return _titles([{'title': title}]).get(str(title).strip()) == 'heading'
 
 
 def _plausible(jobs):
     """Rules found jobs: do they look like job titles (or roles you look for)? If not, the links were probably menu entries."""
-    jobs = [job for job in jobs if not _heading(job['title'])]
+    kinds = _titles(jobs)
+    jobs = [job for job in jobs if kinds.get(job['title'].strip()) != 'heading']
     if not jobs:
         return False
     from ..ai import page_reader
-    return page_reader.plausible(jobs) or sum(1 for job in jobs if TITLE_LIKE.search(job['title'])) >= max(1, len(jobs) // 2)
+    return page_reader.plausible(jobs) or sum(1 for job in jobs if kinds.get(job['title'].strip()) == 'job_title') >= max(1, len(jobs) // 2)
 
 
 def _from_recipe(url, markup, fetch_page):
@@ -195,7 +201,8 @@ def _from_recipe(url, markup, fetch_page):
 def _asked(url, markup, jobs, fetch_page=None, careers_page=False):
     """Rules' jobs when they look like jobs; else a recipe learned earlier (no AI); else, when a model can read the page, its answer,
     and a recipe derived from that answer so the next read needs no model."""
-    jobs = [job for job in jobs if not _heading(job['title'])]   # career-page headings are never jobs
+    kinds = _titles(jobs)
+    jobs = [job for job in jobs if kinds.get(job['title'].strip()) != 'heading']   # career-page headings are never jobs
     if _plausible(jobs):
         return jobs
     fetch_page = fetch_page or get_text

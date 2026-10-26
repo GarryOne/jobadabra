@@ -9,7 +9,8 @@ import re
 import urllib.parse
 
 from . import ats
-from .careers_parse import (CAREER_WORDS, JOB_ID, NO_JOBS, NOT_JOBS, STRONG_WORDS, encode, job_links, jsonld_jobs, registrable)
+from ..ai import page_words
+from .careers_parse import JOB_ID, NO_JOBS, encode, job_links, jsonld_jobs, registrable
 
 
 def successfactors_site(page, link):
@@ -64,20 +65,23 @@ def guessed_links(website, fetch_page):
     """Where a careers page usually is, for a home page that links none: the site map's job-like addresses, then the common paths."""
     parts = urllib.parse.urlsplit(website)
     origin = f'{parts.scheme}://{parts.netloc}'
-    found = []
+    found, strong = [], {}
     try:
         sitemap = fetch_page(f'{origin}/sitemap.xml')
         locations = re.findall(r'<loc>\s*([^<\s]+)\s*</loc>', sitemap)
         if '<sitemapindex' in sitemap:   # an index of site maps: read the ones that sound like pages, at most two
             children = [loc for loc in locations if re.search(r'page|seite|job|career|karriere|post', loc, re.I)][:2] or locations[:1]
             locations = [loc for child in children for loc in re.findall(r'<loc>\s*([^<\s]+)\s*</loc>', _quiet(fetch_page, child))]
-        for loc in locations:
-            path = urllib.parse.urlsplit(loc).path
-            if (STRONG_WORDS.search(path) or CAREER_WORDS.search(path)) and not NOT_JOBS.search(path) and registrable(urllib.parse.urlsplit(loc).hostname) == registrable(parts.hostname):
+        mine = [loc for loc in locations if registrable(urllib.parse.urlsplit(loc).hostname) == registrable(parts.hostname)]
+        words = page_words.link_words(('', urllib.parse.urlsplit(loc).path) for loc in mine)
+        for loc in mine:
+            now = words[('', str(urllib.parse.urlsplit(loc).path or ''))]
+            if now and (now.strong or now.weak) and not now.not_jobs:
                 found.append(loc)
+                strong[loc] = now.strong
     except Exception:  # noqa: BLE001 — no site map: the common paths are still tried
         pass
-    found.sort(key=lambda loc: (not STRONG_WORDS.search(loc), len(loc)))
+    found.sort(key=lambda loc: (not strong.get(loc), len(loc)))
     domain = company_domain(parts.hostname or '')
     subdomains = [f'{parts.scheme}://{name}.{domain}' for name in CAREER_SUBDOMAINS if domain and (parts.hostname or '') != f'{name}.{domain}']
     return list(dict.fromkeys(found[:4] + subdomains + [origin + path for path in COMMON_PATHS]))
@@ -91,16 +95,18 @@ def _quiet(fetch_page, url):
 
 
 def _says_no_jobs(markup, link=''):
-    """The page says it has no open jobs: in the four languages NO_JOBS knows (free), or in any other as the AI reader read it (kept per page)."""
-    if NO_JOBS.search(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', markup))):
-        return True
-    if not link or careers.READER != 'auto':
+    """The page says it has no open jobs, in any language: as the AI reader read it (kept per page; a page it has not read is not known to be
+    empty). The four languages NO_JOBS knows answer only with no AI at all (audit PR 7, 26 Oct 2026)."""
+    if link and careers.READER == 'auto':
+        try:
+            from ..ai import page_reader
+            if page_reader.said_no_open_jobs(link):
+                return True
+        except Exception:  # noqa: BLE001 — no cache yet: as before
+            pass
+    if page_words.ai_on():
         return False
-    try:
-        from ..ai import page_reader
-        return page_reader.said_no_open_jobs(link)
-    except Exception:  # noqa: BLE001 — no cache yet: as before
-        return False
+    return bool(NO_JOBS.search(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', markup))))
 
 
 def _listed(page, url, result):

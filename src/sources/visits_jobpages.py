@@ -10,7 +10,7 @@ import urllib.parse
 from datetime import timedelta
 
 from . import careers, read_routes
-from ..ai import meanings_pack
+from ..ai import meanings_pack, page_words
 from ..ai.providers.contract import detail, reason
 
 
@@ -19,14 +19,17 @@ NOT_A_LIST = meanings_pack.matcher('page-words', 'not_a_list')   # the meanings 
 LOCALE = re.compile(r'(?:^|[/_.-])([a-z]{2})(?:[-_]([a-z]{2}))?(?=$|[/_.])', re.I)
 
 
-def _usable(url):
+def _usable(url, words=None):
     """An address that can be a job list: https, no template code (7 Oct 2026: DHL's '${getUrl(linkEle,' was taken for a link), not a sign-in,
     job-alert, article or news page (Baume & Mercier went to Workday's jobAlerts sign-in; Rolex to a 2024 article)."""
     url = str(url or '')
     if url.startswith('http://'):
         url = 'https://' + url[7:]
     path = urllib.parse.urlsplit(url).path
-    return url if url.startswith('https://') and not re.search(r'\$\{|\{\{|%7B', url) and not NOT_A_LIST.search(path) else ''
+    if not url.startswith('https://') or re.search(r'\$\{|\{\{|%7B', url):
+        return ''
+    now = (words or page_words.link_words([('', path)], floor='not_a_list')).get(('', path))   # not judged yet (None): not usable this run
+    return url if now and not now.not_jobs else ''
 
 
 def _best(urls, countries=()):
@@ -38,8 +41,10 @@ def _best(urls, countries=()):
         found = [(a.lower(), (b or '').lower()) for a, b in LOCALE.findall(parts.path)]
         local = any(a in codes or b in codes for a, b in found) or any(f'={code}' in parts.query.lower() for code in codes)
         foreign = found and not local and not any(a == 'en' for a, _ in found)
-        return (0 if local else 2 if foreign else 1, 0 if JOBLIST.search(parts.path) else 1)
-    usable = [u for u in (_usable(url) for url in urls) if u]
+        return (0 if local else 2 if foreign else 1, 0 if (listed.get(('', parts.path)) or page_words.Words(False, False, False, False)).weak else 1)
+    words = page_words.link_words((('', urllib.parse.urlsplit(url).path) for url in urls), floor='not_a_list')
+    usable = [u for u in (_usable(url, words) for url in urls) if u]
+    listed = page_words.link_words((('', urllib.parse.urlsplit(url).path) for url in usable), floor='job_list')
     return sorted(dict.fromkeys(usable), key=rank)
 
 

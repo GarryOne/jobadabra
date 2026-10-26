@@ -5,9 +5,8 @@ import os
 import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime, timezone
 
-from . import feeds, read_budget
+from . import ats, feed_facts, feeds, read_budget
 from .. import read_methods, source_yield
 
 
@@ -40,13 +39,16 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     the driver's 133 of 134 sites were read by 61 s and the last held every job until 156 s). A job the AI later places outside your
     places leaves the list at the search's end (store.close_elsewhere)."""
     fetcher = fetcher or feeds.fetch
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = feed_facts._now().isoformat(timespec="seconds")
     key = lambda source: f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
-    with db:   # the end-to-end journey's fixture feeds answer the same every run: nothing rests there
+    with db:   # the end-to-end journey's fixture feeds answer the same every run: nothing rests there, nothing is skipped as unchanged
         db.execute(feeds.REST_TABLE)
-        rest = {} if os.getenv('JOB_PILOTTO_FIXTURE_DIR') else feeds.resting(db, now)
+        fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
+        rest, facts = ({}, {}) if fixtures else (feeds.resting(db, now), feed_facts.load(db))
     rested = [source for source in sources if key(source) in rest]
-    sources = read_budget.left_first(read_budget.ranked([source for source in sources if key(source) not in rest]), key)   # best first, then what the last timed read left
+    same = [source for source in sources if key(source) not in rest and feed_facts.fresh(facts.get(key(source)), now)]   # judged for this search minutes ago
+    sources = [source for source in sources if key(source) not in rest and not feed_facts.fresh(facts.get(key(source)), now)]
+    sources = read_budget.left_first(read_budget.ranked(sources), key)   # best first, then what the last timed read left
     total = len(sources)
     if rested:   # said every run, so a short list is never a mystery
         print(f'Employers resting: {len(rested)} gave no match for your roles in your places {feeds.REST_AFTER} checks in a row; checked again after '
@@ -54,12 +56,13 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     from ..progress import Ticker
     ticker, lock, read = Ticker('Reading employer job sites', len(sources)), threading.Lock(), [0, 0]   # [sites read, jobs listed]
 
-    took = {}   # seconds per site read (src/source_yield.py timed: the shared ranking is per minute)
+    took, asked = {}, {}   # seconds per site read (src/source_yield.py timed: the shared ranking is per minute); each read's "changed since?" state
 
     def fetch(source):
         started = time.monotonic()
         with read_methods.reading(key(source), 'plain_page' if source.get('ats') == 'careers' else 'feed_api') as counted:   # a careers page is read as a page
-            got = feeds._fetched(fetcher, source)
+            with ats.conditional(feed_facts.ask(facts.get(key(source)))) as asked[key(source)]:   # a 304 comes back as ats.Unchanged
+                got = feeds._fetched(fetcher, source)
             counted.failed = got[1] is not None   # a failed read is not a source read
             counted.jobs = 0 if counted.failed else read_methods.in_places(got[0])
         took[key(source)] = round(time.monotonic() - started, 1)
@@ -104,13 +107,18 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     shown = {(where[index], job): item for (index, job), item in shown.items() if index in where}
     from .. import time_budget
     time_budget.restart()   # downloading is not AI time: the places, titles and scoring after it get the whole budget (src/time_budget.py)
-    report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested)}
+    report = {"generated_at": now, "sources": [], "jobs": [], "rested": len(rested), "unchanged": [source['company'] for source in same]}
     tally = feeds.coverage.Tally()
     feeds.triage_places([job for jobs, failure in downloads if not failure for job in jobs or []])   # where the new locations are: Claude, once each
     feeds.triage([job for jobs, failure in downloads if not failure for job in jobs or []])   # titles the words miss: Claude sorts the new ones, once
     for index, (source, (jobs, failure)) in enumerate(zip(sources, downloads)):
         board = f'{source.get("ats", "greenhouse")}:{source.get("slug") or source["board"]}'
         try:
+            if isinstance(failure, ats.Unchanged):   # the site's list is the one judged last time: nothing new, no miss
+                with db:
+                    feed_facts.still_same(db, board, now)
+                report["unchanged"].append(source["company"])
+                continue
             if failure:
                 raise failure
             matched = []
@@ -132,6 +140,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
                         print(f'Warning: {source["company"]} {item["id"]}: description not fetched: {type(error).__name__}')
             with db:
                 feeds._after_check(db, board, bool(matched), now)
+                if not fixtures:
+                    feed_facts.keep(db, board, now, all(feed_facts.settled(job) for job in jobs), feed_facts.tag_of(asked.get(board)), jobs)
             feeds.run_counts.matched(matched)
             report["jobs"].extend(matched)
             report["sources"].append({"company": source["company"], "ok": True,
@@ -143,5 +153,8 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     report["funnel"] = tally.summary()
     # How much of the employer list still brings jobs (the "Your employers" meter, owner 7 Oct 2026): feeds read, and those with a match this run.
     read = [s for s in report["sources"] if s.get("ok")]
-    report["funnel"]["employers"] = {"read": len(read), "matched": sum(1 for s in read if s.get("matches"))}
+    report["funnel"]["employers"] = {"read": len(read), "matched": sum(1 for s in read if s.get("matches")), "unchanged": len(report["unchanged"])}
+    if report["unchanged"]:   # said every run, so fewer employers read is never a mystery
+        print(f'Employers unchanged since your last search: {len(report["unchanged"])} not read again ({len(same)} read under '
+              f'{feed_facts.FRESH_HOURS} h ago, {len(report["unchanged"]) - len(same)} said their list is the same); their jobs stay listed.')
     return report

@@ -127,6 +127,8 @@ def search(args, stores=None):
                     from .sources import careers as careers_pages, visits
                     visits.refused(source['company'], careers_pages.decode(source['slug']), source.get('error') or '')
             imported = so_far.statuses(report, store.import_watch_report(db, report))   # a job shown early stays "new"
+            from .sources import feed_facts
+            feed_facts.keep_seen(db, report)   # employers not read because their lists are unchanged: their jobs are still listed
             run.update(crawl_counts(report, imported))
             # What this refresh added, by place (owner, 7 Oct 2026: "we should understand what's being added, what's being removed").
             new_here = Counter(store.place_name(job.get('location')) for job, status in zip(report.get('jobs', []), imported) if status == 'new')

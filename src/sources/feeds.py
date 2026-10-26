@@ -45,7 +45,11 @@ def wanted_title(title):
         return False
     if TITLES.search(title or '') or TITLES.search(plain(title)):
         return True
-    return bool(_triaged().get(' '.join(str(title or '').lower().split())[:160]))
+    return bool(_triaged().get(title_key(title)))
+
+
+def title_key(title):
+    return ' '.join(str(title or '').lower().split())[:160]   # how the AI's answers for titles are kept
 
 
 def sure_title(title):

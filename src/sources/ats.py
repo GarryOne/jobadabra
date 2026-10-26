@@ -5,11 +5,14 @@ Every fetcher returns a list of dicts with: id, title, location, url, date_poste
 description (plain text, may be ''), remote (bool), salary (str, may be '').
 Only documented public endpoints are used; they need no login.
 """
+import contextlib
 import functools
 import html
 import json
 import os
 import re
+import threading
+import types
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -33,13 +36,51 @@ def _fixture(folder, url):
     raise OSError(f'no fixture for {url}')
 
 
+class Unchanged(Exception):
+    """The site answered 304: the job list is the one it tagged at the last read (src/sources/feed_facts.py)."""
+
+
+_asking = threading.local()
+
+
+@contextlib.contextmanager
+def conditional(etag):
+    """One reader's read with "changed since?": its first request carries If-None-Match: etag (when there is one) and a 304 raises
+    Unchanged. Yields the state: .etag, the tag the site gave the first request; .pages, the requests made (a tag is kept for one only)."""
+    state = types.SimpleNamespace(ask=etag, etag=None, pages=0)
+    _asking.state = state
+    try:
+        yield state
+    finally:
+        _asking.state = None
+
+
+def conditional_state():
+    """This thread's conditional read, or None."""
+    return getattr(_asking, 'state', None)
+
+
 def _get(url):
     fixtures = os.getenv('JOB_PILOTTO_FIXTURE_DIR')
     if fixtures:
         return _fixture(fixtures, url)
-    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, 'Accept': 'application/json, text/xml'})
-    with host_pace.open(request, TIMEOUT) as response:
-        return response.read()
+    state = conditional_state()
+    first = state is not None and state.pages == 0
+    if state is not None:
+        state.pages += 1
+    headers = {'User-Agent': USER_AGENT, 'Accept': 'application/json, text/xml'}
+    if first and state.ask:
+        headers['If-None-Match'] = state.ask
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with host_pace.open(request, TIMEOUT) as response:
+            if first:
+                state.etag = response.headers.get('ETag')
+            return response.read()
+    except urllib.error.HTTPError as error:
+        if error.code == 304 and first and state.ask:
+            raise Unchanged(url) from None
+        raise
 
 
 def _json(url):

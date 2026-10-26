@@ -19,7 +19,7 @@ BEGAN = None   # when the search started (src/sources/read_budget.py cut_at)
 PLANNED = 180   # the app's budget, which the seconds below are planned for (part)
 RESERVE = {'titles': 70, 'enrich': 40, 'score': 0}   # seconds kept for the AI steps that come after this one
 FACTS = 25   # a refresh that scores first keeps this many seconds for reading the postings' facts after it (score_first)
-TAIL = 10    # no AI call starts this close to the end: one already running finishes by it
+TAIL = 15    # no AI call starts this close to the end: one already running finishes by it (Free AI answered in ~15 s, 26 Oct 2026)
 SCORE_FIRST = False
 # Every stage that reads or calls the AI after the budget starts (tests/test_three_minutes.py loops over them; a new one goes here and there).
 STAGES = ('web search', 'job boards', 'employer sites', 'free job APIs', 'Google Jobs', 'job-alert emails', 'descriptions', 'places',
@@ -51,10 +51,10 @@ def part(seconds):
     return seconds * (DEADLINE - BEGAN) / PLANNED
 
 
-def ended(now=None, tail=True):
-    """The run's time is over: no AI call starts (TAIL before the deadline, so a call running ends by it). tail=False: the deadline itself,
-    which the floors (FLOOR scores, LOCAL_TITLES) never pass: they beat every step's reserve, not the run's 3 minutes."""
-    return DEADLINE is not None and (now if now is not None else time.monotonic()) >= DEADLINE - (part(TAIL) if tail else 0)
+def ended(now=None):
+    """The run's time is over: no AI call starts, TAIL before the deadline so a call running ends by it. The floors (FLOOR scores,
+    LOCAL_TITLES) beat every step's reserve, never this (26 Oct 2026, a proof run: local-title calls started at 179 s ended the run at 188 s)."""
+    return DEADLINE is not None and (now if now is not None else time.monotonic()) >= DEADLINE - part(TAIL)
 
 
 def later(stage, n, noun):
@@ -76,7 +76,7 @@ def local_titles(wanted):
     """How many of `wanted` titles located in the user's own places are sorted whatever the clock says (and counted): the search's first
     LOCAL_TITLES. 24 Oct 2026, Chisinau: ~750 worldwide-remote titles spent the 3 minutes, and a Moldovan board's titles (the only local jobs)
     were left "for the next refresh" at 158 s."""
-    if ended(tail=False):   # the floor beats the titles' reserve, never the run's end
+    if ended():   # the floor beats the titles' reserve, never the run's end
         return 0
     with _lock:
         n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
@@ -95,7 +95,7 @@ def _may_score(now):
     18 Oct 2026, the persona rerun: the driver's 33 jobs were listed in press 1 and none scored, the budget spent before scoring began;
     the floor moves those 3 scores from the next search to this one (no new spend)."""
     with _lock:
-        if _over('score', now) and (not floor_left() or ended(now, tail=False)):   # the floor beats scoring's reserve, never the run's end
+        if _over('score', now) and (not floor_left() or ended(now)):   # the floor beats scoring's reserve, never the run's end
             return False
         _scored[0] += 1
         return True
@@ -161,7 +161,7 @@ def _batch(step, wanted, now, say):
     plan in the log when it takes fewer (say=False: a step that tops up with further batches says what is left once, at its end). Without a budget: all of them."""
     if DEADLINE is None or wanted <= 0:
         return wanted
-    floor = min(wanted, floor_left()) if step == 'score' and not ended(now, tail=False) else 0   # never fewer than the search's first scores (may_score)
+    floor = min(wanted, floor_left()) if step == 'score' and not ended(now) else 0   # never fewer than the search's first scores (may_score)
     left = DEADLINE - (now if now is not None else time.monotonic()) - part(TAIL + (FACTS if SCORE_FIRST and step in ('score', 'job') else 0))
     pace = max(0.5, _paces().get(step, PACE[step]))
     n = max(floor, min(wanted, int(left * SHARE[step] / pace)))

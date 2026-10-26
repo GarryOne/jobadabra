@@ -162,6 +162,16 @@ class EveryStageOnlyQueuesPastTheRunsTime(Isolated):
         self.assertEqual((got, fetched), (before, []), 'no page asked past the cut')
         self.assertFalse(found_boards._went_up(entry, board(0)['search_url']), 'the next search goes up the ladder')
 
+    def test_no_floor_starts_an_ai_call_in_the_runs_last_seconds(self):
+        # 26 Oct 2026, a proof run at Free AI's pace (12 s a call): local-title calls started at 179 s ended the run at 188 s
+        time_budget.start(180, now=0)
+        last = 180 - time_budget.TAIL
+        self.assertTrue(time_budget.ended(now=last))
+        self.assertFalse(time_budget.may_score(now=last), 'the first 3 scores of a search, but not in its last seconds')
+        self.assertEqual(time_budget.batch('score', 10, now=last), 0)
+        with mock.patch.object(time_budget.time, 'monotonic', return_value=last):
+            self.assertEqual(time_budget.local_titles(10), 0, 'the 300 local titles, but not in the last seconds')
+
     def test_before_the_cut_the_stages_work(self):
         time_budget.start(BUDGET)
         with redirect_stdout(io.StringIO()):

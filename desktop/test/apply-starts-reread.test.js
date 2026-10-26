@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
+import {fileURLToPath} from 'node:url';
 
-const desktop = path.resolve(new URL('..', import.meta.url).pathname);
+const desktop = fileURLToPath(new URL('..', import.meta.url));
 const walk = dir => fs.readdirSync(dir, {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : entry.name.endsWith('.js') ? [path.join(dir, entry.name)] : []));
 // The IPC calls that start an application (main: lib/apply-handlers.js, ready-handlers.js, session-handlers.js). takeOverClaude is not one: it
 // continues a session whose job is already Applying.

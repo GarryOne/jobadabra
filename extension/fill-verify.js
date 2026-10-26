@@ -43,7 +43,8 @@ export async function typeNotTakenOnTab(tabId) {
   try {
     return await driving(tabId, async () => {
       const typed = boxes ? await typeNotTakenForReal({page, send}) : {tried: 0, taken: 0};
-      const pressed = await pressNotTakenForReal({page, send});
+      const mouse = async (x, y) => { for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', {type, x, y, button: 'left', clickCount: 1}); };
+      const pressed = await pressNotTakenForReal({page, mouse});
       if (pressed.tried) decide('fill', 'pressed for real a choice that did not take its answer', {tab: tabId, tried: pressed.tried, taken: pressed.taken}).catch(() => {});
       return {...typed, pressed};
     });

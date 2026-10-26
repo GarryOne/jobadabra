@@ -128,6 +128,7 @@ def left_to_hand(item, data):
 
 
 RELEVANT_MODEL = SMALL_MODEL
+KEEP_LISTS = 8   # answers kept, one per list of sites, roles and places
 RELEVANT_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['keep'], 'properties': {'keep': {
     'type': 'array', 'items': {'type': 'integer'}, 'description': 'Numbers of the sites likely to have jobs of their kinds in their places'}}}
 RELEVANT_SYSTEM = """You get a job seeker's roles and places, and numbered sites to read jobs from (an employer's name and address, or a job \
@@ -136,9 +137,11 @@ warehouses or offices there where such people work, or a portal that lists such 
 private bank for a shop seller, a tech salary site for a photographer) or that have no presence in their places. When unsure, keep it."""
 
 
-def relevant(items, search, client=None):
+def relevant(items, search, client=None, label='Visit list'):
     """The sites worth your browser's time for these roles and places, by Claude once per list (7 Oct 2026: Cornèr Bank, Geneva Freeport and
-    levels.fyi were read for a photographer and shop seller); all of them without AI. Claude sees site names and addresses, roles and places."""
+    levels.fyi were read for a photographer and shop seller); all of them without AI. Claude sees site names and addresses, roles and places.
+    One judge for the visit list and the refused sites' browser reads (src/sources/refused_reads.py queue); the last KEEP_LISTS answers are kept,
+    so the two lists never push each other's answer out."""
     from ..notion.search_settings import terms
     search = search or load_search_config(matching=False)
     roles = terms(search.get('role_keywords'))[:40]
@@ -163,16 +166,16 @@ def relevant(items, search, client=None):
             numbers = {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('keep') or [] if str(n).isdigit()}
             kept = [items[n - 1]['url'] for n in sorted(numbers) if 1 <= n <= len(items)]
         except Exception as error:  # noqa: BLE001 — every site this time
-            print(f'Visit list: not sorted by AI ({reason(error)}); every site is offered', file=sys.stderr)
+            print(f'{label}: not sorted by AI ({reason(error)}); every site is offered', file=sys.stderr)
             detail('visit list', error)
             return items
         with LOCK:
             data = _load()
-            data['relevant'] = {key: kept}
+            data['relevant'] = dict([*list((data.get('relevant') or {}).items())[-(KEEP_LISTS - 1):], (key, kept)])
             _save(data)
         left = [i['name'] for i in items if i['url'] not in kept]
         if left:
-            print(f"Visit list: left out as unlikely for your roles: {', '.join(left)}", file=sys.stderr)
+            print(f"{label}: left out as unlikely for your roles: {', '.join(left)}", file=sys.stderr)
     return [i for i in items if i['url'] in kept]
 
 

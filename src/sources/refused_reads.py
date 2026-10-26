@@ -81,6 +81,12 @@ def queue(now=None, limit=MAX_QUEUE, now_hosts=(), everything=False):
         if allowed(pick['url']) and host not in seen and due(host) and elsewhere(host) not in STOPPED:
             seen.add(host)
             out.append({'url': pick['url'], 'name': pick['name'], 'kind': 'employer', 'step': (kept.get(host) or {}).get('step') or 'download'})
+    # Only the employers that could hire for this search, by the visit list's AI judge (owner, 26 Oct 2026: "The AI decides"; that night a pilot
+    # search's checks read a bank, an energy and a telecom company 4 times, 0 jobs matching). A site the person opened a job on is read anyway.
+    asked = [item for item in out if visits.host_of(item['url']).lower().removeprefix('www.') not in force]
+    if asked:
+        fit = {item['url'] for item in visits.relevant(asked, search_config(), label='Refused sites')}
+        out = [item for item in out if item not in asked or item['url'] in fit]
     out.sort(key=lambda item: elsewhere(visits.host_of(item['url'])) != 'opened')   # opened in another install's browser: asked first
     search = None
     for board in (board_ideas.load().get('boards') or {}).values():

@@ -88,7 +88,10 @@ class PromoteGuardTests(unittest.TestCase):
             # The real gh would edit a real release: the script must find the fake first.
             self.assertEqual(shutil.which('gh', path=env['PATH']), str(binary))
             done = run_alone(['bash', str(SCRIPT), TAG], env)
-            self.calls = self.log.read_text() if self.log.exists() else ''
+            lines = (self.log.read_text() if self.log.exists() else '').splitlines(keepends=True)
+            # The store publish it starts once the release is stable (tests/test_webstore_publish_pipeline.py) is kept apart: calls = the end-to-end runs only.
+            self.store = ''.join(line for line in lines if 'extension-store-publish.yml' in line)
+            self.calls = ''.join(line for line in lines if 'extension-store-publish.yml' not in line)
             return done
 
     def test_its_own_installer_at_the_same_size_promotes(self):
@@ -191,6 +194,18 @@ class PromoteGuardTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn('Dry run: would make', done.stdout)
         self.assertNotIn('Stable:', done.stdout)
+        self.assertEqual(self.store, '', 'a dry run sends nothing to the Chrome Web Store')
+
+    def test_a_promotion_starts_the_chrome_web_store_publish_once_with_its_tag(self):
+        done = self.promote([(OWN, 1), (GENERIC, 1)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(self.store.count('workflow run extension-store-publish.yml'), 1, self.store)
+        self.assertIn(f'tag={TAG}', self.store)
+
+    def test_a_refused_promotion_sends_nothing_to_the_store(self):
+        done = self.promote([(DMG, 1), (GENERIC, 2)], extra={'E2E_ALREADY_GREEN': '1'})
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(self.store, '')
 
 
 if __name__ == '__main__':

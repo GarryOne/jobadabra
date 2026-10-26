@@ -20,6 +20,7 @@ RUNTIME = {
     'actions/create-github-app-token': 3,
     'actions/attest-build-provenance': 0,
     'anthropics/claude-code-action': 0,
+    'google-github-actions/auth': 3,   # node24 since v3 (checked 26 Oct 2026)
 }
 USES = re.compile(r"^\s*(?:-\s+)?uses:\s*['\"]?([^'\"\s#]+)", re.M)
 

@@ -24,6 +24,7 @@ Every release carries `Jobadabra-<version>-arm64.dmg/.zip`, `Jobadabra-mac-arm64
 1. **04:00 Zurich:** `desktop.yml` builds Mac + Windows if the app changed since the last release that reached someone (a stable, or a build approved as beta; a build that failed its gate does not count, so the next night tries again; tests alone do not count), as a pre-release. GitHub may start a scheduled run late.
 2. **When the build finishes**, `e2e.yml` runs **every suite on the build's own commit** (`desktop/e2e/plan-run.mjs`; only for the nightly build: one made by hand is for trying).
 3. **When all suites pass and `build.yml` is green on that commit**, its `promote` job runs `tools/release-stable.sh` (the Windows installer must be the build's own). Friends get the update by morning.
+   Then it starts `extension-store-publish.yml`: the extension goes to the **Chrome Web Store** for review when its version is newer than the store's (betas never; keyless sign-in to Google; `node tools/webstore-publish.mjs check` reads the store). Chrome updates every store copy by itself once it is live.
 4. **A red suite, a red `build.yml`, a failed Windows job, or no build:** nothing is promoted; stable stays; the next night's build carries the fixes.
 There is **no waiting period** and no telemetry check: the end-to-end journey is the gate. Dry run of step 3 for a release: `gh workflow run promote-dry-run.yml -f tag=<tag>`.
 

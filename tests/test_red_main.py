@@ -13,6 +13,7 @@ TESTS, PAGES = 'CI · Tests', 'CI · Page cases (all cases, real extension, Linu
 
 # Every workflow of .github/workflows, counted for red main or ignored with the reason (a new workflow fails the last test until it is put here: a conscious choice).
 CLASSIFIED = {
+    'Extension · Chrome Web Store publish': 'ignored: started by tools/release-stable.sh on a stable release, a PR editing it, or by hand; never runs on a push to main',
     'Extension · Web Store zip': 'ignored: by hand or on an extension-v* tag; builds the store package, never runs on a push to main',
     'CI · Tests': 'counted',
     'CI · Re-run jobs GitHub never started': 'ignored: after a beta or e2e run ends; only re-runs jobs GitHub gave no runner, never tests a push to main',

@@ -4,7 +4,7 @@ which boards the AI happened to name, because the shared-board facts need instal
 (board_ideas), the engine reads each by rules only (no AI page reader: the owner chose "rules only" on 24 Oct 2026), the jobs whose place is in that country
 are counted, and a board with MIN_LOCAL of them is kept as a fact. The index publish sends the facts (site: api/employers.js board_facts), where they are
 served as the same board fact installs share. Never worldwide remote: only a job whose place names the country counts.
-Tests: tests/test_scout_boards.py."""
+Google's results add boards the AI never names (src/scout_google_boards.py). Tests: tests/test_scout_boards.py."""
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -51,12 +51,16 @@ def next_country(db, named=None):
     return country
 
 
-def search_for(db, country):
-    """The search the boards are proposed and read for: software and the country's thinnest kinds (by the central list's counts), the whole country."""
+def kinds_for(db, country):
+    """Software and the country's thinnest kinds of work (by the central list's counts)."""
     cells = scout_cells._meta(db, 'cells', None)
     cells = cells if isinstance(cells, dict) else {}
-    thin = sorted(scout_cells.AIMED, key=lambda kind: (cells.get(f'{kind}|{country}', 0), scout_cells.AIMED.index(kind)))[:KINDS_PER_COUNTRY - 1]
-    words = [word.strip() for kind in ['software', *thin] for word in role_kinds.WORK[kind].split(',') if word.strip()]
+    return ['software', *sorted(scout_cells.AIMED, key=lambda kind: (cells.get(f'{kind}|{country}', 0), scout_cells.AIMED.index(kind)))[:KINDS_PER_COUNTRY - 1]]
+
+
+def search_for(db, country):
+    """The search the boards are proposed and read for: kinds_for's kinds of work, the whole country."""
+    words = [word.strip() for kind in kinds_for(db, country) for word in role_kinds.WORK[kind].split(',') if word.strip()]
     return {'role_keywords': list(dict.fromkeys(words)),
             'locations': {'top_tier': [], 'country_wide': [pool_tags.COUNTRIES[country]], 'abroad': []}}
 
@@ -78,7 +82,7 @@ def measure(board, jobs, country):
     return {'host': board['host'], 'url': board['search_url'], 'country': country, 'families': families, 'local_jobs': len(local)} if families else None
 
 
-def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None):
+def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=None, named=None, google=None):
     """Read the next thin country's boards and keep the facts. Returns the facts kept (a list); never raises: the scout's index goes out regardless."""
     from .ai import board_ideas
     from .sources import careers, found_boards
@@ -92,6 +96,8 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
     try:
         search = search_for(db, country)
         proposed = (ideas or (lambda asked: board_ideas.ideas(asked, field=False)))(search)[:MAX_BOARDS]   # several kinds: no one field to ask for
+        found = (google or _google)(db, country, kinds_for(db, country), out)   # boards only Google's results name, judged by the AI first
+        proposed = (found + [board for board in proposed if board['host'] not in {board['host'] for board in found}])[:MAX_BOARDS]
         began, kept, unread, counts = clock(), [], [], []
         reader, careers.READER = careers.READER, None   # rules only: the AI page reader is off for the scout's boards (owner, 24 Oct 2026)
         try:
@@ -119,6 +125,13 @@ def run(db, ideas=None, read_board=None, clock=time.monotonic, out=print, until=
     except Exception as error:  # noqa: BLE001 — the board pass is a bonus: a failure must never stop the index
         out(f'Warning: board pass skipped: {type(error).__name__}: {error}')
         return []
+
+
+def _google(db, country, kinds, out):
+    """The field boards Google's results name for these kinds in this country (src/scout_google_boards.py), each page judged by the AI."""
+    from . import scout_google_boards
+    from .sources import board_check, careers
+    return scout_google_boards.boards(db, country, kinds, lambda board, roles: board_check.field_kind(board, careers.get_text, roles), out=out)
 
 
 def facts(db, today=None):

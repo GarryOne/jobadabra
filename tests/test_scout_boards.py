@@ -34,7 +34,8 @@ class BoardPassTest(unittest.TestCase):
         def read_board(item, search, fetch):
             seen['reader'] = careers.READER
             return reads[item['host']]
-        got = scout_boards.run(self.db, ideas=ideas or (lambda search: [board(host) for host in reads]), read_board=read_board, out=out.append)
+        got = scout_boards.run(self.db, ideas=ideas or (lambda search: [board(host) for host in reads]), read_board=read_board, out=out.append,
+                               google=lambda db, country, kinds, out: [])   # Google's results: tests/test_scout_google_boards.py
         return got, out, seen
 
     def test_a_board_with_enough_jobs_located_in_the_country_becomes_a_fact(self):

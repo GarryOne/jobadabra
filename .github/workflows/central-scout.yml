@@ -98,6 +98,7 @@ jobs:
           INDEX_PUBLISH_KEY: ${{ secrets.INDEX_PUBLISH_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.CENTRAL_SCOUT_ANTHROPIC_KEY }}   # the Internal workspace's key (own spend limit), not this repo's ANTHROPIC_API_KEY
           BATCH: ${{ inputs.batch || '500' }}
+          SCOUT_TITLE_KINDS: ops/config/title_kinds.json.gz   # titles judged on the owner's Claude plan (tools/recount_title_kinds.py); absent: nothing changes
           SCOUT_BOARD_COUNTRY: ${{ inputs.country }}
           JOB_PILOTTO_AI_COST_FILE: ${{ runner.temp }}/ai-cost.json
         run: python -m src scout --batch "$BATCH" --publish-index

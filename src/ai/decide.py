@@ -58,6 +58,25 @@ def kept(topic, keys, db=None, since=''):
             db.close()
 
 
+def remember(topic, found, answers, older_than='', db=None):
+    """Keep answers judged elsewhere ({key: answer}, e.g. the central scout's seed counted on the owner's plan) as if asked now: only fixed
+    `answers`, and a key kept since `older_than` is left as it is. Returns how many were written."""
+    rows = [(topic, str(key)[:MAX_TEXT].lower(), answer) for key, answer in (found or {}).items() if answer in answers and str(key).strip()]
+    if not rows:
+        return 0
+    own = db is None
+    db = _table(db or _db())
+    try:
+        stamp, before = datetime.now(timezone.utc).isoformat(timespec='seconds'), db.total_changes
+        db.executemany('INSERT INTO decisions (topic, key, answer, at) VALUES (?, ?, ?, ?) ON CONFLICT (topic, key) DO UPDATE SET '
+                       'answer = excluded.answer, at = excluded.at WHERE decisions.at < ?', [(*row, stamp, older_than) for row in rows])
+        db.commit()
+        return db.total_changes - before
+    finally:
+        if own:
+            db.close()
+
+
 def decide(topic, items, answers, instructions, client=None, db=None, since=''):
     """{key: answer} from the cache, the pack or the model. Without the model (none, failed, past its limit): the answers the cache and the
     pack gave (items they don't know are left out), or None when they gave none."""

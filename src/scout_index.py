@@ -12,7 +12,7 @@ from collections import Counter
 from . import read_methods
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, timedelta
-from . import contribute, pool_tags, regions, role_kinds, scout_carry
+from . import contribute, pool_tags, regions, role_kinds, scout_carry, scout_title_seed
 from .notion import cron_runs
 from .sources import ats, careers, feeds
 from .scout_core import OUTCOMES, ensure_tables, _get_text, clean_name, key_for, now
@@ -125,6 +125,7 @@ def fetch_boards(base_url, key, get=None):
 def build_index(db, starter=(), fetch=ats.fetch, today=None, workers=8, contributions=(), boards=(), swiss_titles=None, deadline=None, carry=False):
     """Every feed we know (starter list + what this scout found), fetched once: [{company, ats, slug, tier, quality,
     jobs, checked}]. A feed that doesn't answer is left out (it comes back when it does); returns (feeds, failed)."""
+    scout_title_seed.load()   # the titles counted on the owner's plan: the capped AI asks only new ones
     ensure_tables(db)
     today = today or now().date().isoformat()
     known = {(s.get('ats', 'greenhouse'), s.get('slug') or s['board']): {'company': s['company'], 'tier': 'Standard'}

@@ -60,7 +60,7 @@ test('Telegram is required only when e-mail is not chosen, and the Actions line 
 // The class: every screen that offers or requires a way to be told. Listed 26 Oct 2026: Connections (Telegram required), setup extras (Telegram only), Actions header,
 // Always on "How it works", the Focus reminder tooltip, the ⌘K entry.
 test('no screen presents Telegram as the only channel', () => {
-  const html = read('renderer/index.html'), settings = read('renderer/pages/settings.js'), nav = read('renderer/pages/nav.js'), runs = read('renderer/pages/runs-page.js');
+  const html = read('renderer/index.html'), settings = read('renderer/pages/services-list.js') + read('renderer/pages/settings.js'), nav = read('renderer/pages/nav.js'), runs = read('renderer/pages/runs-page.js');
   assert.match(html, /class="[^"]*\bextras"[\s\S]*data-goto-settings="notify"/, 'setup extras offer e-mail next to Telegram');
   assert.doesNotMatch(html, /sends results to Telegram and/, 'Always on: results go by the chosen channel');
   assert.doesNotMatch(html, /title="Notifications and Telegram when/, 'Focus reminders: by the chosen channels');
@@ -81,7 +81,7 @@ test('Telegram chosen but not connected warns on the card, in Connections and on
   assert.equal(telegramRequired(['email', 'app'], ['email', 'telegram', 'app']), true, 'chosen: Connections asks for it');
   assert.equal(telegramRequired(['email', 'app'], ['email', 'app']), false);
   assert.deepEqual(channelLine({by: ['email', 'app'], chosen: ['email', 'telegram', 'app'], connected: false}), {text: 'Telegram not connected', dot: 'is-warn'});
-  const settings = read('renderer/pages/settings.js'), runs = read('renderer/pages/runs-page.js');
+  const settings = read('renderer/pages/services-list.js'), runs = read('renderer/pages/runs-page.js');
   assert.match(settings, /telegramRequired\(shared\.state\.notifyBy, shared\.state\.settings\.notifyBy\)/);
   assert.match(runs, /chosen: shared\.state\.settings\.notifyBy/);
 });

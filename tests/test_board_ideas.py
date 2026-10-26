@@ -28,6 +28,8 @@ class FakeClient:
         self.messages = SimpleNamespace(create=self.create)
 
     def create(self, **kwargs):
+        if kwargs['system'][0]['text'] == board_ideas.FIELD_SYSTEM:   # the field's own boards: tests/test_field_boards.py
+            return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text='{"boards": []}')])
         self.calls.append(kwargs)
         return SimpleNamespace(stop_reason='end_turn', usage=None, content=[SimpleNamespace(type='text', text=json.dumps(ANSWER))])
 

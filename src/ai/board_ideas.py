@@ -35,6 +35,14 @@ page: its page that lists this field's jobs, else its home page. Only boards you
 creative_media, finance_admin, education, trades, engineering, business_ops, manufacturing, science, customer_service, legal, aviation_transport, \
 public_security, other, any."""
 SOURCE_KINDS = ('public_service', 'general', 'sector', 'regional', 'agency')
+FIELD_SYSTEM = """You know the job boards people in each trade or field really use. You get a job seeker's roles, their kind of work and the \
+places they want. List up to 16 job boards DEDICATED TO THIS FIELD that carry its jobs in these places: the field's international boards, its \
+national boards in these countries, the job boards of its professional associations and unions, and the job sections of its trade magazines \
+and news sites (a board for nurses, for truck drivers, for stage technicians, for pilots: whatever this field is). Not general boards (any \
+job), not one employer's own career site, not LinkedIn, Indeed, Glassdoor or levels.fyi. For each: its search page as a template (https, \
+{role} where the keywords go, {place} where the place goes, no {place} when it has none); a board with no search page: its page that lists \
+this field's jobs, else its home page. source_kind: sector. kinds: from the given ones. Only boards you are confident exist; fewer is better \
+than a guess."""   # one call per search, besides the per-country slices (owner's yes, 26 Oct 2026: "Field first"; tests/test_field_boards.py)
 KINDS = (*ROLE_KINDS, 'any')   # src/role_kinds.py KINDS, plus a board for every kind
 
 
@@ -134,7 +142,7 @@ def ideas(search, client=None):
     if not asked:
         return []
     shared = ranked(served([country for part in asked for country in part[1]]), search)
-    own = []
+    own = list(_field(asked_for(search), client) or [])   # the field's own boards first: the slices' general ones come after (MAX_BOARDS * 2 cap)
     for part in asked:
         found = _proposal(part, client)
         if found is None:
@@ -143,31 +151,60 @@ def ideas(search, client=None):
     return _merge(own, shared)
 
 
+def _field(asked, client=None):
+    """The boards of this search's field across all its places (FIELD_SYSTEM), one call cached per roles, kinds and countries; one the AI
+    left unmarked is a field board ('sector'), one it marked general still needs a keyword search page (valid); None without AI or when the call failed. 26 Oct 2026, a First Officer in Europe: 10 slices of 5 countries asked
+    "public service first, then general boards" gave 111 boards, 14 for aviation, 2 of them read; one field call gave 10-14 aviation boards."""
+    if not asked:
+        return None
+    key, countries, roles, kinds, place_words = asked
+    key = 'field-' + key
+    data = load()
+    if key in (data.get('ideas') or {}):
+        return data['ideas'][key]
+    answer = _ask(FIELD_SYSTEM, {'countries': countries, 'places': place_words, 'roles': roles, 'kinds': kinds}, client)
+    if answer is None:
+        return None
+    found = list({b['host']: b for b in (valid({**item, 'source_kind': item.get('source_kind') or 'sector'}) for item in answer if isinstance(item, dict)) if b}.values())[:MAX_BOARDS]
+    data = load()
+    data.setdefault('ideas', {})[key] = found
+    save(data)
+    print(f"Job boards of your field: {', '.join(b['name'] for b in found) or 'none'}", flush=True)
+    return found
+
+
+def _ask(system, content, client=None):
+    """The AI's boards for this instruction ([] when it named none), or None without AI or when the call failed (said in the log)."""
+    try:
+        from . import cost, engine
+        if client is None:
+            if not engine.ready():
+                return None
+            client = engine.client(action='scout')
+        response = client.messages.create(
+            model=MODEL, max_tokens=6000, system=[{'type': 'text', 'text': system}],
+            messages=[{'role': 'user', 'content': json.dumps(content, ensure_ascii=False)}],
+            output_config=engine.structured(SCHEMA, MODEL, 'low'))
+        cost.side(MODEL, response.usage)
+        if response.stop_reason != 'end_turn':
+            raise RuntimeError(f'stopped with {response.stop_reason}')
+        return json.loads(next(block.text for block in response.content if block.type == 'text')).get('boards') or []
+    except Exception as error:  # noqa: BLE001 — the fixed boards and the shared ones still run
+        print(f'Job boards: the AI proposed none this time ({reason(error)}); the known boards still run', flush=True)
+        detail('job boards', error)
+        return None
+
+
 def _proposal(asked, client=None):
     """The validated boards Claude proposed for one slice (cached per its key), or None without AI or when the call failed."""
     key, countries, roles, kinds, place_words = asked
     data = load()
     if key in (data.get('ideas') or {}):
         return data['ideas'][key]
-    try:
-        from . import cost, engine
-        if client is None:
-            if not engine.ready():
-                return None   # no AI: the boards other installs found for these countries
-            client = engine.client(action='scout')
-        response = client.messages.create(
-            model=MODEL, max_tokens=6000, system=[{'type': 'text', 'text': SYSTEM}],
-            messages=[{'role': 'user', 'content': json.dumps({'countries': countries, 'places': place_words, 'roles': roles, 'kinds': kinds},
-                                                             ensure_ascii=False)}],
-            output_config=engine.structured(SCHEMA, MODEL, 'low'))
-        cost.side(MODEL, response.usage)
-        if response.stop_reason != 'end_turn':
-            raise RuntimeError(f'stopped with {response.stop_reason}')
-        answer = json.loads(next(block.text for block in response.content if block.type == 'text')).get('boards') or []
-    except Exception as error:  # noqa: BLE001 — the fixed boards and the shared ones still run
-        print(f'Job boards: the AI proposed none this time ({reason(error)}); the known boards still run', flush=True)
-        detail('job boards', error)
-        return None
+    answer = _ask(SYSTEM, {'countries': countries, 'places': place_words, 'roles': roles, 'kinds': kinds}, client)
+    if answer is None:
+        return None   # no AI: the boards other installs found for these countries
+    data = load()
     found = list({b['host']: b for b in (valid(item) for item in answer) if b}.values())[:MAX_BOARDS]
     data.setdefault('ideas', {})[key] = found
     save(data)

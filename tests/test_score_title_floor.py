@@ -14,7 +14,13 @@ GAP, FakeModel = career.GAP, career.FakeModel
 
 
 class TitleCheck(unittest.TestCase):
-    setUp, scored = career.CareerChange.setUp, career.CareerChange.scored
+    scored = career.CareerChange.scored
+
+    def setUp(self):
+        career.CareerChange.setUp(self)
+        patch = mock.patch('src.ai.decide.one', return_value='yes')   # the role check on the first lines (tests/test_score_role_check.py)
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def test_free_ai_s_low_fit_to_the_search_is_lifted_by_the_title_check(self):
         """Fails on the old code: fit 0 is not above the CV's 20, so every job keeps 20, under the digest's bar: 0 shown."""

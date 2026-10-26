@@ -7,7 +7,7 @@ import random
 import re
 
 from . import store, tgcard
-from .ai import enrich, score
+from .ai import enrich, score, score_search
 from .notion import client as notion
 from .paths import CONFIG, keyword_regex, load_search_config, place_regex
 
@@ -384,7 +384,7 @@ def build_digest(db, limit=50, rng=None, hidden_urls=frozenset(), page=1, seed=N
     new_ids = {j['id'] for j in everything if since is None or (j.get('first_seen_at') or '') > since}
     recent = recently_shown(db, seed)
     new = rank_jobs([j for j in everything if j['id'] in new_ids], rng)
-    new.sort(key=lambda j: -(j['fit'] or {}).get('score', -1))  # stable: unscored keep rule order
+    new.sort(key=lambda j: (-(j['fit'] or {}).get('score', -1), -score_search.own_fit(j['fit']) if j['fit'] else 0))  # ties: the AI's own fit; unscored keep rule order
     older = rank_jobs([j for j in everything if j['id'] not in new_ids], rng)
     if any(j['fit'] for j in older):
         # Best matches lead every digest, with light rotation: a match shown in the last

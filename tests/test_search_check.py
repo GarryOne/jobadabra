@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CANDIDATES = ['finance', 'music', 'driver', 'sre', 'cluj', 'chisinau']
+CANDIDATES = ['finance', 'music', 'driver', 'sre', 'cluj', 'chisinau', 'pilot']
 
 
 def node(code):
@@ -18,6 +18,17 @@ def dry(*args):
 
 
 class SearchCheck(unittest.TestCase):
+    def test_a_worktree_is_staged_before_the_run(self):
+        # 26 Oct 2026: a check from a worktree died at "Cannot find module desktop/shared/worker/ai.js" after 20 s; it now stages first
+        source = (ROOT / 'tools' / 'persona-search' / 'search-check.mjs').read_text()
+        self.assertIn("'scripts/stage.mjs'", source)
+        self.assertLess(source.index("'scripts/stage.mjs'"), source.index('execFileSync(step.run[0]'), 'staged before the press runs')
+
+    def test_the_pilot_candidate_is_fictional(self):
+        text = (ROOT / 'tools' / 'persona-search' / 'personas.py').read_text()
+        block = text[text.index("'pilot':"):]
+        self.assertIn('example.test', block[:400])
+
     def test_every_candidate_and_random_plan_one_press_on_the_plan_engine_in_a_throwaway_folder(self):
         for who in [*CANDIDATES, 'random']:
             step = dry(who)

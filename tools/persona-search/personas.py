@@ -79,6 +79,18 @@ PERSONAS = {
                  'EDUCATION', 'BSc Software Engineering, Technical University of Moldova, Chisinau, 2019', '',
                  'LANGUAGES', 'Romanian native, Russian fluent, English upper-intermediate (B2)', '',
                  'WORK RIGHTS', 'Moldovan citizen (also holds Romanian citizenship, EU). Lives in Chisinau; on-site, hybrid or remote from Moldova.'],
+    'pilot': ['Lukas Brenner', 'First Officer A320 (airline pilot), Vienna, Austria', 'lukas.brenner@example.test | +43 660 0000000',
+              'linkedin.com/in/lukas-brenner-example', '', 'SUMMARY',
+              'Airline First Officer with 2,800 hours, 2,300 on the A320 family, in short- and medium-haul scheduled and charter flying.',
+              'EASA ATPL (frozen ATPL theory passed), A320 type rating current, MCC/JOC, Class 1 medical. German (native), English (ICAO level 6).', '',
+              'EXPERIENCE', '2021 - now   First Officer A320, Alpenflug Airways (example), Vienna base',
+              '  - Scheduled and charter flights across Europe, North Africa and the Middle East; 600+ sectors a year.',
+              '  - Line training completed 2021; recurrent LPC/OPC passed every year; CRM and dangerous goods current.',
+              '2019 - 2021  Flight Instructor (FI), Danube Flight Academy (example), Wiener Neustadt',
+              '  - PPL and CPL training on DA40 / DA42; 900 hours of instruction.', '',
+              'EDUCATION', 'Integrated ATPL course, Danube Flight Academy (example), 2019', '',
+              'LANGUAGES', 'German native, English fluent (ICAO 6), Italian basic', '',
+              'WORK RIGHTS', 'Austrian citizen (EU). Open to any airline base in Europe; ready to relocate. Flying is on-site.'],
 }
 
 

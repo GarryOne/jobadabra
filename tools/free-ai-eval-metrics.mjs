@@ -18,6 +18,8 @@ export function schemaProblems(value, schema, at = '$') {
 }
 
 // A form-answer reply against what each field should get: expect = {<field id>: {value?: [acceptable values], match?: regex text, empty?: true, category?, use?}} -> [problems].
+// What a written answer puts in the box: its text before the first "• Add:" reminder (those are shown beside the box, never typed: worker/src/written-answer.js splitReminders, #2198).
+const typed = answer => answer?.category === 'written' ? String(answer.value ?? '').split(/\s*•\s*Add:/)[0].trim() : String(answer?.value ?? '');
 export function answerProblems(data, expect) {
   // What reaches the page: the product floors a proposal on a legal or demographic question to an empty kind (worker/src/extension.js answerForm), an unchecked box is no answer, and a
   // proposal is shown, never typed, so an "empty" expectation only fails on a typed answer. A multi-choice value (" && ") is right when every part is.
@@ -29,7 +31,7 @@ export function answerProblems(data, expect) {
     if (want.empty) { if (given && got.use !== 'propose') found.push(`${field}: answered, wanted empty`); }
     else if (!got) { if (!want.maybeEmpty && (want.value || want.match || want.category)) found.push(`${field}: no answer`); continue; }
     else if (want.value && !(want.maybeEmpty && !given) && !parts.every(part => want.value.includes(part)) && !want.value.includes(got.value)) found.push(`${field}: "${got.value}", wanted ${want.value.join(' or ')}`);
-    else if (want.match && !(want.maybeEmpty && !given) && !new RegExp(want.match, 'i').test(got.value)) found.push(`${field}: "${got.value}", wanted /${want.match}/`);
+    else if (want.match && !(want.maybeEmpty && !given) && !new RegExp(want.match, 'i').test(typed(got))) found.push(`${field}: "${typed(got)}", wanted /${want.match}/`);
     if (want.within && given && !parts.every(part => want.within.includes(part))) found.push(`${field}: "${got.value}" is not one of the options`);
     if (want.category && got && got.category !== want.category) found.push(`${field}: category ${got.category}, wanted ${want.category}`);
     if (want.use && got && got.use !== want.use) found.push(`${field}: use ${got.use}, wanted ${want.use}`);

@@ -45,5 +45,18 @@ class KilledMidWriteTests(unittest.TestCase):
         self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
 
 
+class StopReasonTests(unittest.TestCase):
+    """The app's hard end (a time-up) is told apart from a Stop press: its row is not Failed and does not say Stop was pressed."""
+    def test_a_time_up_marker_makes_the_stop_an_ended_by_time_row(self):
+        from unittest import mock
+        from src.notion import cron_runs
+        marker = Path(tempfile.mkdtemp()) / 'timeup'
+        self.addCleanup(shutil.rmtree, marker.parent, True)
+        with mock.patch.dict(os.environ, {'JOB_PILOTTO_TIME_UP_FILE': str(marker)}):
+            self.assertEqual(cron_runs.stop_reason(), (cron_runs.STOPPED_WORDS, True, True), 'no marker: a Stop press')
+            marker.write_text('')
+            self.assertEqual(cron_runs.stop_reason(), (cron_runs.TIME_UP_WORDS, False, False))
+
+
 if __name__ == '__main__':
     unittest.main()

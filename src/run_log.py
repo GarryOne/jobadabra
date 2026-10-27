@@ -21,7 +21,7 @@ from collections import deque
 from . import run_details, run_result
 from .warning_lines import record_logged_warnings
 from .notion import cron_report
-from .notion.cron_runs import CRASH_LINE, EXIT_GRACE_S, HEARTBEAT_S, LOGGED_MODES, LOG_LINES, STEP_EVERY, STOPPED_WORDS
+from .notion.cron_runs import CRASH_LINE, EXIT_GRACE_S, HEARTBEAT_S, LOGGED_MODES, LOG_LINES, STEP_EVERY, stop_reason
 from .stores import notion_blocks, notion_rows
 from .stores.notion_cron_runs import STATS
 
@@ -230,11 +230,12 @@ def log_run(stores, run, failed=False):
 def _on_terminate(signum, frame):
     """Stop (the app's SIGTERM, GitHub's SIGINT): the open row closes as stopped, then the process leaves (cron_runs's rule)."""
     run = _open.get('run')
+    words, failed, stopped = stop_reason()
     if run is not None:
-        run['warnings'] = list(run.get('warnings') or []) + [STOPPED_WORDS]
-        run['stopped'] = True
-        log_run(_open['stores'], run, failed=True)
-    print(STOPPED_WORDS, flush=True)
+        run['warnings'] = list(run.get('warnings') or []) + [words]
+        run['stopped'] = stopped
+        log_run(_open['stores'], run, failed=failed)
+    print(words, flush=True)
     timer = threading.Timer(EXIT_GRACE_S, lambda: os._exit(128 + signum))
     timer.daemon = True
     timer.start()

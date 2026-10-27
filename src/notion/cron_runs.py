@@ -225,6 +225,16 @@ def log_run(tracker, run, failed=False):
 
 STOPPED_WORDS = 'Stopped before it finished: Jobadabra was closed, or Stop was pressed'
 EXIT_GRACE_S = 3
+TIME_UP_WORDS = "Ended at the search's 3 minutes: what it had not reached waits for the next search"
+
+
+def stop_reason():
+    """(words, failed, stopped) for a SIGTERM. The app ends a step at the press's 180 s (desktop/lib/search-steps.js) and creates the file named by
+    JOB_PILOTTO_TIME_UP_FILE just before its SIGTERM: that stop is a time-up, not a Stop press (its row is not Failed, and does not say Stop was pressed)."""
+    marker = os.environ.get('JOB_PILOTTO_TIME_UP_FILE')
+    if marker and os.path.exists(marker):
+        return TIME_UP_WORDS, False, False
+    return STOPPED_WORDS, True, True
 
 
 def _on_terminate(signum, frame):
@@ -234,14 +244,15 @@ def _on_terminate(signum, frame):
     minutes after the app quit, held the run lock, and the restarted run waited for it."""
     import threading
     run = _open.get('run')
+    words, failed, stopped = stop_reason()
     if run is not None:
-        run['warnings'] = list(run.get('warnings') or []) + [STOPPED_WORDS]
-        run['stopped'] = True
+        run['warnings'] = list(run.get('warnings') or []) + [words]
+        run['stopped'] = stopped
         try:
-            log_run(_open['tracker'], run, failed=True)
+            log_run(_open['tracker'], run, failed=failed)
         except Exception:  # noqa: BLE001  log_run never raises; a stop must not hang on Notion either way
             pass
-    print(STOPPED_WORDS, flush=True)
+    print(words, flush=True)
     timer = threading.Timer(EXIT_GRACE_S, lambda: os._exit(128 + signum))
     timer.daemon = True
     timer.start()

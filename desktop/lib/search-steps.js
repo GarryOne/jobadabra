@@ -26,6 +26,9 @@ export const searchTrigger = settings => (settings.lastSearchAt ? 'you' : 'first
 export const SCOUT_SHARE_S = 45;   // the employer finder's seconds at the press's end, when it is due
 const STEP_MIN_S = 20;             // fewer seconds left: the step waits for the next search (an engine step needs a few to start)
 
+// Why (27 Oct 2026, Gitar on #2285): the SIGTERM handler writes the row (a Notion call) and may wait EXIT_GRACE_S (3 s); the stop starts this long before 180 s
+// so the step is gone by the press's end.
+const STOP_MARGIN_S = 5;
 const clockText = s => `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
 
 export async function searchSteps(storage, onLine, mode, trigger = 'you', exec = run, {employers = false, now = Date.now} = {}) {
@@ -39,7 +42,7 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   // Design (27 Oct 2026): one owner of the hard end. The engine's clock (src/time_budget.py) is only asked by the stages; this ends any step at the
   // press's 180 s whether or not it asked. SIGTERM, so the step closes its row; what it saved per item is kept, the rest waits (the next search reads it).
   // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180.
-  const step = (args, what) => exec(storage, args, onLine, env, {stopAfterMs: Math.max(1, SEARCH_BUDGET_S * 1000 - (now() - pressAt))}).then(done => {
+  const step = (args, what) => exec(storage, args, onLine, env, {stopAfterMs: Math.max(1, (SEARCH_BUDGET_S - STOP_MARGIN_S) * 1000 - (now() - pressAt))}).then(done => {
     if (done.endedByTime) { onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
     return done;
   });

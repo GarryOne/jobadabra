@@ -90,7 +90,7 @@ test('every step is ended at the press\'s 180 s, whatever the engine does with i
     return {code: 0, result: {}, endedByTime: args[1] === 'daily'};
   }, {now: () => clock});
   assert.deepEqual(seen.map(s => s.step), ['discover', 'daily', 'scout']);
-  assert.equal(seen[0].stopAfterMs, 180000, 'discover may run until the press\'s end');
-  assert.equal(seen[1].stopAfterMs, 130000, 'daily has what is left: 180 s minus the 50 s gone');
+  assert.equal(seen[0].stopAfterMs, 175000, 'discover may run until the press\'s end, less the stop margin');
+  assert.equal(seen[1].stopAfterMs, 125000, 'daily has what is left: 180 s minus the 5 s stop margin and the 50 s gone');
   assert.match(lines.join('\n'), /^⏱ Time is up \(.*\) for the search: what it has not reached waits for the next search$/m);
 });

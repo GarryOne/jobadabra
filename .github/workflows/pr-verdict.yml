@@ -19,6 +19,7 @@ on:
       - 'Proof · LibreOffice add-on on Mac and Windows'
       - 'CI · Page cases (all cases, real extension, Linux)'
       - 'CI · Ready to send image'
+      - 'CI · Search check (6 personas)'
       - 'CI · Tests · desktop (Windows)'
       - 'CI · Tests · desktop'
       - 'CI · Tests · python'

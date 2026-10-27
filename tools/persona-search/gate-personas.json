@@ -1,0 +1,53 @@
+{
+ "_from": "GarryOne/jobadabra-benchmarks search-bench/personas.json (e14f9a1, seed search-2026-10-27), personas 1-6: the search round the owner reviewed on 27 Oct 2026. Fictional; the CV comes from draws.json (draw.cv).",
+ "personas": [
+  {
+   "family": "driver",
+   "title": "Truck Driver (Class CE)",
+   "kind": "non-tech",
+   "city": "Sofia",
+   "country": "Bulgaria",
+   "language": "Bulgarian"
+  },
+  {
+   "family": "hr",
+   "title": "HR Generalist",
+   "kind": "non-tech",
+   "city": "Cluj-Napoca",
+   "country": "Romania",
+   "language": "Romanian"
+  },
+  {
+   "family": "carpenter",
+   "title": "Carpenter",
+   "kind": "non-tech",
+   "city": "Brussels",
+   "country": "Belgium",
+   "language": "French"
+  },
+  {
+   "family": "warehouse",
+   "title": "Warehouse Operator",
+   "kind": "non-tech",
+   "city": "Zurich",
+   "country": "Switzerland",
+   "language": "German"
+  },
+  {
+   "family": "chef",
+   "title": "Chef de Partie",
+   "kind": "non-tech",
+   "city": "Krakow",
+   "country": "Poland",
+   "language": "Polish"
+  },
+  {
+   "family": "marketing",
+   "title": "Digital Marketing Manager",
+   "kind": "tech",
+   "city": "Zagreb",
+   "country": "Croatia",
+   "language": "Croatian"
+  }
+ ]
+}

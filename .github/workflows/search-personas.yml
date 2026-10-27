@@ -1,0 +1,216 @@
+name: CI · Search check (6 personas)
+# Every PR that changes search: 6 fictional job seekers each press Find jobs once on a fresh install; red when one finds fewer right jobs than the lowest
+# of main's last 3 runs, or a press runs past 3 minutes (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate, for a profile,
+# for a speed perspective.. We break other use-cases."; his answers on the sketch: here with our own tools, all 6 in parallel, right role + place by a
+# blind judge, red below main's range). Each merge to main that touches these paths runs it again: main's numbers are the floor.
+# Every AI step runs on Haiku 5.5 through Claude Code on the owner's plan (CLAUDE_CODE_OAUTH_TOKEN), never an API key: $0.
+# Tools: tools/persona-search/gate.py (cv, result, compare), gate_judge.py (the blind judge), run.mjs (the press). Guard: tests/test_search_personas_gate.py.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/daily_search.py'
+      - 'src/daily_args.py'
+      - 'src/daily_modes.py'
+      - 'src/first_jobs.py'
+      - 'src/time_budget.py'
+      - 'src/run_counts.py'
+      - 'src/places.py'
+      - 'src/geo.py'
+      - 'src/regions.py'
+      - 'src/pool_served.py'
+      - 'src/source_rank.py'
+      - 'src/job_rank.py'
+      - 'src/role_kinds.py'
+      - 'src/target_roles.py'
+      - 'src/scout*.py'
+      - 'src/sources/**'
+      - 'src/ai/board_ideas.py'
+      - 'src/ai/batch_scope.py'
+      - 'src/ai/engine.py'
+      - 'src/ai/few_jobs.py'
+      - 'src/ai/locations.py'
+      - 'src/ai/place_triage.py'
+      - 'src/ai/role_ideas.py'
+      - 'src/ai/score*.py'
+      - 'src/ai/scout_ideas.py'
+      - 'src/ai/slots.py'
+      - 'src/ai/title_triage.py'
+      - 'src/ai/providers/**'
+      - 'tools/persona-search/**'
+      - '.github/workflows/search-personas.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/daily_search.py'
+      - 'src/daily_args.py'
+      - 'src/daily_modes.py'
+      - 'src/first_jobs.py'
+      - 'src/time_budget.py'
+      - 'src/run_counts.py'
+      - 'src/places.py'
+      - 'src/geo.py'
+      - 'src/regions.py'
+      - 'src/pool_served.py'
+      - 'src/source_rank.py'
+      - 'src/job_rank.py'
+      - 'src/role_kinds.py'
+      - 'src/target_roles.py'
+      - 'src/scout*.py'
+      - 'src/sources/**'
+      - 'src/ai/board_ideas.py'
+      - 'src/ai/batch_scope.py'
+      - 'src/ai/engine.py'
+      - 'src/ai/few_jobs.py'
+      - 'src/ai/locations.py'
+      - 'src/ai/place_triage.py'
+      - 'src/ai/role_ideas.py'
+      - 'src/ai/score*.py'
+      - 'src/ai/scout_ideas.py'
+      - 'src/ai/slots.py'
+      - 'src/ai/title_triage.py'
+      - 'src/ai/providers/**'
+      - 'tools/persona-search/**'
+      - '.github/workflows/search-personas.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read         # main's last runs (the floor), and the commit's runs and jobs for the PR's verdict
+  pull-requests: read
+  statuses: write       # the PR's "All checks passed"
+
+concurrency:   # a PR's newer push replaces its older run; each merge to main keeps its own run (its numbers are the next floor)
+  group: search-personas-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLAUDE_CODE_VERSION: 2.1.311
+  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5   # Why (owner, 27 Oct 2026): every AI step on Haiku 5.5 on his plan, $0; tests/test_search_personas_gate.py
+
+jobs:
+  persona:
+    name: Persona ${{ matrix.persona }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        persona: [1, 2, 3, 4, 5, 6]   # Why (owner, 27 Oct 2026, "All 6 in parallel"): a PR sees every case; 12 Claude processes at once on his plan
+    env:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    steps:
+      - name: The plan's token is there
+        id: token
+        run: |
+          mkdir -p out
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Why (27 Oct 2026): until the owner sets the secret (`claude setup-token`; a fork's PR never gets it) the check says "not measured" on the PR, never a green that looks measured
+          echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set: the search check is not measured"
+          printf '{"persona": %s, "not_measured": "CLAUDE_CODE_OAUTH_TOKEN is not set"}\n' "${{ matrix.persona }}" > out/result.json
+      - uses: actions/checkout@v5
+        if: steps.token.outputs.ok == 'yes'
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.ok == 'yes'
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v6
+        if: steps.token.outputs.ok == 'yes'
+        with: {python-version: '3.12'}
+      - name: The engine, the app's libraries, a browser and Claude Code (pinned)
+        if: steps.token.outputs.ok == 'yes'
+        run: |
+          pip install --quiet -r requirements.txt
+          (cd desktop && npm ci)
+          (cd desktop/e2e && (npm ci || npm install) && npx playwright-core install --with-deps chromium)
+          npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+      - name: The persona's fictional CV, then one Find jobs press (Haiku 5.5 for every step)
+        if: steps.token.outputs.ok == 'yes'
+        run: |
+          set -o pipefail
+          python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
+          env -u ANTHROPIC_API_KEY JOB_PILOTTO_NO_DOTENV=1 node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --fresh --tag gate 2>&1 | tee out/run.log || true
+          grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
+          python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json
+      - name: The blind judge (right role, right place; Sonnet on the plan)
+        if: steps.token.outputs.ok == 'yes'
+        run: |
+          set -o pipefail
+          env -u ANTHROPIC_API_KEY python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json out/judged.json 2>&1 | tee out/judge.log
+      - name: The persona's numbers
+        if: always() && steps.token.outputs.ok == 'yes'
+        run: python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: search-personas-p${{ matrix.persona }}
+          retention-days: 30
+          path: |
+            out/result.json
+            out/judged.json
+            out/run.log
+            out/judge.log
+            out/draw/presses.jsonl
+            out/draw/run-*.log
+
+  compare:
+    name: Search check
+    needs: persona
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      statuses: write
+      pull-requests: write   # the table as one comment on the PR, edited on each push
+    steps:
+      - uses: actions/checkout@v5
+        with: {persist-credentials: false}
+      - uses: actions/download-artifact@v7
+        with: {pattern: 'search-personas-p*', path: results}
+      - name: Main's last 3 runs (the floor)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p main
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow search-personas.yml --branch main --event push --status completed --limit 10 \
+                        --json databaseId --jq '.[].databaseId'); do
+            [ "$id" = "$GITHUB_RUN_ID" ] && continue
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -n search-personas-result -D "main/$id" 2>/dev/null || continue
+            ls main | wc -l | grep -qx 3 && break
+          done
+          echo "main runs: $(ls main | tr '\n' ' ')"
+      - name: Compare with main
+        id: compare
+        run: |
+          set +e
+          mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
+          python3 tools/persona-search/gate.py compare results result "${mains[@]}"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat result/table.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with: {name: search-personas-result, path: result/verdict.json, retention-days: 90}
+      - name: The table on the PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" -R "$GITHUB_REPOSITORY" --body-file result/table.md --edit-last --create-if-none
+      - name: Red when a persona is below main's range or a press is over 3 minutes
+        env:
+          CODE: ${{ steps.compare.outputs.code }}
+        run: test "$CODE" = 0
+      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
+      - name: Write the PR's verdict
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
+          py=python3; "$py" -c 1 2>/dev/null || py=python
+          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"

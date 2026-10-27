@@ -28,6 +28,7 @@ CLASSIFIED = {
     'E2E · Bisect a red main suite': 'ignored: started by e2e.yml after a red main suite (gate G2b); it bisects, it never runs on a push to main',
     'E2E · Weekly root causes': 'ignored: a Monday report (gate G6); it reads runs and writes one issue, never runs on a push to main',
     'CI · E2E steps after a merge': 'ignored: it only plans and starts e2e.yml on main; that run\'s red is filed on the merged PR and counted by the beta gate (tools/main_e2e_state.py), not a block on every landing',
+    'CI · Search check (6 personas)': 'ignored: live public job sites; its main runs only record the floor that the next search PR is compared with (owner, 27 Oct 2026), so their noise never blocks a landing',
     'CI · E2E suites for a PR': 'ignored: runs on pull requests only (on: paths:), never on main; its red blocks the PR through All checks passed',
     'CI · Hosted Always on e2e': 'ignored: pull requests that touch the hosted code, and nightly; never on a push to main',
     'CI · Harness tests': 'ignored: pull requests that change the harness only (on: paths:)',

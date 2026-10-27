@@ -14,7 +14,7 @@ import time
 
 from ..paths import DATA
 from .models import SMALL_MODEL
-from . import batch_scope, providers
+from . import batch_scope, providers, slots
 from .providers.contract import detail, reason
 
 MODEL = SMALL_MODEL
@@ -161,7 +161,7 @@ def decide(locations, search, client=None):
             ticker.tick(sorted_[0])
     began = time.monotonic()
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
-        list(pool.map(one, batches))
+        list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     rights = words.get('work_rights') or []
     if countries and rights:
         try:
@@ -253,7 +253,7 @@ def vague(locations, search, client=None):
     began = time.monotonic()
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
-        list(pool.map(one, batches))
+        list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     budget.record('place_vague', time.monotonic() - began, -(-done[0] // (VAGUE_BATCH * max(1, engine.PARALLEL))))
     _save(key, decided)
     found = [loc for loc in ask if decided.get(loc) == 'out:vague']
@@ -343,7 +343,7 @@ def read(jobs, search, client=None):
     began = time.monotonic()
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
-        list(pool.map(one, batches))
+        list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     budget.record('place_reading', time.monotonic() - began, -(-done[0] // (READ_BATCH * max(1, engine.PARALLEL))))
     with LOCK:
         data = _load_read()

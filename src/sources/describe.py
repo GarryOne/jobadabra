@@ -18,6 +18,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 from .. import pool_served
 from . import ats, boards, host_pace, read_routes
+from ..ai import slots
 from .careers_parse import registrable
 
 SMARTRECRUITERS = re.compile(r'jobs\.smartrecruiters\.com/([^/?#]+)/(\d+)')
@@ -220,7 +221,7 @@ def backfill(db, limit=20, days=14, fetcher=fetch, now=None):
             return item, '', error
     filled = failed = gone = empty = 0
     with ThreadPoolExecutor(max_workers=4) as pool:
-        results = list(pool.map(one, todo))
+        results = list(pool.map(slots.carry(one), todo))
     for (job_id, url), text, error in results:
         if isinstance(error, host_pace.Busy):
             waiting_at[host(url)] += 1   # tried again in a later run, at the pace the site asked for

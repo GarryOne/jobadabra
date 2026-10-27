@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 from .. import paths as _paths  # noqa: F401 (import side effect: loads .env before getenv below)
 from .. import run_counts, store
-from . import cost, engine, hints, locations, schema_notes, score_agree, score_bands, score_not_a_job, score_search
+from . import cost, engine, hints, locations, schema_notes, score_agree, score_bands, score_not_a_job, score_search, slots
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 
@@ -424,7 +424,7 @@ def run(db, candidates, profile, model, max_jobs, client=None, workers=5, stats=
         from ..progress import Ticker
         ticker, done = Ticker('Scoring jobs against your Profile', len(todo)), 0
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(one, job): job for job in todo}
+            futures = {pool.submit(slots.carry(one), job): job for job in todo}
             for future in as_completed(futures):
                 job = futures[future]
                 done += 1

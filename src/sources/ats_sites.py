@@ -111,7 +111,7 @@ def umantis(slug):
                     bool(job and job['remote']))
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=4) as pool:
-        return list(pool.map(one, found[:40]))
+        return list(pool.map(slots.carry(one), found[:40]))
 
 
 def careers(slug):
@@ -185,4 +185,5 @@ def netflix(slug='netflix'):
 
 from . import ats  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)
 from . import host_pace  # noqa: E402
+from ..ai import slots  # noqa: E402
 from .ats import _fixture, _job, plain, USER_AGENT, TIMEOUT  # noqa: E402  (at the end: ats imports this file back, so importing this file first works too)

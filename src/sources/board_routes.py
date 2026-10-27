@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 from . import board_state, careers, host_pace
-from ..ai import page_words
+from ..ai import page_words, slots
 from .careers_parse import JOB_ID, MAX_JOB_PAGES, jsonld_jobs
 
 MAX_SITEMAPS = 3      # sitemaps read per board
@@ -139,7 +139,7 @@ def _sitemap_jobs(url, fetch, board, terms):
             refused.append(link)
             return []
     with ThreadPoolExecutor(max_workers=6) as pool:
-        found = [job for result in pool.map(one, pages[:MAX_JOB_PAGES]) for job in result]
+        found = [job for result in pool.map(slots.carry(one), pages[:MAX_JOB_PAGES]) for job in result]
     if refused:
         raise Stop(refused[0])
     from .aggregators import _job

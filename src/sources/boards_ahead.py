@@ -6,6 +6,8 @@ Tests: tests/test_boards_ahead.py."""
 import os
 from concurrent.futures import ThreadPoolExecutor, wait as wait_for
 
+from ..ai import slots
+
 NAME = 'Job boards found'   # aggregators.sources' name for found_boards.read
 
 
@@ -17,7 +19,7 @@ class Ahead:
             with batch_scope.reader('boards'):
                 return read(search)
         self.pool = ThreadPoolExecutor(max_workers=1)
-        self.future = self.pool.submit(run)
+        self.future = self.pool.submit(slots.carry(run))
         self.found = self.matched = None
         self.shown = False
 

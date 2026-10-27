@@ -3,14 +3,15 @@
 # failed; once per red check, it keeps watching), `ship: GREEN #n` (every check passed; once per green), `ship: MERGED #n <sha>`, `ship: CLOSED #n (unmerged)`
 # or `ship: WATCH ENDED #n (still open)` after the cap. `ship: CONFLICT #n` (GitHub says the PR cannot merge into main; once per conflict, UNKNOWN is never reported) is followed at once by
 # tools/pr-conflict-fix.sh, which rebases the stacked-parent case and logs `ship: CONFLICT FIXED #n (stacked parent #m)`; a cleared conflict re-arms GREEN. No AI, only gh.
-#   tools/ship-watch.sh <n> <log> <pidfile>      SHIP_WATCH_FIX=<script> the fixer (default: next to this file)   SHIP_WATCH_POLL=<s> between looks (default 60)   SHIP_WATCH_CAP=<s> give up after (default 172800 = 48 h)
+#   tools/ship-watch.sh <n> <log> <pidfile>      SHIP_WATCH_FIX=<script> the fixer (default: next to this file)   SHIP_WATCH_POLL=<s> between looks (default 120)   SHIP_WATCH_CAP=<s> give up after (default 172800 = 48 h)
 # `ship: COMMENT #n <owner|bot|other> <comment|review-<state>|line> <url>` (27 Oct 2026): once per new comment or review by the owner, a review bot or anyone else, never a session's own; the ids already told live in <pidfile>.comments,
 # so a restart or a second ship repeats none. Costs one extra gh call per look (the line comments; the rest rides on the `gh pr view`). Guard: tests/test_pr_comments.py.
 # Started detached by tools/ship.sh when the PR opens (18 Oct 2026: #1321 sat red for hours because the watcher began only after REVIEW); a second ship of the same branch replaces the old watcher through the pid file (18 Oct 2026: the owner merges by hand and
 # sessions only learned of it when told). Guard: tests/test_ship_watch.py, tests/test_pr_conflict_fix.py.
 set -u
 n="${1:?usage: ship-watch.sh <n> <log> <pidfile>}"; log="${2:?}"; pidfile="${3:?}"
-poll="${SHIP_WATCH_POLL:-60}"; cap="${SHIP_WATCH_CAP:-172800}"
+# Why (27 Oct 2026, owner's GraphQL limit ran out across ~8 sessions and every watcher went blind): a look every 2 min, and a refused look waits twice as long each time, up to SHIP_WATCH_BACKOFF_MAX.
+poll="${SHIP_WATCH_POLL:-120}"; cap="${SHIP_WATCH_CAP:-172800}"; backoff_max="${SHIP_WATCH_BACKOFF_MAX:-900}"; backoff=0
 old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
@@ -69,5 +70,6 @@ while :; do
     else green=""; fi
   fi
   [ "$waited" -lt "$cap" ] || { say "WATCH ENDED #$n (still open)"; exit 0; }
-  sleep "$poll"; waited=$((waited + poll + 1))
+  if [ -n "$view" ]; then backoff=0; else backoff=$(( backoff ? backoff * 2 : (poll > 0 ? poll : 1) * 2 )); [ "$backoff" -le "$backoff_max" ] || backoff="$backoff_max"; fi
+  pause=$(( backoff ? backoff : poll )); sleep "$pause"; waited=$((waited + pause + 1))
 done

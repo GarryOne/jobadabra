@@ -17,7 +17,7 @@ cwd="$(jqr '.cwd // ""')"; transcript="$(jqr '.transcript_path // ""')"; event="
 [ -n "$cwd" ] && [ -d "$cwd" ] || exit 0
 common="$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || exit 0
 dir="${PR_RED_DIR:-$common/pr-red}"; mkdir -p "$dir" 2>/dev/null || exit 0
-ttl="${PR_RED_TTL:-60}"; wait_tenths="${PR_RED_WAIT:-20}"
+ttl="${PR_RED_TTL:-180}"; wait_tenths="${PR_RED_WAIT:-20}"   # Why (27 Oct 2026): every prompt of ~8 sessions asked GitHub each minute; the owner's GraphQL limit ran out
 
 dirs=("$cwd")
 if [ -f "$transcript" ]; then

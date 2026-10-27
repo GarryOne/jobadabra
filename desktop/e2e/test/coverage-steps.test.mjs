@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {cssDeltaEntries, pythonCoverage, pythonSteps, SETUP, takeSetup, takeStep, WHOLE} from '../lib/coverage.mjs';
-import {hunksFromDiff, mergeMap, stepNamesFor, steplessSuites, stepsCovering, stillWhole} from '../lib/coverage-pick.mjs';
+import {hunksFromDiff, mergeMap, stepNamesFor, steplessSuites, stepsCovering, stillWhole, watchedFiles} from '../lib/coverage-pick.mjs';
 
 const lines = (...ranges) => ({loaded: true, lines: ranges});
 const MAP = {suites: {
@@ -144,4 +144,26 @@ test('a file a suite watches runs it whole only until the step map has recorded 
   assert.deepEqual(stillWhole(['src/ai/score.py', 'src/ai/new.py'], pointsAt, PY), ['quality'], 'a file no run recorded');
   assert.deepEqual(stillWhole(['desktop/e2e/suites/quality.mjs'], pointsAt, PY), ['quality'], 'its own file');
   assert.deepEqual(stillWhole(['src/ai/score.py'], pointsAt, {}), ['quality'], 'no map yet: as before');
+});
+
+// #2194 changed src/ai/score.py:268 and :285 on 27 Oct 2026: both were "shared code" (more than MAX_USERS suites ran them), so failureschannels and settings ran
+// them, and quality, the one suite that judges scores, did not run on main. Every exact file a suite watches: a shared line in it still runs that suite.
+test('a changed line in a file a suite watches runs that suite, even when many suites ran the line (every suite\'s every watched file)', async () => {
+  const {suiteFacts} = await import('../plan-run.mjs');
+  const watched = watchedFiles((await suiteFacts()).watches);
+  assert.ok(watched.quality?.includes('src/ai/score.py'), 'quality watches score.py');
+  assert.deepEqual(watchedFiles({wander: ['desktop/lib/'], quality: ['src/ai/score.py', 'desktop/e2e/fixtures/golden/']}), {wander: [], quality: ['src/ai/score.py']}, 'a folder keeps the shared rule');
+  const others = ['activity', 'apply', 'failureschannels', 'jobs', 'settings'];
+  for (const [suite, files] of Object.entries(watched)) for (const file of files) {
+    const ran = {[file]: lines([1, 50])};
+    const entry = {sha: 'S', files: ran, steps: {'the step that ran it': ran, [SETUP]: {}}};
+    const map = {suites: {...Object.fromEntries(others.filter(name => name !== suite).map(name => [name, entry])), [suite]: entry}};
+    const picked = stepsCovering(map, {S: {[file]: [[20, 20]]}}, {watched});
+    assert.deepEqual(picked[suite]?.steps, ['the step that ran it'], `${suite} watches ${file}: a shared line in it runs ${suite}'s step`);
+    const atImport = {suites: {...map.suites, [suite]: {sha: 'S', files: ran, steps: {[WHOLE]: ran}}}};
+    assert.equal(stepsCovering(atImport, {S: {[file]: [[20, 20]]}}, {watched})[suite]?.whole, true, `${suite} watches ${file}: a line run at import runs ${suite} whole`);
+    const unrun = stepsCovering(map, {S: {[file]: [[90, 90]]}}, {watched});
+    assert.equal(unrun[suite]?.whole, true, `${suite} watches ${file}: a line no suite ran runs ${suite} whole`);
+  }
+  assert.deepEqual(Object.keys(stepsCovering({suites: Object.fromEntries([...others, 'quality'].map(name => [name, {sha: 'S', files: {'desktop/lib/server.js': lines([1, 50])}, steps: {'x': {'desktop/lib/server.js': lines([1, 50])}}}]))}, {S: {'desktop/lib/server.js': [[20, 20]]}}, {watched})), ['settings'], 'a file nobody watches: still one suite');
 });

@@ -80,7 +80,8 @@ export function missingCase(changes, addedTo, messages, registry) {
 }
 
 // The tools that build and ask the live sets: a change to one re-asks every live set, since it can change every answer (27 Oct 2026: #2259 moved the asker to an API key and no set was asked).
-export const ASKERS = ['tools/prompt-cases-live.mjs', 'tools/free-ai-eval-claude.mjs', 'tools/free-ai-eval.mjs', 'tools/free-ai-form-cases.mjs'];
+export const ASKERS = ['tools/prompt-cases-live.mjs', 'tools/free-ai-eval-claude.mjs', 'tools/free-ai-eval.mjs', 'tools/free-ai-form-cases.mjs',
+  'tools/prompt-cases.mjs', '.github/workflows/prompt-cases.yml'];   // gitar on #2259: the workflow pins Claude Code and sets the key and caps; prompt-cases.mjs picks the sets
 
 // The live sets a push reaches: a changed prompt of the set, a changed case file of it, or a changed asker.
 export function liveSets(changes, changedFiles, registry) {

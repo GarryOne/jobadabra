@@ -14,6 +14,7 @@ import {lastCost, usageAfter, usageBefore} from '../ai-engine-view.js';
 import {init as letterFallback} from './letter-fallback.js';
 
 let saved = {state: 'none', text: ''};   // the letter as stored: the buttons and the view follow what differs from it
+let draftPending = null; // one generation across clicks and wizard navigation; never spend twice for the same in-flight draft
 let writing = false;                     // "Write my own" pressed: the editor stays open on an empty letter
 let isReading = false;
 let draftSource = null;                 // the typed letter as a draft on Profile's one save bar
@@ -85,7 +86,7 @@ async function act(button, working, run) {
   all.forEach(each => { each.disabled = true; });
   button.classList.add('busy');
   message('letter-message', working);
-  const result = await run();
+  const result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
   button.classList.remove('busy');
   if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); } else buttons();
   $('letter-draft').disabled = false;
@@ -94,13 +95,17 @@ async function act(button, working, run) {
 }
 
 async function draft(button) {
+  if (draftPending) return draftPending;
   const text = $('letter-text').value.trim();
   if (text && text !== (saved.text || '').trim() && !confirm('Replace the text you changed with a new draft?')) return;
-  const result = await act(button, 'Writing your letter…', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()));
-  if (result.ok) $('letter-feedback').value = '';
-  const used = result.ok ? usageAfter(result) : '';
-  message('letter-message', result.ok ? `Here is a draft. Read it, change what you like, then approve.${used ? ` · ${used}` : ''}` : result.error, result.ok ? 'ok' : 'error');
-  if (result.ok) hintAfter($('letter-message'), shared.state, openAi);   // Free AI wrote it: stronger writing with an own key
+  draftPending = (async () => {
+    const result = await act(button, 'Writing your letter…', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()));
+    if (result.ok) $('letter-feedback').value = '';
+    const used = result.ok ? usageAfter(result) : '';
+    message('letter-message', result.ok ? `Here is a draft. Read it, change what you like, then approve.${used ? ` · ${used}` : ''}` : result.error, result.ok ? 'ok' : 'error');
+    if (result.ok) hintAfter($('letter-message'), shared.state, openAi);   // Free AI wrote it: stronger writing with an own key
+  })();
+  try { return await draftPending; } finally { draftPending = null; }
 }
 
 /** Setup starts the existing drafting action only for an empty letter; saved drafts, approved text and edits are never replaced. */

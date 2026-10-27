@@ -1,4 +1,5 @@
 // Fictional consent controls exercise the real page fill, trusted menu click and required-field read-back without accounts or network.
+/* global window, document */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

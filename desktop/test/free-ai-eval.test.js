@@ -147,8 +147,12 @@ test('answerProblems checks use when a case wants it: two saved facts that disag
 test('every form case\'s expected answer rests on lines the demo profile or answers still say', async () => {
   const fs = await import('node:fs');
   const {FORMS} = await import('../../tools/free-ai-form-list.mjs');
-  const demo = ['profile.md', 'answers.md'].map(name => fs.readFileSync(new URL(`../demo/${name}`, import.meta.url), 'utf8')).join('\n');
+  const {APPLICANTS} = await import('../../tools/free-ai-form-applicants.mjs');
+  const demoText = ['profile.md', 'answers.md'].map(name => fs.readFileSync(new URL(`../demo/${name}`, import.meta.url), 'utf8')).join('\n');
   for (const form of FORMS) {
+    // A case with its own applicant (tools/free-ai-form-applicants.mjs) rests on that applicant's lines, never the demo's.
+    if (form.applicant) assert.ok(APPLICANTS[form.applicant], `${form.id}: no applicant "${form.applicant}" in tools/free-ai-form-applicants.mjs`);
+    const demo = form.applicant ? [APPLICANTS[form.applicant].profile, APPLICANTS[form.applicant].answers].join('\n') : demoText;
     const typed = Object.values(form.expect).some(want => want.value && !(want.value.length === 1 && /decline|prefer not|do not wish/i.test(want.value[0])) && !want.empty);
     if (typed) assert.ok(form.rests?.length, `${form.id}: expects a saved answer; name the demo lines it rests on (rests)`);
     for (const line of form.rests || []) assert.ok(demo.includes(line), `${form.id}: the demo no longer says "${line}"; update the case's expected answer`);

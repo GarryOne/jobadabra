@@ -173,6 +173,24 @@ class Workflows(unittest.TestCase):
         self.assertIn("E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}", win)
         self.assertRegex(win, r"Take the suite's lock[^\n]*\n        if: inputs\.pr_steps == ''", 'a PR check on SQLite needs no Notion page: it never waits for the lock on a runner')
 
+    def test_the_budget_counts_running_time_not_the_wait_for_a_runner(self):
+        # Owner, 27 Oct 2026: "Count running time only". #2215: 12.4 min in all, its jobs waited for runners most of it; a run of 11 min stays red.
+        slow = [run('CI · Pull request', at='2026-10-27T05:00:00Z', end='2026-10-27T05:12:24Z')]
+        queued = [('2026-10-27T05:03:00Z', '2026-10-27T05:05:30Z'), ('2026-10-27T05:04:00Z', '2026-10-27T05:06:00Z'), ('2026-10-27T05:08:00Z', '2026-10-27T05:12:24Z')]
+        state, why, *_ = pv.verdict(slow, files=['.github/workflows/e2e.yml'], spans=queued)
+        self.assertEqual(state, 'success', why)
+        self.assertIn('7.4 min running + 5.0 min waiting for runners', why)
+        long = [('2026-10-27T05:00:30Z', '2026-10-27T05:11:30Z')]
+        state, why, *_ = pv.verdict(slow, files=['.github/workflows/e2e.yml'], spans=long)
+        self.assertEqual(state, 'failure')
+        self.assertIn('checks ran 11.0 min running', why)
+        self.assertEqual(pv.verdict(slow, files=['.github/workflows/e2e.yml'])[0], 'failure', 'no job times read: the wall time, as before')
+
+    def test_running_minutes_count_parallel_jobs_once(self):
+        self.assertAlmostEqual(pv.running_minutes([('2026-10-27T05:00:00Z', '2026-10-27T05:04:00Z'), ('2026-10-27T05:01:00Z', '2026-10-27T05:03:00Z'),
+                                                   ('2026-10-27T05:10:00Z', '2026-10-27T05:11:00Z'), (None, None)]), 5.0)
+        self.assertIsNone(pv.running_minutes([(None, None)]))
+
 
 def job(id, name, status='completed', conclusion='success', steps=None, runner=''):
     return {'id': id, 'name': name, 'status': status, 'conclusion': conclusion if status == 'completed' else None, 'runner_name': runner,

@@ -11,8 +11,11 @@ slow and inefficient method of checking PRs?"; on #1992 two polling jobs took 43
 Counted: the runs of the commit started by the pull request, and the e2e run pr-suites.yml started for it (title "E2E for PR · ..."): a red suite blocks the merge
 (gate G1a; the owner rejected report only, 26 Oct 2026). The newest run of each workflow
 decides (a description edit re-runs the gate; a re-run replaces a red). Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
-Budget (owner's yes, 26 Oct 2026): a PR that changes how CI runs PRs (ci_change) and whose checks took over BUDGET_MIN goes red, unless a commit of it says
+Budget (owner's yes, 26 Oct 2026): a PR that changes how CI runs PRs (ci_change) and whose checks RAN over BUDGET_MIN goes red, unless a commit of it says
 "CI-budget: <why>". Each slowdown so far (781637a, bc585e3, a7a6a9f, 7083bb7) landed without saying a PR's time.
+Running time, not queue (owner, 27 Oct 2026: "Count running time only": "Red only when the PR's own jobs run over 10 min; queue wait is still shown on the PR"):
+the wall-clock minutes while at least one of the PR's jobs runs (running_minutes; parallel jobs count once, a stretch where every job waits for a runner not at
+all). #2215 took 12.4 min, of which its jobs ran 7.x and waited the rest; summed job time (12.0) would punish parallel jobs. The wait stays in the status text.
   tools/pr-verdict.py --repo <owner/repo> --sha <head sha> [--job-status <success|failure|cancelled>] [--dry-run]       Guard: tests/test_pr_verdict.py
 """
 import argparse
@@ -87,9 +90,25 @@ def label(r, running_jobs=()):
     return r['workflowName'].replace('CI · ', '')
 
 
-def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None):
+def running_minutes(spans, now=None):
+    """[(started_at, completed_at or None)] of every job that started -> minutes while at least one ran (overlaps count once). None: no span to read."""
+    now = now or datetime.now(timezone.utc)
+    parts = sorted((_at(start), _at(end) if end else now) for start, end in spans if start)
+    if not parts:
+        return None
+    total, (lo, hi) = 0.0, parts[0]
+    for start, end in parts[1:]:
+        if start > hi:
+            total += (hi - lo).total_seconds(); lo, hi = start, end
+        else:
+            hi = max(hi, end)
+    return (total + (hi - lo).total_seconds()) / 60
+
+
+def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None):
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
-    jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far."""
+    jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
+    spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time."""
     live = counted(runs)
     if not live:
         return None, '', live, [], None
@@ -120,9 +139,21 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
         first = next((r for r, _ in running if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)), running[0][0])
         return 'pending', f'{short(label(r, names) for r, names in running)} running since {since}'[:140], live, [], first.get('databaseId')
     minutes = (max(_at(r['updatedAt']) if r.get('status') == 'completed' else now for r in live) - min(_at(r['createdAt']) for r in live)).total_seconds() / 60
-    if minutes > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
-        return 'failure', f'checks took {minutes:.1f} min, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")', live, finishing, None
-    return 'success', f'{len(live)} workflow(s) green in {minutes:.1f} min', live, finishing, None
+    ran = running_minutes(spans, now) if spans else None
+    took = f'{minutes:.1f} min' if ran is None else f'{ran:.1f} min running + {max(0.0, minutes - ran):.1f} min waiting for runners'
+    if (minutes if ran is None else ran) > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
+        return 'failure', f'checks ran {took}, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")'[:140], live, finishing, None
+    return 'success', f'{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
+
+
+def job_spans(repo, runs):
+    """[(started_at, completed_at)] of every job of the counted runs (one call per run; only for a CI change, the one kind of PR with a budget)."""
+    spans = []
+    for r in counted(runs):
+        for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name}]') or '[]'):
+            if j.get('name') not in REPORT_JOBS:
+                spans.append((j.get('started_at'), j.get('completed_at')))
+    return spans
 
 
 def gh(*args):
@@ -176,7 +207,8 @@ def main():
         if a.job_status and me is None:
             mine = [j for j in jobs.get(int(my_run or 0), []) if j.get('status') != 'completed' and j.get('runner_name') == os.environ.get('RUNNER_NAME')]
             me = mine[0]['id'] if mine else None
-        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status)
+        spans = job_spans(a.repo, runs) if ci_change(files) and not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run) else None
+        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):
             break
         if state != 'settling' and leave_it(finishing, me):

@@ -256,6 +256,24 @@ class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
         for path in ('src/first_jobs.py', 'src/daily_search.py', 'src/sources/**', 'src/ai/providers/**', 'tools/persona-search/**'):
             self.assertIn(path, listed(pr))
 
+    def test_a_change_to_the_three_minute_clock_is_measured_on_its_pr(self):
+        """#2285 changed when every Find jobs step ends and got no persona run: desktop/lib/search-steps.js was not listed. Every engine or app file the
+        3-minute tests import is in the paths (owner rule: Find jobs takes at most 3 min; tests/test_three_minutes*.py, desktop/test/search-steps.test.js)."""
+        import fnmatch
+        on = WORKFLOW.split('\njobs:')[0]
+        listed = re.findall(r"(?m)^      - '([^']+)'", re.search(r'(?ms)^  pull_request:.*?(?=^  push:)', on).group(0))
+        root = Path(__file__).resolve().parent.parent
+        files = set()
+        for test in ('tests/test_three_minutes.py', 'tests/test_three_minutes_resume.py'):
+            for package, names in re.findall(r'(?m)^from (src(?:\.\w+)*) import ([\w, ]+)$', (root / test).read_text()):
+                for name in (n.strip() for n in names.split(',')):
+                    module = f"{package.replace('.', '/')}/{name}.py"
+                    files.add(module if (root / module).exists() else f"{package.replace('.', '/')}.py")
+        files |= {f'desktop/lib/{f}' for f in re.findall(r"from '\.\./lib/([\w.-]+\.js)'", (root / 'desktop/test/search-steps.test.js').read_text())}
+        self.assertGreaterEqual(len(files), 10, f'positive control: the imports are read ({sorted(files)})')
+        missing = sorted(f for f in files if not any(fnmatch.fnmatch(f, pattern.replace('**', '*')) for pattern in listed))
+        self.assertEqual(missing, [], 'a change to these never starts the search check')
+
     def test_mains_numbers_are_what_the_compare_reads_back(self):
         self.assertIn('name: search-personas-result', WORKFLOW)
         self.assertIn('-n search-personas-result', WORKFLOW)

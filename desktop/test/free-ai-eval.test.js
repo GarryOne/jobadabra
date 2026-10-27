@@ -48,6 +48,15 @@ test('the table has one row per model with the rank columns, and says n/a withou
   function await0() { return [{id: 'x', valid: true, schemaOk: true, score: 50, baseline: undefined, usage: {}, ms: 5}]; }
 });
 
+test('--effort asks for that reasoning level; without it the body has none (each model\'s own default)', async () => {
+  const bodies = [];
+  const fetcher = async (url, init) => { bodies.push(JSON.parse(init.body)); return Response.json({choices: []}); };
+  await rest({account: 'a', token: 't', fetcher})(SMALL, {messages: []});
+  await rest({account: 'a', token: 't', effort: 'low', fetcher})(SMALL, {messages: []});
+  assert.equal('reasoning_effort' in bodies[0], false);
+  assert.equal(bodies[1].reasoning_effort, 'low');
+});
+
 test('the REST backend posts the model and the Anthropic-translated input to the account\'s chat route with the bearer token', async () => {
   const seen = [];
   const run = rest({account: 'acc1', token: 'tok', fetcher: async (url, init) => { seen.push({url, init}); return Response.json({choices: []}); }});

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The Free AI quality table (private spec jobadabra-lab:docs/specs/2026-10-16-free-workers-ai.md "Quality"): runs Anthropic-shaped cases through the site's own
 // translation (shared/free-ai-translate.js) on Workers AI models and prints a markdown table: valid JSON, schema, rank against Claude's scores, cost.
-//   node tools/free-ai-eval.mjs --cases <cases.json> [--models small,strong] [--backend rest|mock] [--out table.md]
+//   node tools/free-ai-eval.mjs --cases <cases.json> [--models small,strong] [--backend rest|mock] [--effort low] [--out table.md]
 // Cases (made by tools/free-ai-cases.py, fictional data only): [{id, action, params: <Anthropic request>, baseline?: <Claude's score>}].
 // rest: needs a token with Account > Workers AI > Read + Edit: CF_API_TOKEN or the Keychain item job-pilotto.cloudflare.workers_ai_token; --account <id> names the Cloudflare account the token belongs to, never the production one (its free daily allowance is the live Free AI's). A few hundred calls cost cents.
 import {execFileSync} from 'node:child_process';
@@ -15,9 +15,10 @@ const MODELS = {small: SMALL, strong: STRONG};
 const keychain = name => { try { return execFileSync('security', ['find-generic-password', '-a', 'job-pilotto', '-s', name, '-w'], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim(); } catch { return ''; } };
 
 // The REST backend: Cloudflare's OpenAI-compatible chat route for one model. -> the answer in Workers AI's chat shape.
-export const rest = ({account, token, fetcher = fetch}) => async (model, input) => {
+// effort: the reasoning level to ask for (Workers AI's reasoning_effort: low, medium, high ...); empty = each model's own default (qwen3.8 xhigh, deepseek high, glm-5.3 max).
+export const rest = ({account, token, effort = '', fetcher = fetch}) => async (model, input) => {
   const response = await fetcher(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/v1/chat/completions`, {method: 'POST',
-    headers: {'content-type': 'application/json', authorization: `Bearer ${token}`}, body: JSON.stringify({model, ...input})});
+    headers: {'content-type': 'application/json', authorization: `Bearer ${token}`}, body: JSON.stringify({model, ...input, ...(effort ? {reasoning_effort: effort} : {})})});
   if (!response.ok) throw new Error(`Workers AI ${response.status}: ${(await response.text()).slice(0, 200)}`);
   return response.json();
 };
@@ -105,7 +106,7 @@ async function main(argv) {
     ({account, maxCalls, production} = guardAccount({account: option('account'), 'allow-production': argv.includes('--allow-production'), 'max-calls': option('max-calls')}));
     if (!token) throw new Error('No Workers AI token: set CF_API_TOKEN or the Keychain item job-pilotto.cloudflare.workers_ai_token (one made in the --account account), or use --backend mock.');
     guardCalls(cases.length, cloud.length, maxCalls);
-    const cloudRun = rest({account, token}), subscription = claudeRun();
+    const cloudRun = rest({account, token, effort: option('effort')}), subscription = claudeRun();
     run = (model, input) => (isClaude(model) ? subscription(model, input) : cloudRun(model, input));
   }
   const rows = [], usd = {};

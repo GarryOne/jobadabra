@@ -4,6 +4,8 @@ workflow paths can skip (it would never report and block the PR), no step asks a
 import re
 import shlex
 import unittest
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,7 +52,12 @@ def repo_reads(test, area):
     text = test.read_text(errors='ignore')
     found = set()
     def add(target):
+        # Why (27 Oct 2026): dependency availability probes cannot trigger tracked PR paths, including worktree links into installed packages.
+        if "node_modules" in target.parts:
+            return False
         target = target.resolve()
+        if "node_modules" in target.parts:
+            return False
         if target.exists() and ROOT in target.parents:
             found.add(target)
             return True
@@ -138,6 +145,20 @@ class TheClass(unittest.TestCase):
         self.assertIn('tests/fixtures/audience_cases.json', reads('audience.test.js'), "path.join(dirname, '..', '..', 'tests', ...)")
         self.assertNotIn('tests', reads('plan-promo.test.js'), 'a list of names to skip is not a read')
         self.assertNotIn('README.md', reads('ladder-fingerprint.test.js'), 'file names passed to a function are not a read')
+
+    def test_dependency_probes_are_not_repo_inputs_but_package_manifests_are(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            (root / 'desktop/test').mkdir(parents=True)
+            (root / 'worker/node_modules').mkdir(parents=True)
+            (root / 'dependency-link').symlink_to(root / 'worker/node_modules', target_is_directory=True)
+            (root / 'worker/package.json').write_text('{}')
+            test = root / 'desktop/test/probe.js'
+            test.write_text("new URL('../../worker/node_modules/', import.meta.url); "
+                            "new URL('../../dependency-link/', import.meta.url); "
+                            "new URL('../../worker/package.json', import.meta.url);")
+            with patch(__name__ + '.ROOT', root):
+                self.assertEqual(repo_reads(test, 'desktop'), {root / 'worker/package.json'})
 
     def test_every_file_a_suite_watches_starts_the_pr_suites(self):
         # #2043 (26 Oct 2026) changed src/ai/score.py and enrich.py, which the quality suite watches; pr-suites.yml had no src/ path, so it never started

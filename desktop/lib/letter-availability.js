@@ -7,8 +7,9 @@ import * as cv from './cv.js';
 const gap = (state, reason, action) => ({state, ready: false, reason, action, target: 'letter'});
 
 /** Select text and PDF from one usable record. Tailored wins; base use always requires the person's fallback choice. */
-export function availableLetter(storage, url = '', {given = false} = {}) {
+export function availableLetter(storage, url = '', {given = false, failed = false} = {}) {
   if (given === true) return {status: {state: 'ready', ready: true, source: 'form', reason: '', action: '', target: 'letter'}, text: '', file: null};
+  if (failed === true) return {status: gap('delivery-failed', 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.', 'Open cover letter'), text: '', file: null};
   const base = letters.status(storage), tailored = url ? cv.forUrl(storage, url) : null;
   const job = tailored ? jobLetter.load(storage, tailored.job.code) : null;
   let record = null, file = '', name = '', source = '';

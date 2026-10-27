@@ -56,3 +56,20 @@ test('a form that asks for no letter remains ready while general letter setup is
   assert.equal(document.getElementById('ss-before-letter').hidden, true);
   assert.match(document.getElementById('ss-form-pill').textContent, /Ready to submit/);
 });
+
+
+test('Applying forwards failed delivery and offers the same manual recovery state', async () => {
+  const calls = [];
+  window.pilot.cvOf = async (url, given, failed) => {
+    calls.push({url, given, failed});
+    return {tailored: false, coverLetterStatus: {state: 'delivery-failed', ready: false, reason: 'The form did not keep the cover letter.', action: 'Open cover letter'}};
+  };
+  const url = 'https://example.test/letter-reveal-failed';
+  showFormCard({id: 'fictional', url, kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true, letterAsked: true, letterFailed: true});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(calls, [{url, given: false, failed: true}]);
+  assert.equal(document.getElementById('ss-before-letter').hidden, false);
+  assert.match(document.getElementById('ss-before-letter-sub').textContent, /form did not keep/);
+  assert.equal(document.getElementById('ss-before-letter-btn').textContent, 'Open cover letter');
+  assert.doesNotMatch(document.getElementById('ss-form-pill').textContent, /Ready to submit/);
+});

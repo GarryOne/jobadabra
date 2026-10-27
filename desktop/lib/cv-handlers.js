@@ -43,7 +43,7 @@ export function registerCvAndLettersHandlers(ctx) {
       return {ok: true, ...matchCheck.save(storage, String(code), cv, job, {...result, usd: Math.round((result.usd + cost) * 100) / 100})};
     } catch (error) { return {ok: false, error: error.message}; }
   });
-  ipcMain.handle('cvOf', (_, url, given = false) => ({...cvOf(String(url || '')), coverLetterStatus: availableLetter(storage, String(url || ''), {given: given === true}).status}));   // the session card: tailored for this job already, or being tailored now
+  ipcMain.handle('cvOf', (_, url, given = false, failed = false) => ({...cvOf(String(url || '')), coverLetterStatus: availableLetter(storage, String(url || ''), {given: given === true, failed: failed === true}).status}));   // the session card: tailored for this job already, or being tailored now
   // Every "Tailor my CV" in the window (the session page, where the form panel's "Tailor in Jobadabra" sends the person; Jobs; the job drawer): while it runs the form's panel says
   // "Tailoring in Jobadabra…" (cvOf → the review poll); when it is done, the job's open form starts again so the tailored CV is attached from the start (lib/tailored-restart.js).
   // Why (27 Oct 2026, owner): the panel no longer starts tailoring itself; "the extension is not that smart to adapt on the fly and replace the general CV with the tailored one".

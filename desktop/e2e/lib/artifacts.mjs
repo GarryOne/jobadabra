@@ -40,8 +40,17 @@ export async function writeReplay(ctx, suite, env = process.env) {
 export const failureRecords = (suite, results) => results.filter(result => result.status === 'failed')
   .map(result => ({suite, step: result.name, message: String(result.note || '').slice(0, 600), ...(result.environment ? {environment: true} : {})}));
 
-// suite-failures.json, every run: the failed steps, or an empty list.
-export function writeSuiteFailures(dir, suite, results) {
+// GitHub annotation lines for the failed steps (at most 3), titled "<suite> · <step>" with the step's first line: ci-alert.mjs stepCauses quotes them.
+// Why (27 Oct 2026, 6e): main's quality red alerted "the steps merge e7ab156 touched" while its step said "AI question(s) had no recorded answer" (#2234).
+const escapeData = text => String(text).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+const escapeProperty = text => escapeData(text).replace(/:/g, '%3A').replace(/,/g, '%2C');
+export const annotationLines = records => records.slice(0, 3)
+  .map(record => `::error title=${escapeProperty(`${record.suite} · ${record.step}`)}::${escapeData(String(record.message || '').split('\n')[0].slice(0, 300) || 'failed')}`);
+
+// suite-failures.json, every run: the failed steps, or an empty list; on GitHub also one annotation per failed step.
+export function writeSuiteFailures(dir, suite, results, env = process.env) {
   fs.mkdirSync(dir, {recursive: true});
-  fs.writeFileSync(path.join(dir, 'suite-failures.json'), JSON.stringify(failureRecords(suite, results), null, 2));
+  const records = failureRecords(suite, results);
+  fs.writeFileSync(path.join(dir, 'suite-failures.json'), JSON.stringify(records, null, 2));
+  if (env.GITHUB_ACTIONS === 'true') for (const line of annotationLines(records)) console.log(line);
 }

@@ -1,7 +1,7 @@
 // CI alerts on Telegram (ci-alert.mjs): 🔴 on every failure, 🟢 only on the first success after one, nothing without the secrets, never the token in a line.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {failedJobs, isRepeat, messageOf, previousConclusion, sinceGreen, send} from '../ci-alert.mjs';
+import {failedJobs, isRepeat, messageOf, previousConclusion, sinceGreen, send, stepCauses} from '../ci-alert.mjs';
 
 const env = {GITHUB_WORKFLOW: 'CI · Site replays · all (offline)', GITHUB_SHA: 'abcdef1234', GITHUB_REF_NAME: 'main', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42',
   GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/site-replays.yml@refs/heads/main', GH_TOKEN: 'gh'};
@@ -64,4 +64,16 @@ test('the same failure on the same commit alerts once: a repeat needs a new comm
   assert.equal(await isRepeat({...env, GITHUB_SHA: 'ffff'}, fetcher), false, 'a new commit alerts again');
   jobs[42] = ['plan', 'suite'];
   assert.equal(await isRepeat(env, fetcher), false, 'a new failed job alerts again');
+});
+
+// 27 Oct 2026 (6e): main's quality red said "the steps merge e7ab156 touched"; its step said "3 AI question(s) had no recorded answer" (#2234's prompt change).
+test('the cause quotes each failed job\'s own step annotation ("<suite> · <step>"), not the runner\'s exit line; none found or an error: []', async () => {
+  const fetcher = async url => {
+    if (/runs\/42\/jobs/.test(url)) return {json: async () => ({jobs: [{id: 7, name: 'E2E · quality', conclusion: 'failure'}, {id: 8, name: 'plan', conclusion: 'success'}]})};
+    if (/check-runs\/7\/annotations/.test(url)) return {json: async () => [{title: '', message: 'Process completed with exit code 1.'}, {title: 'First try failed', message: 'the next step decides'},
+      {title: 'quality · a Jobs check on the golden postings', message: '3 AI question(s) had no recorded answer (asked live, not kept)'}]};
+    throw new Error(`unexpected ${url}`);
+  };
+  assert.deepEqual(await stepCauses('42', env, fetcher), ['quality · a Jobs check on the golden postings: 3 AI question(s) had no recorded answer (asked live, not kept)']);
+  assert.deepEqual(await stepCauses('42', env, async () => { throw new Error('down'); }), []);
 });

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {failureRecords, writeFindings, writeSuiteFailures} from '../lib/artifacts.mjs';
+import {annotationLines, failureRecords, writeFindings, writeSuiteFailures} from '../lib/artifacts.mjs';
 
 const dir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-'));
 const results = [{name: 'a step that passed', status: 'passed'}, {name: 'a step that failed', status: 'failed', note: 'x'.repeat(900)}, {name: 'a skipped step', status: 'skipped'}];
@@ -28,4 +28,20 @@ test('suite-failures.json is written every run: the failed steps, or an empty li
   writeSuiteFailures(clean, 'activity', results.filter(result => result.status !== 'failed'));
   assert.equal(JSON.parse(fs.readFileSync(path.join(failed, 'suite-failures.json'), 'utf8')).length, 1);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(clean, 'suite-failures.json'), 'utf8')), []);
+});
+
+test('each failed step is a GitHub annotation "<suite> · <step>" with its first line, escaped, at most 3; only on GitHub', () => {
+  const records = [{suite: 'quality', step: 'golden: a, b', message: '3 AI question(s) had no recorded answer: 50%\nsecond line'}, ...['x', 'y', 'z'].map(step => ({suite: 's', step, message: ''}))];
+  const lines = annotationLines(records);
+  assert.equal(lines.length, 3);
+  assert.equal(lines[0], '::error title=quality · golden%3A a%2C b::3 AI question(s) had no recorded answer: 50%25');
+  assert.equal(lines[1], '::error title=s · x::failed');
+  const printed = [], log = console.log;
+  console.log = line => printed.push(line);
+  try {
+    writeSuiteFailures(dir(), 'quality', [{name: 'a step that failed', status: 'failed', note: 'why'}], {});
+    assert.deepEqual(printed, [], 'not on GitHub: no annotation');
+    writeSuiteFailures(dir(), 'quality', [{name: 'a step that failed', status: 'failed', note: 'why'}], {GITHUB_ACTIONS: 'true'});
+    assert.deepEqual(printed, ['::error title=quality · a step that failed::why']);
+  } finally { console.log = log; }
 });

@@ -37,6 +37,23 @@ export async function failedJobLinks(runId, env = process.env, fetcher = fetch) 
   return (body.jobs || []).filter(job => job.conclusion === 'failure').map(job => ({name: job.name, url: job.html_url}));
 }
 
+/**
+ * The failed steps' own words: per failed job, its first annotation titled "<suite> · <step>" (lib/artifacts.mjs annotationLines). Errors: [] (the caller's cause stays).
+ * @returns {Promise<string[]>} e.g. ['quality · a Jobs check …: 3 AI question(s) had no recorded answer …']
+ */
+export async function stepCauses(runId, env = process.env, fetcher = fetch) {
+  try {
+    const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
+    const out = [];
+    for (const job of (body.jobs || []).filter(item => item.conclusion === 'failure')) {
+      const notes = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/check-runs/${job.id}/annotations?per_page=50`, env, fetcher);
+      const note = (Array.isArray(notes) ? notes : []).find(item => / · /.test(item.title || ''));
+      if (note) out.push(`${note.title}: ${note.message}`);
+    }
+    return out;
+  } catch { return []; }
+}
+
 // The PRs that landed since this workflow's last green run on the branch (a commit "Title (#123)" is one), newest first. -> {prs: [number], more: number}; empty when unknown.
 export async function sinceGreen(env = process.env, fetcher = fetch, shown = 5) {
   const file = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]), repo = `${API(env)}/repos/${env.GITHUB_REPOSITORY}`;
@@ -99,6 +116,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
     const failure = status === 'failure';
     const previous = status === 'success' ? await previousConclusion() : '';
     const since = failure ? await sinceGreen() : undefined, jobs = failure ? await failedJobLinks(process.env.GITHUB_RUN_ID).catch(() => []) : undefined;
-    console.log(await send(messageOf({status, what, next, previous, since, jobs})));
+    // Why (27 Oct 2026): the failed step's own words lead the cause; the caller's words (which job, after which merge) follow as context.
+    const causes = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
+    console.log(await send(messageOf({status, what: causes.length ? `${causes.slice(0, 2).join('; ')} (${what})` : what, next, previous, since, jobs})));
   }
 }

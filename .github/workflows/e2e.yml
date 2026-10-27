@@ -693,7 +693,7 @@ jobs:
         run: |
           if [ "$RESULT" = failure ] || { [ "$RESULT" = cancelled ] && [ -z "$AFTER_MERGE" ]; }; then   # after a merge, a newer merge cancels the waiting job: not a red
             failed=$(gh run view "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(", ")' 2>/dev/null || true)
-            node ci-alert.mjs failure "Failed job: ${failed:-the run (see the link)}${AFTER_MERGE:+ (the steps merge $AFTER_MERGE touched)}" "Open the failed job; the next scheduled run re-checks"
+            node ci-alert.mjs failure "Failed job: ${failed:-the run (see the link)}${AFTER_MERGE:+, after merge $AFTER_MERGE}" "Open the failed job; the next scheduled run re-checks"
           elif [ -z "$AFTER_MERGE" ]; then node ci-alert.mjs success; fi   # a few green steps after a merge never say main is green again
       # A red on main gets an owner (gate G2b, owner's yes 26 Oct 2026): each red suite with no open `red-main` issue is bisected to its breaking PR (e2e-bisect.yml),
       # and the issue of a suite this run passed is closed. Not for a release gate (it tests a release, and its reds are the beta's).

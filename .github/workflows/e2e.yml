@@ -319,6 +319,15 @@ jobs:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
+      # Main cannot read a PR's cache: after a merge, the merged PR's own green answers are laid over main's, so main asks what its PR asked and replays what the PR
+      # was green on (27 Oct 2026: #2180 green on its PR with 0 misses; main restored an older cache, asked 8 questions live and went red). desktop/e2e/pr-answers.mjs.
+      - name: The merged PR's own AI answers (after a merge)
+        if: inputs.after_merge != '' && env.E2E_ANTHROPIC_KEY != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGED: ${{ inputs.after_merge }}
+          KEY: ${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
+        run: node desktop/e2e/pr-answers.mjs "$MERGED" "$KEY" desktop/e2e/.ai-cache
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -420,6 +429,14 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
+        if: success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
+        uses: actions/upload-artifact@v6
+        with:
+          name: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
+          path: desktop/e2e/.ai-cache
+          include-hidden-files: true   # .ai-cache is a hidden folder: without this the artifact is empty
+          retention-days: 7
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6

@@ -11,6 +11,7 @@ import {step as wizardStep} from '../lib/app.mjs';
 import crypto from 'node:crypto';
 import os from 'node:os';
 import {backupNowStep, backupTimerStep, makeBackupFile} from '../lib/backup-steps.mjs';
+import {exportedFileDigests} from '../lib/export-snapshot.mjs';
 
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
 export const stepNeeds = {'AI engine panel': ['every Settings section renders']};
@@ -194,6 +195,11 @@ async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the a
       .catch(async () => { throw new Error(`the export did not finish: "${await page.locator('#data-message').textContent().catch(() => '')}"`); });
   }
   if (!fs.existsSync(file)) throw new Error('Export said done but wrote no file');
+  // Why (#2304): opening Settings can tidy the profile after the initial capture; restore must match the bytes actually exported.
+  const exported = exportedFileDigests(file, before.files);
+  for (const name of FILES) if (before.files[name] !== exported[name])
+    console.log(`export snapshot ${name}: before=${before.files[name]} archived=${exported[name]}`);
+  before.files = exported;
 
   await page.click('[data-settings-go="advanced"]');   // the danger zone is on Advanced
   await page.click('#reset-review');

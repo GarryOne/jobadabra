@@ -87,9 +87,26 @@ export function open(storage, {fetcher, cache} = {}) {
       const t = await writable(name);
       return notion.setBlockText(t.token, block, value, fetcher);
     },
-    async remove(block) {
+    async remove(block, {ifUnchanged = false} = {}) {
       const t = await writable(name);
-      return notion.deleteBlock(t.token, block.id, fetcher);
+      if (!ifUnchanged) return notion.deleteBlock(t.token, block.id, fetcher);
+      const route = `blocks/${block.id}`, read = () => notion.call(t.token, 'GET', route, null, fetcher);
+      const matches = raw => {
+        const current = raw.type === 'table_row' ? (raw.table_row?.cells || []).map(plain) : plain(raw[raw.type]?.rich_text);
+        return JSON.stringify(current) === JSON.stringify(block.cells ?? block.text);
+      };
+      const before = await read();
+      if (before.archived || before.in_trash || !matches(before)) return false;
+      await notion.deleteBlock(t.token, block.id, fetcher);
+      // Notion has no compare-and-delete. Archiving is reversible: detect an edit during the request and restore that same block without rewriting it.
+      try {
+        if (matches(await read())) return true;
+      } catch (error) {
+        await notion.call(t.token, 'PATCH', route, {archived: false}, fetcher);
+        throw error;
+      }
+      await notion.call(t.token, 'PATCH', route, {archived: false}, fetcher);
+      return false;
     },
     async append(values) {
       const t = await writable(name);

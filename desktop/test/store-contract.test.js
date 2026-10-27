@@ -47,6 +47,18 @@ for (const [name, make] of Object.entries(ADAPTERS)) {
     assert.deepEqual((await page.outline()).map(item => item.text), ['📇 Contact details', 'Email: a@b.c', 'Notice period: 3 months']);
   });
 
+  test(`${name}: conditional removal compares the entire current value, not a shared label or substring`, async () => {
+    const {store: opened} = make(), page = opened.page('profile');
+    await page.append(['Rule: original']);
+    const [old] = await page.outline();
+    await page.setText(old, 'Rule: original plus a new instruction');
+    assert.equal(await page.remove(old, {ifUnchanged: true}), false);
+    assert.match(await page.text(), /plus a new instruction/);
+    const [current] = await page.outline();
+    assert.equal(await page.remove(current, {ifUnchanged: true}), true);
+    assert.equal(await page.text(), '');
+  });
+
   test(`${name}: capabilities, never a name, say what the store can do`, () => {
     const {store: opened} = make();
     assert.ok(opened.caps instanceof Set);
@@ -98,4 +110,18 @@ test('markdown page: a cell with a pipe reads back whole and survives other cell
   assert.deepEqual(rowOf(first).cells, ['Work mode', 'Remote | hybrid']);
   const second = md.setCell(first, rowOf(first), 0, 'Mode');
   assert.deepEqual(rowOf(second).cells, ['Mode', 'Remote | hybrid'], 'rewriting the other cell kept this one');
+});
+
+// A real Notion archive is reversible; a competing edit in the DELETE request must survive on the same original block.
+test('notion: conditional removal restores a block edited during archive without rewriting its new text', async () => {
+  const fake = fakeNotion(['Rule: original']);
+  const storage = storageWith({store: 'notion', notionIds: {NOTION_PROFILE_PAGE_ID: 'profile'}}, {NOTION_TOKEN: 'fictional'});
+  const fetcher = async (url, init) => {
+    if (init?.method === 'DELETE') fake.blocks[0].text = 'Rule: newly edited';
+    return fake.fetcher(url, init);
+  };
+  const page = store.openStore(storage, {fetcher, cache: false}).page('profile'), [old] = await page.outline();
+  assert.equal(await page.remove(old, {ifUnchanged: true}), false);
+  assert.equal(await page.text(), 'Rule: newly edited');
+  assert.equal((await page.outline())[0].id, old.id, 'restore the original identity, never create a replacement');
 });

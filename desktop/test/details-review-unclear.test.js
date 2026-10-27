@@ -25,7 +25,7 @@ function fakeJudge({unsure = /^$/, skip = /^$/} = {}) {
   const calls = [];
   const clarity = line => (/maybe/.test(line) ? 'guess' : /depends/.test(line) ? 'vague' : /join us\?: Yes/.test(line) ? 'off_topic' : 'clear');
   const ai = {client: {messages: {create: async request => {
-    const items = JSON.parse(request.messages[0].content);
+    const parsed = JSON.parse(request.messages[0].content), items = Array.isArray(parsed) ? parsed : parsed.items;
     calls.push(items.map(each => each.line));
     return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id, line}) => ({id, home: unsure.test(line) ? 'unsure' : 'stay', topic: 'a fact',
       ...(skip.test(line) ? {} : {clarity: clarity(line)})}))})}]};
@@ -123,14 +123,14 @@ test('a line the AI gave no clarity is not kept as sure: asked again a day later
   assert.deepEqual(calls[1].map(line => line.split(':')[0]), ['Relocation']);
 });
 
-test('the first pass on a Profile moved before "unsure" queues the unsure lines once; nothing moves', async () => {
+test('an uncertain line stays intact for automatic retry, never asks the applicant to choose its home', async () => {
   const env = await ADAPTERS.sqlite();
   const {ai} = fakeJudge({unsure: /Relocation/});
   const before = await store.openStore(env.storage).page('profile').text();
-  assert.equal((await review.judgeNew(env.storage, {ai})).queued, 1);
+  assert.equal((await review.judgeNew(env.storage, {ai})).queued, 0);
   assert.equal(await store.openStore(env.storage).page('profile').text(), before, 'nothing moves');
   assert.deepEqual(env.storage.settings().profileUnsure.map(each => each.label), ['Relocation']);
-  assert.ok((await review.pending(env.storage)).some(each => each.details.kind === 'where'), 'asked as Where does this go?');
+  assert.ok(!(await review.pending(env.storage)).some(each => each.details.kind === 'where'), 'technical uncertainty is the organizer’s job');
   assert.ok(!(await unclearOf(env)).some(each => /Relocation/.test(each.question)), 'one question per line');
 });
 
@@ -140,13 +140,15 @@ test('no AI: nothing is judged or spent, and it is tried again later', async () 
   assert.equal(env.storage.settings().answerClarity, undefined);
 });
 
-test('the move keeps the clarity its own call judged: no second call for those lines', async () => {
+test('the narrow details move leaves other lines for one context-aware organization pass', async () => {
   const env = await ADAPTERS.sqlite({});
   const {ai, calls} = fakeJudge();
   await move(env.storage, {ai, copy: async () => ({dir: ''})});
   assert.equal(calls.length, 1);
   await review.judgeNew(env.storage, {ai});
-  assert.equal(calls.length, 1, 'every answered line was judged by the move');
+  assert.equal(calls.length, 2, 'outside Your details, the actual destination is judged once with context');
+  await review.judgeNew(env.storage, {ai});
+  assert.equal(calls.length, 2, 'no repeat after organization');
   assert.ok((await unclearOf(env)).some(each => /Kubernetes/.test(each.question)));
 });
 

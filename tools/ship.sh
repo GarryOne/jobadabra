@@ -109,6 +109,21 @@ ship_fetch() { local try; for try in 1 2 3 4 5; do git fetch -q origin 2>/dev/nu
 rebase() {
   ship_fetch
   config_once merge.ladder-baseline.driver 'node tools/merge-baseline.mjs %O %A %B'   # two sessions' ladder-baseline updates merge (.gitattributes)
+  # A resolved merge of main is already current. Rebasing it flattens the merge commit and can recreate conflicts that were resolved on the branch.
+  if git merge-base --is-ancestor origin/main HEAD; then
+    step "origin/main is already in $branch; keeping its merge history"
+    return 0
+  fi
+  local base; base="$(git merge-base origin/main HEAD)"
+  if [ -n "$(git rev-list --merges "$base..HEAD")" ]; then
+    if ! git merge --no-edit origin/main >/dev/null 2>&1; then
+      git merge --abort >/dev/null 2>&1 || true
+      echo "ship: origin/main advanced; merging it into $branch has conflicts. Resolve them keeping both sides' work, then run this again." >&2
+      exit 1
+    fi
+    step "origin/main advanced; merging it to preserve branch merge history"
+    return 0
+  fi
   if ! git rebase origin/main >/dev/null 2>&1; then
     git rebase --abort >/dev/null 2>&1 || true
     echo "ship: the rebase onto origin/main has conflicts. Resolve them keeping both sides' work, then run this again." >&2
@@ -133,12 +148,12 @@ if [ "$queue" = 1 ]; then
   step "queueing for the landing lock (this landing runs the slow gates; SHIP_LANDING_LOCK=0 skips the queue)"
   landing_acquire "$branch"
 fi
-step "rebasing $branch onto origin/main"
+step "updating $branch from origin/main"
 before_rebase="$(git rev-parse HEAD)"
 rebase
 if [ "$(git rev-list --count origin/main..HEAD)" -eq 0 ]; then
-  # "Nothing to push" only when main has the branch's files as the branch had them: a rebase drops a merge commit, so an amend of main's merge commit vanished
-  # with "DONE nothing to push" (26 Oct 2026, jobadabra-web #160: the owner's sender change). Guard: tests/test_ship_dropped.py.
+  # Why (26 Oct 2026, jobadabra-web #160; 27 Oct 2026, Gitar #2308): a rebase can lose an amended merge edit or skip a linear patch already upstream even after main later reverts it.
+  # The guard compares the branch's pre-update file values with main before reporting "nothing to push"; tests/test_ship_dropped.py covers both histories.
   git merge-base --is-ancestor "$before_rebase" origin/main && lost="" || lost="$(git diff --name-only "$(git merge-base "$before_rebase" origin/main)" "$before_rebase" | while read -r file; do git diff --quiet "$before_rebase" origin/main -- "$file" || echo "$file"; done | head -5 | paste -sd ' ' -)"
   [ -z "$lost" ] || { fail_reason="the rebase left $branch with no commits, but main lacks its change to: $lost. It is still in $before_rebase (git reflog): put it on a new branch from origin/main (git diff origin/main $before_rebase -- <file> | git apply)"; echo "ship: $fail_reason" >&2; exit 1; }
   echo "ship: nothing to push, $branch has no commits beyond origin/main"; finished=1; exit 0

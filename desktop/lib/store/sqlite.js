@@ -29,7 +29,15 @@ export function open(storage, {call = engine.call} = {}) {
       text: async () => md.readable(read()),
       write: async markdown => storage.writeText(file, String(markdown).replace(/\s*$/, '\n')),
       setText: async (block, value) => edit(text => md.setText(text, block, value)),
-      remove: async block => edit(text => md.remove(text, block)),
+      async remove(block, {ifUnchanged = false} = {}) {
+        const text = read();
+        if (ifUnchanged) {
+          const outline = md.outline(text), current = outline.flatMap(item => item.rows || [item]).find(item => item.id === block.id);
+          if (!current || JSON.stringify(current.cells ?? current.text) !== JSON.stringify(block.cells ?? block.text)) return false;
+        }
+        storage.writeText(file, md.remove(text, block));
+        return true;
+      },
       append: async values => { if (values.length) edit(text => md.append(text, values)); },
       insertAfter: async (blockId, values) => edit(text => md.insertAfter(text, blockId, values)),
       async appendHeading(value) {

@@ -43,11 +43,11 @@ merge process.
 
 ## Progress
 
-- [x] Read canonical repo instructions and current Spec Kit official docs.
-- [x] Create the dedicated `adopt-spec-kit` worktree from `origin/main`.
-- [x] Install and verify uv 0.13.6 and Specify CLI 1.2.3.
-- [x] Initialize and inspect the generated Codex integration in the worktree.
-- [x] Write the constitution, adoption guide, and bounded implementation plan.
+- [x] Read canonical repo instructions and current Spec Kit official docs. (proof: docs/spec-driven-development.md)
+- [x] Create the dedicated `adopt-spec-kit` worktree from `origin/main`. (proof: none: worktree creation is recorded in the task session; no changed repo file can prove the base)
+- [x] Install and verify uv 0.13.6 and Specify CLI 1.2.3. (proof: docs/spec-driven-development.md)
+- [x] Initialize and inspect the generated Codex integration in the worktree. (proof: .specify/integrations/codex.manifest.json)
+- [x] Write the constitution, adoption guide, and bounded implementation plan. (proof: .specify/memory/constitution.md, docs/spec-driven-development.md, docs/superpowers/plans/2026-10-27-adopt-spec-kit.md)
 - [ ] Run focused checks and the normal fast gate.
 - [ ] Open the review PR and report its head, ship log, and current CI status.
 

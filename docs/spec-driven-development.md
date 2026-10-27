@@ -9,13 +9,13 @@ lightweight path for small fixes.
 The owner installs the CLI once per machine. The current supported install is:
 
 ```sh
-uv tool install specify-cli
+uv tool install specify-cli==1.2.3
 specify version
 ```
 
 Spec Kit requires Python 3.11+ and uv. The project was initialized with the Codex integration;
 the generated skills live in `.agents/skills/speckit-*/SKILL.md`. Invoke them in Codex with the
-`$speckit-...` syntax. See the [official installation guide](https://github.github.io/spec-kit/installation.html),
+`$speckit-...` syntax. The adoption setup verified Specify CLI 1.2.3 and uv 0.13.6. See the [official installation guide](https://github.github.io/spec-kit/installation.html),
 [existing-project guide](https://github.github.io/spec-kit/guides/existing-projects.html), and
 [Codex integration guide](https://github.github.io/spec-kit/integrations/codex.html) for current
 CLI details. Do not rerun `specify init` in this repository as routine setup.

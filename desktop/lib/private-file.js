@@ -26,7 +26,7 @@ function sweepLeftovers(file) {
   for (const name of names) {
     const pid = name.startsWith(start) && name.endsWith(TEMP_END) ? Number(name.slice(start.length).split('-')[0]) : 0;
     if (!pid || pid === process.pid || alive(pid)) continue;
-    fs.rmSync(path.join(dir, name), {force: true});
+    try { fs.rmSync(path.join(dir, name), {force: true}); } catch { /* a locked leftover (Windows) never stops the save; the next save tries again */ }
   }
 }
 function alive(pid) {

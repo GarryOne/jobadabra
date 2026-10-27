@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {claudeRun} from './free-ai-eval-claude.mjs';
 import {withFloors} from './free-ai-writing-eval.mjs';
 import {proseOf} from './free-ai-writing-judge.mjs';
-import {allCases} from './free-ai-writing-cases.mjs';
+import {loadCases} from './free-ai-writing-load.mjs';
 
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['winner', 'reason'], properties: {winner: {type: 'string', enum: ['A', 'B', 'tie']}, reason: {type: 'string', description: 'One sentence: what decided it'}}};
 const SYSTEM = 'You compare two texts an AI wrote for the same job seeker from the same facts. Pick the one the job seeker would rather send or use: more useful, specific to THIS posting, honest about gaps, in a direct personal voice, well formed. A fact not in the given facts counts heavily against a text. Length and polish alone never win. Answer "tie" only when you truly cannot choose.';
@@ -44,7 +44,7 @@ async function main(argv) {
   const out = option('out'); fs.mkdirSync(out, {recursive: true});
   const run = claudeRun();
   const rows = [];
-  for (const item of allCases({more: process.argv.includes('--more-letters')}).filter(c => wanted.includes(c.feature) && a.raw[c.id]?.[a.slot]?.data && b.raw[c.id]?.[b.slot]?.data)) {
+  for (const item of (await loadCases(process.argv)).filter(c => wanted.includes(c.feature) && a.raw[c.id]?.[a.slot]?.data && b.raw[c.id]?.[b.slot]?.data)) {
     const text = side => proseOf(item.feature, withFloors(item, side.raw[item.id][side.slot].data));
     const [ta, tb] = [text(a), text(b)];
     for (const model of judges) for (const flip of [false, true]) {

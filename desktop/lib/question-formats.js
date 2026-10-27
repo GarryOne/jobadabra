@@ -1,6 +1,6 @@
-// What kind of answer each question takes, kept on this Mac (settings.questionFormats, keyed like the verdicts): from the last fill that met it (its field type and the
-// form's own options, extension/page/fill.js trace rows), else the AI's one judgment from the label for a question no fill described (owner, 17 Oct 2026: "Title",
-// "Country/Region of Residence" were text boxes). The store's mark on the line wins over both (renderer/question-kind.js formatFor). Rebuildable form structure,
+// What kind of answer each question takes, kept on this Mac (settings.questionFormats, keyed like the verdicts): specific fill controls and their options are structural;
+// generic text controls need one AI judgment from the label to distinguish dates, durations and prose (owner, 17 Oct 2026: "Title", "Country/Region of Residence"
+// were text boxes). The store's mark on the line wins over both (renderer/question-kind.js formatFor). Rebuildable form structure,
 // never the person's answers. Spec docs/superpowers/specs/2026-10-17-base-facts.md. Guarded by test/question-formats.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
 import {AI_KINDS, KINDS_VERSION, cleanOptions, formatOfField} from '../renderer/question-kind.js';
@@ -27,6 +27,8 @@ export function noteFields(storage, rows = []) {
     if (!label || looksLikeFieldId(label) || !row.type || row.type === 'file' || row.type === 'password') continue;
     const format = formatOfField(row);
     const before = next[keyOf(label)];
+    // Why (#2312): a generic text box says nothing about meaning; a current AI judgment of the label stays (judged once, not per fill).
+    if (format.kind === 'text' && before?.from === 'ai' && (before.kinds || 0) >= KINDS_VERSION) continue;
     // A menu read while closed has no options: an older reading's options for the same kind stay.
     const options = format.options.length ? format.options : before?.kind === format.kind ? before.options || [] : [];
     // Whether a date question also asks about constraints is the label's meaning (the AI's judgment), not the field's: it stays.
@@ -48,7 +50,7 @@ const INSTRUCTIONS = `A job-application form asked these questions; we no longer
 - "single": one choice from a list (a salutation or title, a country, a level, Yes or No with more choices).
 - "multi": several choices from a list.
 - "yes_no": a single box ticked or not, or a plain Yes / No.
-- "date": a calendar date (a start date, a date of birth, an availability date).
+- "date": one specific calendar day the person can enter in a date picker (a date of birth, a start date, a date on which something happened). Do not use for a length of time ("notice period", "how many years of experience"), a year without month/day, or availability stated as prose ("immediately", "in 2 months", "flexible"). An availability question asking for one exact day is a date.
 - "amount": a sum of money with a currency (a fee, a budget).
 - "salary": pay per period: an amount with a currency and a period such as per year or per month (a salary expectation, a rate).
 - "duration": a length of time (a notice period, how long until available).
@@ -56,13 +58,13 @@ const INSTRUCTIONS = `A job-application form asked these questions; we no longer
 constraints: true only for a "date" question that also asks about constraints, conditions or limits on that date (e.g. "earliest start date, and are there any constraints we should be aware of?"), else false.
 options: for "single" or "multi", the usual choices of such a question when they are few and standard (at most 8, in the question's language), else [].
 list: "countries" when the choice is a country (then options []), else "".
-Answer every label exactly as given; when unsure answer "text", [], "".`;
+Answer every label exactly as given. Use "date" only when the answer is one exact calendar day; use "duration" for elapsed time, "text" for a year-only answer or availability prose, and "text" when unsure. Never let the word "date" alone decide the kind.`;
 
 // The labels with no kept format yet -> one small call; kept with from: 'ai'. ai: {client, apiKey} (none: nothing new). -> {formats: the whole map, usage}.
 export async function ensure(storage, labels, {ai = {}, allow = []} = {}) {
   const known = kept(storage);
   // A date the fill saw has no constraints judgment yet: asked once (the AI never changes what the fill saw).
-  const needs = label => !known[keyOf(label)] || (known[keyOf(label)].from === 'fill' && known[keyOf(label)].kind === 'date' && known[keyOf(label)].constraints === undefined);
+  const needs = label => !known[keyOf(label)] || (known[keyOf(label)].from === 'fill' && (known[keyOf(label)].kind === 'text' || (known[keyOf(label)].kind === 'date' && known[keyOf(label)].constraints === undefined)));
   // An AI judgment made before the current kinds existed (stamped lower, or not at all) is asked again, once; a kind read from a form's own field is never.
   const stale = label => known[keyOf(label)]?.from === 'ai' && (known[keyOf(label)].kinds || 0) < KINDS_VERSION;
   const asked = [...new Set(labels.filter(label => label && !looksLikeFieldId(label)))];
@@ -74,13 +76,13 @@ export async function ensure(storage, labels, {ai = {}, allow = []} = {}) {
     output_config: {format: {type: 'json_schema', schema: schemaFor(allow)}, effort: 'low'}});
   const next = {...kept(storage)}, at = new Date().toISOString().slice(0, 10);
   // A label the AI left out or answered wrongly is kept as text: judged once, never asked again (a fill's reading replaces it).
-  const seen = new Set(fresh.filter(label => !known[keyOf(label)]));
+  const seen = new Set(fresh.filter(label => !known[keyOf(label)] || (known[keyOf(label)].from === 'fill' && known[keyOf(label)].kind === 'text')));
   for (const label of seen) next[keyOf(label)] = {kind: 'text', options: [], list: '', constraints: false, from: 'ai', at, kinds: KINDS_VERSION};
   for (const label of fresh) if (stale(label)) next[keyOf(label)] = {...known[keyOf(label)], kinds: KINDS_VERSION};   // asked again: the AI's answer below replaces the kind, a silent one keeps it
   for (const each of judged(response, fresh, allow)) {
     const before = known[keyOf(each.label)];
     if (before && stale(each.label)) next[keyOf(each.label)] = {kind: each.kind, options: each.options, list: each.list, constraints: each.constraints, from: 'ai', at, kinds: KINDS_VERSION};
-    else if (before) next[keyOf(each.label)] = {...before, constraints: each.constraints};
+    else if (before && !(before.from === 'fill' && before.kind === 'text')) next[keyOf(each.label)] = {...before, constraints: each.constraints};
     else next[keyOf(each.label)] = {kind: each.kind, options: each.options, list: each.list, constraints: each.constraints, from: 'ai', at, kinds: KINDS_VERSION};
   }
   // A fill-read date the AI left unanswered is judged "no constraints": asked once, never again.

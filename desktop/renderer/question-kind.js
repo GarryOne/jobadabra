@@ -10,7 +10,7 @@ export const AI_KINDS = KINDS.filter(kind => !['per_country', 'language', 'range
 // A kind whose answer has parts: its control is drawn by renderer/question-control-composite.js.
 export const COMPOSITE = ['salary', 'duration', 'link', 'per_country', 'language', 'range'];
 // Raise it when a kind is added: the AI's older judgments (stamped lower, or not at all) are asked again, lazily and once (lib/question-formats.js ensure).
-export const KINDS_VERSION = 3;   // 2: date and amount; 3: salary, duration, link
+export const KINDS_VERSION = 4;   // 2: date and amount; 3: salary, duration, link; 4: distinguish calendar dates from durations and prose
 const WORDS = {long_text: 'long text', single: 'pick one', multi: 'pick several', yes_no: 'yes/no', date: 'date', amount: 'amount', salary: 'salary', duration: 'duration', link: 'link',
   per_country: 'per country', language: 'language', range: 'range'};
 const KIND_OF_WORD = Object.fromEntries(Object.entries(WORDS).map(([kind, word]) => [word, kind]));
@@ -113,10 +113,16 @@ export function dateWords(iso) {
 }
 export function dateIso(text) {
   const raw = String(text || '').trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const date = new Date(`${raw}T00:00:00.000Z`);
+    return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === raw ? raw : '';
+  }
   const match = raw.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
   const month = match ? MONTHS.findIndex(name => name.toLowerCase() === match[2].toLowerCase()) : -1;
-  return month < 0 ? '' : `${match[3]}-${String(month + 1).padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+  if (month < 0) return '';
+  const iso = `${match[3]}-${String(month + 1).padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+  const date = new Date(`${iso}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === iso ? iso : '';
 }
 // A date question that also asks about constraints: "1 December 2026; no constraints" or "1 December 2026; <the constraints>". constraints: '' (not chosen yet), 'none' or text.
 export function splitConstraints(value) {

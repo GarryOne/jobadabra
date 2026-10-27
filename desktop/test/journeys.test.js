@@ -26,6 +26,8 @@ import {endingOf} from '../e2e/lib/ending.mjs';
 import {stopsOf} from '../e2e/lib/pool-shadow.mjs';
 import {doorLines, runEvents} from '../e2e/lib/pool-gaps.mjs';
 import {pickDismiss} from '../lib/popup-pick.js';
+import * as questionFormats from '../lib/question-formats.js';
+import {formatFor} from '../renderer/question-kind.js';
 
 const POSTING = 'https://www.jobs.ch/en/vacancies/detail/12181ac1/', SIGNIN = 'https://auth.jobs.ch/u/login/identifier', FORM = 'https://apply.example/form';
 function journeyOf(id = 'f1') {
@@ -394,6 +396,16 @@ test('scenario: Free is on, the person presses the API key card: Free is left, i
   leave(storage, {});
   assert.equal(chosen(settings, !!secrets.ANTHROPIC_API_KEY), 'api');
   assert.equal(secrets.ANTHROPIC_API_KEY, '');
+});
+
+test('scenario: a DOB reported as a generic text field is reviewed with the calendar control', async () => {
+  const storage = createStorage(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-date-question-')), 'x'), {encrypt: value => value, decrypt: value => value});
+  const question = 'What is your date of birth?';
+  questionFormats.noteFields(storage, [{label: question, type: 'text'}]);
+  const client = {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({formats: [{label: question, kind: 'date', options: [], list: '', constraints: false}]})}]})}};
+  await questionFormats.ensure(storage, [question], {ai: {client}});
+  const format = formatFor({kept: questionFormats.keptFor(storage, question)});
+  assert.equal(format.control, 'date', 'the shared Application questions and Profile editors receive a calendar control');
 });
 
 test('scenario: Fill in Chrome pressed twice on one job with its tab open: one tab, the session keeps it, the open tab refills (22 Oct 2026, beta run 8)', async () => {

@@ -50,7 +50,11 @@ def names(fetch=None):
             except Exception:  # noqa: BLE001 — no table is "country only", not a failed search
                 table = {}
             if table:
-                STORE.parent.mkdir(parents=True, exist_ok=True)
-                STORE.write_text(json.dumps(table, ensure_ascii=False, sort_keys=True))
-        _loaded.update(table=table or None, store=str(STORE))
+                try:
+                    STORE.parent.mkdir(parents=True, exist_ok=True)
+                    STORE.write_text(json.dumps(table, ensure_ascii=False, sort_keys=True))
+                except OSError:  # optional cache: fetched names still belong to this search
+                    pass
+        # Why (#2293): cache an empty result for this process too; every job otherwise repeats a failed 20-second fetch.
+        _loaded.update(table=table, store=str(STORE))
         return table

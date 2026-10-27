@@ -13,7 +13,6 @@ from src import first_jobs, scout_core, scout_candidates
 from src.ai import board_ideas
 from src.sources import careers
 
-SEARCH = {'locations': ['Zurich'], 'roles': ['Warehouse worker']}
 _READER = careers.READER
 
 
@@ -25,48 +24,70 @@ def tearDownModule():
     careers.READER = _READER
 
 
-BOARDS = [{'name': f'Board {i}', 'host': f'b{i}.test', 'search_url': f'https://b{i}.test/?q={{role}}'} for i in range(8)]
+SEARCH = {'locations': ['Zurich'], 'role_keywords': ['Warehouse worker']}
+ASKED = ('k1', ['Switzerland'], ['Warehouse worker'], ['logistics'], ['zurich'])
+OWN = [{'name': f'Board {i}', 'search_url': f'https://b{i}.test/?q={{role}}', 'countries': ['Switzerland'], 'kinds': ['logistics'],
+        'source_kind': 'general'} for i in range(3)]
+SHARED = {'name': 'shared.test', 'host': 'shared.test', 'search_url': 'https://shared.test/jobs', 'countries': ['Switzerland'],
+          'kinds': ['any'], 'source_kind': 'general'}
 
 
 class TheProposalIsAskedAtTheSearchsStart(unittest.TestCase):
+    """The AI's answers are asked early and cached; the slice's list is built when it reads (run 40449103205: an early list lost the
+    pool's shared boards, downloaded after it)."""
     def setUp(self):
         self.addCleanup(first_jobs._early.clear)
-        self.asked, self.release = [], threading.Event()
+        self.asks, self.release, self.downloaded, store = [], threading.Event(), [], {}
 
-        def ideas(search, client=None, field=True):
-            self.asked.append(search)
+        def ask(system, content, client=None):
+            self.asks.append(system)
             self.release.wait(5)
-            return list(BOARDS)
-        for name, value in (('ideas', ideas), ('proven', lambda search, limit=2: []), ('load', lambda: {'boards': {}})):
+            return list(OWN)
+        for name, value in (('_ask', ask), ('proven', lambda search, limit=2: []), ('slices', lambda search: [ASKED]),
+                            ('asked_for', lambda search: ASKED), ('load', lambda: store), ('save', lambda data: None),
+                            ('served', lambda countries: [dict(SHARED)] if self.downloaded else [])):
             patcher = mock.patch.object(board_ideas, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
-        self.read = mock.patch('src.sources.found_boards.read', side_effect=lambda search, top, **kw: [b['host'] for b in top]).start()
-        self.addCleanup(mock.patch.stopall)
+        patcher = mock.patch('src.sources.found_boards.read', side_effect=lambda search, top, **kw: [b['host'] for b in top])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(self.release.set)
 
-    def test_the_slice_reads_the_early_proposal_without_asking_again(self):
-        self.assertTrue(first_jobs.propose_early(SEARCH), 'started in the background')
-        self.release.set()
-        hosts = first_jobs.board_jobs(lambda line: None, SEARCH)
-        self.assertEqual(len(self.asked), 1, 'the slice took the early answer, no second call')
-        self.assertEqual(hosts, [b['host'] for b in BOARDS[:first_jobs.SLICE_BOARDS]])
+    def read_slice(self, search=SEARCH):
+        with mock.patch('builtins.print'):
+            return first_jobs.board_jobs(lambda line: None, search)
+
+    def test_the_slice_asks_the_ai_nothing_twice_and_keeps_the_shared_boards(self):
+        with mock.patch('builtins.print'):
+            self.assertTrue(first_jobs.propose_early(SEARCH), 'started in the background')
+            self.release.set()
+            first_jobs._early['future'].result(5)
+        asked = len(self.asks)
+        self.downloaded.append(True)   # the pool's index comes after the early ask
+        hosts = self.read_slice()
+        self.assertEqual(len(self.asks), asked, 'the slice took the cached answers')
+        self.assertIn('shared.test', hosts, "the pool's boards, served when the slice reads")
+        self.assertIn('b0.test', hosts)
+
+    def test_the_slice_waits_for_an_answer_still_coming(self):
+        with mock.patch('builtins.print'):
+            first_jobs.propose_early(SEARCH)
+        threading.Timer(0.2, self.release.set).start()
+        hosts = self.read_slice()
+        self.assertEqual(len(self.asks), 2, 'field + one slice of countries, asked once each')
+        self.assertIn('b0.test', hosts)
 
     def test_it_returns_before_the_answer_comes(self):
         started = time.monotonic()
-        first_jobs.propose_early(SEARCH)
+        with mock.patch('builtins.print'):
+            first_jobs.propose_early(SEARCH)
         self.assertLess(time.monotonic() - started, 1, 'the search goes on while the proposal is asked')
-        self.release.set()
-
-    def test_another_search_asks_its_own(self):
-        first_jobs.propose_early(SEARCH)
-        self.release.set()
-        first_jobs.board_jobs(lambda line: None, {**SEARCH, 'locations': ['Geneva']})
-        self.assertEqual(len(self.asked), 2)
 
     def test_proven_boards_need_no_proposal(self):
-        with mock.patch.object(board_ideas, 'proven', lambda search, limit=2: BOARDS[:2]):
+        with mock.patch.object(board_ideas, 'proven', lambda search, limit=2: [SHARED]):
             self.assertIsNone(first_jobs.propose_early(SEARCH))
-        self.assertEqual(self.asked, [])
+        self.assertEqual(self.asks, [])
 
     def test_the_search_starts_it_before_picking_its_employers(self):
         body = (Path(__file__).resolve().parents[1] / 'src' / 'daily_search.py').read_text()

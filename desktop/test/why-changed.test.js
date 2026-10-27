@@ -113,6 +113,12 @@ test('a Why naming code in backticks still guards the line under it; a prompt se
     'the same words under another Why do not keep the first one guarded');
 });
 
+test('a new Why quoting `words` must sit above the code that holds them (#2217: a Why above one prompt quoted another)', () => {
+  const two = 'export const A = `first prompt: never invent a number.`;\n\nexport const B = `second prompt: write a line per gap.`;\n';
+  assert.match(push({'w/p.js': two}, {'w/p.js': two.replace('\nexport const B', '\n// Why (#953): `never invent a number` — the owner.\nexport const B')}), /w\/p\.js:3 quotes "never invent a number"/);
+  assert.equal(push({'w/p.js': two}, {'w/p.js': two.replace('\nexport const B', '\n// Why (#953): `write a line per gap` — the owner.\nexport const B')}), '');
+});
+
 test('Markdown and other non-code files are not read', () => {
   assert.equal(push({'docs/a.md': '<!-- x -->\n# Why: a heading\ntext\n'}, {'docs/a.md': 'other\n'}), '');
 });

@@ -73,7 +73,8 @@ rule is in [docs/rules/why.md](docs/rules/why.md): read it before relaxing a rul
   a "looks wrong but is right", a prompt sentence added for a case (quote it in backticks); never a comment that narrates the code. Read a Why and its PR
   before changing its line; change the Why with it (a stale Why is refused) and say `Why-changed: <which> — <reason>` (`tools/why-changed.mjs`).
   Code you write or touch also gets: a doc comment on a new exported function, its invariants stated, debt as `TODO(AI): <what> (<date or #PR>)` / `FIXME: <what>`
-  (`tools/new-code-comments.mjs`). Detail: [docs/rules/files.md](docs/rules/files.md#comments).
+  (`tools/new-code-comments.mjs`). A prompt change adds the case it fixed to the prompt's case set or says `Prompt-case: none <why>`; the live set replays
+  on the PR, Haiku via the subscription (`tools/prompt-cases.mjs`, `prompt-cases.yml`). Detail: [docs/rules/files.md](docs/rules/files.md#comments).
 - **Tests also run on Windows CI** (main went red twice on 11 Oct 2026): temp folders via `os.tmpdir()`, never `/tmp`; compare paths after turning `\` into `/`.
   **Linux CI too** (main red again on 11 Oct 2026: `stat -f %m` succeeds on Linux with file-system text): shell uses the GNU form first (`stat -c`, `date -d`), the macOS form as fallback;
   `tests/test_shell_portability.py` fails with file:line on a bare macOS form.

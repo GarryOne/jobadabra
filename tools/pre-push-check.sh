@@ -183,6 +183,10 @@ fi
 if command -v node >/dev/null && [ -f "$repo/tools/new-code-comments.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   newcomments="$(cd "$repo" && timed "new code comments" node tools/new-code-comments.mjs --base origin/main 2>&1)" || { echo "Push blocked: $newcomments" >&2; exit 2; }
 fi
+# A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
+if command -v node >/dev/null && [ -f "$repo/tools/prompt-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || { echo "Push blocked: $promptcases" >&2; exit 2; }
+fi
 # A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || { echo "Push blocked: $proof" >&2; exit 2; }

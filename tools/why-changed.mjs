@@ -90,6 +90,28 @@ export function guardedChanges(diff, oldText) {
   return hits;
 }
 
+// A Why the push ADDS that quotes `words` must find them in the code right under it (the next 80 code lines, up to the next Why): a Why above one prompt
+// quoting another's sentence guards the wrong place (27 Oct 2026, #2217: the #953 Why sat above WRITTEN_RULE quoting REVIEW_INSTRUCTIONS). -> ['file:line ...'].
+export function misplacedAnchors(diff, newText) {
+  const problems = [];
+  let file = null, newLine = 0;
+  for (const line of String(diff).split('\n')) {
+    if (line.startsWith('+++ ')) { file = line === '+++ /dev/null' ? null : line.slice(6); continue; }
+    const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+    if (hunk) { newLine = Number(hunk[1]); continue; }
+    if (!file || line.startsWith('---') || !line.startsWith('+')) continue;
+    const at = newLine++, text = line.slice(1);
+    if (!CODE_FILE.test(file) || !WHY.test(text) || !isComment(text)) continue;
+    const anchors = [...text.matchAll(ANCHOR)].map(found => found[1]).filter(anchor => SENTENCE.test(anchor));   // a quoted name or path is not an anchor
+    if (!anchors.length) continue;
+    const below = [];
+    for (const next of newText(file).split('\n').slice(at)) { if (WHY.test(next)) break; if (!isComment(next)) below.push(next); if (below.length >= 80) break; }
+    const missing = anchors.filter(anchor => !below.some(code => code.includes(anchor)));
+    if (missing.length) problems.push(`${file}:${at} quotes "${missing[0]}", which is not in the code right under it: put the Why above the prompt that holds those words`);
+  }
+  return problems;
+}
+
 // -> '' when fine, else the message. messages: the push's commit messages. A stale Why is refused even with the trailer: update or remove it in the same push.
 export function missingWhyChanged(hits, messages) {
   const list = items => `  ${items.slice(0, 10).map(hit => hit.where).join('\n  ')}${items.length > 10 ? `\n  … ${items.length - 10} more` : ''}`;
@@ -109,6 +131,8 @@ export function checkPush({root, base = 'origin/main'}) {
     diff = git('diff', '-U0', '-M', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', from, 'HEAD');
     messages = git('log', '--format=%B%x00', `${base}..HEAD`).split('\0');
   } catch { return ''; }   // no base to compare with (a fresh clone without origin/main): nothing to say
+  const misplaced = misplacedAnchors(diff, show('HEAD'));
+  if (misplaced.length) return `this push adds a Why whose quoted words are not under it:\n  ${misplaced.join('\n  ')}`;
   return missingWhyChanged(guardedChanges(diff, show(from)), messages);
 }
 

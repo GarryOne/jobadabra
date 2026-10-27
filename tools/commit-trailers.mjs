@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Commit-time check of the trailer VALUES in the message being committed (tools/githooks/commit-msg), so a wrong "Rung: 1" fails in a second, not at the push gate.
 // Checks only the lines that are present (whether a push needs them depends on its files: that stays the push gate's, tools/rung-trailer.mjs, recorded-cases.mjs, e2e-issue-links.mjs):
-//   Rung / Fixture (rung-trailer.mjs valueProblems), Pool-row (poolRowProblem: a row name of the pool), Recorded-unneeded: <why>, Recorded-pins: <why>, E2E-issue: none <why>, E2E-cause: <cause> [suites] | none <why>, Why-changed: <which> — <why>.
+//   Rung / Fixture (rung-trailer.mjs valueProblems), Pool-row (poolRowProblem: a row name of the pool), Recorded-unneeded: <why>, Recorded-pins: <why>, E2E-issue: none <why>, E2E-cause: <cause> [suites] | none <why>, Why-changed: <which> — <why>, Prompt-case: none <why>.
 // Usage: node tools/commit-trailers.mjs <message-file>   exit 1 with the reasons. Guard: desktop/test/commit-trailers.test.js, tests/test_commit_msg_hook.py.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,6 +21,7 @@ export function messageProblems(raw, fixtureIds, pool) {
   if (lines(message, 'Recorded-unneeded').some(value => !value)) problems.push('"Recorded-unneeded:" needs a reason ("Recorded-unneeded: <why>")');
   if (lines(message, 'Recorded-pins').some(value => !value)) problems.push('"Recorded-pins:" needs a reason ("Recorded-pins: <why>")');
   if (lines(message, 'Why-changed').some(value => value.length < 10)) problems.push('"Why-changed:" names the Why and the reason ("Why-changed: <which Why> — <reason>", tools/why-changed.mjs)');
+  if (lines(message, 'Prompt-case').some(value => !/^none\s+\S.{6,}/i.test(value))) problems.push('"Prompt-case:" must read "Prompt-case: none <why>" (a prompt change otherwise adds its case to the set, tools/prompt-cases.mjs)');
   if (lines(message, 'E2E-issue').some(value => !/^none\s+\S/i.test(value))) problems.push('"E2E-issue:" must read "E2E-issue: none <why>" (a fix names its issue as "Fixes #N" or "Refs #N")');
   problems.push(...causeProblems(lines(message, 'E2E-cause')));   // tools/e2e-cause-trailer.mjs; suite names are checked at the push
   return problems;

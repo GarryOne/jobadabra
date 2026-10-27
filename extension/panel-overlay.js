@@ -9,6 +9,7 @@
 // layer the early dim drew is the one the panel lifts.
 (() => {
   if (window.__jobPilottoOverlay?.alive?.()) return;
+  // Why (#2221, 27 Oct 2026): EARLY_MS, the early dim's own life: a fill page that never gets a panel (no site access, Stop) is not left dim and holding clicks.
   const ID = 'jobpilotto-fill-overlay', MAX_MS = 180000, EARLY_MS = 15000;   // MAX_MS: no step refreshed it for three minutes: the person is never locked out of a stuck page
   const HELD = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu', 'keydown', 'keyup', 'keypress', 'wheel', 'touchstart', 'touchmove', 'dragstart', 'selectstart'];
   let layer = null, watch = null, until = 0, early = false, lifted = () => {};

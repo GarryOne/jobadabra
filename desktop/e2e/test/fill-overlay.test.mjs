@@ -408,3 +408,22 @@ test('Check again keeps "Your action is needed" when the AI still says the page 
       .catch(() => assert.fail('the card went though the AI still says the page needs the person'));
   } finally { await t.app.close(); }
 });
+
+// #2221's red apply suite (27 Oct 2026): the fill writes "done" on the page, then does its bookkeeping (reports, notes, dialogs) before it clears its step. The panel kept the dim for
+// that time and its 0.7 s gap, and held the person's first click after "done": the multi-step form's Next and the submitter's Submit were swallowed.
+test('the fill writing its end on the page frees it at once: the person\'s first click after "done" lands, before the worker clears its step', async () => {
+  const t = await open();
+  try {
+    await t.step('Choosing the drop-down answers…');
+    await t.lookIs({dim: true, busy: true}, 'a fill step');
+    await t.app.page.evaluate(() => { document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'running'}); });
+    await t.app.page.waitForTimeout(300);
+    await t.lookIs({dim: true, busy: true}, 'a running fill keeps the look');   // positive control: "running" changes nothing
+    const before = await t.app.page.evaluate(() => window.hits || 0);
+    await t.app.page.evaluate(() => { document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'done', filled: 3, left: 0}); });
+    await t.app.page.waitForTimeout(50);
+    const free = await t.clickInput();
+    assert.ok(free.hits > before, `the first click 50 ms after "done" reaches the page (the page shows ${JSON.stringify(await t.look())})`);
+    await t.lookIs({dim: false, centred: false, busy: false}, 'the fill is over');
+  } finally { await t.app.close(); }
+});

@@ -28,5 +28,5 @@ test('one earlier PR is no circle; no earlier PR (or only tests/docs shared) is 
   const one = report([c('a1', 3, 'Change x (#1)', ['x.js'])], ['x.js'], NOW);
   assert.ok(!one.join('\n').includes('circle:'));
   assert.equal(one.at(-1), 'AREA-CIRCLES 7d=1 30d=1 files=x.js');
-  assert.deepEqual(report([c('b1', 40, 'Old (#2)', ['x.js']), c('b2', 1, 'Docs (#3)', ['docs/a.md'])], ['x.js', 'docs/a.md'], NOW), []);
+  assert.deepEqual(report([c('b1', 40, 'Old (#2)', ['x.js']), c('b2', 1, 'Docs (#3)', ['docs/a.md'])], ['x.js', 'docs/a.md'], NOW), ['AREA-CIRCLES 7d=0 30d=0 files=x.js'], 'no earlier PR: the counter says 0 itself');
 });

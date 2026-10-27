@@ -14,5 +14,12 @@ class AreaCirclesTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
 
+    @unittest.skipUnless(shutil.which('node') and shutil.which('git'), 'node or git missing')
+    def test_a_count_that_could_not_run_says_skipped_never_zero(self):
+        """Gitar on #2287: a failed count written as 7d=0 30d=0 would let a PR in a circle pass without its Design: block."""
+        done = subprocess.run(['node', str(ROOT / 'tools/area-circles.mjs'), 'no-such-base-ref'], capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(done.returncode, 0, 'never blocks a ship')
+        self.assertRegex(done.stdout.strip().splitlines()[-1], r'^AREA-CIRCLES skipped \(')
+
 if __name__ == '__main__':
     unittest.main()

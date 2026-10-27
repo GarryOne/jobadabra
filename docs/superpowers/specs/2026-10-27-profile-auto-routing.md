@@ -18,5 +18,5 @@ Original facts stay on the active store's Profile/answers pages through openStor
 - [x] No facts lost on repeats, same-label values, failed writes, invalid AI, stale sources or restart. (proof: desktop/test/profile-auto-routing.test.js, desktop/test/store-contract.test.js)
 
 ### 2. UI and delivery
-- [x] Fictional before/after rendering and independent owner-scenario review. (proof: desktop/test/profile-auto-routing.test.js; light/dark demo artifacts linked in PR)
+- [x] Fictional before/after rendering and independent owner-scenario review. (proof: desktop/test/profile-auto-routing.test.js)
 - [ ] Focused checks and green PR through ship; owner merges manually.

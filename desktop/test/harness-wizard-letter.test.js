@@ -12,11 +12,13 @@ const scenario = async ({failDraft = false, withApi = true, detailsOnly = false}
       events.push(selector);
       if (selector === '#draft-save') {
         assert.notEqual(canned, original, 'stub must be armed before transition starts the draft');
-        if (failDraft) throw new Error('draft failed');
         const details = JSON.parse(canned({output_config: {format: {schema: {properties: {proposals: {type: 'array'}}}}}}));
         assert.ok(details.proposals.length, 'strategy save retains its fictional CV details');
         assert.equal(details.letter, undefined);
         assert.deepEqual(canned({}), {refuse: 'no-credit'}, 'unknown calls never pass through');
+      }
+      if (selector === '#letter-start-ai') {
+        if (failDraft) throw new Error('draft failed');
         if (!detailsOnly) record = {state: 'draft', pdf: false, text: JSON.parse(canned({output_config: {format: {schema: {properties: {letter: {type: 'string'}}}}}})).letter};
       }
       if (selector === '#letter-approve') {
@@ -35,17 +37,17 @@ const scenario = async ({failDraft = false, withApi = true, detailsOnly = false}
   return {record, events, error};
 };
 
-test('canned auto-draft is approved explicitly before continuing', async () => {
+test('canned letter draft starts on request and is approved explicitly before continuing', async () => {
   const {record, events, error} = await scenario();
   assert.equal(error, undefined);
   assert.ok(record.text);
-  assert.deepEqual(events, ['api-enter', '#draft-save', 'letter', '#letter-approve', '#setup-letter-next', 'api-restore']);
+  assert.deepEqual(events, ['api-enter', '#draft-save', 'letter', '#letter-start-ai', '#letter-approve', '#setup-letter-next', 'api-restore']);
 });
 
 test('failure restores the proxy and never approves or continues', async () => {
   const {events, error} = await scenario({failDraft: true});
   assert.match(error.message, /draft failed/);
-  assert.deepEqual(events, ['api-enter', '#draft-save', 'api-restore']);
+  assert.deepEqual(events, ['api-enter', '#draft-save', 'letter', '#letter-start-ai', 'api-restore']);
 });
 
 test('a missing dummy-key seam is refused before generation', async () => {

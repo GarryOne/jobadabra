@@ -213,6 +213,7 @@ export async function completeWizardLetter(ctx) {
     await ctx.withApi(async () => {
       await page.click('#draft-save');
       await ctx.expectStep('letter', 180000);
+      await page.click('#letter-start-ai');
       await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
       const draft = await page.evaluate(() => window.pilot.coverLetter());
       if (!answered || draft.text !== letter) throw new Error('setup did not use the canned letter');

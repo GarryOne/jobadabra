@@ -219,7 +219,8 @@ export function recordsOf(requests) {
   // falseReadings waits for the page's own record and fails when none comes (13 Oct 2026, email-first-no-password-1).
   const pageOf = url => String(url || '').split('#')[0];
   const before = runs.length ? requests.slice(0, requests.indexOf(runs.at(-1))).filter(request => request.route === '/extension/page-kind').at(-1) : null;
-  const ranOn = pageOf(before && parsed(before)?.url), reportedOn = pageOf(review?.url);
+  // The fill writer's page snapshot is authoritative after navigation; older records fall back to the pre-fill page-kind request.
+  const ranOn = pageOf(run?.pageUrl || (before && parsed(before)?.url)), reportedOn = pageOf(review?.url);
   const stale = !!(run && ranOn && reportedOn && ranOn !== reportedOn);
   return {run: stale ? null : later ? {...run, trace: later} : run, cut: runs.length > 0 && !run, stale, review};
 }

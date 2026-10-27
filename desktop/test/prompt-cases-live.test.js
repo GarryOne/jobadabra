@@ -55,7 +55,7 @@ test('it asks Haiku 5.5 through Claude Code on PR_PROOF_ANTHROPIC_KEY (owner, 27
   assert.ok(MAX_USD > 0 && MAX_USD <= 0.5, 'a per-run cost cap exists');
 });
 
-test('without the key the PR shows "prompt cases NOT run", never a silent green', () => {
+test('without the key a manual run records "prompt cases NOT run", never a silent green', () => {
   const flow = fs.readFileSync(new URL('.github/workflows/prompt-cases.yml', root), 'utf8');
   assert.match(flow, /Prompt cases NOT run: no API key \(PR_PROOF_ANTHROPIC_KEY\)/);
   assert.match(flow, /state=error/);
@@ -75,11 +75,10 @@ test('the key is the only credential Claude Code gets, its cost is reported, and
   assert.match(flow, /PR_PROOF_ANTHROPIC_KEY is not set/);
 });
 
-test('the workflow starts on every file of the live set: its prompts, its case files and the tools that build and ask them', () => {
+test('the paid Haiku workflow is manually dispatchable and never runs automatically on pull requests', () => {
   const flow = fs.readFileSync(new URL('.github/workflows/prompt-cases.yml', root), 'utf8');
-  const {sets} = JSON.parse(fs.readFileSync(new URL('tools/prompt-cases.json', root), 'utf8'));
-  const live = Object.values(sets).filter(set => set.live).flatMap(set => [...Object.keys(set.prompts), ...set.cases]);
-  for (const file of [...live, 'tools/prompt-cases.mjs', 'tools/prompt-cases.json', 'tools/prompt-cases-live.mjs', 'tools/free-ai-form-cases.mjs', 'tools/free-ai-eval.mjs', 'tools/free-ai-eval-claude.mjs']) {
-    assert.ok(flow.includes(`- '${file}'`), `prompt-cases.yml paths: ${file}`);
-  }
+  const triggers = flow.split('\njobs:')[0];
+  assert.match(triggers, /^  workflow_dispatch:/m);
+  assert.doesNotMatch(triggers, /^  pull_request:/m);
+  assert.match(flow, /github\.event\.pull_request\.head\.sha \|\| github\.sha/);
 });

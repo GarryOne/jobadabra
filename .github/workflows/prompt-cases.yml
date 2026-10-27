@@ -1,5 +1,5 @@
 name: CI · Prompt cases (Haiku re-ask)
-# A PR that changes a prompt of a live case set (tools/prompt-cases.json) re-asks that set with main's prompts and with the PR's, on Haiku 5.5 through Claude Code
+# A manually dispatched run compares the selected ref with main on the live prompt case sets, using Haiku 5.5 through Claude Code
 # on the API key PR_PROOF_ANTHROPIC_KEY (its own workspace + spend limit), and fails when a case got worse, the case it adds is wrong, or the run passes its $ cap
 # (tools/prompt-cases-live.mjs). The run's measured cost is in its log and in the "Prompt cases" status line.
 # Why (owner, 27 Oct 2026): a session reworded a prompt to pass one benchmark case; "another session can come tomorrow and redo that prompt for a different use-case
@@ -7,30 +7,12 @@ name: CI · Prompt cases (Haiku re-ask)
 # Why-changed (owner, 27 Oct 2026): asked "Use Haiku instead" instead of setting the subscription token, he chose "Haiku on an API key (Recommended)" over "let them use my claude subscription".
 # Never the production Workers AI token or another key. Free AI runs qwen, not Haiku: this catches prompt regressions, not model ones.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'worker/src/extension.js'
-      - 'worker/src/answer-facts.js'
-      - 'worker/src/answer-declarations.js'
-      - 'worker/src/answer-examples.js'
-      - 'worker/src/cv-facts.js'
-      - 'worker/src/written-answer.js'
-      - 'tools/free-ai-form-asks.mjs'
-      - 'tools/free-ai-form-list.mjs'
-      - 'tools/free-ai-form-cases.mjs'
-      - 'tools/free-ai-eval.mjs'
-      - 'tools/free-ai-eval-claude.mjs'
-      - 'tools/prompt-cases.mjs'
-      - 'tools/prompt-cases.json'
-      - 'tools/prompt-cases-live.mjs'
-      - '.github/workflows/prompt-cases.yml'
+  # Why (owner, 27 Oct 2026): remove paid Haiku calls from automatic pull-request checks; keep them available by explicit dispatch.
+  workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read         # the commit's runs and jobs, for the PR's verdict (the last step of each job)
-  pull-requests: read
-  statuses: write       # the PR's "All checks passed", and "Prompt cases" when the run could not ask
+  statuses: write       # the selected ref's "Prompt cases" status when the run could not ask
 
 concurrency:
   group: prompt-cases-${{ github.head_ref || github.sha }}
@@ -47,35 +29,35 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Which live case sets this PR reaches
+      - name: Which live case sets the selected ref reaches
         id: sets
         run: |
           sets=$(node tools/prompt-cases.mjs --live --base origin/main | tr '\n' ' ')
           echo "sets=$sets" >> "$GITHUB_OUTPUT"
-          if [ -z "$sets" ]; then echo "No prompt of a live case set changed: nothing to ask."; else echo "Live case sets this PR reaches: $sets"; fi
+          if [ -z "$sets" ]; then echo "No prompt of a live case set changed: nothing to ask."; else echo "Live case sets this ref reaches: $sets"; fi
       - name: Say plainly when the API key is missing
         if: steps.sets.outputs.sets != ''
         id: token
         env:
           HAS_TOKEN: ${{ secrets.PR_PROOF_ANTHROPIC_KEY != '' }}
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           if [ "$HAS_TOKEN" = "true" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; exit 0; fi
           msg="Prompt cases NOT run: no API key (PR_PROOF_ANTHROPIC_KEY)"
-          echo "::warning::$msg. The owner adds the repository secret; until then a prompt change is checked only by its case being added (tools/prompt-cases.mjs)."
+          echo "::warning::$msg. Add the repository secret to enable manually dispatched Haiku checks."
           gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=error -f context="Prompt cases" -f description="$msg" >/dev/null
       - name: Install the worker and Claude Code
         if: steps.token.outputs.ok == '1'
         run: |
           npm ci --prefix worker
           npm install -g @anthropic-ai/claude-code@2.1.296
-      - name: Ask the cases with main's prompts and with this PR's (Haiku 5.5, PR_PROOF_ANTHROPIC_KEY)
+      - name: Ask the cases with main's prompts and with this ref's (Haiku 5.5, PR_PROOF_ANTHROPIC_KEY)
         if: steps.token.outputs.ok == '1'
         env:
           PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           git worktree add -q "$RUNNER_TEMP/base" "$(git merge-base origin/main HEAD)"
           set +e
@@ -88,16 +70,3 @@ jobs:
           state=success; [ "$code" = 0 ] || state=failure
           gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=$state -f context="Prompt cases" -f description="${line:-the run ended before asking} ${cost}" >/dev/null || true
           exit "$code"
-      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
-      - name: Write the PR's verdict
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
-          py=python3; "$py" -c 1 2>/dev/null || py=python
-          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"

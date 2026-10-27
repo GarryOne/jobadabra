@@ -93,6 +93,10 @@
 .contact-lines li { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-base); font-weight: 500; overflow-wrap: anywhere; }
 .contact-lines .icon { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
 @container (max-width: 520px) { .fact-cols { margin-left: calc(-1 * var(--sp-5)); } }
+/* Why (27 Oct 2026, owner): writing preferences read as two balanced rows in a small card; keep the shared wide and extreme-narrow layouts. */
+@container (min-width: 400px) and (max-width: 800px) {
+  #setting-letter-style .fact-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* Voluntary surveys as read (survey-rows.js surveyRead, mockup 05): one "Saved preferences" line, every answer folded under it; lined up with the title. */
 .panel.roomy .survey-read { display: grid; gap: var(--sp-2); margin-left: calc(var(--tile-lg) + var(--sp-3)); }
 .survey-saved { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); font-size: var(--fs-base); }

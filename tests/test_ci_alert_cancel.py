@@ -3,7 +3,7 @@
 Refill run 40451220954, cancelled on the owner's own yes, sent "🔴 CI · Replay refill failed … the estimate is above the cap, or the key is
 missing": the alert step ran under always() and read the cancelled jobs as a failure, then guessed a cause. Each step that runs
 `ci-alert.mjs failure` must skip a cancelled run: its `if:` holds `!cancelled()` (the run's own cancel, never a job's timeout), or it is
-`failure()` alone (false for a cancelled run). A new alerting workflow without the guard fails here.
+`failure()` alone or ANDed with the by-hand-branch clause (false for a cancelled run; an `||` after it would run again). A new alerting workflow without the guard fails here.
 """
 import pathlib
 import re
@@ -29,7 +29,7 @@ class AlertSkipsCancelledRun(unittest.TestCase):
         for path in sorted(WORKFLOWS.glob('*.yml')):
             for name, cond in alert_steps(path.read_text(encoding='utf-8')):
                 seen.append(path.name)
-                guarded = '!cancelled()' in cond.replace(' ', '') or re.match(r'(\$\{\{\s*)?failure\(\)', cond)
+                guarded = '!cancelled()' in cond.replace(' ', '') or re.fullmatch(r'(\$\{\{\s*)?failure\(\)(\s*&&\s*\(?github\.event_name[^|]*\|\|[^|]*\|\|[^|]*\)?)?(\s*\}\})?', cond)   # failure() alone, or ANDed with the by-hand-branch clause; never OR-ed with anything
                 self.assertTrue(guarded, f'{path.name}: step "{name}" sends a failure alert without skipping a cancelled run (if: {cond or "none"})')
         self.assertGreaterEqual(len(set(seen)), 5, f'the alerting workflows were not found: {sorted(set(seen))}')
 

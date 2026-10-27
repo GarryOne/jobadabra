@@ -57,11 +57,11 @@ class WatcherCommentsTest(Base):
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
         self.log.write_text('')
 
-    def watch(self):
+    def watch(self, started='2026-10-27T12:00:00Z'):
         # the PR is already merged on the 2nd look: one full pass over the comments, then the watcher ends
         v = json.loads((self.tmp / 'view.json').read_text())
         (self.tmp / 'view.json').write_text(json.dumps(v))
-        env = {**self.env, 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '0'}
+        env = {**self.env, 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '0', 'SHIP_WATCH_STARTED': started}
         subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile)], env=env, timeout=30, check=True)
         return [l for l in self.log.read_text().splitlines() if ' COMMENT ' in l]
 
@@ -119,6 +119,11 @@ class WatcherCommentsTest(Base):
         self.answer(view())
         self.assertEqual(self.watch(), [])
         self.assertEqual((self.tmp / 'watch.pid.comments').read_text(), '')
+
+    def test_a_comment_that_arrives_while_the_watcher_runs_is_told_even_when_a_push_follows_before_the_next_look(self):
+        """gitar-bot on #2258: only comments older than the watcher's start may be silenced as answered."""
+        self.answer(view(comments=[comment('IC_1', 'GarryOne', 'also make it blue', '2026-10-27T10:00:20Z')], commits=[{'committedDate': '2026-10-27T10:00:40Z'}]))
+        self.assertEqual(self.watch(started='2026-10-27T10:00:00Z'), [f'ship: COMMENT #7 owner comment {URL}#issuecomment-IC_1'])
 
     def test_a_comment_followed_by_a_push_is_silent_on_start(self):
         self.answer(view(comments=[comment('IC_1', 'gitar-bot')], commits=[{'committedDate': '2026-10-27T10:30:00Z'}]))

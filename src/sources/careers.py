@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from . import ats, host_pace
 
 MAX_BYTES = 2_000_000
-from ..ai import meanings_pack, page_words
+from ..ai import meanings_pack, page_words, slots
 from .careers_parse import (MAX_JOB_PAGES, CAREER_WORDS, JOB_PATH, JOB_ID, COUNTRIES, AGGREGATORS, own_site, encode, decode, links,  # noqa: F401
                             NO_JOBS, STRONG_WORDS, JOB_HOST, NOT_JOBS, registrable, careers_links, _walk, _words, jsonld_jobs, job_links,
                             MAX_LIST_PAGES, PAGE_PAUSE_S, page_links)
@@ -195,7 +195,7 @@ def _from_recipe(url, markup, fetch_page):
         return ats._job(link or f'{url}#{title}', title, job.get('location') or listing.get('location', ''), link or url,
                         job.get('date_posted', ''), job.get('description', ''), bool(job.get('remote')))
     with ThreadPoolExecutor(max_workers=6) as pool:
-        return list(pool.map(one, items[:40]))
+        return list(pool.map(slots.carry(one), items[:40]))
 
 
 def _asked(url, markup, jobs, fetch_page=None, careers_page=False):
@@ -308,7 +308,7 @@ def read_page_from(markup, url, fetch_page):
         declared = jsonld_jobs(page, link)
         return (declared, []) if declared else ([], [job for job in [job_from_page(page, link)] if job])
     with ThreadPoolExecutor(max_workers=6) as pool:
-        read = list(pool.map(one, job_links(markup, url)))
+        read = list(pool.map(slots.carry(one), job_links(markup, url)))
     from . import one_posting
     headed = list({job['url']: job for _, jobs in read for job in jobs}.values())
     postings = {job['url'] for job in one_posting.kept(headed, reader() is not None)}

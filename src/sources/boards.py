@@ -19,7 +19,7 @@ from urllib.request import Request
 from ..paths import DATA, REPORTS, keyword_regex, load_search_config
 from .feeds import wanted_title
 from ..ai.models import SMALL_MODEL
-from ..ai import meanings_pack, page_words
+from ..ai import meanings_pack, page_words, slots
 from ..ai.providers.contract import detail, reason
 _SEARCH = load_search_config()
 ROLE = keyword_regex(_SEARCH['board_discovery_keywords'])
@@ -454,7 +454,7 @@ def main():
         seen.add(job['url']);groups.setdefault(job['company'],[]).append(job)
     report={'checked_at':datetime.now(timezone.utc).isoformat(timespec='seconds'),'sources':sources,'discovered_companies':len(groups),'companies':[]}
     with ThreadPoolExecutor(max_workers=3) as pool:   # an employer's career links not followed by the cut: the next search finds it on the board again
-        for company in pool.map(lambda pair:None if read_budget.past_cut() else enrich(pair,client),list(groups.items())[:args.max_companies]):
+        for company in pool.map(slots.carry(lambda pair:None if read_budget.past_cut() else enrich(pair,client)),list(groups.items())[:args.max_companies]):
             if company is None:continue
             report['companies'].append(company);print('Checked:',company['company'],flush=True)
     if (unchecked:=min(len(groups),args.max_companies)-len(report['companies'])):

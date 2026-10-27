@@ -151,7 +151,7 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
         with batch_scope.reader('boards'), slots.priority(slots.FIRST):
             return (boards or board_jobs)(say)
     with batch_scope.concurrent(), ThreadPoolExecutor(max_workers=1) as pool:
-        reading = pool.submit(read_boards)   # the boards' pages meanwhile; matched below, in the thread that owns the job cache
+        reading = pool.submit(slots.carry(read_boards))   # the boards' pages meanwhile; matched below, in the thread that owns the job cache
         with batch_scope.reader('employer sites'):
             report = scan(chosen, feed_db)
         try:

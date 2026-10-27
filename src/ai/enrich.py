@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .. import store
 from ..paths import JOBS_DB
-from . import cost, engine, schema_notes
+from . import cost, engine, schema_notes, slots
 from .seniority import settle
 from ..role_kinds import KINDS, WORK
 from .models import SMALL_MODEL
@@ -281,7 +281,7 @@ def run(db, model, max_jobs, client=None, workers=5, stats=None, only_ids=None):
         """One batch, in parallel. True when the run must stop (the API is down, or the AI limit): the next run continues."""
         nonlocal done, late, failures, enriched, tokens_in, tokens_out
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {pool.submit(one, job): job for job in jobs}
+            futures = {pool.submit(slots.carry(one), job): job for job in jobs}
             for future in as_completed(futures):
                 job = futures[future]
                 done += 1

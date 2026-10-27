@@ -7,6 +7,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from . import ats, feed_facts, feeds, late_reads, read_budget
+from ..ai import slots
 from .. import read_methods, source_yield
 
 
@@ -84,7 +85,7 @@ def scan(sources, db, fetcher=None, details=None, on_jobs=None):
     try:
         def submit():   # the next site, in read order, unless its time is up: sites are started as others end, never all at once
             if begun[0] < len(sources) and not read_budget.over(stop, begun[0]):
-                pending[pool.submit(fetch, sources[begun[0]])] = begun[0]
+                pending[pool.submit(slots.carry(fetch), sources[begun[0]])] = begun[0]
                 begun[0] += 1
         pending = {}
         for _ in range(feeds.FETCH_WORKERS * 2):

@@ -263,7 +263,7 @@ def _judged(found, roles, fetch):
 
     from . import board_check
     with ThreadPoolExecutor(max_workers=4, thread_name_prefix='board-judge') as pool:
-        kinds = list(pool.map(lambda board: board_check.field_kind(board, fetch, roles), found))
+        kinds = list(pool.map(slots.carry(lambda board: board_check.field_kind(board, fetch, roles)), found))
     kept = []
     for board, kind in zip(found, kinds):
         if kind == 'field board':

@@ -109,7 +109,7 @@ Before drawing a review list, an empty state, figures with icons, a "From Your d
   **one primary button** on the right, a secondary (Done, Review) if needed, and **⋯** (`moreButton`) for the rest.
 - **Tone = meaning**, the same everywhere: `bad` (red) needs you now / failed, `warn` (amber) soon / waiting for
   you, `info` (blue) next step / running, `good` (green) done / completed, `neutral` later / ended. Rows needing
-  attention get a 4 px left border in that tone.
+  attention get a 4 px left border in that tone, never a tinted fill of the whole row or card (owner, 27 Oct 2026: "too much yellow"; `test/calm-session.test.js`).
 - **Category label** above a card title when cards are grouped: small caps, muted, letter-spaced (DISCOVERY,
   COMMUNICATION, INSIGHTS).
 - **Compact by default**: rows ~56–64 px high, padding `--sp-2 --sp-3`, gaps `--sp-2`. The owner asked for

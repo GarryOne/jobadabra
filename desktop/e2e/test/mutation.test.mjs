@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {applyMutant, baselineKey, issueActions, plan, score, summary} from '../lib/mutation.mjs';
+import {applyMutant, baselineKey, issueActions, issueBody, issueTitle, plan, score, summary} from '../lib/mutation.mjs';
 
 const root = path.resolve(new URL('../../..', import.meta.url).pathname);
 const mutants = JSON.parse(fs.readFileSync(new URL('../mutants.json', import.meta.url), 'utf8'));
@@ -64,7 +64,18 @@ test('red kills, green survives, a red baseline makes it unknown; the score coun
   const result = score(list, {'baseline:s': 'success', m1: 'failure', m2: 'success', 'baseline:t': 'failure', m3: 'failure'});
   assert.deepEqual(result.rows.map(row => row.outcome), ['killed', 'survived', 'unknown']);
   assert.equal(result.score, 50);
-  assert.match(summary(result), /50% of the planted code bugs caught \(1 caught, 1 missed, 1 unknown\)/);
+  assert.match(summary(result), /Planted code bugs: 50% caught \(1 caught, 1 missed, 1 unknown\)/);
+});
+
+test('what people read says "planted code bugs", never "mutation" or "mutant" (owner, 27 Oct 2026: visible names only)', () => {
+  const result = score([{id: 'x-not-held', suite: 's', what: 'the hold is cut short'}], {'baseline:s': 'success', 'x-not-held': 'success'});
+  const row = result.rows[0];
+  // The ids and the file name are code (mutants.json, -f mutant=): taken out before the check, the words around them are what people read.
+  const words = text => text.replaceAll(row.id, '').replace(/mutants\.json|-f mutant=/g, '');
+  for (const text of [summary(result), issueTitle(row.id), issueBody(row, 'https://run')]) assert.doesNotMatch(words(text), /mutation|mutant/i, text);
+  // An issue filed under the old title is still found, commented and closed.
+  const open = [{number: 7, title: `[mutation] ${row.id} survived: no suite caught it`}];
+  assert.deepEqual(issueActions(result, open).comment.map(item => item.number), [7]);
 });
 
 test('a finding the baseline did not raise kills a mutant too: a truth check files, it does not turn the suite red', () => {

@@ -86,7 +86,7 @@ For each issue, oldest high-severity first:
    `curl -sL -H "Authorization: Bearer $(security find-generic-password -s job-pilotto.site.api_key -w)" https://www.jobpilotto.top/admin/operations/self-healing -o <scratch>/selfheal.html`,
    then strip the tags. Read every section, not only the totals:
    - **The loop, live**: its age (published every 3 h by `self-heal-stats.yml`; older than ~6 h = the publisher is broken) and its cutoff.
-   - **Recall** (planted bugs caught; which were missed) and **Mutation catch rate** (planted code bugs).
+   - **Recall** (planted bugs caught; which were missed) and **Planted code bugs caught** (bugs written into the code on purpose).
    - **Detectors under watch** (the breaker: a detector wrong in 4 of its last 10 files nothing unjudged).
    - **What the Finder found** for all time / last 7 days / since the cutoff, and **by detector**; **AI cost per real bug**.
    - **How the Finder is evolving** (per day) and **What we changed in the Finder** (did a change move precision or recall?).

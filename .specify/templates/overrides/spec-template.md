@@ -10,9 +10,11 @@
 
 ## Progress
 
-<!-- Keep 1–5 high-level user outcomes here for report-progress. Detailed implementation tasks live in the sibling tasks.md. Replace the placeholder with outcomes from this spec. Tick an outcome only when verified, and include proof on the same line as required by AGENTS.md. -->
+<!-- Use one ### N. item per high-level outcome so report-progress can read each checklist. Detailed implementation tasks live in the sibling tasks.md. Tick an outcome only when verified; the proof rule is in docs/rules/change-loop.md and enforced by tools/spec-proof.mjs. -->
 
-- [ ] [User outcome 1] (proof: <path>)
+### 1. [User outcome 1]
+
+- [ ] [Verified result] (proof: <path>)
 
 ## User Scenarios & Testing *(mandatory)*
 

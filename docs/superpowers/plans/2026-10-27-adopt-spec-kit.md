@@ -29,7 +29,9 @@ connect it to Jobadabra's current rules without changing product code or frozen 
 - `specify integration status` succeeds in the initialized worktree and shows the configured
   integration; inspect the generated skills/manifest for complete Codex skill files.
 - `.specify/scripts/bash/resolve-template.sh spec-template` resolves the project-local override,
-  whose rendered output contains `## Progress` and keeps the detailed `tasks.md` artifact separate.
+  whose rendered output contains `## Progress` and `### N.` outcome headings; the
+  `tools/ladder-progress.mjs` parser returns a bar for the generated checklist, while detailed
+  implementation tasks remain in sibling `tasks.md`.
 - `git check-ignore` excludes an unrelated `.agents` local-state file while `git status` includes
   only the generated allowlisted `SKILL.md` files.
 - Review all changed paths for generated scripts, secrets, auth/config, unrelated files, and

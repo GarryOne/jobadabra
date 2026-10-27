@@ -48,6 +48,7 @@ export const caseFiles = item => new Map(item.pages.map(page => [pathKey(page.ur
 export const caseStatuses = item => new Map(item.pages.filter(page => page.status != null).map(page => [pathKey(page.url), [].concat(page.status)]));
 // A page's answer delayed (case.json pages[].delayMs): a site whose server answers a press late (record-once spec, 15 Oct 2026: a press answered after 20 s). The request stays open meanwhile.
 export const caseDelays = item => new Map(item.pages.filter(page => page.delayMs > 0).map(page => [pathKey(page.url), Number(page.delayMs)]));
+// Serve one offline route from case-owned HTML/status/delay/redirect maps; missing pages return404, and a pending synthetic redirect returns302 once.
 export async function answerPage(route, files, statuses = new Map(), delays = new Map(), redirects = new Map()) {
   const redirect = takeSyntheticRedirect(route.request().url(), redirects);
   if (redirect) return route.fulfill({status: 302, headers: {location: redirect}, body: ''});

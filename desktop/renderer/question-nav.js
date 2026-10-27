@@ -10,7 +10,7 @@ const SEGMENTS_UP_TO = 30;   // past it each segment would be a few pixels wide:
 const SEARCH_FROM = 9;   // owner, 18 Oct 2026: "From 9 questions"
 
 // What a Your details item asks for (lib/details-review.js), over its answer box and as its state in the list.
-export const ASKS = {which: 'Pick the right one', where: 'Pick its home', check: 'Pick the parts', open: 'Missing answer', unclear: 'Make it sure'};
+export const ASKS = {which: 'Pick the right one', where: 'Pick its home', check: 'Pick the parts', open: 'Missing answer', unclear: 'Make it sure', contact: 'Needed by every form'};
 
 // A question's kind (question-kind.js KINDS) → its tile's icon.
 const KIND_TILE = {text: 'file-text', long_text: 'file-text', single: 'sliders', multi: 'layers', yes_no: 'check-circle', date: 'calendar', amount: 'coins',

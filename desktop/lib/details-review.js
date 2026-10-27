@@ -15,12 +15,13 @@ import * as missingFacts from './missing-facts.js';
 import * as factAsks from './fact-asks.js';
 import {PARTS, splitNote} from '../renderer/experience-profile-model.js';
 import * as clarity from './answer-clarity.js';
+import * as contactReview from './contact-review.js';
 
 export const PREFIX = 'details:';
-export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing'];
+export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing', 'contact'];
 export const KEEP = 'Keep on the Profile';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
-const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet'};
+const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form'};
 const PAGES = {profile: 'Profile', answers: 'Application answers'};
 const plain = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 const same = text => plain(text).toLowerCase();
@@ -58,6 +59,9 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const outlines = {profile: await opened.page('profile').outline()};
   const outline = async page => (outlines[page] ||= await opened.page(page).outline());
   const out = [];
+  for (const each of await contactReview.missing(storage, {fetcher}).catch(() => [])) {   // first: every form asks them (rank MUST)
+    out.push(item('contact', {id: each.id}, {question: each.question, format: contactReview.format, hint: each.hint, value: each.value, details: {where: 'Your details → Contact details', fact: each.fact, must: true}}));
+  }
   const conflicts = await openConflicts(storage, {fetcher}).catch(() => []);
   for (const conflict of conflicts) {
     const values = [...new Map(conflict.choices.map(each => [same(each.value), each.value])).values()];
@@ -159,6 +163,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     else await line.page.setText(line.block, `${ref.label}: ${text}`);
     return {ok: true, homeName: 'your Profile'};
   }
+  if (kind === 'contact') return contactReview.answer(storage, ref.id, text, {fetcher});
   if (kind === 'missing') {
     const fact = missingFacts.byId(ref.id);
     if (!fact) return {ok: false, error: 'That question is no longer open'};

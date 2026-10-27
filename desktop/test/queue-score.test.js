@@ -89,7 +89,7 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
     storage.saveSettings({questionVerdicts: VERDICTS, missingFacts: {since: '2020-01-01'}});   // past the fresh install's 14 days: no missing-fact items beside these
     assert.ok((await factsOf(storage, fetcher)).some(fact => fact.label === 'Work permit / visa' && fact.value === ''), 'a fact with no value is listed (for the AI to map questions to)');
     const {list, fromDetails} = await openShown(storage, {fetcher, ai: {}});
-    assert.deepEqual(list.map(row => row.question), ['Work permit / visa', 'Salary expectation', 'Rare question']);
+    assert.deepEqual(list.map(row => row.question), ['What are your first and last name?', 'What is your email address?', 'What is your phone number?', 'Work permit / visa', 'Salary expectation', 'Rare question'], 'a name nobody gave is the first question, then the other must-haves');
     assert.equal(fromDetails, 0, 'nothing is answered from Your details yet');
   });
 }
@@ -103,4 +103,10 @@ test('every kind of Your details item names its fact (the class: what the score 
   const items = await review.pending(storage);
   assert.deepEqual([...new Set(items.map(item => item.details.kind))].sort(), [...review.KINDS].sort(), 'every kind is drawn here');
   for (const item of items) assert.ok(item.details.fact, `${item.details.kind} "${item.question}" names its fact`);
+});
+
+test('a must-have contact detail (name, email, phone) ranks above a fill that was blocked', () => {
+  const verdicts = {[keyOf('Salary expectation')]: v({blocked: true, asked: 9})};
+  const rows = [{question: 'Salary expectation'}, {question: 'What are your first and last name?', details: {kind: 'contact', fact: 'Name', must: true}}];
+  assert.equal(ranked(rows, verdicts)[0].details.kind, 'contact');
 });

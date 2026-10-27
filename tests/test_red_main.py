@@ -22,6 +22,7 @@ CLASSIFIED = {
     'Proof · Screenshot review scored on the judged issues': 'ignored: by hand only (it spends a few cents on Claude); scores a review model, never runs on a push to main',
     'Proof · Which org the e2e AI keys belong to': 'ignored: pull requests that edit it, and by hand; a $0 check of the e2e keys, never on a push to main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',
+    'CI · Prompt cases (Haiku re-ask)': 'ignored: pull requests that change a prompt only; never runs on main',
     'CI · Page cases (all cases, real extension, Linux)': 'ignored: pull requests and by hand only; on main its cases are a step of CI · Tests (one Linux job, 15 Oct 2026)',
     'CI · Pull request': 'ignored: runs on pull requests only, never on main; its checks gate the merge',
     'CI · PR verdict': 'ignored: writes a pull request\'s "All checks passed" status when its workflows end; it runs on main\'s copy but judges PR commits only',

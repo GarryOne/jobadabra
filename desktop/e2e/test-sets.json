@@ -315,6 +315,8 @@
   "wide-local.test.mjs",
   "widget-zoo.test.mjs",
   "wrong-values.test.mjs",
-  "pr-linux.test.mjs"
+  "pr-linux.test.mjs",
+  "judge-call.test.mjs",
+  "judge-run.test.mjs"
  ]
 }

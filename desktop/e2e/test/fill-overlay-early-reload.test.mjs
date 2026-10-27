@@ -124,9 +124,13 @@ test('replacing the document root during an Apply keeps both drawings at every f
       const replacement = document.createElement('html');
       replacement.innerHTML = '<head><title>Application</title></head><body><h1>Application</h1></body>';
       document.replaceChild(replacement, document.documentElement);
-      requestAnimationFrame(() => resolve({dim: !!document.getElementById('jobpilotto-fill-overlay'), host: !!document.getElementById('jobpilotto-review-host')}));
+      requestAnimationFrame(() => {
+        const host = document.getElementById('jobpilotto-review-host');
+        resolve({dim: !!document.getElementById('jobpilotto-fill-overlay'),
+          working: !!host && (/translate/.test(host.style.cssText) || !!host.shadowRoot?.querySelector('.fill.is-busy'))});
+      });
     }));
-    assert.deepEqual(afterStop, {dim: false, host: false}, 'a redraw after Stop must not resurrect the working look');
+    assert.deepEqual(afterStop, {dim: false, working: false}, 'a redraw after Stop must not resurrect the working look');
     await app.assertIsolated();
   } finally { await app.close(); }
 });

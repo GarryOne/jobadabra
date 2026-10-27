@@ -5,7 +5,7 @@
 // banner count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/details-review.test.js.
 import {openStore} from './store/index.js';
 import * as sections from './profile-sections.js';
-import {itemsOf, judge, keepUnsure, openConflicts, resolve, unsureKey} from './profile-move.js';
+import {itemsOf, openConflicts, resolve, unsureKey} from './profile-move.js';
 import * as formats from './question-formats.js';
 import {HOME_NAMES, homeOf, writeHome} from './answer-home.js';
 import {formatFor} from '../renderer/question-kind.js';
@@ -20,9 +20,10 @@ import * as contactDetails from './contact.js';
 import * as cvQueue from './cv-queue.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import {log} from './log.js';
+import {organize} from './profile-routing.js';
 
 export const PREFIX = 'details:';
-export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck'];
+export const KINDS = ['which', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck'];
 export const KEEP = 'Keep where it is';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
 const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
@@ -80,23 +81,6 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
     out.push(item('which', {topic: conflict.topic}, {question: `${conflict.topic.replace(/^./, letter => letter.toUpperCase())}: which is right?`, format: choice(values),
       hint: conflict.choices.map(each => `${each.value} on your ${PAGES[each.page] || each.page}`).join(' · '), details: {where: HOME_NAMES[conflict.home], fact: conflict.choices.find(each => each.label)?.label || conflict.topic}}));
   }
-  const unsure = new Map();
-  for (const entry of storage.settings().profileUnsure || []) {
-    if (!PAGES[entry.page]) continue;
-    const lines = itemsOf(await outline(entry.page), entry.page);
-    if (!lines.some(line => unsureKey(line) === unsureKey(entry))) continue;
-    // Why (2026-10-27, d9): exact copies share one review, with all sources retained; equal headings or AI topics never merge different values.
-    const key = unsureKey({...entry, page: ''});
-    if (!unsure.has(key)) unsure.set(key, {label: entry.label, value: entry.value, pages: new Set()});
-    unsure.get(key).pages.add(entry.page);
-  }
-  for (const {label, value, pages} of unsure.values()) {
-    const sources = [...pages].sort();
-    out.push(item('where', {pages: sources, label, value}, {question: label || value, format: choice([...Object.values(sections.SECTIONS), KEEP]),
-      hint: 'Choose where to keep this saved line, or leave it where it is.',
-      details: {where: sources.map(page => PAGES[page]).join(' · '), fact: label || value, line: label ? `${label}: ${value}` : value}}));
-  }
-  if (unsure.size) log('profile', 'unplaced source review queue read', {sources: [...unsure.values()].reduce((count, entry) => count + entry.pages.size, 0), reviews: unsure.size});
   const unclear = (line, ref, where, format) => {   // the AI's word on a saved answer (lib/answer-clarity.js): asked when it is not clear
     const said = clarity.UNCLEAR[clarity.verdictOf(storage, line)];
     if (said) out.push(item('unclear', ref, {question: line.label || line.value, format, value: line.value, details: {where, source: said, fact: line.label || line.value, line: `Saved: ${line.value}`}}));
@@ -226,17 +210,15 @@ async function answerUnclear(storage, ref, text, {fetcher, save}) {
 
 // The AI's word on each saved answer not judged yet (owner, 18 Oct 2026: "Every answered line, all 3 pages", "Once now + each save"): the Profile, the
 // answers page and Your details; a line is judged once and again only when its value changes (lib/answer-clarity.js). The first pass on a Profile moved
-// before "unsure" existed also queues the lines the AI cannot place (owner: "Re-check the lines that stayed, once"); nothing moves. No AI: tried later.
+// before automatic routing existed also organizes the legacy unplaced lines, using source context and validated destinations. No AI: originals stay intact.
 // -> {judged, queued, unclear}.
-export async function judgeNew(storage, {fetcher, ai = {}, now = new Date()} = {}) {
+export async function judgeNew(storage, {fetcher, ai = {}, now = new Date(), copy} = {}) {
   if (!(ai.client || ai.apiKey)) return {judged: 0, queued: 0, unclear: 0};
   const opened = openStore(storage, {fetcher});
   const profile = await opened.page('profile').outline(), owned = ownedElsewhere(profile);
   const lines = [...itemsOf(profile, 'profile').filter(each => !owned.has(each.id.slice('profile:'.length))), ...itemsOf(await opened.page('answers').outline(), 'answers')];
   const fresh = clarity.unjudged(storage, lines, now);
-  if (!fresh.length) { clarity.record(storage, [], new Map(), {now, present: lines}); return {judged: 0, queued: 0, unclear: 0}; }
-  const settings = storage.settings(), judged = await judge(fresh, ai);
-  clarity.record(storage, fresh, judged, {now, present: lines});
-  const queued = settings.profileMovedAt && !settings.profileUnsureAt ? keepUnsure(storage, fresh.filter(each => !each.home && judged.get(each.id)?.home === 'unsure'), now) : 0;
-  return {judged: fresh.length, queued, unclear: fresh.filter(each => clarity.UNCLEAR[judged.get(each.id)?.clarity]).length};
+  const organized = await organize(storage, {fetcher, ai, now, fresh, ...(copy ? {copy} : {})});
+  if (!organized.judged) clarity.record(storage, [], new Map(), {now, present: lines});
+  return {judged: organized.judged, queued: 0, unclear: organized.unclear};
 }

@@ -50,6 +50,7 @@ async function readQuestions({force}) {
 }
 
 function renderQuestions(list, error = '', hidden = [], consent = 0, fromDetails = null) {
+  list = list.filter(item => item.details?.kind !== 'where');   // legacy cached home pickers: the app now organizes these sources itself
   Object.assign(now, {list, hidden, consent, error: error || '', ...(fromDetails === null ? {} : {fromDetails})});
   const shown = JSON.stringify([list.length, error, now.fromDetails]);
   if (shown === questionsShown) return;

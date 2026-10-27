@@ -12,8 +12,8 @@ import {lineInput, outlineTab} from './outline-tab.js';
 import {input, labelled} from './website-rules.js';
 
 const TEXT = 'answers';
-export const STYLE_HEADING = 'Cover letter style';   // the app's own heading (lib/strategy.js asks the setup draft for it)
-export const isStyle = title => /^cover letter style$/i.test(String(title || '').replace(/^[^\p{L}\p{N}]+/u, '').trim());
+import {STYLE_HEADING, isStyle} from '../writing-preferences-model.js';
+export {STYLE_HEADING, isStyle};
 const typed = new Map();
 let tab = null;
 

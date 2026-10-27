@@ -71,10 +71,6 @@ const FIXTURES = {
     assert.ok((await sections.read(env.storage, env.fetcher)).availability.some(line => line.value === '3 months'));
     assert.deepEqual(env.storage.settings().setAside?.map(each => each.value), ['2 months'], 'the other value is set aside, with Undo');
   }},
-  where: {match: /^Relocation$/, answer: () => sections.SECTIONS.eligibility, after: async env => {
-    assert.ok((await sections.read(env.storage, env.fetcher)).eligibility.some(line => line.label === 'Relocation' && line.value === 'open to moving within the EU'), 'moved word for word');
-    assert.equal((await profileText(env)).split('Relocation').length - 1, 1, 'the old line left the Preferences');
-  }},
   check: {match: /^Target/, answer: () => '10000 CHF/month gross', after: async env => {
     const line = (await sections.read(env.storage, env.fetcher)).availability.find(each => each.label === 'Target');
     assert.equal(line.value, '10000 CHF/month gross');
@@ -148,7 +144,7 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
 
   test(`${name}: "Keep on the Profile" closes a where item and leaves the line where it is`, async () => {
     const env = await setup();
-    const item = (await review.pending(env.storage, {fetcher: env.fetcher})).find(each => each.details.kind === 'where');
+    const item = {key: `details:where:${JSON.stringify(UNSURE)}`};   // a drawer cached by an older app
     assert.equal((await review.answer(env.storage, item.key, review.KEEP, {fetcher: env.fetcher, ai})).ok, true);
     assert.match(await profileText(env), /Relocation: open to moving within the EU/);
     assert.deepEqual(env.storage.settings().profileUnsure, []);

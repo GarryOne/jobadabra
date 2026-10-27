@@ -33,6 +33,7 @@
   "test-sets.test.mjs"
  ],
  "daily": [
+  "export-snapshot.test.mjs",
   "replay-deadline.test.mjs",
   "phone-replace.test.mjs",
   "synthetic-navigation.test.mjs",

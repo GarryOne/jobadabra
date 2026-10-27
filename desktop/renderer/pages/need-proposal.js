@@ -7,7 +7,7 @@
 import {el} from '../components.js';
 import {renderSessionPage} from './session-log.js';
 import {badge, reviewStates, showInForm, smallButton, submitOnEnter, titleLine} from './session-needs.js';
-import {keyAsker, onChoices, pickProposal} from '../proposal-pick.js';
+import {keyAsker, onChoices, pickProposal, rowPicks} from '../proposal-pick.js';
 import {storeName} from '../store-words.js';
 
 // What the row needs besides the form's report, asked once per window and kept: your details, the CV's proposals, and which detail a
@@ -46,6 +46,7 @@ const used = new Map();   // `${id}|${label}` -> {at, kept}
 const counted = new Set();
 const noteUse = (id, source, act) => { if (source) window.pilot.sessionProposalUse?.(id, source, act)?.catch?.(() => {}); };
 const TAKES_MS = 5000;
+const picks = rowPicks();   // a redraw builds a new box: what the person chose lives here, not in the box
 
 export function proposedRow(item, label, proposal, now = Date.now()) {
   const li = el('li', 'ss-need is-ask'), body = el('div', 'ss-need-body'), actions = el('span', 'ss-need-actions'), line = el('div', 'ss-ask-line');   // askRow's layout
@@ -56,7 +57,9 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   const input = proposal.options?.length ? el('select', 'ss-ask-input') : el('input', 'ss-ask-input');
   if (proposal.options?.length) input.append(el('option', '', proposal.waiting ? 'Finding the matching choice…' : ''), ...proposal.options.map(option => el('option', '', option)));
   else { input.type = 'text'; input.placeholder = 'Your answer'; }
-  input.value = tried?.value || proposal.value;
+  input.value = picks.start(key, tried?.value || proposal.value);
+  input.addEventListener('input', () => picks.note(key, input.value));
+  input.addEventListener('change', () => picks.note(key, input.value));   // a menu fires change, a text box input
   const note = el('span', 'ss-need-desc small', proposal.from);
   line.append(input, actions);
   body.append(titleLine(label.replace(/^\s*\*\s*|\s*\*\s*$/g, '')), note, line);
@@ -85,6 +88,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
     const kept = already ? {ok: true} : await (proposal.key ? window.pilot.saveContactField(proposal.key, value) : window.pilot.rememberAnswer(label, value)).catch(() => ({ok: false}));
     if (proposal.key && kept?.ok) contact = {...contact, [proposal.key]: value};
     used.set(key, {at: Date.now(), value, kept: !!kept?.ok});
+    picks.forget(key);
     setTimeout(() => { if ((reviewStates.get(item.id)?.pending || []).includes(label)) { navigator.clipboard?.writeText(value).catch(() => {}); renderSessionPage(); } }, TAKES_MS);
     renderSessionPage();
   });

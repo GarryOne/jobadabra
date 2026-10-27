@@ -31,6 +31,19 @@ function proposalOf({proposals = [], label, key = '', contact = {}, cv = []} = {
   return {value: '', key: wants, source: 'empty', from: `Your ${NAMES[wants] || 'detail'}: type it once, every form gets it`};
 }
 
+// What the person has picked or typed in a row's box, kept outside the box: the session page redraws a row many times (proposals,
+// contact, the choice lookup arrive late) and a new box starts from the proposal, so a pick made a moment before Use read "" and
+// the row said "Write an answer first" (applyflows run 40526061842, 27 Oct 2026). One owner per row key; changed only by the person
+// (`note`) or by Use (`forget`, the form has it now).
+export function rowPicks() {
+  const picked = new Map();
+  return {
+    note: (key, value) => { picked.set(key, value); },
+    start: (key, fallback) => picked.has(key) ? picked.get(key) : fallback,
+    forget: key => { picked.delete(key); },
+  };
+}
+
 // Which detail each label asks for, asked of Claude once per label (lib/contact-keys.js), the labels of one redraw in one call.
 // A label stays "asked" until its answer comes: a redraw while Claude reads it must not pay for it again (8 Oct 2026, the live-test
 // twin: "Localité" was sent twice, 0.1 s apart). ask(labels) -> Promise<{label: key}>; onAnswer() redraws.

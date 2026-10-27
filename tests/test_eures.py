@@ -57,6 +57,23 @@ class EuresTest(unittest.TestCase):
         self.assertIn('EURES', [name for name, _ in aggregators.sources({})])
         self.assertNotIn('EURES', [name for name, _ in aggregators.sources({'JOB_PILOTTO_DISABLE': 'eures'})])
 
+    def test_it_runs_past_the_read_cut_and_stops_asking_after_its_own_time(self):
+        from src.sources import read_budget
+        self.assertIn('EURES', aggregators.CHEAP_PAST_CUT)
+        asked = []
+        with mock.patch.object(eures, 'SECONDS', -1):
+            found = eures.eures(SEARCH, get=lambda *a, **k: asked.append(1) or {'jvs': []}, client=Client({'Brussels': 'BE10'}))
+        self.assertEqual((found, asked), ([], []), 'past its own time it asks for nothing more')
+
+    def test_scan_reads_eures_after_the_cut_but_queues_the_others(self):
+        import sqlite3
+        from src.sources import read_budget
+        read = []
+        db = sqlite3.connect(':memory:')
+        with mock.patch.object(read_budget, 'past_cut', lambda now=None: True), mock.patch('builtins.print'), mock.patch('src.time_budget.later'):
+            aggregators.scan(db, SEARCH, readers=[('Arbeitnow', lambda s: read.append('A') or []), ('EURES', lambda s: read.append('E') or [])])
+        self.assertEqual(read, ['E'])
+
 
 if __name__ == '__main__':
     unittest.main()

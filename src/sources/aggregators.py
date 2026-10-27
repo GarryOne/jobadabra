@@ -22,6 +22,7 @@ SPACING_HOURS = 6
 PAGES = 2
 JOBSCH_PAGES = 5   # jobs.ch pages read at most per search and place (20 postings a page)
 TIMEOUT = 30
+CHEAP_PAST_CUT = ('EURES',)   # readers that run even past the read cut: each bounds its own time (eures.SECONDS)
 TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_runs (source TEXT PRIMARY KEY, at TEXT NOT NULL)'
 SEARCH_TABLE = 'CREATE TABLE IF NOT EXISTS aggregator_searches (source TEXT PRIMARY KEY, search TEXT NOT NULL)'   # which search each last read was for
 # Search-place country words -> Adzuna's country codes (the countries it covers).
@@ -286,7 +287,9 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
             continue
-        if read_budget.past_cut() and not (ahead is not None and name == boards_ahead.NAME):   # the boards read beside the employers are only taken
+        # Why (27 Oct 2026, benchmark run 40451692782): the free APIs start after the employers and boards, past the read cut (~72 s), so EURES was queued
+        # ("5 sources wait for the next search") in every persona and gave no local job; it is a few requests with its own time limit, so it reads anyway.
+        if read_budget.past_cut() and name not in CHEAP_PAST_CUT and not (ahead is not None and name == boards_ahead.NAME):   # the boards read beside the employers are only taken
             late.append(name)
             continue
         try:

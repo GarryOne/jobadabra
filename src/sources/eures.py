@@ -9,6 +9,7 @@ shape the code validates against the map's country: a bad answer is dropped, the
 import json
 import re
 import threading
+import time
 import urllib.parse
 
 from .. import geo
@@ -20,6 +21,7 @@ COUNTRIES = frozenset('AT BE BG HR CY CZ DK EE FI FR DE HU IS IE IT LV LI LT LU 
 PAGE_SIZE = 50
 MAX_PAGES = 6   # per role word and country: the best matches first, the rest waits for another search
 KEEP = 100
+SECONDS = 25   # a read stops asking for more pages after this (it runs past the search's read cut, src/sources/aggregators.py CHEAP_PAST_CUT)
 STORE = DATA / 'eures_regions.json'
 LOCK = threading.Lock()
 NUTS2 = re.compile(r'[A-Z]{2}[0-9A-Z]{2}')
@@ -101,11 +103,13 @@ def eures(search, get=None, client=None):
     get = get or aggregators._get
     places = [readable(str(p)) for group in ('top_tier', 'country_wide', 'abroad') for p in terms((search.get('locations') or {}).get(group))[:6]]
     wanted = regions(places, client)
-    jobs, seen = [], set()
+    jobs, seen, began = [], set(), time.monotonic()
     for country in dict.fromkeys(prefix[:2] for prefixes in wanted.values() for prefix in prefixes):
         mine = {word: prefixes for word, prefixes in wanted.items() if prefixes[0][:2] == country}
         for query in aggregators._queries(search)[:3]:
             for page in range(1, MAX_PAGES + 1):
+                if time.monotonic() - began > SECONDS:
+                    return jobs
                 data = get(URL, json.dumps(_body(query, country, page)).encode(), {'Content-Type': 'application/json'})
                 listed = data.get('jvs') or []
                 for j in listed:

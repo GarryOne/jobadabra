@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {loadJsdom, openPage, userClick} from './helpers/page.js';
 const JSDOM = await loadJsdom();
 
-for (const shape of ['native','custom']) test(`late ${shape} consent returns and records its final required count without a second fill`, {skip:!JSDOM}, async () => {
+for (const [shape,enabled] of [['native',true],['custom',true],['native',false]]) test(`late ${shape} consent, setting ${enabled ? 'on' : 'off'}, returns and records the final required count without a second fill`, {skip:!JSDOM}, async () => {
   const dom = openPage(JSDOM, `<form><div><label for="notice">Privacy notice for applicants *</label>${shape === 'native'
     ? '<select id="notice" required><option value="">Choose</option><option value="agree">Acconsento</option><option value="no">Non acconsento</option></select>'
     : '<input id="notice" role="combobox" readonly aria-required="true" aria-controls="choices" aria-expanded="false"><ul id="choices" hidden role="listbox"><li role="option">Non acconsento</li><li role="option">Acconsento</li></ul>'}</div></form>`);
@@ -28,13 +28,19 @@ for (const shape of ['native','custom']) test(`late ${shape} consent returns and
       assert.equal(new URL(address).origin,'https://fixture-api.example.test','never contact the live owner app or a service');
       const path=new URL(address).pathname,body=init?.body ? JSON.parse(init.body) : {};
       requests.push({path,body});
-      const data=path==='/extension/me' ? {contact:{},acceptConsents:true} : path==='/extension/answer'
+      const data=path==='/extension/me' ? {contact:{},acceptConsents:enabled} : path==='/extension/answer'
         ? {eligible:true,answers:[{field:'notice',category:'legal',use:'kind',consent:true,value:shape==='native'?'Acconsento':'checked'}]}
         : path==='/extension/pick-choice' ? {choice:'Acconsento'} : {};
       return Response.json(data);
     };
     const {fillTab}=await import(`../../extension/flow.js?consent-${shape}`);
-    const summary=await fillTab({id:618,url},{workerUrl:'https://fixture-api.example.test',token:'fictional',clickDropdowns:true},{hasKit:true,useAI:true});
+    const summary=await fillTab({id:618,url},{workerUrl:'https://fixture-api.example.test',token:'fictional',clickDropdowns:true,acceptConsents:true},{hasKit:true,useAI:true,kitAnswers:enabled ? [] : [{field:'notice',category:'legal',answer:'Acconsento'}]});
+    if (!enabled) {
+      assert.equal(notice.value,'');
+      assert.equal(requests.filter(request=>request.path==='/extension/answer').length,0,'consent off and a kit-covered legal form makes no AI answer call');
+      assert.equal(summary.unfilledRequired,1);
+      return;
+    }
     assert.equal(notice.value,shape==='native'?'agree':'Acconsento');
     const row=summary.trace.find(row=>row.label.startsWith('Privacy notice'));
     assert.equal(row.outcome,'filled');

@@ -28,7 +28,8 @@ export const FORMS = [
   ['location-fr', [['Quelle est votre localisation ? (Région seulement)', 'text', null, {m: 'zurich|zürich|suisse|switzerland', maybeEmpty: true}]]],
   ['notice', [['What is your current notice period?', 'textarea', null, {m: '2 months|two months|8 weeks'}]]],
   ['start-de', [['Verfügbar ab', 'text', null, {m: '2 monat|zwei monat|2 months|8 woch'}]]],
-  ['available-fr', [['Disponibilité', 'select', ['Immédiate', 'Dans 1 mois', 'Dans 2 mois', 'Dans 3 mois', 'Plus de 3 mois'], {v: ['Dans 2 mois']}]]],
+  // Why (27 Oct 2026, consent proof): demo Profile says 2 months, Answers says 3; retain the French inputs but require a proposal instead of choosing a conflicting fact.
+  ['available-fr', [['Disponibilité', 'select', ['Immédiate', 'Dans 1 mois', 'Dans 2 mois', 'Dans 3 mois', 'Plus de 3 mois'], {v: ['Dans 2 mois', 'Dans 3 mois'], use: 'propose', single: true}]]],
   // Money
   ['salary-gross-eur', [['What are your salary expectations? (in Euros GROSS per year)', 'text', null, {m: '\\d'}]]],
   ['salary-de', [['Gehaltsvorstellung', 'text', null, {m: '1[34]\\d'}]]],

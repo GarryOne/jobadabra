@@ -22,8 +22,8 @@ const typed = answer => answer?.category === 'written' ? String(answer.value ?? 
 /**
  * A form-answer reply against what each field should get (the eval cases in tools/free-ai-form-list.mjs).
  * @param {{answers?: Array<{field: string, value?: string, use?: string, category?: string}>}} data the model's parsed reply
- * @param {Record<string, {value?: string[], match?: string, notMatch?: string, empty?: true, maybeEmpty?: true, category?: string, use?: string}>} expect per field id:
- *   acceptable values, a regex the typed text must hold (match) or must not hold (notMatch), empty, category, use
+ * @param {Record<string, {value?: string[], match?: string, notMatch?: string, empty?: true, maybeEmpty?: true, category?: string, use?: string, single?: true}>} expect per field id:
+ *   acceptable values, a regex the typed text must hold (match) or must not hold (notMatch), empty, category, use; single requires one exact allowed value
  * @returns {string[]} one line per broken expectation; [] when every field is right. Never throws on a missing or malformed answer (it is a problem line).
  * A written answer is judged on what is typed: its text before the first "• Add:" reminder.
  */
@@ -37,7 +37,7 @@ export function answerProblems(data, expect) {
     const parts = String(got?.value ?? '').split(' && ');
     if (want.empty) { if (given && got.use !== 'propose') found.push(`${field}: answered, wanted empty`); }
     else if (!got) { if (!want.maybeEmpty && (want.value || want.match || want.category)) found.push(`${field}: no answer`); continue; }
-    else if (want.value && !(want.maybeEmpty && !given) && !parts.every(part => want.value.includes(part)) && !want.value.includes(got.value)) found.push(`${field}: "${got.value}", wanted ${want.value.join(' or ')}`);
+    else if (want.value && !(want.maybeEmpty && !given) && !(want.single ? want.value.includes(got.value) : parts.every(part => want.value.includes(part)) || want.value.includes(got.value))) found.push(`${field}: "${got.value}", wanted ${want.value.join(' or ')}`);
     else if (want.match && !(want.maybeEmpty && !given) && !new RegExp(want.match, 'i').test(typed(got))) found.push(`${field}: "${typed(got)}", wanted /${want.match}/`);
     if (want.notMatch && new RegExp(want.notMatch, 'i').test(typed(got))) found.push(`${field}: "${typed(got)}", must not say /${want.notMatch}/`);
     if (want.within && given && !parts.every(part => want.within.includes(part))) found.push(`${field}: "${got.value}" is not one of the options`);

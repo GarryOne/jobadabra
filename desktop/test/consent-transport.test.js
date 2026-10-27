@@ -31,3 +31,11 @@ test('saved consent on/default reaches the explicit agreement decision; off neve
   }
   assert.equal(calls,2);
 });
+
+test('consent off does not add legal-only AI work, including a kit-covered form and app-off overriding extension-on', async () => {
+  const rows=[{field:'privacy',label:'Privacy notice',type:'select',legal:true,options:['Agree']}, {field:'truth',label:'Certification',type:'checkbox',legal:true}];
+  for (const kit of [[],rows.map(row=>({field:row.field,category:'legal'}))]) {
+    const {open}=await openQuestions({},rows,kit,{acceptConsents:false},{acceptConsents:true});
+    assert.deepEqual(open,[]);
+  }
+});

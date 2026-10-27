@@ -137,7 +137,6 @@ export const APP = 'http://127.0.0.1:47111';
 export const NOT_CONNECTED = "the Jobadabra app didn't accept this extension, even after reconnecting";
 export const NO_APP = "can't reach the Jobadabra app: is it open?";
 const usesApp = config => !config.workerUrl || config.workerUrl.startsWith(APP);
-
 // Connect to the app (the Settings button, and by itself whenever the app turns the token down).
 export async function pair() {
   const response = await fetch(`${APP}/extension/pair`);
@@ -201,11 +200,12 @@ const readForm = tab => inPage(tab.id, async () => [...await window.__jobPilotto
 // What goes to Claude is only what nothing else answers: not a field the kit covers (answered, or left empty on purpose: an optional question it
 // chose to skip), not your contact details and CV (the app's, filled by the fill itself), not a file. A form the kit was drafted from needs no call.
 async function openQuestions(tab, form, kitAnswers, me, config) {
-  const fromKit = new Set(kitAnswers.filter(a => a.category !== 'legal').map(a => a.field).filter(Boolean));
+  const consentsOn = (me?.acceptConsents ?? config.acceptConsents) !== false;
+  const fromKit = new Set(kitAnswers.filter(a => !consentsOn || a.category !== 'legal').map(a => a.field).filter(Boolean));
   const contact = new Set((await inPage(tab.id, (rows, profile) => window.__jobPilottoProfileEntries(rows, profile).map(e => e.field),
     [form || [], me?.contact || config.profile || {}]).catch(() => [])) || []);
   const PERSONAL = /^(first_name|last_name|preferred_name|email|phone|resume|resume_text|cover_letter|cover_letter_text|longitude|latitude)$/;
-  const ask = (form || []).filter(f => !f.filled && f.type !== 'file' && (!fromKit.has(f.field) || f.legal) && !PERSONAL.test(f.field)).map(({field, label, type, custom, required, options, multiple}) => ({field, label, type: custom ? 'combobox' : type, required, options, ...(multiple ? {multiple} : {})}));
+  const ask = (form || []).filter(f => !f.filled && f.type !== 'file' && (f.legal ? consentsOn : !fromKit.has(f.field)) && !PERSONAL.test(f.field)).map(({field, label, type, custom, required, options, multiple}) => ({field, label, type: custom ? 'combobox' : type, required, options, ...(multiple ? {multiple} : {})}));
   // Why (#2200): contact boxes ride along when the AI is asked anyway, never alone (owner, 27 Oct 2026: no new call): its reading of a box beats the quick step's label pattern (page/fill.js)
   return {fromKit, open: ask.some(f => !contact.has(f.field)) ? ask : []};
 }

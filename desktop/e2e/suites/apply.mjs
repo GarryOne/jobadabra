@@ -39,6 +39,14 @@ export const browser = true;
 export const engine = 'api';   // the form's open question is answered by the AI proxy, which needs the API engine
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
+// Only the fixture's declared consent ids receive an explicit AI reading; unknown boxes and factual declarations stay unread.
+function fixtureAnswers(fields) {
+  const consent = new Set(Object.values(FORMS).flatMap(form => form.consent || []));
+  return fields.flatMap(item => consent.has(item.field) && item.type === 'checkbox'
+    ? [{field: item.field, category: 'consent', use: 'fill', value: 'checked', confidence: 'high'}]
+    : item.field === 'why' ? [{field: item.field, value: OPEN_ANSWER, confidence: 'medium', note: 'inferred from the profile'}] : []);
+}
+
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
@@ -132,7 +140,7 @@ export async function runApply(ctx, parts) {
       const asked = /<form_fields>\n([\s\S]*?)\n<\/form_fields>/.exec(typeof content === 'string' ? content : (content || []).map(part => part.text || '').join(''));
       if (!asked) return null;
       ctx.answerAsks = [...(ctx.answerAsks || []), ...JSON.parse(asked[1]).map(item => item.field)];   // counted: a question the night answered is never asked
-      const answers = JSON.parse(asked[1]).filter(item => item.field === 'why').map(item => ({field: item.field, value: OPEN_ANSWER, confidence: 'medium', note: 'inferred from the profile'}));
+      const answers = fixtureAnswers(JSON.parse(asked[1]));
       return JSON.stringify({eligible: true, eligibility_note: '', answers});
     });
     await page.reload();

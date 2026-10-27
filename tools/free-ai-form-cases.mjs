@@ -11,7 +11,7 @@ import {APPLICANTS} from './free-ai-form-applicants.mjs';
 export const realForms = () => REAL_FORMS.map(([id, list]) => ({id: `real-${id}`,
   fields: list.map(([label, type, options], i) => field(`f${i + 1}`, label, type, options)),
   expect: Object.fromEntries(list.map(([, , options, want], i) => [`f${i + 1}`, {...(want.v ? {value: want.v} : {}), ...(want.empty ? {empty: true} : {}), ...(want.maybeEmpty ? {maybeEmpty: true} : {}), ...(want.m ? {match: want.m} : {}),
-    ...(want.cat ? {category: want.cat} : {}), ...(options ? {within: options} : {})}]))}));
+    ...(want.cat ? {category: want.cat} : {}), ...(want.use ? {use: want.use} : {}), ...(want.single ? {single: true} : {}), ...(options ? {within: options} : {})}]))}));
 
 // answerForm builds the exact request, then asks the client: ours keeps the request and stops.
 export async function formCases({profile, answers, forms = FORMS}) {

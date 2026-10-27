@@ -193,10 +193,10 @@ async function connectNotion(ctx, {startedOnNotion = false} = {}) {
 }
 
 
-/** Exercise auto-draft and explicit approval using an existing fictional letter; refuse engines that bypass the canned proxy. */
+/** Exercise auto-draft and explicit approval using the existing dummy-key API seam and a fictional letter. */
 export async function completeWizardLetter(ctx) {
   const {page, proxy} = ctx;
-  if (!['api', 'openai'].includes(ctx.engine) || !proxy?.setCanned) throw new Error('wizard letter proof requires the canned API proxy');
+  if (!proxy?.setCanned || typeof ctx.withApi !== 'function') throw new Error('wizard letter proof requires the canned API seam');
   const fixtures = JSON.parse(fs.readFileSync(new URL('../../demo/job-pages.json', import.meta.url), 'utf8'));
   const section = Object.values(fixtures).flatMap(item => Object.values(item.sections || {})).find(text => String(text).includes('### ✉️ Cover letter'));
   const letter = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
@@ -205,17 +205,19 @@ export async function completeWizardLetter(ctx) {
   // Why (2026-10-27): entering setup starts generation immediately; arm the stub before the transition so this test never asks a model.
   proxy.setCanned(() => { answered += 1; return JSON.stringify({letter}); });
   try {
-    await page.click('#draft-save');
-    await ctx.expectStep('letter', 180000);
-    await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
-    const draft = await page.evaluate(() => window.pilot.coverLetter());
-    if (!answered || draft.text !== letter) throw new Error('setup did not use the canned letter');
-    if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
-    await page.click('#letter-approve');
-    await page.waitForFunction(async () => {
-      const approved = await window.pilot.coverLetter();
-      return approved.state === 'approved' && approved.pdf;
-    }, null, {timeout: 30000});
-    await page.click('#setup-letter-next');
+    await ctx.withApi(async () => {
+      await page.click('#draft-save');
+      await ctx.expectStep('letter', 180000);
+      await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
+      const draft = await page.evaluate(() => window.pilot.coverLetter());
+      if (!answered || draft.text !== letter) throw new Error('setup did not use the canned letter');
+      if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
+      await page.click('#letter-approve');
+      await page.waitForFunction(async () => {
+        const approved = await window.pilot.coverLetter();
+        return approved.state === 'approved' && approved.pdf;
+      }, null, {timeout: 30000});
+      await page.click('#setup-letter-next');
+    });
   } finally { proxy.setCanned(previous); }
 }

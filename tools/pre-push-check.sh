@@ -175,6 +175,10 @@ fi
 if command -v node >/dev/null && [ -f "$repo/tools/rung-trailer.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   trailer="$(cd "$repo" && timed "rung trailer" node tools/rung-trailer.mjs --base origin/main 2>&1)" || { echo "Push blocked: $trailer" >&2; exit 2; }
 fi
+# A line guarded by a "Why (<PR or date>): <reason>" comment changes only on purpose: "Why-changed: <which> — <reason>" in a commit message (tools/why-changed.mjs; owner, 27 Oct 2026).
+if command -v node >/dev/null && [ -f "$repo/tools/why-changed.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  whychanged="$(cd "$repo" && timed "why comments" node tools/why-changed.mjs --base origin/main 2>&1)" || { echo "Push blocked: $whychanged" >&2; exit 2; }
+fi
 # A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || { echo "Push blocked: $proof" >&2; exit 2; }

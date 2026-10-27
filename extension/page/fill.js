@@ -41,7 +41,7 @@
     // The popup guard (page/guard-gate.js): between the stages a layer that opened over the form is closed by the extension, or the fill is held and types nothing more.
     let held = false;
     const gate = async () => { if (!held && await (window.__jobPilottoGate?.() ?? true) === false) held = true; return !held; };
-    // A reminder line in a value is never typed (page/fill-marks.js splitReminders): the rest is typed, the reminders go with the answer; nothing left = the AI's reading only.
+    // Why (#2198, owner): a reminder line in a value is never typed (page/fill-marks.js splitReminders): the rest is typed, the reminders go with the answer; nothing left = the AI's reading only.
     for (const a of all || []) if (typeof a.value === 'string' && /•\s*Add:/.test(a.value)) {
       const {text, remind} = window.__jobPilottoFillKit.splitReminders(a.value);
       Object.assign(a, {value: text, remind: [...(a.remind || []), ...remind]}, text ? (a.draft ? {draft: 'outline'} : {}) : {use: 'kind', draft: undefined});
@@ -71,7 +71,7 @@
       if (rows.length === 1 && !(all || []).some(other => other !== item && other.field === rows[0].field)) { item.field = rows[0].field; reach.byQuestion++; } else reach.lost++;
     }
     proposedOf = Object.fromEntries((all || []).filter(a => a.use === 'propose').map(a => [a.field, a]));
-    // The AI's reading of what a contact box means wins over the quick step's label pattern (owner, 27 Oct 2026; form 103 "Preferred First & Last Name" typed "Tester"):
+    // Why (#2200, owner): the AI's reading of what a contact box means wins over the quick step's label pattern (owner, 27 Oct 2026; form 103 "Preferred First & Last Name" typed "Tester"):
     // where its answer disagrees, the AI's is typed, now (the pattern's entry is dropped) or over the box the quick step typed earlier (data-jobpilotto-contact), never over the person's edit.
     const alnum = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
     const byAI = Object.fromEntries(answers.filter(a => a.use === 'fill' && typeof a.value === 'string' && a.value.trim() && !/^(your details|standard answer)/.test(a.source || '')).map(a => [a.field, a.value]));

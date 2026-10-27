@@ -90,6 +90,12 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - **Splitting safely** (8 Oct 2026): `main.js` 2,781 → 1,197 lines took a failed start (`prepareKitFor` needed before it existed) and three near-misses;
   a session had split the contact handlers meanwhile (two files registering one channel).
 
+## Why comments (27 Oct 2026)
+- 8 Oct 2026: an owner-approved card layout was overwritten by a later session that never knew it was approved (CLAUDE.local "A card has many states").
+- 27 Oct 2026: a session first built the Website box by its label, against the owner's choice that the AI judges the box (#2201); another reworded a prompt
+  to pass one benchmark case. Owner: "next time an AI agent/session comes, doesn't get overwrite with no reasoning/understanding why that code was like that";
+  asked "rule + gate", he chose it. Hence the Why comment and `tools/why-changed.mjs` (guard: `desktop/test/why-changed.test.js`).
+
 ## Change loop
 - **Superpowers plugin dropped** (30 Sep 2026): its process cost more tokens than it saved. **No subagents** (30 Sep 2026): they ate most of the
   token usage and were slow.

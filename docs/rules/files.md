@@ -1,6 +1,6 @@
 # Files: one concern each, never over 500 lines
 
-Linked from CLAUDE.md. Why: [why.md](why.md#files).
+Linked from CLAUDE.md. Why: [why.md](why.md#files), [why comments](why.md#why-comments-27-oct-2026).
 
 ## The cap (owner, 8 Oct 2026)
 - **No source file (.js, .mjs, .cjs, .py) over 500 lines.** About to cross it? Move a concern into its own file first (the pattern:
@@ -29,3 +29,18 @@ a quiet window). `tools/file-size.mjs` warns (never blocks) when a change touche
   (25 Oct 2026: activity-result-bottom.js left run-compact and visits-view-jobs red; 27 Oct 2026, #2205: the score bands left score.py, fit-tooltip.test.js red).
 - **Land fast:** rebase right before the push and port what others changed in the moved range.
 - **A migration or move is its own pure commit**, in a quiet window announced to all peers, never mixed with behaviour changes.
+
+## Why comments
+A line that encodes a decision says why, so the next session does not undo it without knowing (owner, 27 Oct 2026).
+- **Form:** one line, `// Why (<PR or date>[, owner]): <reason>` (`#` in Python, shell, YAML), right above the line or trailing it. `owner` when it was his choice.
+  More lines may follow as plain comment lines; a labelled line (`Usage:`, `Tests:`, `Used by`) ends them.
+- **When:** an owner's choice, a fix for an incident, a guard, a "looks wrong but is right", a prompt sentence added for a case.
+  Never a comment that narrates what the code does. `// Why a job has no score` (a function's description) is not one: only `Why:` and `Why (…):` count.
+- **Prompts:** a comment cannot sit inside the string, so the Why above the prompt const quotes its sentence in backticks:
+  ``// Why (#2203): `names neither a currency nor a period` — form 106 stayed empty``. The gate then guards those words, not the whole prompt line.
+  A comment explains; the prompt's case set protects (a test that replays the case).
+- **What the gate guards** (`tools/why-changed.mjs`, in the push's fast checks): the Why's own lines, the first code line under them (not under a file's header),
+  the line a trailing Why sits on, and a quoted prompt sentence. Deleting or rewriting one needs `Why-changed: <which Why> — <reason>` in a commit message
+  of the push. Free: a new Why, a pure move or re-indent (the same lines come back elsewhere in the push), any other line.
+- **Before you change a guarded line:** read the Why and its PR (`gh pr view <n>`). Still wrong? Change it, update or drop the Why, and say it in the trailer.
+  Over main's last 300 commits the gate would have asked 4 times, each an edit of a Why or the line under it.

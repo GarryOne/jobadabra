@@ -8,7 +8,7 @@ const bad = message => messageProblems(message, IDS).join('\n');
 
 test('a message with no trailers, or good ones, has no problem', () => {
   assert.deepEqual(messageProblems('Fix a label\n\nbody', IDS), []);
-  assert.deepEqual(messageProblems('Fix\n\nRung: 3, router\nFixture: aldi-suisse, trap-press-address-de\nPool-row: Acme Corp\nRecorded-unneeded: a log line\nE2E-issue: none the step is unrelated', IDS), []);
+  assert.deepEqual(messageProblems('Fix\n\nRung: 3, router\nFixture: aldi-suisse, trap-press-address-de\nPool-row: Acme Corp\nRecorded-unneeded: a log line\nE2E-issue: none the step is unrelated\nWhy-changed: #2201 link box — the owner moved it to the shared rule', IDS), []);
   assert.deepEqual(messageProblems('Fix\n\nRung: none: a log line\nFixture: none: a pure move', IDS), []);
 });
 
@@ -18,6 +18,7 @@ test('every wrong value names its line (the "Rung: 1 " that cost a ship cycle is
     ['x\n\nFixture: nope', /no fixture "nope"/], ['x\n\nFixture: none', /"Fixture: none" needs a reason/],
     ['x\n\nPool-row: https://a.example/jobs?id=1', /Pool-row/], ['x\n\nPool-row:', /Pool-row/],
     ['x\n\nRecorded-unneeded:', /Recorded-unneeded/], ['x\n\nRecorded-pins:', /Recorded-pins/], ['x\n\nE2E-issue: none', /E2E-issue/], ['x\n\nE2E-issue: 12', /E2E-issue/],
+    ['x\n\nWhy-changed:', /Why-changed/], ['x\n\nWhy-changed: x', /Why-changed/],
   ]) assert.match(bad(message), pattern, message);
 });
 

@@ -401,7 +401,7 @@ jobs:
           replay=0; [ "${{ matrix.suite }}" != quality ] || replay="$E2E_AI_REPLAY"   # quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate")
           export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY="$replay"   # fresh answers, never the first try's (a replayed bad draw proves nothing); quality's retry replays like its first try (owner, 27 Oct 2026); a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
-          # The retry repeats only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs). Main's quality on
+          # Why (#2199): the retry repeats only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs). Main's quality on
           # 27 Oct 2026 had one red step, then a whole-suite retry ran out of the 7-minute budget. No step to name (a crash, a renamed pick): the whole suite.
           red=$(node red-steps.mjs "$first/suite-failures.json")
           if [ -n "$red" ]; then export E2E_STEP_NAMES="$red"; echo "The second try repeats only the red step(s) and their setup: $red"; else unset E2E_STEP_NAMES; echo "The second try runs the whole suite (no red step to name)."; fi

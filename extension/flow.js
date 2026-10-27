@@ -207,7 +207,7 @@ async function openQuestions(tab, form, kitAnswers, me, config) {
     [form || [], me?.contact || config.profile || {}]).catch(() => [])) || []);
   const PERSONAL = /^(first_name|last_name|preferred_name|email|phone|resume|resume_text|cover_letter|cover_letter_text|longitude|latitude)$/;
   const ask = (form || []).filter(f => !f.filled && !f.legal && f.type !== 'file' && !fromKit.has(f.field) && !PERSONAL.test(f.field)).map(({field, label, type, required, options, multiple}) => ({field, label, type, required, options, ...(multiple ? {multiple} : {})}));
-  // Contact boxes ride along when the AI is asked anyway, never alone (owner, 27 Oct 2026: no new call): its reading of a box beats the quick step's label pattern (page/fill.js)
+  // Why (#2200): contact boxes ride along when the AI is asked anyway, never alone (owner, 27 Oct 2026: no new call): its reading of a box beats the quick step's label pattern (page/fill.js)
   return {fromKit, open: ask.some(f => !contact.has(f.field)) ? ask : []};
 }
 // Claude's answers for a fill, or the news that they were dropped: the app call gives null when the tab had left the page the answer was asked for (read-gen.js), and the fill went on to read

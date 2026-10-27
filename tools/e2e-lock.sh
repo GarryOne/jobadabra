@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# One lock per e2e suite (it owns one Notion page) that WAITS: a job takes it and holds it to the end; another job of the same suite polls until it is free.
+# One lock per e2e suite on the REAL Notion test workspace (`export const store = 'notion'`, today notion-real) that WAITS: a job takes it and holds it to the end;
+# another job of the same suite polls until it is free. Every other suite takes none: since 9 Oct 2026 it keeps its data on this Mac's store or the in-memory
+# stand-in, fresh per run (desktop/e2e/lib/store.mjs), so two runs share nothing, and a job waiting for the lock held its runner (377 runner-minutes in 3 days,
+# up to 14 min a job; PR #2156's applyflows-2of2 30+ min, 27 Oct 2026). A key whose suite file is not found still takes the lock.
 # Why not a `concurrency:` group: GitHub keeps ONE waiting job per group and a newer one cancels the older (beta 14, 24 Oct 2026: 12 jobs cancelled by other runs' jobs).
 # The lock is the git ref refs/e2e-locks/<key>, created atomically; its commit message names the holder. A lock whose run has finished is taken over.
 # Usage: e2e-lock.sh acquire <key> | e2e-lock.sh release <key>   (needs GH_TOKEN with contents: write, GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_JOB, GITHUB_SHA)
@@ -13,6 +16,13 @@ set -uo pipefail
 cmd="${1:?acquire|release}"; key="${2:?suite key}"
 repo="${GITHUB_REPOSITORY:?}"; ref="e2e-locks/${key}"
 me="run=${GITHUB_RUN_ID:?} job=${GITHUB_JOB:?}"
+# The suite of a job key (desktop/e2e/lib/suite-shards.mjs suiteOfKey): a store leg (-standin, -sqlite) or a slice (-1of2) is its suite's job.
+suite="$(printf '%s' "$key" | sed -E 's/-(standin|sqlite)$//; s/-[0-9]+of[0-9]+$//')"
+suite_file="${E2E_SUITES_DIR:-desktop/e2e/suites}/${suite}.mjs"
+if [ "$cmd" = acquire ] && [ -f "$suite_file" ] && ! grep -qE "^export const store = ['\"]notion['\"]" "$suite_file"; then
+  echo "e2e-lock: ${key} keeps no shared Notion page (this Mac's store or the in-memory stand-in, fresh per run): no lock to wait for"
+  exit 0
+fi
 poll="${E2E_LOCK_POLL:-20}"; max="${E2E_LOCK_MAX:-10800}"   # three hours, then the job fails by name instead of hanging
 
 # gh prints an error body on stdout when a call fails, so only a real 40-hex sha counts as "someone holds it"

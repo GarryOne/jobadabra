@@ -71,13 +71,19 @@ test('an install with no key never sent anything: nothing to delete, no call', a
   assert.deepEqual(s.calls, []);
 });
 
-test('the card offers delete in every state that is not on, and says when the profile was last copied or deleted', () => {
-  const now = new Date(2026, 9, 27, 12, 0);
-  const on = model({on: true, email: 'a@example.com', copiedAt: new Date(2026, 9, 27, 9, 14).toISOString()}, null, now);
+test('the card offers "Delete our copy" only while off and only when we hold a copy, whatever the store; it says when the profile was copied or deleted', () => {
+  const now = new Date(2026, 9, 27, 12, 0), at = (d, h, m) => new Date(2026, 9, d, h, m).toISOString();
+  const on = model({on: true, email: 'a@example.com', copiedAt: at(27, 9, 14)}, null, now);
   assert.equal(on.erase, false);   // "Turn off and delete" covers it while on
   assert.equal(on.held, 'Your profile was last copied to our servers today at 9:14.');
-  for (const mine of [{skipped: true, email: 'a@example.com'}, {email: 'a@example.com'}, {skipped: true}, {}]) assert.equal(model(mine, null, now).erase, true, JSON.stringify(mine));
-  assert.equal(model({skipped: true, email: 'a@example.com', deletedAt: new Date(2026, 9, 26, 10, 2).toISOString()}, null, now).held, 'Nothing of yours is on our servers (deleted 26 Oct at 10:02).');
-  assert.equal(model({skipped: true, email: 'a@example.com'}, null, now).held, '');
+  // Never copied to us (a Notion or SQLite user who never used Always on): no button, nothing said. The store plays no part (owner, 27 Oct 2026).
+  for (const mine of [{skipped: true, email: 'a@example.com'}, {email: 'a@example.com'}, {skipped: true}, {}]) {
+    for (const store of ['sqlite', 'notion']) assert.deepEqual([model({...mine, store}, null, now).erase, model({...mine, store}, null, now).held], [false, ''], JSON.stringify({mine, store}));
+  }
+  // A delete that failed leaves our copy: the button stays and the line says so.
+  const left = model({skipped: true, email: 'a@example.com', copiedAt: at(26, 8, 0)}, null, now);
+  assert.deepEqual([left.erase, left.held], [true, 'A copy of your profile is still on our servers (copied 26 Oct at 8:00).']);
+  const gone = model({skipped: true, email: 'a@example.com', deletedAt: at(26, 10, 2)}, null, now);
+  assert.deepEqual([gone.erase, gone.held], [false, 'Nothing of yours is on our servers (deleted 26 Oct at 10:02).']);
   assert.equal(stamp('nope', now), '');
 });

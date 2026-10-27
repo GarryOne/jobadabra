@@ -1,5 +1,5 @@
 // Always on "on our servers" in the window (private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §4b, §4d): the wizard's step 4 (switch ON, e-mail, a pre-checked product-news box, Skip / Turn on Always on)
-// and the Settings card (ON by default until Skip; asks for the e-mail first when there is none; Turn off and delete; Download my data; Delete my data from our servers at any time, also while off; when the profile was last copied there). One name everywhere: "Always on" (owner, 17 Oct 2026).
+// and the Settings card (ON by default until Skip; asks for the e-mail first when there is none; Turn off and delete; Download my data; Delete our copy of your data while off, when we hold one; when the profile was last copied there). One name everywhere: "Always on" (owner, 17 Oct 2026).
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/hosted-search.test.js, test/hosted-words.test.js.
 import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';
@@ -75,8 +75,8 @@ export function mountCard() {
   info.append(status, held);
   const main = el('div', 'aon-actions');
   main.append(button('hosted-turn-on', 'Turn on Always on', 'secondary'), button('hosted-resume', 'Resume Always on', 'secondary'),
-    button('hosted-change-email', 'Change e-mail', 'secondary'), button('hosted-download', 'Download my data', 'secondary'), button('hosted-turn-off', 'Turn off and delete', 'secondary'),
-    button('hosted-delete', 'Delete my data from our servers', 'secondary'));
+    button('hosted-change-email', 'Change e-mail', 'secondary'), button('hosted-download', 'Download my data', 'secondary'), button('hosted-turn-off', 'Turn off and delete', 'danger-outline'),
+    button('hosted-delete', 'Delete our copy of your data', 'danger-outline'));   // destroys data: the red outline (owner, 27 Oct 2026)
   row.append(tile('cloud'), info, main);
   // No e-mail field of its own (#1711, owner 27 Oct 2026: one shared e-mail): the address and the news choice are Notifications', a button goes there.
   const msg = el('p', 'message'); msg.id = 'hosted-set-message';

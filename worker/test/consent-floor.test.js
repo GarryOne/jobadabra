@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { answerForm } from '../src/extension.js';
+import {loadJsdom, openPage} from './helpers/page.js';
+const JSDOM = await loadJsdom();
 
 const ask = async (fields, answers) => {
   const client = { messages: { create: async () => ({ stop_reason: 'end_turn', usage: {}, content: [{ type: 'text', text: JSON.stringify({ eligible: true, eligibility_note: '', pay_asks: [], answers }) }] }) } };
@@ -44,13 +46,14 @@ test('uncertain, proposed, unlisted and text consent decisions cannot authorize 
   assert.ok(!got.some(a => a.consent === true));
 });
 
-test('a rejected or personal-review AI reading cannot fall through to the legacy legal checkbox tick', async () => {
-  const {fakeFillPage} = await import('../../desktop/test/fake-fill-page.js');
+test('a rejected or personal-review AI reading cannot fall through to the legacy legal checkbox tick', {skip:!JSDOM}, async () => {
   for (const over of [{category:'consent',confidence:'low'}, {category:'consent',use:'propose'}, {category:'legal'}]) {
     const fields = [{field:'a',label:'Aviso de datos personales',type:'checkbox',required:true,filled:false}];
     const decisions = await ask(fields,[answer({value:'checked',...over})]);
-    const {fill,elements} = fakeFillPage(fields,{checkboxes:true});
-    await fill(decisions,{consents:true});
-    assert.equal(elements.a.checked,false,JSON.stringify(over));
+    const page = openPage(JSDOM,'<form><label><input id="a" type="checkbox" required>Aviso de datos personales</label></form>');
+    try {
+      await page.__jobPilottoExtensionFill(decisions,{},null,'',true);
+      assert.equal(page.document.getElementById('a').checked,false,JSON.stringify(over));
+    } finally {page.close();}
   }
 });

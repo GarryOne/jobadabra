@@ -103,7 +103,7 @@ contextBridge.exposeInMainWorld('pilot', {
     remindGet: call('ivRemindGet'), remindSet: call('ivRemindSet'), recordings: call('ivRecordings'), access: call('mediaAccess'), tapAvailable: call('ivTapAvailable'), tapStart: call('ivTapStart'), openPrivacy: call('openPrivacy'), relaunch: call('relaunch')},
   onInterviewProgress: callback => ipcRenderer.on('ivProgress', (_, step) => callback(step)),
   onCallLevel: callback => ipcRenderer.on('ivLevel', (_, level) => callback(level)),
-  hostedState: call('hostedState'), hostedOn: call('hostedOn'), hostedOff: call('hostedOff'), hostedPush: call('hostedPush'), hostedExport: call('hostedExport'),
+  hostedState: call('hostedState'), hostedOn: call('hostedOn'), hostedOff: call('hostedOff'), hostedDelete: call('hostedDelete'), hostedPush: call('hostedPush'), hostedExport: call('hostedExport'),
   onHostedArrived: callback => ipcRenderer.on('hostedArrived', (_, arrived) => callback(arrived)),
   cloudConnect: call('cloudConnect'), cloudOff: call('cloudOff'), cloudTurnOffConfirmed: call('cloudTurnOffConfirmed'), telegramCloudOn: call('telegramCloudOn'), telegramCloudOff: call('telegramCloudOff'),
   openExternal: call('openExternal'), openVisit: call('openVisit'), visitsList: call('visitsList'), visitsStuck: call('visitsStuck'), visitsDismiss: call('visitsDismiss'), visitsRun: call('visitsRun'), refusedReadStart: call('refusedReadStart'), visitWithClaude: call('visitWithClaude'), visitsWithClaude: call('visitsWithClaude'), focusBrowser: call('focusBrowser'), visitShowTab: call('visitShowTab'), visitAgain: call('visitAgain'), showBrowser: call('showBrowser'), openNotion: call('openNotion'), showFolder: call('showFolder'), extensionInfo: call('extensionInfo'),

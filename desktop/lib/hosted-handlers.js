@@ -15,6 +15,7 @@ export function registerHostedHandlers({DEMO, dialog, getWindow, ipcMain, storag
     return done;
   });
   ipcMain.handle('hostedOff', async () => (DEMO ? {ok: true} : hosted.turnOff(storage)));
+  ipcMain.handle('hostedDelete', async () => (DEMO ? {ok: true} : hosted.deleteData(storage)));   // at any time, also while off (owner, 27 Oct 2026)
   ipcMain.handle('hostedPush', async () => (DEMO || !hosted.state(storage).on ? {ok: true} : hosted.pushConfig(storage)));
   ipcMain.handle('hostedExport', async () => {
     if (DEMO) return {ok: true};

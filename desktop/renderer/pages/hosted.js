@@ -1,5 +1,5 @@
 // Always on "on our servers" in the window (private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §4b, §4d): the wizard's step 4 (switch ON, e-mail, a pre-checked product-news box, Skip / Turn on Always on)
-// and the Settings card (ON by default until Skip; asks for the e-mail first when there is none; Turn off deletes; Download my data). One name everywhere: "Always on" (owner, 17 Oct 2026).
+// and the Settings card (ON by default until Skip; asks for the e-mail first when there is none; Turn off and delete; Download my data; Delete my data from our servers at any time, also while off; when the profile was last copied there). One name everywhere: "Always on" (owner, 17 Oct 2026).
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/hosted-search.test.js, test/hosted-words.test.js.
 import {el, pill, tile} from '../components.js';
 import {$, message, show} from './core.js';
@@ -71,10 +71,12 @@ export function mountCard() {
   // Rows, never one squeezed line (owner, 17 Oct 2026): 1 icon + status at full width, 2 the buttons. All solid, in one row: a text-only link under a button looked
   // misaligned and broken (owner, 27 Oct 2026: "let's have always just solid buttons in the app"; docs/rules/desktop-ui.md).
   const row = el('div', 'aon-row aon-stack'), info = el('div', 'aon-text'), status = el('p', 'muted small'); status.id = 'hosted-status';
-  info.append(status);
+  const held = el('p', 'muted small'); held.id = 'hosted-held';   // when the profile was last copied to our servers, or deleted (owner, 27 Oct 2026)
+  info.append(status, held);
   const main = el('div', 'aon-actions');
   main.append(button('hosted-turn-on', 'Turn on Always on', 'secondary'), button('hosted-resume', 'Resume Always on', 'secondary'),
-    button('hosted-change-email', 'Change e-mail', 'secondary'), button('hosted-turn-off', 'Turn off', 'secondary'), button('hosted-download', 'Download my data', 'secondary'));
+    button('hosted-change-email', 'Change e-mail', 'secondary'), button('hosted-download', 'Download my data', 'secondary'), button('hosted-turn-off', 'Turn off and delete', 'secondary'),
+    button('hosted-delete', 'Delete my data from our servers', 'secondary'));
   row.append(tile('cloud'), info, main);
   // No e-mail field of its own (#1711, owner 27 Oct 2026: one shared e-mail): the address and the news choice are Notifications', a button goes there.
   const msg = el('p', 'message'); msg.id = 'hosted-set-message';
@@ -91,6 +93,11 @@ export function mountCard() {
   $('hosted-change-email').addEventListener('click', toNotify);
   $('hosted-resume').addEventListener('click', turnOn);
   $('hosted-turn-off').addEventListener('click', async () => { const done = await window.pilot.hostedOff(); message('hosted-set-message', done.ok ? 'Always on is off. Everything we held is deleted.' : done.error || 'Could not turn it off just now.', done.ok ? 'ok' : 'bad'); refresh(); });
+  $('hosted-delete').addEventListener('click', async () => {
+    const done = await window.pilot.hostedDelete();
+    message('hosted-set-message', done.ok ? (done.nothing ? 'Nothing to delete: this Mac never sent anything to our servers.' : 'Deleted ✓ Nothing of yours is on our servers.') : done.error || 'Could not delete it just now. Try again.', done.ok ? 'ok' : 'bad');
+    refresh();
+  });
   $('hosted-download').addEventListener('click', async () => { const done = await window.pilot.hostedExport(); if (!done.cancelled) message('hosted-set-message', done.ok ? 'Saved ✓' : done.error || 'Could not save it just now.', done.ok ? 'ok' : 'bad'); });
   window.pilot.onHostedArrived(refresh);
   refresh();
@@ -104,7 +111,8 @@ export function draw(view, email = '') {
   show($('hosted-turn-on'), view.button === 'on' || view.button === 'email');
   show($('hosted-resume'), view.button === 'resume');
   show($('hosted-change-email'), !!email && view.button !== 'email');
-  show($('hosted-turn-off'), view.off); show($('hosted-download'), view.download);
+  show($('hosted-turn-off'), view.off); show($('hosted-download'), view.download); show($('hosted-delete'), !!view.erase);
+  $('hosted-held').textContent = view.held || ''; show($('hosted-held'), !!view.held);
 }
 const hostedAddress = now => now.email || now.shared || '';
 

@@ -21,11 +21,29 @@ export function when(iso, now = new Date()) {
   return `${gap <= 0 ? 'today' : gap === 1 ? 'tomorrow' : at.toLocaleDateString('en', {weekday: 'short'})} ~${clock}`;
 }
 
-// -> {state, pill: [text, tone], line, asksEmail, button: 'on' | 'email' | 'resume' | null, off, download, note}
+// "today at 9:14" / "26 Oct at 10:02": when the profile was last copied to our servers, or deleted from them.
+export function stamp(iso, now = new Date()) {
+  const at = new Date(iso);
+  if (!(at.getTime() > 0)) return '';
+  const same = at.toDateString() === now.toDateString(), clock = `${at.getHours()}:${two(at.getMinutes())}`;
+  return `${same ? 'today' : `${at.getDate()} ${at.toLocaleDateString('en', {month: 'short'})}`} at ${clock}`;
+}
+// What our servers hold, in one line: the last copy while it is on, the deletion once it is off (owner, 27 Oct 2026).
+function heldLine(mine, now) {
+  if (mine.on) return mine.copiedAt ? `Your profile was last copied to our servers ${stamp(mine.copiedAt, now)}.` : '';
+  return mine.deletedAt ? `Nothing of yours is on our servers (deleted ${stamp(mine.deletedAt, now)}).` : '';
+}
+
+// -> {state, pill: [text, tone], line, held, asksEmail, button: 'on' | 'email' | 'resume' | null, off, download, erase, note}
+//   held: when the profile was last copied to our servers, or deleted from them. erase: "Delete my data from our servers" shows (every state that is not on;
+//   while on, "Turn off and delete" does it).
 //   mine: the app's own record {on, skipped, email}; schedule: the server's {state, pause_reason, next_run_at, email_channel} or null;
 //   shared: the address Settings → Notifications keeps, the one Always on uses (#1711, owner 27 Oct 2026: one shared e-mail). asksEmail: there is none yet,
 //   and the button goes to Notifications to add it.
 export function model(mine = {}, schedule = null, now = new Date(), shared = '') {
+  return {...view(mine, schedule, now, shared), held: heldLine(mine, now), erase: !mine.on};
+}
+function view(mine, schedule, now, shared) {
   const email = mine.email || shared || '', skipped = !!mine.skipped && !mine.on;
   if (!email && (skipped || !mine.on)) return {state: 'needs-email', pill: skipped ? ['Off', 'neutral'] : ['On', 'good'], line: 'Add your e-mail in Notifications to get the matches. Then turn it on here.', asksEmail: true, button: 'email', off: false, download: false};
   if (skipped) return {state: 'off', pill: ['Off', 'neutral'], line: `Turn it on to get new matches every morning at ${email}, even when your Mac is off.`, asksEmail: false, button: 'on', off: false, download: false};

@@ -6,11 +6,12 @@ import {flakyProof} from './lib/flaky-proof.mjs';
 
 let failures = null;
 try { failures = JSON.parse(fs.readFileSync(process.argv[2], 'utf8')); } catch (error) { console.log(`flaky-proof: no first-try failures read (${error.message.split('\n')[0]}): nothing to judge`); process.exit(0); }
-let bad = 0;
+let bad = 0, harness = 0;
 for (const failure of failures) {
   const proof = flakyProof(failure.message);
-  if (!proof.flaky) bad++;
-  console.log(`${proof.flaky ? '🎲 flaky' : '🔁 intermittent'}: ${failure.step}: ${proof.why}`);
+  if (proof.harness) harness++; else if (!proof.flaky) bad++;
+  console.log(`${proof.harness ? '🧰 harness' : proof.flaky ? '🎲 flaky' : '🔁 intermittent'}: ${failure.step}: ${proof.why}`);
 }
+if (harness) console.log(`${harness} step(s) failed a check of the test harness itself (e.g. its isolation from the live app) and passed on the second try: the harness's red, not the app's. The job stays red until the harness is fixed.`);
 if (bad) console.log(`${bad} step(s) failed on a wrong value and passed on the second try: that is a bug that shows sometimes, not a flake. The job stays red (gate G5).`);
-process.exit(bad ? 1 : 0);
+process.exit(bad || harness ? 1 : 0);

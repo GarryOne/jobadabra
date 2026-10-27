@@ -106,6 +106,7 @@
   "installed-only.test.mjs",
   "interact.test.mjs",
   "interview-data.test.mjs",
+  "isolation-check.test.mjs",
   "issue-links.test.mjs",
   "jobs-filter-all.test.mjs",
   "journey-run.test.mjs",

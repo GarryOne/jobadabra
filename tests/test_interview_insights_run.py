@@ -191,5 +191,17 @@ class EffortTests(unittest.TestCase):
             self.assertEqual(client.calls[0]['output_config'].get('effort'), expected, model)
 
 
+class OwnStepName(unittest.TestCase):
+    """27 Oct 2026 (owner): the patterns call is its own AI step, so the Pro lane can route it apart from the call review ('interview')."""
+
+    def test_the_default_client_is_asked_for_interview_patterns(self):
+        a, b = env()
+        a.start(), b.start()
+        self.addCleanup(a.stop), self.addCleanup(b.stop)
+        with mock.patch('src.ai.engine.client', return_value=FakeClient(RESULT)) as made:
+            ii.update(stores=open_stores(tracker=FakeNotion(list(ONE), PAGES)), now=NOW, budget_status=lambda t: {'level': 'ok'})
+        made.assert_called_once_with(action='interview_patterns')
+
+
 if __name__ == '__main__':
     unittest.main()

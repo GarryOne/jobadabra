@@ -6,14 +6,14 @@ export const OSS = '@cf/openai/gpt-oss-120b';   // measured 16 Oct 2026 (tools/f
 const PRICES = {[SMALL]: [0.0509, 0.335], [STRONG]: [0.15, 0.5], [OSS]: [0.35, 0.75]};
 
 // Steps that read a page, a mail or a job (short, structured answers) run on the small model; writing a CV, a kit, a strategy or an answer for a form runs on the stronger one.
-export const STRONG_STEPS = new Set(['kit', 'prep', 'insight', 'interview', 'opportunity', 'review', 'tailor', 'cover_letter', 'job_cover_letter', 'answer', 'answer_review']);
+export const STRONG_STEPS = new Set(['kit', 'prep', 'insight', 'interview', 'interview_patterns', 'opportunity', 'review', 'tailor', 'cover_letter', 'job_cover_letter', 'answer', 'answer_review']);
 
 // Every other step reads or judges (a score, job facts, a mail, a title, a decision): it answers at temperature 0 (owner, 26 Oct 2026: "Reading + judging steps").
 // Measured 26 Oct 2026 (690 draws on CI's quality fixtures): at the model's default 0.6, 26% of score texts invented a fact; at 0, 11%. Writing keeps the default.
 // Guard: desktop/test/free-ai-temperature.test.js.
 // The interview review judges a call's notes for gaps and practice steps (owner, 26 Oct 2026: "Yes, temp 0 for interview"; beta 3's Windows run named no gap):
 // it keeps the stronger model when that is on, but answers at 0.
-const JUDGED_WRITING = new Set(['interview']);
+const JUDGED_WRITING = new Set(['interview', 'interview_patterns']);
 export const temperatureFor = action => (STRONG_STEPS.has(String(action ?? '')) && !JUDGED_WRITING.has(String(action ?? '')) ? undefined : 0);
 
 // Per step (owner, 16 Oct 2026: "Yes, that step only"): the rejection review ('review') runs on gpt-oss-120b, every other step on SMALL (or STRONG when STRONG_ON). STEP_MODELS=off puts it back on SMALL.

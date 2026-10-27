@@ -2,6 +2,7 @@
 person's, and remote limited to another region, are out even when they accept remote. The AI's answer is the model's; this keeps the prompt's cases and
 the version that makes old answers asked again. No network."""
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -53,15 +54,13 @@ class TheFixedCases(unittest.TestCase):
             return SimpleNamespace(content=[SimpleNamespace(type='text', text=json.dumps(body))], usage=SimpleNamespace(input_tokens=0, output_tokens=0))
         case = CASES[2]
         job = {'url': 'https://x.test/3003', 'title': 'Senior DevOps Engineer', 'location': case['where'], 'description': case['text']}
-        with unittest.mock.patch.object(place_triage, 'places_words', lambda search, prefs=None: case['places']), \
+        with tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(place_triage, 'places_words', lambda search, prefs=None: case['places']), \
                 unittest.mock.patch.object(place_triage, '_load_read', lambda: {}), unittest.mock.patch.object(place_triage, 'LOCK'), \
-                unittest.mock.patch.object(place_triage, 'READ_STORE', Path('/dev/null')), unittest.mock.patch('builtins.print'):
-            try:
-                found = place_triage.read([job], {}, SimpleNamespace(messages=SimpleNamespace(create=create)))
-            except OSError:
-                found = {}
+                unittest.mock.patch.object(place_triage, 'READ_STORE', Path(tmp) / 'place_reading.json'), unittest.mock.patch('builtins.print'):
+            found = place_triage.read([job], {}, SimpleNamespace(messages=SimpleNamespace(create=create)))
         self.assertTrue(sent and 'anywhere_in' in sent[0] and 'Switzerland' in sent[0] and 'anywhere in Switzerland' in sent[0])
-        self.assertTrue(found == {} or next(iter(found.values()))['place'] == 'in')
+        self.assertEqual(next(iter(found.values()))['place'], 'in')   # gitar-bot, #2242: a real temp store and an answer that is always checked
 
 
 if __name__ == '__main__':

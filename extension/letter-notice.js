@@ -1,6 +1,6 @@
 // The cover-letter panel copy by status, shared by rendering and unit tests.
 (() => {
-  const PROFILE = 'Profile → Cover letter';
+  const PROFILE = 'Profile';
   const STATUS_COPY = {
     missing: {title: 'Cover letter needed', reason: 'Create and review a cover letter before applying.', action: `Create in ${PROFILE}`},
     draft: {title: 'Cover letter needs review', reason: 'Review and approve your draft before applying.', action: `Review in ${PROFILE}`},
@@ -8,7 +8,7 @@
   };
   const DELIVERY_FAILURE = {
     title: 'Cover letter wasn’t kept',
-    reason: 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.',
+    reason: 'Paste or attach it manually, then check again.',
     action: 'Show on form',
   };
 

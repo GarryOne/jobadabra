@@ -44,7 +44,7 @@ test('Applying panel quietly offers missing-letter setup even when required fiel
     assert.equal(banner.hidden, false, JSON.stringify(sent.map(m => m.type))); 
     assert.equal(root.querySelector('.letter-title').textContent, 'Cover letter needed');
     assert.equal(root.querySelector('.letter-reason').textContent, 'Create and review a cover letter before applying.');
-    assert.equal(root.querySelector('.letter-action').textContent, 'Create in Profile → Cover letter');
+    assert.equal(root.querySelector('.letter-action').textContent, 'Create in Profile');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
     banner.querySelector('button').click();
     assert.ok(sent.some(message => message.type === 'panelOpenApp' && message.session === 'setup:cover-letter'));
@@ -96,7 +96,7 @@ for (const hidden of [false, true]) test(`a rejected optional letter upload is a
     const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
     assert.equal(root.querySelector('.letter-setup').hidden, false);
     assert.equal(root.querySelector('.letter-title').textContent, 'Cover letter wasn’t kept');
-    assert.equal(root.querySelector('.letter-reason').textContent, 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.');
+    assert.equal(root.querySelector('.letter-reason').textContent, 'Paste or attach it manually, then check again.');
     assert.equal(root.querySelector('.letter-action').textContent, 'Show on form');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
     root.querySelector('.letter-action').click();

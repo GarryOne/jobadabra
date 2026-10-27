@@ -44,3 +44,8 @@
 - [x] Update the rendered-panel integration expectation for the calmer copy; focused tests pass 59/59 desktop and 36/36 worker.
 - [x] Fix the `.verify` cascade, test the production status-copy helper once, and guard against partial helper injection; rerender and inspect fictional normal/narrow dark/light screens.
 - [ ] Run the complete fast gate on the reviewed PR head; owner merges manually.
+
+## Approved revision
+- Use neutral surface with slim amber edge/icon and compact secondary button.
+- Shorten recovery copy and Profile action labels; preserve routing and queue semantics.
+- Refresh after assets, preserve original before assets, run focused checks and ship existing PR.

@@ -11,17 +11,17 @@ const notice = window.__jobPilottoCoverLetterNotice;
 
 test('cover-letter notice copy names the right next step for each status', () => {
   assert.deepEqual({...notice({state: 'missing'})}, {
-    title: 'Cover letter needed', reason: 'Create and review a cover letter before applying.', action: 'Create in Profile → Cover letter',
+    title: 'Cover letter needed', reason: 'Create and review a cover letter before applying.', action: 'Create in Profile',
   });
   assert.deepEqual({...notice({state: 'draft', reason: 'Draft status from the app.'})}, {
-    title: 'Cover letter needs review', reason: 'Review and approve your draft before applying.', action: 'Review in Profile → Cover letter',
+    title: 'Cover letter needs review', reason: 'Review and approve your draft before applying.', action: 'Review in Profile',
   });
   assert.deepEqual({...notice({state: 'invalid', reason: 'The draft has no usable content.'})}, {
-    title: 'Cover letter needs attention', reason: 'The draft has no usable content.', action: 'Complete in Profile → Cover letter',
+    title: 'Cover letter needs attention', reason: 'The draft has no usable content.', action: 'Complete in Profile',
   });
   for (const state of ['unavailable', 'disabled', 'withheld']) {
     assert.deepEqual({...notice({state, reason: 'The approved letter is unavailable.'})}, {
-      title: 'Cover letter needs attention', reason: 'The approved letter is unavailable.', action: 'Open Profile → Cover letter',
+      title: 'Cover letter needs attention', reason: 'The approved letter is unavailable.', action: 'Open Profile',
     });
   }
 });
@@ -30,7 +30,7 @@ test('delivery failure keeps manual recovery copy and never claims the letter wa
   const rejected = notice({state: 'ready', reason: 'A letter exists'}, true);
   assert.deepEqual({...rejected}, {
     title: 'Cover letter wasn’t kept',
-    reason: 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.',
+    reason: 'Paste or attach it manually, then check again.',
     action: 'Show on form',
   });
 });

@@ -23,3 +23,10 @@ A separate visual variant for each state would preserve more bespoke styling but
 - [x] Verify both rendered states, setup navigation without generation, manual recovery, normal/narrow screenshots, lint, focused tests, and journey proof. (proof: desktop/test/journeys-cover-letter-notice.js)
 - [ ] Run the complete fast gate on the reviewed PR head. (proof: desktop/test/journeys-cover-letter-notice.js)
 - [ ] Open PR for owner review; owner merges manually.
+
+## Owner-requested redesign
+Owner approved a soft neutral surface with a slim amber edge and 16px amber document outline, short recovery copy and a compact secondary action aligned beneath the text. This signals importance without danger styling. Keep existing theme tokens, status semantics and routes. Render both missing and not-retained states at 430px and 300px; open before/after previews for explicit approval before committing.
+
+- [x] Prepare and inspect revised actual renders.
+- [x] Owner approved rendered design: “that's fine”, then requested PR update and shipping.
+- [ ] Update PR before/after assets and verify focused checks.

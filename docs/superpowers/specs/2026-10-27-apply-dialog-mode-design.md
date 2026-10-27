@@ -44,6 +44,6 @@ The Jobs “Apply to jobs” dialog must show the same three mode cards as Setti
 - [x] Run the fast gate and review the committed diff. (proof: none: fast gate passed on the PR update; see registered ship log)
 - [x] Reuse Settings' three mode cards in Jobs and persist card selection to canonical settings. (proof: desktop/renderer/pages/jobs.js, desktop/renderer/apply-settings-model.js, desktop/test/apply-dialog-mode.test.js)
 - [x] Capture current fictional before/after card screenshots, including a persisted Background automation selection. (proof: none: PNGs uploaded as the PR's before/after images)
-- [x] Simplify first-Apply to the same three concise mode cards and remove supplemental paragraphs per owner direction. (proof: desktop/test/apply-choice-gate.test.js, `/private/tmp/jobadabra-codex-takeover/d17-first-apply-concise-pr-before-after.png`)
+- [x] Simplify first-Apply to the same three concise mode cards and remove supplemental paragraphs per owner direction. (proof: desktop/test/apply-choice-gate.test.js)
 - [ ] Integrate the shared hidden runner only after review confirms its end-to-end readiness contract.
 - [ ] Run the fast gate on the combined final head, refresh screenshots/body, and track current-head CI/review/owner merge.

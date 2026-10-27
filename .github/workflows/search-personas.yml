@@ -16,6 +16,11 @@ on:
       - 'src/daily_modes.py'
       - 'src/first_jobs.py'
       - 'src/time_budget.py'
+      - 'src/budget_tape.py'   # Why (#2285, 27 Oct 2026): the 3-minute clock's owners, app and engine; a change to it is measured on its PR (tests/test_search_personas_gate.py)
+      - 'src/run_log.py'
+      - 'desktop/lib/search-steps.js'
+      - 'desktop/lib/pipeline-args.js'
+      - 'desktop/lib/pipeline-run.js'
       - 'src/run_counts.py'
       - 'src/places.py'
       - 'src/geo.py'
@@ -49,6 +54,11 @@ on:
       - 'src/daily_modes.py'
       - 'src/first_jobs.py'
       - 'src/time_budget.py'
+      - 'src/budget_tape.py'   # Why (#2285, 27 Oct 2026): the 3-minute clock's owners, app and engine; a change to it is measured on its PR (tests/test_search_personas_gate.py)
+      - 'src/run_log.py'
+      - 'desktop/lib/search-steps.js'
+      - 'desktop/lib/pipeline-args.js'
+      - 'desktop/lib/pipeline-run.js'
       - 'src/run_counts.py'
       - 'src/places.py'
       - 'src/geo.py'

@@ -38,7 +38,7 @@ function proposalOf({proposals = [], label, key = '', contact = {}, cv = []} = {
 export function rowPicks() {
   const picked = new Map();
   return {
-    note: (key, value) => { picked.set(key, value); },
+    note: (key, value) => { if (value) picked.set(key, value); else picked.delete(key); },   // an emptied box goes back to the proposal
     start: (key, fallback) => picked.has(key) ? picked.get(key) : fallback,
     forget: key => { picked.delete(key); },
   };

@@ -240,13 +240,15 @@ export async function run(ctx) {
           const facts = Object.fromEntries(['Seniority', 'Work mode', 'Languages', 'Salary', 'Role family', 'Technologies', 'Recruiter'].map(column => [column, p[column]]));
           // The employer is on every posting the app read (fixtures/golden/sources.json): without it the judge called the company's own name invented (Windows run 37150232804, job 3008).
           const verdict = await judge({key: ctx.judgeKey, posting: {...item, company: item.company || read('sources.json')[0].company}, profile, produced, facts});
-          verdicts.push({id: item.id, title: item.title, scoring: first ? 'first' : 'second', produced, verdict});
+          verdicts.push({id: item.id, title: item.title, scoring: first ? 'first' : 'second', produced, facts, verdict});   // facts kept: the judge's inputs, re-judged by another model offline
           const bad = failures(verdict);
           if (bad.length) problems.push(`"${item.title}"${first ? ' (first scoring)' : ''} ${bad.join(' and ')}: ${verdict.why} [text: ${produced.filter(Boolean).join(' / ')}]`);
         }));
       }
       summary.invented = verdicts.filter(v => v.verdict.invents_facts).length;
       fs.writeFileSync(path.join(ctx.ARTIFACTS, 'quality-verdicts.json'), JSON.stringify(verdicts, null, 2));
+      // The profile the judge read, once: with the golden postings and each verdict's facts, any model can re-judge the same texts (owner, 27 Oct 2026: keep Haiku, but measure it).
+      fs.writeFileSync(path.join(ctx.ARTIFACTS, 'quality-judge-profile.txt'), profile);
       console.log(`  judged ${verdicts.length} score texts: ${verdicts.filter(v => v.verdict.grounded).length} grounded, ${verdicts.filter(v => v.verdict.useful).length} useful, ${summary.invented} with invented facts`);
     const allowance = judgeVerdict(problems, verdicts.length);
     if (problems.length) console.log(`  ${problems.length} of ${verdicts.length} texts flagged (allowed: ${allowance.allowed}):\n    ${problems.join('\n    ')}`);

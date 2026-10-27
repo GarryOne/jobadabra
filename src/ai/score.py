@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 from .. import paths as _paths  # noqa: F401 (import side effect: loads .env before getenv below)
 from .. import run_counts, store
-from . import cost, engine, hints, locations, schema_notes, score_agree, score_not_a_job, score_search
+from . import cost, engine, hints, locations, schema_notes, score_agree, score_bands, score_not_a_job, score_search
 from .models import MAIN_MODEL
 from .providers.contract import detail, reason
 
@@ -118,16 +118,7 @@ missing information.
 - Missing information lowers confidence; it is not evidence against the job.
 - Do not reward a famous brand by itself.
 - Tier A: strong fit worth a tailored application. Tier B: reasonable fit. Tier C: poor fit.
-- The overall score means the same for every candidate and every model (9 Oct 2026: two AI families ranked the same jobs alike \
-but 16 points apart). Use these bands, from the evidence alone:
-  85-100: the role's core work and level match the profile, almost every required skill is named in it, the location works; \
-nothing important is missing. Tier A.
-  70-84: the core matches, with one or two real gaps the candidate could close or argue (a missing tool, a level step). A or B.
-  50-69: a partial fit: some core requirements are missing from the profile, or the place, level or contract is a real compromise. B.
-  30-49: mostly another kind of role; only some skills carry over. C.
-  0-29: unrelated work, level or place. C.
-  An unknown (no salary, no stated level) neither adds nor subtracts. The overall score is not the average of the components.
-- reason: one line under 90 characters, plain words, no hype.""" + score_search.RULE + """
+""" + score_bands.TEXT + """- reason: one line under 90 characters, plain words, no hype.""" + score_search.RULE + """
 
 What each field means:
 """ + schema_notes.text(SCHEMA) + """

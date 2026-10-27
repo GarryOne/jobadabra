@@ -61,3 +61,25 @@ test('the fill check is asked when a contact-kind value sits in a question', asy
   assert.equal(wantsFillCheck({controls: [phoneInQuestion]}, {answer: 'needs_person'}), true);
   assert.equal(wantsFillCheck({controls: [{label: 'Phone', match: 'yes', answer: 'phone'}]}, {answer: 'ready'}), false);
 });
+
+// The AI's reading of a link box (answer-facts.js LINK_RULE; owner, 27 Oct 2026: "'Website / Portfolio' gets the GitHub link, 'Personal website' stays empty"): a saved link the AI
+// read as a page of the person's work is typed though no word matches; its own_site / other reading keeps the word rule; a link nobody saved is never typed, whatever the reading.
+test('link_box work_page: a saved GitHub link goes into "Website / Portfolio"; "Personal website" (own_site) and an unsaved link stay proposals', () => {
+  const saved = 'GitHub: https://github.com/ada-tester\nLinkedIn: https://www.linkedin.com/in/ada-tester';
+  const typed = (value, link_box) => ({use: 'fill', fact: 'contact', category: 'contact', value, link_box});
+  assert.equal(floorLinkKind(typed('https://github.com/ada-tester', 'work_page'), 'Website / Portfolio', saved).use, 'fill');
+  assert.equal(floorLinkKind(typed('https://github.com/ada-tester', 'own_site'), 'Personal website', saved).use, 'propose');
+  assert.equal(floorLinkKind(typed('https://github.com/ada-tester', 'other'), 'Website / Portfolio', saved).use, 'propose', 'control: without the AI\'s work_page reading, today\'s word rule');
+  assert.equal(floorLinkKind(typed('https://github.com/someone-else', 'work_page'), 'Website / Portfolio', saved).use, 'propose', 'a link that is not saved is never typed');
+});
+
+test('the answers ask carries the link_box reading: in the schema (every answer) and its rule in the prompt', async () => {
+  const { ANSWER_SCHEMA_FOR_TESTS: schema } = await import('../src/extension.js');
+  const { LINK_RULE } = await import('../src/answer-facts.js');
+  const item = schema.properties.answers.items;
+  assert.ok(item.required.includes('link_box'));
+  assert.deepEqual(item.properties.link_box.enum, ['work_page', 'own_site', 'other', 'none']);
+  const src = (await import('node:fs')).readFileSync(new URL('../src/extension.js', import.meta.url), 'utf8');
+  assert.match(src, /\$\{FACT_RULE\}\n\$\{LINK_RULE\}/);
+  for (const word of ['work_page', 'own_site', 'never a profile on a social or job network']) assert.ok(LINK_RULE.includes(word), word);
+});

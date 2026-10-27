@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {blockLine} from '../lib/notion.mjs';
-import {HARD_JUMP, allowedMisses, judgeVerdict, stabilityVerdict, checkFacts, dirtyRows, dirtyText, fingerprints, leaks, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable} from '../lib/quality.mjs';
+import {judgeVerdict, checkFacts, dirtyRows, dirtyText, fingerprints, leaks, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable} from '../lib/quality.mjs';
 
 const truth = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url), 'utf8'));
 const sre = truth.find(item => item.id === 3001);
@@ -102,16 +102,8 @@ test('leaks: a posting sentence, an email or a token in a log is found; clean lo
   assert.deepEqual(fingerprints('short'), []);
 });
 
-test('noise allowance: two jobs in nine may move and one text in six may slip, more is not, and a big jump never is', () => {
-  assert.deepEqual([9, 8, 17, 0].map(allowedMisses), [2, 1, 3, 0]);   // owner, 26 Oct 2026: "2 of 9"
-  const moved = (id, first, second) => ({id, first, second});
-  assert.ok(stabilityVerdict([], 9).ok);
-  assert.ok(stabilityVerdict([moved('a', 50, 60)], 9).ok);                                          // one of nine, 10 points
-  assert.ok(stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50)], 9).ok);                        // two of nine
-  assert.ok(!stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50), moved('c', 30, 40)], 9).ok);   // three of nine
-  assert.ok(!stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50)], 8).ok);                       // eight jobs: one allowed
-  const jump = stabilityVerdict([moved('a', 50, 50 + HARD_JUMP + 1)], 9);                              // one job, but 21 points
-  assert.ok(!jump.ok && /moved 21 points/.test(jump.problems[0]));
+// Score steadiness is a rate over the last 90 pairs (lib/quality-rate.mjs, test/quality-rate.test.mjs); a judged text may still slip one in six.
+test('noise allowance: one text in six may slip, to the nearest text, more is not', () => {
   // The gate judges one replayed scoring, 9 texts (27 Oct 2026, #2210: 2 of 9 flagged on the recorded answers; floor allowed 1, so the replayed gate was red on every try).
   assert.ok(judgeVerdict(['x', 'y'], 9).ok);                                                          // owner, 27 Oct 2026: "2 of 9"
   assert.ok(!judgeVerdict(['x', 'y', 'z'], 9).ok);

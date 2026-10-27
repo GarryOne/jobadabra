@@ -39,6 +39,7 @@ import {deadEnd, useFallback, useReporter} from './ladder/dead-end.js';
 import {notePage, noteProgress, useProgressLog} from './ladder/progress.js';
 import {onTop} from './on-top.js';
 import {labelReaderIn, pageShape, pageSketchOf} from './page-reads.js';
+import {setApply} from './apply-state.js';
 import {dropIfLate, openRead} from './read-gen.js';
 import {blindOn, blindOr, candidatesOf, claimFrame, climbOnStall, confirmedBody, digestAsked, frameBecameCandidate, climbOnUnsure, controlsOf, forgetClimb, frameSketch, frameSrcOf, framesOf, noteFrames, notePressed, noteSignal, otherReport, takePressed, toldReport, verifiedBody} from './ladder/climb.js';
 
@@ -117,7 +118,10 @@ export async function askKind(tab, {fresh = false, digest = false, shadow = fals
 // Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: worker/test/fill-mark-own-page.test.js.
 export function writeState(tabId, value, token = '') {
   return chrome.scripting.executeScript({target: {tabId}, args: [JSON.stringify(value), token, value.state],
-    func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; }}).catch(() => {});
+    func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})
+    // Why (#2221 "the fill writing its end frees the page at once", 2026-10-27, owner: one state, changed only on a verdict): the fill's end on its own page IS the verdict (the person's first click after "done" is theirs, not held
+    // until the bookkeeping): `account` hands the page to the person, any other end is done. A write the token refused (another page's end) says nothing.
+    .then(rows => { if (rows?.[0]?.result && !['running', 'received'].includes(value.state)) setApply(tabId, value.state === 'account' ? 'your-turn' : 'done'); }, () => {});
 }
 // A page with no form control of any kind (fill-flow consider waits for it to stop growing before its kind is asked).
 export const BOT_CHECK_NEED = "This site wants a quick check: solve it, then I'll continue";   // said in the panel and the session (owner, 20 Oct 2026: the person solves a real captcha, we never do; the form fills after it) (desktop/lib/terminals.js noteStuck)
@@ -423,7 +427,7 @@ export async function consider(tab, jobUrl) {
     blindVerdict(blindLook, look, led);
   }
   if (role !== 'form') {
-    await progress(tab.id, '');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
+    await progress(tab.id, '', '', 'your-turn');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
     // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two
     // minutes and filled once it shows (SmartRecruiters, 9 Oct 2026: the check was read as an empty page, "no form", and nobody was told).
     const botCheck = role === 'no-form' && kind?.botCheck === true;

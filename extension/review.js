@@ -20,6 +20,9 @@
   function mount() {
   document.getElementById('jobpilotto-review-host')?.remove();
 
+  // Why (2026-10-27, owner): a page's own re-render deletes the panel with the dim; while the Apply is working the panel is put back at once (panel-overlay.js does the same for the layer), the state stays.
+  new MutationObserver(() => { if (!host.isConnected && applyWorking && chrome.runtime?.id) document.documentElement.append(host); }).observe(document.documentElement, {childList: true});
+
   const MIN_FIELDS = 3;
   // A form the night filled, opened in the morning (ready-handoff.js marks the page): the panel says so instead of a new reading (owner, 18 Oct 2026: "Last night's fill is back").
   const night = () => document.documentElement.getAttribute('data-jobpilotto-night') === '1';
@@ -35,20 +38,20 @@
   const $ = selector => root.querySelector(selector);
   const jp = $('.jp'), card = $('.card'), pill = $('.pill');
   // While a fill step shows, the page is dimmed (panel-overlay.js) and the panel is centred, bigger, with what it is doing (owner, 19 Oct 2026); at the end the panel goes back to its corner.
-  // ONE look: look(true) dims AND centres, look(false) does neither; nothing else turns either on or off, and when the dim lifts by itself (Stop, the 3-minute backstop, a removal
-  // from outside) the step ends with it (owner, 27 Oct 2026: "everytime when the extension is working... it should be centered and there should be dark/glowing background").
+  // ONE look: look(true) dims AND centres, look(false) does neither; nothing else turns either on or off, and when the worker's verdict lifts the dim (done, Stop, your turn:
+  // apply-state.js) the step ends with it (owner, 27 Oct 2026: "everytime when the extension is working... it should be centered and there should be dark/glowing background").
   // Working = a step shows: the worker's fill steps (panelStep), this panel's own fill, and the page being read or routed (WORKING_MARKS). Not working: done, stopped, needs you, stuck, closed.
   const overlay = window.__jobPilottoOverlay, HOME = host.style.cssText, steps = [];
   const WORKING_MARKS = ['reading', 'posting', 'opening', 'signing-in', 'signing-up'], MARK_STEP_MS = 60000; let markStepWords = '';
   const place = working => { host.style.cssText = working ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483646;pointer-events:none;' : HOME; jp.classList.toggle('working', working); };
-  const look = working => { const on = working && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
+  // The Apply's state is the worker's (apply-state.js); this page draws it. applyWorking: the last thing the worker said (its answer at the first draw, then its pushes); this panel's own fill counts too.
+  let applyWorking = false;
+  const look = working => { const on = working && (applyWorking || filling) && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
   const stepShowing = () => $('.fill').classList.contains('is-busy');
-  const markWorking = () => WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobpilotto-page') || '') && !stopped && !moved;
-  // Why (#2221, owner 27 Oct 2026): a step that ends and the next one that starts within END_GAP_MS are one piece of work, the look stays ("flashes (very short moments)" between steps).
-  // Every end the person must see at once (Stop, needs you, stuck, a close, the dim lifted, the fill writing its end on the page) ends without the gap.
-  let workerStep = '', endTimer = null; const END_GAP_MS = 700;
-  const endSoon = () => { clearTimeout(endTimer); endTimer = setTimeout(() => { endTimer = null; if (stepShowing() && !filling && !workerStep) endStep(); }, END_GAP_MS); };
-  overlay.onLift?.(() => { if (stepShowing()) endStep(); else look(false); });
+  const markWorking = () => applyWorking && WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobpilotto-page') || '') && !stopped && !moved;
+  // Why (2026-10-27, owner, replacing #2221's end gap and its timers): the look ends on the worker's verdict only; it reaches the overlay (panel-overlay.js), which tells this panel here.
+  let workerStep = '';
+  overlay.onLift?.(() => { applyWorking = false; if (stepShowing()) endStep(); else look(false); });
   const drawSteps = () => $('.steps').replaceChildren(...steps.slice(-6, -1).map(text => Object.assign(document.createElement('li'), {textContent: text})));
   const written = window.__jobPilottoPanelWritten.start({send, alive: () => host.isConnected});   // Review my answer beside each written question's box (panel-written.js)
   window.__jobPilottoClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
@@ -93,14 +96,14 @@
     const stuckWord = stuckNow ? String(session.stuck) : '';
     if (session && stuckWord !== lastStuck) { lastStuck = stuckWord; stuckSince = stuckWord ? Date.now() : 0; }   // from the app's answer changing, not from a sync that brought no session
     const handed = (!!needsNow && !filling) || stopped || (stuckNow && !filling && stepAt <= stuckSince);   // this panel's own fill (Check again, Fill again) reads the page anew: the AI's older "needs you" waits for its end
-    if (handed && stepShowing()) endStep(false);
+    if (handed && stepShowing() && applyWorking) send({type: 'applyVerdict', verdict: stopped ? 'stopped' : 'your-turn'}).catch(() => {});   // the person must act: a verdict, which the worker answers by lifting every page
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
-    const markWorks = WORKING_MARKS.includes(markNow) && !handed && !moved;
+    const markWorks = applyWorking && WORKING_MARKS.includes(markNow) && !handed && !moved;
     if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words, MARK_STEP_MS); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
     // Why (#2221, owner 27 Oct 2026): the mark moved on: its row ends. A fill step still running under it (the worker's, or this panel's fill) keeps the look and gets its row back: ending here dropped the dim and the
     // centring until the fill's next step brought them back (owner, 27 Oct 2026: "flashes (very short moments) when the extension panel moves from center to bottom right").
-    else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); else endSoon(); }
+    else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); }   // the mark moved on: the step's words only; the look stays until the verdict
     // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
     written.update(list);
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
@@ -197,24 +200,22 @@
   }
 
   // ---- actions ----
-  // What the fill is doing, shown in the button; a fill's empty end step ends it. The timer is only a safety net: 45 s, not 6 (owner, 15 Oct 2026: "Fill again" showed while Claude's later pass was still answering).
-  let stepTimer = null, filledOnce = false, stepped = false; const STEP_SAFETY_MS = 45000;
-  function showStep(text, wait = STEP_SAFETY_MS) {
+  // What the fill is doing, shown in the button. It ends on the worker's verdict, with no timer (owner, 27 Oct 2026; was a 45 s safety net).
+  let filledOnce = false, stepped = false;
+  function showStep(text) {
     stepped = true;
     $('.step-hint').textContent = /^check/i.test(text) ? 'Checking whether any fields need your input.' : /^(reading this page|putting back)/i.test(text) ? 'Looking for the application on this page.' : /^(apply button|logging in|creating your)/i.test(text) ? 'Taking you to the application form.' : 'Counts update as new fields appear.';   // our own step words, each with its sub-line (mockups 01/02)
     if (steps.at(-1) !== text) { if (steps.includes(text)) steps.splice(steps.indexOf(text), 1); steps.push(text); drawSteps(); }   // "Done so far" never repeats the step now on
-    stepAt = Date.now(); clearTimeout(endTimer);
+    stepAt = Date.now();
     look(true);
     const button = $('.fill');
     button.classList.add('is-busy');
     button.setAttribute('aria-busy', 'true');
     button.title = text;
     $('.fill .label').textContent = text;
-    clearTimeout(stepTimer);
-    if (!filling) stepTimer = setTimeout(endStep, wait);
   }
   function endStep(redraw = true) {
-    clearTimeout(stepTimer); clearTimeout(endTimer); workerStep = '';
+    workerStep = '';
     look(false); steps.length = 0; drawSteps();
     const button = $('.fill');
     button.classList.remove('is-busy');
@@ -286,8 +287,8 @@
   chrome.runtime.onMessage.addListener((message, _, reply) => {
     if (message?.type !== 'panelStep') return false;
     if (!host.isConnected) { reply({shown: false}); return false; }
-    if (message.text) { workerStep = message.text; showStep(message.text); if (!open) setOpen(true); }
-    else { workerStep = ''; if (!filling) endSoon(); }  // the fill is over: no step line left over a form that is ready; this panel's own fill ends at its answer (fill())
+    if (message.text) { workerStep = message.text; applyWorking = true; showStep(message.text); if (!open) setOpen(true); }
+    else workerStep = '';   // the fill's last step said nothing more; the end is the worker's verdict (applyState)
     reply({shown: true});
     return false;
   });
@@ -317,13 +318,19 @@
     return false;
   });
 
-  // Why (#2221, owner 27 Oct 2026: "instantly show the overlay"): the page was dimmed from its first moment (early-dim.js): the panel takes that look over at once, centred, so nothing jumps between the dim and the first step.
-  if (overlay.early?.()) { const was = stepped; showStep('Starting…', 20000); stepped = was; setOpen(true); }
-  // A fill already on a step when this panel appeared: show it here (the background removes its floating copy).
-  // Why (#2221, owner 27 Oct 2026): the first draw waits for this answer (at most STEP_FIRST_MS), so a page in the middle of a run is drawn working and centred from its first frame; drawn before the answer it showed
-  // the finished look ("Fill again") in the corner for a moment ("moves from center to bottom-left and center again").
-  const STEP_FIRST_MS = 800;
-  const stepFirst = Promise.race([send({type: 'panelStepNow'}).then(answer => { if (answer?.text && host.isConnected) { showStep(answer.text, answer.wait || STEP_SAFETY_MS); if (!open) setOpen(true); } }), new Promise(resolve => setTimeout(resolve, STEP_FIRST_MS))]).catch(() => {});
+  // Why (2026-10-27, owner: "we start with dark/glow and the panel in the middle, and keep it until a clear verdict"): the first draw is the worker's state, whatever it takes to answer (no 800 ms race that fell
+  // back to the finished look): working draws the dim and the centred panel with the step now ("Starting…" before the first); a verdict draws the finished look. No worker answer at all (the extension is gone) draws it too.
+  const stepFirst = send({type: 'panelApply'}).then(answer => {
+    if (answer?.state !== 'working') return;   // the host is not on the page yet (the first render attaches it): the look is drawn into it all the same
+    applyWorking = true;
+    const was = stepped; showStep(answer.text || 'Starting…'); if (!answer.text) stepped = was;
+    if (!open) setOpen(true);
+  }).catch(() => {});
+  // The worker's state changes reach the panel here (a lift also reaches it through the overlay, panel-overlay.js): working draws, a verdict is drawn by endStep.
+  chrome.runtime.onMessage.addListener(message => {
+    if (message?.type !== 'applyState') return;
+    if (message.state === 'working') { applyWorking = true; if (!stepShowing() && host.isConnected) { const was = stepped; showStep(workerStep || 'Starting…'); stepped = was; if (!open) setOpen(true); } }
+  });
 
   const learn = window.__jobPilottoPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobPilottoPanelForm});
 
@@ -384,10 +391,6 @@
   document.addEventListener('input', soon, true);
   document.addEventListener('change', soon, true);
   if (document.documentElement) new MutationObserver(soon).observe(document.documentElement, {childList: true, subtree: true});
-  // Why (#2221, 27 Oct 2026): the fill writes its end on the page (done, error, no-form…) before its bookkeeping and its step clear: the look ends then, with no gap, so the person's
-  // first click after "done" is theirs (the apply suite's Next and Submit were held). The panel's own fill ends at its answer (fill()); a page still being read keeps its look.
-  const fillOver = () => { try { return !['', 'running', 'received'].includes(JSON.parse(document.documentElement.dataset.jobpilottoFill || '{}').state || ''); } catch { return false; } };
-  if (document.documentElement) new MutationObserver(() => { if (!filling && stepShowing() && !markWorking() && fillOver()) endStep(); }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-jobpilotto-fill']});
   const tick = setInterval(sync, 2000);
   sync();
   }

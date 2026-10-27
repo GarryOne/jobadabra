@@ -7,6 +7,7 @@
 // fill's entry, the worker's messages, a tab joining an application). Guard: desktop/test/extension-stop.test.js (it fails when a press or an attach skips these).
 import {IDENTITY_KEYS} from './tab-identity.js';
 import {decide} from './log.js';
+import {setApply, workingTabs} from './apply-state.js';
 import {forgetDebuggerUsers, isStopped, markStopped, noteStarting, restart as restartState} from './stop-state.js';
 
 export {attachDebugger, isStopped, mayAct} from './stop-state.js';
@@ -63,6 +64,7 @@ function startedPage() {
 // Owner, 27 Oct 2026: "I stopped the extension, then said fill again and then it still stays stopped". -> resolves once the page is clear.
 export function startTab(tabId, who = '', wasStopped = false) {
   if (!Number.isInteger(tabId)) return Promise.resolve(false);
+  setApply(tabId, 'working');   // the person's own start on this tab: its Apply is working again until a verdict (apply-state.js)
   const page = chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: startedPage})
     .then(rows => (rows || []).some(row => row?.result === true), () => false);
   noteStarting(tabId, page);
@@ -88,6 +90,7 @@ export async function stopAll(reason = 'the person pressed Stop') {
   for (const target of await chrome.debugger.getTargets().catch(() => [])) if (target.attached && Number.isInteger(target.tabId)) held.add(target.tabId);
   for (const tabId of held) await chrome.debugger.detach({tabId}).catch(() => {});   // only ours detaches; any other client's attach refuses and is left alone
   forgetDebuggerUsers();   // nobody holds the attachment any more (the form trace is dropped by its own onStopped, messages-report.js)
+  for (const tabId of new Set([...ids, ...workingTabs()])) setApply(tabId, 'stopped');   // Stop is a verdict: the one owner of the dim says so, every page lifts (apply-state.js)
   for (const tabId of ids) {
     await chrome.storage.session.remove([...IDENTITY_KEYS(tabId), `role:${tabId}`, `armed:${tabId}`, `carried:${tabId}`, `submit:${tabId}`, `judged:${tabId}`, `read:${tabId}`, `next:${tabId}`]).catch(() => {});
     await chrome.storage.session.set({[`stoppedTab:${tabId}`]: at}).catch(() => {});   // still the app's tab for the person's own start (the popup's Apply on this page): its mark and arming are gone

@@ -2,7 +2,7 @@
 // a quick run is compared only over its own cases, and a harness that ran nothing is never a pass. Run: node --test test/check-fill.test.mjs
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {bucketOf, compare, summarize} from '../lib/check-fill-score.mjs';
+import {bucketOf, compare, replayedNothing, summarize} from '../lib/check-fill-score.mjs';
 
 const fail = (...failures) => ({ok: false, failures});
 
@@ -29,4 +29,11 @@ test('a case main had right that is not right is red; one main had not right nev
   assert.deepEqual(same.main, {right: 1, wrong: 0, empty: 1, 'not reached': 0}, 'main is counted over the cases this run has');
   assert.deepEqual(compare(base, summarize([{name: 'a', bucket: 'empty'}, {name: 'b', bucket: 'right'}])).red, ['a (empty)']);
   assert.deepEqual(compare(base, summarize([{name: 'new', bucket: 'wrong'}])).red, [], 'a case main never saw is only counted');
+});
+
+test('a harness that replayed nothing is never a pass, a page the fill never reached is a finding', () => {
+  assert.equal(replayedNothing([], []), true);
+  assert.equal(replayedNothing([undefined], [{bucket: 'not reached', failures: ['error: browser closed']}]), true);
+  assert.equal(replayedNothing([fail('stuck: posting')], [{bucket: 'not reached', failures: ['stuck: posting']}]), false);
+  assert.equal(replayedNothing([{ok: true}], [{bucket: 'right', failures: []}]), false);
 });

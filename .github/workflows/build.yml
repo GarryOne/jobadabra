@@ -103,7 +103,7 @@ jobs:
         run: |
           run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=check-fill-baseline&per_page=20" --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main")][0].workflow_run.id // empty' || true)
           [ -z "$run_id" ] || gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n check-fill-baseline -D last-green || true
-          node check-fill.mjs --all --baseline last-green/check-fill-baseline.json --write check-fill-baseline.json --json check-fill.json
+          node check-fill.mjs --all --baseline last-green/check-fill-baseline.json --write check-fill-baseline.json --json check-fill.json || { echo "::error title=Suite failed::fill check: the job fails at \"Every suite passed\""; exit 1; }
       - uses: actions/upload-artifact@v6
         if: steps.fillcheck.outcome == 'success'
         with:

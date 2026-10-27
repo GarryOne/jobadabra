@@ -355,6 +355,13 @@
    "kind": "ci"
   },
   {
+   "path": "/search-lab/session-checks",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/self-heal/data",
    "methods": [
     "PUT"
@@ -375,6 +382,10 @@
   },
   {
    "path": "/admin/join",
+   "kind": "page"
+  },
+  {
+   "path": "/admin/hop",
    "kind": "page"
   },
   {

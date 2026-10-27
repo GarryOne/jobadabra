@@ -65,19 +65,22 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
   if (owner?.stopped) { engineLog.end({code: null, seconds: 0, runId}); return Promise.resolve({code: null, stdout: '', result: null, runId, timedOut: false}); }
   return new Promise((resolve, reject) => {
     const child = spawn(python(), ['-m', ...args], {cwd: REPO, detached: process.platform !== 'win32', env: {...pipelineEnv(storage), ...extraEnv,
-      JOB_PILOTTO_RUN_ID: runId, JOB_PILOTTO_RESULT_FILE: resultFile}});
+      JOB_PILOTTO_RUN_ID: runId, JOB_PILOTTO_RESULT_FILE: resultFile, JOB_PILOTTO_TIME_UP_FILE: path.join(os.tmpdir(), `jp-timeup-${runId}`)}});
     children.add(child);
     onChild?.(child);   // a caller that must end this one command by itself (Cancel sign-in), by the child's own handle
     owner?.children.add(child);
     child.on('exit', () => { children.delete(child); owner?.children.delete(child); });
     let endedByTime = false, hardKill = null;
+    const timeUpFile = path.join(os.tmpdir(), `jp-timeup-${runId}`);   // the engine reads it in its SIGTERM handler (src/notion/cron_runs.py stop_reason): a time-up, not a Stop press
     const stopper = stopAfterMs ? setTimeout(() => {
       endedByTime = true;
+      try { fs.writeFileSync(timeUpFile, ''); } catch {}
       appLog('run', `stopped after ${Math.round(stopAfterMs / 1000)} s: python -m ${shown.join(' ')} (its time was up)`, {run_id: runId});
       killTree(child);   // SIGTERM: the engine closes its row and leaves (src/run_log.py); what it saved per item stays
       hardKill = setTimeout(() => killTree(child, {signal: 'SIGKILL'}), LIMITS.killAfterMs);   // a step that ignores SIGTERM is not left running
     }, stopAfterMs) : null;
     child.on('exit', () => { clearTimeout(stopper); clearTimeout(hardKill); });
+    child.on('close', () => { try { fs.unlinkSync(timeUpFile); } catch {} });
     let stdout = '', buffer = '', lastOutputAt = awakeNow(), timedOut = '', killTimer = null, rowUrl = '';
     const startedAwake = awakeNow();   // the watchdog's clock leaves out the time the computer slept (lib/awake.js)
     const watch = (args[0] === 'src' || LIMITS.watchAll) ? setInterval(() => {
@@ -107,7 +110,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
       const seconds = Math.round((Date.now() - started) / 1000);
       const result = readResult(resultFile);
       try { fs.unlinkSync(resultFile); } catch {}
-      if (result && code !== 0) result.ok = false;
+      if (result && code !== 0 && !endedByTime) result.ok = false;   // a time-up keeps what the engine published (it closed its row as ended, not failed)
       engineLog.end({code, seconds, runId});
       appLog('run', `end: python -m ${shown.join(' ')} -> exit ${code} in ${seconds}s`, {run_id: runId, tail: tail.slice(-3)});
       for (const listener of runEnd) { try { listener({args: shown, code, seconds: Math.round((Date.now() - started) / 1000), tail: [...tail], runId, timedOut, result, errorKind: privateOutput && code ? errorKindOf(stdout) : ''}); } catch {} }

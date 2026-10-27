@@ -22,6 +22,15 @@ PAGE_SIZE = 50
 MAX_PAGES = 6   # per role word and country: the best matches first, the rest waits for another search
 KEEP = 100
 SECONDS = 25   # a read stops asking for more pages after this (it runs past the search's read cut, src/sources/aggregators.py CHEAP_PAST_CUT)
+
+
+def out_of_time(began, now=None):
+    """True when no more page may be asked. Why (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/test_three_minutes.py; 6e's review): EURES
+    runs past the read cut, so its own SECONDS never extend the press: it also stops where the AI steps' share starts (titles reserve + tail before the end)."""
+    from .. import time_budget
+    now = time.monotonic() if now is None else now
+    stop = time_budget.end()
+    return now - began > time_budget.part(SECONDS) or (stop is not None and now >= stop - time_budget.part(time_budget.RESERVE['titles'] + time_budget.TAIL))
 STORE = DATA / 'eures_regions.json'
 LOCK = threading.Lock()
 NUTS2 = re.compile(r'[A-Z]{2}[0-9A-Z]{2}')
@@ -108,7 +117,7 @@ def eures(search, get=None, client=None):
         mine = {word: prefixes for word, prefixes in wanted.items() if prefixes[0][:2] == country}
         for query in aggregators._queries(search)[:3]:
             for page in range(1, MAX_PAGES + 1):
-                if time.monotonic() - began > SECONDS:
+                if out_of_time(began):
                     return jobs
                 data = get(URL, json.dumps(_body(query, country, page)).encode(), {'Content-Type': 'application/json'})
                 listed = data.get('jvs') or []

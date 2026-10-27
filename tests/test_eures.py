@@ -61,7 +61,7 @@ class EuresTest(unittest.TestCase):
         from src.sources import read_budget
         self.assertIn('EURES', aggregators.CHEAP_PAST_CUT)
         asked = []
-        with mock.patch.object(eures, 'SECONDS', -1):
+        with mock.patch.object(eures, 'out_of_time', lambda began, now=None: True):
             found = eures.eures(SEARCH, get=lambda *a, **k: asked.append(1) or {'jvs': []}, client=Client({'Brussels': 'BE10'}))
         self.assertEqual((found, asked), ([], []), 'past its own time it asks for nothing more')
 
@@ -73,6 +73,18 @@ class EuresTest(unittest.TestCase):
         with mock.patch.object(read_budget, 'past_cut', lambda now=None: True), mock.patch('builtins.print'), mock.patch('src.time_budget.later'):
             aggregators.scan(db, SEARCH, readers=[('Arbeitnow', lambda s: read.append('A') or []), ('EURES', lambda s: read.append('E') or [])])
         self.assertEqual(read, ['E'])
+
+
+    def test_it_never_reads_into_the_ai_steps_share_of_the_180_seconds(self):
+        from src import time_budget
+        began = time_budget.BEGAN
+        try:
+            time_budget.start(180, now=1000.0)
+            self.assertFalse(eures.out_of_time(1000.0 + 72, now=1000.0 + 80), 'at 80 s there is room')
+            self.assertTrue(eures.out_of_time(1000.0 + 72, now=1000.0 + 100), '25 s after its start')
+            self.assertTrue(eures.out_of_time(1000.0 + 90, now=1000.0 + 95), 'titles reserve (70 s) + tail (15 s) before 180 s')
+        finally:
+            time_budget.DEADLINE = time_budget.STARTED = time_budget.BEGAN = time_budget.STAGE_END = None
 
 
 if __name__ == '__main__':

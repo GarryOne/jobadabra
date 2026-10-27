@@ -27,6 +27,8 @@ export function noteFields(storage, rows = []) {
     if (!label || looksLikeFieldId(label) || !row.type || row.type === 'file' || row.type === 'password') continue;
     const format = formatOfField(row);
     const before = next[keyOf(label)];
+    // Why (#2312): a generic text box says nothing about meaning; a current AI judgment of the label stays (judged once, not per fill).
+    if (format.kind === 'text' && before?.from === 'ai' && (before.kinds || 0) >= KINDS_VERSION) continue;
     // A menu read while closed has no options: an older reading's options for the same kind stay.
     const options = format.options.length ? format.options : before?.kind === format.kind ? before.options || [] : [];
     // Whether a date question also asks about constraints is the label's meaning (the AI's judgment), not the field's: it stays.

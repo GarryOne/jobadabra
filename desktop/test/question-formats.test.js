@@ -152,6 +152,9 @@ test('a generic text field is semantically judged, while typed controls remain a
   await formats.ensure(storage, labels, {ai: {client}});
   assert.deepEqual(labels.map(label => formats.keptFor(storage, label).kind), kinds);
   assert.equal(formats.keptFor(storage, 'Start date').from, 'fill', 'a native date control remains the source of truth');
+  formats.noteFields(storage, [{label: labels[0], type: 'text'}]);
+  assert.equal(formats.keptFor(storage, labels[0]).kind, 'date', 'a generic control does not erase the semantic judgment');
+  assert.equal(formats.keptFor(storage, labels[0]).from, 'ai');
   await formats.ensure(storage, labels, {ai: {client}});
-  assert.equal(calls, 1, 'each generic text label is judged once until a new fill reports it again');
+  assert.equal(calls, 1, 'the judgment survives the next fill and does not call AI again');
 });

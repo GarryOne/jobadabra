@@ -1259,7 +1259,7 @@ main { min-width: 0; }
 .ss-row { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2); border-radius: var(--r-md); cursor: pointer;
   border: 1px solid transparent; border-left: 4px solid transparent; }
 .ss-row:hover { background: var(--surface-2); }
-.ss-row.is-current { background: var(--signal-soft); border-color: var(--signal-line); border-left-color: var(--signal-edge); }
+.ss-row.is-current { background: var(--surface-2); border-color: var(--line); border-left-color: var(--signal-edge); }   /* selected: a grey tint and the amber edge, never an amber fill (owner, 27 Oct 2026) */
 .ss-row .logo { width: 30px; height: 30px; margin-top: 2px; }
 .ss-row-words { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .ss-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); width: 100%; min-width: 0; }
@@ -1272,15 +1272,14 @@ main { min-width: 0; }
 .ss-job-words b { font-size: var(--fs-base); }
 .ss-job-tab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* the session's Chrome tab: one line */
 .ss-job-card .link { margin-left: auto; align-self: flex-start; text-decoration: none; white-space: nowrap; }
-/* The next step: tinted by its tone, a 4 px edge, the state on the right. */
+/* The next step: a plain card, its tone only on the 4 px edge (owner, 27 Oct 2026: "too much yellow backgrounds"), the state on the right. */
 .ss-next { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
-.ss-next.tone-warn { background: var(--warn-soft); border-color: var(--warn-line); border-left-color: var(--warn); }
-.ss-next.tone-info { background: var(--info-soft); border-color: var(--info-line); border-left-color: var(--info); }
-.ss-next.tone-bad { background: var(--bad-soft); border-color: var(--bad-line); border-left-color: var(--bad); }
-.ss-next.tone-good { background: var(--good-soft); border-color: transparent; border-left-color: var(--good); }
+.ss-next[class*='tone-'] { background: var(--surface); }
+.ss-next.tone-warn { border-left-color: var(--warn); }  .ss-next.tone-info { border-left-color: var(--info); }
+.ss-next.tone-bad { border-left-color: var(--bad); }  .ss-next.tone-good { border-left-color: var(--good); }
 .ss-next-head { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .ss-next-title { font-size: var(--fs-base); line-height: 1.25; }
-.ss-full { border-top: 1px solid var(--warn-line); padding-top: var(--sp-2); color: var(--ink-2); max-height: 20em; overflow: auto; }
+.ss-full { border-top: 1px solid var(--line); padding-top: var(--sp-2); color: var(--ink-2); max-height: 20em; overflow: auto; }
 .ss-question { color: var(--ink-2); max-height: 12em; overflow: auto; }
 .ss-decision-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .ss-never { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: auto; }
@@ -1300,19 +1299,19 @@ main { min-width: 0; }
 .ss-check.is-open .ss-check-line .icon { transform: rotate(90deg); }
 .ss-check-more { margin: var(--sp-1) 0 0 22px; }
 /* What happened: a problem Claude hit stands out (and comes first). */
-.ss-check.is-problem .ss-check-line { color: var(--warn); }
+.ss-check.is-problem .ss-check-line { color: var(--ink); }   /* the icon carries the warning, not the whole line */
 .ss-check.is-problem .ss-check-line .icon { color: var(--warn); }
 .ss-audit { border-top: 1px solid var(--line); padding-top: var(--sp-2); }
-/* Needs your attention: the page's to-do, a numbered row each, in the card's warm tone. */
-.ss-needs { border-color: var(--warn-line); }
+/* Needs your attention: numbered plain rows, a thin amber edge, outlined buttons (owner, 27 Oct 2026: "too much yellow"; test/calm-session.test.js) */
+.ss-needs { border-color: var(--line); }
 .ss-needs .ss-fact-head .icon { color: var(--warn); }
 .ss-needs-words { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ss-needs-words b { font-size: var(--fs-lg); }
 .ss-needs-list { display: flex; flex-direction: column; gap: var(--sp-2); margin: var(--sp-3) 0 0; }
 .ss-need { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--warn-line); border-radius: var(--r-md); background: var(--warn-soft); }
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }
 .ss-need-num { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
-  border-radius: 50%; background: rgb(var(--amber-rgb) / .22); color: var(--warn); font-size: var(--fs-sm); font-weight: 700; }
+  border-radius: 50%; background: var(--surface-2); color: var(--ink-2); font-size: var(--fs-sm); font-weight: 700; }
 .ss-need-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .ss-need-title { font-size: var(--fs-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ss-need-desc { color: var(--muted); }
@@ -1326,7 +1325,7 @@ main { min-width: 0; }
 .ss-need.is-asking .ss-need-button { flex: none; white-space: nowrap; }
 .ss-need-outcome { color: var(--good); }
 /* A handled row: quiet, its outcome on the right, its answer box gone (saving it to your answers stays). */
-.ss-need.is-done { background: var(--surface-2); border-color: var(--line); }
+.ss-need.is-done { background: var(--surface-2); border-color: var(--line); }   /* the edge goes grey too: handled */
 .ss-need.is-done .ss-need-num { background: var(--good-soft); color: var(--good); }
 .ss-need.is-done .ss-need-title { font-weight: 500; color: var(--muted); }
 .ss-need.is-done .ss-need-desc { display: none; }
@@ -1367,7 +1366,7 @@ main { min-width: 0; }
 .ss-need.is-ask .ss-ask-input { max-width: none; min-width: 0; }
 .ss-need.is-ask .ss-need-actions { flex: none; }
 /* A knockout question's row (need-knockout.js): a warning edge and a bold line, the same edge as the other warning cards. */
-.ss-need.is-knockout { padding-left: calc(var(--sp-3) - 3px); border-left: 4px solid var(--warn); border-color: var(--warn-line); border-left-color: var(--warn); }
+.ss-need.is-knockout { padding-left: calc(var(--sp-3) - 3px); border-left: 4px solid var(--warn); border-left-color: var(--warn); }
 .ss-need-knock { color: var(--warn); font-size: var(--fs-sm); }
 .ss-ask-save { display: inline-flex; align-items: center; gap: var(--sp-2); cursor: pointer; color: var(--ink-2); white-space: nowrap; margin: 0; }
 .ss-ask-save input { width: auto; margin: 0; }

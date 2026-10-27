@@ -93,7 +93,7 @@ export function updateNeedsCount() {
   const check = open.filter(li => li.classList.contains('is-confirm')).length, form = open.length - check;
   const detail = [form && `${form} in the form`, check && `${check} to check`].filter(Boolean).join(' · ');
   $('ss-needs-count').replaceChildren(open.length
-    ? pill(`${open.length} action${open.length === 1 ? '' : 's'} remaining`, 'warn', {title: detail})
+    ? pill(`${open.length} action${open.length === 1 ? '' : 's'} remaining`, 'neutral', {title: detail})
     : pill('All handled', 'good', {dot: true}));
   // The open rows are the numbered list you work through, in order.
   open.forEach((li, i) => { const number = li.querySelector('.ss-need-num'); if (number) number.textContent = String(i + 1); });
@@ -188,8 +188,8 @@ export function emptyRow(label, item) {
   body.append(titleLine(name), el('span', 'ss-need-desc small', more
     ? `Still empty in the form (the ring on the form lists ${label.startsWith('1 ') ? 'it' : 'them'}).`
     : draftNote(reviewStates.get(item.id), label) || reasonFor(reviewStates.get(item.id), label, sameQuestion) || 'This section is still empty in the form.'));   // why the fill left it (reason-words.js)
-  actions.append(more ? smallButton('Open the form', 'primary', event => openForm(item, event.currentTarget))
-    : smallButton('Open in form', 'secondary is-signal', event => showInForm(item, label, event.currentTarget)));
+  actions.append(more ? smallButton('Open the form', 'secondary', event => openForm(item, event.currentTarget))
+    : smallButton('Open in form', 'secondary', event => showInForm(item, label, event.currentTarget)));
   li.append(badge(), body, actions);
   return markKnockout(li, item, label);
 }
@@ -293,14 +293,14 @@ export function needRow(need, item) {
   const name = need.label ? unbold(need.label) : `"${title}"`;
   const reply = need.kind !== 'agree' && replyOf(title);
   if (reply && resumeOffered()) {   // "Reply ok, and I'll click Create an account" (a reply to Claude: only with Claude help on, claude-help.js): one button that sends it, not a field to review
-    actions.append(smallButton(`Reply "${reply}"`, 'primary', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
+    actions.append(smallButton(`Reply "${reply}"`, 'secondary', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
     li.append(badge(), body, actions);
     if (handled.has(key)) doneRow(li, key, handled.get(key));
     return li;
   }
   if (need.kind === 'agree') {
     // Chrome comes forward on the form and the page scrolls to this field (extension/review.js picks it up).
-    actions.append(smallButton('Review in form', 'primary', event => showInForm(item, agreeLabel(need), event.currentTarget)),
+    actions.append(smallButton('Review in form', 'secondary', event => showInForm(item, agreeLabel(need), event.currentTarget)),
       smallButton('Done', 'secondary', () => doneRow(li, key, 'Ticked in the form')));
     li.dataset.watch = watchId(need.text);
   } else {
@@ -331,7 +331,7 @@ export function needRow(need, item) {
       };
       const before = [...actions.childNodes];
       const back = () => { li.classList.remove('is-asking'); actions.replaceChildren(...before); };
-      const sendButton = smallButton('Send', 'primary', send, offline(item));
+      const sendButton = smallButton('Send', 'secondary', send, offline(item));
       submitOnEnter(input, sendButton);
       input.addEventListener('keydown', event => { if (event.key === 'Escape') back(); });
       li.classList.add('is-asking');   // the answer box takes its own line under the text, not a corner of the row
@@ -350,7 +350,7 @@ export function needRow(need, item) {
     chip.append(select);
     if (choices.length) actions.append(onlyChange ? smallButton('Tell Claude…', 'secondary', ask, offline(item)) : chip);   // nothing to pick (Claude help off, nothing saved): Review in form alone
     // On the account step there is no application form yet: Review in form would open the page again in a new tab, without what Claude typed (12 Oct 2026).
-    if (item.stage !== 'account') actions.append(smallButton('Review in form', 'primary', event => showInForm(item, agreeLabel(need), event.currentTarget)));
+    if (item.stage !== 'account') actions.append(smallButton('Review in form', 'secondary', event => showInForm(item, agreeLabel(need), event.currentTarget)));
   }
   li.append(badge(), body, actions);
   if (handled.has(key)) doneRow(li, key, handled.get(key));
@@ -398,7 +398,7 @@ export function askRow(need, item) {
   const key = `${item.id}|${need.text}`;
   li.dataset.key = key;
   li.dataset.watch = watchId(need.text);  // the form page says when it has an answer
-  const fill = smallButton('Fill it in', 'primary', () => {
+  const fill = smallButton('Fill it in', 'secondary', () => {
     const value = input.value.trim();
     if (!value) { note.textContent = 'Write an answer first'; input.focus(); return; }
     queue(item, key, `"${need.question}": ${value}`);

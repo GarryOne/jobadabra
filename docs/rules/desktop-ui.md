@@ -42,6 +42,7 @@ living copy: `npm run gallery` → "Card shell"; API for other sessions: `~/job-
 - **Not drafts:** actions with their own button keep their behaviour (read the CV again, an AI review, Generate, Review questions).
 - **Amber = the one current primary action.** Filled amber with dark ink (`button.primary`) only for Save while there are drafts, or the screen's single next step (Review questions, Generate).
   Edit, Add, "View source in Notion", "Fill from my CV" are quiet (secondary, ghost or in the ⋯ menu); one "View source in Notion" per page, in a secondary menu.
+- **Colour marks, never fills a list** (owner, 27 Oct 2026: "too much yellow backgrounds" on the Applying page): colour = a state or the ONE next action. A row, list or card that needs you gets a thin tone edge (and a pill for its status), never a tinted fill; its buttons are outlined (`secondary`), the card's one primary stays the only amber fill. Small things (pills, tags, one banner) keep their tint. Guard: `desktop/test/calm-session.test.js` (the session page; other screens follow in their own PR).
 - **What fails a change:** `desktop/test/card-system.test.js` (a card's own Save/Cancel/Discard in code or in the Profile/Strategy markup; a filled Edit), `card-edit.test.js`,
   `card-shell.test.js`, `save-bar.test.js`, `unsaved-guard.test.js`. Cards not moved yet are listed in `card-system.test.js` KNOWN_LEFT / MARKUP_LEFT: the lists may only shrink.
 

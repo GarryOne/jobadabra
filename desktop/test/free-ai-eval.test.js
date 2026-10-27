@@ -174,3 +174,10 @@ test('a written answer is matched on what is typed: its "• Add:" reminders are
   assert.deepEqual(answerProblems({answers: [{field: 'backlog', category: 'written', value: 'I cut backlog noise by half.\n• Add: which teams'}]}, want), []);
   assert.equal(answerProblems({answers: [{field: 'backlog', category: 'written', value: 'I ran 400 services on EKS.\n• Add: a backlog cleanup you led'}]}, want).length, 1, 'the subject only in a reminder is not answered');
 });
+
+test('answerProblems flags a written answer that says what a case forbids, after the subject is named (benchmark run 40451005110)', async () => {
+  const {answerProblems} = await import('../../tools/free-ai-eval-metrics.mjs');
+  const want = {backlog: {category: 'written', match: 'backlog', notMatch: 'so I know how'}};
+  assert.deepEqual(answerProblems({answers: [{field: 'backlog', category: 'written', value: 'The closest I can point to for backlog cleanliness is the platform I built.'}]}, want), []);
+  assert.equal(answerProblems({answers: [{field: 'backlog', category: 'written', value: 'The closest I can point to for backlog cleanliness is the platform I built, so I know how to keep teams aligned.'}]}, want).length, 1);
+});

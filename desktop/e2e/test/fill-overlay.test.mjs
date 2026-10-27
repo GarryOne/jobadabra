@@ -124,11 +124,14 @@ test('the app saying stuck after a step ends the working look; a newer step brin
   } finally { await t.app.close(); }
 });
 
-test('a navigation leaves no overlay', async () => {
+// Why-changed: a page change inside a run is dimmed at its commit now (fill-overlay-run.test.mjs, #2221): this one ends the run first, and a page change after the run's end leaves no overlay.
+test('a navigation after the run leaves no overlay', async () => {
   const t = await open();
   try {
+    await fillOver(t);
     await t.step('Filling Full name…');
     await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.worker.evaluate(async () => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: ''}); });
     await t.app.page.goto('https://jobs.example.test/next');
     assert.equal(await t.overlay(), false);
   } finally { await t.app.close(); }

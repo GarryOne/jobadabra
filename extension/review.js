@@ -320,7 +320,10 @@
   // Why (#2221, owner 27 Oct 2026: "instantly show the overlay"): the page was dimmed from its first moment (early-dim.js): the panel takes that look over at once, centred, so nothing jumps between the dim and the first step.
   if (overlay.early?.()) { const was = stepped; showStep('Starting…', 20000); stepped = was; setOpen(true); }
   // A fill already on a step when this panel appeared: show it here (the background removes its floating copy).
-  send({type: 'panelStepNow'}).then(answer => { if (answer?.text && host.isConnected) { showStep(answer.text, answer.wait || STEP_SAFETY_MS); if (!open) setOpen(true); } }).catch(() => {});
+  // Why (#2221, owner 27 Oct 2026): the first draw waits for this answer (at most STEP_FIRST_MS), so a page in the middle of a run is drawn working and centred from its first frame; drawn before the answer it showed
+  // the finished look ("Fill again") in the corner for a moment ("moves from center to bottom-left and center again").
+  const STEP_FIRST_MS = 800;
+  const stepFirst = Promise.race([send({type: 'panelStepNow'}).then(answer => { if (answer?.text && host.isConnected) { showStep(answer.text, answer.wait || STEP_SAFETY_MS); if (!open) setOpen(true); } }), new Promise(resolve => setTimeout(resolve, STEP_FIRST_MS))]).catch(() => {});
 
   const learn = window.__jobPilottoPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobPilottoPanelForm});
 
@@ -328,6 +331,7 @@
   let watch = [], timer = null, busy = false, jobAsked = '';
   async function sync() {
     if (!chrome.runtime?.id) { host.remove(); clearInterval(tick); return; }  // this copy was replaced by a reload
+    await stepFirst;   // the worker's answer about the step on this page comes before the first draw (above)
     const state = render();
     if (!state || busy) return;
     learn.reportMisses(state.list);

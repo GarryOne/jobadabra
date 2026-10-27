@@ -17,7 +17,7 @@
 # Every run writes its whole output to a log (the first line names it; SHIP_LOG=<file> chooses it), shows each step with the seconds since
 # the start, and ends with one marker line (then MERGED / CLOSED / RED / GREEN, below): `ship: DONE <sha>` (merged), `ship: REVIEW #n <url>` (owner reviews by hand: open, checks green) or `ship: FAILED (exit N) ...`. A caller that cut the run short
 # (a timeout, a piped `| tail`) reads that last line of the log to know how it ended; running it again is safe.
-# From the moment the PR opens a detached watcher (tools/ship-watch.sh, no AI, ~60 s looks, 48 h cap) adds to the same log: `ship: MERGED #n <sha>`, `ship: CLOSED #n (unmerged)`,
+# From the moment the PR opens a detached watcher (tools/ship-watch.sh, no AI, ~2 min looks, longer while GitHub refuses, 48 h cap) adds to the same log: `ship: MERGED #n <sha>`, `ship: CLOSED #n (unmerged)`,
 # `ship: RED #n <check>`, `ship: GREEN #n` or `ship: WATCH ENDED #n (still open)`. SHIP_WATCH=0 starts none.
 set -euo pipefail
 flags=""; keep=1; background=0; args=()

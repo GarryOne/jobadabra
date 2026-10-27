@@ -15,6 +15,7 @@ FAKE = """#!/bin/sh
 d="$FAKE_GH_DIR"; n=$(cat "$d/looks" 2>/dev/null || echo 0)
 case "$1 $2" in
   "pr view") n=$((n + 1)); echo $n > "$d/looks"; s=$(sed -n "${n}p" "$d/states"); [ -n "$s" ] || s=$(tail -n 1 "$d/states")
+             [ "$s" != REFUSED ] || { echo "GraphQL: API rate limit already exceeded" >&2; exit 1; }
              m=$(sed -n "${n}p" "$d/mergeables" 2>/dev/null); [ -n "$m" ] || m=MERGEABLE
              set -- $s; if [ "$1" = MERGED ]; then echo "{\\"headRefOid\\":\\"new1\\",\\"url\\":\\"https://github.com/o/r/pull/7\\",\\"state\\":\\"MERGED\\",\\"mergeable\\":\\"$m\\",\\"mergeCommit\\":{\\"oid\\":\\"$2\\"}}"; else echo "{\\"headRefOid\\":\\"new1\\",\\"url\\":\\"https://github.com/o/r/pull/7\\",\\"state\\":\\"$1\\",\\"mergeable\\":\\"$m\\",\\"mergeCommit\\":null}"; fi ;;
   "api repos/o/r/commits/new1/check-runs?per_page=100") r=$(sed -n "${n}p" "$d/runs" 2>/dev/null); [ -n "$r" ] || r=ok
@@ -90,6 +91,16 @@ class ShipWatchTest(unittest.TestCase):
 
     def test_a_pr_still_open_at_the_cap_ends_the_watch(self):
         self.assertEqual(self.watch('OPEN\n', checks='pending\n' * 4, cap=2, poll=1), ['ship: WATCH ENDED #7 (still open)'])
+
+    def test_a_refused_look_waits_twice_as_long_each_time(self):
+        # 27 Oct 2026: the owner's GraphQL limit ran out; ~38 pollers kept asking every minute and every watcher was blind until the hour reset.
+        start = time.monotonic()
+        self.assertEqual(self.watch('REFUSED\n', cap=6, poll=1), ['ship: WATCH ENDED #7 (still open)'])
+        self.assertEqual((self.tmp / 'looks').read_text().strip(), '3', 'looks after 2 s, then 4 s: not one a second')
+        self.assertLess(time.monotonic() - start, 15)
+
+    def test_a_look_that_answers_again_goes_back_to_the_normal_pace(self):
+        self.assertEqual(self.watch('REFUSED\nOPEN\nOPEN\nMERGED abc1234def\n', checks='pending\n' * 4, poll=1), ['ship: MERGED #7 abc1234'])
 
     def test_a_second_watcher_replaces_the_first_by_pid_file(self):
         env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'SHIP_WATCH_POLL': '1', 'SHIP_WATCH_CAP': '60'}

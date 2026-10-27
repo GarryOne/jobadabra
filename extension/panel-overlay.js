@@ -38,7 +38,7 @@
     window.__jobPilottoOverlayFx?.(layer);   // the magic behind the panel (panel-overlay-fx.js): inside the layer, so every end takes it away
     for (const name of HELD) window.addEventListener(name, hold, {capture: true, passive: false});
     wipe?.disconnect();
-    // Why (2026-10-27, owner, dim-gap): the page may replace <html> itself. Watch the document, which survives that replacement, and restore both drawings before the next paint.
+    // Why (2026-10-27, dim-gap fixture): replacing <html> left both drawings absent for >=1.2 s; the old root's observers only caught child deletion. The document survives root replacement, so restore both here before paint.
     // Invariant: this observer only draws the worker's existing state; off() disconnects it on a verdict or a closed panel. No timer or page change starts or ends an Apply.
     wipe = new MutationObserver(() => {
       if (!layer || !chrome.runtime?.id || !document.documentElement) return;

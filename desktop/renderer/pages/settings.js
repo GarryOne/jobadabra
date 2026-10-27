@@ -69,7 +69,7 @@ async function openProfile() {
   showClaudeAuto();
   showMode(shared.state.settings);
   showContact();
-  if (stillDefault()) profileTab('cv', {byDefault: true});
+  if (stillDefault()) profileTab(remembered('profileTab') || 'cv', {byDefault: true});
 }
 
 // Each service's state. Keys are known at once (this Mac); Google (a Python check) and the extension answer later, so

@@ -45,10 +45,8 @@ import {setFilters} from './jobs-filter-menu.js';
 // ---------- app ----------
 // The page (and Settings section) open now, kept for a reload (⌘R): the app comes back where it was.
 // sessionStorage: survives a reload of this window, not a restart of the app (that opens Focus as before).
-export const remembered = (key, value) => {
-  try { if (value === undefined) return sessionStorage.getItem(key); sessionStorage.setItem(key, value); } catch {}
-  return null;
-};
+import {remembered} from '../view-memory.js';
+export {remembered} from '../view-memory.js';
 // Back / forward (⌘← ⌘→, ⌘[ ⌘], the mouse's side buttons): every screen opened through here, in order, and the
 // Recent activity panel opened over one (pages/activity.js tells us through panelOpened / panelClosed).
 let history = viewHistory.start(null);

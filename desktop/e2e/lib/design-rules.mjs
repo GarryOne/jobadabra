@@ -212,6 +212,8 @@ const STRATEGY = 'the mockup rebuild session (Strategy from mockup 03)', CV_CHEC
 export const KNOWN_LEFT = {
   // The design-system page's "Value → control" section draws answerControl (question-control*.js): its period, net/gross, unit and few-option menus are selects.
   'value-control|small-select|page': 'the editors session (Availability, Work eligibility, answer kinds) proposed by job-pilotto-75',
+  // Up next: each item's own orange button (Open LinkedIn, Open email, Build new prep kit…).
+  'focus|many-primaries|Up next': CLEANUP,
   // Jobs' list filter (7 views) and sort (3) menus; Interviews' outcome filter (4).
   'jobs|small-select|page': CLEANUP,
   'interviews|small-select|page': CLEANUP,

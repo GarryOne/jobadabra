@@ -18,13 +18,11 @@ code { font: var(--fs-sm) var(--font-mono); background: var(--sky); padding: 2px
 button { font: 600 var(--fs-md) var(--font-sans); border-radius: var(--r-md); padding: 8px 14px; cursor: pointer; border: 1px solid transparent; }
 button.primary { background: var(--signal-solid); color: var(--on-signal); }
 button.primary:hover { filter: brightness(1.05); }
-button.is-main { background: var(--good); color: var(--on-bright); border-color: var(--good); }   /* a list row's main action (Focus Up next): solid, not the page's amber */
-button.is-main:hover { filter: brightness(1.08); }
 button.secondary { background: var(--surface); color: var(--ink); border-color: var(--line); }
 button.ghost { background: transparent; color: var(--muted); }
 button.link { background: none; border: 0; padding: 0; color: var(--signal); font-weight: 600; }
 /* A button's words stay on one line (owner, 18 Oct 2026: "the Accept button is too fat"; docs/rules/desktop-ui.md "Read views, lists, buttons and choices"; e2e/lib/design-rules.mjs fat-button). */
-button.primary, button.is-main, button.secondary, button.ghost, button.danger, button.danger-outline { white-space: nowrap; }
+button.primary, button.secondary, button.ghost, button.danger, button.danger-outline { white-space: nowrap; }
 button:disabled { opacity: .5; cursor: default; }
 button.primary:disabled { opacity: 1; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line-strong); }   /* readable grey, not a faded orange (AA ≥ 4.5:1) */
 label { display: block; font-weight: 600; font-size: var(--fs-md); margin: 12px 0 4px; color: var(--label); }
@@ -1321,8 +1319,8 @@ main { min-width: 0; }
 .ss-need-button { padding: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); }
 /* Same-size buttons in one column, Review in form last; roles told apart by a soft tint only (owner, 27 Oct 2026: "slightly different colors, not big contrasts"). */
 .ss-need-actions > .ss-need-button { min-width: 112px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-.ss-need-button.is-answer { background: var(--good); border-color: var(--good); color: var(--on-bright); }   /* the row's main action: solid (owner, 27 Oct 2026) */
-.ss-need-button.is-change { background: var(--info-soft); border-color: color-mix(in srgb, var(--info) 55%, var(--line)); }  .ss-need-button.is-review { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink-2); }  .ss-choice[aria-pressed="true"] { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.ss-need-button.is-answer { background: var(--signal-solid); border-color: var(--signal-edge); color: var(--on-signal); }   /* the row's main action: solid amber, as primary (owner, 27 Oct 2026) */
+.ss-need-button.is-change { background: var(--info-soft); border-color: color-mix(in srgb, var(--info) 55%, var(--line)); }  .ss-need-button.is-review { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink-2); }  .ss-choice[aria-pressed="true"] { background: var(--signal-soft); border-color: var(--signal-edge); color: var(--ink); }
 .ss-saved { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); color: var(--muted); }  .ss-saved.is-error { color: var(--bad); }
 /* Change…: the chips, the answer box, Send and Cancel on a line under the text, lined up with it. */
 .ss-need.is-asking { flex-wrap: wrap; }

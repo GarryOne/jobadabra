@@ -204,8 +204,6 @@ function focusCard(item) {
   }
   if (item.done && item.page_id) actions.append(focusButton('Done', 'secondary', () => finishItem(item,
     () => window.pilot.focusDone(item.page_id, item.kind === 'follow_up' ? 'followed_up' : 'replied'))));
-  // A row's main action is solid green, never the amber primary: amber is the page's one next step (owner, 27 Oct 2026, test/calm-session.test.js).
-  for (const button of actions.querySelectorAll('button.primary')) button.classList.replace('primary', 'is-main');
   const more = [];
   if (item.kind.startsWith('feedback') && item.kind !== 'feedback_wait') more.push({label: 'Add employer feedback', run: () => openFeedback(item, 'receive')});
   if (item.kind === 'feedback') more.push({label: 'Skip this request', run: async () => {

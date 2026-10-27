@@ -81,6 +81,6 @@ test('every need row ends with its quiet Review/Open in form button (one column,
   const borders = ['answer', 'change', 'review'].map(border);
   assert.ok(borders.every(Boolean), `a role has no border colour: ${borders}`);
   assert.equal(new Set(borders).size, 3, `two roles share a border colour: ${borders}`);
-  // The row's main button is solid (owner: "a solid/distinctive background for the main button"): the tone's fill, AA text on it.
-  assert.match(css, /\.ss-need-button\.is-answer \{[^}]*background: var\(--good\);[^}]*color: var\(--on-bright\)/);
+  // The row's main button is solid (owner: "a solid/distinctive background for the main button"): the primary's amber, AA text on it.
+  assert.match(css, /\.ss-need-button\.is-answer \{[^}]*background: var\(--signal-solid\);[^}]*color: var\(--on-signal\)/);   // amber, as primary (owner: "revert here to amber")
 });

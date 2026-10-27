@@ -21,6 +21,19 @@ export function removedStrings(diff) {
 
 // The suites that mention one of these strings: `sources` maps an e2e file (suites/x.mjs, lib/y.mjs) to its text; a lib file counts for every suite that imports it (one hop, as
 // the suites do; a deeper lib is named by its own importer). Returns {suite: [strings]}.
+// The parts of an e2e file that can expect the app's words: comments, step names (`ctx.run('<name>'`), `needs`/`name:` labels and the messages a test writes
+// (`new Error`, `console.log`, `problems.push`) are blanked, same length, so positions stay. #2157 (27 Oct 2026) removed the UI words "Notion page": 25 e2e files
+// said them only in step names, labels, messages and comments, and 17 suites ran whole. Tests: test/pr-store.test.mjs
+const LIT = String.raw`(['"\`])(?:\\[\s\S]|(?!\1)[\s\S])*?\1`;
+const DESCRIBING = new RegExp(String.raw`(?:\bctx\.run\(\s*|\bname:\s*|\bnew Error\(\s*|\bconsole\.(?:log|warn|error)\(\s*|\bproblems\.push\(\s*)` + LIT, 'g');
+const blank = text => text.replace(/[^\n]/g, ' ');
+export function checkedText(text) {
+  return String(text || '')
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
+    .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (all, before) => before + blank(all.slice(before.length)))
+    .replace(DESCRIBING, blank);
+}
+
 export function suitesExpecting(strings, sources) {
   const hits = {};
   const add = (suite, text) => { (hits[suite] ||= new Set()).add(text); };
@@ -33,7 +46,8 @@ export function suitesExpecting(strings, sources) {
   for (const [file, text] of Object.entries(sources)) {
     const direct = /^suites\/([^/]+)\.mjs$/.exec(file)?.[1];
     const owners = direct ? [direct] : [...(importers[file] || [])];
-    for (const string of strings) if (text.includes(string)) for (const owner of owners) add(owner, string);
+    const checked = checkedText(text);
+    for (const string of strings) if (checked.includes(string)) for (const owner of owners) add(owner, string);
   }
   return Object.fromEntries(Object.entries(hits).map(([suite, set]) => [suite, [...set]]));
 }
@@ -95,11 +109,11 @@ export function stepCalls(text) {
 export function stepsQuoting(hits, sources) {
   const out = {};
   for (const [suite, strings] of Object.entries(hits)) {
-    const text = String(sources[`suites/${suite}.mjs`] || ''), calls = stepCalls(text), entry = out[suite] = {steps: [], whole: false};
+    const text = String(sources[`suites/${suite}.mjs`] || ''), calls = stepCalls(text), entry = out[suite] = {steps: [], whole: false}, checked = checkedText(text);
     for (const string of strings) {
-      let at = text.indexOf(string), placed = false;
+      let at = checked.indexOf(string), placed = false;   // a quote in a step's name or message is no expectation (checkedText)
       if (at < 0) { entry.whole = true; continue; }   // quoted in a lib file the suite imports
-      for (; at >= 0; at = text.indexOf(string, at + 1)) {
+      for (; at >= 0; at = checked.indexOf(string, at + 1)) {
         const inside = calls.filter(call => call.start <= at && at <= call.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0];
         if (!inside?.name) { entry.whole = true; break; }
         if (!entry.steps.includes(inside.name)) entry.steps.push(inside.name);

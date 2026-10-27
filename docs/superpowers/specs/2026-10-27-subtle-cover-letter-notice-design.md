@@ -20,6 +20,6 @@ A separate visual variant for each state would preserve more bespoke styling but
 ## Progress
 - [x] Inspect landed cover-letter implementation and confirm route contract. (proof: extension/panel-markup.js)
 - [x] Implement the shared notice presentation and state-specific inline actions. (proof: extension/panel-markup.js)
-- [x] Verify both rendered states, setup navigation without generation, manual recovery, normal/narrow screenshots, lint, focused tests, and journey proof. (proof: desktop/test/letter-panel-notice.test.js)
-- [x] Run the complete fast gate through `tools/ship.sh`. (proof: desktop/test/letter-panel-notice.test.js)
+- [x] Verify both rendered states, setup navigation without generation, manual recovery, normal/narrow screenshots, lint, focused tests, and journey proof. (proof: desktop/test/journeys-cover-letter-notice.js)
+- [ ] Run the complete fast gate on the reviewed PR head. (proof: desktop/test/journeys-cover-letter-notice.js)
 - [ ] Open PR for owner review; owner merges manually.

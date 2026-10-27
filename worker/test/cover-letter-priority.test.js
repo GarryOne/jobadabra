@@ -96,7 +96,7 @@ for (const hidden of [false, true]) test(`a rejected optional letter upload is a
     const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
     assert.equal(root.querySelector('.letter-setup').hidden, false);
     assert.equal(root.querySelector('.letter-title').textContent, 'Cover letter wasn’t kept');
-    assert.equal(root.querySelector('.letter-reason').textContent, 'The form did not keep the letter. Open its field, paste or attach it manually, then check again.');
+    assert.equal(root.querySelector('.letter-reason').textContent, 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.');
     assert.equal(root.querySelector('.letter-action').textContent, 'Show on form');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
     root.querySelector('.letter-action').click();

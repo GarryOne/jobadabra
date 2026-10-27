@@ -87,8 +87,7 @@
     .jp.busy .pill-stop { display: block; } .card:not([hidden]) ~ .pill-stop { display: none; }
     .verify .shield { content: ''; display: inline-block; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
     /* Why (2026-10-27, owner): missing and rejected letters share a calm reminder style, with their own copy and next step. */
-    .letter-notice { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 2px 8px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
-    .letter-notice.verify { background: var(--soft); }
+    .letter-notice.verify { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 2px 8px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
     .letter-notice .letter-icon { color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; }
     .letter-notice .letter-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
     .letter-notice .letter-title { font-size: 13px; }

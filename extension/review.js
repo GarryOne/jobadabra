@@ -115,16 +115,10 @@
     const letterMissing = !account && letterAsked && !letterGiven && (letterRejected || coverLetterStatus && !coverLetterStatus.ready);
     $('.letter-setup').hidden = moved || !letterMissing;
     // Why (2026-10-27, owner): keep each letter status truthful while sharing the same compact notice and routing setup through the app.
-    const letterState = letterRejected ? 'delivery-failed' : coverLetterStatus?.state || 'missing';
-    $('.letter-title').textContent = letterRejected ? 'Cover letter wasn’t kept' : letterState === 'draft' ? 'Cover letter needs review' : letterState === 'missing' ? 'Cover letter needed' : 'Cover letter needs attention';
-    $('.letter-reason').textContent = letterRejected
-      ? 'The form did not keep the letter. Open its field, paste or attach it manually, then check again.'
-      : letterMissing ? letterState === 'missing' ? 'Create and review a cover letter before applying.'
-        : letterState === 'draft' ? 'Review and approve your draft before applying.' : coverLetterStatus.reason : '';
-    $('.letter-action').textContent = letterRejected ? 'Show on form'
-      : letterState === 'missing' ? 'Create in Profile → Cover letter'
-        : letterState === 'draft' ? 'Review in Profile → Cover letter'
-          : letterState === 'invalid' ? 'Complete in Profile → Cover letter' : 'Open Profile → Cover letter';
+    const letterCopy = window.__jobPilottoCoverLetterNotice(coverLetterStatus, !!letterRejected);
+    $('.letter-title').textContent = letterCopy.title;
+    $('.letter-reason').textContent = letterMissing ? letterCopy.reason : '';
+    $('.letter-action').textContent = letterCopy.action;
     $('.letter-action').onclick = event => letterRejected ? flash(letterRejected.el) : ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: 'setup:cover-letter'}, APP_DOWN);
     const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobpilotto-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobpilotto-needs');
     counts = {total, left};   // the stopped note says what the page holds

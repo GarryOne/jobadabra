@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import './journeys-letter-fallback.test.js';
 import './journeys-profile.js';
-import './letter-panel-notice.test.js';
+import './journeys-cover-letter-notice.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';

@@ -105,7 +105,7 @@ class TheFilesRoundTrip(unittest.TestCase):
             for n in range(1, 7):
                 out = tmp / 'results' / f'search-personas-p{n}'
                 (out / 'draw').mkdir(parents=True)
-                (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 150}) + '\n')
+                (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 150, 'funnel': {'ai_usd': 0.02}}) + '\n')
                 (out / 'judged.json').write_text(json.dumps({'persona': gate.PERSONAS[n - 1], 'rows': [{'role': 'yes', 'place': 'yes'}, {'role': 'yes', 'place': 'no'}]}))
                 (out / 'non-haiku-steps.txt').write_text('0\n')
                 self.assertEqual(gate.result(n, out)['local'], 1)
@@ -183,6 +183,16 @@ class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
         table = gate.table(gate.compare({1: row}, []))
         self.assertIn('| Cost |', table)
         self.assertIn('cost $', table)
+
+    def test_an_unmeasured_press_cost_is_red_and_never_shown_as_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / 'draw').mkdir()
+            (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 150, 'funnel': {'ai_usd': None}}) + '\n')
+            (out / 'judged.json').write_text(json.dumps({'usd': 0.009, 'rows': [{'role': 'yes', 'place': 'yes'}]}))
+            row = gate.result(1, out)
+            self.assertIsNone(row['usd'])
+            self.assertIn('the press cost was not measured', gate.judge_one(row, [])[0])
 
     def test_result_adds_the_press_and_the_judge_cost(self):
         with tempfile.TemporaryDirectory() as tmp:

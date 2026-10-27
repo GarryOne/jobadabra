@@ -34,7 +34,7 @@ while IFS=$'\t' read -r pn oid; do
   [ "$oid" != "$old" ] || continue
   size="$(git rev-list --count "origin/main..$oid")"
   [ "$size" -gt "$best" ] && { best="$size"; parent="$oid"; parent_n="$pn"; }
-done < <(gh pr list --state merged --base main --limit 40 --json number,headRefOid --jq '.[] | "\(.number)\t\(.headRefOid)"' 2>/dev/null)
+done < <(. "$(dirname "$0")/pr-rest-lib.sh" && pr_list "$(pr_repo .)" closed | jq -r '.[:60][] | select(.merged) | "\(.number)\t\(.headRefOid)"' 2>/dev/null)   # REST (try 3 on "GraphQL runs out", 27 Oct 2026)
 [ -n "$parent" ] || exit 0
 
 if ! git rebase --onto origin/main "$parent" >/dev/null 2>&1; then git rebase --abort >/dev/null 2>&1 || true; git reset -q --hard "$old"; exit 0; fi

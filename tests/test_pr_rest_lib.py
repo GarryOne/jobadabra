@@ -87,7 +87,7 @@ class PrRestLibTest(unittest.TestCase):
             self.assertEqual(self.sh('pr_repo', cwd=d)[1], want, url)
 
     def test_the_pr_loops_ask_no_graphql(self):
-        """The loops that look again and again: the watcher whole, ship-pr's wait. One-off calls (pr create/edit) may stay on gh pr."""
+        """The loops that look again and again: the watcher whole, ship-pr's wait. REST-capable one-off calls also use the helper; GraphQL-only draft-ready and auto-merge remain attributed."""
         watch = (ROOT / 'tools' / 'ship-watch.sh').read_text()
         self.assertNotRegex(watch, r'\bgh (pr|issue) |gh api graphql')
         ship_pr = (ROOT / 'tools' / 'ship-pr.sh').read_text()

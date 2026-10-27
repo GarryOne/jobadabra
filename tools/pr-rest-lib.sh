@@ -4,6 +4,12 @@
 #   looked every 15 s, each watcher every 2 min). A REST read with the last ETag that comes back 304 costs nothing (measured: 1 full read + 3 conditional reads = 1 call).
 #   The answers keep the shape of gh's own PR view and checks, so the callers keep their logic. The repo is always explicit: gh's PR commands read it from the working folder
 #   and fail in a deleted worktree, so web #177's watcher never saw its merge. Guard: tests/test_pr_rest_lib.py.
+# Why (owner, 27 Oct 2026, try 3 on "GraphQL runs out": "No GraphQL in our tools"): opening, editing, listing and labelling PRs and red-main issues are here too, over
+#   REST; only what GitHub offers in GraphQL alone (a draft made ready, auto-merge) is left, and tools/bin/gh logs it with its session.
+
+# Every gh of the tools that source this lib goes through tools/bin/gh, which logs a GraphQL call with its session (none should be left but a draft's ready and auto-merge).
+_pr_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bin"
+case ":$PATH:" in *":$_pr_bin:"*) ;; *) [ -x "$_pr_bin/gh" ] && PATH="$_pr_bin:$PATH" ;; esac
 
 # pr_repo [dir]: "owner/repo" of the dir's origin when it is on GitHub, read from git (no network); empty otherwise.
 pr_repo() { git -C "${1:-.}" remote get-url origin 2>/dev/null | sed -nE 's#^(git@github\.com:|ssh://git@github\.com/|https://github\.com/)([^/]+/[^/]+)$#\2#p' | sed -E 's#\.git$##'; }
@@ -28,7 +34,7 @@ pr_get() {
   esac
 }
 
-# pr_view <repo> <n> [full]: the PR like `gh pr view --json number,url,state,mergeable,headRefOid,headRefName,mergeCommit` (state OPEN|MERGED|CLOSED,
+# pr_view <repo> <n> [full]: the PR like `gh pr view --json number,url,title,state,mergeable,headRefOid,headRefName,mergeCommit` (state OPEN|MERGED|CLOSED,
 # mergeable MERGEABLE|CONFLICTING|UNKNOWN). "full" adds comments, reviews and commits in the same shape (3 more reads, free while unchanged).
 pr_view() {
   local p c r k
@@ -36,7 +42,7 @@ pr_view() {
   if [ "${3:-}" = full ]; then
     c="$(pr_get "repos/$1/issues/$2/comments?per_page=100")" && r="$(pr_get "repos/$1/pulls/$2/reviews?per_page=100")" && k="$(pr_get "repos/$1/pulls/$2/commits?per_page=100")" || return 1
   else c='[]'; r='[]'; k='[]'; fi
-  printf '%s\n%s\n%s\n%s\n' "$p" "$c" "$r" "$k" | jq -sc '.[0] as $p | {number: $p.number, url: $p.html_url, headRefOid: $p.head.sha, headRefName: $p.head.ref,
+  printf '%s\n%s\n%s\n%s\n' "$p" "$c" "$r" "$k" | jq -sc '.[0] as $p | {number: $p.number, url: $p.html_url, title: $p.title, headRefOid: $p.head.sha, headRefName: $p.head.ref,
       state: (if $p.merged_at then "MERGED" elif $p.state == "closed" then "CLOSED" else "OPEN" end),
       mergeable: (if $p.mergeable == true then "MERGEABLE" elif $p.mergeable == false then "CONFLICTING" else "UNKNOWN" end),
       mergeCommit: (if $p.merged_at then {oid: $p.merge_commit_sha} else null end),
@@ -54,3 +60,30 @@ pr_checks() {
         elif (.conclusion | IN("success", "neutral")) then "pass" elif .conclusion == "skipped" then "skipping" elif .conclusion == "cancelled" then "cancel" else "fail" end)}),
       (.[1].statuses[]? | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
 }
+
+# pr_list <repo> <state open|closed> [pages=1]: every PR of the state, 100 a page, newest first, as [{number, headRefName, headRefOid, merged}]. Each page is a conditional read.
+pr_list() {
+  local page=1 out all='[]'
+  while [ "$page" -le "${3:-1}" ]; do
+    out="$(pr_get "repos/$1/pulls?state=$2&per_page=100&page=$page")" || return 1
+    all="$(jq -c --argjson a "$all" '$a + [.[] | {number, headRefName: .head.ref, headRefOid: .head.sha, merged: (.merged_at != null)}]' <<<"$out")" || return 1
+    [ "$(jq length <<<"$out")" -eq 100 ] || break
+    page=$((page + 1))
+  done
+  printf '%s\n' "$all"
+}
+
+# pr_of_head <repo> <branch>: the number of the open PR whose head is <branch> of <repo>'s owner; empty when there is none.
+pr_of_head() { pr_get "repos/$1/pulls?state=open&head=${1%%/*}:$2&per_page=1" | jq -r '.[0].number // empty'; }
+
+# pr_open <repo> <branch> <title> <body> [draft]: opens the PR into main; prints its URL.
+pr_open() { gh api -X POST "repos/$1/pulls" -f base=main -f head="$2" -f title="$3" -f body="$4" ${5:+-F draft=true} --jq .html_url; }
+
+# pr_set <repo> <n> <title|body> <text>: replaces the PR's title or description.
+pr_set() { gh api -X PATCH "repos/$1/pulls/$2" -f "$3=$4" --jq .number >/dev/null; }
+
+# pr_label <repo> <n> <label> <color> <description>: creates the label when the repo lacks it, then puts it on the PR.
+pr_label() { gh api -X POST "repos/$1/labels" -f name="$3" -f color="$4" -f description="$5" >/dev/null 2>&1; gh api -X POST "repos/$1/issues/$2/labels" -f "labels[]=$3" >/dev/null; }
+
+# pr_issues <repo> <label>: the open issues (never PRs) with that label, as [{number, title, body}].
+pr_issues() { pr_get "repos/$1/issues?state=open&labels=$2&per_page=100" | jq -c '[.[] | select(.pull_request | not) | {number, title, body: (.body // "")}]'; }

@@ -13,10 +13,32 @@ ROOT = Path(__file__).resolve().parent.parent
 HOOK, ACK = ROOT / 'tools' / 'pr-red-check.sh', ROOT / 'tools' / 'pr-red-ack.sh'
 FAKE = """#!/bin/sh
 d="$FAKE_GH_DIR"; first="$1"; echo "$@" >> "$d/calls"; [ ! -f "$d/slow" ] || sleep 5
+[ "$1 $2" != "api -i" ] || exec python3 "$FAKE_GH_DIR/../rest.py" "$@"
 expr=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && expr="$2"; shift; done
 if [ "$first" = issue ]; then [ -f "$d/issues.json" ] && jq -r "$expr" "$d/issues.json"; exit 0; fi
 if [ "$first" = api ]; then [ -f "$d/api.json" ] && jq -r "$expr" "$d/api.json"; exit 0; fi
 case "$FAKE_GH_VERB" in list) jq -r "$expr" "$d/list.json" ;; view) jq -r "$expr" "$d/view.json" ;; esac
+"""
+# Try 3 on "GraphQL runs out" (27 Oct 2026): the hook reads REST (tools/pr-rest-lib.sh); this answers its paths from the same list.json / issues.json.
+REST = r"""import json, os, re, sys
+d, path = os.environ['FAKE_GH_DIR'], sys.argv[-1]
+def load(name, default):
+    try: return json.load(open(os.path.join(d, name)))
+    except (OSError, ValueError): return default
+prs = load('list.json', [])
+rollup = prs[0].get('statusCheckRollup', []) if prs else []
+def out(body): print('HTTP/2.0 200 OK\n\n' + json.dumps(body)); sys.exit(0)
+if 'pulls?state=open&head=' in path: out([{'number': p['number']} for p in prs])
+if re.search(r'/pulls/\d+$', path) and prs:
+    out({'number': prs[0]['number'], 'html_url': f"https://github.com/o/r/pull/{prs[0]['number']}", 'title': 't', 'head': {'sha': 'h1', 'ref': 'feature'}, 'state': 'open',
+         'merged_at': None, 'mergeable': {'MERGEABLE': True, 'CONFLICTING': False}.get(prs[0].get('mergeable'))})
+if path.endswith('/check-runs?per_page=100'):
+    out({'check_runs': [{'id': i, 'name': c['name'], 'status': 'completed' if c.get('conclusion') else 'in_progress', 'conclusion': (c.get('conclusion') or '').lower() or None,
+                         'html_url': c.get('detailsUrl', '')} for i, c in enumerate(rollup) if 'name' in c]})
+if path.endswith('/status'): out({'statuses': [{'context': c['context'], 'state': c['state'].lower(), 'target_url': c.get('targetUrl', '')} for c in rollup if 'context' in c]})
+if 'labels=red-main' in path: out(load('issues.json', []))
+if re.search(r'/(comments|reviews|commits)\?', path): out([])
+print('HTTP/2.0 404 Not Found\n\n{}'); sys.exit(1)
 """
 FAKE_BIN = """#!/bin/sh
 export FAKE_GH_VERB="$2"; exec "$FAKE_GH_REAL" "$@"
@@ -34,6 +56,8 @@ class PrRedHookTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.repo = self.tmp / 'repo'
         subprocess.run(['git', 'init', '-q', '-b', 'feature', str(self.repo)], check=True)
+        subprocess.run(['git', '-C', str(self.repo), 'remote', 'add', 'origin', 'git@github.com:o/r.git'], check=True)   # pr-rest-lib reads the repo from origin
+        (self.tmp / 'rest.py').write_text(REST)
         (self.tmp / 'bin').mkdir()
         (self.tmp / 'real-gh').write_text(FAKE)
         gh = self.tmp / 'bin' / 'gh'
@@ -41,7 +65,7 @@ class PrRedHookTest(unittest.TestCase):
         for f in (gh, self.tmp / 'real-gh'): f.chmod(f.stat().st_mode | stat.S_IEXEC)
         self.state = self.tmp / 'state'; self.state.mkdir()
         self.env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.state), 'FAKE_GH_REAL': str(self.tmp / 'real-gh'),
-                    'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '10'}
+                    'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '50', 'PR_REST_CACHE': str(self.tmp / 'rest-cache'), 'GH_GRAPHQL_LOG': 'off'}
         self.env.pop('JOB_PILOTTO_SESSION', None)
         red_main = self.tmp / 'red-main.sh'   # main's verdict (tools/red-main.sh) from a file: unknown unless a test writes one
         red_main.write_text('#!/bin/sh\n[ "$RED_MAIN_NO_RERUN" = 1 ] || echo "rerun allowed" >> "$FAKE_GH_DIR/calls"\ncat "$FAKE_GH_DIR/red-main" 2>/dev/null || echo unknown\n')
@@ -110,7 +134,7 @@ class PrRedHookTest(unittest.TestCase):
             ('running', pr(('python', 'SUCCESS'), ('desktop', None)), None),
             ('cancelled by a newer push is no red', pr(('desktop', 'CANCELLED')), None),
             ('no open PR', [], None),
-            ('red', pr(('python', 'SUCCESS'), ('desktop (windows-latest)', 'FAILURE'), ('desktop (ubuntu-24.04)', 'FAILURE')), 'PR #5 is red: desktop (ubuntu-24.04), desktop (windows-latest) https://ci.test/desktop (windows-latest); fix it now'),
+            ('red', pr(('python', 'SUCCESS'), ('desktop (windows-latest)', 'FAILURE'), ('desktop (ubuntu-24.04)', 'FAILURE')), 'PR #5 is red: desktop (ubuntu-24.04), desktop (windows-latest) https://ci.test/desktop (ubuntu-24.04); fix it now'),
             ('timed out is red', pr(('e2e', 'TIMED_OUT')), 'PR #5 is red: e2e'),
         ]
         for event in ('UserPromptSubmit', 'Stop'):
@@ -168,7 +192,7 @@ class PrRedHookTest(unittest.TestCase):
     def test_merged_pr_is_not_listed_so_it_is_silent(self):
         self.answer([])   # `--state open` returns nothing for a merged or closed PR
         self.assertEqual(self.run_hook('Stop').returncode, 0)
-        self.assertIn('--state open', (self.state / 'calls').read_text())
+        self.assertIn('pulls?state=open&head=o:feature', (self.state / 'calls').read_text())
 
     def test_acknowledged_red_is_silent_until_the_red_set_changes(self):
         self.answer(pr(('python', 'FAILURE')))
@@ -210,7 +234,7 @@ class PrRedHookTest(unittest.TestCase):
     def test_the_answer_is_cached_between_prompt_and_stop(self):
         self.answer(pr(('python', 'FAILURE')))
         self.run_hook(env={'PR_RED_TTL': '60'}); self.run_hook('Stop', env={'PR_RED_TTL': '60'})
-        self.assertEqual((self.state / 'calls').read_text().count('pr list'), 1)
+        self.assertEqual((self.state / 'calls').read_text().count('pulls/5\n'), 2)
 
     def test_the_worktree_it_shipped_from_is_checked_too(self):
         work = self.repo / '.claude' / 'worktrees' / 'topic'
@@ -221,7 +245,7 @@ class PrRedHookTest(unittest.TestCase):
         (self.state / 'list.json').write_text(json.dumps(pr(('python', 'FAILURE')))); (self.state / 'view.json').write_text('{}')
         done = self.run_hook('Stop', extra={'transcript_path': str(transcript)}, cwd=self.repo)
         self.assertEqual(done.returncode, 2)
-        self.assertIn('--head topic', (self.state / 'calls').read_text())
+        self.assertIn('head=o:topic', (self.state / 'calls').read_text())
 
 
 class PrRedHookRegistered(unittest.TestCase):

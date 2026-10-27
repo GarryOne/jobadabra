@@ -233,8 +233,8 @@ jobs:
       E2E_STEP_NAMES: ${{ inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
       # AI cost (7 Oct 2026: the e2e key billed ~$10 a day, mostly unseen). Only the scheduled runs ask the model live; every other run (gates, soaks, the canary, reruns,
-      # by hand) answers a request it has seen before from the replay cache, and pays only for new ones (lib/ai-meter.mjs). Judges on Haiku, except the quality suite,
-      # which measures Sonnet's scoring.
+      # by hand) answers a request it has seen before from the replay cache, and pays only for new ones (lib/ai-meter.mjs). Every judge runs on Haiku, the quality
+      # suite's too since 27 Oct 2026 (its verdicts keep their inputs, so Sonnet can re-judge the same texts offline).
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
       E2E_AI_REPLAY: '1'   # every run replays an answer it has seen; only a request never seen goes to the model (owner, 7 Oct 2026: "$30 a week"; the schedule used to ask live)
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")

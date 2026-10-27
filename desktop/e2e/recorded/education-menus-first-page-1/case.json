@@ -3,7 +3,7 @@
  "shape": "three required react-select menus of an Education section: a school list that opens on its first page and does not hold the CV's school, then a degree list of levels the CV words differently (BSc), then a long discipline list",
  "why": "27 Oct 2026, fair round run 40440347913, form 102 (Greenhouse): School and Degree empty in 3 of 3 runs although the CV states the education; the owner: search the school, then the list's Other",
  "control": {
-  "build": "a281e3d",
+  "build": "0.9.629",
   "failed": "to be measured on main"
  },
  "sample": "react-select 5.8.0 as a hosted application form's education section initialises it (names and values made up)",

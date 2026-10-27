@@ -25,7 +25,8 @@ const picked = (process.env.JP_REPLAY_CASES || '').split(',').filter(Boolean);  
 const everyCase = loadCases().filter(one => one.name.includes(only) && (!picked.length || picked.includes(one.name)));
 // A pull request (JP_REPLAY_PR_SPLIT=1, set by page-cases.yml for pull_request only) leaves the slow cases to main and the daily run unless it touches their folder (lib/replay-slow.mjs);
 // JP_REPLAY_CHANGED holds the PR's changed files, one per line. It says which it left, whole: the split is on the whole set, then sharded.
-const split = process.env.JP_REPLAY_PR_SPLIT && !picked.length ? splitForPr(everyCase, {slow: readSlow().slow, touched: touchedCases((process.env.JP_REPLAY_CHANGED || '').split('\n').filter(Boolean))}) : null;
+const prChanged = (process.env.JP_REPLAY_CHANGED || '').split('\n').filter(Boolean);   // an extension change replays every case, the slow ones too (lib/replay-slow.mjs)
+const split = process.env.JP_REPLAY_PR_SPLIT && !picked.length ? splitForPr(everyCase, {slow: readSlow().slow, touched: touchedCases(prChanged), changed: prChanged}) : null;
 if (split?.left.length && !skip) console.log(`left to main and the daily run (${split.left.length} slow cases, ${readSlow().basis}): ${split.left.map(one => one.name).join(', ')}`);
 const planned = split ? split.run : everyCase;
 const cases = shard ? shardOf(planned, shard.index, shard.count) : planned;

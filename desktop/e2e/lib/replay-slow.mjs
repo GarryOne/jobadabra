@@ -12,8 +12,13 @@ export const touchedCases = changed => [...new Set(changed.map(file => /^desktop
 
 export const readSlow = (file = SLOW_FILE) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {slow: []}; } };
 
-// -> {run: [cases], left: [{name, why}]}. A case not in the slow list (a new one, or never measured) always runs.
-export function splitForPr(cases, {slow = [], touched = []} = {}) {
+// A PR that changes the extension replays every case, the slow ones too: page-cases is its only replay since the e2e run stopped starting `recorded` on a PR
+// (owner, 27 Oct 2026: "Drop it, slow cases on PR too"; #2164 replayed every case twice, 5 runner-min here and 44 in e2e's recorded). -> bool
+export const extensionChanged = changed => changed.some(file => file.startsWith('extension/'));
+
+// -> {run: [cases], left: [{name, why}]}. A case not in the slow list (a new one, or never measured) always runs; an extension change runs them all.
+export function splitForPr(cases, {slow = [], touched = [], changed = []} = {}) {
+  if (extensionChanged(changed)) return {run: [...cases], left: []};
   const run = [], left = [];
   for (const item of cases) {
     if (slow.includes(item.name) && !touched.includes(item.name)) left.push({name: item.name, why: 'slow, and this PR does not touch its folder'});

@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {PROMPT_FILES} from './ladder-fingerprint.mjs';
 
 // Worker: the instructions, the fact rule, the missing-field re-ask, the CV facts. Extension: the field list read from the page (what each field carries to the worker).
-export const WORKER_AND_PAGE_SOURCES = ['worker/src/extension.js', 'worker/src/answer-examples.js', 'worker/src/answer-facts.js', 'worker/src/answer-missing.js', 'worker/src/cv-facts.js', 'worker/src/written-answer.js', 'extension/page/fill-read.js'];
+export const WORKER_AND_PAGE_SOURCES = ['worker/src/extension.js', 'worker/src/answer-declarations.js', 'worker/src/answer-examples.js', 'worker/src/answer-facts.js', 'worker/src/answer-missing.js', 'worker/src/cv-facts.js', 'worker/src/written-answer.js', 'extension/page/fill-read.js'];
 export const LADDER_BASELINE = 'desktop/e2e/ladder-baseline.json';
 
 // Every file whose change can change an ask: the ladder prompt files (their prompts are also hashed in the baseline), the worker and page files above.

@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Application</title></head><body>
+<!-- A one-page application with an open question answered in the person's own words (benchmark form round, 27 Oct 2026: Workable "Describe a time you...",
+     Hume "Why Hume?", "Tell us about yourself!"). Written by hand from the run's field list; fake applicant. -->
+<form onsubmit="return false" style="font:14px system-ui;padding:20px;max-width:560px">
+  <div><label for="firstname">First name<span aria-hidden="true">*</span></label><input id="firstname" name="firstname" type="text" required></div>
+  <div><label for="email">Email<span aria-hidden="true">*</span></label><input id="email" name="email" type="email" required></div>
+  <div><label for="story">Describe a time you improved how several teams planned their work without adding process.<span aria-hidden="true">*</span></label>
+    <textarea id="story" name="story" rows="6" required></textarea></div>
+  <div><label for="why">Why do you want to join us?<span aria-hidden="true">*</span></label><textarea id="why" name="why" rows="4" required></textarea></div>
+  <button type="submit">Submit application</button>
+</form>
+</body></html>

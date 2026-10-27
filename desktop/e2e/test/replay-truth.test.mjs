@@ -48,6 +48,12 @@ test('a choice the case\'s picker names is that field\'s answer too: "Yes" reach
 
 const trace = (...rows) => rows.map(([label, outcome, required = true, type = 'text']) => ({label, outcome, required, type, ...(label === 'CV' ? {source: 'your CV'} : {})}));   // the fill's own CV row (page/fill.js)
 
+test('agreement: a drafted written answer is left in the fill record as on the panel, until the person reads it (written-reminder-never-typed-1)', () => {
+  const rows = [{label: 'Story', outcome: 'filled', required: true, type: 'textarea', reason: 'outline: add your own details'}, {label: 'Why', outcome: 'left', required: true, type: 'textarea'}];
+  assert.deepEqual(agreementFailures({trace: rows, review: {missing: ['Story', 'Why']}, panel: {present: true, ready: false}, required: [], files: 0}), []);
+  assert.deepEqual(agreementFailures({trace: [{...rows[0], reason: ''}, rows[1]], review: {missing: ['Story', 'Why']}, panel: {present: true, ready: false}, required: [], files: 0}).length, 1, 'a plain filled row is still not left');
+});
+
 test('agreement: the panel\'s missing, the fill record\'s left and the page\'s own empty required agree', () => {
   const ok = agreementFailures({trace: trace(['Email', 'filled'], ['Phone', 'left'], ['CV', 'filled', true, 'file']), review: {missing: ['Phone']}, panel: {present: true, ready: false},
     required: [{name: 'phone', empty: true}], files: 1});

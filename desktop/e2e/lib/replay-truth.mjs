@@ -85,7 +85,9 @@ export function agreementFailures({trace, review, panel, required = [], files = 
   const failures = [];
   const cvRow = (trace || []).find(row => row.source === 'your CV');   // the fill's own CV row (page/fill.js): counted when left (the panel lists the slot); its "in" is checked below
   // The CV row is always in the record ("no place to attach it"): counted only where the page has an upload slot, or it balances a duplicate on the panel (fill-ladder, 13 Oct 2026).
-  const traceLeft = (trace || []).filter(row => row.required && row.outcome === 'left' && (row !== cvRow || slots > 0)).map(row => String(row.label));
+  // A written answer we drafted is typed but left until the person reads it (owner, 16 Oct 2026; page/fill.js reason "drafted: review it" / "outline: ..."): the panel counts it left, so does this.
+  const drafted = row => row.outcome === 'filled' && /^(drafted|outline):/.test(String(row.reason || ''));
+  const traceLeft = (trace || []).filter(row => row.required && (row.outcome === 'left' || drafted(row)) && (row !== cvRow || slots > 0)).map(row => String(row.label));
   const panelLeft = review ? (review.missing || []).map(String) : null;
   const pageLeft = required.filter(one => one.empty).map(one => String(one.name));
   // The record is written once, at the fill's end; the panel reads the page later. Fewer left in the record than on the panel makes the row look better: that fails.

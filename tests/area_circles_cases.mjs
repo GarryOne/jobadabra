@@ -19,7 +19,7 @@ test('the panel dim scenario (no "fix" in any subject) is a circle with a machin
   const commits = [c('0d0327b', 0, 'Keep the panel centred and dimmed while working', [files[0]]), c('be1c238', 0, 'Keep the working panel steady', [files[1]]),
     c('16acd70', 0, 'Free the page the moment the fill writes its end', [files[0]]), c('f2262', 0, 'Dim once (#2262)', files)];
   const lines = report(commits, [...files, 'desktop/test/panel.test.js', 'docs/x.md'], NOW);
-  assert.match(lines.join('\n'), /circle: 4 earlier PRs on these files in 7 days/);
+  assert.match(lines.join('\n'), /circle: 4 earlier PRs on these files in 7 days \(if they were fixes, this PR is fix number 5\)/);
   assert.equal(lines.at(-1), 'AREA-CIRCLES 7d=4 30d=4 files=extension/panel-overlay.js,extension/early-dim.js');
 });
 

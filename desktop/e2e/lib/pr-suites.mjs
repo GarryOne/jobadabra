@@ -196,3 +196,13 @@ export function rehomeQuotes(hits, quoting, map) {
   }
   return {hits: outHits, quoting: outQuoting};
 }
+
+// A folder watch on app code (wander's desktop/renderer/ + desktop/lib/, interactions' desktop/renderer/, 5 Oct 2026) was the guess from before the code → suite
+// map. Once the map holds a suite's steps, a changed app .js/.css file it does not name exactly picks that suite's steps by its lines (a file no recorded run loaded
+// is reached through the changed line that loads it), never the whole suite: #2156 ran wander and interactions whole for 3 new files and 2 handlers (27 Oct 2026).
+// Folders the map cannot record (quality's golden fixtures) keep their watch. all/exact: suitesFor with every watch / without folder watches. -> [suites]
+const RECORDED = /^desktop\/(renderer|lib)\/.+\.(js|cjs|mjs|css)$/;
+export function pointedWithMap(file, all, exact, map) {
+  if (!RECORDED.test(file)) return all;
+  return all.filter(suite => exact.includes(suite) || !map?.suites?.[suite]?.steps);
+}

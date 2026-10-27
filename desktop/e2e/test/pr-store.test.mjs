@@ -87,3 +87,15 @@ test('#2137: a quoted step another suite runs is picked in that suite, not in th
   const whole = rehomeQuotes({apply: new Set(['Claude is off'])}, {apply: {steps: [], whole: true}}, map);
   assert.deepEqual(whole.quoting, {apply: {steps: [], whole: true}}, 'a quote outside a named step keeps its suite whole');
 });
+
+test('#2156: a folder watch on app code no longer runs wander or interactions whole once the map has their steps', async () => {
+  const {pointedWithMap} = await import('../lib/pr-suites.mjs');
+  const map = {suites: {wander: {steps: {walk: {}}}, interactions: {steps: {sweep: {}}}, quality: {steps: {score: {}}}}};
+  assert.deepEqual(pointedWithMap('desktop/lib/ai-caps.js', ['wander'], [], map), [], 'a new lib file: its loader\'s changed line picks the steps');
+  assert.deepEqual(pointedWithMap('desktop/renderer/pages/topup-dialog.js', ['interactions', 'wander'], [], map), []);
+  assert.deepEqual(pointedWithMap('desktop/lib/e2e-ipc.js', ['interactions', 'wander'], ['interactions'], map), ['interactions'], 'a file named exactly still runs it');
+  assert.deepEqual(pointedWithMap('desktop/lib/ai-caps.js', ['wander'], [], {suites: {wander: {files: {}}}}), ['wander'], 'no steps recorded yet: whole, as before');
+  assert.deepEqual(pointedWithMap('desktop/e2e/fixtures/golden/a.json', ['quality'], [], map), ['quality'], 'a fixture folder the map cannot record keeps its watch');
+  const watched = ['wander', 'interactions'].map(suite => fs.readFileSync(new URL(`../suites/${suite}.mjs`, import.meta.url), 'utf8').match(/^export const watches = (.*);/m)?.[1] || '');
+  assert.ok(watched.every(text => /'desktop\/renderer\/'/.test(text)), 'the class this guards still watches app folders (drop this test with the watch)');
+});

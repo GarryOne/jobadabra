@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor} from './lib/coverage-pick.mjs';
@@ -72,7 +72,9 @@ try {
         for (const name of touched.steps.filter(owns)) for (const home of stepHomes(map, suite, name)) if (facts.all.includes(home)) (own[home] ||= []).push(name);
       }
     }
-    const pointedBy = stillWholeBy(changedFiles.filter(file => !byStep.has(file)), file => suitesFor([file], facts.all, pointing), map), pointedElse = Object.keys(pointedBy);
+    const exactWatches = {...pointing, watches: Object.fromEntries(Object.entries(pointing.watches).map(([suite, paths]) => [suite, paths.filter(path => !path.endsWith('/'))]))};
+    const pointsAt = file => pointedWithMap(file, suitesFor([file], facts.all, pointing), suitesFor([file], facts.all, exactWatches), map);   // lib/pr-suites.mjs
+    const pointedBy = stillWholeBy(changedFiles.filter(file => !byStep.has(file)), pointsAt, map), pointedElse = Object.keys(pointedBy);
     // Removed text → the steps that quote it, each in the suite that runs it (rehomeQuotes: #2137's channels step was picked in activityfailures).
     const {hits, quoting} = rehomeQuotes(suitesExpecting(strings, sources), stepsQuoting(suitesExpecting(strings, sources), sources), map);
     const pointed = [...new Set([...pointedElse, ...Object.keys(own)])];

@@ -10,7 +10,7 @@
   if (window.__jobPilottoOverlay?.alive?.()) return;
   const ID = 'jobpilotto-fill-overlay';
   const HELD = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu', 'keydown', 'keyup', 'keypress', 'wheel', 'touchstart', 'touchmove', 'dragstart', 'selectstart'];
-  let layer = null, watch = null, wipe = null, lifted = () => {};
+  let layer = null, watch = null, wipe = null, lifted = () => {}, restorePanel = () => {};
   document.getElementById(ID)?.remove();   // a copy left by an extension reload: its owner is gone
   const ours = event => (event.composedPath?.() || [event.target]).some(node => typeof node?.id === 'string' && node.id.startsWith('jobpilotto'));
   const hold = event => {
@@ -38,10 +38,14 @@
     window.__jobPilottoOverlayFx?.(layer);   // the magic behind the panel (panel-overlay-fx.js): inside the layer, so every end takes it away
     for (const name of HELD) window.addEventListener(name, hold, {capture: true, passive: false});
     wipe?.disconnect();
-    // Why (2026-10-27, owner, 2nd recording of an Apply on a posting): a page's framework re-renders <html> about 2 s in and deletes every child it did not draw: the dim went with it. The layer is the
-    // state's drawing, not its owner: a layer the page deleted is put back at once and the state stays (apply-state.js).
-    wipe = new MutationObserver(() => { if (layer && !layer.isConnected) document.documentElement.append(layer); });
-    wipe.observe(document.documentElement, {childList: true});
+    // Why (2026-10-27, owner, dim-gap): the page may replace <html> itself. Watch the document, which survives that replacement, and restore both drawings before the next paint.
+    // Invariant: this observer only draws the worker's existing state; off() disconnects it on a verdict or a closed panel. No timer or page change starts or ends an Apply.
+    wipe = new MutationObserver(() => {
+      if (!layer || !chrome.runtime?.id || !document.documentElement) return;
+      if (!layer.isConnected) document.documentElement.append(layer);
+      restorePanel();
+    });
+    wipe.observe(document, {childList: true, subtree: true});
     watch = setInterval(() => { if (!chrome.runtime?.id) lift(); }, 1000);   // the extension was reloaded: this script has no owner left
   }
   chrome.runtime.onMessage.addListener(message => {
@@ -50,5 +54,5 @@
   });
   // The page's first moment: ask the worker, so a verdict that came before this script existed lifts a layer drawn on a stale answer (early-dim.js injects only for a working tab).
   const first = () => chrome.runtime.sendMessage({type: 'panelApply'}).then(answer => { if (answer && answer.state !== 'working') lift(); }).catch(() => {});
-  window.__jobPilottoOverlay = {on, off, active: () => !!layer?.isConnected, earlyOn: function early(tries = 0) { if (document.documentElement) { on(); first(); } else if (tries < 50) setTimeout(() => early(tries + 1), 10); }, alive: () => !!chrome.runtime?.id, onLift: fn => { lifted = fn; }};
+  window.__jobPilottoOverlay = {on, off, active: () => !!layer?.isConnected, earlyOn: function early(tries = 0) { if (document.documentElement) { on(); first(); } else if (tries < 50) setTimeout(() => early(tries + 1), 10); }, alive: () => !!chrome.runtime?.id, onLift: fn => { lifted = fn; }, onRestore: fn => { restorePanel = fn; }};
 })();

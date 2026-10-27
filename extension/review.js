@@ -20,9 +20,6 @@
   function mount() {
   document.getElementById('jobpilotto-review-host')?.remove();
 
-  // Why (2026-10-27, owner): a page's own re-render deletes the panel with the dim; while the Apply is working the panel is put back at once (panel-overlay.js does the same for the layer), the state stays.
-  new MutationObserver(() => { if (!host.isConnected && applyWorking && chrome.runtime?.id) document.documentElement.append(host); }).observe(document.documentElement, {childList: true});
-
   const MIN_FIELDS = 3;
   // A form the night filled, opened in the morning (ready-handoff.js marks the page): the panel says so instead of a new reading (owner, 18 Oct 2026: "Last night's fill is back").
   const night = () => document.documentElement.getAttribute('data-jobpilotto-night') === '1';
@@ -46,6 +43,8 @@
   const place = working => { host.style.cssText = working ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483646;pointer-events:none;' : HOME; jp.classList.toggle('working', working); };
   // The Apply's state is the worker's (apply-state.js); this page draws it. applyWorking: the last thing the worker said (its answer at the first draw, then its pushes); this panel's own fill counts too.
   let applyWorking = false;
+  // Why (2026-10-27, owner, dim-gap): one document observer restores the dim and this same panel together, including when the page replaces <html>. The worker's state stays unchanged.
+  overlay.onRestore?.(() => { if (!host.isConnected && applyWorking && !host.hidden) document.documentElement.append(host); });
   const look = working => { const on = working && (applyWorking || filling) && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
   const stepShowing = () => $('.fill').classList.contains('is-busy');
   const markWorking = () => applyWorking && WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobpilotto-page') || '') && !stopped && !moved;

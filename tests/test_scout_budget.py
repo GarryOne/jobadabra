@@ -53,5 +53,28 @@ class WholeRunBudgetTest(unittest.TestCase):
         self.assertGreater(checked, 0)
 
 
+class ChecksUnderWayAtTheEnd(unittest.TestCase):
+    def test_a_check_still_running_at_the_end_is_not_waited_for(self):
+        """27 Oct 2026, a benchmark first press: 6 checks started at 165 s were waited for until 379 s of the press's 180."""
+        import time
+
+        from src import run_exit
+
+        def slow(system, slug):
+            time.sleep(4)
+            return []
+        with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, contextlib_quiet(), \
+                mock.patch.object(scout_core, 'CENTRAL', True), mock.patch.object(scout, 'ai_ideas', lambda db, harvest_sources=None: None), \
+                mock.patch.object(scout.scout_role_search, 'guarded', lambda db, search, harvest_sources=None: None):
+            scout.harvest(db, SEEDS, sources=[lambda: [dict(name=f'Co{i}', origin='AI idea', priority=99 - i) for i in range(4)]])
+            began = time.monotonic()
+            _, results = scout.run(db, batch=4, harvest_sources=[], probe=slow, workers=2, budget=1)
+            took = time.monotonic() - began
+        self.assertLess(took, 3, f'the scout waited {took:.1f} s for checks still under way at its end')
+        self.assertEqual(results, [], 'they wait for the next run')
+        self.assertIsNone(run_exit._own[0], 'the central scout keeps its own end (scout_overrun), not the process deadline')
+        run_exit.until(None)
+
+
 if __name__ == '__main__':
     unittest.main()

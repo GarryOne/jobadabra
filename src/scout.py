@@ -24,11 +24,11 @@ import sys
 import threading
 import time
 from collections import Counter
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import timedelta
 from html import escape
 from pathlib import Path
-from . import budget_tape, read_methods, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, tgcard
+from . import budget_tape, read_methods, run_exit, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, tgcard
 from .notion import client as notion, cron_runs  # noqa: F401 -- notion: tests patch scout.notion (its Tracker)
 from .paths import CONFIG, JOBS_DB, load_search_config
 from .sources import ats, careers, feeds  # noqa: F401 -- `feeds` is also reached as scout.feeds by tests
@@ -102,6 +102,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
     # The budget counts from here, not from the first check (19 Oct 2026: a driver's 180 s scout ran 638 s: a Wikidata timeout, the AI's ideas
     # and the role searches ran before the clock started). The steps that only add names start while half of it is left: the checks keep theirs.
     deadline = time.monotonic() + budget if budget else None
+    run_exit.until(None if scout_core.CENTRAL else deadline)   # the app's scout exits at it (the central one: scout_overrun)
     may_add = budget_tape.until('scout names', deadline - budget / 2 if budget else None)
     # Central + Mac only when thin (owner, 20 Oct 2026): a search the shared list already covers adds no names; only the person's own are checked.
     have = None if scout_core.CENTRAL or harvest_sources is not None else scout_need.covered(db=db)
@@ -242,10 +243,8 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
                 print(f"Warning: {not_updated(stores, candidate['name'])}: {type(error).__name__}: {error}")
 
 
-    # Each employer is saved as soon as it is checked, here on this thread (the database is not shared across threads); a stop (SIGTERM)
-    # leaves at once instead of waiting for the whole batch (src/notion/cron_runs.py _on_terminate).
-    # A time budget (the app: SCOUT_BUDGET_S): no new check starts after it, the ones running finish, the rest wait for the next run (owner,
-    # 7 Oct 2026: "runs for too long"; 91 checks at 20-45 s each took over half an hour). Each one is saved as it ends, so nothing is lost.
+    # Each employer is saved as it is checked, on this thread (the database is not shared); a stop (SIGTERM) leaves at once (cron_runs.py).
+    # A time budget (SCOUT_BUDGET_S, owner 7 Oct 2026: "runs for too long"): no check starts after it; the rest wait for the next run.
     outcomes = [None] * len(candidates)
     may_start = budget_tape.until('scout', deadline)   # a tape's replay starts what its recording did
     pool = ThreadPoolExecutor(max_workers=workers * 4)   # a check that outlives its limit keeps its thread, so there are spare ones
@@ -260,7 +259,10 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
                 futures[future], began[future] = nxt[0], time.monotonic()
         more()
         while futures:
-            finished, _ = wait(list(futures), timeout=5, return_when=FIRST_COMPLETED)
+            left = 5 if deadline is None else deadline - time.monotonic()   # at the end, what ends within 1 s is kept, the rest waits for the
+            late = left <= 0                                                  # next run (27 Oct 2026: 379 s of 180)
+            finished, _ = wait(list(futures), timeout=1 if late else min(5, left), return_when=ALL_COMPLETED if late else FIRST_COMPLETED)
+            futures = {f: i for f, i in futures.items() if f in finished} if late else futures
             for future in finished:
                 i = futures.pop(future)
                 outcomes[i] = future.result()
@@ -276,7 +278,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
     if None in outcomes:
         done_now = sum(1 for o in outcomes if o is not None)
         span = f'{budget // 60} min' if budget >= 60 else f'{budget} s'
-        print(f'Scout: its {span} are up: {done_now} of {len(candidates)} checked (the ones under way finished); the other {len(candidates) - done_now} wait for the next run.')
+        print(f'Scout: its {span} are up: {done_now} of {len(candidates)} checked; the other {len(candidates) - done_now} wait for the next run.')
         kept = [(c, o) for c, o in zip(candidates, outcomes) if o is not None]
         candidates, outcomes = [c for c, _ in kept], [o for _, o in kept]
     for key, url in note_site:

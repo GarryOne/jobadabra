@@ -502,6 +502,8 @@ jobs:
         with:
           node-version: '22'
       - name: Tell the owner on Telegram (a failure or a capped run, one yellow list, or back to green)
+        # Why (owner, 27 Oct 2026, via the coordinator): a run cancelled by hand is no failure; it sent "🔴 … the estimate is above the cap, or the key is missing" (refill 40451220954). cancelled() is the run's own cancel, never a job's timeout. Guard: tests/test_ci_alert_cancel.py.
+        if: ${{ !cancelled() }}
         working-directory: desktop/e2e
         env:
           GH_TOKEN: ${{ github.token }}
@@ -510,7 +512,9 @@ jobs:
           RESULTS: pick=${{ needs.pick.result }} bundles=${{ needs.bundles.result }} refill=${{ needs.refill.result }} publish=${{ needs.publish.result }} finish=${{ needs.finish.result }}
           PICK: ${{ needs.pick.outputs.line }}
         run: |
-          if echo "$RESULTS" | grep -qE '=(failure|cancelled)'; then node ci-alert.mjs failure "The replay refill on main did not finish (${RESULTS}). ${PICK:-the estimate is above the cap, or the key is missing: see the run}" "Run it again: gh workflow run replay-refill.yml (no pr); the recorded rows stay stale until then"
+          # Why (27 Oct 2026): the cause is the jobs that failed and the pick's own line, never a guess ("the estimate is above the cap, or the key is missing" was sent for a hand cancel).
+          if echo "$RESULTS" | grep -qE '=(failure|cancelled)'; then failed=$(gh run view "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" --json jobs --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(", ")' 2>/dev/null || true)
+            node ci-alert.mjs failure "The replay refill on main did not finish: ${failed:-no job failed, see the run} (${RESULTS}).${PICK:+ $PICK}" "Run it again: gh workflow run replay-refill.yml (no pr); the recorded rows stay stale until then"
             exit 0
           fi
           # Green run: the rows that need a re-record are ONE yellow message, and only when the set differs from the run before (this run's list is kept as an artifact for the next one).

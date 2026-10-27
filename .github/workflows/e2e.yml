@@ -670,6 +670,8 @@ jobs:
             desktop/e2e
             tools
       - name: Tell the owner (a failure, or back to green)
+        # Why (owner, 27 Oct 2026, via the coordinator): a run cancelled by hand is no failure; it sent "🔴 … the estimate is above the cap, or the key is missing" (refill 40451220954). cancelled() is the run's own cancel, never a job's timeout. Guard: tests/test_ci_alert_cancel.py.
+        if: ${{ !cancelled() }}
         working-directory: desktop/e2e
         env:
           GH_TOKEN: ${{ github.token }}

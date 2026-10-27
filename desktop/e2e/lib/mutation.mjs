@@ -40,16 +40,22 @@ export function score(mutants, runs) {
 
 export function summary(result) {
   const icon = {killed: '✅ caught', survived: '🔴 missed', unknown: '⚪ unknown'};
-  return [`## 🧬 Mutation test: ${result.score === null ? 'no result' : `${result.score}% of the planted code bugs caught`} (${result.killed} caught, ${result.survived} missed, ${result.unknown} unknown)`, '',
-    '| Mutant | Suite | The bug | Result |', '|---|---|---|---|',
+  return [`## 🧬 Planted code bugs: ${result.score === null ? 'no result' : `${result.score}% caught`} (${result.killed} caught, ${result.survived} missed, ${result.unknown} unknown)`, '',
+    '| Planted bug | Suite | The bug | Result |', '|---|---|---|---|',
     ...result.rows.map(row => `| \`${row.id}\` | ${row.suite} | ${row.what} | ${icon[row.outcome]}${row.why ? ` (${row.why})` : ''} |`)].join('\n');
 }
 
 // The issues a scored run leaves (mutation-score.mjs): one per missed mutant (a comment on its open one), and the open issue of a mutant caught now is closed.
 // An unknown outcome (its suite red without the mutant) changes nothing. open: [{number, title}] -> {create: [row], comment: [{number, row}], close: [{number, row}]}
-export const issueTitle = id => `[mutation] ${id} survived: no suite caught it`;
+// Visible words say "planted code bug", never "mutation"/"mutant" (owner, 27 Oct 2026: "Visible names only"); code and file names keep the standard term.
+export const issueTitle = id => `[planted bug] ${id}: no suite caught it`;
+const oldTitle = id => `[mutation] ${id} survived: no suite caught it`;   // issues filed before 27 Oct 2026
+// The new issue's body: what was planted, where, and how to replay it.
+export const issueBody = (row, run) => [`> [!WARNING]`, `> A serious bug was written into the app on purpose and the \`${row.suite}\` suite stayed green.`, '',
+  `**The bug:** ${row.what}`, `**Planted bug:** \`${row.id}\` in \`desktop/e2e/mutants.json\``, `**Run:** ${run}`, '',
+  `**Next:** add the check that would have caught it (a truth check, a step in \`${row.suite}\`), then the next planted-bug run catches it. Replay: \`gh workflow run e2e.yml -f suite=${row.suite} -f store=${row.store || 'alternate'} -f mutant=${row.id}\`.`].join('\n');
 export function issueActions(result, open) {
-  const known = row => open.find(issue => issue.title === issueTitle(row.id));
+  const known = row => open.find(issue => issue.title === issueTitle(row.id) || issue.title === oldTitle(row.id));
   const survived = result.rows.filter(row => row.outcome === 'survived'), killed = result.rows.filter(row => row.outcome === 'killed' && known(row));
   return {create: survived.filter(row => !known(row)), comment: survived.filter(known).map(row => ({number: known(row).number, row})),
     close: killed.map(row => ({number: known(row).number, row}))};

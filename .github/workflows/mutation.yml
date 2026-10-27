@@ -1,4 +1,4 @@
-name: CI · Mutation test
+name: CI · Planted code bugs
 # Does the Finder catch SERIOUS bugs in the app's own code? (5 Oct 2026) Each mutant of desktop/e2e/mutants.json writes one real bug into critical-path code
 # (a lost calendar day, a failed run shown done, raw API text, a wrong count, a write that never reaches Notion) and runs the suite that should catch it
 # (e2e.yml, input `mutant`): red = caught, green = missed (one detector-miss issue). Each suite also runs once unmutated: red there makes its mutants "unknown".

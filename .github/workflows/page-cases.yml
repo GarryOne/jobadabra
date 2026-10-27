@@ -51,6 +51,7 @@ on:
       - 'desktop/e2e/lib/replay-slow.mjs'
       - 'desktop/e2e/lib/replay-time.mjs'
       - 'desktop/e2e/lib/replay-truth.mjs'
+      - 'desktop/e2e/lib/synthetic-navigation.mjs'
       - 'desktop/e2e/lib/repo-counts.mjs'
       - 'desktop/e2e/lib/row-case-run.mjs'
       - 'desktop/e2e/lib/row-end.mjs'

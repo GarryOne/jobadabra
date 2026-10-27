@@ -64,11 +64,19 @@ class PrRestLibTest(unittest.TestCase):
         self.assertEqual((v['state'], v['mergeable'], v['mergeCommit'], v['headRefOid']), ('MERGED', 'UNKNOWN', {'oid': 'abc'}, 'h1'))
         self.assertEqual(v['comments'], [{'id': 'IC_1', 'author': {'login': 'gitar-bot[bot]'}, 'body': 'x', 'url': 'c', 'createdAt': 't1'}])
         self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [
-            {'name': 'a', 'status': 'completed', 'conclusion': 'success', 'html_url': 'l'}, {'name': 'b', 'status': 'completed', 'conclusion': 'timed_out'},
-            {'name': 'c', 'status': 'completed', 'conclusion': 'cancelled'}, {'name': 'd', 'status': 'queued', 'conclusion': None}, {'name': 'e', 'status': 'completed', 'conclusion': 'skipped'}]})
+            {'id': 1, 'name': 'a', 'status': 'completed', 'conclusion': 'success', 'html_url': 'l'}, {'id': 2, 'name': 'b', 'status': 'completed', 'conclusion': 'timed_out'},
+            {'id': 3, 'name': 'c', 'status': 'completed', 'conclusion': 'cancelled'}, {'id': 4, 'name': 'd', 'status': 'queued', 'conclusion': None}, {'id': 5, 'name': 'e', 'status': 'completed', 'conclusion': 'skipped'}]})
         self.put('repos/o/r/commits/h1/status', {'statuses': [{'context': 'All checks passed', 'state': 'error', 'target_url': 't'}]})
         checks = json.loads(self.sh('pr_checks o/r h1')[1])
         self.assertEqual([(c['name'], c['bucket']) for c in checks], [('a', 'pass'), ('b', 'fail'), ('c', 'cancel'), ('d', 'pending'), ('e', 'skipping'), ('All checks passed', 'fail')])
+
+    def test_only_the_newest_run_of_a_check_counts(self):
+        """#2282: the body edit and the retitle each started the PR gate; the first run was cancelled, the second passed; ship read the cancelled one as a failure."""
+        self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [
+            {'id': 2, 'name': 'Pull request checks', 'status': 'completed', 'conclusion': 'success'},
+            {'id': 1, 'name': 'Pull request checks', 'status': 'completed', 'conclusion': 'cancelled'}]})
+        self.put('repos/o/r/commits/h1/status', {'statuses': []})
+        self.assertEqual([(c['name'], c['bucket']) for c in json.loads(self.sh('pr_checks o/r h1')[1])], [('Pull request checks', 'pass')])
 
     def test_the_repo_comes_from_a_github_origin_only(self):
         for url, want in (('git@github.com:GarryOne/jobadabra-web.git', 'GarryOne/jobadabra-web'), ('https://github.com/GarryOne/jobadabra', 'GarryOne/jobadabra'),

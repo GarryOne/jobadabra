@@ -103,7 +103,7 @@ test('Answer once: a proposal outside the row options is dropped; a changed save
   const marked = [{question: 'Need sponsorship?', mark: {kind: 'yes_no', options: []}}, {question: 'Title', mark: {kind: 'single', options: ['Mr', 'Mrs']}}];
   const first = await lists.openShown(s, {rows: marked, groups: groups2, ai: reply([
     {label: 'Need sponsorship?', verdict: 'reusable', covered_by: 'Work permit', value: 'no'}, {label: 'Title', verdict: 'reusable', covered_by: 'Work permit', value: 'Herr'}])});
-  const by = Object.fromEntries(first.list.map(row => [row.question, row.proposal || '']));
+  const by = Object.fromEntries(first.list.filter(row => !row.setup).map(row => [row.question, row.proposal || '']));
   assert.deepEqual(by, {'Need sponsorship?': 'No', 'Title': ''});
   const changed = [{...groups2[0], items: [{question: 'Work permit', answer: 'B permit, needs renewal', open: false}, ...groups2[0].items.slice(1)]}];
   await lists.openShown(s, {rows: marked, groups: changed, ai: reply([{label: 'Need sponsorship?', verdict: 'reusable', covered_by: '', value: ''}])});
@@ -117,7 +117,7 @@ test('a verdict from before deduction is judged once more, keeping its counts; t
   const ai3 = {client: {messages: {create: async () => { calls.push(1); return {content: [{type: 'text', text: JSON.stringify({verdicts: [{label: 'Need sponsorship?', verdict: 'reusable', covered_by: 'Work permit', value: 'No'}]})}]}; }}}};
   const rows3 = [{question: 'Need sponsorship?', mark: {kind: 'yes_no', options: []}}];
   const first = await lists.openShown(s, {rows: rows3, groups: groups3, ai: ai3});
-  assert.equal(first.list[0].proposal, 'No');
+  assert.equal(first.list.find(row => row.question === 'Need sponsorship?').proposal, 'No');
   const kept = s.settings().questionVerdicts[keyOf('Need sponsorship?')];
   assert.deepEqual([kept.asked, kept.blocked], [4, true]);
   await lists.openShown(s, {rows: rows3, groups: groups3, ai: ai3});

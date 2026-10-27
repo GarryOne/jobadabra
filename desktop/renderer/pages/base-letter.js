@@ -54,7 +54,7 @@ function paint() {
 const typedChange = () => { const text = $('letter-text').value.trim(); return text && text !== (saved.text || '').trim() ? 1 : 0; };
 function buttons() {
   const text = $('letter-text').value.trim();
-  $('letter-approve').disabled = !text || (saved.state === 'approved' && text === (saved.text || '').trim());
+  $('letter-approve').disabled = !text || (saved.state === 'approved' && saved.pdf && text === (saved.text || '').trim());
   draftSource?.changed();
 }
 function showLetter(status) {
@@ -87,7 +87,7 @@ async function act(button, working, run) {
   message('letter-message', working);
   const result = await run();
   button.classList.remove('busy');
-  if (result.ok) showLetter(result); else buttons();
+  if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); } else buttons();
   $('letter-draft').disabled = false;
   if ($('letter-start-ai')) $('letter-start-ai').disabled = false;
   return result;
@@ -103,6 +103,14 @@ async function draft(button) {
   if (result.ok) hintAfter($('letter-message'), shared.state, openAi);   // Free AI wrote it: stronger writing with an own key
 }
 
+/** Setup starts the existing drafting action only for an empty letter; saved drafts, approved text and edits are never replaced. */
+export async function draftLetterForSetup() {
+  if (saved.state !== 'none' || writing || $('letter-text').value.trim() || isReading) return;
+  const button = $('letter-start-ai') || $('letter-draft');
+  if (button.disabled) return;
+  await draft(button);
+}
+
 export function initLetter({openAiSettings} = {}) {
   if (openAiSettings) openAi = openAiSettings;
   letterFallback();
@@ -112,7 +120,7 @@ export function initLetter({openAiSettings} = {}) {
   draftSource = profileBar().register({id: 'base-letter', tab: 'letter', label: 'Base letter', count: typedChange,
     save: async () => {
       const result = await window.pilot.coverLetterSave($('letter-text').value).catch(error => ({ok: false, error: error.message}));
-      if (result.ok) { showLetter(result); message('letter-message', 'Saved as a draft. Approve it to make the PDF.', 'ok'); }
+      if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); message('letter-message', 'Saved as a draft. Approve it to make the PDF.', 'ok'); }
       return result.ok ? {ok: true} : {ok: false, error: result.error};
     },
     discard: () => { $('letter-text').value = saved.text || ''; writing = false; paint(); },

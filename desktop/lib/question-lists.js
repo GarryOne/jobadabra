@@ -10,6 +10,7 @@ import * as formats from './question-formats.js';
 import {factsOf} from './base-facts.js';
 import {keyOf, ranked, visibleQuestions} from '../renderer/question-filter.js';
 import {formatFor, proposalIn} from '../renderer/question-kind.js';
+import {letterQuestion} from './letter-availability.js';
 import * as detailsReview from './details-review.js';
 
 const answeredNow = async (storage, groups, fetcher) => verdicts.answeredOf(storage, groups ?? await questions.standardAnswers(storage, fetcher));
@@ -36,7 +37,7 @@ export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows 
   if (!rows) await detailsReview.judgeNew(storage, {fetcher, ai}).catch(() => {});   // each save: answers saved since the last load get the AI's word (no new line: no call)
   const details = rows ? [] : await detailsReview.pending(storage, {fetcher, ai}).catch(() => []);
   // One score for the whole list (owner, 18 Oct 2026): form questions and Your details items in one order (renderer/question-filter.js ranked).
-  return {list: ranked([...withFormat(shown, kept), ...details], verdicts.cached(storage)), hidden: withFormat(hidden, kept), fromDetails: fromDetails.length, usage, consent: hidden.filter(row => verdicts.cached(storage)[keyOf(row.question)]?.reuse === 'consent').length};
+  return {list: ranked([...withFormat(shown, kept), ...details, ...[letterQuestion(storage)].filter(Boolean)], verdicts.cached(storage)), hidden: withFormat(hidden, kept), fromDetails: fromDetails.length, usage, consent: hidden.filter(row => verdicts.cached(storage)[keyOf(row.question)]?.reuse === 'consent').length};
 }
 
 // Profile → Needs review: the verdict map for these labels (classifying new ones), the window filters with visibleQuestions; and the kinds this Mac kept for

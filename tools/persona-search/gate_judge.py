@@ -44,7 +44,16 @@ def ask(profile, jobs, run=subprocess.run, env=None):
               cwd=tempfile.mkdtemp(), env=plan_env(os.environ if env is None else env))
     reply = json.loads(out.stdout)
     data = json.loads(re.search(r'\{.*\}', reply['result'], re.S).group(0))
-    return {r['n']: r for r in data['jobs']}
+    return complete({r['n']: r for r in data['jobs']}, jobs)
+
+
+def complete(got, jobs):
+    """The verdicts, or ValueError when the reply left jobs out. Why (gitar on #2243): a left-out job counted as wrong and showed as a search
+    drop ("below main's lowest"); now the judge step fails and the result says the judge wrote no verdicts."""
+    missing = [j['n'] for j in jobs if j['n'] not in got]
+    if missing:
+        raise ValueError(f'the judge left out {len(missing)} of {len(jobs)} jobs: {missing[:5]}')
+    return got
 
 
 def judge(n, pool, asker=ask):

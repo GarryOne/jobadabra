@@ -152,6 +152,9 @@ export function suitesCovering(map, hunksBySha) {
   return picked;
 }
 
+// Each suite's `watches` as exact files (a folder, ending in '/', is left out): stepsCovering's `watched`. {suite: [paths]} -> {suite: [files]}
+export const watchedFiles = watches => Object.fromEntries(Object.entries(watches || {}).map(([suite, paths]) => [suite, paths.filter(file => !file.endsWith('/'))]));
+
 // The distinct commits the map was recorded on (one diff each).
 export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(entry => entry.sha).filter(Boolean))];
 
@@ -162,7 +165,10 @@ export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(e
 //  - a line nobody ran (a file's top level, a function never called) → every suite that loads the file, whole: a change nobody measured runs everyone who loads it;
 //  - a suite recorded before steps were (no `steps`) → by its lines, whole, as suitesCovering.
 // `reach`: {step: 'file:line'}, the first changed line that picked each step (the plan's reasons, lib/pick-why.mjs).
-export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS} = {}) {
+// `watched`: {suite: [files]}, the exact files each suite's `watches` names (quality: src/ai/score.py). A changed line in one is never shared code for that suite: it
+// runs its own steps that ran the line (whole when none did), because no other suite judges that file (#2194's score.py lines went to failureschannels
+// and settings only, and quality did not run on main; 27 Oct 2026). A watched folder (wander: desktop/lib/) keeps the shared rule.
+export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS, watched = {}} = {}) {
   const out = {}, setupOnly = [];
   const suites = Object.entries(map?.suites || {});
   const pick = (suite, patch, reason) => { const now = out[suite] ||= {steps: [], setup: false, whole: false, reason, reach: {}}; if (patch.step && !now.steps.includes(patch.step)) now.steps.push(patch.step); if (patch.step && patch.at) now.reach[patch.step] ||= patch.at; if (patch.setup) now.setup = true; if (patch.whole) now.whole = true; };
@@ -184,7 +190,7 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
     for (const [file, ranges] of Object.entries(hunks)) {
       if (!entry.files[file]) continue;
       for (const range of ranges) {
-        const shared = runner(file, range);
+        const shared = (watched[suite] || []).includes(file) ? null : runner(file, range);   // a suite's own watched file: never shared
         if (shared && shared.suite !== suite) continue;
         if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }

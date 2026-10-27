@@ -16,6 +16,8 @@ import * as factAsks from './fact-asks.js';
 import {PARTS, splitNote} from '../renderer/experience-profile-model.js';
 import * as clarity from './answer-clarity.js';
 import * as contactReview from './contact-review.js';
+import * as contactDetails from './contact.js';
+import {anthropicApi} from './ai/anthropic-api.js';
 
 export const PREFIX = 'details:';
 export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing', 'contact'];
@@ -59,8 +61,10 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const outlines = {profile: await opened.page('profile').outline()};
   const outline = async page => (outlines[page] ||= await opened.page(page).outline());
   const out = [];
-  for (const each of await contactReview.missing(storage, {fetcher}).catch(() => [])) {   // first: every form asks them (rank MUST)
-    out.push(item('contact', {id: each.id}, {question: each.question, format: contactReview.format, hint: each.hint, value: each.value, details: {where: 'Your details → Contact details', fact: each.fact, must: true}}));
+  const client = ai.client || (ai.apiKey ? anthropicApi(ai.apiKey) : null);
+  const have = [...Object.values(found).flat().map(line => line.label), ...itemsOf(outlines.profile, 'profile', {withOpen: true}).map(each => each.label)];
+  for (const each of await contactReview.asks(storage, await contactReview.emptyKeys(storage, {fetcher}).catch(() => []), {client, have}).catch(() => [])) {   // generated from what is missing, weighted by importance
+    out.push(item('contact', {field: each.field}, {question: each.question, format: contactReview.format, hint: each.hint, details: {where: 'Your details → Contact details', fact: contactDetails.LABELS[each.field], weight: contactReview.weightOf(each.importance)}}));
   }
   const conflicts = await openConflicts(storage, {fetcher}).catch(() => []);
   for (const conflict of conflicts) {
@@ -100,7 +104,6 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
     out.push(item('open', {page: 'profile', label: each.label}, {question: each.label, format: formatFor({kept: kept[keyOf(each.label)]}), hint: hintOf(each.key), details: {where: PAGES.profile, fact: each.label}}));
   }
   // The facts forms ask that nothing holds yet (lib/missing-facts.js): a few a day, the queue's most important first.
-  const have = [...Object.values(found).flat().map(line => line.label), ...itemsOf(outlines.profile, 'profile', {withOpen: true}).map(each => each.label)];
   const covered = await missingFacts.covered(storage, have, {ai});
   for (const fact of missingFacts.pick(storage, have, {now, covered, shares: factAsks.shares(storage)})) {
     out.push(item('missing', {id: fact.id}, {question: fact.question, format: fact.format, hint: fact.hint, details: {where: HOME_NAMES[fact.home], fact: fact.label}}));
@@ -163,7 +166,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     else await line.page.setText(line.block, `${ref.label}: ${text}`);
     return {ok: true, homeName: 'your Profile'};
   }
-  if (kind === 'contact') return contactReview.answer(storage, ref.id, text, {fetcher});
+  if (kind === 'contact') return contactReview.answer(storage, ref.field, text, {fetcher});
   if (kind === 'missing') {
     const fact = missingFacts.byId(ref.id);
     if (!fact) return {ok: false, error: 'That question is no longer open'};

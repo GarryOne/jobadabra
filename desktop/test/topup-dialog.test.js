@@ -23,7 +23,7 @@ test('Pro with no credit tops up; the free tier at a line upgrades to Pro, hears
 });
 
 test('a credit code says the euros it added; the same code twice adds nothing; a Pro code is unchanged', async () => {
-  assert.equal(redeemWords({ok: true, credit: 10}), '€10 of AI credit added.');
+  assert.equal(redeemWords({ok: true, credit: 10}), '€10 of AI credit added (about 70 applications).');
   assert.equal(redeemWords({ok: true, credit: 10, already: true}), 'This code was already added on this computer.');
   assert.equal(redeemWords({ok: true}), 'Pro is on. Thank you.');
   assert.equal(redeemWords({ok: false, error: 'pro_only'}), 'This code adds AI credit to Pro. Upgrade to Pro first.');

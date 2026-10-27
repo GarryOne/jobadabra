@@ -12,6 +12,11 @@ Owner, 15 Oct 2026: "when triggered, present me this report". One table, read in
 - **PRs:** `gh pr list --state all --limit 20 --json number,state,headRefName,title,statusCheckRollup` and count each open PR's checks: green / running / failing. A failing "All checks passed" summary next to running checks is the old result: say "re-run running", not "red".
 - **CI the sessions wait on:** the runs they named (recordings `record-sites.yml`, `fix-verdicts.yml`, refills): `gh run view <id> --json status,conclusion`. A run `pending`/`queued` for >10 min: say why (GitHub's parallel-job limit full, a concurrency group) after one check (`gh api repos/<repo>/actions/runs/<id>`), never a guess.
 - **The Mac:** `uptime`. Load above ~20: name the cause before reporting it (memory feedback-no-artificial-load-on-mac: orphaned loops first).
+- **Circles (every round-up, unasked; owner, 27 Oct 2026: "we fix one thing tens of times… going in circles… Pretending each time like it's the last time"):** count merged fix commits per product area in the last 7 days
+  (`git log origin/main --since=7.days --name-only --format=@@%h` grouped by file, then by area: the files one subject lives in), and per open session the tries on its current symptom.
+  An area with **3+ fixes this week**, or a session on **try 3** of one symptom, is a circle: name it 🌀 under the table (area, count, the last 3 commit subjects) and **propose the step back yourself**:
+  the intended behaviour in the owner's words (states, their one owner, the verdicts that change them), what to simplify or replace, who builds it, as a sketch and one AskUserQuestion.
+  Never brief "try N+1" on a circle. Golden rule: `~/.claude/CLAUDE.md` "Going in circles"; once `tools/area-circles.mjs` lands, read its count instead of the git one-liner.
 - **Ask each running session for 3 lines only when its state is not visible** from PRs and runs: (1) done since last report, (2) what blocks it, (3) ETA. `SendMessage`, first line self-contained; do not wait more than ~3 min for replies: mark "no reply" and use what is measured.
 
 ## 2. The table (exact columns, a few words per cell)
@@ -29,8 +34,9 @@ Owner, 15 Oct 2026: "when triggered, present me this report". One table, read in
 - Order: done first (to close), then by progress, highest first.
 - **Closing** (owner, 18 Oct 2026: "don't ask me. just check with the session every time"): send the session "may I close your workspace now? Is anything open, or is the owner in a conversation with you?"; close (`cmux close-workspace --force`) only on its explicit "yes, close" to THAT message. An earlier "done, you can close" is not enough: e0 was closed while the owner was mid-conversation with it.
 
-## 3. Under the table (max 4 bullets)
+## 3. Under the table (max 5 bullets)
 - **Overall: ~N%** (average of the rows), the circles counted (e.g. 🟢 3 · 🔵 2 · 🟡 1 · 🔴 0) and **the one wait most rows share** (the owner's merges, GitHub's queue, the Mac).
+- **🌀 Circles**, when any: the area, its fixes this week, and the step back you propose (or "none this week").
 - **Ready for you to merge**, in order, with links only for PRs that turned green since the last round-up.
 - **Needs your word:** decisions only the owner makes (an accept, a live visit's yes in a session's own window, spending).
 - A correction of an earlier ETA or claim, said plainly.

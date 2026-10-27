@@ -2501,7 +2501,7 @@ button.is-busy { cursor: progress; opacity: .7; }
 .qa-section-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); }
 .qa-section-head h4 { margin: 0; }
 .qa-section-head svg { width: 20px; height: 20px; color: var(--ink-2); }
-.qa-row { display: grid; grid-template-columns: auto minmax(0, 2fr) minmax(0, 1.4fr) 132px; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4); }
+.qa-row { display: grid; grid-template-columns: auto minmax(0, 1.7fr) minmax(9rem, 1fr) minmax(0, 1.25fr) 112px; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4); }
 .qa-row + .qa-row, .qa-edit + .qa-row { border-top: 1px solid var(--line); }
 .qa-row.is-open, .qa-row.is-open + .qa-edit { background: var(--signal-soft); }
 .qa-row.is-open, .qa-row.is-open + .qa-edit { box-shadow: inset 3px 0 0 var(--signal-edge); }   /* the row being edited: an orange edge (mockup 10) */
@@ -2514,10 +2514,25 @@ button.is-busy { cursor: progress; opacity: .7; }
 .qa-row > button:last-child { justify-self: end; }
 /* Application answers from the owner's mockup (pages/application-answers.js, 17 Oct 2026): one Saved answers card with a header band per section,
    rows without a button, "Answer as" under Advanced options, a review banner. */
-.qa-row.no-action { grid-template-columns: auto minmax(0, 2fr) minmax(0, 2fr); }
+.qa-row.no-action { grid-template-columns: auto minmax(0, 1.7fr) minmax(9rem, 1fr) minmax(0, 1.25fr) 112px; }
+.qa-columns { display: grid; grid-template-columns: auto minmax(0, 1.7fr) minmax(9rem, 1fr) minmax(0, 1.25fr) 112px; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+.qa-location { min-width: 0; color: var(--muted); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.qa-location-link { color: var(--signal-ink); text-decoration: underline; text-decoration-color: var(--signal-edge); text-underline-offset: 2px; }
+.qa-location-link:hover { color: var(--signal); text-decoration-color: currentColor; }
+.qa-location-link:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: var(--r-sm); }
+.qa-action-empty { min-width: 0; }
 .qa-row.no-action > .ui-pill { justify-self: start; }
 .qa-row > .ui-pill { justify-self: start; }   /* a status chip (Missing answer, Suggested answer) keeps its own width */
 .qa-row.is-open > .ui-pill { border: 1px solid var(--signal-line); }   /* "Editing" on the open row's own tint */
+@media (max-width: 900px) {
+  .qa-columns { display: none; }
+  .qa-row, .qa-row.no-action { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-2); row-gap: var(--sp-1); }
+  .qa-row > .qa-chevron { grid-column: 1; grid-row: 1; }
+  .qa-row > .qa-words { grid-column: 2; grid-row: 1; }
+  .qa-row > .qa-location { grid-column: 2; grid-row: 2; }
+  .qa-row > .qa-status { grid-column: 2; grid-row: 3; justify-self: start; }
+  .qa-row > .qa-action, .qa-row > .qa-action-empty { grid-column: 2; grid-row: 4; justify-self: start; }
+}
 .qa-saved .qa-group, .qa-section.is-review .qa-group { margin: 0; padding: var(--sp-2) var(--sp-4); background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
 .qa-saved .qa-intro, .qa-saved .qa-note { margin: 0; padding: var(--sp-1) var(--sp-4); }
 .qa-saved .qa-note-fold > summary { padding: var(--sp-1) var(--sp-4); cursor: pointer; }

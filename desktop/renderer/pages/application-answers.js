@@ -59,6 +59,7 @@ function kindField(view, item) {
 function row(view, {key, title, under, value, needs, field, kind = null, optional = false, button = needs, status = null, action = 'Add answer', run = null}) {
   const isOpen = opened.has(key);
   const head = el('div', `qa-row${isOpen ? ' is-open' : ''}${button ? '' : ' no-action'}`);
+  head.dataset.answerKey = key;
   const toggle = () => { if (isOpen) opened.delete(key); else opened.add(key); view.redraw(); };
   const chevron = Object.assign(el('button', 'link qa-chevron', icon('chevron')), {type: 'button', ariaLabel: isOpen ? 'Close' : 'Open'});
   chevron.classList.add('is-bar-chevron');
@@ -67,12 +68,14 @@ function row(view, {key, title, under, value, needs, field, kind = null, optiona
   const words = el('div', 'qa-words');
   words.append(Object.assign(el('b', 'qa-title', title), {title}));   // long questions clamp to two lines (CSS); the whole one on hover and in the open row
   if (under) words.append(el('span', 'muted small', under));
-  head.append(chevron, words, isOpen ? pill('Editing', 'signal') : status && !value ? status : el('span', value ? 'qa-value' : 'qa-value muted', value ? shown(value) : optional ? 'Optional' : 'Not set'));
+  const state = isOpen ? pill('Editing', 'signal') : status && !value ? status : el('span', value ? 'qa-value' : 'qa-value muted', value ? shown(value) : optional ? 'Optional' : 'Not set');
+  state.classList.add('qa-status');
+  head.append(chevron, words, state);
   if (button) {
-    const press = Object.assign(el('button', 'secondary qa-add', action), {type: 'button'});
+    const press = Object.assign(el('button', 'secondary qa-add qa-action', action), {type: 'button'});
     press.addEventListener('click', () => (run ? run() : (opened.add(key), view.redraw())));
     head.append(press);
-  }
+  } else head.append(el('span', 'qa-action-empty'));
   if (!isOpen) return [head];
   const edit = el('div', 'qa-edit');
   edit.append(labelled('Your answer', field()));
@@ -82,6 +85,116 @@ function row(view, {key, title, under, value, needs, field, kind = null, optiona
   advanced.append(el('p', 'muted small', 'Left empty, it stays not set and forms ask you again.'));
   edit.append(advanced);
   return [head, edit];
+}
+
+function locationTitle(text) { return String(text || '').replace(/^\P{L}+/u, '').replace(/\s+/gu, ' ').trim(); }
+const locationPath = text => String(text || '').split('→').map(locationTitle).filter(Boolean).join(' → ');
+
+function destinationFor(where, fact, question, key) {
+  const parts = locationPath(where).split(' → ').filter(Boolean);
+  if (!parts.length) return null;
+  const tabs = [...document.querySelectorAll('[data-profile-tab]')];
+  const tab = tabs.find(each => locationTitle(each.textContent) === parts[0]);
+  if (tab) {
+    if (parts[1]) {
+      if (tab.dataset.profileTab === 'answers') return {label: parts.join(' → '), sourcePath: where, tab: 'answers', question: fact || question, view: 'saved'};
+      const panel = [...document.querySelectorAll(`[data-profile-panel="${tab.dataset.profileTab}"]`)].find(each =>
+        locationTitle([...((each.querySelector('.card-words')?.children) || [])].find(child => child.tagName === 'H3')?.textContent) === parts[1]);
+      if (panel?.id) return {label: parts.join(' → '), sourcePath: where, panelId: panel.id, fact, key};
+      if (tab.dataset.profileTab !== 'details') return {label: parts.join(' → '), sourcePath: where, tab: tab.dataset.profileTab, question: fact || question};
+      return {label: parts.join(' → '), sourcePath: where};
+    }
+    return {label: parts.join(' → '), sourcePath: where, tab: tab.dataset.profileTab, question: fact || question, view: 'saved'};
+  }
+  const strategy = document.querySelector('.nav[data-view="strategy"]');
+  return strategy && locationTitle(strategy.textContent) === parts[0] ? {label: parts.join(' → '), sourcePath: where, viewName: 'strategy'} : {label: parts.join(' → '), sourcePath: where};
+}
+
+function focusFact(panel, destination) {
+  if (!panel) return;
+  panel.querySelector('.card-edit')?.click();
+  const field = (() => {
+    if (panel.id === 'setting-contact' && destination.key) {
+      try {
+        const ref = JSON.parse(destination.key.slice('details:'.length).split(':').slice(1).join(':'));
+        return panel.querySelector(`[data-contact="${ref.field}"]`);
+      } catch { return null; }
+    }
+    if (destination.fact) {
+      const row = [...panel.querySelectorAll('.fact-line')].find(each => locationTitle(each.querySelector('span')?.textContent) === locationTitle(destination.fact));
+      return row?.querySelector('[data-fact-value]');
+    }
+    return null;
+  })();
+  field?.focus();
+}
+
+async function openLocation(destination, {key, question, view, into}) {
+  if (destination.row) {
+    opened.add(key);
+    view.redraw();
+    into.querySelectorAll('.qa-row').find(each => each.dataset.answerKey === key)?.scrollIntoView?.({block: 'center'});
+    return;
+  }
+  if (destination.panelId) {
+    const panel = document.getElementById(destination.panelId);
+    document.querySelector(`[data-profile-tab="${panel?.dataset.profilePanel}"]`)?.click();
+    setTimeout(() => {
+      panel?.scrollIntoView?.({behavior: 'smooth', block: 'start'});
+      focusFact(panel, destination);
+    }, 80);
+    return;
+  }
+  if (destination.tab === 'answers') {
+    searchAnswers(destination.question || question, destination.view || 'saved');
+    document.querySelector('[data-profile-tab="answers"]')?.click();
+    await loadApplicationAnswers();
+    const target = [...into.querySelectorAll('.qa-row')].find(each => locationTitle(each.querySelector('.qa-title')?.getAttribute('title') || each.querySelector('.qa-title')?.textContent) === locationTitle(question));
+    if (target) {
+      opened.add(target.dataset.answerKey);
+      view.redraw();
+      into.querySelectorAll('.qa-row').find(each => each.dataset.answerKey === target.dataset.answerKey)?.scrollIntoView?.({block: 'center'});
+    }
+    return;
+  }
+  if (destination.tab) document.querySelector(`[data-profile-tab="${destination.tab}"]`)?.click();
+  if (destination.viewName) document.querySelector('.nav[data-view="strategy"]')?.click();
+}
+
+function addLocationColumns(into, locations, view) {
+  for (const section of into.querySelectorAll('.qa-section')) {
+    const rows = [...section.querySelectorAll('.qa-row')].filter(each => !each.classList.contains('qa-columns'));
+    if (!rows.length) continue;
+    for (const rowNode of rows) {
+      const key = rowNode.dataset.answerKey;
+      const destination = locations.get(key);
+      const subtitle = rowNode.querySelector('.qa-words .muted.small');
+      if (subtitle && destination?.sourcePath) {
+        const parts = subtitle.textContent.split(' · ');
+        const rest = parts.filter(part => locationPath(part) !== locationPath(destination.sourcePath));
+        if (rest.length !== parts.length) {
+          if (rest.length) subtitle.textContent = rest.join(' · '); else subtitle.remove();
+        }
+      }
+      const cell = el('span', 'qa-location');
+      const link = destination && (destination.panelId || destination.tab || destination.viewName || destination.row);
+      if (link) {
+        const anchor = Object.assign(el('a', 'qa-location-link', destination.label), {href: '#'});
+        anchor.setAttribute('aria-label', `Open ${destination.label}`);
+        anchor.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          openLocation(destination, {key, question: destination.question, view, into}).catch(() => {});
+        });
+        cell.append(anchor);
+      } else cell.append(destination?.label || 'Location not recorded');
+      rowNode.insertBefore(cell, rowNode.children[2] || null);
+    }
+    const header = el('div', 'qa-columns');
+    header.setAttribute('aria-hidden', 'true');
+    header.append(el('span'), el('span', '', 'Question'), el('span', '', 'Location'), el('span', '', 'Answer'), el('span', '', 'Action'));
+    section.insertBefore(header, rows[0]);
+  }
 }
 
 // Why a queue row is there (mockup 04, from what the row already holds): an answer to accept, a guess to confirm, or none yet.
@@ -181,6 +294,17 @@ function draw(view, into) {
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().catch(() => {}); }
   const extraRows = extrasIn(questionsNow().list).filter(each => matches({question: each.question, value: each.details?.line || ''}, {query: filters.query}));
   const detailRows = extraRows.filter(each => each.details), setupRows = extraRows.filter(each => each.setup);
+  const locations = new Map();
+  for (const section of list) for (const item of section.items) {
+    if (item.kind !== 'note') locations.set(item.id, {label: `Application answers → ${shown(section.title) || 'Answers'}`, sourcePath: shown(section.title) || 'Answers', row: true, question: item.question});
+  }
+  for (const entry of shownRows) {
+    const section = list.find(each => each.items.some(item => item.id === entry.item.id));
+    locations.set(`review:${entry.item.id}`, {label: `Application answers → ${shown(section?.title) || 'Answers'}`, sourcePath: shown(section?.title) || 'Answers', row: true, question: entry.item.question});
+  }
+  for (const each of detailRows) locations.set(`details:${each.key}`, destinationFor(each.details?.where, each.details?.fact, each.question, each.key));
+  for (const each of setupRows) locations.set(each.key, destinationFor(each.details?.where || each.setup?.where, each.details?.fact, each.question, each.key));
+  for (const each of ruleRows) locations.set(each.key, {label: 'Application answers → Website-specific questions', row: true, question: each.title});
   const reviewCount = shownRows.length + extraRows.length;
 
   toolbar(view, into, reviewCount);
@@ -230,6 +354,7 @@ function draw(view, into) {
     }
     if (!open.length && !detailRows.length && !ruleRows.length && !hiddenRows.length) review.append(el('p', 'muted qa-empty', 'Nothing to review: forms have every answer they asked for.'));
     into.append(review);
+    addLocationColumns(into, locations, view);
     return;
   }
 
@@ -273,6 +398,7 @@ function draw(view, into) {
   const learned = drawRules(view, inner, filters.query).count;
   count.textContent = `Review how form questions map to your saved answers · ${learned} learned from forms`;
   into.append(rules);
+  addLocationColumns(into, locations, view);
 }
 
 export function addQuestion() {

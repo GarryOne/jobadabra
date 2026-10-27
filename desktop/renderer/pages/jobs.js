@@ -32,7 +32,8 @@ import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
-import {applyDialogCopy, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
+import {applyDialogCopy, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
+import {modeCards, save as saveApplySettings} from './apply-settings.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -61,20 +62,24 @@ async function linkToJob(dialogId, messageId, result) {
 const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.fyi|reddit\.com)$/i;
 let applyDialogSettings = null;
 const applyStartGate = createApplyStartGate();
+let applyModeSaving = false;
 
 function drawApplyDialogMode(settings) {
   applyDialogSettings = settings || null;
   const go = $('apply-go'), count = $('apply-n').value || '3';
   if (!applyDialogSettings) {   // Why (27 Oct 2026, owner): do not offer a fallback action when the persisted mode could not be read.
-    $('apply-mode-title').textContent = 'Apply mode unavailable';
     $('apply-mode-description').textContent = 'Could not read your saved Apply mode. Close this dialog and try again.';
+    $('apply-mode-cards').replaceChildren();
     go.disabled = true;
     go.textContent = 'Unavailable';
     return;
   }
   const mode = applyDialogCopy(applyDialogSettings);
-  $('apply-mode-title').textContent = mode.title;
   $('apply-mode-description').textContent = mode.description;
+  // Why (27 Oct 2026, owner): these are the same saved Settings → Apply choices, so Jobs cannot keep a second mode value.
+  $('apply-mode-cards').replaceChildren(modeCards(mode.mode, selected => saveApplyDialogMode(selected), {
+    disabled: applyStartGate.isStarting() || applyModeSaving,
+  }));
   if (applyStartGate.isStarting()) {
     go.disabled = true;
     go.textContent = 'Starting…';
@@ -82,6 +87,29 @@ function drawApplyDialogMode(settings) {
   }
   go.disabled = !mode.canStart;   // Why (27 Oct 2026, owner): a confirmed unsupported mode cannot start; an unconfirmed choice still reaches the first-choice gate.
   go.textContent = mode.available ? `Start ${count} for review` : mode.chosen ? 'Unavailable' : 'Confirm Apply mode';
+}
+
+// Why (27 Oct 2026, owner): persist each card choice through Settings → Apply and verify it before changing the displayed selection.
+async function saveApplyDialogMode(selected) {
+  if (applyStartGate.isStarting() || applyModeSaving) return;
+  applyModeSaving = true;
+  drawApplyDialogMode(applyDialogSettings);
+  try {
+    const selection = await applyDialogSelectMode({mode: selected, save: saveApplySettings});
+    const current = await window.pilot.state().catch(() => null);
+    if (!selection.ok || !current?.settings || applyDialogCopy(current.settings).mode !== selected) {
+      message('apply-message', selection.error || 'Could not verify the selected Apply mode. No jobs were started.', 'error');
+      return;
+    }
+    applyDialogSettings = current.settings;
+    message('apply-message', `${applyDialogCopy(current.settings).title} saved to Settings → Apply.`, 'ok');
+  } catch (error) {
+    message('apply-message', `Could not save the selected Apply mode: ${error.message}`, 'error');
+  } finally {
+    applyModeSaving = false;
+    const latest = await window.pilot.state().catch(() => null);
+    drawApplyDialogMode(latest?.settings || null);
+  }
 }
 
 // List density: Comfortable (columns) or Compact (one block per job); remembered on this computer.

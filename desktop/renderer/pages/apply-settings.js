@@ -8,11 +8,12 @@ import {ANSWERS_TEXT, MODES, MODE_TODAY, applyOf, applyPatch} from '../apply-set
 import {openSetting} from './settings.js';
 
 let current = {};   // the saved settings, as the app last answered them
+let ready = Promise.resolve();
 export const settingsNow = () => current;
 
 // The three modes as stacked choice cards (the dialog draws the same ones).
-export function modeCards(selected, onPick, {dialog = false} = {}) {
-  const modes = dialog ? MODES.map(mode => ({...mode, text: mode.dialogText || mode.text})) : MODES;
+export function modeCards(selected, onPick, {dialog = false, disabled = false, notes = {}} = {}) {
+  const modes = MODES.map(mode => ({...mode, ...(dialog ? {text: mode.dialogText || mode.text} : {}), ...(notes[mode.id] ? {note: notes[mode.id]} : {}), ...(disabled ? {disabled: true} : {})}));
   const group = choiceCards(modes, {selected, onPick, label: 'How applying works'});
   group.classList.add('is-single');
   return group;
@@ -70,6 +71,7 @@ export function draw(settings = current) {
 
 // change: part of settings.apply; chosen: stamps the person's confirmation (the gate in lib/apply-choice-gate.js then lets every Apply through).
 export async function save(change = {}, {chosen = false} = {}) {
+  await ready;
   const saved = await window.pilot.saveSettings(applyPatch(current, change, {chosen})).catch(() => null);
   if (saved) current = saved;
   draw();
@@ -93,7 +95,8 @@ function closeBar(chosen) {
 
 export async function init() {
   if (!$('apply-modes')) return;
-  current = (await window.pilot.state().catch(() => null))?.settings || {};
+  ready = window.pilot.state().catch(() => null).then(state => { current = state?.settings || {}; });
+  await ready;
   const box = $('apply-auto-checks');
   box.replaceChildren(...CHECKS.map(checkRow));
   document.querySelectorAll('[data-apply-answers]').forEach(button => button.addEventListener('click', () => save({answers: button.dataset.applyAnswers})));

@@ -1,4 +1,4 @@
-// The first-Apply dialog (owner, 26 Oct 2026: new installs and existing users see it once; "I check each form" pre-selected): any Apply before the choice
+// The first-Apply dialog (owner, 26 Oct 2026: new installs and existing users see it once; Standard automation pre-selected): any Apply before the choice
 // answers {needsApplyChoice} (lib/apply-choice-gate.js), preload.cjs holds that press and raises pilot-needs-apply-choice; this asks "How should Jobadabra
 // apply for you?". Continue saves the choice and the held press goes on (pilot-apply-chosen); Adjust settings… opens Settings → Apply with Confirm;
 // Not now or Esc lets it go (pilot-apply-not-chosen). Guard: test/apply-choice-gate.test.js, test/apply-settings.test.js.
@@ -18,7 +18,7 @@ export function init() {
   };
   window.addEventListener('pilot-needs-apply-choice', () => {
     if (dialog.open || confirming()) return;   // one question at a time: every press waiting goes on with the same answer
-    pick = applyOf(settingsNow()).mode;   // "I check each form" unless a mode was saved before
+    pick = applyOf(settingsNow()).mode;   // Standard automation unless a mode was saved before
     draw();
     dialog.showModal();
   });

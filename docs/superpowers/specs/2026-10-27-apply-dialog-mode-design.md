@@ -1,7 +1,7 @@
 # Apply dialog follows saved mode
 
 ## Intent
-The Jobs “Apply to jobs” dialog must show the same saved Apply mode as Settings → Apply and only start work that mode can actually run. Today the dialog has a separate legacy Chrome/Claude selector, while the saved setting is `settings.apply.mode`.
+The Jobs “Apply to jobs” dialog must show the same three mode cards as Settings → Apply. Choosing a card saves the canonical `settings.apply.mode`; Start then routes only work that mode can actually run. The approved display names are Standard automation, Background automation, and Full automation; IDs remain `check`, `fill`, and `auto`.
 
 ## Approaches
 - Keep legacy radios and translate them to settings: rejected because it leaves two mode sources and can reset the saved choice.
@@ -11,21 +11,23 @@ The Jobs “Apply to jobs” dialog must show the same saved Apply mode as Setti
 ## Observable behavior / mode-state table
 | Saved mode | Dialog description and Start | Execution / submission policy |
 |---|---|---|
-| `check` | Show manual review behavior; Start enabled for a valid count | Existing batch runner opens jobs in Chrome, extension fills, candidate reviews every tab and submits manually |
-| `fill` | Explain background-fill runner is not available in this build; Start disabled after the mode is confirmed. Before the first-choice gate, Start opens the existing confirmation flow. | No execution for the unsupported saved mode, no visible Chrome launch |
-| `auto` | Explain Full automation runner is not available in this build; Start disabled after the mode is confirmed. Before the first-choice gate, Start opens the existing confirmation flow. Do not imply unattended submission is active. | No execution for the unsupported saved mode, no visible Chrome launch or submission |
+| Standard automation (`check`) | Show selected card and manual-review behavior; Start enabled for a valid count | Existing batch runner opens jobs in a visible Chrome tab, extension fills, candidate reviews each form and submits manually |
+| Background automation (`fill`) | Show selected card and honest unavailable state until hidden fill/session review is implemented; first-choice gate remains available | No unsupported-mode execution and no visible Chrome fallback |
+| Full automation (`auto`) | Show selected card and honest unavailable state until hidden fill, saved-check submission and receipt handling are implemented; never imply active submission | No unsupported-mode execution, no visible Chrome fallback or submission |
 | missing/unsupported | Resolve through canonical `applyOf` fallback (`check`) and describe the actual check path; do not show an unsupported mode as Full automation | Manual-review runner only |
 
 ## Constraints and non-goals
-- `settings.apply.mode` remains the sole mode source; opening the dialog never changes it.
+- `settings.apply.mode` remains the sole mode source. The three cards reuse the Settings → Apply choices and writer; selection updates the persisted mode and preserves the existing first-choice stamp.
 - Preserve the first-choice gate, dialog cancel, count bounds, and existing start guards.
 - Do not implement background filling or unattended submission, submit any form, open real applications, or call paid models.
 - Browser processes may exist for supported work; make no claim that background mode means no browser process.
 
 ## Acceptance criteria
-- The modal reflects the currently persisted canonical mode when opened, without a second selector.
+- The modal reflects the persisted mode when opened, using the existing mode-card UI and single canonical setting.
+- Choosing one of the three cards immediately persists that mode to Settings → Apply, and the selection remains after reopening the dialog.
 - Starting `check` routes through the existing batch `apply` path with the validated count and preserves manual review.
 - `fill` and `auto` cannot route to the visible Chrome fallback; their explanation accurately says the execution path is unavailable.
+- Hidden modes become startable only when the shared runner reports end-to-end readiness: Background automation reaches `ready_for_review`, while Full automation passes saved checks, stops for manual handoff on CAPTCHA/unknown states, and records `Applied` only from a receipt.
 - Missing/invalid values use the model's honest `check` fallback.
 - Tests cover each mode, invalid count, cancel, and actual start dispatch / no dispatch for unsupported modes.
 - Fictional before/after dialog screenshots and focused tests, changed-JS lint, and the fast gate are recorded.
@@ -38,4 +40,7 @@ The Jobs “Apply to jobs” dialog must show the same saved Apply mode as Setti
 - [x] Capture after screenshots. (proof: none: PNGs uploaded as the PR's after images)
 - [x] Run focused verification. (proof: desktop/test/apply-dialog-mode.test.js)
 - [x] Run the fast gate and review the committed diff. (proof: none: fast gate passed on the PR update; see registered ship log)
-- [ ] Ship review PR and track current-head CI/review/owner merge.
+- [x] Reuse Settings' three mode cards in Jobs and persist card selection to canonical settings. (proof: desktop/renderer/pages/jobs.js, desktop/renderer/apply-settings-model.js, desktop/test/apply-dialog-mode.test.js)
+- [x] Capture current fictional before/after card screenshots, including a persisted Background automation selection. (proof: none: PNGs uploaded as the PR's before/after images)
+- [ ] Integrate the shared hidden runner only after review confirms its end-to-end readiness contract.
+- [ ] Run the fast gate on the combined final head, refresh screenshots/body, and track current-head CI/review/owner merge.

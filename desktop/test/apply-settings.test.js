@@ -10,7 +10,7 @@ const here = path.resolve(import.meta.dirname, '..');
 const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
 const page = name => { const at = html.indexOf(`data-settings-page="${name}"`); return html.slice(at, html.indexOf('data-settings-page="', at + 10)); };
 
-test('nothing saved: "I check each form", facts only, the owner\'s defaults, not chosen', () => {
+test('nothing saved: Standard automation, facts only, the owner\'s defaults, not chosen', () => {
   assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 10}, chosenAt: ''});
   assert.deepEqual(AUTO_DEFAULTS, applyOf(undefined).auto);
   assert.equal(applyChosen({}), false);
@@ -35,9 +35,15 @@ test('a change keeps the rest; numbers stay in range; Confirm stamps the choice'
 
 test('three modes; the two that come later say what happens until then', () => {
   assert.deepEqual(MODES.map(mode => mode.id), ['check', 'fill', 'auto']);
+  assert.deepEqual(MODES.map(mode => mode.title), ['Standard automation', 'Background automation', 'Full automation']);
+  assert.deepEqual(MODES.map(mode => mode.text), [
+    'Fills in a visible browser; you review and submit.',
+    'Fills in a hidden browser; you review and submit when ready.',
+    'Fills and submits in a hidden browser when your checks pass.',
+  ]);
   assert.equal(MODE_TODAY.check, '');
   for (const id of ['fill', 'auto']) assert.match(MODE_TODAY[id], /coming update[\s\S]*opens in a tab/);
-  assert.match(MODES.find(mode => mode.id === 'auto').dialogText, /fit 80\+, at most 20 a day, a 10-minute wait with Stop/);
+  assert.match(MODES.find(mode => mode.id === 'auto').text, /hidden browser when your checks pass/i);
 });
 
 test('every applying setting is on the Apply tab, and nowhere else', () => {

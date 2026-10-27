@@ -9,11 +9,18 @@ export function applyDialogCopy(settings) {
   const title = modeById.get(mode)?.title || modeById.get('check').title;
   const available = mode === 'check';   // Why (27 Oct 2026, owner): only check has a batch runner in this build; fill and auto must not launch visible Chrome.
   const description = mode === 'check'
-    ? 'Each selected job opens in a Chrome tab. The extension fills eligible forms; you review every tab and press Submit. No form is submitted for you.'
+    ? 'Standard automation uses a visible Chrome tab. Jobadabra does not submit forms in this mode.'
     : mode === 'fill'
-      ? 'Fill for me, I press Submit is saved, but background filling is not available in this build. No jobs start in this mode; change the mode in Settings → Apply to use I check each form.'
-      : 'Full automation is saved, but its background fill-and-send runner is not available in this build. No jobs start in this mode; change the mode in Settings → Apply to use I check each form.';
+      ? 'Background filling is not available in this build. No jobs start in this mode.'
+      : 'Full automation is not available in this build. No jobs start in this mode.';
   return {mode, title, description, available, chosen, canStart: available || !chosen};   // Why (27 Oct 2026, owner): an unconfirmed saved choice still needs to reach the first-Apply gate.
+}
+
+// Saves a card choice through the same Settings → Apply writer and verifies the returned canonical mode.
+export async function applyDialogSelectMode({mode, save}) {
+  if (!modeById.has(mode)) return {ok: false, error: 'Choose one of the available Apply modes.'};
+  const saved = await save({mode});
+  return saved?.apply && applyOf(saved).mode === mode ? {ok: true, settings: saved} : {ok: false, error: 'Could not save the selected Apply mode.'};
 }
 
 // Validates a requested batch and passes a settings token so the main process reads the mode again after the first-choice gate.

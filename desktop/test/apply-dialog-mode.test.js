@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {applyDialogCopy, applyDialogStart, createApplyStartGate} from '../renderer/apply-dialog-model.js';
+import {applyDialogCopy, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../renderer/apply-dialog-model.js';
 import {applyOf} from '../renderer/apply-settings-model.js';
 import {registerApplyHandlers} from '../lib/apply-handlers.js';
 import {guard} from '../lib/apply-choice-gate.js';
@@ -28,7 +28,7 @@ function register(mode, {chosen = true} = {}) {
 }
 
 test('the dialog describes the persisted mode and enables only the implemented manual-review path', () => {
-  assert.match(applyDialogCopy({apply: {mode: 'check'}}).description, /opens in a Chrome tab[\s\S]*review every tab and press Submit/i);
+  assert.match(applyDialogCopy({apply: {mode: 'check'}}).description, /visible Chrome tab[\s\S]*does not submit/i);
   assert.equal(applyDialogCopy({apply: {mode: 'check'}}).available, true);
   for (const mode of ['fill', 'auto']) {
     const copy = applyDialogCopy({apply: {mode}});
@@ -40,6 +40,21 @@ test('the dialog describes the persisted mode and enables only the implemented m
   assert.equal(applyDialogCopy({}).mode, applyOf({}).mode);
   assert.equal(applyDialogCopy({apply: {mode: 'auto'}}).canStart, true, 'an unconfirmed saved choice still reaches the first-choice gate');
   assert.equal(applyDialogCopy({apply: {mode: 'auto', chosenAt: '2026-10-27T00:00:00.000Z'}}).canStart, false);
+});
+
+test('choosing a dialog card saves its mode through the Settings Apply writer', async () => {
+  let settings = {apply: {mode: 'check', chosenAt: '2026-10-27T00:00:00.000Z'}};
+  const selected = await applyDialogSelectMode({mode: 'fill', save: async patch => {
+    settings = {...settings, apply: {...settings.apply, ...patch}};
+    return settings;
+  }});
+  assert.equal(selected.ok, true);
+  assert.equal(selected.settings.apply.mode, 'fill');
+  assert.equal(selected.settings.apply.chosenAt, '2026-10-27T00:00:00.000Z');
+  let wrote = false;
+  const invalid = await applyDialogSelectMode({mode: 'other', save: async () => { wrote = true; return settings; }});
+  assert.equal(invalid.ok, false);
+  assert.equal(wrote, false);
 });
 
 test('Start dispatches check to the guarded batch runner and leaves review and submission with the owner', async () => {
@@ -103,10 +118,14 @@ test('a second Start while the first batch is in flight cannot dispatch another 
   assert.equal(starts, 2);
 });
 
-test('the dialog keeps a native cancel action and has no independent Apply mode selector', () => {
+test('the dialog reuses persisted mode cards and keeps its native cancel action', () => {
   const html = fs.readFileSync(path.join(desktop, 'renderer/index.html'), 'utf8');
   const dialog = html.slice(html.indexOf('<dialog id="apply-dialog">'), html.indexOf('</dialog>', html.indexOf('<dialog id="apply-dialog">')));
   assert.match(dialog, /<form method="dialog" id="apply-form">/);
   assert.match(dialog, /<button class="secondary" value="cancel">Close<\/button>/);
-  assert.doesNotMatch(dialog, /name="apply-mode"/);
+  assert.match(dialog, /id="apply-mode-cards"/);
+  const jobs = fs.readFileSync(path.join(desktop, 'renderer/pages/jobs.js'), 'utf8');
+  assert.match(jobs, /modeCards\(mode\.mode/);
+  assert.match(jobs, /applyDialogSelectMode/);
+  assert.match(jobs, /save as saveApplySettings/);
 });

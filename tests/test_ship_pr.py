@@ -32,6 +32,26 @@ class ShipPrTest(ShipFixture):
     def calls(self):
         return json.loads(self.state.read_text()).get('calls', [])
 
+    def test_keeps_a_resolved_main_merge_when_origin_main_is_already_an_ancestor(self):
+        self.change(self.tree, 'shared.txt', 'feature version\n', 'Feature change')
+        self.change(self.other, 'shared.txt', 'main version\n', 'Main change')
+        git(self.other, 'push', '-q', 'origin', 'main')
+        git(self.tree, 'fetch', '-q', 'origin')
+        merged = subprocess.run(['git', 'merge', '--no-edit', 'origin/main'], cwd=self.tree, capture_output=True, text=True)
+        self.assertNotEqual(merged.returncode, 0, 'the branches intentionally conflict')
+        (self.tree / 'shared.txt').write_text('resolved feature and main\n')
+        git(self.tree, 'add', 'shared.txt')
+        git(self.tree, 'commit', '-qm', 'Merge main and resolve shared file')
+        self.assertEqual(subprocess.run(['git', 'merge-base', '--is-ancestor', 'origin/main', 'HEAD'], cwd=self.tree).returncode, 0)
+
+        result = self.pr_ship(None, '--title=Ship a branch with its resolved main merge', SHIP_REVIEW='1')
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('ship: REVIEW #1', result.stdout)
+        remote = git(self.origin, 'rev-parse', 'refs/heads/topic')
+        self.assertEqual(git(self.origin, 'show', f'{remote}:shared.txt'), 'resolved feature and main')
+        self.assertEqual(git(self.origin, 'rev-list', '--parents', '-n', '1', remote).count(' '), 2, 'the merge commit remains on the published branch')
+
     def test_pushes_the_branch_opens_a_pr_turns_on_auto_merge_and_waits_for_the_merge(self):
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
         result = self.pr_ship()

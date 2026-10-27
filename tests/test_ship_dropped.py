@@ -18,14 +18,13 @@ class DroppedChangeTests(ShipFixture):
         git(self.tree, 'add', 'b.txt')
         git(self.tree, 'commit', '-q', '--amend', '-m', 'Turn on mail, from no-reply')   # amends the MERGE commit
 
-    def test_a_change_the_rebase_dropped_is_refused_not_called_nothing_to_push(self):
+    def test_a_change_amended_into_a_merge_is_preserved_when_updating_from_main(self):
         self.merged_then_amended()
         result = self.ship()
         out = result.stdout + result.stderr
-        self.assertNotIn('nothing to push', out)
-        self.assertNotEqual(result.returncode, 0, out)
-        self.assertIn('b.txt', out, 'the refusal names the file main lacks')
-        self.assertIn('git reflog', out, 'and says where the change still is')
+        self.assertEqual(result.returncode, 0, out)
+        self.assertIn('ship: DONE', out)
+        self.assertEqual(git(self.origin, 'show', 'main:b.txt'), 'sender no-reply')
 
     def test_a_branch_fully_on_main_still_says_nothing_to_push(self):
         self.change(self.tree, 'a.txt', 'on\n', 'Change a')

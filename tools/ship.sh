@@ -109,6 +109,21 @@ ship_fetch() { local try; for try in 1 2 3 4 5; do git fetch -q origin 2>/dev/nu
 rebase() {
   ship_fetch
   config_once merge.ladder-baseline.driver 'node tools/merge-baseline.mjs %O %A %B'   # two sessions' ladder-baseline updates merge (.gitattributes)
+  # A resolved merge of main is already current. Rebasing it flattens the merge commit and can recreate conflicts that were resolved on the branch.
+  if git merge-base --is-ancestor origin/main HEAD; then
+    step "origin/main is already in $branch; keeping its merge history"
+    return 0
+  fi
+  local base; base="$(git merge-base origin/main HEAD)"
+  if [ -n "$(git rev-list --merges "$base..HEAD")" ]; then
+    if ! git merge --no-edit origin/main >/dev/null 2>&1; then
+      git merge --abort >/dev/null 2>&1 || true
+      echo "ship: origin/main advanced; merging it into $branch has conflicts. Resolve them keeping both sides' work, then run this again." >&2
+      exit 1
+    fi
+    step "origin/main advanced; merging it to preserve branch merge history"
+    return 0
+  fi
   if ! git rebase origin/main >/dev/null 2>&1; then
     git rebase --abort >/dev/null 2>&1 || true
     echo "ship: the rebase onto origin/main has conflicts. Resolve them keeping both sides' work, then run this again." >&2
@@ -133,7 +148,7 @@ if [ "$queue" = 1 ]; then
   step "queueing for the landing lock (this landing runs the slow gates; SHIP_LANDING_LOCK=0 skips the queue)"
   landing_acquire "$branch"
 fi
-step "rebasing $branch onto origin/main"
+step "updating $branch from origin/main"
 before_rebase="$(git rev-parse HEAD)"
 rebase
 if [ "$(git rev-list --count origin/main..HEAD)" -eq 0 ]; then

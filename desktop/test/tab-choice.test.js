@@ -21,7 +21,7 @@ test('a default that waited is dropped when a tab was picked meanwhile, kept oth
 
 test('the Profile page uses it: its default call is marked, every other profileTab call is a pick', () => {
   const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
-  assert.match(read('../renderer/pages/settings.js'), /const stillDefault = startDefault\(\);[\s\S]*?await window\.pilot\.state\(\);[\s\S]*?if \(stillDefault\(\)\) profileTab\('cv', \{byDefault: true\}\);/);   // CV is the default tab since the split (17 Oct 2026)
+  assert.match(read('../renderer/pages/settings.js'), /const stillDefault = startDefault\(\);[\s\S]*?await window\.pilot\.state\(\);[\s\S]*?if \(stillDefault\(\)\) profileTab\(remembered\('profileTab'\) \|\| 'cv', \{byDefault: true\}\);/);   // Reload restores the tab; fresh windows still default to CV.
   assert.match(read('../renderer/pages/profile.js'), /export function profileTab\(name, \{byDefault = false\} = \{\}\) \{\n  if \(!byDefault\) pick\(\);/);
   const calls = [...read('../renderer/pages/settings.js').matchAll(/profileTab\('[^']+'(?:, \{byDefault: true\})?\)/g)].map(match => match[0]);
   assert.deepEqual(calls.filter(call => !call.includes('byDefault')), [], 'a profileTab call in settings.js that is not the marked default would count as a pick');

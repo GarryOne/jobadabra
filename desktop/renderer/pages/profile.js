@@ -8,6 +8,7 @@ import {showStoreParts} from './store-parts.js';
 import {addQuestion, loadApplicationAnswers} from './application-answers.js';
 import {loadAnswersFacts} from './answers-facts.js';
 import {pick} from '../tab-choice.js';
+import {remembered} from '../view-memory.js';
 import {initExperience, loadExperience} from './experience.js';
 import {loadExperienceProfile} from './experience-profile.js';
 import {startOfficeProgress} from './office-progress.js';
@@ -49,6 +50,8 @@ export function profileTab(name, {byDefault = false} = {}) {
   if (name === 'knowledge') name = 'answers';   // Form knowledge is a section of Application answers since 16 Oct 2026 (owner)
   // The Preferences tab is gone (owner, 17 Oct 2026: "General Preferences links can open Strategy"): its old name opens Strategy → Job preferences.
   if (name === 'profiletext') { openJobPreferences(); return; }
+  if (![...document.querySelectorAll('[data-profile-tab]')].some(tab => tab.dataset.profileTab === name)) name = 'cv';
+  remembered('profileTab', name);
   document.querySelectorAll('[data-profile-tab]').forEach(tab => tab.classList.toggle('is-active', tab.dataset.profileTab === name));
   document.querySelectorAll('[data-profile-panel]').forEach(panel => {
     show(panel, panel.dataset.profilePanel === name && panel.dataset.wanted !== '0');   // a conditional part keeps its wish (pages/tab-part.js)

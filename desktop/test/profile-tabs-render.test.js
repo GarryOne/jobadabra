@@ -43,6 +43,7 @@ for (const [store, items] of Object.entries({sqlite: LOCAL, notion: NOTION})) {
     body.replaceChildren(node);
     const {loadApplicationAnswers} = await import('../renderer/pages/application-answers.js');
     await loadApplicationAnswers();
+    node.querySelectorAll('.segmented button').find(button => button.dataset.view === 'all').click();
     const text = node.textContent;
     assert.equal(node.querySelectorAll('textarea').length, 0, 'no textarea');
     assert.ok(!text.includes('❓'), 'no ❓ on screen');

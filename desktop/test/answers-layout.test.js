@@ -42,7 +42,7 @@ test('All: the banner, one Saved answers card with a header per section, the int
   assert.ok(!node.textContent.includes('❓'));
 });
 
-test('Saved shows only set answers; Needs review shows the rows to answer; the tab opens on All again', async () => {
+test('Saved shows only set answers; Needs review shows the rows to answer; data refresh retains Needs review', async () => {
   let node = await open();
   view(node, 'saved').listeners.click[0]();
   assert.deepEqual(rowTitles(node), ['Authorised to work in Switzerland?', 'Notice period']);
@@ -50,7 +50,8 @@ test('Saved shows only set answers; Needs review shows the rows to answer; the t
   assert.match(node.querySelector('.is-review').textContent, /Will you need sponsorship\?/);
   assert.equal(node.querySelector('.qa-saved'), null);
   node = await open();
-  assert.ok(view(node, 'all').classList.contains('is-active'));
+  assert.ok(view(node, 'review').classList.contains('is-active'));
+  view(node, 'all').click();   // explicitly reset the next scenario's starting view
 });
 
 test('a row opens in place: "Editing", Your answer, Answer as under Advanced options; the save bar counts the change', async () => {

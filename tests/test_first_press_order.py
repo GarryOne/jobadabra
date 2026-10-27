@@ -112,19 +112,20 @@ class TheTitlesThatFeedTheFirstScoresAreSorted(unittest.TestCase):
         time_budget.start(BUDGET, now=time.monotonic() - BUDGET * 130 / time_budget.PLANNED)   # 130 s of the app's 180
         self.assertTrue(time_budget._scorings() and not time_budget.ended())
 
-    def test_one_batch_of_local_titles_is_sorted_while_no_score_started(self):
+    def test_one_batch_a_call_while_no_matched_job_waits_for_a_score(self):
         self.assertEqual(time_budget.local_titles(10), 10)
-        self.assertEqual(time_budget.local_titles(100), time_budget.FEED - 10, 'one batch, not the whole floor')
-        self.assertEqual(time_budget.local_titles(10), 0)
+        self.assertEqual(time_budget.local_titles(100), time_budget.FEED, 'one batch, not the whole floor')
 
-    def test_none_once_the_first_score_started(self):
-        self.assertTrue(time_budget.may_score())
-        self.assertEqual(time_budget.local_titles(10), 0)
-
-    def test_none_once_the_search_has_a_job_to_score(self):
+    def test_none_while_a_matched_job_waits_for_its_score_then_one_batch_again(self):
         from src import run_counts
         with redirect_stdout(io.StringIO()):
             run_counts.matched([{'url': 'https://x.test/1'}])
+            self.assertEqual(time_budget.local_titles(10), 0, 'scoring keeps its share for the job that waits (b8cfac4)')
+            run_counts.scored({'url': 'https://x.test/1'}, 40)
+        self.assertEqual(time_budget.local_titles(10), 10, 'scored: the share is idle, the next titles feed it')
+
+    def test_none_at_the_runs_end(self):
+        time_budget.start(BUDGET, now=time.monotonic() - BUDGET)
         self.assertEqual(time_budget.local_titles(10), 0)
 
 

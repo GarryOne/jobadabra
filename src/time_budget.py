@@ -37,8 +37,7 @@ FLOOR = 3     # the first jobs of a search are scored whatever the clock says (o
 _scored = [0]  # scores started in this search (may_score)
 LOCAL_TITLES = 300  # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
 _local = [0]
-FEED = 30   # local titles still sorted in scoring's share while the search has matched no job: one batch feeds the FLOOR scores (local_titles)
-_fed = [0]
+FEED = 30   # local titles a call still sorts in scoring's share while no matched job waits for a score: one batch feeds scoring (local_titles)
 _lock = threading.Lock()
 
 
@@ -65,7 +64,7 @@ def start(seconds, now=None, stage=None, name=None):
     score_first(False)
     _said.clear()
     _scored[0] = 0   # a new search: its first FLOOR scores start again whatever the clock
-    _local[0] = _fed[0] = 0
+    _local[0] = 0
 
 
 def part(seconds):
@@ -109,14 +108,14 @@ def local_titles(wanted):
     if ended():
         return 0
     with _lock:
-        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while the search has
-            # no job to score yet, one batch, or the FLOOR scores have nothing to take (27 Oct 2026, the quality suite on Free AI: its places
-            # took ~50 s, then "No time left" for its 10 titles, and the first press listed 0 of its 12 postings)
+        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while no job this
+            # search matched waits for a score, one batch a call, or scoring has nothing to take (27 Oct 2026: the quality suite on Free AI,
+            # "No time left" for its 10 titles, 0 of 12 postings listed; a benchmark first press left 28 local titles unsorted at 80 s of 135
+            # with its one match scored)
             from . import run_counts
-            if _scored[0] or run_counts.any_match():
+            if run_counts.waiting():
                 return 0
-            n = max(0, min(wanted, FEED - _fed[0], LOCAL_TITLES - _local[0]))
-            _fed[0] += n
+            n = max(0, min(wanted, FEED, LOCAL_TITLES - _local[0]))
         else:
             n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
         _local[0] += n

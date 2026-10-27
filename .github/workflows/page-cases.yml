@@ -45,6 +45,7 @@ on:
       - 'desktop/e2e/lib/recorded-false-readings.mjs'
       - 'desktop/e2e/lib/recorded-origin.mjs'
       - 'desktop/e2e/lib/replay-browser.mjs'
+      - 'desktop/e2e/lib/replay-deadline.mjs'
       - 'desktop/e2e/lib/replay-candidate.mjs'
       - 'desktop/e2e/lib/replay-lines.mjs'
       - 'desktop/e2e/lib/replay-shard.mjs'
@@ -122,7 +123,7 @@ jobs:
   replay:
     name: page cases ${{ matrix.shard }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:

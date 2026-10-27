@@ -17,6 +17,7 @@ import {E2E} from './app.mjs';
 import {EXTENSION_DIR, browserChannel, copyExtension, freePort} from './extension.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
+import {replayLimit} from './replay-deadline.mjs';
 
 // The extension's stored settings (chrome.storage.local as JSON) -> '' or why it is not isolated: its app address is not the stand-in's port, or an address
 // on the live app's port 47111 is stored anywhere. An ADDRESS, never the bare digits: 27 Oct 2026 (run 40447725087) a stored timestamp, "boot":"1793074711121",
@@ -78,7 +79,16 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
     throw error;
   }
   await setExtensionStorage(worker, {workerUrl: `http://127.0.0.1:${port}`, token: 'e2e', ladderAct: true});   // ladderAct: the fill ladder's repair acts in test runs only (fake applicant; extension/ladder/fill-climb.js)
-  const close = async () => { await context.close().catch(() => {}); stub?.close(); };
+  const page = await context.newPage();
+  const control = await context.newCDPSession(page);
+  const close = async () => {
+    try { await replayLimit('isolated browser.close', 3500, () => context.close()); }
+    catch (error) {
+      // Why (2026-10-27): a stuck context close must not leave its browser alive after the case deadline.
+      await replayLimit('isolated browser force-close', 1000, () => control.send('Browser.close')).catch(() => {});
+      throw error;
+    } finally { stub?.closeAllConnections(); stub?.close(); }
+  };
 
   // Fails the run unless the extension talks to the stand-in only (isolationProblem).
   const assertIsolated = async () => {
@@ -88,7 +98,6 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   };
   await assertIsolated().catch(async error => { await close(); throw error; });
 
-  const page = await context.newPage();
   const panel = () => page.evaluate(() => {
     const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
     const text = selector => (root?.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();

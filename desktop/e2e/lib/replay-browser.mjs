@@ -5,6 +5,7 @@
 // Isolation between tabs: told/asked/judged count only requests whose body names the case's host, notTold counts the case's own lines and the ones no case's host names (a line of another case's host is not its tab's; a failure in parallel is run again alone by the caller), and two cases that share a host never run at the same time (their pages, and the extension's per-host state, would meet).
 import {startRealExtension} from './real-extension.mjs';
 import {fillSeconds} from './replay-time.mjs';
+import {timedReplay, replayLimit} from './replay-deadline.mjs';
 import {syntheticNavigation, routeSyntheticNavigation} from './synthetic-navigation.mjs';
 import {answerFor, answerPage, caseDelays, contactOf, caseFiles, caseHosts, caseStatuses, fillSettled, isExtensionPage, judgeCase} from './page-replay.mjs';
 
@@ -52,12 +53,12 @@ export function nextRunnable(queue, runningHosts) {
 }
 
 // -> {run, live, serve, close}: one browser, the stand-in answering by case. items: every case that may run in it (their AI routes are known up front).
-export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp = false} = {}) {   // appPort: the caller's own stand-in app (row replay); then the AI answers and the request lists below are the caller's
+export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp = false, startExtension = startRealExtension, judge = judgeCase, caseBudgetMs, cleanupMs} = {}) {   // appPort: the caller's own stand-in app (row replay); then the AI answers and the request lists below are the caller's
   const live = [];   // states of the cases running now: {item, hosts, answer, from, tabs: Set, opened: [pages], shared}
   const allHosts = [...new Set(items.flatMap(caseHosts))];   // a request that names none of them could belong to any tab
   const routes = [...new Set(items.flatMap(item => Object.keys(item.ai || {})))];
   const answer = Object.fromEntries(routes.map(route => [route, sent => { const state = caseForRequest(live, route, sent); return state?.answer[route] ? state.answer[route](sent) : {}; }]));
-  const run = await startRealExtension({extensionDir, cv: items.some(item => item.cv !== false), allowAllSites: true, answer, offline: true, appPort, cdp, contactFor: query => contactForUrl(live, query.get('url'))});   // each tab's own applicant details (a case's `contact`: its phone), asked by the page's address
+  const run = await startExtension({extensionDir, cv: items.some(item => item.cv !== false), allowAllSites: true, answer, offline: true, appPort, cdp, contactFor: query => contactForUrl(live, query.get('url'))});   // each tab's own applicant details (a case's `contact`: its phone), asked by the page's address
   const files = new Map(), statuses = new Map(), delays = new Map(), redirects = new Map();   // pathKey -> each live case's response; a synthetic redirect is consumed once
   await run.context.route('**/*', route => {   // ONE route for the browser, before any tab navigates: a route added while another tab loads let a request out (example.ch, 11 Oct 2026)
     const url = route.request().url(), host = new URL(url).hostname;
@@ -75,48 +76,50 @@ export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp 
 
   // One case in its own tab: -> {name, ok, failures, seen}.
   async function runInTab(item) {
-    const navigation = syntheticNavigation(item);
-    const hosts = caseHosts(item), others = live.length;
-    const state = {item, hosts, answer: answerFor(item), from: Date.now(), tabs: new Set(), shared: others > 0};
-    if (others) for (const one of live) one.shared = true;
-    for (const [key, html] of caseFiles(item)) files.set(key, html);
-    for (const [key, list] of caseStatuses(item)) statuses.set(key, list);
-    for (const [key, ms] of caseDelays(item)) delays.set(key, ms);
-    for (const [key, target] of navigation.redirects) redirects.set(key, target);
-    live.push(state);
-    const first = run.requests.length, began = Date.now(), tab = await run.context.newPage();
-    const strict = () => run.requests.slice(first).filter(request => hosts.some(host => request.body.includes(host)));
-    const loose = () => run.requests.slice(first).filter(request => hosts.some(host => request.body.includes(host)) || !allHosts.some(host => request.body.includes(host)));   // the case's own, and lines no case's host names (the extension's log lines often carry no host)
-    const popups = trackPopups(tab);
-    const theTabs = () => {   // the tabs opened since this case began (not its own), told apart by who opened them; alone, every tab is the case's
-      const ours = [], unplaced = [];
-      for (const one of everyOpened.filter(entry => entry.page !== tab && entry.at >= state.from)) {
-        const root = state.shared === false ? tab : rootOf(one);
-        if (root === tab || popups.has(one.page) || (root === undefined && hosts.some(host => one.page.url().includes(host)))) ours.push(one);
-        else if (root === undefined && !allHosts.some(host => one.page.url().includes(host))) unplaced.push(one);   // opened by nobody we know, at an address of no case: it could be this case's
-      }
-      return {ours, unplaced};
-    };
-    const ours = open => !isExtensionPage(open) && open !== run.page && (open === tab || state.shared === false || hosts.some(host => open.url().includes(host)) || !/^https?:/.test(open.url()));   // alone: every tab is the case's
-    try {
-      await routeSyntheticNavigation(run.context, tab, item, route => answerPage(route, files, statuses, delays, redirects));
-      await tab.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
-      const result = await judgeCase(item, {run, page: tab, pages: () => run.context.pages().filter(ours), mine: () => (state.shared ? loose() : run.requests.slice(first)), strict: state.shared ? strict : null, otherHosts: state.shared ? allHosts.filter(host => !hosts.includes(host)) : null,
-        every: () => run.requests.slice(first), all: () => (state.shared ? loose() : run.requests.slice(first)), opened: () => theTabs().ours.length, unplacedTabs: () => theTabs().unplaced.length});   // the case's own tab is not one it opened (solo: the first tab, opened before the count starts)
+    const hosts = caseHosts(item);
+    let state, tab;
+    return timedReplay(item, async step => {
+      const navigation = syntheticNavigation(item), others = live.length;
+      state = {item, hosts, answer: answerFor(item), from: Date.now(), tabs: new Set(), shared: others > 0};
+      if (others) for (const one of live) one.shared = true;
+      for (const [key, html] of caseFiles(item)) files.set(key, html);
+      for (const [key, list] of caseStatuses(item)) statuses.set(key, list);
+      for (const [key, ms] of caseDelays(item)) delays.set(key, ms);
+      for (const [key, target] of navigation.redirects) redirects.set(key, target);
+      live.push(state);
+      const first = run.requests.length, began = Date.now();
+      tab = await step('newPage', () => run.context.newPage(), late => replayLimit('late replay tab.close', 5000, () => late.close()));
+      const strict = () => run.requests.slice(first).filter(request => hosts.some(host => request.body.includes(host)));
+      const loose = () => run.requests.slice(first).filter(request => hosts.some(host => request.body.includes(host)) || !allHosts.some(host => request.body.includes(host)));   // the case's own, and lines no case's host names (the extension's log lines often carry no host)
+      const popups = trackPopups(tab);
+      const theTabs = () => {   // the tabs opened since this case began (not its own), told apart by who opened them; alone, every tab is the case's
+        const ours = [], unplaced = [];
+        for (const one of everyOpened.filter(entry => entry.page !== tab && entry.at >= state.from)) {
+          const root = state.shared === false ? tab : rootOf(one);
+          if (root === tab || popups.has(one.page) || (root === undefined && hosts.some(host => one.page.url().includes(host)))) ours.push(one);
+          else if (root === undefined && !allHosts.some(host => one.page.url().includes(host))) unplaced.push(one);   // opened by nobody we know, at an address of no case: it could be this case's
+        }
+        return {ours, unplaced};
+      };
+      const ours = open => !isExtensionPage(open) && open !== run.page && (open === tab || state.shared === false || hosts.some(host => open.url().includes(host)) || !/^https?:/.test(open.url()));   // alone: every tab is the case's
+      await step('routes', () => routeSyntheticNavigation(run.context, tab, item, route => answerPage(route, files, statuses, delays, redirects)));
+      await step('goto', () => tab.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}));
+      const result = await step('judge', () => judge(item, {run, page: tab, pages: () => run.context.pages().filter(ours), mine: () => (state.shared ? loose() : run.requests.slice(first)), strict: state.shared ? strict : null, otherHosts: state.shared ? allHosts.filter(host => !hosts.includes(host)) : null,
+        every: () => run.requests.slice(first), all: () => (state.shared ? loose() : run.requests.slice(first)), opened: () => theTabs().ours.length, unplacedTabs: () => theTabs().unplaced.length}));
+      await step('fillSettled', () => fillSettled(tab));
       return {name: item.name, ...result, seconds: (Date.now() - began) / 1000, fillTime: () => fillSeconds(run.requests.slice(first), hosts)};   // read after the tab settled (lib/replay-time.mjs)
-    } finally {
-      await fillSettled(tab);   // a fill still running reports its moves before the tab goes (page-replay.mjs)
-      live.splice(live.indexOf(state), 1);
-      for (const key of caseFiles(item).keys()) { files.delete(key); statuses.delete(key); redirects.delete(key); }
-      await Promise.all(run.context.pages().filter(open => open !== run.page && !isExtensionPage(open) && (open === tab || hosts.some(host => open.url().includes(host)))).map(open => open.close().catch(() => {})));
-    }
+    }, async step => {
+      if (state && live.includes(state)) live.splice(live.indexOf(state), 1);
+      for (const key of caseFiles(item).keys()) { files.delete(key); statuses.delete(key); delays.delete(key); redirects.delete(key); }
+      await step('tab.close', () => Promise.all(run.context.pages().filter(open => open !== run.page && !isExtensionPage(open) && (open === tab || hosts.some(host => open.url().includes(host)))).map(open => open.close())));
+    }, {budgetMs: caseBudgetMs, cleanupMs});
   }
   return {run, live, runInTab, close: () => run.close()};
 }
 
 // Every case in one browser, `tabs` at a time. -> results in the order of items: {name, ok, failures, seen}. A case that throws is a failure with the error as its reason.
-export async function replayInTabs(items, {tabs = 4, extensionDir, onResult} = {}) {
-  const browser = await startReplayBrowser(items, {extensionDir});
+export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, startBrowser = startReplayBrowser, ...browserOptions} = {}) {
+  const browser = await replayLimit('replay browser startup', 120000, () => startBrowser(items, {extensionDir, ...browserOptions}));
   const queue = [...items], results = new Map(), running = new Map();   // running: case name -> promise
   const hostsRunning = () => new Set([...running.keys()].flatMap(name => caseHosts(items.find(item => item.name === name))));
   try {
@@ -127,8 +130,12 @@ export async function replayInTabs(items, {tabs = 4, extensionDir, onResult} = {
       }
       if (running.size) await Promise.race(running.values());
     }
-    if (!(await browser.run.assertIsolated().catch(() => false))) for (const result of results.values()) result.failures.push('isolation'), result.ok = false;
-  } finally { await browser.close(); }
+    if (!(await replayLimit('replay isolation', 5000, () => browser.run.assertIsolated()).catch(() => false))) for (const result of results.values()) result.failures.push('isolation'), result.ok = false;
+  } finally {
+    try { await replayLimit('replay browser.close', 10000, () => browser.close()); }
+    catch (error) { for (const result of results.values()) { result.ok = false; result.failures.push(error.message); } }
+    for (const result of results.values()) onResult?.(result);
+  }
   return items.map(item => results.get(item.name));
 }
 const runInTab_ = (browser, item) => browser.runInTab(item).catch(error => ({name: item.name, ok: false, failures: [`error: ${String(error?.message || error).slice(0, 200)}`], seen: {tabs: 0, opened: 0}}));

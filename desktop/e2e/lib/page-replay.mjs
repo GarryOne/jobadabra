@@ -13,6 +13,7 @@ import {movesFromRequests, repairsFromRequests} from './ladder-moves.mjs';
 import {falseReadings} from './replay-truth.mjs';
 import {fillSeconds} from './replay-time.mjs';
 import {linesOfCase, saysWord} from './replay-lines.mjs';
+import {timedReplay} from './replay-deadline.mjs';
 import {syntheticNavigation, takeSyntheticRedirect, routeSyntheticNavigation} from './synthetic-navigation.mjs';
 
 export const REPLAY_DIR = path.join(E2E, 'recorded');
@@ -180,18 +181,19 @@ export const contactOf = item => (item.contact ? {first_name: 'Test', last_name:
 
 // One case in its own browser (JP_REPLAY_TABS=1, and the run alone after a failure in parallel): the same checks over every request of that browser.
 export async function runCase(item, {extensionDir} = {}) {
-  const navigation = syntheticNavigation(item);
-  const run = await startRealExtension({extensionDir, cv: item.cv !== false, ...(contactOf(item) ? {contact: contactOf(item)} : {}), allowAllSites: true, answer: answerFor(item), offline: true});   // offline: nothing but the case's pages
-  const pages = caseFiles(item), statuses = caseStatuses(item), delays = caseDelays(item);
-  try {
+  let run;
+  return timedReplay(item, async step => {
+    const navigation = syntheticNavigation(item);
+    run = await step('browser.start', () => startRealExtension({extensionDir, cv: item.cv !== false, ...(contactOf(item) ? {contact: contactOf(item)} : {}), allowAllSites: true, answer: answerFor(item), offline: true}), late => late.close());   // offline: nothing but the case's pages
+    const pages = caseFiles(item), statuses = caseStatuses(item), delays = caseDelays(item);
     for (const host of caseHosts(item)) await run.context.route(`https://${host}/**`, route => answerPage(route, pages, statuses, delays, navigation.redirects));
     await routeSyntheticNavigation(run.context, run.page, item, route => answerPage(route, pages, statuses, delays, navigation.redirects));
     let opened = 0;   // every tab a page or the extension opened during the run (a tab loop closes the tab behind it: the count at the end stays 1)
     run.context.on('page', open => { if (!open.url().startsWith('chrome-extension://')) opened += 1; });
-    await run.page.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
-    const result = await judgeCase(item, {run, page: run.page, pages: () => run.context.pages().filter(open => !isExtensionPage(open)), mine: () => run.requests, all: () => run.requests, opened: () => opened});
-    if (!(await run.assertIsolated())) result.failures.push('isolation');
-    await fillSettled(run.page);
+    await step('goto', () => run.page.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'}));
+    const result = await step('judge', () => judgeCase(item, {run, page: run.page, pages: () => run.context.pages().filter(open => !isExtensionPage(open)), mine: () => run.requests, all: () => run.requests, opened: () => opened}));
+    if (!(await step('isolation', () => run.assertIsolated()))) result.failures.push('isolation');
+    await step('fillSettled', () => fillSettled(run.page));
     return {...result, ok: !result.failures.length, fillTime: () => fillSeconds(run.requests, caseHosts(item))};   // the fill's own clock (lib/replay-time.mjs)
-  } finally { await run.close(); }
+  }, async step => { if (run) await step('browser.close', () => run.close()); });
 }

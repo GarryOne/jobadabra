@@ -32,9 +32,9 @@ export const FORMS = [
   // The same question as the benchmark asked it (form 106): its own applicant's facts and a delivery-lead posting. Before #2213 the typed text never named the subject
   // (0/3: one off-topic sentence, two boxes left with reminders only). A later change to the written rule must keep this passing.
   {id: 'written-uncovered-live', applicant: 'sreNoBacklog', fields: [field('backlog', 'Describe a time you improved backlog cleanliness and Jira structure across multiple teams without adding unnecessary process overhead.', 'textarea')],
-    // Why notMatch (benchmark run 40451005110, 27 Oct 2026; owner "Honest draft = right"): the judge called a sentence that claims the question's own skill invented ("so I know how to
-    // standardise … without slowing them down", "I kept coordination lightweight"). A proxy for that judge, not a word list in the product.
-    expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board', notMatch: 'so I know how|I know how to|taught me|lightweight|I kept |without (adding (a |new |extra )|much |any |new |extra )'}}},
+    // Why notMatch (benchmark runs 40451005110 + 40456280034, owner 27 Oct 2026, "Stop after the fact"): the typed draft is one sentence; any second sentence (the text before the
+    // "• Add:" lines) is where the judge found claims beyond the facts ("so I know how to …", "both were shared standards that many teams used").
+    expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board', notMatch: '[.!?]\\s+\\S'}}},
   // The same ask with the whole form around it, as the extension sends it (benchmark run 40451005110: contact boxes, summary, cover letter, salary, referral): with many
   // boxes the draft is one sentence, and its link to the subject turned into a claim of the skill asked (judged invented 2/3). The single-box case above did not show it.
   {id: 'written-uncovered-live-form', applicant: 'sreNoBacklog', fields: [field('firstname', 'First name', 'text'), field('lastname', 'Last name', 'text'), field('email', 'Email', 'email'),
@@ -42,7 +42,7 @@ export const FORMS = [
     field('salary', 'What are your salary expectations for this role? A range is fine.', 'text'),
     field('backlog', 'Describe a time you improved backlog cleanliness and Jira structure across multiple teams without adding unnecessary process overhead.', 'textarea'),
     field('referral', 'Have you been referred to this position by one of our employees? If so, please let us know their full name.', 'text')],
-    expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board', notMatch: 'so I know how|I know how to|taught me|lightweight|I kept |without (adding (a |new |extra )|much |any |new |extra )'}}},
+    expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board', notMatch: '[.!?]\\s+\\S'}}},
   {id: 'record', fields: [field('record', 'Do you have a criminal record?', 'radio', ['Yes', 'No'])],
     expect: {record: {empty: true}}},
   {id: 'mixed', fields: [field('sponsor', 'Do you need a visa to work in Switzerland?', 'radio', ['Yes', 'No']), field('start', 'Earliest start date', 'text'),

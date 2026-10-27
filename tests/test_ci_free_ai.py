@@ -16,6 +16,8 @@ RELAY_STEP = re.compile(r'uses: \./(?:\.ci-relay/)?\.github/actions/free-ai-rela
 # Jobs that see E2E_ANTHROPIC_KEY but start no relay, each with its reason.
 NO_RELAY = {
     ('desktop.yml', 'ai-ready'): 'the gate\'s preflight: it checks CI_FREE_AI_CF_TOKEN instead (asserted below)',
+    ('e2e.yml', 'plan'): 'the one AI check before the suites (key-preflight.mjs, asserted below)',
+    ('e2e-windows.yml', 'plan'): 'the one AI check before the suites (key-preflight.mjs, asserted below)',
     ('review-eval.yml', 'eval'): 'scores a review model on the judged issues, by hand; asks the model itself, runs no app',
     ('key-org-proof.yml', 'proof'): 'proves which organization each key belongs to; runs no suite',
     ('record-sites.yml', 'smoke'): 'the live pool on real sites: its own key and recordings; moves in its own PR',
@@ -54,6 +56,22 @@ class CiFreeAiTests(unittest.TestCase):
     def test_the_gate_checks_the_free_ai_token(self):
         gate = jobs((WORKFLOWS / 'desktop.yml').read_text())['ai-ready']
         self.assertIn('CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}', gate)
+
+    def test_every_relay_matrix_checks_the_ai_once_first(self):
+        # Owner, 27 Oct 2026 ("let's close the gaps", part 4): the relay starts without checking CI's token, so a refused token was a red suite each.
+        # Every matrix job that starts the relay needs a job that runs key-preflight.mjs with the Free AI token.
+        missing = []
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            found = jobs(path.read_text())
+            for name, text in found.items():
+                if not RELAY_STEP.search(text) or 'matrix:' not in text:
+                    continue
+                need = re.search(r'(?m)^    needs: *\[?([^\]\n]*)', text)
+                needed = [n.strip() for n in need.group(1).split(',')] if need else []
+                if not any('node desktop/e2e/key-preflight.mjs' in found.get(n, '') and 'CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}' in found.get(n, '')
+                           for n in needed):
+                    missing.append(f'{path.name} {name}')
+        self.assertEqual(missing, [], 'a job these need must run node desktop/e2e/key-preflight.mjs with CI_FREE_AI_CF_TOKEN')
 
     def test_the_relay_never_reaches_production(self):
         action = ACTION.read_text()

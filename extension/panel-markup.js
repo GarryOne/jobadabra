@@ -28,7 +28,8 @@
     .pill small { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
     .ready .pill b { color: var(--good); }
     /* the card (open) */
-    .card { width: 372px; max-height: min(640px, calc(100vh - 110px)); display: flex; flex-direction: column; background: var(--card);
+    /* Why (2026-10-27, owner): the panel card must fit narrow browser viewports without clipping its actions. */
+    .card { width: min(372px, calc(100vw - 24px)); max-height: min(640px, calc(100vh - 110px)); display: flex; flex-direction: column; background: var(--card);
       border-radius: 16px; overflow: hidden; box-shadow: 0 18px 50px var(--shadow), 0 0 0 1px var(--line); }
     .head { display: flex; align-items: center; gap: 8px; padding: 11px 14px; background: var(--head); color: #fff; }
     .mark { width: 22px; height: 22px; border-radius: 6px; background: #f5c542; display: grid; place-items: center; font: 800 10px/1 system-ui; }
@@ -85,6 +86,15 @@
     .pill-stop { display: none; padding: 6px 14px; border-radius: 999px; background: var(--btn); color: var(--ink); border: 1px solid var(--line); font-weight: 650; box-shadow: 0 4px 14px var(--shadow); }
     .jp.busy .pill-stop { display: block; } .card:not([hidden]) ~ .pill-stop { display: none; }
     .verify .shield { content: ''; display: inline-block; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+    /* Why (2026-10-27, owner): missing and rejected letters share an important but non-danger reminder, with an amber edge and concise next step. */
+    .letter-notice.verify { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 0 10px; padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; background: var(--soft); }
+    .letter-notice .letter-icon { width: 16px; height: 16px; margin-top: 2px; color: var(--warn); }
+    .letter-notice .letter-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+    .letter-notice .letter-title { font-size: 13px; font-weight: 600; }
+    .letter-notice .letter-reason { color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .letter-notice .letter-action { min-height: 30px; max-width: 100%; margin-top: 4px; padding: 5px 9px; border-radius: 6px; white-space: normal; text-align: left; }
+    .letter-notice .letter-action:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+    .letter-notice .letter-action::after { content: none; }
     .actions { border-top: 1px solid var(--line); padding-top: 6px; justify-content: center; }
     .tip { display: flex; gap: 8px; align-items: baseline; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; color: var(--ink); cursor: pointer; }
     .tip-chip { flex: none; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -135,7 +145,7 @@
         <div class="progress"><div class="progress-line"><b></b><span></span></div><div class="bar"><i></i></div></div>
         <div class="stopped" hidden><span class="pause"><i></i><i></i></span><div><b>Stopped by you</b><span class="s-text"></span></div></div>
         <div class="verify" hidden><span class="shield"></span><div class="v-body"><b class="v-title"></b><span class="v-text">Finish it on the page, then press Check again.</span></div><button class="primary v-show" type="button">Show on form</button><button class="link v-again" type="button">Check again</button></div>
-        <div class="letter-setup verify" hidden><span class="shield"></span><div class="v-body"><b>HIGH PRIORITY · Cover letter</b><span class="letter-reason"></span></div><button class="primary letter-action" type="button">Create cover letter</button></div>
+        <div class="letter-setup verify letter-notice" hidden><svg class="letter-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg><div class="letter-copy"><b class="letter-title"></b><span class="letter-reason"></span><button class="secondary letter-action" type="button">Go to Profile → Cover letter</button></div></div>
         <div class="live"><h4>Done so far</h4><ol class="steps"></ol></div>
         <div class="fill-box"><button class="primary fill"><i class="spin"></i><span class="label">Fill this form</span></button><button class="stop-btn" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again">Stop</button><p class="step-hint">Counts update as new fields appear.</p></div>
         <div class="note trace-note" hidden><span>Chrome shows a debugging bar while Jobadabra keeps a trace of this fill, so you can report a problem.</span><button class="got-it" type="button">Got it</button></div>

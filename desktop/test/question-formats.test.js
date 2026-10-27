@@ -117,6 +117,9 @@ test('older AI labels are rejudged with explicit calendar-day distinctions', asy
     return {content: [{type: 'text', text: JSON.stringify({formats: labels.map((label, i) => ({label, kind: kinds[i], options: [], list: '', constraints: false}))})}]};
   }}}}});
   assert.match(request.system, /one exact calendar day/i);
+  assert.match(request.system, /length of time/i);
+  assert.match(request.system, /availability stated as prose/i);
+  assert.match(request.system, /an availability question asking for one exact day is a date/i);
   assert.match(request.system, /year without month\/day/i);
   assert.deepEqual(labels.map(label => formats.keptFor(storage, label).kind), kinds);
 });

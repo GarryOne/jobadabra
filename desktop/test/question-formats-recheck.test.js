@@ -51,11 +51,15 @@ test('only the labels shown are asked, at most 10 old ones per call; the rest wa
   assert.equal(ai.sent.length, 1, 'a label not shown, or already re-asked, costs nothing');
 });
 
-test('a kind read from the form\'s own field is never asked again; an already-stamped judgment neither', async () => {
+test('a generic text field from the form can be semantically judged once; an already-stamped judgment is not re-asked', async () => {
   const storage = storageWith({questionFormats: {'start': {kind: 'text', options: [], from: 'fill', at: '2026-10-17'}, 'city': old('text', {kinds: KINDS_VERSION})}});
   const ai = client();
   await formats.ensure(storage, ['Start', 'City'], {ai: {client: ai}});
-  assert.equal(ai.sent.length, 0);
+  assert.equal(ai.sent.length, 1, 'generic text needs semantic classification');
+  assert.deepEqual(ai.sent[0].labels, ['Start']);
+  assert.equal(formats.keptFor(storage, 'Start').kinds, KINDS_VERSION);
+  await formats.ensure(storage, ['Start', 'City'], {ai: {client: ai}});
+  assert.equal(ai.sent.length, 1, 'judged labels are not re-asked');
 });
 
 test('measured cost of one re-ask of 9 old questions (estimate: tokens ≈ characters / 4, Haiku $0.1 in / $0.5 out per million)', async () => {

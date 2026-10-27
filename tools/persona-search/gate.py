@@ -1,7 +1,7 @@
-"""The search PR check (search-personas.yml): 6 fictional job seekers each press Find jobs once; a PR is red when one finds fewer right jobs than
-the lowest of main's last 3 runs, or a press runs past 3 minutes (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate,
+"""The search PR check (search-personas.yml): 6 fictional job seekers each press Find jobs once; a PR is red when a press runs past 3 minutes; the
+right jobs are shown per persona and pooled, red only from 10 measured main runs on (QUALITY_MIN_RUNS; owner, 27 Oct 2026, "Time only, until 10 runs"). Origin (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate,
 for a profile, for a speed perspective.. We break other use-cases."; his four answers on the sketch: here with our own tools, all 6 in parallel,
-right role + place by a blind judge, red below main's range).
+right role + place by a blind judge).
   python3 tools/persona-search/gate.py cv <n> <out>                       the persona's fictional CV: <out>/draw/cv.pdf, cv.md, draw.json
   python3 tools/persona-search/gate.py extract <jobs.sqlite> <jobs.json>  the open jobs (title, company, place, source) for the judge
   python3 tools/persona-search/gate.py result <n> <out>                   <out>/result.json from presses.jsonl and judged.json
@@ -15,8 +15,13 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))['personas']
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/test_three_minutes.py)
-MAIN_RUNS = 3       # Why (owner, 27 Oct 2026, "Below main's range"): one run is noise (the same commit found 53 and 20 jobs), so the floor is the
-#                     lowest of main's last 3 runs, never one run's number
+MAIN_RUNS = 3       # the per-persona "Main" column shows the newest 3 measured runs (numbers only; they decide nothing: see QUALITY_MIN_RUNS)
+# Why (owner, 27 Oct 2026, "Time only, until 10 runs"): #2289 changed no search code and went red at 10 right jobs in total against main's 13 (main's own two
+# measured runs: 13 and 16), each persona's lowest of 3 being 0-1 jobs. Until main has QUALITY_MIN_RUNS measured runs, quality is shown and never red; from then
+# on a PR is red when its six-persona total falls below main's average minus twice its spread (sample standard deviation), computed here and switched on by
+# itself: no guessed number.
+QUALITY_MIN_RUNS = 10
+QUALITY_SPREADS = 2
 PERSONA_CAP_USD = 0.10   # Why (owner, 27 Oct 2026, "Haiku on an API key ... with a per-run $ cap"): measured on #2259 (4 personas): $0.045-0.079, mean $0.058, so ~$0.35 a run; the cap is ~25% over the worst
 COST = 'Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY'
 
@@ -120,9 +125,27 @@ def judge_one(row, mains):
     if row.get('non_haiku'):
         reasons.append(f"{row['non_haiku']} AI step(s) not on Haiku 5.5")
     seen = [m['local'] for m in mains if isinstance(m.get('local'), int)][:MAIN_RUNS]
-    if seen and isinstance(row.get('local'), int) and row['local'] < min(seen):
-        reasons.append(f"{row['local']} right jobs, below main's lowest ({min(seen)})")
-    return reasons, seen
+    return reasons, seen   # right jobs are shown, never red per persona (quality(): the pooled total)
+
+
+def _total(run):
+    """The six personas' right jobs added up, or None when this run did not measure every persona (an errored, failed or unmeasured one)."""
+    rows = [run.get(n) for n in range(1, len(PERSONAS) + 1)]
+    if any(r is None or r.get('not_measured') or r.get('error') or r.get('code') or r.get('crashes') or not isinstance(r.get('local'), int) for r in rows):
+        return None
+    return sum(r['local'] for r in rows)
+
+
+def quality(pr, main_runs):
+    """-> {mode: 'shown'|'gated', measured, total, floor, red}. 'shown' below QUALITY_MIN_RUNS measured main runs (a run that measured all six personas);
+    then the newest QUALITY_MIN_RUNS of them give mean and sample spread, and the PR is red below mean - QUALITY_SPREADS x spread."""
+    import statistics
+    totals = [t for t in (_total(run) for run in main_runs) if t is not None][:QUALITY_MIN_RUNS]
+    total = _total(pr)
+    if len(totals) < QUALITY_MIN_RUNS:
+        return {'mode': 'shown', 'measured': len(totals), 'total': total, 'floor': None, 'red': False}
+    floor = statistics.mean(totals) - QUALITY_SPREADS * statistics.stdev(totals)
+    return {'mode': 'gated', 'measured': len(totals), 'total': total, 'floor': round(floor, 1), 'red': total is not None and total < floor}
 
 
 def compare(pr, main_runs):
@@ -135,15 +158,17 @@ def compare(pr, main_runs):
         red += bool(reasons)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
                      'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
-    if red:
-        state, head = 'failure', f'🔴 {red} persona(s) red'
+    quality_ = quality(pr, main_runs)
+    if red or quality_['red']:
+        parts = ([f'{red} persona(s) red'] if red else []) + ([f"total {quality_['total']} right jobs, below main's floor {quality_['floor']}"] if quality_['red'] else [])
+        state, head = 'failure', '🔴 ' + ' · '.join(parts)
     elif unmeasured:
         state, head = 'neutral', f'⚪ not measured ({unmeasured} of {len(PERSONAS)}): {next(r["not_measured"] for r in rows if r["not_measured"])}'
     else:
-        state, head = 'success', "🟢 no persona below main's range · every press ≤ 180 s"
-    if not main_runs and state == 'success':
-        head += " · no main run to compare yet (the first merge records one)"
-    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs)}
+        state, head = 'success', '🟢 every press ≤ 180 s'
+    head += ' · ' + (f"quality: shown, gate starts at {QUALITY_MIN_RUNS} measured main runs, {quality_['measured']} so far" if quality_['mode'] == 'shown' else
+                     f"quality: gated at total {quality_['floor']} (main's average minus {QUALITY_SPREADS} spreads over {quality_['measured']} runs)")
+    return {'state': state, 'head': head, 'rows': rows, 'main_runs': len(main_runs), 'quality': quality_}
 
 
 def table(verdict):
@@ -156,7 +181,7 @@ def table(verdict):
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
         lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
     lines += ['', '<sub>This PR / Main = jobs a blind judge (Haiku 5.5) called right role AND right place, of the jobs found; one press each, '
-              'a fresh install. Red: a press over 180 s, or a persona below the lowest of main\'s last 3 runs.</sub>']
+              'a fresh install. Red: a press over 180 s, or (from 10 measured main runs) the six-persona total below main\'s average minus twice its spread.</sub>']
     return '\n'.join(lines) + '\n'
 
 

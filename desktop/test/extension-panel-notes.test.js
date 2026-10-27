@@ -33,7 +33,7 @@ test('a page mark of posting or opening is never Ready and never counts; the fil
   assert.match(panel, /pageMark = \(m => \(\['form', 'account', 'sign-up'\]\.includes\(m\) \? '' : m \|\| 'reading'\)\)\(document\.documentElement\.getAttribute\('data-jobpilotto-page'\) \|\| ''\)/, 'default-deny: Ready only on a page judged to be a form');
   assert.match(panel, /!account && !pageMark;/, 'no CV tip on a page that is not a form');
   assert.match(read('page/review-payload.js'), /page: \(mark => mark \|\| 'reading'\)/, 'the app hears the same: an unjudged page reports no counts');
-  assert.match(read('fill-flow.js'), /markPage\(tab\.id, role, false, kind\);/);
+  assert.match(read('fill-flow.js'), /markPage\(tab\.id, role, false, kind, \{working: true\}\);/, 'set while the read goes on: no verdict yet (extension/working-mark.js)');
   assert.match(read('fill-flow.js'), /markPage\(tab\.id, role, pressed, kind\);/);
   const {markOf} = await import('../../extension/tab-pages.js');
   assert.deepEqual([markOf('no-form'), markOf('no-form', true), markOf('form'), markOf('account'), markOf('account', false, 'sign_up'), markOf('reading'), markOf('signing-in'), markOf('other')],

@@ -1,0 +1,120 @@
+{
+ "schemaVersion": 1,
+ "id": "inv-form-robot-field-en",
+ "source": "invented",
+ "lang": "en",
+ "why": "an application form whose own fields include a robot check and a small check frame: it is the form, bot_check false (27 Oct 2026: the first read said other + bot check and the page was handed to the person)",
+ "capture": {
+  "page": "ladder-fixtures/pages/inv-form-robot-field-en.html"
+ },
+ "url": "https://jobs.example.com/northwind/jobs/ml-engineer",
+ "expect": {
+  "outcome": "form"
+ },
+ "sketch": {
+  "url": "https://jobs.example.com/northwind/jobs/ml-engineer",
+  "title": "Job Application for Machine Learning Engineer at Northwind",
+  "headings": [
+   "Machine Learning Engineer",
+   "Apply for this job"
+  ],
+  "controls": [
+   {
+    "type": "text",
+    "label": "First Name*",
+    "required": true
+   },
+   {
+    "type": "text",
+    "label": "Last Name*",
+    "required": true
+   },
+   {
+    "type": "email",
+    "label": "Email*",
+    "required": true
+   },
+   {
+    "type": "tel",
+    "label": "Phone",
+    "required": false
+   },
+   {
+    "type": "file",
+    "label": "Resume/CV*",
+    "required": true
+   },
+   {
+    "type": "text",
+    "label": "LinkedIn Profile",
+    "required": false
+   },
+   {
+    "type": "text",
+    "label": "Please specify notice period in your current workplace",
+    "required": false
+   },
+   {
+    "type": "textarea",
+    "label": "Confirm you are not a robot",
+    "required": false
+   }
+  ],
+  "buttons": [
+   "Submit application"
+  ],
+  "frames": [
+   "check.example.net"
+  ],
+  "mails": []
+ },
+ "candidates": [
+  {
+   "n": 1,
+   "kind": "button",
+   "text": "Submit application",
+   "position": "main"
+  },
+  {
+   "n": 2,
+   "kind": "sentence",
+   "text": "Machine Learning Engineer",
+   "position": "main"
+  },
+  {
+   "n": 3,
+   "kind": "sentence",
+   "text": "Remote · Full-time",
+   "position": "main"
+  },
+  {
+   "n": 4,
+   "kind": "sentence",
+   "text": "Apply for this job",
+   "position": "main"
+  },
+  {
+   "n": 5,
+   "kind": "sentence",
+   "text": "This site is protected by a check and the provider's Privacy Policy and Terms of Service apply.",
+   "position": "main"
+  }
+ ],
+ "answer": {
+  "kind": "form",
+  "confidence": 0.95,
+  "apply_button": "",
+  "apply_button_kind": "",
+  "apply_route": "",
+  "apply_by": "",
+  "apply_email": "",
+  "form_frame": -1,
+  "account_step": "",
+  "register_control": "",
+  "signin_control": "",
+  "account_button": "",
+  "bot_check": false,
+  "still_drawing": false
+ },
+ "answer_path": "app"
+}

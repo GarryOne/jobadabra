@@ -10,6 +10,8 @@
 //  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (worker/test/form-ready.test.js).
 import {PAGE_FILES, apiFor, askEarly, clickCombos, forgetGivenUp, settings} from './flow.js';
 import {decide} from './log.js';
+import {laterLookIsForm} from './later-look.js';
+import {holdVerdict} from './working-mark.js';
 import {retireFill} from './one-fill.js';
 import {handoffKey} from './ready-handoff.js';
 import {noteRole} from './account.js';
@@ -315,7 +317,7 @@ export async function consider(tab, jobUrl) {
   if (late(tab, gen, 'account details')) return;   // the peek waits on the app: the person may have pressed on meanwhile (beta run 38383983490: a sign-up's read filled the form after it)
   decide('fill', `page kind: ${kind?.kind || ruled}`, {by: kind ? kind.by : 'structure rule', confidence: kind?.confidence ?? null, ms: Date.now() - lookedAt, outcomeMs,
     ...(kind && kind.role !== ruled ? {rule: ruled} : {}), host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
-  await markPage(tab.id, role, false, kind);   // a page with no form says so to the panel: never Ready, never counts (page-mark.js)
+  await markPage(tab.id, role, false, kind, {working: true});   // a page with no form says so to the panel: never Ready, never counts (page-mark.js); no verdict yet: the read goes on (working-mark.js)
   const carried = takePressed(tab.id);   // the Apply press that brought the tab here: confirmed below only if this page takes the fill (ladder/climb.js)
   await noteRole(tab.id, tab.url, noted || role);   // a sign-up page filled like a form is still an account page: no application learning, no "application form" stage (Migros, 8 Oct 2026)
   // Event-driven: an account page is looked at the moment its kind is known, not at the panel's next tick. One filled with your details is looked at AFTER
@@ -362,6 +364,11 @@ export async function consider(tab, jobUrl) {
           if (afterRoute === 'navigated') { started.delete(key); return; }
           if (afterRoute) { role = 'form'; pressed = true; await noteRole(tab.id, tab.url, role); } else noteNoEffect(key, chosen.pressed);
         }
+        // The look after the press says this page IS the form, as sure as the first answer: filled, never handed over as a bot check (later-look.js).
+        if (role === 'no-form' && laterLookIsForm(kind, lookAfterPress)) {
+          decide('fill', 'a later look says this page is the form: filled', {host, first: kind?.kind || '', confidence: lookAfterPress.confidence});
+          await forgetKind(tab, kind, 'a later look says form'); kind = lookAfterPress; role = 'form'; await noteRole(tab.id, tab.url, role);
+        }
       }
     }
   }
@@ -371,7 +378,7 @@ export async function consider(tab, jobUrl) {
     if (noJobPage(kind)) decide('fill', 'the AI says this is no job page: its fields do not make it a form', {host, confidence: kind.confidence});
     else { await forgetKind(tab, kind, 'a posting with no Apply but a form\'s fields'); role = 'form'; await noteRole(tab.id, tab.url, role); }
   }
-  await markPage(tab.id, role, pressed, kind);   // after the Apply press: the form came (cleared) or is opening
+  await markPage(tab.id, role, pressed, kind, {working: true});   // after the Apply press: the form came (cleared) or is opening; the climbs below still work
   // The application form is inside a frame of this page (Datadog, 10 Oct 2026): the page-kind AI named it by index; its stored address is opened in this same tab, https only, once per tab and page.
   // The numbered digest names a frame too (rung 2 unsure, 14 Oct 2026: a posting with its form in a frame got no frame from the unsure rung): the same opening, from the answer that carries it.
   const openFormFrame = async answer => {
@@ -415,7 +422,10 @@ export async function consider(tab, jobUrl) {
     }
     blindVerdict(blindLook, look, led);
   }
+  // A no-form end on a page that shows a form's fields: no verdict yet, the answer is forgotten and the page looked at once more (owner, 27 Oct 2026: "don't show a verdict").
+  if (holdVerdict({role, counts, lookedAgain: lookedAgain.has(key)})) { decide('fill', 'no form said, but the page shows fields: looking again before any verdict', {host}); await forgetKind(tab, kind, 'no form on a page with fields'); watchForFields(tab, jobUrl, undefined, 2, counts?.frameHosts || []).catch(() => {}); return; }
   if (role !== 'form') {
+    await markPage(tab.id, role, pressed, kind);   // stopped and sure: the verdict now
     await progress(tab.id, '');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
     // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two
     // minutes and filled once it shows (SmartRecruiters, 9 Oct 2026: the check was read as an empty page, "no form", and nobody was told).

@@ -89,6 +89,11 @@ button that submits this sign-in or sign-up form (never "forgot password", a soc
 // Datadog, 11 Oct 2026: with the form in a listed frame and the page's own Controls empty, the small model answered kind "form" (the page embeds a form), which cannot carry form_frame.
 export const FRAME_RULE = `If the page's own Controls hold no application form and the application sits inside one of these frames (a hosted job board embedded in the employer's page), the page itself is a posting, never a form: answer posting, form_frame is that frame's index and apply_by stays form. A frame that is not clearly the application changes nothing: form_frame -1.`;
 
+// Appended ONLY when the page has visible frames AND its own form controls (the shape of a form with a robot check among its fields), so every other page is asked as before.
+// Greenhouse, 27 Oct 2026: the form's own controls held "Confirm you are not a robot" beside a check frame; the ask said bot_check, kind other, and the form waited ~45 s "handed to the person".
+export const FORM_CHECK_RULE = `This page has its own form controls and visible frames. A robot check that is one of the form's own fields (a box or a frame among the application's fields, done just before sending), or a small "protected by" badge, does not stand in front of the page: judge the page by its own Controls (form when they ask for the application) and bot_check is false. bot_check is true only when the check covers or replaces the page's content.`;
+export const formCheckShape = page => page.frames.length > 0 && page.controls.filter(item => !['button', 'submit'].includes(item.type)).length >= 3;
+
 const MAIL = /[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i;
 const clean = (value, max) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 // The layer drawn over the page (extension/on-top.js: structure only), kept as {shape, role, text, buttons} or null. The same small helper stands in rung3-digest.js (a rung does not import another's internals).
@@ -187,7 +192,7 @@ async function pageKindOnce(client, raw, cache, {now = Date.now(), fresh = false
         `Controls (type · label · required):\n${page.controls.map(item => `- ${item.type} · ${item.label || '(no label)'}${item.required ? ' · required' : ''}`).join('\n') || '(none)'}`,
         `Buttons: ${page.buttons.join(' | ') || '(none)'}`,
         `Addresses (sentences or links on the page that carry an email address):\n${page.mails.map(text => `- ${text}`).join('\n') || '(none)'}`,
-        `Frames: ${page.frames.join(' | ') || '(none)'}`,
+        `Frames: ${page.frames.join(' | ') || '(none)'}${formCheckShape(page) ? `\n${FORM_CHECK_RULE}` : ''}`,
         `Frame candidates (index · host · path · size; a posting whose application form is inside one of them names its index in form_frame):\n${page.frameCandidates.map((item, index) => `${index} · ${item.host} · ${item.path} · ${item.width}x${item.height}`).join('\n') || '(none)'}${page.frameCandidates.length ? `\n${FRAME_RULE}` : ''}`,
         ...(page.onTop ? [layerLine(page.onTop)] : []),
         ...(page.noEffect.length ? [noEffectLine(page.noEffect)] : []),

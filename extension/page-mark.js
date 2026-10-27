@@ -6,6 +6,7 @@
 import {apiFor, settings} from './flow.js';
 import {sessionOf} from './tab-identity.js';
 import {markOf} from './tab-pages.js';
+import {workingMark} from './working-mark.js';
 
 // The app hears each step from the worker itself, so a page with no panel (a small sign-in page) still moves the desktop's card.
 async function tellApp(tabId, page) {
@@ -14,8 +15,8 @@ async function tellApp(tabId, page) {
   if (config) apiFor(tabId, config, '/extension/event', {method: 'POST', body: JSON.stringify({type: 'page', page, session, tab: tabId})}).catch(() => {});
 }
 
-export async function markPage(tabId, role, pressed = false, kind = null) {   // kind: the AI's page answer, for a sign-up page's own words
-  const value = markOf(role, pressed, kind?.accountStep || '', kind?.kind || '');
+export async function markPage(tabId, role, pressed = false, kind = null, {working = false} = {}) {   // kind: the AI's page answer, for a sign-up page's own words; working: the read goes on, so no verdict (working-mark.js)
+  const mark = markOf(role, pressed, kind?.accountStep || '', kind?.kind || ''), value = working ? workingMark(mark) : mark;
   await chrome.scripting.executeScript({target: {tabId}, func: mark => {
     if (mark) document.documentElement.setAttribute('data-jobpilotto-page', mark); else document.documentElement.removeAttribute('data-jobpilotto-page');
   }, args: [value]}).catch(() => {});

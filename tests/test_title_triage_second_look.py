@@ -52,6 +52,7 @@ class SecondLookTest(unittest.TestCase):
         got = title_triage.decide(TITLES, SEARCH, client)
         self.assertFalse(got['staff platform engineer, kubernetes'])
         self.assertFalse(got['product owner platform'])
+        self.assertTrue(any(was_second for was_second, _ in client.calls), 'the second look was asked')
 
     def test_a_second_look_that_fails_leaves_those_titles_unjudged_for_the_next_refresh(self):
         client = Client(first=['senior sre'], second=[], fails=True)

@@ -38,6 +38,26 @@ class AiAnswerCacheTests(unittest.TestCase):
             with self.subTest(file=name):
                 self.assertRegex(text, r'E2E_RERUN=1[^\n]*E2E_AI_REPLAY=0|E2E_AI_REPLAY=0[^\n]*E2E_RERUN=1')
 
+    # Main cannot read a PR's cache (27 Oct 2026: #2180 green on its PR with 0 misses, main red after 8 live questions): the PR hands its answers over.
+    def test_a_green_pr_job_hands_its_answers_to_main(self):
+        uploads = [step for step in steps((WORKFLOWS / 'e2e.yml').read_text()) if 'upload-artifact' in step and 'ai-answers-' in step]
+        self.assertEqual(len(uploads), 1, 'one upload of the AI answers, from a PR run')
+        step = uploads[0]
+        for part in ('success()', "inputs.pr_suites != ''", "inputs.after_merge == ''", 'include-hidden-files: true', 'path: desktop/e2e/.ai-cache',
+                     "name: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}"):
+            self.assertIn(part, step)
+        self.assertNotIn('always()', step)
+
+    def test_main_after_a_merge_lays_the_prs_answers_over_its_cache_before_the_suite(self):
+        names = steps((WORKFLOWS / 'e2e.yml').read_text())
+        restore = next(i for i, step in enumerate(names) if 'actions/cache/restore' in step and 'ai-answers-' in step)
+        load = next(i for i, step in enumerate(names) if 'pr-answers.mjs' in step and 'run:' in step)
+        first = next(i for i, step in enumerate(names) if step.startswith('name: Run the ${{ matrix.key }} suite (first try)'))
+        self.assertLess(restore, load)
+        self.assertLess(load, first)
+        self.assertIn("inputs.after_merge != ''", names[load])
+        self.assertIn("KEY: ${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}", names[load])
+
 
 if __name__ == '__main__':
     unittest.main()

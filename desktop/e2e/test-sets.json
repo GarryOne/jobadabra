@@ -182,6 +182,7 @@
   "pool-gaps.test.mjs",
   "pool-labels-honest.test.mjs",
   "pool-shadow.test.mjs",
+  "pr-answers.test.mjs",
   "pr-body.test.mjs",
   "prejudge.test.mjs",
   "prompt-sources.test.mjs",

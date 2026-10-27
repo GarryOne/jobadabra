@@ -1,5 +1,5 @@
-"""The search PR check (search-personas.yml, tools/persona-search/gate.py): red when a persona finds fewer right jobs than main's lowest of its last 3
-runs or a press runs past 3 minutes, on recorded numbers; every AI step on Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY with a $ cap (owner, 27 Oct 2026, "Haiku on an API key")."""
+"""The search PR check (search-personas.yml, tools/persona-search/gate.py): red when a press runs past 3 minutes; right jobs are shown, and red only from
+10 measured main runs, below main's average minus twice its spread (owner, 27 Oct 2026, "Time only, until 10 runs"), on recorded numbers; every AI step on Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY with a $ cap (owner, 27 Oct 2026, "Haiku on an API key")."""
 import json
 import re
 import sys
@@ -31,24 +31,67 @@ class TheRecordedRunsDecideAsTheOwnerAsked(unittest.TestCase):
     def test_the_recorded_drop_is_red(self):
         verdict = gate.compare(DROP, [BEFORE])
         self.assertEqual(verdict['state'], 'failure')
-        p4 = verdict['rows'][3]
-        self.assertIn("1 right jobs, below main's lowest (11)", p4['reasons'])
+        self.assertFalse(any('right jobs' in r for r in verdict['rows'][3]['reasons']), "p4's 11 -> 1 is shown, not red: quality is not gated before 10 measured main runs")
         self.assertTrue(any('press took 251 s' in r for r in verdict['rows'][4]['reasons']), 'p5 ran past 3 minutes')
 
     def test_main_runs_within_mains_range_are_green(self):
-        self.assertEqual(gate.compare(FIRST_PRESS, [DROP, BEFORE])['state'], 'success', "p4's 1 is inside main's range (1, 11)")
+        self.assertEqual(gate.compare(FIRST_PRESS, [DROP, BEFORE])['state'], 'success')
         self.assertEqual(gate.compare(FIRST_PRESS, [FIRST_PRESS])['state'], 'success', 'the same numbers again')
 
-    def test_only_mains_newest_three_runs_set_the_floor(self):
+    def test_the_main_column_shows_the_newest_three_measured_runs(self):
         high = run([0, 0, 0, 5, 0, 0], [150] * 6)
-        self.assertEqual(gate.compare(high, [high, high, high, FIRST_PRESS])['state'], 'success')
-        self.assertEqual(gate.compare(FIRST_PRESS, [high, high, high, FIRST_PRESS])['state'], 'failure', 'the 4th run is older than the floor')
+        self.assertEqual(gate.compare(FIRST_PRESS, [high, high, high, FIRST_PRESS])['rows'][3]['main'], [5, 5, 5])
 
     def test_no_main_run_yet_is_green_on_the_3_minutes_alone(self):
         verdict = gate.compare(FIRST_PRESS, [])
         self.assertEqual(verdict['state'], 'success')
-        self.assertIn('no main run to compare yet', verdict['head'])
+        self.assertIn('quality: shown, gate starts at 10 measured main runs, 0 so far', verdict['head'])
         self.assertEqual(gate.compare(DROP, [])['state'], 'failure', 'presses over 180 s are red with or without main')
+
+
+# #2289 (27 Oct 2026) changed no search code: p1 1->0, p4 10->9, p5 1->0, and went red. Main's two measured runs then: totals 13 and 16 (40522092534, 40528942517).
+MAIN_13 = run([1, 0, 0, 10, 1, 1], [145, 151, 152, 181, 145, 149])
+MAIN_16 = run([0, 0, 0, 11, 4, 1], [144, 144, 134, 178, 149, 152])
+PR_2289 = run([0, 0, 0, 9, 0, 1], [143, 143, 148, 178, 147, 147])
+
+
+class QualityIsPooledAndGatedByMainsOwnSpread(unittest.TestCase):
+    def test_2289s_numbers_are_green(self):
+        verdict = gate.compare(PR_2289, [MAIN_16, MAIN_13])
+        self.assertEqual(verdict['state'], 'success', 'one job less on three personas is noise, not red')
+        self.assertIn('quality: shown, gate starts at 10 measured main runs, 2 so far', verdict['head'])
+        self.assertEqual(verdict['quality']['mode'], 'shown')
+
+    def test_a_press_over_180_seconds_is_red(self):
+        slow = run([0, 0, 0, 9, 0, 1], [143, 143, 148, 181, 147, 147])
+        self.assertEqual(gate.compare(slow, [MAIN_16, MAIN_13])['state'], 'failure')
+
+    def test_below_ten_measured_main_runs_quality_is_never_red(self):
+        nine = [run([4, 4, 4, 4, 4, 4], [150] * 6)] * 9
+        verdict = gate.compare(run([0] * 6, [150] * 6), nine)
+        self.assertEqual((verdict['state'], verdict['quality']['mode'], verdict['quality']['measured']), ('success', 'shown', 9))
+
+    def test_with_ten_measured_runs_below_average_minus_two_spreads_is_red_above_is_green(self):
+        totals = [14, 16, 13, 18, 15, 17, 14, 16, 15, 17]   # mean 15.5, sample spread 1.6 -> floor 12.3
+        mains = [run([t, 0, 0, 0, 0, 0], [150] * 6) for t in totals]
+        floor = gate.compare(run([12, 0, 0, 0, 0, 0], [150] * 6), mains)['quality']['floor']
+        self.assertAlmostEqual(floor, 12.3, places=1)
+        self.assertEqual(gate.compare(run([12, 0, 0, 0, 0, 0], [150] * 6), mains)['state'], 'failure', '12 < 12.3')
+        self.assertEqual(gate.compare(run([13, 0, 0, 0, 0, 0], [150] * 6), mains)['state'], 'success', '13 > 12.3')
+        red = gate.compare(run([1, 1, 1, 1, 1, 1], [150] * 6), mains)
+        self.assertIn('below main\'s floor', red['head'])
+        self.assertEqual(red['quality']['mode'], 'gated')
+
+    def test_failed_main_presses_do_not_supply_quality_measurements(self):
+        for failure in ({'code': 1}, {'crashes': 1}):
+            with self.subTest(failure=failure):
+                failed = run([0] * 6, [150] * 6)
+                failed[3].update(failure)
+                self.assertEqual(gate.quality(PR_2289, [failed] * 10)['measured'], 0)
+
+    def test_a_main_run_that_did_not_measure_every_persona_is_not_one_of_the_ten(self):
+        errored = {**run([1] * 6, [150] * 6), 3: {'persona': 3, 'error': 'the judge wrote no verdicts'}}
+        self.assertEqual(gate.quality(run([1] * 6, [150] * 6), [errored] * 10)['measured'], 0)
 
 
 class SilenceIsNeverGreen(unittest.TestCase):
@@ -216,7 +259,7 @@ class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
     def test_mains_numbers_are_what_the_compare_reads_back(self):
         self.assertIn('name: search-personas-result', WORKFLOW)
         self.assertIn('-n search-personas-result', WORKFLOW)
-        self.assertIn('--limit 10', WORKFLOW)
+        self.assertGreaterEqual(int(re.search(r'--limit (\d+)', WORKFLOW).group(1)), 10)   # the gate needs room for gate.QUALITY_MIN_RUNS measured runs
         self.assertEqual(gate.MAIN_RUNS, 3)
         self.assertEqual(gate.PRESS_LIMIT, 180)
 

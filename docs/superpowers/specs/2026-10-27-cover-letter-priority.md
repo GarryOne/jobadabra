@@ -27,5 +27,5 @@ The frozen wizard integration source is session32 commit `be1f04cc9ca4af723cb3bf
 - [x] The six product and test findings closed by Gitar are present in merged #2304 and covered by focused regression tests.
 - [x] Regression proves opening the step currently starts AI generation before a user choice.
 - [x] Wizard generation starts only after the existing Draft with AI action; fake-AI test still verifies explicit approval. (proof: desktop/test/wizard-letter.test.js)
-- [ ] Session32 updates the frozen e2e wizard helper to make the same explicit action.
+- [x] Session32 updates the frozen e2e wizard helper to make the same explicit action. (proof: source commit `f4efd3ee12694685f4925343113d08b1513ef767`; `desktop/test/harness-wizard-letter.test.js` passes 5/5)
 - [ ] Follow-up PR passes current-head checks.

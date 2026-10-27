@@ -1,4 +1,4 @@
-// The wizard harness must arm its canned AI before auto-generation and leave approval explicit.
+// The wizard harness arms canned AI before the explicit draft action and leaves approval to the person.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {completeWizardLetter, wizardSetupAnswer} from '../e2e/lib/wizard.mjs';
@@ -11,7 +11,7 @@ const scenario = async ({failDraft = false, withApi = true, detailsOnly = false}
     click: async selector => {
       events.push(selector);
       if (selector === '#draft-save') {
-        assert.notEqual(canned, original, 'stub must be armed before transition starts the draft');
+        assert.notEqual(canned, original, 'stub must be armed before the explicit draft action starts the request');
         const details = JSON.parse(canned({output_config: {format: {schema: {properties: {proposals: {type: 'array'}}}}}}));
         assert.ok(details.proposals.length, 'strategy save retains its fictional CV details');
         assert.equal(details.letter, undefined);

@@ -674,6 +674,7 @@ jobs:
     permissions:
       actions: write   # start e2e-bisect.yml for a new red suite (tools/e2e_bisect.py)
       issues: write    # the red-main issues
+      checks: read     # the failed steps' annotations the alert quotes (ci-alert.mjs stepCauses; review on #2249)
     steps:
       - uses: actions/checkout@v5
         with:

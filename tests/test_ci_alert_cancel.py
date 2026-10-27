@@ -39,5 +39,24 @@ class AlertSkipsCancelledRun(unittest.TestCase):
         self.assertIn('select(.conclusion == "failure")', text)
 
 
+
+class AlertReadsTheFailedSteps(unittest.TestCase):
+    def test_every_failure_alert_can_read_the_failed_steps_annotations(self):
+        # Review on #2249: ci-alert.mjs stepCauses reads check-run annotations; without `checks: read` the API refuses and the cause silently falls back.
+        missing, seen = [], 0
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            text = path.read_text(encoding='utf-8')
+            top, body = text.split('\njobs:\n', 1)
+            for job in re.split(r'(?m)^  [A-Za-z0-9_-]+:\s*$', body)[1:]:
+                if 'ci-alert.mjs failure' not in job:
+                    continue
+                seen += 1
+                own = re.search(r'(?m)^    permissions:\n((?:      .*\n)+)', job)
+                scopes = own.group(1) if own else (re.search(r'(?m)^permissions:\n((?:  .*\n)+)', top + '\n') or [None, ''])[1]
+                if not re.search(r'(?m)^\s+checks: (read|write)', scopes):
+                    missing.append(path.name)
+        self.assertGreaterEqual(seen, 5, 'positive control: the alert jobs are read')
+        self.assertEqual(missing, [], 'give these alert jobs `checks: read`')
+
 if __name__ == '__main__':
     unittest.main()

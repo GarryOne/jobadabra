@@ -7,6 +7,7 @@ A successful answer save can take several seconds to disappear from Profile → 
 ## Observable behavior
 
 - A successful, non-empty persisted answer immediately leaves the pending Needs review count and modal progress; its current list row briefly shows **Set in its original position**, then fades away after about 1–2 seconds.
+- If adjacent answers are saved before the queue reread, their transient Set rows keep the same captured review order until each acknowledgement expires.
 - The acknowledgement is keyed to the question, survives redraws, filter changes and the queue reread, and cannot remove a different row or be cleared by an old timer.
 - The saved answer remains in its canonical home and is available through the existing Saved/All surfaces. Reloads derive state from persistence; the animation itself is transient.
 - Failed, empty or invalid saves remain in Needs review, preserve the entered value and show the existing error. No success acknowledgement is shown.
@@ -28,7 +29,7 @@ Root cause is shared across reusable-answer and Your details routes; do not spec
 
 ## Acceptance evidence
 
-Focused tests cover successful reusable and Your details completion, the immediate count/modal progression, failed and unusable answers, refresh/filter/rerender identity, and timer replacement. Render fictional before/after states for the PR.
+Focused tests cover successful reusable and Your details completion, the immediate count/modal progression, failed and unusable answers, refresh/filter/rerender identity, adjacent overlapping saves in captured order, and timer replacement. Render fictional before/after states for the PR.
 
 ## Progress
 

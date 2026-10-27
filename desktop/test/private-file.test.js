@@ -72,3 +72,21 @@ test('a killed save leaves no temp that outlives its process or goes into an exp
   const {LEFT_OUT} = await import('../lib/reset.js');
   assert.ok(LEFT_OUT.some(rule => rule.test(live)), 'the export leaves temp files out');
 });
+
+// #2279, gitar-bot: a leftover that cannot be removed (EPERM/EBUSY on Windows) must not stop the save that found it.
+test('a leftover that cannot be removed does not stop the save', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-private-'));
+  const file = path.join(dir, 'settings.json');
+  const gone = spawn(process.execPath, ['-e', '']);
+  await new Promise(done => gone.on('exit', done));
+  const leftover = path.join(dir, `settings.json.${gone.pid}-1.private-tmp`);
+  fs.writeFileSync(leftover, 'half');
+  const rmSync = fs.rmSync;
+  fs.rmSync = (target, options) => {
+    if (String(target).endsWith('.private-tmp') && String(target).includes(`.${gone.pid}-`)) throw Object.assign(new Error('locked'), {code: 'EPERM'});
+    return rmSync(target, options);
+  };
+  try { writePrivate(file, '{"saved":true}'); } finally { fs.rmSync = rmSync; }
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"saved":true}');
+  assert.ok(fs.existsSync(leftover), 'the removal really failed (the mock took effect)');
+});

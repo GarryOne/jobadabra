@@ -51,7 +51,7 @@ class EuresTest(unittest.TestCase):
     def test_keeps_only_jobs_whose_region_is_the_places_with_the_place_as_location(self):
         calls = []
 
-        def get(url, data=None, headers=None):
+        def get(url, data=None, headers=None, timeout=None):
             calls.append(json.loads(data))
             return {'jvs': [jv('a', 'Carpenter', 'BE100'), jv('b', 'Carpenter', 'BE255')]}   # Brussels region; West Flanders
         found = eures.eures(SEARCH, get=get, client=Client({'Brussels': 'BE10'}))
@@ -95,6 +95,20 @@ class EuresTest(unittest.TestCase):
             self.assertTrue(eures.out_of_time(1000.0 + 90, now=1000.0 + 95), 'titles reserve (70 s) + tail (15 s) before 180 s')
         finally:
             time_budget.DEADLINE = time_budget.STARTED = time_budget.BEGAN = time_budget.STAGE_END = None
+
+    def test_a_read_cut_short_by_its_clock_is_queued_not_marked_read_and_asks_nothing(self):
+        import sqlite3
+        asked = []
+        db = sqlite3.connect(':memory:')
+
+        def cut(search):
+            with mock.patch.object(eures, 'out_of_time', lambda began, now=None: True):
+                return eures.eures(search, get=lambda *a, **k: asked.append(1) or {'jvs': []}, client=Client({}))
+        with mock.patch('builtins.print'), mock.patch('src.time_budget.later') as later:
+            aggregators.scan(db, SEARCH, readers=[('EURES', cut)])
+        self.assertEqual((asked, eures.CUT[0]), ([], True))
+        self.assertIsNone(aggregators.read_lately(db, 'EURES', search=SEARCH), 'not marked read: the next search reads it')
+        later.assert_called()
 
 
 if __name__ == '__main__':

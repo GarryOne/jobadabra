@@ -17,7 +17,7 @@ export function schemaProblems(value, schema, at = '$') {
   return found;
 }
 
-// A form-answer reply against what each field should get: expect = {<field id>: {value?: [acceptable values], match?: regex text, empty?: true, category?}} -> [problems].
+// A form-answer reply against what each field should get: expect = {<field id>: {value?: [acceptable values], match?: regex text, empty?: true, category?, use?}} -> [problems].
 export function answerProblems(data, expect) {
   // What reaches the page: the product floors a proposal on a legal or demographic question to an empty kind (worker/src/extension.js answerForm), an unchecked box is no answer, and a
   // proposal is shown, never typed, so an "empty" expectation only fails on a typed answer. A multi-choice value (" && ") is right when every part is.
@@ -32,6 +32,7 @@ export function answerProblems(data, expect) {
     else if (want.match && !(want.maybeEmpty && !given) && !new RegExp(want.match, 'i').test(got.value)) found.push(`${field}: "${got.value}", wanted /${want.match}/`);
     if (want.within && given && !parts.every(part => want.within.includes(part))) found.push(`${field}: "${got.value}" is not one of the options`);
     if (want.category && got && got.category !== want.category) found.push(`${field}: category ${got.category}, wanted ${want.category}`);
+    if (want.use && got && got.use !== want.use) found.push(`${field}: use ${got.use}, wanted ${want.use}`);
   }
   return found;
 }

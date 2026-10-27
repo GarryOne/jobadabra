@@ -135,3 +135,22 @@ test('failureLines names, per case, why it was not right: the error, or each pro
   const lines = failureLines('m', [{id: 'a', right: true}, {id: 'b', right: false, problems: ['highlights: 6, wanted 3-5', 'cover_letter: invented figure 12']}, {id: 'c', error: 'timeout'}, {id: 'd', valid: true, score: 5}]);
   assert.deepEqual(lines, ['m b: highlights: 6, wanted 3-5; cover_letter: invented figure 12', 'm c: timeout']);
 });
+
+test('answerProblems checks use when a case wants it: two saved facts that disagree are proposed, never typed', async () => {
+  const {answerProblems} = await import('../../tools/free-ai-eval-metrics.mjs');
+  const want = {notice: {value: ['2 months', '3 months'], use: 'propose'}};
+  assert.deepEqual(answerProblems({answers: [{field: 'notice', value: '3 months', use: 'propose'}]}, want), []);
+  assert.deepEqual(answerProblems({answers: [{field: 'notice', value: '2 months', use: 'fill'}]}, want), ['notice: use fill, wanted propose']);
+});
+
+// The class: an eval case whose expected answer drifted from the demo data it is built from (16 -> 17 Oct 2026: gender-decline and notice kept old answers).
+test('every form case\'s expected answer rests on lines the demo profile or answers still say', async () => {
+  const fs = await import('node:fs');
+  const {FORMS} = await import('../../tools/free-ai-form-list.mjs');
+  const demo = ['profile.md', 'answers.md'].map(name => fs.readFileSync(new URL(`../demo/${name}`, import.meta.url), 'utf8')).join('\n');
+  for (const form of FORMS) {
+    const typed = Object.values(form.expect).some(want => want.value && !(want.value.length === 1 && /decline|prefer not|do not wish/i.test(want.value[0])) && !want.empty);
+    if (typed) assert.ok(form.rests?.length, `${form.id}: expects a saved answer; name the demo lines it rests on (rests)`);
+    for (const line of form.rests || []) assert.ok(demo.includes(line), `${form.id}: the demo no longer says "${line}"; update the case's expected answer`);
+  }
+});

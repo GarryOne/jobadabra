@@ -33,6 +33,8 @@ test('a persisted Your details answer leaves Needs review immediately, stays Set
 
   saved('First name', 'contact:first-name');
   const review = answersBody.querySelector('.is-review');
+  assert.equal(review.querySelector('.is-completing').classList.contains('no-action'), false, 'Set retains the pending status column');
+  assert.equal(review.querySelector('.is-completing .ui-pill').textContent, 'Set', 'completion uses the shared status chip');
   assert.match(review.textContent, /1 to review/, 'the count drops before the queue reread');
   assert.match(review.textContent, /First name[\s\S]*Set/, 'the completed row gives immediate confirmation');
   assert.match(review.textContent, /Current location[\s\S]*Needed by every form/, 'the neighboring question remains open');

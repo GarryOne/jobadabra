@@ -2515,7 +2515,8 @@ button.is-busy { cursor: progress; opacity: .7; }
 /* Application answers from the owner's mockup (pages/application-answers.js, 17 Oct 2026): one Saved answers card with a header band per section,
    rows without a button, "Answer as" under Advanced options, a review banner. */
 .qa-row.no-action { grid-template-columns: auto minmax(0, 2fr) minmax(0, 2fr); }
-.qa-row.is-completing { transition: opacity .3s var(--ease), transform .3s var(--ease); }
+.qa-row.is-completing { background: color-mix(in srgb, var(--good-soft) 35%, var(--surface)); box-shadow: inset 3px 0 0 var(--good); transition: opacity .3s var(--ease), transform .3s var(--ease); }
+.qa-row.is-completing .qa-chevron { color: var(--good); }
 .qa-row.is-completing.is-leaving { opacity: 0; transform: translateY(-4px); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .qa-row.is-completing { transition: none; } }
 .qa-row.no-action > .ui-pill { justify-self: start; }

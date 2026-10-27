@@ -39,3 +39,7 @@ Focused tests cover successful reusable and Your details completion, the immedia
 - [x] Run focused behavior tests, changed-JS lint, and fictional light before/after screenshots. (proof: desktop/test/answers-review-completion.test.js)
 - [x] Rebase on current main and run the complete fast gate. (proof: docs/superpowers/plans/2026-10-27-answers-review-save-completion.md)
 - [ ] Ship PR and monitor current-head checks/comments through owner merge.
+
+## Approved visual revision
+
+Owner approved the rendered light and narrow dark revision on 27 October: retain a distinct rounded green Set chip in the pending status column, a subtle green row tint and thin green edge. Keep the existing 1.4-second acknowledgement and fade. Preview app opened before explicit approval; styling uses shared tokens and leaves the row grid available for the separate Location-column work.

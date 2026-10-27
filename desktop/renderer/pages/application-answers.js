@@ -96,6 +96,8 @@ function completedRow(view, record) {
     nodes = row(view, {key: `details:${detail.key}`, title: shown(detail.question), under: [detail.details?.where || 'Your details', detail.details?.line].filter(Boolean).join(' · '),
       value: '', needs: false, button: false, status, field: () => el('span')});
   }
+  // Why (2026-10-27, owner): Set keeps the pending row's status column even after its action disappears.
+  nodes[0].classList.remove('no-action');
   nodes[0].classList.add('is-completing');
   if (record.leaving) nodes[0].classList.add('is-leaving');
   return nodes;

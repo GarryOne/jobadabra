@@ -63,7 +63,7 @@ jobs:
         run: |
           set -o pipefail   # a program piped into tee keeps its exit code (tests/test_workflow_pipefail.py)
           git fetch -q origin main
-          node desktop/e2e/pr-suites.mjs --base origin/main --plan
+          node desktop/e2e/pr-suites.mjs --base origin/main --plan --pull-request   # a PR: no `recorded` (page-cases.yml replays the cases; lib/pr-suites.mjs ON_PR_ELSEWHERE)
       - name: Start them
         id: start
         if: steps.plan.outputs.suites != '' || steps.plan.outputs.windows != ''

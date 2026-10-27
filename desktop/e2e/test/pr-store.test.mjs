@@ -108,3 +108,23 @@ test('#2157: removed UI words count only where a suite expects them, not in step
   assert.deepEqual(suitesExpecting(['Notion page'], {'suites/a.mjs': named, 'suites/b.mjs': expects}), {b: ['Notion page']});
   assert.match(checkedText(named), /'https:\/\/x\.test\/a'/, 'a URL is no comment');
 });
+
+test('one replay of the recorded cases per PR: its e2e run never starts `recorded`; page-cases replays them, all of them on an extension change', async () => {
+  // Owner, 27 Oct 2026: "Drop it, slow cases on PR too". #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44.
+  const {planPrSuites, ON_PR_ELSEWHERE} = await import('../lib/pr-suites.mjs');
+  const {splitForPr} = await import('../lib/replay-slow.mjs');
+  const args = {pointed: ['apply', 'recorded'], linux: () => true};
+  assert.deepEqual(planPrSuites({...args, pullRequest: true}).suites, ['apply'], 'a PR');
+  assert.deepEqual(planPrSuites(args).suites, ['apply', 'recorded'], 'after a merge (main-steps.yml): unchanged');
+  assert.ok(ON_PR_ELSEWHERE.recorded);
+  const workflow = name => fs.readFileSync(new URL(`../../../.github/workflows/${name}`, import.meta.url), 'utf8');
+  assert.match(workflow('pr-suites.yml'), /pr-suites\.mjs --base origin\/main --plan --pull-request/);
+  assert.doesNotMatch(workflow('main-steps.yml'), /--pull-request/, 'main keeps recorded after a merge');
+  const pages = workflow('page-cases.yml');
+  for (const path of ["'extension/**'", "'desktop/e2e/recorded/**'"]) assert.ok(pages.includes(path), `page-cases.yml runs on a PR that changes ${path}`);
+  assert.match(pages, /JP_REPLAY_CHANGED: \$\{\{ steps\.changed\.outputs\.files \}\}/, 'it knows the PR\'s files');
+  const cases = [{name: 'fast'}, {name: 'slow'}];
+  assert.deepEqual(splitForPr(cases, {slow: ['slow'], changed: ['desktop/lib/x.js']}).left.map(one => one.name), ['slow'], 'no extension change: the slow ones wait for main');
+  assert.deepEqual(splitForPr(cases, {slow: ['slow'], changed: ['extension/flow.js']}), {run: cases, left: []}, 'an extension change: every case, slow ones too');
+  assert.match(fs.readFileSync(new URL('./recorded-pages.test.mjs', import.meta.url), 'utf8'), /changed: prChanged/, 'the page-cases run passes the PR\'s files to the split');
+});

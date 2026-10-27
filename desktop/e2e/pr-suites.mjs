@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor} from './lib/coverage-pick.mjs';
@@ -78,7 +78,8 @@ try {
     // Removed text → the steps that quote it, each in the suite that runs it (rehomeQuotes: #2137's channels step was picked in activityfailures).
     const {hits, quoting} = rehomeQuotes(suitesExpecting(strings, sources), stepsQuoting(suitesExpecting(strings, sources), sources), map);
     const pointed = [...new Set([...pointedElse, ...Object.keys(own)])];
-    const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence});
+    const pullRequest = process.argv.includes('--pull-request');   // pr-suites.yml; main-steps.yml (after a merge) leaves it out
+    const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
     // Steps per suite: those its changed lines reach, those that quote removed UI text, those its own file's change touches. Whole: a suite a helper, the extension
     // or the harness points at, a change or a quote outside a named step, a line nobody ran.
     const byLines = stepNamesFor(picked), steps = {};
@@ -101,7 +102,8 @@ try {
     const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
-    const reasons = whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own});
+    const elsewhere = pullRequest ? [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => ON_PR_ELSEWHERE[suite]) : [];
+    const reasons = [...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
     console.log(`\n### Why each one runs (suite [store] · step ← the changed line that reached it)\n${reasons.join('\n')}\n`);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);

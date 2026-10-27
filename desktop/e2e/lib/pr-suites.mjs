@@ -79,8 +79,12 @@ export function report({strings, hits, changedFiles, sources}) {
 // suite itself (its file, a helper it imports, the extension for apply/applyflows: owner's yes to the e2e audit, 26 Oct 2026; #2074, #2075 and #2091 changed apply and
 // it never ran: it had left PRs on 13 Oct, c6a6366, when it ran whole on every flow PR). A line no suite ran (reason "loads …": a file's top level, an unused rule) picks
 // every suite that loads the file, on Linux only: the Free plan runs 5 macOS jobs at once. No count cap since G1a: suites run in parallel.
-export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cadence = {}}) {
-  const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (cadence[suite] || 'always') !== 'manual');
+// Suites a pull request's e2e run never starts, and the workflow that runs the same on the PR: `recorded` replays the recorded cases page-cases.yml already replays
+// (owner, 27 Oct 2026: "Drop it, slow cases on PR too"; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
+// After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
+export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays every recorded case on this PR (all of them when it changes extension/)'};
+export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cadence = {}, pullRequest = false}) {
+  const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (cadence[suite] || 'always') !== 'manual' && !(pullRequest && ON_PR_ELSEWHERE[suite]));
   const run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
 }

@@ -50,7 +50,7 @@ try {
     const linux = {};
     for (const suite of facts.all) linux[suite] = (await facts.os(suite)) === 'ubuntu-24.04';
     // A suite's own watched files (exact paths, not folders) are never shared code for it: quality runs for a score.py line (lib/coverage-pick.mjs stepsCovering).
-    const {map, picked: all} = covered(changedFiles, watchedFiles(facts.watches));
+    const {map, picked: all} = covered(changedFiles, watchedFiles(facts.watches, facts.judges));
     const picked = Object.fromEntries(Object.entries(all).filter(([suite]) => facts.all.includes(suite)));   // a suite removed since the map was made: gone
     const covering = Object.fromEntries(Object.entries(picked).map(([suite, p]) => [suite, p.reason]));
     // A suite a changed file points at runs whole, unless the step map recorded that file for it (a watched src/ Python file): then its lines pick the steps.

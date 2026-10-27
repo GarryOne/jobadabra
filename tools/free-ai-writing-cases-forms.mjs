@@ -4,8 +4,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {tailor} from '../desktop/lib/cv.js';
-import {answerForm} from '../worker/src/extension.js';
 import {PROFILE, ANSWERS} from './free-ai-writing-cases.mjs';
 
 const jobs = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'free-ai-eval-jobs.json'), 'utf8'));
@@ -25,6 +23,7 @@ const area = (field, label, required = true) => ({field, label, type: 'textarea'
 
 /** The five textarea-form cases: the app's answerForm request over invented forms. @returns {Promise<object[]>} cases with feature 'answers' */
 export async function answersCases() {
+  const {answerForm} = await import('../worker/src/extension.js');   // Why (27 Oct 2026, #2277): on demand; the desktop CI job has no worker/node_modules
   const env = {PROFILE_TEXT: PROFILE, ANSWERS_TEXT: ANSWERS, KNOWLEDGE_TEXT: '', SEARCH_TEXT: '', CV_FACTS_TEXT: ''};
   const make = async (id, posting, fields, trap) => ({feature: 'answers', id: `answers-${id}`, trap,
     params: await capture(client => answerForm(env, {url: `https://example.com/jobs/${posting.id}`, fields, page_text: `${posting.title} at ${posting.company}, ${posting.location}. ${posting.description}`}, client))});
@@ -52,6 +51,7 @@ const BASE_CV = {name: 'Alex Morgan', location: 'Zurich', summary: 'Site Reliabi
 
 /** The five CV-tailoring cases: the app's tailor request over the demo CV and an invented posting. @returns {Promise<object[]>} cases with feature 'tailor' */
 export async function tailorCases() {
+  const {tailor} = await import('../desktop/lib/cv.js');
   const make = async (id, posting, trap) => ({feature: 'tailor', id: `tailor-${id}`, trap,
     params: await capture(client => tailor(null, posting, 'unused', {client, base: structuredClone(BASE_CV), profile: PROFILE}))});
   return [

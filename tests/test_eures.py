@@ -110,6 +110,28 @@ class EuresTest(unittest.TestCase):
         self.assertIsNone(aggregators.read_lately(db, 'EURES', search=SEARCH), 'not marked read: the next search reads it')
         later.assert_called()
 
+    def test_the_stage_takes_the_read_started_with_the_search_and_asks_nothing_itself(self):
+        calls = []
+
+        def get(url, data=None, headers=None, timeout=None):
+            calls.append(1)
+            return {'jvs': [jv('a', 'Carpenter', 'BE100')]}
+        read = mock.Mock(return_value=[{'id': 'eures:a'}])
+        with mock.patch.object(eures, 'eures', read), mock.patch('builtins.print'):
+            future = eures.start_early(SEARCH)
+            future.result(5)
+            taken = eures.read(SEARCH)
+        self.assertEqual((taken, read.call_count, calls), ([{'id': 'eures:a'}], 1, []), 'one read, started early; the stage only takes it')
+        self.assertEqual(eures._early, {}, 'taken once')
+
+    def test_the_early_read_is_not_started_in_the_fixture_mode(self):
+        with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/x'}):
+            self.assertIsNone(eures.start_early(SEARCH))
+
+    def test_the_search_starts_it_with_the_run(self):
+        body = (Path(__file__).resolve().parents[1] / 'src' / 'daily_search.py').read_text()
+        self.assertIn('eures.start_early(', body[body.index('board_web.early('):])
+
 
 if __name__ == '__main__':
     unittest.main()

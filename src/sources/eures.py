@@ -32,7 +32,7 @@ def stop_at(began):
     review): EURES runs past the read cut, so its own SECONDS never extend the press: it also stops where the AI steps' share starts (titles reserve + tail)."""
     from .. import time_budget
     stop = began + time_budget.part(SECONDS)
-    end = time_budget.end()
+    end = time_budget.DEADLINE   # the run's end, not a step's share: the AI steps run in their own stage (benchmark 40504636029: a stage end of ~75 s cut every read)
     return stop if end is None else min(stop, end - time_budget.part(time_budget.RESERVE['titles'] + time_budget.TAIL))
 
 
@@ -149,4 +149,41 @@ def eures(search, get=None, client=None):
                                                  aggregators._when((j.get('creationDate') or 0) // 1000), j.get('description')))
                 if len(jobs) >= KEEP or len(listed) < PAGE_SIZE:
                     break
+    return jobs
+
+
+_early = {}   # the search's key -> the read started with the search (start_early)
+
+
+def start_early(search):
+    """Read EURES in the background from the search's first second, so the free-API stage (which starts at 72-107 s, past the title budget) only takes
+    the result. Why (27 Oct 2026, benchmark 40504636029): started inside that stage, EURES was queued by the clock in all 10 personas (0 jobs). Returns the
+    future, or None in the end-to-end fixture mode."""
+    import os
+    from concurrent.futures import ThreadPoolExecutor
+    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+        return None
+    from . import aggregators
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='eures')
+    future = pool.submit(eures, search)
+    pool.shutdown(wait=False)
+    _early[aggregators.search_key(search)] = future
+    return future
+
+
+def read(search):
+    """The free-API stage's reader: the read started with the search when there is one (waited for until the run's stop time), else a read now.
+    Prints what it found, so a press log shows whether EURES gave jobs."""
+    from concurrent.futures import TimeoutError as Late
+    from . import aggregators
+    future = _early.pop(aggregators.search_key(search), None)
+    if future is None:
+        jobs = eures(search)
+    else:
+        try:
+            jobs = future.result(timeout=max(0, stop_at(time.monotonic()) - time.monotonic()) + 1)
+        except Late:
+            CUT[0] = True
+            return []
+    print(f'EURES: {len(jobs)} vacanc{"y" if len(jobs) == 1 else "ies"} in your places read', flush=True)
     return jobs

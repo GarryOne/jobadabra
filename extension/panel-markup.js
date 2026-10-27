@@ -84,11 +84,8 @@
     .link:hover { text-decoration: underline; }
     .pill-stop { display: none; padding: 6px 14px; border-radius: 999px; background: var(--btn); color: var(--ink); border: 1px solid var(--line); font-weight: 650; box-shadow: 0 4px 14px var(--shadow); }
     .jp.busy .pill-stop { display: block; } .card:not([hidden]) ~ .pill-stop { display: none; }
-    .tailor { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between; gap: 10px; margin: 0 !important; padding: 10px 0 !important; border: 0 !important; border-top: 1px solid var(--line) !important; border-radius: 0 !important; background: none !important; }
-    .tailor .t-btn { background: none; border: 0; padding: 0; color: var(--link); font-weight: 600; } .tailor .t-btn::after { content: ' \\2197'; }
-    .tailor .t-text::before, .verify .shield { content: ''; display: inline-block; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
-    .tailor .t-text::before { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 18' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M3 1.7h6.5L13 5.2v11.1H3z'/%3E%3Cpath d='M9.5 1.7v3.5H13M5.5 9h5M5.5 12h5'/%3E%3C/svg%3E"); width: 16px; height: 18px; margin-right: 10px; vertical-align: -4px; }
-    .actions { border-top: 1px solid var(--line); padding-top: 6px; }
+    .verify .shield { content: ''; display: inline-block; background: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+    .actions { border-top: 1px solid var(--line); padding-top: 6px; justify-content: center; }
     .tip { display: flex; gap: 8px; align-items: baseline; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.4; color: var(--ink); cursor: pointer; }
     .tip-chip { flex: none; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
     /* The footer of every state (owner mockup, 16 Oct 2026): the connection on the left, the one Report entry on the right. */
@@ -144,7 +141,6 @@
         <div class="note" hidden><span></span><button class="anyway" hidden>Fill anyway</button></div>
         <div class="left" hidden><h4>Left for you</h4><p class="knock" hidden></p><div class="list"></div></div>
         <button class="secondary recheck" type="button" hidden>Check form again</button>
-        <div class="tailor" hidden><span class="t-text"></span><button class="t-btn">Tailor in Jobadabra</button></div>
         <div class="actions">
           <div class="claude-offer" hidden></div>
           <button class="link go-there" hidden>Go there</button>

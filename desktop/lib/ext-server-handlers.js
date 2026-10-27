@@ -215,13 +215,13 @@ export function registerExtServerHandlers(ctx) {
     return arm;
   });
   server.setFocusHandler(payload => review.noteFocus(terminals.list(), payload));
-  server.setOpenHandler((id, show = '') => {   // the panel's "Open in Jobadabra", or its "Tailor in Jobadabra" (show: 'tailor')
+  server.setOpenHandler(id => {   // the panel's "Open in Jobadabra"
     if (!terminals.get(id)) return false;
     if (!getWindow() || getWindow().isDestroyed()) createWindow();
     getWindow().show();
     getWindow().focus();
     app.focus({steal: true});
-    toWindow('session', 'open', {id, show});
+    toWindow('session', 'open', {id});
     return true;
   });
   server.setStoppedHandler(event => appLog('extension', 'the extension stopped', {reason: String(event?.reason || '').slice(0, 80), marked: stopLiveForms(terminals)}));   // its Stop, the app's, or Chrome's Cancel: every live form says Stopped (lib/stop-all.js)

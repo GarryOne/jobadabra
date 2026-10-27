@@ -156,10 +156,9 @@ export function start(storage, onError = () => {}) {
           'Access-Control-Allow-Headers': 'Authorization, Content-Type'};
         if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
         const ok = req.headers.authorization === `Bearer ${extensionToken(storage)}`;
-        const {session, show} = (() => { try { return JSON.parse(body?.toString() || '{}'); } catch { return {}; } })();
+        const {session} = (() => { try { return JSON.parse(body?.toString() || '{}'); } catch { return {}; } })();
         res.writeHead(ok ? 200 : 401, {'Content-Type': 'application/json', ...cors});
-        // show: 'tailor' (the panel's "Tailor in Jobadabra") lands on the session page with its Tailor button highlighted; any other value is ignored.
-        res.end(JSON.stringify({ok: ok && !!openHandler(String(session || ''), show === 'tailor' ? 'tailor' : '')}));
+        res.end(JSON.stringify({ok: ok && !!openHandler(String(session || ''))}));
         return;
       }
       if (req.url === '/extension/join' || req.url === '/extension/focus') {

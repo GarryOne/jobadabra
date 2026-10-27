@@ -169,15 +169,6 @@
       row.onclick = () => flash(field.el);
       return row;
     }));
-    // Which CV this form gets, and a way to a tailored one IN THE APP: the panel never tailors itself (owner, 27 Oct 2026: "Send me to the app"; "I don't think the extension is that
-    // smart to adapt on the fly and replace the general CV with the tailored one"). The app restarts the form when the tailored CV is ready (desktop/lib/tailored-restart.js).
-    const tailor = $('.tailor');
-    tailor.hidden = !canTailor;
-    if (!tailor.hidden) {
-      $('.t-text').textContent = cv.tailored ? 'Tailored CV attached' : cv.working ? 'Tailoring in Jobadabra…' : 'General CV attached';
-      $('.t-text').title = cv.tailored ? 'A CV written for this job.' : 'A CV tailored to this job gets noticeably more replies. When it is ready, this form fills again from the start with it.';
-      $('.t-btn').hidden = cv.tailored || cv.working;
-    }
     // One tip at the bottom, about what the form is at: knockout questions left, no tailored CV yet, else the CV. Click for the next one.
     const prefer = knockouts ? 'knockout' : canTailor && !cv.tailored ? 'tailor' : 'cv';
     if (SHOW_TIPS && tipFor !== prefer && connection?.connected) { tipFor = prefer; askTip(); }
@@ -281,7 +272,6 @@
     return answer;
   }
   const APP_DOWN = 'Jobadabra is not answering: open the app, then try again.';
-  $('.t-btn').onclick = event => session && ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: session.id, show: 'tailor'}, APP_DOWN);   // the session page, its Tailor button highlighted
   $('.go-there').onclick = () => Number.isInteger(movedTab) && send({type: 'panelGoTab', tab: movedTab}).catch(() => {});
   $('.open-app').onclick = event => session && ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: session.id}, APP_DOWN);
   // The extension's fill reports its steps here (instead of a floating box).

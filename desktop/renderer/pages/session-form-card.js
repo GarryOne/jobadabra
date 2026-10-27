@@ -51,11 +51,7 @@ function showBefore(item, left, account = false, aiKnockouts = []) {
     show(button, !info.tailored && !info.working);
     button.disabled = false;
     button.textContent = job?.code ? 'Tailor my CV' : 'Add this job';
-    const suggested = button.dataset.suggested === item.id;   // the panel's "Tailor in Jobadabra" opened this session (session-show-tailor.js): its main button until pressed
-    button.classList.toggle('primary', suggested);
-    button.classList.toggle('secondary', !suggested);
     button.onclick = async () => {
-      delete button.dataset.suggested;
       button.disabled = true;
       if (!job?.code) {   // the panel's old "Add this job", now here: once the job is listed, the same button tailors
         button.textContent = 'Adding…';

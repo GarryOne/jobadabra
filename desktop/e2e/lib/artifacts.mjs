@@ -2,6 +2,7 @@
 // What a suite leaves behind for the UI loop (ui-findings.yml), written even when the suite stops at a failing step: its layout findings so far, and which steps failed.
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 // The layout findings collected so far (a suite that stops early used to leave none, hiding that night's findings).
 export function writeFindings(ctx) {
@@ -41,14 +42,20 @@ export const failureRecords = (suite, results) => results.filter(result => resul
   .map(result => ({suite, step: result.name, message: String(result.note || '').slice(0, 600), ...(result.where ? {where: result.where} : {}), ...(result.environment ? {environment: true} : {})}));
 
 // Why (#2266, 27 Oct 2026): apply's last step threw "Unexpected end of JSON input" once and the record named no file, so its source stayed unknown.
+// Frames are cut at the repo root, never at the first folder named like ours (review on #2270: a checkout under /home/me/src/, or a dependency's file).
+const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url)).replace(/\\/g, '/');
 /**
  * Where an unexpected error (a SyntaxError, TypeError…, never a step's own `Error`) came from: its first frame in our code, repo-relative.
  * @param {unknown} error  @returns {string} e.g. "desktop/e2e/lib/seed-data.mjs:30:25", or '' for a plain Error or no frame of ours
  */
 export function codeLine(error) {
   if (!(error instanceof Error) || error.constructor === Error) return '';
-  const frame = String(error.stack || '').split('\n').map(line => /\/((?:desktop|extension|worker|tools|src)\/[^\s):]+:\d+:\d+)/.exec(line)?.[1]).find(Boolean);
-  return frame || '';
+  for (const raw of String(error.stack || '').split('\n')) {
+    const line = raw.replace(/\\/g, '/'), at = line.indexOf(REPO_ROOT);
+    const rel = at < 0 ? '' : /^([^\s):]+:\d+:\d+)/.exec(line.slice(at + REPO_ROOT.length))?.[1];
+    if (rel && !rel.includes('node_modules/') && /^(?:desktop|extension|worker|tools|src)\//.test(rel)) return rel;
+  }
+  return '';
 }
 
 // GitHub annotation lines for the failed steps (at most 3), titled "<suite> · <step>" with the step's first line: ci-alert.mjs stepCauses quotes them.

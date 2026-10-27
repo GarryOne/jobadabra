@@ -52,6 +52,9 @@ test('an unexpected error names its first line in our code, and the failure reco
   assert.match(codeLine(thrown), /^desktop\/e2e\/test\/artifacts\.test\.mjs:\d+:\d+$/);
   assert.equal(codeLine(new Error('the step\'s own check failed')), '', 'a step\'s own message needs no line');
   assert.equal(codeLine('not an error'), '');
+  const elsewhere = new TypeError('x');
+  elsewhere.stack = 'TypeError: x\n    at f (/home/me/src/other/tools/x.mjs:1:2)\n    at g (' + new URL('../../node_modules/dep/index.js:3:4', import.meta.url).pathname + ')';
+  assert.equal(codeLine(elsewhere), '', 'a folder named src outside the repo, or a dependency, is not our code (review on #2270)');
   const [record] = failureRecords('apply', [{name: 'a step', status: 'failed', note: 'Unexpected end of JSON input', where: 'desktop/e2e/lib/x.mjs:3:9'}]);
   assert.equal(record.where, 'desktop/e2e/lib/x.mjs:3:9');
   assert.equal('where' in failureRecords('apply', [{name: 'a step', status: 'failed', note: 'why'}])[0], false);

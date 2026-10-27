@@ -208,3 +208,8 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
   (installs keep 60); an employer is judged on a fixed sample of 60 jobs, its counts scaled to all; the run log says "Kind counts by country on N of M feeds".
   Guard: `tests/test_kind_counts.py` (CentralCapAndSampleTest). Lesson: after a run that publishes a new field, count how many entries carry it.
 - The first run at 600 calls: counts on 190 of 4,513 employers, $0.205 for 652 calls (the cap still bound). Owner: "2,000 calls" (~$0.65 a run while filling).
+
+## CLAUDE.md diet (27 Oct 2026)
+- Owner, 27 Oct 2026, asked by the coordinator: cut the always-loaded rules to under 200 lines, "keep commands, gotchas, safety; move incidents and quotes to why.md". Anthropic: "Keep CLAUDE.md short… under 200"; a rule that keeps failing belongs in a hook. The pre-diet text (every long bullet with its dates and quotes) is `git show c7bed98:CLAUDE.md`.
+- **CI freeze** (owner, 27 Oct 2026): harness PRs were 49% of PRs; target under 15%. Until 3 Nov 2026 only session 32 changes workflows, harness lib and ship tooling.
+- **Fresh reviewer** (owner, 27 Oct 2026): bug PRs passed with tests that did not play the owner's scenario (flicker survived 3 fixes); one `/code-review` in a fresh subagent asks that question. The only subagent use besides the owner asking.

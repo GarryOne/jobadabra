@@ -29,6 +29,10 @@ export const FORMS = [
   // No demo fact covers the subject (an SRE asked about backlogs): the draft still answers it, from the nearest real experience, never unrelated facts (owner, 27 Oct 2026; form 106).
   {id: 'written-uncovered', fields: [field('backlog', 'Describe a time you improved backlog cleanliness and Jira structure across multiple teams without adding unnecessary process overhead.', 'textarea')],
     expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board'}}},
+  // The same question as the benchmark asked it (form 106): its own applicant's facts and a delivery-lead posting. Before #2213 the typed text never named the subject
+  // (0/3: one off-topic sentence, two boxes left with reminders only). A later change to the written rule must keep this passing.
+  {id: 'written-uncovered-live', applicant: 'sreNoBacklog', fields: [field('backlog', 'Describe a time you improved backlog cleanliness and Jira structure across multiple teams without adding unnecessary process overhead.', 'textarea')],
+    expect: {backlog: {category: 'written', match: 'backlog|jira|ticket|board'}}},
   {id: 'record', fields: [field('record', 'Do you have a criminal record?', 'radio', ['Yes', 'No'])],
     expect: {record: {empty: true}}},
   {id: 'mixed', fields: [field('sponsor', 'Do you need a visa to work in Switzerland?', 'radio', ['Yes', 'No']), field('start', 'Earliest start date', 'text'),

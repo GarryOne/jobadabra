@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import {answerForm, ANSWER_SCHEMA_FOR_TESTS} from '../worker/src/extension.js';
 import {FORMS as REAL_FORMS} from './free-ai-form-asks.mjs';
 import {FORMS, field} from './free-ai-form-list.mjs';
+import {APPLICANTS} from './free-ai-form-applicants.mjs';
 
 
 // The real-sized set (tools/free-ai-form-asks.mjs, [label, type, options, expect] per field) in this file's shape: ids f1.., expect keys value/empty/match/category/within.
@@ -18,8 +19,9 @@ export async function formCases({profile, answers, forms = FORMS}) {
   for (const form of forms) {
     let params;
     const client = {messages: {create: async request => { params = request; throw new Error('captured'); }}};
-    await answerForm({PROFILE_TEXT: profile, ANSWERS_TEXT: answers, KNOWLEDGE_TEXT: '', SEARCH_TEXT: '', CV_FACTS_TEXT: '', store: {findJob: async () => null, kit: async () => null}},
-      {url: 'https://example.com/jobs/sre', fields: form.fields, page_text: 'Senior Site Reliability Engineer, Zurich. Hybrid. Kubernetes, AWS, on-call.'}, client).catch(error => { if (error.message !== 'captured') throw error; });
+    const who = form.applicant ? APPLICANTS[form.applicant] : null;   // a case the demo applicant cannot show brings its own (tools/free-ai-form-applicants.mjs)
+    await answerForm({PROFILE_TEXT: who?.profile ?? profile, ANSWERS_TEXT: who?.answers ?? answers, KNOWLEDGE_TEXT: '', SEARCH_TEXT: '', CV_FACTS_TEXT: who?.cv ?? '', store: {findJob: async () => null, kit: async () => null}},
+      {url: 'https://example.com/jobs/sre', fields: form.fields, page_text: who?.page ?? 'Senior Site Reliability Engineer, Zurich. Hybrid. Kubernetes, AWS, on-call.'}, client).catch(error => { if (error.message !== 'captured') throw error; });
     const {model, ...rest} = params;
     out.push({id: `form-${form.id}`, action: 'answer', expect: form.expect, params: rest});
   }

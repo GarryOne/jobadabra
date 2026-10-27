@@ -28,3 +28,7 @@ Two tools, same 25 fictional cases (5 per feature, `tools/free-ai-writing-cases.
 
 ## Report
 Per feature: rubric table, head-to-head wins, which judge, n, and cost per Pro user per month from the measured token mix (`/admin/ai-cost`, list prices). A model goes in the routing table only with its measured gain written next to it.
+
+## More steps (27 Oct 2026, owner)
+- `--new-steps` adds the interview review and interview patterns, `--form-steps` the textarea form answers and CV tailoring (5 cases each; `--features interview,patterns,answers,tailor`).
+- Measured (wins of 20, both judges): interview review Haiku beat Sonnet 15-5 and Opus 13-7; patterns Sonnet beat Haiku 13-7 and Opus 15-5; form answers Haiku beat Sonnet 14-6; tailoring Haiku beat Sonnet 15-5. Only cover letters go to Sonnet; the owner stopped testing here.

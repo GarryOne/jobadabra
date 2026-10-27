@@ -102,6 +102,13 @@ jobs:
       - name: Install the tests
         working-directory: desktop/e2e
         run: npm ci || npm install
+      # Why (owner, 27 Oct 2026: "let's close the gaps", part 4): one look at CI's AI before the matrix, as e2e.yml's plan; a refused Free AI token is one red line, not a red suite each.
+      - name: Is CI's AI ready? (one check before the suites)
+        env:
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
+          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
+        run: node desktop/e2e/key-preflight.mjs
       - name: What to run (the Mac run's suites and AI review, or the ones named by hand)
         id: pick
         working-directory: desktop/e2e

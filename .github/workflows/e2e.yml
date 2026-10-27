@@ -168,6 +168,14 @@ jobs:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_DAILY_BUDGET: ${{ vars.E2E_DAILY_BUDGET }}
         run: node ai-spend.mjs >> "$GITHUB_OUTPUT"
+      # Why (owner, 27 Oct 2026: "let's close the gaps", part 4): one look at CI's AI before the matrix, as desktop.yml's ai-ready; a refused Free AI token is one red line here,
+      # not a red suite each (each suite's relay starts without checking it). Guard: tests/test_ci_free_ai.py test_every_relay_matrix_checks_the_ai_once_first.
+      - name: Is CI's AI ready? (one check before the suites)
+        env:
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
+          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
+        run: node desktop/e2e/key-preflight.mjs
       - name: What to run (suites, commit, AI review, release to promote)
         id: list
         working-directory: desktop/e2e

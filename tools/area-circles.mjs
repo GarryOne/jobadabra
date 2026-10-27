@@ -31,7 +31,7 @@ export function report(commits, changed, now) {
   const short = list => list.slice(0, 8).map(pr => `  ${pr.id} ${pr.subject.replace(/\s*\(#\d+\)$/, '')}`);
   const lines = [`Files: ${files.slice(0, 6).join(', ')}${files.length > 6 ? `, +${files.length - 6} more` : ''}`,
     ` 7 days : ${week.length} earlier PRs`, ...short(week), `30 days : ${month.length} earlier PRs`];
-  if (week.length >= CIRCLE_AT) lines.push(`circle: ${week.length} earlier PRs on these files in 7 days (if they were fixes, this PR is the ${week.length + 1}th). Write a Design: block (states, their one owner, the verdicts that change them).`);
+  if (week.length >= CIRCLE_AT) lines.push(`circle: ${week.length} earlier PRs on these files in 7 days (if they were fixes, this PR is fix number ${week.length + 1}). Write a Design: block (states, their one owner, the verdicts that change them).`);
   lines.push(`AREA-CIRCLES 7d=${week.length} 30d=${month.length} files=${files.join(',')}`);
   return lines;
 }

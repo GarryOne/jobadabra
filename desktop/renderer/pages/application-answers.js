@@ -250,10 +250,19 @@ function draw(view, into) {
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().catch(() => {}); }
   const extraRows = extrasIn(questionsNow().list).filter(each => matches({question: each.question, value: each.details?.line || ''}, {query: filters.query}));
   const detailRows = extraRows.filter(each => each.details), setupRows = extraRows.filter(each => each.setup);
+  const open = showHidden ? [...shownRows, ...hiddenRows] : shownRows;
+  const reviewOrder = [...open.map(entry => `review:${entry.item.id}`), ...setupRows.map(entry => entry.key), ...detailRows.map(entry => `details:${entry.key}`)];
   reviewRowsByQuestion = new Map();
-  for (const entry of shownRows) reviewRowsByQuestion.set(identityOf(entry.item.question), {kind: 'answer', entry, rowKey: `review:${entry.item.id}`});
-  for (const entry of detailRows) {
-    const snapshot = {kind: 'detail', entry, rowKey: `details:${entry.key}`};
+  for (const entry of open) {
+    const rowKey = `review:${entry.item.id}`;
+    const position = reviewOrder.indexOf(rowKey);
+    reviewRowsByQuestion.set(identityOf(entry.item.question), {kind: 'answer', entry, rowKey, position, previousRowKey: reviewOrder[position - 1], nextRowKey: reviewOrder[position + 1]});
+  }
+  for (const entry of [...setupRows, ...detailRows]) {
+    if (!entry.details) continue;
+    const rowKey = `details:${entry.key}`;
+    const position = reviewOrder.indexOf(rowKey);
+    const snapshot = {kind: 'detail', entry, rowKey, position, previousRowKey: reviewOrder[position - 1], nextRowKey: reviewOrder[position + 1]};
     reviewRowsByQuestion.set(identityOf(entry.question), snapshot);
     reviewRowsByQuestion.set(keyIdentity(entry.key), snapshot);
   }
@@ -281,48 +290,65 @@ function draw(view, into) {
   }
 
   if (filters.view === 'review') {
-    const open = showHidden ? [...shownRows, ...hiddenRows] : shownRows;
     const review = card('Needs review', 'alert', [pill(`${reviewCount} to review`, 'warn', {dot: true})]);
     review.classList.add('is-review');
-    const renderedCompletions = new Set();
-    let visibleQueueRows = 0, visibleDetailRows = 0;
-    // Why (2026-10-27): render a Set row in its original queue slot so the list does not jump before the acknowledgement fades.
-    for (const entry of open) {
-      const {item, section} = entry;
+    const reviewEntries = [];
+    const representedCompletions = new Set();
+    const addAnswer = entry => {
+      const {item} = entry;
       const completion = completionFor(item.question, '', 'answer');
-      if (completion) {
-        visibleQueueRows++;
-        renderedCompletions.add(completion);
-        review.append(...completedRow(view, completion));
+      if (completion) { reviewEntries.push({kind: 'completion', completion}); representedCompletions.add(completion); }
+      else if (!isResolved(item.question)) reviewEntries.push({kind: 'answer', entry, rowKey: `review:${item.id}`});
+    };
+    for (const entry of open) addAnswer(entry);
+    for (const each of currentSetupRows) reviewEntries.push({kind: 'setup', entry: each, rowKey: each.key});
+    for (const each of detailRows) {
+      const completion = completionFor(each.question, each.key, 'detail');
+      if (completion) { reviewEntries.push({kind: 'completion', completion}); representedCompletions.add(completion); }
+      else if (!isResolved(each.question, each.key)) reviewEntries.push({kind: 'detail', entry: each, rowKey: `details:${each.key}`});
+    }
+    // Why (2026-10-27): an async queue reread can remove a saved source row before its brief Set acknowledgement expires; neighbor keys restore its slot after filters change.
+    for (const completion of visibleCompletions) {
+      if (representedCompletions.has(completion)) continue;
+      const {snapshot} = completion;
+      let index = snapshot.nextRowKey ? reviewEntries.findIndex(entry => entry.rowKey === snapshot.nextRowKey) : -1;
+      if (index < 0 && snapshot.previousRowKey) {
+        const previousIndex = reviewEntries.findIndex(entry => entry.rowKey === snapshot.previousRowKey);
+        if (previousIndex >= 0) index = previousIndex + 1;
+      }
+      if (index < 0) index = Math.min(snapshot.position ?? reviewEntries.length, reviewEntries.length);
+      reviewEntries.splice(index, 0, {kind: 'completion', completion});
+    }
+    let visibleQueueRows = 0, visibleDetailRows = 0;
+    // Why (2026-10-27): keep acknowledged rows in queue order through redraws and async source-list refreshes.
+    for (const current of reviewEntries) {
+      if (current.kind === 'completion') {
+        if (current.completion.snapshot.kind === 'answer') visibleQueueRows++;
+        else visibleDetailRows++;
+        review.append(...completedRow(view, current.completion));
         continue;
       }
-      if (isResolved(item.question)) continue;
+      if (current.kind === 'setup') {
+        const each = current.entry;
+        review.append(...row(view, {key: each.key, title: shown(each.question), under: each.hint, value: '', needs: true,
+          status: statusPill(each.priority, 'bad', 'alert'), action: each.setup.action,
+          run: () => import('./question-review.js').then(page => page.openQuestionReview({start: each.key}))}));
+        continue;
+      }
+      if (current.kind === 'detail') {
+        const each = current.entry;
+        visibleDetailRows++;
+        review.append(...row(view, {key: current.rowKey, title: shown(each.question), under: [each.details?.where || 'Your details', each.details?.line].filter(Boolean).join(' · '), value: '', needs: true,
+          status: statusPill(ASKS[each.details?.kind] || 'Review saved answer', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));
+        continue;
+      }
+      const {entry} = current, {item, section} = entry;
       visibleQueueRows++;
       const sure = statusOf(entry);
-      review.append(...row(view, {key: `review:${item.id}`, title: titleOf(item.question), under: [item.asked ? `Asked by ${item.asked}` : '', shown(section.title) || 'Answers', cutNote(item.question)].filter(Boolean).join(' · '),
+      review.append(...row(view, {key: current.rowKey, title: titleOf(item.question), under: [item.asked ? `Asked by ${item.asked}` : '', shown(section.title) || 'Answers', cutNote(item.question)].filter(Boolean).join(' · '),
         value: valueOf(item), needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), action: sure.action,
         field: () => answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : 'Your answer', entry), kind: () => kindField(view, item)}));
     }
-    // Your details' unclear items: answered in the review drawer, at that item (its one review flow).
-    for (const each of currentSetupRows) {
-      review.append(...row(view, {key: each.key, title: shown(each.question), under: each.hint, value: '', needs: true,
-        status: statusPill(each.priority, 'bad', 'alert'), action: each.setup.action,
-        run: () => import('./question-review.js').then(page => page.openQuestionReview({start: each.key}))}));
-    }
-    for (const each of detailRows) {
-      const completion = completionFor(each.question, each.key, 'detail');
-      if (completion) {
-        visibleDetailRows++;
-        renderedCompletions.add(completion);
-        review.append(...completedRow(view, completion));
-        continue;
-      }
-      if (isResolved(each.question, each.key)) continue;
-      visibleDetailRows++;
-      review.append(...row(view, {key: `details:${each.key}`, title: shown(each.question), under: [each.details?.where || 'Your details', each.details?.line].filter(Boolean).join(' · '), value: '', needs: true,
-        status: statusPill(ASKS[each.details?.kind] || 'Review saved answer', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));
-    }
-    for (const completion of visibleCompletions) if (!renderedCompletions.has(completion)) review.append(...completedRow(view, completion));
     if (ruleRows.length) {
       review.append(el('h5', 'qa-group', `Website rules without an answer · ${ruleRows.length}`));
       for (const each of ruleRows) review.append(...row(view, {...each, needs: true, status: statusPill('Missing answer', 'warn', 'bang-circle')}));

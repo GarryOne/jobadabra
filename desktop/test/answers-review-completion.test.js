@@ -43,6 +43,7 @@ test('a persisted Your details answer leaves Needs review immediately, stays Set
   Object.assign(questionsNow(), {list: [DETAILS[1]]});
   globalThis.document.dispatchEvent(new Event('questions-read'));
   assert.match(answersBody.querySelector('.is-review').textContent, /First name[\s\S]*Set/, 'a slow queue refresh cannot erase the acknowledgement');
+  assert.deepEqual(rowTitles(), ['First name', 'Current location'], 'the refreshed queue keeps the Set row before its original next question');
 
   t.mock.timers.tick(800);
   saved('Current location', 'contact:location', 'Zurich');

@@ -24,13 +24,23 @@ KEEP = 100
 SECONDS = 25   # a read stops asking for more pages after this (it runs past the search's read cut, src/sources/aggregators.py CHEAP_PAST_CUT)
 
 
-def out_of_time(began, now=None):
-    """True when no more page may be asked. Why (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/test_three_minutes.py; 6e's review): EURES
-    runs past the read cut, so its own SECONDS never extend the press: it also stops where the AI steps' share starts (titles reserve + tail before the end)."""
+CUT = [False]   # the last read ended on its clock, not on its pages: src/sources/aggregators.py scan queues it instead of marking it read
+
+
+def stop_at(began):
+    """The monotonic time after which nothing more may be asked. Why (27 Oct 2026, owner's rule: one 180 s deadline for every stage, tests/test_three_minutes.py; 6e's
+    review): EURES runs past the read cut, so its own SECONDS never extend the press: it also stops where the AI steps' share starts (titles reserve + tail)."""
     from .. import time_budget
-    now = time.monotonic() if now is None else now
-    stop = time_budget.end()
-    return now - began > time_budget.part(SECONDS) or (stop is not None and now >= stop - time_budget.part(time_budget.RESERVE['titles'] + time_budget.TAIL))
+    stop = began + time_budget.part(SECONDS)
+    end = time_budget.end()
+    return stop if end is None else min(stop, end - time_budget.part(time_budget.RESERVE['titles'] + time_budget.TAIL))
+
+
+def out_of_time(began, now=None):
+    """True when no more page may be asked (stop_at)."""
+    return (time.monotonic() if now is None else now) >= stop_at(began)
+
+
 STORE = DATA / 'eures_regions.json'
 LOCK = threading.Lock()
 NUTS2 = re.compile(r'[A-Z]{2}[0-9A-Z]{2}')
@@ -110,16 +120,23 @@ def eures(search, get=None, client=None):
     from . import aggregators
     from ..notion.search_settings import readable, terms
     get = get or aggregators._get
+    began = time.monotonic()
+    CUT[0] = False
+    if out_of_time(began):   # started past its share: nothing is asked, not even the region question (gitar-bot, #2251)
+        CUT[0] = True
+        return []
     places = [readable(str(p)) for group in ('top_tier', 'country_wide', 'abroad') for p in terms((search.get('locations') or {}).get(group))[:6]]
     wanted = regions(places, client)
-    jobs, seen, began = [], set(), time.monotonic()
+    jobs, seen = [], set()
     for country in dict.fromkeys(prefix[:2] for prefixes in wanted.values() for prefix in prefixes):
         mine = {word: prefixes for word, prefixes in wanted.items() if prefixes[0][:2] == country}
         for query in aggregators._queries(search)[:3]:
             for page in range(1, MAX_PAGES + 1):
                 if out_of_time(began):
+                    CUT[0] = True
                     return jobs
-                data = get(URL, json.dumps(_body(query, country, page)).encode(), {'Content-Type': 'application/json'})
+                # a request waits at most until the stop time, so a slow page cannot run into the AI steps' share (gitar-bot, #2251)
+                data = get(URL, json.dumps(_body(query, country, page)).encode(), {'Content-Type': 'application/json'}, timeout=max(3, min(30, stop_at(began) - time.monotonic())))
                 listed = data.get('jvs') or []
                 for j in listed:
                     codes = [c.upper() for found in (j.get('locationMap') or {}).values() for c in found or [] if c]

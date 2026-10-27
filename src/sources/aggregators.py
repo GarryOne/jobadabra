@@ -16,7 +16,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from .. import read_methods
-from . import ats, board_employers, boards_ahead, feeds, host_pace
+from . import ats, board_employers, boards_ahead, eures, feeds, host_pace
 
 SPACING_HOURS = 6
 PAGES = 2
@@ -33,9 +33,9 @@ ADZUNA_COUNTRIES = {'gb': 'United Kingdom', 'us': 'United States', 'at': 'Austri
                     'mx': 'Mexico', 'nl': 'Netherlands', 'nz': 'New Zealand', 'pl': 'Poland', 'sg': 'Singapore', 'za': 'South Africa'}
 
 
-def _get(url, data=None, headers=None):
+def _get(url, data=None, headers=None, timeout=None):
     request = urllib.request.Request(url, data=data, headers={'User-Agent': ats.USER_AGENT, 'Accept': 'application/json', **(headers or {})})
-    with host_pace.open(request, TIMEOUT) as response:
+    with host_pace.open(request, timeout or TIMEOUT) as response:
         return json.loads(response.read())
 
 
@@ -206,7 +206,6 @@ def sources(env=None):
     if not disabled('aggregators', env) and not disabled('jobsch', env):
         found.append(('jobs.ch', jobsch))   # Swiss places only (it returns nothing otherwise)
     if not disabled('aggregators', env) and not disabled('eures', env):
-        from . import eures
         found.append(('EURES', eures.eures))   # the portal's countries only (it returns nothing otherwise)
     if not disabled('aggregators', env) and not disabled('found_boards', env):   # boards found for your countries (src/sources/found_boards.py)
         from . import found_boards
@@ -303,7 +302,10 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
                         found = read(search)
                         counted.jobs = read_methods.in_places(found)
                 matched = kept(db, name, found, now)
-            mark_read(db, name, now, search)
+            if name == 'EURES' and eures.CUT[0]:   # stopped by its clock: what it read is kept, the rest waits (gitar-bot, #2251)
+                late.append(name)
+            else:
+                mark_read(db, name, now, search)
             if on_jobs and matched and not (ahead is not None and name == boards_ahead.NAME and ahead.shown):   # shown already
                 on_jobs(matched)
             report['jobs'].extend(matched)

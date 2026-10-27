@@ -155,7 +155,7 @@ test('a page with a bot check in front says what the person must do, on the card
   assert.ok(sessionSteps(terminals.get('f2')).some(step => step.text === 'No application form found on the page yet'), 'no need: the old wording');
   const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
   assert.match(flow, /const botCheck = role === 'no-form' && kind\?\.botCheck === true;/);
-  assert.match(flow, /watchForFields\(tab, jobUrl, undefined, botCheck \? 60 : 10, counts\?\.frameHosts \|\| \[\]\)/);
+  assert.match(flow, /watchForFields\(tab, jobUrl, undefined, botCheck \? 60 : 10, counts\?\.frameHosts \|\| \[\], \(\) => markPage\(tab\.id, role, pressed, kind\)\)/);
   assert.match(flow, /deadEndHere\(tab, jobUrl, host, role === 'account' \? 'account' : 'no-form', botCheck \? BOT_CHECK_NEED : '',/, 'the no-form dead end carries the bot check\'s need');
   const reads = fs.readFileSync(new URL('../../extension/page-reads.js', import.meta.url), 'utf8');   // pageSketchOf (moved out of fill-flow.js)
   assert.match(reads, /frames: \[\.\.\.new Set\(frames\)\]\.slice\(0, 5\)/, 'the sketch carries the visible frames\' hosts');

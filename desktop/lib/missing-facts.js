@@ -8,6 +8,7 @@ import {anthropicApi} from './ai/anthropic-api.js';
 import {MODEL} from './question-reuse.js';
 import {BLOCKED, factScore} from '../renderer/question-filter.js';
 import {CATALOG, byId} from './fact-catalog.js';
+import {written} from './queue-wording.js';
 
 export {CATALOG, byId};
 
@@ -38,6 +39,19 @@ export async function covered(storage, labels, {ai = {}} = {}) {
   } catch { return []; }   // tried again at the next list
 }
 
+// Each fact's question and hint, worded by the queue's one question writer (lib/queue-wording.js, as the contact questions; owner, 27 Oct 2026: "Yes, write them too"),
+// once per catalogue and language (settings.factWording). The kind shapes the question (a yes/no one, a date, a period...). -> Map id -> {question, hint}; empty with no AI
+// (a fact is then asked by its own name).
+const WORDING = `Facts a job application asks an applicant are listed in <facts> (id: the fact's name; answer: the kind of answer). For each fact write the short question to ask
+the applicant (their language; <language> when given, else English) and a hint of a few words saying what to give. The kind shapes the question: yes_no = a yes/no question,
+date = a day, duration = a length of time, salary = an amount and currency, language = the languages and the level in each, text = a few words.`;
+export async function wording(storage, {client, language = ''} = {}) {
+  const sig = [...CATALOG.map(fact => `${fact.id}:${fact.kind}:${fact.label}`), language].join('~');
+  const list = await written(storage, {cache: 'factWording', sig, system: WORDING, tag: 'facts', client, maxTokens: 1000,
+    fields: CATALOG.map(fact => ({key: fact.id, label: `${fact.label}; answer: ${fact.kind}`})), extra: language ? `\n<language>${language}</language>` : ''});
+  return new Map((list || []).map(each => [each.field, {question: each.question, hint: each.hint}]));
+}
+
 // The facts nothing holds yet, as {label, value: ''} for lib/base-facts.js: the question AI maps a form question to one, and that question is then asked once, as
 // this item (owner, 18 Oct 2026: "Ask once"). Not the ones the AI found answered or the person never wants asked.
 export function listed(storage, known = []) {
@@ -45,9 +59,10 @@ export function listed(storage, known = []) {
   return CATALOG.filter(fact => !answered.includes(fact.id) && !mine.never.includes(fact.id) && !known.some(label => plain(label) === plain(fact.label))).map(fact => ({label: fact.label, value: ''}));
 }
 
-// have: the labels Your details and the Profile already hold (answered or asked); covered: the ids the AI says they answer (covered() above). -> the items to show now: [{key id, question, format, hint, score, home, fact}].
+// have: the labels Your details and the Profile already hold (answered or asked); covered: the ids the AI says they answer (covered() above); words: wording() above.
+// -> the items to show now: [{key id, question, format, hint, score, home, fact}].
 // Writes the day's pick once (settings.missingFacts), so the same facts stay in the queue all day.
-export function pick(storage, have, {now = new Date(), covered: known = [], shares = {}} = {}) {
+export function pick(storage, have, {now = new Date(), covered: known = [], shares = {}, words = new Map()} = {}) {
   const held = new Set([...have].map(plain)), mine = state(storage), today = day(now), verdicts = storage.settings().questionVerdicts || {};
   const since = mine.since || today, fresh = (now - new Date(`${since}T00:00:00Z`)) / 864e5 < FRESH_DAYS;
   const open = CATALOG.filter(fact => !held.has(plain(fact.label)) && !known.includes(fact.id) && !mine.never.includes(fact.id)).map((fact, order) => ({fact, order, score: factScore(fact.label, verdicts)}));
@@ -60,7 +75,7 @@ export function pick(storage, have, {now = new Date(), covered: known = [], shar
     chosen = [...blocked, ...rest];
     storage.saveSettings({missingFacts: {...mine, since, day: today, today: chosen.map(each => each.fact.id), seen: {...mine.seen, ...Object.fromEntries(chosen.map(each => [each.fact.id, today]))}}});
   }
-  return chosen.sort(rank).map(({fact, score}) => ({id: fact.id, home: fact.home, label: fact.label, question: fact.label, hint: fact.hint, score, format: formatFor({marked: {kind: fact.kind}})}));
+  return chosen.sort(rank).map(({fact, score}) => ({id: fact.id, home: fact.home, label: fact.label, question: words.get(fact.id)?.question || fact.label, hint: words.get(fact.id)?.hint || '', score, format: formatFor({marked: {kind: fact.kind}})}));
 }
 
 // "Don't keep": the fact is never asked again.

@@ -17,7 +17,7 @@ export const FILE = 'cv/fact-proposals.json';
 export const MODEL = fromCv.MODEL;
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['facts'], properties: {facts: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['id', 'value', 'how', 'reason'], properties: {id: {type: 'string', enum: CATALOG.map(fact => fact.id)}, value: {type: 'string'}, how: {type: 'string', enum: ['stated', 'inferred']}, reason: {type: 'string'}}}}}};
-const INSTRUCTIONS = `You read a CV and say what it states or plainly implies about the applicant's job-application facts listed in <facts> (id: label, how a form asks it).
+const INSTRUCTIONS = `You read a CV and say what it states or plainly implies about the applicant's job-application facts listed in <facts> (id: the fact's name; answer: the kind of answer).
 Return one entry per fact the CV gives or implies, with value written as a form would take it, how = stated (the CV says it) or inferred (the CV implies it: e.g. a work permit or sponsorship need
 from the countries of citizenship, studies and jobs; languages from the CV's language lines and the language it is written in), and reason = one short sentence of the evidence.
 Use only this CV; never guess from a name alone. Leave out a fact the CV neither gives nor implies. Copy values as written; a yes/no fact is "Yes" or "No".`;
@@ -47,7 +47,7 @@ export async function factProposals(storage, {client, wanted, read = fs.readFile
   try {
     const response = await client.messages.create({model: MODEL, max_tokens: 4000, system: INSTRUCTIONS, output_config: {format: {type: 'json_schema', schema: SCHEMA}},
       messages: [{role: 'user', content: [{type: 'document', source: {type: 'base64', media_type: 'application/pdf', data: Buffer.from(read(storage.path('cv.pdf'))).toString('base64')}},
-        {type: 'text', text: `<facts>\n${CATALOG.map(fact => `${fact.id}: ${fact.label} (${fact.hint})`).join('\n')}\n</facts>`}]}]});
+        {type: 'text', text: `<facts>\n${CATALOG.map(fact => `${fact.id}: ${fact.label}; answer: ${fact.kind}`).join('\n')}\n</facts>`}]}]});
     if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') throw new Error(`the read ended: ${response.stop_reason}`);
     proposals = clean(JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}').facts, CATALOG.map(fact => fact.id));
   } catch (failure) { error = String(failure?.message || failure).slice(0, 200); }
@@ -59,8 +59,10 @@ const SOURCE = {stated: 'Not sure: check it', inferred: 'Inferred from your CV: 
 const item = (ref, fields) => ({key: `details:cvcheck:${JSON.stringify(ref)}`, company: '', hint: '', ...fields,
   details: {kind: 'cvcheck', where: '', ...fields.details}});
 
-// The queue items: contact proposals still unsaved for an empty detail, and the fact proposals. -> [item]
-export async function items(storage, {fetcher, client, have = [], never = []} = {}) {
+// The queue items: contact proposals still unsaved for an empty detail, and the fact proposals. Their question is the queue's generated wording (words.contact from
+// lib/contact-review.js wordsFor, words.facts from lib/missing-facts.js wording), never typed; the field's own name when the AI worded nothing. -> [item]
+export async function items(storage, {fetcher, client, have = [], never = [], words = {}} = {}) {
+  const asked = (map, key, name) => map?.get(key)?.question || name;
   const out = [];
   const contact = await contactDetails.read(storage, fetcher).catch(() => ({}));
   const cv = hashOf(storage);
@@ -68,13 +70,13 @@ export async function items(storage, {fetcher, client, have = [], never = []} = 
     let saved = null;   // the setup read keys its file by the CV plus the Profile's text (sourceKey): any key that starts with this CV's hash is this CV's
     try { saved = JSON.parse(storage.readText(fromCv.FILE) || 'null'); } catch {}
     for (const each of saved?.cv?.startsWith(cv) ? fromCv.pending(saved, saved.cv, contact) : []) {
-      out.push(item({contact: each.field}, {question: `${contactDetails.LABELS[each.field]}: is this right?`, value: each.value, hint: each.source === 'profile' ? 'From your Profile' : '',
+      out.push(item({contact: each.field}, {question: asked(words.contact, each.field, contactDetails.LABELS[each.field]), value: each.value, hint: each.source === 'profile' ? 'From your Profile' : '',
         format: formatFor({marked: {kind: 'text'}}), details: {source: SOURCE[each.inferred ? 'inferred' : 'stated'], where: 'Your details → Contact details', fact: contactDetails.LABELS[each.field], inferred: !!each.inferred}}));
     }
   }
   for (const each of await factProposals(storage, {client, wanted: wantedFacts(have, never)}).catch(() => [])) {
     const fact = byId(each.id);
-    out.push(item({fact: each.id}, {question: `${fact.label}: is this right?`, value: each.value, hint: each.reason, format: formatFor({marked: {kind: fact.kind}}),
+    out.push(item({fact: each.id}, {question: asked(words.facts, each.id, fact.label), value: each.value, hint: each.reason, format: formatFor({marked: {kind: fact.kind}}),
       details: {source: SOURCE[each.how], where: HOME_NAMES[fact.home], fact: fact.label, inferred: each.how === 'inferred'}}));
   }
   return out;

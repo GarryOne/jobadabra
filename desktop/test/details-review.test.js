@@ -92,7 +92,7 @@ const FIXTURES = {
   contact: {match: /^First name/, answer: () => 'Ana Maria', after: async env => {
     assert.equal((await contactDetails.read(env.storage, env.fetcher)).first_name, 'Ana Maria', 'the answer goes to its Contact details field');
   }},
-  cvcheck: {match: /^Languages: is this right/, answer: () => 'Romanian (native), English (fluent)', after: async env => {
+  cvcheck: {match: /^Languages$/, answer: () => 'Romanian (native), English (fluent)', after: async env => {
     assert.ok((await sections.read(env.storage, env.fetcher)).languages.some(line => line.label === 'Languages' && /fluent/.test(line.value)), 'the confirmed fact goes to its section');
   }},
   missing: {match: /^Earliest start date/, answer: () => '1 December 2026', after: async env => {

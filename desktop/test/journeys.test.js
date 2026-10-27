@@ -3,6 +3,7 @@
 // A live bug becomes one scenario here, failing first. The push hook runs this file when a flow-core file changed (tools/journey-gate.mjs).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import './journeys-letter-fallback.test.js';
 import './journeys-profile.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';

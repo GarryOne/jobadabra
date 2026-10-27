@@ -50,17 +50,17 @@ test('the PDF page escapes the text and shows the sender', () => {
   assert.equal((page.match(/<p>/g) || []).length, 2);
 });
 
-test('the extension gets the cover letter PDF only while a letter is approved', async () => {
+test('the extension gets a base letter only after approval; approval creates its usable PDF', async () => {
   const storage = withCv(tempStorage());
+  storage.saveSettings({letterFallback: false});  // a legacy opt-out no longer blocks the automatic default
   assert.equal((await me(storage)).coverLetterFile, null);
   await letters.generate(storage, {client: client('Dear Hiring Team,\n\nHello.')});
-  assert.equal((await me(storage)).coverLetterFile, null);  // a draft is not uploaded
+  assert.equal((await me(storage)).coverLetterFile, null);  // an unapproved draft is never used
   letters.approve(storage, Buffer.from('%PDF-letter'));
-  assert.equal((await me(storage)).coverLetterFile, null);  // approved, but used in forms only once its own switch is on (owner, 18 Oct 2026)
-  storage.saveSettings({letterFallback: true});
   const file = (await me(storage)).coverLetterFile;
   assert.equal(file.type, 'application/pdf');
   assert.equal(Buffer.from(file.data, 'base64').toString(), '%PDF-letter');
+  assert.equal(storage.settings().letterFallback, false, 'legacy settings are normalized without a user-data write');
 });
 
 test('a base letter with a gap left to fill cannot be approved', async () => {
@@ -95,8 +95,7 @@ test('one availability decision delivers approved base text and PDF, or an actio
   await letters.generate(storage, {client: client('Dear Hiring Team,\n\nHello.')});
   assert.equal((await me(storage)).coverLetterStatus?.state, 'draft');
   letters.approve(storage, Buffer.from('%PDF-letter'));
-  assert.equal((await me(storage)).coverLetterStatus?.state, 'disabled');
-  storage.saveSettings({letterFallback: true});
+  assert.equal((await me(storage)).coverLetterStatus?.state, 'ready');
   const {letterQuestion} = await import('../lib/letter-availability.js');
   assert.equal(letterQuestion(storage), null, 'usable approved fallback removes the derived queue item');
   const ready = await me(storage);
@@ -113,4 +112,26 @@ test('failed generation never clears missing setup or approves a draft', async (
   await assert.rejects(letters.generate(storage, {client: {messages: {create: async () => { throw new Error('fictional generation failure'); }}}}), /fictional generation failure/);
   assert.equal((await me(storage)).coverLetterStatus.state, 'missing');
   assert.equal(letters.status(storage).state, 'none');
+});
+
+test('a failed redraft leaves the last approved letter and its PDF intact', async () => {
+  const storage = withCv(tempStorage());
+  await letters.generate(storage, {client: client('Approved original')});
+  letters.approve(storage, Buffer.from('%PDF-approved-original'));
+  await assert.rejects(letters.generate(storage, {client: {messages: {create: async () => { throw new Error('fictional redraft failure'); }}}}), /fictional redraft failure/);
+  assert.equal(letters.status(storage).text, 'Approved original');
+  assert.equal(letters.status(storage).state, 'approved');
+  assert.equal(letters.status(storage).pdf, true);
+  assert.equal(fs.readFileSync(letters.pdfPath(storage), 'utf8'), '%PDF-approved-original');
+});
+
+test('a successful redraft becomes an unapproved draft and cannot reuse the prior PDF', async () => {
+  const storage = withCv(tempStorage());
+  await letters.generate(storage, {client: client('Approved original')});
+  letters.approve(storage, Buffer.from('%PDF-approved-original'));
+  await letters.generate(storage, {client: client('Fictional replacement draft')});
+  assert.equal(letters.status(storage).text, 'Fictional replacement draft');
+  assert.equal(letters.status(storage).state, 'draft');
+  assert.equal(letters.status(storage).pdf, false);
+  assert.equal(fs.existsSync(letters.pdfPath(storage)), false);
 });

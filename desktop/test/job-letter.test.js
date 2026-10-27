@@ -57,16 +57,15 @@ test('the PDF page is in the CV design: Inter, the CV\'s own style.css, the send
   assert.match(page, /I &lt;3 uptime\./);
 });
 
-// The base letter in forms is its own switch, off by default (owner, 18 Oct 2026: approving a letter and using it everywhere are two choices).
-test('the extension\'s upload slot gets the job\'s letter; the base letter only while its switch is on', async () => {
+// A job's complete tailored letter wins; otherwise an approved usable base letter is the automatic fallback.
+test('the extension prefers the tailored letter and automatically falls back to an approved base letter', async () => {
   const storage = storageWithCv();
   cv.save(storage, JOB.code, {job: JOB, cv: CV}, Buffer.from('%PDF-cv'));
   await letters.generate(storage, {client: client('Dear Hiring Team,\n\nGeneral.')});
-  letters.approve(storage, Buffer.from('%PDF-general'));
   const read = file => Buffer.from(file.data, 'base64').toString();
-  assert.equal((await me(storage, JOB.url)).coverLetterFile, null);   // approved, but the switch is off: no letter
+  assert.equal((await me(storage, JOB.url)).coverLetterFile, null);   // an unapproved draft is never used
   assert.equal((await me(storage)).coverLetterFile, null);
-  storage.saveSettings({letterFallback: true});
+  letters.approve(storage, Buffer.from('%PDF-general'));
   assert.equal(read((await me(storage, JOB.url)).coverLetterFile), '%PDF-general');   // tailored CV, no job letter yet
   jobLetter.save(storage, JOB.code, {job: JOB, text: 'Dear Hiring Team,\n\nKestrel.', source: 'ai'}, Buffer.from('%PDF-job'));
   const delivered = await me(storage, JOB.url);
@@ -82,7 +81,6 @@ test('the extension\'s upload slot gets the job\'s letter; the base letter only 
 // A letter with a gap left to fill ("[Company]") never goes to a form (owner, 18 Oct 2026): a job's own falls back to the base letter, a base one to none.
 test('a letter with an unfilled gap is never uploaded', async () => {
   const storage = storageWithCv();
-  storage.saveSettings({letterFallback: true});
   cv.save(storage, JOB.code, {job: JOB, cv: CV}, Buffer.from('%PDF-cv'));
   await letters.generate(storage, {client: client('Dear Hiring Team,\n\nGeneral.')});
   letters.approve(storage, Buffer.from('%PDF-general'));

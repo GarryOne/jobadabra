@@ -68,5 +68,5 @@ function renderQuestions(list, error = '', hidden = [], consent = 0, fromDetails
   show($('questions-review'), !error);
 }
 
-// A letter was drafted, approved or its fallback choice changed: the derived setup action must refresh immediately.
+// A letter was drafted, approved or its availability changed: the derived setup action must refresh immediately.
 document.addEventListener('letter-updated', () => loadQuestions({force: true}));

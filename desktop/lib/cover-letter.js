@@ -1,6 +1,6 @@
 // The user's general cover letter (Settings → Profile → Cover letter): drafted once by the AI from the CV, the Profile and
-// the standard answers, reviewed and approved by the user, then kept as text and as a PDF. A form that asks for the
-// cover letter as a file gets the PDF only while settings.letterFallback is on and the job has no letter of its own (server-contact.js me()).
+// the standard answers, reviewed and approved by the user, then kept as text and as a PDF. A form that asks for a letter
+// file gets it when no complete tailored letter exists; only approved, complete base letters with a PDF are usable.
 //
 //   cover-letter/letter.json  {text, status: 'draft' | 'approved', createdAt, approvedAt, model, usd, paidBy: 'credits' | 'api' | 'plan' | ''}
 //   cover-letter/letter.pdf   only while approved: an edit makes it a draft again and removes the PDF
@@ -92,8 +92,8 @@ export function edit(storage, text) {
 // A gap left to fill ("[Company]", "{name}"): a letter with one never goes to a form (owner, 18 Oct 2026). By shape: brackets around a short phrase, any language.
 export const gapIn = text => String(text || '').match(/\[[^\]\n]{1,60}\]|\{[^}\n]{1,60}\}/)?.[0] || '';
 export const hasGap = text => !!gapIn(text);
-// Using the approved base letter in forms whose job has no letter of its own is a choice apart from approving it (owner, 18 Oct 2026): off by default.
-export const fallbackOn = settings => settings?.letterFallback === true;
+// Why (2026-10-27, owner): approved usable base letters are the automatic fallback; old false values are ignored without rewriting profile settings.
+export const fallbackOn = () => true;
 
 export function approve(storage, pdf) {
   const record = load(storage);

@@ -1,9 +1,9 @@
-// Guard for tools/area-circles.mjs: the circle counter counts fix PRs per area, flags 2+ in 7 days, and stays silent for an area with no fixes.
+// Cases for tools/area-circles.mjs, run by tests/test_area_circles.py (the python suite starts on tools/**, the desktop one would not): the circle counter counts fix PRs per area, flags 2+ in 7 days, and stays silent for an area with no fixes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const NOW = Date.UTC(2026, 9, 27), DAY = 86400e3;
 const c = (hash, daysAgo, subject, files) => ({hash, time: NOW - daysAgo * DAY, subject, files});
-const load = () => import('../../tools/area-circles.mjs');
+const load = () => import('../tools/area-circles.mjs');
 
 test('counts distinct PRs touching the changed files, by window', async () => {
   const {priorPrs} = await load();

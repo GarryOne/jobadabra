@@ -74,6 +74,7 @@ on:
       - 'tools/free-ai-writing-cases.mjs'
       - 'tools/free-ai-writing-eval.mjs'
       - 'tools/free-ai-writing-judge.mjs'
+      - 'tools/free-ai-writing-pairwise.mjs'
       - 'shared/free-ai-models.js'
       - 'shared/free-ai-translate.js'
       - 'tools/hardcoded-page-words.mjs'

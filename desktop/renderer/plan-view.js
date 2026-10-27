@@ -1,3 +1,4 @@
+import {FREE_WEAKER_SHORT} from './ai-tier-words.js';
 // The Pro plan's words and numbers for the window (Settings → Plan, the sidebar counter, ⌘K), kept free of the DOM so a test can read them
 // (private spec jobadabra-lab:docs/specs/2026-10-16-pro-plan.md §4, owner decisions 16 Oct 2026): the AI credit is a bar and a percent, never dollars or "applications left";
 // "one-time payment, no subscription", never "lifetime"; the own key is the way out when the credit runs low. Prices come from the site's offers (/api/pro/status), never from here.
@@ -20,7 +21,7 @@ export const NOTES = {
 };
 // The two plans side by side on a Pro's Plan card (owner, 27 Oct 2026: "the free plan/card shown, but just not selectable. Or disabled"; "the Pro plan should be selected").
 export const PLAN_CHOICES = [
-  {id: 'free', icon: 'user', title: 'Free', text: '20 applications or 60 days, whichever lasts longer. Free AI with daily limits.', disabled: true},
+  {id: 'free', icon: 'user', title: 'Free', text: `20 applications or 60 days, whichever lasts longer. Free AI with daily limits; its answers are ${FREE_WEAKER_SHORT}.`, disabled: true},
   {id: 'pro', icon: 'zap', title: 'Pro', text: 'No application limit. Our AI runs on your AI credit; your own key is unlimited.'},
 ];
 export const CODE_CREDIT_NOTE = 'Top-ups open when paying is on. A promo code can add AI credit now, or use your own AI key (unlimited).';

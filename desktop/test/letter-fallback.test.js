@@ -1,18 +1,11 @@
-// Legacy fallback settings resolve to the automatic approved-base default in both the engine and the window.
+// The Profile Cover letter card has no separate fallback opt-in.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {fallbackOn as engine} from '../lib/cover-letter.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-
-test('a legacy fallback flag no longer gates the automatic approved-base default', () => {
-  for (const settings of [undefined, {}, {letterFallback: false}, {letterFallback: true}, {letterFallback: 'yes'}]) {
-    assert.equal(engine(settings), true, JSON.stringify(settings));
-  }
-});
 
 test('the Cover letter panel has no fallback checkbox or opt-in copy', () => {
   const html = fs.readFileSync(path.join(here, '../renderer/index.html'), 'utf8');

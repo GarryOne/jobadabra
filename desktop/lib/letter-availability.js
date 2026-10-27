@@ -13,10 +13,11 @@ export function availableLetter(storage, url = '', {given = false, failed = fals
   const base = letters.status(storage), tailored = url ? cv.forUrl(storage, url) : null;
   const job = tailored ? jobLetter.load(storage, tailored.job.code) : null;
   let record = null, file = '', name = '', source = '';
-  // Why (2026-10-27, owner): the approved base letter is automatic fallback; a usable tailored letter still takes precedence.
   if (job?.text?.trim() && !letters.hasGap(job.text) && jobLetter.hasPdf(storage, tailored.job.code)) {
     record = job; file = jobLetter.pdfPath(storage, tailored.job.code); name = jobLetter.finalName(storage, tailored); source = 'tailored';
-  } else if (base.state === 'approved' && base.text.trim() && !letters.hasGap(base.text) && letters.fallbackOn(storage.settings()) && base.pdf) {
+  } else if (
+    // Why (2026-10-27, owner): approved usable base is automatic fallback; a usable tailored letter wins first.
+    base.state === 'approved' && base.text.trim() && !letters.hasGap(base.text) && base.pdf) {
     record = base; file = letters.pdfPath(storage); name = 'Cover letter.pdf'; source = 'base';
   }
   if (record) {

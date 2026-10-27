@@ -92,9 +92,6 @@ export function edit(storage, text) {
 // A gap left to fill ("[Company]", "{name}"): a letter with one never goes to a form (owner, 18 Oct 2026). By shape: brackets around a short phrase, any language.
 export const gapIn = text => String(text || '').match(/\[[^\]\n]{1,60}\]|\{[^}\n]{1,60}\}/)?.[0] || '';
 export const hasGap = text => !!gapIn(text);
-// Why (2026-10-27, owner): approved usable base letters are the automatic fallback; old false values are ignored without rewriting profile settings.
-export const fallbackOn = () => true;
-
 export function approve(storage, pdf) {
   const record = load(storage);
   if (!record?.text) throw new Error('No letter to approve yet.');

@@ -72,6 +72,7 @@ test('the real tab scheduler retains its healthy sibling while evaluation and cl
     assert.doesNotThrow(() => results[0].seconds.toFixed(0));
     assert.match(results[0].failures.join(';'), /hung: judge timed out/);
     assert.equal(results[2].ok, false);
+    assert.equal(results[2].retired, true);
     assert.match(results[2].failures.join(';'), /browser retired/);
     assert.equal(judged.includes('later'), false);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
@@ -131,4 +132,15 @@ test('shared partial startup exposes cleanup before its factory returns', async 
   }}), /browser startup timed out/);
   assert.equal(closed, true);
   assert.equal(startupSignal.aborted, true);
+});
+
+
+test('isolated recovery after retirement never labels an unrun case as flaky', async () => {
+  const {replayRetryMessage} = await import('../lib/replay-browser.mjs');
+  const first = {name: 'queued', ok: false, retired: true, failures: ['not run: browser retired']};
+  const text = replayRetryMessage(first, {ok: true}, 4);
+  assert.match(text, /run alone after browser retirement/);
+  assert.doesNotMatch(text, /FLAKY/);
+  assert.equal(replayRetryMessage(first, {ok: false}, 4), '');
+  assert.match(replayRetryMessage({...first, retired: false}, {ok: true}, 4), /FLAKY in parallel/);
 });

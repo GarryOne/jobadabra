@@ -144,7 +144,7 @@ export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, sta
     while (queue.length || running.size) {
       // Why (2026-10-27): expired awaits do not cancel an old tab; retire the browser before any queued case can reuse its routes.
       if (retired) for (const item of queue.splice(0)) {
-        const result = {name: item.name, ok: false, seconds: 0, failures: [`not run: browser retired after ${retired}`], seen: {tabs: 0, opened: 0}};
+        const result = {name: item.name, ok: false, retired: true, seconds: 0, failures: [`not run: browser retired after ${retired}`], seen: {tabs: 0, opened: 0}};
         results.set(item.name, result); onResult?.(result);
       }
       for (let index = nextRunnable(queue, hostsRunning()); running.size < tabs && index >= 0; index = nextRunnable(queue, hostsRunning())) {
@@ -167,3 +167,13 @@ const runInTab_ = async (browser, item) => {
   catch (error) { return {name: item.name, ok: false, fatal: true, seconds: (Date.now() - began) / 1000,
     failures: [`error: ${String(error?.message || error).slice(0, 200)}`], seen: {tabs: 0, opened: 0}}; }
 };
+
+
+/** Describe a successful isolated retry truthfully; retired cases never failed in parallel and are not flaky. */
+export function replayRetryMessage(first, again, tabs) {
+  if (!again.ok) return '';
+  if (first.retired) return `run alone after browser retirement: ${first.name} passed; no parallel attempt ran`;
+  if (!first.ok) return `FLAKY in parallel: ${first.name} failed in ${tabs} tabs (${first.failures.join('; ').slice(0, 160)}) and passed alone; counted as passed`;
+  if (!first.confirm?.length) return '';
+  return `confirmed alone: ${first.name} (${first.confirm.join('; ').slice(0, 120)} came from a line no case's host names)`;
+}

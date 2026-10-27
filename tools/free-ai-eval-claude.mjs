@@ -27,7 +27,7 @@ const spawnExec = (file, args, {cwd, env, stdin}) => new Promise((resolve, rejec
 
 // run(name, input) -> an answer in the shape evaluate() reads. `name` is 'claude:<alias>' (haiku, sonnet, opus).
 export const claudeRun = ({exec = spawnExec, env = process.env, cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'free-ai-eval-claude-')), apiKey = '', onCost = () => {}} = {}) => async (name, input) => {
-  const {ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, PR_PROOF_ANTHROPIC_KEY, ...rest} = env;   // eslint-disable-line no-unused-vars
+  const {ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, PR_PROOF_ANTHROPIC_KEY, ...rest} = env;
   const clean = apiKey ? {...rest, ANTHROPIC_API_KEY: apiKey, MAX_THINKING_TOKENS: '0'} : {...rest, ...(CLAUDE_CODE_OAUTH_TOKEN ? {CLAUDE_CODE_OAUTH_TOKEN} : {})};
   const stdin = input.messages.filter(m => m.role !== 'system').map(m => m.content).join('\n\n');
   const reply = JSON.parse(await exec('claude', claudeArgs(name.slice('claude:'.length), input), {cwd, env: clean, stdin}));

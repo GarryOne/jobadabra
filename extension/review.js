@@ -277,7 +277,8 @@
   chrome.runtime.onMessage.addListener((message, _, reply) => {
     if (message?.type !== 'panelStep') return false;
     if (!host.isConnected) { reply({shown: false}); return false; }
-    if (message.text) { workerStep = message.text; applyWorking = true; showStep(message.text); if (!open) setOpen(true); }
+    // Why (2026-10-27, minimized Stop): a progress update must keep the person's chosen pill visible, with its Stop button.
+    if (message.text) { workerStep = message.text; applyWorking = true; showStep(message.text); if (!open && !userMoved) setOpen(true); }
     else workerStep = '';   // the fill's last step said nothing more; the end is the worker's verdict (applyState)
     reply({shown: true});
     return false;

@@ -16,10 +16,9 @@ const open = async () => {
   await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = app.context.serviceWorkers()[0];
   const step = text => worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text);
-  const spot = selector => app.page.evaluate(sel => { const el = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector(sel); const b = el?.getBoundingClientRect(); return b && b.width ? {x: b.x + b.width / 2, y: b.y + b.height / 2} : null; }, selector);
-  const press = async selector => { const at = await spot(selector); assert.ok(at, `${selector} is on screen`); await app.page.mouse.click(at.x, at.y); };   // a real, trusted click
+  const press = selector => app.page.locator('#jobpilotto-review-host').locator(selector).click();   // a trusted click, after the live control is visible and stable
   const surface = () => app.page.evaluate(() => { const jp = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.jp'); return jp && {theme: jp.dataset.theme || '', card: getComputedStyle(jp.querySelector('.card')).backgroundColor}; });
-  return {app, state, step, press, spot, surface};
+  return {app, state, step, press, surface};
 };
 
 test('switching the app\'s theme changes an open panel without a reload', async () => {
@@ -43,8 +42,12 @@ for (const minimised of [false, true]) {
     try {
       await t.step('Choosing dropdown answers…');
       await t.app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.fill.is-busy'), null, {timeout: 5000});
-      if (minimised) await t.press('.min');
-      await t.app.page.waitForTimeout(300);
+      if (minimised) {
+        await t.press('.min');
+        // A real fill keeps reporting steps after the person minimises; Stop must stay on the pill.
+        await t.step('Reading another field…');
+        assert.equal(await t.app.page.locator('#jobpilotto-review-host').locator('.card').evaluate(el => el.hidden), true, 'ordinary progress keeps the card minimised');
+      }
       await t.press(minimised ? '.pill-stop' : '.stop-btn');
       // Stop keeps the panel, calm: "Stopped by you" with Check form again, no dim, no step row (0d0327b, owner 27 Oct 2026); it no longer removes the panel.
       await t.app.page.waitForFunction(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;

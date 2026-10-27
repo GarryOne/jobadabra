@@ -4,6 +4,7 @@
 // Floors: only the boxes the page lists (plain text boxes, never a password, read-only, disabled or a menu's search box), no Enter, no Tab, no other key; at most 8 boxes;
 // one debugger at a time (the caller passes the turn it shares with the dropdown clicks). Counts only leave this file, never a value. Guard: worker/test/fill-verify.test.js.
 import {attachDebugger, detachDebugger} from './stop-state.js';
+import {selectForReplacement} from './text-replace.js';
 import {driving} from './input-gap.js';
 import {decide} from './log.js';
 import {hasPressSpots, pressNotTakenForReal} from './press-real.js';
@@ -23,8 +24,7 @@ export async function typeNotTakenForReal({page, send}) {
   for (const spot of spots.slice(0, 8)) {
     if ((await page((px, py) => globalThis.__jobPilottoSubmitPress?.markAt(px, py), [spot.x, spot.y]).catch(() => true)) === false) continue;   // the extension's own press: marked first (page/submit-press.js markAt)
     for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', {type, x: spot.x, y: spot.y, button: 'left', clickCount: 1});
-    await send('Input.dispatchKeyEvent', {type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 4, commands: ['selectAll']});
-    await send('Input.dispatchKeyEvent', {type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 4});
+    if (!await selectForReplacement(page, spot.field)) continue;
     for (const char of [...String(spot.text || '')]) for (const key of keysFor(char)) await send('Input.dispatchKeyEvent', key);
     await wait(SETTLE_MS);
     if (await page(field => window.__jobPilottoTakenNow?.(field) || false, [spot.field]).catch(() => false)) taken += 1;

@@ -226,7 +226,7 @@
     el.scrollIntoView({block: 'center', behavior: 'instant'});
     await sleep(120);
     const rect = el.getBoundingClientRect();
-    return {x: Math.round(rect.left + 30), y: Math.round(rect.top + rect.height / 2), text: phone.national};
+    return {field: phone.field, x: Math.round(rect.left + 30), y: Math.round(rect.top + rect.height / 2), text: phone.national};
   };
   window.__jobPilottoArmedCount = () => document.querySelectorAll('[data-jobpilotto-armed]').length;
   Object.assign(window.__jobPilottoFillKit, {DIAL, dialOf, armCombo});

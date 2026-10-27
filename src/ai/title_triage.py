@@ -143,7 +143,7 @@ def decide(titles, search, client=None, local=False):
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     budget.record('title_rounds', time.monotonic() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
-    _second_look(client, ask, decided, search, words)
+    slots.carry(_second_look)(client, ask, decided, search, words)   # the caller's slot level, as the sort's own calls
     with LOCK:
         data = _load()
         data[key] = {**(data.get(key) or {}), **decided}

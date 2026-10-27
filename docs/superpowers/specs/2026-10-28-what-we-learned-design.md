@@ -85,7 +85,13 @@ is never overwritten; drawer 1 asks which is right.
 ## Acceptance criteria
 
 1. The Application answers tab is renamed **What we learned about you** and lists one entry per topic: question, answer,
-   evidence ("from 3 forms: Acme, Northwind, …"), state chip (New / Confirmed / Two answers).
+   a column of evidence chips (one per form fill it came from, "Acme · 26 Oct", at most 3 then "+N"; each opens that Form fill
+   in Reports), state chip (New / Confirmed / Two answers). Owner, 28 Oct 2026: "a column with chips, representing the form
+   fills references from where did we make these conclusions".
+1b. The tab has no "Saved answers" box and no "Website-specific questions" section (owner, 28 Oct 2026: "It's getting dropped").
+   Site rules (Form knowledge `widget` / `option` / `meaning`) stay internal, used by fills, and are shown per row in Reports →
+   Form fills as "Learned on this site". PR B cleans broken site-rule lines: stray quotes in values, field ids as titles, a kind
+   in the site column, personal facts (name, phone) stored as rules instead of in Your details.
 2. No entry in that tab is a Your details fact, a per-company question, or a duplicate topic (fixture: today's 21-item queue from
    the owner's screenshot → expected entries listed in the plan).
 3. Drawer 1 contains only missing Your details facts, ranked; first/last name and email come before relocate/salary.

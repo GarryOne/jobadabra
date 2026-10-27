@@ -42,7 +42,7 @@
   // apply-state.js) the step ends with it (owner, 27 Oct 2026: "everytime when the extension is working... it should be centered and there should be dark/glowing background").
   // Working = a step shows: the worker's fill steps (panelStep), this panel's own fill, and the page being read or routed (WORKING_MARKS). Not working: done, stopped, needs you, stuck, closed.
   const overlay = window.__jobPilottoOverlay, HOME = host.style.cssText, steps = [];
-  const WORKING_MARKS = ['reading', 'posting', 'opening', 'signing-in', 'signing-up'], MARK_STEP_MS = 60000; let markStepWords = '';
+  const WORKING_MARKS = ['reading', 'posting', 'opening', 'signing-in', 'signing-up'];  let markStepWords = '';
   const place = working => { host.style.cssText = working ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483646;pointer-events:none;' : HOME; jp.classList.toggle('working', working); };
   // The Apply's state is the worker's (apply-state.js); this page draws it. applyWorking: the last thing the worker said (its answer at the first draw, then its pushes); this panel's own fill counts too.
   let applyWorking = false;
@@ -100,9 +100,9 @@
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
     const markWorks = applyWorking && WORKING_MARKS.includes(markNow) && !handed && !moved;
-    if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words, MARK_STEP_MS); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
-    // Why (#2221, owner 27 Oct 2026): the mark moved on: its row ends. A fill step still running under it (the worker's, or this panel's fill) keeps the look and gets its row back: ending here dropped the dim and the
-    // centring until the fill's next step brought them back (owner, 27 Oct 2026: "flashes (very short moments) when the extension panel moves from center to bottom right").
+    if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
+    // Why (#2221, owner 27 Oct 2026; now by the one state owner): the mark moved on: only its words end, never the look: a fill step still running under it (the worker's, or this panel's fill) gets its row back, and the dim and
+    // the centring stay until the worker's verdict (owner: "flashes (very short moments) when the extension panel moves from center to bottom right"; "we keep it like that until we have a very clear verdict").
     else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); }   // the mark moved on: the step's words only; the look stays until the verdict
     // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
     written.update(list);

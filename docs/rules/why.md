@@ -98,6 +98,9 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - Same day, the owner on stale comments ("an outdated comment misleads an AI more than no comment"): a Why left above changed code is refused.
   Then "let's adopt all these rules/recommendations": why-not-what, doc comments on new exported functions, invariants, tagged debt
   (`tools/new-code-comments.mjs`, guard `desktop/test/new-code-comments.test.js`; over main's last 150 commits it would have asked on 29, 55 functions).
+- Prompts: "a comment can't stop a prompt regression; a test does". 5 of main's last 150 commits changed a prompt (#2198-#2203 among them; 977b3a0 rewrote
+  WRITTEN_RULE the same evening). Hence the case sets (`tools/prompt-cases.json`, gate `tools/prompt-cases.mjs`) and the PR re-ask on Haiku via the
+  subscription (`prompt-cases.yml`; the owner: "very cheap"). #2217 also showed a Why above one prompt quoting another's sentence: now refused.
 
 ## Change loop
 - **Superpowers plugin dropped** (30 Sep 2026): its process cost more tokens than it saved. **No subagents** (30 Sep 2026): they ate most of the

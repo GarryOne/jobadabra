@@ -18,6 +18,7 @@ on:
       - 'Extension · Chrome Web Store publish'
       - 'Proof · LibreOffice add-on on Mac and Windows'
       - 'CI · Page cases (all cases, real extension, Linux)'
+      - 'CI · Prompt cases (Haiku re-ask)'
       - 'CI · Ready to send image'
       - 'CI · Search check (6 personas)'
       - 'CI · Tests · desktop (Windows)'

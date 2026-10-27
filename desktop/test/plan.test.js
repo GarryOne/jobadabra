@@ -136,13 +136,13 @@ test('every place that shows the plan is wired: the panel, the palette entries (
 test('a credit amount in the window comes from the offers (€10 included, a top-up adds what it costs), never from a literal in the code', () => {
   const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
   const proAi = OFFERS.find(o => o.id === 'pro-ai');
-  assert.equal(creditWords(proAi), '€10 of AI credit'); assert.equal(creditWords(OFFERS[0]), '', 'Pro has none');
+  assert.equal(creditWords(proAi), '€10 of AI credit (about 70 applications)'); assert.equal(creditWords(OFFERS[0]), '', 'Pro has none');
   const free = planView({mode: 'test', plan: 'free', offers: OFFERS});
-  assert.ok(free.packages.find(p => p.kind === 'pro-ai').included.includes('€10 of AI credit, no setup'));
+  assert.ok(free.packages.find(p => p.kind === 'pro-ai').included.includes('€10 of AI credit (about 70 applications), no setup'));
   const older = planView({mode: 'test', plan: 'free', offers: OFFERS.map(({creditEur, ...rest}) => rest)});   // a site that does not send creditEur yet
   assert.ok(older.packages.find(p => p.kind === 'pro-ai').included.includes(PACKAGE_INCLUDES['pro-ai'][1]));
   const pro = planView({mode: 'test', plan: 'pro', package: 'pro-ai', hasCredit: true, creditPercent: 50, warn: null, offers: OFFERS});
-  assert.deepEqual(pro.topups.map(t => [t.price, t.adds]), [['€5', '€5 of AI credit'], ['€10', '€10 of AI credit'], ['€20', '€20 of AI credit']]);
+  assert.deepEqual(pro.topups.map(t => [t.price, t.adds]), [['€5', '€5 of AI credit (about 35 applications)'], ['€10', '€10 of AI credit (about 70 applications)'], ['€20', '€20 of AI credit (about 140 applications)']]);
   for (const file of ['../renderer/plan-view.js', '../renderer/pages/plan.js', '../renderer/pages/plan-waitlist.js', '../renderer/pages/nav.js', '../renderer/license-chip.js', '../renderer/hosted-words.js', '../renderer/plan-line.js', '../renderer/pro-promise.js'])
     assert.doesNotMatch(read(file).replace(/\/\/.*$/gm, ''), /€\d+ (?:of )?(?:our )?AI|\$\d+ (?:of )?(?:AI )?credit|about €5/, `${file} names a credit amount by itself`);
 });

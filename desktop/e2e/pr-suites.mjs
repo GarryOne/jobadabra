@@ -5,10 +5,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
-import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWhole} from './lib/coverage-pick.mjs';
+import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor} from './lib/coverage-pick.mjs';
+import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
 import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -67,33 +68,48 @@ try {
       const suites = [...new Set([...(rel.startsWith('suites/') ? [rel.slice(7, -4)] : []), ...(users[rel] || [])])].filter(name => facts.all.includes(name));
       for (const suite of suites) {
         const owns = (await import(`./suites/${suite}.mjs`)).ownsStep || (() => true);
-        const names = touched.steps.filter(name => owns(name));
-        if (names.length) (own[suite] ||= []).push(...names);
+        // a step another suite runs (it imports this file) is that suite's (lib/pr-suites.mjs stepHomes)
+        for (const name of touched.steps.filter(owns)) for (const home of stepHomes(map, suite, name)) if (facts.all.includes(home)) (own[home] ||= []).push(name);
       }
     }
-    const pointedElse = stillWhole(changedFiles.filter(file => !byStep.has(file)), file => suitesFor([file], facts.all, pointing), map);
-    const pointed = [...new Set([...pointedElse, ...Object.keys(own)])], hits = suitesExpecting(strings, sources);
+    const pointedBy = stillWholeBy(changedFiles.filter(file => !byStep.has(file)), file => suitesFor([file], facts.all, pointing), map), pointedElse = Object.keys(pointedBy);
+    // Removed text → the steps that quote it, each in the suite that runs it (rehomeQuotes: #2137's channels step was picked in activityfailures).
+    const {hits, quoting} = rehomeQuotes(suitesExpecting(strings, sources), stepsQuoting(suitesExpecting(strings, sources), sources), map);
+    const pointed = [...new Set([...pointedElse, ...Object.keys(own)])];
     const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence});
     // Steps per suite: those its changed lines reach, those that quote removed UI text, those its own file's change touches. Whole: a suite a helper, the extension
     // or the harness points at, a change or a quote outside a named step, a line nobody ran.
-    const quoting = stepsQuoting(hits, sources), byLines = stepNamesFor(picked), steps = {};
+    const byLines = stepNamesFor(picked), steps = {};
     for (const suite of plan.suites) {
       if (pointedElse.includes(suite) || quoting[suite]?.whole || (picked[suite] && !byLines[suite])) continue;
       const names = [...(byLines[suite] || []), ...(quoting[suite]?.steps || []), ...(own[suite] || [])];
       const real = names.filter(name => name !== '(setup)');
       steps[suite] = real.length ? [...new Set(real)] : names;
     }
+    // The store each suite's picked steps run on: the one they were recorded on (lib/coverage-pick.mjs storeFor; #2156's settings and strategy picked steps that exist
+    // only on the Notion stand-in, failed "not found" on SQLite and ran whole again). A step no store of the run has is named and left out.
+    const stores = {}, dropped = {};
+    for (const suite of Object.keys(steps)) {
+      if (!map.suites?.[suite]?.stores) continue;
+      const chosen = storeFor(map.suites[suite], steps[suite]);
+      if (!chosen.steps.length) { delete steps[suite]; continue; }   // never happens (the chosen store has the most), but an empty list would run nothing
+      stores[suite] = chosen.store; steps[suite] = chosen.steps;
+      if (chosen.dropped.length) dropped[suite] = chosen.dropped;
+    }
     const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
+    const reasons = whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own});
+    console.log(`\n### Why each one runs (suite [store] · step ← the changed line that reached it)\n${reasons.join('\n')}\n`);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);
     if (stepless.length) console.log(`Map: ${stepless.length} of ${Object.keys(map.suites).length} suites have no steps yet (${[...new Set(stepless.map(entry => `${entry.sha} ${entry.at}`))].join('; ')}): a line they ran picks them whole until a whole run of each records its steps`);
-    console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${JSON.stringify(steps)}`);
+    const stepsOut = JSON.stringify({...steps, ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // two keys no suite has: e2e.yml reads steps by suite name
+    console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${stepsOut}`);
     const ciText = windowsCiText(file => { try { return fs.readFileSync(path.join(here, '..', '..', file), 'utf8'); } catch { return null; } });
     const windows = windowsSmoke(changedFiles, ciText) ? JSON.stringify(WINDOWS_SMOKE.steps) : '';
     if (windows) console.log(`\nWindows: ${WINDOWS_SMOKE.suite} · ${WINDOWS_SMOKE.steps.join(', ')} (this PR changes CI plumbing or shell)`);
-    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${JSON.stringify(steps)}\nwindows=${windows}\n`);
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${stepsOut}\nwindows=${windows}\n`);
   }
 } catch (error) {
   console.log(`pr-suites: could not read the diff (${error.message.split('\n')[0]}); nothing reported`);

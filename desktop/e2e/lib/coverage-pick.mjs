@@ -7,17 +7,20 @@
 import {mergeRanges, SETUP, WHOLE} from './coverage.mjs';
 import {MAX_USERS} from './plan.mjs';
 
-// Coverage files of one run (each {suite, sha, files, steps, partial}) laid over the previous map: a suite this run recorded whole replaces its old entry; the others keep theirs.
+// Coverage files of one run (each {suite, sha, files, steps, partial, store}) laid over the previous map: a suite this run recorded whole replaces its old entry; the others keep theirs.
 // A suite this run recorded only some steps of (an after-merge run, E2E_STEP_NAMES; owner's yes 26 Oct 2026: "keep it fresh after each merge") is laid over its old
 // entry step by step (overlay). diff(fromSha, toSha, files) -> `git diff -U0` text, or null when it cannot (coverage-map.mjs).
 export function mergeMap(previous, coverageFiles, at = new Date().toISOString(), {diff} = {}) {
   const fresh = {}, partial = {};
-  for (const {suite, sha, files, steps, partial: some} of coverageFiles) {
+  for (const {suite, sha, files, steps, partial: some, store} of coverageFiles) {
     if (!suite || !files) continue;
     const entry = fresh[suite] || (fresh[suite] = {sha, at, files: {}});
     partial[suite] = (partial[suite] ?? true) && Boolean(some);   // one whole file (the whole second try) makes the suite's run whole
     unionFiles(entry.files, files);
-    for (const [step, stepFiles] of Object.entries(steps || {})) unionFiles((entry.steps ||= {})[step] ||= {}, stepFiles);
+    for (const [step, stepFiles] of Object.entries(steps || {})) {
+      unionFiles((entry.steps ||= {})[step] ||= {}, stepFiles);
+      if (store && step !== SETUP && step !== WHOLE) addStores((entry.stores ||= {}), step, [store]);
+    }
   }
   const suites = {...(previous?.suites || {})};
   for (const [suite, entry] of Object.entries(fresh)) {
@@ -26,6 +29,10 @@ export function mergeMap(previous, coverageFiles, at = new Date().toISOString(),
   }
   return {suites};
 }
+
+// `stores`: {<step name>: [the stores it ran on]} (27 Oct 2026: a step named only on the Notion stand-in was picked for a PR run on SQLite, "not found", and the
+// whole suite ran again: settings and strategy on #2156). A step with no entry ran before stores were recorded: unknown.
+function addStores(into, step, stores) { into[step] = [...new Set([...(into[step] || []), ...stores])].sort(); }
 
 function unionFiles(into, files = {}) {
   for (const [file, {lines = []}] of Object.entries(files)) into[file] = {loaded: true, lines: mergeRanges([...(into[file]?.lines || []), ...lines])};
@@ -43,9 +50,10 @@ function overlay(old, now, diff) {
     if (text == null) return old;
     moved = shiftEntry(old, lineMoves(text));
   }
-  const steps = {...moved.steps};
+  const steps = {...moved.steps}, stores = {...(old.stores || {})};
   for (const [step, files] of Object.entries(now.steps || {})) steps[step] = step === SETUP || step === WHOLE ? unionFiles({...moved.steps[step]}, files) : files;
-  return {sha: now.sha, at: now.at, files: unionFiles({...moved.files}, now.files), steps};
+  for (const [step, names] of Object.entries(now.stores || {})) addStores(stores, step, names);
+  return {sha: now.sha, at: now.at, files: unionFiles({...moved.files}, now.files), steps, ...(Object.keys(stores).length ? {stores} : {})};
 }
 
 // `git diff -U0 --no-renames <old> <new>` → {path: [[oldStart, oldCount, newStart, newCount], ...]} (comments too: a line number moves either way); a deleted file: false.
@@ -153,10 +161,11 @@ export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(e
 //    suite already runs for this PR;
 //  - a line nobody ran (a file's top level, a function never called) → every suite that loads the file, whole: a change nobody measured runs everyone who loads it;
 //  - a suite recorded before steps were (no `steps`) → by its lines, whole, as suitesCovering.
+// `reach`: {step: 'file:line'}, the first changed line that picked each step (the plan's reasons, lib/pick-why.mjs).
 export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS} = {}) {
   const out = {}, setupOnly = [];
   const suites = Object.entries(map?.suites || {});
-  const pick = (suite, patch, reason) => { const now = out[suite] ||= {steps: [], setup: false, whole: false, reason}; if (patch.step && !now.steps.includes(patch.step)) now.steps.push(patch.step); if (patch.setup) now.setup = true; if (patch.whole) now.whole = true; };
+  const pick = (suite, patch, reason) => { const now = out[suite] ||= {steps: [], setup: false, whole: false, reason, reach: {}}; if (patch.step && !now.steps.includes(patch.step)) now.steps.push(patch.step); if (patch.step && patch.at) now.reach[patch.step] ||= patch.at; if (patch.setup) now.setup = true; if (patch.whole) now.whole = true; };
   const ran = (lines, range) => overlaps(lines || [], range);
   // A changed line more than `maxUsers` suites ran is shared code (the app's launch, the local server, the notifier: every suite runs it), as a helper nearly
   // every suite imports is (lib/plan.mjs MAX_USERS): ONE suite runs it, the settings smoke when it ran it (its steps that did, else its setup), else the first.
@@ -181,7 +190,7 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }
         if (ran(entry.steps[WHOLE]?.[file]?.lines, range)) { pick(suite, {whole: true}, `runs ${file}:${range[0]} at import or across steps`); continue; }   // Python (lib/coverage.mjs WHOLE)
         const steps = Object.entries(entry.steps).filter(([name, files]) => name !== SETUP && name !== WHOLE && ran(files[file]?.lines, range)).map(([name]) => name);
-        for (const step of steps) pick(suite, {step}, `runs ${file}:${range[0]} in "${step}"`);
+        for (const step of steps) pick(suite, {step, at: `${file}:${range[0]}`}, `runs ${file}:${range[0]} in "${step}"`);
         if (steps.length) continue;
         if (ran(entry.steps[SETUP]?.[file]?.lines, range)) { setupOnly.push({suite, key: `${file}:${range[0]}`}); continue; }
         const ranByAny = suites.some(([, other]) => ran(other.files[file]?.lines, range));
@@ -201,10 +210,12 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
 
 // The suites a PR's files point at (pointsAt(file) -> suites: its own suite file, the harness, a suite's `watches`, lib/plan.mjs suitesFor) that still run whole.
 // A watched file the step map recorded for that suite (the engine's Python since 26 Oct 2026) no longer does: its changed lines pick the steps (stepsCovering).
-export function stillWhole(changedFiles, pointsAt, map) {
-  const out = new Set();
-  for (const file of changedFiles) for (const suite of pointsAt(file)) if (!map?.suites?.[suite]?.files?.[file]) out.add(suite);
-  return [...out];
+export const stillWhole = (changedFiles, pointsAt, map) => Object.keys(stillWholeBy(changedFiles, pointsAt, map));
+// The same, with the first file that keeps each suite whole: {suite: file}.
+export function stillWholeBy(changedFiles, pointsAt, map) {
+  const out = {};
+  for (const file of changedFiles) for (const suite of pointsAt(file)) if (!map?.suites?.[suite]?.files?.[file]) out[suite] ||= file;
+  return out;
 }
 
 // The map's suites with no step data (recorded before per-step coverage, 26 Oct 2026, and not run whole since: a run of a few steps keeps an old entry as it was):
@@ -214,4 +225,16 @@ export const steplessSuites = map => Object.entries(map?.suites || {}).filter(([
 // E2E_STEP_NAMES per suite for e2e.yml (pr_steps): a whole suite gets none; setup only: ["(setup)"].
 export function stepNamesFor(picked) {
   return Object.fromEntries(Object.entries(picked).filter(([, p]) => !p.whole).map(([suite, p]) => [suite, p.steps.length ? p.steps : [SETUP]]));
+}
+
+// The store a PR runs a suite's picked steps on (e2e.yml E2E_STORE through plan-run.mjs): the one most of them were recorded on, SQLite on a tie. A step with no
+// recorded store counts for both. Steps never seen on the chosen store are dropped and named (they do not exist there: the runner would fail them as "not found"
+// and run the whole suite again). entry: the suite's map entry. -> {store, steps, dropped: [{step, stores}]}
+export const PR_STORES = ['sqlite', 'standin'];
+export function storeFor(entry, names) {
+  const known = Object.fromEntries(Object.entries(entry?.stores || {}).map(([step, stores]) => [step, stores.filter(store => PR_STORES.includes(store))]));   // the real workspace (notion-real): its own pin
+  const on = (step, store) => !known[step]?.length || known[step].includes(store);
+  const score = store => names.filter(step => on(step, store)).length;
+  const store = PR_STORES.reduce((best, next) => (score(next) > score(best) ? next : best));
+  return {store, steps: names.filter(step => on(step, store)), dropped: names.filter(step => !on(step, store)).map(step => ({step, stores: known[step]}))};
 }

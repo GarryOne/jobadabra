@@ -168,3 +168,31 @@ export function windowsCiText(read) {
 const named = (file, text) => text.includes(file) || (file.startsWith('desktop/') && text.includes(file.slice('desktop/'.length)));
 export const windowsSmoke = (files, ci = {text: '', files: [WINDOWS_WORKFLOW]}) =>
   files.some(file => ci.files.includes(file) || ci.files.some(used => used.endsWith('/action.yml') && file.startsWith(used.slice(0, -'action.yml'.length))) || (SHELL.test(file) && named(file, ci.text)));
+
+// The suite that really runs a step found by its text: a suite file's steps can run in another suite that imports it (activityfailures.mjs runParts: its
+// 'channels' steps run in failureschannels). #2137 (26 Oct 2026) removed text a channels step quotes; the step was picked for activityfailures, was "not
+// found" there, and activityfailures ran whole again (6.5 min). A name the suite's recorded steps lack but another suite's have goes to that suite; a name no
+// suite recorded (a new step) or a suite recorded without steps stays. map: the coverage map. -> [suites]
+export function stepHomes(map, suite, name) {
+  const suites = map?.suites || {}, has = other => Boolean(suites[other]?.steps?.[name]);
+  if (!suites[suite]?.steps || has(suite)) return [suite];
+  const others = Object.keys(suites).filter(other => other !== suite && has(other));
+  return others.length ? others : [suite];
+}
+
+// stepsQuoting's {suite: {steps, whole}} and the hits behind it, each step moved to the suite that runs it (stepHomes). A suite left with no step and no
+// whole-suite quote is no longer pointed at by text. -> {hits: {suite: Set}, quoting}
+export function rehomeQuotes(hits, quoting, map) {
+  const outHits = {}, outQuoting = {};
+  const add = (suite, strings, name) => {
+    const entry = outQuoting[suite] ||= {steps: [], whole: false};
+    if (name && !entry.steps.includes(name)) entry.steps.push(name);
+    for (const text of strings) (outHits[suite] ||= new Set()).add(text);
+  };
+  for (const [suite, entry] of Object.entries(quoting)) {
+    const strings = [...(hits[suite] || [])];
+    if (entry.whole) { add(suite, strings); outQuoting[suite].whole = true; }
+    for (const name of entry.steps) for (const home of stepHomes(map, suite, name)) add(home, strings, name);
+  }
+  return {hits: outHits, quoting: outQuoting};
+}

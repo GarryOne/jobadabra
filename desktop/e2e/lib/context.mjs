@@ -48,6 +48,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});
   if (store) console.log(`  store under test: ${store}${isCi() && !suiteStore && !notionStandIn ? ` (CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: runs 0,1 sqlite, 2,3 stand-in, by 4)` : ''}`);
+  if (store) process.env.E2E_STORE_UNDER_TEST = store;   // the coverage file names it (lib/coverage.mjs): a PR runs its picked steps on the store they were recorded on
   const onNotion = usesNotion && store !== 'sqlite';
   // A suite on this Mac's store that also opts into the stand-in (`store = 'sqlite'` + `notionStandIn = true`: "Move my data to Notion") gets an empty one to move into.
   const standIn = store === 'standin' || (store === 'sqlite' && notionStandIn) ? await startNotionFake() : null;

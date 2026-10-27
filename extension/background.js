@@ -28,7 +28,7 @@ import {tellPanel} from './page-notes.js';
 import {fillWaitsForAllow, resumeFillWaiting, watchUnallowedFillTabs} from './site-allow.js';
 import {createReadyHandoff} from './ready-handoff.js';
 import {startRefusedReads} from './refused-read.js';
-import {startEarlyDim} from './early-dim.js';
+import {startEarlyDim} from './early-dim.js'; import {setApply, forgetApply} from './apply-state.js';
 
 // The tab we may touch: Chrome reuses a tab id after its tab closes, and the user can navigate the tab elsewhere
 // while a fill is still running, so every injection asks the tab what it shows first (tab-pages.js).
@@ -155,10 +155,10 @@ if (chrome.webNavigation) {
     // means the extension never saw it (an old version, the extension off), not a slow page.
     if (found[1] && !/^#jp-board/.test(found[0])) settings().then(config => api(config, '/extension/visit-state', {method: 'POST', body: JSON.stringify({ticket: found[1], words: 'the extension has the tab: waiting for the page to load'})})).catch(() => {});
   });
-  chrome.tabs.onRemoved.addListener(tabId => { chrome.storage.session.remove(`readmark:${tabId}`).catch(() => {}); });
+  chrome.tabs.onRemoved.addListener(tabId => { forgetApply(tabId); chrome.storage.session.remove(`readmark:${tabId}`).catch(() => {}); });
   chrome.permissions.onAdded.addListener(() => { startWaiting(); resumeFillWaiting({decide}); });
   watchUnallowedFillTabs({decide});
-  startEarlyDim(tabId => stepNow.has(tabId));   // a fill page, and a page change inside a run, is dimmed from its first moment, not when the panel arrives (early-dim.js)
+  startEarlyDim();   // an Apply starts when the app opens its tab and stays dimmed through every page change until a verdict (apply-state.js, early-dim.js)
   startRefusedReads();   // reads refused sites only after the person's press in the app, seen by a one-minute look (extension/refused-read.js)
   chrome.webNavigation.onCommitted.addListener(async details => {
     if (details.frameId !== 0) return;
@@ -209,9 +209,9 @@ chrome.tabs.onCreated.addListener(async tab => {
 
 // A progress panel on the page while a tab fills itself (the popup is closed then). `url`: the page being filled —
 // nothing is drawn when that tab has moved on to another site (or its id came back as a different tab).
-async function progress(tabId, text, url = '') {
-  // Why (#2262, review bot): a run's end frees the tab even when it has moved to another site (the check below returns early then): early-dim.js dims on a tab that has a step, so a stale one would dim every later page.
-  if (!text) stepNow.delete(tabId);
+async function progress(tabId, text, url = '', verdict = 'done') {
+  // Why (2026-10-27, owner, replacing #2262's step-on-tab rule): the run's end is the verdict that lifts the dim, whichever site the tab is on (apply-state.js): a progress with no text is `done`, or `your-turn` when the fill hands the page over.
+  if (!text) { stepNow.delete(tabId); setApply(tabId, verdict); }
   if (url && !(await onPage(tabId, url))) return;
   // The page's panel (review.js) shows it when it is there; the floating box is for pages without one. Whichever
   // takes it, the other is cleared: a box drawn before the panel opened used to stay on the page for good, above a

@@ -1,48 +1,53 @@
 // The fill overlay (owner, 19 Oct 2026): while the extension fills, the page is dimmed and the person's clicks, keys and scrolling are held back, so nothing is disturbed mid-fill.
 // The layer takes NO hit-test (pointer-events: none): every page read (elementFromPoint, on-top.js) and the driver's own clicks see the page; the blocking is done by capturing listeners
 // that drop only the person's trusted input. The driver (extension/input-gap.js) sets data-jobpilotto-driving around its own debugger input, which lets that through. The panel, the Stop chip
-// and the report card (ids starting jobpilotto) are never held. It lifts on every end: review.js turns it on and off with the panel's centring as ONE look (its look()); a page change drops
-// it with the document; Stop, an extension reload, a missing refresh and a removal from outside lift it from here, and tell the panel (onLift) so the panel leaves its centred, working
-// look too: the two never drift apart (owner, 27 Oct 2026: the panel stayed centred on "Reading this page…" while the dim was gone). The animated aurora, sparkles and shimmer on it are panel-overlay-fx.js. Injected before review.js (panel-files.js). Guards: desktop/e2e/test/fill-overlay.test.mjs, desktop/test/fill-overlay.test.js.
-// Early (owner, 27 Oct 2026: "at the time the webpage loads, can we instantly show the overlay"): the worker turns it on at the page's commit (early-dim.js), before the panel is injected; it then
-// lifts by itself after EARLY_MS unless the panel's first step takes it over (on()). One copy per page: a second injection (the panel's own, arm() in background.js) keeps the live copy, so the
-// layer the early dim drew is the one the panel lifts.
+// and the report card (ids starting jobpilotto) are never held. It lifts on ONE thing: the worker's verdict (apply-state.js: done, stopped, your-turn),
+// which reaches it as {type: 'applyState'} (and as 'stopped'); it tells the panel (onLift) so the panel leaves its centred, working look too: the two never drift apart. No timer, page event or removed layer lifts it
+// (owner, 27 Oct 2026: "Why we're so reactive? Who needs that reactivity? It causes glitches"); a page that deletes the layer gets it back. An extension reload ends the script itself. The animated aurora, sparkles and shimmer on it are panel-overlay-fx.js. Injected before review.js (panel-files.js). Guards: desktop/e2e/test/fill-overlay.test.mjs, desktop/test/fill-overlay.test.js.
+// Early (owner, 27 Oct 2026: "at the time the webpage loads, can we instantly show the overlay"): the worker turns it on at the page's commit (early-dim.js), before the panel is injected. One copy per page:
+// a second injection (the panel's own, arm() in background.js) keeps the live copy, so the layer the early dim drew is the one the panel lifts.
 (() => {
   if (window.__jobPilottoOverlay?.alive?.()) return;
-  // Why (#2221, 27 Oct 2026): EARLY_MS, the early dim's own life: a fill page that never gets a panel (no site access, Stop) is not left dim and holding clicks.
-  const ID = 'jobpilotto-fill-overlay', MAX_MS = 180000, EARLY_MS = 15000;   // MAX_MS: no step refreshed it for three minutes: the person is never locked out of a stuck page
+  const ID = 'jobpilotto-fill-overlay';
   const HELD = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick', 'contextmenu', 'keydown', 'keyup', 'keypress', 'wheel', 'touchstart', 'touchmove', 'dragstart', 'selectstart'];
-  let layer = null, watch = null, until = 0, early = false, lifted = () => {};
+  let layer = null, watch = null, wipe = null, lifted = () => {};
   document.getElementById(ID)?.remove();   // a copy left by an extension reload: its owner is gone
   const ours = event => (event.composedPath?.() || [event.target]).some(node => typeof node?.id === 'string' && node.id.startsWith('jobpilotto'));
   const hold = event => {
-    if (!layer?.isConnected) { lift(); return; }   // the layer was removed from outside (Stop, a settle): the holding goes with it
     if (!event.isTrusted || document.documentElement.hasAttribute('data-jobpilotto-driving') || ours(event)) return;
     event.stopImmediatePropagation();
     if (event.cancelable) event.preventDefault();
   };
   function off() {
-    clearInterval(watch); watch = null;
+    clearInterval(watch); watch = null; wipe?.disconnect(); wipe = null;
     for (const name of HELD) window.removeEventListener(name, hold, true);
     layer?.remove(); layer = null;
   }
-  // Lifted by itself, not by the panel: the panel is told, and leaves its working look (review.js endStep).
+  // Lifted by the worker's verdict (or the extension's end), not by the panel: the panel is told, and leaves its working look (review.js endStep).
   function lift() {
     if (!layer && !watch) return;
     off();
     try { lifted(); } catch { /* the panel is gone */ }
   }
-  // The fill is on a step: the layer (re)appears, and the backstop's clock restarts. `stay`: how long it stays without another on() (the early dim's short wait, else three minutes).
-  function on(stay = MAX_MS) {
-    until = Date.now() + stay; early = stay < MAX_MS;
+  // The Apply is working: the layer (re)appears. Stays until a verdict.
+  function on() {
     if (layer?.isConnected) return;
     layer = Object.assign(document.createElement('div'), {id: ID});
     layer.style.cssText = 'position:fixed;inset:0;z-index:2147483645;pointer-events:none;background:rgba(19,36,57,.55);';
     document.documentElement.append(layer);
     window.__jobPilottoOverlayFx?.(layer);   // the magic behind the panel (panel-overlay-fx.js): inside the layer, so every end takes it away
     for (const name of HELD) window.addEventListener(name, hold, {capture: true, passive: false});
-    watch = setInterval(() => { if (!chrome.runtime?.id || !layer?.isConnected || Date.now() > until) lift(); }, 1000);
+    // Why (2026-10-27, owner, 2nd recording of an Apply on a posting): a page's framework re-renders <html> about 2 s in and deletes every child it did not draw: the dim went with it. The layer is the
+    // state's drawing, not its owner: a layer the page deleted is put back at once and the state stays (apply-state.js).
+    wipe = new MutationObserver(() => { if (layer && !layer.isConnected) document.documentElement.append(layer); });
+    wipe.observe(document.documentElement, {childList: true});
+    watch = setInterval(() => { if (!chrome.runtime?.id) lift(); }, 1000);   // the extension was reloaded: this script has no owner left
   }
-  chrome.runtime.onMessage.addListener(message => { if (message?.type === 'stopped') lift(); });
-  window.__jobPilottoOverlay = {on, off, early: () => early && !!layer?.isConnected, earlyOn: function early(tries = 0) { if (document.documentElement) on(EARLY_MS); else if (tries < 50) setTimeout(() => early(tries + 1), 10); }, alive: () => !!chrome.runtime?.id, active: () => !!layer?.isConnected, onLift: fn => { lifted = fn; }};
+  chrome.runtime.onMessage.addListener(message => {
+    if (message?.type === 'stopped') lift();
+    else if (message?.type === 'applyState') { if (message.state === 'working') on(); else lift(); }
+  });
+  // The page's first moment: ask the worker, so a verdict that came before this script existed lifts a layer drawn on a stale answer (early-dim.js injects only for a working tab).
+  const first = () => chrome.runtime.sendMessage({type: 'panelApply'}).then(answer => { if (answer && answer.state !== 'working') lift(); }).catch(() => {});
+  window.__jobPilottoOverlay = {on, off, active: () => !!layer?.isConnected, earlyOn: function early(tries = 0) { if (document.documentElement) { on(); first(); } else if (tries < 50) setTimeout(() => early(tries + 1), 10); }, alive: () => !!chrome.runtime?.id, onLift: fn => { lifted = fn; }};
 })();

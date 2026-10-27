@@ -12,9 +12,9 @@ import os
 import re
 import shutil
 import subprocess
-import threading
 from pathlib import Path
 
+from ..slots import Slots
 from .cli_base import CliAdapter, CliError, CliLimitError, conversation
 from .contract import SUBSCRIPTION, Usage
 from .schema import drop_nulls, parse_json, strict
@@ -101,7 +101,7 @@ class Codex(CliAdapter):
     fallback_label = 'your OpenAI API key'
     reads_pdf = False
     missing_text, not_answering_text = MISSING_TEXT, NOT_ANSWERING_TEXT
-    _slots = threading.BoundedSemaphore(PARALLEL)
+    _slots = Slots(PARALLEL)
 
     def __init__(self, binary=None, fallback=None, run=subprocess.run, timeout=None, log=None, models=None):
         super().__init__(binary if binary is not None else find_binary(), fallback=fallback, run=run, timeout=timeout, log=log)

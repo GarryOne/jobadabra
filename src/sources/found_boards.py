@@ -18,6 +18,7 @@ from contextlib import closing
 from datetime import datetime, timezone
 
 from .. import run_counts, time_budget
+from ..ai import slots
 from ..progress import Ticker
 from . import board_check, board_employers, board_forms, board_sections, board_web, board_pages, board_routes, board_yield, careers, host_pace, late_reads, read_budget
 from .board_rendered import _rendered  # noqa: F401 -- moved out (500-line rule); tests and _another_way use found_boards._rendered
@@ -468,7 +469,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         run_counts.matched(relevant)
         jobs.extend(found)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
-    for done, (read_item, future) in enumerate([(read_item, pool.submit(one_or_spare, read_item)) for read_item in reads], 1):
+    for done, (read_item, future) in enumerate([(read_item, pool.submit(slots.carry(one_or_spare), read_item)) for read_item in reads], 1):
         result = read_budget.result(future, cut)   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         if result is read_budget.LEFT:
             left.append(read_item[0]['name'])

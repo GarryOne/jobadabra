@@ -8,15 +8,16 @@ import os
 import re
 import shutil
 import subprocess
-import threading
 from pathlib import Path
 
+from ..slots import Slots
 from .cli_base import CliAdapter, CliError, CliLimitError
 from .contract import Usage, SUBSCRIPTION
 
 # Claude Code's model aliases for our model ids (the alias follows Claude Code's own latest model of that family).
 ALIASES = (('claude-haiku', 'haiku'), ('claude-sonnet', 'sonnet'), ('claude-opus', 'opus'))
-PARALLEL = 2     # Claude Code processes at once, whatever a module's thread pool (score.py runs 5)
+PARALLEL = 4     # Claude Code processes at once, whatever a module's thread pool (score.py runs 5); served by priority (src/ai/slots.py)
+# Why (#first-press-slots, owner, 27 Oct 2026: "more AI slots"): with 2, a first press's calls waited 13-24 s each (rerun 40450152414); cost: up to ~1.2 GB (~300 MB a process, measured) and 4 calls at once on the person's plan
 # Tools a text call never needs, for a Claude Code too old for --tools.
 DENY = ('Bash', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'WebFetch', 'WebSearch', 'Task', 'Glob', 'Grep', 'Read')
 _help = {}
@@ -135,7 +136,7 @@ class ClaudeCode(CliAdapter):
     label = 'Claude Code (your plan)'
     fallback_label = 'your Anthropic API key'
     missing_text, not_answering_text = MISSING_TEXT, NOT_ANSWERING_TEXT
-    _slots = threading.BoundedSemaphore(PARALLEL)
+    _slots = Slots(PARALLEL)
 
     def __init__(self, binary=None, fallback=None, run=subprocess.run, timeout=None, log=None):
         super().__init__(binary if binary is not None else find_binary(), fallback=fallback, run=run, timeout=timeout, log=log)

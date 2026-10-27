@@ -17,6 +17,7 @@ from pathlib import Path
 
 from ..features import disabled
 from . import careers
+from ..ai import slots
 
 WANT = 2        # working sector or regional boards a search should have
 DAYS = 30       # a search whose boards work is searched again this often
@@ -129,7 +130,8 @@ def _submit(search_config, data, fetch, now):
     from concurrent.futures import ThreadPoolExecutor
     known = [{'name': entry.get('name') or host, 'host': host} for host, entry in (data.get('boards') or {}).items()]
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-web')
-    future = pool.submit(search, search_config, known, now=now, fetch=fetch, data=data)
+    # Why (#first-press-slots, owner, 27 Oct 2026): its long call waits behind every other one; its boards are read after the slice's anyway
+    future = pool.submit(slots.carry(search, slots.LATER), search_config, known, now=now, fetch=fetch, data=data)
     pool.shutdown(wait=False)
     return future
 

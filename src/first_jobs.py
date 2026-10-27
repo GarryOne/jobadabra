@@ -13,7 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import store
-from .ai import score
+from .ai import score, slots
 from .sources import ats, feeds
 
 SLICE = 15     # feeds read first
@@ -89,7 +89,7 @@ def propose_early(search=None):
     if board_ideas.proven(search, limit=SLICE_BOARDS):
         return None
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-proposal')
-    future = pool.submit(board_ideas.ideas, search)
+    future = pool.submit(slots.carry(board_ideas.ideas, slots.FIRST), search)   # its boards are the slice's local boards
     pool.shutdown(wait=False)
     _early.clear()
     _early.update(search=search, future=future)
@@ -147,7 +147,8 @@ def run(db, feed_db, sources, profile, hidden, sync, say=print, scan=None, score
     from .ai import batch_scope
 
     def read_boards():   # side by side with the employer sites: each batches its own jobs, so a tape replays in any finishing order
-        with batch_scope.reader('boards'):
+        # Why (#first-press-slots, owner, 27 Oct 2026: "local boards first"): the local boards' reads and titles take Claude's slots first
+        with batch_scope.reader('boards'), slots.priority(slots.FIRST):
             return (boards or board_jobs)(say)
     with batch_scope.concurrent(), ThreadPoolExecutor(max_workers=1) as pool:
         reading = pool.submit(read_boards)   # the boards' pages meanwhile; matched below, in the thread that owns the job cache

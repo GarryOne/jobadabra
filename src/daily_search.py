@@ -48,6 +48,9 @@ def search(args, stores=None):
             first_jobs.propose_early()
         except Exception as error:  # noqa: BLE001 — the slice asks the proposal itself
             print(f'Warning: early board proposal skipped: {type(error).__name__}: {error}', flush=True)
+    if args.mode in ('scheduled', 'run') and not args.only_visits:   # the board web search at second 0, beside the proposal (src/sources/board_web.py early)
+        from .sources import board_web   # Why (#first-press-slots, owner, 27 Oct 2026: "Web search ... in parallel"): it started at ~25 s, after the employers' pick
+        board_web.early(load_search_config())
     hidden, saved, dismissed = frozenset(), frozenset(), frozenset()
     stages = None   # job URL -> Stage: also what the pool's outcome counts read (src/contribute.py outcomes)
     try:
@@ -74,9 +77,6 @@ def search(args, stores=None):
             if employer_index.problem:  # said on the run, not only in its log: the check then crawled a small list
                 run['warnings'].append(f'Employer index not downloaded ({employer_index.problem}): this check crawled {len(feed_list)} feeds, not the full list')
             with feeds.database(DATA / 'jobs.sqlite') as feed_db:
-                if args.mode in ('scheduled', 'run') and not args.only_visits:   # the board web search at second 0, beside the first jobs (src/sources/board_web.py early)
-                    from .sources import board_web
-                    board_web.early(load_search_config())
                 so_far = jobs_so_far.SoFar(db)   # each source's jobs in the list as soon as it is read, not all at the end (owner, 18 Oct 2026); before the slice, so its jobs stay "new" in the count
                 first_boards = []
                 full_read = args.mode in ('scheduled', 'run') and not args.only_visits

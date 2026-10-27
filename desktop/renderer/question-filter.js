@@ -19,6 +19,7 @@ export const looksLikeFieldId = text => {
 // how many forms asked. A Your details item ("From its form questions"): the sum of the form questions the AI mapped to its fact; one no form asked yet ranks
 // right after the blocked questions. Guarded by test/queue-score.test.js.
 export const BLOCKED = 1e6;
+export const MUST = 1e12;   // a must-have detail every form asks (lib/contact-review.js): above any fill it blocked
 export const weightOf = verdict => (verdict?.blocked ? BLOCKED : 0) + (verdict?.asked || 0);
 export function factScore(fact, verdicts = {}) {
   const mine = Object.values(verdicts).filter(verdict => verdict?.reuse === 'details' && keyOf(verdict.fact) === keyOf(fact));
@@ -27,7 +28,7 @@ export function factScore(fact, verdicts = {}) {
 }
 // The queue in one order, highest score first; equal scores keep their place.
 export function ranked(list, verdicts = {}) {
-  const scoreOf = row => (row.details ? factScore(row.details.fact || row.question, verdicts) : weightOf(verdicts[keyOf(row.question)]));
+  const scoreOf = row => (row.details?.must ? MUST : row.details ? factScore(row.details.fact || row.question, verdicts) : weightOf(verdicts[keyOf(row.question)]));
   return (list || []).map((row, at) => ({row, at, score: scoreOf(row)})).sort((a, b) => b.score - a.score || a.at - b.at).map(each => each.row);
 }
 

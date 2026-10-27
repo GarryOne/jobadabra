@@ -9,6 +9,7 @@ import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import * as sections from '../lib/profile-sections.js';
+import * as contactDetails from '../lib/contact.js';
 import * as review from '../lib/details-review.js';
 import {openShown} from '../lib/question-lists.js';
 import * as questions from '../lib/questions.js';
@@ -78,6 +79,10 @@ const FIXTURES = {
     const answers = await store.openStore(env.storage, {fetcher: env.fetcher}).page('answers').text();
     assert.match(answers, /Years of experience with Kubernetes \| 3 years/, 'the new value replaces the guess on its own line');
     assert.doesNotMatch(answers, /maybe 3\?/);
+  }},
+  contact: {match: /first and last name/, answer: () => 'Ana Maria Popescu', after: async env => {
+    const contact = await contactDetails.read(env.storage, env.fetcher);
+    assert.deepEqual([contact.first_name, contact.last_name], ['Ana Maria', 'Popescu'], 'the name goes to Contact details, split on the last space');
   }},
   missing: {match: /^Earliest start date/, answer: () => '1 December 2026', after: async env => {
     assert.ok((await sections.read(env.storage, env.fetcher)).availability.some(line => line.label === 'Earliest start date' && line.value === '1 December 2026'), 'a fact nobody had given goes to its section');

@@ -15,14 +15,18 @@
 
   const letterBoxes = () => Array.from(document.querySelectorAll('textarea')).filter(el => visible(el) && window.__jobPilottoUpload.fileKind(`${el.id} ${el.name} ${labelOf(el)}`, window.__jobPilottoAliases || []) === 'cover_letter');
 
+  // The same visible manual-entry shape drives filling and missing-letter observation.
+  const manualLetterButton = () => {
+    const heading = Array.from(document.querySelectorAll('label, legend, h3, h4, div')).find(el => visible(el) && /^\s*cover\s*letter\s*\*?\s*$/i.test(el.textContent || ''));
+    return heading && Array.from(heading.parentElement.querySelectorAll('button, a')).find(el => visible(el) && /enter manually|type it|paste/i.test(el.textContent || ''));
+  };
+
   // Optional cover letter: a textarea labelled Cover letter, or behind an "Enter manually" button.
   const fillCoverLetter = async letter => {
     const find = () => letterBoxes()[0];
     let box = find();
     if (!box) {
-      const heading = Array.from(document.querySelectorAll('label, legend, h3, h4, div')).find(el => /^\s*cover\s*letter\s*\*?\s*$/i.test(el.textContent || ''));
-      const scope = heading?.parentElement || document;
-      const manual = Array.from(scope.querySelectorAll('button, a')).find(el => /enter manually|type it|paste/i.test(el.textContent || ''));
+      const manual = manualLetterButton();
       if (!manual) return false;
       (globalThis.__jobPilottoPress?.(manual) || manual.click());
       for (let i = 0; i < 10 && !box; i++) { await sleep(150); box = find(); }
@@ -247,9 +251,11 @@
     // Why (2026-10-27, owner): an optional letter is still important setup; employer requiredness must never hide the missing letter.
     const coverLetterStatus = resume?.coverLetterStatus || null;
     const letterGiven = letterFileAttached || letterBoxes().some(el => String(el.value || '').trim());
+    const manualLetter = manualLetterButton();
+    manualLetter?.setAttribute('data-jobpilotto-letter-manual', '1');
     for (const box of letterBoxes()) box.setAttribute('data-jobpilotto-letter', '1');
     for (const slot of (window.__jobPilottoUpload.slots?.() || [])) if (window.__jobPilottoUpload.meaningOf(slot, window.__jobPilottoAliases || []) === 'cover_letter') for (const el of new Set([slot.el, slot.input].filter(Boolean))) { el.setAttribute('data-jobpilotto-letter', '1'); el.toggleAttribute('data-jobpilotto-letter-error', !!(resume?.coverLetterFile && !slot.filled)); }
-    if ((letterBoxes().length || uploads.some(item => item.meaning === 'cover_letter')) && coverLetterStatus && !coverLetterStatus.ready && !letterGiven) todo.unshift(`Important: cover letter — ${coverLetterStatus.reason} ${coverLetterStatus.action} in Jobadabra → Profile → Cover letter, then Fill again.`);
+    if ((manualLetter || letterBoxes().length || uploads.some(item => item.meaning === 'cover_letter')) && coverLetterStatus && !coverLetterStatus.ready && !letterGiven) todo.unshift(`Important: cover letter — ${coverLetterStatus.reason} ${coverLetterStatus.action} in Jobadabra → Profile → Cover letter, then Fill again.`);
     const letterUploadFailed = resume?.coverLetterFile && uploads.some(item => item.meaning === 'cover_letter' && !item.ok);
     if (letterUploadFailed) todo.unshift('Important: cover letter upload did not keep the file. Attach the letter manually from Jobadabra, then check the form again.');
     if (coverLetter && letterBoxes().some(el => !String(el.value || '').trim())) todo.unshift('Important: cover letter was available but the text box did not keep it. Paste it from Jobadabra → Profile → Cover letter, then check the form again.');

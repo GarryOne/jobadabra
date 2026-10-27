@@ -108,7 +108,7 @@
     written.update(list);
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
-    const letterAsked = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1');
+    const letterAsked = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1') || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual]')).some(el => el.getClientRects().length);
     const letterGiven = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled);
     const letterRejected = list.find(f => f.el?.hasAttribute('data-jobpilotto-letter-error') && !f.filled);
     const letterMissing = !account && letterAsked && !letterGiven && (letterRejected || coverLetterStatus && !coverLetterStatus.ready);

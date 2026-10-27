@@ -141,6 +141,7 @@ export async function decidePageKind(storage, body, {decide = pageKind, client} 
 // Which of a page's own buttons means what the extension needs (a cookie banner's "reject non-essential", the extension/visit.js fallback
 // when its words know none of them), in any language: lib/option-pick.js, kept per meaning and set of buttons. Labels only, never a value.
 export async function pickChoice(storage, body, {client} = {}) {
+  if (body?.consent === true && storage.settings().acceptConsents === false) return {ok: true, choice: ''};
   // Up to 60 choices, as many as the page sends (a long menu's first page: the answer may sit past the 20th).
   const options = (Array.isArray(body?.options) ? body.options : []).map(text => String(text).replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 60);
   const value = String(body?.value || '').slice(0, 80), label = String(body?.label || '').slice(0, 80);
@@ -152,7 +153,7 @@ export async function pickChoice(storage, body, {client} = {}) {
     appLog('extension', `button by meaning: kept answer ${dropped ? 'forgotten' : 'not kept'}: the page still shows it`, {meaning: value.slice(0, 40), buttons: options.length});
     return {ok: true, forgotten: dropped};
   }
-  const found = await pickOption(storage, {label, value, options, searchable, tried}, {client: client === undefined ? aiClient(storage, {lane: 'page'}) : client});
+  const found = await pickOption(storage, {label, value, options, searchable, tried, consent: body?.consent === true}, {client: client === undefined ? aiClient(storage, {lane: 'page'}) : client});
   appLog('extension', `button by meaning: ${found.choice ? 'picked' : found.searches?.length ? 'search' : 'none'}`, {meaning: value.slice(0, 40), how: found.how, buttons: options.length, ...(searchable ? {searches: found.searches?.length || 0, tried: tried.length} : {})});
   return {ok: true, choice: options.includes(found.choice) ? found.choice : '', ...(searchable ? {searches: found.searches || []} : {})};
 }

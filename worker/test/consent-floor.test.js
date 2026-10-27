@@ -26,3 +26,31 @@ test('a box with no saved fact behind it is only proposed; one resting on a save
   assert.equal(guessed.use, 'fill');
   assert.equal(guessed.guess, true);
 });
+
+test('an explicit high-confidence consent decision survives as a gated kind, never an ordinary answer', async () => {
+  for (const type of ['select', 'combobox', 'checkbox']) {
+    const got = await ask([{field: 'a', label: 'Privacy notice', type, options: ['I agree', 'I decline']}],
+      [answer({category: 'consent', value: type === 'checkbox' ? 'checked' : type === 'combobox' ? '' : 'I agree'})]);
+    assert.deepEqual(got.map(a => [a.category, a.use, a.consent, a.value]), [['legal', 'kind', true, type === 'select' ? 'I agree' : 'checked']], type);
+  }
+});
+
+test('uncertain, proposed, unlisted and text consent decisions cannot authorize a choice', async () => {
+  for (const over of [{confidence: 'low'}, {use: 'propose'}, {value: 'invented'}]) {
+    const got = await ask([{field: 'a', label: 'Privacy notice', type: 'select', options: ['I agree']}], [answer({category: 'consent', value: 'I agree', ...over})]);
+    assert.ok(!got.some(a => a.consent === true));
+  }
+  const got = await ask([{field: 'a', label: 'Signature', type: 'text'}], [answer({category: 'consent'})]);
+  assert.ok(!got.some(a => a.consent === true));
+});
+
+test('a rejected or personal-review AI reading cannot fall through to the legacy legal checkbox tick', async () => {
+  const {fakeFillPage} = await import('../../desktop/test/fake-fill-page.js');
+  for (const over of [{category:'consent',confidence:'low'}, {category:'consent',use:'propose'}, {category:'legal'}]) {
+    const fields = [{field:'a',label:'Aviso de datos personales',type:'checkbox',required:true,filled:false}];
+    const decisions = await ask(fields,[answer({value:'checked',...over})]);
+    const {fill,elements} = fakeFillPage(fields,{checkboxes:true});
+    await fill(decisions,{consents:true});
+    assert.equal(elements.a.checked,false,JSON.stringify(over));
+  }
+});

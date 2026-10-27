@@ -1,4 +1,4 @@
-// Consent boxes are ticked for the person by default (owner, 17 Oct 2026); only the AI-read "legal" kind, never a choice, never a statement of fact.
+// Consent boxes are ticked for the person by default (owner, 17 Oct 2026); only the explicit AI agreement reading, never an unread control or a statement of fact.
 // Guards extension/page/fill-checks.js tickConsents, the flow.js switch and the /extension/me field that carries Settings -> Consent boxes.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ const rows = [
   {field: 'gdpr', label: 'Li e aceito o aviso de privacidade (RGPD)', type: 'checkbox', required: true, filled: false, legal: false},
   {field: 'visa', label: 'Do you need a visa to work here?', type: 'checkbox', required: true, filled: false, legal: false},
   {field: 'truth', label: 'I certify that the information provided is true', type: 'checkbox', required: true, filled: false, legal: false}];
-const answers = [{field: 'gdpr', value: 'checked', category: 'legal'}, {field: 'visa', value: '', category: 'knockout'}, {field: 'truth', value: '', category: 'legal'}];
+const answers = [{field: 'gdpr', value: 'checked', category: 'legal', use: 'kind', consent: true}, {field: 'visa', value: '', category: 'knockout'}, {field: 'truth', value: '', category: 'legal'}];
 
 test('consent on: the data notice is ticked in any language; a choice and a certification never are', async () => {
   const {elements, fill} = fakeFillPage(rows, {checkboxes: true});
@@ -34,4 +34,14 @@ test('the switch is on unless the person turned it off, in the app and in the ex
   assert.equal(flow.match(/\(me\?\.acceptConsents \?\? config\.acceptConsents\) !== false/g).length, 2);
   assert.match(fs.readFileSync(new URL('../lib/server-contact.js', import.meta.url), 'utf8'), /acceptConsents: storage\.settings\(\)\.acceptConsents !== false/);
   assert.match(fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8'), /id="consent-tick"/);
+});
+
+
+test('an unread legal-looking box stays for the person; a legacy kit label alone is not an AI consent decision', async () => {
+  for (const answers of [[], [{field:'gdpr',category:'legal',value:'checked'}]]) {
+    const fields=[{field:'gdpr',label:'I agree to the privacy notice',type:'checkbox',required:true,filled:false,legal:true}];
+    const {elements,fill}=fakeFillPage(fields,{checkboxes:true});
+    await fill(answers,{consents:true});
+    assert.equal(elements.gdpr.checked,false);
+  }
 });

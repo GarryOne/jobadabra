@@ -154,8 +154,9 @@
     badge.style.cssText = 'margin-top:4px;font:600 12px system-ui,sans-serif;color:#8a5700';
     control.parentElement.insertBefore(badge, control.nextSibling);
     control.dataset.jobpilottoArmed = labelOf(el) || field;
+    if (opts.consent) control.dataset.jobpilottoConsent = 'true';
     control.dataset.jobpilottoArmedId = String(++armedSeq);   // which menu flow.js has passed over, whatever menus are disarmed meanwhile (__jobPilottoNextCombo)
-    const done = () => { control.style.outline = ''; badge.remove(); delete control.dataset.jobpilottoArmed; delete control.dataset.jobpilottoArmedId; control.removeEventListener('mousedown', onOpen, true); };
+    const done = () => { control.style.outline = ''; badge.remove(); delete control.dataset.jobpilottoArmed; delete control.dataset.jobpilottoConsent; delete control.dataset.jobpilottoArmedId; control.removeEventListener('mousedown', onOpen, true); };
     const onOpen = event => {
       if (!event.isTrusted) return;
       // Each opening is a try in the menu's one attempt log (page/attempts.js): one that failed on this state is not made again, and a menu gets a few in all, then it is
@@ -165,8 +166,15 @@
       const before = attemptLog ? attemptLog.stateOf(el) : '';
       setTimeout(async () => { window.__jobPilottoPicking = true; let took = null; try {   // flow.js/combo-click.js waits for it: no second click while the page is still deciding
         if (opts.suggest) { took = await suggestPick(el, answer, control, badge, done); return; }   // a box that only takes a suggestion the page offers (page/suggest-box.js)
-        let option = matchOption(answer);
-        if (!option) {
+        let option = null;
+        if (opts.consent) {
+          let choices = [];
+          for (let waited = 0; waited < 1500 && !choices.length; waited += 150) { await sleep(150); choices = realOptions().map(o => clean(o.textContent)).filter(Boolean).slice(0, 60); }
+          const choice = choices.length ? await need({kind: 'choose', label: labelOf(el) || '', asked: answer, choices, consent: true}) : '';
+          const matches = choice ? realOptions().filter(o => clean(o.textContent) === choice) : [];
+          option = matches.length === 1 ? matches[0] : null;
+        } else option = matchOption(answer);
+        if (!option && !opts.consent) {
           // The menu as it opened (before typing filters it): for the fill-failure report's snapshot (snapshot.js).
           try { (window.__jobPilottoMenuSnapshots ||= {})[control.dataset.jobpilottoArmed] = window.__jobPilottoSnapshot?.({field: el.id || el.name}); } catch {} var shown = []; for (let w = 0; w < 1500 && !shown.length; w += 150) { await sleep(150); shown = optionNodes().map(o => clean(o.textContent)).filter(Boolean).slice(0, 60); } option = matchOption(answer); var menuAsOpened = shown.slice();   // the menu's own choices once drawn (a slow menu: Coop, 8 Oct 2026)
           // Long menus (countries, cities) show only their first entries: type the answer to filter, which the menu accepts once your click has opened it; search-as-you-type fields (Location) load suggestions from the server: type the first part, wait for them.
@@ -187,7 +195,7 @@
         // Picked only when the page shows it (page/menu-pick.js); what was seen goes to flow.js clickCombos and the fill card's reason (observed, not assumed: 9 Oct 2026).
         const opened = el.getAttribute('aria-expanded') === 'true' || optionNodes().length > 0;   // before the pick closes it
         took = option ? await (window.__jobPilottoMenuPick?.({el, option, control, readValue: comboValue, multiple: !!el.closest('[class*="is-multi"], [aria-multiselectable="true"]')}) ?? ((globalThis.__jobPilottoPress?.(option) || option.click()), {selectedAfter: true, trusted: false})) : {selectedAfter: false, trusted: false};
-        window.__jobPilottoLastPick = {asked: String(answer).split(' || ')[0], got: option ? clean(option.textContent) : '', same: option ? !!window.__jobPilottoValueClass?.fits?.(String(answer).split(' || ')[0], clean(option.textContent)) : null, opened, found: !!option, choices: option ? [] : (shown || []).slice(0, 8).map(text => text.slice(0, 60)),
+        window.__jobPilottoLastPick = {asked: opts.consent && option ? clean(option.textContent) : String(answer).split(' || ')[0], got: option ? clean(option.textContent) : '', same: option ? !!window.__jobPilottoValueClass?.fits?.(String(answer).split(' || ')[0], clean(option.textContent)) : null, opened, found: !!option, choices: option ? [] : (shown || []).slice(0, 8).map(text => text.slice(0, 60)),
           peek: option ? '' : Array.from(document.querySelectorAll('[class*="menu-notice"], [class*="menu-list"], [role="listbox"]')).filter(n => !/iti__|country/.test(String(n.className))).map(n => clean(n.textContent).slice(0, 30)).slice(0, 3).join(' | '), ...took};   // choices, peek: the form's own wording of a menu nothing matched (its choices, or its "No options" notice), for the log; never the answer
         if (took.selectedAfter) { el.setAttribute('data-jobpilotto-picked', clean(option.textContent).toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 160)); done(); if (rest.length) moreChoices.push([field, rest.join(' && ')]); return; }   // the fill's own pick, for the one reader's mismatch (page/read-back.js)
         badge.textContent = `✈️ Suggested: ${answer} (pick it yourself)`; if (!option) window.__jobPilottoMenuMissed?.(el, shown);   // page/propose.js: no text left in the box; its choices go to the app

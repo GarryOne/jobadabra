@@ -133,3 +133,17 @@ test('a search box: the AI may name what to type, in order; never a search alrea
   assert.deepEqual(await pickOption(memory(), {label: 'School', value: 'Example University', options: [], searchable: true}, {client: reply({choice: '', searches: ['Other']})}),
     {choice: '', how: 'ai', searches: ['Other']}, 'a search that showed nothing still asks what to type next');
 });
+
+test('consent mode requires an explicit AI agreement reading; no exact-text shortcut, old memo, attestation or refusal', async () => {
+  const storage = memory(), sent = [];
+  const ask = {label: 'Applicant privacy notice', value: 'Acconsento', options: ['Acconsento', 'Non acconsento'], consent: true};
+  const reply = (choice, agreement, stop_reason = 'end_turn') => ({messages: {create: async request => {sent.push(request); return {stop_reason, content: [{type:'text',text:JSON.stringify({choice,agreement})}]};}}});
+  assert.equal((await pickOption(storage, ask, {client: reply('Acconsento', true)})).choice, 'Acconsento');
+  assert.equal(sent.length, 1, 'same text still needs a consent reading');
+  assert.match(sent[0].system, /attestation/);
+  assert.equal(sent[0].output_config.format.schema.properties.agreement.type, 'boolean');
+  for (const [choice, agreement, stop] of [['Non acconsento', false], ['invented', true], ['Acconsento', true, 'refusal']]) {
+    assert.equal((await pickOption(storage, ask, {client: reply(choice, agreement, stop)})).choice, '');
+  }
+  assert.equal((await pickOption(storage, ask, {client: null})).choice, '', 'no previous ordinary or consent memo can bypass the AI');
+});

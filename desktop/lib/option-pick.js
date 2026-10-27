@@ -25,32 +25,34 @@ When no choice shown means the same, return in "searches" what to type to find o
 word for the list's own choice for answers it does not list (such as "Other"); never anything already tried. Return no searches when the choices shown are clearly the whole list.
 Only when "tried" already holds the answer's own name and no choice means the same: a choice that is the list's own catch-all for answers it does not list (such as "Other" or
 "Not listed") is the right choice; return it.`;
+const CONSENT_INSTRUCTIONS = `The saved setting authorizes only agreeing to application terms, a privacy policy or data-processing notice. Read the question AND every actual option in any language. Return agreement true and the exact affirmative agreement option only when this is unambiguously that consent. Never choose a refusal, placeholder, marketing preference, eligibility/sponsorship/qualification answer, certification, signature or factual attestation (including a combined consent and attestation). Ambiguous, unread or no affirmative option: agreement false and choice "". One option alone is no evidence of agreement.`;
 const keyOf = (value, choices, label = '') => `${norm(label)}|${norm(value)}|${choices.map(norm).sort().join('|')}`;
 // The page contradicted the kept answer (the banner is still there after its button was pressed): dropped, asked again next time.
 export const forgetOption = (storage, {label = '', value = '', options = []}) => forget(storage, FILE, keyOf(value, (options || []).map(String).filter(option => option.trim()), label));
 // → {choice, how: 'same' | 'ai' | 'kept' | 'none'}; choice '' when none fits (or no AI to ask).
 // searchable, tried: a search box and what was already typed in it (above); then the answer may carry `searches`, never kept (the list a search shows changes).
-export async function pickOption(storage, {label = '', value, options, searchable = false, tried = []}, {client, log = () => {}} = {}) {
+export async function pickOption(storage, {label = '', value, options, searchable = false, tried = [], consent = false}, {client, log = () => {}} = {}) {
   const choices = (options || []).map(String).filter(option => option.trim());
-  const same = choices.find(option => norm(option) === norm(value));
+  const same = !consent && choices.find(option => norm(option) === norm(value));
   if (same || (!choices.length && !searchable) || !String(value || '').trim()) return {choice: same || '', how: same ? 'same' : 'none'};
   const kept = readKept(storage, FILE), key = keyOf(value, choices, label);
-  const known = searchable ? {found: false} : keptValue(kept, key);   // young answers only; a contradicted one was forgotten (lib/kept-decisions.js)
+  const known = searchable || consent ? {found: false} : keptValue(kept, key);   // young answers only; a contradicted one was forgotten (lib/kept-decisions.js)
   if (known.found) return {choice: choices.includes(known.value) ? known.value : '', how: 'kept'};
   const typed = (tried || []).map(String).filter(Boolean).slice(0, 3);
   if (!client) return {choice: '', how: 'none'};
   const started = Date.now();
   try {
-    const response = await client.messages.create({model: MODEL, max_tokens: 8000, system: searchable ? `${INSTRUCTIONS}\n${SEARCH_INSTRUCTIONS}` : INSTRUCTIONS,
+    const response = await client.messages.create({model: MODEL, max_tokens: 8000, system: consent ? CONSENT_INSTRUCTIONS : searchable ? `${INSTRUCTIONS}\n${SEARCH_INSTRUCTIONS}` : INSTRUCTIONS,
       messages: [{role: 'user', content: JSON.stringify({question: String(label).slice(0, 200), answer: String(value).slice(0, 200), choices, ...(searchable ? {tried: typed} : {})})}],
-      output_config: {format: {type: 'json_schema', schema: {type: 'object', additionalProperties: false, required: searchable ? ['choice', 'searches'] : ['choice'],
-        properties: {choice: {type: 'string', enum: [...choices, '']}, ...(searchable ? {searches: {type: 'array', items: {type: 'string'}}} : {})}}}}});
+      output_config: {format: {type: 'json_schema', schema: {type: 'object', additionalProperties: false, required: consent ? ['choice', 'agreement'] : searchable ? ['choice', 'searches'] : ['choice'],
+        properties: {choice: {type: 'string', enum: [...choices, '']}, ...(consent ? {agreement: {type: 'boolean'}} : {}), ...(searchable ? {searches: {type: 'array', items: {type: 'string'}}} : {})}}}}});
+    if (response.stop_reason === 'refusal') throw new Error('AI refused the choice');
     if (response.stop_reason === 'max_tokens') throw new Error('answer cut short');
     const said = JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}');
-    const picked = choices.includes(said.choice) ? said.choice : '';
+    const picked = (!consent || said.agreement === true) && choices.includes(said.choice) ? said.choice : '';
     // What to type next: short texts, none already typed, at most 3 (validated here: the page types them for real).
     const searches = searchable && !picked ? [...new Set((Array.isArray(said.searches) ? said.searches : []).map(text => String(text).replace(/\s+/g, ' ').trim()).filter(text => text && text.length <= 60 && !typed.some(done => norm(done) === norm(text))))].slice(0, 3) : [];
-    if (!searchable) keep(storage, FILE, kept, key, picked);
+    if (!searchable && !consent) keep(storage, FILE, kept, key, picked);
     log('fill', picked ? 'a menu choice picked by meaning' : searches.length ? 'a menu choice to search for' : 'no menu choice means the same', {choices: choices.length, ...(searchable ? {searches: searches.length, tried: typed.length} : {}), ms: Date.now() - started});
     return {choice: picked, how: 'ai', ...(searchable ? {searches} : {})};
   } catch (error) {

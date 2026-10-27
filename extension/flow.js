@@ -77,8 +77,8 @@ async function clickCombosNow(tabId) {
     if (keys) { for (const char of [...String(text)]) for (const key of keysFor(char)) await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', key); return; }
     await chrome.debugger.sendCommand(target, 'Input.insertText', {text});
   }));
-  const choose = bound('choose', async ({label, asked, choices, searchable = false, tried = []}) => {
-    const config = await settings().catch(() => null), reply = config ? await apiFor(tabId, config, '/extension/pick-choice', {method: 'POST', body: JSON.stringify({label, value: asked, options: choices, searchable, tried})}).catch(() => null) : null;
+  const choose = bound('choose', async ({label, asked, choices, searchable = false, tried = [], consent = false}) => {
+    const config = await settings().catch(() => null), reply = config ? await apiFor(tabId, config, '/extension/pick-choice', {method: 'POST', body: JSON.stringify({label, value: asked, options: choices, searchable, tried, consent})}).catch(() => null) : null;
     return searchable ? {choice: reply?.choice || '', searches: Array.isArray(reply?.searches) ? reply.searches.slice(0, 3) : []} : reply?.choice || '';   // a search box: also what to type in it next (page/fill-menus.js searchFor)
   });
   const skip = [];   // the ids of the menus passed over in this pass (page/fill-menus.js __jobPilottoNextCombo): never a count, a disarmed one shifted the rest
@@ -195,18 +195,17 @@ export async function cachedAI(tab, open = null) {
   return !open || open.every(f => asked.has(f.field)) ? entry.ai : null;
 }
 export function forgetAI(tab) { return chrome.storage.session.remove(cacheKey(tab)); }
-
 // The form as the AI is told about it: its fields and its checkbox questions (page scripts loaded).
 const readForm = tab => inPage(tab.id, async () => [...await window.__jobPilottoDescribeForm(),
   ...window.__jobPilottoCheckboxQuestions().map(g => ({field: `group:${g.question}`, label: g.question, type: 'checkbox-group', options: g.options}))]);
 // What goes to Claude is only what nothing else answers: not a field the kit covers (answered, or left empty on purpose: an optional question it
 // chose to skip), not your contact details and CV (the app's, filled by the fill itself), not a file. A form the kit was drafted from needs no call.
 async function openQuestions(tab, form, kitAnswers, me, config) {
-  const fromKit = new Set(kitAnswers.map(a => a.field).filter(Boolean));
+  const fromKit = new Set(kitAnswers.filter(a => a.category !== 'legal').map(a => a.field).filter(Boolean));
   const contact = new Set((await inPage(tab.id, (rows, profile) => window.__jobPilottoProfileEntries(rows, profile).map(e => e.field),
     [form || [], me?.contact || config.profile || {}]).catch(() => [])) || []);
   const PERSONAL = /^(first_name|last_name|preferred_name|email|phone|resume|resume_text|cover_letter|cover_letter_text|longitude|latitude)$/;
-  const ask = (form || []).filter(f => !f.filled && !f.legal && f.type !== 'file' && !fromKit.has(f.field) && !PERSONAL.test(f.field)).map(({field, label, type, required, options, multiple}) => ({field, label, type, required, options, ...(multiple ? {multiple} : {})}));
+  const ask = (form || []).filter(f => !f.filled && f.type !== 'file' && (!fromKit.has(f.field) || f.legal) && !PERSONAL.test(f.field)).map(({field, label, type, custom, required, options, multiple}) => ({field, label, type: custom ? 'combobox' : type, required, options, ...(multiple ? {multiple} : {})}));
   // Why (#2200): contact boxes ride along when the AI is asked anyway, never alone (owner, 27 Oct 2026: no new call): its reading of a box beats the quick step's label pattern (page/fill.js)
   return {fromKit, open: ask.some(f => !contact.has(f.field)) ? ask : []};
 }
@@ -476,6 +475,7 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
   if (tries && Object.keys(tries.byTries).length) decide('fill', 'tries per control', tries).catch(() => {});   // measures the attempt log's cap (spec amendment 1): counts only
   const lastRead = (await climbFill(tab, config, {turn: debuggerTurn}).catch(() => null))?.readBack || readBack;   // the fill ladder's repair (test switch only) and the read after a late retype (ladder/fill-climb.js)
   summary.trace = settleTrace(summary.trace || [], Array.isArray(finalForm) ? finalForm : [], gaveUp, Array.isArray(lastRead) ? lastRead : [], (me?.resume || config.resume)?.name || '');
+  if (Array.isArray(finalForm)) summary.unfilledRequired = finalForm.filter(row => row.required && !row.filled && !(row.field === 'resume' && summary.resumeAttached)).length;   // after trusted picks: the same settled form as the trace
   // One anonymous record of this fill for the learning digest (fill-card.js: counts and fixed words), and its id on the page so
   // the panel can add, at Submit, what you answered yourself.
   summary.card = fillCard({id: crypto.randomUUID(), trace: summary.trace || [], form: debug.form || [],

@@ -28,9 +28,11 @@ jobs:
       - name: Stage the app's shared files
         working-directory: desktop
         run: node scripts/stage.mjs --files-only
-      - name: A headless browser for the tests' own tests
+      # Why (27 Oct 2026): the headless shell alone cannot load an extension, so every real-extension test here (lib/real-extension.mjs, lib/extension.mjs) failed
+      # from the first run on 17 Oct ("Executable doesn't exist ... chrome-linux64/chrome"), 15 of 25 reds. Guard: tests/test_playwright_install_action.py.
+      - name: The browsers for the tests' own tests (the full one loads the extension)
         uses: ./.github/actions/playwright-browser
-        with: {working-directory: desktop/e2e, mode: shell}
+        with: {working-directory: desktop/e2e, mode: both}
       - name: Every harness test
         working-directory: desktop/e2e
         run: node --test --test-reporter=spec test/*.test.mjs

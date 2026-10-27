@@ -34,6 +34,12 @@ class FreeAiKitCasesTest(unittest.TestCase):
     def test_the_schema_is_the_kits(self):
         self.assertEqual(self.out[0]['params']['output_config']['format']['schema']['required'][0], 'eligible')
 
+    def test_all_jobs_adds_the_postings_without_an_asserted_eligibility(self):
+        everything = tool.cases(self.jobs, self.profile, self.answers, all_jobs=True)
+        self.assertEqual(len(everything), len(self.jobs))
+        self.assertGreater(len(everything), len(self.out))
+        self.assertEqual([case['id'] for case in everything if case['id'] in {c['id'] for c in self.out}], [c['id'] for c in self.out])
+
 
 if __name__ == '__main__':
     unittest.main()

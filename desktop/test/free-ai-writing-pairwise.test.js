@@ -24,3 +24,12 @@ test('the tally counts wins and ties per feature', () => {
   const rows = [{feature: 'letter', winner: 'a'}, {feature: 'letter', winner: 'b'}, {feature: 'letter', winner: 'tie'}, {feature: 'prep', winner: 'b'}];
   assert.deepEqual(tally(rows), {letter: {a: 1, b: 1, tie: 1, n: 3}, prep: {a: 0, b: 1, tie: 0, n: 1}});
 });
+
+test('--more-letters gives 15 letter cases, each with its own trap; the default stays 5 per feature', async () => {
+  const {allCases} = await import('../../tools/free-ai-writing-cases.mjs');
+  const letters = allCases({more: true}).filter(item => item.feature === 'letter');
+  assert.equal(letters.length, 15);
+  assert.equal(new Set(letters.map(item => item.id)).size, 15);
+  assert.ok(letters.every(item => item.trap.length > 40 && item.params.messages.length > 0));
+  assert.equal(allCases().filter(item => item.feature === 'letter').length, 5);
+});

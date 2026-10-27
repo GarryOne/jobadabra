@@ -20,9 +20,10 @@ Two tools, same 25 fictional cases (5 per feature, `tools/free-ai-writing-cases.
 ## Traps (each cost a rerun on 27 Oct 2026)
 - **`claude not found` (exit 127):** put the real node bin first on PATH (`/Users/mac/.nvm/versions/node/<v>/bin`); a cmux shim, or an auto-update swapping the binary mid-run, hides it. Check `command -v claude` in the runner's own shell.
 - **Five cases per feature is a coin-flip for close calls** (Haiku 17 vs Sonnet 13 of 25 was noise). Read a difference of fewer than ~5 cases as "not shown", never as "none"; say which in the report.
-- **A judge from the writer's family favours it.** Use two judges, one of each family where possible, and read the notes behind a surprising loss (Opus prep "unsupported" were judge strictness on embellishment plus a case that confused "48 hours away" with "already past").
+- **A judge from the writer's family favours it.** 27 Oct 2026, 15 letters, Opus vs Haiku: 23-7 under an Opus judge, 16-14 under a Sonnet judge (noise). Always read the per-judge split (the table prints it) and claim a gain only when both judges agree; a judge of a third family (not Claude) is still to be added. Read the notes behind a surprising loss (Opus prep "unsupported" were judge strictness on embellishment plus a case that confused "48 hours away" with "already past").
 - **Run long runs in the background with `2>&1 | tee <log>`** and a Monitor on `PAIR|WROUND|rror`; one runner at a time, so two runs never share the plan's usage.
 - Baselines go stale: re-run the cheap model (Qwen) beside the new ones in the same round.
+- `--more-letters` (eval and pairwise) adds 10 letter cases (15 in all: fits, level/pay mismatches, a ruled-out job, language gaps) for a close call on letters; the default stays 5 per feature.
 - Cases are fictional only; they go to a third party.
 
 ## Report

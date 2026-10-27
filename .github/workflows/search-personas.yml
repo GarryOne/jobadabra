@@ -3,7 +3,10 @@ name: CI · Search check (6 personas)
 # of main's last 3 runs, or a press runs past 3 minutes (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate, for a profile,
 # for a speed perspective.. We break other use-cases."; his answers on the sketch: here with our own tools, all 6 in parallel, right role + place by a
 # blind judge, red below main's range). Each merge to main that touches these paths runs it again: main's numbers are the floor.
-# Every AI step runs on Haiku 5.5 through Claude Code on the owner's plan (CLAUDE_CODE_OAUTH_TOKEN), never an API key: $0.
+# Every AI step runs on Haiku 5.5 on the API key PR_PROOF_ANTHROPIC_KEY (its own workspace + spend limit): the engine's steps through the API, the blind judge
+# through Claude Code with that key as its only key (tools/persona-search/gate_judge.py). Each persona's measured $ is in the PR table; a persona over its cap is red.
+# Why (owner, 27 Oct 2026, replaces the subscription-token decision): Haiku on PR_PROOF_ANTHROPIC_KEY, not the subscription token. He had said "let them use my claude subscription";
+# asked "Use Haiku instead" he answered "Haiku on an API key (Recommended)": one workspace + spend limit, no token to set, the first runs report their cost.
 # Tools: tools/persona-search/gate.py (cv, result, compare), gate_judge.py (the blind judge), run.mjs (the press). Guard: tests/test_search_personas_gate.py.
 on:
   pull_request:
@@ -86,7 +89,7 @@ concurrency:   # a PR's newer push replaces its older run; a newer merge replace
 
 env:
   CLAUDE_CODE_VERSION: 2.1.311
-  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5   # Why (owner, 27 Oct 2026): every AI step on Haiku 5.5 on his plan, $0; tests/test_search_personas_gate.py
+  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5   # Why (owner, 27 Oct 2026): every AI step on Haiku 5.5, on PR_PROOF_ANTHROPIC_KEY; tests/test_search_personas_gate.py
 
 jobs:
   persona:
@@ -96,18 +99,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        persona: [1, 2, 3, 4, 5, 6]   # Why (owner, 27 Oct 2026, "All 6 in parallel"): a PR sees every case; 12 Claude processes at once on his plan
-    env:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        persona: [1, 2, 3, 4, 5, 6]   # Why (owner, 27 Oct 2026, "All 6 in parallel"): a PR sees every case; 6 presses and 6 judges at once on the key's workspace
     steps:
-      - name: The plan's token is there
+      - name: The API key is there
         id: token
+        env:   # Why (27 Oct 2026): the key goes only to the steps that ask Claude, never to the installs of third-party packages
+          PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}
         run: |
           mkdir -p out
-          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0; fi
-          # Why (27 Oct 2026): until the owner sets the secret (`claude setup-token`; a fork's PR never gets it) the check says "not measured" on the PR, never a green that looks measured
-          echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set: the search check is not measured"
-          printf '{"persona": %s, "not_measured": "CLAUDE_CODE_OAUTH_TOKEN is not set"}\n' "${{ matrix.persona }}" > out/result.json
+          if [ -n "$PR_PROOF_ANTHROPIC_KEY" ]; then echo "ok=yes" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Why (27 Oct 2026): a fork's PR never gets the secret, and a missing one must show: the check says "not measured" on the PR, never a green that looks measured
+          echo "::warning::PR_PROOF_ANTHROPIC_KEY is not set: the search check is not measured"
+          printf '{"persona": %s, "not_measured": "PR_PROOF_ANTHROPIC_KEY is not set"}\n' "${{ matrix.persona }}" > out/result.json
       - uses: actions/checkout@v5
         if: steps.token.outputs.ok == 'yes'
         with: {persist-credentials: false}
@@ -129,19 +132,23 @@ jobs:
         if: steps.token.outputs.ok == 'yes'
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
-      - name: The persona's fictional CV, then one Find jobs press (Haiku 5.5 for every step)
+      - name: The persona's fictional CV, then one Find jobs press (Haiku 5.5 for every step, through the API)
         if: steps.token.outputs.ok == 'yes'
+        env:
+          PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}
         run: |
           set -o pipefail
           python3 tools/persona-search/gate.py cv "${{ matrix.persona }}" out
-          env -u ANTHROPIC_API_KEY JOB_PILOTTO_NO_DOTENV=1 node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --fresh --tag gate 2>&1 | tee out/run.log || true
+          env -u ANTHROPIC_API_KEY JOB_PILOTTO_NO_DOTENV=1 node tools/persona-search/run.mjs draw "$GITHUB_WORKSPACE/out" --presses 1 --fresh --engine api --tag gate 2>&1 | tee out/run.log || true
           grep -h 'with claude-' out/draw/run-*.log | grep -v -c 'claude-haiku-5-5' > out/non-haiku-steps.txt || true
           python3 tools/persona-search/gate.py extract "$(node -p 'require("os").tmpdir()')/jp-persona-draw-gate/data/jobs.sqlite" out/jobs.json
-      - name: The blind judge (right role, right place; Sonnet on the plan)
+      - name: The blind judge (right role, right place; Haiku 5.5 on the key)
         if: steps.token.outputs.ok == 'yes'
+        env:
+          PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}
         run: |
           set -o pipefail
-          env -u ANTHROPIC_API_KEY python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json out/judged.json 2>&1 | tee out/judge.log
+          python3 tools/persona-search/gate_judge.py "${{ matrix.persona }}" out/jobs.json out/judged.json 2>&1 | tee out/judge.log
       - name: The persona's numbers
         if: always() && steps.token.outputs.ok == 'yes'
         run: python3 tools/persona-search/gate.py result "${{ matrix.persona }}" out

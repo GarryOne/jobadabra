@@ -28,11 +28,11 @@ export function takeSyntheticRedirect(address, redirects) {
 
 
 /** Serve synthetic redirect chains through CDP; Playwright routing misses requests after a fulfilled 302.
- * Takes the case's tab and existing offline responder; returns a detach callback, or a no-op for ordinary cases.
+ * Takes the case's tab and existing offline responder; the owning tab closes its CDP session.
  * Responder failures abort the request so navigation fails red rather than reaching the network.
  */
 export async function routeSyntheticNavigation(context, page, item, respond) {
-  if (!item.syntheticNavigation?.dropQueryOnce) return async () => {};
+  if (!item.syntheticNavigation?.dropQueryOnce) return;
   const session = await context.newCDPSession(page);
   const hosts = [...new Set(item.pages.map(one => new URL(one.url).host))];
   // Why (2026-10-27): a fulfilled HTTP redirect bypasses Playwright's next route; raw Fetch must serve every hop offline.
@@ -49,5 +49,4 @@ export async function routeSyntheticNavigation(context, page, item, respond) {
   });
   await session.send('Fetch.enable', {patterns: hosts.map(host => ({urlPattern: `https://${host}/*`, requestStage: 'Request'}))});
   console.log(`[replay ${item.name || 'synthetic'}] offline HTTP redirect interception ready (${hosts.length} hosts)`);
-  return () => session.detach().catch(() => {});
 }

@@ -148,17 +148,19 @@ test('every golden posting with no level may leave Growth empty; every one with 
   }
 });
 
-// The AI judges whether a posting is in the person's places; a remote job beyond their country ("Remote - Europe" for a Zurich search) is not local
-// (owner, 24 Oct 2026: "at most remote in that specific country"), so the suite may not demand it. Main red 27 Oct 2026 (runs 40421937350, 40434477266):
-// a fresh Places answer dropped 3003 and the facts step called it "missing from Notion"; the PR had replayed an older answer that kept it.
-test('a golden posting that is remote beyond the search\'s country may be dropped', () => {
+// A golden posting's place has one clear answer for the candidate's search (owner, 27 Oct 2026, on "Remote - Europe" for a Zurich search:
+// "I don't understand "Remote - Europe". That's confusing, lets just another text."): a remote posting names the search's country, and the
+// truth stays strict for it. Main red 27 Oct 2026 (runs 40421937350, 40434477266): one fresh Places answer dropped 3003, an older replayed one kept it.
+test('every remote golden posting names the search\'s country and must be kept', () => {
   for (const name of ['golden', 'golden-photographer']) {
     const postings = JSON.parse(fs.readFileSync(new URL(`../fixtures/${name}/truth.json`, import.meta.url), 'utf8'));
-    for (const posting of postings.filter(item => item.workMode === 'Remote' && !/switzerland/i.test(item.location))) {
-      assert.equal(posting.filterMayDrop, true, `${name} ${posting.id} "${posting.location}" must be filterMayDrop`);
+    const board = JSON.parse(fs.readFileSync(new URL(`../fixtures/${name}/board.json`, import.meta.url), 'utf8'));
+    for (const posting of postings.filter(item => item.workMode === 'Remote')) {
+      assert.match(posting.location, /switzerland/i, `${name} ${posting.id} "${posting.location}"`);
+      assert.notEqual(posting.filterMayDrop, true, `${name} ${posting.id} must be kept`);
     }
+    for (const job of board.jobs) assert.doesNotMatch(`${job.location?.name} ${job.content}`, /remote - europe|within europe/i, `${name} board ${job.id}`);
   }
-  assert.ok(truth.some(item => item.workMode === 'Remote' && !/switzerland/i.test(item.location)), 'the golden set keeps one remote-beyond-the-country posting');
 });
 
 // Main red, 26-27 Oct 2026 (runs 40421937350, 40423209526): Free AI took ~50 s to place 6 locations, the first refresh ran out of time with

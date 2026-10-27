@@ -44,7 +44,7 @@
   "id": 3003,
   "title": "Senior DevOps Engineer",
   "url": "https://boards.e2e.test/job/3003",
-  "location": "Remote - Europe",
+  "location": "Switzerland (remote)",
   "seniority": "Senior",
   "workMode": "Remote",
   "english": true,
@@ -60,8 +60,7 @@
    "cloud_infrastructure"
   ],
   "fit": "mid",
-  "filterMayDrop": true,
-  "description": "Fully remote within Europe, no office. Run CI/CD, Kubernetes and AWS infrastructure for a fintech product. Terraform, Prometheus, Grafana, on-call rotation one week in six. Senior level, English only. Compensation: EUR 95,000 - 120,000."
+  "description": "Fully remote from anywhere in Switzerland, no office. Run CI/CD, Kubernetes and AWS infrastructure for a fintech product. Terraform, Prometheus, Grafana, on-call rotation one week in six. Senior level, English only. Compensation: EUR 95,000 - 120,000."
  },
  {
   "id": 3004,

@@ -99,3 +99,12 @@ test('#2156: a folder watch on app code no longer runs wander or interactions wh
   const watched = ['wander', 'interactions'].map(suite => fs.readFileSync(new URL(`../suites/${suite}.mjs`, import.meta.url), 'utf8').match(/^export const watches = (.*);/m)?.[1] || '');
   assert.ok(watched.every(text => /'desktop\/renderer\/'/.test(text)), 'the class this guards still watches app folders (drop this test with the watch)');
 });
+
+test('#2157: removed UI words count only where a suite expects them, not in step names, labels, messages or comments', async () => {
+  const {checkedText, suitesExpecting} = await import('../lib/pr-suites.mjs');
+  const named = "// a Notion page\nawait ctx.run('this suite starts with no jobs in its Notion page', async () => {\n  if (!ok) throw new Error(`the Notion page ${id} was empty`);\n  console.log('  Notion page ready');\n}, {needs: [{name: 'the Notion page', value: true}]});\nconst url = 'https://x.test/a'; // Notion page";
+  const expects = "await ctx.run('the review is saved', async () => { await see(page, 'The review is on the Notion page'); });";
+  assert.equal(checkedText(named).length, named.length, 'same length: positions stay');
+  assert.deepEqual(suitesExpecting(['Notion page'], {'suites/a.mjs': named, 'suites/b.mjs': expects}), {b: ['Notion page']});
+  assert.match(checkedText(named), /'https:\/\/x\.test\/a'/, 'a URL is no comment');
+});

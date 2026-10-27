@@ -146,6 +146,26 @@ test('a file a suite watches runs it whole only until the step map has recorded 
   assert.deepEqual(stillWhole(['src/ai/score.py'], pointsAt, {}), ['quality'], 'no map yet: as before');
 });
 
+// #2234 changed only src/ai/place_triage.py (the place prompt) on 27 Oct 2026: activity and 5 more suites ran its lines, so it was "shared code" and went to activity;
+// quality, whose AI answers are replayed strictly, did not run on the PR, recorded nothing, and main's quality went red. A suite's judged folder is its own.
+test('a prompt-only change in a folder a suite judges runs that suite\'s own steps, even when many suites ran the line (quality judges src/ai/)', async () => {
+  const {suiteFacts} = await import('../plan-run.mjs');
+  const facts = await suiteFacts();
+  assert.deepEqual(facts.judges.quality, ['src/ai/'], 'quality judges every AI file it runs');
+  const file = 'src/ai/place_triage.py', ran = {[file]: lines([1, 50])};
+  const entry = {sha: 'S', files: ran, steps: {'Find jobs': ran, [SETUP]: {}}};
+  const golden = {sha: 'S', files: ran, steps: {'a Jobs check on the golden postings finishes and scores them': ran, [SETUP]: {}}};
+  const map = {suites: {...Object.fromEntries(['activity', 'apply', 'jobs', 'settings', 'strategy', 'wander'].map(name => [name, entry])), quality: golden}};
+  const hunks = {S: {[file]: [[22, 22]]}};
+  assert.equal(stepsCovering(map, hunks, {watched: watchedFiles(facts.watches)}).quality, undefined, 'without judges: shared code, quality skipped (the #2234 gap)');
+  const picked = stepsCovering(map, hunks, {watched: watchedFiles(facts.watches, facts.judges)});
+  assert.deepEqual(picked.quality?.steps, ['a Jobs check on the golden postings finishes and scores them'], 'with judges: quality runs its own step that ran the line');
+  const store = 'src/stores/sqlite.py', renamed = JSON.parse(JSON.stringify(map).replaceAll(file, store));
+  assert.ok(renamed.suites.quality.files[store], 'every suite ran the store file too');
+  assert.equal(stepsCovering(renamed, {S: {[store]: [[22, 22]]}}, {watched: watchedFiles(facts.watches, facts.judges)}).quality, undefined, 'a file outside src/ai/ keeps the shared rule');
+  assert.deepEqual(watchedFiles({quality: ['src/ai/score.py']}, {quality: ['src/ai/']}), {quality: ['src/ai/score.py', 'src/ai/']});
+});
+
 // #2194 changed src/ai/score.py:268 and :285 on 27 Oct 2026: both were "shared code" (more than MAX_USERS suites ran them), so failureschannels and settings ran
 // them, and quality, the one suite that judges scores, did not run on main. Every exact file a suite watches: a shared line in it still runs that suite.
 test('a changed line in a file a suite watches runs that suite, even when many suites ran the line (every suite\'s every watched file)', async () => {

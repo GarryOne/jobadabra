@@ -34,6 +34,10 @@ const STEP = 60000;
 export const sameOnEveryOs = true;
 // On the Notion stand-in its Profile is drafted from the CV by the wizard, as on the real test page: the scores this suite judges read it (lib/context.mjs).
 export const standInFromWizard = true;
+// Why (27 Oct 2026, #2234): the AI files this suite judges. Its answers are replayed strictly, so a changed prompt it ran must run its own steps on the PR (which records
+// the new answers for main); a line in them is never "shared code" another suite runs for it (lib/coverage-pick.mjs stepsCovering). #2234 changed place_triage.py
+// and only activity ran it; main's quality then asked 1-6 questions live and went red.
+export const judges = ['src/ai/'];
 export const watches = ['src/ai/score.py', 'src/ai/score_bands.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/e2e/fixtures/golden/'];
 // This suite measures what a user gets, so the app under test runs on the shipped model (about $0.3 a run); the other suites run on Haiku. For a cheap run:
 // E2E_APP_MODEL=claude-haiku-4-5 (Haiku 4.5 scored the same job up to 10 points apart between two scorings, Sonnet within 6).

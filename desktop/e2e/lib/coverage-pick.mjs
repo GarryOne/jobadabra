@@ -152,8 +152,13 @@ export function suitesCovering(map, hunksBySha) {
   return picked;
 }
 
-// Each suite's `watches` as exact files (a folder, ending in '/', is left out): stepsCovering's `watched`. {suite: [paths]} -> {suite: [files]}
-export const watchedFiles = watches => Object.fromEntries(Object.entries(watches || {}).map(([suite, paths]) => [suite, paths.filter(file => !file.endsWith('/'))]));
+// Each suite's own files for stepsCovering's `watched`: its `watches` as exact files (a watched folder, ending in '/', keeps the shared rule: wander's desktop/lib/),
+// plus the folders it `judges` (quality: src/ai/), whose every file is its own. {suite: [paths]}, {suite: [folders]} -> {suite: [files and folders]}
+export function watchedFiles(watches, judges = {}) {
+  const suites = new Set([...Object.keys(watches || {}), ...Object.keys(judges || {})]);
+  return Object.fromEntries([...suites].map(suite => [suite, [...(watches?.[suite] || []).filter(file => !file.endsWith('/')), ...(judges?.[suite] || [])]]));
+}
+const owns = (paths = [], file) => paths.some(own => (own.endsWith('/') ? file.startsWith(own) : own === file));
 
 // The distinct commits the map was recorded on (one diff each).
 export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(entry => entry.sha).filter(Boolean))];
@@ -167,7 +172,8 @@ export const mapShas = map => [...new Set(Object.values(map?.suites || {}).map(e
 // `reach`: {step: 'file:line'}, the first changed line that picked each step (the plan's reasons, lib/pick-why.mjs).
 // `watched`: {suite: [files]}, the exact files each suite's `watches` names (quality: src/ai/score.py). A changed line in one is never shared code for that suite: it
 // runs its own steps that ran the line (whole when none did), because no other suite judges that file (#2194's score.py lines went to failureschannels
-// and settings only, and quality did not run on main; 27 Oct 2026). A watched folder (wander: desktop/lib/) keeps the shared rule.
+// and settings only, and quality did not run on main; 27 Oct 2026). A watched folder (wander: desktop/lib/) keeps the shared rule; a judged folder (quality's src/ai/,
+// watchedFiles) does not: every file under it is the suite's own (#2234's place_triage.py).
 export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = MAX_USERS, watched = {}} = {}) {
   const out = {}, setupOnly = [];
   const suites = Object.entries(map?.suites || {});
@@ -190,7 +196,7 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
     for (const [file, ranges] of Object.entries(hunks)) {
       if (!entry.files[file]) continue;
       for (const range of ranges) {
-        const shared = (watched[suite] || []).includes(file) ? null : runner(file, range);   // Why (#2212): a suite's own watched file is never shared code (quality skipped after #2194)
+        const shared = owns(watched[suite], file) ? null : runner(file, range);   // Why (#2212): a suite's own watched file is never shared code (quality skipped after #2194)
         if (shared && shared.suite !== suite) continue;
         if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }

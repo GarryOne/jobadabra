@@ -51,6 +51,21 @@ test('the dim and the centring are one look: only look() sets either, a closed p
   assert.match(review, /\$\('\.x'\)\.onclick = \(\) => \{[^}]*look\(false\)/, 'the X lifts the look');
   assert.match(review, /overlay\.onLift\?\.\(/, 'the panel hears a lift it did not ask for (Stop, the backstop, a removal from outside)');
   const overlay = read('extension/panel-overlay.js');
-  for (const why of [/!chrome\.runtime\?\.id \|\| !layer\?\.isConnected \|\| Date\.now\(\) - refreshed > MAX_MS\) lift\(\)/, /'stopped'\) lift\(\)/, /isConnected\) \{ lift\(\); return; \}/])
+  for (const why of [/!chrome\.runtime\?\.id \|\| !layer\?\.isConnected \|\| Date\.now\(\) > until\) lift\(\)/, /'stopped'\) lift\(\)/, /isConnected\) \{ lift\(\); return; \}/])
     assert.match(overlay, why, `every lift the overlay does by itself goes through lift(), which tells the panel: ${why}`);
+});
+
+// 27 Oct 2026 (owner: "at the time the webpage loads, can we instantly show the overlay dark/glowing background? Right now there is a 0.5 second until it appears"): a fill page is dimmed when
+// its document commits, by the same one-per-page overlay the panel then takes over, and a page that never gets a panel is not left dim.
+test('a fill page is dimmed from its commit by the one overlay the panel takes over, and the early dim lifts by itself', () => {
+  const early = read('extension/early-dim.js');
+  assert.match(early, /webNavigation\?\.onCommitted/, 'at the commit, the earliest moment the worker can reach the new document');
+  assert.match(early, /details\.url\.includes\(FILL_MARK\)/, 'only a page the app opened to fill (its mark), never any other page');
+  assert.match(early, /isStopped\(\)/, 'never after the person\'s Stop');
+  assert.match(early, /files: \['panel-overlay-fx\.js', 'panel-overlay\.js', 'overlay-early\.js'\]/, 'one injection: the overlay and its early start together');
+  assert.match(read('extension/background.js'), /startEarlyDim\(\)/, 'the worker starts it');
+  const overlay = read('extension/panel-overlay.js');
+  assert.match(overlay, /if \(window\.__jobPilottoOverlay\?\.alive\?\.\(\)\) return;/, 'one copy per page: the panel\'s own injection keeps the early layer, so the panel lifts the layer it sees');
+  assert.match(overlay, /EARLY_MS = \d+/, 'the early dim lifts by itself when no panel takes it over');
+  assert.match(read('extension/review.js'), /if \(overlay\.early\?\.\(\)\) \{[^\n]*showStep\(/, 'the panel takes the early dim over at once, centred, with its first step');
 });

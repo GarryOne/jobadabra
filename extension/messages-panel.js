@@ -10,7 +10,8 @@ import {forgetAI} from './flow.js';
 import {settings} from './flow.js';
 import {sharedFixNote} from './tab-pages.js';
 import {sharedFixes} from './tab-pages.js';
-import {consider, tabReloaded} from './fill-flow.js';
+import {consider, sayStep, tabReloaded} from './fill-flow.js';
+import {forgetJudged, formNext, handGivenUpToPerson} from './form-ready.js';
 
 export function createPanelMessages(ctx) {
   const {fillOpenedTab, jobOf, prefetch, readyHandoff, started} = ctx;
@@ -35,7 +36,18 @@ export function createPanelMessages(ctx) {
     if (message?.type === 'panelFill' && sender.tab) {
       const url = String(message.url || sender.tab.url).split('#')[0];
       started.add(sender.tab.id);
-      forgetAI(sender.tab).then(() => fillOpenedTab(sender.tab, url, !!message.force, {fast: true})).then(result => reply({
+      // Its end is judged like any fill's (fill-flow.js invariant 4): the AI says what the page needs now, so Check again clears a "needs you" the person dealt with, or keeps it.
+      const judge = async result => {
+        if (result?.error || result?.ineligible) return result;
+        forgetJudged(sender.tab.id);
+        sayStep(sender.tab.id, 'Checking the form…');
+        await chrome.scripting.executeScript({target: {tabId: sender.tab.id}, func: () => document.documentElement.removeAttribute('data-jobpilotto-needs')}).catch(() => {});   // the old verdict goes; the judges below set it again if the page still needs the person
+        await handGivenUpToPerson(sender.tab, 0, result?.trace).catch(() => {});
+        await formNext(sender.tab, 0).catch(() => {});
+        sayStep(sender.tab.id, '');
+        return result;
+      };
+      forgetAI(sender.tab).then(() => fillOpenedTab(sender.tab, url, !!message.force, {fast: true})).then(judge).then(result => reply({
         ok: !result?.error, error: result?.error || '', ineligible: !!result?.ineligible, note: result?.note || '',
         filled: result?.filled || 0, todo: (result?.todo || []).slice(0, 20), coverLetter: result?.coverLetter || '',
         sharedNote: sharedFixNote(sharedFixes(result?.operated))}));

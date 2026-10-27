@@ -21,10 +21,15 @@ for (const [name, reply] of Object.entries(REPLIES)) {
       await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
       await app.page.goto('https://jobs.example.test/apply');
       assert.ok(await app.fillWithPanel(), 'the panel offers a Fill button');
-      await app.page.waitForFunction(() => /couldn't answer|Answer them yourself/.test(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.note')?.textContent || ''), null, {timeout: 60000});
+      await app.page.waitForFunction(() => { const line = document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.note:not(.trace-note)'); return !!line && !line.hidden && /couldn't answer|Answer them yourself/.test(line.textContent); }, null, {timeout: 60000});   // shown: a hidden line keeps an older note's words
       const {note} = await app.panel();
       assert.match(note, /The AI couldn't answer the questions this form asks \(its answer couldn't be read\)\. Answer them yourself, or press Fill again/, note);
       assert.doesNotMatch(note, RAW, `a raw code error reached the panel: ${note}`);
+      // The note is drawn in the note line, never in the debugging-bar note above it (both are .note; since 516e3fb every note went there, under its "Got it": 27 Oct 2026).
+      const boxes = await app.page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot;   // the boxes' own state: the card itself may be minimised now
+        return {line: !root.querySelector('.note:not(.trace-note)').hidden, trace: !root.querySelector('.trace-note').hidden, traceText: root.querySelector('.trace-note span').textContent}; });
+      assert.deepEqual({line: boxes.line, trace: boxes.trace}, {line: true, trace: false}, 'the note shows in its own line, the debugging-bar note stays closed');
+      assert.match(boxes.traceText, /debugging bar/, 'the debugging-bar note keeps its own words');
       await app.assertIsolated();
     } finally { await app.close(); }
   });

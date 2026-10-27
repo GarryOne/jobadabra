@@ -28,6 +28,7 @@ import {tellPanel} from './page-notes.js';
 import {fillWaitsForAllow, resumeFillWaiting, watchUnallowedFillTabs} from './site-allow.js';
 import {createReadyHandoff} from './ready-handoff.js';
 import {startRefusedReads} from './refused-read.js';
+import {startEarlyDim} from './early-dim.js';
 
 // The tab we may touch: Chrome reuses a tab id after its tab closes, and the user can navigate the tab elsewhere
 // while a fill is still running, so every injection asks the tab what it shows first (tab-pages.js).
@@ -157,6 +158,7 @@ if (chrome.webNavigation) {
   chrome.tabs.onRemoved.addListener(tabId => { chrome.storage.session.remove(`readmark:${tabId}`).catch(() => {}); });
   chrome.permissions.onAdded.addListener(() => { startWaiting(); resumeFillWaiting({decide}); });
   watchUnallowedFillTabs({decide});
+  startEarlyDim();   // a fill page is dimmed from its first moment, not when the panel arrives (early-dim.js)
   startRefusedReads();   // reads refused sites only after the person's press in the app, seen by a one-minute look (extension/refused-read.js)
   chrome.webNavigation.onCommitted.addListener(async details => {
     if (details.frameId !== 0) return;

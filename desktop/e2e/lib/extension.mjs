@@ -152,6 +152,6 @@ export const readPanel = page => page.evaluate(() => {
   const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
   if (!root) return null;
   const text = selector => (root.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
-  return {pill: text('.pill'), progress: text('.progress-line'), note: root.querySelector('.note')?.hidden ? '' : text('.note'),
+  return {pill: text('.pill'), progress: text('.progress-line'), note: root.querySelector('.note:not(.trace-note)')?.hidden ? '' : text('.note:not(.trace-note)'),
     tailor: root.querySelector('.tailor')?.hidden ? '' : text('.tailor'), knock: root.querySelector('.knock')?.hidden ? '' : text('.knock'), tip: root.querySelector('.tip')?.hidden ? null : {chip: text('.tip-chip'), text: text('.tip-text')}, left: [...root.querySelectorAll('.left .item')].map(item => item.textContent.replace(/\s+/g, ' ').trim()), foot: text('.foot'), fillLabel: text('.fill .label'), filling: !!root.querySelector('.fill')?.disabled};   // filling: the panel's own Fill is running (review.js)
 });

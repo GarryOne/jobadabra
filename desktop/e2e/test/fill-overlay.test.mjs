@@ -1,4 +1,4 @@
-/* global document, location, window, chrome, innerWidth */
+/* global document, location, window, chrome, innerWidth, getComputedStyle, performance */
 // While the extension fills, the page is dimmed and the person's clicks, keys and scrolling are held back; the panel comes forward; every way the fill ends takes the overlay away
 // (real extension on a fixture form, fake data). The driver's own input passes through a gap flag; the overlay is invisible to hit-tests and reads (pointer-events: none).
 import assert from 'node:assert/strict';
@@ -240,5 +240,171 @@ test('after Stop, every restart on the page works again: Check form again, Fill 
       assert.equal((await t.look()).stopped, false, `${name}: the fill ran instead of answering "Stopped by you." at once`);
       assert.ok(t.app.requests.slice(sent).some(request => request.route === '/extension/event' && /"type":"started"/.test(request.body)), `${name}: the app is told, so its session leaves "Stopped"`);
     }
+  } finally { await t.app.close(); }
+});
+
+// The fill's own first run on the page (its mark) ends before a test drives its own steps: its end would cut into them.
+const fillOver = t => t.app.page.waitForFunction(() => /"state":"(done|error|no-form|account)"/.test(document.documentElement.dataset.jobpilottoFill || ''), null, {timeout: 30000}).catch(() => {});
+// The look, sampled in the page every 16 ms (a frame) from now on: what the person sees, including a flash between two calls of the test.
+const sampleLook = t => t.app.page.evaluate(() => { window.__looks = []; window.__sampler = setInterval(() => { const h = document.getElementById('jobpilotto-review-host');
+  window.__looks.push({dim: !!document.getElementById('jobpilotto-fill-overlay'), centred: !!h && /translate/.test(h.style.cssText), at: performance.now()}); }, 16); });
+const sampled = t => t.app.page.evaluate(() => { clearInterval(window.__sampler); return window.__looks; });
+
+// Owner, 27 Oct 2026: "there are flashes (very short moments) when the extension panel moves from center to bottom right, and removes the background, then comes back again". Causes: the page's
+// mark moving on mid-fill ended the whole step, and a step's end with the next one a moment later dropped the look in between.
+test('back-to-back steps keep the dim and the centring at every frame: the mark moving on mid-fill, an end with the next step a moment later', async () => {
+  const t = await open();
+  try {
+    await fillOver(t);
+    await t.step('Reading the form…');
+    await t.lookIs({dim: true, centred: true}, 'the first step');
+    await sampleLook(t);
+    await t.mark('reading');   // the worker reads the page under its own step (fill-flow.js "Reading this page…" + the mark)
+    await t.app.page.waitForTimeout(300);
+    await t.step('Filling the form…');
+    await t.mark('form');   // the page is judged a form: the mark's row ends, the fill's own goes on
+    await t.app.page.waitForTimeout(400);
+    await t.step('');   // one fill ends…
+    await t.app.page.waitForTimeout(150);
+    await t.step('Choosing the drop-down answers…');   // …and the next starts a moment later (the panel's own fill, a Claude pass, the account step)
+    await t.app.page.waitForTimeout(300);
+    await t.step('Uploading your CV…');
+    await t.app.page.waitForTimeout(300);
+    const looks = await sampled(t);
+    assert.ok(looks.length >= 40, `positive control: the look was sampled every frame (${looks.length} samples)`);
+    const broken = looks.filter(look => !look.dim || !look.centred);
+    assert.equal(broken.length, 0, `the look broke for ${broken.length} frame(s) between steps, first at ${Math.round(broken[0]?.at - looks[0].at)} ms: ${JSON.stringify(broken.slice(0, 3))}`);
+    await t.step('');
+    await t.lookIs({dim: false, centred: false, busy: false}, 'the last step ended: the look goes within a moment');
+  } finally { await t.app.close(); }
+});
+
+// Owner, 27 Oct 2026: "at the time the webpage loads, can we instantly show the overlay dark/glowing background? Right now there is a 0.5 second until it appears".
+test('a page the app opened to fill is dimmed at load: the dim is on 50 ms after DOMContentLoaded, and the panel takes it over centred', async () => {
+  const t = await open();
+  try {
+    await fillOver(t);
+    // Like most application pages, the form is drawn by the page's script a moment after load (an empty shell first).
+    const LATE = `<!doctype html><title>Apply</title><body><div id="app">Loading…</div><script>setTimeout(() => { document.getElementById('app').innerHTML = ${JSON.stringify(FORM.replace(/^<!doctype html><title>[^<]*<\/title>/, ''))}; }, 1200);</script>`;
+    await t.app.context.route('https://jobs.example.test/late**', route => route.fulfill({status: 200, contentType: 'text/html', body: LATE}));
+    await t.app.page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { window.__dims = []; for (const ms of [50, 400, 900]) setTimeout(() => window.__dims.push(!!document.getElementById('jobpilotto-fill-overlay')), ms); }));
+    await t.app.page.goto('https://jobs.example.test/late#jobpilotto-fill');   // a fresh document with the mark, as the app opens it
+    await t.app.page.waitForFunction(() => window.__dims?.length === 3, null, {timeout: 10000});
+    assert.deepEqual(await t.app.page.evaluate(() => window.__dims), [true, true, true], 'the dim at 50, 400 and 900 ms after DOMContentLoaded, before the form is drawn');
+    await t.lookIs({dim: true, centred: true}, 'the panel takes the early dim over, centred');
+    assert.equal(await t.app.page.evaluate(() => document.querySelectorAll('#jobpilotto-fill-overlay').length), 1, 'one dim layer, the early one and the panel\'s are the same');
+  } finally { await t.app.close(); }
+});
+
+test('a page opened without the fill mark is never dimmed at load', async () => {
+  const t = await open();
+  try {
+    await fillOver(t);
+    const page = await t.app.context.newPage();   // a tab the person opened: never the app's (that one is followed to its next pages, rightly)
+    await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => setTimeout(() => { window.__dimAtLoad = !!document.getElementById('jobpilotto-fill-overlay'); }, 50)));
+    await page.goto('https://jobs.example.test/apply?other=1');
+    await page.waitForFunction(() => window.__dimAtLoad !== undefined, null, {timeout: 10000});
+    await page.waitForTimeout(1500);
+    assert.deepEqual(await page.evaluate(() => ({atLoad: window.__dimAtLoad, later: !!document.getElementById('jobpilotto-fill-overlay')})), {atLoad: false, later: false}, 'a page the app did not open got the dim');
+  } finally { await t.app.close(); }
+});
+
+// Owner, 27 Oct 2026: "this should not be 2 rows. It's ugly, make it look nicer. Align the text better."
+test('the working status row is one line: spinner, the step left-aligned and cut with … , Stop at the right; the hint below', async () => {
+  const t = await open();
+  try {
+    await fillOver(t);
+    await t.step('Choosing the drop-down answers for the questions this employer asks about your work permit…');
+    await t.lookIs({dim: true, centred: true, busy: true}, 'a long step');
+    const row = await t.app.page.evaluate(() => {
+      const root = document.getElementById('jobpilotto-review-host').shadowRoot, box = el => root.querySelector(el).getBoundingClientRect(), label = root.querySelector('.fill .label');
+      const style = getComputedStyle(label);
+      return {label: box('.fill .label'), spin: box('.fill .spin'), stop: box('.stop-btn'), hint: box('.step-hint'), lineHeight: parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.3, align: style.textAlign, cut: label.scrollWidth > label.clientWidth, title: root.querySelector('.fill').title};
+    });
+    assert.ok(row.label.height <= row.lineHeight * 1.5, `the step wraps onto ${Math.round(row.label.height / row.lineHeight)} rows`);
+    assert.equal(row.align, 'left', 'the step reads from the left, beside the spinner');
+    assert.ok(row.label.left - row.spin.right < 16, 'the step starts right after the spinner');
+    assert.ok(row.stop.left >= row.label.right, 'Stop sits at the right of the step');
+    assert.ok(Math.abs((row.label.top + row.label.bottom) / 2 - (row.stop.top + row.stop.bottom) / 2) < 6, 'the step and Stop share one row');
+    assert.ok(row.hint.top >= row.label.bottom, '"Counts update as new fields appear." stays on its own line below');
+    assert.equal(row.cut, true, 'positive control: this step is too long for the row, so it is cut');
+    assert.match(row.title, /work permit/, 'the whole step stays readable in its tooltip');
+  } finally { await t.app.close(); }
+});
+
+// Owner, 27 Oct 2026: "I cannot click on "Tailor CV" even though it looks like a button", "same for the cross", "same for report"; "let's not display at all the buttons ... if they're not
+// available during the extension work". The class: every button of the panel, while working, is hidden or does what it says.
+test('while working, every panel button is hidden or works: Stop, minimise and the pill act, nothing else is drawn', async () => {
+  const t = await open({'/extension/kit': () => ({job: {code: 'J1', title: 'Senior SRE', company: 'Example'}, kit: {answers: []}}),
+    '/extension/review': () => ({matched: 's1', session: {id: 's1', url: URL, status: 'input', live: false, kind: 'form', stuck: ''}, watch: [], commands: [], cv: {tailored: false, working: false}})});
+  const shown = () => t.app.page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot;
+    return [...root.querySelectorAll('button')].filter(button => button.getClientRects().length > 0).map(button => button.className.split(' ').filter(name => !['primary', 'secondary', 'link', 'is-busy'].includes(name)).join('.')); });
+  const hits = selector => t.app.page.evaluate(which => { const host = document.getElementById('jobpilotto-review-host'), b = host.shadowRoot.querySelector(which).getBoundingClientRect();
+    return host.shadowRoot.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)?.closest(which) === host.shadowRoot.querySelector(which); }, selector);
+  const press = async selector => { const b = await t.app.page.evaluate(which => { const r = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector(which).getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }, selector); await t.app.page.mouse.click(b.x, b.y); };
+  try {
+    await fillOver(t);
+    await t.step('');
+    await t.lookIs({dim: false, centred: false, busy: false}, 'control: not working');
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.tailor').hidden, null, {timeout: 15000}).catch(() => {});
+    const idle = await shown();
+    for (const name of ['x', 'min', 'report-btn']) assert.ok(idle.includes(name), `positive control: "${name}" is drawn when the panel is not working (${idle})`);
+    await t.step('Filling the form…');
+    await t.lookIs({dim: true, centred: true, busy: true}, 'working');
+    const working = await shown();
+    const ACTS = ['stop-btn', 'min', 'fill'];   // the step row's own label (aria-busy, not a button to press), Stop, minimise
+    assert.deepEqual(working.filter(name => !ACTS.includes(name)), [], `buttons drawn while working that cannot act: ${working}`);
+    assert.equal(await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.fill').getAttribute('aria-busy')), 'true', 'the step row says it is busy, it is not a button to press');
+    for (const name of ['stop-btn', 'min']) assert.ok(await hits(`.${name}`), `"${name}" is drawn but takes no click`);
+    await press('.min');
+    await t.app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.card').hidden, null, {timeout: 3000}).catch(() => assert.fail('minimise did nothing while working'));
+    assert.ok(await hits('.pill'), 'minimised while working, the pill takes the click that opens the panel again');
+    await press('.pill');
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.card').hidden, null, {timeout: 3000}).catch(() => assert.fail('the pill did not open the panel again'));
+    await t.step('');
+    await t.lookIs({dim: false, centred: false, busy: false}, 'the work ended');
+    const after = await shown();
+    for (const name of ['x', 'report-btn']) assert.ok(after.includes(name), `"${name}" comes back when the work ends (${after})`);
+  } finally { await t.app.close(); }
+});
+
+// Owner, 27 Oct 2026: "clicking "check again" does nothing right now" (and "Check form again is not working" the same day). The class: every button on the panel that reads the form again.
+const AGAIN = [['.v-again', 'Check again (Your action is needed)'], ['.recheck', 'Check form again (Stopped by you)'], ['.fill', 'Fill again'], ['.anyway', 'Fill anyway']];
+test('every "again" button on the panel is one this file presses (a new one fails here until it is tested)', () => {
+  const markup = fs.readFileSync(new globalThis.URL('../../../extension/panel-markup.js', import.meta.url), 'utf8');
+  const found = [...markup.matchAll(/<button class="([^"]+)"[^>]*>([^<]*)<\/button>/g)].filter(([, , label]) => /again|anyway/i.test(label)).map(([, names]) => `.${names.split(' ').at(-1)}`);
+  assert.ok(found.length >= 3, `positive control: the again buttons are read from the markup (${found})`);
+  for (const selector of found) assert.ok(AGAIN.some(([tested]) => tested === selector), `${selector} reads the form again but no test presses it`);
+});
+
+test('Check again on "Your action is needed" reads the form again and the AI judges it anew: the card goes when the page no longer needs you', async () => {
+  let judged = 0, verdict = {answer: 'needs_person', needs: 'the captcha'};   // the AI says the page waits for the person, until they dealt with it
+  const t = await open({'/extension/account-judge': body => { if (/"phase":"form"/.test(body)) judged += 1; return verdict; }});
+  try {
+    await fillOver(t);
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'the captcha'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000});
+    verdict = {answer: 'ready'};   // the person solved it on the page…
+    const before = judged;
+    const b = await t.app.page.evaluate(() => { const r = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.v-again').getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; });
+    await t.app.page.mouse.click(b.x, b.y);   // …then pressed Check again
+    for (let waited = 0; waited < 30000 && judged <= before; waited += 250) await t.app.page.waitForTimeout(250);
+    assert.ok(judged > before, 'Check again did nothing: the AI was not asked about the page again');
+    await t.app.page.waitForFunction(() => !document.documentElement.hasAttribute('data-jobpilotto-needs'), null, {timeout: 15000}).catch(() => assert.fail('the page still says it needs you after the AI said it is ready'));
+    await t.app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000}).catch(() => assert.fail('"Your action is needed" stayed after the AI said the page is ready'));
+  } finally { await t.app.close(); }
+});
+
+test('Check again keeps "Your action is needed" when the AI still says the page needs the person', async () => {
+  const t = await open({'/extension/account-judge': () => ({answer: 'needs_person', needs: 'the captcha'})});
+  try {
+    await fillOver(t);
+    await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'the captcha'));
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden, null, {timeout: 8000});
+    await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.v-again').click());
+    await t.lookIs({busy: true}, 'Check again reads the form (the step row shows)');
+    await t.lookIs({busy: false}, 'the read is over');
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.verify').hidden && document.documentElement.getAttribute('data-jobpilotto-needs') === 'the captcha', null, {timeout: 15000})
+      .catch(() => assert.fail('the card went though the AI still says the page needs the person'));
   } finally { await t.app.close(); }
 });

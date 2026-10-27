@@ -25,6 +25,7 @@
   const night = () => document.documentElement.getAttribute('data-jobpilotto-night') === '1';
   const MARK_WORDS = {get reading() { return night() ? 'Putting back last night\u2019s fill…' : 'Reading this page…'; }, other: 'This page shows no application', 'signing-in': 'Logging in…', 'signing-up': 'Creating your account…'};   // page-mark.js; a posting: the owner's own words
   const {KNOCKOUT, AGREE, fields, find, flash} = window.__jobPilottoPanelForm;
+  const NOTE = '.note:not(.trace-note)';
 
   // ---- the panel (its own shadow root: the page's styles can't touch it, it can't touch the page) ----
   const host = Object.assign(document.createElement('div'), {id: 'jobpilotto-review-host'});
@@ -42,6 +43,11 @@
   const place = working => { host.style.cssText = working ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483646;pointer-events:none;' : HOME; jp.classList.toggle('working', working); };
   const look = working => { const on = working && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
   const stepShowing = () => $('.fill').classList.contains('is-busy');
+  const markWorking = () => WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobpilotto-page') || '') && !stopped && !moved;
+  // A step that ends and the next one that starts within END_GAP_MS are one piece of work: the look stays (owner, 27 Oct 2026: the panel flashed to its corner and back between steps).
+  // Every end the person must see at once (Stop, needs you, stuck, a close, the dim lifted) ends without the gap.
+  let workerStep = '', endTimer = null; const END_GAP_MS = 700;
+  const endSoon = () => { clearTimeout(endTimer); endTimer = setTimeout(() => { endTimer = null; if (stepShowing() && !filling && !workerStep) endStep(); }, END_GAP_MS); };
   overlay.onLift?.(() => { if (stepShowing()) endStep(); else look(false); });
   const drawSteps = () => $('.steps').replaceChildren(...steps.slice(-6, -1).map(text => Object.assign(document.createElement('li'), {textContent: text})));
   const written = window.__jobPilottoPanelWritten.start({send, alive: () => host.isConnected});   // Review my answer beside each written question's box (panel-written.js)
@@ -78,20 +84,23 @@
       askedPassword = Date.now();
       send({type: 'sitePassword'}).catch(() => {});
     }
-    if (list.length < MIN_FIELDS && !document.documentElement.hasAttribute('data-jobpilotto-needs')) { look(false); host.remove(); return null; }   // a sign-in page is too small for a panel, unless the AI says it needs the person
+    // A sign-in page is too small for a panel, unless the AI says it needs the person, or the extension works on it: then the panel shows what it does (and Stop), centred over the dim.
+    if (list.length < MIN_FIELDS && !needsNow && !stepShowing() && !markWorking()) { look(false); host.remove(); return null; }
     if (!host.isConnected) document.documentElement.append(host);
     // The person is needed (a captcha, a question the page asks) or the page is stuck: the step ends (no dim, the corner, no busy step row) so they can act. The app's "stuck" is
     // an older word than a step the extension showed after it (it handed the page over, then fields appeared and it went on: owner, 27 Oct 2026), and never ends this panel's own fill.
     const stuckNow = !!session?.stuck && !(session.live && ['running', 'input'].includes(session.status));
     const stuckWord = stuckNow ? String(session.stuck) : '';
     if (session && stuckWord !== lastStuck) { lastStuck = stuckWord; stuckSince = stuckWord ? Date.now() : 0; }   // from the app's answer changing, not from a sync that brought no session
-    const handed = !!needsNow || stopped || (stuckNow && !filling && stepAt <= stuckSince);
+    const handed = (!!needsNow && !filling) || stopped || (stuckNow && !filling && stepAt <= stuckSince);   // this panel's own fill (Check again, Fill again) reads the page anew: the AI's older "needs you" waits for its end
     if (handed && stepShowing()) endStep(false);
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
     const markWorks = WORKING_MARKS.includes(markNow) && !handed && !moved;
     if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words, MARK_STEP_MS); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
-    else if (markStepWords) { markStepWords = ''; endStep(); return null; }   // the mark moved on (or the person is needed): the layer lifts and the panel is drawn again
+    // The mark moved on: its row ends. A fill step still running under it (the worker's, or this panel's fill) keeps the look and gets its row back: ending here dropped the dim and the
+    // centring until the fill's next step brought them back (owner, 27 Oct 2026: "flashes (very short moments) when the extension panel moves from center to bottom right").
+    else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); else endSoon(); }
     // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
     written.update(list);
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
@@ -119,7 +128,7 @@
       Object.assign(document.createElement('span'), {className: `tag ${/applied/i.test(job?.stage || '') ? 'good' : ''}`, textContent: job?.stage || 'Not submitted'})].filter(Boolean));
     $('.go-there').hidden = !(moved && Number.isInteger(movedTab));
     const verify = $('.verify');
-    verify.hidden = !needsYou || moved;
+    verify.hidden = !needsYou || moved || filling;
     if (!verify.hidden) { stoppedCard(false); $('.verify .v-title').textContent = needsYou === '1' ? 'Your action is needed' : needsYou; }   // the AI's own words for what the page waits on
     const claude = pageMark ? '' : moved ? 'This application continues in another tab.'   // an older tab of the session: it no longer reports
       : session?.kind === 'form' ? ''   // the Apply button's session: the extension fills it, there is no Claude to name
@@ -206,8 +215,8 @@
   function showStep(text, wait = STEP_SAFETY_MS) {
     stepped = true;
     $('.step-hint').textContent = /^check/i.test(text) ? 'Checking whether any fields need your input.' : /^(reading this page|putting back)/i.test(text) ? 'Looking for the application on this page.' : /^(apply button|logging in|creating your)/i.test(text) ? 'Taking you to the application form.' : 'Counts update as new fields appear.';   // our own step words, each with its sub-line (mockups 01/02)
-    if (steps.at(-1) !== text) { steps.push(text); drawSteps(); }
-    stepAt = Date.now();
+    if (steps.at(-1) !== text) { if (steps.includes(text)) steps.splice(steps.indexOf(text), 1); steps.push(text); drawSteps(); }   // "Done so far" never repeats the step now on
+    stepAt = Date.now(); clearTimeout(endTimer);
     look(true);
     const button = $('.fill');
     button.classList.add('is-busy');
@@ -218,7 +227,7 @@
     if (!filling) stepTimer = setTimeout(endStep, wait);
   }
   function endStep(redraw = true) {
-    clearTimeout(stepTimer);
+    clearTimeout(stepTimer); clearTimeout(endTimer); workerStep = '';
     look(false); steps.length = 0; drawSteps();
     const button = $('.fill');
     button.classList.remove('is-busy');
@@ -230,7 +239,7 @@
   }
   async function fill(force = false) {
     filling = true; stopped = false; startedAt = Date.now();   // the person's own start: this page works again (the worker clears its Stop and the page's: stop.js startTab)
-    $('.note').hidden = true;
+    $(NOTE).hidden = true;
     stoppedCard(false);
     showStep('Reading the form…');
     render();
@@ -253,10 +262,13 @@
   $('.recheck').onclick = () => { stoppedCard(false); fill(); };
   // 04 Your action needed: the page waits for the person (the AI's word in data-jobpilotto-needs): a warm card, Show on form (scrolls to the first thing left), Check again (reads the form now).
   $('.verify .v-show').onclick = () => shown[0] && flash(shown[0].el);
-  $('.verify .v-again').onclick = () => { render(); sync(); };
+  // Check again reads the form again like Check form again: the fill runs (what the person did is kept, what is left is filled) and, at its end, the AI judges the page anew (messages-panel.js
+  // panelFill). It only redrew the panel before, and the AI's "needs you" stayed until the page claimed every field filled (owner, 27 Oct 2026: "clicking "check again" does nothing").
+  $('.verify .v-again').onclick = () => fill();
+  // The note line, never the debugging-bar note above it (both are .note): since 516e3fb every note went into that box, under its "Got it", and Fill anyway sat in a box that stayed hidden (27 Oct 2026).
   function note(text, anyway = false) {
-    $('.note').hidden = false;
-    $('.note span').textContent = text;
+    $(NOTE).hidden = false;
+    $(`${NOTE} span`).textContent = text;
     $('.anyway').hidden = !anyway;
   }
   $('.fill').onclick = () => fill();
@@ -292,8 +304,8 @@
   chrome.runtime.onMessage.addListener((message, _, reply) => {
     if (message?.type !== 'panelStep') return false;
     if (!host.isConnected) { reply({shown: false}); return false; }
-    if (message.text) { showStep(message.text); if (!open) setOpen(true); }
-    else endStep();  // the fill is over: no step line left over a form that is ready
+    if (message.text) { workerStep = message.text; showStep(message.text); if (!open) setOpen(true); }
+    else { workerStep = ''; if (!filling) endSoon(); }  // the fill is over: no step line left over a form that is ready; this panel's own fill ends at its answer (fill())
     reply({shown: true});
     return false;
   });
@@ -304,7 +316,7 @@
   function stoppedHere(at = Date.now()) {
     if (at < startedAt) return;
     if (stopped && !stepShowing()) { stopsBack(); return; }
-    stopped = true; markStepWords = ''; endStep(false); stopsBack(); $('.note').hidden = true; stoppedCard(true);
+    stopped = true; markStepWords = ''; endStep(false); stopsBack(); $(NOTE).hidden = true; stoppedCard(true);
     if (!host.hidden && !open) setOpen(true);
     render();
   }
@@ -323,6 +335,8 @@
     return false;
   });
 
+  // The page was dimmed from its first moment (early-dim.js): the panel takes that look over at once, centred, so nothing jumps between the dim and the first step.
+  if (overlay.early?.()) { const was = stepped; showStep('Starting…', 20000); stepped = was; setOpen(true); }
   // A fill already on a step when this panel appeared: show it here (the background removes its floating copy).
   send({type: 'panelStepNow'}).then(answer => { if (answer?.text && host.isConnected) { showStep(answer.text, answer.wait || STEP_SAFETY_MS); if (!open) setOpen(true); } }).catch(() => {});
 

@@ -76,8 +76,8 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 .lead-field > .segmented + input { margin-top: var(--sp-2); }
 .lead-field input, .lead-field select { width: 100%; box-sizing: border-box; }
 .lead-field .lead-date { width: auto; }
-/* Inferred (please check) and not in the message (answer it): amber, like everything that waits for you. */
-.lead-field.is-check, .lead-field.is-ask { border-color: var(--warn-line); background: var(--warn-soft); }
+/* Inferred (please check) and not in the message (answer it): an amber edge, like every row that waits for you. */
+.lead-field.is-check, .lead-field.is-ask { border-color: var(--warn); border-left-width: 3px; }   /* the warning edge, the field stays a field (owner, 27 Oct 2026) */
 .lead-flag { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .lead-pair[hidden] { display: none; }
 /* "This will change": the values a save replaces on a tracked job, before → after. */

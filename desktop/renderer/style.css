@@ -18,11 +18,13 @@ code { font: var(--fs-sm) var(--font-mono); background: var(--sky); padding: 2px
 button { font: 600 var(--fs-md) var(--font-sans); border-radius: var(--r-md); padding: 8px 14px; cursor: pointer; border: 1px solid transparent; }
 button.primary { background: var(--signal-solid); color: var(--on-signal); }
 button.primary:hover { filter: brightness(1.05); }
+button.is-main { background: var(--good); color: var(--on-bright); border-color: var(--good); }   /* a list row's main action (Focus Up next): solid, not the page's amber */
+button.is-main:hover { filter: brightness(1.08); }
 button.secondary { background: var(--surface); color: var(--ink); border-color: var(--line); }
 button.ghost { background: transparent; color: var(--muted); }
 button.link { background: none; border: 0; padding: 0; color: var(--signal); font-weight: 600; }
 /* A button's words stay on one line (owner, 18 Oct 2026: "the Accept button is too fat"; docs/rules/desktop-ui.md "Read views, lists, buttons and choices"; e2e/lib/design-rules.mjs fat-button). */
-button.primary, button.secondary, button.ghost, button.danger, button.danger-outline { white-space: nowrap; }
+button.primary, button.is-main, button.secondary, button.ghost, button.danger, button.danger-outline { white-space: nowrap; }
 button:disabled { opacity: .5; cursor: default; }
 button.primary:disabled { opacity: 1; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line-strong); }   /* readable grey, not a faded orange (AA ≥ 4.5:1) */
 label { display: block; font-weight: 600; font-size: var(--fs-md); margin: 12px 0 4px; color: var(--label); }
@@ -1133,7 +1135,7 @@ main { min-width: 0; }
 .focus-meta .sep { opacity: .6; }
 .focus-actions { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
 .focus-insight-box { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--r-md);
-  background: var(--warn-soft); border-left: 4px solid var(--warn); }
+  background: var(--surface-2); border-left: 4px solid var(--warn); }
 .focus-progress-big { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .focus-progress-big b { font-size: var(--fs-display); line-height: 1; }
 .focus-bar-row { display: flex; align-items: center; gap: var(--sp-3); }
@@ -1147,7 +1149,7 @@ main { min-width: 0; }
 .focus-tip .icon { width: 18px; height: 18px; color: var(--info); flex: none; }
 .focus-reminder { display: flex; align-items: center; gap: var(--sp-3); }
 .focus-reminder > div { flex: 1; display: flex; flex-direction: column; }
-.focus-summary { background: var(--signal-soft); border-color: var(--signal-line); }
+.focus-summary { border-left: 4px solid var(--signal-edge); }   /* the plain card and an amber edge, never an amber fill (owner, 27 Oct 2026) */
 .focus-summary p { margin: var(--sp-2) 0 0; color: var(--ink-2); }
 /* A switch: a checkbox drawn as a sliding toggle */
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex: none; }
@@ -1671,7 +1673,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
   border-radius: var(--r-sm); padding: 2px var(--sp-2); color: var(--ink-2); }
 .mail-diff-move b { color: var(--muted); font-weight: 600; }
 .mail-confirm { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-3); padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--warn-line); border-radius: var(--r-md); background: var(--warn-soft); }
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }   /* a tone edge, never a fill (owner, 27 Oct 2026; test/calm-session.test.js) */
 .mail-confirm h4 { margin: 0; font-size: var(--fs-md); }
 .mail-confirm .mail-sub { margin: 0; color: var(--ink-2); font-size: var(--fs-sm); }
 .mail-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
@@ -1707,8 +1709,8 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .mail-diff-field { color: var(--muted); padding-right: var(--sp-2); margin-right: var(--sp-2); border-right: 1px solid var(--line); font-weight: 600; }
 /* The AI's reading of a rejection: label on the left, the verdict and one line on the right, a guess and said so. */
 .mail-ai { display: grid; grid-template-columns: max-content 1fr; gap: var(--sp-4); padding: var(--sp-3) var(--sp-4);
-  background: var(--warn-soft); border: 1px solid var(--warn-line); border-radius: var(--r-md); }
-.mail-ai-label { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--sp-2); align-self: start; padding-right: var(--sp-4); border-right: 1px solid var(--warn-line); color: var(--ink); }
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }
+.mail-ai-label { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--sp-2); align-self: start; padding-right: var(--sp-4); border-right: 1px solid var(--line); color: var(--ink); }
 .mail-ai-label:focus-visible { outline: 2px solid var(--focus, currentColor); outline-offset: 2px; }
 .mail-ai-label .mail-ai-chevron { width: 14px; height: 14px; color: var(--muted); transform: rotate(90deg); transition: transform .15s; }
 .mail-ai-label.is-open .mail-ai-chevron { transform: rotate(-90deg); }
@@ -1739,8 +1741,8 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .mail-meeting-consent .icon { width: 18px; height: 18px; flex: none; }
 /* The which-job question in a row: icon, question and reason, the button on the right; answered, the job you picked. */
 .mail-ask { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);
-  background: var(--warn-soft); border: 1px solid var(--warn-line); border-radius: var(--r-md); }
-.mail-ask.is-answered { align-items: flex-start; background: var(--good-soft); border-color: var(--good-soft); }
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }
+.mail-ask.is-answered { align-items: flex-start; border-left-color: var(--good); }
 .mail-ask-icon { display: inline-flex; flex: none; color: var(--signal); }
 .mail-ask.is-answered .mail-ask-icon { color: var(--good); }
 .mail-ask-icon .icon { width: 24px; height: 24px; }
@@ -1813,7 +1815,7 @@ details.ss-form-more { margin: var(--sp-3) 0 0; padding: 0; border: 0; border-ra
 .insight-number-value { font-size: var(--fs-lg); font-weight: 600; }
 /* Recommended next step: the one action, on its own warm band. */
 .insight-next { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-4);
-  border: 1px solid var(--warn-line); border-radius: var(--r-md); background: var(--warn-soft); }
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }
 .insight-next-icon { display: inline-flex; flex: none; color: var(--warn); }
 .insight-next-icon .icon { width: 20px; height: 20px; }
 #activity-next .insight-next-words > button, #activity-browser-next .insight-next-words > button { justify-self: start; margin-top: var(--sp-2); }   /* a search's "Find new employers": its own width, under the words */
@@ -2285,8 +2287,8 @@ body.is-demo > .app, body.is-demo > .wizard { height: auto; flex: 1; min-height:
 #jobs-unscored { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
 
 .mail-question { grid-column: 1 / -1; display: grid; gap: var(--sp-2); justify-items: start; margin-top: var(--sp-2); padding: var(--sp-4);
-  border: 1px solid var(--warn-line); border-radius: var(--r-md); background: var(--warn-soft); }
-.mail-question.is-answered { border-color: var(--good-soft); background: var(--good-soft); }
+  border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: var(--r-md); background: var(--surface); }
+.mail-question.is-answered { border-left-color: var(--good); }
 .mail-question-head { display: flex; align-items: center; gap: var(--sp-2); }
 .mail-question.is-answered .mail-question-head { color: var(--good); font-size: var(--fs-sm); }
 .mail-question p { margin: 0; }

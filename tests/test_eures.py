@@ -60,13 +60,22 @@ class EuresTest(unittest.TestCase):
 
     def test_a_country_word_does_not_admit_other_cities_when_the_person_named_a_city(self):
         # Why (27 Oct 2026, benchmark 40509412515, persona Krakow): "poland" matched every Polish job, shown as "poland, Poland": 1 of 52 local.
-        search = {'role_keywords': ['cook'], 'locations': {'top_tier': ['Brussels'], 'country_wide': ['Belgium'], 'abroad': []}}
+        search = {'role_keywords': ['cook'], 'locations': {'top_tier': ['Brussels', 'Belgium'], 'country_wide': [], 'abroad': []}}
 
         def get(url, data=None, headers=None, timeout=None):
             return {'jvs': [jv('a', 'Cook', 'BE100'), jv('b', 'Cook', 'BE255')]}
         with mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'country' if w == 'Belgium' else 'city', 'cc': 'BE', 'lat': 50.8, 'lon': 4.4, 'r': 30} for w in words}):
             found = eures.eures(search, get=get, client=Client({'Brussels': 'BE10'}))
         self.assertEqual([(j['id'], j['location']) for j in found], [('eures:a', 'Brussels, Belgium')])
+
+    def test_a_country_listed_as_anywhere_in_keeps_the_whole_country_beside_a_town(self):
+        search = {'role_keywords': ['cook'], 'locations': {'top_tier': ['Brussels'], 'country_wide': ['Belgium'], 'abroad': []}}
+
+        def get(url, data=None, headers=None, timeout=None):
+            return {'jvs': [jv('b', 'Cook', 'BE255')]}
+        with mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'country' if w == 'Belgium' else 'city', 'cc': 'BE', 'lat': 50.8, 'lon': 4.4, 'r': 30} for w in words}):
+            found = eures.eures(search, get=get, client=Client({'Brussels': 'BE10'}))
+        self.assertEqual([j['id'] for j in found], ['eures:b'])
 
     def test_a_country_only_search_keeps_the_whole_country_with_no_city_in_the_location(self):
         search = {'role_keywords': ['cook'], 'locations': {'top_tier': [], 'country_wide': ['Belgium'], 'abroad': []}}

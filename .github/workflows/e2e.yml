@@ -376,16 +376,10 @@ jobs:
           first="$E2E_ARTIFACTS"
           export E2E_ARTIFACTS="${{ github.workspace }}/e2e-rerun/${{ matrix.key }}" E2E_RERUN=1 E2E_AI_REPLAY=0   # fresh answers, never the first try's (a replayed bad draw proves nothing); a second try writes no HTML report (report/playwright.config.mjs)
           again() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
-          # The first try ran only the steps this PR reaches: the second runs the WHOLE suite (owner's yes, 26 Oct 2026). Green whole = the picked steps lack a setup step
-          # they need when run alone (declare it in the suite's stepNeeds), never a false block; red whole = red.
-          if [ -n "$E2E_STEP_NAMES" ] && [ "$E2E_STEP_NAMES" != null ]; then
-            unset E2E_STEP_NAMES
-            if again ${{ matrix.suite }}; then
-              echo "The picked steps went red alone and the whole suite passed: a picked step needs a setup step it does not declare (stepNeeds in suites/${{ matrix.suite }}.mjs). Not a block."
-              exit 0
-            fi
-            echo "Red again with the whole suite: a real failure."; exit 1
-          fi
+          # The retry repeats only the first try's red steps and their setup (owner, 27 Oct 2026: "Retry only the red steps"; red-steps.mjs). Main's quality on
+          # 27 Oct 2026 had one red step, then a whole-suite retry ran out of the 7-minute budget. No step to name (a crash, a renamed pick): the whole suite.
+          red=$(node red-steps.mjs "$first/suite-failures.json")
+          if [ -n "$red" ]; then export E2E_STEP_NAMES="$red"; echo "The second try repeats only the red step(s) and their setup: $red"; else unset E2E_STEP_NAMES; echo "The second try runs the whole suite (no red step to name)."; fi
           if again ${{ matrix.suite }}; then
             echo '{"rerun": "passed"}' > "$first/flaky.json"
             # "Flaky" needs proof (gate G5): a first-try failure on a wrong value, not timing, is a bug that shows sometimes; the job stays red (lib/flaky-proof.mjs).

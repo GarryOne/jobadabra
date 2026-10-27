@@ -206,6 +206,7 @@
   "recorded-pages.test.mjs",
   "recorded-rung.test.mjs",
   "records-compact.test.mjs",
+  "red-steps.test.mjs",
   "refill-auto.test.mjs",
   "refill-resilience.test.mjs",
   "refill-yellow.test.mjs",

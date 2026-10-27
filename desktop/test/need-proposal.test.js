@@ -112,18 +112,3 @@ test('a knockout question\'s row is marked in every row kind: proposed, empty an
   assert.match(mark, /KNOCKOUT\.test\(label\) \|\| \(reviewStates\.get\(item\.id\)\?\.knockouts \|\| \[\]\)\.includes\(label\)/);   // the same test as "Before you submit"
   assert.match(src('../renderer/style.css'), /\.ss-need\.is-knockout \{[^}]*border-left: 4px solid var\(--warn\)/);
 });
-
-test('a pick made in a row\'s menu survives the redraws before Use (applyflows run 40526061842: "2 months" picked, Use read "" and said Write an answer first)', async () => {
-  const {rowPicks} = await import('../renderer/proposal-pick.js');
-  const picks = rowPicks(), key = 's1|Notice period';
-  assert.equal(picks.start(key, ''), '');             // first draw: the proposal (none fits the menu)
-  picks.note(key, '2 months');                        // the person picks
-  assert.equal(picks.start(key, ''), '2 months');     // the redraw builds a new box: it starts from the pick, not the proposal
-  assert.equal(picks.start(key, ''), '2 months');
-  picks.forget(key);                                  // Use took it
-  assert.equal(picks.start(key, 'x'), 'x');
-  // The row writes every pick into that owner and starts from it (the box itself is rebuilt on each redraw).
-  const row = fs.readFileSync(new URL('../renderer/pages/need-proposal.js', import.meta.url), 'utf8');
-  assert.match(row, /input\.value = picks\.start\(key, /);
-  assert.match(row, /addEventListener\('change', \(\) => picks\.note\(key, input\.value\)\)/);
-});

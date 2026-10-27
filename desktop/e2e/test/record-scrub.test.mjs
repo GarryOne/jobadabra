@@ -67,6 +67,7 @@ test('an address encoded more than once, or inside base64, is scrubbed as well a
     {url: 'https://site.example.test/b', type: 'text/html', body: '<p>jane.fake&amp;#64;acme-test.de</p>'},
     {url: 'https://site.example.test/c', type: 'application/json', body: JSON.stringify({m: 'jane.fake@acme-test.de'}).replace('@', '\\u0040')},
     {url: 'https://site.example.test/d', type: 'application/json', body: JSON.stringify({blob: Buffer.from(`{"email":"${fake}","n":1}`).toString('base64')})},
+    {url: 'https://site.example.test/f', type: 'application/json', body: JSON.stringify({blob: Buffer.from(`{"next":"/x?m=${encodeURIComponent(fake)}","n":1}`).toString('base64')})},
     {url: 'https://site.example.test/e', type: 'application/json', body: JSON.stringify({blob: Buffer.from(`{"email":"${fake}"}`).toString('base64url')})},
   ];
   for (const one of bodies) {

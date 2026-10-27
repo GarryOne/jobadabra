@@ -485,7 +485,7 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
   if (stillOnPage(tab.url, await addressNow(tab.id))) await inPage(tab.id, id => { document.documentElement.dataset.jobpilottoFill = id; }, [summary.card.id]).catch(() => {});
   event('fill-done', {filled: summary.filled || 0, left: (summary.todo || []).length});
   // One row in 🎏 Job Apply — Agent Runs (Agent = Extension), comparable with the agent runs there.
-  const runBody = {url: job, started: startedAt.toISOString(),
+  const runBody = {url: job, pageUrl: tab.url, started: startedAt.toISOString(),
     ended: new Date().toISOString(), fields: summary.filled || 0, unfilled: summary.unfilledRequired || 0, usd: ai?.usd || 0, billed_to: ai?.billed_to || '',
     kit: withKit, todo: (summary.todo || []).slice(0, 8), trace: summary.trace || [], snapshots: snapshots || {}, debug: {...debug, aiUsd: ai?.usd || 0}};
   const logged = apiFor(tab.id, config, '/extension/run', {method: 'POST', body: JSON.stringify(runBody)})

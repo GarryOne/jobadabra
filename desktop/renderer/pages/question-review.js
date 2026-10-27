@@ -160,6 +160,7 @@ function step(by) {
 
 // Confirm (or "Don't keep", value ''): the answer goes to its home (lib/answer-home.js); the question leaves the queue; the next one shows.
 async function answer(q, value) {
+  if (state.busy) return;   // Why (2026-10-27, owner): Confirm, Enter and explicit actions can arrive in one turn; one persistence result owns progress.
   const onlyHere = Boolean(value) && jobOnly.has(q.key);
   state.busy = true;
   state.error = '';
@@ -171,6 +172,11 @@ async function answer(q, value) {
   jobOnly.delete(q.key);
   keepDrafts();
   state.saved = value ? `✓ Saved to ${result.homeName || 'your application answers'}` : '✓ Not kept: forms will not ask you for it again';
+  if (String(value || '').trim() && value !== KEEP_AS_IS) {   // Why (2026-10-27, owner): Set is evidence of a stored usable answer, not a keep/skip decision.
+    const saved = new Event('question-saved');
+    saved.detail = {key: q.key, question: q.question, questions: [q.question, ...(q.also || []).map(each => each.question)].filter(Boolean), value: String(value).trim(), homeName: result.homeName || 'your application answers', persisted: true};
+    document.dispatchEvent(saved);
+  }
   if (state.aside) { state.setAside = state.setAside.filter(each => each !== q); state.aside = null; }
   else { state.queue = state.queue.filter(each => each !== q); state.at = Math.min(state.at, Math.max(state.queue.length - 1, 0)); }
   draw();

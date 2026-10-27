@@ -14,11 +14,14 @@ const LIST = [
 ];
 const HIDDEN = [{key: 'title', question: 'Title', company: 'Adnovum', format: {kind: 'single', control: 'single', options: ['Mr', 'Ms']}}];
 const calls = [];
+let nextAnswerResult = null;
+const savedEvents = [];
+globalThis.document.addEventListener('question-saved', event => savedEvents.push(event.detail));
 const ids = ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'questions-manage', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
 for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
 globalThis.window.pilot = new Proxy({
   openQuestions: async () => ({list: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2}),
-  answerQuestion: async (key, value) => { calls.push([key, value]); return {ok: true, homeName: key === 'start' ? 'Your details → 💶 Availability & compensation' : ''}; },
+  answerQuestion: async (key, value) => { calls.push([key, value]); const result = nextAnswerResult; nextAnswerResult = null; return result || {ok: true, homeName: key === 'start' ? 'Your details → 💶 Availability & compensation' : ''}; },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions} = await import('../renderer/pages/jobs-questions.js');
 const review = await import('../renderer/pages/question-review.js');
@@ -61,6 +64,7 @@ test('the drawer: Question 1 of 3, a suggested answer told apart from a missing 
 
 test('a draft is kept when the drawer closes; Confirm & next saves, says where, and the queue shrinks; Don’t keep saves an empty answer', async () => {
   calls.length = 0;
+  savedEvents.length = 0;
   await review.openQuestionReview();
   panel().querySelector('#qr-skip').click();   // the salary question
   const field = panel().querySelector('#qr-control');
@@ -76,15 +80,58 @@ test('a draft is kept when the drawer closes; Confirm & next saves, says where, 
   assert.deepEqual(calls, [['salary', '9000']]);
   assert.match(panel().textContent, /Question 2 of 2/);
   assert.match(panel().textContent, /✓ Saved to your application answers/);
+  assert.deepEqual(savedEvents[0], {key: 'salary', question: LIST[1].question, questions: [LIST[1].question], value: '9000', homeName: 'your application answers', persisted: true});
   panel().querySelector('#qr-back').click();
   panel().querySelector('#qr-confirm').click();   // accept the suggested start date
   await flush();
   assert.deepEqual(calls[1], ['start', '1 December 2026']);
   assert.match(panel().textContent, /Saved to Your details → 💶 Availability & compensation/);
+  assert.equal(savedEvents[1].homeName, 'Your details → 💶 Availability & compensation');
   panel().querySelector('#qr-drop').click();
   await flush();
   assert.deepEqual(calls[2], ['permit', '']);
+  assert.equal(savedEvents.length, 2, 'an empty explicit drop is not reported as a saved answer');
   assert.match(panel().textContent, /All questions reviewed/);
+});
+
+test('a failed save keeps the same question, typed value and error without publishing completion', async () => {
+  const before = savedEvents.length;
+  nextAnswerResult = {ok: false, error: 'The details page did not accept the answer'};
+  await review.openQuestionReview({start: 'salary'});
+  const field = panel().querySelector('#qr-control');
+  field.value = '8500';
+  field.dispatch('input');
+  panel().querySelector('#qr-confirm').click();
+  await flush();
+  assert.match(panel().textContent, /Question 2 of 3/);
+  assert.equal(panel().querySelector('#qr-control').value, '8500');
+  assert.match(panel().textContent, /The details page did not accept the answer/);
+  assert.equal(savedEvents.length, before);
+  panel().querySelector('#qr-confirm').click();   // release the typed draft for the following independent navigator cases
+  await flush();
+  review.closeQuestionReview();
+});
+
+test('saving the last usable answer immediately shows the all-reviewed state', async () => {
+  const earlier = LIST.splice(0, LIST.length, {key: 'last', question: 'Which city should we use for correspondence?', company: 'Acme', format: {kind: 'text', control: 'text', options: []}});
+  savedEvents.length = 0;
+  try {
+    await review.openQuestionReview({force: true});
+    assert.match(panel().textContent, /Question 1 of 1/);
+    const field = panel().querySelector('#qr-control');
+    field.value = 'Zurich';
+    field.dispatch('input');
+    panel().querySelector('#qr-confirm').click();
+    await flush();
+    assert.match(panel().textContent, /All questions reviewed/);
+    assert.equal(savedEvents.length, 1);
+    assert.equal(savedEvents[0].key, 'last');
+  } finally {
+    LIST.splice(0, LIST.length, ...earlier);
+    review.closeQuestionReview();
+    await review.openQuestionReview({force: true});
+    review.closeQuestionReview();
+  }
 });
 
 test('it shares the job drawer\'s overlay slot: opening it closes a job or Recent activity, never stacks', async () => {

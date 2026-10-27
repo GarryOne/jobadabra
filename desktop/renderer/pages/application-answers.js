@@ -25,12 +25,76 @@ const savedView = remembered('answersView');
 const filters = {query: '', view: ['all', 'review', 'saved'].includes(savedView) ? savedView : 'all'};   // view: all | review | saved
 const opened = new Set();   // rows shown open (answer ids, review keys)
 const drafts = new Map();   // answer id → the value typed; new questions under `new-<n>`: {section, question, value}
+const completions = new Map();   // normalized question identity → transient Set row; persistence remains the store's authority
+const resolved = new Map();   // identity → save revision; suppresses stale queue/outline snapshots until the next page read
+const SET_VISIBLE_MS = 1100, COMPLETION_FADE_MS = 300;   // Why (2026-10-27, owner): a 1.4 s acknowledgement stays visible, then exits quickly.
 let added = 0, tab = null, rulesOpen = false, verdicts = {}, keptFormats = {}, askedFor = '', showHidden = false, queueAsked = false, lastView = null;
-document.addEventListener?.('questions-read', () => lastView?.redraw());
+let reviewRowsByQuestion = new Map(), saveRevision = 0, refreshAfterSave = false;
+// The queue refresh can lag the successful write; re-read this page after it completes to reconcile both canonical homes.
+document.addEventListener?.('questions-read', () => {
+  if (refreshAfterSave) { refreshAfterSave = false; loadApplicationAnswers().catch(() => lastView?.redraw()); }
+  else lastView?.redraw();
+});
 const kinds = new Map();   // answer id → the kind the person picked ("Answer as"), written with the question
 
 const valueOf = item => drafts.get(item.id) ?? item.value;
 const missing = item => item.open && !item.optional && !valueOf(item);
+const identityOf = question => { const label = keyOf(question); return label ? `question:${label}` : ''; };
+const keyIdentity = key => key ? `key:${String(key)}` : '';
+const isResolved = (question, key = '') => [identityOf(question), keyIdentity(key)].filter(Boolean).some(identity => resolved.has(identity) || completions.has(identity));
+
+function clearCompletion(record) {
+  clearTimeout(record.fadeTimer);
+  clearTimeout(record.removeTimer);
+  for (const identity of record.identities) if (completions.get(identity) === record) completions.delete(identity);
+}
+
+function acknowledgeQuestion(event) {
+  const saved = event.detail || {};
+  const value = String(saved.value || '').trim();
+  if (!saved.persisted || !value) return;
+  const identities = [...new Set([...((saved.questions || [saved.question]).map(identityOf)), keyIdentity(saved.key)].filter(Boolean))];
+  const snapshot = identities.map(identity => reviewRowsByQuestion.get(identity)).find(Boolean);
+  const revision = ++saveRevision;
+  for (const identity of identities) resolved.set(identity, revision);
+  refreshAfterSave = true;
+  if (!snapshot) { lastView?.redraw(); return; }
+
+  const prior = new Set(identities.map(identity => completions.get(identity)).filter(Boolean));
+  for (const record of prior) clearCompletion(record);
+  const record = {identities, snapshot, value, leaving: false};
+  for (const identity of identities) completions.set(identity, record);
+  opened.delete(snapshot.rowKey);
+  lastView?.redraw();
+  record.fadeTimer = setTimeout(() => {
+    if (!identities.some(identity => completions.get(identity) === record)) return;
+    record.leaving = true;
+    lastView?.redraw();
+    record.removeTimer = setTimeout(() => {
+      clearCompletion(record);
+      lastView?.redraw();
+    }, COMPLETION_FADE_MS);
+  }, SET_VISIBLE_MS);
+}
+document.addEventListener?.('question-saved', acknowledgeQuestion);
+
+function completedRow(view, record) {
+  const {kind, entry} = record.snapshot;
+  const status = statusPill('Set', 'good', 'check-circle');
+  let nodes;
+  if (kind === 'answer') {
+    const {item, section} = entry;
+    nodes = row(view, {key: `review:${item.id}`, title: titleOf(item.question), under: [item.asked ? `Asked by ${item.asked}` : '', shown(section.title) || 'Answers', cutNote(item.question)].filter(Boolean).join(' · '),
+      value: '', needs: false, button: false, status, field: () => el('span')});
+  } else {
+    const detail = entry;
+    nodes = row(view, {key: `details:${detail.key}`, title: shown(detail.question), under: [detail.details?.where || 'Your details', detail.details?.line].filter(Boolean).join(' · '),
+      value: '', needs: false, button: false, status, field: () => el('span')});
+  }
+  nodes[0].classList.add('is-completing');
+  if (record.leaving) nodes[0].classList.add('is-leaving');
+  return nodes;
+}
 
 // The kind a row is answered with: the person's pick, else its mark in the store, else what this Mac kept (a fill's reading, else the AI's one judgment).
 const formatOf = item => kinds.get(item.id) || formatFor({marked: item.mark, kept: keptFormats[keyOf(item.question)]});
@@ -181,7 +245,19 @@ function draw(view, into) {
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().catch(() => {}); }
   const extraRows = extrasIn(questionsNow().list).filter(each => matches({question: each.question, value: each.details?.line || ''}, {query: filters.query}));
   const detailRows = extraRows.filter(each => each.details), setupRows = extraRows.filter(each => each.setup);
-  const reviewCount = shownRows.length + extraRows.length;
+  reviewRowsByQuestion = new Map();
+  for (const entry of shownRows) reviewRowsByQuestion.set(identityOf(entry.item.question), {kind: 'answer', entry, rowKey: `review:${entry.item.id}`});
+  for (const entry of detailRows) {
+    const snapshot = {kind: 'detail', entry, rowKey: `details:${entry.key}`};
+    reviewRowsByQuestion.set(identityOf(entry.question), snapshot);
+    reviewRowsByQuestion.set(keyIdentity(entry.key), snapshot);
+  }
+  const currentShownRows = shownRows.filter(entry => !isResolved(entry.item.question, entry.item.id));
+  const currentDetailRows = detailRows.filter(entry => !isResolved(entry.question, entry.key));
+  const currentSetupRows = setupRows.filter(entry => !isResolved(entry.question, entry.key));
+  const currentExtraRows = extraRows.filter(entry => !isResolved(entry.question, entry.key));
+  const visibleCompletions = [...new Set(completions.values())].filter(record => matches({question: record.snapshot.kind === 'answer' ? record.snapshot.entry.item.question : record.snapshot.entry.question, value: record.value}, {query: filters.query}));
+  const reviewCount = currentShownRows.length + currentExtraRows.length;
 
   toolbar(view, into, reviewCount);
   for (const key of [...drafts.keys()].filter(k => String(k).startsWith('new-'))) into.append(newQuestion(view, key, list));
@@ -200,7 +276,7 @@ function draw(view, into) {
   }
 
   if (filters.view === 'review') {
-    const open = showHidden ? [...shownRows, ...hiddenRows] : shownRows;
+    const open = showHidden ? [...currentShownRows, ...hiddenRows] : currentShownRows;
     const review = card('Needs review', 'alert', [pill(`${reviewCount} to review`, 'warn', {dot: true})]);
     review.classList.add('is-review');
     for (const entry of open) {
@@ -210,15 +286,16 @@ function draw(view, into) {
         field: () => answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : 'Your answer', entry), kind: () => kindField(view, item)}));
     }
     // Your details' unclear items: answered in the review drawer, at that item (its one review flow).
-    for (const each of setupRows) {
+    for (const each of currentSetupRows) {
       review.append(...row(view, {key: each.key, title: shown(each.question), under: each.hint, value: '', needs: true,
         status: statusPill(each.priority, 'bad', 'alert'), action: each.setup.action,
         run: () => import('./question-review.js').then(page => page.openQuestionReview({start: each.key}))}));
     }
-    for (const each of detailRows) {
+    for (const each of currentDetailRows) {
       review.append(...row(view, {key: `details:${each.key}`, title: shown(each.question), under: [each.details?.where || 'Your details', each.details?.line].filter(Boolean).join(' · '), value: '', needs: true,
         status: statusPill(ASKS[each.details?.kind] || 'Review saved answer', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));
     }
+    for (const completion of visibleCompletions) review.append(...completedRow(view, completion));
     if (ruleRows.length) {
       review.append(el('h5', 'qa-group', `Website rules without an answer · ${ruleRows.length}`));
       for (const each of ruleRows) review.append(...row(view, {...each, needs: true, status: statusPill('Missing answer', 'warn', 'bang-circle')}));
@@ -228,7 +305,7 @@ function draw(view, into) {
       more.addEventListener('click', () => { showHidden = !showHidden; view.redraw(); });
       review.append(more);
     }
-    if (!open.length && !detailRows.length && !ruleRows.length && !hiddenRows.length) review.append(el('p', 'muted qa-empty', 'Nothing to review: forms have every answer they asked for.'));
+    if (!open.length && !currentDetailRows.length && !currentSetupRows.length && !visibleCompletions.length && !ruleRows.length && !hiddenRows.length) review.append(el('p', 'muted qa-empty', 'Nothing to review: forms have every answer they asked for.'));
     into.append(review);
     return;
   }
@@ -297,6 +374,8 @@ export async function loadApplicationAnswers() {
   const named = wanted;
   // Why (2026-10-27, owner): refreshing data keeps the selected view; an explicit jump can change it.
   if (['all', 'review', 'saved'].includes(named)) { filters.view = named; remembered('answersView', named); }
+  const readRevision = saveRevision;
   await tab.load();
+  for (const [identity, revision] of resolved) if (revision <= readRevision) resolved.delete(identity);   // a fresh store read replaces any local stale snapshot
   if (named) { setTimeout(() => { if (wanted === named) wanted = null; }, 2000); node.querySelector('.segmented')?.scrollIntoView?.({block: 'nearest'}); }   // later loads of the same jump keep it
 }

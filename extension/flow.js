@@ -71,7 +71,8 @@ async function clickCombosNow(tabId) {
   const click = async (x, y) => { if ((await page((px, py) => globalThis.__jobPilottoSubmitPress?.markAt(px, py), [x, y]).catch(() => true)) === false) return; await driving(tabId, async () => { await mouse('mouseMoved', x, y); await mouse('mousePressed', x, y); await mouse('mouseReleased', x, y); }); };   // the extension's own press: marked first (page/submit-press.js markAt)
   // A type-to-search box (page/fill-menus.js typeToSearch): the text typed over the box's content for real, and the AI's pick by meaning among the options it showed.
   const type = bound('type', (text, keys = false) => driving(tabId, async () => {
-    if (!await selectForReplacement(page)) return;
+    await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', {type: 'rawKeyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 4, commands: ['selectAll']});
+    await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', {type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 4});
     // A suggest-only box (page/suggest-box.js) is typed the way a person types: each character a real key event (its key press AND its input), whichever of the two its search listens to.
     if (keys) { for (const char of [...String(text)]) for (const key of keysFor(char)) await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', key); return; }
     await chrome.debugger.sendCommand(target, 'Input.insertText', {text});

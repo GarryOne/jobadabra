@@ -24,3 +24,8 @@ test('no timer, page event or removed layer lifts the dim or ends the working lo
   assert.match(read('stop.js'), /setApply\(tabId, 'stopped'\)/, 'Stop is a verdict');
   assert.match(read('background.js'), /setApply\(tabId, verdict\)/, 'the end of a run is a verdict');
 });
+
+test('a run that goes on elsewhere keeps its Apply: a watch re-look and a tab followed from the posting set working again', () => {
+  assert.match(read('fill-flow.js'), /setApply\(tab\.id, 'working'\);[^\n]*\n\s*await consider\(live, jobUrl\)/, 'the watch for new fields starts the run again before it looks (steps are drawn only while working)');
+  assert.match(read('tabs.js'), /applyState\(opener\) === WORKING\) setApply\(tab\.id, WORKING\)/, 'the tab Apply opens from the posting is the same application: its state goes with it');
+});

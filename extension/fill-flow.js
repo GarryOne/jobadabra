@@ -210,6 +210,7 @@ async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => s
     decide('fill', framed ? 'a frame appeared on a page judged without a form: looking again' : 'fields appeared on a page judged without a form: looking again', {host, fields: shape.fields + shape.textareas + shape.files, frames: shape.frames || 0, after: (i + 1) * 2});
     noteProgress(tab.id, 'new_controls', {fields: shape.fields + shape.textareas + shape.files, frames: shape.frames || 0});
     await arm(tab.id, 'fields appeared');
+    setApply(tab.id, 'working');   // Why (2026-10-27, review bot on #2281): the page changed under the watch, so the run is on again: its steps and dim were dropped after the hand-over
     await consider(live, jobUrl);
     return true;
   }

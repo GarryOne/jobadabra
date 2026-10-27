@@ -68,6 +68,8 @@ export async function followOpener(tab) {
   Object.assign(next, inheritedEntries(stored, opener, tab.id));   // the same application: the newest tab is its tab now
   if (appTabs.has(tab.id)) { decide('panel', 'a tab the app opened for a job: not its opener\'s', {tab: tab.id, opener}); return false; }
   await chrome.storage.session.set(next);
+  await restored;
+  if (applyState(opener) === WORKING) setApply(tab.id, WORKING);   // Why (2026-10-27, review bot on #2281): the same application goes on in the new tab, and its steps are drawn only while it is working
   return true;
 }
 

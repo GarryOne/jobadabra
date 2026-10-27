@@ -103,7 +103,8 @@ class RankedFirst(Base):
         with mock.patch.object(source_rank, 'order', side_effect=order) as ranked, mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['pilot']}), \
                 mock.patch('src.places.countries', return_value=['Austria']), mock.patch('src.places.load', return_value={}):
             _, read, _, log = self.scan(given, slow_from=50)
-        self.assertEqual(set(read[:3]), {7, 3, 9}, 'the proven best first (read in parallel: they start in any order)')
+        self.assertLessEqual({7, 3, 9}, set(read[:feeds.FETCH_WORKERS]), 'the proven best in the first wave (its threads start in any order: '
+                             '2 started before 9 on #2187)')
         self.assertNotIn(0, read)
         self.assertNotIn(1, read)
         self.assertIn('2 left out', log)

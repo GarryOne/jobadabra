@@ -10,7 +10,7 @@ const reads = fs.readFileSync(new URL('../../extension/page-reads.js', import.me
 test('the page shape counts visible frames, and a frame that appears later makes the page be judged again', () => {
   assert.match(reads, /frames: \[\.\.\.document\.querySelectorAll\('iframe'\)\]\.filter\(el => \{ const box = el\.getBoundingClientRect\(\); return box\.width > 40 && box\.height > 40; \}\)\.length/);
   assert.match(flow, /const hadHosts = seenHosts === null \? \(await pageShape\(tab\.id\)\)\?\.frameHosts \|\| \[\] : seenHosts/);
-  assert.match(flow, /watchForFields\(tab, jobUrl, undefined, botCheck \? 60 : 10, counts\?\.frameHosts \|\| \[\]\)/, 'the baseline is what the judgment saw');
+  assert.match(flow, /watchForFields\(tab, jobUrl, undefined, botCheck \? 60 : 10, counts\?\.frameHosts \|\| \[\], \(\) => markPage\(tab\.id, role, pressed, kind\)\)/, 'the baseline is what the judgment saw');
   assert.match(flow, /const newHost = \(shape\?\.frameHosts \|\| \[\]\)\.some\(host => !hadHosts\.includes\(host\)\);/, 'a frame whose host shows up later is new');
   assert.match(flow, /const framed = newHost \|\| \(!!shape && await frameBecameCandidate\(tab\.id\)\);/, 'a frame that became a form-frame candidate later is new too');
   // Whichever way the frame came (a new host, or one that grew into a candidate), a kept answer for the page shape never saw it (Ocado, 11 Oct 2026: the Apply press opened a form frame, the kept "posting" was served again).

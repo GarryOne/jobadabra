@@ -262,7 +262,7 @@
     const letterUploadFailed = resume?.coverLetterFile && uploads.some(item => item.meaning === 'cover_letter' && !item.ok);
     if (letterUploadFailed) todo.unshift('Important: cover letter upload did not keep the file. Attach the letter manually from Jobadabra, then check the form again.');
     if (coverLetter && (manualLetter && !letterGiven || letterBoxes().some(el => !String(el.value || '').trim()))) todo.unshift('Important: cover letter was available but the text box did not keep it. Paste it from Jobadabra → Profile → Cover letter, then check the form again.');
-    const unfilledRequired = open.filter(row => !(row.field === 'resume' && resumeAttached) && !row.legal).length;
+    const unfilledRequired = after.filter(row => row.required && !row.filled && !(row.field === 'resume' && resumeAttached)).length;
     // A value we put in that the person then changes by hand is a correction: the label is kept (never the value) so the product learns
     // which questions it fills wrongly. The background drains window.__jobPilottoCorrections (extension/background.js reportTabs).
     window.__jobPilottoCorrections = window.__jobPilottoCorrections || [];

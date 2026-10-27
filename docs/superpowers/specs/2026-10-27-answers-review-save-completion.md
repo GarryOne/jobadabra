@@ -32,9 +32,9 @@ Focused tests cover successful reusable and Your details completion, the immedia
 
 ## Progress
 
-- [x] Trace persistence and queue refresh; confirm slow reread leaves the underlying page stale.
-- [x] Add a focused failing behavior test for immediate completion and failure retention.
-- [x] Implement transient completion state and reduced-motion fade.
-- [x] Run focused behavior tests, changed-JS lint, and fictional light before/after screenshots.
+- [x] Trace persistence and queue refresh; confirm slow reread leaves the underlying page stale. (proof: desktop/renderer/pages/application-answers.js)
+- [x] Add a focused failing behavior test for immediate completion and failure retention. (proof: desktop/test/answers-review-completion.test.js)
+- [x] Implement transient completion state and reduced-motion fade. (proof: desktop/renderer/pages/application-answers.js)
+- [x] Run focused behavior tests, changed-JS lint, and fictional light before/after screenshots. (proof: desktop/test/answers-review-completion.test.js)
 - [ ] Rebase on current main and run the complete fast gate.
 - [ ] Ship PR and monitor current-head checks/comments through owner merge.

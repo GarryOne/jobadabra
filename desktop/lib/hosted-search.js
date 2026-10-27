@@ -33,7 +33,12 @@ export function config(storage) {
   try { search = JSON.parse(read('config/search.json')); } catch { /* none yet: the wizard saves it before this step */ }
   return {search, profile: read('profile.md'), cv: ''};
 }
-export const pushConfig = (storage, options) => call(storage, '/api/hosted/config', {method: 'PUT', body: config(storage), ...options});
+// A good copy is remembered with its time: the card says when the profile was last copied to our servers (owner, 27 Oct 2026).
+export async function pushConfig(storage, options) {
+  const done = await call(storage, '/api/hosted/config', {method: 'PUT', body: config(storage), ...options});
+  if (done.ok) save(storage, {copiedAt: new Date().toISOString()});
+  return done;
+}
 
 // Turn on: the schedule (the e-mail makes the trial account), then the config. -> {ok, error?}
 export async function turnOn(storage, {email, marketing = false}, options = {}) {
@@ -49,10 +54,21 @@ export async function turnOn(storage, {email, marketing = false}, options = {}) 
 // Turn off: the schedule stops and everything we hold is deleted at once (the person's own words in the wizard: "turn it off anytime and it's deleted").
 export async function turnOff(storage, options = {}) {
   if (!state(storage).on) { save(storage, {skipped: true}); return {ok: true, receipt: null}; }   // never turned on here (Skip in the wizard): nothing to delete, no call to the site
+  return erase(storage, options);
+}
+
+// Delete my data, at any time, also while Always on is off (owner, 27 Oct 2026: "give at any time this option. But also when the user disabled the
+// 'Always on'"): our servers are asked even when this Mac thinks nothing is there (an earlier install, a delete that failed). 401 = no account there: nothing held.
+// -> {ok, receipt?, nothing?, error?}
+export async function deleteData(storage, options = {}) {
+  if (!keyOf(storage) && !options.key) return {ok: true, nothing: true};   // no install key: this Mac never sent anything
+  return erase(storage, options);
+}
+async function erase(storage, options) {
   const gone = await call(storage, '/api/hosted/data', {method: 'DELETE', ...options});
   if (!gone.ok && gone.status !== 401) return gone;
   await call(storage, '/api/hosted/schedule', {method: 'PUT', body: {on: false}, ...options});
-  save(storage, {on: false, skipped: true, after: 0});
+  save(storage, {on: false, skipped: true, after: 0, copiedAt: '', deletedAt: new Date().toISOString()});
   return {ok: true, receipt: gone.receipt || null};
 }
 

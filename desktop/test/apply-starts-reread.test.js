@@ -34,7 +34,7 @@ test('a main handler that starts an application is in the list above', () => {
     const end = line.trimEnd().endsWith('{') ? lines.findIndex((other, i) => i > at && /^  \}\);/.test(other)) : at;
     blocks.push([name, lines.slice(at, end + 1).join('\n')]);
   });
-  const starting = blocks.filter(([, body]) => /applyOne\(|apply\.start\(|startClaude\(|restartAs\(/.test(body)).map(([name]) => name);
+  const starting = blocks.filter(([, body]) => /applyOne\(|(apply|applyRunner)\.start\(|startClaude\(|restartAs\(/.test(body)).map(([name]) => name);
   assert.ok(starting.includes('applyOne') && starting.includes('sessionRestart'), 'the handler scan finds the known starts');
   for (const name of starting) assert.ok(STARTS.includes(name) || name === 'takeOverClaude', `${name} starts an application: add it to STARTS and end its window call in startedApplying`);
 });

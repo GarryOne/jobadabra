@@ -8,8 +8,8 @@ The owner (28 Oct 2026) on the first version: you could pick and save Background
 
 ## Design: states, their one owner, the verdicts that change them
 - **One owner of the mode:** `settings.apply.mode`, read through `applyOf` (renderer/apply-settings-model.js) and written only by Settings → Apply's `save` (pages/apply-settings.js), which the Jobs dialog and the first-Apply dialog call too.
-- **Built or not:** `MODES[].built` is the only switch. A mode not built is drawn disabled with a "Coming soon" pill (shared `modeCards`, on every surface), cannot be picked, and `applyOf` never returns it: an older save of it reads as Standard automation, so the cards and the runner always agree.
-- **Runner:** `BATCH_RUNNER` (lib/apply-handlers.js) maps each built mode to its batch runner (`check` → the visible Chrome extension batch). A test fails when `built` and `BATCH_RUNNER` disagree, so a mode cannot be marked built without a runner and never falls back to visible Chrome.
+- **Built or not:** `MODES[].runner` is the only switch (`modeBuilt` = it names a runner). A mode not built is drawn disabled with a "Coming soon" pill (shared `modeCards`, on every surface), cannot be picked, and `applyOf` never returns it: an older save of it reads as Standard automation, so the cards and the runner always agree.
+- **Runner:** the main process starts `modeRunner(applyOf(settings).mode)` (`check` → the visible Chrome extension batch). A mode without a runner is not built by construction, so it never falls back to visible Chrome.
 - **Verdicts:** a card press on a built mode (save), Start (main reads the mode again after the first-choice gate), Close/Esc (nothing).
 
 | Mode | Jobs dialog | Start |
@@ -34,9 +34,9 @@ The owner (28 Oct 2026) on the first version: you could pick and save Background
 ## Progress
 - [x] First version: Jobs reuses Settings → Apply's cards and writer; main resolves the mode after the gate. (proof: desktop/lib/apply-handlers.js)
 - [x] Duplicate-start guard, including count edits while starting. (proof: desktop/test/apply-dialog-mode.test.js)
-- [x] Rework tests first: unbuilt not selectable, button label, one writer, `built` ↔ `BATCH_RUNNER`. (proof: desktop/test/apply-dialog-mode.test.js)
-- [x] `built` flag and Coming soon cards on every surface; `MODE_TODAY` line removed. (proof: desktop/test/apply-settings.test.js)
+- [x] Rework tests first: unbuilt not selectable, button label, one writer, built = has a runner. (proof: desktop/test/apply-dialog-mode.test.js)
+- [x] `runner` field and Coming soon cards on every surface; `MODE_TODAY` line removed. (proof: desktop/test/apply-settings.test.js)
 - [x] Dialog wiring moved to pages/jobs-apply.js; "Apply to N jobs". (proof: desktop/renderer/pages/jobs-apply.js)
 - [x] Side-by-side r17 approved by the owner (28 Oct 2026). (proof: none: image in the PR body)
-- [ ] Background automation runner: flip `built` and add its `BATCH_RUNNER` entry in that PR.
+- [ ] Background automation: name its `runner` in that PR (spec 2026-10-28-background-full-automation-design.md).
 - [ ] Full automation runner, with its checks and receipts: same.

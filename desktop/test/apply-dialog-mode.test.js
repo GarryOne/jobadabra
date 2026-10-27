@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {applyButtonLabel, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../renderer/apply-dialog-model.js';
-import {MODES, applyOf, modeBuilt} from '../renderer/apply-settings-model.js';
-import {BATCH_RUNNER, registerApplyHandlers} from '../lib/apply-handlers.js';
+import {MODES, applyOf, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
+import {registerApplyHandlers} from '../lib/apply-handlers.js';
 import {guard} from '../lib/apply-choice-gate.js';
 
 const desktop = path.resolve(import.meta.dirname, '..');
@@ -56,8 +56,23 @@ test('a built mode is saved through Settings → Apply\'s writer, keeping the fi
   assert.doesNotMatch(page, /saveSettings\(/, 'no second writer of settings.apply');
 });
 
-test('every built mode has a batch runner, and an unbuilt one has none (never the visible Chrome path)', () => {
-  for (const mode of MODES) assert.equal(!!BATCH_RUNNER[mode.id], modeBuilt(mode.id), mode.id);
+test('a mode is built exactly when it names its batch runner; Standard\'s is the visible Chrome batch, the others have none', () => {
+  assert.deepEqual(Object.fromEntries(MODES.map(mode => [mode.id, modeRunner(mode.id)])), {check: 'chrome', fill: '', auto: ''});
+  for (const mode of MODES) assert.equal(modeBuilt(mode.id), !!modeRunner(mode.id), mode.id);
+  assert.match(read('lib/apply-handlers.js'), /modeRunner\(applyOf\(storage\.settings\(\)\)\.mode\)/, 'main starts the runner the saved (built) mode names');
+});
+
+test('a save that fails is said, never shown as picked', async () => {
+  const picked = await applyDialogSelectMode({mode: 'check', save: async () => null});
+  assert.equal(picked.ok, false);
+  assert.match(picked.error, /Could not save/);
+  assert.match(read('renderer/pages/apply-settings.js'), /return saved \? current : null;/, 'Settings → Apply\'s save answers null on a failed write');
+});
+
+test('a start whose call fails says so and gives the button back', () => {
+  const page = read('renderer/pages/jobs-apply.js');
+  assert.match(page, /catch \(error\) \{[^}]*Could not start applying/);
+  assert.match(page, /busy: saving \|\| gate\.isStarting\(\)/, 'the cards are off while a batch starts');
 });
 
 test('Start sends the validated count; the main process runs the saved mode\'s own runner', async () => {

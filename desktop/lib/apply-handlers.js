@@ -34,19 +34,15 @@ import {withAccounts, withCompanies, withoutHost} from './site-accounts.js';
 import {isTwin} from './twin.js';
 import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
 import {demoFormsOpen, demoPath} from './demo.js';
-import {applyOf} from '../renderer/apply-settings-model.js';
+import {applyOf, modeRunner} from '../renderer/apply-settings-model.js';
 
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
-// The batch runner of each built Apply mode (renderer/apply-settings-model.js `built`). Why (28 Oct 2026, owner, #2317 rework): a mode with no runner
-// is not built, so it never reaches the visible Chrome path; test/apply-dialog-mode.test.js fails when `built` and this map disagree.
-export const BATCH_RUNNER = Object.freeze({check: 'chrome'});
 export function registerApplyHandlers(ctx) {
   const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   ipcMain.handle('apply', async (_, options) => {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
-    const mode = fromSettings ? BATCH_RUNNER[applyOf(storage.settings()).mode] : options?.mode;
-    if (fromSettings && !mode) return {ok: false, error: 'This way of applying is coming soon. Choose Standard automation in Settings → Apply.'};
+    const mode = fromSettings ? modeRunner(applyOf(storage.settings()).mode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
     const agents = mode === 'agents';
     const blocked = needsNotion('apply') || await allowanceBlock() || (agents ? null : needExtension());   // (an earlier one-line form sent these answers through the "Claude is off" branch)
     if (blocked) return blocked;

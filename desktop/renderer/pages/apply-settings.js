@@ -67,12 +67,13 @@ export function draw(settings = current) {
 }
 
 // change: part of settings.apply; chosen: stamps the person's confirmation (the gate in lib/apply-choice-gate.js then lets every Apply through).
+/** Saves a change of settings.apply and redraws; -> the saved settings, or null when the save failed (the last saved ones stay drawn). */
 export async function save(change = {}, {chosen = false} = {}) {
   await ready;
   const saved = await window.pilot.saveSettings(applyPatch(current, change, {chosen})).catch(() => null);
   if (saved) current = saved;
   draw();
-  return current;
+  return saved ? current : null;
 }
 
 // "Adjust settings…" in the first-Apply dialog: Settings → Apply with a Confirm bar; answer(true) after Confirm, answer(false) after Not now.

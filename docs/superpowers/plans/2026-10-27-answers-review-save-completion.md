@@ -33,8 +33,8 @@
 - Modify: `desktop/test/question-review.test.js`
 - Add: `desktop/test/answers-review-completion.test.js`
 
-- [ ] **Step 1: Assert successful drawer save publishes completion and advances count immediately; failed/empty saves do not.**
-- [ ] **Step 2: Run only the changed test files and confirm the new assertion fails for missing immediate bridge.**
+- [x] **Step 1: Assert successful drawer save publishes completion and advances count immediately; failed/empty saves do not.**
+- [x] **Step 2: Run only the changed test files and confirm the new assertion fails for missing immediate bridge.**
 
 ### Task 2: Bridge saved completion to Application Answers
 
@@ -45,16 +45,16 @@
 - Modify: `desktop/test/question-review.test.js`
 - Modify: `desktop/test/answers-review-completion.test.js`
 
-- [ ] **Step 1: After a successful usable answer, dispatch question identity/value/home metadata and keep the drawer's existing local queue progression.**
-- [ ] **Step 2: Capture the matching visible row in Application Answers, decrement its Needs review count immediately, render Set, then fade/remove after roughly 1.5 seconds.**
-- [ ] **Step 3: Guard timer replacement/removal by record identity; keep state across filter changes and queue refresh, and never create it for failures or empty answers.**
-- [ ] **Step 4: Add reduced-motion CSS so the row exits without a transition under `prefers-reduced-motion`.**
-- [ ] **Step 5: Run focused tests and inspect fictional before/after screenshots.**
+- [x] **Step 1: After a successful usable answer, dispatch question identity/value/home metadata and keep the drawer's existing local queue progression.**
+- [x] **Step 2: Capture the matching visible row in Application Answers, decrement its Needs review count immediately, render Set, then fade/remove after roughly 1.5 seconds.**
+- [x] **Step 3: Guard timer replacement/removal by record identity; keep state across filter changes and queue refresh, and never create it for failures or empty answers.**
+- [x] **Step 4: Add reduced-motion CSS so the row exits without a transition under `prefers-reduced-motion`.**
+- [x] **Step 5: Run focused tests and inspect fictional before/after screenshots.**
 
 ### Task 3: Verify and ship
 
 **Files:** changed files above, spec progress, and this plan.
 
-- [ ] **Step 1: Run changed-JS lint, adjacent save/filter/modal tests and the repository fast gate in this worktree.**
-- [ ] **Step 2: Update spec evidence, prepare PR body/assets, register exact ship log and open PR using `tools/ship.sh`.**
-- [ ] **Step 3: Monitor current-head checks/comments and hand off for owner merge; never merge.**
+- [x] **Step 1: Run changed-JS lint, adjacent save/filter/modal tests and the repository fast gate in this worktree.**
+- [x] **Step 2: Update spec evidence, prepare PR body/assets, register exact ship log and open PR using `tools/ship.sh`.**
+- [x] **Step 3: Monitor current-head checks/comments; ship watcher is active for owner review and merge. Never merge.**

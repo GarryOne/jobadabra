@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 WORKFLOWS = Path(__file__).resolve().parent.parent / '.github' / 'workflows'
-SUITE = re.compile(r'node suite\.mjs|tools/check\.sh --area|recorded-pages\.test\.mjs|widget-zoo\.mjs')
+SUITE = re.compile(r'node suite\.mjs|tools/check\.sh --area|recorded-pages\.test\.mjs|widget-zoo\.mjs|check-fill\.mjs')
 
 
 def steps(text):

@@ -32,3 +32,6 @@ export function compare(base, now) {
   const red = Object.entries(now.cases).filter(([name, bucket]) => base.cases[name] === 'right' && bucket !== 'right').map(([name, bucket]) => `${name} (${bucket})`);
   return {red, main};
 }
+
+/** A run whose harness replayed nothing (no result, or every case stopped at an error or isolation line) is not a finding about the filler: check:fill fails it as a harness error. */
+export const replayedNothing = (results, verdicts) => !results.length || verdicts.every(one => one.bucket === 'not reached' && one.failures.some(line => /^(error|isolation)/.test(line)));

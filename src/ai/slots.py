@@ -20,6 +20,8 @@ def level():
 
 @contextlib.contextmanager
 def priority(at):
+    """Inside the block, this thread's AI calls queue at level `at` (FIRST, NORMAL or LATER); the previous level comes back after it, also on
+    an exception. Only this thread: a pool thread it starts takes the level through carry()."""
     before = level()
     _local.level = at
     try:

@@ -469,6 +469,7 @@ def read(search, boards=None, fetch=None, now=None, is_relevant=None, dead=None,
         run_counts.matched(relevant)
         jobs.extend(found)
     pool, cut, left = ThreadPoolExecutor(max_workers=max(1, workers)), read_budget.cut_at(), []   # 18 Oct 2026: Chisinau's 2 slice boards gave nothing, its 4th and 8th 14 jobs
+    # Why (#2235, owner, 27 Oct 2026: "local boards first"): a pool thread starts NORMAL; carry() keeps the slice's FIRST for each board's AI calls
     for done, (read_item, future) in enumerate([(read_item, pool.submit(slots.carry(one_or_spare), read_item)) for read_item in reads], 1):
         result = read_budget.result(future, cut)   # a board still open at the search's cut is not waited for (read_budget.cut_at)
         if result is read_budget.LEFT:

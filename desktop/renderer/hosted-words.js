@@ -28,20 +28,21 @@ export function stamp(iso, now = new Date()) {
   const same = at.toDateString() === now.toDateString(), clock = `${at.getHours()}:${two(at.getMinutes())}`;
   return `${same ? 'today' : `${at.getDate()} ${at.toLocaleDateString('en', {month: 'short'})}`} at ${clock}`;
 }
-// What our servers hold, in one line: the last copy while it is on, the deletion once it is off (owner, 27 Oct 2026).
+// What our servers hold, in one line: the last copy while it is on, the deletion once it is off, or a copy still there after a delete that failed (owner, 27 Oct 2026).
 function heldLine(mine, now) {
-  if (mine.on) return mine.copiedAt ? `Your profile was last copied to our servers ${stamp(mine.copiedAt, now)}.` : '';
-  return mine.deletedAt ? `Nothing of yours is on our servers (deleted ${stamp(mine.deletedAt, now)}).` : '';
+  if (mine.copiedAt) return mine.on ? `Your profile was last copied to our servers ${stamp(mine.copiedAt, now)}.` : `A copy of your profile is still on our servers (copied ${stamp(mine.copiedAt, now)}).`;
+  return !mine.on && mine.deletedAt ? `Nothing of yours is on our servers (deleted ${stamp(mine.deletedAt, now)}).` : '';
 }
 
 // -> {state, pill: [text, tone], line, held, asksEmail, button: 'on' | 'email' | 'resume' | null, off, download, erase, note}
-//   held: when the profile was last copied to our servers, or deleted from them. erase: "Delete my data from our servers" shows (every state that is not on;
-//   while on, "Turn off and delete" does it).
+//   held: when the profile was last copied to our servers, or deleted from them. erase: "Delete our copy of your data" shows while off and only when this Mac
+//   copied the profile to us and it is not deleted yet, whatever the store (SQLite or Notion: their data stays theirs; owner, 27 Oct 2026: "That is in his control.
+//   not in our control"). While on, "Turn off and delete" does it.
 //   mine: the app's own record {on, skipped, email}; schedule: the server's {state, pause_reason, next_run_at, email_channel} or null;
 //   shared: the address Settings → Notifications keeps, the one Always on uses (#1711, owner 27 Oct 2026: one shared e-mail). asksEmail: there is none yet,
 //   and the button goes to Notifications to add it.
 export function model(mine = {}, schedule = null, now = new Date(), shared = '') {
-  return {...view(mine, schedule, now, shared), held: heldLine(mine, now), erase: !mine.on};
+  return {...view(mine, schedule, now, shared), held: heldLine(mine, now), erase: !mine.on && !!mine.copiedAt};
 }
 function view(mine, schedule, now, shared) {
   const email = mine.email || shared || '', skipped = !!mine.skipped && !mine.on;

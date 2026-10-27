@@ -24,3 +24,17 @@ export async function applyDialogStart({settings, count, cancelled = false, star
   if (!copy.canStart) return {ok: false, error: copy.description};   // Why (27 Oct 2026, owner): a confirmed unsupported mode cannot start any batch.
   return start({n, mode: 'settings'});   // Why (27 Oct 2026, owner): main resolves the mode after first-choice confirmation, before selecting a runner.
 }
+
+// Prevents overlapping batch starts while leaving later deliberate starts available after completion.
+export function createApplyStartGate() {
+  let starting = false;
+  return {
+    isStarting: () => starting,
+    run: async start => {
+      if (starting) return {ignored: true};   // Why (27 Oct 2026): a second click must not launch another set of Chrome tabs.
+      starting = true;
+      try { return await start(); }
+      finally { starting = false; }
+    },
+  };
+}

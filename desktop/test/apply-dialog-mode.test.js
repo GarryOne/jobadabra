@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {applyDialogCopy, applyDialogStart} from '../renderer/apply-dialog-model.js';
+import {applyDialogCopy, applyDialogStart, createApplyStartGate} from '../renderer/apply-dialog-model.js';
 import {applyOf} from '../renderer/apply-settings-model.js';
 import {registerApplyHandlers} from '../lib/apply-handlers.js';
 import {guard} from '../lib/apply-choice-gate.js';
@@ -85,6 +85,22 @@ test('invalid counts and cancel do not start a job batch', async () => {
   assert.equal(cancelled.cancelled, true);
   assert.deepEqual(registered.starts, []);
   assert.deepEqual(registered.launches, []);
+});
+
+test('a second Start while the first batch is in flight cannot dispatch another batch', async () => {
+  const gate = createApplyStartGate();
+  let releaseFirst;
+  let starts = 0;
+  const first = gate.run(() => new Promise(resolve => { starts++; releaseFirst = resolve; }));
+  assert.equal(gate.isStarting(), true);
+  const second = await gate.run(async () => { starts++; return {ok: true}; });
+  assert.deepEqual(second, {ignored: true});
+  assert.equal(starts, 1);
+  releaseFirst({ok: true});
+  assert.deepEqual(await first, {ok: true});
+  assert.equal(gate.isStarting(), false);
+  assert.deepEqual(await gate.run(async () => { starts++; return {ok: true}; }), {ok: true});
+  assert.equal(starts, 2);
 });
 
 test('the dialog keeps a native cancel action and has no independent Apply mode selector', () => {

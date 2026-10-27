@@ -32,7 +32,7 @@ import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
-import {applyDialogCopy, applyDialogStart} from '../apply-dialog-model.js';
+import {applyDialogCopy, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -60,6 +60,7 @@ async function linkToJob(dialogId, messageId, result) {
 
 const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.fyi|reddit\.com)$/i;
 let applyDialogSettings = null;
+const applyStartGate = createApplyStartGate();
 
 function drawApplyDialogMode(settings) {
   applyDialogSettings = settings || null;
@@ -74,6 +75,11 @@ function drawApplyDialogMode(settings) {
   const mode = applyDialogCopy(applyDialogSettings);
   $('apply-mode-title').textContent = mode.title;
   $('apply-mode-description').textContent = mode.description;
+  if (applyStartGate.isStarting()) {
+    go.disabled = true;
+    go.textContent = 'Starting…';
+    return;
+  }
   go.disabled = !mode.canStart;   // Why (27 Oct 2026, owner): a confirmed unsupported mode cannot start; an unconfirmed choice still reaches the first-choice gate.
   go.textContent = mode.available ? `Start ${count} for review` : mode.chosen ? 'Unavailable' : 'Confirm Apply mode';
 }
@@ -385,39 +391,45 @@ export async function init() {
   window.pilot.onApplyProgress(text => message('apply-message', text, 'waiting'));   // "Drafting kit 2 of 3…" while the batch drafts what is missing
   $('apply-go').addEventListener('click', async event => {
     event.preventDefault();
-    const state = await window.pilot.state().catch(() => null);
-    if (!state?.settings) { drawApplyDialogMode(null); return; }   // Why (27 Oct 2026, owner): fail closed if saved Apply mode is unavailable.
-    drawApplyDialogMode(state.settings);
     const n = Number($('apply-n').value);
     if (!Number.isInteger(n) || n < 1 || n > 10) {   // Why (27 Oct 2026, owner): keep the batch's 1–10 integer bounds before the first-choice gate or runner.
       $('apply-n').reportValidity();
       message('apply-message', 'Choose between 1 and 10 jobs.', 'error');
       return;
     }
-    // Feedback at once: picking the jobs reads Notion and checks each posting is still open (a few seconds).
-    $('apply-go').disabled = true;
-    $('apply-go').classList.add('busy');
-    $('apply-go').textContent = 'Starting…';
-    const applyMode = applyDialogCopy(state.settings);
-    message('apply-message', applyMode.chosen
-      ? `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`
-      : 'Confirming how Jobadabra applies before starting…', 'waiting');
-    try {
-      const result = await applyDialogStart({settings: state.settings, count: n, start: options => window.pilot.apply(options)});
-      if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
-      if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
-      if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
-        $('apply-dialog').close();
-        toastMessage('Applying with Claude', result.message, {view: 'sessions'}, 'info');
-        await refreshSessions();
-        return;
+    const started = await applyStartGate.run(async () => {
+      // Feedback at once: picking the jobs reads Notion and checks each posting is still open (a few seconds).
+      $('apply-go').disabled = true;
+      $('apply-go').classList.add('busy');
+      $('apply-go').textContent = 'Starting…';
+      try {
+        const state = await window.pilot.state().catch(() => null);
+        if (!state?.settings) {   // Why (27 Oct 2026, owner): fail closed if saved Apply mode is unavailable.
+          message('apply-message', 'Could not read your saved Apply mode. No jobs were started.', 'error');
+          return;
+        }
+        drawApplyDialogMode(state.settings);
+        const applyMode = applyDialogCopy(state.settings);
+        message('apply-message', applyMode.chosen
+          ? `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`
+          : 'Confirming how Jobadabra applies before starting…', 'waiting');
+        const result = await applyDialogStart({settings: state.settings, count: n, start: options => window.pilot.apply(options)});
+        if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
+        if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
+        if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
+          $('apply-dialog').close();
+          toastMessage('Applying with Claude', result.message, {view: 'sessions'}, 'info');
+          await refreshSessions();
+          return;
+        }
+        message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
+      } finally {
+        $('apply-go').classList.remove('busy');
       }
-      message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
-    } finally {
-      $('apply-go').classList.remove('busy');
-      const latest = await window.pilot.state().catch(() => null);
-      drawApplyDialogMode(latest?.settings || null);
-    }
+    });
+    if (started.ignored) return;
+    const latest = await window.pilot.state().catch(() => null);
+    drawApplyDialogMode(latest?.settings || null);
   });
 }
 

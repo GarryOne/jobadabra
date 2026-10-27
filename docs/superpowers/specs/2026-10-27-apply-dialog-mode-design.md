@@ -37,5 +37,5 @@ The Jobs “Apply to jobs” dialog must show the same saved Apply mode as Setti
 - [x] Wire dialog to saved mode and supported runner. (proof: desktop/renderer/pages/jobs.js, desktop/lib/apply-handlers.js)
 - [x] Capture after screenshots. (proof: none: PNGs uploaded as the PR's after images)
 - [x] Run focused verification. (proof: desktop/test/apply-dialog-mode.test.js)
-- [ ] Run the fast gate and review the committed diff.
+- [x] Run the fast gate and review the committed diff. (proof: none: fast gate passed on the PR update; see registered ship log)
 - [ ] Ship review PR and track current-head CI/review/owner merge.

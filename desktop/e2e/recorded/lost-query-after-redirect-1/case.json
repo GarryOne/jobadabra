@@ -6,10 +6,10 @@
   "build": "0.9.652",
   "failed": "0 fields filled; first_name, last_name and email absent (old extension snapshot 3557b3cf2412470c1fbf6f360fd462a612ba5c47; original control replay in session c94bf950)"
  },
- "sample": "invented careers page; the redirect is emulated by the page itself (first load per session replaces its address with the one without the query), the harness cannot redirect",
+ "sample": "invented careers page on a reserved .example host; harness generates the fixed synthetic job query and issues one real 302 dropping it, then serves the application after restoration",
  "pages": [
   {
-   "url": "https://careers.beispiel.example/careers?gh_jid=4711",
+   "url": "https://careers.beispiel.example/careers",
    "file": "careers.html"
   }
  ],
@@ -33,5 +33,11 @@
   ],
   "seconds": 60
  },
- "start": "panel"
+ "start": "panel",
+ "syntheticNavigation": {
+  "queryKeys": [
+   "gh_jid"
+  ],
+  "dropQueryOnce": true
+ }
 }

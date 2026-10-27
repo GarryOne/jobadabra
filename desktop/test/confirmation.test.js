@@ -95,3 +95,18 @@ test('a yes marks the job and a no does not', async () => {
   assert.equal(no.confirmation, false);
   assert.deepEqual(marks, [JOB]);
 });
+
+test('actual challenge evidence overrides a contradictory receipt answer and hands off without marking Applied', async () => {
+  const client = {messages: {create: async () => ({content: [{type: 'text', text: '{"confirmation":true,"bot_check":true}'}]})}};
+  const judged = await judgePage(client, {url: 'https://jobs.example.test/result', title: 'Check', text: 'Human verification challenge'});
+  assert.equal(judged.botCheck, true);
+  assert.equal(judged.confirmation, false);
+  const handed = [], marked = [];
+  const verdict = await judgeConfirmation({}, {job: 'https://jobs.example.test/app', page: 'https://jobs.example.test/result', title: 'Check', background: {session: 'fictional', owner: 'owned'}}, {
+    client: null, judge: async () => judged, mark: async url => { marked.push(url); return {ok: true}; },
+    background: {handle: async payload => { handed.push(payload); return {ok: true}; }},
+  });
+  assert.equal(verdict.manual, true);
+  assert.equal(handed[0].reason, 'captcha_runtime');
+  assert.deepEqual(marked, []);
+});

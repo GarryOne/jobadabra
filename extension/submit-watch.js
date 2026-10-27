@@ -1,6 +1,7 @@
 // Did the person submit? (moved out of background.js, 8 Oct 2026): the submit press starts a short watch; a redirect or a change on the same page is read by the app, which decides
 // if it is the site's confirmation. The address alone is not a submission, and a press that leaves the page unchanged is not one either. A FLOW FILE (docs/flows/applying.md).
 // Guards: the confirmation, submit-outcome and tab-pages tests in desktop/test and the e2e row "the person submits a form" (npm run flows).
+import {backgroundContext, backgroundChallenge, setBackgroundWatcher} from './background-apply.js';
 import {plainWhy} from './ai-reply.js';
 import {KEY} from './tab-identity.js';
 import {LATE_CONFIRMATION_MS} from './tab-pages.js';
@@ -55,9 +56,12 @@ export function createSubmitWatch(ctx) {
     decide('submitted?', `submit, then the page changed (${gate.why}): asking whether it confirms`, {host: gate.host, path: gate.path});
     try {
       const config = await settings();
+      const background = await backgroundContext(tabId), submit = (await sessionGet(`submit:${tabId}`))[`submit:${tabId}`];
+      if (background?.manual && submit?.automation) return {done: true};
       const verdict = await apiFor(tabId, config, '/extension/confirmation', {method: 'POST', body: JSON.stringify({
-        job, page: pageKey(tab.url), title: reading?.title || '', headings: reading?.headings || [], text: reading?.text || '', inputs: reading?.inputs || 0,
+        job, page: pageKey(tab.url), title: reading?.title || '', headings: reading?.headings || [], text: reading?.text || '', inputs: reading?.inputs || 0, background: background ? {...background, attempt: submit?.automation ? submit.attempt : '', humanAt: submit?.automation ? 0 : pressAt} : null,
       })});
+      if (verdict.manual) { await backgroundChallenge(tabId, verdict.reason || 'captcha_runtime'); return {done: true}; }
       if (!verdict.confirmation) {
         decide('submitted?', verdict.error ? `page not read (${verdict.error}): not marked` : 'page is not a confirmation: not marked', {host: gate.host, path: gate.path});
         return {done: false};
@@ -112,6 +116,7 @@ export function createSubmitWatch(ctx) {
         });
         if (gate.why === 'unchanged') {
           await chrome.storage.session.set({[key]: {...submit, closed: true}});
+          await backgroundChallenge(tabId, 'submission_outcome_unknown');
           logOnce(tabId, 'submit, page unchanged: not marked', {host: gate.host, path: gate.path});
           return;
         }
@@ -122,6 +127,7 @@ export function createSubmitWatch(ctx) {
         submit = {...submit, fingerprint: after, calls, ...(calls >= ASK_LIMIT ? {closed: true} : {})};
         await chrome.storage.session.set({[key]: submit});
         const result = await askAboutOutcome(tabId, tab, reading, gate, pressAt);
+        if (!result.done && calls >= ASK_LIMIT) await backgroundChallenge(tabId, 'submission_outcome_unknown');
         if (result.done) {
           const latest = await sessionGet(key);
           if (latest[key]?.at === pressAt) await chrome.storage.session.set({[key]: {...latest[key], closed: true}});
@@ -139,6 +145,7 @@ export function createSubmitWatch(ctx) {
     const stored = await sessionGet([KEY.job(tabId), `submit:${tabId}`, `judged:${tabId}`, armedKey]);
     if (!tabArmed({url: tab.url, armed: stored[armedKey]})) return;
     const submit = stored[`submit:${tabId}`];
+    if (submit?.automation && (await backgroundContext(tabId))?.manual) return;
     if (submit?.at && !submit.closed && stored[`judged:${tabId}`] !== submit.at && Date.now() - submit.at < SUBMIT_WAIT_MS) {
       watchSubmission(tabId);
       return;
@@ -156,5 +163,6 @@ export function createSubmitWatch(ctx) {
     if (miss) logOnce(tabId, miss.text, miss.fields);
     else if (!submit?.at && job && confirmationOf(tab.url)) logOnce(tabId, 'no submit press before this page: not marked', {host: confirmationOf(tab.url).host, path: confirmationOf(tab.url).path});
   }
+  setBackgroundWatcher(watchSubmission);
   return {watchSubmission, onTabSettled};
 }

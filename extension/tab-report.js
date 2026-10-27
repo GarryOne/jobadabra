@@ -18,6 +18,7 @@ import {reportedIds} from './tab-pages.js';
 import {sessionGet} from './tab-memory.js';
 import {settings} from './flow.js';
 import {stopFromApp} from './stop.js';
+import {pollBackgroundApply} from './background-apply.js';
 
 // This browser (one Chrome profile), the same across its restarts, unlike `boot`: the app keeps each browser's tabs apart, so a second
 // profile or a test Chrome with this extension never makes this one's forms look closed (8 Oct 2026). A random id, nothing about you.
@@ -64,6 +65,7 @@ export function createTabReport(ctx) {
       const running = await runningVersion();
       const answer = await api(config, '/extension/tabs', {method: 'POST', body: JSON.stringify({urls, ids, boot, browser, worker: WORKER, reading, sessions, version: running})});
       connected(true);
+      await pollBackgroundApply(config);
       await chrome.storage.local.set({appBuild: answer?.build ? {...answer.build, version: running} : null}).catch(() => {});   // what the panel shows: the commit this copy runs, and the fixes it lacks (desktop/lib/build-state.js)
       await stopFromApp(answer);   // the app's Stop button reaches a tab with no panel too (stop.js)
       // Sites this extension was reading before it started again (a reload, an update, Chrome stopping its worker): read again from where each

@@ -277,12 +277,12 @@
       el.addEventListener('input', once); el.addEventListener('change', once);
     };
     // Every field the fill set carries a mark, so the panel tells at Submit what you answered yourself (extension/review.js).
-    const markFilled = field => {
+    const markFilled = (field, grounded) => {
       const name = String(field);
       const els = name.startsWith('radio:') ? document.querySelectorAll(`input[type=radio][name="${CSS.escape(name.slice(6))}"]`)
         : name.startsWith('group:') ? Array.from(document.querySelectorAll('input[type=checkbox]')).filter(b => questionOf(b) === name.slice(6))
         : [document.getElementById(name) || document.querySelector(`[name="${CSS.escape(name)}"]`)];
-      for (const el of els) el?.setAttribute('data-jobpilotto-filled', '');
+      for (const el of els) if (el) { el.setAttribute('data-jobpilotto-filled', ''); el.dataset.jobpilottoGrounding = grounded ? 'known' : 'unknown'; }
     };
     // Field-by-field log for the run record: where each answer came from and what happened.
     const answerOf = Object.fromEntries([...answers, ...(all || []).filter(a => a.consent === true)].map(a => [a.field, a]));
@@ -318,7 +318,8 @@
       if (outcome === 'filled' && fromCvFields.has(row.field)) reason = 'from your CV: check it';   // not in your saved details: the CV states it (owner, 27 Oct 2026)
       if (outcome === 'filled' && answer?.draft && row.type !== 'file') reason = answer.draft === 'outline' ? 'outline: add your own details' : 'drafted: review it';   // typed, but the person has not read it yet (owner, 16 Oct 2026)
       if (outcome === 'filled' && source && row.type !== 'file') watchCorrection(row.field, label);
-      if (outcome === 'filled' && source) markFilled(row.field); else window.__jobPilottoMarkProposal?.({...row, options: rowOf[row.field]?.options || row.options}, answer || proposedOf[row.field], (PROFILE_LABELS.find(([, pattern]) => pattern.test(label)) || [])[0] || aliasFor(label)?.key || '');   // page/propose.js: what the app's row proposes
+      const grounded = contactFields.has(row.field) || fromCvFields.has(row.field) || !!answer && !answer.guess && !answer.draft && (!answer.confidence || answer.confidence === 'high') && (!!answer.fact && answer.fact !== 'none' || /your details|standard answer/.test(source));
+      if (outcome === 'filled' && source) markFilled(row.field, grounded); else window.__jobPilottoMarkProposal?.({...row, options: rowOf[row.field]?.options || row.options}, answer || proposedOf[row.field], (PROFILE_LABELS.find(([, pattern]) => pattern.test(label)) || [])[0] || aliasFor(label)?.key || '');   // page/propose.js: what the app's row proposes
       // The form's own choices (never a value): the app keeps the question's kind (desktop/lib/question-formats.js). A menu's placeholder (an option with an empty value) is not a choice.
       const menu = (el => (el?.tagName === 'SELECT' ? el : null))(document.getElementById(row.field) || document.querySelector(`select[name="${CSS.escape(row.field)}"]`));
       const choices = (menu ? Array.from(menu.options).filter(o => o.value !== '').map(o => o.text.replace(/\s+/g, ' ').trim()) : rowOf[row.field]?.options || row.options || []).filter(Boolean).slice(0, 60).map(option => String(option).slice(0, 120));
@@ -337,6 +338,8 @@
       const row = rowOf[item.field];
       if (!row || contactFields.has(item.field) || row.legal || /your details|standard answer/.test(item.source || '')) continue;
       const long = row.type === 'textarea' || String(item.value || '').length > 80;
+      const grounded = document.getElementById(item.field) || document.querySelector(`[name="${CSS.escape(item.field)}"]`);
+      if (grounded && (item.guess || item.fact === 'none' || item.confidence && item.confidence !== 'high')) grounded.dataset.jobpilottoGrounding = 'unknown';
       const unsure = item.guess || (item.confidence && item.confidence !== 'high');   // a typed guess at any confidence (worker typeGuess, 14 Oct 2026)
       if (item.draft) summary.todo.push(`${item.draft === 'outline' ? 'Complete' : 'Review'}: ${row.label} (drafted for you)`);
       if (long || unsure || item.draft) markAttention(item.field, row.label || item.question || item.field);

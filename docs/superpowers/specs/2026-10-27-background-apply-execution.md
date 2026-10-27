@@ -1,0 +1,70 @@
+# Background Apply execution (27 Oct 2026; owner decisions 28 Oct 2026)
+
+> [!NOTE]
+> **Verdict (owner, 28 Oct 2026):** "Finish the Full automation / background applying flow." This is the one spec for Background and Full automation (the draft `2026-10-28-background-full-automation-design.md` was folded in here). The 27 Oct work is uncommitted in the worktree `hidden-apply-modes` (about 1,000 lines plus tests). Build on it; never delete or overwrite it.
+
+## Owner decisions, 28 Oct 2026
+- **What a person sees when a job needs them (captcha, login, review before Submit):** a **live view of the same held page in the app**, reusing Ready to send's `hosted/ready-fill/live.mjs` (measured 17 Oct: open p50 155 ms, input p50 79 ms). The person types, solves and presses Submit in it. "Open in my browser" (`ready-handoff.js`) stays as an extra. This closes the "owner design choice pending" below: no native window reveal.
+- **Hidden browser, a Settings → Apply choice:** (1) **Jobadabra's browser**, Chromium, headless, hidden: **the default**. (2) **My Chrome**: the person's own Chrome, a normal visible window with focus. The minimized-Chrome option is dropped: owner, "Probably it's not much worth over the 3rd one" (it flashes focus anyway, per the 27 Oct finding). My Chrome's advantages are the person's sign-ins and site cookies, and passive "checking your browser" pages clear more often on a real profile (never disguised).
+- **Mode capability API (#2317):** each mode names its batch runner in `MODES[].runner` (desktop/renderer/apply-settings-model.js). A mode with no runner is a disabled "Coming soon" card on every surface and can never be the saved mode. Main starts `modeRunner(applyOf(settings).mode)`. `fill` then `auto` get `runner: 'background'` in the PR that makes each one pass this spec's acceptance.
+- **The Full automation recap is PR C of "What we learned"** (`2026-10-28-what-we-learned-design.md`, "Remember, by Apply mode"): after a Full automation run, a recap of what was answered and learned, with Change. Here: emit each submitted job's answers and receipt through the store so PR C can draw it. The recap screen is PR C's, not this spec's. Full automation does not ship to people before that recap exists.
+- **Step order (one PR each):** A, the 27 Oct work committed as reviewable state, store, controller and safety, with modes still Coming soon. B, headless browser plus first-use download plus the in-app live view; `fill` gets its runner. C, Full automation gates, wait with Stop, receipts, README/privacy wording, then `auto` gets its runner (after the What-we-learned recap). D, the My Chrome choice.
+
+## Problem and observable behavior
+
+Settings already stores three Apply modes, but `fill` and `auto` still fall through to the visible Chrome Apply path (#2317 since shows them as "Coming soon" until their runners pass). Implement both modes through one app-owned session and the existing Jobadabra extension form flow. `check` keeps opening the visible review form.
+
+| Mode/state | Browser/session behavior | Application outcome |
+|---|---|---|
+| Standard automation (`check`) | Existing visible browser review | User reviews and submits |
+| Background automation (`fill`) | Same extension flow in a hidden/minimized browser window | Persist `ready_for_review`; user opens the same session and explicitly submits |
+| Full automation (`auto`) eligible | Same hidden extension flow; submit only after the saved opt-in, eligibility, required-field/fact policy, per-day/employer caps, wait and Stop checks all still pass | `Applied` only after the existing confirmation judgment reports a receipt |
+| Either background mode, preflight CAPTCHA | Persist a per-job manual override and route to manual review; retain the job | No automated attempt for that job |
+| Either background mode, runtime CAPTCHA (including submit response) | Stop that job, persist manual handoff, reveal the same browser session with its current cookies/form/files, notify clearly | User solves it and presses Submit; automation never resumes, even after restart or a mode change |
+| Unknown sign-in/2FA, missing required fact, attestation, ambiguous/unsafe page, unverified submission | Stop and hand off honestly; never invent facts or infer success | No false `Applied`; no retry that could duplicate the application |
+
+## State and invariants
+
+Per application: `queued → preflight → filling → ready_for_review` (fill mode); or `queued → preflight → filling → waiting_to_submit → submitting → receipt_confirmed` (auto mode). Any unsafe/unknown state goes to `needs_user_handoff`. CAPTCHA goes to terminal-for-automation `manual_submit_required`. An explicit user action may review/submit from that state, but no background event can transition it back into `submitting`. Persist these states by job/session identity so restart, repeated dispatch and races cannot duplicate fill or submit.
+
+Standard automation remains visible. Background and Full automation must not create a visible browser window unless a manual handoff requires one. All actual form reads, decisions and fills continue through the extension. The browser process is app-owned; do not copy the system browser profile or expose cookies. Reuse the extension's session identity and existing Ready handoff data where applicable. The mode IDs stay `check` / `fill` / `auto`; the canonical labels are owned by d17's PR #2317.
+
+## Data ownership and browser contract
+
+Canonical per-job state is a named `Background Apply` section on its existing Applications record, read/written through `src/stores` for every adapter. Terminal and extension records are runtime caches, never authority to resume a submit. A serialized server controller persists a one-shot submit reservation before returning a command; reserved/unknown outcomes never retry. Reservation events supply limits across jobs/restarts. Store failures stop automation.
+
+A dedicated browser uses only a Jobadabra-owned profile. It starts without a visible window; the actual extension creates minimized application windows and reveals that same live tab for review or a runtime challenge. Browser files are an optional first-use download with explicit consent and progress, never bundled silently. The hosted Ready/night extension workflow is reused; no second form filler.
+
+### Hidden-launch finding (27 Oct, actual browser)
+
+The minimized-window premise failed on macOS: `chrome.windows.create` initially activates a normal window before it minimizes. Keeping `focused:false` prevents the requested minimization; omitting it eventually minimizes but still emits an initial focus event. The fictional browser smoke caught both behaviors. This does not meet acceptance, even though filling, mode-3 receipt and runtime CAPTCHA paths pass.
+
+Proposed reuse: the existing Ready `hosted/ready-fill/live.mjs` already streams and forwards human input to the same held headless page. A local viewer can therefore expose the exact live page without restoring or refilling it. Owner design choice is pending before this replacement handoff is implemented. Modes remain unavailable until hidden launch and interactive handoff both pass.
+
+## Acceptance and evidence
+
+- One canonical saved-mode dispatch; mode 1 unchanged, mode 2 never submits, mode 3 has explicit gate checks and requires an observed receipt.
+- A fictional local browser integration exercises the real extension/session contract, including hidden launch and same-session reveal; a mode-ignoring canned runner is insufficient.
+- Preflight/runtime CAPTCHA tests prove per-job persistence, manual routing/reveal and no automatic resume after restart, mode change or challenge resolution.
+- Unknown facts/attestations/auth states stop; per-job idempotency and concurrency limits are proven.
+- No real application, production submission, production applicant data or paid AI call during development. Tests use fictional local fixtures and existing deterministic browser contracts.
+
+## Constraints and non-goals
+
+No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile cloning, second filler, silent bundling of a large Chromium download, or visible launch in modes 2/3. Keep existing settings, eligibility defaults and user limits. Do not report full background modes complete until the fictional browser integration proves the end-to-end contract.
+
+## Progress
+
+### 1. Background Apply execution
+
+- [x] Audit current mode, Apply, extension session/outcome, Ready handoff, twin, browser launch and hybrid fill research. (proof: none: audit read-out, findings are in this spec's Hidden-launch finding)
+- [x] Add failing focused state and browser-contract regressions. (proof: desktop/test/background-apply-store.test.js)
+- [x] Owner decisions on hand-off view and browser choice (28 Oct 2026, above). (proof: none: owner decision, quoted above)
+- [x] A: commit the 27 Oct work as reviewable state, store, controller and safety; modes stay Coming soon. (proof: desktop/test/background-apply-controller.test.js)
+  - A moved to B: mode dispatch (onto #2317's `MODES[].runner`), the download module and its IPC (the module needs a `tests-desktop-windows.yml` paths line), `form-judge.js` `bot_check`/`submit_control` (needs a ladder fixture), and the headless smoke that replaces the native minimized-window smoke.
+- [ ] B: headless Jobadabra browser, first-use download, in-app live view (reuse live.mjs); `fill` runner.
+- [ ] C: Full automation gates, wait + Stop, receipts, README/privacy; `auto` runner after What-we-learned's recap (PR C).
+- [ ] D: My Chrome (normal visible window) as the second browser choice.
+- [ ] Implement durable per-job state, hidden session dispatch, manual reveal, mode-3 guard and receipt settlement.
+- [ ] Review every transition and acceptance item against focused evidence.
+- [ ] Run changed-JS lint, focused tests and required fast gate; ship one reviewable PR.

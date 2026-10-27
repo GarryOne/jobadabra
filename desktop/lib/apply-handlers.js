@@ -20,6 +20,7 @@ import * as server from './server.js';
 import {extensionReady} from './extension-ready.js';
 import * as sitePassword from './site-password.js';
 import * as terminals from './terminals.js';
+import {backgroundApplyFor} from './background-apply-controller.js';
 import fs from 'node:fs';
 import {GOOGLE_KEYCHAIN, GOOGLE_SCOPES_KEYCHAIN} from './google-keys.js';
 import {log as appLog} from './log.js';
@@ -40,6 +41,8 @@ export const extensionGate = installedGate;   // what main.js hands to every han
 export function registerApplyHandlers(ctx) {
   const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
+  const background = backgroundApplyFor(storage);
+  server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   ipcMain.handle('apply', async (_, options) => {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
     const mode = fromSettings ? modeRunner(applyOf(storage.settings()).mode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
@@ -82,6 +85,7 @@ export function registerApplyHandlers(ctx) {
   // macOS permission needed, never the wrong tab). Only when no page answers does the app look for the tab itself.
   const showForm = async (id, label, url, company) => {
     const key = String(id), name = String(label || '');
+    if (terminals.record(key)?.background) return background.reveal(key);
     // On a Mac the form tab is found and brought forward first, through Chrome's own tab list: at once, whatever the page is
     // doing (a background tab's timers are slow). One attempt: it worked, or it says no tab is this job's form.
     if (process.platform === 'darwin' && !isTwin()) {   // a twin finds its tab through its own extension (lib/twin.js)

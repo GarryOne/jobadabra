@@ -1,5 +1,5 @@
 import {FREE_WEAKER_SHORT} from './ai-tier-words.js';
-import {buysWords} from './credit-buys.js';
+import {buysSuffix} from './credit-buys.js';
 // The Pro plan's words and numbers for the window (Settings → Plan, the sidebar counter, ⌘K), kept free of the DOM so a test can read them
 // (private spec jobadabra-lab:docs/specs/2026-10-16-pro-plan.md §4, owner decisions 16 Oct 2026): the AI credit LEFT is a bar and a percent, never dollars or "applications left" (an AMOUNT bought or added says what it buys: owner, 27 Oct 2026, renderer/credit-buys.js);
 // "one-time payment, no subscription", never "lifetime"; the own key is the way out when the credit runs low. Prices come from the site's offers (/api/pro/status), never from here.
@@ -15,7 +15,7 @@ export const INCLUDED = EVERYTHING;   // the waitlist card's list (pages/plan-wa
 export const TOPUP_NOTE = 'Top-ups are one-time, VAT is included in the price. Each adds credit worth what you pay, used at our AI prices; the bar shows what is left.';
 // The euro amount an offer adds, as the site says it (offers[].creditEur; 24 Oct 2026: €1 of credit = €1 at our AI prices, so a top-up adds what it costs). '' when the site did not send it (an older site).
 // Why (27 Oct 2026, owner): an amount always says what it buys (renderer/credit-buys.js), so "€10 of AI credit" reads "€10 of AI credit (about 70 applications)"; the bar itself stays a percent.
-export const creditWords = offer => (offer?.creditEur > 0 ? `€${offer.creditEur} of AI credit (${buysWords(offer.creditEur)})` : '');
+export const creditWords = offer => (offer?.creditEur > 0 ? `€${offer.creditEur} of AI credit${buysSuffix(offer.creditEur)}` : '');
 export const NOTES = {
   30: 'Your AI credit is under 30%. Add credit anytime, or use your own AI key: it is unlimited and saves your credit.',
   10: 'Your AI credit is under 10%. Add credit anytime, or use your own AI key: it is unlimited and saves your credit.',
@@ -73,7 +73,7 @@ export const signinWords = answer => answer.error === 'wrong' ? `That code is no
 // A promo code: what to say for the site's answer (the site decides; the words are fixed here).
 const PROMO_WORDS = {wrong: "That code doesn't work.", expired: 'This code has expired.', used_up: 'This code has been used up.', pro_only: 'This code adds AI credit to Pro. Upgrade to Pro first.', limit: 'Too many tries. Try again in an hour.', offline: 'Could not reach Jobadabra. Check your connection and try again.'};
 export const redeemWords = answer => (!answer.ok ? PROMO_WORDS[answer.error] || 'That did not work. Try again.'
-  : answer.credit > 0 ? (answer.already ? 'This code was already added on this computer.' : `€${answer.credit} of AI credit added (${buysWords(answer.credit)}).`)
+  : answer.credit > 0 ? (answer.already ? 'This code was already added on this computer.' : `€${answer.credit} of AI credit added${buysSuffix(answer.credit)}.`)
   : answer.already ? 'Pro is already on.' : 'Pro is on. Thank you.');
 
 // The top-up dialog (pages/topup-dialog.js; owner, 26 Oct 2026): why our AI stopped -> {tag, title, body, wait, primary, pro}. why: a refusal (renderer/refusal.js) or a Free

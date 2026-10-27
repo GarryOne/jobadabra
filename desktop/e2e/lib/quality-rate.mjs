@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Why (#2211, #2214, owner 27 Oct 2026): his bars, set from 34 live runs' measured noise (scores 85.4% within 8; facts 2,079/2,079; flags 5.9%, worst 8.9%).
 export const BARS = {pairs: 90, agree: 0.8, jumps: 0.02, within: 8, jump: 20, factNights: 10, facts: 0.995, texts: 90, flagged: 0.1};
 // Below these the rate is reported, not judged (half of each window): one bad night must not turn main red by itself.
 export const MIN_PAIRS = 45, MIN_FACT_NIGHTS = 5, MIN_TEXTS = 45;

@@ -75,6 +75,17 @@ export function rankingViolations(truth, scores) {
   return violations;
 }
 
+/**
+ * The golden jobs scored above their own cap (truth.json `maxScore`). Why (#2205, owner 27 Oct 2026: "Allow, capped at 20+20"): a requirement the posting states
+ * and the profile shows unmet is a core gap, at most 49 (src/ai/score_bands.py UNMET); 3005 (German C1 required, the profile gives B1) scored 30-70 before it.
+ * @param {Array<{id, title, maxScore?}>} truth the golden postings
+ * @param {Object<string, number>} scores jobId -> score; a job not scored is left out
+ * @returns {Array<{title, score, cap}>} empty when every capped job holds its cap
+ */
+export function capViolations(truth, scores) {
+  return truth.filter(item => item.maxScore != null && scores[item.id] != null && scores[item.id] > item.maxScore).map(item => ({title: item.title, score: scores[item.id], cap: item.maxScore}));
+}
+
 // Two scorings of the same postings: the ones further apart than `tolerance`. -> [{id, first, second}]
 export function unstable(first, second, tolerance = 8) {
   return Object.keys(first).filter(id => second[id] != null && Math.abs(first[id] - second[id]) > tolerance).map(id => ({id, first: first[id], second: second[id]}));

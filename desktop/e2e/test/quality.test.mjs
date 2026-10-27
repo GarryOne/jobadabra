@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {blockLine} from '../lib/notion.mjs';
-import {judgeVerdict, checkFacts, dirtyRows, dirtyText, fingerprints, leaks, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable} from '../lib/quality.mjs';
+import {capViolations, judgeVerdict, checkFacts, dirtyRows, dirtyText, fingerprints, leaks, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable} from '../lib/quality.mjs';
 
 const truth = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url), 'utf8'));
 const sre = truth.find(item => item.id === 3001);
@@ -174,4 +174,13 @@ test('workLeft: every out-of-time line the engine prints asks for another refres
   for (const done of ['Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one', 'Cronjob run logged: ⏱️ Search runs row', 'Job Matches: 9 created, 0 updated']) {
     assert.equal(workLeft(done), false, done);
   }
+});
+
+// #2205 (owner, 27 Oct 2026): a requirement the posting states and the profile shows unmet is a core gap, at most 49. Golden 3005 is that case in the prompt's
+// fixed set; the gate (replayed answers) fails when it scores above its cap.
+test('a golden job scored above its cap is named: 3005, German C1 required, at most 49', () => {
+  assert.equal(truth.find(item => item.id === 3005).maxScore, 49);
+  assert.deepEqual(capViolations(truth, {3005: 49, 3001: 95}), []);
+  assert.deepEqual(capViolations(truth, {3005: 65}), [{title: 'Senior Site Reliability Engineer (DE)', score: 65, cap: 49}]);
+  assert.deepEqual(capViolations(truth, {}), [], 'a job not scored is left out');
 });

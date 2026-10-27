@@ -17,7 +17,7 @@ import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf, rewriteTextLines} from '../lib/seed-texts.mjs';
 import {MATCHES, matchRowsOf, notKeptNote} from '../lib/quality-rows.mjs';
 import {clearData} from '../lib/start-state.mjs';
-import {checkFacts, dirtyRows, dirtyText, fingerprints, leaks, judgeVerdict, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable, workLeft} from '../lib/quality.mjs';
+import {capViolations, checkFacts, dirtyRows, dirtyText, fingerprints, leaks, judgeVerdict, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable, workLeft} from '../lib/quality.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {quiet} from '../lib/activity-steps.mjs';
@@ -193,6 +193,11 @@ export async function run(ctx) {
       summary.ranking = violations.length ? `${violations.length} violation(s)` : 'ok';
       console.log(`  scores: ${postings.map(item => `${item.id}=${scores[item.id] ?? 'dropped'}`).join(' ')}`);
       if (violations.length) throw new Error(violations.map(v => `"${v.low}" (${v.lowScore}) is not below "${v.high}" (${v.highScore})`).join('; '));
+      const over = capViolations(truth, scores), said = over.map(v => `"${v.title}" scored ${v.score}, above its cap ${v.cap}`).join('; ');
+      // Why (#2205, owner 27 Oct 2026: "Code gate + AI rate"): the gate's replayed answers never change, so a cap broken there is the code's; one live night
+      // broke it once (3005 = 65, run 40451177894) and the night's rates judge the AI, not one draw.
+      if (over.length && replaying()) throw new Error(`a job with an unmet stated requirement is scored too high: ${said}`);
+      if (over.length) console.log(`  above a cap tonight: ${said}`);
     }, {needs: ctx.needs});
 
     await ctx.run('every Notion column the app promises is filled, and no text shows a programming accident', async () => {

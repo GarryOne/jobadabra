@@ -9,7 +9,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import geo  # noqa: E402
-from src.sources import aggregators, careers, eures  # noqa: E402
+from src.sources import aggregators, careers, eures, nuts_names  # noqa: E402
 
 _READER = careers.READER
 
@@ -21,6 +21,7 @@ def setUpModule():   # no test here reaches a real model through a page read (gu
 def tearDownModule():
     careers.READER = _READER
 
+TABLE = {'BE100': 'Brussels', 'BG423': 'Pazardzhik', 'BG411': 'Sofia (stolitsa)', 'BG331': 'Varna'}   # Eurostat's NUTS table, as src/sources/nuts_names.py gives it
 SEARCH = {'role_keywords': ['carpenter'], 'locations': {'top_tier': ['Brussels'], 'country_wide': [], 'abroad': []}}
 
 
@@ -46,6 +47,7 @@ class EuresTest(unittest.TestCase):
             mock.patch(target, Path(self.tmp.name) / (target.split('.')[-2] + '.json')).start()
         self.addCleanup(mock.patch.stopall)
         self.addCleanup(self.tmp.cleanup)
+        mock.patch.object(nuts_names, 'names', lambda fetch=None: TABLE).start()
         mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'city', 'cc': 'BE', 'lat': 50.8, 'lon': 4.4, 'r': 30} for w in words}).start()
 
     def test_keeps_only_jobs_whose_region_is_the_places_with_the_place_as_location(self):
@@ -84,7 +86,22 @@ class EuresTest(unittest.TestCase):
             return {'jvs': [jv('b', 'Cook', 'BE255')]}
         with mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'country', 'cc': 'BE'} for w in words}):
             found = eures.eures(search, get=get, client=Client({}))
-        self.assertEqual([j['location'] for j in found], ['Belgium, Belgium'])
+        self.assertEqual([j['location'] for j in found], ['Belgium'], 'a code the table lacks: the country alone, never the person\'s word as if it were the job\'s place')
+
+    def test_each_job_carries_the_area_of_its_own_code_never_the_persons_place_word(self):
+        # Why (27 Oct 2026, search check 40528942517, persona 1 Truck Driver, Sofia): 5 jobs were all stamped "bulgaria, Bulgaria" (the person's word),
+        # one lay ~200 km away and the judge could not place any. The portal gives only a NUTS code per job; Eurostat's table names it.
+        search = {'role_keywords': ['truck driver'], 'locations': {'top_tier': ['Sofia'], 'country_wide': ['Bulgaria'], 'abroad': []}}
+        codes = {'a': 'BG423', 'b': 'BG411', 'c': 'BG411', 'd': 'BG331', 'e': 'BG999'}
+
+        def get(url, data=None, headers=None, timeout=None):
+            return {'jvs': [jv(id, f'Driver {id}', code) for id, code in codes.items()]}
+        kinds = lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'country' if w == 'Bulgaria' else 'city', 'cc': 'BG', 'lat': 42.7, 'lon': 23.3, 'r': 30} for w in words}
+        with mock.patch.object(geo, 'resolve', kinds):
+            found = eures.eures(search, get=get, client=Client({'Sofia': 'BG41'}))
+        self.assertEqual({j['id'][6:]: j['location'] for j in found},
+                         {'a': 'Pazardzhik, Bulgaria', 'b': 'Sofia (stolitsa), Bulgaria', 'c': 'Sofia (stolitsa), Bulgaria', 'd': 'Varna, Bulgaria', 'e': 'Bulgaria'})
+        self.assertNotIn('bulgaria, Bulgaria', [j['location'] for j in found])
 
     def test_a_region_code_of_another_country_is_dropped_and_the_place_not_read(self):
         read = []

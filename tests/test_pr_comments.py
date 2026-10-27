@@ -3,9 +3,11 @@
 A fake `gh` answers from recorded JSON files; no network."""
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -34,6 +36,22 @@ def view(comments=(), reviews=(), commits=(), state='OPEN'):
             'comments': list(comments), 'reviews': list(reviews), 'commits': list(commits)}
 
 
+def rest(d, v, n='7', lines=()):
+    """Writes a `view()` (gh pr view shape) as the REST answers tools/pr-rest-lib.sh reads (tests/fake_gh_rest.py serves them)."""
+    def put(path, body):
+        f = d / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', path)
+        f.parent.mkdir(exist_ok=True)
+        f.write_text(json.dumps(body))
+    put(f'repos/o/r/pulls/{n}', {'number': int(n), 'html_url': v['url'], 'head': {'sha': 'h1', 'ref': 'feature'}, 'state': 'open' if v['state'] == 'OPEN' else 'closed',
+                                 'merged_at': '2026-10-27T10:00:00Z' if v['state'] == 'MERGED' else None, 'mergeable': True})
+    put(f'repos/o/r/issues/{n}/comments?per_page=100', [{'node_id': c['id'], 'user': {'login': c['author']['login']}, 'body': c['body'], 'html_url': c['url'], 'created_at': c['createdAt']} for c in v['comments']])
+    put(f'repos/o/r/pulls/{n}/reviews?per_page=100', [{'node_id': r['id'], 'user': {'login': r['author']['login']}, 'body': r['body'], 'state': r['state'], 'submitted_at': r['submittedAt']} for r in v['reviews']])
+    put(f'repos/o/r/pulls/{n}/commits?per_page=100', [{'commit': {'committer': {'date': c['committedDate']}}} for c in v['commits']])
+    put(f'repos/o/r/pulls/{n}/comments?per_page=100', list(lines))
+    put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [{'name': 'x', 'status': 'in_progress', 'conclusion': None}]})
+    put('repos/o/r/commits/h1/status', {'statuses': []})
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -56,13 +74,18 @@ class WatcherCommentsTest(Base):
         super().setUp()
         self.log, self.pidfile = self.tmp / 'ship.log', self.tmp / 'watch.pid'
         self.log.write_text('')
+        (self.tmp / 'bin' / 'gh').write_text(f'#!/bin/sh\nexec "{sys.executable}" "{ROOT / "tests" / "fake_gh_rest.py"}" "$@"\n')
+        self.env['PR_REST_CACHE'] = str(self.tmp / 'rest-cache')
+        self.answer(view())
+
+    def answer(self, v, lines=()):
+        super().answer(v, lines)
+        rest(self.tmp, v, lines=lines)
 
     def watch(self, started='2026-10-27T12:00:00Z'):
         # the PR is already merged on the 2nd look: one full pass over the comments, then the watcher ends
-        v = json.loads((self.tmp / 'view.json').read_text())
-        (self.tmp / 'view.json').write_text(json.dumps(v))
         env = {**self.env, 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '0', 'SHIP_WATCH_STARTED': started}
-        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile)], env=env, timeout=30, check=True)
+        subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), '7', str(self.log), str(self.pidfile), 'o/r'], env=env, timeout=30, check=True)
         return [l for l in self.log.read_text().splitlines() if ' COMMENT ' in l]
 
     def test_a_bot_comment_is_told_once_and_not_again_on_the_next_loop_or_after_a_restart(self):
@@ -85,10 +108,10 @@ class WatcherCommentsTest(Base):
         v8 = view(comments=[comment('IC_8', 'GarryOne', 'rename it')])
         v8['url'] = 'https://github.com/o/r/pull/8'
         v8['comments'][0]['url'] = 'https://github.com/o/r/pull/8#issuecomment-IC_8'
-        (self.tmp / 'view8.json').write_text(json.dumps(v8))
+        rest(self.tmp, v8, n='8')
         env = {**self.env, 'SHIP_WATCH_POLL': '0', 'SHIP_WATCH_CAP': '0'}
         for n in ('7', '8'):
-            subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), n, str(self.log), str(self.tmp / f'w{n}.pid')], env=env, timeout=30, check=True)
+            subprocess.run(['bash', str(ROOT / 'tools' / 'ship-watch.sh'), n, str(self.log), str(self.tmp / f'w{n}.pid'), 'o/r'], env=env, timeout=30, check=True)
         lines = [l for l in self.log.read_text().splitlines() if ' COMMENT ' in l]
         self.assertEqual(lines, [f'ship: COMMENT #7 bot comment {URL}#issuecomment-IC_1', 'ship: COMMENT #8 owner comment https://github.com/o/r/pull/8#issuecomment-IC_8'])
 
@@ -136,10 +159,11 @@ class WatcherCommentsTest(Base):
         self.answer(view(comments=[bot, reply, owner]), lines=[{'id': 5, 'user': {'login': 'gitar-bot[bot]'}, 'body': 'x', 'html_url': 'https://x/l5', 'created_at': '2026-10-27T09:00:00Z'}])
         self.assertEqual(self.watch(), [f'ship: COMMENT #7 owner comment {URL}#issuecomment-IC_3'])
 
-    def test_one_extra_call_per_look_for_the_line_comments(self):
+    def test_the_line_comments_are_read_once_per_look(self):
         self.answer(view(comments=[comment('IC_1', 'gitar-bot')]))
         self.watch()
-        self.assertEqual(len((self.tmp / 'lineapi').read_text().split()), len((self.tmp / 'views').read_text().split()))
+        calls = (self.tmp / 'calls').read_text().splitlines()
+        self.assertEqual(sum(c.endswith('repos/o/r/pulls/7/comments?per_page=100') for c in calls), sum(c.endswith('repos/o/r/pulls/7') for c in calls))
 
 
 @unittest.skipUnless(shutil.which('jq') and shutil.which('git') and shutil.which('bash'), 'needs jq, git and bash')

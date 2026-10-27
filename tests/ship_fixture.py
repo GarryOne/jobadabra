@@ -25,7 +25,7 @@ class ShipFixture(unittest.TestCase):
         self.origin, self.main, self.other = self.tmp / 'origin.git', self.tmp / 'main', self.tmp / 'other'
         subprocess.run(['git', 'init', '-q', '--bare', '-b', 'main', str(self.origin)], check=True)
         (self.main / 'tools').mkdir(parents=True)
-        for name in ('ship.sh', 'worktree.sh', 'recheck-needed.py', 'affected-tests.py', 'wait-build-tag.sh', 'ship-timeline.sh', 'session-name.sh', 'red-main.sh', 'ship-red.sh', 'ship-pr.sh', 'pr-body.sh', 'pr-title.sh', 'pr-body-format.py', 'pr-screens.py', 'ship-watch.sh', 'pr-conflict-fix.sh'):
+        for name in ('ship.sh', 'worktree.sh', 'recheck-needed.py', 'affected-tests.py', 'wait-build-tag.sh', 'ship-timeline.sh', 'session-name.sh', 'red-main.sh', 'ship-red.sh', 'ship-pr.sh', 'pr-body.sh', 'pr-title.sh', 'pr-body-format.py', 'pr-screens.py', 'ship-watch.sh', 'pr-conflict-fix.sh', 'pr-rest-lib.sh', 'pr-comments-lib.sh'):
             shutil.copy(ROOT / 'tools' / name, self.main / 'tools' / name)
         self.hook = self.main / 'tools' / 'pre-push-check.sh'
         self.hook.write_text('#!/bin/sh\ncat > /dev/null\n')   # the real hook has its own tests; here it only has to be asked

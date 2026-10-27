@@ -30,7 +30,7 @@ DEV_TOOLING = ('test_affected_tests', 'test_check', 'test_check_slot', 'test_com
 # a lock path; CI · Tests passes the PR's changed files in JOB_PILOTTO_PY_CHANGED_FILE. A push to main, a local run or an unreadable list runs everything. Guarded by tests/test_lock_test_scope.py,
 # which also fails when a lock test starts using a tools/ file that is not a lock path here.
 LOCK_MODULES = ('test_red_fix_first', 'test_landing_lock', 'test_check_slot')
-LOCK_PATHS = ('tools/heavy-lock', 'tools/check-slot.sh', 'tools/landing-lock.sh', 'tools/ship', 'tools/pr-body.sh', 'tools/pr-title.sh', 'tools/pr-conflict-fix.sh', 'tools/pr-body-format.py', 'tools/pr-screens.py', 'tools/red-main.sh', 'tools/revert-red.sh', 'tools/worktree.sh', 'tools/session-name.sh',
+LOCK_PATHS = ('tools/heavy-lock', 'tools/check-slot.sh', 'tools/landing-lock.sh', 'tools/ship', 'tools/pr-body.sh', 'tools/pr-title.sh', 'tools/pr-conflict-fix.sh', 'tools/pr-rest-lib.sh', 'tools/pr-comments-lib.sh', 'tools/pr-body-format.py', 'tools/pr-screens.py', 'tools/red-main.sh', 'tools/revert-red.sh', 'tools/worktree.sh', 'tools/session-name.sh',
               'tools/recheck-needed.py', 'tools/pre-push-check.sh', 'tools/affected-tests.py', 'tools/wait-build-tag.sh', 'tools/py-shards.py', 'desktop/e2e/lib/heavy.mjs',
               'tests/test_heavy_lock', 'tests/heavy_wait.py', 'tests/heavy_lock_fixture.py', 'tests/ship_fixture.py', 'tests/test_lock_test_scope.py',
               *(f'tests/{m}.py' for m in LOCK_MODULES))

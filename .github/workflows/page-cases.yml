@@ -117,13 +117,13 @@ concurrency:   # newest wins (owner, 15 Oct 2026): a newer push replaces the PR'
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
-  JP_REPLAY_SHARD_COUNT: 2   # two longer parts, not four (15 Oct 2026: a flow PR started ~25 jobs and PRs waited for runners); each ~8 min, the timeout is 20
+  JP_REPLAY_SHARD_COUNT: 2   # two longer parts, not four (15 Oct 2026: a flow PR started ~25 jobs and PRs waited for runners); the documented ~8-minute replay also needs setup/full-window retry headroom; retain the existing 20-minute ceiling (#2306)
 
 jobs:
   replay:
     name: page cases ${{ matrix.shard }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

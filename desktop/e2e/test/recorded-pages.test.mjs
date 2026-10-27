@@ -5,7 +5,7 @@ import {after, test} from 'node:test';
 import fs from 'node:fs';
 import {replayReason} from '../lib/applying-report.mjs';
 import {loadCases, runCase} from '../lib/page-replay.mjs';
-import {replayInTabs} from '../lib/replay-browser.mjs';
+import {replayInTabs, replayRetryMessage} from '../lib/replay-browser.mjs';
 import {isRowCase, runRowCase} from '../lib/row-case-run.mjs';
 import {parseShard, shardOf} from '../lib/replay-shard.mjs';
 import {readSlow, splitForPr, touchedCases} from '../lib/replay-slow.mjs';
@@ -68,8 +68,8 @@ const batchResults = () => batch ||= tabs === 1 ? Promise.resolve(null) : replay
   return new Map(list.map(result => {
     const second = again.get(result.name);
     if (!second) return [result.name, result];
-    if (second.again.ok && !second.first.ok) console.log(`FLAKY in parallel: ${result.name} failed in ${tabs} tabs (${second.first.failures.join('; ').slice(0, 160)}) and passed alone; counted as passed`);
-    if (second.again.ok && second.first.ok) console.log(`confirmed alone: ${result.name} (${second.first.confirm.join('; ').slice(0, 120)} came from a line no case's host names)`);
+    const message = replayRetryMessage(second.first, second.again, tabs);
+    if (message) console.log(message);
     return [result.name, second.again];
   }));
 });

@@ -27,16 +27,20 @@ on:
 permissions:
   contents: read
 
-# One verdict per commit at a time; a newer event replaces a queued one (it reads the newer state anyway).
-concurrency:
-  group: pr-verdict-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: false
-
 jobs:
   verdict:
     name: Write the PR's verdict
-    # Only runs of a pull request, or the e2e run one started: main's schedules and bisects end here at once.
-    if: github.event.workflow_run.event == 'pull_request' || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')
+    # Only runs of a pull request's CURRENT head, or the e2e run one started: main's schedules and bisects end here at once.
+    # Why (27 Oct 2026, 6e with the owner's yes): a commit a newer push replaced still started a verdict per finished workflow, each holding a runner; 22 were cancelled
+    # by hand at 06:53 while 38 Linux jobs queued behind GitHub's 20-job cap. workflow_run.pull_requests[].head.sha is the PR's head NOW (an older commit's run
+    # names the newer head), and it is empty once the PR is merged or closed: a skipped job takes no runner. Guard: tests/test_pr_verdict.py.
+    if: >-
+      (github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha)
+      || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')
+    # One verdict per PR branch: a newer event replaces a queued or running one, which would read the same state (every PR job also writes it as its last step).
+    concurrency:
+      group: pr-verdict-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

@@ -173,6 +173,15 @@ class Workflows(unittest.TestCase):
         self.assertIn("E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}", win)
         self.assertRegex(win, r"Take the suite's lock[^\n]*\n        if: inputs\.pr_steps == ''", 'a PR check on SQLite needs no Notion page: it never waits for the lock on a runner')
 
+    def test_the_backstop_skips_a_replaced_commit_and_keeps_one_per_pr(self):
+        # 27 Oct 2026: 22 queued verdicts for commits no open PR had as its head, each waiting for a runner under GitHub's 20-job cap.
+        text = (WORKFLOWS / 'pr-verdict.yml').read_text()
+        job = text.split('\n  verdict:\n', 1)[1]
+        condition = job.split('    if: >-\n', 1)[1].split('\n    concurrency:', 1)[0]
+        self.assertIn("github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha", condition, 'a replaced commit or a merged PR is skipped')
+        self.assertRegex(job, r"concurrency:\n      group: pr-verdict-\$\{\{ github\.event\.workflow_run\.head_branch \}\}\n      cancel-in-progress: true", 'one verdict per PR branch')
+        self.assertNotRegex(text.split('\njobs:\n', 1)[0], r'(?m)^concurrency:', 'no run-level group per sha that piles runs up')
+
     def test_the_budget_counts_running_time_not_the_wait_for_a_runner(self):
         # Owner, 27 Oct 2026: "Count running time only". #2215: 12.4 min in all, its jobs waited for runners most of it; a run of 11 min stays red.
         slow = [run('CI · Pull request', at='2026-10-27T05:00:00Z', end='2026-10-27T05:12:24Z')]

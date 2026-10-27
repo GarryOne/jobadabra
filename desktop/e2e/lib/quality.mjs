@@ -53,9 +53,11 @@ export function checkFacts(item, row) {
 // Every column the app promises for a scored job. -> the missing ones.
 export const REQUIRED_COLUMNS = ['Job', 'Score', 'Tier', 'Company', 'Location', 'Reason', 'Role fit', 'Location fit', 'Compensation fit', 'Growth', 'Risk', 'Confidence', 'Job URL', 'Code', 'Status',
   'Seniority', 'Work mode', 'Languages', 'Technologies'];
-// The columns a posting may leave empty: the ones its truth names, and Compensation fit when it states no salary (N/A by design, 13 Oct 2026).
+// The columns a posting may leave empty: the ones its truth names, Compensation fit when it states no salary and Growth when it states no level
+// (N/A by design: src/ai/score.py HAS_BASIS, 13 Oct 2026).
 export function mayBeEmptyFor(posting) {
-  return [...(posting?.mayBeEmpty || []), ...(posting && !(posting.salary || []).length ? ['Compensation fit'] : [])];
+  return [...(posting?.mayBeEmpty || []), ...(posting && !(posting.salary || []).length ? ['Compensation fit'] : []),
+    ...(posting && posting.seniority == null ? ['Growth'] : [])];
 }
 // `mayBeEmpty`: the columns this posting does not state a value for (the truth names them), which the app rightly leaves empty.
 export function missingColumns(row, mayBeEmpty = []) {

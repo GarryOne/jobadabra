@@ -135,3 +135,7 @@ export function judgeVerdict(failed, judged) {
   const allowed = Math.floor(judged * JUDGE_SHARE + 1e-9);
   return {ok: failed.length <= allowed, allowed, tolerated: failed.length <= allowed ? failed : []};
 }
+
+// A refresh ran out of time with work left: the engine starts every such line with "⏱ " (src/time_budget.py, daily_search.py, run_exit.py),
+// never a word list here (27 Oct 2026: the suite knew two of its five lines and stopped after a slow first refresh). "⏱️ Search runs" is not one.
+export const workLeft = engineText => /^⏱ /mu.test(engineText);

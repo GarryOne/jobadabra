@@ -16,7 +16,7 @@ import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf, rewriteTextLines} from '../lib/seed-texts.mjs';
 import {MATCHES, matchRowsOf, notKeptNote} from '../lib/quality-rows.mjs';
 import {clearData} from '../lib/start-state.mjs';
-import {checkFacts, dirtyRows, dirtyText, fingerprints, leaks, judgeVerdict, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, stabilityVerdict, unstable} from '../lib/quality.mjs';
+import {checkFacts, dirtyRows, dirtyText, fingerprints, leaks, judgeVerdict, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, stabilityVerdict, unstable, workLeft} from '../lib/quality.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {quiet} from '../lib/activity-steps.mjs';
@@ -127,7 +127,7 @@ export async function run(ctx) {
         const from = size();
         await check(round === 1 ? 'first Jobs check' : `Jobs check ${round} (the rest of the first one)`);
         const written = fs.existsSync(engineLog) ? fs.readFileSync(engineLog, 'utf8').slice(from) : '';
-        if (!/left for the next one|wait for the next refresh/.test(written)) break;
+        if (!workLeft(written)) break;   // the engine's own mark for work left over (lib/quality.mjs)
         console.log(`  refresh ${round} ran out of time with jobs left (engine ${ctx.engine}): refreshing again`);
       }
       await read2(); if (!rows.length) {

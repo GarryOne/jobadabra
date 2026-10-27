@@ -15,7 +15,8 @@ connect it to Jobadabra's current rules without changing product code or frozen 
 2. Initialize Spec Kit only in the isolated, clean worktree; review every generated path and limit
    staged `.agents/` files to the generated skill Markdown.
 3. Replace the generated constitution placeholder with principles that point to existing canonical
-   rules and preserve owner decisions, and add the workflow guide plus adoption spec/progress.
+   rules and preserve owner decisions; add the workflow guide, adoption spec/progress, and a
+   project-local spec template override that retains `## Progress` reporting.
 4. Link the guide from `AGENTS.md` and `CLAUDE.md`; confirm legacy specs remain untouched and small
    fixes have no mandatory Spec Kit ceremonies.
 5. Run focused CLI and generated-file checks, inspect the complete diff, run the normal fast gate,
@@ -27,6 +28,8 @@ connect it to Jobadabra's current rules without changing product code or frozen 
   `.specify/init-options.json` identifies `codex` and 1.2.3.
 - `specify integration status` succeeds in the initialized worktree and shows the configured
   integration; inspect the generated skills/manifest for complete Codex skill files.
+- `.specify/scripts/bash/resolve-template.sh spec-template` resolves the project-local override,
+  whose rendered output contains `## Progress` and keeps the detailed `tasks.md` artifact separate.
 - `git check-ignore` excludes an unrelated `.agents` local-state file while `git status` includes
   only the generated allowlisted `SKILL.md` files.
 - Review all changed paths for generated scripts, secrets, auth/config, unrelated files, and

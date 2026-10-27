@@ -27,8 +27,10 @@ clear. Keep each feature's artifacts together in a dated directory under
 `docs/superpowers/specs/`, for example `docs/superpowers/specs/2026-10-27-search-export/`.
 Before invoking `$speckit-specify`, set `SPECIFY_FEATURE_DIRECTORY` to that directory. The
 generated `spec.md`, `plan.md`, `tasks.md`, and supporting artifacts are the canonical artifacts
-for that feature; track implementation progress in the sibling `tasks.md` checklist. Older flat
-dated specs remain valid with their existing `## Progress` section; do not migrate or duplicate them.
+for that feature. `spec.md` keeps a high-level `## Progress` checklist for `report-progress`, while
+the sibling `tasks.md` tracks detailed implementation tasks. The project-local override supplies
+that section through the supported Spec Kit template resolution mechanism. Older flat dated specs
+remain valid with their existing `## Progress` section; do not migrate or duplicate them.
 
 1. Set the feature directory and invoke `$speckit-specify` with the requested outcome and
    compatibility boundaries.

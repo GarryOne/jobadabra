@@ -38,7 +38,9 @@ merge process.
    architecture, testing-tier, or owner-merge rules.
 4. Project instructions name the current `$speckit-*` entrypoints, artifact location, and
    small-fix exception; old specs remain in place.
-5. Focused generated-asset/setup checks and the repository fast gate complete, then a normal PR is
+5. The project-local spec template keeps `## Progress` for `report-progress`; sibling `tasks.md`
+   carries detailed tasks without a duplicate specification.
+6. Focused generated-asset/setup checks and the repository fast gate complete, then a normal PR is
    opened with its watcher and ship-log registration intact.
 
 ## Progress
@@ -48,6 +50,7 @@ merge process.
 - [x] Install and verify uv 0.13.6 and Specify CLI 1.2.3. (proof: docs/spec-driven-development.md)
 - [x] Initialize and inspect the generated Codex integration in the worktree. (proof: .specify/integrations/codex.manifest.json)
 - [x] Write the constitution, adoption guide, and bounded implementation plan. (proof: .specify/memory/constitution.md, docs/spec-driven-development.md, docs/superpowers/plans/2026-10-27-adopt-spec-kit.md)
+- [x] Preserve `## Progress` in Spec Kit specs through the supported project-local template override. (proof: .specify/templates/overrides/spec-template.md)
 - [ ] Run focused checks and the normal fast gate.
 - [ ] Open the review PR and report its head, ship log, and current CI status.
 

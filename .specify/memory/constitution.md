@@ -3,9 +3,11 @@
 Spec Kit is the canonical authoring workflow for substantial new features. Its feature artifacts
 (specification, plan, tasks, and any supporting design) live together under
 `docs/superpowers/specs/`; use `SPECIFY_FEATURE_DIRECTORY=docs/superpowers/specs/YYYY-MM-DD-<slug>`
-before `$speckit-specify`. Existing dated specifications in that directory remain valid and are
-not migrated or regenerated. Link relevant existing specs and architecture/rule documents rather
-than copying them.
+before `$speckit-specify`. The project-local `spec-template` override keeps a `## Progress`
+checklist of high-level outcomes in `spec.md` for `report-progress`; the sibling `tasks.md` holds
+detailed implementation tasks. Existing dated specifications in that directory remain valid and
+are not migrated or regenerated. Link relevant existing specs and architecture/rule documents
+rather than copying them.
 
 ## Principles
 

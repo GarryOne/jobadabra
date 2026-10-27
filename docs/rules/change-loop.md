@@ -20,7 +20,7 @@ Why each rule exists: [why.md](why.md#change-loop).
    `run-all.mjs` refuses a whole suite on the Mac (`lib/local-run.mjs`; the owner's full run by choice: `JP_E2E_FULL=1`; `npm run live` passes).
 
 ## A big change: slices, a safety net first, ONE full run at landing (owner, 10 Oct 2026)
-1. **Size it first** (Tier 0/1/2). Above Tier 1: a spec with a checklist (`docs/superpowers/specs/`). Existing flat specs use a `## Progress` section; a Spec Kit feature directory uses its `tasks.md` checklist as progress (`spec.md`, `plan.md`, `tasks.md` stay together). Say what stays unverified. A box a PR ticks names its proof: `(proof: <path>)` the PR changes, `(proof: <path> @<sha>)`
+1. **Size it first** (Tier 0/1/2). Above Tier 1: a spec with a checklist (`docs/superpowers/specs/`). Existing flat specs use their `## Progress` section; a Spec Kit feature directory keeps high-level outcomes in `spec.md`'s `## Progress` for `report-progress` and detailed task progress in its sibling `tasks.md` (`spec.md`, `plan.md`, `tasks.md` stay together). Say what stays unverified. A box a PR ticks names its proof: `(proof: <path>)` the PR changes, `(proof: <path> @<sha>)`
    on main, or `(proof: none: <why>)` (`tools/spec-proof.mjs`, in the pure push checks and CI's Fast checks).
 2. **Safety net before behaviour:** fixtures, a baseline and a gate (`ladder-score`, `tools/ladder-gate.mjs`, recorded pages, contract and
    architecture tests) exist BEFORE the change.

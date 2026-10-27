@@ -15,7 +15,7 @@ import {initOptional, showOptional} from './session-optional.js';
 import {jobsChanged} from './jobs.js';
 import {richText} from './rich-text.js';
 import {openSession, renderSessionPage, say} from './session-log.js';
-import {applyFormStates, askRow, reviewStates, opening, openForm, reopenClosedTab, checkingTab, redirecting, silentChrome, waitingChrome, tabLost, formGone, formReady, emptyFields, emptyRow, explainExtension, needRow, showFormState, showSendBar, updateNeedsCount, watchAgreements} from './session-needs.js';
+import {applyFormStates, askRow, reviewStates, opening, openForm, reopenClosedTab, checkingTab, redirecting, silentChrome, waitingChrome, tabLost, formGone, formReady, emptyFields, emptyRow, explainExtension, needRow, showFormState, updateNeedsCount, watchAgreements} from './session-needs.js'; import {showSendBar} from './need-send.js';
 import {toastMessage} from './startup.js';
 import {pauseSession, removeSession, resumeSession, skipSession} from './session-actions.js';
 import {storeName} from '../store-words.js';

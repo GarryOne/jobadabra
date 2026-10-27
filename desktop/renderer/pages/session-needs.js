@@ -6,11 +6,11 @@ import {replyOf, splitLabel, unbold} from '../session-message.js';
 import {checkingTabs, chromeSilent, chromeWaiting, tabClosed, tabNotFound, stepShown} from '../session-state.js';
 import {icon} from '../icons.js';
 import {sameQuestion} from '../labels.js';
-import {answerOptions} from '../answer-options.js'; import {proposalFor, proposedRow} from './need-proposal.js'; import {markKnockout} from './need-knockout.js';
+import {answerOptions} from '../answer-options.js'; import {clearAnswers, queue, sendAnswer} from './need-send.js'; import {choiceButtons, choiceChips} from './need-choice.js'; import {proposalFor, proposedRow} from './need-proposal.js'; import {markKnockout} from './need-knockout.js';
 import {shared} from './shared.js';
-import {$, show} from './core.js';
+import {$} from './core.js';
 import {openView} from './nav.js';
-import {openSession, renderSessionPage, say} from './session-log.js';
+import {openSession, renderSessionPage} from './session-log.js';
 import {firstLine, refreshSessions, renderDock, sessionCompany, sessionList} from './sessions.js';
 import {toastMessage} from './startup.js';
 import {showFormCard} from './session-form-card.js';
@@ -24,11 +24,11 @@ import {reasonFor} from '../reason-words.js';
 // window's local storage (a note of what you clicked, not data: Notion and the form hold the answers).
 const KEPT = 'jobpilotto.session-rows';
 const keptRows = (() => { try { return JSON.parse(localStorage.getItem(KEPT) || '{}'); } catch { return {}; } })();
-const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [...handled], synced: [...syncedDone], saved: [...savedAnswers]})); } catch {} };
+const keep = () => { try { localStorage.setItem(KEPT, JSON.stringify({handled: [...handled], synced: [...syncedDone], saved: [...savedAnswers], forgot: [...forgotten]})); } catch {} };
 const remembered = (map, entries) => { for (const [key, value] of entries || []) map.set(key, value); return map; };
 const handled = remembered(new Map(), keptRows.handled);  // `${session}|${text}` → what was done
 const KEEP = /^(?:keep|leave|ok|fine|no change|looks right|as is|nothing)/i;
-const offline = item => (item.live === false ? 'The session has ended: resume it to send this' : '');
+export const offline = item => (item.live === false ? 'The session has ended: resume it to send this' : '');
 // The answers you already saved (Notion → Application Answers, the same page the Profile shows), for the rows that
 // offer a choice: read once, on the side, the first time a row wants them. Offline or without Notion the row still
 // offers Claude's own answer and "Change with Claude…".
@@ -110,7 +110,6 @@ export function updateNeedsCount() {
   const head = $('ss-needs-card').querySelector('.ss-fact-head .icon');
   if (head && head.dataset.state !== String(!open.length)) { const glyph = icon(open.length ? 'alert' : 'check'); glyph.dataset.state = String(!open.length); head.replaceWith(glyph); }
 }
-const capital = text => text.replace(/^./, c => c.toUpperCase());
 export function smallButton(text, kind, run, title = '') {
   const button = el('button', `${kind} ss-need-button`, text);
   if (title) { button.disabled = true; button.title = title; }
@@ -118,6 +117,8 @@ export function smallButton(text, kind, run, title = '') {
   return button;
 }
 // Enter in a row's answer box presses its button (Use, Fill it in, Send), unless the button is off or an IME is composing.
+// Review in form: always the row's last button, a quiet one (owner, 27 Oct 2026: same-size buttons in one column).
+export const reviewButton = (item, label) => smallButton('Review in form', 'secondary is-review', event => showInForm(item, label, event.currentTarget));
 export function submitOnEnter(input, button) {
   input.addEventListener('keydown', event => {
     if (event.key !== 'Enter' || event.isComposing || button.disabled || !button.isConnected) return;
@@ -188,8 +189,8 @@ export function emptyRow(label, item) {
   body.append(titleLine(name), el('span', 'ss-need-desc small', more
     ? `Still empty in the form (the ring on the form lists ${label.startsWith('1 ') ? 'it' : 'them'}).`
     : draftNote(reviewStates.get(item.id), label) || reasonFor(reviewStates.get(item.id), label, sameQuestion) || 'This section is still empty in the form.'));   // why the fill left it (reason-words.js)
-  actions.append(more ? smallButton('Open the form', 'secondary', event => openForm(item, event.currentTarget))
-    : smallButton('Open in form', 'secondary', event => showInForm(item, label, event.currentTarget)));
+  actions.append(more ? smallButton('Open the form', 'secondary is-review', event => openForm(item, event.currentTarget))
+    : smallButton('Open in form', 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
   li.append(badge(), body, actions);
   return markKnockout(li, item, label);
 }
@@ -232,7 +233,7 @@ export async function reopenClosedTab(item, button) {
     for (const key of rowsOf(item.id)) { handled.delete(key); syncedDone.delete(key); }
     keep();
     reviewStates.delete(item.id);
-    batch.delete(item.id);
+    clearAnswers(item.id);
   }
   if (result?.focused) toastMessage('Form tab found', 'The form is still open in Chrome (its address changed): showing it.');
   else toastMessage('Form reopened', 'Opened the form in a new Chrome tab; the extension fills it from your kit.');
@@ -253,34 +254,6 @@ export async function showInForm(item, label, button) {
   else if (result?.went !== 'tab') toastMessage('Opened the job in Chrome', `Find "${label}" in its form.`);
   else toastMessage('Scroll to it yourself this time', `The form tab is open, but the extension could not attach to it. Look for "${label}" in the form.`);
 }
-// Answers wait here until you send them all at once (owner, 8 Oct 2026: one answer sent at once made Claude reply, and its new
-// message redrew the list, so the other questions vanished before you could answer them). Each answer names its question.
-const batch = new Map();   // session id → Map(row key → {line, last})
-function queue(item, key, line, {last = false} = {}) {
-  if (!batch.has(item.id)) batch.set(item.id, new Map());
-  batch.get(item.id).set(key, {line, last});
-  setTimeout(() => showSendBar(item));   // after the row is marked done, so the count of open ones is right
-}
-// One message for Claude: the answers, numbered, each with its question; a reply it asked for ("ok") last.
-export function batchMessage(entries) {
-  const answers = entries.filter(entry => !entry.last).map(entry => entry.line);
-  const replies = entries.filter(entry => entry.last).map(entry => entry.line);
-  return [answers.length ? `My answers to your list, put them in the form: ${answers.map((line, at) => `${at + 1}) ${line}`).join('; ')}.` : '', ...replies]
-    .filter(Boolean).join(' Then: ');
-}
-export function showSendBar(item) {
-  const bar = $('ss-needs-send');
-  if (!bar) return;
-  const waiting = [...(batch.get(item?.id)?.values() || [])];
-  show(bar, resumeOffered() && waiting.length > 0 && shared.openSessionId === item?.id);   // a reply to Claude: hidden while Claude's takeover is off (owner, 15 Oct 2026)
-  if (!waiting.length) return;
-  const open = document.querySelectorAll('#ss-needs > .ss-need:not(.is-done)').length;
-  $('ss-needs-send-text').textContent = `${waiting.length} answer${waiting.length === 1 ? '' : 's'} ready${open ? ` · ${open} still open` : ''}`;
-  const button = $('ss-needs-send-btn');
-  button.textContent = waiting.length === 1 ? 'Send answer' : `Send all ${waiting.length} answers`;
-  button.disabled = !!offline(item);
-  button.onclick = () => { say(batchMessage(waiting)); batch.delete(item.id); show(bar, false); };
-}
 export function needRow(need, item) {
   const key = `${item.id}|${need.text}`, li = el('li', `ss-need is-${need.kind}`);
   li.dataset.key = key;
@@ -293,72 +266,78 @@ export function needRow(need, item) {
   const name = need.label ? unbold(need.label) : `"${title}"`;
   const reply = need.kind !== 'agree' && replyOf(title);
   if (reply && resumeOffered()) {   // "Reply ok, and I'll click Create an account" (a reply to Claude: only with Claude help on, claude-help.js): one button that sends it, not a field to review
-    actions.append(smallButton(`Reply "${reply}"`, 'secondary', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
+    actions.append(smallButton(`Reply "${reply}"`, 'secondary is-answer', () => { queue(item, key, reply, {last: true}); doneRow(li, key, `To send: ${reply}`); }, offline(item)));
     li.append(badge(), body, actions);
     if (handled.has(key)) doneRow(li, key, handled.get(key));
     return li;
   }
   if (need.kind === 'agree') {
     // Chrome comes forward on the form and the page scrolls to this field (extension/review.js picks it up).
-    actions.append(smallButton('Review in form', 'secondary', event => showInForm(item, agreeLabel(need), event.currentTarget)),
-      smallButton('Done', 'secondary', () => doneRow(li, key, 'Ticked in the form')));
+    actions.append(smallButton('Done', 'secondary is-answer', () => doneRow(li, key, 'Ticked in the form')), reviewButton(item, agreeLabel(need)));
     li.dataset.watch = watchId(need.text);
   } else {
-    // A judgement call: Claude's proposed answer is chosen; the list holds the other answers you saved for the same
-    // question, and the last entry asks Claude for a different one instead.
+    // A judgement call: the proposal agrees in one click, Change… picks a saved answer or (Claude help on) takes your words (need-choice.js).
     loadAnswers();
     const choices = answerOptions(need, knownAnswers, {claude: resumeOffered()});   // "Change with Claude…" only with Claude help on
-    const chip = el('span', 'ss-answer');
-    // Only "Change with Claude…" to pick (Claude proposed nothing, and none is saved): a lone dropdown under the label
-    // "Proposed answer" proposes nothing, so the row gets one plain button instead.
-    const onlyChange = choices.length === 1 && choices[0].kind === 'change';
-    chip.append(el('span', 'ss-answer-label', 'Proposed answer'));
-    const select = el('select', 'ss-answer-select');
-    select.title = 'Claude\'s answer, or one of the answers you saved for this question';
-    for (const choice of choices) {
-      const node = el('option', '', choice.kind === 'change' ? choice.label : `✓ ${capital(choice.label)}`);
-      node.value = choice.value;
-      select.append(node);
-    }
-    // "Change with Claude…": say what it should be instead, in your own words.
-    const ask = () => {
-      const input = el('input', 'ss-ask-input');
-      input.placeholder = `What should ${name} be?`;
-      const send = () => {
-        if (!input.value.trim()) return;
-        queue(item, key, `${name}: ${input.value.trim()}`);
-        doneRow(li, key, `To send: ${input.value.trim()}`);
-      };
+    const field = need.label ? unbold(need.label) : agreeLabel(need);
+    const answer = async value => {   // your own answer (a saved one, or typed): into the form's field
+      const sent = await sendAnswer(item, key, field, value, `${name}: ${value}`);
+      if (sent.ok) doneRow(li, key, sent.outcome); else toastMessage('Could not fill it in', sent.error);
+    };
+    const pick = chosen => {
+      if (chosen.kind === 'saved') { answer(chosen.value); return; }
+      // A recommendation that isn't "keep it as it is" is an instruction for Claude (with Claude help on), not just an acknowledgement.
+      const change = !!need.recommended && !KEEP.test(need.recommended) && resumeOffered();
+      if (change) queue(item, key, `${name}: ${chosen.value}`);
+      doneRow(li, key, change ? `To send: ${chosen.value}` : KEEP.test(chosen.value) ? 'Checked' : `Agreed: ${chosen.value}`);
+    };
+    const change = () => {
       const before = [...actions.childNodes];
       const back = () => { li.classList.remove('is-asking'); actions.replaceChildren(...before); };
-      const sendButton = smallButton('Send', 'secondary', send, offline(item));
-      submitOnEnter(input, sendButton);
-      input.addEventListener('keydown', event => { if (event.key === 'Escape') back(); });
-      li.classList.add('is-asking');   // the answer box takes its own line under the text, not a corner of the row
-      actions.replaceChildren(input, sendButton, smallButton('Cancel', 'secondary', back));
-      input.focus();
+      const parts = choiceChips(choices, pick);
+      let input = null;
+      {   // say what it should be instead, in your own words
+        input = el('input', 'ss-ask-input');
+        input.placeholder = `Something else for ${name}…`;
+        const send = () => { if (input.value.trim()) answer(input.value.trim()); };
+        const sendButton = smallButton('Send', 'secondary is-answer', send, offline(item));
+        submitOnEnter(input, sendButton);
+        input.addEventListener('keydown', event => { if (event.key === 'Escape') back(); });
+        parts.push(input, sendButton);
+      }
+      li.classList.add('is-asking');   // the picker takes its own line under the text, not a corner of the row
+      actions.replaceChildren(...parts, smallButton('Cancel', 'secondary', back));
+      (input || parts[0])?.focus();
     };
-    select.addEventListener('change', () => {
-      const chosen = choices.find(choice => choice.value === select.value);
-      if (!chosen || chosen.kind === 'change') { ask(); return; }
-      // A recommendation that isn't "keep it as it is" is an instruction for Claude, not just an acknowledgement.
-      const change = chosen.kind === 'proposed' && !!need.recommended && !KEEP.test(need.recommended);
-      if (chosen.kind === 'saved' || change) queue(item, key, `${name}: ${chosen.value}`);
-      doneRow(li, key, chosen.kind === 'saved' || change ? `To send: ${chosen.value}` : 'Checked');
-    });
-    if (offline(item)) { select.disabled = true; select.title = offline(item); }
-    chip.append(select);
-    if (choices.length) actions.append(onlyChange ? smallButton('Tell Claude…', 'secondary', ask, offline(item)) : chip);   // nothing to pick (Claude help off, nothing saved): Review in form alone
+    const button = (text, run, role) => smallButton(text, `secondary is-${role}`, run, offline(item));   // is-answer / is-change: each role its own border
+    actions.append(...choiceButtons(choices, {button, pick, change, field: need.label ? field : ''}));   // nothing to pick (Claude help off, nothing saved): Review in form alone
     // On the account step there is no application form yet: Review in form would open the page again in a new tab, without what Claude typed (12 Oct 2026).
-    if (item.stage !== 'account') actions.append(smallButton('Review in form', 'secondary', event => showInForm(item, agreeLabel(need), event.currentTarget)));
+    if (item.stage !== 'account') actions.append(reviewButton(item, agreeLabel(need)));
   }
   li.append(badge(), body, actions);
   if (handled.has(key)) doneRow(li, key, handled.get(key));
   return li;
 }
-// A fact Claude couldn't find: its suggested answer (editable), and a tick that saves it to your standard answers
-// in Notion, so every later application has it. Type it in the form too: the form is already filled.
+// A fact Claude couldn't find: its suggested answer (editable). Fill it in types it into the form AND keeps it for future forms, as
+// "Use" does (owner, 27 Oct 2026: "maybe we should not ask the user... take the decision for him"; the Remember tick is gone);
+// afterwards the row says so, with Forget = only this application (the job drawer's Undo, question-lists.js onlyThisJob).
 const savedAnswers = remembered(new Map(), keptRows.saved);  // question → the answer saved (the page redraws often)
+const forgotten = new Set(keptRows.forgot || []);           // questions you chose to keep for this application only
+function savedLine(question) {
+  const line = el('div', 'small ss-saved');
+  if (forgotten.has(question)) { line.textContent = 'Only for this application'; return line; }
+  if (!savedAnswers.has(question)) return null;
+  const forget = smallButton('Forget', 'secondary', async () => {
+    forget.disabled = true;
+    const result = await window.pilot.jobQuestionOnly(question);
+    if (!result?.ok) { forget.disabled = false; forget.title = result?.error || 'Couldn\'t forget it'; return; }
+    savedAnswers.delete(question); forgotten.add(question); keep();
+    line.replaceWith(savedLine(question));
+  });
+  forget.title = 'Keep this answer for this application only: later forms will ask again';
+  line.append('Saved for future forms ', forget);
+  return line;
+}
 export function askRow(need, item) {
   const li = el('li', 'ss-need is-ask');
   const body = el('div', 'ss-need-body');
@@ -370,54 +349,41 @@ export function askRow(need, item) {
   loadAnswers();
   const saved = savedAnswers.get(need.question) ?? savedFor(need.question);
   input.value = saved || need.suggested;
-  const box = el('label', 'ss-ask-save');
-  const tick = el('input');
-  tick.type = 'checkbox';
-  // What saving does, said plainly: the answer goes to your Answers in Notion and every later form fills it by itself.
-  // Once the question is handled its input is hidden, so the row says which answer it would keep.
-  const shown = () => (input.value.trim() ? `"${input.value.trim().slice(0, 80)}"` : 'this answer');
-  const offer = () => `Remember ${shown()} for future forms`;
-  const note = el('span', 'small', saved ? `Remembered ${shown()} for future forms` : offer());
-  box.title = 'Saves it to your Answers in Notion: later forms with this question fill it without asking you.';
-  box.append(tick, note);
-  input.addEventListener('input', () => { if (!tick.checked) note.textContent = offer(); });
-  tick.checked = input.disabled = tick.disabled = !!saved;
-  tick.addEventListener('change', async () => {
-    const value = input.value.trim();
-    if (!value) { tick.checked = false; note.textContent = 'Write an answer first'; input.focus(); return; }
-    tick.disabled = input.disabled = true;
-    note.textContent = `Saving to ${storeName()}…`;
-    const result = await window.pilot.rememberAnswer(need.question, value);
-    if (result.ok) { savedAnswers.set(need.question, value); keep(); note.textContent = `Remembered ${shown()} for future forms${result.homeName ? ` (in ${result.homeName})` : ''}`; box.classList.add('is-saved'); return; }
-    tick.checked = tick.disabled = input.disabled = false;
-    note.textContent = result.error || 'Couldn\'t save';
-    box.classList.add('is-error');
-  });
-  if (saved) box.classList.add('is-saved');
   // The one click that unblocks it: Claude types the answer into the form.
   const key = `${item.id}|${need.text}`;
   li.dataset.key = key;
   li.dataset.watch = watchId(need.text);  // the form page says when it has an answer
-  const fill = smallButton('Fill it in', 'secondary', () => {
-    const value = input.value.trim();
-    if (!value) { note.textContent = 'Write an answer first'; input.focus(); return; }
-    queue(item, key, `"${need.question}": ${value}`);
-    handled.set(key, `To send: ${value}`);
-    keep();
+  const actions = el('span', 'ss-need-actions');
+  const done = value => {
     li.classList.add('is-done');
     const number = li.querySelector('.ss-need-num');
     if (number) number.textContent = '✓';
-    fill.replaceWith(el('span', 'small ss-need-outcome', `✓ To send: ${value}`));
+    actions.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${value}`));
+  };
+  const fill = smallButton('Fill it in', 'secondary is-answer', async () => {
+    const value = input.value.trim();
+    if (!value) { input.placeholder = 'Write an answer first'; input.focus(); return; }
+    fill.disabled = true;
+    const sent = await sendAnswer(item, key, need.question, value, `"${need.question}": ${value}`);
+    if (!sent.ok) { fill.disabled = false; toastMessage('Could not fill it in', sent.error); return; }
+    handled.set(key, sent.outcome);
+    keep();
+    done(sent.outcome);
     updateNeedsCount();
+    if (value === saved && !forgotten.has(need.question)) { savedAnswers.set(need.question, value); keep(); body.append(savedLine(need.question)); return; }
+    const result = await window.pilot.rememberAnswer(need.question, value);
+    if (!result?.ok) { body.append(el('div', 'small ss-saved is-error', result?.error || `Couldn't keep it in ${storeName()}`)); return; }
+    savedAnswers.set(need.question, value); forgotten.delete(need.question); keep();
+    body.append(savedLine(need.question));
   }, offline(item));
-  const line = el('div', 'ss-ask-line');
-  const actions = el('span', 'ss-need-actions');
   submitOnEnter(input, fill);
   actions.append(fill);
-  line.append(input, actions, box);
+  if (item.stage !== 'account') actions.append(reviewButton(item, need.question));
+  const line = el('div', 'ss-ask-line');   // the buttons sit on the input's line (owner, 27 Oct 2026)
+  line.append(input, actions);
   body.append(line);
   li.append(badge(), body);
-  if (handled.has(key)) { li.classList.add('is-done'); actions.replaceChildren(el('span', 'small ss-need-outcome', `✓ ${handled.get(key)}`)); }
+  if (handled.has(key)) { done(handled.get(key)); const note = savedLine(need.question); if (note) body.append(note); }
   return markKnockout(li, item, need.question);
 }
 

@@ -63,7 +63,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   li.append(badge(), body);
   if (tried && now - tried.at >= TAKES_MS) {   // still empty in the form after Use
     note.textContent = 'The form didn\'t take it: the answer is copied, paste or pick it there';
-    actions.append(smallButton('Open in form', 'secondary', event => showInForm(item, label, event.currentTarget)));
+    actions.append(smallButton('Open in form', 'secondary is-review', event => showInForm(item, label, event.currentTarget)));
     return li;
   }
   if (tried) {
@@ -72,7 +72,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
     li.classList.add('is-done');
     return li;
   }
-  const use = smallButton('Use', 'secondary', async () => {
+  const use = smallButton('Use', 'secondary is-answer', async () => {
     const value = input.value.trim();
     if (!value) { note.textContent = 'Write an answer first'; input.focus(); return; }
     use.disabled = input.disabled = true;

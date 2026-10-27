@@ -94,8 +94,9 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   // "Use" on a Needs your attention row: the form's panel fills that one field through the extension (lib/review.js queueFill).
   // Logged: which session and field, never the value. The row checks the next report to see that it took.
   checkedSessions.handle('sessionFillField', (_, id, label, value) => {
-    if (!terminals.get(String(id))) return {ok: false, error: 'This session is no longer in the list.'};
     if (!String(value).trim()) return {ok: false, error: 'Write an answer first.'};
+    if (DEMO) return {ok: true};   // the demo's sessions have no tab: its rows show the answer as filled (27 Oct 2026, Fill it in goes through here)
+    if (!terminals.get(String(id))) return {ok: false, error: 'This session is no longer in the list.'};
     review.queueFill(String(id), label, value.trim());
     appLog('review', `fill one field asked from the session page`, {id, field: String(label).slice(0, 60)});
     return {ok: true};

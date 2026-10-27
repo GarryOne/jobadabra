@@ -217,8 +217,8 @@ export const KNOWN_LEFT = {
   // Jobs' list filter (7 views) and sort (3) menus; Interviews' outcome filter (4).
   'jobs|small-select|page': CLEANUP,
   'interviews|small-select|page': CLEANUP,
-  // A session card: "Fill it in" / "Review in form" per question, and one-choice decision menus (Keep it, Apply anyway).
-  'sessions|many-primaries|*': CLEANUP,
+  // A session card's proposed answer for a form dropdown (need-proposal.js: the form's own few choices). Row primaries and the
+  // Keep it / Apply anyway menu went on 27 Oct 2026 (outlined buttons; Keep it + Change…).
   'sessions|small-select|*': CLEANUP,
   // Main's Strategy as the owner rejected it (#1513): group captions over chips ("Also inside longer words"), single values under their labels, labels off
   // one edge, no dividers between settings, a line under a button. Found on the loaded demo with Advanced search settings open.

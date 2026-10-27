@@ -29,7 +29,8 @@ const SURFACES = [
   ['Apply with Claude in the ⋯ menu on Jobs', 'pages/jobs-render.js', /if \(jobsState\.claudeReady && resumeOffered\(\)\)/],
   ['Resume Claude (session menu)', 'pages/sessions.js', /resumeOffered\(\)\) menu\.push\(\{label: '▶ Resume Claude'/],
   ['Tell Claude / Change with Claude (Needs your attention)', 'pages/session-needs.js', /claude: resumeOffered\(\)/],
-  ['Send answers to a Claude session (footer bar)', 'pages/session-needs.js', /show\(bar, resumeOffered\(\) &&/],
+  ['Send answers to a Claude session (footer bar)', 'pages/need-send.js', /show\(bar, resumeOffered\(\) &&/],
+  ['A typed answer goes to Claude only as a fallback (Needs your attention)', 'pages/need-send.js', /if \(resumeOffered\(\)\) \{ queue\(/],
   ['Claude in Chrome prerequisites (Settings, setup)', 'pages/claude-prereqs.js', /inSettings\.hidden = !resumeOffered\(\)/],
   ['"Always let Claude finish" line', 'claude-auto.js', /hidden = !resumeOffered\(\)/],
 ];

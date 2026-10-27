@@ -9,7 +9,17 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import geo  # noqa: E402
-from src.sources import aggregators, eures  # noqa: E402
+from src.sources import aggregators, careers, eures  # noqa: E402
+
+_READER = careers.READER
+
+
+def setUpModule():   # no test here reaches a real model through a page read (guard: tests/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 SEARCH = {'role_keywords': ['carpenter'], 'locations': {'top_tier': ['Brussels'], 'country_wide': [], 'abroad': []}}
 

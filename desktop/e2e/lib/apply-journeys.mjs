@@ -2,7 +2,7 @@
 // The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a posting that opens a tab, side-by-side applications, sign-up, one page, a closed form tab, a wrong page kind. Guards the flows in docs/flows/applying.md.
 import {CHAIN, LATE, MENU_AGAIN, MENU_CHOICES, MENU_FIRST, MISLABELLED, NOTICE_CHOICES, ONEPAGE, PROPOSE, REVEAL, COLLAPSED, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED, SIGNUP} from './forms.mjs';
 import {CONTACT, pause} from './apply-fixtures.mjs';
-import {appLogText} from './app-log.mjs';
+import {appLogText, rearmedSessions} from './app-log.mjs';
 import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -254,8 +254,7 @@ export async function runJourneys(ctx, h) {
     fail(problems);
   }, {needs: ctx.needs});
 
-  // A menu whose choices are not the answer's words (Coop, 8 Oct 2026: "+41" asked, country names listed). The fill cannot match it; the app asks the AI once
-  // for the choice that means the same, arms the menu with it, and remembers it for the site: the next form there gets "Suisse" at once, no AI call, no re-arm.
+  // A menu whose choices are not the answer's words (Coop, 8 Oct 2026: "+41" asked, country names listed). The fill cannot match it; the app asks the AI once for the choice that means the same, arms the menu with it, and remembers it for the site: the next form there gets "Suisse" at once, no AI call, no re-arm.
   await ctx.run('a menu whose choices are not the answer\'s words: the choice that means the same is picked, then remembered for the next form on the site', async () => {
     const problems = [];
     const openForm = async fixture => {
@@ -285,7 +284,8 @@ export async function runJourneys(ctx, h) {
     const value2 = await menuOf(again, 5000);
     if (value2 !== 'Suisse') problems.push(`the next form on the site has "Indicatif de pays" "${value2}" a few seconds after its fill (the remembered choice is tried first)`);
     if (asked() !== 1) problems.push(`the AI was asked again on the next form (${asked()} asks): the remembered choice needs none`);
-    if (/menu armed again/.test(appLogText(ctx.profile).slice(logBefore))) problems.push('the next form\'s menu was re-armed (a detour the remembered choice avoids)');
+    const log = appLogText(ctx.profile), firstForm = rearmedSessions(log.slice(0, logBefore));   // Why (main 40508145728): the first form's own 10 s re-arm (lib/menu-rearm.js GAP_MS) may land after logBefore
+    if ([...rearmedSessions(log.slice(logBefore))].some(id => !firstForm.has(id))) problems.push('the next form\'s menu was re-armed (a detour the remembered choice avoids)');
     for (const tab of [first, again]) {
       const read = await readForm(tab);
       if (String(read.question_3001?.value ?? read.question_3001 ?? '') !== '6') problems.push(`${tab.url()}: Kubernetes years is not the kit's 6`);

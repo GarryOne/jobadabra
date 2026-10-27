@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {appLogLines} from '../lib/app-log.mjs';
+import {appLogLines, rearmedSessions} from '../lib/app-log.mjs';
 
 test('a line rolled into yesterday\'s day file is still read, in order', () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'applog-'));
@@ -26,4 +26,17 @@ test('no suite or harness file reads logs/app.log by itself (a midnight roll wou
     if (/readFileSync\([^)]*'app\.log'/.test(text) || /readFileSync\(path\.join\([^)]*'logs', 'app\.log'\)/.test(text)) offenders.push(name);
   }
   assert.deepEqual(offenders, []);
+});
+
+test('rearmedSessions names each session whose menu was armed again, so a step can tell the first form\'s late re-arm from the next form\'s (main 40508145728)', () => {
+  const log = [
+    '2026-10-27T13:06:40.266Z [fill] menu armed again with the choice that means the same {"id":"e83f4cb1","field":"Indicatif de pays","times":1}',
+    '2026-10-27T13:06:49.206Z [run] start: python -m src.ai.apply_batch --mark-applying https://boards.greenhouse.io/e2e-menus/4001011',
+    '2026-10-27T13:06:50.274Z [fill] menu armed again: the field is still empty {"id":"e83f4cb1","field":"Indicatif de pays","times":2}',
+  ].join('\n');
+  const mark = log.indexOf('[run] start');
+  const first = rearmedSessions(log.slice(0, mark));
+  assert.deepEqual([...first], ['e83f4cb1']);
+  assert.deepEqual([...rearmedSessions(log.slice(mark))].filter(id => !first.has(id)), [], 'the first form\'s 10 s re-arm is not the next form\'s detour');
+  assert.deepEqual([...rearmedSessions(`${log}\n[fill] menu armed again with the choice that means the same {"id":"77aa01bc","times":1}`)].sort(), ['77aa01bc', 'e83f4cb1']);
 });

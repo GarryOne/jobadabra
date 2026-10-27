@@ -23,7 +23,7 @@
 
 | Home | Holds | Owner (writes it) | Used how |
 |---|---|---|---|
-| Your details | Fixed, black-or-white facts: name, contact, links, eligibility per country, notice period, languages, demographics (Voluntary surveys), criminal-record disclosure | You; the CV; a value you typed into a form when the field was empty | Copied into forms as is |
+| Your details | Fixed, black-or-white facts: name, contact, links, work eligibility per zone (EU / EEA + Switzerland, UK, US; sponsorship derived), notice period, languages, demographics (Voluntary surveys), criminal-record disclosure | You; the CV; a value you typed into a form when the field was empty | Copied into forms as is |
 | What we learned about you | One question + answer per topic, about your stances and stories: willingness to travel, employment type, background-check willingness, salary to state per country/role, "if X then contract, else full-time" | The app, from Form fills; you when you edit an answer | Guides the AI when it writes an answer; never pasted blindly |
 | Form fills (Reports) | The raw log of every value sent, per form | Each fill | Evidence for learnings; never reused directly |
 | Strategy (unchanged) | Search minimum salary per country | You | Which jobs to show |

@@ -40,7 +40,9 @@ here="$(git rev-parse --show-toplevel)"
 # current directory (origin, branch, gh) and the push checks are the small ship-private-checks.sh. `~/jobadabra/tools/ship.sh --background --body=<file>` from a site worktree.
 tools="$here/tools"; external=""
 if [ ! -f "$tools/ship-pr.sh" ]; then tools="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; external=1; fi
-[ -n "$external" ] || git config core.hooksPath tools/githooks 2>/dev/null || true   # the commit-msg hook (trailer values) for every worktree of this repo; the setting is shared and relative
+# Why (27 Oct 2026): two ships at once both rewrote the shared .git/config and one lost its lock ("could not lock config file", FAILED twice): write a setting only when it differs.
+config_once() { [ "$(git config --get "$1" 2>/dev/null)" = "$2" ] || git config "$1" "$2"; }
+[ -n "$external" ] || config_once core.hooksPath tools/githooks 2>/dev/null || true   # the commit-msg hook (trailer values) for every worktree of this repo; the setting is shared and relative
 branch="$(git rev-parse --abbrev-ref HEAD)"
 main="$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)"
 [ "$branch" != main ] || { echo "ship: this is the main checkout. Work in a worktree (tools/worktree.sh <topic>), then run this there." >&2; exit 2; }
@@ -106,7 +108,7 @@ trap 'code=$?; landing_release; timeline_write "$code"; if [ "$code" -ne 0 ]; th
 ship_fetch() { local try; for try in 1 2 3 4 5; do git fetch -q origin 2>/dev/null && return 0; sleep 1; done; git fetch -q origin; }
 rebase() {
   ship_fetch
-  git config merge.ladder-baseline.driver 'node tools/merge-baseline.mjs %O %A %B'   # two sessions' ladder-baseline updates merge (.gitattributes)
+  config_once merge.ladder-baseline.driver 'node tools/merge-baseline.mjs %O %A %B'   # two sessions' ladder-baseline updates merge (.gitattributes)
   if ! git rebase origin/main >/dev/null 2>&1; then
     git rebase --abort >/dev/null 2>&1 || true
     echo "ship: the rebase onto origin/main has conflicts. Resolve them keeping both sides' work, then run this again." >&2

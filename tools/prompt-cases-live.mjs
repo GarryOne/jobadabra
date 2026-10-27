@@ -5,7 +5,7 @@
 // Cost: every call's total_cost_usd is added up and printed; past --max-usd it stops asking and fails ("cost cap"), never a silent pass.
 // Fails when a case right on main is wrong on the PR twice (one re-ask: Haiku answers vary), or a case the PR adds is wrong on the PR's prompt.
 // It catches prompt regressions, not model ones: Free AI users get qwen on Workers AI, not Haiku.
-// Usage (prompt-cases.yml): node tools/prompt-cases-live.mjs --base-tree <a checkout of the merge base> [--jobs 6] [--max-calls 140] [--max-usd 0.20]   (needs PR_PROOF_ANTHROPIC_KEY)
+// Usage (prompt-cases.yml): node tools/prompt-cases-live.mjs --base-tree <a checkout of the merge base> [--jobs 6] [--max-calls 140] [--max-usd 0.10]   (needs PR_PROOF_ANTHROPIC_KEY)
 // Writes nothing but stdout; exit 1 with the cases that broke. Guard: desktop/test/prompt-cases-live.test.js.
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 export const MODEL = 'claude:claude-haiku-5-5';
-export const MAX_USD = 0.20;   // Why (owner, 27 Oct 2026, "per-run $ cap"): TODO(AI): set from the first measured run on the PR (27 Oct 2026)
+export const MAX_USD = 0.10;   // Why (owner, 27 Oct 2026, "per-run $ cap"): measured on #2259: $0.044 for the 60-case set asked on both sides (120 calls), so the cap is ~2x
 const CASE_FILES = ['tools/free-ai-form-asks.mjs', 'tools/free-ai-form-list.mjs'];
 
 // [{id, right}] of main and of the PR, the case ids main's own list had, and the re-ask of the PR's misses -> {regressions, newWrong, counts}.

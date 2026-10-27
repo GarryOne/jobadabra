@@ -27,6 +27,14 @@ test('the AI is told a placeholder choice ("No Selection", "Select...") means no
   assert.deepEqual(sent[0].output_config.format.schema.properties.choice.enum, ['No Selection', 'Mr.', 'Ms.', 'Diverse', '']);
 });
 
+test('the AI is told an answer that is a value on an ordered scale (a level, a range) means the choice that holds it, in any language (fair round form 264401, 27 Oct 2026: "Level of Spanish")', async () => {
+  const sent = [];
+  const ask = {label: 'Level of Spanish', value: 'Native', options: ['Ninguna', 'Básico', 'Intermedio', 'Avanzado']};
+  assert.deepEqual(await pickOption(memory(), ask, {client: claude('Avanzado', sent)}), {choice: 'Avanzado', how: 'ai'});
+  assert.match(sent[0].system, /ordered scale.*holds it/s, 'the instructions name the class: a value on a scale, not only "means the same"');
+  assert.match(sent[0].system, /not one returns ""/, 'and keep the guard: an answer that is no value on the scale picks nothing');
+});
+
 test('the same text needs no AI; a choice not on the form, or no AI, is none', async () => {
   const sent = [];
   assert.deepEqual(await pickOption(memory(), {value: 'sir', options: ['Madam', 'Sir']}, {client: claude('x', sent)}), {choice: 'Sir', how: 'same'});

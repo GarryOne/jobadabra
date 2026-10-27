@@ -1,0 +1,14 @@
+{
+  "why": "The fixed case set of lib/option-pick.js's prompt (27 Oct 2026, fair round form 264401 'Level of Spanish': a native speaker's answer left a 4-level scale unpicked). A prompt change adds its case here and replays the whole set: node tools/option-pick-cases.mjs",
+  "cases": [
+    {"id": "salutation-other-language", "label": "Opening formula", "value": "Monsieur", "choices": ["Madam", "Sir"], "expect": "Sir"},
+    {"id": "placeholder-is-no-answer", "label": "Title", "value": "Decline to self-identify", "choices": ["No Selection", "Mr.", "Ms.", "Diverse"], "expect": ""},
+    {"id": "yes-means-the-statement", "label": "Do you have the right to work here?", "value": "Yes", "choices": ["I have the right to work here", "I need sponsorship"], "expect": "I have the right to work here"},
+    {"id": "scale-native-top", "label": "Level of Spanish", "value": "Native", "choices": ["Ninguna", "Básico (puede leer y escribir documentos con ayuda)", "Intermedio (puede leer y escribir bien, habla con timidez)", "Avanzado (puede leer y escribir bien y habla con naturalidad"], "expect": "Avanzado (puede leer y escribir bien y habla con naturalidad"},
+    {"id": "scale-native-other-language", "label": "Level of Spanish", "value": "Nativo", "choices": ["Ninguna", "Básico (puede leer y escribir documentos con ayuda)", "Intermedio (puede leer y escribir bien, habla con timidez)", "Avanzado (puede leer y escribir bien y habla con naturalidad"], "expect": "Avanzado (puede leer y escribir bien y habla con naturalidad"},
+    {"id": "scale-cefr-middle", "label": "Level of Spanish", "value": "B1", "choices": ["Ninguna", "Básico (puede leer y escribir documentos con ayuda)", "Intermedio (puede leer y escribir bien, habla con timidez)", "Avanzado (puede leer y escribir bien y habla con naturalidad"], "expect": "Intermedio (puede leer y escribir bien, habla con timidez)"},
+    {"id": "scale-years-range", "label": "Years of experience", "value": "4 years", "choices": ["0-2 years", "3-5 years", "6-10 years", "10+ years"], "expect": "3-5 years"},
+    {"id": "not-a-scale-yes-no", "label": "Do you hold a driving licence?", "value": "Fluent German", "choices": ["Yes", "No"], "expect": ""},
+    {"id": "not-a-scale-colours", "label": "Favourite colour", "value": "Fluent", "choices": ["Red", "Blue"], "expect": ""}
+  ]
+}

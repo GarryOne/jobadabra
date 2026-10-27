@@ -127,6 +127,16 @@ test('the fill record is the /extension/run as the extension later corrected it:
   assert.equal(recordsOf([log([updated('filled')])]).run, null, 'no record, nothing to correct');
 });
 
+test('an explicit fill page owns the record after query restoration; other query jobs stay stale', () => {
+  const request = (route, body) => ({route, body: JSON.stringify(body)});
+  const kind = request('/extension/page-kind', {url: 'https://a.example/apply'});
+  const run = request('/extension/run', {url: 'https://a.example/posting', pageUrl: 'https://a.example/apply?job=fixture-job', trace: []});
+  const review = url => request('/extension/review', {url});
+  assert.equal(recordsOf([kind, run, review('https://a.example/apply?job=fixture-job#fill')]).stale, false);
+  assert.equal(recordsOf([kind, run, review('https://a.example/apply?job=another-job')]).stale, true);
+  assert.equal(recordsOf([kind, run, review('https://a.example/other')]).stale, true);
+});
+
 test('a fill record from ANOTHER page than the panel reports on is not compared with it (a two-page case: the login page\'s record is not the apply page\'s)', () => {
   const body = value => JSON.stringify(value);
   const kind = url => ({route: '/extension/page-kind', body: body({url})});

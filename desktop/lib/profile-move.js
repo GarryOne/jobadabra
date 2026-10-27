@@ -84,6 +84,7 @@ export function staleOpen(open, items, judged) {
 // items -> Map(id -> {home, topic, clarity?}); one small call per 150 lines (the output stays under max_tokens). A mangled id, an unknown home or no
 // topic keeps the item where it is; an unknown clarity is left out (lib/answer-clarity.js asks again later).
 export const BATCH = 150;
+/** Judge supplied store lines in bounded batches; return validated ID verdicts, leaving missing/invalid decisions unmapped and propagating request failures. */
 export async function judge(items, {client = null, apiKey = ''} = {}, {destinations = null} = {}) {
   const ai = client || (apiKey ? anthropicApi(apiKey) : null);
   const out = new Map();

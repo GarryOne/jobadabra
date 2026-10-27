@@ -260,8 +260,8 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
         more()
         while futures:
             remaining = 5 if deadline is None else deadline - time.monotonic()   # Why (27 Oct 2026: 379 s of 180; run 40454138418: 181 s): the end waits its
-            late = remaining <= 1   # last second, what ends by then is kept; not named `left`, the set-aside count the summary returns ("-0.00025 set aside")
-            finished, _ = wait(list(futures), timeout=max(0, remaining) if late else min(5, remaining - 1), return_when=ALL_COMPLETED if late else FIRST_COMPLETED)
+            late = remaining <= 1   # last second (0.25 s at least: a tape's check ends just after), what ends by then is kept; not named `left`, the set-aside count the summary returns ("-0.00025 set aside")
+            finished, _ = wait(list(futures), timeout=max(0.25, remaining) if late else min(5, remaining - 1), return_when=ALL_COMPLETED if late else FIRST_COMPLETED)
             futures = {f: i for f, i in futures.items() if f in finished} if late else futures
             for future in finished:
                 i = futures.pop(future)

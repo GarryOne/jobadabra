@@ -47,7 +47,7 @@ test('the banner, the Needs review filter and its rows count the same queue; web
   assert.equal(banner, 2, 'one form question + one Your details item');
   assert.equal(filter, banner);
   assert.equal(rows.length, banner);
-  assert.match(review.textContent, /Confirm in Your details/);
+  assert.match(review.textContent, /Make it sure/);
   assert.match(review.textContent, /Missing answer/);
   assert.match(review.textContent, /Website rules without an answer · 1/);
   assert.match(review.textContent, /Salutation/);

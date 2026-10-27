@@ -13,6 +13,7 @@ import * as sections from './profile-sections.js';
 import * as backup from './backup.js';
 import {keep} from './set-aside.js';
 import * as clarity from './answer-clarity.js';
+import {log} from './log.js';
 
 export const MODEL = 'claude-haiku-5-5';
 export const HOMES = [...Object.keys(sections.SECTIONS), 'stay', 'unsure'];   // unsure: the person is asked (lib/details-review.js "Where does this go?")
@@ -133,12 +134,20 @@ export function planOf(items, judged) {
   return {moves, conflicts};
 }
 
-// The lines the AI could not place, kept for "Where does this go?" (lib/details-review.js) as {page, label, value}: found again by their words.
+/** Exact source-content identity; headings alone and AI topic names never identify an applicant fact. */
+export const unsureKey = ({page = '', label = '', value = ''}) => JSON.stringify([page, plain(label), plain(value)]);
+
+// The lines the AI could not place. Repeated imports and duplicate entries in one batch share an identity; source pages remain separate.
 export function keepUnsure(storage, items, now = new Date()) {
-  const known = storage.settings().profileUnsure || [];
-  const fresh = items.map(({page, label, value}) => ({page, label, value})).filter(each => !known.some(old => old.page === each.page && same(old.label) === same(each.label) && same(old.value) === same(each.value)));
-  storage.saveSettings({profileUnsure: [...known, ...fresh], profileUnsureAt: now.toISOString()});
-  return fresh.length;
+  const known = new Map((storage.settings().profileUnsure || []).map(each => [unsureKey(each), each]));
+  let added = 0;
+  for (const {page, label, value} of items) {
+    const entry = {page, label, value}, key = unsureKey(entry);
+    if (!known.has(key)) { known.set(key, entry); added++; }
+  }
+  storage.saveSettings({profileUnsure: [...known.values()], profileUnsureAt: now.toISOString()});
+  log('profile', 'unplaced source lines reconciled', {incoming: items.length, queued: known.size, added});
+  return added;
 }
 
 // Both pages as text, copied into the app's folder (with Notion they live nowhere else on this Mac), then the backup that takes the folder.

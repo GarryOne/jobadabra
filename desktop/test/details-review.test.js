@@ -71,7 +71,7 @@ const FIXTURES = {
     assert.ok((await sections.read(env.storage, env.fetcher)).availability.some(line => line.value === '3 months'));
     assert.deepEqual(env.storage.settings().setAside?.map(each => each.value), ['2 months'], 'the other value is set aside, with Undo');
   }},
-  where: {match: /where does this line go/i, answer: () => sections.SECTIONS.eligibility, after: async env => {
+  where: {match: /^Relocation$/, answer: () => sections.SECTIONS.eligibility, after: async env => {
     assert.ok((await sections.read(env.storage, env.fetcher)).eligibility.some(line => line.label === 'Relocation' && line.value === 'open to moving within the EU'), 'moved word for word');
     assert.equal((await profileText(env)).split('Relocation').length - 1, 1, 'the old line left the Preferences');
   }},

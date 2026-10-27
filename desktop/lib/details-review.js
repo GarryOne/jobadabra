@@ -5,7 +5,7 @@
 // banner count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/details-review.test.js.
 import {openStore} from './store/index.js';
 import * as sections from './profile-sections.js';
-import {itemsOf, judge, keepUnsure, openConflicts, resolve} from './profile-move.js';
+import {itemsOf, judge, keepUnsure, openConflicts, resolve, unsureKey} from './profile-move.js';
 import * as formats from './question-formats.js';
 import {HOME_NAMES, homeOf, writeHome} from './answer-home.js';
 import {formatFor} from '../renderer/question-kind.js';
@@ -19,10 +19,11 @@ import * as contactReview from './contact-review.js';
 import * as contactDetails from './contact.js';
 import * as cvQueue from './cv-queue.js';
 import {anthropicApi} from './ai/anthropic-api.js';
+import {log} from './log.js';
 
 export const PREFIX = 'details:';
 export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck'];
-export const KEEP = 'Keep on the Profile';
+export const KEEP = 'Keep where it is';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
 const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
 const PAGES = {profile: 'Profile', answers: 'Application answers'};
@@ -79,12 +80,23 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
     out.push(item('which', {topic: conflict.topic}, {question: `${conflict.topic.replace(/^./, letter => letter.toUpperCase())}: which is right?`, format: choice(values),
       hint: conflict.choices.map(each => `${each.value} on your ${PAGES[each.page] || each.page}`).join(' · '), details: {where: HOME_NAMES[conflict.home], fact: conflict.choices.find(each => each.label)?.label || conflict.topic}}));
   }
+  const unsure = new Map();
   for (const entry of storage.settings().profileUnsure || []) {
+    if (!PAGES[entry.page]) continue;
     const lines = itemsOf(await outline(entry.page), entry.page);
-    if (!lines.some(line => same(line.label) === same(entry.label) && same(line.value) === same(entry.value))) continue;
-    out.push(item('where', {page: entry.page, label: entry.label, value: entry.value}, {question: 'Where does this line go?', format: choice([...Object.values(sections.SECTIONS), KEEP]),
-      details: {where: PAGES[entry.page] || entry.page, fact: entry.label || entry.value, line: entry.label ? `${entry.label}: ${entry.value}` : entry.value}}));
+    if (!lines.some(line => unsureKey(line) === unsureKey(entry))) continue;
+    // Why (2026-10-27, d9): exact copies share one review, with all sources retained; equal headings or AI topics never merge different values.
+    const key = unsureKey({...entry, page: ''});
+    if (!unsure.has(key)) unsure.set(key, {label: entry.label, value: entry.value, pages: new Set()});
+    unsure.get(key).pages.add(entry.page);
   }
+  for (const {label, value, pages} of unsure.values()) {
+    const sources = [...pages].sort();
+    out.push(item('where', {pages: sources, label, value}, {question: label || value, format: choice([...Object.values(sections.SECTIONS), KEEP]),
+      hint: 'Choose where to keep this saved line, or leave it where it is.',
+      details: {where: sources.map(page => PAGES[page]).join(' · '), fact: label || value, line: label ? `${label}: ${value}` : value}}));
+  }
+  if (unsure.size) log('profile', 'unplaced source review queue read', {sources: [...unsure.values()].reduce((count, entry) => count + entry.pages.size, 0), reviews: unsure.size});
   const unclear = (line, ref, where, format) => {   // the AI's word on a saved answer (lib/answer-clarity.js): asked when it is not clear
     const said = clarity.UNCLEAR[clarity.verdictOf(storage, line)];
     if (said) out.push(item('unclear', ref, {question: line.label || line.value, format, value: line.value, details: {where, source: said, fact: line.label || line.value, line: `Saved: ${line.value}`}}));
@@ -150,15 +162,29 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     return done.ok ? {...done, homeName: HOME_NAMES[conflict.home]} : done;
   }
   if (kind === 'where') {
-    const mine = each => each.page === ref.page && same(each.label) === same(ref.label) && same(each.value) === same(ref.value);
+    const pages = (ref.pages || [ref.page]).filter(page => PAGES[page]);   // legacy cached keys still name a single page
+    const mine = each => pages.includes(each.page) && unsureKey({...each, page: ''}) === unsureKey({...ref, page: ''});
     const drop = () => storage.saveSettings({profileUnsure: (storage.settings().profileUnsure || []).filter(each => !mine(each))});
-    if (text === KEEP) { drop(); return {ok: true, homeName: `your ${PAGES[ref.page] || ref.page}`}; }
+    if (text === KEEP || text === 'Keep on the Profile') {
+      drop();
+      log('profile', 'saved line kept at reviewed sources', {sources: pages, requestedBy: 'review choice'});
+      return {ok: true, homeName: pages.map(page => PAGES[page]).join(' · ')};
+    }
     const home = Object.keys(sections.SECTIONS).find(each => sections.SECTIONS[each] === text);
     if (!home) return {ok: false, error: 'Pick where it goes'};
-    if (!await writeHome(storage, home, ref.label || ref.value, ref.value, fetcher, save)) return {ok: false, error: 'It did not save; nothing else changed'};
-    const old = await lineOn(storage, ref.page, mine, {fetcher});
-    if (old) await old.page.remove({id: old.block.id, text: old.item.check});
+    const label = ref.label || ref.value, target = {label, value: ref.value};
+    const current = (await sections.read(storage, fetcher))[home] || [];
+    // Why (2026-10-27, d9): choosing a home relocates an existing fact; it is not an edit that may replace a different value with the same label.
+    if (!current.some(line => unsureKey(line) === unsureKey(target))) await save(storage, home, [...current, target], fetcher);
+    if (!(await sections.read(storage, fetcher))[home]?.some(line => unsureKey(line) === unsureKey(target))) return {ok: false, error: 'It did not save; nothing else changed'};
+    // Remove each exact source copy only after the destination read-back succeeded; reverse order keeps Markdown line IDs valid.
+    const opened = openStore(storage, {fetcher});
+    for (const page of pages) {
+      const source = opened.page(page), lines = itemsOf(await source.outline(), page).filter(each => !each.home && mine(each));
+      for (const line of lines.reverse()) await source.remove({id: line.id.slice(page.length + 1), text: line.check});
+    }
     drop();
+    log('profile', 'saved line moved after destination read-back', {sources: pages, home, requestedBy: 'review choice'});
     return {ok: true, homeName: HOME_NAMES[home]};
   }
   if (kind === 'unclear') return answerUnclear(storage, ref, text, {fetcher, save});

@@ -13,6 +13,7 @@ import {isStyle} from './letter-style.js';
 import {detailsIn, keyOf, visibleQuestions} from '../question-filter.js';
 import {loadQuestions, questionsNow} from './jobs-questions.js';
 import {fromDetailsLine} from '../answered-from-details.js';
+import {ASKS} from '../question-nav.js';
 import {stageAnswer} from '../question-wordings.js';
 import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
@@ -176,7 +177,7 @@ function draw(view, into) {
   // Your details' unclear items, as the review drawer walks them. Website rules with no value are listed apart, under their own count.
   lastView = view;
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().catch(() => {}); }
-  const detailRows = detailsIn(questionsNow().list).filter(each => matches({question: each.question, value: ''}, {query: filters.query}));
+  const detailRows = detailsIn(questionsNow().list).filter(each => matches({question: each.question, value: each.details?.line || ''}, {query: filters.query}));
   const reviewCount = shownRows.length + detailRows.length;
 
   toolbar(view, into, reviewCount);
@@ -207,8 +208,8 @@ function draw(view, into) {
     }
     // Your details' unclear items: answered in the review drawer, at that item (its one review flow).
     for (const each of detailRows) {
-      review.append(...row(view, {key: `details:${each.key}`, title: shown(each.question), under: each.details?.where ? `Your details · ${each.details.where}` : 'Your details', value: '', needs: true,
-        status: statusPill('Confirm in Your details', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));
+      review.append(...row(view, {key: `details:${each.key}`, title: shown(each.question), under: [each.details?.where || 'Your details', each.details?.line].filter(Boolean).join(' · '), value: '', needs: true,
+        status: statusPill(ASKS[each.details?.kind] || 'Review saved answer', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));
     }
     if (ruleRows.length) {
       review.append(el('h5', 'qa-group', `Website rules without an answer · ${ruleRows.length}`));

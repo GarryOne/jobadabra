@@ -139,16 +139,19 @@ export function scrubPersonal(text, {type = '', url = '', values = new Map()} = 
 // An address inside a base64 run (a JSON answer or a token carrying one): the run is decoded, the address (when the text around it is text, as the gate counts it) becomes the fake one, and the run is written back in
 // its own alphabet. A run with no address stays as it was. Why (27 Oct 2026, owner): personalHits searches base64 runs, so the replay scrub has to clean them or the publish gate refuses the row.
 const b64EmailsOut = (text, counts) => text.replace(BASE64, run => {
-  const urlSafe = /[-_]/.test(run), inner = Buffer.from(run.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('latin1');
+  // The alphabet and padding are read from the run itself (a base64url run of 40+ characters often has no "-" or "_"); the separators inside are written plain first, as the gate decodes them.
+  const urlSafe = !/[+/=]/.test(run), padded = /=$/.test(run), inner = plainSeparators(Buffer.from(run.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('latin1'));
+  let replaced = 0;
   EMAIL.lastIndex = 0;
   const clean = inner.replace(EMAIL, (email, ...rest) => {
     const at = rest[rest.length - 2];
     if (EXAMPLE.test(email) || !inText(inner, at, email.length)) return email;
-    counts.contacts += 1; return FAKE_EMAIL;
+    replaced += 1; return FAKE_EMAIL;
   });
-  if (clean === inner) return run;
-  const b64 = Buffer.from(clean, 'latin1').toString('base64');
-  return urlSafe ? b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : b64;
+  if (!replaced) return run;
+  counts.contacts += replaced;
+  const b64 = Buffer.from(clean, 'latin1').toString('base64'), out = urlSafe ? b64.replace(/\+/g, '-').replace(/\//g, '_') : b64;
+  return padded ? out : out.replace(/=+$/, '');
 });
 
 // What a scrubbed replay record must no longer hold, in every decoded form (URL, JSON, HTML entities, base64): an e-mail address that is not an example one, and any of the person's own values.

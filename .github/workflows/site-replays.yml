@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  checks: read   # the failed steps' annotations the alert quotes (desktop/e2e/ci-alert.mjs stepCauses; review on #2249)
   actions: read   # the pool runs' encrypted records, the baseline run's results
   pull-requests: read   # the PRs merged since the baseline: their replay-accepted label and comment (replay-accepts.mjs)
 

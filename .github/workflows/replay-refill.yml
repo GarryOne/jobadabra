@@ -43,6 +43,7 @@ on:
 
 permissions:
   contents: read
+  checks: read   # the failed steps' annotations the alert quotes (desktop/e2e/ci-alert.mjs stepCauses; review on #2249)
   actions: write        # re-run the PR's gate after the publish
   pull-requests: read   # the PR's head repo (never a fork)
 

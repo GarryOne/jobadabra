@@ -31,6 +31,14 @@ A level, when given, is the seniority they want: leave out a title plainly far f
 a level ("Senior First Officer" is a pilot rank) is judged by its work. A title with their role word can still be another job ("Pilote / Product \
 Owner" is no pilot). When unsure, include it: a later step scores each job."""
 
+# Why (27 Oct 2026, owner "Ask again before closing"; quality run 40508145728): Free AI said no to 'Staff Platform Engineer, Kubernetes' and 'Cloud Infrastructure
+# Engineer' for an SRE/platform search after both were scored and listed; the sort's no closed them before their facts were read. A no on a title that holds
+# one of the search's own role words is asked once more, alone; the job leaves only when both say no.
+RECHECK_SYSTEM = """You check job titles that a first sort rejected for one job seeker. You get their search (the role words they wrote, and words \
+that rule a title out) and a numbered list of job titles; each holds one of their role words. Answer with the numbers of the titles that are \
+the kind of work they look for, or a close neighbour of it at a similar level. Leave out a title where the role word names another job \
+("Pilote / Product Owner" is no pilot, "Infrastructure Tax Lead" is no infrastructure engineer). When unsure, include it: a later step scores each job."""
+
 
 def _key(search):
     words = {'roles': sorted(str(w) for w in search.get('role_keywords') or []), 'out': sorted(str(w) for w in search.get('title_exclude_keywords') or [])}
@@ -54,6 +62,34 @@ batch_scope.watch('titles_store', _load)
 def known(search):
     """{title: True/False} decided for this search so far (for readers side by side: as it was when they began, src/ai/batch_scope.py)."""
     return batch_scope.view('titles_store', _load).get(_key(search)) or {}
+
+
+def _second_look(client, ask, decided, search, words):
+    """The titles this call rejected that hold one of the search's role words are asked once more, alone (RECHECK_SYSTEM); a yes keeps the job.
+    When that call fails or the clock is up they are dropped from `decided`: unknown, asked again next refresh, never a guessed no."""
+    from . import cost, engine
+    from .. import time_budget as budget
+    from ..paths import keyword_regex
+    roles = keyword_regex(search.get('role_keywords'))
+    doubted = [title for title in ask if decided.get(title) is False and roles.search(title)]
+    for start in range(0, len(doubted), BATCH):
+        batch = doubted[start:start + BATCH]
+        try:
+            if budget.over('titles', key=batch[0]):
+                raise TimeoutError('the refresh\'s time is up')
+            listed = '\n'.join(f'{n}. {title}' for n, title in enumerate(batch, 1))
+            response = client.messages.create(model=MODEL, max_tokens=1500, system=[{'type': 'text', 'text': RECHECK_SYSTEM}],
+                                              messages=[{'role': 'user', 'content': f'The search (JSON): {json.dumps(words, ensure_ascii=False)}\nThe titles:\n{listed}'}],
+                                              output_config=engine.structured(SCHEMA, MODEL, 'low'))
+            cost.side(MODEL, response.usage)
+            fit = {int(n) for n in json.loads(next(b.text for b in response.content if b.type == 'text')).get('fit') or [] if str(n).isdigit()}
+        except Exception as error:  # noqa: BLE001 — any failure of the extra look leaves its titles unknown for the next refresh
+            print(f'Titles: second look at {len(batch)} title(s) not done ({type(error).__name__}); they stay unjudged until the next refresh', flush=True)
+            for title in batch:
+                decided.pop(title, None)
+            continue
+        for n, title in enumerate(batch, 1):
+            decided[title] = n in fit
 
 
 def decide(titles, search, client=None, local=False):
@@ -107,6 +143,7 @@ def decide(titles, search, client=None, local=False):
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
         list(pool.map(slots.carry(one), batches))   # the caller's slot level (src/ai/slots.py)
     budget.record('title_rounds', time.monotonic() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
+    _second_look(client, ask, decided, search, words)
     with LOCK:
         data = _load()
         data[key] = {**(data.get(key) or {}), **decided}

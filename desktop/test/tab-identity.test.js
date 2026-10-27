@@ -134,3 +134,21 @@ test('a worker waking with empty storage gets each tab\'s posting and session ba
   assert.equal(run.restore['from:7'], 'https://boards.example/jobs/1');
   assert.equal(run.restore['session:7'], 'ca582c3c');
 });
+
+// 27 Oct 2026 (the panel-tailor journey step): a tab report taken before the app opened a form says nothing about that new tab. The session page showed "The form tab was closed" (then
+// "Checking Chrome…") for up to 30 s, with no "Before you submit" card, while the form was open and filling. The form page's own report proves its tab open.
+test('a form page that just reported has its tab open while every tab report is older than its tab; a newer report decides', () => {
+  let now = 1000;
+  review._clock(() => now);
+  review.noteTabs({ids: [5], boot: RUN});                  // the report before the form tab existed
+  now = 2000;
+  review.report([coop], form(812, RUN));                   // the new tab's page reports
+  assert.equal(review.tabOpen('s1'), true, 'its page just reported');
+  now = 13000;
+  assert.equal(review.tabOpen('s1'), null, 'the page went quiet and no tab report saw it yet: not known, never closed');
+  review.noteTabs({ids: [5, 812], boot: RUN});
+  assert.equal(review.tabOpen('s1'), true);
+  now = 14000;
+  review.noteTabs({ids: [5], boot: RUN});                  // a report after the bind without it: closed
+  assert.equal(review.tabOpen('s1'), false);
+});

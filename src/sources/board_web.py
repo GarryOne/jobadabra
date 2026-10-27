@@ -9,12 +9,14 @@ Anthropic API key (about $0.07 a search: up to 6 planned web searches, owner's y
 (its own yield in found_boards.json), joins the cached proposal (found_boards.json 'ideas'), and one that gives nothing is checked like any
 (src/sources/board_check.py). Off while the AI page reader is off (tests), in the fixture mode, or with JOB_PILOTTO_DISABLE=web_search.
 Tests: tests/test_board_web.py, tests/test_board_web_thin.py, tests/test_web_first.py."""
+import contextlib
 import json
 import os
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from ..ai.providers import slots
 from ..features import disabled
 from . import careers
 
@@ -125,11 +127,15 @@ def _run(key):
     return None if time_budget.BEGAN is None else (time_budget.BEGAN, key)
 
 
-def _submit(search_config, data, fetch, now):
+def _submit(search_config, data, fetch, now, background=False):
+    """background: the web search started with the run, beside the search's own AI calls, which go first (src/ai/providers/slots.py)."""
     from concurrent.futures import ThreadPoolExecutor
     known = [{'name': entry.get('name') or host, 'host': host} for host, entry in (data.get('boards') or {}).items()]
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-web')
-    future = pool.submit(search, search_config, known, now=now, fetch=fetch, data=data)
+    def run(*args, **kwargs):
+        with slots.background() if background else contextlib.nullcontext():
+            return search(*args, **kwargs)
+    future = pool.submit(run, search_config, known, now=now, fetch=fetch, data=data)
     pool.shutdown(wait=False)
     return future
 
@@ -143,7 +149,7 @@ def early(search_config, fetch=None, now=None):
     if not asked:
         return None
     copy = board_ideas.load()
-    future = _submit(search_config, copy, fetch, now)
+    future = _submit(search_config, copy, fetch, now, background=True)
     with _lock:
         _early[asked[0]] = (future, copy)
     return future
@@ -261,7 +267,7 @@ def _judged(found, roles, fetch):
 
     from . import board_check
     with ThreadPoolExecutor(max_workers=4, thread_name_prefix='board-judge') as pool:
-        kinds = list(pool.map(lambda board: board_check.field_kind(board, fetch, roles), found))
+        kinds = list(pool.map(slots.carry(lambda board: board_check.field_kind(board, fetch, roles)), found))
     kept = []
     for board, kind in zip(found, kinds):
         if kind == 'field board':

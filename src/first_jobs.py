@@ -77,9 +77,10 @@ def begin(search, say=print):
     works out its employers. -> what run() takes as `boards`: it waits for that read (which ends by the search's read cut, found_boards.read)."""
     from concurrent.futures import ThreadPoolExecutor
     from .ai import batch_scope
+    from .ai.providers import slots
 
-    def read():
-        with batch_scope.reader('boards'):
+    def read():   # in the background: the search's own AI calls go first (src/ai/providers/slots.py)
+        with slots.background(), batch_scope.reader('boards'):
             return board_jobs(say, search)
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='first-boards')
     reading = pool.submit(read)

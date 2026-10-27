@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 
 from .ai import batch_scope
+from .ai.providers import slots
 from .paths import DATA
 
 BATCH = 40
@@ -185,7 +186,7 @@ def _ask(client, keys):
     batches = [keys[start:start + BATCH] for start in range(0, len(keys), BATCH)]
     out = {}
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
-        for found in pool.map(one, batches):
+        for found in pool.map(slots.carry(one), batches):
             out.update(found)
     return out
 

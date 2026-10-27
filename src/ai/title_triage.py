@@ -14,6 +14,7 @@ import threading
 from ..paths import DATA
 from .models import SMALL_MODEL
 from . import batch_scope, providers
+from .providers import slots
 
 MODEL = SMALL_MODEL
 BATCH = 30   # ~30 s a batch through Claude Code (100 took ~2 min): a 3-minute search can stop between them
@@ -105,7 +106,7 @@ def decide(titles, search, client=None, local=False):
             ticker.tick(sorted_[0])
     began = time.monotonic()
     with ThreadPoolExecutor(max_workers=max(1, min(len(batches), engine.PARALLEL))) as pool:
-        list(pool.map(one, batches))
+        list(pool.map(slots.carry(one), batches))
     budget.record('title_rounds', time.monotonic() - began, -(-sorted_[0] // (BATCH * max(1, engine.PARALLEL))))
     with LOCK:
         data = _load()

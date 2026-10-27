@@ -18,7 +18,7 @@ export { BILLED, billedTo, learnings, runData, runRecord };
 import { cvFactsBlock, CV_FACTS_RULE } from './cv-facts.js';
 import { FACT_KEYS, FACT_RULE, floorBoxGuess, floorInventedFigure, floorLinkKind, floorUngrounded, typeGuess } from './answer-facts.js';
 import { applyPay } from './pay-convert.js';
-import { WRITTEN_RULE, reviewAnswer } from './written-answer.js';
+import { WRITTEN_RULE, reviewAnswer, draftWritten, writtenKinds } from './written-answer.js';
 import { ANSWER_EXAMPLES } from './answer-examples.js';
 import { DECLARATION_RULE, LEGAL_CHOICE_RULE, legalChoice } from './answer-declarations.js';
 import { JOB_ANSWERS_SECTION, asKitAnswers, jobAnswersOf } from './job-answers.js';
@@ -279,8 +279,8 @@ export async function answerForm(env, { url, fields, page_text, test = false }, 
   // A legal question is never answered, whatever use the AI gave (16 Oct 2026: a legal answer with use "fill" passed this floor and only the page's category mark held it); a proposal on a demographic one never is either.
   const floored = (a) => a.category === 'legal' || (a.use === 'propose' && a.category === 'demographic');
   // A written question (the person's own words) is DRAFTED from their facts and typed marked draft (owner, 16 Oct 2026, reversing 11 Oct); with no text it comes back as an empty kind.
-  // low confidence = an outline of "• Add: ..." lines to complete, never a finished answer. Never a proposal: the box gets it.
-  const raw = all.filter((a) => !floored(a)).map((a) => (a.category === 'written' && a.value !== '' ? { ...a, use: 'fill', draft: a.confidence === 'low' ? 'outline' : 'draft' } : a)).filter((a) => a.category !== 'written' || a.value !== '');
+  // low confidence = an outline to complete, never a finished answer. Never a proposal: the box gets it. Its "• Add: ..." reminders are never typed (written-answer.js draftWritten).
+  const raw = all.filter((a) => !floored(a)).map((a) => (a.category === 'written' && a.value !== '' ? draftWritten(a) : a)).filter((a) => a.category !== 'written' || a.value !== '' || a.remind);
   // What this call did, in counts and field ids (never an answer or the profile's text): with 0 answers it tells "nothing to go on"
   // (an empty profile) from "answered, but under other ids" from "answered nothing" (8 Oct 2026: Coop, 11 fields sent, 0 back, no trace).
   await env.onAnswer?.({ fields: fields.length, returned: raw.length, kept: raw.filter((a) => known.has(a.field) && a.value !== '').length,
@@ -310,9 +310,8 @@ export async function answerForm(env, { url, fields, page_text, test = false }, 
     answers: [...raw.filter((a) => known.has(a.field) && a.value !== ''),
       ...[...new Set(all.filter((a) => a.category === 'legal' && known.has(a.field) && !(a.value !== '' && !floored(a))).map((a) => a.field))]
         .map((field) => ({ field, value: '', category: 'legal', use: 'kind' })),
-      // An open question in the applicant's own words that nothing given answers (12 Oct 2026, Ashby "why join us?"): the same, as "written".
-      ...[...new Set(all.filter((a) => a.category === 'written' && a.value === '' && known.has(a.field)).map((a) => a.field))]
-        .map((field) => ({ field, value: '', category: 'written', use: 'kind' })),
+      // An open question in the applicant's own words that nothing given answers (12 Oct 2026, Ashby "why join us?"): the same, as "written" (with its reminders, if any).
+      ...writtenKinds(all, raw, known),
       // A salutation, gender or other personal-choice question with nothing in the profile: the person's own choice, never guessed (owner, 11 Oct 2026): the same.
       ...[...new Set(all.filter((a) => a.category === 'demographic' && a.value === '' && known.has(a.field)).map((a) => a.field))]
         .map((field) => ({ field, value: '', category: 'demographic', use: 'kind' })),

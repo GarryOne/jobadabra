@@ -7,7 +7,7 @@
     button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:4px 10px;font-weight:600}.go{background:#132439;color:#fff}.go[disabled]{opacity:.6;cursor:wait}.alt{background:#eef2f7;color:#182537;margin-left:6px}
     .tag{display:inline-block;padding:1px 8px;border-radius:999px;background:#fdf4e4;color:#9a6200;font-size:11.5px;font-weight:600;margin-right:8px}
     .card{margin-top:6px;padding:10px;border-radius:10px;background:#f5f7fb;border:1px solid #e2e8f0}.card b{display:block;margin-bottom:2px}.card ul{margin:4px 0 6px 18px;padding:0}
-    .imp{white-space:pre-wrap;margin:6px 0;padding:8px;border-radius:8px;background:#fff;border:1px solid #e2e8f0;max-height:220px;overflow:auto}.err{color:#a33}</style>`;
+    .add{margin:2px 0 6px 18px;padding:0}.imp{white-space:pre-wrap;margin:6px 0;padding:8px;border-radius:8px;background:#fff;border:1px solid #e2e8f0;max-height:220px;overflow:auto}.err{color:#a33}</style>`;
   window.__jobPilottoPanelWritten = {start({send, alive}) {
     const hosts = new Map();   // the box -> {host, root, result}
     const setValue = (el, text) => {   // as a person's typing would arrive: the page's own listeners see it
@@ -21,11 +21,13 @@
     function draw(field, slot) {
       const {root, result} = slot, el = field.el, kind = kindOf(field);
       const box = root.querySelector('.w'), text = String(el.value || '').trim();
-      const sig = [kind, !!text, result.busy, result.error, result.rev].join('|');   // drawn again only when something shown changed: a press never lands on a rebuilt button
+      const remind = (() => { try { return JSON.parse(el.dataset.jobpilottoRemind || '[]'); } catch { return []; } })();   // what to add in your own words (page/categories.js): never typed (owner, 27 Oct 2026)
+      const sig = [kind, !!text, result.busy, result.error, result.rev, remind.length].join('|');   // drawn again only when something shown changed: a press never lands on a rebuilt button
       if (slot.sig === sig) return;
       slot.sig = sig;
       box.replaceChildren();
       if (kind) box.append(Object.assign(line('span', kind === 'outline' ? 'Outline: add your own details' : 'Drafted for you: review'), {className: 'tag'}));
+      if (remind.length) { const ul = Object.assign(document.createElement('ul'), {className: 'add'}); for (const item of remind) ul.append(line('li', item)); box.append(line('div', text ? 'Add in your own words:' : 'Answer in your own words; mention:'), ul); }
       const go = Object.assign(line('button', result.busy ? 'Reviewing…' : 'Review my answer'), {className: 'go', disabled: !!result.busy || !text});
       go.onclick = () => review(field);
       box.append(go);

@@ -79,3 +79,14 @@ test('Review my answer asks once, shows the result, and types nothing until "Use
   assert.equal(box.hasAttribute('data-jobpilotto-draft'), false, 'what the person chose is no longer an unread draft');
   close();
 });
+
+test('reminders on a written box are listed beside it, never in it (owner, 27 Oct 2026)', { skip: !JSDOM }, async () => {
+  const html = FORM('').replace('<textarea id="q3" required data-jobpilotto-category="written" >Draft 3</textarea>',
+    `<textarea id="q3" required data-jobpilotto-category="written" data-jobpilotto-remind='["which incident","its root cause"]'></textarea>`);
+  assert.ok(html.includes('data-jobpilotto-remind'), 'the fixture placed the reminders');
+  const { window, close } = await panel(html);
+  const root = hostOf(window, 'q3').shadowRoot;
+  assert.deepEqual([...root.querySelectorAll('.add li')].map((li) => li.textContent), ['which incident', 'its root cause']);
+  assert.equal(window.document.getElementById('q3').value, '');
+  close();
+});

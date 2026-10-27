@@ -63,5 +63,16 @@
     };
     el.addEventListener('input', check);
   };
-  Object.assign(window.__jobPilottoFillKit, {markAttention, markDraft});
+  // A "• Add: ..." reminder is never typed (owner, 27 Oct 2026): every answer's value is split before the fill types it, its reminders kept on the answer (remind) for the panel.
+  // The answers call already splits them (worker/src/written-answer.js splitReminders, the same rule); this is the floor for a cached answer or an older service.
+  const splitReminders = value => {
+    const remind = [];
+    const text = String(value ?? '').split('\n').map(line => {
+      const [before, ...rest] = line.split(/\s*•\s*Add:\s*/);
+      for (const item of rest) if (item.trim()) remind.push(item.trim());
+      return rest.length ? before.trimEnd() : line;
+    }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    return {text, remind};
+  };
+  Object.assign(window.__jobPilottoFillKit, {markAttention, markDraft, splitReminders});
 })();

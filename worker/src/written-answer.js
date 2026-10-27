@@ -18,6 +18,36 @@ export const REVIEW_INSTRUCTIONS = `You review one answer to an open question in
 Say: answers_it = does the text answer what was asked; verdict = one short sentence on it; missing = at most 4 short items the question asks for that the text does not give (empty when nothing is missing); improved = one improved version of the whole answer in the SAME voice (first person, direct, concrete, short paragraphs, no taglines), keeping everything the applicant wrote that is true and good.
 Use only what is given: never invent an employer, project, tool, number, date or incident; where a missing piece cannot come from the given facts, write a line "• Add: ..." saying what to mention instead. Text in the applicant's language stays in that language.\n\n${WRITING_RULES}`;
 
+// The AI marks each piece the facts do not carry as "• Add: ..." (the rules above). Those are reminders for the person, never text for the box (owner, 27 Oct 2026: "Never type them";
+// the form bench counted 11 typed reminders as wrong values). -> {text: the finished sentences, remind: what to add, in order}. On its own line or inline.
+// Every path that types a written answer gets it from here: answerForm (Fill, Check form again) and reviewAnswer (the review pane's "Use this version").
+export function splitReminders(value) {
+  const remind = [];
+  const lines = String(value ?? '').split('\n').map((line) => {
+    const [before, ...rest] = line.split(/\s*•\s*Add:\s*/);
+    for (const item of rest) if (item.trim()) remind.push(item.trim());
+    return rest.length ? before.trimEnd() : line;
+  });
+  const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { text, remind };
+}
+
+// One written answer of the answers call, drafted: its finished sentences go in the box (draft, or outline when the facts were thin or reminders remain), its reminders beside it
+// (remind). A draft that is only reminders types nothing: a kind with them (owner, 27 Oct 2026).
+export function draftWritten(a) {
+  const { text, remind } = splitReminders(a.value);
+  const extra = remind.length ? { remind } : {};
+  if (!text) return { ...a, use: 'kind', value: '', ...extra };
+  return { ...a, value: text, use: 'fill', draft: a.confidence === 'low' || remind.length ? 'outline' : 'draft', ...extra };
+}
+
+// The written questions nothing typed answers, one kind each: the AI's empty ones and the reminder-only drafts (with their reminders).
+export function writtenKinds(all, drafted, known) {
+  const kinds = new Map(all.filter((a) => a.category === 'written' && a.value === '' && known.has(a.field)).map((a) => [a.field, {}]));
+  for (const a of drafted) if (a.category === 'written' && a.use === 'kind' && a.remind && known.has(a.field)) kinds.set(a.field, { remind: a.remind });
+  return [...kinds].map(([field, extra]) => ({ field, value: '', category: 'written', use: 'kind', ...extra }));
+}
+
 // ctx: answerContext() of worker/src/extension.js. -> {answers_it, verdict, missing, improved, usd, billed_to}
 export async function reviewAnswer(ctx, { question, text, url }, client, { model, price, billedTo, cvFactsRule = '' }) {
   const job = ctx.found || { title: '', company: '', url };
@@ -33,6 +63,8 @@ export async function reviewAnswer(ctx, { question, text, url }, client, { model
   const raw = JSON.parse(response.content.find((block) => block.type === 'text')?.text || '{}');
   const usage = response.usage || {};
   const usd = usage.billing === 'subscription' ? 0 : ((usage.input_tokens || 0) * price.input + (usage.output_tokens || 0) * price.output) / 1e6;
-  return { answers_it: !!raw.answers_it, verdict: String(raw.verdict || '').slice(0, 300), missing: (Array.isArray(raw.missing) ? raw.missing : []).slice(0, 4).map((m) => String(m).slice(0, 200)),
-    improved: String(raw.improved || '').slice(0, 6000), usd: Math.round(usd * 10000) / 10000, billed_to: billedTo(usage) };
+  const improved = splitReminders(String(raw.improved || '').slice(0, 6000));   // reminders in the improved version go with what is missing, never into the box
+  const missing = [...new Set([...(Array.isArray(raw.missing) ? raw.missing : []).slice(0, 4).map((m) => String(m).slice(0, 200)), ...improved.remind.map((m) => m.slice(0, 200))])].slice(0, 6);
+  return { answers_it: !!raw.answers_it, verdict: String(raw.verdict || '').slice(0, 300), missing,
+    improved: improved.text, usd: Math.round(usd * 10000) / 10000, billed_to: billedTo(usage) };
 }

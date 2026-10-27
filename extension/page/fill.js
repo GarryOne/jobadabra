@@ -41,6 +41,11 @@
     // The popup guard (page/guard-gate.js): between the stages a layer that opened over the form is closed by the extension, or the fill is held and types nothing more.
     let held = false;
     const gate = async () => { if (!held && await (window.__jobPilottoGate?.() ?? true) === false) held = true; return !held; };
+    // A reminder line in a value is never typed (page/fill-marks.js splitReminders): the rest is typed, the reminders go with the answer; nothing left = the AI's reading only.
+    for (const a of all || []) if (typeof a.value === 'string' && /•\s*Add:/.test(a.value)) {
+      const {text, remind} = window.__jobPilottoFillKit.splitReminders(a.value);
+      Object.assign(a, {value: text, remind: [...(a.remind || []), ...remind]}, text ? (a.draft ? {draft: 'outline'} : {}) : {use: 'kind', draft: undefined});
+    }
     const answers = (all || []).filter(a => a.use !== 'propose' && a.use !== 'kind');
     let proposedOf = {};   // built below, once the answers' fields are matched to the rows
     const form = await window.__jobPilottoDescribeForm();

@@ -127,10 +127,12 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     // from the closed tab is cleared and the form opens in a new tab. Claude is never started here; Start again is for that.
     // The tab may still be open under another address (redirected to the employer's own site, 15 Oct 2026: two presses opened two new tabs): its fill mark
     // names it on any host in any window (lib/session-tab.js), so it is focused instead, and a form is opened only when no tab carries the mark.
-    const live = await focusTab({id: old.id, boundTab: review.tabOf(old.id)}).catch(() => 'none');
+    // A stopped session opens a NEW tab, as its card says ("the form already open in Chrome is left as it is"): focusing the stopped tab started nothing (owner, 27 Oct 2026).
+    const stopped = old.stuck === 'stopped';
+    const live = stopped ? 'none' : await focusTab({id: old.id, boundTab: review.tabOf(old.id)}).catch(() => 'none');
     if (live === 'tab') { appLog('review', `tab gone ${old.id}: its tab is open (marked), focused it instead of reopening`, {kind: old.kind}); return {ok: true, reset: false, focused: true}; }
     if (Date.now() - (reopenedAt.get(old.id) || 0) < REOPEN_MS) { appLog('review', `tab gone ${old.id}: reopen pressed again while the form opens, nothing more opened`); return {ok: true, reset: false, focused: false}; }
-    const reset = !!stale;
+    const reset = !!stale || stopped;
     if (reset) { review.forget(old.id); terminals.clearStuck(old.id); }
     appLog('review', `tab gone ${old.id}: ${reset ? 'cleared the closed tab\'s state, reopening' : 'nothing to clear, reopening'}`, {kind: old.kind});
     reopenedAt.set(old.id, Date.now());

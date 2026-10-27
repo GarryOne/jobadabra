@@ -39,9 +39,18 @@ test('the magic behind the panel lives inside the layer, only moves transform an
 });
 
 // #1558: a closed panel (its X) has no Stop on the page, so a later step must not dim and hold the page; closing it lifts the overlay.
-test('the panel\'s close lifts the overlay and a step on a hidden panel never turns it on', () => {
+// 27 Oct 2026 (owner: the panel stayed centred on "Reading this page…" with no dim): the dim and the centring are ONE look, set only by look(), and a lift by itself tells the panel.
+test('the dim and the centring are one look: only look() sets either, a closed panel is never dimmed, and the overlay tells the panel when it lifts by itself', () => {
   const review = read('extension/review.js');
-  assert.match(review, /\$\('\.x'\)\.onclick = \(\) => \{[^}]*overlay\.off\(\)/, 'the X lifts the overlay');
-  assert.match(review, /if \(!host\.hidden\) overlay\.on\(\)/, 'overlay.on() only while the panel is shown (the one Stop lives on it)');
-  assert.equal((review.match(/overlay\.on\(/g) || []).length, 1, 'positive control: one place turns it on');
+  const lookLine = review.match(/const look = [^\n]*\n/)?.[0] || '';
+  assert.match(lookLine, /working && !host\.hidden/, 'look() dims only while the panel is shown (the one Stop lives on it)');
+  assert.match(lookLine, /overlay\.on\(\)[^\n]*overlay\.off\(\)[^\n]*place\(on\)/, 'look() sets the dim and the centring together');
+  const outside = review.replace(lookLine, '');
+  assert.doesNotMatch(outside, /overlay\.(on|off)\(/, 'nothing but look() turns the dim on or off');
+  assert.doesNotMatch(outside.replace(/const place = [^\n]*\n/, ''), /\bplace\(/, 'nothing but look() centres the panel or sends it back');
+  assert.match(review, /\$\('\.x'\)\.onclick = \(\) => \{[^}]*look\(false\)/, 'the X lifts the look');
+  assert.match(review, /overlay\.onLift\?\.\(/, 'the panel hears a lift it did not ask for (Stop, the backstop, a removal from outside)');
+  const overlay = read('extension/panel-overlay.js');
+  for (const why of [/!chrome\.runtime\?\.id \|\| !layer\?\.isConnected \|\| Date\.now\(\) - refreshed > MAX_MS\) lift\(\)/, /'stopped'\) lift\(\)/, /isConnected\) \{ lift\(\); return; \}/])
+    assert.match(overlay, why, `every lift the overlay does by itself goes through lift(), which tells the panel: ${why}`);
 });

@@ -2,7 +2,7 @@
 // Shared by the popup (the tab you're on) and the background worker (tabs the app opens to fill).
 import {addressNow, stillOnPage} from './one-fill.js';
 import {KEY} from './tab-identity.js';
-import {attachDebugger, detachDebugger, isStopped} from './stop-state.js';
+import {attachDebugger, detachDebugger, isStopped, pageStarted} from './stop-state.js';
 import {StepTimeout, within} from './step-bound.js';
 import {askEnded, askStarted} from './ladder/silence.js';
 import {MENU_REASONS, OLD_MENU_REASON, applyCombos} from './menu-reason.js';
@@ -368,8 +368,8 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
   debug.details = {coverLetterFile: !!me?.coverLetterFile, fields: Object.keys(me?.contact || {}), source: me?.contactSource || null, cv: me?.resume?.name || null, tailoredCv: !!me?.resume?.tailored};
   if (me?.contactError) debug.errors.push(`your details: ${me.contactError}`);
   const letter = coverLetter || ai?.cover_letter || '';
-  const summary = await inPage(tab.id, (list, profile, resume, letter, consents) => window.__jobPilottoExtensionFill(list, profile, resume, letter, consents),
-    [answers, me?.contact || config.profile || {}, withLetterFile(me?.resume || config.resume || null, me?.coverLetterFile), letter, (me?.acceptConsents ?? config.acceptConsents) !== false]);
+  const summary = await pageStarted(tab.id).then(() => inPage(tab.id, (list, profile, resume, letter, consents) => window.__jobPilottoExtensionFill(list, profile, resume, letter, consents),   // pageStarted: a start just now cleared the page's own Stop first (stop.js startTab)
+    [answers, me?.contact || config.profile || {}, withLetterFile(me?.resume || config.resume || null, me?.coverLetterFile), letter, (me?.acceptConsents ?? config.acceptConsents) !== false]));
   // The page fill threw or returned nothing (a control it did not expect, or the page went away): said as it is, never read as a result (page/fill.js reports the error and where).
   if (!summary || summary.error) {
     const why = summary?.error || 'the fill failed on this page: the page returned nothing';

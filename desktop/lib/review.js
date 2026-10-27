@@ -129,6 +129,9 @@ export function delivered(id, ms = 7000) {
 // (the extension's `boot`, which changes only when Chrome starts: extension/tab-memory.js). A binding from an earlier run is a closed tab.
 const bound = new Map();  // session id → tab id
 const runOf = new Map();  // session id → the browser run its tab id belongs to ('' unknown: saved by an older app)
+const pageAt = new Map();  // session id → when its form page last reported (the panel's poll, every few seconds): proof its tab is open
+const boundAt = new Map();  // session id → when it was bound to its tab (a tab report older than that never saw the tab)
+const PAGE_MS = 10 * 1000;
 // Each browser's open tabs (`browser`: one Chrome profile, kept across its restarts; an older extension: its run `boot`), from its own
 // reports: two browsers with the extension (a second profile, a test Chrome paired by mistake) each say what THEY have open, and one never
 // closes the other's forms. A browser that restarts replaces its entry (a new run: the old tab ids mean nothing); one silent for RUN_MS is gone.
@@ -141,7 +144,7 @@ const sameRun = (id, boot = bootId) => !runOf.get(id) || !boot || runOf.get(id) 
 function bind(id, tab, boot, by, host = '', keep = true) {
   if (bound.get(id) === tab && runOf.get(id) === boot) return;
   bindLog({id, tab, before: bound.get(id) ?? null, by, host, ...(runOf.has(id) && runOf.get(id) !== boot ? {newRun: true} : {})});
-  bound.set(id, tab); runOf.set(id, boot);
+  bound.set(id, tab); runOf.set(id, boot); boundAt.set(id, clock());
   if (by.startsWith('tab report')) byReport.add(id); else byReport.delete(id);
   const state = keep && last.get(id);   // a page's report saves its own state; a tab report keeps the new tab here
   if (state && (state.tab !== tab || state.boot !== boot)) { last.set(id, {...state, tab, boot, tabAt: state.tab === tab ? state.tabAt : Date.now()}); save(); }
@@ -180,7 +183,10 @@ export const tabOpen = id => {
   const tab = bound.get(id), own = runOf.get(id);
   const asked = own ? live.filter(run => run.boot === own) : live;
   if (asked.some(run => !run.ids)) return null;   // a report without tab ids says nothing
-  return asked.some(run => run.ids.has(tab));
+  if (asked.some(run => run.ids.has(tab))) return true;
+  // Why (27 Oct 2026): every tab report is older than this tab, so none saw it: "closed" showed for up to 30 s while the new form filled. Its page's own report, a moment ago, says open.
+  if (asked.length && asked.every(run => run.at < (boundAt.get(id) || 0))) return clock() - (pageAt.get(id) ?? -Infinity) < PAGE_MS ? true : null;
+  return false;   // a tab report since the tab was bound lacks it (closed), or no report of its run is left (Chrome restarted, or went quiet)
 };
 // Open, closed or not known, per session: its own tab decides when the app knows it; otherwise the address only ever says open
 // (a form on another site than the posting matches no address, and was shown closed while it was open: owner, 8 Oct 2026).
@@ -238,6 +244,7 @@ export function report(sessions, payload, now = Date.now()) {
     // Unless this older tab holds the live application form and the newer one does not (the app opened a second tab, 15 Oct 2026): the page that is further wins.
     if ((olderTab(session.id, tab, boot) && !furtherThanBound(session.id, payload)) || behindBound(session.id, tab, boot, payload)) return {matched: null, moved: true, session: null, watch: [], commands: []};
     bind(session.id, tab, boot, by, hostOf(page.url), false);
+    pageAt.set(session.id, clock());
   }
   // The session's tab, and when it first reported (Chrome gives no tab's creation time; its first report comes as its page
   // loads): a different tab starts the clock again, a restarted app does not (owner, 8 Oct 2026: show each session's tab).
@@ -291,4 +298,4 @@ export function forget(id) { last.delete(id); bound.delete(id); runOf.delete(id)
 // Every form's last state, for a window that just loaded (⌘R) and missed them: they're passed on only when they change.
 export const allStates = () => [...last.values()];
 export const _clock = fn => { clock = fn; };   // tests
-export const _reset = () => { keptFile = ''; watches.clear(); commands.clear(); bound.clear(); byReport.clear(); runOf.clear(); runs.clear(); bootId = ''; clock = () => Date.now(); last.clear(); waiting.clear(); focusAnswers.clear(); focusWaiters.clear(); reporter = () => {}; bindLog = () => {}; };  // tests
+export const _reset = () => { keptFile = ''; watches.clear(); commands.clear(); bound.clear(); pageAt.clear(); boundAt.clear(); byReport.clear(); runOf.clear(); runs.clear(); bootId = ''; clock = () => Date.now(); last.clear(); waiting.clear(); focusAnswers.clear(); focusWaiters.clear(); reporter = () => {}; bindLog = () => {}; };  // tests

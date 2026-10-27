@@ -1,0 +1,47 @@
+{
+ "origin": "captured",
+ "shape": "a label that holds an icon <svg> whose <desc>/<title> text is never drawn, read into the field's name (\"AddressSVGs not supported by this browser.\"), so the box's meaning is lost",
+ "why": "27 Oct 2026, benchmark form 106 after #2196: the Address box still kept the page's IP guess 3/3 (bakeoff run 40441599817). The CI recording of the real page (record-sites run 40443475073) read the label as \"AddressSVGs not supported by this browser.\": the info icon's <desc> was read as words, so the label no longer read as the address and the page-guess rule never ran. The one label reader (page/required-mark.js read) now drops text the page never draws (svg, style, script, template, noscript).",
+ "control": {
+  "build": "0.9.633",
+  "failed": "valueIs: #address|Musterstrasse 12 (the label read \"AddressSVGs not supported by this browser.\"; the page's guess was kept)"
+ },
+ "sample": "the real page's Personal information section, from the record-sites CI recording (run 40443475073, fake applicant, never submitted); the page's IP guess stands in as a one-line script; the phone field cut out (its widget needs the page's own script)",
+ "pages": [
+  {
+   "url": "https://apply.example.com/acme/j/0A6915AC27/apply/",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "eligibility_note": "",
+   "answers": []
+  }
+ },
+ "contact": {
+  "street": "Musterstrasse 12",
+  "postal_code": "8001",
+  "location": "Zurich, Switzerland"
+ },
+ "expect": {
+  "valueIs": [
+   "#firstname|Test",
+   "#address|Musterstrasse 12"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ }
+}

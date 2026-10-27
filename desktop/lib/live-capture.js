@@ -15,8 +15,17 @@ export const FAKE_EMAIL = 'test.candidate@example.com', FAKE_PHONE = '(phone)';
 // A phone: 9+ digits standalone; a digit run glued to a word character is an identifier (Greenhouse's question_4553828006: scrubbing it broke every label's for=, 11 Oct 2026).
 export const EMAIL = /(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z][\w-]*/g, PHONE = /(?<![\w])\+?\d[\d\s().-]{8,}\d(?![\w])/g;
 // The reserved example domains (RFC 2606: example.com, .org, .net and example.test) are never a person's: the offline runs' fake applicant is ada.tester@example.test. Other .test names stay personal (a test person's).
-export const EXAMPLE = /@example\.(?:com|org|net|test)$/i;   // words-ok: the reserved domains, never page text
-export const fakeContacts = value => value.replace(EMAIL, email => (EXAMPLE.test(email) ? email : FAKE_EMAIL))
+// Why (27 Oct 2026): a retina image name (flags@2x.9790563a0e331d13.webp) has the shape of an address but names a file; rewriting it changed Starling Bank's recorded stylesheets. Only "@<n>x" + an image extension, or "@tag" + a script/style file (sdk@beta.umd.js, an npm tag in Vimeo's player).
+export const EXAMPLE = /@example\.(?:com|org|net|test)$|@\dx(?:\.[\w-]+)*\.(?:png|jpe?g|gif|webp|svg|avif|ico)$|@[a-z]+(?:\.[\w-]+)*\.(?:m?js|css|map)$/i;   // words-ok: the reserved domains, never page text
+// Why (27 Oct 2026): a scrubbed address keeps the LENGTH of the one it replaces (as far as "@example.com" allows: 13+ characters). Personio's posting is a Next.js page whose text chunks carry their byte length
+// ("e20:T48e,"); a 25-character fake for a 21-character address broke every chunk after it, React failed to hydrate and the replay stopped at a blank posting. The local part is "test.candidate" cut or padded
+// with underscores (a digit run would be read as a number by the memo key); the AI's memo key (normalise -> fakeContacts) folds every such fake back to FAKE_EMAIL, so the page text still keys to the live run's kept answers.
+const FAKE_LOCAL = FAKE_EMAIL.slice(0, FAKE_EMAIL.indexOf('@')), EXAMPLE_COM = '@example.com';
+// email (a string that EMAIL matched) -> an example.com address of the same length when it is 13+ characters long, else FAKE_EMAIL; never throws, reads no data. Used by the publish scrub (lib/report-scrub.js).
+export const sameLengthFake = email => (email.length >= FAKE_EMAIL.length ? `${FAKE_LOCAL}${'_'.repeat(email.length - FAKE_EMAIL.length)}${EXAMPLE_COM}` : email.length > EXAMPLE_COM.length ? `${FAKE_LOCAL.slice(0, email.length - EXAMPLE_COM.length)}${EXAMPLE_COM}` : FAKE_EMAIL);
+const isScrubFake = email => { const local = email.slice(0, -EXAMPLE_COM.length); return email.endsWith(EXAMPLE_COM) && local.length > 0 && (FAKE_LOCAL.startsWith(local) || new RegExp(`^${FAKE_LOCAL.replace('.', '\\.')}_+$`).test(local)); };
+// value (any string) -> the same text with every non-example address as FAKE_EMAIL (a same-length scrub fake folds back to it) and every 9+ digit phone as FAKE_PHONE; never throws. Used by the page capture and the memo key.
+export const fakeContacts = value => value.replace(EMAIL, email => (isScrubFake(email) ? FAKE_EMAIL : EXAMPLE.test(email) ? email : FAKE_EMAIL))
   .replace(PHONE, number => (number.replace(/\D/g, '').length >= 9 ? FAKE_PHONE : number));
 const text = value => fakeContacts(value.replace(QUERY, ''));
 

@@ -2,7 +2,7 @@
 // whatever could be the person's: URL query values, typed-value attributes and text, the person's own values (lib/owner-values.js), any e-mail or phone. Then lastGate() scans the
 // result again with the same values: one hit and nothing is sent. Kinds and counts only ever leave here, never a value. Pure: no files, no network.
 // Guard: test/report-scrub.test.js.
-import {EMAIL, EXAMPLE, FAKE_EMAIL, PHONE, fakeContacts} from './live-capture.js';
+import {EMAIL, EXAMPLE, FAKE_EMAIL, PHONE, fakeContacts, sameLengthFake} from './live-capture.js';
 import {KEEP_HEADER, keepRecord, sha} from './net-keep.js';
 
 const CODE = /javascript|ecmascript|text\/css/i, TEXT = /^(text\/|application\/([\w.+-]*\+)?(json|xml)\b|application\/(x-)?(javascript|ecmascript|x-www-form-urlencoded)\b)/i;   // a text kind by its whole type ("vnd.openxmlformats..." is a Word file, not XML)
@@ -30,8 +30,12 @@ export function decodedForms(text) {
 const BASE64 = /[A-Za-z0-9+/_-]{40,}={0,2}/g;
 const b64Forms = text => (text.match(BASE64) || []).map(run => Buffer.from(run.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('latin1'));
 // The few encoded spellings of "@" and of a space that stand between an e-mail's or phone's parts: written plain before the scrub, so its shapes match (a page does not break on a raw @).
-// Why (27 Oct 2026, owner: scrub missed an e-mail in a recorded Personio page): the "@" can be encoded more than once ("%2540", "&amp;#64;", "\\u0040" inside a JSON string), so each spelling allows its own escape layers in front.
-const plainSeparators = text => text.replace(/%(?:25)*40|&(?:amp;)*(?:#0*64|#x0*40|commat);|\\+u0040|\\+x40/gi, '@').replace(/&nbsp;|&#0*160;|&#xa0;/gi, ' ');
+// Why (27 Oct 2026, owner: scrub missed an e-mail in a recorded Personio page): an "@" can be encoded more than once ("%2540", "&amp;#64;", "\\u0040" inside a JSON string), so each spelling allows its own escape layers in front. Narrowed the same day: an encoded @ is written plain only where an address stands around it (the next Why).
+// Why (27 Oct 2026): a "%40" is written plain ONLY where an address stands around it. Site code spells modulo 400 as e%400==0; rewriting every "%40" broke Starling Bank's and a Personio row's bundle
+// (e@0==0), so the recorded page never booted and its replay stopped at the posting. The left part is the run of address characters before it, the right part must read as a host with a dot.
+const ENCODED_AT = /%(?:25)*40|&(?:amp;)*(?:#0*64|#x0*40|commat);|\\+u0040|\\+x40/gi, AT_RIGHT = /^[\w-]+(?:\.[\w-]+)*\.[A-Za-z]/, AT_LEFT = /[\w.+-]+$/;
+const NBSP = /&nbsp;|&#0*160;|&#xa0;/gi;
+const plainSeparators = (text, {spaces = true} = {}) => text.replace(ENCODED_AT, (found, at) => (AT_LEFT.test(text.slice(Math.max(0, at - 64), at)) && AT_RIGHT.test(text.slice(at + found.length, at + found.length + 255)) ? '@' : found)).replace(spaces ? NBSP : /(?!)/g, ' ');
 
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const ONE_EMAIL = new RegExp(`^${EMAIL.source}$`);
@@ -116,6 +120,10 @@ function contactsOut(text, counts) {
   return out;
 }
 
+// Why (27 Oct 2026): after a backslash the first letters of the match are an escape (\u003e, \x3c, \n), not part of the address: Personio's page data holds \u003eprivacy@host, and rewriting u003eprivacy
+// removed the > so the markup after it broke (React error 412, a blank posting). -> the escape's text ('' when no backslash precedes the match).
+const escapeLead = (email, at, whole) => (whole[at - 1] === '\\' ? (/^(?:u[0-9a-f]{4}|x[0-9a-f]{2}|[nrtbfv])/i.exec(email) || [''])[0] : '');
+
 // The personal part of ONE recorded response, for a record a REPLAY reads (e2e/lib/record-scrub.mjs, run by records-publish.mjs): the person's own values (names, places, e-mails, phones by value) and any
 // e-mail address, by the definitions above (ownOut, EMAIL, EXAMPLE), and nothing else: a replay needs the page, its URLs, its typed values, its numbers and its tokens as the site sent them (a phone SHAPE
 // would rewrite a timestamp in a JSON answer). Unchanged text comes back as it was (no re-encoding, so its hash stays). null when the body is not a text kind. -> {text, counts: {own, contacts, phones}} | null
@@ -123,16 +131,26 @@ export function scrubPersonal(text, {type = '', url = '', values = new Map()} = 
   if (!TEXT.test(type)) return null;
   let path = ''; try { path = new URL(url, 'https://x.invalid').pathname; } catch { /* no address */ }
   const code = CODE.test(type) || /\.(m?js|css)(\?|$)/i.test(path), counts = {own: 0, contacts: 0, phones: 0}, original = String(text);
-  let out = ownOut(plainSeparators(original), values, code, counts);
-  EMAIL.lastIndex = 0;
-  out = out.replace(EMAIL, email => { if (EXAMPLE.test(email)) return email; counts.contacts += 1; return FAKE_EMAIL; });
-  out = b64EmailsOut(out, counts);
-  for (const [value, kind] of values) {
-    if (kind !== 'phone') continue;
-    const digits = String(value).replace(/\D/g, '');
-    if (digits.length < 9) continue;
-    out = out.replace(new RegExp(escape(String(value)), 'g'), () => { counts.phones += 1; return '(phone)'; });
-  }
+  // Why (27 Oct 2026): a non-breaking space is written plain only when that finds more of the person's own values (a name split by one); otherwise the page keeps its "&nbsp;", because the AI's
+  // kept answers are keyed by the page text and Personio's posting stopped matching them (0 of 6) after every one became a space.
+  const pass = spaces => {
+    const found = {own: 0, contacts: 0, phones: 0};
+    let out = ownOut(plainSeparators(original, {spaces}), values, code, found);
+    EMAIL.lastIndex = 0;
+    out = out.replace(EMAIL, (email, at, whole) => { if (EXAMPLE.test(email)) return email; const lead = escapeLead(email, at, whole), rest = email.slice(lead.length); if (rest.startsWith('@')) return email; found.contacts += 1; return lead + sameLengthFake(rest); });
+    out = b64EmailsOut(out, found);
+    for (const [value, kind] of values) {
+      if (kind !== 'phone') continue;
+      const digits = String(value).replace(/\D/g, '');
+      if (digits.length < 9) continue;
+      out = out.replace(new RegExp(escape(String(value)), 'g'), () => { found.phones += 1; return '(phone)'; });
+    }
+    return {out, found};
+  };
+  let {out, found} = pass(false);
+  NBSP.lastIndex = 0;
+  if (NBSP.test(original)) { const spaced = pass(true); if (spaced.found.own + spaced.found.phones > found.own + found.phones) ({out, found} = spaced); }
+  Object.assign(counts, found);
   return counts.own || counts.contacts || counts.phones ? {text: out, counts} : {text: original, counts};
 }
 
@@ -156,9 +174,11 @@ const b64EmailsOut = (text, counts) => text.replace(BASE64, run => {
 
 // What a scrubbed replay record must no longer hold, in every decoded form (URL, JSON, HTML entities, base64): an e-mail address that is not an example one, and any of the person's own values.
 // Narrower than lastGate (no phone SHAPE, no token shapes: those would fire on a replay's own numbers). -> [kind, ...] (kinds only, never a value)
-// An address found in the bytes of a decoded base64 run counts only when the text around it is text (6 characters each side printable): random bytes of an embedded binary spell "x@hZ.B" by chance (17 Oct 2026).
+// An address found in the bytes of a decoded base64 run counts only when the text around it is text (90% of the 32 characters each side printable): random bytes of an embedded binary spell "x@hZ.B" by chance (17 Oct 2026).
 const printable = ch => ch >= 0x20 && ch < 0x7f || ch === 0x09 || ch === 0x0a || ch === 0x0d;
-const inText = (form, at, length) => { const around = form.slice(Math.max(0, at - 6), at) + form.slice(at + length, at + length + 6); return [...around].every(char => printable(char.charCodeAt(0))); };
+// Why (27 Oct 2026): 6 characters either side are not enough. Cloudflare's challenge answer (a 600 KB base64 run, 38% printable) spells "x@y.z" with 6 text-like characters around it often enough that the scrub
+// rewrote it and the challenge broke: a Personio posting then rendered another page and its replay stopped there. Text means 90% printable over 32 characters either side (random bytes: ~0%; a name inside JSON: 100%).
+const inText = (form, at, length) => { const around = [...form.slice(Math.max(0, at - 32), at) + form.slice(at + length, at + length + 32)]; return around.filter(char => printable(char.charCodeAt(0))).length >= 0.9 * around.length; };
 export function personalHits(text, {code = false, values = new Map()} = {}) {
   const hits = new Set(), run = (form, bytes = false) => {
     EMAIL.lastIndex = 0;

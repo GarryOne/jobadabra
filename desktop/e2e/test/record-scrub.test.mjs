@@ -8,6 +8,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {sha} from '../../lib/net-keep.js';
 import {gateRecordDir, scrubRecordDir} from '../lib/record-scrub.mjs';
+import {sameLengthFake} from '../../lib/live-capture.js';
 import {REPLAY_EMAIL, replayAccounts, signedInHosts} from '../lib/test-accounts.mjs';
 
 const values = new Map([['Rosalind Quill', 'name'], ['+41 79 555 01 23', 'phone']]);
@@ -44,7 +45,7 @@ test('the scrub removes the person\'s values and any e-mail from text bodies and
   for (const entry of after) { const body = fs.readFileSync(path.join(dir, 'bodies', entry.hash)); assert.equal(sha(body), entry.hash, 'the file is named by its content'); assert.equal(body.length, entry.size); }
   assert.ok(!fs.existsSync(path.join(dir, 'bodies', hashes[0])) && !fs.existsSync(path.join(dir, 'bodies', hashes[1])), 'a body no entry refers to is removed');
   const profile = JSON.parse(fs.readFileSync(path.join(dir, 'bodies', after[0].hash), 'utf8'));   // still valid JSON
-  assert.deepEqual([profile.email, profile.other, profile.phone], ['test.candidate@example.com', 'kept@example.com', '(phone)']);
+  assert.deepEqual([profile.email, profile.other, profile.phone], [sameLengthFake(ADDRESS), 'kept@example.com', '(phone)']);   // the fake keeps the address's length (live-capture.js sameLengthFake)
   for (const file of filesOf(dir)) { const text = fs.readFileSync(file).toString('latin1'); assert.ok(!text.includes(ADDRESS) && !/Rosalind Quill/.test(text), `${path.relative(dir, file)} holds no personal value`); }
   assert.deepEqual(gateRecordDir(dir, values), []);
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'bodies', after[2].hash), 'utf8')).id, 1792155265346, 'a long number is not a phone');
@@ -118,4 +119,102 @@ test('the gate does not read an e-mail address out of the bytes of a font or an 
   assert.deepEqual(gateRecordDir(clean).filter(hit => hit.in === 'body'), [], 'binary files are not read as addresses');
   const leaky = recordIn([{url: 'https://site.example.test/blob', type: 'application/octet-stream', body: `{"who":"${ADDRESS}"}`}]);
   assert.ok(gateRecordDir(leaky).some(hit => hit.in === 'body'), 'an address in a text body served as octet-stream still stops the row');
+});
+
+// 27 Oct 2026: Starling Bank's and a Personio row's guard replays stopped at the posting while live reached the form (0 of 5-6 asks answered): the scrub's "%40 is an @" step ran over the whole
+// site bundle (it held a real-looking address, so the body was rewritten) and turned the code's `e%400==0` (modulo 400) into `e@0==0`: the bundle no longer parsed, the page never booted. An
+// encoded "@" is written plain only where it stands inside an address; code, styles and `name@2x.png` image names come back byte for byte, the address next to them still goes.
+test('the scrub leaves a site bundle\'s %40 arithmetic and @2x file names alone while it removes the address beside them', () => {
+  const code = 'const leap=e=>e%4==0&&e%100!=0||e%400==0,mail="support@bank.example-corp.com",ok=1;';
+  const css = '.flag{background:url(images/flags@2x.9790563a0e331d13.webp)}';
+  const player = 'const k=load("latest/wirewax-embedder-sdk@beta.umd.js");const m="hr@firm.example-corp.com";';
+  const dir = recordIn([
+    {url: 'https://cdn.site.example.test/careers.js', type: 'application/javascript', body: code},
+    {url: 'https://cdn.site.example.test/app.css', type: 'text/css', body: css},
+    {url: 'https://cdn.site.example.test/player.js', type: 'application/javascript', body: player},
+    {url: 'https://site.example.test/ask', type: 'application/json', body: JSON.stringify({link: 'https://x.example.test/?to=real.person%40mail.example-corp.com&n=1'})},
+  ]);
+  const entries = () => JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries, bodyOf = entry => fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8');
+  scrubRecordDir(dir, values);
+  const [js, style, script, json] = entries();
+  assert.equal(bodyOf(js), code.replace('support@bank.example-corp.com', sameLengthFake('support@bank.example-corp.com')), 'only the address changed in the bundle');
+  assert.equal(bodyOf(style), css, 'an image name with an @ is not an address');
+  assert.equal(bodyOf(script), player.replace('hr@firm.example-corp.com', sameLengthFake('hr@firm.example-corp.com')), 'an npm tag on a script file is not an address');
+  assert.ok(!bodyOf(json).includes('real.person') && !bodyOf(json).includes('real.person%40'), 'an encoded address is still removed');
+  assert.deepEqual(gateRecordDir(dir, values), [], 'the gate is clear after the scrub');
+});
+
+// 27 Oct 2026: the same rows' Personio copy: a page body that held an employer's contact address also had every "&nbsp;" written as a space, so the posting text the AI was asked about no longer matched
+// the kept answers (0 of 6). A non-breaking space is written plain only where it hides one of the person's own values (a name split by one); everywhere else the page is as the site sent it.
+test('the scrub keeps a page\'s &nbsp; as sent, and still finds a name or phone split by one', () => {
+  const page = '<p>Alles gut.&nbsp;</p><p>Mail: hr@firm.example-corp.com, z.&nbsp;B. Teams.</p>';
+  const split = '<p>Hi Rosalind&nbsp;Quill, call +41&nbsp;79 555 01 23</p>';
+  const dir = recordIn([{url: 'https://site.example.test/job', type: 'text/html', body: page}, {url: 'https://site.example.test/me', type: 'text/html', body: split}]);
+  scrubRecordDir(dir, values);
+  const [first, second] = JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries.map(entry => fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8'));
+  assert.equal(first, page.replace('hr@firm.example-corp.com', sameLengthFake('hr@firm.example-corp.com')), 'only the address changed');
+  assert.ok(!second.includes('Quill') && !second.includes('555 01 23'), 'a value hidden behind a non-breaking space still goes');
+  assert.deepEqual(gateRecordDir(dir, values), []);
+});
+
+// 27 Oct 2026: a Personio row's guard replay stopped at the posting because the scrub rewrote an "address" inside a base64 run of random bytes (a challenge answer, 38% printable). Bytes that are not text are
+// never rewritten, and the gate does not read them as an address either; a name inside a base64 JSON token still goes.
+test('the scrub leaves a base64 run of random bytes alone and still cleans a base64 token that holds text', () => {
+  const noise = Buffer.from(Array.from({length: 600}, (_, i) => (i * 37 + 11) % 256 | 0x80)); noise.write('abcdef Zq@Xd.yt ghijkl', 300, 'latin1');   // an address with 6 text-like bytes either side, random bytes beyond
+  const run = noise.toString('base64'), token = Buffer.from(JSON.stringify({who: ADDRESS, note: 'a person'})).toString('base64');
+  const dir = recordIn([{url: 'https://site.example.test/orchestrate', type: 'text/plain', body: `window.x="${run}"`}, {url: 'https://site.example.test/t', type: 'application/json', body: JSON.stringify({token})}]);
+  scrubRecordDir(dir, values);
+  const [first, second] = JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries.map(entry => fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8'));
+  assert.equal(first, `window.x="${run}"`, 'random bytes come back byte for byte');
+  assert.ok(!Buffer.from(JSON.parse(second).token, 'base64').toString().includes(ADDRESS), 'an address inside a base64 text token goes');
+  assert.deepEqual(gateRecordDir(dir, values), []);
+});
+
+// 27 Oct 2026: the Personio posting is a Next.js page whose server-components text chunks carry their byte length ("e20:T48e," then exactly 0x48e bytes). The scrub's 25-character fake in place of a 21-character
+// address made every later chunk start in the wrong place, React failed to hydrate (error 412) and the posting rendered blank: the replay stopped there. A fake keeps the length of the address it replaces
+// (as far as the example domain allows), and the AI's kept answers, keyed by the page text, still match: the key folds every such fake back to the standard one.
+test('a scrubbed address keeps its length, and the memo key of the real page equals the key of the scrubbed page', async () => {
+  const {normalise} = await import('../../lib/ai/model-memo.js');
+  const addresses = ['karriere@pjmueller.de', 'hr@firm.example-corp.com', 'jobs.team.recruiting@some-long-company-name.co.uk', 'a@bc.de'];
+  const page = list => `<p>${list.join(' | ')}</p>`;
+  const dir = recordIn([{url: 'https://site.example.test/job', type: 'text/html', body: page(addresses)}]);
+  scrubRecordDir(dir, values);
+  const [entry] = JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries, scrubbed = fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8');
+  const found = scrubbed.match(/[\w.+-]+@example\.com/g) || [];
+  assert.equal(found.length, 4);
+  assert.deepEqual(addresses.slice(0, 3).map(item => item.length), found.slice(0, 3).map(item => item.length), 'each fake is as long as its address');
+  assert.equal(found[3], 'test.candidate@example.com', 'an address too short for the example domain gets the standard fake');
+  assert.equal(normalise(JSON.stringify({text: page(addresses)})), normalise(JSON.stringify({text: scrubbed})), 'the memo key does not move');
+  assert.deepEqual(gateRecordDir(dir, values), []);
+});
+
+// 27 Oct 2026: in Personio's page data an address follows an escaped ">" (`>privacy@host`) and a new line (`\nmail@host`); the address pattern took the escape's letters ("u003e", "n") as the start of the
+// address, so the scrub removed the ">" and the markup after it: React could not hydrate (error 412) and the posting rendered blank. A backslash starts an escape; the escape is not part of the address.
+test('the scrub keeps the escape in front of an address (\\u003e, \\x3e, \\n) and replaces only the address', () => {
+  const page = 'x="\\u003ca href=\\"mailto:privacy@firm.example-corp.com\\"\\u003eprivacy@firm.example-corp.com\\u003c/a\\u003e\\nhr@firm.example-corp.com\\x3cb\\x3e"';
+  const dir = recordIn([{url: 'https://site.example.test/job', type: 'text/html', body: `<script>${page}</script>`}]);
+  scrubRecordDir(dir, values);
+  const [entry] = JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries, out = fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8');
+  assert.equal(out, `<script>${page.replaceAll('privacy@firm.example-corp.com', sameLengthFake('privacy@firm.example-corp.com')).replace('hr@firm.example-corp.com', sameLengthFake('hr@firm.example-corp.com'))}</script>`);
+  assert.deepEqual(gateRecordDir(dir, values), []);
+});
+
+// 27 Oct 2026 (6e's check on #2254's privacy path): the narrowing above only removes FALSE hits. Every spelling of a real address still goes, even with the code that must stay (a %400 sum, an @2x name,
+// a random-bytes run) in the same body, and the gate is clear afterwards.
+test('every spelling of a real address is still scrubbed when the body also holds code the scrub must leave alone', () => {
+  const real = 'jane.fake@acme-test.de', code = 'const k=e%400==0;img="a@2x.png";';
+  const spellings = {plain: real, percent: real.replace('@', '%40'), 'percent twice': real.replace('@', '%2540'), 'entity decimal': real.replace('@', '&#64;'), 'entity hex': real.replace('@', '&#x40;'),
+    'entity named': real.replace('@', '&commat;'), 'js escape': real.replace('@', '\\u0040'), 'hex escape': real.replace('@', '\\x40'), 'after an escape': `\\u003e${real}`, 'after a newline': `\\n${real}`};
+  for (const [name, spelling] of Object.entries(spellings)) {
+    const body = `${code}x="${spelling}";`, dir = recordIn([{url: 'https://site.example.test/app.js', type: 'application/javascript', body}]);
+    if (name !== 'entity named') assert.ok(gateRecordDir(dir, values).some(hit => hit.in === 'body'), `${name}: the gate sees it before`);   // the gate does not decode &commat; (the scrub does)
+    scrubRecordDir(dir, values);
+    const [entry] = JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries, out = fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8');
+    assert.ok(out.startsWith(code), `${name}: the code beside it is untouched`);
+    assert.ok(!/jane\.fake/.test(out), `${name}: the address is gone`);
+    assert.deepEqual(gateRecordDir(dir, values), [], `${name}: nothing left after`);
+  }
+  const split = recordIn([{url: 'https://site.example.test/p', type: 'text/html', body: '<p>Rosalind&nbsp;Quill</p>'}]);
+  scrubRecordDir(split, values);
+  assert.deepEqual(gateRecordDir(split, values), [], 'a name split by a non-breaking space is still found');
 });

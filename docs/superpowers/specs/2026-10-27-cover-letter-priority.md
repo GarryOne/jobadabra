@@ -19,13 +19,13 @@ Existing records/preferences retain their existing owners. Queue and panel state
 - [x] Implement shared availability and existing editor reuse; focused tests pass. (proof: desktop/test/cover-letter.test.js, desktop/test/letter-applying.test.js, desktop/test/wizard-letter.test.js)
 - [x] Fictional demo preview inspected. (proof: none: local fictional wizard/editor renders inspected; PR preview retains images)
 - [x] Independent review checks the owner's scenario and opposite assertions. (proof: worker/test/cover-letter-priority.test.js)
-- [x] PR #2304 merged with current-head checks green. (proof: https://github.com/GarryOne/jobadabra/pull/2304, head `04506e8152fbddea801fd9dbc6c9828fcae997f8`)
+- [x] PR #2304 merged with current-head checks green. (proof: none: GitHub merge and check state is external evidence; owner merged #2304)
 
 The frozen wizard integration source is session32 commit `be1f04cc9ca4af723cb3bf2bc0a7823d0eafd46f`; the owner recorded session32's authorship and same-PR authorization in [the PR comment](https://github.com/GarryOne/jobadabra/pull/2304#issuecomment-6449530151). Local e2e execution is explicitly excluded by the owner; CI verified prefill → explicit approval → PDF → continue on #2304.
 
 ### 2. Gitar review follow-up
-- [x] The six product and test findings closed by Gitar are present in merged #2304 and covered by focused regression tests.
-- [x] Regression proves opening the step currently starts AI generation before a user choice.
+- [x] The six product and test findings closed by Gitar are present in merged #2304 and covered by focused regression tests. (proof: desktop/test/letter-priority.test.js @262a7ed, desktop/test/letter-applying.test.js @262a7ed, desktop/e2e/lib/wizard.mjs @3146cea)
+- [x] Regression proves opening the step currently starts AI generation before a user choice. (proof: desktop/test/wizard-letter.test.js)
 - [x] Wizard generation starts only after the existing Draft with AI action; fake-AI test still verifies explicit approval. (proof: desktop/test/wizard-letter.test.js)
-- [x] Session32 updates the frozen e2e wizard helper to make the same explicit action. (proof: source commit `f4efd3ee12694685f4925343113d08b1513ef767`; `desktop/test/harness-wizard-letter.test.js` passes 5/5)
+- [x] Session32 updates the frozen e2e wizard helper to make the same explicit action. (proof: desktop/e2e/lib/wizard.mjs, desktop/test/harness-wizard-letter.test.js)
 - [ ] Follow-up PR passes current-head checks.

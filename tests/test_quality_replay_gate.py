@@ -43,6 +43,20 @@ class QualityReplayGateTests(unittest.TestCase):
                 self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY="$replay"', text)
                 self.assertNotRegex(text, r'E2E_RERUN=1 E2E_AI_REPLAY=0\b')
 
+    # "Same scores twice" is a rate over the last 90 pairs of the night's live runs (desktop/e2e/lib/quality-rate.mjs): its history is restored for quality
+    # and saved after the live run on main even when it is red (a red night must count), never from a PR or a replayed run.
+    def test_the_score_steadiness_history_is_kept_between_live_nights(self):
+        text = (WORKFLOWS / 'e2e.yml').read_text()
+        self.assertIn("E2E_QUALITY_HISTORY: ${{ matrix.suite == 'quality' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}", text)
+        steps = re.split(r'(?m)^      - ', text)
+        restore = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/restore' in step]
+        save = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/save' in step]
+        self.assertEqual((len(restore), len(save)), (1, 1))
+        self.assertIn('restore-keys: quality-rate-', restore[0])
+        for condition in ('always()', "matrix.suite == 'quality'", "env.E2E_AI_REPLAY == '0'", "github.ref == 'refs/heads/main'"):
+            self.assertIn(condition, save[0])
+        self.assertLess(text.index(restore[0]), text.index('- name: Run the ${{ matrix.key }} suite (first try)'))
+
 
 if __name__ == '__main__':
     unittest.main()

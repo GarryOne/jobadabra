@@ -188,7 +188,7 @@
   "prompt-sources.test.mjs",
   "proposals-to-use.test.mjs",
   "python-env.test.mjs",
-  "quality-judge-input.test.mjs",
+  "quality-judge-input.test.mjs", "quality-rate.test.mjs",
   "quality-rows.test.mjs",
   "quality.test.mjs",
   "read-back-equivalence.test.mjs",

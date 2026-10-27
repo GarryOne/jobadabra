@@ -242,6 +242,7 @@ jobs:
       # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). How steady the AI is: the night's fresh run. Guard: tests/test_quality_replay_gate.py
       E2E_AI_STRICT: ${{ matrix.suite == 'quality' && (inputs.pr_suites == '' || inputs.after_merge != '') && '1' || '' }}
       E2E_AI_MAX_AGE_DAYS: ${{ matrix.suite == 'quality' && '3650' || '' }}
+      E2E_QUALITY_HISTORY: ${{ matrix.suite == 'quality' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}   # lib/quality-rate.mjs
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       JOB_PILOTTO_E2E_EXPECTS_FAILURES: ${{ inputs.mutant && '1' || '' }}   # a mutant run breaks the app on purpose: its crash reports are tagged expected, so the Sentry loop ignores them
@@ -333,6 +334,14 @@ jobs:
           KEY: ${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
         run: node desktop/e2e/pr-answers.mjs "$MERGED" "$KEY" desktop/e2e/.ai-cache
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
+      - name: The score-steadiness history of the night's live quality runs (lib/quality-rate.mjs)
+        # Owner, 27 Oct 2026 ("Code gate + AI rate"): "same scores twice" is a rate over the last 90 pairs, red below 80% within 8 points or above 2% more than 20 apart.
+        if: matrix.suite == 'quality'
+        uses: actions/cache/restore@v5
+        with:
+          path: desktop/e2e/.quality-rate
+          key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: quality-rate-
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
         continue-on-error: true   # a failed mint falls back to the workflow token
@@ -428,6 +437,12 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Keep the score-steadiness history, red or green (the night's live quality run on main)
+        if: always() && matrix.suite == 'quality' && env.E2E_AI_REPLAY == '0' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: desktop/e2e/.quality-rate
+          key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)
         if: success() && inputs.pr_suites != '' && inputs.after_merge == '' && env.E2E_ANTHROPIC_KEY != '' && hashFiles('desktop/e2e/.ai-cache/*.json') != ''
         uses: actions/upload-artifact@v6

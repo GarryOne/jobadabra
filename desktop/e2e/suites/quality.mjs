@@ -11,12 +11,13 @@ import {python, pythonEnv} from '../lib/python.mjs';
 import {fileURLToPath} from 'node:url';
 import {sample, watch} from '../lib/activity.mjs';
 import {fresh, missedQuestions, replaying, strict} from '../lib/ai-meter.mjs';
+import {addNight, nightOf, rateOf, rateVerdict, readHistory, writeHistory} from '../lib/quality-rate.mjs';
 import {failures, judge} from '../lib/factjudge.mjs';
 import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf, rewriteTextLines} from '../lib/seed-texts.mjs';
 import {MATCHES, matchRowsOf, notKeptNote} from '../lib/quality-rows.mjs';
 import {clearData} from '../lib/start-state.mjs';
-import {checkFacts, dirtyRows, dirtyText, fingerprints, leaks, judgeVerdict, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, stabilityVerdict, unstable, workLeft} from '../lib/quality.mjs';
+import {checkFacts, dirtyRows, dirtyText, fingerprints, leaks, judgeVerdict, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl, rankingViolations, unstable, workLeft} from '../lib/quality.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {quiet} from '../lib/activity-steps.mjs';
@@ -218,9 +219,15 @@ export async function run(ctx) {
       summary.stable = `within ±${Math.max(0, ...spread)}`;
       console.log(`  second scores: ${postings.map(item => `${item.id}=${second[item.id] ?? '-'}`).join(' ')}`);
       if (!spread.length) throw new Error('the second check scored nothing to compare');
-      const apart = unstable(first, second, 8), verdict = stabilityVerdict(apart, spread.length);
-    if (apart.length) console.log(`  ${apart.length} of ${spread.length} jobs moved more than 8 points (allowed: ${verdict.allowed}): ${apart.map(item => `${item.id}: ${item.first} → ${item.second}`).join(', ')}`);
-    if (!verdict.ok) throw new Error(`scores are not stable: ${verdict.problems.join('; ')}`);
+      const apart = unstable(first, second, 8);
+      if (apart.length) console.log(`  ${apart.length} of ${spread.length} jobs moved more than 8 points: ${apart.map(item => `${item.id}: ${item.first} → ${item.second}`).join(', ')}`);
+      // A rate over the last 90 pairs of the night's live runs (lib/quality-rate.mjs), not this run alone: one wobbly night never turns main red by itself.
+      const file = process.env.E2E_QUALITY_HISTORY || '', runId = Number(process.env.GITHUB_RUN_ID) || `local-${Date.now()}`;
+      const history = addNight(readHistory(file), nightOf(first, second, {runId, day: new Date().toISOString().slice(0, 10)}));
+      writeHistory(file, history);
+      const rate = rateVerdict(rateOf(history));
+      console.log(`  score steadiness: ${rate.line}`);
+      if (!rate.ok) throw new Error(`the AI's scores are not steady over the last nights: ${rate.problems.join('; ')}`);
     }, {needs: [...ctx.needs, LIVE], limitMs: 6 * STEP}));
 
     await soft(() => ctx.run('no job text, CV text or secret reached the logs', async () => {

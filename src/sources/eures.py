@@ -164,6 +164,7 @@ def start_early(search):
     if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
         return None
     from . import aggregators, feeds
+    from ..ai import slots
     # Why (gitar-bot, #2261): an early read must not run when the stage would not take it: its switch is off (not in sources()), or it rests SPACING_HOURS.
     if 'EURES' not in dict(aggregators.sources()):
         return None
@@ -174,7 +175,8 @@ def start_early(search):
     except Exception:  # noqa: BLE001 — no readable history: read, as a first search does
         pass
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='eures')
-    future = pool.submit(eures, search)
+    # Why (#2235, gitar): a pool thread starts at NORMAL; the region question is one short call at the run's start, so it queues FIRST
+    future = pool.submit(slots.carry(eures, slots.FIRST), search)
     pool.shutdown(wait=False)
     _early[aggregators.search_key(search)] = future
     return future

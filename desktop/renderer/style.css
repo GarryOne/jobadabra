@@ -1317,10 +1317,15 @@ main { min-width: 0; }
 .ss-need-desc { color: var(--muted); }
 .ss-need-actions { display: flex; align-items: center; gap: var(--sp-2); flex: none; flex-wrap: wrap; }
 .ss-need-button { padding: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); }
-/* "Tell Claude…": the answer box, its button and Cancel on one line under the text, lined up with it. */
+/* Same-size buttons in one column, Review in form last; roles told apart by a soft tint only (owner, 27 Oct 2026: "slightly different colors, not big contrasts"). */
+.ss-need-actions > .ss-need-button { min-width: 112px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.ss-need-button.is-answer { background: var(--good); border-color: var(--good); color: var(--on-bright); }   /* the row's main action: solid (owner, 27 Oct 2026) */
+.ss-need-button.is-change { background: var(--info-soft); border-color: color-mix(in srgb, var(--info) 55%, var(--line)); }  .ss-need-button.is-review { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink-2); }  .ss-choice[aria-pressed="true"] { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.ss-saved { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); color: var(--muted); }  .ss-saved.is-error { color: var(--bad); }
+/* Change…: the chips, the answer box, Send and Cancel on a line under the text, lined up with it. */
 .ss-need.is-asking { flex-wrap: wrap; }
-.ss-need.is-asking .ss-need-actions { flex: 1 1 100%; flex-wrap: nowrap; padding-left: calc(24px + var(--sp-3)); }
-.ss-need.is-asking .ss-ask-input { flex: 1 1 auto; max-width: none; min-width: 0; }
+.ss-need.is-asking .ss-need-actions { flex: 1 1 100%; padding-left: calc(24px + var(--sp-3)); }
+.ss-need.is-asking .ss-ask-input { flex: 1 1 200px; max-width: none; min-width: 0; }
 .ss-need.is-asking .ss-need-title { white-space: normal; }
 .ss-need.is-asking .ss-need-button { flex: none; white-space: nowrap; }
 .ss-need-outcome { color: var(--good); }
@@ -1330,8 +1335,6 @@ main { min-width: 0; }
 .ss-need.is-done .ss-need-title { font-weight: 500; color: var(--muted); }
 .ss-need.is-done .ss-need-desc { display: none; }
 .ss-need.is-done .ss-ask-input, .ss-need.is-done .ss-need-hint { display: none; }
-.ss-need.is-done .ss-ask-q b { font-weight: 500; }
-.ss-need.is-done .ss-ask-save { font-size: var(--fs-sm); font-weight: 400; color: var(--muted); }
 /* Everything handled: the card folds to its header; a click opens it. */
 .ss-needs.is-all-done { border-color: var(--line); }
 /* Now vs history: handled rows show only on the footer's click; with nothing open, one line says so */
@@ -1344,13 +1347,6 @@ main { min-width: 0; }
   color: var(--muted); font-size: var(--fs-sm); font-weight: 500; text-align: left; }
 .ss-needs-history:hover { color: var(--ink); }
 .ss-needs-history .icon { flex: none; width: 16px; height: 16px; color: var(--good); }
-/* The answer chip: Claude's proposed answer, and any you saved for the same question, in one control. */
-.ss-answer { display: inline-flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-1) 0 var(--sp-3);
-  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); }
-.ss-answer-label { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; }
-.ss-answer select { width: auto; max-width: 240px; padding: var(--sp-1) 0; border: 0; background: none;
-  color: var(--good); font-size: var(--fs-md); font-weight: 600; }
-.ss-answer select:focus-visible { outline-offset: 0; }
 /* Claude's report (its own words, from when it finished): folded to its header */
 .ss-happened .ss-fact-head { cursor: pointer; margin-bottom: 0; }
 .ss-happened .ss-fact-head .icon { transition: transform .15s; }
@@ -1368,10 +1364,6 @@ main { min-width: 0; }
 /* A knockout question's row (need-knockout.js): a warning edge and a bold line, the same edge as the other warning cards. */
 .ss-need.is-knockout { padding-left: calc(var(--sp-3) - 3px); border-left: 4px solid var(--warn); border-left-color: var(--warn); }
 .ss-need-knock { color: var(--warn); font-size: var(--fs-sm); }
-.ss-ask-save { display: inline-flex; align-items: center; gap: var(--sp-2); cursor: pointer; color: var(--ink-2); white-space: nowrap; margin: 0; }
-.ss-ask-save input { width: auto; margin: 0; }
-.ss-ask-save.is-saved { color: var(--good); }
-.ss-ask-save.is-error { color: var(--bad); }
 /* What Claude did: folded by default (a report to look up, not a task). */
 .ss-done-card { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-4); background: var(--surface); margin: 0; }
 .ss-done-card > summary { list-style: none; cursor: pointer; margin: 0; padding: var(--sp-1) 0; }

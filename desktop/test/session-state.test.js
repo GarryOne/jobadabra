@@ -314,7 +314,7 @@ test('Claude stopped on an account page with things for you: "Needs you", never 
   assert.match(page, /show\(\$\('ss-needs-card'\), needs\.length \+ empty\.length > 0 && !gone\)/);
   assert.doesNotMatch(page, /What Claude needs from you:'/, 'the list is the card below, not a second copy in the top card');
   const needs = fs.readFileSync(new URL('../renderer/pages/session-needs.js', import.meta.url), 'utf8');
-  assert.match(needs, /if \(item\.stage !== 'account'\) actions\.append\(smallButton\('Review in form'/, 'no form to review on the account step');
+  assert.equal((needs.match(/if \(item\.stage !== 'account'\) actions\.append\(reviewButton\(/g) || []).length, 2, 'no form to review on the account step (decision and ask rows)');
 });
 
 test('right after the app starts a silent Chrome is a neutral wait; the warning comes after WAIT_MS', async () => {

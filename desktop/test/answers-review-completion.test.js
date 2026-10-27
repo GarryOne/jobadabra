@@ -48,6 +48,7 @@ test('a persisted Your details answer leaves Needs review immediately, stays Set
   t.mock.timers.tick(800);
   saved('Current location', 'contact:location', 'Zurich');
   assert.match(answersBody.querySelector('.is-review').textContent, /0 to review/, 'the second successful save updates progress without waiting');
+  assert.deepEqual(rowTitles(), ['First name', 'Current location'], 'adjacent active acknowledgements retain their captured queue order');
   t.mock.timers.tick(300);   // first acknowledgement begins fading at 1.1 s
   t.mock.timers.tick(300);   // and is removed 300 ms later
   const afterFade = answersBody.querySelector('.is-review').textContent;

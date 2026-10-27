@@ -67,7 +67,7 @@ function acknowledgeQuestion(event) {
 
   const prior = new Set(identities.map(identity => completions.get(identity)).filter(Boolean));
   for (const record of prior) clearCompletion(record);
-  const record = {identities, snapshot, value, leaving: false};
+  const record = {identities, snapshot, value, revision, leaving: false};
   for (const identity of identities) completions.set(identity, record);
   opened.delete(snapshot.rowKey);
   lastView?.redraw();
@@ -255,14 +255,12 @@ function draw(view, into) {
   reviewRowsByQuestion = new Map();
   for (const entry of open) {
     const rowKey = `review:${entry.item.id}`;
-    const position = reviewOrder.indexOf(rowKey);
-    reviewRowsByQuestion.set(identityOf(entry.item.question), {kind: 'answer', entry, rowKey, position, previousRowKey: reviewOrder[position - 1], nextRowKey: reviewOrder[position + 1]});
+    reviewRowsByQuestion.set(identityOf(entry.item.question), {kind: 'answer', entry, rowKey, orderKeys: reviewOrder});
   }
   for (const entry of [...setupRows, ...detailRows]) {
     if (!entry.details) continue;
     const rowKey = `details:${entry.key}`;
-    const position = reviewOrder.indexOf(rowKey);
-    const snapshot = {kind: 'detail', entry, rowKey, position, previousRowKey: reviewOrder[position - 1], nextRowKey: reviewOrder[position + 1]};
+    const snapshot = {kind: 'detail', entry, rowKey, orderKeys: reviewOrder};
     reviewRowsByQuestion.set(identityOf(entry.question), snapshot);
     reviewRowsByQuestion.set(keyIdentity(entry.key), snapshot);
   }
@@ -270,7 +268,9 @@ function draw(view, into) {
   const currentShownRows = shownRows.filter(entry => !isResolved(entry.item.question));
   const currentSetupRows = setupRows.filter(entry => !isResolved(entry.question, entry.key));
   const currentExtraRows = extraRows.filter(entry => !isResolved(entry.question, entry.key));
-  const visibleCompletions = [...new Set(completions.values())].filter(record => matches({question: record.snapshot.kind === 'answer' ? record.snapshot.entry.item.question : record.snapshot.entry.question, value: record.value}, {query: filters.query}));
+  const visibleCompletions = [...new Set(completions.values())]
+    .filter(record => matches({question: record.snapshot.kind === 'answer' ? record.snapshot.entry.item.question : record.snapshot.entry.question, value: record.value}, {query: filters.query}))
+    .sort((a, b) => a.revision - b.revision);
   const reviewCount = currentShownRows.length + currentExtraRows.length;
 
   toolbar(view, into, reviewCount);
@@ -297,28 +297,26 @@ function draw(view, into) {
     const addAnswer = entry => {
       const {item} = entry;
       const completion = completionFor(item.question, '', 'answer');
-      if (completion) { reviewEntries.push({kind: 'completion', completion}); representedCompletions.add(completion); }
+      if (completion) { reviewEntries.push({kind: 'completion', completion, rowKey: `review:${item.id}`}); representedCompletions.add(completion); }
       else if (!isResolved(item.question)) reviewEntries.push({kind: 'answer', entry, rowKey: `review:${item.id}`});
     };
     for (const entry of open) addAnswer(entry);
     for (const each of currentSetupRows) reviewEntries.push({kind: 'setup', entry: each, rowKey: each.key});
     for (const each of detailRows) {
       const completion = completionFor(each.question, each.key, 'detail');
-      if (completion) { reviewEntries.push({kind: 'completion', completion}); representedCompletions.add(completion); }
+      if (completion) { reviewEntries.push({kind: 'completion', completion, rowKey: `details:${each.key}`}); representedCompletions.add(completion); }
       else if (!isResolved(each.question, each.key)) reviewEntries.push({kind: 'detail', entry: each, rowKey: `details:${each.key}`});
     }
-    // Why (2026-10-27): an async queue reread can remove a saved source row before its brief Set acknowledgement expires; neighbor keys restore its slot after filters change.
+    // Why (2026-10-27): keep saved source rows in the captured queue order until their brief Set acknowledgement expires, including adjacent saves.
     for (const completion of visibleCompletions) {
       if (representedCompletions.has(completion)) continue;
-      const {snapshot} = completion;
-      let index = snapshot.nextRowKey ? reviewEntries.findIndex(entry => entry.rowKey === snapshot.nextRowKey) : -1;
-      if (index < 0 && snapshot.previousRowKey) {
-        const previousIndex = reviewEntries.findIndex(entry => entry.rowKey === snapshot.previousRowKey);
-        if (previousIndex >= 0) index = previousIndex + 1;
-      }
-      if (index < 0) index = Math.min(snapshot.position ?? reviewEntries.length, reviewEntries.length);
-      reviewEntries.splice(index, 0, {kind: 'completion', completion});
+      reviewEntries.push({kind: 'completion', completion, rowKey: completion.snapshot.rowKey});
     }
+    const stableOrder = visibleCompletions[0]?.snapshot.orderKeys || reviewOrder;
+    const stablePositions = new Map(stableOrder.map((key, index) => [key, index]));
+    const currentPositions = new Map(reviewOrder.map((key, index) => [key, index]));
+    const positionOf = entry => stablePositions.get(entry.rowKey) ?? stableOrder.length + (currentPositions.get(entry.rowKey) ?? reviewEntries.length);
+    reviewEntries.sort((a, b) => positionOf(a) - positionOf(b));
     let visibleQueueRows = 0, visibleDetailRows = 0;
     // Why (2026-10-27): keep acknowledged rows in queue order through redraws and async source-list refreshes.
     for (const current of reviewEntries) {

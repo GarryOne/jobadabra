@@ -31,12 +31,13 @@
   }
   // The Apply is working: the layer (re)appears. Stays until a verdict.
   function on() {
-    if (layer?.isConnected) return;
+    if (layer?.isConnected || document.getElementById('jobpilotto-review-host')?.hidden) return;   // Why (#1558): a closed panel (its X) has no Stop on the page: never dimmed
     layer = Object.assign(document.createElement('div'), {id: ID});
     layer.style.cssText = 'position:fixed;inset:0;z-index:2147483645;pointer-events:none;background:rgba(19,36,57,.55);';
     document.documentElement.append(layer);
     window.__jobPilottoOverlayFx?.(layer);   // the magic behind the panel (panel-overlay-fx.js): inside the layer, so every end takes it away
     for (const name of HELD) window.addEventListener(name, hold, {capture: true, passive: false});
+    wipe?.disconnect();
     // Why (2026-10-27, owner, 2nd recording of an Apply on a posting): a page's framework re-renders <html> about 2 s in and deletes every child it did not draw: the dim went with it. The layer is the
     // state's drawing, not its owner: a layer the page deleted is put back at once and the state stays (apply-state.js).
     wipe = new MutationObserver(() => { if (layer && !layer.isConnected) document.documentElement.append(layer); });

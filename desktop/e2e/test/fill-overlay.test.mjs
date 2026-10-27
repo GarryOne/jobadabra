@@ -18,7 +18,10 @@ const open = async (answer = {}) => {
   await app.page.evaluate(() => { location.hash = 'jobpilotto-fill'; });
   await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
   const worker = app.context.serviceWorkers()[0];
-  const step = text => worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text);
+  // Why-changed (27 Oct 2026, owner: one state, changed only on a verdict): a step is the worker saying the run is on (apply-state.js: `working`), an empty one its end (`done`), exactly as background.js progress() does;
+  // the page draws what it is told. `verdict(state)` pushes any other state the way the worker does.
+  const verdict = state => worker.evaluate(async word => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'applyState', state: word}); }, state);
+  const step = async text => { await verdict(text ? 'working' : 'done'); return worker.evaluate(async words => { const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'}); return chrome.tabs.sendMessage(tab.id, {type: 'panelStep', text: words}); }, text); };
   const overlay = () => app.page.evaluate(() => !!document.getElementById('jobpilotto-fill-overlay'));
   const host = () => app.page.evaluate(() => { const h = document.getElementById('jobpilotto-review-host'); const box = h?.getBoundingClientRect(); return {centred: !!h && /translate/.test(h.style.cssText), right: h?.style.right, x: box && Math.round(box.x + box.width / 2), w: innerWidth}; });
   const clickInput = async () => { await app.page.mouse.click(300, 60); return app.page.evaluate(() => ({hits: window.hits, focus: document.activeElement?.id || ''})); };
@@ -31,7 +34,7 @@ const open = async (answer = {}) => {
       return names.every(name => now[name] === wanted[name]); }, [want, keys], {timeout: 10000}).catch(async () => assert.fail(`${what}: wanted ${JSON.stringify(want)}, the page shows ${JSON.stringify(await look())}`));
   };
   const mark = page => app.page.evaluate(word => document.documentElement.setAttribute('data-jobpilotto-page', word), page);
-  return {app, step, overlay, host, clickInput, worker, look, lookIs, mark};
+  return {app, step, verdict, overlay, host, clickInput, worker, look, lookIs, mark};
 };
 
 test('a fill step dims the page, holds the person\'s click, key and wheel, and centres the panel', async () => {
@@ -142,8 +145,10 @@ test('reading or routing a page covers it too, says it once in the step row, and
   try {
     await t.step('');
     await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 5000});
+    await t.verdict('working');   // Why-changed (27 Oct 2026): a page mark only words the step; the worker's state decides whether the page is dimmed
     await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-page', 'reading'));
     await t.app.page.waitForFunction(() => !!document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('no overlay while the page is being read'));
+    await t.app.page.waitForFunction(() => /Reading this page/.test(document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.fill .label')?.textContent || ''), null, {timeout: 8000});
     const seen = await t.app.page.evaluate(() => {
       const root = document.getElementById('jobpilotto-review-host').shadowRoot, shown = el => !!el && el.getClientRects().length > 0;   // drawn (an ancestor with display:none draws nothing)
       const count = [...root.querySelectorAll('.progress-line b, .step-line, .fill .label, .pill b')].filter(el => shown(el) && /Reading this page/.test(el.textContent)).length;
@@ -154,7 +159,10 @@ test('reading or routing a page covers it too, says it once in the step row, and
     assert.doesNotMatch(seen.hint, /Counts update/, 'reading has its own sub-line');
     assert.equal((await t.host()).centred, true);
     await t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-page', 'form'));
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('the overlay stayed after the page became a form'));
+    await t.app.page.waitForTimeout(600);
+    assert.equal(await t.overlay(), true, 'a page mark moving on never lifts the dim (Why-changed, 27 Oct 2026: only the worker\'s verdict does)');
+    await t.verdict('done');
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 8000}).catch(() => assert.fail('the overlay stayed after the worker\'s verdict'));
     assert.equal((await t.host()).centred, false, 'the panel is back in its corner');
   } finally { await t.app.close(); }
 });
@@ -177,9 +185,11 @@ test('every working state dims the page and centres the panel, together; its end
       await t.lookIs({dim: false, centred: false}, `after fill step "${words}"`);
     }
     for (const page of WORKING_MARKS) {
+      await t.verdict('working');
       await t.mark(page);
       await t.lookIs({dim: true, centred: true}, `page mark "${page}"`);
       await t.mark('form');
+      await t.verdict('done');   // Why-changed (27 Oct 2026): the page mark moving on no longer ends the look, the worker's verdict does
       await t.lookIs({dim: false, centred: false}, `after page mark "${page}"`);
     }
   } finally { await t.app.close(); }
@@ -189,7 +199,6 @@ test('every end of a working state takes the dim and the centring away together,
   const t = await open();
   const ends = [
     ['done', () => t.step('')],
-    ['the layer removed from outside (a settle, Stop on another path)', () => t.app.page.evaluate(() => document.getElementById('jobpilotto-fill-overlay')?.remove())],
     ['needs you', () => t.app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'a captcha'))],
   ];
   try {
@@ -202,7 +211,10 @@ test('every end of a working state takes the dim and the centring away together,
     }
     await t.app.page.evaluate(() => document.documentElement.removeAttribute('data-jobpilotto-needs'));
     await t.step('Filling Full name…');
-    await t.lookIs({dim: true, centred: true}, 'before the close');
+    await t.lookIs({dim: true, centred: true}, 'before the wipe');
+    await t.app.page.evaluate(() => { document.getElementById('jobpilotto-fill-overlay')?.remove(); document.getElementById('jobpilotto-review-host')?.remove(); });   // Why-changed (27 Oct 2026): a layer and panel the page deletes are put back, the state stays
+    await t.app.page.waitForTimeout(300);
+    await t.lookIs({dim: true, centred: true}, 'a page that deletes the layer and the panel gets them back');
     await t.app.page.evaluate(() => document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.x').click());
     await t.lookIs({dim: false, centred: false}, 'end "closed"');
     await t.step('Filling Email…');
@@ -267,9 +279,8 @@ test('back-to-back steps keep the dim and the centring at every frame: the mark 
     await t.step('Filling the form…');
     await t.mark('form');   // the page is judged a form: the mark's row ends, the fill's own goes on
     await t.app.page.waitForTimeout(400);
-    await t.step('');   // one fill ends…
-    await t.app.page.waitForTimeout(150);
-    await t.step('Choosing the drop-down answers…');   // …and the next starts a moment later (the panel's own fill, a Claude pass, the account step)
+    // Why-changed (27 Oct 2026, owner: one verdict at the real end, nothing pending): "one fill ends, the next starts a moment later" is no longer a gap the page bridges with a timer; a run has no end between its steps.
+    await t.step('Choosing the drop-down answers…');
     await t.app.page.waitForTimeout(300);
     await t.step('Uploading your CV…');
     await t.app.page.waitForTimeout(300);
@@ -424,6 +435,7 @@ test('the fill writing its end on the page frees it at once: the person\'s first
     await t.lookIs({dim: true, busy: true}, 'a running fill keeps the look');   // positive control: "running" changes nothing
     const before = await t.app.page.evaluate(() => window.hits || 0);
     await t.app.page.evaluate(() => { document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'done', filled: 3, left: 0}); });
+    await t.verdict('done');   // Why-changed (27 Oct 2026): the worker's writeState says the verdict as it writes the end (fill-flow.js); the page no longer watches the attribute
     await t.app.page.waitForTimeout(50);
     const free = await t.clickInput();
     assert.ok(free.hits > before, `the first click 50 ms after "done" reaches the page (the page shows ${JSON.stringify(await t.look())})`);

@@ -62,7 +62,7 @@ test('a working Apply is dimmed from its commit by the one overlay the panel tak
   const early = read('extension/early-dim.js');
   assert.match(early, /webNavigation\?\.onCommitted/, 'at the commit, the earliest moment the worker can reach the new document');
   // Why-changed: the mark-or-step rule is now the worker's state (apply-state.js): set by the app's marked open before any page loads, dimmed while working.
-  assert.match(early, /details\.url\.includes\(FILL_MARK\)[^\n]*applyState\(details\.tabId\)\) return;\n    setApply\(details\.tabId, WORKING\)/, 'an Apply starts at the first marked navigation of a tab with no state');
+  assert.match(early, /includes\(FILL_MARK\)[\s\S]*applyState\(details\.tabId\)[\s\S]*setApply\(details\.tabId, WORKING\)/, 'an Apply starts at the first marked navigation of a tab with no state (or the app opening a finished tab again)');
   assert.match(early, /!isWorking\(details\.tabId\)/, 'only a tab the worker holds as working is dimmed, never any other page');
   assert.match(early, /isStopped\(\)/, 'never after the person\'s Stop');
   assert.match(early, /files: \['panel-overlay-fx\.js', 'panel-overlay\.js', 'overlay-early\.js'\]/, 'one injection: the overlay and its early start together');

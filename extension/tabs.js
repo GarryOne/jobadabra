@@ -9,7 +9,7 @@
 import {IDENTITY_KEYS, fromOf, inheritedEntries} from './tab-identity.js';
 import {FOLD_MS, postingToClose, pressedLately, realOpener} from './same-tab.js';
 import {pageKey} from './tab-pages.js';
-import {applyState, setApply, WORKING} from './apply-state.js';
+import {applyState, restored, setApply, WORKING} from './apply-state.js';
 import {decide} from './log.js';
 import {sessionGet} from './tab-memory.js';
 import {isStopped, restart} from './stop-state.js';
@@ -46,7 +46,7 @@ export function claimAppTab(tabId, url = '') {
   decide('tab', 'tab with the fill mark seen', {host, tab: tabId, session: /#jobpilotto-fill=/.test(url)});   // the app's "opened the form tab" without this line: the extension never saw it
   const restarted = restart();
   if (restarted) decide('stop', 'started again: the app opened a tab for a job', {host});   // Apply in the app is the person's word to start again (stop.js)
-  if (restarted || !applyState(tabId)) setApply(tabId, WORKING);   // the app's open of a tab starts its Apply before any page loads (apply-state.js); a later event of a tab with a verdict never restarts it   // Apply in the app is the person's word to start again (stop.js)
+  restored.then(() => { if (restarted || !applyState(tabId)) setApply(tabId, WORKING); });   // after the states a sleeping worker kept are back, so a finished tab is not started again   // the app's open of a tab starts its Apply before any page loads (apply-state.js); a later event of a tab with a verdict never restarts it   // Apply in the app is the person's word to start again (stop.js)
   appTabs.add(tabId); setTimeout(() => appTabs.delete(tabId), 60000).unref?.(); }
 const hostOf = tab => { try { return new URL(tab.pendingUrl || tab.url || '').hostname; } catch { return ''; } };
 export async function followOpener(tab) {

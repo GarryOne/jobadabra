@@ -28,7 +28,7 @@ import {tellPanel} from './page-notes.js';
 import {fillWaitsForAllow, resumeFillWaiting, watchUnallowedFillTabs} from './site-allow.js';
 import {createReadyHandoff} from './ready-handoff.js';
 import {startRefusedReads} from './refused-read.js';
-import {startEarlyDim} from './early-dim.js'; import {setApply, forgetApply} from './apply-state.js';
+import {startEarlyDim} from './early-dim.js'; import {applyState, setApply, forgetApply} from './apply-state.js';
 
 // The tab we may touch: Chrome reuses a tab id after its tab closes, and the user can navigate the tab elsewhere
 // while a fill is still running, so every injection asks the tab what it shows first (tab-pages.js).
@@ -211,7 +211,7 @@ chrome.tabs.onCreated.addListener(async tab => {
 // nothing is drawn when that tab has moved on to another site (or its id came back as a different tab).
 async function progress(tabId, text, url = '', verdict = 'done') {
   // Why (2026-10-27, owner, replacing #2262's step-on-tab rule): the run's end is the verdict that lifts the dim, whichever site the tab is on (apply-state.js): a progress with no text is `done`, or `your-turn` when the fill hands the page over.
-  if (!text) { stepNow.delete(tabId); setApply(tabId, verdict); }
+  if (!text) { stepNow.delete(tabId); setApply(tabId, verdict); } else { if (applyState(tabId) === 'done') setApply(tabId, 'working'); if (applyState(tabId) !== 'working') return; }   // a step after a `done` (a no-form read, then a fill) is the run being on again; after Stop or your-turn only the person's own start brings it back, and a step is drawn only while working
   if (url && !(await onPage(tabId, url))) return;
   // The page's panel (review.js) shows it when it is there; the floating box is for pages without one. Whichever
   // takes it, the other is cleared: a box drawn before the panel opened used to stay on the page for good, above a

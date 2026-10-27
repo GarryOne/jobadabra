@@ -4,6 +4,7 @@
 // must act (your-turn). The page only DRAWS it (panel-overlay.js, review.js, early-dim.js): dim + centred panel while working, nothing decided by a timer, a page event or a removed layer.
 // Held in the worker and in chrome.storage.session (a sleeping worker wakes to the same answer); every change is pushed to the tab as {type: 'applyState'}. Guards: desktop/e2e/test/fill-overlay-early-reload.test.mjs,
 // desktop/test/apply-state-owner.test.js.
+// TODO(AI): a run that ends with no progress('') (a return that skips it) leaves its tab working until Stop, the panel's X or the tab's close: find such a path and give it a verdict (2026-10-27).
 export const WORKING = 'working';
 export const VERDICTS = ['done', 'stopped', 'your-turn'];
 const states = new Map();   // tab id -> 'working' | a verdict
@@ -25,11 +26,12 @@ export const workingTabs = () => [...states].filter(([, state]) => state === WOR
  * @returns {boolean} whether the state changed
  */
 export function setApply(tabId, state) {
-  if (!Number.isInteger(tabId) || ![WORKING, ...VERDICTS].includes(state) || states.get(tabId) === state) return false;
+  if (!Number.isInteger(tabId) || ![WORKING, ...VERDICTS].includes(state)) return false;
+  const changed = states.get(tabId) !== state;
   states.set(tabId, state);
-  globalThis.chrome?.storage?.session?.set({[KEY(tabId)]: state}).catch(() => {});
-  globalThis.chrome?.tabs?.sendMessage(tabId, {type: 'applyState', state}).catch(() => {});   // a page with no script yet asks on its first draw (panelApply)
-  return true;
+  if (changed) globalThis.chrome?.storage?.session?.set({[KEY(tabId)]: state}).catch(() => {});
+  globalThis.chrome?.tabs?.sendMessage(tabId, {type: 'applyState', state}).catch(() => {});   // pushed again on a repeat: a page that drew a step locally meanwhile is set right; a page with no script yet asks on its first draw (panelApply)
+  return changed;
 }
 
 /** A closed tab's state goes with it. */

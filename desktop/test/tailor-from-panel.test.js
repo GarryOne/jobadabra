@@ -73,7 +73,7 @@ test('every Tailor in the window marks the job as being tailored (the panel says
 });
 
 // From the old tailor-status test (1da1158, 19 Oct 2026): a panel control that asks the app says its progress and failure on the panel.
-const OWN = new Set(['panelFill', 'panelReviewAnswer', 'panelTakeOver', 'panelClaudeAuto', 'panelTip', 'panelGoTab', 'panelReload', 'panelReloading', 'panelStepNow', 'panelBuild', 'panelJob', 'panelAllowed', 'panelCloseTab', 'panelFillOne', 'panelShowTab']);
+const OWN = new Set(['panelFill', 'panelReviewAnswer', 'panelTakeOver', 'panelClaudeAuto', 'panelTip', 'panelGoTab', 'panelReload', 'panelReloading', 'panelStepNow', 'panelApply', 'panelBuild', 'panelJob', 'panelAllowed', 'panelCloseTab', 'panelFillOne', 'panelShowTab']);
 test('every panel control that asks the app goes through ask(), which says progress and failure on the panel', () => {
   const root = new URL('../../extension/', import.meta.url);
   const sources = fs.readdirSync(root).filter(f => /^(review|panel-.*)\.js$/.test(f)).map(f => fs.readFileSync(new URL(f, root), 'utf8'));

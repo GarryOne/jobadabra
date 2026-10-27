@@ -4,7 +4,7 @@
 // the learned-answers, submit and account tests in desktop/test and the matrix (npm run flows).
 import {accountSkip} from './account.js';
 import {STARTING} from './panel-start.js';
-import {applyState, setApply, VERDICTS} from './apply-state.js';
+import {applyState, restored, setApply, VERDICTS} from './apply-state.js';
 import {api} from './flow.js';
 import {decide} from './log.js';
 import {stripMark} from './tab-pages.js';
@@ -70,7 +70,7 @@ export function createLearningMessages(ctx) {
       return true;
     }
     // The page asks the worker's state for its first draw and draws exactly that (apply-state.js); a verdict the page saw (the person must act, its own fill ended) is reported here, never decided there.
-    if (message?.type === 'panelApply' && sender.tab) { const text = stepNow.get(sender.tab.id) || ''; reply({state: applyState(sender.tab.id), text}); return false; }
+    if (message?.type === 'panelApply' && sender.tab) { const text = stepNow.get(sender.tab.id) || ''; restored.then(() => reply({state: applyState(sender.tab.id), text})); return true; }
     if (message?.type === 'applyVerdict' && sender.tab && VERDICTS.includes(message.verdict)) { setApply(sender.tab.id, message.verdict); reply({ok: true}); return false; }
     if (message?.type === 'panelStepNow' && sender.tab) {
       const text = stepNow.get(sender.tab.id) || '';

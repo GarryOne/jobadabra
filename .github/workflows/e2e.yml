@@ -438,7 +438,7 @@ jobs:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Keep the score-steadiness history, red or green (the night's live quality run on main)
-        if: always() && matrix.suite == 'quality' && env.E2E_AI_REPLAY == '0' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+        if: always() && matrix.suite == 'quality' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.quality-rate

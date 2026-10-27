@@ -53,7 +53,7 @@ class QualityReplayGateTests(unittest.TestCase):
         save = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/save' in step]
         self.assertEqual((len(restore), len(save)), (1, 1))
         self.assertIn('restore-keys: quality-rate-', restore[0])
-        for condition in ('always()', "matrix.suite == 'quality'", "env.E2E_AI_REPLAY == '0'", "github.ref == 'refs/heads/main'"):
+        for condition in ('always()', "matrix.suite == 'quality'", "env.E2E_AI_REPLAY != '1'", "github.ref == 'refs/heads/main'"):
             self.assertIn(condition, save[0])
         self.assertLess(text.index(restore[0]), text.index('- name: Run the ${{ matrix.key }} suite (first try)'))
 

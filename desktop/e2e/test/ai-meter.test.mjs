@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import {count, fresh, priceName, requestKey, resetUsage, usage, usageOf, writeUsage} from '../lib/ai-meter.mjs';
+import {count, fresh, keep, priceName, requestKey, resetUsage, usable, usage, usageOf, writeUsage} from '../lib/ai-meter.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
 
@@ -265,4 +265,21 @@ test('strict: a recorded answer never expires, a miss is not kept, and the misse
   assert.deepEqual(missedQuestions(env), [{key: 'k9', url: '/v1/messages', about: 'Title: Senior SRE (DE) Company: E2E Quality Labs'}]);
   assert.deepEqual(missedQuestions({...env, E2E_ARTIFACTS: path.join(dir, 'none')}), []);
   fs.rmSync(dir, {recursive: true, force: true});
+});
+
+// #2205's run 40451177894 (27 Oct 2026): Free AI's relay answered a quality judge with a 200 and an empty text; kept, every retry replayed "did not answer with JSON".
+test('an answer that says nothing is never kept: an empty text, no block, a broken JSON; a stream or another shape is kept as it came', t => {
+  const json = data => Buffer.from(JSON.stringify(data));
+  const messages = text => json({content: [{type: 'text', text}], usage: {}});
+  for (const [what, body] of [['an empty text', messages('')], ['a blank text', messages('  \n')], ['no block', json({content: []})], ['an empty OpenAI answer', json({choices: [{message: {content: ''}}]})]]) assert.equal(usable('application/json', body), false, what);
+  assert.equal(usable('application/json', Buffer.from('{broken')), false, 'a broken JSON');
+  assert.equal(usable('application/json', messages('{"grounded": true}')), true);
+  assert.equal(usable('application/json', json({content: [{type: 'tool_use', input: {}}]})), true, 'a tool call is an answer');
+  assert.equal(usable('application/json', json({choices: [{message: {content: 'yes'}}]})), true);
+  assert.equal(usable('text/event-stream', Buffer.from('event: message_start\n')), true, 'a stream is kept as it came');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-cache-')), env = {E2E_AI_CACHE: dir};
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  keep('empty', {status: 200, contentType: 'application/json', body: messages('')}, env);
+  keep('said', {status: 200, contentType: 'application/json', body: messages('{"grounded": true}')}, env);
+  assert.deepEqual(fs.readdirSync(dir), ['said.json'], 'only the answer that says something is kept');
 });

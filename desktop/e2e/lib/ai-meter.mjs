@@ -135,9 +135,22 @@ export function missedQuestions(env = process.env) {
 }
 
 // Keep a successful answer (CI only: E2E_AI_CACHE is set by the workflow; a Mac never records).
+// An answer that says nothing is never kept: Free AI's relay once answered a quality judge with a 200 and an empty text, it was kept, and every retry replayed
+// the same "did not answer with JSON" (#2205's run 40451177894, 27 Oct 2026; quality's answers never expire). A JSON Messages or OpenAI answer counts when one
+// block holds text or a tool call; any other answer (a stream, another shape) is kept as it came. Guard: test/ai-meter.test.mjs.
+export function usable(contentType, body) {
+  if (!/json/i.test(contentType || '')) return true;
+  let data;
+  try { data = JSON.parse(Buffer.from(body).toString('utf8')); } catch { return false; }
+  const said = text => typeof text === 'string' && text.trim() !== '';
+  if (Array.isArray(data?.content)) return data.content.some(block => block?.type === 'tool_use' || said(block?.text));
+  if (Array.isArray(data?.choices)) return data.choices.some(choice => said(choice?.message?.content) || choice?.message?.tool_calls?.length);
+  return true;
+}
+
 export function keep(key, {status, contentType, body}, env = process.env) {
   const dir = cacheDir(env);
-  if (!dir || status !== 200 || strict(env)) return;
+  if (!dir || status !== 200 || strict(env) || !usable(contentType, body)) return;
   try { fs.mkdirSync(dir, {recursive: true}); fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({status, contentType, savedAt: new Date().toISOString(), body: Buffer.from(body).toString('base64')})); } catch {}
 }
 

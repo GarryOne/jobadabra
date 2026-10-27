@@ -8,6 +8,7 @@ import {test} from 'node:test';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 import {DUMMY_KEY} from '../lib/engine.mjs';
 import {startOfflineApp} from '../lib/offline-app.mjs';
+import {withDerived} from '../../lib/target-roles.js';
 
 const REAL = path.join(os.homedir(), 'Library', 'Application Support', 'Job Pilotto');
 
@@ -39,7 +40,8 @@ test('the offline app holds the same applicant as the Electron run: the strategy
     assert.ok(profile.includes(draft.profile_markdown.trim()), `the strategy's Profile is kept (${profile.length} characters)`);
     assert.match(profile, /test\.candidate@example\.com/, 'the stand-in contact, never the draft\'s or a person\'s');
     assert.equal(fs.readFileSync(path.join(app.dir, 'answers.md'), 'utf8').trim(), draft.answers_markdown.trim());
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(app.dir, 'config', 'search.json'), 'utf8')).role_keywords, draft.search.role_keywords);
+    // Why (8c8bd70, 21 Oct 2026): the draft holds one list, target_roles; role_keywords is written from it, so the expected list is the app's own derivation.
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(app.dir, 'config', 'search.json'), 'utf8')).role_keywords, withDerived(draft.search).role_keywords);
   } finally { await app.close(); }
 });
 

@@ -85,13 +85,14 @@ test('"Restart" is never pressed by the probe (it relaunches the app: Windows in
 
 // #86 / #89: the real ⋯ menu (components.js + the app's CSS) below the fold. A click that scrolls the page itself delivers its scroll event just after the press, and the menu
 // closes on any scroll, so the probe saw "More actions" do nothing. The probe now scrolls the control into view and lets it settle first.
+// Why (3fc251e, 18 Oct 2026): the menu's styles moved to ui-menu.css; without it the menu opened unstyled and the probe filed it as broken (harness-daily red until 27 Oct).
 test('a real ⋯ menu below the fold is opened by the probe, not filed as broken', async () => {
   const http = await import('node:http'), fs = await import('node:fs'), path = await import('node:path');
   const root = new URL('../../renderer/', import.meta.url).pathname;
   const types = {'.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml'};
   const server = http.createServer((req, res) => {
     const url = req.url.split('?')[0];
-    if (url === '/t.html') { res.setHeader('content-type', 'text/html'); return res.end(`<link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/components.css"><link rel="stylesheet" href="/style.css"><body style="margin:0"><section class="view" data-view="t"><div style="height:1800px">filler</div><div id="host"></div><div style="height:1200px"></div></section><script type="module">import {moreButton} from '/components.js'; document.getElementById('host').append(moreButton([{label: 'Dismiss', run() {}}], 'More'));</script></body>`); }
+    if (url === '/t.html') { res.setHeader('content-type', 'text/html'); return res.end(`<link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/components.css"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/ui-menu.css"><body style="margin:0"><section class="view" data-view="t"><div style="height:1800px">filler</div><div id="host"></div><div style="height:1200px"></div></section><script type="module">import {moreButton} from '/components.js'; document.getElementById('host').append(moreButton([{label: 'Dismiss', run() {}}], 'More'));</script></body>`); }
     if (url === '/favicon.ico') { res.statusCode = 204; return res.end(); }   // the CI browser asks for it; a 404 would be filed as a console error
     const file = path.join(root, url);
     if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.statusCode = 404; return res.end(); }

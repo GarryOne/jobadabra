@@ -45,6 +45,7 @@ try {
   const out = report({strings, hits: suitesExpecting(strings, sources), changedFiles, sources});
   console.log(out.text);
   if (process.argv.includes('--plan')) {
+    (await import('./lib/ensure-staged.mjs')).ensureStaged(path.resolve(here, '..'));   // the suites imported below need desktop/shared/, which a PR job never staged (test/ensure-staged.test.mjs)
     const {suiteFacts} = await import('./plan-run.mjs');
     const facts = await suiteFacts();
     const linux = {};

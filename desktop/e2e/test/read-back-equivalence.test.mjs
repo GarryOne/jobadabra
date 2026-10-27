@@ -70,6 +70,7 @@ export const CHANGES = {
   'c: the file the extension attached, or a name that appeared after first sight, is the file for every reader (the panel\'s chip rule, read as a person sees the words)': d => d.kind === 'file' && committed(d.state) && d.old === false && !d.files,
   'f: a format hint, an example name or a file shown before anyone looked is never a CV (the old panel read "(.pdf" and "resume.pdf" in a hint as one; cc\'s review of #507)': d => d.kind === 'file' && d.reader === 'panel' && d.old === true && ['empty', 'unknown'].includes(d.state) && !d.files,
   'd: a picklist chip counts only from the field\'s own area: the fill\'s end read took one from any "container", even one holding another field': d => d.kind === 'combobox' && d.reader === 'fill' && d.old === true && d.state === 'empty',
+  'g: a chip beside a picker\'s plain search box is the picker\'s value for every reader (10b16d5, 16 Oct 2026: Workday\'s calling-code picker; recorded/picker-chip-beside-search-1, phone-split-picker-1)': d => /^recorded\/(picker-chip-beside-search-1|phone-split-picker-1)\//.test(d.page) && committed(d.state) && d.old === false,
   'e: a picklist chip in a container that holds only this field counts for the panel, the judges and the audit too (the fill\'s end read already took it)': d => d.kind === 'combobox' && committed(d.state) && d.old === false && d.reader !== 'fill',
 };
 const nowFor = (reader, state) => reader === 'sketch' ? held(state) : committed(state);

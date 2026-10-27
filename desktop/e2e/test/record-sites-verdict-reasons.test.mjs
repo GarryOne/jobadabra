@@ -11,7 +11,7 @@ const left = (reason, type = 'text', required = true) => ({outcome: 'left', type
 // The class (15 Oct 2026, Migros "unread" row): a reason the fill writes for a field that is NOT a failure must never count as a miss in the pool verdict. 0ae22fd added
 // "answered no: left unchecked" and the verdict kept reading it as a miss, so a correct "no" made a form "short". Every reason the fill can write is listed here as a failure or not.
 const FAILURES = new Set(['answer given, but the field did not take it', 'dropdown that opens only on a real click', 'question on the page not read', 'question text not found on the page',
-  'no answer in the kit, Profile or your details', 'the AI gave no answer', 'preselected by the page: check it']);   // preselected: written with outcome filled, so never judged here
+  'no answer in the kit, Profile or your details', 'the AI gave no answer', 'preselected by the page: check it', 'from your CV: check it']);   // preselected / from your CV (fill.js, 27 Oct 2026): written with outcome filled, so never judged here
 test('every reason the fill writes that is not a failure counts as filled or expected, never a miss', () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../extension/page');
   const reasons = new Set(fs.readdirSync(dir).filter(name => name.endsWith('.js')).flatMap(name => [...fs.readFileSync(path.join(dir, name), 'utf8').matchAll(/reason = '([^']+)'/g)].map(m => m[1])));

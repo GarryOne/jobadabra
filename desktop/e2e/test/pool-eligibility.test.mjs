@@ -9,11 +9,11 @@ import {POOL_LINE, applyPoolEligibility, eligibilityOff, poolEnv} from '../lib/p
 
 const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// A service worker stand-in: evaluate() runs the function against a chrome.storage.local kept in a plain object (`keeps: false` drops every write).
+// A service worker stand-in: evaluate() runs the function against a chrome.storage.local kept in a plain object (`keeps: false` drops every write). It passes evaluate's argument on, as Playwright does (setExtensionStorage hands its values over that way since 18 Oct 2026).
 const fakeWorker = ({keeps = true} = {}) => {
   const stored = {};
   const chrome = {storage: {local: {set: async values => { if (keeps) Object.assign(stored, values); }, get: async key => (key in stored ? {[key]: stored[key]} : {})}}};
-  return {stored, evaluate: async fn => { globalThis.chrome = chrome; try { return await fn(); } finally { delete globalThis.chrome; } }};
+  return {stored, evaluate: async (fn, arg) => { globalThis.chrome = chrome; try { return await fn(arg); } finally { delete globalThis.chrome; } }};
 };
 
 test('a pool row runs with the eligibility check off unless RECORD_ELIGIBILITY=on keeps it', () => {

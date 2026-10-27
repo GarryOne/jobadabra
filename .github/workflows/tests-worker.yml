@@ -26,6 +26,8 @@ on:
       - 'tools/free-ai-eval-metrics.mjs'
       - 'tools/free-ai-form-asks.mjs'
       - 'tools/free-ai-form-cases.mjs'
+      - 'tools/free-ai-form-list.mjs'
+      - 'tools/free-ai-form-applicants.mjs'
       - 'tools/browser-form-snapshot.js'
       - 'tools/browser-submit-guard.js'
       - 'tools/fill-fixture.mjs'

@@ -23,7 +23,7 @@ export async function formCases({profile, answers, forms = FORMS}) {
     await answerForm({PROFILE_TEXT: who?.profile ?? profile, ANSWERS_TEXT: who?.answers ?? answers, KNOWLEDGE_TEXT: '', SEARCH_TEXT: '', CV_FACTS_TEXT: who?.cv ?? '', store: {findJob: async () => null, kit: async () => null}},
       {url: 'https://example.com/jobs/sre', fields: form.fields, page_text: who?.page ?? 'Senior Site Reliability Engineer, Zurich. Hybrid. Kubernetes, AWS, on-call.'}, client).catch(error => { if (error.message !== 'captured') throw error; });
     const {model, ...rest} = params;
-    out.push({id: `form-${form.id}`, action: 'answer', expect: form.expect, params: rest});
+    out.push({id: `form-${form.id}`, action: 'answer', expect: form.expect, params: rest, ...(form.applicant ? {applicant: form.applicant} : {})});
   }
   return out;
 }

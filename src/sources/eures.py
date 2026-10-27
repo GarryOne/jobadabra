@@ -130,6 +130,10 @@ def eures(search, get=None, client=None):
     jobs, seen = [], set()
     for country in dict.fromkeys(prefix[:2] for prefixes in wanted.values() for prefix in prefixes):
         mine = {word: prefixes for word, prefixes in wanted.items() if prefixes[0][:2] == country}
+        # Why (27 Oct 2026, benchmark 40509412515, persona Krakow): the country word matched every Polish job, shown as "poland, Poland" (1 of 52 local).
+        # With a town or area named in this country, a whole-country word admits nothing; EURES has no remote flag to tell the exceptions.
+        if any(len(prefixes[0]) > 2 for prefixes in mine.values()):
+            mine = {word: prefixes for word, prefixes in mine.items() if len(prefixes[0]) > 2}
         for query in aggregators._queries(search)[:3]:
             for page in range(1, MAX_PAGES + 1):
                 if out_of_time(began):

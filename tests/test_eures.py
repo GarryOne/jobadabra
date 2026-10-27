@@ -58,6 +58,25 @@ class EuresTest(unittest.TestCase):
         self.assertEqual([(j['id'], j['location']) for j in found], [('eures:a', 'Brussels, Belgium')])
         self.assertEqual(calls[0]['locationCodes'], ['be'])
 
+    def test_a_country_word_does_not_admit_other_cities_when_the_person_named_a_city(self):
+        # Why (27 Oct 2026, benchmark 40509412515, persona Krakow): "poland" matched every Polish job, shown as "poland, Poland": 1 of 52 local.
+        search = {'role_keywords': ['cook'], 'locations': {'top_tier': ['Brussels'], 'country_wide': ['Belgium'], 'abroad': []}}
+
+        def get(url, data=None, headers=None, timeout=None):
+            return {'jvs': [jv('a', 'Cook', 'BE100'), jv('b', 'Cook', 'BE255')]}
+        with mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'country' if w == 'Belgium' else 'city', 'cc': 'BE', 'lat': 50.8, 'lon': 4.4, 'r': 30} for w in words}):
+            found = eures.eures(search, get=get, client=Client({'Brussels': 'BE10'}))
+        self.assertEqual([(j['id'], j['location']) for j in found], [('eures:a', 'Brussels, Belgium')])
+
+    def test_a_country_only_search_keeps_the_whole_country_with_no_city_in_the_location(self):
+        search = {'role_keywords': ['cook'], 'locations': {'top_tier': [], 'country_wide': ['Belgium'], 'abroad': []}}
+
+        def get(url, data=None, headers=None, timeout=None):
+            return {'jvs': [jv('b', 'Cook', 'BE255')]}
+        with mock.patch.object(geo, 'resolve', lambda words, client=None, ask=True, share=False: {geo.norm(w): {'kind': 'country', 'cc': 'BE'} for w in words}):
+            found = eures.eures(search, get=get, client=Client({}))
+        self.assertEqual([j['location'] for j in found], ['Belgium, Belgium'])
+
     def test_a_region_code_of_another_country_is_dropped_and_the_place_not_read(self):
         read = []
         found = eures.eures(SEARCH, get=lambda *a, **k: read.append(1) or {'jvs': []}, client=Client({'Brussels': 'FR10'}))

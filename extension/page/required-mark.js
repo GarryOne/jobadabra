@@ -28,7 +28,9 @@
     }
     return false;
   };
-  // The words of a label element without its star element and that spoken twin; a string is returned as it is.
+  // The words of a label element without its star element and that spoken twin; a string is returned as it is. Text the page never draws is no word of it: an icon's
+  // <svg> carries a <desc>/<title> ("SVGs not supported by this browser." beside Workable's "Address", benchmark form 106, 27 Oct 2026: the label no longer read as the address).
+  const UNDRAWN = 'svg, style, script, template, noscript';
   const read = value => {
     if (!value?.cloneNode) return text(value);
     const copy = value.cloneNode(true);
@@ -36,6 +38,7 @@
       if (leaf.getAttribute('aria-hidden') === 'true') leaf.nextElementSibling?.remove();
       leaf.remove();
     }
+    for (const undrawn of Array.from(copy.querySelectorAll?.(UNDRAWN) || [])) undrawn.remove();
     return text(copy.textContent);
   };
   // Does this label text (or label element) carry the mark?

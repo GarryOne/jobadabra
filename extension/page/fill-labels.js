@@ -23,7 +23,7 @@
   const looseLabel = el => {
     for (let up = el.parentElement, i = 0; up && i < 3; up = up.parentElement, i++) {
       const loose = Array.from(up.querySelectorAll('label')).filter(l => !l.control && !l.querySelector('input, select, textarea'));
-      if (loose.length === 1) return loose[0].textContent;
+      if (loose.length === 1) return R.read(loose[0]);
       if (loose.length > 1) return '';
     }
     return '';
@@ -39,7 +39,7 @@
       const found = Array.from(up.querySelectorAll(TITLE_BLOCK)).filter(b => !b.contains(el) && !b.querySelector('input, select, textarea, button') &&
         clean(b.textContent) && b.textContent.length <= 200 && (b.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING));
       const innermost = found.filter(b => !found.some(o => o !== b && b.contains(o)));
-      if (innermost.length === 1) return innermost[0].textContent;
+      if (innermost.length === 1) return R.read(innermost[0]);
       if (innermost.length > 1) return '';
     }
     return '';
@@ -59,7 +59,7 @@
     String(getComputedStyle(title, '::after').content || '').includes('*'));
   const questionOf = el => clean(R.read(fieldsetTitle(el.closest('fieldset'))) ||
     (['radio', 'checkbox'].includes(el.type) ? R.read(window.__jobPilottoRequired.rowTitle(el)) : '') ||
-    (group => group && (window.__jobPilottoOwnName(group)?.text || group.querySelector('label, legend, span')?.textContent))(el.closest('[role=radiogroup], [role=group]')) || '');   // the group's own accessible name (aria-labelledby, aria-label: page/label-before.js), else its first title inside
+    (group => group && (window.__jobPilottoOwnName(group)?.text || R.read(group.querySelector('label, legend, span'))))(el.closest('[role=radiogroup], [role=group]')) || '');   // the group's own accessible name (aria-labelledby, aria-label: page/label-before.js), else its first title inside
   const isCombo = el => el.getAttribute('role') === 'combobox';
   const comboControl = el => el.closest('[class*=control]') || el;
   const comboValue = el => window.__jobPilottoReadBack.comboValue(el);   // react-select's chip or a labelled hidden input: the one reading of a control (page/read-back.js, injected first)

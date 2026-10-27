@@ -15,8 +15,9 @@
 // Shape test: desktop/test/page-radios.test.js.
 (() => {
   window.__jobPilottoRadios = ({clean, norm, labelOf, questionOf, LEGAL, visible}) => {
+    const words = node => (window.__jobPilottoRequired?.read || (n => n?.textContent || ''))(node);   // the one words reader (page/required-mark.js): no icon text
     const nameOf = el => clean(el.getAttribute('aria-label') || (el.getAttribute('aria-labelledby') || '').split(/\s+/)
-      .map(id => (id && document.getElementById(id)?.textContent) || '').join(' ') || el.textContent || '');
+      .map(id => (id && words(document.getElementById(id))) || '').join(' ') || words(el) || '');
     // The one option whose name is the answer: the same words, else the only one that starts with or contains them.
     const optionFor = (options, answer, name) => {
       const want = norm(answer);

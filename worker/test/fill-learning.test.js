@@ -36,7 +36,7 @@ const PLANTS = [
   { name: 'fieldset titled by a label is not read', file: LABELS, questions: ['How much has AI increased your speed?'],
     from: "Array.from(set.querySelectorAll('label')).find(l => !l.control && !l.querySelector('input, select, textarea'))", to: 'null' },
   { name: 'a field\'s loose label is ignored', file: LABELS, questions: ['Where are you located?'],
-    from: 'if (loose.length === 1) return loose[0].textContent;', to: "if (loose.length === 1) return '';" },
+    from: 'if (loose.length === 1) return R.read(loose[0]);', to: "if (loose.length === 1) return '';" },
   { name: 'a field with no id or name is dropped', file: READER, questions: ['Where are you located?'],
     from: 'el.id = `jp-field-${++unnamed}`', to: 'void 0' },
   { name: 'radio buttons are not read at all', file: READER, questions: ['Do you need a visa to work here?', 'How much has AI increased your speed?'],

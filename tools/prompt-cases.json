@@ -34,6 +34,14 @@
       "prompts": {
         "src/ai/mail_config.py": ["SYSTEM"]
       }
+    },
+    "place": {
+      "live": false,
+      "about": "where a job is, for one person's places (src/ai/place_triage.py): a city list without theirs and remote limited elsewhere are out; remote from anywhere inside an anywhere place is in (Zagreb, Helsinki, quality golden 3003/3010; 27 Oct 2026)",
+      "cases": ["tests/test_place_triage_wrong_place.py"],
+      "prompts": {
+        "src/ai/place_triage.py": ["SYSTEM", "READ_SYSTEM", "VAGUE_SYSTEM"]
+      }
     }
   }
 }

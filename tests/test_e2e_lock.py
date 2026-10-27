@@ -69,7 +69,8 @@ class E2eLockTest(unittest.TestCase):
         gh = bin_dir / 'gh'; gh.write_text(FAKE_GH); gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
         self.state = self.tmp / 'state'; self.state.mkdir()
         self.env = {**os.environ, 'PATH': f'{bin_dir}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH': str(self.state), 'GITHUB_REPOSITORY': 'o/r',
-                    'GITHUB_SHA': 'abc', 'E2E_LOCK_POLL': '1', 'E2E_LOCK_MAX': '3'}
+                    'GITHUB_SHA': 'abc', 'E2E_LOCK_POLL': '1', 'E2E_LOCK_MAX': '3',
+                    'E2E_SUITES_DIR': str(self.tmp / 'no-suites')}   # no suite file: the lock is taken (the cases below are about the lock itself)
 
     def run_lock(self, cmd, run, job='test-mac', key='apply', **env):
         return subprocess.run(['bash', str(LOCK), cmd, key], env={**self.env, **env, 'GITHUB_RUN_ID': run, 'GITHUB_JOB': job}, capture_output=True, text=True, timeout=30)
@@ -140,6 +141,36 @@ class E2eLockTest(unittest.TestCase):
         self.set_runs({'1': 'in_progress'})
         self.run_lock('acquire', '1', key='apply')
         self.assertEqual(self.run_lock('acquire', '1', key='quality').returncode, 0)
+
+    def suites_dir(self, files):
+        folder = self.tmp / 'suites'; folder.mkdir(exist_ok=True)
+        for name, text in files.items(): (folder / f'{name}.mjs').write_text(text)
+        return str(folder)
+
+    def test_only_a_suite_on_the_real_notion_workspace_takes_the_lock(self):
+        # 27 Oct 2026: every suite but notion-real runs on this Mac's store or the in-memory stand-in, yet each job waited for its suite's lock on a runner
+        # (377 runner-minutes in 3 days; PR #2156's applyflows-2of2 sat 30+ min at the lock).
+        self.set_runs({'1': 'in_progress', '2': 'in_progress'})
+        folder = self.suites_dir({'apply': "export const minutes = 10;\n", 'failuresnotion': "export const store = 'standin';\n", 'notion-real': "export const store = 'notion';\n"})
+        for key in ('apply', 'apply-1of2', 'apply-standin', 'failuresnotion'):
+            self.run_lock('acquire', '1', key=key, E2E_SUITES_DIR=folder)
+            free = self.run_lock('acquire', '2', key=key, E2E_SUITES_DIR=folder)   # a second run of the same suite does not wait
+            self.assertEqual(free.returncode, 0, key)
+            self.assertIn('no lock to wait for', free.stdout, key)
+        self.assertEqual(self.refs(), {})
+        self.run_lock('acquire', '1', key='notion-real', E2E_SUITES_DIR=folder)
+        self.assertEqual(list(self.refs()), ['e2e-locks/notion-real'])
+        self.assertEqual(self.run_lock('acquire', '2', key='notion-real', E2E_SUITES_DIR=folder).returncode, 1, 'the real workspace still waits')
+
+    def test_every_real_suite_takes_the_lock_only_when_it_pins_the_real_workspace(self):
+        # the class: each suite file of desktop/e2e/suites, read as the workflows do (a new suite on the real workspace is locked without a list to update)
+        self.set_runs({'1': 'in_progress'})
+        folder = ROOT / 'desktop/e2e/suites'
+        for file in sorted(folder.glob('*.mjs')):
+            real = re.search(r"^export const store = ['\"]notion['\"]", file.read_text(), re.M) is not None
+            out = self.run_lock('acquire', '1', key=file.stem, E2E_SUITES_DIR=str(folder))
+            self.assertEqual('no lock to wait for' in out.stdout, not real, file.name)
+        self.assertEqual(sorted(self.refs()), ['e2e-locks/notion-real'])
 
 
 class SuiteJobsTakeTheLockTest(unittest.TestCase):

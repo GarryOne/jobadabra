@@ -568,7 +568,7 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
-      - name: Take the suite's lock (it owns one Notion page; waits, never dropped)
+      - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
@@ -794,7 +794,7 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
-      - name: Take the suite's lock (it owns one Notion page; waits, never dropped)
+      - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}

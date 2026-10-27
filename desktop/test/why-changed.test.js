@@ -119,6 +119,14 @@ test('a new Why quoting `words` must sit above the code that holds them (#2217: 
   assert.equal(push({'w/p.js': two}, {'w/p.js': two.replace('\nexport const B', '\n// Why (#953): `write a line per gap` — the owner.\nexport const B')}), '');
 });
 
+// Why (#2223 review): the guard counted 80 raw lines and the push check 80 code lines, so a sentence the check accepted could go unguarded.
+test('the guard and the push check look as far down for a quoted sentence: 80 code lines, headings in between not counted', () => {
+  const headings = Array.from({length: 90}, (_, i) => `# Part ${i}`).join('\n');
+  const prompt = `import x from "y";\n// Why (#7): \`never invent a missing number\` — form 9.\nexport const RULE = \`Answer.\n${headings}\nnever invent a missing number.\nBe short.\`;\n`;
+  assert.equal(push({'w/p.js': 'import x from "y";\n'}, {'w/p.js': prompt}), '', 'the push check finds the words');
+  assert.match(push({'w/p.js': prompt}, {'w/p.js': prompt.replace('never invent a missing number.', 'guess a number.')}), /guarded words are gone/, 'and so does the guard');
+});
+
 test('Markdown and other non-code files are not read', () => {
   assert.equal(push({'docs/a.md': '<!-- x -->\n# Why: a heading\ntext\n'}, {'docs/a.md': 'other\n'}), '');
 });

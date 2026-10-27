@@ -11,7 +11,7 @@ const states = new Map();   // tab id -> 'working' | a verdict
 const KEY = tabId => `apply:${tabId}`;
 
 /** Resolves once the states a sleeping worker kept are back; early-dim.js waits for it before its first answer. */
-export const restored = (globalThis.chrome?.storage?.session?.get(null) || Promise.resolve({})).then(all => {
+export const restored = Promise.resolve().then(() => globalThis.chrome?.storage?.session?.get?.(null)).then(all => {
   for (const [key, state] of Object.entries(all || {})) if (key.startsWith('apply:') && !states.has(Number(key.slice(6)))) states.set(Number(key.slice(6)), state);
 }).catch(() => {});
 
@@ -33,12 +33,12 @@ export function setApply(tabId, state) {
   const changed = states.get(tabId) !== state;
   states.set(tabId, state);
   if (changed) globalThis.chrome?.storage?.session?.set({[KEY(tabId)]: state}).catch(() => {});
-  globalThis.chrome?.tabs?.sendMessage(tabId, {type: 'applyState', state}).catch(() => {});   // pushed again on a repeat: a page that drew a step locally meanwhile is set right; a page with no script yet asks on its first draw (panelApply)
+  Promise.resolve().then(() => globalThis.chrome?.tabs?.sendMessage?.(tabId, {type: 'applyState', state})).catch(() => {});   // pushed again on a repeat: a page that drew a step locally meanwhile is set right; a page with no script yet asks on its first draw (panelApply)
   return changed;
 }
 
 /** A closed tab's state goes with it. */
 export function forgetApply(tabId) {
   states.delete(tabId);
-  globalThis.chrome?.storage?.session?.remove(KEY(tabId)).catch(() => {});
+  Promise.resolve().then(() => globalThis.chrome?.storage?.session?.remove?.(KEY(tabId))).catch(() => {});
 }

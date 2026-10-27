@@ -259,7 +259,7 @@ class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
     def test_mains_numbers_are_what_the_compare_reads_back(self):
         self.assertIn('name: search-personas-result', WORKFLOW)
         self.assertIn('-n search-personas-result', WORKFLOW)
-        self.assertGreaterEqual(int(re.search(r'--limit (\d+)', WORKFLOW).group(1)), 10)   # the gate needs room for gate.QUALITY_MIN_RUNS measured runs
+        self.assertGreater(int(re.search(r'--limit (\d+)', WORKFLOW).group(1)), gate.QUALITY_MIN_RUNS)   # the gate needs room for gate.QUALITY_MIN_RUNS measured runs
         self.assertEqual(gate.MAIN_RUNS, 3)
         self.assertEqual(gate.PRESS_LIMIT, 180)
 

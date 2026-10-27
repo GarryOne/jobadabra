@@ -1,8 +1,7 @@
 name: CI · Search check (6 personas)
-# Every PR that changes search: 6 fictional job seekers each press Find jobs once on a fresh install; red when one finds fewer right jobs than the lowest
-# of main's last 3 runs, or a press runs past 3 minutes (owner, 27 Oct 2026: "Every time we improve search for an use-case, for a candidate, for a profile,
-# for a speed perspective.. We break other use-cases."; his answers on the sketch: here with our own tools, all 6 in parallel, right role + place by a
-# blind judge, red below main's range). Each merge to main that touches these paths runs it again: main's numbers are the floor.
+# Every PR that changes search: six fictional job seekers press Find jobs once on fresh installs; a press over 180 s is red.
+# Quality is shown per persona and pooled; it gates only after 10 measured complete main runs, below their mean minus twice the sample standard deviation
+# (owner, 27 Oct 2026: "Time only, until 10 runs"). Each relevant main merge contributes another measured run.
 # Every AI step runs on Haiku 5.5 on the API key PR_PROOF_ANTHROPIC_KEY (its own workspace + spend limit): the engine's steps through the API, the blind judge
 # through Claude Code with that key as its only key (tools/persona-search/gate_judge.py). Each persona's measured $ is in the PR table; a persona over its cap is red.
 # Why (owner, 27 Oct 2026, replaces the subscription-token decision): Haiku on PR_PROOF_ANTHROPIC_KEY, not the subscription token. He had said "let them use my claude subscription";
@@ -79,7 +78,7 @@ on:
 
 permissions:
   contents: read
-  actions: read         # main's last runs (the floor), and the commit's runs and jobs for the PR's verdict
+  actions: read         # main's measured history, and the commit's runs and jobs for the PR's verdict
   pull-requests: read
   statuses: write       # the PR's "All checks passed"
 
@@ -181,18 +180,20 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/download-artifact@v7
         with: {pattern: 'search-personas-p*', path: results}
-      - name: Main's last 3 runs (the floor)
+      - name: Main's measured runs (the quality gate, from 10)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p main
-          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow search-personas.yml --branch main --event push --status completed --limit 10 \
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow search-personas.yml --branch main --event push --status completed --limit 40 \
                         --json databaseId --jq '.[].databaseId'); do
             [ "$id" = "$GITHUB_RUN_ID" ] && continue
-            # Why (gitar on #2243): every listed run, so a run with an errored persona does not take one of its 3 places (gate.py keeps the newest 3 measured)
+            # Why (#2295, gitar): fetch more than the ten measured runs the gate requires; neutral or incomplete runs must not consume all history slots.
             gh run download "$id" -R "$GITHUB_REPOSITORY" -n search-personas-result -D "main/$id" 2>/dev/null || continue
           done
-          echo "main runs: $(ls main | tr '\n' ' ')"
+          printf 'main runs: '
+          for dir in main/*; do [ ! -d "$dir" ] || printf '%s ' "${dir#main/}"; done
+          printf '\n'
       - name: Compare with main
         id: compare
         run: |

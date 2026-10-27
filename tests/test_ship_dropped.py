@@ -1,11 +1,23 @@
-"""tools/ship.sh never says "nothing to push" while the branch holds a change main lacks (26 Oct 2026, jobadabra-web #160: the PR merged, a later rebase moved the branch onto
-main's merge commit, an amend rewrote that merge commit, and ship's rebase dropped it: "DONE nothing to push", the owner's sender change unpushed). Fixture: tests/ship_fixture.py."""
+"""tools/ship.sh refuses to report nothing to push when rebasing drops a change main lacks. Fixture: tests/ship_fixture.py."""
 import unittest
 
 from tests.ship_fixture import ShipFixture, git
 
 
 class DroppedChangeTests(ShipFixture):
+    def test_refuses_nothing_to_push_when_rebase_skips_change_later_reverted_on_main(self):
+        self.change(self.tree, 'a.txt', 'owner setting\n', 'Owner setting')
+        self.change(self.other, 'a.txt', 'owner setting\n', 'Same setting reached main')
+        self.change(self.other, 'a.txt', 'default\n', 'Revert setting on main')
+        git(self.other, 'push', '-q', 'origin', 'main')
+
+        result = self.ship()
+        out = result.stdout + result.stderr
+
+        self.assertNotEqual(result.returncode, 0, out)
+        self.assertIn('main lacks its change to: a.txt', out)
+        self.assertEqual(git(self.origin, 'show', 'main:a.txt'), 'default')
+
     def merged_then_amended(self):
         self.change(self.tree, 'a.txt', 'mail on\n', 'Turn on mail')
         git(self.tree, 'push', '-q', 'origin', 'HEAD:refs/heads/topic')

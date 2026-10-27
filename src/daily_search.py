@@ -91,7 +91,7 @@ def search(args, stores=None):
                         print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
                     if full_read:
                         try:
-                            first_boards = boards_first.web_boards(feed_db, load_search_config(), so_far.listener('job boards'))
+                            first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
                         except Exception as error:  # noqa: BLE001 — the full board read reads them
                             print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
                 from .sources import boards_ahead   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)

@@ -200,6 +200,9 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 .apply-choice-dialog #apply-choice-modes { margin-bottom: var(--sp-3); }
 .apply-mode-summary { margin: var(--sp-3) 0; }
 .apply-mode-summary p { margin: var(--sp-2) 0 0; color: var(--muted); font-size: var(--fs-sm); }
+#apply-dialog .message.ok.is-apply-saved-badge { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; min-height: 0;
+  margin-top: var(--sp-2); padding: var(--sp-1) var(--sp-2); border: 1px solid color-mix(in srgb, var(--good) 35%, transparent);
+  border-radius: var(--r-pill); background: var(--good-soft); color: var(--good); }
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */
 .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }

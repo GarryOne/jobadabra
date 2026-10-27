@@ -128,4 +128,5 @@ test('the dialog reuses persisted mode cards and keeps its native cancel action'
   assert.match(jobs, /modeCards\(mode\.mode/);
   assert.match(jobs, /applyDialogSelectMode/);
   assert.match(jobs, /save as saveApplySettings/);
+  assert.match(jobs, /classList\.add\('is-apply-saved-badge'\)/);
 });

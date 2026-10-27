@@ -25,6 +25,7 @@ The Jobs “Apply to jobs” dialog must show the same three mode cards as Setti
 ## Acceptance criteria
 - The modal reflects the persisted mode when opened, using the existing mode-card UI and single canonical setting.
 - Choosing one of the three cards immediately persists that mode to Settings → Apply, and the selection remains after reopening the dialog.
+- A verified card choice confirms the save with a visible in-dialog status badge.
 - Starting `check` routes through the existing batch `apply` path with the validated count and preserves manual review.
 - `fill` and `auto` cannot route to the visible Chrome fallback; their explanation accurately says the execution path is unavailable.
 - Hidden modes become startable only when the shared runner reports end-to-end readiness: Background automation reaches `ready_for_review`, while Full automation passes saved checks, stops for manual handoff on CAPTCHA/unknown states, and records `Applied` only from a receipt.

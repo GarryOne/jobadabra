@@ -103,6 +103,7 @@ async function saveApplyDialogMode(selected) {
     }
     applyDialogSettings = current.settings;
     message('apply-message', `${applyDialogCopy(current.settings).title} saved to Settings → Apply.`, 'ok');
+    $('apply-message').classList.add('is-apply-saved-badge');
   } catch (error) {
     message('apply-message', `Could not save the selected Apply mode: ${error.message}`, 'error');
   } finally {

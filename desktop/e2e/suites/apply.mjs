@@ -28,7 +28,7 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // The split's weights: each step's seconds on a slow attempt (beta, 26 Oct 2026, Notion leg), a step's followers counted in it (multi-step + the session page,
 // cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
-  'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'the form\'s panel offers a tailored CV': 23, 'the person submits a form': 21,
+  'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'the form\'s panel sends you to the app to tailor': 23, 'the person submits a form': 21,
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,

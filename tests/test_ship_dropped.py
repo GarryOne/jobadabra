@@ -1,11 +1,23 @@
-"""tools/ship.sh never says "nothing to push" while the branch holds a change main lacks (26 Oct 2026, jobadabra-web #160: the PR merged, a later rebase moved the branch onto
-main's merge commit, an amend rewrote that merge commit, and ship's rebase dropped it: "DONE nothing to push", the owner's sender change unpushed). Fixture: tests/ship_fixture.py."""
+"""tools/ship.sh refuses to report nothing to push when rebasing drops a change main lacks. Fixture: tests/ship_fixture.py."""
 import unittest
 
 from tests.ship_fixture import ShipFixture, git
 
 
 class DroppedChangeTests(ShipFixture):
+    def test_refuses_nothing_to_push_when_rebase_skips_change_later_reverted_on_main(self):
+        self.change(self.tree, 'a.txt', 'owner setting\n', 'Owner setting')
+        self.change(self.other, 'a.txt', 'owner setting\n', 'Same setting reached main')
+        self.change(self.other, 'a.txt', 'default\n', 'Revert setting on main')
+        git(self.other, 'push', '-q', 'origin', 'main')
+
+        result = self.ship()
+        out = result.stdout + result.stderr
+
+        self.assertNotEqual(result.returncode, 0, out)
+        self.assertIn('main lacks its change to: a.txt', out)
+        self.assertEqual(git(self.origin, 'show', 'main:a.txt'), 'default')
+
     def merged_then_amended(self):
         self.change(self.tree, 'a.txt', 'mail on\n', 'Turn on mail')
         git(self.tree, 'push', '-q', 'origin', 'HEAD:refs/heads/topic')
@@ -18,14 +30,13 @@ class DroppedChangeTests(ShipFixture):
         git(self.tree, 'add', 'b.txt')
         git(self.tree, 'commit', '-q', '--amend', '-m', 'Turn on mail, from no-reply')   # amends the MERGE commit
 
-    def test_a_change_the_rebase_dropped_is_refused_not_called_nothing_to_push(self):
+    def test_a_change_amended_into_a_merge_is_preserved_when_updating_from_main(self):
         self.merged_then_amended()
         result = self.ship()
         out = result.stdout + result.stderr
-        self.assertNotIn('nothing to push', out)
-        self.assertNotEqual(result.returncode, 0, out)
-        self.assertIn('b.txt', out, 'the refusal names the file main lacks')
-        self.assertIn('git reflog', out, 'and says where the change still is')
+        self.assertEqual(result.returncode, 0, out)
+        self.assertIn('ship: DONE', out)
+        self.assertEqual(git(self.origin, 'show', 'main:b.txt'), 'sender no-reply')
 
     def test_a_branch_fully_on_main_still_says_nothing_to_push(self):
         self.change(self.tree, 'a.txt', 'on\n', 'Change a')

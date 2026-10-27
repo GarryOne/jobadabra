@@ -4,7 +4,8 @@
 // desktop/test/store-contract.test.js.
 //
 // A page (`store.page('profile' | 'answers' | 'knowledge')`): blocks(), outline(), text(), write(markdown), setText(block, text),
-// remove(block), append(lines), insertAfter(id, lines, {parent}), appendHeading(text) → id, setCell(row, index, text).
+// remove(block, {ifUnchanged}) → false when its full text/cells changed (Notion restores a raced archive), append(lines),
+// insertAfter(id, lines, {parent}), appendHeading(text) → id, setCell(row, index, text).
 // Several removes on one page: last block first (this Mac's ids are line numbers).
 // Runs (`store.runs`, Recent activity): list({size}) → activity records or null, close(link, reason) → bool, detail(link).
 import * as notionGate from '../notion-gate.js';

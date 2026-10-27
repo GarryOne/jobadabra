@@ -49,6 +49,26 @@ class ShipRefusedTest(ShipFixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(runs, 2, result.stdout + result.stderr)
 
+    def test_a_main_advance_after_a_resolved_merge_is_merged_into_the_branch_on_retry(self):
+        self.change(self.tree, 'shared.txt', 'feature version\n', 'Feature change')
+        self.change(self.other, 'shared.txt', 'main version\n', 'Main change')
+        git(self.other, 'push', '-q', 'origin', 'main')
+        git(self.tree, 'fetch', '-q', 'origin')
+        merged = subprocess.run(['git', 'merge', '--no-edit', 'origin/main'], cwd=self.tree, capture_output=True, text=True)
+        self.assertNotEqual(merged.returncode, 0, 'the branches intentionally conflict')
+        (self.tree / 'shared.txt').write_text('resolved feature and main\n')
+        git(self.tree, 'add', 'shared.txt')
+        git(self.tree, 'commit', '-qm', 'Merge main and resolve shared file')
+
+        result, runs = self.land_with_other_pushing(('docs/theirs.md', 'x\\n'), ('docs/mine.md', 'y\n'))
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(runs, 1, result.stdout + result.stderr)
+        self.assertIn('not re-running the checks', result.stdout)
+        self.assertIn('origin/main advanced; merging it to preserve branch merge history', result.stdout)
+        self.assertEqual(git(self.origin, 'show', 'main:shared.txt'), 'resolved feature and main')
+        self.assertEqual(git(self.origin, 'show', 'main:docs/theirs.md'), 'x')
+
     def test_a_missing_decision_tool_checks_again(self):
         (self.tree / 'tools' / 'recheck-needed.py').unlink()
         git(self.tree, 'commit', '-qam', 'Drop the tool')

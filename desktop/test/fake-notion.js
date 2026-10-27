@@ -3,6 +3,7 @@
 // A line is a bullet, "# / ## / ### heading", or {table: [[cell, …], …], header: true} (16 Oct 2026: tables, for the Profile tabs' cell edits).
 // prefix: block ids start with it, so two fakes (a Profile and an answers page) can sit behind one fetcher without their ids meeting.
 export function fakeNotion(lines = [], {prefix = ''} = {}) {
+  const archived = new Map();
   let next = 1;
   const make = (type, text) => ({id: `${prefix}b${next++}`, type, text});
   const table = ({table: rows, header = true}) => ({id: `${prefix}t${next++}`, type: 'table', header, rows: rows.map(cells => ({id: `${prefix}r${next++}`, cells: [...cells]}))});
@@ -27,6 +28,15 @@ export function fakeNotion(lines = [], {prefix = ''} = {}) {
       const at = body.after ? blocks.findIndex(b => b.id === body.after) + 1 : blocks.length;
       blocks.splice(at, 0, ...added);
       data = {results: added.map(b => ({id: b.id}))};
+    } else if (init.method === 'GET' && route.startsWith('blocks/')) {
+      const id = route.replace('blocks/', ''), block = blocks.find(b => b.id === id) || archived.get(id)?.block;
+      const row = rowById(id) || archived.get(id)?.block;
+      if (block?.type) data = {...asBlock(block), archived: archived.has(id)};
+      else if (row) data = {id, type: 'table_row', table_row: {cells: cellsOf(row)}, archived: archived.has(id)};
+      else throw new Error(`fake Notion: no block ${route}`);
+    } else if (init.method === 'PATCH' && body.archived === false) {
+      const id = route.replace('blocks/', ''), kept = archived.get(id);
+      if (kept) { kept.holder.splice(kept.at, 0, kept.block); archived.delete(id); }
     } else if (init.method === 'PATCH' && body.table_row) {
       rowById(route.replace('blocks/', '')).cells = body.table_row.cells.map(cell => cell.map(item => item.text?.content ?? item.plain_text ?? '').join(''));
     } else if (init.method === 'PATCH') {
@@ -35,8 +45,8 @@ export function fakeNotion(lines = [], {prefix = ''} = {}) {
     } else if (init.method === 'DELETE') {
       const row = rowById(route.replace('blocks/', ''));
       const holder = row && blocks.find(b => b.type === 'table' && b.rows.includes(row));
-      if (holder) holder.rows.splice(holder.rows.indexOf(row), 1);   // a table row (17 Oct 2026: it deleted the page's last block instead)
-      else if (blocks.some(b => `blocks/${b.id}` === route)) blocks.splice(blocks.findIndex(b => `blocks/${b.id}` === route), 1);
+      const list = holder ? holder.rows : blocks, at = holder ? list.indexOf(row) : list.findIndex(b => `blocks/${b.id}` === route);
+      if (at >= 0) { archived.set(list[at].id, {block: list[at], holder: list, at}); list.splice(at, 1); }
       else throw new Error(`fake Notion: no block ${route}`);
     } else if (init.method === 'GET' && route.startsWith('pages/')) {
       data = {parent: {page_id: 'parent'}};

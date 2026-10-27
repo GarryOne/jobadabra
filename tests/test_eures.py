@@ -124,6 +124,16 @@ class EuresTest(unittest.TestCase):
         self.assertEqual((taken, read.call_count, calls), ([{'id': 'eures:a'}], 1, []), 'one read, started early; the stage only takes it')
         self.assertEqual(eures._early, {}, 'taken once')
 
+    def test_the_early_read_is_not_started_when_the_stage_would_not_take_it(self):
+        from datetime import datetime, timezone
+        from src.sources import feeds
+        with mock.patch.dict('os.environ', {'JOB_PILOTTO_DISABLE': 'eures'}):
+            self.assertIsNone(eures.start_early(SEARCH), 'switched off')
+        with mock.patch.object(eures, 'DATA', Path(self.tmp.name)):
+            with feeds.database(Path(self.tmp.name) / 'jobs.sqlite') as db:
+                aggregators.mark_read(db, 'EURES', datetime.now(timezone.utc), SEARCH)
+            self.assertIsNone(eures.start_early(SEARCH), 'read within the last SPACING_HOURS for this search')
+
     def test_the_early_read_is_not_started_in_the_fixture_mode(self):
         with mock.patch.dict('os.environ', {'JOB_PILOTTO_FIXTURE_DIR': '/x'}):
             self.assertIsNone(eures.start_early(SEARCH))

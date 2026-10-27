@@ -37,7 +37,7 @@ export const LIMITS = {idleMs: E2E_IDLE || 15 * 60 * 1000, totalMs: 45 * 60 * 10
 // What a person reads when the app stopped a silent run (the row, its detail, the toast, the bottom bar). #185: it said only "no output for 10 s", with no
 // next step. The prefix stays: tests and the technical log match it.
 export const stoppedReason = timedOut => `Stopped by Jobadabra: ${timedOut}. The run went quiet, so it was stopped. Run it again; if it keeps stopping, check your AI key or plan in Settings.`;
-// `stopAfterMs`: a run whose answer is no use after that long is stopped then (7 Oct 2026: Claude's filter choices went on for 130 s after
+// `stopAfterMs`: a run whose time is up after that long is stopped then (`endedByTime` says so), e.g. Find jobs' 180 s (lib/search-steps.js); a run whose answer is no use after that long is stopped then (7 Oct 2026: Claude's filter choices went on for 130 s after
 // the page had been read without them, slowing every other Claude call of a Find jobs using your browser run).
 // `inTask`: the kind of task whose command this is, when its output does not go through the task's own line handler.
 // `logArgs`: what the logs and the run-end listeners see instead of `args` (a store call's arguments are the person's data). `privateOutput`:
@@ -70,11 +70,14 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
     onChild?.(child);   // a caller that must end this one command by itself (Cancel sign-in), by the child's own handle
     owner?.children.add(child);
     child.on('exit', () => { children.delete(child); owner?.children.delete(child); });
+    let endedByTime = false, hardKill = null;
     const stopper = stopAfterMs ? setTimeout(() => {
-      appLog('run', `stopped after ${Math.round(stopAfterMs / 1000)} s: python -m ${shown.join(' ')} (its answer is no longer used)`, {run_id: runId});
-      killTree(child);
+      endedByTime = true;
+      appLog('run', `stopped after ${Math.round(stopAfterMs / 1000)} s: python -m ${shown.join(' ')} (its time was up)`, {run_id: runId});
+      killTree(child);   // SIGTERM: the engine closes its row and leaves (src/run_log.py); what it saved per item stays
+      hardKill = setTimeout(() => killTree(child, {signal: 'SIGKILL'}), LIMITS.killAfterMs);   // a step that ignores SIGTERM is not left running
     }, stopAfterMs) : null;
-    child.on('exit', () => clearTimeout(stopper));
+    child.on('exit', () => { clearTimeout(stopper); clearTimeout(hardKill); });
     let stdout = '', buffer = '', lastOutputAt = awakeNow(), timedOut = '', killTimer = null, rowUrl = '';
     const startedAwake = awakeNow();   // the watchdog's clock leaves out the time the computer slept (lib/awake.js)
     const watch = (args[0] === 'src' || LIMITS.watchAll) ? setInterval(() => {
@@ -114,7 +117,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
         const closed = await (await import('./run-history.js')).closeStopped(storage, rowUrl, reason).catch(() => false);
         appLog('run', `its run row ${closed ? 'was closed as Failed' : 'was already closed'}`, {run_id: runId});
       }
-      resolve({code, stdout, result, runId, timedOut});
+      resolve({code, stdout, result, runId, timedOut, endedByTime});
     });
   });
 }

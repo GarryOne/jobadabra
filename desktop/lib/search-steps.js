@@ -26,6 +26,8 @@ export const searchTrigger = settings => (settings.lastSearchAt ? 'you' : 'first
 export const SCOUT_SHARE_S = 45;   // the employer finder's seconds at the press's end, when it is due
 const STEP_MIN_S = 20;             // fewer seconds left: the step waits for the next search (an engine step needs a few to start)
 
+const clockText = s => `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
+
 export async function searchSteps(storage, onLine, mode, trigger = 'you', exec = run, {employers = false, now = Date.now} = {}) {
   const ai = claudeCode.aiReady(storage.settings(), !!storage.secret('ANTHROPIC_API_KEY'), !!storage.secret('OPENAI_API_KEY'));
   const pressAt = now();
@@ -34,11 +36,18 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
   const budget = SEARCH_BUDGET_S - (scout ? SCOUT_SHARE_S : 0);   // the search's end on the press's clock
   const spent = () => Math.floor((now() - pressAt) / 1000);
   const left = () => SEARCH_BUDGET_S - spent();
-  const timeUp = what => onLine(`⏱ Time is up (${Math.floor(spent() / 60)} min ${String(spent() % 60).padStart(2, '0')} s) for ${what}: it waits for the next search`);
+  // Design (27 Oct 2026): one owner of the hard end. The engine's clock (src/time_budget.py) is only asked by the stages; this ends any step at the
+  // press's 180 s whether or not it asked. SIGTERM, so the step closes its row; what it saved per item is kept, the rest waits (the next search reads it).
+  // Why (27 Oct 2026, owner: build only this first step): main's search check had persona 4 at 181 s of 180.
+  const step = (args, what) => exec(storage, args, onLine, env, {stopAfterMs: Math.max(1, SEARCH_BUDGET_S * 1000 - (now() - pressAt))}).then(done => {
+    if (done.endedByTime) { onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: what it has not reached waits for the next search`); return {...done, code: 0}; }   // a time-up is not a failure
+    return done;
+  });
+  const timeUp = what => onLine(`⏱ Time is up (${clockText(spent())}) for ${what}: it waits for the next search`);
   const discover = async () => {
     if (budget - spent() < STEP_MIN_S) return timeUp('job boards');
     onLine('Searching job boards…');
-    await exec(storage, ['src', 'discover', '--pages', '5', '--max-companies', '40', '--budget', String(budget)], onLine, env);
+    await step(['src', 'discover', '--pages', '5', '--max-companies', '40', '--budget', String(budget)], 'job boards');
   };
   let code;
   let result;
@@ -46,20 +55,20 @@ export async function searchSteps(storage, onLine, mode, trigger = 'you', exec =
     // The first run: jobs in seconds. The engine reads a slice of fast feeds and scores 3 jobs first (src/first_jobs.py), then does the full search;
     // the job boards come after it, and the jobs they find are scored by a light run (mode today), so nothing in front of the first job waits for them.
     onLine('Finding your first jobs…');
-    ({code, result} = await exec(storage, dailyArgs(storage, {mode, firstJobs: true, budget}), onLine, env));
+    ({code, result} = await step(dailyArgs(storage, {mode, firstJobs: true, budget}), 'the search'));
     await discover();
     if (budget - spent() < STEP_MIN_S) timeUp('scoring the job boards\' jobs');
-    else await exec(storage, dailyArgs(storage, {mode: 'today', budget}), onLine, env);
+    else await step(dailyArgs(storage, {mode: 'today', budget}), 'scoring the job boards\' jobs');
   } else {
     await discover();
     onLine('Checking employer career pages' + (ai ? ', then reading and scoring new jobs…' : '…'));
-    ({code, result} = await exec(storage, dailyArgs(storage, {mode, budget}), onLine, env));
+    ({code, result} = await step(dailyArgs(storage, {mode, budget}), 'the search'));
   }
   if (scout && left() < STEP_MIN_S) timeUp('finding more employers');   // still due: the next press runs it
   else if (scout) {
     onLine('Growing your sources: finding more employers…');
     storage.saveSettings({lastScoutAt: new Date().toISOString()});
-    await exec(storage, ['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], onLine, env);
+    await step(['src', 'scout', ...(deliveryReady(storage) ? ['--send'] : []), '--log-run', '--budget', String(left())], 'finding more employers');
   }
   return {code, result};
 }

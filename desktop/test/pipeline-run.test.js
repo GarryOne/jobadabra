@@ -63,3 +63,16 @@ test('a stopped run says what to do next, and keeps the prefix the log and tests
   assert.match(text, /Run it again/);
   assert.match(text, /check your AI key or plan in Settings/);
 });
+
+test('a run given a time limit is ended at it even though it never looks at a clock, and says it was ended by time', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-hardend-'));
+  const storage = {settings: () => ({}), secret: () => '', saveSettings: () => {}, path: (...parts) => path.join(dir, ...parts)};
+  logTo(dir);
+  const started = Date.now();
+  // `http.server` waits for connections forever: a step that ignores every clock.
+  const {endedByTime, code} = await pipeline.run(storage, ['http.server', '0', '--bind', '127.0.0.1'], () => {}, {}, {stopAfterMs: 700});
+  logTo(null);
+  assert.ok(Date.now() - started < 8000, 'ended within seconds of its limit');
+  assert.equal(endedByTime, true);
+  assert.notEqual(code, 0);
+});

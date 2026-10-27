@@ -77,3 +77,20 @@ test('on the first run, a step with no time left waits for the next search and s
   assert.deepEqual(calls.map(c => c.step), ['daily --first-jobs']);
   assert.match(lines, /^⏱ Time is up \(2 min 58 s\) for job boards: it waits for the next search$/m);
 });
+
+// The app ends every step at the press's 180 s (27 Oct 2026, main's search check: persona 4 pressed for 181 s). The engine's own clock is only asked
+// (src/time_budget.py); a step that forgot to ask is ended here. Each step is told how long it may still run, on the press's clock.
+test('every step is ended at the press\'s 180 s, whatever the engine does with its clock', async () => {
+  let clock = Date.parse('2026-10-27T10:00:00Z');
+  const seen = [];
+  const lines = [];
+  await searchSteps(storage({lastScoutAt: stale()}), line => lines.push(line), 'run', 'you', async (_storage, args, _onLine, _env, opts = {}) => {
+    seen.push({step: args[1], stopAfterMs: opts.stopAfterMs});
+    clock += args[1] === 'discover' ? 50000 : 0;
+    return {code: 0, result: {}, endedByTime: args[1] === 'daily'};
+  }, {now: () => clock});
+  assert.deepEqual(seen.map(s => s.step), ['discover', 'daily', 'scout']);
+  assert.equal(seen[0].stopAfterMs, 180000, 'discover may run until the press\'s end');
+  assert.equal(seen[1].stopAfterMs, 130000, 'daily has what is left: 180 s minus the 50 s gone');
+  assert.match(lines.join('\n'), /^⏱ Time is up \(.*\) for the search: what it has not reached waits for the next search$/m);
+});

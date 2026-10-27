@@ -292,6 +292,7 @@
   "telegram-html.test.mjs",
   "test-accounts.test.mjs",
   "test-mail.test.mjs",
+  "test-reach.test.mjs",
   "trace-real-browser.test.mjs",
   "triage-cli.test.mjs",
   "triage-evidence.test.mjs",

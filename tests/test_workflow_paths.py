@@ -183,7 +183,7 @@ class TheShapes(unittest.TestCase):
         self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
 
     def test_the_apply_flow_starts_its_replays_and_desktop(self):
-        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'pr-suites.yml'})   # worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at
+        self.assertEqual(self.started(['extension/fill-flow.js']), {'tests-desktop.yml', 'tests-worker.yml', 'page-cases.yml', 'pr-suites.yml', 'harness.yml'})   # worker tests read extension/ (14 Oct 2026); pr-suites.yml names the suites the extension points at; harness.yml: the harness tests that load the extension (owner, 27 Oct 2026, "Yes, reached files")
         self.assertNotIn('site-replays-pr.yml', self.started(['desktop/lib/server.js']), 'owner, 17 Oct 2026: site replays are off PRs, scheduled only')
         self.assertFalse((WORKFLOWS / 'site-replays-pr.yml').exists())
 

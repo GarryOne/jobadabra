@@ -30,17 +30,23 @@ head_checks_passed() {
 }
 seen="$pidfile.comments"; touch "$seen" 2>/dev/null
 # Why (#PR comments, owner 27 Oct 2026): the cursor is a file of told ids, not a timestamp, so an edited or late comment is never lost and a restart never repeats one.
+# Why (27 Oct 2026, owner: "Start a fixer"): a watcher that starts on an existing PR has an empty cursor (#2241: 3 gitar-bot comments fixed hours earlier were announced again);
+#   an item already answered (a session reply or a later commit, pc_unanswered) is marked told WITHOUT a COMMENT line; unanswered old ones are still told once.
 report_comments() {  # <view json> <repo>
-  local lines id who kind url t
+  local lines rows open id who kind url t
   lines="$(gh api "repos/$2/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
-  pc_items "$1" "${lines:-null}" | while IFS=$'\t' read -r id who kind url t; do
-    [ "$who" != self ] || continue
-    grep -qxF "$id" "$seen" 2>/dev/null || { echo "$id" >> "$seen"; say "COMMENT #$n $who $kind $url"; }
-  done
+  rows="$(pc_items "$1" "${lines:-null}")"
+  open="$(pc_unanswered "$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$1")" <<<"$rows" | cut -f1)"
+  while IFS=$'\t' read -r id who kind url t; do
+    [ -n "$id" ] && [ "$who" != self ] || continue   # a PR with no comments still feeds the loop one empty row
+    grep -qxF "$id" "$seen" 2>/dev/null && continue
+    echo "$id" >> "$seen"
+    grep -qxF "$id" <<<"$open" && say "COMMENT #$n $who $kind $url"
+  done <<<"$rows"
 }
 waited=0; red=""; green=""; conflict=""; lasthead=""
 while :; do
-  view="$(gh pr view "$n" --json state,mergeCommit,mergeable,headRefOid,url,comments,reviews 2>/dev/null)" || view=""
+  view="$(gh pr view "$n" --json state,mergeCommit,mergeable,headRefOid,url,comments,reviews,commits 2>/dev/null)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
   case "$state" in
     MERGED) say "MERGED #$n $(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; exit 0 ;;

@@ -74,8 +74,8 @@ unanswered() {  # <branch> <worktree>: prints "<n>\t<owner+bot count>\t<first ur
   n="$(jq -r 'select(.state == "OPEN") | .number // empty' <<<"$view" 2>/dev/null)"; [ -n "$n" ] || return 0
   lines="$(cd "$wt" && limit gh api "repos/{owner}/{repo}/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
   rows="$(pc_items "$view" "${lines:-null}")"
-  # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item; ISO times compare as text.
-  rows="$(awk -F'\t' -v last="$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$view")" '$2=="self" && $5>last {last=$5} {r[NR]=$0} END {for (i=1;i<=NR;i++) {split(r[i],f,"\t"); if (f[2]!="self" && f[5]>last) print r[i]}}' <<<"$rows")"
+  # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item; the rule lives in pc_unanswered (pr-comments-lib.sh), shared with ship-watch.sh so a watcher never re-announces what this reminder drops.
+  rows="$(pc_unanswered "$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$view")" <<<"$rows")"
   { echo "$now"; [ -z "$rows" ] || awk -F'\t' -v n="$n" '$2!="other" {c++; if (!u) u=$4} $2=="other" {o++} END {if (c+o) print n "\t" c+0 "\t" (u ? u : "-") "\t" o+0}' <<<"$rows"; } > "$file"
   tail -n +2 "$file"
 }

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {changedPrompts, liveSets, missingCase, PROMPT_FILE, promptTexts} from '../../tools/prompt-cases.mjs';
+import {ASKERS, changedPrompts, liveSets, missingCase, PROMPT_FILE, promptTexts} from '../../tools/prompt-cases.mjs';
 
 const root = new URL('../../', import.meta.url);
 const registry = JSON.parse(fs.readFileSync(new URL('tools/prompt-cases.json', root), 'utf8'));
@@ -49,6 +49,7 @@ test('the live sets a push reaches: a changed prompt of a live set or a changed 
   assert.deepEqual(liveSets([], ['tools/free-ai-form-asks.mjs'], registry), ['form']);
   assert.deepEqual(liveSets([{file: 'src/ai/mail_config.py', name: 'SYSTEM'}], ['src/ai/mail_config.py'], registry), []);
   assert.deepEqual(liveSets([], ['README.md'], registry), []);
+  for (const asker of ASKERS) assert.deepEqual(liveSets([], [asker], registry), ['form'], `${asker}: a changed asker re-asks every live set`);
 });
 
 test('every prompt the registry names exists in its file, and every case file exists (a renamed prompt fails here)', () => {

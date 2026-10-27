@@ -22,11 +22,14 @@ to prefill a form they will check. Return one proposal per requested field that 
 location is the town or city they live in; street is street and number only; postal_code is the postal code only.
 salutation is how forms address them (e.g. "Mr", "Ms", or the CV's own language: "Monsieur", "Madame", "Herr", "Frau"): propose it only when the CV
 shows it (a title, a gendered word such as "né"/"née" or "geboren als"), with sure=false. Never invent a value, never guess from a name alone.
-Leave out a field neither gives. sure=true only when the CV states the value plainly.`;
+first_name and last_name are the applicant's own name as the CV's heading or contact block writes it: copy it even when it is the same as the name of an account you are signed in with.
+A value the CV does not write but plainly implies may be inferred, with how=inferred and sure=false: e.g. location when every job and the education of recent years are in one city or
+country (the most recent city; the country alone when only the country is clear). Never infer a phone, an e-mail, a link, a street, a postal code or a date of birth.
+Leave out a field neither gives nor implies. how=stated and sure=true only when the CV states the value plainly.`;
 
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['proposals'], properties: {proposals: {type: 'array', items: {
-  type: 'object', additionalProperties: false, required: ['field', 'value', 'sure', 'source'],
-  properties: {field: {type: 'string', enum: FIELDS}, value: {type: 'string'}, sure: {type: 'boolean'}, source: {type: 'string', enum: ['cv', 'profile']}}}}}};
+  type: 'object', additionalProperties: false, required: ['field', 'value', 'sure', 'source', 'how'],
+  properties: {field: {type: 'string', enum: FIELDS}, value: {type: 'string'}, sure: {type: 'boolean'}, source: {type: 'string', enum: ['cv', 'profile']}, how: {type: 'string', enum: ['stated', 'inferred']}}}}}};
 
 // The fields worth asking about: known, and empty in what you saved.
 export const emptyFields = (contact = {}) => FIELDS.filter(key => !String(contact?.[key] || '').trim());
@@ -39,7 +42,9 @@ export function cleanProposals(raw, wanted) {
     if (!allowed.has(field) || !value || seen.has(field)) return [];
     seen.add(field);
     const profile = item?.source === 'profile';   // only the Profile states it: a suggestion to check, never "From your CV"
-    return [{field, value, sure: field === 'salutation' || profile ? false : item?.sure === true, ...(profile ? {source: 'profile'} : {})}];
+    const inferred = item?.how === 'inferred' && !['phone', 'email', 'linkedin', 'github', 'website', 'street', 'postal_code', 'birth_date'].includes(field);   // a contact channel is never inferred
+    if (item?.how === 'inferred' && !inferred) return [];
+    return [{field, value, sure: field === 'salutation' || profile || inferred ? false : item?.sure === true, ...(profile ? {source: 'profile'} : {}), ...(inferred ? {inferred: true} : {})}];
   });
 }
 
@@ -48,6 +53,26 @@ export function pending(saved, cvHash, contact) {
   if (!saved || !cvHash || saved.cv !== cvHash) return [];
   const empty = new Set(emptyFields(contact));
   return (saved.proposals || []).filter(item => empty.has(item.field));
+}
+
+// The CV's sure values for the details you left empty, for a form only (owner, 27 Oct 2026: "Empty saved detail → the fill types the CV's sure value and
+// marks it 'from your CV: check it'; the Profile is not changed"). A Greenhouse form stayed without First/Last Name while the CV read had proposed both and
+// nobody pressed Save. Only proposals of THIS CV file (the key's part before "+": a later Profile edit does not change what the CV states), sure, stated by the CV
+// (a Profile-only value is never sure). Nothing is written. -> {details: {key: value}, keys: [key]}
+export function cvFallback(saved, cvFile, contact = {}) {
+  const fromFile = String(saved?.cv || '').split('+')[0];
+  if (!cvFile || fromFile !== cvFile) return {details: {}, keys: []};
+  const empty = new Set(emptyFields(contact));
+  const details = {};
+  for (const item of saved?.proposals || []) {
+    if (item?.sure === true && item.source !== 'profile' && empty.has(item.field) && !details[item.field] && String(item.value || '').trim()) details[item.field] = String(item.value).trim();
+  }
+  return {details, keys: Object.keys(details)};
+}
+export function cvFallbackFor(storage, cvFile, contact) {
+  let saved = null;
+  try { saved = JSON.parse(storage.readText(FILE) || 'null'); } catch {}
+  return cvFallback(saved, cvFile, contact);
 }
 
 // One Claude call on the CV PDF. → {proposals, usd?} ; throws on an AI failure (the caller says why).

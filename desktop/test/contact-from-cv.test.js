@@ -90,3 +90,28 @@ test('what you stated: Profile, Answers and learned notes, each named; empty one
   assert.equal(statedText({profile: 'Retail.', answers: '', knowledge: "Candidate's location is Nyon."}), "## Profile\nRetail.\n\n## Learned notes\nCandidate's location is Nyon.");
   assert.equal(statedText({}), '');
 });
+
+// Owner, 27 Oct 2026: a Greenhouse form stayed without First/Last Name; the CV read had proposed both, nobody pressed Save, and the fill reads saved details only.
+test('cvFallback: the CV\'s sure values fill the empty details for a form; never an unsure, inferred, Profile-only or another CV\'s value', async () => {
+  const {cvFallback} = await import('../lib/contact-from-cv.js');
+  const saved = {cv: 'cv1+abc123', proposals: [{field: 'first_name', value: 'Ana', sure: true}, {field: 'last_name', value: 'Lupu', sure: true},
+    {field: 'location', value: 'Somewhere', sure: false, inferred: true}, {field: 'website', value: 'x.example', sure: false, source: 'profile'}, {field: 'email', value: 'old@x.y', sure: true}]};
+  assert.deepEqual(cvFallback(saved, 'cv1', {email: 'me@x.y'}), {details: {first_name: 'Ana', last_name: 'Lupu'}, keys: ['first_name', 'last_name']});
+  assert.deepEqual(cvFallback(saved, 'cv2', {}).keys, [], 'another CV file: nothing');
+  assert.deepEqual(cvFallback(null, 'cv1', {}).keys, []);
+});
+
+test('an inferred value is kept as a proposal to check; a contact channel is never inferred', () => {
+  const wanted = ['location', 'phone', 'first_name'];
+  assert.deepEqual(cleanProposals([{field: 'location', value: 'Chisinau', sure: true, how: 'inferred'}, {field: 'phone', value: '+1 555', sure: false, how: 'inferred'},
+    {field: 'first_name', value: 'Ana', sure: true, how: 'stated'}], wanted),
+  [{field: 'location', value: 'Chisinau', sure: false, inferred: true}, {field: 'first_name', value: 'Ana', sure: true}]);
+});
+
+test('the CV read copies the applicant\'s own name even when it matches a signed-in account', async () => {
+  const {MODEL} = await import('../lib/contact-from-cv.js');
+  const calls = [];
+  await forCv(memoryStorage(), {contact: {}, client: fakeClient({proposals: []}, calls), cvHash: 'cv9', read: pdf});
+  assert.match(calls[0].system, /copy it even when it is the same as the name of an account you are signed in with/);
+  assert.ok(MODEL);
+});

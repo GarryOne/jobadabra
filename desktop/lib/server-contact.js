@@ -7,6 +7,8 @@ import fs from 'node:fs';
 import * as knowledge from './knowledge.js';
 import * as viewCache from './view-cache.js';
 import * as contactDetails from './contact.js';
+import {cvFallbackFor} from './contact-from-cv.js';
+import {hashOf} from './cv-check.js';
 import {log} from './log.js';
 import {choicesFor} from './menu-choices.js';
 import {isTwin} from './twin.js';
@@ -62,6 +64,16 @@ export function pickCv({tailored, general, url = '', read = file => fs.readFileS
   return null;
 }
 
+// A detail left empty that the CV states plainly goes to the form, named in contact._fromCv (an array: never typed, never a value the page compares) so the
+// page marks it "from your CV: check it" (page/fill.js). Not saved: the Profile stays as the person left it (contact-from-cv.js cvFallback). Guard: test/contact-cv-fallback.test.js.
+export function withCvFallback(storage, details, cvFile = hashOf(storage)) {
+  const {details: fromCv, keys} = cvFallbackFor(storage, cvFile, details.contact || {});
+  if (!keys.length) return details;
+  if (fromCv.first_name && fromCv.last_name && !details.contact?.full_name) fromCv.full_name = `${fromCv.first_name} ${fromCv.last_name}`;   // a "Name" box takes both (contact.js read does the same for a saved one)
+  log('extension', `details from your CV for an empty one: ${keys.join(', ')}`, {fields: keys});   // which fields, never their values
+  return {...details, contact: {...details.contact, ...fromCv, _fromCv: Object.keys(fromCv)}};
+}
+
 export async function me(storage, url = '') {
   const settings = storage.settings();
   const tailored = url ? cv.forUrl(storage, url) : null;
@@ -84,7 +96,7 @@ export async function me(storage, url = '') {
     return {notes: list};
   }).catch(() => ({notes: []}));
   const direct = (notes.notes || []).filter(n => n.value && ['answer', 'option'].includes(n.kind));
-  const details = await contactOf(storage);
+  const details = withCvFallback(storage, await contactOf(storage));
   // Logged only when Notion was actually read or failed: an answer from the kept copy is the normal case (no noise).
   if (!details.contactSource?.startsWith('kept')) log('extension', `details for ${(() => { try { return new URL(url).hostname; } catch { return 'a form'; } })()}: ${Object.keys(details.contact).length} contact fields from ${details.contactSource}`,
     {fields: Object.keys(details.contact), cv: resume?.name || null, tailored: !!resume?.tailored, coverLetter: !!coverLetterFile, tailoredLetter: !!coverLetterFile?.tailored, ...(details.contactError ? {error: details.contactError} : {})});

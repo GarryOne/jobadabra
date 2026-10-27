@@ -67,7 +67,7 @@
     }
     proposedOf = Object.fromEntries((all || []).filter(a => a.use === 'propose').map(a => [a.field, a]));
     const contact = window.__jobPilottoProfileEntries(form, profile || {});
-    const contactFields = new Set(contact.map(entry => entry.field));
+    const contactFields = new Set(contact.map(entry => entry.field)), fromCvFields = new Set(contact.filter(entry => entry.fromCv).map(entry => entry.field));
     const todo = [], review = [], armed = []; document.querySelectorAll('.job-pilotto-badge').forEach(badge => badge.remove());
     let filled = 0;
     const plain = [];
@@ -255,7 +255,7 @@
     const trace = after.filter(row => row.field !== 'resume' && !/^(attach|dropbox|google drive|enter manually)$/i.test(clean(row.label))).map(row => {
       const label = rowOf[row.field]?.label || clean(row.label).replace(row.field, '').trim() || row.field;
       const answer = answerOf[row.field];
-      const source = contactFields.has(row.field) ? 'your details' : answer ? (answer.source || 'kit') : '';
+      const source = fromCvFields.has(row.field) ? 'your CV' : contactFields.has(row.field) ? 'your details' : answer ? (answer.source || 'kit') : '';
       let outcome = row.filled ? 'filled' : 'left';
       let reason = '';
       if (row.type === 'file') { if (!row.filled) reason = 'upload: no file for this question'; }
@@ -279,6 +279,7 @@
       else if (!row.filled && !answer && !contactFields.has(row.field) && knownKey(row)) reason = `a detail of yours not saved yet (${knownKey(row)})`;
       else if (!row.filled && !answer && !contactFields.has(row.field)) reason = 'no answer in the kit, Profile or your details';
       else if (!row.filled) { reason = 'answer given, but the field did not take it'; window.__jobPilottoNoteNotTaken?.(row.field, answer?.value); }   // typed again for real after the fill (page/fill-verify.js)
+      if (outcome === 'filled' && fromCvFields.has(row.field)) reason = 'from your CV: check it';   // not in your saved details: the CV states it (owner, 27 Oct 2026)
       if (outcome === 'filled' && answer?.draft && row.type !== 'file') reason = answer.draft === 'outline' ? 'outline: add your own details' : 'drafted: review it';   // typed, but the person has not read it yet (owner, 16 Oct 2026)
       if (outcome === 'filled' && source && row.type !== 'file') watchCorrection(row.field, label);
       if (outcome === 'filled' && source) markFilled(row.field); else window.__jobPilottoMarkProposal?.({...row, options: rowOf[row.field]?.options || row.options}, answer || proposedOf[row.field], (PROFILE_LABELS.find(([, pattern]) => pattern.test(label)) || [])[0] || aliasFor(label)?.key || '');   // page/propose.js: what the app's row proposes

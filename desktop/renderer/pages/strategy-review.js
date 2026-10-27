@@ -87,6 +87,9 @@ async function saveDraft(parts = null) {
   const replacing = !!shared.state.settings.setupDone;
   show(document.querySelector('[data-save-step="snapshot"]'), replacing);
   if (!replacing) saveState.snapshot = 1;  // nothing to keep on a first setup
+  const profileTaken = !parts || parts.includes('profile');   // Your details are read from the CV only when the Profile is saved (lib/strategy-draft-handlers.js detailsAfter)
+  show(document.querySelector('[data-save-step="details"]'), profileTaken);
+  if (!profileTaken) saveState.details = 1;
   if (!$('save-dialog').open) $('save-dialog').showModal();
   const result = await window.pilot.saveStrategy(shared.draft, parts);
   if (!result.ok) {

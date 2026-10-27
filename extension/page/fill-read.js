@@ -98,7 +98,7 @@
       const part = key === 'phone' ? parts.get(row.field) || 'number' : '';
       const value = key === 'phone' ? phoneFor(part === 'number' && split ? 'split-number' : part, profile.phone) : String(profile[key]);
       if (!value) { used.add(row.field); continue; }   // the extension box: nothing to type, and no other detail takes it
-      entries.push({field: row.field, value, ...(guess ? {pageGuess: true} : {})});
+      entries.push({field: row.field, value, ...(guess ? {pageGuess: true} : {}), ...((profile._fromCv || []).includes(key) ? {fromCv: true} : {})});   // a detail you left empty, from your CV (desktop/lib/server-contact.js withCvFallback): shown "check it"
       if (alias) window.__jobPilottoAliasUsed[row.field] = alias.phrase;
       used.add(row.field);
     }

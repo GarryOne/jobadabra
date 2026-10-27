@@ -12,7 +12,7 @@ import {showFilter} from './jobs-filter.mjs';
 import {openRunsList} from './runs-list.mjs';
 
 export async function runCvSteps(ctx, h) {
-  const {apply, cv, fail, page, panelOf, proxy} = h;
+  const {apply, cv, fail, page, proxy} = h;
   await ctx.run('Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV', async () => {
     const form = FORMS.greenhouse;
     const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
@@ -45,27 +45,20 @@ export async function runCvSteps(ctx, h) {
     fail(cvProblems(await readForm(tab), {name: 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf', size}));   // the tailored file's bytes, under its own name: the form shows which CV it got
   }, {needs: ctx.needs});
 
-  // Why (27 Oct 2026, owner: "Send me to the app"): the panel never tailors; its "Tailor in Jobadabra" opens the session page at its Tailor button, and the app restarts the form
-  // when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press.
-  await ctx.run('the form\'s panel sends you to the app to tailor: the session page opens at Tailor, and the tailored CV restarts the form with it under its own name', async () => {
+  // Why (27 Oct 2026, owner: "remove the line with 'general CV attached… Tailor in Jobadabra'"): the panel neither tailors nor links to it; Tailor lives on the session page,
+  // and the app restarts the form when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press.
+  await ctx.run('Tailor on the session page of a form restarts the form with the tailored CV under its own name', async () => {
     const form = FORMS.lever;
     const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
     const tailoredPdf = path.join(ctx.profile, 'cv', 'tailored', `${code}.pdf`);
     fs.rmSync(tailoredPdf, {force: true});
     const {tab, state} = await apply(form, {viaApi: true});
     if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
-    let panel = await panelOf(tab);
-    for (let i = 0; i < 10 && !/general CV/i.test(panel?.tailor || ''); i++) { await pause(1500); panel = await readPanel(tab); }
-    // The offer needs a session, the app connected, the CV state and no account page (extension/review.js canTailor): the panel's other lines say which is missing.
-    if (!/general CV/i.test(panel?.tailor || '')) throw new Error(`the panel does not say which CV goes in (its tailor line: "${panel?.tailor}"; the panel: ${JSON.stringify({pill: panel?.pill, progress: panel?.progress, note: panel?.note, foot: panel?.foot, fill: panel?.fillLabel})})`);
-    const offer = tab.locator('#jobpilotto-review-host .t-btn');
-    await offer.waitFor({state: 'visible', timeout: 60000}).catch(() => { throw new Error('the panel shows no "Tailor in Jobadabra" once its fill is over (hidden while it works)'); });
-    await offer.click();
+    fail(cvProblems(await readForm(tab), cv).map(problem => `${problem} (before Tailor the form has the general CV)`));
+    await page.click('.nav[data-view="sessions"]');
+    await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page`); });
     const tailor = page.locator('#ss-before-cv-btn');
-    await tailor.waitFor({state: 'visible', timeout: 20000}).catch(() => { throw new Error('"Tailor in Jobadabra" did not open the session page with its Tailor button'); });
-    let focused = '';
-    for (let i = 0; i < 20 && focused !== 'ss-before-cv-btn'; i++) { await pause(300); focused = await page.evaluate(() => document.activeElement?.id || ''); }
-    if (focused !== 'ss-before-cv-btn') throw new Error(`the session page opened but its Tailor button is not highlighted (focus on "${focused}")`);
+    await tailor.waitFor({state: 'visible', timeout: 20000}).catch(() => { throw new Error(`the session page of ${form.company} has no Tailor button`); });
     await tailor.click();
     for (let waited = 0; !fs.existsSync(tailoredPdf) && waited < 120000; waited += 1000) await pause(1000);
     if (!fs.existsSync(tailoredPdf)) throw new Error('Tailor on the session page wrote no tailored CV within two minutes');

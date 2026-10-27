@@ -1,6 +1,6 @@
 /* global document */
-// The form panel's CV line says which CV goes in, and its "Tailor in Jobadabra" opens the app at this job's Tailor button: the panel never tailors itself (owner, 27 Oct 2026:
-// "Send me to the app"; the app restarts the form when the tailored CV is ready, desktop/lib/tailored-restart.js). Open in Jobadabra's failure is said on the panel too.
+// The form panel draws no CV row and no "Tailor in Jobadabra" (owner, 27 Oct 2026: "let's remove the line with "general CV attached… Tailor in Jobadabra". And let's have the "Open in Jobadabra" centered"):
+// the app tailors and restarts the form when the CV is ready (desktop/lib/tailored-restart.js). Open in Jobadabra is centred, and its failure is said on the panel.
 // Real extension on a fixture form, a stand-in app with fake data, no paid AI, nothing live (owner, 19 Oct 2026).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -21,11 +21,11 @@ async function start({cv = {tailored: false, working: false}, silent = false} = 
   const real = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true, answer});
   await real.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
   await real.page.goto(`${URL}#jobpilotto-fill`);   // the app opens the tab with the mark: the panel mounts
-  await real.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.tailor:not([hidden])'), null, {timeout: 25000});
+  await real.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.open-app:not([hidden])'), null, {timeout: 25000});
   await real.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 25000});   // the first fill is over
   await real.page.waitForTimeout(1000);
-  const panel = () => real.page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot, button = root.querySelector('.t-btn');
-    return {text: root.querySelector('.tailor .t-text').textContent, button: button.hidden ? '' : button.textContent}; });
+  const panel = () => real.page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot, link = root.querySelector('.open-app').getBoundingClientRect(), card = root.querySelector('.actions').getBoundingClientRect();
+    return {row: !!root.querySelector('.tailor, .t-btn, .t-text'), offCentre: Math.round(Math.abs((link.x + link.width / 2) - (card.x + card.width / 2)))}; });
   const press = async selector => {   // a real click on the panel's own control
     const box = await real.page.evaluate(sel => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector(sel).getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }, selector);
     await real.page.mouse.click(box.x, box.y);
@@ -34,33 +34,22 @@ async function start({cv = {tailored: false, working: false}, silent = false} = 
   return {real, app, panel, press, noteSays};
 }
 
-test('Tailor in Jobadabra: the panel says the general CV is attached and its press opens the app at this job\'s Tailor, never tailoring itself', async () => {
+test('the panel has no CV row, and "Open in Jobadabra" sits in the middle of its row', async () => {
   const t = await start();
   try {
-    assert.deepEqual(await t.panel(), {text: 'General CV attached', button: 'Tailor in Jobadabra'});
-    await t.press('.t-btn');
+    const now = await t.panel();
+    assert.equal(now.row, false, 'no "General CV attached" / "Tailor in Jobadabra" row is drawn');
+    assert.ok(now.offCentre <= 2, `Open in Jobadabra is ${now.offCentre}px off the centre of its row`);
+    await t.press('.open-app');
     for (let i = 0; i < 20 && !t.app.opened.length; i++) await t.real.page.waitForTimeout(250);
-    assert.deepEqual(t.app.opened, [{session: 's1', show: 'tailor'}], 'the app is asked to open this session at its Tailor button');
+    assert.deepEqual(t.app.opened, [{session: 's1'}], 'the app is asked to open this session');
     assert.deepEqual(t.app.events.filter(type => /tailor|add-job/.test(type)), [], 'the panel never asks the app to tailor or add the job itself');
   } finally { await t.real.close(); }
 });
 
-test('the CV line follows the app: "Tailoring in Jobadabra…" while the window tailors, "Tailored CV attached" once it is written, no button in either', async () => {
-  const t = await start({cv: {tailored: false, working: true}});
-  try {
-    assert.deepEqual(await t.panel(), {text: 'Tailoring in Jobadabra…', button: ''});
-    t.app.cv = {tailored: true, working: false};
-    await t.real.page.waitForFunction(() => /Tailored CV attached/.test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.tailor .t-text').textContent), null, {timeout: 15000});
-    assert.deepEqual(await t.panel(), {text: 'Tailored CV attached', button: ''});
-  } finally { await t.real.close(); }
-});
-
-test('Tailor in Jobadabra and Open in Jobadabra: an app that does not answer is said on the panel, not a dead link', async () => {
+test('Open in Jobadabra: an app that does not answer is said on the panel, not a dead link', async () => {
   const t = await start({silent: true});
   try {
-    await t.press('.t-btn');
-    await t.noteSays(/not answering/);
-    await t.real.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.open-app').hidden, null, {timeout: 15000});
     await t.press('.open-app');
     await t.noteSays(/not answering/);
   } finally { await t.real.close(); }

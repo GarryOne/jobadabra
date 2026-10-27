@@ -20,7 +20,6 @@ import {toastMessage} from './startup.js';
 import {syncTips} from '../tips.js';
 import {storeName} from '../store-words.js';
 import {NO_PLACE} from '../targets.js';
-import {showTailor} from './session-show-tailor.js';
 
 export async function openSession(id) {
   if (!id) return;
@@ -253,7 +252,7 @@ export async function init() {
       else if (shared.termShownFor === payload.id) shared.xterm?.write(payload.data);
       return;
     }
-    if (event === 'open') { openSession(payload.id).then(() => payload.show === 'tailor' && shared.openSessionId === payload.id && showTailor(payload.id)); return; }   // show: the panel's "Tailor in Jobadabra"
+    if (event === 'open') { openSession(payload.id); return; }
     if (event === 'update' && (payload?.kind === 'form' || payload?.inChrome)) nudgeMissingDetails();   // a form is being filled: details it will ask for
     refreshSessions().then(() => { if (!document.querySelector('.view[data-view="jobs"]').hidden) renderJobs(); });
   });

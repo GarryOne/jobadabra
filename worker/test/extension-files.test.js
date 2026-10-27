@@ -148,8 +148,8 @@ test('a CV tailored after the first fill replaces the one the extension attached
   assert.match(fill, /input\.dataset\.jobPilottoFile = file\.name/);
   assert.match(fill, /ours && input\.files\[0\]\.name === ours && ours !== file\.name/);
   const review = readPanel();
-  // Why (27 Oct 2026, owner): the panel sends the person to the app to tailor (show: 'tailor'); the app restarts the form with the new CV, so the panel never asks the app to tailor.
-  assert.match(review, /type: 'panelOpenApp', session: session\.id, show: 'tailor'/);
+  // Why (27 Oct 2026, owner: "remove the line with General CV attached… Tailor in Jobadabra"): the panel has no CV row; tailoring is the app's, which restarts the form with the new CV, so the panel never asks the app to tailor.
+  assert.doesNotMatch(review, /show: 'tailor'|class="tailor"/);
   assert.doesNotMatch(readBackground(), /type: 'tailor-cv'/);
 });
 

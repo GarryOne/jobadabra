@@ -360,7 +360,7 @@ test('while working, every panel button is hidden or works: Stop, minimise and t
     await fillOver(t);
     await t.step('');
     await t.lookIs({dim: false, centred: false, busy: false}, 'control: not working');
-    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.tailor').hidden, null, {timeout: 15000}).catch(() => {});
+    await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.open-app').hidden, null, {timeout: 15000}).catch(() => {});   // the idle panel has drawn its actions
     const idle = await shown();
     for (const name of ['x', 'min', 'report-btn']) assert.ok(idle.includes(name), `positive control: "${name}" is drawn when the panel is not working (${idle})`);
     await t.step('Filling the form…');

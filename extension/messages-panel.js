@@ -1,5 +1,5 @@
 // The extension worker's messages from the page's panel (moved out of background.js, 8 Oct 2026): the job it shows, Fill, bringing the tab forward or closing it, taking over with
-// Claude, the tip and opening the app (also at its Tailor button). Each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE
+// Claude, the tip and opening the app. Each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE
 // (docs/flows/applying.md). Guards: the panel and review tests in desktop/test and the matrix (npm run flows).
 import {NO_APP} from './flow.js';
 import {plainWhy} from './ai-reply.js';
@@ -140,7 +140,7 @@ export function createPanelMessages(ctx) {
       return true;
     }
     if (message?.type === 'panelOpenApp') {
-      settings().then(config => api(config, '/extension/open', {method: 'POST', body: JSON.stringify({session: message.session, ...(message.show === 'tailor' ? {show: 'tailor'} : {})})}))
+      settings().then(config => api(config, '/extension/open', {method: 'POST', body: JSON.stringify({session: message.session})}))
         .then(data => reply({ok: !!data.ok}), () => reply({ok: false}));
       return true;
     }

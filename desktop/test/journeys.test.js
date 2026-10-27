@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import './journeys-letter-fallback.test.js';
 import './journeys-profile.js';
+import './letter-panel-notice.test.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';
@@ -493,3 +494,4 @@ test('scenario: attached CV and complete required fields still leave missing cov
   const written = review.allStates().find(row => row.id === 'letter-journey');
   assert.equal(availableLetter(storage, FORM, {given: written.letterGiven}).status.source, 'form', 'a letter actually supplied satisfies this form without changing fallback consent');
 });
+

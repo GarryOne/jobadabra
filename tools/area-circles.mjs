@@ -23,11 +23,12 @@ export function priorPrs(commits, files, days, now) {
   return [...seen.values()];
 }
 
-// -> the report lines (empty when no earlier PR touched the area). Last line: AREA-CIRCLES 7d=<n> 30d=<n> files=<list>.
+// -> the report lines; last line AREA-CIRCLES 7d=<n> 30d=<n> files=<list>, alone (0 and 0) when no earlier PR touched the area.
+// Why (Gitar on #2287): the counter writes its own zero, so a description's 0/0 is a count, never a caller's fallback for a run that failed.
 export function report(commits, changed, now) {
   const files = changed.filter(file => !NOT_AREA.test(file));
   const week = priorPrs(commits, files, 7, now), month = priorPrs(commits, files, 30, now);
-  if (!month.length) return [];
+  if (!month.length) return [`AREA-CIRCLES 7d=0 30d=0 files=${files.join(',')}`];
   const short = list => list.slice(0, 8).map(pr => `  ${pr.id} ${pr.subject.replace(/\s*\(#\d+\)$/, '')}`);
   const lines = [`Files: ${files.slice(0, 6).join(', ')}${files.length > 6 ? `, +${files.length - 6} more` : ''}`,
     ` 7 days : ${week.length} earlier PRs`, ...short(week), `30 days : ${month.length} earlier PRs`];
@@ -50,7 +51,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = process.argv[2] || 'origin/main';
   try {
     const files = git('diff', '--name-only', `${base}...HEAD`).split('\n').filter(Boolean);
-    const lines = files.length ? report(readCommits(base), files, Date.now()) : [];
-    if (lines.length) console.log(lines.join('\n'));
-  } catch (error) { console.error(`area-circles: skipped (${String(error.message).split('\n')[0]})`); }   // never blocks a ship
+    console.log(report(files.length ? readCommits(base) : [], files, Date.now()).join('\n'));
+  } catch (error) { console.log(`AREA-CIRCLES skipped (${String(error.message).split('\n')[0]})`); }   // never blocks a ship; said in the line, so a reader never takes it for 0
 }

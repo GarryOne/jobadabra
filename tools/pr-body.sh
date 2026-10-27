@@ -51,9 +51,8 @@ printf '\n'
 # Why (27 Oct 2026, .gitar/config/approve.md): Gitar approves only when the circle count is in the description, and #2284 waited on the owner's bypass without it.
 #   Written here from tools/area-circles.mjs, so no description misses it; a summary that already has the line keeps its own.
 if [ -n "$summary" ] && ! grep -q 'AREA-CIRCLES 7d=' "$summary" && [ -f "$(dirname "$0")/area-circles.mjs" ]; then
-  if report="$(node "$(dirname "$0")/area-circles.mjs" "$base" 2>/dev/null)"; then   # no earlier PR on these files: it prints nothing, which is 0 and 0
-    circles="$(grep -E '^AREA-CIRCLES ' <<<"$report" | tail -n 1 || true)"; printf '\n`%s`\n' "${circles:-AREA-CIRCLES 7d=0 30d=0 files=-}"
-  fi
+  circles="$(node "$(dirname "$0")/area-circles.mjs" "$base" 2>&1 | grep -E '^AREA-CIRCLES ' | tail -n 1 || true)"   # a count (0 and 0 included) or "skipped (why)", as the counter says it
+  printf '\n`%s`\n' "${circles:-AREA-CIRCLES skipped (the counter printed no line)}"
 fi
 facts=""
 fact() {   # emoji, label, trailer key

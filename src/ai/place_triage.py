@@ -19,7 +19,7 @@ from .providers.contract import detail, reason
 
 MODEL = SMALL_MODEL
 BATCH = 30   # one line of reasoning per location: 30 a call (7 Oct 2026: 60 at once misfiled Swiss towns)
-VERSION = 3   # 3: nearest place and distance per location, visa asked apart (7 Oct 2026); a new version asks again
+VERSION = 4   # 4: several places in one location and remote limited to another region are out (#2228 follow-up, 27 Oct 2026); 3: nearest place and distance per location, visa asked apart (7 Oct 2026); a new version asks again
 STORE = DATA / 'place_triage.json'
 LOCK = threading.Lock()
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['locations'], 'properties': {'locations': {'type': 'array', 'items': {
@@ -40,7 +40,11 @@ more away is not part of it).
 cities abroad. When they listed no such place, nothing is "inside".
 - "out": everything else, including a location naming only a country or an area wider than their places ("Switzerland" for someone who \
 wants only Geneva), and remote jobs unless they accept remote work and the posting does not limit it to a region outside their places.
-Being in the same country as their places does not make a town "inside". When unsure, answer "out"."""
+Being in the same country as their places does not make a town "inside". When unsure, answer "out".
+A location may list several places ("Vienna; London; Munich", "Remote; New York City - Hybrid; Toronto - Remote; Poland"): it is in their places only when \
+one listed place is theirs, or it says remote with no region at all or a region that holds their places. Other cities and remote limits to other \
+regions or countries ("Remote (South Africa)", "Ukraine, Remote", "Remote: UK", "Toronto - Remote", "Paris - Full Remote") say where the job is based \
+or who may take it: "out" for someone whose places are elsewhere, even when they accept remote work."""
 VISA_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['visa'],
                'properties': {'visa': {'type': 'array', 'items': {'type': 'string'}, 'description': 'The countries, as given, where they need a visa'}}}
 VISA_SYSTEM = """You get a job seeker's work rights in their own words (a permit, a citizenship, "EU") and a list of countries. Answer the \

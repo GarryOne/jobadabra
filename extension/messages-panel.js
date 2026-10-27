@@ -10,7 +10,8 @@ import {forgetAI} from './flow.js';
 import {settings} from './flow.js';
 import {sharedFixNote} from './tab-pages.js';
 import {sharedFixes} from './tab-pages.js';
-import {consider, sayStep, tabReloaded} from './fill-flow.js';
+import {consider, tabReloaded} from './fill-flow.js';
+import {sayStep} from './fill-flow.js';
 import {forgetJudged, formNext, handGivenUpToPerson} from './form-ready.js';
 
 export function createPanelMessages(ctx) {

@@ -11,8 +11,20 @@ from unittest import mock
 
 from src import first_jobs, scout_core, scout_candidates
 from src.ai import board_ideas
+from src.sources import careers
 
 SEARCH = {'locations': ['Zurich'], 'roles': ['Warehouse worker']}
+_READER = careers.READER
+
+
+def setUpModule():   # the guard in tests/test_found_boards_ai.py: no page read reaches a real model from this file
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
+
+
 BOARDS = [{'name': f'Board {i}', 'host': f'b{i}.test', 'search_url': f'https://b{i}.test/?q={{role}}'} for i in range(8)]
 
 

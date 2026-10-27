@@ -45,11 +45,12 @@ pr_view() {
       commits: [.[3][]? | {committedDate: .commit.committer.date}]}'
 }
 
-# pr_checks <repo> <sha>: every check-run and commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).
+# pr_checks <repo> <sha>: the newest check-run of each name and every commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).
+# Why (#2282, its own first run): two edits of a PR start the same workflow twice and the first run is cancelled; the list keeps both, gh's checks keep only the newest.
 pr_checks() {
   local runs st
   runs="$(pr_get "repos/$1/commits/$2/check-runs?per_page=100")" && st="$(pr_get "repos/$1/commits/$2/status")" || return 1
-  printf '%s\n%s\n' "$runs" "$st" | jq -sc '[(.[0].check_runs[]? | {name, link: (.html_url // ""), bucket: (if .status != "completed" then "pending"
+  printf '%s\n%s\n' "$runs" "$st" | jq -sc '[(.[0].check_runs // [] | group_by(.name) | map(max_by(.id))[] | {name, link: (.html_url // ""), bucket: (if .status != "completed" then "pending"
         elif (.conclusion | IN("success", "neutral")) then "pass" elif .conclusion == "skipped" then "skipping" elif .conclusion == "cancelled" then "cancel" else "fail" end)}),
       (.[1].statuses[]? | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
 }

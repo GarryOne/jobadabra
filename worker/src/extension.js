@@ -20,7 +20,7 @@ import { FACT_KEYS, FACT_RULE, LINK_RULE, floorBoxGuess, floorInventedFigure, fl
 import { applyPay } from './pay-convert.js';
 import { WRITTEN_RULE, reviewAnswer, draftWritten, writtenKinds } from './written-answer.js';
 import { ANSWER_EXAMPLES } from './answer-examples.js';
-import { DECLARATION_RULE, LEGAL_CHOICE_RULE, legalChoice } from './answer-declarations.js';
+import { DECLARATION_RULE, LEGAL_CHOICE_RULE, CONSENT_RULE, consentKind, legalChoice } from './answer-declarations.js';
 import { JOB_ANSWERS_SECTION, asKitAnswers, jobAnswersOf } from './job-answers.js';
 
 const KIT_HEADING = '📝 Application kit';
@@ -164,7 +164,7 @@ const ANSWER_SCHEMA = {
           value: { type: 'string' },
           confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
           note: { type: 'string' },
-          category: { type: 'string', enum: ['knockout', 'legal', 'demographic', 'contact', 'preference', 'normal', 'written'] },
+          category: { type: 'string', enum: ['knockout', 'legal', 'consent', 'demographic', 'contact', 'preference', 'normal', 'written'] },
           use: { type: 'string', enum: ['fill', 'propose'] },
           fact: { type: 'string', enum: FACT_KEYS },
           link_box: { type: 'string', enum: ['work_page', 'own_site', 'other', 'none'] },   // the AI's reading of a link box (answer-facts.js LINK_RULE)
@@ -190,10 +190,11 @@ ${FACT_RULE}
 ${LINK_RULE}
 ${DECLARATION_RULE}
 ${LEGAL_CHOICE_RULE}
-Base a proposal on what is stated (their country, their CV, that they chose to apply to this job) and on what the posting expects (its hours, place, duties). Leave a field out (no answer) when nothing given points to an answer: never invent employers, dates, numbers, links, tools, projects, skills, experience or personal details: an experience or skill claim that <profile>, <standard_answers> and the CV facts do not state is not typed (use: "propose"), it is a suggestion the applicant checks. A legal question (a consent, terms, a certification or attestation, an acknowledgement) is never answered: return it with value "" and category "legal", so the applicant sees it is theirs to decide; never propose an answer to a demographic question or to a fact only the applicant can know (a criminal record, a registration with an office, their health). Voluntary demographic questions (gender, ethnicity, veteran, disability) are answered only from the applicant's saved survey answers (the voluntary surveys section of <profile>, or <standard_answers>; the answer saved for that very question beats a general one such as "decline all"); otherwise choose the "decline to answer" option if there is one. A demographic question with no saved answer and no decline option (a salutation Mr/Ms, Herr/Frau, a gender) is returned with value "" and category "demographic": never guess it from the applicant's name.
-category, in whatever language the form is: knockout = a question the employer can reject on by itself (work authorisation, visa or sponsorship, location, relocation, on-site days, a required licence or language); legal = a consent, terms, privacy notice, certification or acknowledgement; demographic = gender, ethnicity, disability, veteran or similar voluntary questions; contact = name, email, phone, address; preference = whether and how the applicant is kept informed (notifications by SMS or email, job alerts, a newsletter, a talent pool): a choice, not a legal consent, so give it your most plausible answer with use: "propose"; ${WRITTEN_RULE}; normal = anything else.
+${CONSENT_RULE}
+Base a proposal on what is stated (their country, their CV, that they chose to apply to this job) and on what the posting expects (its hours, place, duties). Leave a field out (no answer) when nothing given points to an answer: never invent employers, dates, numbers, links, tools, projects, skills, experience or personal details: an experience or skill claim that <profile>, <standard_answers> and the CV facts do not state is not typed (use: "propose"), it is a suggestion the applicant checks. A legal question (a certification, signature or attestation, or an acknowledgement beyond the consent rule) is never answered: return it with value "" and category "legal", so the applicant sees it is theirs to decide; never propose an answer to a demographic question or to a fact only the applicant can know (a criminal record, a registration with an office, their health). Voluntary demographic questions (gender, ethnicity, veteran, disability) are answered only from the applicant's saved survey answers (the voluntary surveys section of <profile>, or <standard_answers>; the answer saved for that very question beats a general one such as "decline all"); otherwise choose the "decline to answer" option if there is one. A demographic question with no saved answer and no decline option (a salutation Mr/Ms, Herr/Frau, a gender) is returned with value "" and category "demographic": never guess it from the applicant's name.
+category, in whatever language the form is: knockout = a question the employer can reject on by itself (work authorisation, visa or sponsorship, location, relocation, on-site days, a required licence or language); legal = a certification, signature, attestation or acknowledgement requiring personal review; consent = an unambiguous agreement to application terms, privacy or data processing (the separate consent rule above); demographic = gender, ethnicity, disability, veteran or similar voluntary questions; contact = name, email, phone, address; preference = whether and how the applicant is kept informed (notifications by SMS or email, job alerts, a newsletter, a talent pool): a choice, not a legal consent, so give it your most plausible answer with use: "propose"; ${WRITTEN_RULE}; normal = anything else.
 ${ANSWER_EXAMPLES}
-confidence: high when the answer is stated in the profile or standard answers, medium when you inferred it, low when the applicant should check it. note: a few words on why, for medium and low. When two saved facts disagree on the answer (<profile> says one thing, <standard_answers> another), use "propose" with confidence low and name both in the note: the applicant picks, neither is typed.
+confidence: high for the explicit consent reading under the consent rule above, or when the answer is stated in the profile or standard answers, medium when you inferred it, low when the applicant should check it. note: a few words on why, for medium and low. When two saved facts disagree on the answer (<profile> says one thing, <standard_answers> another), use "propose" with confidence low and name both in the note: the applicant picks, neither is typed.
 
 Eligibility: set eligible to false only when the posting clearly rules the applicant out (a work location, residence or authorization the profile says they can't meet, or a required language they don't speak), and say why in eligibility_note. Otherwise eligible is true and eligibility_note is empty.`;
 
@@ -273,7 +274,7 @@ export async function answerForm(env, { url, fields, page_text, test = false }, 
   const paid = await applyPay(Array.isArray(result.answers) ? result.answers : [], result.pay_asks, fields, { fetchFn: env.fetchFn || globalThis.fetch });   // a salary in another currency or period, converted by the code
   const typeOf = Object.fromEntries(fields.map((f) => [f.field, f.type]));
   const optionsOf = Object.fromEntries(fields.map((f) => [f.field, Array.isArray(f.options) ? f.options : []]));
-  const choiceChecked = paid.map((a) => legalChoice(a, typeOf[a.field]));   // a legal-looking choice is asked once, not held (answer-declarations.js)
+  const choiceChecked = paid.map((a) => consentKind(a, typeOf[a.field], optionsOf[a.field]) || legalChoice(a, typeOf[a.field]));   // a legal-looking choice is asked once, not held (answer-declarations.js)
   const floorsApplied = choiceChecked.map((a) => floorInventedFigure(floorBoxGuess(floorLinkKind(floorUngrounded(test ? a : typeGuess(a), given, { test, options: optionsOf[a.field] }), labelOf[a.field] || '', given, { test }), test ? '' : typeOf[a.field]), labelOf[a.field] || '', given, typeOf[a.field], { test }));
   // Test harness only (owner-guard.js): an answer that is the owner's own value is never typed, whatever its kind or category; the field stays empty.
   const { answers: all, withheld } = withholdOwner(floorsApplied, labelOf, env.ownerValues);
@@ -303,7 +304,7 @@ export async function answerForm(env, { url, fields, page_text, test = false }, 
     floored: all.filter(floored).map((a) => a.category),
     ...(withheld.length ? { withheld } : {}),   // the owner's own values the guard kept out (field + kind, never the value; test harness only)
     retried, stillMissing: stillMissing.slice(0, 10).map((f) => String(f).slice(0, 60)),
-    categories: Object.fromEntries(['knockout', 'legal', 'demographic', 'contact', 'preference', 'normal', 'written'].map((c) => [c, all.filter((a) => a.category === c).length]).filter(([, n]) => n)) });
+    categories: Object.fromEntries(['knockout', 'legal', 'consent', 'demographic', 'contact', 'preference', 'normal', 'written'].map((c) => [c, all.filter((a) => a.category === c).length]).filter(([, n]) => n)) });
   return {
     job: found,
     eligible: result.eligible, eligibility_note: result.eligibility_note,
@@ -311,7 +312,7 @@ export async function answerForm(env, { url, fields, page_text, test = false }, 
     // (11 Oct 2026, Datadog: "I certify ..." was left out by the AI and missed by the English floor). A floored legal proposal says the same.
     answers: [...raw.filter((a) => known.has(a.field) && a.value !== ''),
       ...[...new Set(all.filter((a) => a.category === 'legal' && known.has(a.field) && !(a.value !== '' && !floored(a))).map((a) => a.field))]
-        .map((field) => ({ field, value: '', category: 'legal', use: 'kind' })),
+        .map((field) => { const decision = all.find(a => a.field === field && typeof a.consent === 'boolean'); return {field, value: decision?.value || '', category: 'legal', use: 'kind', ...(decision ? {consent: decision.consent} : typeOf[field] === 'checkbox' ? {consent: false} : {})}; }),
       // An open question in the applicant's own words that nothing given answers (12 Oct 2026, Ashby "why join us?"): the same, as "written" (with its reminders, if any).
       ...writtenKinds(all, raw, known),
       // A salutation, gender or other personal-choice question with nothing in the profile: the person's own choice, never guessed (owner, 11 Oct 2026): the same.

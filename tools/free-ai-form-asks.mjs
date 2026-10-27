@@ -3,7 +3,7 @@
 // A field is [label, type, options|null, expect]. expect: {v:[accepted values]}, {empty:true}, {m:'regex'}, plus {cat:'category'}; {within:true} = any answer must be one of the options exactly (empty is fine).
 const YN = ['Yes', 'No'], JN = ['Ja', 'Nein'], OUI = ['Oui', 'Non'];
 const SOFTNO = {v: ['No', 'Nein'], maybeEmpty: true};
-const NO = {v: ['No']}, YES = {v: ['Yes']}, LEGAL = {empty: true, cat: 'legal'}, DEMO = {empty: true, cat: 'demographic'}, OWN = {empty: true}, FREE = {within: true};
+const NO = {v: ['No']}, YES = {v: ['Yes']}, LEGAL = {empty: true, cat: 'legal'}, CONSENT = {v: ['checked'], cat: 'consent'}, DEMO = {empty: true, cat: 'demographic'}, OWN = {empty: true}, FREE = {within: true};
 const DECLINE = (...extra) => ({v: ['Decline to self-identify', 'Prefer not to say', 'I do not wish to answer', ...extra], cat: 'demographic'});
 
 export const FORMS = [
@@ -28,7 +28,8 @@ export const FORMS = [
   ['location-fr', [['Quelle est votre localisation ? (Région seulement)', 'text', null, {m: 'zurich|zürich|suisse|switzerland', maybeEmpty: true}]]],
   ['notice', [['What is your current notice period?', 'textarea', null, {m: '2 months|two months|8 weeks'}]]],
   ['start-de', [['Verfügbar ab', 'text', null, {m: '2 monat|zwei monat|2 months|8 woch'}]]],
-  ['available-fr', [['Disponibilité', 'select', ['Immédiate', 'Dans 1 mois', 'Dans 2 mois', 'Dans 3 mois', 'Plus de 3 mois'], {v: ['Dans 2 mois']}]]],
+  // Why (27 Oct 2026, consent proof): demo Profile says 2 months, Answers says 3; retain the French inputs but require a proposal instead of choosing a conflicting fact.
+  ['available-fr', [['Disponibilité', 'select', ['Immédiate', 'Dans 1 mois', 'Dans 2 mois', 'Dans 3 mois', 'Plus de 3 mois'], {v: ['Dans 2 mois', 'Dans 3 mois'], use: 'propose', single: true}]]],
   // Money
   ['salary-gross-eur', [['What are your salary expectations? (in Euros GROSS per year)', 'text', null, {m: '\\d'}]]],
   ['salary-de', [['Gehaltsvorstellung', 'text', null, {m: '1[34]\\d'}]]],
@@ -55,10 +56,13 @@ export const FORMS = [
   ['name-given', [['Given Name(s)', 'text', null, {v: ['Alex'], cat: 'contact'}], ['Family Name', 'text', null, {v: ['Morgan'], cat: 'contact'}]]],
   ['email-phone', [['Email address', 'email', null, OWN], ['Phone number', 'tel', null, OWN]]],
   ['address', [['Strasse, Nummer', 'text', null, OWN], ['Postleitzahl (Erforderlich)', 'text', null, OWN]]],
-  // Consents: always the person's
-  ['consent-privacy-en', [['By checking this box, I consent to the company collecting and processing my personal data as described in the Recruitment Privacy Notice.', 'checkbox', null, LEGAL]]],
-  ['consent-de', [['Ich habe die Datenschutzerklärung gelesen und akzeptiere sie.', 'checkbox', null, LEGAL]]],
-  ['consent-fr', [['Protection des données personnelles (Obligatoire): j’accepte le traitement de mes données.', 'checkbox', null, LEGAL]]],
+  // Consent meanings are gated by the saved setting; attestations remain personal review.
+  ['consent-privacy-en', [['By checking this box, I consent to the company collecting and processing my personal data as described in the Recruitment Privacy Notice.', 'checkbox', null, CONSENT]]],
+  ['consent-de', [['Ich habe die Datenschutzerklärung gelesen und akzeptiere sie.', 'checkbox', null, CONSENT]]],
+  ['consent-fr', [['Protection des données personnelles (Obligatoire): j’accepte le traitement de mes données.', 'checkbox', null, CONSENT]]],
+  ['consent-native', [['Privacy policy for applicants', 'select', ['Choose', 'Acconsento', 'Non acconsento'], {v: ['Acconsento'], cat: 'consent'}]]],
+  ['consent-custom-unread-options', [['Privacy policy for applicants', 'combobox', null, {empty: true, cat: 'consent'}]]],
+  ['consent-factual-attestation', [['I certify that my qualifications and statements are accurate', 'checkbox', null, LEGAL]]],
   ['data-release-radio', [['Datenfreigabe', 'radio', ['Meine Daten dürfen an andere Unternehmen der Gruppe weitergegeben werden', 'Nicht weitergeben'], LEGAL]]],
   // Demographics: decline, or leave for the person
   ['gender-decline', [['Gender', 'select', ['Male', 'Female', 'Decline to self-identify'], DECLINE()]]],
@@ -76,6 +80,6 @@ export const FORMS = [
   // How did you hear, preferences, mixed
   ['hear-select', [['How did you hear about this job?', 'combobox', ['LinkedIn', 'Company website', 'Job board', 'Referral', 'Other'], FREE]]],
   ['hear-fr', [["Comment avez-vous été informé de cette opportunité ?", 'select', ['Site carrière', 'LinkedIn', 'Cooptation', 'Autre'], FREE]]],
-  ['mixed-lever', [['Would you now or at any time require employer sponsorship?', 'textarea', null, {m: '^(no|nein|not)\\b'}], ['Gender', 'select', ['Male', 'Female', 'Decline to self-identify'], DECLINE()], ['I consent to the Talent Privacy Policy given.', 'checkbox', null, LEGAL]]],
-  ['mixed-ch', [['Anrede', 'radio', ['Herr', 'Frau'], DEMO], ['Vorname', 'text', null, {v: ['Alex'], cat: 'contact'}], ['Nachname', 'text', null, {v: ['Morgan'], cat: 'contact'}], ['Bitte bestätigen: Ich bin mit der Datenschutzerklärung einverstanden', 'checkbox', null, LEGAL]]],
+  ['mixed-lever', [['Would you now or at any time require employer sponsorship?', 'textarea', null, {m: '^(no|nein|not)\\b'}], ['Gender', 'select', ['Male', 'Female', 'Decline to self-identify'], DECLINE()], ['I consent to the Talent Privacy Policy given.', 'checkbox', null, CONSENT]]],
+  ['mixed-ch', [['Anrede', 'radio', ['Herr', 'Frau'], DEMO], ['Vorname', 'text', null, {v: ['Alex'], cat: 'contact'}], ['Nachname', 'text', null, {v: ['Morgan'], cat: 'contact'}], ['Bitte bestätigen: Ich bin mit der Datenschutzerklärung einverstanden', 'checkbox', null, CONSENT]]],
 ];

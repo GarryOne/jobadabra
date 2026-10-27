@@ -37,6 +37,7 @@
   "replay-deadline.test.mjs",
   "phone-replace.test.mjs",
   "synthetic-navigation.test.mjs",
+  "consent-controls.test.mjs",
   "coverage-merge.test.mjs",
   "coverage-steps.test.mjs",
   "a11y.test.mjs",

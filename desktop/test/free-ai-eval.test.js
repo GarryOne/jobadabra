@@ -162,7 +162,8 @@ test('every form case\'s expected answer rests on lines the demo profile or answ
     // A case with its own applicant (tools/free-ai-form-applicants.mjs) rests on that applicant's lines, never the demo's.
     if (form.applicant) assert.ok(APPLICANTS[form.applicant], `${form.id}: no applicant "${form.applicant}" in tools/free-ai-form-applicants.mjs`);
     const demo = form.applicant ? [APPLICANTS[form.applicant].profile, APPLICANTS[form.applicant].answers].join('\n') : demoText;
-    const typed = Object.values(form.expect).some(want => want.value && !(want.value.length === 1 && /decline|prefer not|do not wish/i.test(want.value[0])) && !want.empty);
+    // Consent is an AI meaning returned as a gated kind, never an applicant fact or an ordinary typed answer.
+    const typed = Object.values(form.expect).some(want => want.category !== 'consent' && want.value && !(want.value.length === 1 && /decline|prefer not|do not wish/i.test(want.value[0])) && !want.empty);
     if (typed) assert.ok(form.rests?.length, `${form.id}: expects a saved answer; name the demo lines it rests on (rests)`);
     for (const line of form.rests || []) assert.ok(demo.includes(line), `${form.id}: the demo no longer says "${line}"; update the case's expected answer`);
   }

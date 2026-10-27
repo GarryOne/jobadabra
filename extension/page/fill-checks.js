@@ -41,10 +41,9 @@
       // Sites often hide the real checkbox behind a drawn one: then its label is what's on screen.
       const label = box.labels?.[0] || box.closest('label');
       // The AI's reading of the box decides (any language, page/categories.js marks it): "legal" is a consent or data notice; any other kind (a knockout, a
-      // demographic question) is the person's choice. Only a box the AI did not read falls back to the English LEGAL words. A statement of fact about the
+      // demographic question) is the person's choice. An unread or rejected control stays for the person. A statement of fact about the
       // person (certify, affirm, attest) is never ticked either way: a floor that only removes.
-      const kind = box.dataset?.jobpilottoCategory || '';
-      const consent = kind ? kind === 'legal' : LEGAL.test(text);
+      const consent = box.dataset?.jobpilottoCategory === 'legal' && box.dataset?.jobpilottoConsentReading === 'agreement';
       if (box.checked || !consent || ATTESTS.test(text) || !(visible(box) || (label && visible(label)))) continue;
       (globalThis.__jobPilottoPress?.((visible(box) ? box : label)) || (visible(box) ? box : label).click());
       if (!box.checked && label && visible(box)) (globalThis.__jobPilottoPress?.(label) || label.click());
@@ -52,5 +51,29 @@
     }
     return ticked;
   };
-  Object.assign(window.__jobPilottoFillKit, {pickCheckboxOption, setCheckbox, wantsChecked, wantsUnchecked, boxOf, tickConsents});
+  // Consent choices use the same saved authorization as tickConsents. Meaning comes only from the validated AI kind, never option count or words.
+  const fillConsentChoices = (all, form, enabled) => {
+    const result = {filled: [], armed: []};
+    for (const control of document.querySelectorAll('[data-jobpilotto-consent]')) if (!enabled) control.__jobPilottoDisarm?.();
+    if (!enabled) return result;
+    for (const item of all || []) {
+      const row = form.find(row => row.field === item.field);
+      if (!row || row.filled || item.category !== 'legal' || item.use !== 'kind' || item.consent !== true || !item.value || ATTESTS.test(row.label || '') || row.multiple) continue;
+      const el = document.getElementById(item.field) || document.querySelector(`[name="${CSS.escape(item.field)}"]`);
+      if (!el || !visible(el) || el.disabled || el.getAttribute('aria-disabled') === 'true') continue;
+      if (row.type === 'combobox' || row.custom) {
+        if (window.__jobPilottoFillKit.armCombo(item.field, 'Accept this privacy notice or application terms', {consent: true})) result.armed.push(row.field);
+      } else if (row.type === 'select' && el.tagName === 'SELECT') {
+        const choices = Array.from(el.options).filter(option => option.text.trim() === item.value && option.value !== '' && !option.disabled && !option.hidden);
+        if (choices.length !== 1) continue;
+        window.__jobPilottoHandOver?.();
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, choices[0].value);
+        el.dispatchEvent(new Event('input', {bubbles: true})); el.dispatchEvent(new Event('change', {bubbles: true}));
+        el.setAttribute('data-jobpilotto-picked', item.value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''));
+        if (window.__jobPilottoReadBack?.holds(el)) result.filled.push(row.field);
+      }
+    }
+    return result;
+  };
+  Object.assign(window.__jobPilottoFillKit, {pickCheckboxOption, setCheckbox, wantsChecked, wantsUnchecked, boxOf, tickConsents, fillConsentChoices});
 })();

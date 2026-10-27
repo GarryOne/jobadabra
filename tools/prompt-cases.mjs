@@ -2,7 +2,7 @@
 // The prompt case gate (docs/rules/files.md "Comments" → "Prompts"; owner, 27 Oct 2026: a session reworded a prompt to pass one benchmark case, "another session can
 // come tomorrow and redo that prompt for a different use-case and basically introducing a regression"). A push that changes an AI prompt's text also adds the case it
 // fixed to that prompt's fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (a typo, a pure move, a prompt with no set yet).
-// A prompt: a top-level string constant named *SYSTEM, *PROMPT, *RULE(S), *INSTRUCTIONS or *EXAMPLES in worker/src/*.js or src/**/*.py.
+// A prompt: a top-level string constant named *SYSTEM, *PROMPT, *RULE(S), *INSTRUCTIONS or *EXAMPLES in worker/src/*.js, desktop/lib/*.js or src/**/*.py.
 // Usage: node tools/prompt-cases.mjs [--base origin/main]            exit 1 with the prompts and what to add.
 //        node tools/prompt-cases.mjs --live [--base origin/main]     prints the live sets the push reaches, one per line (prompt-cases.yml re-asks them).
 // Guard: desktop/test/prompt-cases.test.js.
@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-export const PROMPT_FILE = /^(worker\/src\/[^/]+\.js|src\/.+\.py)$/;
+export const PROMPT_FILE = /^(worker\/src\/[^/]+\.js|desktop\/lib\/[^/]+\.js|src\/.+\.py)$/;
 const NAME = /^(?:export\s+)?(?:const\s+|let\s+)?([A-Z0-9_]*(?:SYSTEM|PROMPT|RULES?|INSTRUCTIONS|EXAMPLES))\s*=\s*(.*)$/;
 const STRING_START = /^(?:[rRbBuUfF]{0,2}("""|'''|"|')|`|\()/;
 const TRAILER = /^Prompt-case:[ \t]*none\s+\S.{6,}$/m;

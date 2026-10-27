@@ -1,0 +1,17 @@
+<!-- Fictional consent controls: equivalent native, custom and checkbox agreements beside a personal factual attestation. -->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Application form</title></head><body>
+<h1>Apply for Example Platform Engineer</h1><form action="/never-submit">
+<div><label for="first">First name *</label><input id="first" required></div>
+<div><label for="mail">Email *</label><input id="mail" type="email" required></div>
+<div><label for="resume">CV *</label><input id="resume" type="file" required></div>
+<div><label for="privacy">Privacy policy for applicants *</label><select id="privacy" required><option value="">Choose</option><option>Acconsento</option><option>Non acconsento</option></select></div>
+<div><label for="processing">Data processing notice *</label><input id="processing" role="combobox" aria-required="true" aria-expanded="false" readonly><ul id="options" role="listbox" hidden><li role="option">Non acconsento</li><li role="option">Acconsento</li></ul></div>
+<div><label><input id="ack" type="checkbox" required>I agree to application terms</label></div>
+<div><label for="truth">I certify my qualifications and statements are accurate *</label><select id="truth" required><option value="">Choose</option><option>Yes</option></select></div>
+<button type="submit">Submit application</button></form>
+<script>
+const input=document.getElementById('processing'), list=document.getElementById('options');
+input.addEventListener('mousedown',()=>{list.hidden=false;input.setAttribute('aria-expanded','true');});
+for(const option of list.children) option.addEventListener('click',()=>{input.value=option.textContent;const chip=document.createElement('span');chip.className='single-value';chip.textContent=option.textContent;input.parentElement.append(chip);list.hidden=true;input.setAttribute('aria-expanded','false');});
+document.querySelector('form').addEventListener('submit',event=>{event.preventDefault();document.body.dataset.submitted='true';});
+</script></body></html>

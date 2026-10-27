@@ -13,7 +13,7 @@ export const FORMS = [
   {id: 'german', fields: [field('german', 'German level', 'select', ['None', 'A1-A2', 'B1', 'B2', 'C1', 'Native'])],
     expect: {german: {value: ['B1']}}, rests: ['German (B1)']},
   {id: 'consent', fields: [field('privacy', 'I agree to the processing of my personal data as described in the privacy notice.', 'checkbox')],
-    expect: {privacy: {empty: true, category: 'legal'}}},
+    expect: {privacy: {value: ['checked'], category: 'consent'}}},
   {id: 'gender-saved', fields: [field('gender', 'Gender (voluntary)', 'select', ['Female', 'Male', 'Non-binary', 'Prefer not to say'], false)],
     expect: {gender: {value: ['Male'], category: 'demographic'}}, rests: ['- Gender identity: Man']},   // the survey's own answer beats the general "decline" row
   {id: 'religion-decline', fields: [field('religion', 'Religion or belief (voluntary)', 'select', ['Christian', 'Muslim', 'Jewish', 'No religion', 'Prefer not to say'], false)],

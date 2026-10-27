@@ -1,7 +1,7 @@
 // Runs in the application page (main world) after browser-submit-guard.js and browser-form-fastpath.js.
 // Describes the form (labels, types, options; never your values), fills answers of every field type,
-// attaches the CV, and shows what is left in a panel on the page. It never clicks Submit or legal
-// checkboxes: the guard blocks both until you unlock them yourself.
+// attaches the CV, and shows what is left in a panel on the page. It never clicks Submit; consent
+// controls require the saved authorization and an explicit validated AI agreement reading.
 // Its helpers come first, each a concern of its own (FILL_FILES in extension/page-files.js): fill-labels.js (names, LEGAL), fill-read.js (the
 // reader), fill-menus.js (dropdowns), fill-checks.js (checkboxes, consents), fill-marks.js (the AI glow), shared through window.__jobPilottoFillKit.
 (() => {
@@ -11,7 +11,7 @@
   const TRACE_LABEL_MAX = 500;
 
   const {LEGAL, asksQuestion, clean, norm, once, sleep, visible, labelOf, questionOf, radioOps, PROFILE_LABELS, aliasFor, DIAL, dialOf, armCombo, phoneParts,
-    pickCheckboxOption, setCheckbox, wantsUnchecked, boxOf, tickConsents, markAttention, markDraft} = window.__jobPilottoFillKit;
+    pickCheckboxOption, setCheckbox, wantsUnchecked, boxOf, tickConsents, fillConsentChoices, markAttention, markDraft} = window.__jobPilottoFillKit;
 
   const letterBoxes = () => Array.from(document.querySelectorAll('textarea')).filter(el => visible(el) && window.__jobPilottoUpload.fileKind(`${el.id} ${el.name} ${labelOf(el)}`, window.__jobPilottoAliases || []) === 'cover_letter');
 
@@ -90,7 +90,9 @@
     }
     const contactFields = new Set(contact.map(entry => entry.field)), fromCvFields = new Set(contact.filter(entry => entry.fromCv).map(entry => entry.field));
     const todo = [], review = [], armed = []; document.querySelectorAll('.job-pilotto-badge').forEach(badge => badge.remove());
-    let filled = 0;
+    const consentChoices = await gate() ? fillConsentChoices(all, form, acceptConsents) : {filled: [], armed: []};
+    armed.push(...consentChoices.armed.map(field => rowOf[field]?.label || field));
+    let filled = consentChoices.filled.length;
     const plain = [];
     for (const item of answers) {
       const row = rowOf[item.field];
@@ -246,7 +248,7 @@
       filled += consented.length;
       for (const row of after) if (row.legal && consented.length) row.filled = row.filled || !!document.getElementById(row.field)?.checked;
     }
-    const legal = [...after.filter(row => row.legal && !row.filled && !acceptConsents).map(row => `Your choice (legal): ${readable(row.label)}`),
+    const legal = [...after.filter(row => row.legal && !row.filled).map(row => `Your choice (legal): ${readable(row.label)}`),
       ...consented.map(text => `Ticked for you: ${text}`)];
     // Why (2026-10-27, owner): an optional letter is still important setup; employer requiredness must never hide the missing letter.
     const coverLetterStatus = resume?.coverLetterStatus || null;
@@ -260,7 +262,7 @@
     const letterUploadFailed = resume?.coverLetterFile && uploads.some(item => item.meaning === 'cover_letter' && !item.ok);
     if (letterUploadFailed) todo.unshift('Important: cover letter upload did not keep the file. Attach the letter manually from Jobadabra, then check the form again.');
     if (coverLetter && (manualLetter && !letterGiven || letterBoxes().some(el => !String(el.value || '').trim()))) todo.unshift('Important: cover letter was available but the text box did not keep it. Paste it from Jobadabra → Profile → Cover letter, then check the form again.');
-    const unfilledRequired = open.filter(row => !(row.field === 'resume' && resumeAttached) && !row.legal).length;
+    const unfilledRequired = after.filter(row => row.required && !row.filled && !(row.field === 'resume' && resumeAttached)).length;
     // A value we put in that the person then changes by hand is a correction: the label is kept (never the value) so the product learns
     // which questions it fills wrongly. The background drains window.__jobPilottoCorrections (extension/background.js reportTabs).
     window.__jobPilottoCorrections = window.__jobPilottoCorrections || [];
@@ -283,18 +285,18 @@
       for (const el of els) el?.setAttribute('data-jobpilotto-filled', '');
     };
     // Field-by-field log for the run record: where each answer came from and what happened.
-    const answerOf = Object.fromEntries(answers.map(a => [a.field, a]));
+    const answerOf = Object.fromEntries([...answers, ...(all || []).filter(a => a.consent === true)].map(a => [a.field, a]));
     const knownKey = row => (PROFILE_LABELS.find(([, pattern]) => pattern.test(clean(row.label || ''))) || [])[0] || aliasFor(row.label || '')?.key || '';
     // Upload widgets' own buttons (Attach, Dropbox, Enter manually…) aren't questions: not in the log.
     const trace = after.filter(row => row.field !== 'resume' && !/^(attach|dropbox|google drive|enter manually)$/i.test(clean(row.label))).map(row => {
       const label = rowOf[row.field]?.label || clean(row.label).replace(row.field, '').trim() || row.field;
       const answer = answerOf[row.field];
-      const source = fromCvFields.has(row.field) ? 'your CV' : contactFields.has(row.field) ? 'your details' : answer ? (answer.source || 'kit') : '';
+      const source = fromCvFields.has(row.field) ? 'your CV' : contactFields.has(row.field) ? 'your details' : answer ? (answer.source || (answer.consent === true ? 'your consent setting' : 'kit')) : '';
       let outcome = row.filled ? 'filled' : 'left';
       let reason = '';
       if (row.type === 'file') { if (!row.filled) reason = 'upload: no file for this question'; }
       else if (row.type === 'password' && !row.filled) { outcome = 'left'; reason = 'password: never typed, yours to set'; }   // a safety rule (CLAUDE.md: never a password field): left for you, never "no answer"   // an upload slot that is not the CV (the CV has its own row below): counted like any required control, left unless it holds a file
-      else if (row.legal) { outcome = 'left'; reason = 'legal/consent: always your choice'; }
+      else if (row.legal && !row.filled) { outcome = 'left'; reason = 'legal/consent: always your choice'; }
       else if (row.written && !row.filled && !answer && !proposedOf[row.field]) { outcome = 'left'; reason = 'written: your own words to write'; }   // the AI's reading (category written), any language
       else if (row.demographic && !row.filled && !answer && !proposedOf[row.field]) { outcome = 'left'; reason = 'demographic: your own choice'; }   // a salutation or gender nothing given states: never guessed
       else if (row.unanswered && !row.filled && !answer && !proposedOf[row.field]) { outcome = 'left'; reason = 'the AI gave no answer'; }

@@ -1,0 +1,27 @@
+{
+ "origin":"hand-cut",
+ "shape":"a native consent select and input combobox offer equivalent agreements beside a consent checkbox and a factual attestation",
+ "why":"The existing consent setting reached the filler but its consent step iterated only checkboxes; legal dropdowns were excluded from the AI ask and ordinary fill. This fictional form proves the same authorization fills equivalent agreement shapes and leaves the attestation alone.",
+ "control":{"build":"0.9.655","commit":"c7d2116bbf472fb34ad8ac003d01dda6e0d4b2d2","failed":"native and custom consent remained empty; both traced left; privacy control never asked"},
+ "sample":"invented labels, controls and options only; no applicant facts or private screenshot content",
+ "pages":[{"url":"https://consent-shapes.example.test/apply","file":"form.html"}],
+ "ai":{
+  "/extension/page-kind":{"ok":true,"kind":"form","role":"form","by":"ai","confidence":0.95,"rung":2},
+  "/extension/answer":{"ok":true,"eligible":true,"eligibility_note":"","answers":[
+   {"field":"privacy","category":"legal","use":"kind","consent":true,"value":"Acconsento"},
+   {"field":"processing","category":"legal","use":"kind","consent":true,"value":"checked"},
+   {"field":"ack","category":"legal","use":"kind","consent":true,"value":"checked"},
+   {"field":"truth","category":"legal","use":"kind","consent":false,"value":""}
+  ]},
+  "/extension/pick-choice":{"ok":true,"choice":"Acconsento"}
+ },
+ "expect":{
+  "asked":["Privacy policy for applicants","Data processing notice"],
+  "filled":["#privacy","#processing"],
+  "chosen":["#ack"],
+  "empty":["#truth"],
+  "traced":["Privacy policy for applicants:filled","Data processing notice:filled"],
+  "notTold":["pressed the submit"],
+  "seconds":45
+ }
+}

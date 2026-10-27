@@ -16,6 +16,7 @@
       if (item.category === 'preference') row.demographic = true;   // the same hold: a preference nothing given states is the person's own choice   // fill.js declines it, as for the English words of DEMOGRAPHIC
       const el = document.getElementById(item.field) || document.querySelector(`[name="${CSS.escape(String(item.field).replace(/^(radio|group):/, ''))}"]`);
       if (el) el.dataset.jobpilottoCategory = item.category;
+      if (el && typeof item.consent === 'boolean') el.dataset.jobpilottoConsentReading = item.consent ? 'agreement' : 'review';
       if (el && Array.isArray(item.remind) && item.remind.length) el.dataset.jobpilottoRemind = JSON.stringify(item.remind.slice(0, 6).map(text => String(text).slice(0, 200)));   // what to add in the person's own words: shown beside the box (panel-written.js), never typed
     }
   };

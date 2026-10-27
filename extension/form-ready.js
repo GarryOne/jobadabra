@@ -41,7 +41,12 @@ export async function formReady(tab, frameId, payload) {
 // After a fill, whatever the panel's count says (owner, 9 Oct 2026: the CV was in, the step was done, nothing asked what comes next because the count of HTML-required boxes was not "ready"):
 // the AI looks at the page's real state once per page state, and a middle step's own next button is pressed (next-step.js).
 export const formNext = (tab, frameId = 0) => askForm(tab, frameId);
-// The person asked for a fresh look (the panel's Check again, Fill again): the page is judged again even when it looks as it did, so a "needs you" they have since dealt with is cleared.
+/**
+ * Forget this tab's last page judgment, so the next formNext asks the AI again even when the page looks as it did.
+ * Why (#2221, owner 27 Oct 2026: "clicking check again does nothing"): the panel's Check again and Fill again want a fresh look; a "needs you" the person has dealt with is cleared.
+ * @param {number} tabId the tab whose judgment is dropped
+ * @returns {void} never throws (a tab never judged is a no-op)
+ */
 export const forgetJudged = tabId => { judged.delete(tabId); unanswered.delete(tabId); };
 
 // The fill ladder's fill_verify in SHADOW (spec docs/superpowers/specs/2026-10-12-fill-ladder.md, PR 3; owner, 12 Oct 2026: one zoo pass + one pool pass, then repair goes live): asked

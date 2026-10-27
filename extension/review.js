@@ -44,8 +44,8 @@
   const look = working => { const on = working && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
   const stepShowing = () => $('.fill').classList.contains('is-busy');
   const markWorking = () => WORKING_MARKS.includes(document.documentElement.getAttribute('data-jobpilotto-page') || '') && !stopped && !moved;
-  // A step that ends and the next one that starts within END_GAP_MS are one piece of work: the look stays (owner, 27 Oct 2026: the panel flashed to its corner and back between steps).
-  // Every end the person must see at once (Stop, needs you, stuck, a close, the dim lifted) ends without the gap.
+  // Why (#2221, owner 27 Oct 2026): a step that ends and the next one that starts within END_GAP_MS are one piece of work, the look stays ("flashes (very short moments)" between steps).
+  // Every end the person must see at once (Stop, needs you, stuck, a close, the dim lifted, the fill writing its end on the page) ends without the gap.
   let workerStep = '', endTimer = null; const END_GAP_MS = 700;
   const endSoon = () => { clearTimeout(endTimer); endTimer = setTimeout(() => { endTimer = null; if (stepShowing() && !filling && !workerStep) endStep(); }, END_GAP_MS); };
   overlay.onLift?.(() => { if (stepShowing()) endStep(); else look(false); });
@@ -98,7 +98,7 @@
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
     const markWorks = WORKING_MARKS.includes(markNow) && !handed && !moved;
     if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words, MARK_STEP_MS); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
-    // The mark moved on: its row ends. A fill step still running under it (the worker's, or this panel's fill) keeps the look and gets its row back: ending here dropped the dim and the
+    // Why (#2221, owner 27 Oct 2026): the mark moved on: its row ends. A fill step still running under it (the worker's, or this panel's fill) keeps the look and gets its row back: ending here dropped the dim and the
     // centring until the fill's next step brought them back (owner, 27 Oct 2026: "flashes (very short moments) when the extension panel moves from center to bottom right").
     else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); else endSoon(); }
     // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
@@ -335,7 +335,7 @@
     return false;
   });
 
-  // The page was dimmed from its first moment (early-dim.js): the panel takes that look over at once, centred, so nothing jumps between the dim and the first step.
+  // Why (#2221, owner 27 Oct 2026: "instantly show the overlay"): the page was dimmed from its first moment (early-dim.js): the panel takes that look over at once, centred, so nothing jumps between the dim and the first step.
   if (overlay.early?.()) { const was = stepped; showStep('Starting…', 20000); stepped = was; setOpen(true); }
   // A fill already on a step when this panel appeared: show it here (the background removes its floating copy).
   send({type: 'panelStepNow'}).then(answer => { if (answer?.text && host.isConnected) { showStep(answer.text, answer.wait || STEP_SAFETY_MS); if (!open) setOpen(true); } }).catch(() => {});
@@ -398,6 +398,10 @@
   document.addEventListener('input', soon, true);
   document.addEventListener('change', soon, true);
   if (document.documentElement) new MutationObserver(soon).observe(document.documentElement, {childList: true, subtree: true});
+  // Why (#2221, 27 Oct 2026): the fill writes its end on the page (done, error, no-form…) before its bookkeeping and its step clear: the look ends then, with no gap, so the person's
+  // first click after "done" is theirs (the apply suite's Next and Submit were held). The panel's own fill ends at its answer (fill()); a page still being read keeps its look.
+  const fillOver = () => { try { return !['', 'running', 'received'].includes(JSON.parse(document.documentElement.dataset.jobpilottoFill || '{}').state || ''); } catch { return false; } };
+  if (document.documentElement) new MutationObserver(() => { if (!filling && stepShowing() && !markWorking() && fillOver()) endStep(); }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-jobpilotto-fill']});
   const tick = setInterval(sync, 2000);
   sync();
   }

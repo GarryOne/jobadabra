@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HOOK, ACK = ROOT / 'tools' / 'pr-red-check.sh', ROOT / 'tools' / 'pr-red-ack.sh'
 FAKE = """#!/bin/sh
 d="$FAKE_GH_DIR"; first="$1"; echo "$@" >> "$d/calls"; [ ! -f "$d/slow" ] || sleep 5
+while [ -e "$d/hold" ]; do sleep 0.02; done
 [ "$1 $2" != "api -i" ] || exec python3 "$FAKE_GH_DIR/../rest.py" "$@"
 expr=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && expr="$2"; shift; done
 if [ "$first" = issue ]; then [ -f "$d/issues.json" ] && jq -r "$expr" "$d/issues.json"; exit 0; fi
@@ -230,6 +231,37 @@ class PrRedHookTest(unittest.TestCase):
         self.answer(pr(('python', 'FAILURE')))
         done = self.run_hook('Stop', env={'PR_RED_WAIT': '5'})
         self.assertEqual((done.returncode, done.stderr), (0, ''))
+
+    def test_a_slow_answer_finishes_in_cache_and_the_next_prompt_reports_it(self):
+        import time
+        self.answer(pr(('python', 'FAILURE')))
+        hold = self.state / 'hold'; hold.touch()
+        first = self.run_hook(env={'PR_RED_WAIT': '0', 'PR_RED_TTL': '60'})
+        self.assertEqual((first.returncode, first.stdout, first.stderr), (0, '', ''))
+        hold.unlink()
+        cache = self.tmp / 'cache' / 'repo-feature.look'
+        deadline = time.monotonic() + 5
+        while (not cache.exists() or 'python' not in cache.read_text()) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.assertTrue(cache.exists(), 'slow REST chain must finish and publish its answer after the hook returns')
+        self.assertIn('python', cache.read_text())
+        second = self.run_hook(env={'PR_RED_WAIT': '0', 'PR_RED_TTL': '60'})
+        self.assertIn('PR #5 is red: python', second.stdout)
+
+    def test_a_failed_refresh_never_replays_an_expired_red_from_an_older_head(self):
+        cache = self.tmp / 'cache'; cache.mkdir()
+        (cache / 'repo-feature.look').write_text('1\n5\thttps://old-head\tpython\t-\n')
+        (self.tmp / 'bin' / 'gh').write_text('#!/bin/sh\nexit 1\n')
+        self.answer([])
+        done = self.run_hook('Stop')
+        self.assertEqual((done.returncode, done.stderr), (0, ''))
+
+    def test_an_abandoned_pidless_refresh_lock_is_reclaimed(self):
+        self.answer(pr(('python', 'FAILURE')))
+        lock = self.tmp / 'cache' / 'repo-feature.look.pending'; lock.mkdir(parents=True)
+        os.utime(lock, (1, 1))
+        done = self.run_hook()
+        self.assertIn('PR #5 is red: python', done.stdout)
 
     def test_the_answer_is_cached_between_prompt_and_stop(self):
         self.answer(pr(('python', 'FAILURE')))

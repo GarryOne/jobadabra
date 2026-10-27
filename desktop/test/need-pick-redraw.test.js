@@ -20,7 +20,7 @@ test('a redraw between the pick and Use keeps the pick: Use fills "2 months", no
   filled.length = 0;
   const first = proposedRow(item, label, proposal);
   const menu = first.querySelector('select');
-  menu.value = '2 months'; menu.dispatch('change');            // the person picks
+  menu.value = '2 months'; menu.dispatch('input');            // the person picks
   const redrawn = proposedRow(item, label, {...proposal});     // the page redraws before Use (late proposals, contact, choice lookup)
   assert.equal(redrawn.querySelector('select').value, '2 months');
   useOf(redrawn).click();

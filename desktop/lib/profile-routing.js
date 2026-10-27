@@ -73,7 +73,13 @@ async function route(storage, {fetcher, ai = {}, now = new Date(), copy = saveCo
     if (!(await liveSources()).length) continue;
     let outline = await page.outline(), heading = headingIn(outline, destination);
     if (!heading && !destination.canonical) throw Error('The saved-line destination changed; originals were kept');
-    if (!heading) { await page.appendHeading(destination.heading); outline = await page.outline(); heading = headingIn(outline, destination); }
+    if (!heading) {
+      const id = await page.appendHeading(destination.heading);
+      outline = await page.outline();
+      heading = outline.find(each => each.id === id);
+      // Why (#2313): groups share this catalogue object, so later lines must use the persisted nested path too.
+      if (heading) destination.path = contexts(outline).get(heading.id);
+    }
     if (!heading) throw Error('The saved-line heading did not save; originals were kept');
     if (!(await liveSources()).length) continue;
     const target = {...line, page: destination.page, context: destination.path}, targetKey = sourceKey(target);

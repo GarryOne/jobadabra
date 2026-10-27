@@ -7,6 +7,7 @@ import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import {openStore} from '../lib/store/index.js';
 import {itemsOf, move} from '../lib/profile-move.js';
+import {contexts} from '../lib/profile-destinations.js';
 import {sigOf} from '../lib/answer-clarity.js';
 import * as review from '../lib/details-review.js';
 import {openShown} from '../lib/question-lists.js';
@@ -16,19 +17,19 @@ import {install} from './tiny-dom.js';
 const PROFILE = ['## Imported notes', 'Rule Q: avoid slogans', 'Règle Z: rester sobre', 'Notice period: 1 month', 'Notice period: 2 months', 'Evidence: maintained a fictional service', 'Opaque saved line'];
 const ANSWERS = ['## Imported answers', 'Rule Q: avoid slogans'];
 const crypto = {encrypt: value => value, decrypt: value => value};
-const markdown = lines => lines.map(line => line.startsWith('##') ? line : `- ${line}`).join('\n');
-async function setup(adapter) {
+const markdown = lines => lines.map(line => line.startsWith('#') ? line : `- ${line}`).join('\n');
+async function setup(adapter, {profile = PROFILE, answers = ANSWERS} = {}) {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-auto-home-')), crypto);
   storage.saveSettings({store: adapter, telemetry: false, profileMovedAt: '2026-10-21T00:00:00Z', profileUnsureAt: '2026-10-21T00:00:00Z'});
   let fetcher;
   if (adapter === 'notion') {
     storage.setSecret('NOTION_TOKEN', 'fictional');
     storage.saveSettings({notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_ANSWERS_PAGE_ID: 'answers'}});
-    const pages = {profile: fakeNotion(PROFILE, {prefix: 'P'}), answers: fakeNotion(ANSWERS, {prefix: 'A'})};
+    const pages = {profile: fakeNotion(profile, {prefix: 'P'}), answers: fakeNotion(answers, {prefix: 'A'})};
     fetcher = (url, init) => (url.includes('blocks/profile') || url.includes('blocks/P') ? pages.profile : pages.answers).fetcher(url, init);
   } else {
-    await openStore(storage).page('profile').write(markdown(PROFILE));
-    await openStore(storage).page('answers').write(markdown(ANSWERS));
+    await openStore(storage).page('profile').write(markdown(profile));
+    await openStore(storage).page('answers').write(markdown(answers));
   }
   const read = async () => (await Promise.all(['profile', 'answers'].map(async page => itemsOf(await openStore(storage, {fetcher}).page(page).outline(), page)))).flat();
   const sources = await read();
@@ -51,6 +52,21 @@ function fakeAi({before = async () => {}, choose = line => says.get(line)} = {})
   }}}};
 }
 for (const adapter of ['sqlite', 'notion']) {
+  test(`${adapter}: a missing destination on an H1 template is found by the returned heading identity`, async () => {
+    const env = await setup(adapter, {answers: ['# Fictional application template', 'Rule Q: avoid slogans']});
+    await review.judgeNew(env.storage, {...env, ai: fakeAi()});
+    const [profile] = await texts(env);
+    const outline = await openStore(env.storage, {fetcher: env.fetcher}).page('answers').outline();
+    const headings = outline.filter(each => each.type?.startsWith('heading_') && each.text === 'Cover letter style');
+    assert.equal(headings.length, 1, 'later writing lines reuse the same newly created destination');
+    const paths = contexts(outline);
+    const routed = itemsOf(outline, 'answers').filter(line => ['Rule Q: avoid slogans', 'Règle Z: rester sobre'].includes(`${line.label}: ${line.value}`));
+    assert.equal(routed.length, 2);
+    for (const line of routed) assert.deepEqual(paths.get(line.id.slice('answers:'.length)), ['Fictional application template', 'Cover letter style']);
+    assert.ok(!profile.includes('Rule Q: avoid slogans'));
+    assert.deepEqual(env.storage.settings().profileUnsure.map(line => line.value), ['Opaque saved line']);
+  });
+
   test(`${adapter}: legacy lines organize automatically into real UI homes; copies consolidate and different values survive`, async () => {
     const env = await setup(adapter), before = await texts(env), ai = fakeAi();
     await review.judgeNew(env.storage, {...env, ai});

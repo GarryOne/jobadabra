@@ -112,11 +112,13 @@ test('noise allowance: two jobs in nine may move and one text in six may slip, m
   assert.ok(!stabilityVerdict([moved('a', 50, 60), moved('b', 40, 50)], 8).ok);                       // eight jobs: one allowed
   const jump = stabilityVerdict([moved('a', 50, 50 + HARD_JUMP + 1)], 9);                              // one job, but 21 points
   assert.ok(!jump.ok && /moved 21 points/.test(jump.problems[0]));
-  assert.ok(judgeVerdict(['x'], 9).ok);
-  assert.ok(!judgeVerdict(['x', 'y'], 9).ok);
-  assert.ok(!judgeVerdict(['x'], 5).ok);                                                              // five texts: no allowance
-  assert.deepEqual(judgeVerdict(['x'], 9).tolerated, ['x']);
-  assert.deepEqual(judgeVerdict(['x', 'y'], 9).tolerated, []);
+  // The gate judges one replayed scoring, 9 texts (27 Oct 2026, #2210: 2 of 9 flagged on the recorded answers; floor allowed 1, so the replayed gate was red on every try).
+  assert.ok(judgeVerdict(['x', 'y'], 9).ok);                                                          // owner, 27 Oct 2026: "2 of 9"
+  assert.ok(!judgeVerdict(['x', 'y', 'z'], 9).ok);
+  assert.ok(judgeVerdict(['x'], 5).ok);                                                               // to the nearest text: 5 -> 1
+  assert.ok(!judgeVerdict(['x'], 2).ok);                                                              // two texts: no allowance
+  assert.deepEqual(judgeVerdict(['x', 'y'], 9).tolerated, ['x', 'y']);
+  assert.deepEqual(judgeVerdict(['x', 'y', 'z'], 9).tolerated, []);
   // Both scorings judged: 18 texts, at most 3 invented (owner, 26 Oct 2026: "Fresh daily + rate gate"; measured: 11% of Free AI texts at temperature 0 passes 87%, 26% passes 27%)
   assert.equal(judgeVerdict([], 18).allowed, 3);
   assert.ok(judgeVerdict(['a', 'b', 'c'], 18).ok);

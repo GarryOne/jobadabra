@@ -78,3 +78,22 @@ test('on Free AI the judges ask the relay with its own key; pinned to Claude the
   try { await ask(relay); await ask({...relay, E2E_JUDGE_FAMILY: 'claude'}); } finally { globalThis.fetch = original; }
   assert.deepEqual(seen, [{url: 'http://127.0.0.1:8787/api/ai/v1/messages', key: 'JPF1.ci-e2e-x.t'}, {url: 'https://api.anthropic.com/v1/messages', key: 'sk-ant-claude'}]);
 });
+
+// The judges replay like the app (owner, 27 Oct 2026: "Code gate + AI rate"; "with the judges replaying in the gate too"): main's quality run asked its 21 judge
+// calls live every time (0 replayed), so a judge's own wobble turned a gate red. A judge answer seen before is replayed; a fresh run (lib/ai-meter.mjs fresh) asks live.
+test('a judge answer seen before is replayed, not asked again; a fresh run asks live', async () => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const cache = fs.mkdtempSync(path.join(os.tmpdir(), 'judge-cache-'));
+  const original = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({content: [{type: 'text', text: `verdict ${calls}`}], usage: {input_tokens: 5, output_tokens: 2}}), {status: 200, headers: {'content-type': 'application/json'}}); };
+  const env = {CI: 'true', E2E_AI_REPLAY: '1', E2E_AI_CACHE: cache};
+  const ask = (text, e = env) => modelFetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...body, messages: [{role: 'user', content: text}]})}, {engine: () => 'api', env: e}).then(r => r.json());
+  try {
+    assert.equal((await ask('Judge A.')).content[0].text, 'verdict 1');
+    assert.equal((await ask('Judge A.')).content[0].text, 'verdict 1');   // replayed: the same answer, no second call
+    assert.equal(calls, 1);
+    assert.equal((await ask('Judge B.')).content[0].text, 'verdict 2');   // a new question is asked and kept
+    assert.equal((await ask('Judge A.', {...env, E2E_AI_REPLAY: '0'})).content[0].text, 'verdict 3');   // fresh: asked live
+  } finally { globalThis.fetch = original; fs.rmSync(cache, {recursive: true, force: true}); }
+});

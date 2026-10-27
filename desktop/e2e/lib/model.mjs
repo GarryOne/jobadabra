@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {judgeFamily, pickEngine} from './engine.mjs';
-import {count, usageOf} from './ai-meter.mjs';
+import {count, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 // A bare `claude -p` loads the owner's MCP servers, skills and settings: 106k tokens for a one-word answer. These flags leave about 400.
@@ -65,9 +65,23 @@ export function judgeTarget(url, init, env = process.env) {
 
 export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
   if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
+    // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
+    const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${judgeFamily(env)} ${new URL(url).pathname}`, body);
+    const kept = recall(key, env);
+    if (kept) {
+      try { countReplay('judges', usageOf(kept.body.toString('utf8'), kept.contentType || '')); } catch { /* counting never breaks the call */ }
+      return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});
+    }
+    keepMiss(key, `judge ${new URL(url).pathname}`, body, env);
     const target = judgeTarget(url, init, env);
     const response = await fetch(target.url, target.init);
-    try { if (response.ok) count('judges', usageOf(await response.clone().text(), response.headers.get('content-type') || '')); } catch { /* counting never breaks the call */ }
+    try {
+      if (response.ok) {
+        const text = await response.clone().text(), contentType = response.headers.get('content-type') || '';
+        count('judges', usageOf(text, contentType));
+        keep(key, {status: response.status, contentType, body: Buffer.from(text)}, env);
+      }
+    } catch { /* counting and keeping never break the call */ }
     return response;
   }
   const body = JSON.parse(init.body);

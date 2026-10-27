@@ -77,6 +77,9 @@ export function requestKey(url, body) {
 
 const cacheDir = (env = process.env) => env.E2E_AI_CACHE || '';
 export const replaying = (env = process.env) => env.E2E_AI_REPLAY === '1' && !!cacheDir(env);
+// The quality gate on main replays only (owner, 27 Oct 2026: "Code gate + AI rate"; e2e.yml E2E_AI_STRICT): a recorded answer never expires, a question with
+// no answer is asked (the run goes on) but never kept, so the retry misses it too, and the suite names it (missedQuestions). Guard: test/ai-meter.test.mjs.
+export const strict = (env = process.env) => env.E2E_AI_STRICT === '1';
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
 // second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.
 export async function fresh(fn, env = process.env) {
@@ -95,7 +98,7 @@ export function recall(key, env = process.env, now = Date.now()) {
   if (!replaying(env)) return null;
   try {
     const file = path.join(cacheDir(env), `${key}.json`), kept = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (!(now - Date.parse(kept.savedAt) < maxAgeMs(env))) return null;   // too old, or undated: asked live, and keep() saves it fresh
+    if (!strict(env) && !(now - Date.parse(kept.savedAt) < maxAgeMs(env))) return null;   // too old, or undated: asked live, and keep() saves it fresh
     try { const now = new Date(); fs.utimesSync(file, now, now); } catch {}   // still in use: the workflow drops answers untouched for a week
     return {status: kept.status, contentType: kept.contentType, body: Buffer.from(kept.body, 'base64')};
   } catch { return null; }
@@ -117,10 +120,24 @@ export function keepMiss(key, url, body, env = process.env) {
   } catch {}
 }
 
+// The questions replay could not answer in this run (its ai-misses/): key, path and the first words of the last user message, for a red that names them.
+export function missedQuestions(env = process.env) {
+  const dir = path.join(env.E2E_ARTIFACTS || '', 'ai-misses');
+  if (!env.E2E_ARTIFACTS || !fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter(file => file.endsWith('.json')).sort().map(file => {
+    try {
+      const {url, request} = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+      const last = [...(request?.messages || [])].reverse().find(message => message.role === 'user')?.content;
+      const text = typeof last === 'string' ? last : (last || []).map(part => part.text || '').join(' ');
+      return {key: file.slice(0, -5), url, about: text.replace(/\s+/g, ' ').trim().slice(0, 100)};
+    } catch { return {key: file.slice(0, -5), url: '', about: ''}; }
+  });
+}
+
 // Keep a successful answer (CI only: E2E_AI_CACHE is set by the workflow; a Mac never records).
 export function keep(key, {status, contentType, body}, env = process.env) {
   const dir = cacheDir(env);
-  if (!dir || status !== 200) return;
+  if (!dir || status !== 200 || strict(env)) return;
   try { fs.mkdirSync(dir, {recursive: true}); fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({status, contentType, savedAt: new Date().toISOString(), body: Buffer.from(body).toString('base64')})); } catch {}
 }
 

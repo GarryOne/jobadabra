@@ -12,8 +12,13 @@ import {FLAKY, TIMEOUT_FAILURE, flakyComment} from './triage-match.mjs';
 export const INTERMITTENT = 'intermittent';
 
 // message: the failed step's note (suite-failures.json `message`), without the step's name → {flaky, why}
+// The harness's own guards (the extension not on the stand-in app): never a product bug and never flaky (a run that may have reached the owner's live app stays
+// red), named "harness: <which>" so a red main reads as the harness's (6e, 27 Oct 2026: a false NOT ISOLATED was announced as "a wrong value", like a product bug).
+const HARNESS = [[/NOT ISOLATED:/, 'isolation']];
 export function flakyProof(message = '') {
   const text = String(message || '');
+  const harness = HARNESS.find(([pattern]) => pattern.test(text));
+  if (harness) return {flaky: false, harness: harness[1], why: `harness: ${harness[1]}: "${text.split('\n')[0].slice(0, 140)}"`};
   const timing = TIMEOUT_FAILURE.exec(text);
   if (timing) return {flaky: true, why: `timing: "${timing[0]}"`};
   if (isEnvironment(text)) return {flaky: true, why: 'the test environment answered badly'};

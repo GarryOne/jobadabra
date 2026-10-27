@@ -18,6 +18,17 @@ import {EXTENSION_DIR, browserChannel, copyExtension, freePort} from './extensio
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {setExtensionStorage} from '../../../hosted/ready-fill/extension-storage.mjs';
 
+// The extension's stored settings (chrome.storage.local as JSON) -> '' or why it is not isolated: its app address is not the stand-in's port, or an address
+// on the live app's port 47111 is stored anywhere. An ADDRESS, never the bare digits: 27 Oct 2026 (run 40447725087) a stored timestamp, "boot":"1793074711121",
+// contains 47111 and failed an isolated run as "NOT ISOLATED" (the second try passed with another timestamp). Guard: test/isolation-check.test.mjs.
+const LIVE_ADDRESS = /(?:127\.0\.0\.1|localhost|\[::1\]):47111(?!\d)/;
+export function isolationProblem(stored, port) {
+  const text = String(stored || ''), wrongUrl = !text.includes(`"workerUrl":"http://127.0.0.1:${port}"`), live = LIVE_ADDRESS.exec(text);
+  if (!wrongUrl && !live) return '';
+  return `NOT ISOLATED: the extension is not on the stand-in app's port ${port} (${wrongUrl ? `workerUrl stored: ${text.match(/"workerUrl":"[^"]*"/)?.[0] || 'none'}`
+    : `"${live[0]}" stored at ${live.index}: …${text.slice(Math.max(0, live.index - 40), live.index + 40)}…`}; ${text.length} characters stored)`;
+}
+
 export const FIXTURE_CV = path.join(E2E, 'fixtures', 'cv.pdf');
 const pdf = (name, source = FIXTURE_CV) => ({data: fs.readFileSync(source).toString('base64'), name, type: 'application/pdf'});
 export const FAKE_CONTACT = {first_name: 'Test', last_name: 'Candidate', email: 'test.candidate@example.com'};
@@ -69,11 +80,10 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   await setExtensionStorage(worker, {workerUrl: `http://127.0.0.1:${port}`, token: 'e2e', ladderAct: true});   // ladderAct: the fill ladder's repair acts in test runs only (fake applicant; extension/ladder/fill-climb.js)
   const close = async () => { await context.close().catch(() => {}); stub?.close(); };
 
-  // Fails the run unless the extension talks to the stand-in only.
+  // Fails the run unless the extension talks to the stand-in only (isolationProblem).
   const assertIsolated = async () => {
-    const stored = await worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null)));
-    const wrongUrl = !stored.includes(`"workerUrl":"http://127.0.0.1:${port}"`), liveAt = stored.indexOf('47111');
-    if (wrongUrl || liveAt >= 0) throw new Error(`NOT ISOLATED: the extension is not on the stand-in app's port ${port} (${wrongUrl ? `workerUrl stored: ${stored.match(/"workerUrl":"[^"]*"/)?.[0] || 'none'}` : `"47111" stored at ${liveAt}: …${stored.slice(Math.max(0, liveAt - 40), liveAt + 20)}…`}; ${stored.length} characters stored)`);
+    const problem = isolationProblem(await worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null))), port);
+    if (problem) throw new Error(problem);
     return true;
   };
   await assertIsolated().catch(async error => { await close(); throw error; });

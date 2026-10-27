@@ -90,3 +90,11 @@ test('every rerun step that writes flaky.json runs flaky-proof.mjs on the first 
 });
 
 function fileURLToDir() { return path.dirname(fileURLToPath(import.meta.url)); }
+
+test('a red of the harness\'s own isolation check is the harness\'s: never flaky, never "a wrong value" (6e, 27 Oct 2026: main read like a product bug)', () => {
+  const proof = flakyProof('NOT ISOLATED: the extension is not on the stand-in app\'s port 42941 ("47111" stored at 3520: …)');
+  assert.equal(proof.flaky, false);
+  assert.equal(proof.harness, 'isolation');
+  assert.match(proof.why, /^harness: isolation: "NOT ISOLATED/);
+  assert.doesNotMatch(proof.why, /wrong value/);
+});

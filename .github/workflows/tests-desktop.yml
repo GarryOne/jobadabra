@@ -69,6 +69,7 @@ on:
       - 'tools/free-ai-eval.mjs'
       - 'tools/free-ai-eval-claude.mjs'
       - 'tools/free-ai-eval-metrics.mjs'
+      - 'tools/free-ai-form-list.mjs'
       - 'tools/free-ai-writing-cases.mjs'
       - 'tools/free-ai-writing-eval.mjs'
       - 'tools/free-ai-writing-judge.mjs'

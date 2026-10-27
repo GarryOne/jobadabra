@@ -3,35 +3,8 @@
 import fs from 'node:fs';
 import {answerForm, ANSWER_SCHEMA_FOR_TESTS} from '../worker/src/extension.js';
 import {FORMS as REAL_FORMS} from './free-ai-form-asks.mjs';
+import {FORMS, field} from './free-ai-form-list.mjs';
 
-const field = (id, label, type, options, required = true) => ({field: id, label, type, required, ...(options ? {options} : {})});
-const FORMS = [
-  {id: 'permit', fields: [field('sponsor', 'Will you now or in the future require sponsorship to work in Switzerland?', 'radio', ['Yes', 'No'])],
-    expect: {sponsor: {value: ['No']}}},
-  {id: 'hybrid', fields: [field('hybrid', 'Are you comfortable working hybrid from our Zurich office?', 'radio', ['Yes', 'No'])],
-    expect: {hybrid: {value: ['Yes']}}},
-  {id: 'notice', fields: [field('notice', 'Notice period', 'select', ['Immediately', '1 month', '2 months', '3 months', 'More than 3 months'])],
-    expect: {notice: {value: ['2 months']}}},
-  {id: 'german', fields: [field('german', 'German level', 'select', ['None', 'A1-A2', 'B1', 'B2', 'C1', 'Native'])],
-    expect: {german: {value: ['B1']}}},
-  {id: 'consent', fields: [field('privacy', 'I agree to the processing of my personal data as described in the privacy notice.', 'checkbox')],
-    expect: {privacy: {empty: true, category: 'legal'}}},
-  {id: 'gender-decline', fields: [field('gender', 'Gender (voluntary)', 'select', ['Female', 'Male', 'Non-binary', 'Prefer not to say'], false)],
-    expect: {gender: {value: ['Prefer not to say'], category: 'demographic'}}},
-  {id: 'salutation', fields: [field('salutation', 'Salutation', 'radio', ['Mr', 'Ms'])],
-    expect: {salutation: {empty: true, category: 'demographic'}}},
-  {id: 'name', fields: [field('first', 'First name', 'text'), field('last', 'Last name', 'text')],
-    expect: {first: {value: ['Alex'], category: 'contact'}, last: {value: ['Morgan'], category: 'contact'}}},
-  {id: 'salary', fields: [field('pay', 'Salary expectation (CHF per year)', 'text')],
-    expect: {pay: {match: '1[34]\\d'}}},
-  {id: 'why', fields: [field('why', 'Why do you want to work with us?', 'textarea')],
-    expect: {why: {category: 'written', match: '\\w{3}'}}},
-  {id: 'record', fields: [field('record', 'Do you have a criminal record?', 'radio', ['Yes', 'No'])],
-    expect: {record: {empty: true}}},
-  {id: 'mixed', fields: [field('sponsor', 'Do you need a visa to work in Switzerland?', 'radio', ['Yes', 'No']), field('start', 'Earliest start date', 'text'),
-    field('src', 'How did you hear about us?', 'select', ['Website', 'Friend', 'Job board', 'Other']), field('terms', 'I confirm that all information is true and complete.', 'checkbox')],
-    expect: {sponsor: {value: ['No']}, terms: {empty: true, category: 'legal'}}},
-];
 
 // The real-sized set (tools/free-ai-form-asks.mjs, [label, type, options, expect] per field) in this file's shape: ids f1.., expect keys value/empty/match/category/within.
 export const realForms = () => REAL_FORMS.map(([id, list]) => ({id: `real-${id}`,

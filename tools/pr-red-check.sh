@@ -28,68 +28,73 @@ if [ -f "$transcript" ]; then
       grep -E 'tools/ship\.sh' | grep -oE '/[^[:space:]"'"'"'`;|&()]*(\.claude/worktrees/|job-pilotto-site-|jobadabra-web-)[^/[:space:]"'"'"'`;|&()]+' | sort -u | head -5)   # also the private site repo's sibling worktrees (job-pilotto-site-<topic>), shipped with this repo's tools/ship.sh
 fi
 
-lookup() {  # <branch> <dir of its worktree>: prints "<n>\t<url>\t<red checks joined by ,>" for its open PR when one is red, nothing otherwise; cached for $ttl seconds
-  local branch="$1" wt="$2" key file now stamp out
-  key="$(basename "$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null)")-${branch//\//-}"; file="$dir/$key.look"; now="$(date +%s)"   # the worktree name keeps two repos' same-named branches apart
-  stamp="$(head -n 1 "$file" 2>/dev/null)"
-  if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
-  local tmp="$file.$$"
-  ( : > "$tmp"; cd "$wt" && repo="$(pr_repo .)" && n="$(pr_of_head "$repo" "$branch")" && [ -n "$n" ] && view="$(pr_view "$repo" "$n")" \
-      && checks="$(pr_checks "$repo" "$(jq -r .headRefOid <<<"$view")")" && jq -rn --argjson v "$view" --argjson c "$checks" '
-      [ $c[] | select(.bucket == "fail") ] as $red | ($v.mergeable == "CONFLICTING") as $conflict | select(($red | length) > 0 or $conflict)
-      | "\($v.number)\t\(if ($red | length) > 0 and $red[0].link != "" then $red[0].link else "-" end)\t\(if ($red | length) > 0 then ([$red[].name] | unique | join(",")) else "-" end)\t\(if $conflict then "conflict" else "-" end)"' > "$tmp" 2>/dev/null
-    echo done >> "$tmp.ok" ) >/dev/null 2>&1 &
-  local pid=$! i=0
-  while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
-  if [ ! -e "$tmp.ok" ]; then kill "$pid" 2>/dev/null; rm -f "$tmp" "$tmp.ok"; return 0; fi   # too slow: skip, and look again next time
-  out="$(cat "$tmp")"; rm -f "$tmp" "$tmp.ok"
-  { echo "$now"; [ -z "$out" ] || echo "$out"; } > "$file"
-  [ -z "$out" ] || printf '%s\n' "$out"
-}
-
-# A red main this session's merged PR broke (gate G2b, 26 Oct 2026): tools/e2e_bisect.py opens a `red-main` issue naming the breaking PR and its branch;
-# the session that shipped that branch is told like a red PR. Prints "<issue>\t<branch>\t<suite>\t<pr>" per open issue; cached for $ttl seconds like lookup().
-red_main() {
-  local file="$dir/red-main.look" now stamp tmp out pid i=0
+# One worker owns each cache refresh. A slow REST chain finishes after the hook returns;
+# the next prompt reads it instead of repeatedly killing useful work at the foreground deadline.
+# Why (#2297, gitar): four to six sequential REST reads can exceed two seconds even when every request succeeds.
+cached_read() {  # <cache file> <reader function> [args...]; reader emits rows, never applicant content
+  local file="$1"; shift
+  local now stamp before after modified busy="$file.pending" pid i=0
   now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
   if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
-  tmp="$file.$$"
-  ( cd "$cwd" && pr_issues "$(pr_repo .)" red-main | jq -r '.[] | (.body | capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")?) as $m
-      | select($m != null) | "\(.number)\t\($m.br)\t\(.title | sub("^Red main: "; ""))\t\($m.pr)"' > "$tmp" 2>/dev/null; echo done > "$tmp.ok" ) >/dev/null 2>&1 &
-  pid=$!
-  while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
-  if [ ! -e "$tmp.ok" ]; then kill "$pid" 2>/dev/null; rm -f "$tmp" "$tmp.ok"; return 0; fi
-  out="$(cat "$tmp")"; rm -f "$tmp" "$tmp.ok"
-  { echo "$now"; [ -z "$out" ] || echo "$out"; } > "$file"
-  [ -z "$out" ] || printf '%s\n' "$out"
+  before="$(stat -c %i "$file" 2>/dev/null || stat -f %i "$file" 2>/dev/null || true)"
+  # A hook can disappear between mkdir and publishing its worker PID. Reclaim that startup gap after a grace period.
+  if [ -d "$busy" ] && [ ! -f "$busy/pid" ]; then
+    modified="$(stat -c %Y "$busy" 2>/dev/null || stat -f %m "$busy" 2>/dev/null || echo "$now")"
+    [ "$((now - modified))" -lt 10 ] || rmdir "$busy" 2>/dev/null || true
+  fi
+  if [ -f "$busy/pid" ] && ! kill -0 "$(cat "$busy/pid")" 2>/dev/null; then rm -f "$busy/pid"; rmdir "$busy" 2>/dev/null || true; fi
+  if mkdir "$busy" 2>/dev/null; then
+    ( trap 'rm -f "$busy/pid" "$file.$$.rows" "$file.$$.next"; rmdir "$busy" 2>/dev/null || true' EXIT
+      "$@" > "$file.$$.rows" || exit 0
+      { date +%s; cat "$file.$$.rows"; } > "$file.$$.next" && mv -f "$file.$$.next" "$file"
+    ) >/dev/null 2>&1 &
+    pid=$!; printf '%s\n' "$pid" > "$busy/pid" 2>/dev/null || true
+  fi
+  while [ -d "$busy" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
+  # Expired results are not reported during a refresh: their red checks may belong to an older head.
+  after="$(stat -c %i "$file" 2>/dev/null || stat -f %i "$file" 2>/dev/null || true)"
+  [ -d "$busy" ] || { [ -z "$after" ] || [ "$after" = "$before" ] || tail -n +2 "$file"; }
+  return 0
 }
 
-# GitHub refuses main's counted workflow (tools/red-main.sh: "<workflow> did not start (startup_failure)", 26 Oct 2026: an hour of pushes ran no tests and no session heard
-# of it). Prints "<sha>\t<workflow>\t<run url>\t<pr>\t<branch>"; cached for $ttl seconds; a slow answer is not killed: it lands in the cache for the next prompt.
-unanswered_read() {  # <branch> <worktree>: prints "<n>\t<owner+bot count>\t<first url>\t<other count>" when comments wait; cached for $ttl seconds like lookup()
-  local branch="$1" wt="$2" file now stamp view lines n rows repo
-  file="$dir/$(basename "$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null)")-${branch//\//-}.comments"; now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
-  if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
-  repo="$(pr_repo "$wt")"; n="$(pr_of_head "$repo" "$branch" 2>/dev/null)"; [ -n "$n" ] || return 0
-  view="$(pr_view "$repo" "$n" full 2>/dev/null)" || return 0
+lookup_read() {
+  local branch="$1" wt="$2" repo n view checks
+  repo="$(pr_repo "$wt")"; n="$(pr_of_head "$repo" "$branch")" || return 1
+  [ -n "$n" ] || return 0
+  view="$(pr_view "$repo" "$n")" && checks="$(pr_checks "$repo" "$(jq -r .headRefOid <<<"$view")")" || return 1
+  jq -rn --argjson v "$view" --argjson c "$checks" '
+    [ $c[] | select(.bucket == "fail") ] as $red | ($v.mergeable == "CONFLICTING") as $conflict | select(($red | length) > 0 or $conflict)
+    | "\($v.number)\t\(if ($red | length) > 0 and $red[0].link != "" then $red[0].link else "-" end)\t\(if ($red | length) > 0 then ([$red[].name] | unique | join(",")) else "-" end)\t\(if $conflict then "conflict" else "-" end)"'
+}
+lookup() {
+  local branch="$1" wt="$2" key
+  key="$(basename "$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null)")-${branch//\//-}"
+  cached_read "$dir/$key.look" lookup_read "$branch" "$wt"
+}
+
+# A red-main issue identifies the breaking branch; its cached lookup follows the same deadline as PR reads.
+red_main_read() {
+  pr_issues "$(pr_repo "$cwd")" red-main | jq -r '.[] | (.body | capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")?) as $m
+    | select($m != null) | "\(.number)\t\($m.br)\t\(.title | sub("^Red main: "; ""))\t\($m.pr)"'
+}
+red_main() { cached_read "$dir/red-main.look" red_main_read; }
+
+unanswered_read() {  # <branch> <worktree>: "<n>\t<owner+bot count>\t<first url>\t<other count>"
+  local branch="$1" wt="$2" view lines n rows repo
+  repo="$(pr_repo "$wt")"; n="$(pr_of_head "$repo" "$branch" 2>/dev/null)" || return 1
+  [ -n "$n" ] || return 0
+  view="$(pr_view "$repo" "$n" full 2>/dev/null)" || return 1
   n="$(jq -r 'select(.state == "OPEN") | .number // empty' <<<"$view" 2>/dev/null)"; [ -n "$n" ] || return 0
   lines="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
   rows="$(pc_items "$view" "${lines:-null}")"
   # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item; the rule lives in pc_unanswered (pr-comments-lib.sh), shared with ship-watch.sh so a watcher never re-announces what this reminder drops.
   rows="$(pc_unanswered "$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$view")" <<<"$rows")"
-  { echo "$now"; [ -z "$rows" ] || awk -F'\t' -v n="$n" '$2!="other" {c++; if (!u) u=$4} $2=="other" {o++} END {if (c+o) print n "\t" c+0 "\t" (u ? u : "-") "\t" o+0}' <<<"$rows"; } > "$file"
-  tail -n +2 "$file"
+  [ -z "$rows" ] || awk -F'\t' -v n="$n" '$2!="other" {c++; if (!u) u=$4} $2=="other" {o++} END {if (c+o) print n "\t" c+0 "\t" (u ? u : "-") "\t" o+0}' <<<"$rows"
+  return 0
 }
-
-# Keep the whole REST comment lookup within the prompt's budget, including a slow first PR lookup.
-# Redirect the worker's streams before backgrounding: a descendant gh must never hold the hook's output pipe open.
 unanswered() {
-  local tmp="$dir/comments-$$" pid i=0
-  ( unanswered_read "$@" > "$tmp"; : > "$tmp.ok" ) >/dev/null 2>&1 &
-  pid=$!
-  while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
-  if [ -e "$tmp.ok" ]; then cat "$tmp"; else kill "$pid" 2>/dev/null || true; fi
-  rm -f "$tmp" "$tmp.ok"
+  local key="$(basename "$(git -C "$2" rev-parse --show-toplevel 2>/dev/null)")-${1//\//-}"
+  cached_read "$dir/$key.comments" unanswered_read "$@"
 }
 
 red_main_sh="${PR_RED_MAIN_SCRIPT:-$(cd "$(dirname "$0")" && pwd)/red-main.sh}"

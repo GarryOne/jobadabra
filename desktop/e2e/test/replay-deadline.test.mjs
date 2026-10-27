@@ -42,7 +42,9 @@ test('the real tab scheduler retains its healthy sibling while evaluation and cl
   const {replayInTabs} = await import('../lib/replay-browser.mjs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'replay-deadline-'));
   fs.writeFileSync(path.join(dir, 'page.html'), '<title>Fictional fixture</title>');
-  const items = ['hung', 'healthy'].map(name => ({name, dir, pages: [{url: `https://${name}.example/form`, file: 'page.html'}]}));
+  const items = ['hung', 'healthy', 'later'].map(name => ({name, dir, pages: [{url: `https://${name}.example/form`, file: 'page.html'}]}));
+  items[2].pages[0].url = 'https://hung.example/form';
+  const judged = [];
   const context = new EventEmitter(), pages = [], base = {url: () => 'about:blank'};
   context.route = async () => {};
   context.pages = () => [base, ...pages];
@@ -60,13 +62,18 @@ test('the real tab scheduler retains its healthy sibling while evaluation and cl
     const results = await replayLimit('scheduler test', 1000, () => replayInTabs(items, {
       tabs: 2, caseBudgetMs: 30, cleanupMs: 15,
       startExtension: async () => ({context, page: base, requests: [], assertIsolated: async () => true, close: async () => {}}),
-      judge: async (item, scope) => { await scope.page.evaluate(() => null); return {ok: true, failures: [], seen: {tabs: 1, opened: 0}}; },
+      judge: async (item, scope) => { judged.push(item.name); await scope.page.evaluate(() => null); return {ok: true, failures: [], seen: {tabs: 1, opened: 0}}; },
       onResult: result => saved.push({name: result.name, ok: result.ok, failures: [...result.failures]}),
     }));
     assert.equal(saved[0].name, 'healthy');
     assert.equal(results[1].ok, true);
     assert.equal(results[0].ok, false);
+    assert.equal(Number.isFinite(results[0].seconds), true, 'error result must support the batch duration summary');
+    assert.doesNotThrow(() => results[0].seconds.toFixed(0));
     assert.match(results[0].failures.join(';'), /hung: judge timed out/);
+    assert.equal(results[2].ok, false);
+    assert.match(results[2].failures.join(';'), /browser retired/);
+    assert.equal(judged.includes('later'), false);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
 
@@ -83,6 +90,16 @@ test('late resources are closed after the failed case returns', async () => {
   let release, closed = false;
   await assert.rejects(timedReplay({name: 'late-resource'}, step => step('browser.start', () => new Promise(resolve => { release = resolve; }),
     resource => resource.close()), async () => {}, {budgetMs: 15, log: () => {}}), /late-resource: browser.start timed out/);
+  release({close: () => { closed = true; }});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(closed, true);
+});
+
+
+test('a shared browser which finishes startup late is disposed', async () => {
+  const {replayInTabs} = await import('../lib/replay-browser.mjs');
+  let release, closed = false;
+  await assert.rejects(replayInTabs([], {startupMs: 15, startBrowser: () => new Promise(resolve => { release = resolve; })}), /browser startup timed out/);
   release({close: () => { closed = true; }});
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(closed, true);

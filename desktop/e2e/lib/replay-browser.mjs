@@ -53,12 +53,13 @@ export function nextRunnable(queue, runningHosts) {
 }
 
 // -> {run, live, serve, close}: one browser, the stand-in answering by case. items: every case that may run in it (their AI routes are known up front).
-export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp = false, startExtension = startRealExtension, judge = judgeCase, caseBudgetMs, cleanupMs} = {}) {   // appPort: the caller's own stand-in app (row replay); then the AI answers and the request lists below are the caller's
+export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp = false, startExtension = startRealExtension, judge = judgeCase, caseBudgetMs, cleanupMs, onStarted = () => {}} = {}) {   // appPort: the caller's own stand-in app (row replay); then the AI answers and the request lists below are the caller's
   const live = [];   // states of the cases running now: {item, hosts, answer, from, tabs: Set, opened: [pages], shared}
   const allHosts = [...new Set(items.flatMap(caseHosts))];   // a request that names none of them could belong to any tab
   const routes = [...new Set(items.flatMap(item => Object.keys(item.ai || {})))];
   const answer = Object.fromEntries(routes.map(route => [route, sent => { const state = caseForRequest(live, route, sent); return state?.answer[route] ? state.answer[route](sent) : {}; }]));
   const run = await startExtension({extensionDir, cv: items.some(item => item.cv !== false), allowAllSites: true, answer, offline: true, appPort, cdp, contactFor: query => contactForUrl(live, query.get('url'))});   // each tab's own applicant details (a case's `contact`: its phone), asked by the page's address
+  onStarted(run);
   const files = new Map(), statuses = new Map(), delays = new Map(), redirects = new Map();   // pathKey -> each live case's response; a synthetic redirect is consumed once
   await run.context.route('**/*', route => {   // ONE route for the browser, before any tab navigates: a route added while another tab loads let a request out (example.ch, 11 Oct 2026)
     const url = route.request().url(), host = new URL(url).hostname;
@@ -119,14 +120,33 @@ export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp 
 
 // Every case in one browser, `tabs` at a time. -> results in the order of items: {name, ok, failures, seen}. A case that throws is a failure with the error as its reason.
 export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, startBrowser = startReplayBrowser, ...browserOptions} = {}) {
-  const browser = await replayLimit('replay browser startup', 120000, () => startBrowser(items, {extensionDir, ...browserOptions}));
+  let startupExpired = false, startingRun, browser;
+  const startup = Promise.resolve().then(() => startBrowser(items, {extensionDir, ...browserOptions, onStarted: run => {
+    startingRun = run;
+    if (startupExpired) { void replayLimit('late replay startup cleanup', 5000, () => run.close()).catch(() => {}); throw new Error('replay startup already expired'); }
+  }})).then(found => {
+    if (startupExpired) void replayLimit('late replay browser.close', 5000, () => found.close()).catch(() => {});
+    return found;
+  });
+  try { browser = await replayLimit('replay browser startup', browserOptions.startupMs || 120000, () => startup); }
+  catch (error) {
+    startupExpired = true;
+    if (startingRun) await replayLimit('failed replay startup cleanup', 5000, () => startingRun.close()).catch(() => {});
+    throw error;
+  }
+  let retired = '';
   const queue = [...items], results = new Map(), running = new Map();   // running: case name -> promise
   const hostsRunning = () => new Set([...running.keys()].flatMap(name => caseHosts(items.find(item => item.name === name))));
   try {
     while (queue.length || running.size) {
+      // Why (2026-10-27): expired awaits do not cancel an old tab; retire the browser before any queued case can reuse its routes.
+      if (retired) for (const item of queue.splice(0)) {
+        const result = {name: item.name, ok: false, seconds: 0, failures: [`not run: browser retired after ${retired}`], seen: {tabs: 0, opened: 0}};
+        results.set(item.name, result); onResult?.(result);
+      }
       for (let index = nextRunnable(queue, hostsRunning()); running.size < tabs && index >= 0; index = nextRunnable(queue, hostsRunning())) {
         const item = queue.splice(index, 1)[0];
-        running.set(item.name, runInTab_(browser, item).then(result => { results.set(item.name, result); running.delete(item.name); onResult?.(result); }));
+        running.set(item.name, runInTab_(browser, item).then(result => { if (result.fatal) retired ||= `${item.name}: ${result.failures.join("; ")}`; results.set(item.name, result); running.delete(item.name); onResult?.(result); }));
       }
       if (running.size) await Promise.race(running.values());
     }
@@ -138,4 +158,9 @@ export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, sta
   }
   return items.map(item => results.get(item.name));
 }
-const runInTab_ = (browser, item) => browser.runInTab(item).catch(error => ({name: item.name, ok: false, failures: [`error: ${String(error?.message || error).slice(0, 200)}`], seen: {tabs: 0, opened: 0}}));
+const runInTab_ = async (browser, item) => {
+  const began = Date.now();
+  try { return await browser.runInTab(item); }
+  catch (error) { return {name: item.name, ok: false, fatal: error.code === 'REPLAY_TIMEOUT', seconds: (Date.now() - began) / 1000,
+    failures: [`error: ${String(error?.message || error).slice(0, 200)}`], seen: {tabs: 0, opened: 0}}; }
+};

@@ -60,10 +60,10 @@ test('the dim and the centring are one look: only look() sets either, a closed p
 test('a fill page is dimmed from its commit by the one overlay the panel takes over, and the early dim lifts by itself', () => {
   const early = read('extension/early-dim.js');
   assert.match(early, /webNavigation\?\.onCommitted/, 'at the commit, the earliest moment the worker can reach the new document');
-  assert.match(early, /details\.url\.includes\(FILL_MARK\)/, 'only a page the app opened to fill (its mark), never any other page');
+  assert.match(early, /details\.url\.includes\(FILL_MARK\) \|\| stepOn\(details\.tabId\)/, 'only a page the app opened to fill (its mark) or one a run of ours has a step on, never any other page');
   assert.match(early, /isStopped\(\)/, 'never after the person\'s Stop');
   assert.match(early, /files: \['panel-overlay-fx\.js', 'panel-overlay\.js', 'overlay-early\.js'\]/, 'one injection: the overlay and its early start together');
-  assert.match(read('extension/background.js'), /startEarlyDim\(\)/, 'the worker starts it');
+  assert.match(read('extension/background.js'), /startEarlyDim\(tabId => stepNow\.has\(tabId\)\)/, 'the worker starts it, with the tabs that have a step on');
   const overlay = read('extension/panel-overlay.js');
   assert.match(overlay, /if \(window\.__jobPilottoOverlay\?\.alive\?\.\(\)\) return;/, 'one copy per page: the panel\'s own injection keeps the early layer, so the panel lifts the layer it sees');
   assert.match(overlay, /EARLY_MS = \d+/, 'the early dim lifts by itself when no panel takes it over');

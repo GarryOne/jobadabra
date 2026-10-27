@@ -114,7 +114,8 @@
   // The rest of a multiple-choice menu's answer: queued when a pick took, armed again by the next __jobPilottoNextCombo, so flow.js sees the first pick as done (the armed count fell)
   // before the same menu is clicked for the next choice.
   const moreChoices = [];
-  const armCombo = (field, fullAnswer, opts = {}) => {
+  let armedSeq = 0;
+  const armCombo =(field, fullAnswer, opts = {}) => {
     // A menu that takes several choices gets them joined by " && " (the AI's answer for a `multiple` field): the first is picked now, the rest arm the same menu again after it.
     const [answer, ...rest] = String(fullAnswer).split(' && ').map(part => part.trim()).filter(Boolean);
     const el = document.getElementById(field) || document.querySelector(`[name="${CSS.escape(field)}"]`);
@@ -128,7 +129,8 @@
     badge.style.cssText = 'margin-top:4px;font:600 12px system-ui,sans-serif;color:#8a5700';
     control.parentElement.insertBefore(badge, control.nextSibling);
     control.dataset.jobpilottoArmed = labelOf(el) || field;
-    const done = () => { control.style.outline = ''; badge.remove(); delete control.dataset.jobpilottoArmed; control.removeEventListener('mousedown', onOpen, true); };
+    control.dataset.jobpilottoArmedId = String(++armedSeq);   // which menu flow.js has passed over, whatever menus are disarmed meanwhile (__jobPilottoNextCombo)
+    const done = () => { control.style.outline = ''; badge.remove(); delete control.dataset.jobpilottoArmed; delete control.dataset.jobpilottoArmedId; control.removeEventListener('mousedown', onOpen, true); };
     const onOpen = event => {
       if (!event.isTrusted) return;
       // Each opening is a try in the menu's one attempt log (page/attempts.js): one that failed on this state is not made again, and a menu gets a few in all, then it is
@@ -169,6 +171,8 @@
 
   // For "Fill drop-down menus too": the next armed dropdown, scrolled into view, as viewport coordinates
   // for a real click (sent by the extension through Chrome's debugger), or null when none is left.
+  // skip: the ids of the menus already passed over (flow.js), or how many to pass. By id: a failed menu disarmed by the sweep below shifted every later one, so a count
+  // passed over the next menu unclicked (27 Oct 2026, fair round form 102: School missed, then Degree was never clicked). The spot carries the menu's id.
   window.__jobPilottoNextCombo = async (skip = 0) => {
     while (moreChoices.length) { const [field, answer] = moreChoices.shift(); armCombo(field, answer); }
     // A menu whose attempt log refuses another opening (page/attempts.js) is disarmed here, before it is counted and clicked: its suggestion stays for the person.
@@ -176,14 +180,15 @@
       const box = armed.matches('input, select') ? armed : armed.querySelector('input[role=combobox], input, select');
       if (box && window.__jobPilottoAttempts && !window.__jobPilottoAttempts.mayTry(box, 'pick')) armed.__jobPilottoDisarm?.();
     }
-    const control = Array.from(document.querySelectorAll('[data-jobpilotto-armed]'))[skip];
+    const armed = Array.from(document.querySelectorAll('[data-jobpilotto-armed]'));
+    const control = Array.isArray(skip) ? armed.find(one => !skip.includes(one.dataset.jobpilottoArmedId)) : armed[skip];
     if (!control) return null;
     // Instant, not smooth: sites with smooth scrolling (Greenhouse) moved the menu after it was measured.
     control.scrollIntoView({block: 'center', behavior: 'instant'});
     await sleep(120);
     const rect = control.getBoundingClientRect();
     return {x: Math.round(rect.left + Math.min(40, rect.width / 2)), y: Math.round(rect.top + rect.height / 2),
-      label: control.dataset.jobpilottoArmed};
+      label: control.dataset.jobpilottoArmed, id: control.dataset.jobpilottoArmedId || ''};
   };
   // After the country menu is picked: where to type the national number (the widget adds the prefix).
   window.__jobPilottoPhoneSpot = async () => {

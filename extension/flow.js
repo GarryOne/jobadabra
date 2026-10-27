@@ -80,12 +80,12 @@ async function clickCombosNow(tabId) {
     const config = await settings().catch(() => null);
     return config ? (await apiFor(tabId, config, '/extension/pick-choice', {method: 'POST', body: JSON.stringify({label, value: asked, options: choices})}).catch(() => null))?.choice || '' : '';
   });
-  let skip = 0;
+  const skip = [];   // the ids of the menus passed over in this pass (page/fill-menus.js __jobPilottoNextCombo): never a count, a disarmed one shifted the rest
   try {
     for (let i = 0; i < 40; i++) {
       const spot = await page(n => window.__jobPilottoNextCombo(n), [skip]);
       if (!spot) break;
-      if (givenUp.get(tabId)?.has(spot.label)) { skip += 1; continue; }
+      if (givenUp.get(tabId)?.has(spot.label)) { skip.push(spot.id); continue; }
       const started = Date.now();
       let outcome;
       const marks = [];
@@ -105,7 +105,7 @@ async function clickCombosNow(tabId) {
       // What was observed for this menu (fill card reasons: opened, found, selectedAfter, trusted), never assumed.
       results.push({label: spot.label, picked, matched, ms: Date.now() - started, opened: last?.opened ?? null, found: last?.found ?? null, selectedAfter: last?.selectedAfter ?? null, trusted: last?.trusted ?? null});
       if (!picked && last && last.found === false) decide('fill', 'a menu showed no choice that matched', {tab: tabId, field: spot.label.slice(0, 60), choices: last.choices || [], peek: last.peek || ''}).catch(() => {});   // the form's wording, not the answer
-      if (!picked) skip += 1;
+      if (!picked) skip.push(spot.id);
     }
     // A phone widget whose country was just picked: type the number for real, so the form registers it.
     const phone = await page(() => window.__jobPilottoPhoneSpot?.());

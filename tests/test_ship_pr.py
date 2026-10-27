@@ -92,6 +92,7 @@ class ShipPrTest(ShipFixture):
         self.change(self.tree, 'more.txt', 'z\n', 'More')
         self.pr_ship(open_pr, '--title=Better words')
         self.assertIn('pr edit 1 --title Better words', ' | '.join(self.calls()))
+        self.assertEqual(sorted(set(json.loads(self.state.read_text()).get('graphql', []))), ['pr merge'], 'retitle also uses REST')
 
     def test_a_title_that_already_has_the_session_tag_keeps_one(self):
         # 24 Oct 2026: --title="[d8] ..." became "[d8] [d8] ..." (#1750), on a new PR and on a retitle.
@@ -127,6 +128,18 @@ class ShipPrTest(ShipFixture):
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
         result = self.pr_ship({'others': [{'number': 7, 'headRefName': 'other', 'commits': [{'oid': 'f' * 40}]}]})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_ship_opens_over_rest_with_the_tag_and_the_layout(self):
+        """Owner, 27 Oct 2026, try 3 on "GraphQL runs out" ("No GraphQL in our tools"): #2288, #2290 and bench #9 were opened over REST by hand and went red without the
+        [xx] tag or pr-body.sh's layout. Ship opens over REST itself and keeps both; the only GraphQL left is a draft's ready and auto-merge."""
+        self.change(self.tree, 'mine.txt', 'y\n', 'My change')
+        result = self.pr_ship(JOB_PILOTTO_SESSION='job-pilotto-9f')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        state = json.loads(self.state.read_text())
+        self.assertEqual(state['title'], '[9f] My change')
+        self.assertIn('<details>', state['body'], 'laid out by tools/pr-body.sh')
+        self.assertTrue(any('pulls?state=open&head=' in c for c in state['calls']), 'its PR is looked up over REST')
+        self.assertEqual(sorted(set(state.get('graphql', []))), ['pr merge'], 'no GraphQL but auto-merge')
 
     def test_the_pr_title_names_the_session_that_opened_it(self):
         # Owner, 15 Oct 2026: "add in the PR title the name of the session that opened that PR".

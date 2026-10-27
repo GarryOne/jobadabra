@@ -24,8 +24,8 @@ if [ "${1:-}" = "prune" ]; then
   # A squash merge leaves the branch's commits off main, so `git cherry` calls it unlanded (25 Oct 2026: 667 worktrees, ~95% squash-merged,
   # prune kept nearly all of them and the disk filled). A worktree whose HEAD is a merged PR's head commit is landed; an open PR's head never is.
   # JP_MERGED_PR_HEADS / JP_OPEN_PR_HEADS (files of shas) replace the gh lookup; no gh or no network: empty lists, as before.
-  merged_heads=$(if [ -n "${JP_MERGED_PR_HEADS:-}" ]; then cat "$JP_MERGED_PR_HEADS"; else (cd "$main" && gh pr list --state merged --limit 3000 --json headRefOid -q '.[].headRefOid') 2>/dev/null; fi || true)
-  open_heads=$(if [ -n "${JP_OPEN_PR_HEADS:-}" ]; then cat "$JP_OPEN_PR_HEADS"; else (cd "$main" && gh pr list --state open --limit 500 --json headRefOid -q '.[].headRefOid') 2>/dev/null; fi || true)
+  merged_heads=$(if [ -n "${JP_MERGED_PR_HEADS:-}" ]; then cat "$JP_MERGED_PR_HEADS"; else bash -c '. "$1" && pr_list "$(pr_repo "$2")" closed 30' _ "$main/tools/pr-rest-lib.sh" "$main" | jq -r '.[] | select(.merged) | .headRefOid'; fi 2>/dev/null || true)   # REST, newest 3,000 (try 3 on "GraphQL runs out", 27 Oct 2026)
+  open_heads=$(if [ -n "${JP_OPEN_PR_HEADS:-}" ]; then cat "$JP_OPEN_PR_HEADS"; else bash -c '. "$1" && pr_list "$(pr_repo "$2")" open 5' _ "$main/tools/pr-rest-lib.sh" "$main" | jq -r '.[].headRefOid'; fi 2>/dev/null || true)
   kept=0; gone=0
   git -C "$main" worktree list --porcelain | sed -n 's/^worktree //p' | while read -r tree; do
     case "$tree" in "$main/.claude/worktrees/"*) ;; *) continue ;; esac

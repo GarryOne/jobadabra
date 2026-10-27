@@ -13,6 +13,13 @@ path = Path(os.environ['FAKE_GH_STATE'])
 state = json.loads(path.read_text())
 argv = sys.argv[1:]
 state.setdefault('calls', []).append(' '.join(argv))
+if argv[:1] in (['pr'], ['issue'], ['repo'], ['label']):   # a GraphQL call: tests/test_ship_pr.py allows only a draft's ready and auto-merge (try 3, 27 Oct 2026)
+    state.setdefault('graphql', []).append(' '.join(argv[:2]))
+
+
+def said(words):
+    """A REST write, logged in gh's own words (`pr create --head x --title y --body z`), so the tests read what happened to the PR either way."""
+    state['calls'][-1] = words
 
 
 def save():
@@ -40,6 +47,21 @@ def merge():
 
 
 pending = state.get('fail_check') or state.get('fail_check_once')
+def fields():
+    """-> the -f / -F name=value pairs of a gh api call."""
+    return {argv[i + 1].split('=', 1)[0]: argv[i + 1].split('=', 1)[1] for i, a in enumerate(argv[:-1]) if a in ('-f', '-F') and '=' in argv[i + 1]}
+
+
+if argv[:3] == ['api', '-X', 'POST'] and argv[3].endswith('/pulls'):   # pr_open (try 3, 27 Oct 2026): ship opens over REST
+    f = fields()
+    state.update(state='OPEN', head=f.get('head'), auto=False, draft=f.get('draft') == 'true', title=f.get('title'), body=f.get('body'))
+    said(f"pr create --base {f.get('base')} --head {f.get('head')} --title {f.get('title')} --body {f.get('body')}" + (' --draft' if f.get('draft') == 'true' else ''))
+    print('https://example.test/pull/1'); save(); sys.exit(0)
+if argv[:3] == ['api', '-X', 'PATCH'] and re.search(r'/pulls/\d+$', argv[3]):   # pr_set: a title or a description
+    state.update(fields()); said('pr edit 1 ' + ' '.join(f'--{k} {v}' for k, v in fields().items())); print(1); save(); sys.exit(0)
+if argv[:3] == ['api', '-X', 'POST'] and re.search(r'/labels$', argv[3]):   # pr_label: the label, then the PR's labels
+    if 'labels[]' in fields(): said(f"pr edit 1 --add-label {fields()['labels[]']}"); state.setdefault('labels', []).append(fields()['labels[]'])
+    save(); sys.exit(0)
 if argv[:1] == ['api'] and '-i' in argv:   # tools/pr-rest-lib.sh's REST reads (27 Oct 2026): the PR, the head's check-runs and statuses
     p = argv[-1]
     if p.endswith('/check-runs?per_page=100'):
@@ -52,11 +74,15 @@ if argv[:1] == ['api'] and '-i' in argv:   # tools/pr-rest-lib.sh's REST reads (
             body = {'check_runs': [{'name': 'python', 'status': 'completed', 'conclusion': 'success', 'html_url': ''}]}
     elif p.endswith('/status'):
         body = {'statuses': []}
+    elif re.search(r'/pulls\?state=open&head=', p):   # pr_of_head: the open PR of the branch
+        body = [{'number': 1}] if state.get('state') == 'OPEN' else []
+    elif re.search(r'/pulls\?state=open&per_page=100', p):   # pr_list: every open PR, its head (state 'others': number, headRefName, the commits' oids)
+        body = [{'number': o['number'], 'head': {'ref': o['headRefName'], 'sha': (o.get('commits') or [{}])[-1].get('oid', '')}, 'merged_at': None} for o in state.get('others', [])] if 'page=1' in p else []
     elif re.search(r'/pulls/\d+$', p):
         if state.get('auto') and not pending and state.get('state') == 'OPEN':
             merge()
         st = state.get('state', 'OPEN')
-        body = {'number': 1, 'html_url': 'https://example.test/pull/1', 'head': {'sha': 'h1', 'ref': state.get('head')}, 'state': 'open' if st == 'OPEN' else 'closed',
+        body = {'number': 1, 'title': state.get('title') or 'My change', 'html_url': 'https://example.test/pull/1', 'head': {'sha': 'h1', 'ref': state.get('head')}, 'state': 'open' if st == 'OPEN' else 'closed',
                 'merged_at': 't' if st == 'MERGED' else None, 'merge_commit_sha': state.get('merge_sha'), 'mergeable': True}
     else:
         print('HTTP/2.0 404 Not Found\n\n{}'); save(); sys.exit(1)

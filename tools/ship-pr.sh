@@ -28,17 +28,23 @@ ship_pr_fail() { fail_reason="$1"; echo "ship: FAILED $1" >&2; exit 1; }
 ship_pr_push() { local now; now="$(git ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)"; git push -q "--force-with-lease=refs/heads/$branch:$now" origin "HEAD:refs/heads/$branch" 2>&1 || ship_pr_fail "could not push the branch $branch to origin"; }
 # No stacking (owner, 17 Oct 2026: a PR on another PR's branch gets stuck when the base merges or is retargeted): refuse to push a branch that carries a commit of another open PR.
 ship_pr_no_stacking() {
-  local mine others hit
+  local mine others hit="" pn ref sha theirs
   mine="$(git rev-list origin/main..HEAD)"
-  others="$(gh pr list --state open --limit 100 --json number,headRefName,commits 2>/dev/null)" || return 0
-  hit="$(printf '%s' "$others" | jq -r --arg b "$branch" --arg mine "$mine" '($mine | split("\n")) as $m | .[] | select(.headRefName != $b) | select(any(.commits[]?; .oid as $o | $m | index($o))) | "#\(.number) (\(.headRefName))"' 2>/dev/null | head -n 1)"
+  others="$(pr_list "$(ship_repo)" open 2)" || return 0
+  # Why (try 3 on "GraphQL runs out", 27 Oct 2026): REST lists no commits of a PR; their commits come from git (every session's branch is in this clone), else its head alone.
+  while IFS=$'\t' read -r pn ref sha; do
+    [ -n "$sha" ] && [ "$ref" != "$branch" ] || continue
+    if git cat-file -e "$sha^{commit}" 2>/dev/null; then theirs="$(git rev-list "origin/main..$sha")"; else theirs="$sha"; fi
+    if grep -qxF -f <(printf '%s\n' "$theirs" | grep .) <<<"$mine" 2>/dev/null; then hit="#$pn ($ref)"; break; fi
+  done < <(jq -r '.[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)"' <<<"$others")
   [ -z "$hit" ] || ship_pr_fail "this branch carries commits of the open PR $hit; one PR per branch off main, no stacking: start from origin/main (tools/worktree.sh) and bring over only your own commits (git cherry-pick)"
 }
 ship_pr_land() {
   local n="" repo out view state mergeable checks failing name link who tries=0 waited=0 last_say=0 body title poll="${SHIP_PR_POLL:-15}" limit="${SHIP_PR_TIMEOUT:-2700}"
   files="$(git diff --name-only origin/main HEAD)"
   ship_pr_no_stacking
-  n="$(gh pr list --head "$branch" --state open --json number 2>/dev/null | jq -r '.[0].number // empty')" || n=""
+  repo="$(ship_repo)"
+  n="$(pr_of_head "$repo" "$branch" 2>/dev/null)" || n=""
   # A PR's title names the whole PR (owner, 24 Oct 2026: #1743 was titled by its 6th commit, a spec tick): 2+ commits that are not "Move ..." splits need --title= when the PR is opened.
   if [ -z "$n" ] && [ -z "${SHIP_PR_TITLE:-}" ] && [ "$(git log --format=%s origin/main..HEAD | grep -vc '^Move ')" -ge 2 ]; then
     ship_pr_fail "this PR has several commits: pass --title=\"<what the whole PR does for the user>\" (a PR's title names the whole change, not its newest commit)"
@@ -53,21 +59,22 @@ ship_pr_land() {
     [ -n "${SHIP_PR_BODY:-}" ] || step "no --body=<file>: the PR shows the subject, the facts and the commit folded; a 5-second summary goes in a file (CLAUDE.md \"PR descriptions\")"
     body="$(bash "$tools/pr-body.sh" origin/main ${SHIP_PR_BODY:+"--body=$SHIP_PR_BODY"})"   # the summary first, the facts, the commit folded (tools/pr-body.sh)
     rows="$(git log --format='%(trailers:key=Pool-row,valueonly)' origin/main..HEAD | grep -v '^$' | grep -iv '^none' | sort -u || true)"   # the pool rows this PR fixes (the Pool-row lines)
-    out="$(gh pr create --base main --head "$branch" --title "$title" --body "$body" ${SHIP_PR_DRAFT:+--draft} 2>&1)" || ship_pr_fail "could not open the pull request: $(echo "$out" | tail -n 1)"
-    if [ -n "$rows" ]; then gh label create pool-fix --color 1D76DB --description "fixes a row of the applying pool (from its Pool-row lines)" >/dev/null 2>&1 || true; gh pr edit "$(echo "$out" | tail -n 1)" --add-label pool-fix >/dev/null 2>&1 || true; fi   # a missing label never fails a landing
-    n="${out##*/}"; step "opened the pull request: $(echo "$out" | tail -n 1)"
+    out="$(pr_open "$repo" "$branch" "$title" "$body" ${SHIP_PR_DRAFT:+draft} 2>&1)" || ship_pr_fail "could not open the pull request: $(echo "$out" | tail -n 1)"
+    n="${out##*/}"
+    if [ -n "$rows" ]; then pr_label "$repo" "$n" pool-fix 1D76DB "fixes a row of the applying pool (from its Pool-row lines)" || true; fi   # a missing label never fails a landing
+    step "opened the pull request: $(echo "$out" | tail -n 1)"
   else
     step "the branch already has pull request #$n: reusing it"
     if [ -n "${SHIP_PR_BODY:-}" ]; then   # a new --body=<file> on a PR that is already open: its description is refreshed through the same tools/pr-body.sh (16 Oct 2026: #1049 kept the first draft's numbers)
-      body="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && gh pr edit "$n" --body "$body" >/dev/null 2>&1 && step "refreshed the description of #$n from --body" || step "could not refresh the description of #$n (the old one stays)"
+      body="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && pr_set "$repo" "$n" body "$body" 2>/dev/null && step "refreshed the description of #$n from --body" || step "could not refresh the description of #$n (the old one stays)"
     fi
     if [ -n "${SHIP_PR_TITLE:-}" ]; then   # --title= on a PR that is already open: its title is replaced (only then)
       who="$(session_name)"; title="$SHIP_PR_TITLE"; [ "$who" = "?" ] || title="[${who##*-}] ${title#"[${who##*-}] "}"
-      gh pr edit "$n" --title "$title" >/dev/null 2>&1 && step "retitled #$n" || step "could not retitle #$n (the old title stays)"
+      pr_set "$repo" "$n" title "$title" 2>/dev/null && step "retitled #$n" || step "could not retitle #$n (the old title stays)"
     else   # no --title: still keep the "[xx]" tag (21 Oct 2026: site#18 and #19 were red for a missing tag, opened or retitled by hand): add it when the title lacks one
-      who="$(session_name)"; title="$(gh pr view "$n" --json title --jq .title 2>/dev/null || true)"
+      who="$(session_name)"; title="$(pr_view "$repo" "$n" 2>/dev/null | jq -r '.title // empty' || true)"
       if [ "$who" != "?" ] && [ -n "$title" ] && ! printf '%s' "$title" | grep -qE '^\[[^]]+\] '; then
-        gh pr edit "$n" --title "[${who##*-}] $title" >/dev/null 2>&1 && step "added the [${who##*-}] tag to the title of #$n" || step "could not add the session tag to #$n (the old title stays)"
+        pr_set "$repo" "$n" title "[${who##*-}] $title" 2>/dev/null && step "added the [${who##*-}] tag to the title of #$n" || step "could not add the session tag to #$n (the old title stays)"
       fi
     fi
     if [ -n "${SHIP_PR_DRAFT:-}" ]; then gh pr ready "$n" --undo >/dev/null 2>&1 && step "#$n is a draft again until its new checks are green" || true; fi   # --draft: a new push restarts the checks

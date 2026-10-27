@@ -13,8 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / 'tools' / 'pr-conflict-fix.sh'
 FAKE = """#!/bin/sh
-expr=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && expr="$2"; shift; done
-jq -r "$expr" "$FAKE_GH_DIR/merged.json"
+printf 'HTTP/2.0 200 OK\\n\\n'
+jq -c '[.[] | {number, head: {sha: .headRefOid, ref: "parent"}, merged_at: "t"}]' "$FAKE_GH_DIR/merged.json"
 """
 
 
@@ -42,7 +42,7 @@ class PrConflictFixTest(unittest.TestCase):
         (self.tmp / 'bin').mkdir()
         gh = self.tmp / 'bin' / 'gh'; gh.write_text(FAKE); gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
         self.log = self.tmp / 'ship.log'; self.log.write_text('')
-        self.env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp)}
+        self.env = {**os.environ, 'PATH': f'{self.tmp / "bin"}{os.pathsep}{os.environ["PATH"]}', 'FAKE_GH_DIR': str(self.tmp), 'PR_REST_CACHE': str(self.tmp / 'rest-cache')}
         (self.tmp / 'merged.json').write_text('[]')
 
     def stacked(self):

@@ -172,13 +172,21 @@ class HookCommentsTest(Base):
         super().setUp()
         self.repo = self.tmp / 'repo'
         subprocess.run(['git', 'init', '-q', '-b', 'feature', str(self.repo)], check=True)
-        # `gh pr list` (the red lookup) answers nothing; `gh pr view` is the comment lookup
+        subprocess.run(['git', '-C', str(self.repo), 'remote', 'add', 'origin', 'git@github.com:o/r.git'], check=True)
         gh = self.tmp / 'bin' / 'gh'
-        gh.write_text(FAKE.replace('"pr checks")', '"pr list") ;;\n  "pr checks")'))
+        gh.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{ROOT / "tests" / "fake_gh_rest.py"}" "$@"\n')
+        self.env['PR_REST_CACHE'] = str(self.tmp / 'rest-cache')
+        self.answer(view())
         self.env.update({'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '20',
                          'PR_RED_MAIN_SCRIPT': str(self.tmp / 'rm.sh')})
         (self.tmp / 'rm.sh').write_text('#!/bin/sh\necho unknown\n')
         self.env.pop('JOB_PILOTTO_SESSION', None)
+
+    def answer(self, v, lines=()):
+        super().answer(v, lines)
+        rest(self.tmp, v, lines=lines)
+        f = self.tmp / 'rest' / re.sub(r'[^A-Za-z0-9]', '_', 'repos/o/r/pulls?state=open&head=o:feature&per_page=1')
+        f.write_text(json.dumps([{'number': 7}] if v['state'] == 'OPEN' else []))
 
     def hook(self):
         payload = {'cwd': str(self.repo), 'hook_event_name': 'UserPromptSubmit'}
@@ -204,7 +212,8 @@ class HookCommentsTest(Base):
         self.assertNotIn('unanswered', self.hook())
         self.answer(view(comments=[comment('IC_1', 'GarryOne', 'make it blue')]))
         (self.tmp / 'rm.sh').write_text('#!/bin/sh\necho "red|abc1234|ci.yml did not start (startup_failure)|https://ci.test/run"\n')
-        (self.tmp / 'bin' / 'gh').write_text((self.tmp / 'bin' / 'gh').read_text().replace('  api*)', '  "api repos/{owner}/{repo}/commits/abc1234/pulls") printf "9\\tother-branch\\n" ;;\n  api*)'))
+        gh = self.tmp / 'bin' / 'gh'
+        gh.write_text(gh.read_text().replace('exec ', 'case "$2" in repos/{owner}/{repo}/commits/abc1234/pulls) printf "9\\tother-branch\\n"; exit 0 ;; esac\nexec ', 1))
         out = self.hook()
         self.assertIn('unanswered comment(s)', out)
         self.assertIn("Main's ci.yml did not start", out)

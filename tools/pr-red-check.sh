@@ -11,6 +11,8 @@ set -uo pipefail
 [ "${PR_RED_CHECK:-1}" != 0 ] || exit 0
 [ -z "${JOB_PILOTTO_SESSION:-}" ] || exit 0   # an "Apply with Claude" session of the desktop app changes no code
 command -v gh >/dev/null && command -v jq >/dev/null || exit 0
+# Why (owner, 27 Oct 2026, try 3 on "GraphQL runs out": "No GraphQL in our tools"): every look is REST with the last ETag (tools/pr-rest-lib.sh); this hook runs on every prompt of every session.
+. "$(cd "$(dirname "$0")" && pwd)/pr-rest-lib.sh"; . "$(cd "$(dirname "$0")" && pwd)/pr-comments-lib.sh"
 input="$(cat)"
 jqr() { jq -r "$1" <<<"$input" 2>/dev/null; }
 cwd="$(jqr '.cwd // ""')"; transcript="$(jqr '.transcript_path // ""')"; event="$(jqr '.hook_event_name // ""')"; again="$(jqr '.stop_hook_active // false')"
@@ -32,10 +34,11 @@ lookup() {  # <branch> <dir of its worktree>: prints "<n>\t<url>\t<red checks jo
   stamp="$(head -n 1 "$file" 2>/dev/null)"
   if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
   local tmp="$file.$$"
-  ( cd "$wt" && gh pr list --head "$branch" --state open --json number,mergeable,statusCheckRollup --jq '
-      .[0] // empty | . as $pr | [ .statusCheckRollup[]? | select(.conclusion == "FAILURE" or .conclusion == "TIMED_OUT" or .conclusion == "STARTUP_FAILURE" or .state == "FAILURE" or .state == "ERROR")
-        | {name: (.name // .context), url: (.detailsUrl // .targetUrl // "")} ] as $red | ($pr.mergeable == "CONFLICTING") as $conflict | select(($red | length) > 0 or $conflict)
-      | "\($pr.number)\t\(if ($red | length) > 0 and $red[0].url != "" then $red[0].url else "-" end)\t\(if ($red | length) > 0 then ([$red[].name] | unique | join(",")) else "-" end)\t\(if $conflict then "conflict" else "-" end)"' > "$tmp" 2>/dev/null; echo done >> "$tmp.ok" ) &
+  ( : > "$tmp"; cd "$wt" && repo="$(pr_repo .)" && n="$(pr_of_head "$repo" "$branch")" && [ -n "$n" ] && view="$(pr_view "$repo" "$n")" \
+      && checks="$(pr_checks "$repo" "$(jq -r .headRefOid <<<"$view")")" && jq -rn --argjson v "$view" --argjson c "$checks" '
+      [ $c[] | select(.bucket == "fail") ] as $red | ($v.mergeable == "CONFLICTING") as $conflict | select(($red | length) > 0 or $conflict)
+      | "\($v.number)\t\(if ($red | length) > 0 and $red[0].link != "" then $red[0].link else "-" end)\t\(if ($red | length) > 0 then ([$red[].name] | unique | join(",")) else "-" end)\t\(if $conflict then "conflict" else "-" end)"' > "$tmp" 2>/dev/null
+    echo done >> "$tmp.ok" ) >/dev/null 2>&1 &
   local pid=$! i=0
   while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
   if [ ! -e "$tmp.ok" ]; then kill "$pid" 2>/dev/null; rm -f "$tmp" "$tmp.ok"; return 0; fi   # too slow: skip, and look again next time
@@ -51,8 +54,8 @@ red_main() {
   now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
   if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
   tmp="$file.$$"
-  ( cd "$cwd" && gh issue list --label red-main --state open --json number,title,body --jq '.[] | (.body | capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")?) as $m
-      | select($m != null) | "\(.number)\t\($m.br)\t\(.title | sub("^Red main: "; ""))\t\($m.pr)"' > "$tmp" 2>/dev/null; echo done > "$tmp.ok" ) &
+  ( cd "$cwd" && pr_issues "$(pr_repo .)" red-main | jq -r '.[] | (.body | capture("Breaking PR: #(?<pr>[0-9]+) \\(branch `(?<br>[^`]+)`\\)")?) as $m
+      | select($m != null) | "\(.number)\t\($m.br)\t\(.title | sub("^Red main: "; ""))\t\($m.pr)"' > "$tmp" 2>/dev/null; echo done > "$tmp.ok" ) >/dev/null 2>&1 &
   pid=$!
   while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
   if [ ! -e "$tmp.ok" ]; then kill "$pid" 2>/dev/null; rm -f "$tmp" "$tmp.ok"; return 0; fi
@@ -63,21 +66,30 @@ red_main() {
 
 # GitHub refuses main's counted workflow (tools/red-main.sh: "<workflow> did not start (startup_failure)", 26 Oct 2026: an hour of pushes ran no tests and no session heard
 # of it). Prints "<sha>\t<workflow>\t<run url>\t<pr>\t<branch>"; cached for $ttl seconds; a slow answer is not killed: it lands in the cache for the next prompt.
-. "$(cd "$(dirname "$0")" && pwd)/pr-comments-lib.sh"
-tbin="$(command -v gtimeout || command -v timeout || true)"   # Why (#2252, gitar-bot): stock macOS has no `timeout`; without one the call runs unlimited rather than never
-limit() { if [ -n "$tbin" ]; then "$tbin" "$((wait_tenths / 10 + 1))" "$@"; else "$@"; fi; }
-unanswered() {  # <branch> <worktree>: prints "<n>\t<owner+bot count>\t<first url>\t<other count>" when comments wait; cached for $ttl seconds like lookup()
-  local branch="$1" wt="$2" file now stamp view lines n rows
+unanswered_read() {  # <branch> <worktree>: prints "<n>\t<owner+bot count>\t<first url>\t<other count>" when comments wait; cached for $ttl seconds like lookup()
+  local branch="$1" wt="$2" file now stamp view lines n rows repo
   file="$dir/$(basename "$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null)")-${branch//\//-}.comments"; now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
   if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
-  view="$(cd "$wt" && limit gh pr view "$branch" --json number,state,url,comments,reviews,commits 2>/dev/null)" || return 0
+  repo="$(pr_repo "$wt")"; n="$(pr_of_head "$repo" "$branch" 2>/dev/null)"; [ -n "$n" ] || return 0
+  view="$(pr_view "$repo" "$n" full 2>/dev/null)" || return 0
   n="$(jq -r 'select(.state == "OPEN") | .number // empty' <<<"$view" 2>/dev/null)"; [ -n "$n" ] || return 0
-  lines="$(cd "$wt" && limit gh api "repos/{owner}/{repo}/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
+  lines="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
   rows="$(pc_items "$view" "${lines:-null}")"
   # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item; the rule lives in pc_unanswered (pr-comments-lib.sh), shared with ship-watch.sh so a watcher never re-announces what this reminder drops.
   rows="$(pc_unanswered "$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$view")" <<<"$rows")"
   { echo "$now"; [ -z "$rows" ] || awk -F'\t' -v n="$n" '$2!="other" {c++; if (!u) u=$4} $2=="other" {o++} END {if (c+o) print n "\t" c+0 "\t" (u ? u : "-") "\t" o+0}' <<<"$rows"; } > "$file"
   tail -n +2 "$file"
+}
+
+# Keep the whole REST comment lookup within the prompt's budget, including a slow first PR lookup.
+# Redirect the worker's streams before backgrounding: a descendant gh must never hold the hook's output pipe open.
+unanswered() {
+  local tmp="$dir/comments-$$" pid i=0
+  ( unanswered_read "$@" > "$tmp"; : > "$tmp.ok" ) >/dev/null 2>&1 &
+  pid=$!
+  while [ ! -e "$tmp.ok" ] && [ "$i" -lt "$wait_tenths" ]; do sleep 0.1; i=$((i + 1)); done
+  if [ -e "$tmp.ok" ]; then cat "$tmp"; else kill "$pid" 2>/dev/null || true; fi
+  rm -f "$tmp" "$tmp.ok"
 }
 
 red_main_sh="${PR_RED_MAIN_SCRIPT:-$(cd "$(dirname "$0")" && pwd)/red-main.sh}"

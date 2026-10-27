@@ -107,6 +107,21 @@ for (const adapter of ['sqlite', 'notion']) {
     assert.equal(ai.requests.length, 1);
   });
 
+  test(`${adapter}: an actual Contact heading is a readable destination even though its fields have a separate editor`, async () => {
+    const env = await setup(adapter), page = openStore(env.storage, {fetcher: env.fetcher}).page('profile');
+    await page.appendHeading('📇 Contact details');
+    const ai = fakeAi();
+    ai.client.messages.create = async request => {
+      const {items, destinations} = JSON.parse(request.messages[0].content);
+      const contact = destinations.find(each => each.heading === '📇 Contact details');
+      return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id, line}) => ({id, home: line === 'Opaque saved line' ? contact.id : 'stay', topic: 'fictional', clarity: 'clear'}))})}]};
+    };
+    await review.judgeNew(env.storage, {...env, ai});
+    const outline = await page.outline(), heading = outline.findIndex(each => each.text === '📇 Contact details');
+    assert.equal(outline[heading + 1].text, 'Opaque saved line');
+    assert.equal(outline.filter(each => each.text === 'Opaque saved line').length, 1);
+  });
+
   test(`${adapter}: first-run details migration does not mark unrouted writing rules as already organized`, async () => {
     const env = await setup(adapter);
     env.storage.saveSettings({profileMovedAt: '', profileUnsureAt: '', profileUnsure: [], answerClarity: {}});

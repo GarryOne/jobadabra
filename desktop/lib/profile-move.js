@@ -47,13 +47,14 @@ function split(text) {
 
 // One page's movable items: {id, page, key (what finds it again), check (text its line must hold to be removed), label, value, home (a section's own line: fixed)}.
 // withOpen: also the ❓ lines outside Your details, in page order, as {open: true, value: ''} (the move clears the ones whose fact is answered).
-export function itemsOf(outline, page, {withOpen = false} = {}) {
+/** Read original outline lines as source identities; includeOwned lets destination verification see sections whose separate editors own their inputs. */
+export function itemsOf(outline, page, {withOpen = false, includeOwned = false} = {}) {
   const out = [];
   let under = '';
   for (const entry of outline) {
     if (entry.type?.startsWith('heading')) { under = bare(entry.text); continue; }
     const section = Object.keys(sections.SECTIONS).find(key => bare(sections.SECTIONS[key]) === under) || '';
-    if (OURS.has(under) && !section) continue;   // Contact details: its own screen
+    if (!includeOwned && OURS.has(under) && !section) continue;   // Contact details: its own screen
     if (entry.type === 'table') {
       for (const row of entry.rows.slice(entry.header ? 1 : 0)) {
         const [label, ...rest] = row.cells.map(plain), value = rest.join(' | ').trim();

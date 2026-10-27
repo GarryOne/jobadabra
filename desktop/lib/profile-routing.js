@@ -13,7 +13,7 @@ const sourceKey = line => JSON.stringify([line.page, line.context, contentKey(li
 const lineText = line => line.label ? `${line.label}: ${line.value}` : line.value;
 const ownLines = (outline, page) => {
   const paths = contexts(outline);
-  return itemsOf(outline, page).map(line => ({...line, context: paths.get(line.id.slice(page.length + 1)) || []}));
+  return itemsOf(outline, page, {includeOwned: true}).map(line => ({...line, context: paths.get(line.id.slice(page.length + 1)) || []}));
 };
 const read = async opened => Object.fromEntries(await Promise.all(['profile', 'answers'].map(async page => [page, await opened.page(page).outline()])));
 const linesOf = outlines => Object.entries(outlines).flatMap(([page, outline]) => ownLines(outline, page));

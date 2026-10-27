@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sourced by the loops that look at a PR again and again (tools/ship-watch.sh, tools/ship-pr.sh's wait, tools/pr-red-check.sh): a PR's state, checks and comments over REST with conditional requests.
+# Sourced by the loops that look at a PR again and again (tools/ship-watch.sh, tools/ship-pr.sh's wait): a PR's state, checks and comments over REST with conditional requests.
 # Why (27 Oct 2026, the owner's 5,000-an-hour GraphQL budget ran out and PRs could not be opened): every look asked GitHub's GraphQL for the PR and its checks (a ship's wait
 #   looked every 15 s, each watcher every 2 min). A REST read with the last ETag that comes back 304 costs nothing (measured: 1 full read + 3 conditional reads = 1 call).
 #   The answers keep the shape of gh's own PR view and checks, so the callers keep their logic. The repo is always explicit: gh's PR commands read it from the working folder
@@ -53,6 +53,3 @@ pr_checks() {
         elif (.conclusion | IN("success", "neutral")) then "pass" elif .conclusion == "skipped" then "skipping" elif .conclusion == "cancelled" then "cancel" else "fail" end)}),
       (.[1].statuses[]? | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
 }
-
-# pr_of_branch <repo> <branch>: the number of the branch's open PR; nothing when it has none.
-pr_of_branch() { pr_get "repos/$1/pulls?head=${1%%/*}:$2&state=open&per_page=1" | jq -r '.[0].number // empty' 2>/dev/null; }

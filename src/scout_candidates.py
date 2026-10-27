@@ -6,6 +6,7 @@ Tests: tests/test_scout.py, tests/test_seeds_private.py, tests/test_scout_ideas.
 import json
 import os
 import re
+import time
 import urllib.parse
 from datetime import datetime, timedelta
 from html import unescape
@@ -345,8 +346,17 @@ def harvest_met(db, seeds, stores, skip=()):
     return harvest(db, seeds, [lambda: met_company_candidates(stores)], skip)
 
 
-def harvest(db, seeds, sources=None, skip=()):
-    """Add unseen candidates; returns how many were new. Failing sources are skipped, and so are candidates whose origin is in `skip`."""
+def harvest(db, seeds, sources=None, skip=(), until=None):
+    """Add unseen candidates; returns how many were new. Failing sources are skipped, and so are candidates whose origin is in `skip`.
+    until (time.monotonic()): no list starts after it and a list's reads wait at most the time left (scout_core._timeout)."""
+    scout_core._reads_end[0] = until
+    try:
+        return _harvest(db, seeds, sources, skip, until)
+    finally:
+        scout_core._reads_end[0] = None
+
+
+def _harvest(db, seeds, sources, skip, until):
     ensure_tables(db)
     extra = [name for name in os.getenv('JOB_PILOTTO_EXCLUDED_COMPANIES', '').split(',') if name.strip()]
     excluded = {key_for(name.strip()) for name in seeds.get('excluded', []) + extra}
@@ -355,7 +365,10 @@ def harvest(db, seeds, sources=None, skip=()):
         # JOB_PILOTTO_FIXTURE_DIR (the end-to-end journey, desktop/e2e): the seeds only, no Hacker News or whiteboard crawl.
         sources = [lambda: seed_candidates(seeds)] if os.getenv('JOB_PILOTTO_FIXTURE_DIR') else default_sources(db, seeds, search_countries(), skip)
     added = 0
-    for source in sources:
+    for number, source in enumerate(sources):
+        if until is not None and time.monotonic() >= until:
+            print(f"Scout: its time for new names is up: {len(sources) - number} employer list(s) wait for the next run")
+            break
         try:
             candidates = list(source())
         except Exception as error:

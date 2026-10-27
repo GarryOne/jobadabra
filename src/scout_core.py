@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sqlite3
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -121,15 +122,30 @@ def key_for(name):
     return re.sub(r'[^a-z0-9]', '', re.sub(r'\b(ag|sa|gmbh|ltd|inc|llc|plc)\b', '', name.lower()))
 
 
+_reads_end = [None]   # time.monotonic() at which the employer lists' reads stop (scout_candidates.harvest until), None: no bound
+
+
+def _timeout(seconds):
+    """`seconds`, or the list reads' time left when shorter; past it a read is not started.
+    Why (#first-press-jobs, 27 Oct 2026): a Wikidata 504 held the app's 45 s scout 77-138 s, every benchmark press ran 180-251 s."""
+    end = _reads_end[0]
+    if end is None:
+        return seconds
+    left = end - time.monotonic()
+    if left < 1:
+        raise TimeoutError("the scout's time for new names is up")
+    return min(seconds, left)
+
+
 def _get_json(url, timeout=30):
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT})
-    with host_pace.open(request, timeout) as response:
+    with host_pace.open(request, _timeout(timeout)) as response:
         return json.load(response)
 
 
 def _get_text(url):
     request = urllib.request.Request(url, headers={'User-Agent': ats.USER_AGENT})
-    with host_pace.open(request, 30) as response:
+    with host_pace.open(request, _timeout(30)) as response:
         return response.read().decode('utf-8', 'replace')
 
 

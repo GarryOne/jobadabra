@@ -112,7 +112,7 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
         may_add = lambda: False   # noqa: E731
     # New names every run, however long the queue (owner, 18 Oct 2026: the old 100-name pause froze them for 12 days): the queue is worked in
     # order of each source's yield, and a source with no feed in many checks stops waiting (src/scout_queue.py).
-    added = 0 if have else harvest(db, seeds, harvest_sources, skip)
+    added = 0 if have else harvest(db, seeds, harvest_sources, skip, until=None if scout_core.CENTRAL or not budget else deadline - budget / 2)   # Why (27 Oct 2026): a list's 504 ran 93 s
     added += harvest_met(db, seeds, stores, skip) if harvest_sources is None else 0   # the employers the person met: even on a day with no new names
     if not have:
         print(f'Scout: {added} new candidate(s) from the lists; asking the AI for ideas…')

@@ -193,7 +193,7 @@ async function connectNotion(ctx, {startedOnNotion = false} = {}) {
 }
 
 
-/** Exercise auto-draft and explicit approval using the existing dummy-key API seam and a fictional letter. */
+/** Exercise explicit AI drafting and approval using the existing dummy-key API seam and a fictional letter. */
 export async function completeWizardLetter(ctx) {
   const {page, proxy} = ctx;
   if (!proxy?.setCanned || typeof ctx.withApi !== 'function') throw new Error('wizard letter proof requires the canned API seam');
@@ -203,7 +203,7 @@ export async function completeWizardLetter(ctx) {
   const previous = proxy.canned();
   let answered = 0;
   const cv = JSON.parse(fs.readFileSync(new URL('../fixtures/cv.json', import.meta.url), 'utf8'));
-  // Why (#2304): setup saves CV details before drafting; answer their distinct schemas and refuse unknown calls before auto-generation starts.
+  // Why (#2304): setup saves CV details before drafting; answer their distinct schemas and refuse unknown calls before the explicit Draft with AI click.
   proxy.setCanned(body => {
     const answer = wizardSetupAnswer(body, {letter, cv});
     if (typeof answer === 'string' && Object.hasOwn(JSON.parse(answer), 'letter')) answered += 1;

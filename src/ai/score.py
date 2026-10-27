@@ -266,6 +266,7 @@ HAS_BASIS = {
 }
 # The same basis in the scorer's own answer (SCHEMA 'basis'), for a job scored before its facts are read.
 BASIS = {'compensation': 'salary_stated', 'growth': 'level_stated'}
+ASK_AGAIN_MAX = 2   # asks for a part left empty although it has a basis (tests/test_score.py UnreadPartTest)
 
 
 def unread_parts(components, facts, basis=None):
@@ -282,13 +283,18 @@ def score_one(client, model, job, profile, effort=None):
 def _score_once(client, model, job, profile, effort):
     data, usage = _ask(client, model, job, profile, effort, '', SCHEMA)
     missing = unread_parts(data['components'], job.get('ai'), data.get('basis'))
-    if missing and score_not_a_job.is_one_job(data):   # never kept as sure: ask again once, naming the parts, and the answer's shape no longer allows null for them
+    # Never kept as sure: ask again naming the parts, in a shape without null. A shape is no guarantee (Free AI checks only for JSON; 27 Oct 2026 two
+    # senior postings kept an empty Growth): code checks each answer; still empty after ASK_AGAIN_MAX asks = unknown, never a made-up number.
+    for _ in range(ASK_AGAIN_MAX):
+        if not missing or not score_not_a_job.is_one_job(data):
+            break
         data, again = _ask(client, model, job, profile, effort,
                            f"\n\nYour last answer left {', '.join(missing)} unknown, but the posting gives a basis for "
                            f"{'it' if len(missing) == 1 else 'them'} (a stated salary in another currency is still a stated salary: judge it from the "
                            f"posting's own figures, without converting). Give a whole number 0-100 for {'it' if len(missing) == 1 else 'each'}.",
                            _whole(missing))
         usage = cost.combined(usage, again)
+        missing = [part for part in missing if data['components'].get(part) is None]
     if not score_not_a_job.is_one_job(data):   # a verdict that zeroes a job is never kept as sure: ask again once, with the question narrowed (two real Greenhouse postings were zeroed, 22 Oct 2026)
         again_data, again = _ask(client, model, job, profile, effort, score_not_a_job.RECHECK, SCHEMA)
         usage = cost.combined(usage, again)

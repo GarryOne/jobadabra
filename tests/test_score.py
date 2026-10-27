@@ -88,6 +88,39 @@ class UnreadPartTest(unittest.TestCase):
         self.assertIn('leads', text)
         self.assertIn('team', text)
 
+    def schema_blind(self, part, nulls):
+        """A model that answers null for `part` on its first `nulls` asks whatever the schema says (Free AI checks only that the answer is JSON)."""
+        answers = []
+        def create(**params):
+            answers.append(params)
+            comps = dict(fit(70)['components'])
+            if len(answers) <= nulls:
+                comps[part] = None
+            return SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text=json.dumps({**fit(70), 'components': comps}))],
+                                   usage=SimpleNamespace(input_tokens=1, output_tokens=1, cache_read_input_tokens=0))
+        client = SimpleNamespace(messages=SimpleNamespace(create=create))
+        client.requests = answers
+        return client
+
+    def test_a_second_answer_that_ignores_the_whole_number_shape_is_asked_once_more(self):
+        # Main's quality, 27 Oct 2026 (runs 40434477266, 40435903584): "Senior DevOps Engineer" and "Senior Site Reliability Engineer" kept an empty Growth
+        # after their facts said "senior". The re-ask's shape allows no null, but Free AI's relay checks only that the answer is JSON (jobadabra-web
+        # shared/free-ai.js), and Workers AI answered null again; the scorer kept it as sure.
+        for part in score.UNKNOWN_OK:
+            with self.subTest(part=part):
+                client = self.schema_blind(part, nulls=2)
+                data, _ = score.score_one(client, 'm', {'title': 't', 'company': 'c', 'description': 'd', 'ai': self.FACTS}, 'p')
+                self.assertEqual(3, len(client.requests))
+                self.assertEqual(fit(70)['components'][part], data['components'][part])
+
+    def test_a_part_never_answered_stays_unknown_after_a_bounded_number_of_asks(self):
+        for part in score.UNKNOWN_OK:
+            with self.subTest(part=part):
+                client = self.schema_blind(part, nulls=99)
+                data, _ = score.score_one(client, 'm', {'title': 't', 'company': 'c', 'description': 'd', 'ai': self.FACTS}, 'p')
+                self.assertEqual(1 + score.ASK_AGAIN_MAX, len(client.requests))
+                self.assertIsNone(data['components'][part])   # never invented
+
     def test_a_part_with_no_basis_stays_unknown_without_a_second_call(self):
         for part in score.UNKNOWN_OK:
             with self.subTest(part=part):

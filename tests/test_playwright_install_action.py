@@ -18,7 +18,9 @@ class PlaywrightInstallAction(unittest.TestCase):
         bare = []
         for path in sorted(WORKFLOWS.glob('*.yml')):
             for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
-                if re.search(r'playwright\s+install', line) and not line.lstrip().startswith('#'):
+                # Why (27 Oct 2026, persona runs 40510577328): the playwright-core form with apt packages slipped past the old pattern in 9 places and crawled 10 min on apt.
+                # A per-suite `playwright-core install chromium` with no apt packages (e2e.yml, desktop.yml, e2e-windows.yml) stays: it needs no mirror.
+                if re.search(r'playwright\s+install|playwright-core\s+install\s+--with-deps|install-deps', line) and not line.lstrip().startswith('#'):
                     bare.append(f'{path.name}:{number}')
         self.assertEqual(bare, [], 'use ./.github/actions/playwright-browser instead of `playwright install`: ' + ', '.join(bare))
 

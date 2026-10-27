@@ -1,4 +1,4 @@
-// Setup moves the one existing letter editor into its own step and restores it; entering generates one draft through the existing action and never approves it.
+// Setup moves the one existing letter editor into its own step and restores it; generation starts only after an explicit draft choice.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -10,32 +10,49 @@ for (const id of new Set([...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]))) d
 document.getElementById('letter-draft').append(document.createElement('span'));
 const calls = [];
 window.pilot = new Proxy({coverLetter: async () => ({state: 'none', text: '', pdf: false}),
-  coverLetterDraft: async () => { calls.push('draft'); return {ok:false, error:'Fictional generation failure'}; }, coverLetterApprove: () => { calls.push('approve'); }}, {get: (obj, key) => obj[key] || (() => null)});
+  coverLetterDraft: async () => { calls.push('draft'); return {ok:false, error:'Fictional generation failure'}; }, coverLetterApprove: () => { calls.push('approve'); },
+  state: async () => ({settings: {}})}, {get: (obj, key) => obj[key] || (() => null)});
 const {showLetterStep, hideLetterStep} = await import('../renderer/pages/wizard-letter.js');
+const {initLetter} = await import('../renderer/pages/base-letter.js');
+initLetter();
 
-test('setup shares the editor and starts a draft, leaving approval to the person', async () => {
+test('setup shares the editor without generating until the person asks for a draft', async () => {
   const editor = document.getElementById('setting-letter'), home = editor.parentNode;
   await showLetterStep();
   assert.equal(editor.parentNode, document.getElementById('setup-letter-slot'));
   assert.equal(editor.hidden, false);
   assert.match(editor.textContent || document.getElementById('letter-empty').textContent, /Draft with AI/);
-  assert.deepEqual(calls, ['draft'], 'setup drafts once but never approves');
+  const openedCalls = calls.slice();
   hideLetterStep();
+  assert.deepEqual(openedCalls, [], 'opening setup must not start a potentially paid AI request');
   assert.equal(editor.parentNode, home);
   assert.equal(editor.hidden, true);
 });
 
-test('leaving and reopening while a first draft is pending shares one generation request', async () => {
+test('explicitly started draft is shared when leaving and reopening the step', async () => {
   let finish, started = 0;
   window.pilot.coverLetterDraft = () => { started += 1; return new Promise(resolve => { finish = resolve; }); };
-  const first = showLetterStep();
+  const opening = showLetterStep();
   await new Promise(resolve => setImmediate(resolve));
+  const autoStarted = started;
+  if (finish) { finish({ok: false, error: 'Fictional generation failure'}); await opening; }
+  hideLetterStep();
+  assert.equal(autoStarted, 0, 'opening the step must wait for a deliberate action');
+  started = 0;
+  finish = null;
+  await showLetterStep();
+  document.getElementById('letter-start-ai').click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(started, 1);
   hideLetterStep();
   const second = showLetterStep();
   await new Promise(resolve => setImmediate(resolve));
+  document.getElementById('letter-start-ai').click();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(started, 1, 'navigation cannot spend twice on concurrent drafts');
   finish({ok: false, error: 'Fictional generation failure'});
-  await Promise.all([first, second]);
+  await second;
+  await new Promise(resolve => setImmediate(resolve));
   hideLetterStep();
 });
 
@@ -58,9 +75,13 @@ test('fake AI prefills the existing wizard textbox; only the person’s approval
     return {ok: true, ...letters.status(storage)};
   };
   window.pilot.coverLetterApprove = async value => {approvals += 1; letters.edit(storage, value); letters.approve(storage, Buffer.from('%PDF-fictional')); return {ok: true, ...letters.status(storage)};};
-  const {initLetter} = await import('../renderer/pages/base-letter.js');
-  initLetter();
   await showLetterStep();
+  const autoGenerations = generations;
+  if (autoGenerations) hideLetterStep();
+  assert.equal(autoGenerations, 0, 'entering the wizard letter step does not spend AI credits');
+  assert.equal(document.getElementById('letter-text').value, '');
+  document.getElementById('letter-start-ai').click();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(document.getElementById('letter-text').value, text);
   assert.equal(generations, 1);
   assert.equal(approvals, 0);

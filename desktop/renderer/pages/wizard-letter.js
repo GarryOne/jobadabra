@@ -1,9 +1,10 @@
-// The wizard uses the existing base-letter editor, including its generation, explicit approval, PDF and fallback choice; no second editing state.
+// Why (27 Oct 2026 owner follow-up to Gitar review): address the review's setup-cost concern; entering setup must not generate before the person chooses Draft with AI.
+// The wizard reuses the base-letter editor, explicit approval, PDF and fallback choice; no second editing state.
 import {$} from './core.js';
-import {loadLetter, draftLetterForSetup} from './base-letter.js';
+import {loadLetter} from './base-letter.js';
 let home = null, next = null;
 
-/** Move the existing editor into setup. Start a first draft through the existing action; approval is always the person's. */
+/** Move the existing editor into setup; generation stays behind the editor's explicit Draft with AI action. */
 export async function showLetterStep() {
   const editor = $('setting-letter'), slot = $('setup-letter-slot');
   if (!editor || !slot) return;
@@ -11,7 +12,6 @@ export async function showLetterStep() {
   slot.append(editor);
   editor.hidden = false;
   await loadLetter();
-  if (editor.parentNode === slot) await draftLetterForSetup();
 }
 
 /** Restore the very same editor to Profile when setup leaves the cover-letter step. */

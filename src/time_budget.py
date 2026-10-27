@@ -37,6 +37,7 @@ FLOOR = 3     # the first jobs of a search are scored whatever the clock says (o
 _scored = [0]  # scores started in this search (may_score)
 LOCAL_TITLES = 300  # titles in the user's own places sorted whatever the clock says, like FLOOR for scores (local_titles)
 _local = [0]
+FEED = 30   # local titles a call still sorts in scoring's share while no matched job waits for a score: one batch feeds scoring (local_titles)
 _lock = threading.Lock()
 
 
@@ -104,10 +105,19 @@ def local_titles(wanted):
     """How many of `wanted` titles located in the user's own places are sorted whatever the clock says (and counted): the search's first
     LOCAL_TITLES. 24 Oct 2026, Chisinau: ~750 worldwide-remote titles spent the 3 minutes, and a Moldovan board's titles (the only local jobs)
     were left "for the next refresh" at 158 s."""
-    if ended() or _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING)
+    if ended():
         return 0
     with _lock:
-        n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
+        if _scorings():   # the floor beats the titles' reserve, never the run's end nor scoring's share (SCORING), but while no job this
+            # search matched waits for a score, one batch a call, or scoring has nothing to take (27 Oct 2026: the quality suite on Free AI,
+            # "No time left" for its 10 titles, 0 of 12 postings listed; a benchmark first press left 28 local titles unsorted at 80 s of 135
+            # with its one match scored)
+            from . import run_counts
+            if run_counts.waiting():
+                return 0
+            n = max(0, min(wanted, FEED, LOCAL_TITLES - _local[0]))
+        else:
+            n = max(0, min(wanted, LOCAL_TITLES - _local[0]))
         _local[0] += n
         return n
 

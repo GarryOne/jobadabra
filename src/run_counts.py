@@ -28,6 +28,12 @@ def _add(kind, keys):
             print(line(), flush=True)   # the card shows the latest one (desktop/renderer/find-card-model.js runCounts)
 
 
+def waiting():
+    """Jobs this search matched and has not scored yet (src/time_budget.py local_titles: while any waits, the title floor leaves scoring its share)."""
+    with _lock:
+        return len(_sets['matches'] - _sets['scored'])
+
+
 def looked(jobs):
     _add('looked', [job.get('url') or job.get('id') for job in jobs])
 

@@ -69,12 +69,24 @@ class LocalFirstTest(unittest.TestCase):
         title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
         self.assertEqual(client.asked, [])
 
-    def test_in_scorings_share_local_titles_wait(self):
+    def test_in_scorings_share_local_titles_wait_once_the_search_has_a_job_to_score(self):
         # 26 Oct 2026, a proof on a copy of the owner's data: floor title calls held the board read to 136 s; the search scored 3 jobs
+        from src import run_counts
+        self.addCleanup(run_counts.reset)
+        run_counts.matched([{'url': 'https://x.test/1'}])
         time_budget.start(180, now=time.monotonic() - 125)
         client = Client()
         title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
         self.assertEqual(client.asked, [])
+
+    def test_in_scorings_share_one_batch_is_sorted_while_the_search_matched_nothing(self):
+        # 27 Oct 2026, the quality suite on Free AI: "No time left" for its 10 titles, so its FLOOR scores had no job (tests/test_first_press_order.py)
+        from src import run_counts
+        run_counts.reset()
+        time_budget.start(180, now=time.monotonic() - 125)
+        client = Client()
+        title_triage.decide(['Java Developer', 'Data Engineer'], SEARCH, client, local=True)
+        self.assertEqual(client.asked, ['java developer', 'data engineer'])
 
     def test_a_job_is_in_my_place_by_its_location_not_by_being_remote(self):
         for location, mine in [('Chișinău', True), ('Moldova', True), ('MD', True), ('Remote - Worldwide', False), ('Remote', False), ('Berlin', False)]:

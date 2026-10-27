@@ -23,6 +23,10 @@ const fresh = () => {
 const calls = [];
 const client = {messages: {create: async request => {
   calls.push(request);
+  if (typeof request.messages[0].content === 'string' && request.messages[0].content.startsWith('<facts>')) {   // the question writer for the base facts
+    const ids = [...request.messages[0].content.matchAll(/^(\w+):/gm)].map(each => each[1]);
+    return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({asks: ids.map(field => ({field, question: `Q-${field}`, hint: ''}))})}]};
+  }
   if (request.system.includes('contact details are missing')) {   // the question writer: its own wording, a rating, and what the saved lines already answer
     const keys = [...request.messages[0].content.match(/<empty>\n([\s\S]*?)\n<\/empty>/)[1].matchAll(/^(\w+):/gm)].map(each => each[1]);
     return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({asks: keys.map(field => ({field, question: `Q-${field}`, hint: '', importance: field === 'last_name' ? 3 : field === 'github' ? 0 : 2, held: field === 'phone'}))})}]};
@@ -50,27 +54,27 @@ test('an install set up before the CV read: the queue opening reads it once, sav
   const items = await review.pending(storage, {ai: {client}});
   assert.equal((await contactDetails.read(storage)).first_name, 'Ana', 'what the CV states plainly is saved');
   const kinds = items.filter(each => each.details.kind === 'cvcheck');
-  assert.deepEqual(kinds.map(each => each.question).sort(), ['Languages: is this right?', 'Location: is this right?', 'Work permit / visa: is this right?']);
-  const permit = kinds.find(each => /Work permit/.test(each.question));
+  assert.deepEqual(kinds.map(each => each.question).sort(), ['Q-languages', 'Q-location', 'Q-permit'], 'worded by the question writer, never typed');
+  const permit = kinds.find(each => each.question === 'Q-permit');
   assert.equal(permit.value, 'Citizen of Moldova');
   assert.match(permit.details.source, /Inferred from your CV/);
   assert.match(permit.hint, /only in Moldova/, 'the AI says why');
   const reads = calls.length;
   await review.pending(storage, {ai: {client}});
   assert.equal(calls.length, reads, 'a second list asks the AI nothing again (contact read, facts read and question writer are kept)');
-  assert.ok(!items.some(each => each.details.kind === 'missing' && /Work permit|Languages/.test(each.question)), 'a fact the CV proposes is not asked again as an empty one');
+  assert.ok(!items.some(each => each.details.kind === 'missing' && /permit|languages/.test(each.question)), 'a fact the CV proposes is not asked again as an empty one');
 });
 
 test('Confirm saves a base fact into its section and a contact value into Contact details; both leave the queue', async () => {
   const storage = fresh();
   const items = await review.pending(storage, {ai: {client}});
-  const permit = items.find(each => /Work permit/.test(each.question)), place = items.find(each => /Location/.test(each.question));
+  const permit = items.find(each => each.question === 'Q-permit'), place = items.find(each => each.details.kind === 'cvcheck' && each.question === 'Q-location');
   assert.equal((await review.answer(storage, permit.key, 'Citizen of Moldova')).ok, true);
   assert.equal((await review.answer(storage, place.key, 'Chișinău')).ok, true, 'an edit replaces the proposal');
   assert.ok((await sections.read(storage)).eligibility.some(line => line.label === 'Work permit / visa' && line.value === 'Citizen of Moldova'));
   assert.equal((await contactDetails.read(storage)).location, 'Chișinău');
   const left = (await review.pending(storage, {ai: {client}})).filter(each => each.details.kind === 'cvcheck');
-  assert.deepEqual(left.map(each => each.question), ['Languages: is this right?']);
+  assert.deepEqual(left.map(each => each.question), ['Q-languages']);
 });
 
 test('a name nobody gave stays the first question; "check it" items rank after it', async () => {

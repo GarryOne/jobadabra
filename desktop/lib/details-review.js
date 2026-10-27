@@ -65,10 +65,12 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const client = ai.client || (ai.apiKey ? anthropicApi(ai.apiKey) : null);
   await cvQueue.readOnce(storage, {client}).catch(() => false);   // an install set up before the CV read: once per CV file
   const have = [...Object.values(found).flat().map(line => line.label), ...itemsOf(outlines.profile, 'profile', {withOpen: true}).map(each => each.label)];
-  const proposedFrom = await cvQueue.items(storage, {fetcher, client, have, never: storage.settings().missingFacts?.never || []}).catch(() => []);   // what the CV states or implies, to check
+  // Every question about a fact is worded by the queue's one question writer (lib/queue-wording.js), never typed: the contact fields and the base facts.
+  const emptyKeys = await contactReview.emptyKeys(storage, {fetcher}).catch(() => []);
+  const words = {contact: await contactReview.wordsFor(storage, emptyKeys, {client, have}).catch(() => new Map()), facts: await missingFacts.wording(storage, {client}).catch(() => new Map())};
+  const proposedFrom = await cvQueue.items(storage, {fetcher, client, have, words, never: storage.settings().missingFacts?.never || []}).catch(() => []);   // what the CV states or implies, to check
   const cvFields = new Set(proposedFrom.map(each => parse(each.key).ref.contact).filter(Boolean));   // a field the CV proposes is asked there, once
-  const emptyKeys = (await contactReview.emptyKeys(storage, {fetcher}).catch(() => [])).filter(key => !cvFields.has(key));
-  for (const each of await contactReview.asks(storage, emptyKeys, {client, have}).catch(() => [])) {   // generated from what is missing, weighted by importance
+  for (const each of await contactReview.asks(storage, emptyKeys, {client, have, except: cvFields}).catch(() => [])) {   // generated from what is missing, weighted by importance
     out.push(item('contact', {field: each.field}, {question: each.question, format: contactReview.format, hint: each.hint, details: {where: 'Your details → Contact details', fact: contactDetails.LABELS[each.field], weight: contactReview.weightOf(each.importance)}}));
   }
   const conflicts = await openConflicts(storage, {fetcher}).catch(() => []);
@@ -112,7 +114,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const covered = await missingFacts.covered(storage, have, {ai});
   const proposed = new Set(proposedFrom.map(each => parse(each.key).ref.fact).filter(Boolean));   // a fact the CV proposes is asked there, not again as an empty one
   out.push(...proposedFrom);
-  for (const fact of missingFacts.pick(storage, have, {now, covered, shares: factAsks.shares(storage)}).filter(each => !proposed.has(each.id))) {
+  for (const fact of missingFacts.pick(storage, have, {now, covered, shares: factAsks.shares(storage), words: words.facts}).filter(each => !proposed.has(each.id))) {
     out.push(item('missing', {id: fact.id}, {question: fact.question, format: fact.format, hint: fact.hint, details: {where: HOME_NAMES[fact.home], fact: fact.label}}));
   }
   return out;

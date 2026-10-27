@@ -20,8 +20,9 @@ const fresh = () => {
 };
 let calls = 0;
 const client = {messages: {create: async request => {
-  calls += 1;
-  const keys = [...request.messages[0].content.match(/<empty>\n([\s\S]*?)\n<\/empty>/)[1].matchAll(/^(\w+):/gm)].map(each => each[1]);
+  const tag = request.messages[0].content.startsWith('<facts>') ? 'facts' : 'empty';   // the same writer words the base facts (lib/missing-facts.js wording)
+  if (tag === 'empty') calls += 1;
+  const keys = [...request.messages[0].content.match(new RegExp(`<${tag}>\\n([\\s\\S]*?)\\n</${tag}>`))[1].matchAll(/^(\w+):/gm)].map(each => each[1]);
   return {content: [{type: 'text', text: JSON.stringify({asks: keys.map(field => ({field, question: `Q-${field}`, hint: '', importance: field === 'last_name' ? 3 : field === 'github' ? 0 : 2, held: field === 'phone'}))})}]};
 }}};
 const contactItems = async (storage, ai) => (await review.pending(storage, {ai})).filter(each => each.details.kind === 'contact');

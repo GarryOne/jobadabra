@@ -12,7 +12,7 @@ import * as store from '../lib/store/index.js';
 import {openShown} from '../lib/question-lists.js';
 import {factsOf} from '../lib/base-facts.js';
 import * as review from '../lib/details-review.js';
-import {BLOCKED, factScore, keyOf, ranked, visibleQuestions, weightOf} from '../renderer/question-filter.js';
+import {BLOCKED, MUST, factScore, keyOf, ranked, visibleQuestions, weightOf} from '../renderer/question-filter.js';
 import {fakeNotion} from './fake-notion.js';
 
 const v = (fields) => ({v: 4, reuse: 'reusable', ...fields});
@@ -89,7 +89,7 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
     storage.saveSettings({questionVerdicts: VERDICTS, missingFacts: {since: '2020-01-01'}});   // past the fresh install's 14 days: no missing-fact items beside these
     assert.ok((await factsOf(storage, fetcher)).some(fact => fact.label === 'Work permit / visa' && fact.value === ''), 'a fact with no value is listed (for the AI to map questions to)');
     const {list, fromDetails} = await openShown(storage, {fetcher, ai: {}});
-    assert.deepEqual(list.map(row => row.question), ['What are your first and last name?', 'What is your email address?', 'What is your phone number?', 'Work permit / visa', 'Salary expectation', 'Rare question'], 'a name nobody gave is the first question, then the other must-haves');
+    assert.deepEqual(list.map(row => row.question), ['First name', 'Last name', 'Email', 'Phone', 'Work permit / visa', 'Salary expectation', 'Rare question'], 'with no AI the schema\'s first empty fields lead, then the facts');
     assert.equal(fromDetails, 0, 'nothing is answered from Your details yet');
   });
 }
@@ -107,6 +107,6 @@ test('every kind of Your details item names its fact (the class: what the score 
 
 test('a must-have contact detail (name, email, phone) ranks above a fill that was blocked', () => {
   const verdicts = {[keyOf('Salary expectation')]: v({blocked: true, asked: 9})};
-  const rows = [{question: 'Salary expectation'}, {question: 'What are your first and last name?', details: {kind: 'contact', fact: 'Name', must: true}}];
+  const rows = [{question: 'Salary expectation'}, {question: 'First name', details: {kind: 'contact', fact: 'First name', weight: MUST}}];
   assert.equal(ranked(rows, verdicts)[0].details.kind, 'contact');
 });

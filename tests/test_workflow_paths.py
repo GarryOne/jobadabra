@@ -193,8 +193,8 @@ class TheShapes(unittest.TestCase):
 
     def test_a_worker_change_starts_its_suite_and_the_desktop_tests_that_read_it(self):
         # identity-rule.test.js and site-routes.test.js walk all of worker/src (26 Oct 2026, the repo-root reads)
-        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml'})
-        self.assertEqual(self.started(['worker/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml'}, 'a desktop test reads it')
+        self.assertEqual(self.started(['worker/src/index.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml'})   # harness.yml: the app's server imports worker/src through desktop/shared/ (review on #2241)
+        self.assertEqual(self.started(['worker/src/report.js']), {'tests-worker.yml', 'tests-desktop.yml', 'harness.yml'}, 'a desktop test reads it; harness.yml: worker/src is staged into desktop/shared/ (#2241)')
 
     def test_a_workflow_change_starts_that_workflow(self):
         for name in pr_workflows():

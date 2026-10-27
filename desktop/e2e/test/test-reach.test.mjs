@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {reach, reachedTests, specifiers} from '../lib/test-reach.mjs';
+import {reach, reachedTests, specifiers, unstage} from '../lib/test-reach.mjs';
 import {testSets} from '../test-sets.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -69,4 +69,18 @@ test('harness.yml starts for every file a harness test reaches (its `paths:` cov
     }
   }
   assert.deepEqual([...missing].sort(), [], 'add these to harness.yml\'s on: pull_request: paths: (a change there reaches a harness test)');
+});
+
+test('a reach into staged desktop/shared/ is a reach into the file stage.mjs copies it from, and the job\'s own inputs run the pr set (review on #2241)', () => {
+  assert.equal(unstage('desktop/shared/worker/ai.js'), 'worker/src/ai.js');
+  assert.equal(unstage('desktop/shared/ladder-core.js'), 'extension/ladder/core.js');
+  assert.equal(unstage('desktop/shared/ladder/endings.js'), 'extension/ladder/endings.js');
+  assert.equal(unstage('desktop/shared/alias-schema.js'), 'extension/alias-schema.js');
+  assert.equal(unstage('desktop/lib/server.js'), 'desktop/lib/server.js');
+  const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo), always = pr.map(inRepo);
+  assert.ok(reachedTests({root: ROOT, tests, changed: ['worker/src/ai.js']}).files.length > 0, 'a worker file the app server imports through shared/ reaches its tests');
+  for (const input of ['desktop/package.json', 'desktop/package-lock.json', 'desktop/scripts/stage.mjs']) {
+    const picked = reachedTests({root: ROOT, tests, changed: [input], always}).files;
+    for (const file of always) assert.ok(picked.includes(file), `${input} runs the pr set (${file})`);
+  }
 });

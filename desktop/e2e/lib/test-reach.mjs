@@ -11,6 +11,11 @@ const SPECIFIERS = [
   /\bimport\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g,
   /new URL\(\s*['"](\.{1,2}\/[^'"]*)['"]\s*,\s*import\.meta\.url\s*\)/g,
 ];
+// desktop/shared/ is staged, never in a diff (desktop/scripts/stage.mjs copies it): a reach into it is a reach into the file it was copied from (review on #2241).
+const STAGED = [[/^desktop\/shared\/worker\//, 'worker/src/'], [/^desktop\/shared\/bot-worker\.js$/, 'worker/src/'], [/^desktop\/shared\/ladder-core\.js$/, 'extension/ladder/core.js'],
+  [/^desktop\/shared\/ladder\//, 'extension/ladder/'], [/^desktop\/shared\/(recipe|alias)-schema\.js$/, 'extension/$1-schema.js']];
+/** A staged desktop/shared/ path -> the repo file or folder it is copied from; any other path as it is. @param {string} file @returns {string} */
+export const unstage = file => { for (const [from, to] of STAGED) if (from.test(file)) return file.replace(from, to); return file; };
 const BROWSER = /\bfrom\s*['"](?:playwright|playwright-core|@playwright\/test)['"]|\bimport\(\s*['"](?:playwright|playwright-core)['"]\s*\)/;
 const CODE = /\.(?:mjs|js|cjs)$/;
 
@@ -40,7 +45,7 @@ export function reach(root, file, cache = new Map()) {
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it
-      queue.push(spec.endsWith('/') || spec === '.' || spec === '..' ? `${joined.replace(/\/?$/, '/')}` : joined);
+      queue.push(unstage(spec.endsWith('/') || spec === '.' || spec === '..' ? `${joined.replace(/\/?$/, '/')}` : joined));
     }
   }
   return {paths, browser};
@@ -48,6 +53,7 @@ export function reach(root, file, cache = new Map()) {
 
 // Test data other jobs replay (harness.yml's paths leave them out): a change there runs only the tests that read it, not the pr set.
 const DATA = /^desktop\/e2e\/(?:recorded|recorded-pending|fixtures|ladder-fixtures|widget-zoo)\//;
+const HARNESS_INPUTS = new Set(['.github/workflows/harness.yml', 'desktop/package.json', 'desktop/package-lock.json', 'desktop/scripts/stage.mjs']);
 const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item));
 
 /**
@@ -58,7 +64,8 @@ const covers = (reached, changed) => reached.has(changed) || [...reached].some(i
 export function reachedTests({root, tests, changed, always = []}) {
   const cache = new Map(), why = {};
   let browser = false;
-  const harnessChanged = changed.some(file => (file.startsWith('desktop/e2e/') && !DATA.test(file)) || file === '.github/workflows/harness.yml');
+  // What the job installs and stages from runs the pr set too, as before #2241 (review on #2241): no test imports a package file or stage.mjs.
+  const harnessChanged = changed.some(file => (file.startsWith('desktop/e2e/') && !DATA.test(file)) || HARNESS_INPUTS.has(file));
   for (const test of tests) {
     const reached = reach(root, test, cache);
     const hit = changed.find(file => covers(reached.paths, file)) || (harnessChanged && always.includes(test) ? 'the harness changed: the pr set' : '');

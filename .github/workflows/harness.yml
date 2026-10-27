@@ -43,8 +43,7 @@ on:
       - 'tools/pool-rows.mjs'
       - 'tools/record-env.mjs'
       - 'tools/rung-trailer.mjs'
-      - 'worker/src/cv-facts.js'
-      - 'worker/src/owner-guard.js'
+      - 'worker/src/**'   # staged into desktop/shared/worker/, which the app's server imports (review on #2241)
 
 permissions:
   contents: read

@@ -27,6 +27,8 @@ test('a persisted Your details answer leaves Needs review immediately, stays Set
   await loadApplicationAnswers();
   answersBody.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').click();
   assert.equal(answersBody.querySelector('.is-review').textContent.includes('2 to review'), true);
+  const rowTitles = () => Array.from(answersBody.querySelectorAll('.is-review .qa-row .qa-title'), title => title.textContent);
+  assert.deepEqual(rowTitles(), ['First name', 'Current location']);
   t.mock.timers.enable({apis: ['setTimeout']});
 
   saved('First name', 'contact:first-name');
@@ -34,6 +36,7 @@ test('a persisted Your details answer leaves Needs review immediately, stays Set
   assert.match(review.textContent, /1 to review/, 'the count drops before the queue reread');
   assert.match(review.textContent, /First name[\s\S]*Set/, 'the completed row gives immediate confirmation');
   assert.match(review.textContent, /Current location[\s\S]*Needed by every form/, 'the neighboring question remains open');
+  assert.deepEqual(rowTitles(), ['First name', 'Current location'], 'the Set row stays in its original position during the acknowledgement');
 
   answersBody.querySelectorAll('.segmented button').find(button => button.dataset.view === 'saved').click();
   answersBody.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').click();

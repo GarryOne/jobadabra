@@ -6,7 +6,7 @@ A successful answer save can take several seconds to disappear from Profile → 
 
 ## Observable behavior
 
-- A successful, non-empty persisted answer immediately leaves the pending Needs review count and modal progress; its current list row briefly shows **Set**, then fades away after about 1–2 seconds.
+- A successful, non-empty persisted answer immediately leaves the pending Needs review count and modal progress; its current list row briefly shows **Set in its original position**, then fades away after about 1–2 seconds.
 - The acknowledgement is keyed to the question, survives redraws, filter changes and the queue reread, and cannot remove a different row or be cleared by an old timer.
 - The saved answer remains in its canonical home and is available through the existing Saved/All surfaces. Reloads derive state from persistence; the animation itself is transient.
 - Failed, empty or invalid saves remain in Needs review, preserve the entered value and show the existing error. No success acknowledgement is shown.

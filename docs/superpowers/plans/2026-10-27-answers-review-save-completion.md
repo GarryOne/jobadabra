@@ -46,7 +46,7 @@
 - Modify: `desktop/test/answers-review-completion.test.js`
 
 - [x] **Step 1: After a successful usable answer, dispatch question identity/value/home metadata and keep the drawer's existing local queue progression.**
-- [x] **Step 2: Capture the matching visible row in Application Answers, decrement its Needs review count immediately, render Set, then fade/remove after roughly 1.5 seconds.**
+- [x] **Step 2: Keep the matching row in its original list position, decrement Needs review immediately, render Set, then fade/remove after roughly 1.5 seconds.**
 - [x] **Step 3: Guard timer replacement/removal by record identity; keep state across filter changes and queue refresh, and never create it for failures or empty answers.**
 - [x] **Step 4: Add reduced-motion CSS so the row exits without a transition under `prefers-reduced-motion`.**
 - [x] **Step 5: Run focused tests and inspect fictional before/after screenshots.**

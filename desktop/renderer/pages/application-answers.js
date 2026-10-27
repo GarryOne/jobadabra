@@ -46,6 +46,7 @@ const identityOf = question => {
 };
 const keyIdentity = key => key ? `key:${String(key)}` : '';
 const isResolved = (question, key = '') => [identityOf(question), keyIdentity(key)].filter(Boolean).some(identity => resolved.has(identity) || completions.has(identity));
+const completionFor = (question, key, kind) => [identityOf(question), keyIdentity(key)].map(identity => completions.get(identity)).find(record => record?.snapshot.kind === kind);
 
 function clearCompletion(record) {
   clearTimeout(record.fadeTimer);
@@ -258,7 +259,6 @@ function draw(view, into) {
   }
   // Why (2026-10-27): reusable-answer row ids and question keys are separate identity spaces; match these rows by wording only.
   const currentShownRows = shownRows.filter(entry => !isResolved(entry.item.question));
-  const currentDetailRows = detailRows.filter(entry => !isResolved(entry.question, entry.key));
   const currentSetupRows = setupRows.filter(entry => !isResolved(entry.question, entry.key));
   const currentExtraRows = extraRows.filter(entry => !isResolved(entry.question, entry.key));
   const visibleCompletions = [...new Set(completions.values())].filter(record => matches({question: record.snapshot.kind === 'answer' ? record.snapshot.entry.item.question : record.snapshot.entry.question, value: record.value}, {query: filters.query}));
@@ -281,11 +281,24 @@ function draw(view, into) {
   }
 
   if (filters.view === 'review') {
-    const open = showHidden ? [...currentShownRows, ...hiddenRows] : currentShownRows;
+    const open = showHidden ? [...shownRows, ...hiddenRows] : shownRows;
     const review = card('Needs review', 'alert', [pill(`${reviewCount} to review`, 'warn', {dot: true})]);
     review.classList.add('is-review');
+    const renderedCompletions = new Set();
+    let visibleQueueRows = 0, visibleDetailRows = 0;
+    // Why (2026-10-27): render a Set row in its original queue slot so the list does not jump before the acknowledgement fades.
     for (const entry of open) {
-      const {item, section} = entry, sure = statusOf(entry);
+      const {item, section} = entry;
+      const completion = completionFor(item.question, '', 'answer');
+      if (completion) {
+        visibleQueueRows++;
+        renderedCompletions.add(completion);
+        review.append(...completedRow(view, completion));
+        continue;
+      }
+      if (isResolved(item.question)) continue;
+      visibleQueueRows++;
+      const sure = statusOf(entry);
       review.append(...row(view, {key: `review:${item.id}`, title: titleOf(item.question), under: [item.asked ? `Asked by ${item.asked}` : '', shown(section.title) || 'Answers', cutNote(item.question)].filter(Boolean).join(' · '),
         value: valueOf(item), needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), action: sure.action,
         field: () => answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : 'Your answer', entry), kind: () => kindField(view, item)}));
@@ -296,11 +309,20 @@ function draw(view, into) {
         status: statusPill(each.priority, 'bad', 'alert'), action: each.setup.action,
         run: () => import('./question-review.js').then(page => page.openQuestionReview({start: each.key}))}));
     }
-    for (const each of currentDetailRows) {
+    for (const each of detailRows) {
+      const completion = completionFor(each.question, each.key, 'detail');
+      if (completion) {
+        visibleDetailRows++;
+        renderedCompletions.add(completion);
+        review.append(...completedRow(view, completion));
+        continue;
+      }
+      if (isResolved(each.question, each.key)) continue;
+      visibleDetailRows++;
       review.append(...row(view, {key: `details:${each.key}`, title: shown(each.question), under: [each.details?.where || 'Your details', each.details?.line].filter(Boolean).join(' · '), value: '', needs: true,
         status: statusPill(ASKS[each.details?.kind] || 'Review saved answer', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));
     }
-    for (const completion of visibleCompletions) review.append(...completedRow(view, completion));
+    for (const completion of visibleCompletions) if (!renderedCompletions.has(completion)) review.append(...completedRow(view, completion));
     if (ruleRows.length) {
       review.append(el('h5', 'qa-group', `Website rules without an answer · ${ruleRows.length}`));
       for (const each of ruleRows) review.append(...row(view, {...each, needs: true, status: statusPill('Missing answer', 'warn', 'bang-circle')}));
@@ -310,7 +332,7 @@ function draw(view, into) {
       more.addEventListener('click', () => { showHidden = !showHidden; view.redraw(); });
       review.append(more);
     }
-    if (!open.length && !currentDetailRows.length && !currentSetupRows.length && !visibleCompletions.length && !ruleRows.length && !hiddenRows.length) review.append(el('p', 'muted qa-empty', 'Nothing to review: forms have every answer they asked for.'));
+    if (!visibleQueueRows && !visibleDetailRows && !currentSetupRows.length && !visibleCompletions.length && !ruleRows.length && !hiddenRows.length) review.append(el('p', 'muted qa-empty', 'Nothing to review: forms have every answer they asked for.'));
     into.append(review);
     return;
   }

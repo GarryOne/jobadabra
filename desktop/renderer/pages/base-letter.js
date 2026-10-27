@@ -1,6 +1,6 @@
 // Settings → Profile → Cover letter → Base letter (owner's mockup 07, 18 Oct 2026; moved from pages/profile.js): a neutral "Not created" with Draft with AI
-// and Write my own, the editor only after a choice or once a letter exists; then draft → Approve & make PDF → approved (its date, Open PDF, and the switch
-// that lets forms use it, pages/letter-fallback.js). Who pays is said before Draft with AI and after it ran (ai-engine-view.js usage words), never a guess.
+// and Write my own, the editor only after a choice or once a letter exists; then draft → Approve & make PDF → approved (its date and Open PDF).
+// Approved usable base letters automatically fill the gap when a job has no usable tailored letter. Who pays is said before and after a draft.
 // A job's own letter lives in its preparation kit (job-drawer/job-letter.js). Guarded by test/base-letter.test.js and test/contact-reading.test.js.
 import {pill} from '../components.js';
 import {emptyState} from '../page-parts.js';
@@ -11,7 +11,6 @@ import {reading} from '../contact-reading.js';
 import {swr} from '../swr.js';
 import {hintAfter} from '../own-key-hint.js';
 import {lastCost, usageAfter, usageBefore} from '../ai-engine-view.js';
-import {init as letterFallback} from './letter-fallback.js';
 
 let saved = {state: 'none', text: ''};   // the letter as stored: the buttons and the view follow what differs from it
 let draftPending = null; // one generation across clicks and wizard navigation; never spend twice for the same in-flight draft
@@ -48,7 +47,6 @@ function paint() {
   $('letter-state').replaceChildren(isReading ? pill('Reading…') : statePill(saved));
   $('letter-draft').querySelector('span').textContent = saved.text ? 'Redraft with AI' : 'Draft with AI';
   show($('letter-pdf'), !!saved.pdf);
-  show($('letter-fallback-row'), saved.state === 'approved');
   document.querySelectorAll('[data-letter-usage]').forEach(node => { node.textContent = usageLine(); });
   buttons();
 }
@@ -81,16 +79,26 @@ export async function loadLetter() {
   });
 }
 
-async function act(button, working, run) {
-  const all = ['letter-draft', 'letter-start-ai', 'letter-approve'].map($).filter(Boolean);
+async function act(button, working, run, {cardBusy = false} = {}) {
+  const all = ['letter-draft', 'letter-start-ai', 'letter-approve', 'letter-pdf'].map($).filter(Boolean);
   all.forEach(each => { each.disabled = true; });
   button.classList.add('busy');
-  message('letter-message', working);
-  const result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
-  button.classList.remove('busy');
+  const card = $('setting-letter'), overlay = $('letter-busy'), editor = $('letter-text');
+  const wasReadOnly = editor.readOnly;
+  if (cardBusy) {
+    card.setAttribute('aria-busy', 'true');
+    overlay.hidden = false;
+    overlay.querySelector('.letter-busy-copy').textContent = working;
+    editor.readOnly = true;
+  } else message('letter-message', working);
+  let result;
+  try { result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message})); }
+  finally {
+    button.classList.remove('busy');
+    if (cardBusy) { card.removeAttribute('aria-busy'); overlay.hidden = true; editor.readOnly = wasReadOnly; }
+    all.forEach(each => { each.disabled = false; });
+  }
   if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); } else buttons();
-  $('letter-draft').disabled = false;
-  if ($('letter-start-ai')) $('letter-start-ai').disabled = false;
   return result;
 }
 
@@ -99,7 +107,7 @@ async function draft(button) {
   const text = $('letter-text').value.trim();
   if (text && text !== (saved.text || '').trim() && !confirm('Replace the text you changed with a new draft?')) return;
   draftPending = (async () => {
-    const result = await act(button, 'Writing your letter…', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()));
+    const result = await act(button, 'Writing your cover letter…', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()), {cardBusy: true});
     if (result.ok) $('letter-feedback').value = '';
     const used = result.ok ? usageAfter(result) : '';
     message('letter-message', result.ok ? `Here is a draft. Read it, change what you like, then approve.${used ? ` · ${used}` : ''}` : result.error, result.ok ? 'ok' : 'error');
@@ -110,7 +118,6 @@ async function draft(button) {
 
 export function initLetter({openAiSettings} = {}) {
   if (openAiSettings) openAi = openAiSettings;
-  letterFallback();
   $('letter-text').addEventListener('input', buttons);
   $('letter-draft').addEventListener('click', () => draft($('letter-draft')));
   // Typed changes are a draft on Profile's one bar (Save all changes keeps it as a draft letter; Discard all puts the saved text back); Approve stays here.
@@ -124,7 +131,7 @@ export function initLetter({openAiSettings} = {}) {
     reveal: () => $('letter-text').focus()});
   $('letter-approve').addEventListener('click', async () => {
     const result = await act($('letter-approve'), 'Making the PDF…', () => window.pilot.coverLetterApprove($('letter-text').value));
-    const words = $('letter-fallback').checked ? 'Approved ✓ Forms whose job has no letter of its own get this PDF.' : 'Approved ✓ Turn on the switch below to use it when a job has no letter of its own.';
+    const words = 'Approved ✓ Used when a job has no usable tailored letter.';
     message('letter-message', result.ok ? words : result.error, result.ok ? 'ok' : 'error');
   });
   $('letter-pdf').addEventListener('click', () => window.pilot.coverLetterOpen());

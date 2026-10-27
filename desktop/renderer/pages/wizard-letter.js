@@ -1,5 +1,5 @@
 // Why (27 Oct 2026 owner follow-up to Gitar review): address the review's setup-cost concern; entering setup must not generate before the person chooses Draft with AI.
-// The wizard reuses the base-letter editor, explicit approval, PDF and fallback choice; no second editing state.
+// The wizard reuses the base-letter editor, explicit approval, PDF and automatic approved-base fallback; no second editing state.
 import {$} from './core.js';
 import {loadLetter} from './base-letter.js';
 let home = null, next = null;

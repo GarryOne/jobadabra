@@ -242,7 +242,7 @@
     <div class="step" data-step="letter" hidden>
       <header class="view-head step-head"><div><h1>Your cover letter</h1><p>Draft it, review it, then approve it for applications.</p></div></header>
       <div id="setup-letter-slot"></div>
-      <p class="muted small">If you leave this unfinished, Application questions keeps it as HIGH PRIORITY. Using an approved base letter as a fallback is your choice below.</p>
+      <p class="muted small">If you leave this unfinished, Application questions keeps it as HIGH PRIORITY. An approved base letter is used when a job has no usable tailored letter.</p>
       <div class="actions sticky"><button class="secondary" data-back>Back</button><button class="primary" id="setup-letter-next">Continue</button></div>
     </div>
 
@@ -1138,7 +1138,7 @@
             <div class="outline-body" id="letter-style-body"></div>
           </div>
           <div class="setting panel roomy" id="setting-letter" data-profile-panel="letter" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Base letter</h3><p class="muted small">An optional starting point; each job's own letter lives in its preparation kit.</p></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Base letter</h3><p class="muted small">Used when a job has no usable tailored letter; each job's own letter lives in its preparation kit.</p></div></div>
               <div class="panel-actions"><span id="letter-state"></span></div></div>
             <div id="letter-empty" hidden></div>
             <div class="letter-editor" id="letter-editor">
@@ -1152,7 +1152,10 @@
               <p class="muted small letter-usage" data-letter-usage></p>
             </div>
             <p class="message" id="letter-message"></p>
-            <label class="check-row letter-fallback" id="letter-fallback-row" hidden><input type="checkbox" id="letter-fallback"><span><span>Use this approved base letter when a job has no tailored letter</span><small class="muted">Off: a form that asks for a letter file gets none unless the job has its own.</small></span></label>
+            <div class="letter-card-busy" id="letter-busy" hidden role="status" aria-live="polite" aria-atomic="true" aria-label="Cover letter draft status">
+              <span class="letter-busy-sparkles" aria-hidden="true"><i data-icon="sparkle"></i><i data-icon="sparkle"></i><i data-icon="sparkle"></i></span>
+              <span class="ui-pill tone-info letter-busy-copy">Writing your cover letter…</span>
+            </div>
           </div>
           <div class="setting panel roomy" id="setting-answers-facts" data-profile-panel="answers" hidden>
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="user"></i></span><div class="card-words"><h3>Profile facts used in forms</h3><p class="muted small">Forms answer these from Your details, their one home: a change there reaches every form.</p></div></div>

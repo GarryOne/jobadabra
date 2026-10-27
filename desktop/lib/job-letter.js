@@ -1,6 +1,6 @@
 // A job's own cover letter, made together with its tailored CV (Tailor CV + cover letter): the kit's letter when the job has one, else drafted
 // here from the tailored CV and the posting; kept as text and as a PDF in the CV's design. The extension gets the PDF for an upload slot
-// (server-contact.js me()); the base letter (lib/cover-letter.js) is the fallback only while its switch is on. Guarded by desktop/test/job-letter.test.js.
+// (server-contact.js me()); the approved base letter is the automatic fallback when this tailored letter is unusable. Guarded by desktop/test/job-letter.test.js.
 //
 //   cover-letter/jobs/<job code>.json  {job, text, source: 'kit' | 'ai' | 'you', createdAt, model, usd, tokens, warnings}
 //   cover-letter/jobs/<job code>.pdf   always matches the text (an edit remakes it at once)

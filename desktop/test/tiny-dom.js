@@ -21,6 +21,7 @@ class Element {
   after(...nodes) { const parent = this.parentNode; let at = parent.children.indexOf(this); for (const node of nodes) { node.parentNode = parent; parent.children.splice(++at, 0, node); } }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); this.removed = true; }
   setAttribute(key, value) { this.attributes[key] = String(value); }
+  removeAttribute(key) { delete this.attributes[key]; }
   getAttribute(key) { return this.attributes[key] ?? null; }
   addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
   dispatch(type, event = {}) { for (const fn of this.listeners[type] || []) fn({preventDefault() {}, stopPropagation() {}, target: this, ...event}); }

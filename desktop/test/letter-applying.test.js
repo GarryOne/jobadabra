@@ -29,7 +29,7 @@ test('Applying shows HIGH PRIORITY, the approval action and no ready badge for a
 });
 
 
-test('an observed written letter on this form clears setup without changing the base fallback preference', async () => {
+test('an observed written letter on this form clears setup without writing settings', async () => {
   showFormCard({id: 'fictional', url: 'https://example.test/job', kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true, letterGiven: true});
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(document.getElementById('ss-before-letter').hidden, true);

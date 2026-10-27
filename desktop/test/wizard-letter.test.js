@@ -8,6 +8,7 @@ const {document, window} = globalThis;
 const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
 for (const id of new Set([...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]))) document.body.append(Object.assign(document.createElement('div'), {id}));
 document.getElementById('letter-draft').append(document.createElement('span'));
+document.getElementById('letter-busy').append(Object.assign(document.createElement('span'), {className: 'letter-busy-copy'}));
 const calls = [];
 window.pilot = new Proxy({coverLetter: async () => ({state: 'none', text: '', pdf: false}),
   coverLetterDraft: async () => { calls.push('draft'); return {ok:false, error:'Fictional generation failure'}; }, coverLetterApprove: () => { calls.push('approve'); },
@@ -90,8 +91,6 @@ test('fake AI prefills the existing wizard textbox; only the person’s approval
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(approvals, 1);
   assert.equal(letters.status(storage).state, 'approved');
-  assert.equal(letterQuestion(storage).setup.state, 'disabled', 'approval never opts the base into fallback');
-  storage.saveSettings({letterFallback: true});
-  assert.equal(letterQuestion(storage), null);
+  assert.equal(letterQuestion(storage), null, 'explicit approval makes the complete base letter an automatic fallback');
   hideLetterStep();
 });

@@ -6,17 +6,18 @@ import * as cv from './cv.js';
 
 const gap = (state, reason, action) => ({state, ready: false, reason, action, target: 'letter'});
 
-/** Select text and PDF from one usable record. Tailored wins; base use always requires the person's fallback choice. */
+/** Select text and PDF from one usable record. A complete tailored letter wins over the approved base fallback. */
 export function availableLetter(storage, url = '', {given = false, failed = false} = {}) {
   if (given === true) return {status: {state: 'ready', ready: true, source: 'form', reason: '', action: '', target: 'letter'}, text: '', file: null};
   if (failed === true) return {status: gap('delivery-failed', 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.', 'Open cover letter'), text: '', file: null};
   const base = letters.status(storage), tailored = url ? cv.forUrl(storage, url) : null;
   const job = tailored ? jobLetter.load(storage, tailored.job.code) : null;
   let record = null, file = '', name = '', source = '';
-  // Why (2026-10-27, owner): both forms use one selected record; approval never silently opts the base into fallback use.
   if (job?.text?.trim() && !letters.hasGap(job.text) && jobLetter.hasPdf(storage, tailored.job.code)) {
     record = job; file = jobLetter.pdfPath(storage, tailored.job.code); name = jobLetter.finalName(storage, tailored); source = 'tailored';
-  } else if (base.state === 'approved' && base.text.trim() && !letters.hasGap(base.text) && letters.fallbackOn(storage.settings()) && base.pdf) {
+  } else if (
+    // Why (2026-10-27, owner): approved usable base is automatic fallback; a usable tailored letter wins first.
+    base.state === 'approved' && base.text.trim() && !letters.hasGap(base.text) && base.pdf) {
     record = base; file = letters.pdfPath(storage); name = 'Cover letter.pdf'; source = 'base';
   }
   if (record) {
@@ -28,7 +29,6 @@ export function availableLetter(storage, url = '', {given = false, failed = fals
   const status = base.text && letters.hasGap(base.text) ? gap('invalid', 'The cover letter still has placeholders to complete.', 'Complete cover letter')
     : base.state === 'draft' ? gap('draft', 'Your cover letter is a draft and needs your review and approval.', 'Review cover letter')
     : base.state === 'approved' && !base.pdf ? gap('unavailable', 'The approved cover-letter PDF is missing. Make it again.', 'Review cover letter')
-    : base.state === 'approved' && !letters.fallbackOn(storage.settings()) ? gap('disabled', 'The base letter is approved, but use as a fallback is off. Choose it or prepare this job’s letter.', 'Set cover letter')
     : job?.text ? gap('unavailable', 'This job’s cover letter needs a complete text and PDF. Review its preparation kit.', 'Review cover letter')
     : gap('missing', 'No usable cover letter has been created. Create and review it before applying.', 'Create cover letter');
   return {status, text: '', file: null};

@@ -119,8 +119,8 @@ export async function askKind(tab, {fresh = false, digest = false, shadow = fals
 export function writeState(tabId, value, token = '') {
   return chrome.scripting.executeScript({target: {tabId}, args: [JSON.stringify(value), token, value.state],
     func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})
-    // Why (#2221 "the fill writing its end frees the page at once", 2026-10-27, owner: one state, changed only on a verdict): the fill's end on its own page IS the verdict (the person's first click after "done" is theirs, not held
-    // until the bookkeeping): `account` hands the page to the person, any other end is done. A write the token refused (another page's end) says nothing.
+    // Why (#2221 "the fill writing its end frees the page at once", kept 2026-10-27 under the one state owner): the fill's end on its own page is the worker's verdict, said at once, not after the bookkeeping that follows (reports, notes, dialogs):
+    // the person's first click after "done" is theirs (the apply suite's Next and Submit were held). `account` hands the page over. A write the token refused (another page's end) says nothing; a later step brings `working` back (background.js progress).
     .then(rows => { if (rows?.[0]?.result && !['running', 'received'].includes(value.state)) setApply(tabId, value.state === 'account' ? 'your-turn' : 'done'); }, () => {});
 }
 // A page with no form control of any kind (fill-flow consider waits for it to stop growing before its kind is asked).

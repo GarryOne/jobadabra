@@ -1,4 +1,4 @@
-/* global document, location, window, performance, chrome */
+/* global document, location, window, performance */
 // An Apply whose posting document is replaced once in its first half second, before the worker has the fill's first step: the dim and the centred panel never drop (real extension, fixture page, fake data).
 // Owner, 27 Oct 2026, second recording after #2262 (Greenhouse posting): dimmed + centred at 2.2 s, then dim and panel gone for 0.4 s, the panel back centred on an undimmed page, then in the
 // bottom-right corner in the finished look, then dimmed and centred for good. Guard for: extension/early-dim.js, extension/background.js (the tab is "in an Apply" from the app's open), review.js.
@@ -50,10 +50,15 @@ for (const [name, how] of [['reload (mark kept)', 'location.reload()'], ['same p
   });
 }
 
-// Each verdict of the worker lifts the dim and the centred panel, and nothing brings either back (owner, 27 Oct 2026: "Done, Stop, or your turn. Nothing else"). The verdict is pushed from the worker the way
-// extension/apply-state.js does; the run's own end (done) is covered by fill-overlay-run.test.mjs, Stop's and the person's turn by the senders asserted in desktop/test/apply-state-owner.test.js.
-for (const state of ['done', 'stopped', 'your-turn']) {
-  test(`the worker's verdict "${state}" lifts the dim and the centred panel for good`, async () => {
+// Each verdict lifts the dim and the centred panel, and nothing brings either back (owner, 27 Oct 2026: "Done, Stop, or your turn. Nothing else"). Each is made the real way, so the worker's own state moves:
+// done = the run ends by itself (the fixture has no form), Stop = the panel's Stop button, your turn = the page needs the person (the panel reports it to the worker).
+const VERDICTS = {
+  done: () => new Promise(resolve => setTimeout(resolve, 5000)),
+  stopped: async app => { const at = await app.page.evaluate(() => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.stop-btn').getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }); await app.page.mouse.click(at.x, at.y); },
+  'your-turn': app => app.page.evaluate(() => document.documentElement.setAttribute('data-jobpilotto-needs', 'a captcha')),
+};
+for (const [state, cause] of Object.entries(VERDICTS)) {
+  test(`the verdict "${state}" lifts the dim and the centred panel for good`, async () => {
     const app = await startRealExtension({extensionDir: process.env.REAL_EXTENSION_DIR || undefined, allowAllSites: true});
     const samples = [];
     try {
@@ -61,12 +66,10 @@ for (const state of ['done', 'stopped', 'your-turn']) {
       await app.page.exposeFunction('__rec', sample => { samples.push(sample); });
       await app.page.addInitScript(SAMPLER);
       await app.page.goto('https://jobs.example.test/post#jobpilotto-fill');
-      await app.page.waitForFunction(() => document.getElementById('jobpilotto-fill-overlay') && document.getElementById('jobpilotto-review-host'), null, {timeout: 20000});
-      await app.context.serviceWorkers()[0].evaluate(async verdict => {
-        const [tab] = await chrome.tabs.query({url: 'https://jobs.example.test/*'});
-        await chrome.tabs.sendMessage(tab.id, {type: 'applyState', state: verdict});
-      }, state);
-      await app.page.waitForTimeout(1500);
+      await app.page.waitForFunction(() => document.getElementById('jobpilotto-fill-overlay') && document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.stop-btn'), null, {timeout: 20000});
+      await cause(app);
+      await app.page.waitForFunction(() => !document.getElementById('jobpilotto-fill-overlay'), null, {timeout: 20000}).catch(() => {});
+      await app.page.waitForTimeout(2500);
     } finally { await app.close(); }
     const lifted = samples.findIndex((s, i) => i > 0 && samples[i - 1].dim && !s.dim);
     assert.ok(lifted > 0, `positive control: the dim was on, then lifted by "${state}"`);

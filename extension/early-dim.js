@@ -7,6 +7,7 @@ import {isStopped} from './stop-state.js';
 import {applyState, isWorking, restored, setApply, WORKING} from './apply-state.js';
 
 const FILL_MARK = '#jobpilotto-fill';
+const WALKED_AWAY = ['typed', 'auto_bookmark', 'generated', 'keyword', 'keyword_generated'];
 
 /**
  * Dim one tab's page now, before the panel is injected: the overlay files plus its early start, in one injection.
@@ -24,14 +25,18 @@ export function dimEarly(tabId) {
  * @returns {void}
  */
 export function startEarlyDim() {
-  const begin = details => {
-    if (details.frameId !== 0 || !/^https:/.test(details.url) || !details.url.includes(FILL_MARK) || isStopped() || applyState(details.tabId)) return;
-    setApply(details.tabId, WORKING);
+  // A marked address on a tab with no state starts its Apply; on a tab that already has a verdict, a marked document that was not a redirect is the app opening it again (the next job, Apply again) and starts a new one.
+  const begin = (details, again = false) => {
+    if (details.frameId !== 0 || !/^https:/.test(details.url) || !details.url.includes(FILL_MARK) || isStopped()) return;
+    const was = applyState(details.tabId);
+    if (!was || (again && !isWorking(details.tabId) && !(details.transitionQualifiers || []).some(q => /redirect/.test(q)))) setApply(details.tabId, WORKING);
   };
   chrome.webNavigation?.onBeforeNavigate?.addListener(async details => { await restored; begin(details); });
   chrome.webNavigation?.onCommitted.addListener(async details => {
     await restored;
-    begin(details);
+    begin(details, true);
+    // Why (2026-10-27, code review): a person who types an address or picks a bookmark in the app's tab (an address with no mark) walks away: the Apply is theirs again, else the next site would be dimmed with no panel to Stop it.
+    if (details.frameId === 0 && isWorking(details.tabId) && !details.url.includes(FILL_MARK) && WALKED_AWAY.includes(details.transitionType)) { setApply(details.tabId, 'your-turn'); return; }
     if (details.frameId !== 0 || !/^https:/.test(details.url) || !isWorking(details.tabId) || isStopped()) return;
     dimEarly(details.tabId);
   });

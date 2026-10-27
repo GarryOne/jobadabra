@@ -62,7 +62,7 @@
   const setOpen = value => { open = value; card.hidden = !open; if (open) render(); };
   pill.onclick = () => { userMoved = true; setOpen(!open); };
   $('.min').onclick = () => { userMoved = true; setOpen(false); };   // minimise: back to the pill
-  $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
+  $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); if (applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {}); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
   const stopButtons = [...root.querySelectorAll('.stop-btn, .pill-stop')], stopsBack = () => { for (const button of stopButtons) { button.disabled = false; button.textContent = 'Stop'; } };
   for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = 'Stopping…'; const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else stopsBack(); }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
   // "Report", the one entry, in the footer of every state (owner, 16 Oct 2026): a popup on the panel (panel-report.js) that says what goes, takes a note and sends. A page script's click is ignored; a press that cannot open it says why.

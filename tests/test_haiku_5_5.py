@@ -53,3 +53,16 @@ class SmallModelIsData(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class EveryTierFollowsTheOneModelOverride(unittest.TestCase):
+    """The one-model override (JOB_PILOTTO_MODEL_OVERRIDE -> desktop/lib/pipeline-env.js) reaches every tier, so a Haiku-only run never has a
+    step on Sonnet or Opus (27 Oct 2026: the job-boards proposal ran Sonnet in the Haiku-only benchmark). Without the variables nothing changes."""
+    def test_each_tier_reads_its_variable_and_keeps_its_default(self):
+        import os, subprocess, sys
+        tiers = 'from src.ai import models; print(*(models.model_for("claude", t) for t in ("small", "main", "big")))'
+        run = lambda env: subprocess.run([sys.executable, '-c', tiers], cwd=ROOT, env=env, capture_output=True, text=True, check=True).stdout.split()
+        names = ('JOB_PILOTTO_SMALL_MODEL', 'JOB_PILOTTO_MAIN_MODEL', 'JOB_PILOTTO_BIG_MODEL')
+        clean = {k: v for k, v in os.environ.items() if k not in names}
+        self.assertEqual(run({**clean, **{n: 'claude-haiku-9' for n in names}}), ['claude-haiku-9'] * 3)
+        self.assertEqual(run(clean), ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'])

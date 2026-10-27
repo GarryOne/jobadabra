@@ -20,7 +20,8 @@ test('with the override set, every model the app hands to the engine and every m
   const all = [...Object.values(out.models), out.strategy, out.cv, out.cvChange];
   assert.ok(Object.keys(out.models).length >= 7, `expected the engine's model settings, got ${Object.keys(out.models)}`);
   assert.deepEqual([...new Set(all)], ['claude-haiku-4-5']);
-  for (const name of ['JOB_PILOTTO_INTERVIEW_MODEL', 'JOB_PILOTTO_PREP_MODEL', 'JOB_PILOTTO_REJECTION_MODEL']) assert.equal(out.models[name], 'claude-haiku-4-5', name);
+  for (const name of ['JOB_PILOTTO_INTERVIEW_MODEL', 'JOB_PILOTTO_PREP_MODEL', 'JOB_PILOTTO_REJECTION_MODEL', 'JOB_PILOTTO_MAIN_MODEL', 'JOB_PILOTTO_BIG_MODEL'])
+    assert.equal(out.models[name], 'claude-haiku-4-5', name);
 });
 
 test('without the override nothing changes: the app still uses its own models', () => {
@@ -29,4 +30,6 @@ test('without the override nothing changes: the app still uses its own models', 
   assert.equal(out.models.JOB_PILOTTO_SCORE_MODEL, 'claude-sonnet-5-5');
   assert.equal(out.strategy, 'claude-sonnet-5-5');
   assert.equal(out.models.JOB_PILOTTO_INTERVIEW_MODEL, undefined);
+  assert.equal(out.models.JOB_PILOTTO_MAIN_MODEL, undefined);
+  assert.equal(out.models.JOB_PILOTTO_BIG_MODEL, undefined);
 });

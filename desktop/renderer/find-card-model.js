@@ -65,8 +65,10 @@ export function webSearchChip(log = []) {
 // Live updates (owner, 26 Oct 2026: "Keep each step's result visible: 'web search found…', 'boards read', 'employers stopped'"): every step's
 // result line of this run, in words, kept until it ends, then the newest progress tick, last; ticks replace each other. A result is a line the
 // engine starts with a step's name (and the scoring, added and digest lines); per-item lines (one employer, one job, one AI answer) are the
-// technical log's, in Recent activity. Guarded by: test/live-updates.test.js.
-const RESULT = /^((First jobs|Job boards|Job boards found|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready|⏱ Time is up \()/;
+// technical log's, in Recent activity. Why (#live-updates-3-lines, owner 27 Oct 2026: "why we're showing so many lines of the log updates"): one board's
+// "Job boards found: <board> N jobs, M relevant" is a per-item line like an employer's, so it is not in RESULT; the step's one summary line
+// ("Job boards: done, N jobs for your search") stays. Guarded by: test/live-updates.test.js.
+const RESULT = /^((First jobs|Job boards|Job boards first|Employers|Titles|Places|Source scout|Warning): |Scored \d+ of |Added \d+ new job|Digest ready|⏱ Time is up \()/;
 export function liveLines(log = []) {
   const results = [], tick = [];
   let matches = 0;

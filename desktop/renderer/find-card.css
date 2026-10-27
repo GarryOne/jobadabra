@@ -32,8 +32,13 @@ body[data-find-card="empty"] #jobs-head, body[data-find-card="empty"] #jobs-empt
 .find-live > summary::after { content: ""; width: .5em; height: .5em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform .15s; }
 .find-live[open] > summary::after { transform: rotate(-135deg); }
 .find-live[open] > .run-card-rows { margin-top: var(--sp-3); }
-/* Every step's result stays in the fold until the run ends (owner, 26 Oct 2026); a long run's list scrolls inside it, at its newest line. */
-.find-live > .run-card-rows { max-height: 28rem; overflow-y: auto; overscroll-behavior: contain; }
+/* Every step's result stays in the fold until the run ends (owner, 26 Oct 2026); a long run's list scrolls inside it, at its newest line.
+   Why (#live-updates-3-lines, owner 27 Oct 2026: "it should be just 3 lines visible. the rest, either with scroll"): the fold is three rows high, each row one line
+   (a long one is cut with an ellipsis, in a grid column that may shrink; its full text is in the technical log), so the height is the row's own, never a pixel value. */
+.find-steps-row, .find-live { min-width: 0; }
+.find-live > .run-card-rows { min-width: 0; grid-template-columns: minmax(0, 1fr); --live-row: calc(1.5em + 2 * var(--sp-1)); max-height: calc(3 * var(--live-row)); overflow-y: auto; overscroll-behavior: contain; }
+.find-live > .run-card-rows > .run-card-row { box-sizing: border-box; height: var(--live-row); line-height: 1.5; }
+.find-live > .run-card-rows > .run-card-row > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The compact cards (a done search, "Find more jobs", a refused press): the words on the left, one button on the right, centred on the card (owner, 25 Oct 2026). */
 .find-card.is-done, .find-card.is-none, .find-card.is-refused { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
 .find-card.is-done .find-head-box, .find-card.is-none .find-head-box, .find-card.is-refused .find-head-box { flex: 1; min-width: 0; }

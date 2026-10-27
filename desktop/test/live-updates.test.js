@@ -4,6 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {findCard, liveLines, stepChips, webSearchChip} from '../renderer/find-card-model.js';
+import fs from 'node:fs';
+import {readableLog} from '../renderer/human-log.js';
 import {keepRunLine} from '../lib/pipeline-lines.js';
 
 // Each step's result line the engine prints (src/sources/board_web.py, board_yield.py, found_boards.py, aggregators.py, src/sources/feeds.py),
@@ -13,7 +15,6 @@ const RESULTS = [
   ['Job boards: a web search found Aero Board (Pilot jobs), Wing Jobs (Crew)', /^Job boards: a web search found Aero Board/],
   ['Job boards: no web search: searched lately, its boards are kept', /^Job boards: no web search: searched lately/],
   ['Job boards: 2 read in the last 6 h skipped; reading 3 new ones', /^Job boards: 2 read in the last 6 h skipped/],
-  ['Job boards found: Aero Board 12 job(s), 3 relevant', /^Job boards found: Aero Board 12 jobs, 3 relevant/],
   ['Job boards first: reading the 2 the web search found, before the employer sites: Aero Board, Wing Jobs', /^Job boards first: reading the 2/],
   ['Job boards: done, 15 job(s) for your search', /^Job boards: done, 15 jobs for your search/],
   ['Employers: 1045 of 2807 in your places hire for your kind of role; the others are left out.', /^Employers: 1045 of 2807 in your places/],
@@ -125,4 +126,22 @@ test('each stage\'s "Time is up" line stays in Live updates through the ticks', 
   const lines = liveLines(log.reduce(keepRunLine, []));
   assert.ok(lines.includes('⏱ Time is up (0 min 36 s) for employer sites: 422 sites wait for the next search'), lines.join(' | '));
   assert.ok(lines.includes('⏱ Time is up (2 min 33 s) for free job APIs: 4 sources wait for the next search'), lines.join(' | '));
+});
+
+// Owner, 27 Oct 2026: "it should be just 3 lines visible. the rest, either with scroll. Either at the end of the run, in the technical log".
+test('a per-board line is not in Live updates, and is in the technical log; the step\'s summary line stays', () => {
+  const log = ['Job boards found: xing.com 17 job(s), 7 relevant', 'Job boards found: Acme Jobs read after its scripts ran', 'Job boards: done, 15 job(s) for your search'];
+  assert.deepEqual(liveLines(log), ['Job boards: done, 15 jobs for your search']);
+  const technical = readableLog(log).join('\n');
+  assert.match(technical, /xing\.com 17 jobs, 7 relevant/);
+  assert.match(technical, /Acme Jobs read after its scripts ran/);
+});
+
+test('the Live updates fold is three rows high, one line each, and scrolls', () => {
+  const css = fs.readFileSync(new URL('../renderer/find-card.css', import.meta.url), 'utf8');
+  assert.match(css, /\.find-live > \.run-card-rows \{[^}]*max-height: calc\(3 \* var\(--live-row\)\)[^}]*overflow-y: auto/);
+  assert.match(css, /\.find-live > \.run-card-rows > \.run-card-row \{[^}]*height: var\(--live-row\)/);
+  assert.match(css, /\.find-live > \.run-card-rows \{[^}]*grid-template-columns: minmax\(0, 1fr\)/, 'the grid column may shrink, or a long line stretches it');
+  assert.match(css, /text-overflow: ellipsis; white-space: nowrap/);
+  assert.doesNotMatch(css.match(/\.find-live > \.run-card-rows \{[^}]*\}/)[0], /\d+(px|rem)/, 'no pixel value');
 });

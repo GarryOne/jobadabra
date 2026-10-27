@@ -39,4 +39,5 @@ if __name__ == '__main__':
         parser.add_argument(f'--{name}', required=True)
     parser.add_argument('--all-jobs', action='store_true')
     args = parser.parse_args()
-    Path(args.out).write_text(json.dumps(cases(json.loads(Path(args.jobs).read_text()), Path(args.profile).read_text(), Path(args.answers).read_text(), args.all_jobs), ensure_ascii=False))
+    # Why (27 Oct 2026, PR #2240): utf-8 on both sides, because Windows' default (cp1252) failed on the extra postings of --all-jobs on CI's Windows runner; the writing eval reads the file as utf-8.
+    Path(args.out).write_text(json.dumps(cases(json.loads(Path(args.jobs).read_text(encoding='utf-8')), Path(args.profile).read_text(encoding='utf-8'), Path(args.answers).read_text(encoding='utf-8'), args.all_jobs), ensure_ascii=False), encoding='utf-8')

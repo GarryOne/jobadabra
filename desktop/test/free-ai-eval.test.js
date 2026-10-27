@@ -154,3 +154,10 @@ test('every form case\'s expected answer rests on lines the demo profile or answ
     for (const line of form.rests || []) assert.ok(demo.includes(line), `${form.id}: the demo no longer says "${line}"; update the case's expected answer`);
   }
 });
+
+test('a written answer is matched on what is typed: its "• Add:" reminders are shown beside the box, never typed (#2198)', async () => {
+  const {answerProblems} = await import('../../tools/free-ai-eval-metrics.mjs');
+  const want = {backlog: {category: 'written', match: 'backlog'}};
+  assert.deepEqual(answerProblems({answers: [{field: 'backlog', category: 'written', value: 'I cut backlog noise by half.\n• Add: which teams'}]}, want), []);
+  assert.equal(answerProblems({answers: [{field: 'backlog', category: 'written', value: 'I ran 400 services on EKS.\n• Add: a backlog cleanup you led'}]}, want).length, 1, 'the subject only in a reminder is not answered');
+});

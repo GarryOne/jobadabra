@@ -22,7 +22,9 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
 ## The loop (small change: 5–10 minutes)
 1. `tools/worktree.sh <topic>` (a worktree from origin/main with node_modules linked; never `npm install` in it);
    keep it after landing (`tools/worktree.sh prune` tidies landed ones older than 7 days).
-2. Edit with anchored replacements: check the anchor exists (`assert old in s`). **Never cut code by index ranges**
+2. **A line with a `Why (...)` comment** (above it or trailing it): read the Why and its PR (`gh pr view <n>`) before changing it; change it only on purpose,
+   with `Why-changed: <which Why> — <reason>` in the commit (`tools/why-changed.mjs`). A decision you add gets its own Why (docs/rules/files.md "Why comments").
+   Edit with anchored replacements: check the anchor exists (`assert old in s`). **Never cut code by index ranges**
    (`s[a:b]`) without printing the range first: it once deleted a whole render block.
 3. While editing, `node --test test/<the file you changed>` (after `node scripts/stage.mjs --files-only` in a fresh worktree) and `npm run lint`; the whole
    desktop suite runs on CI only (owner, 26 Oct 2026: "It should run only on CI"; the hook refuses `npm test` and `tools/check.sh` in a session).

@@ -64,6 +64,8 @@ decides that through their own permission settings.
   to check, even when an answer is supplied for them.
 - Never invent experience, numbers, employers, or credentials. Only facts from the Profile,
   Application Answers, the CV, and the posting.
+- A line that encodes a decision carries `// Why (<PR or date>[, owner]): <reason>`; read it and its PR before changing that line, and say
+  `Why-changed: <which> — <reason>` in the commit (the push gate `tools/why-changed.mjs` asks; docs/rules/files.md "Why comments").
 - Ask before spending money on AI models or large re-runs; this project already has three tiers
   running (Haiku extraction, Sonnet scoring, Sonnet kit drafting) — a fourth or a big re-run needs
   the owner's sign-off first.

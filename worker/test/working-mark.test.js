@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { END_MARKS, holdVerdict, showsFields, workingMark } from '../../extension/working-mark.js';
+import { END_MARKS, workingMark } from '../../extension/working-mark.js';
 import { markOf } from '../../extension/tab-pages.js';
 
 const ROLES = ['no-form', 'form', 'account', 'signing', 'reading', 'signing-in', 'signing-up', ''];
@@ -20,23 +20,23 @@ test('a working mark is never an end verdict, for every role, kind, step and pre
   for (const end of END_MARKS) assert.ok(seen.has(end), `END_MARKS names a mark markOf really gives: ${end}`);
 });
 
-test('the Greenhouse sequence: a no-form answer on a page with a form\'s fields is held once, then may be said', () => {
-  const counts = { fields: 14, textareas: 2, files: 2 };
-  assert.equal(holdVerdict({ role: 'no-form', counts }), true, 'first read: no verdict, look again');
-  assert.equal(holdVerdict({ role: 'no-form', counts, lookedAgain: true }), false, 'after the one more look: the verdict may show');
-});
-
-test('controls: a page with no fields (a real check, an error page) is told at once; a form is never held', () => {
-  assert.equal(holdVerdict({ role: 'no-form', counts: { fields: 1 } }), false);
-  assert.equal(holdVerdict({ role: 'no-form', counts: null }), false);
-  assert.equal(holdVerdict({ role: 'form', counts: { fields: 9 } }), false);
-  assert.equal(showsFields({ fields: 1, files: 1 }), true);
-});
-
-test('fill-flow: the marks set while the read goes on are working marks; the verdict comes only after the hold', () => {
+test('fill-flow: marks set while the read goes on are working marks; the end verdict waits for a field watch that may judge the page again', () => {
   const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
-  const marks = [...flow.matchAll(/await markPage\(tab\.id, role, [^)]*\)/g)].map((m) => m[0]);
-  const hold = flow.indexOf('holdVerdict({role, counts'), verdict = flow.indexOf('await markPage(tab.id, role, pressed, kind);   // stopped and sure');
-  assert.ok(hold > 0 && verdict > hold, 'the verdict mark comes after the hold');
-  for (const mark of marks.filter((m) => !m.endsWith('kind)') || flow.indexOf(m) < hold)) assert.match(mark, /working: true/, mark);
+  const marks = [...flow.matchAll(/markPage\(tab\.id, role, [^)]*\)/g)].map((m) => m[0]);
+  const plain = marks.filter((m) => m === 'markPage(tab.id, role, pressed, kind)');
+  assert.ok(plain.length >= 1, 'the verdict is said somewhere');
+  // Every plain (verdict) mark is the watch's end or its failure, never a mark set before the watch starts.
+  const end = flow.indexOf('await markPage(tab.id, role, pressed, kind, {working: !!watching});'), watch = flow.indexOf('if (watching) watchForFields(');
+  assert.ok(end > 0 && watch > end, 'the end block marks working while a watch runs, then starts it');
+  assert.match(flow.slice(watch, flow.indexOf('\n', watch)), /\(\) => markPage\(tab\.id, role, pressed, kind\)\)\.catch\(\(\) => markPage\(tab\.id, role, pressed, kind\)\)/, 'the verdict once the watch ends, or fails');
+  for (const mark of marks.filter((m) => m !== 'markPage(tab.id, role, pressed, kind)')) assert.match(mark, /working: /, mark);
+});
+
+test('fill-flow: the field watch says the verdict on every ending with no form (ran out, or looked at once already), never after a re-judge', () => {
+  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const body = flow.slice(flow.indexOf('async function watchForFields('), flow.indexOf('\n}\n', flow.indexOf('async function watchForFields(')));
+  assert.match(body, /if \(lookedAgain\.has\(key\)\) \{ if \(onEnd\) await onEnd\(\); return false; \}/);
+  assert.match(body, /'watch ended: no form and no new frame'[^\n]*\n\s*if \(onEnd\) await onEnd\(\);/);
+  const rejudge = body.indexOf('await consider(live, jobUrl);');
+  assert.ok(rejudge > 0 && !body.slice(body.lastIndexOf('lookedAgain.add(key)', rejudge), rejudge).includes('onEnd'), 'a re-judge says its own mark');
 });

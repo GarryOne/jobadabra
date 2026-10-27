@@ -4,6 +4,7 @@
 // ("Editing", the answer control of its kind, "Answer as" under Advanced options); the page's own intro (lines before its first heading) is shown
 // small, never as answers; Website-specific questions folded (pages/website-rules.js). Never the not-answered mark on screen (renderer/answers-model.js).
 // Same on every store: block edits through pages/outline-tab.js. Guarded by test/profile-tabs-render.test.js and test/answers-layout.test.js.
+import {remembered} from '../view-memory.js';
 import {el, pill, toggleOnBar} from '../components.js';
 import {icon} from '../icons.js';
 import {changeFor, kindChange, lineFor, matches, sections, shown} from '../answers-model.js';
@@ -20,7 +21,8 @@ import {answerControl, kindPicker} from '../question-control.js';
 import {drawRules, input, labelled, newRule, resetRules, reviewRows, select} from './website-rules.js';
 
 const TEXT = 'answers';
-const filters = {query: '', view: 'all'};   // view: all | review | saved
+const savedView = remembered('answersView');
+const filters = {query: '', view: ['all', 'review', 'saved'].includes(savedView) ? savedView : 'all'};   // view: all | review | saved
 const opened = new Set();   // rows shown open (answer ids, review keys)
 const drafts = new Map();   // answer id → the value typed; new questions under `new-<n>`: {section, question, value}
 let added = 0, tab = null, rulesOpen = false, verdicts = {}, keptFormats = {}, askedFor = '', showHidden = false, queueAsked = false, lastView = null;
@@ -148,7 +150,7 @@ function toolbar(view, into, reviewCount) {
     const button = Object.assign(el('button', key === filters.view ? 'is-active' : '', name), {type: 'button'});
     button.dataset.view = key;
     if (key === 'review' && reviewCount) button.append(' ', pill(String(reviewCount), 'warn'));
-    button.addEventListener('click', () => { filters.view = key; view.redraw(); });
+    button.addEventListener('click', () => { filters.view = key; remembered('answersView', key); wanted = null; view.redraw(); });
     views.append(button);
   }
   bar.append(box, views);
@@ -292,7 +294,8 @@ export async function loadApplicationAnswers() {
       bar: profileBar(), tab: 'answers', label: 'Application answers'}), node};
   }
   const named = wanted;
-  filters.view = named || 'all';   // the tab opens on All, or on the one a jump named
+  // Why (2026-10-27, owner): refreshing data keeps the selected view; an explicit jump can change it.
+  if (['all', 'review', 'saved'].includes(named)) { filters.view = named; remembered('answersView', named); }
   await tab.load();
   if (named) { setTimeout(() => { if (wanted === named) wanted = null; }, 2000); node.querySelector('.segmented')?.scrollIntoView?.({block: 'nearest'}); }   // later loads of the same jump keep it
 }

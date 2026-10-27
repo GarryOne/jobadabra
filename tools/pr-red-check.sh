@@ -33,19 +33,30 @@ fi
 # Why (#2297, gitar): four to six sequential REST reads can exceed two seconds even when every request succeeds.
 cached_read() {  # <cache file> <reader function> [args...]; reader emits rows, never applicant content
   local file="$1"; shift
-  local now stamp before after modified busy="$file.pending" pid i=0
+  local now stamp before after modified token busy="$file.pending" pid i=0
   now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
   if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
   before="$(stat -c %i "$file" 2>/dev/null || stat -f %i "$file" 2>/dev/null || true)"
   # A hook can disappear between mkdir and publishing its worker PID. Reclaim that startup gap after a grace period.
   if [ -d "$busy" ] && [ ! -f "$busy/pid" ]; then
     modified="$(stat -c %Y "$busy" 2>/dev/null || stat -f %m "$busy" 2>/dev/null || echo "$now")"
-    [ "$((now - modified))" -lt 10 ] || rmdir "$busy" 2>/dev/null || true
+    [ "$((now - modified))" -lt 10 ] || { rm -f "$busy/owner"; rmdir "$busy" 2>/dev/null || true; }
   fi
-  if [ -f "$busy/pid" ] && ! kill -0 "$(cat "$busy/pid")" 2>/dev/null; then rm -f "$busy/pid"; rmdir "$busy" 2>/dev/null || true; fi
+  if [ -f "$busy/pid" ]; then
+    pid="$(cat "$busy/pid" 2>/dev/null)"
+    modified="$(stat -c %Y "$busy/pid" 2>/dev/null || stat -f %m "$busy/pid" 2>/dev/null || echo "$now")"
+    # A later prompt reclaims a refresh older than one minute; only its registered cache worker is terminated.
+    if ! kill -0 "$pid" 2>/dev/null || [ "$((now - modified))" -ge 60 ]; then
+      kill "$pid" 2>/dev/null || true
+      rm -f "$busy/pid" "$busy/owner"; rmdir "$busy" 2>/dev/null || true
+    fi
+  fi
   if mkdir "$busy" 2>/dev/null; then
-    ( trap 'rm -f "$busy/pid" "$file.$$.rows" "$file.$$.next"; rmdir "$busy" 2>/dev/null || true' EXIT
+    token="$$-$RANDOM-$now"; printf '%s\n' "$token" > "$busy/owner"
+    ( trap 'rm -f "$file.$$.rows" "$file.$$.next"; if [ "$(cat "$busy/owner" 2>/dev/null)" = "$token" ]; then rm -f "$busy/pid" "$busy/owner"; rmdir "$busy" 2>/dev/null || true; fi' EXIT
       "$@" > "$file.$$.rows" || exit 0
+      # An overdue worker must not publish into a replacement worker's cache or release its lease.
+      [ "$(cat "$busy/owner" 2>/dev/null)" = "$token" ] || exit 0
       { date +%s; cat "$file.$$.rows"; } > "$file.$$.next" && mv -f "$file.$$.next" "$file"
     ) >/dev/null 2>&1 &
     pid=$!; printf '%s\n' "$pid" > "$busy/pid" 2>/dev/null || true

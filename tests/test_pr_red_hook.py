@@ -263,6 +263,19 @@ class PrRedHookTest(unittest.TestCase):
         done = self.run_hook()
         self.assertIn('PR #5 is red: python', done.stdout)
 
+    def test_an_overdue_live_refresh_is_reclaimed_and_a_fresh_read_can_report(self):
+        self.answer(pr(('python', 'FAILURE')))
+        process = subprocess.Popen(['sleep', '30'])
+        def stop():
+            if process.poll() is None: process.terminate()
+            process.wait()
+        self.addCleanup(stop)
+        lock = self.tmp / 'cache' / 'repo-feature.look.pending'; lock.mkdir(parents=True)
+        pidfile = lock / 'pid'; pidfile.write_text(str(process.pid)); os.utime(pidfile, (1, 1))
+        done = self.run_hook()
+        self.assertIn('PR #5 is red: python', done.stdout)
+        process.wait(timeout=2)
+
     def test_the_answer_is_cached_between_prompt_and_stop(self):
         self.answer(pr(('python', 'FAILURE')))
         self.run_hook(env={'PR_RED_TTL': '60'}); self.run_hook('Stop', env={'PR_RED_TTL': '60'})

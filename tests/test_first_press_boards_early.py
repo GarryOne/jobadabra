@@ -52,7 +52,16 @@ class TheProposalIsAskedAtTheSearchsStart(unittest.TestCase):
         patcher = mock.patch('src.sources.found_boards.read', side_effect=lambda search, top, **kw: [b['host'] for b in top])
         patcher.start()
         self.addCleanup(patcher.stop)
+        self.addCleanup(self.finish_early)
         self.addCleanup(self.release.set)
+
+    def finish_early(self):
+        """Why (#2228): a proposal thread a test left running looked up board_ideas._ask late and wrote into the NEXT test's asks (red on CI's slower
+        shard: test_proven_boards_need_no_proposal saw the proposal's prompt); each test waits for its own before its patches stop."""
+        future = first_jobs._early.get('future')
+        if future is not None:
+            with mock.patch('builtins.print'):
+                future.exception(timeout=10)
 
     def read_slice(self, search=SEARCH):
         with mock.patch('builtins.print'):

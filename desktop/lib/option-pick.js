@@ -7,11 +7,15 @@ import {forget, keep, keptValue, readKept} from './kept-decisions.js';
 export const FILE = 'option-picks.json';
 const norm = text => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
+// Why (27 Oct 2026, fair round form 264401 'Level of Spanish'; owner: close the gap to Browser Use): the menu was a 4-level scale in Spanish, the applicant a native speaker; "means the same" has no
+// choice for a value ON a scale, so the answer flipped between draws ("Native" 2/3, "Nativo" 0/3) and the field stayed empty. Case set: test/option-pick-cases.json.
 const INSTRUCTIONS = `A job application form asks a question with fixed choices. Given the applicant's answer, return the choice that means the same
 (the same answer in another language or wording, e.g. "Monsieur" means "Sir" or "Mr"), copied exactly, or "" when no choice means the same.
 An answer to a yes/no question means the choice that states it ("Yes" to "do you have the right to work here?" means the choice saying you have it).
 Never pick a choice that changes the meaning.
-A choice that only says nothing is chosen yet (a placeholder such as "No Selection", "Select...", "Please choose", often the first one) means the same as no answer: never return it, return "" instead.`;
+A choice that only says nothing is chosen yet (a placeholder such as "No Selection", "Select...", "Please choose", often the first one) means the same as no answer: never return it, return "" instead.
+When the choices are an ordered scale (levels of a skill, ranges of years or size, ratings) and the answer is a value on that scale in any wording or language ("native", "fluent", "B1", "4 years"),
+return the choice whose level or range holds it, reading each choice's own description; a value above the top level is the top choice. Only for an answer that is a value on that scale: an answer that is not one returns "".`;
 
 // A search box (the page says so: searchable) may show only the start of its list, or what an earlier search found (owner, 27 Oct 2026, fair round form 102: Greenhouse's
 // School list opens on its first 100 schools; "search, then Other"): the AI may also name what to type to find the choice, in order: the answer's own name, then the list's

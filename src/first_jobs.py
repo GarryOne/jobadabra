@@ -10,7 +10,7 @@ The search after it is unchanged; scored jobs are skipped by their hash, so the 
 Tests: tests/test_first_jobs.py, tests/test_proven_boards.py."""
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as Late
+from concurrent.futures import ThreadPoolExecutor
 
 from . import store
 from .ai import score
@@ -59,8 +59,8 @@ def board_jobs(say=print, search=None):
         say(f"First jobs: reading {', '.join(board['name'] for board in top)}, the job board{'s' if len(top) > 1 else ''} that gave people "
             'like you the most jobs')
     else:
-        proposed = _taken_early(search)
-        proposed = _proposed(board_ideas, search) if proposed is None else proposed
+        _wait_early(search)
+        proposed = _proposed(board_ideas, search)
         top, spare = proposed[:SLICE_BOARDS], proposed[SLICE_BOARDS:2 * SLICE_BOARDS]
         if not top:
             return []
@@ -74,10 +74,13 @@ _early = {}   # the slice's board proposal asked at the search's start (propose_
 
 
 def propose_early(search=None):
-    """Ask the slice's board proposal (_proposed) now, in the background, while the search picks its employers -> its future, or None when
-    the slice needs none (proven boards, the end-to-end fixture mode). board_jobs takes its answer instead of asking again.
-    Why (#first-press-jobs, 27 Oct 2026, benchmark run 40446066828): asked inside the slice, its 2 AI calls waited for Claude's 2 slots behind
-    the employer titles and the web search, so the boards started at 41-63 s and the read cut (67 s) left them 5-26 s: 0 board jobs."""
+    """Ask the slice's board proposal (board_ideas.ideas: its AI answers are cached per search) now, in the background, while the search
+    picks its employers -> its future, or None when the slice needs none (proven boards, the end-to-end fixture mode). The slice waits for
+    it (_wait_early) and builds its list then, from the cached answers and the boards the pool serves at that time.
+    Why (#2218, 27 Oct 2026, benchmark run 40446066828): asked inside the slice, its 2 AI calls waited for Claude's 2 slots behind the
+    employer titles and the web search, so the boards started at 41-63 s and the read cut (67 s) left them 5-26 s: 0 board jobs.
+    Why (#2218, its rerun 40449103205): only the AI's answers are taken early, never the list: at 10 s the pool's index is not downloaded
+    yet, and an early list lost its shared boards (aviationcv.com, hipo.ro)."""
     if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
         return None
     from .ai import board_ideas
@@ -86,27 +89,25 @@ def propose_early(search=None):
     if board_ideas.proven(search, limit=SLICE_BOARDS):
         return None
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-proposal')
-    future = pool.submit(_proposed, board_ideas, search)
+    future = pool.submit(board_ideas.ideas, search)
     pool.shutdown(wait=False)
     _early.clear()
     _early.update(search=search, future=future)
     return future
 
 
-def _taken_early(search):
-    """The early proposal's boards for this same search (waited for until the read cut at most), or None: none started, another search,
-    or it failed (the slice asks itself). Taken once."""
-    if _early.get('search') != search:
-        return None
-    future = _early.pop('future', None)
+def _wait_early(search):
+    """The early proposal of this same search ended (waited for until the read cut at most), so the slice's own ask finds its answers
+    cached instead of asking again; nothing for another search or none started. Taken once."""
+    future = _early.pop('future', None) if _early.get('search') == search else None
     _early.clear()
+    if future is None:
+        return
     from .sources import read_budget
     try:
-        return future.result(timeout=read_budget.seconds_left(read_budget.cut_at())) if future else None
-    except Late:   # past the read cut: no board would be read now anyway
-        return []
-    except Exception:  # noqa: BLE001 — the slice asks the proposal itself
-        return None
+        future.result(timeout=read_budget.seconds_left(read_budget.cut_at()))
+    except Exception:  # noqa: BLE001 — late or failed: the slice asks itself (a late answer is cached when it comes)
+        pass
 
 
 def _refused(board_ideas):

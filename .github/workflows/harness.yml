@@ -1,24 +1,50 @@
 name: CI · Harness tests
-# The e2e harness's safety-critical unit tests (desktop/e2e/test-sets.json "pr", about a minute; the rest run daily in harness-daily.yml, owner 17 Oct 2026: 0 catches in 30 days), on a pull request that changes the harness's code. GitHub's `on: paths:` below decides (owner, 14 Oct 2026: "rely fully on gh workflow
-# paths"; the shared pick ran them on a PR that changed only a recorded case). Not a required check: a required check whose workflow `paths:` skips never reports and
-# blocks the PR (tests/test_affected_jobs.py checks no required check lives in a workflow with `paths:`). The backstop for a break from outside these paths is e2e.yml's plan job.
-# History: they ran only in that scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
+# The e2e harness's unit tests a pull request reaches (owner, 27 Oct 2026, "Yes, reached files"): the safety-critical set (desktop/e2e/test-sets.json "pr") when the harness
+# itself changed, plus every test file whose imports reach a changed file (desktop/e2e/lib/test-reach.mjs); the whole folder still runs daily (harness-daily.yml).
+# Why: with only the pr set on PRs, 8c8bd70 and 3fc251e broke daily-set tests unseen and harness-daily stayed red 10 days (17-27 Oct 2026).
+# GitHub's `on: paths:` below starts it for every area a harness test reaches (test/test-reach.test.mjs fails when one is missing); the plan step then picks the files, no install first.
+# Not a required check: a required check whose workflow `paths:` skips never reports and blocks the PR (tests/test_affected_jobs.py). The backstop is harness-daily.yml.
+# History: they ran only in e2e.yml's scheduled plan job, which broke silently for ~11 h (12 Oct 2026, ERR_MODULE_NOT_FOUND after 3394c2e); here they gate the change that would
 # break them (test/recorded-ci-deps.test.mjs checks every job that runs them installs the app's own packages and stages desktop/shared).
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'desktop/e2e/**'
-      # Data that other jobs replay, not harness code: recorded cases (page-cases.yml, "New test pages fail on the old build"), fixture pages, the widget zoo (control-tests.yml).
+      # Every file or folder a harness test reaches (desktop/e2e/lib/test-reach.mjs), so the plan below sees each change that can break one: test/test-reach.test.mjs fails on a missing one.
+      - 'desktop/**'
+      # Data that other jobs replay (page-cases.yml, control-tests.yml); no harness test reaches them (owner, 14 Oct 2026: a recorded case alone started the harness).
       - '!desktop/e2e/recorded/**'
       - '!desktop/e2e/recorded-pending/**'
       - '!desktop/e2e/fixtures/**'
       - '!desktop/e2e/ladder-fixtures/**'
       - '!desktop/e2e/widget-zoo/**'
-      - 'desktop/scripts/stage.mjs'
-      - 'desktop/package.json'
-      - 'desktop/package-lock.json'
+      # ... except the ones a harness test reads (a later pattern wins)
+      - 'desktop/e2e/fixtures/cv.json'
+      - 'desktop/e2e/fixtures/cv.pdf'
+      - 'desktop/e2e/fixtures/golden/truth.json'
+      - 'desktop/e2e/fixtures/real-forms/**'
+      - 'desktop/e2e/recorded/multi-select-menu-1/form.html'
+      - 'extension/**'
+      - 'src/**'   # test/quality.test.mjs reads the engine's folder
       - '.github/workflows/harness.yml'
+      - '.github/workflows/e2e-windows.yml'
+      - '.github/workflows/e2e.yml'
+      - '.github/workflows/journeys.yml'
+      - '.github/workflows/page-cases.yml'
+      - '.github/workflows/replay-refill.yml'
+      - 'hosted/ready-fill/extension-storage.mjs'
+      - 'hosted/ready-fill/fill-video.mjs'
+      - 'tools/browser-submit-guard.js'
+      - 'tools/claim-shape.mjs'
+      - 'tools/design-system/build.mjs'
+      - 'tools/design-system/rules-html.mjs'
+      - 'tools/design-system/serve.mjs'
+      - 'tools/design-system/zip.mjs'
+      - 'tools/pool-rows.mjs'
+      - 'tools/record-env.mjs'
+      - 'tools/rung-trailer.mjs'
+      - 'worker/src/cv-facts.js'
+      - 'worker/src/owner-guard.js'
 
 permissions:
   contents: read
@@ -37,24 +63,42 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # the plan diffs the PR against main
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: Which harness tests this change reaches
+        id: plan
+        working-directory: desktop/e2e
+        run: |
+          git fetch -q origin main
+          node test-sets.mjs reached --base origin/main >> "$GITHUB_OUTPUT"
       - name: Install the tests
+        if: steps.plan.outputs.files != ''
         working-directory: desktop/e2e
         run: npm ci || npm install
       - name: Install the app's own packages
+        if: steps.plan.outputs.files != ''
         working-directory: desktop
         run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
       - name: Stage the app's shared files
+        if: steps.plan.outputs.files != ''
         working-directory: desktop
         run: node scripts/stage.mjs --files-only
-      - name: The safety-critical tests (privacy scrub, records publish and fetch, discovery pick and judge, journey check, gates, ledgers, owner guards)
+      - name: The browsers, when a picked test opens one (the full one loads the extension)
+        if: steps.plan.outputs.browser == 'true'
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: The harness tests this change reaches
+        if: steps.plan.outputs.files != ''
         working-directory: desktop/e2e
+        env:
+          FILES: ${{ steps.plan.outputs.files }}
         # the flags go before the files; the full set runs daily (harness-daily.yml)
         run: |
-          # shellcheck disable=SC2046
-          node --test --test-reporter=spec $(node test-sets.mjs pr)
+          # shellcheck disable=SC2086
+          node --test --test-reporter=spec $FILES
       # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
       - name: Write the PR's verdict
         if: always() && github.event_name == 'pull_request'

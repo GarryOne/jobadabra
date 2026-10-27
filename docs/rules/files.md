@@ -50,9 +50,9 @@ A line that encodes a decision says why, so the next session does not undo it wi
   ``// Why (#2203): `names neither a currency nor a period` — form 106 stayed empty``. The gate then guards those words (3+ words, found in that const), not the whole prompt line.
   A backticked name or path (`` `retryCount` ``) is not a sentence: the line under the Why stays guarded.
   A comment explains; the prompt's case set protects. **A prompt change adds the case it fixed to that prompt's set** (`tools/prompt-cases.json`: the form answers,
-  writing and mail sets), or says `Prompt-case: none <why>` (a typo, a move, a prompt with no set yet); `tools/prompt-cases.mjs` checks it at push. A PR that
-  changes a live set's prompt re-asks the whole set with main's prompts and its own, on Haiku 5.5 through the owner's subscription (`prompt-cases.yml`,
-  ~120 calls, $0 API): a case right on main and wrong twice on the PR, or its new case wrong, fails it. Haiku, not Free AI's qwen: it catches prompt regressions, not model ones.
+  writing and mail sets), or says `Prompt-case: none <why>` (a typo, a move, a prompt with no set yet); `tools/prompt-cases.mjs` checks it at push. The live set
+  comparison is **manual only** (`prompt-cases.yml`, `workflow_dispatch`): choose a ref to compare with main, and Haiku 5.5 checks the cases using main's prompts
+  and the selected ref's prompts. It is a paid proof run, not a PR check. Haiku, not Free AI's qwen: it catches prompt regressions, not model ones.
   A new anchored Why must quote words that are in the code right under it (`tools/why-changed.mjs`).
 - **What the gate guards** (`tools/why-changed.mjs`, in the push's fast checks): the Why's own lines, the first code line under them (not under a file's header),
   the line a trailing Why sits on, and a quoted prompt sentence. Deleting or rewriting one needs `Why-changed: <which Why> — <reason>` in a commit message

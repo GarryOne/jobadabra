@@ -7,6 +7,7 @@ import {shared} from './shared.js';
 import {$, show} from './core.js';
 import {loadJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
+import {restoreView} from '../view-memory.js';
 import {PANEL_KEY, openActivity} from './activity.js';
 import {settingsPage} from './settings.js';
 import {refusal, refusalAction} from '../refusal.js';
@@ -72,13 +73,7 @@ export async function init() {
     loadJobs();
     // After a reload (⌘R), the page and Settings section it was on, once all the code below has loaded (every page's
     // state is declared by then); else Focus.
-    const view = remembered('view'), section = remembered('settingsPage');
-    if (view && view !== 'focus' && document.querySelector(`.view[data-view="${view}"]`)) {
-      setTimeout(() => {
-        openView(view);
-        if (view === 'settings' && section && document.querySelector(`[data-settings-page="${section}"]`)) settingsPage(section);
-      }, 0);
-    } else openView(shared.state.notion ? 'focus' : 'jobs');
+    setTimeout(() => restoreView({document, openView, settingsPage, fallback: shared.state.notion ? 'focus' : 'jobs'}), 0);
     // The Recent activity panel open over it, on the same run (pages/activity.js PANEL_KEY); its content paints when the runs arrive.
     const panel = remembered(PANEL_KEY);
     if (panel) setTimeout(() => { shared.selectedRun = panel === 'live' ? null : Number(panel) || panel; openActivity(true); }, 0);

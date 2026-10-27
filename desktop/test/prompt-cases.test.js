@@ -1,5 +1,5 @@
 // The prompt case gate (tools/prompt-cases.mjs, tools/prompt-cases.json): a push that changes an AI prompt adds the case it fixed to that prompt's set, or says
-// "Prompt-case: none <why>"; the live sets a push reaches are re-asked on the PR (prompt-cases.yml). Owner, 27 Oct 2026.
+// "Prompt-case: none <why>"; the live-set comparison is manually dispatched, never a PR check (prompt-cases.yml). Owner, 27 Oct 2026.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

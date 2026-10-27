@@ -39,7 +39,7 @@ CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suite
 # The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
 # Guard: tests/test_pr_verdict.py recomputes it from .github/workflows (a new PR workflow fails there until listed).
-PR_WORKFLOWS = {'beta-approve.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'harness.yml', 'hosted-probe.yml', 'key-org-proof.yml', 'prompt-cases.yml',
+PR_WORKFLOWS = {'beta-approve.yml', 'e2e-windows.yml', 'e2e.yml', 'extension-store-publish.yml', 'harness.yml', 'hosted-probe.yml', 'key-org-proof.yml',
                 'office-addon.yml', 'page-cases.yml', 'pr-closed-cancel.yml', 'pr-gate.yml', 'pr-suites.yml', 'ready-fill-image.yml', 'search-personas.yml', 'tests-desktop-windows.yml',
                 'tests-desktop.yml', 'tests-python.yml', 'tests-worker.yml'}
 

@@ -1,5 +1,5 @@
 {
-  "_": "Each AI prompt and the fixed case set that protects it (tools/prompt-cases.mjs; owner, 27 Oct 2026: a prompt change adds the case it fixed, and the set replays on any prompt change). live: the PR job re-asks the set on Haiku 5.5 through the owner's subscription (.github/workflows/prompt-cases.yml). A prompt in no set: its change says 'Prompt-case: none <why>' until it gets one.",
+  "_": "Each AI prompt and the fixed case set that protects it (tools/prompt-cases.mjs; owner, 27 Oct 2026: a prompt change adds the case it fixed, and the set replays on any prompt change). live: manual workflow_dispatch only; compares the selected ref with main on Haiku 5.5 through the API key (.github/workflows/prompt-cases.yml), not a PR check. A prompt in no set: its change says 'Prompt-case: none <why>' until it gets one.",
   "sets": {
     "form": {
       "live": true,

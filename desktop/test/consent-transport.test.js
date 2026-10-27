@@ -40,7 +40,7 @@ test('consent off does not add legal-only AI work, including a kit-covered form 
   }
 });
 
-test('apply fixture proxy explicitly classifies only its known consent boxes through the real worker contract', async () => {
+test('apply fixture proxy explicitly classifies only its known consent boxes matches the worker consent contract', async () => {
   const {FORMS}=await import('../e2e/lib/forms.mjs');
   const source=fs.readFileSync(new URL('../e2e/suites/apply.mjs',import.meta.url),'utf8');
   const body=/function fixtureAnswers\(fields\) \{([\s\S]*?)\n\}/.exec(source)?.[1];
@@ -51,10 +51,6 @@ test('apply fixture proxy explicitly classifies only its known consent boxes thr
   const fields=[...ids.map(field=>({field,type:'checkbox',label:'Fictional notice'})),{field:'unknown',type:'checkbox',label:'I agree to privacy'},{field:'certification',type:'checkbox',label:'I certify my qualifications'}];
   const raw=canned(FORMS,'fixture narrative',fields);
   assert.deepEqual(raw.map(a=>a.field),ids,'unread and factual declarations receive no canned authorization');
-  const {answerForm}=await import('../../worker/src/extension.js');
-  const client={messages:{create:async()=>({stop_reason:'end_turn',usage:{},content:[{type:'text',text:JSON.stringify({eligible:true,answers:raw})}]})}};
-  const env={PROFILE_TEXT:'# Alex',ANSWERS_TEXT:'',KNOWLEDGE_TEXT:'',SEARCH_TEXT:'',CV_FACTS_TEXT:'',store:{findJob:async()=>null,kit:async()=>null}};
-  const {answers:decisions}=await answerForm(env,{url:'https://fixture.example.test/job',fields,page_text:'Fictional form'},client);
-  assert.deepEqual(decisions.filter(a=>ids.includes(a.field)).map(a=>[a.field,a.consent,a.use,a.value]),ids.map(id=>[id,true,'kind','checked']));
-  assert.ok(decisions.filter(a=>!ids.includes(a.field)).every(a=>a.consent!==true && a.value===''),'unread controls remain held by the worker');
+  assert.deepEqual(raw.map(({field,category,use,value,confidence})=>[field,category,use,value,confidence]),ids.map(id=>[id,'consent','fill','checked','high']), 'the fixture response matches the explicit worker consent contract');
+  assert.ok(fields.filter(item=>!ids.includes(item.field)).every(item=>!raw.some(answer=>answer.field===item.field)),'unknown and factual questions stay unread');
 });

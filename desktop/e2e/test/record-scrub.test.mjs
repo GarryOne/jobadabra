@@ -50,12 +50,31 @@ test('the scrub removes the person\'s values and any e-mail from text bodies and
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'bodies', after[2].hash), 'utf8')).id, 1792155265346, 'a long number is not a phone');
 });
 
-test('what the scrub cannot rewrite is caught by the gate: an address hidden in base64 or percent-encoding keeps the row off the release', () => {
+test('what the scrub cannot rewrite is caught by the gate: an address in a URL keeps the row off the release (base64 in a body is rewritten, see below)', () => {
   const dir = recordIn([{url: 'https://site.example.test/state', type: 'application/json', body: JSON.stringify({blob: Buffer.from(`mail ${ADDRESS} end`).toString('base64')})},
     {url: 'https://site.example.test/q?next=owner.name%2Bjp%40gmail.com', type: 'text/html', body: '<p>x</p>'}]);
   scrubRecordDir(dir, values);
   const hits = gateRecordDir(dir, values);
-  assert.deepEqual(hits.map(hit => `${hit.kind} in ${hit.in}`).sort(), ['email in body', 'email in url']);
+  assert.deepEqual(hits.map(hit => `${hit.kind} in ${hit.in}`), ['email in url']);
+});
+
+// Why (27 Oct 2026, owner): the scrub left one address in a recorded Personio page (44 others went) and the publish gate refused the row. The gate reads every decoded form; the scrub only undid ONE layer of "@" encoding.
+// A FAKE address in each kind of encoding the gate searches: the scrub must leave the gate nothing, whatever the layers.
+test('an address encoded more than once, or inside base64, is scrubbed as well as a plain one', () => {
+  const fake = 'jane.fake@acme-test.de', twice = encodeURIComponent(encodeURIComponent(fake));
+  const bodies = [
+    {url: 'https://site.example.test/a', type: 'text/html', body: `<a href="x?m=${twice}">mail</a>`},
+    {url: 'https://site.example.test/b', type: 'text/html', body: '<p>jane.fake&amp;#64;acme-test.de</p>'},
+    {url: 'https://site.example.test/c', type: 'application/json', body: JSON.stringify({m: 'jane.fake@acme-test.de'}).replace('@', '\\u0040')},
+    {url: 'https://site.example.test/d', type: 'application/json', body: JSON.stringify({blob: Buffer.from(`{"email":"${fake}","n":1}`).toString('base64')})},
+    {url: 'https://site.example.test/e', type: 'application/json', body: JSON.stringify({blob: Buffer.from(`{"email":"${fake}"}`).toString('base64url')})},
+  ];
+  for (const one of bodies) {
+    const dir = recordIn([one]), inBody = () => gateRecordDir(dir, values).filter(hit => hit.in === 'body');
+    assert.equal(inBody().length, 1, `${one.url}: the gate sees it before`);
+    scrubRecordDir(dir, values);
+    assert.deepEqual(inBody(), [], `${one.url}: nothing left after`);
+  }
 });
 
 test('a record with nothing personal is not touched at all', () => {

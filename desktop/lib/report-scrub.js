@@ -30,7 +30,8 @@ export function decodedForms(text) {
 const BASE64 = /[A-Za-z0-9+/_-]{40,}={0,2}/g;
 const b64Forms = text => (text.match(BASE64) || []).map(run => Buffer.from(run.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('latin1'));
 // The few encoded spellings of "@" and of a space that stand between an e-mail's or phone's parts: written plain before the scrub, so its shapes match (a page does not break on a raw @).
-const plainSeparators = text => text.replace(/%40|&#0*64;|&#x0*40;|\\u0040|\\x40/gi, '@').replace(/&nbsp;|&#0*160;|&#xa0;/gi, ' ');
+// Why (27 Oct 2026, owner: scrub missed an e-mail in a recorded Personio page): the "@" can be encoded more than once ("%2540", "&amp;#64;", "\\u0040" inside a JSON string), so each spelling allows its own escape layers in front.
+const plainSeparators = text => text.replace(/%(?:25)*40|&(?:amp;)*(?:#0*64|#x0*40|commat);|\\+u0040|\\+x40/gi, '@').replace(/&nbsp;|&#0*160;|&#xa0;/gi, ' ');
 
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const ONE_EMAIL = new RegExp(`^${EMAIL.source}$`);
@@ -125,6 +126,7 @@ export function scrubPersonal(text, {type = '', url = '', values = new Map()} = 
   let out = ownOut(plainSeparators(original), values, code, counts);
   EMAIL.lastIndex = 0;
   out = out.replace(EMAIL, email => { if (EXAMPLE.test(email)) return email; counts.contacts += 1; return FAKE_EMAIL; });
+  out = b64EmailsOut(out, counts);
   for (const [value, kind] of values) {
     if (kind !== 'phone') continue;
     const digits = String(value).replace(/\D/g, '');
@@ -133,6 +135,21 @@ export function scrubPersonal(text, {type = '', url = '', values = new Map()} = 
   }
   return counts.own || counts.contacts || counts.phones ? {text: out, counts} : {text: original, counts};
 }
+
+// An address inside a base64 run (a JSON answer or a token carrying one): the run is decoded, the address (when the text around it is text, as the gate counts it) becomes the fake one, and the run is written back in
+// its own alphabet. A run with no address stays as it was. Why (27 Oct 2026, owner): personalHits searches base64 runs, so the replay scrub has to clean them or the publish gate refuses the row.
+const b64EmailsOut = (text, counts) => text.replace(BASE64, run => {
+  const urlSafe = /[-_]/.test(run), inner = Buffer.from(run.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('latin1');
+  EMAIL.lastIndex = 0;
+  const clean = inner.replace(EMAIL, (email, ...rest) => {
+    const at = rest[rest.length - 2];
+    if (EXAMPLE.test(email) || !inText(inner, at, email.length)) return email;
+    counts.contacts += 1; return FAKE_EMAIL;
+  });
+  if (clean === inner) return run;
+  const b64 = Buffer.from(clean, 'latin1').toString('base64');
+  return urlSafe ? b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') : b64;
+});
 
 // What a scrubbed replay record must no longer hold, in every decoded form (URL, JSON, HTML entities, base64): an e-mail address that is not an example one, and any of the person's own values.
 // Narrower than lastGate (no phone SHAPE, no token shapes: those would fire on a replay's own numbers). -> [kind, ...] (kinds only, never a value)

@@ -64,18 +64,18 @@ test('a job\'s key, job name or artifact folder leads back to its suite', () => 
   assert.deepEqual(windowsMatrix(['jobs', 'recorded'], {recorded: 2}).include.map(item => item.key), ['jobs', 'recorded-1of2', 'recorded-2of2']);
 });
 
-// The class: every workflow job that runs `node suite.mjs ${{ matrix.suite }}`. Its slice reaches the suite, and its identity (job name, group, caches, artifacts) is the key,
+// The class: every workflow job that runs `node suite.mjs ${{ matrix.suite }}` (e2e.yml: through its `once` function, since 26 Oct 2026). Its slice reaches the suite, and its identity (job name, group, caches, artifacts) is the key,
 // so two slices never share a concurrency group (a third waiting job there is cancelled) or overwrite each other's artifacts.
 test('every workflow job that runs a suite passes its slice and names everything by key', () => {
   const dir = path.join(ROOT, '.github/workflows');
   const jobs = [];
   for (const file of fs.readdirSync(dir).filter(name => name.endsWith('.yml'))) {
     const text = fs.readFileSync(path.join(dir, file), 'utf8');
-    for (const block of text.split(/\n(?=  [\w-]+:\n)/)) if (/node suite\.mjs \$\{\{ matrix\.suite \}\}/.test(block)) jobs.push({file, id: /^\s*([\w-]+):/.exec(block)[1], block});
+    for (const block of text.split(/\n(?=  [\w-]+:\n)/)) if (/(node suite\.mjs|once) \$\{\{ matrix\.suite \}\}/.test(block)) jobs.push({file, id: /^\s*([\w-]+):/.exec(block)[1], block});
   }
   assert.deepEqual(jobs.map(job => `${job.file}:${job.id}`).sort(), ['desktop.yml:test-mac', 'desktop.yml:test-windows', 'e2e-windows.yml:suite', 'e2e.yml:suite']);
   // Where the suite's own name is right: its file, the command that runs it, a comparison with a named suite, a step's title, the steps a PR picked for it (every slice runs them).
-  const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|matrix\.suite == '|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]/;
+  const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|once \$\{\{ matrix\.suite \}\}|\[ "\$\{\{ matrix\.suite \}\}" != quality|matrix\.suite == '|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]/;
   for (const job of jobs) {
     assert.match(job.block, /JP_REPLAY_SHARD: \$\{\{ matrix\.shard \}\}/, `${job.file} ${job.id}: pass the slice to the suite (JP_REPLAY_SHARD: \${{ matrix.shard }})`);
     for (const line of job.block.split('\n').filter(text => text.includes('matrix.suite') && !allowed.test(text)))

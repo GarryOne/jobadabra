@@ -97,7 +97,9 @@ test('a refresh looks at the page again, and the popup has a permanent Apply for
 test('the popup\'s Apply on this page forgets the tried Apply press, only for the person\'s own press', () => {
   const read = name => fs.readFileSync(new URL(`../../extension/${name}`, import.meta.url), 'utf8');
   const messages = read('messages-panel.js');
-  assert.match(messages, /import \{consider, tabReloaded\} from '\.\/fill-flow\.js'/);
+  // Why (#2221, 27 Oct 2026): checks the imported names, in any import line from fill-flow.js; an exact line text went red when another name joined that import.
+  const fromFillFlow = [...messages.matchAll(/import \{([^}]*)\} from '\.\/fill-flow\.js'/g)].flatMap(m => m[1].split(',').map(name => name.trim()));
+  for (const name of ['consider', 'tabReloaded']) assert.ok(fromFillFlow.includes(name), `messages-panel.js imports ${name} from ./fill-flow.js`);
   assert.match(messages, /message\?\.type === 'applyHere'[\s\S]*tabReloaded\(tab\.id\);[\s\S]*consider\(tab, await jobOf\(tab\)\)/);
   assert.equal([...read('fill-flow.js').matchAll(/forgetApplyTries\(/g)].length, 1, 'fill-flow.js calls it only inside tabReloaded: never by itself after an Apply press');
 });

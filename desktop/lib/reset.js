@@ -20,9 +20,10 @@ export const NOTION_FILE = 'notion.json';  // a Notion copy older exports could 
 // files of an export or reset in progress. secrets.json goes in (8 Oct 2026: left out, an export imported back on the same Mac lost its Notion key and
 // asked to connect from scratch): its keys are sealed for this computer, so they open only here; elsewhere they count as unreadable and are asked again
 // (storage.js), unless keys.json (plain keys, when asked for at export) brings them.
-export const LEFT_OUT = [/cache/i, /^(Dawn.*|Graphite.*|Shared Dictionary|SharedStorage.*|blob_storage|Local Storage|Session Storage|IndexedDB|WebStorage|Network|Network Persistent State|Crashpad|Preferences|Local State|Trust Tokens.*|Cookies.*|Dictionaries|Service Worker|VideoDecodeStats|shared_proto_db|databases|Partitions|DIPS.*|declarative_performance_observer\.db.*|DevToolsActivePort|Singleton.*|TransportSecurity|Origin Bound Certs|QuotaManager.*|Login Data.*|Web Data.*|Visited Links|Favicons.*|History.*|Top Sites.*|logs|bin|manifest\.json|keys\.json|accounts\.json|notion\.json|reset-pending\.json)$/];
+export const LEFT_OUT = [/cache/i, /\.private-tmp$/, /^(Dawn.*|Graphite.*|Shared Dictionary|SharedStorage.*|blob_storage|Local Storage|Session Storage|IndexedDB|WebStorage|Network|Network Persistent State|Crashpad|Preferences|Local State|Trust Tokens.*|Cookies.*|Dictionaries|Service Worker|VideoDecodeStats|shared_proto_db|databases|Partitions|DIPS.*|declarative_performance_observer\.db.*|DevToolsActivePort|Singleton.*|TransportSecurity|Origin Bound Certs|QuotaManager.*|Login Data.*|Web Data.*|Visited Links|Favicons.*|History.*|Top Sites.*|logs|bin|manifest\.json|keys\.json|accounts\.json|notion\.json|reset-pending\.json)$/];
 // Inside the folders that go in: a run's lock (data/run.lock) would make the first run after an import wait for a holder that is gone.
-const LEFT_OUT_INSIDE = ['*.lock'];
+// A save killed before its rename (lib/private-file.js, #2279) leaves a *.private-tmp beside the file: never exported.
+const LEFT_OUT_INSIDE = ['*.lock', '*.private-tmp'];
 export const exported = dir => fs.readdirSync(dir).filter(name => !LEFT_OUT.some(rule => rule.test(name)));
 const stamp = now => now.toISOString().slice(0, 16).replace('T', ' ').replace(':', '.');
 // A name not taken yet: a reset and then an import in the same minute (the setup's "Import an export…") wanted the same folder, the rename

@@ -202,8 +202,13 @@ export async function completeWizardLetter(ctx) {
   const letter = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
   const previous = proxy.canned();
   let answered = 0;
-  // Why (2026-10-27): entering setup starts generation immediately; arm the stub before the transition so this test never asks a model.
-  proxy.setCanned(() => { answered += 1; return JSON.stringify({letter}); });
+  const cv = JSON.parse(fs.readFileSync(new URL('../fixtures/cv.json', import.meta.url), 'utf8'));
+  // Why (#2304): setup saves CV details before drafting; answer their distinct schemas and refuse unknown calls before auto-generation starts.
+  proxy.setCanned(body => {
+    const answer = wizardSetupAnswer(body, {letter, cv});
+    if (typeof answer === 'string' && Object.hasOwn(JSON.parse(answer), 'letter')) answered += 1;
+    return answer;
+  });
   try {
     await ctx.withApi(async () => {
       await page.click('#draft-save');
@@ -220,4 +225,18 @@ export async function completeWizardLetter(ctx) {
       await page.click('#setup-letter-next');
     });
   } finally { proxy.setCanned(previous); }
+}
+
+
+/** Answer only the setup's letter/details schemas from fictional fixtures; unknown calls are refused without model passthrough. */
+export function wizardSetupAnswer(body, {letter, cv}) {
+  const properties = body?.output_config?.format?.schema?.properties || {};
+  if (Object.keys(properties).length !== 1) return {refuse: 'no-credit'};
+  if (properties.letter) return JSON.stringify({letter});
+  if (properties.proposals) {
+    const [first, ...last] = cv.name.trim().split(/\s+/);
+    const stated = {first_name: first, last_name: last.join(' '), location: cv.location};
+    return JSON.stringify({proposals: Object.entries(stated).filter(([, value]) => value).map(([field, value]) => ({field, value, sure: true, source: 'cv', how: 'stated'}))});
+  }
+  return {refuse: 'no-credit'};
 }

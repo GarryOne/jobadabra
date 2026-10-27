@@ -57,3 +57,18 @@ test('a write that fails leaves the old file whole and no temp file', {skip: pro
   assert.equal(fs.readFileSync(file, 'utf8'), '{"kept":true}');
   assert.deepEqual(fs.readdirSync(dir).sort(), ['settings.json', 'settings.json.dir']);
 });
+
+// #2279, gitar-bot: a save killed before its rename leaves the private content in <file>.<pid>-<n>.private-tmp. The next save removes it once that process is gone,
+// keeps a live process's temp (it may be renaming now), and an export never carries one.
+test('a killed save leaves no temp that outlives its process or goes into an export', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-private-'));
+  const file = path.join(dir, 'secrets.json');
+  const gone = spawn(process.execPath, ['-e', '']);
+  await new Promise(done => gone.on('exit', done));
+  const dead = `secrets.json.${gone.pid}-1.private-tmp`, live = `secrets.json.${process.ppid}-1.private-tmp`;
+  for (const name of [dead, live]) fs.writeFileSync(path.join(dir, name), '{"key":"half"}');
+  writePrivate(file, '{"key":"whole"}');
+  assert.deepEqual(fs.readdirSync(dir).sort(), [live, 'secrets.json'].sort());
+  const {LEFT_OUT} = await import('../lib/reset.js');
+  assert.ok(LEFT_OUT.some(rule => rule.test(live)), 'the export leaves temp files out');
+});

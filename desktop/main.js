@@ -39,7 +39,6 @@ import {registerSearchTuningHandlers} from './lib/search-tuning-handlers.js';
 import {settingsDepsFor} from './lib/settings-deps.js';
 import {createSessionFlow} from './lib/session-flow.js';
 import * as cvlib from './lib/cv.js';
-import * as tailorStatus from './lib/tailor-status.js';
 import * as github from './lib/github.js';
 import * as reminders from './lib/interview-reminders.js';
 import * as engineLog from './lib/engine-log.js';
@@ -314,9 +313,9 @@ if (twinRefusal()) { console.error(`Jobadabra twin refused: ${twinRefusal()}`); 
 // A reset asked for in Settings → Danger zone: the data folder is moved aside (or deleted) now, before anything
 // opens it; the app then starts like the first time (the setup wizard).
 let resetDone = null;
-// What the form's panel shows about a job's CV: tailored already, or being tailored now (jobs whose Tailor CV was asked from the panel).
+// What the form's panel shows about a job's CV: tailored already, or being tailored now in the window (lib/cv-handlers.js 'tailorCv').
 const tailoring = new Set();
-const cvOf = url => ({tailored: !!cvlib.forUrl(storage, url), working: tailoring.has(server.pageKey(url)), status: tailorStatus.statusOf(url)});
+const cvOf = url => ({tailored: !!cvlib.forUrl(storage, url), working: tailoring.has(server.pageKey(url))});
 const syncCv = createCvSync({DEMO, getStorage: () => storage});   // lib/cv-sync.js
 const {dataJob, backupNow} = createDataJob({toWindow, backupWith: options => backup.run(storage, {version: about?.label || '', ...options}), appLog});   // one export, import or backup at a time, its progress for the window (lib/data-job.js)
 try { resetDone = reset.applyPending(app.getPath('userData')); } catch (error) { console.error('Reset failed:', error.message); resetDone = {failed: error.message}; }

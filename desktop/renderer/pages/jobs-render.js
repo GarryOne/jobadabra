@@ -303,7 +303,7 @@ export function renderJobs() {
     if (job.code) {
       // A CV tailored to this posting (reworded, reordered bullets from your own CV; the extension uploads it here).
       const tailorNow = () => background('✂️ Tailoring CV…', async () => {
-        const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`);
+        const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, job.url);
         if (result.ok) job.tailored = true; else toastMessage('Tailoring failed', result.error || 'Try again.', jobPlace(job), 'bad');
       });
       menu.push({icon: 'scissors', wand: true, label: job.tailored ? 'Re-tailor CV + cover letter' : 'Tailor CV + cover letter',

@@ -121,7 +121,7 @@ export function registerKitHandlers(ctx) {
       return {ok: false, error: error.message};
     }
   };
-  ipcMain.handle('tailorCv', (_, code, name) => tailorCv(code, name));
+  // The window's 'tailorCv' is answered in cv-handlers.js: it also marks the job as being tailored for the form's panel and restarts the job's open form when done.
   // Tailor CVs for top matches (Actions): the best N open jobs without a tailored CV, one after another (about 1-2 minutes each),
   // so the form needs no wait for it. One notification at the end; each CV is listed on its job as 📄 Tailored CV to check.
   ipcMain.handle('tailorTop', async (_, count) => {

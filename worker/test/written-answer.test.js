@@ -39,7 +39,7 @@ test('a draft the AI called a proposal is typed as a draft anyway (the person re
 });
 
 test('the prompt tells the AI to draft from the given facts only and never to invent', () => {
-  for (const part of [/never invent an employer, project, tool, number, date or incident/, /• Add:/, /first person/, /never leave it as a bare empty box/, /answers the question that is asked/, /never fill the box with facts unrelated to the question/, /never leave the question.s subject only to the/]) assert.match(WRITTEN_RULE, part);
+  for (const part of [/never invent an employer, project, tool, number, date or incident/, /• Add:/, /first person/, /never leave it as a bare empty box/, /answers the question that is asked/, /never fill the box with facts unrelated to the question/, /never leave the question.s subject only to the/, /never a claim that the applicant did, kept, improved or knows how to do the question.s subject itself/]) assert.match(WRITTEN_RULE, part);
 });
 
 test('/extension/review-answer: one AI read, the form is never touched; needs a question and text', async () => {

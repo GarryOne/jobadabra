@@ -40,7 +40,7 @@ class ReplayVerifyWorkflow(unittest.TestCase):
 
     def test_the_replays_run_on_linux_with_the_browser_libraries(self):
         self.assertNotIn('macos', WORKFLOW)   # macOS runners queued for hours (15 Oct 2026); Linux replays Mac-made rows as live (site-replays-pr.yml)
-        self.assertIn('install --with-deps chromium', WORKFLOW)
+        self.assertIn('uses: ./.github/actions/playwright-browser\n        with: {working-directory: desktop/e2e, mode: both}', WORKFLOW)   # the browser and its system libraries, cached (#2269)
 
     def test_a_run_can_be_limited_to_named_rows(self):
         # 15 Oct 2026: 5 rows were skipped by the 20-job cap; they run in a run of their own, the cap stays

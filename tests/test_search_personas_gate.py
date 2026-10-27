@@ -76,6 +76,28 @@ class SilenceIsNeverGreen(unittest.TestCase):
         self.assertNotIn('local', row)
 
 
+class GitarsEdgeCases(unittest.TestCase):
+    """gitar on #2243 (27 Oct 2026), and the red table a cancelled run posted on it."""
+    def test_a_main_run_with_an_errored_persona_does_not_take_a_place_in_the_floor(self):
+        errored = {**FIRST_PRESS, 4: {'persona': 4, 'error': 'the judge wrote no verdicts (see judge.log)'}}
+        high = run([0, 0, 0, 9, 0, 0], [150] * 6)
+        verdict = gate.compare(FIRST_PRESS, [errored, errored, high, high, FIRST_PRESS])
+        self.assertEqual(verdict['rows'][3]['main'], [9, 9, 1], "p4's floor: the newest 3 measured runs, the errored ones skipped")
+        self.assertEqual(verdict['state'], 'success')
+        self.assertNotIn('ls main | wc -l', WORKFLOW, 'every listed main run is read, not the first 3 folders')
+
+    def test_a_reply_that_leaves_jobs_out_fails_the_judge(self):
+        jobs = [{'n': 1}, {'n': 2}, {'n': 3}]
+        with self.assertRaisesRegex(ValueError, 'left out 1 of 3'):
+            gate_judge.complete({1: {}, 2: {}}, jobs)
+        self.assertEqual(len(gate_judge.complete({1: {}, 2: {}, 3: {}}, jobs)), 3)
+
+    def test_a_cancelled_run_posts_no_table(self):
+        compare = WORKFLOW.split('\n  compare:\n', 1)[1]
+        self.assertIn("if: ${{ !cancelled() }}", compare.split('steps:')[0])
+        self.assertNotRegex(compare.split('steps:')[0], r'(?m)^    if: always\(\)')
+
+
 class TheFilesRoundTrip(unittest.TestCase):
     def test_result_and_compare_read_what_the_jobs_write(self):
         with tempfile.TemporaryDirectory() as tmp:

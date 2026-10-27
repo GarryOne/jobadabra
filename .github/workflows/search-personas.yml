@@ -156,7 +156,7 @@ jobs:
   compare:
     name: Search check
     needs: persona
-    if: always()
+    if: ${{ !cancelled() }}   # Why (#2243): a run a newer push cancelled posted a red table ("p6: no result"); only a finished run is compared
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -177,8 +177,8 @@ jobs:
           for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow search-personas.yml --branch main --event push --status completed --limit 10 \
                         --json databaseId --jq '.[].databaseId'); do
             [ "$id" = "$GITHUB_RUN_ID" ] && continue
+            # Why (gitar on #2243): every listed run, so a run with an errored persona does not take one of its 3 places (gate.py keeps the newest 3 measured)
             gh run download "$id" -R "$GITHUB_REPOSITORY" -n search-personas-result -D "main/$id" 2>/dev/null || continue
-            ls main | wc -l | grep -qx 3 && break
           done
           echo "main runs: $(ls main | tr '\n' ' ')"
       - name: Compare with main

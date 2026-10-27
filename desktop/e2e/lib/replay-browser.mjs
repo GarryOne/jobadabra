@@ -53,12 +53,12 @@ export function nextRunnable(queue, runningHosts) {
 }
 
 // -> {run, live, serve, close}: one browser, the stand-in answering by case. items: every case that may run in it (their AI routes are known up front).
-export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp = false, startExtension = startRealExtension, judge = judgeCase, caseBudgetMs, cleanupMs, onStarted = () => {}} = {}) {   // appPort: the caller's own stand-in app (row replay); then the AI answers and the request lists below are the caller's
+export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp = false, startExtension = startRealExtension, judge = judgeCase, caseBudgetMs, cleanupMs, onStarted = () => {}, signal, onCleanup} = {}) {   // appPort: the caller's own stand-in app (row replay); then the AI answers and the request lists below are the caller's
   const live = [];   // states of the cases running now: {item, hosts, answer, from, tabs: Set, opened: [pages], shared}
   const allHosts = [...new Set(items.flatMap(caseHosts))];   // a request that names none of them could belong to any tab
   const routes = [...new Set(items.flatMap(item => Object.keys(item.ai || {})))];
   const answer = Object.fromEntries(routes.map(route => [route, sent => { const state = caseForRequest(live, route, sent); return state?.answer[route] ? state.answer[route](sent) : {}; }]));
-  const run = await startExtension({extensionDir, cv: items.some(item => item.cv !== false), allowAllSites: true, answer, offline: true, appPort, cdp, contactFor: query => contactForUrl(live, query.get('url'))});   // each tab's own applicant details (a case's `contact`: its phone), asked by the page's address
+  const run = await startExtension({extensionDir, cv: items.some(item => item.cv !== false), allowAllSites: true, answer, offline: true, appPort, cdp, signal, onCleanup, contactFor: query => contactForUrl(live, query.get('url'))});   // each tab's own applicant details (a case's `contact`: its phone), asked by the page's address
   onStarted(run);
   const files = new Map(), statuses = new Map(), delays = new Map(), redirects = new Map();   // pathKey -> each live case's response; a synthetic redirect is consumed once
   await run.context.route('**/*', route => {   // ONE route for the browser, before any tab navigates: a route added while another tab loads let a request out (example.ch, 11 Oct 2026)
@@ -120,8 +120,9 @@ export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp 
 
 // Every case in one browser, `tabs` at a time. -> results in the order of items: {name, ok, failures, seen}. A case that throws is a failure with the error as its reason.
 export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, startBrowser = startReplayBrowser, ...browserOptions} = {}) {
-  let startupExpired = false, startingRun, browser;
-  const startup = Promise.resolve().then(() => startBrowser(items, {extensionDir, ...browserOptions, onStarted: run => {
+  const startupController = new AbortController();
+  let startupExpired = false, startingRun, startupClose, browser;
+  const startup = Promise.resolve().then(() => startBrowser(items, {extensionDir, ...browserOptions, signal: startupController.signal, onCleanup: close => { startupClose = close; }, onStarted: run => {
     startingRun = run;
     if (startupExpired) { void replayLimit('late replay startup cleanup', 5000, () => run.close()).catch(() => {}); throw new Error('replay startup already expired'); }
   }})).then(found => {
@@ -131,6 +132,8 @@ export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, sta
   try { browser = await replayLimit('replay browser startup', browserOptions.startupMs || 120000, () => startup); }
   catch (error) {
     startupExpired = true;
+    startupController.abort(error);
+    if (startupClose) await replayLimit('partial replay startup cleanup', 5000, startupClose).catch(() => {});
     if (startingRun) await replayLimit('failed replay startup cleanup', 5000, () => startingRun.close()).catch(() => {});
     throw error;
   }
@@ -161,6 +164,6 @@ export async function replayInTabs(items, {tabs = 4, extensionDir, onResult, sta
 const runInTab_ = async (browser, item) => {
   const began = Date.now();
   try { return await browser.runInTab(item); }
-  catch (error) { return {name: item.name, ok: false, fatal: error.code === 'REPLAY_TIMEOUT', seconds: (Date.now() - began) / 1000,
+  catch (error) { return {name: item.name, ok: false, fatal: true, seconds: (Date.now() - began) / 1000,
     failures: [`error: ${String(error?.message || error).slice(0, 200)}`], seen: {tabs: 0, opened: 0}}; }
 };

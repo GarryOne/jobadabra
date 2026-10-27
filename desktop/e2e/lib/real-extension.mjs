@@ -36,7 +36,7 @@ export const FAKE_CONTACT = {first_name: 'Test', last_name: 'Candidate', email: 
 
 // options: {extensionDir (default: this checkout's extension/), cv: true|false (the CV the app has), letter: true|false (an approved cover letter file),
 // contact (fake details)}. -> {context, page, port, requests, assertIsolated, panel, fillWithPanel, told, controlReports, close}
-export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = true, letter = false, contact = FAKE_CONTACT, answer = {}, allowAllSites = false, offline = false, appPort = 0, cdp = false, timezoneId = '', contactFor = null} = {}) {   // answer: {route: () => body} the stub app gives instead of {} (e.g. the page-kind AI's word)
+export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = true, letter = false, contact = FAKE_CONTACT, answer = {}, allowAllSites = false, offline = false, appPort = 0, cdp = false, timezoneId = '', contactFor = null, signal, onCleanup = () => {}} = {}) {   // answer: {route: () => body} the stub app gives instead of {} (e.g. the page-kind AI's word)
   const port = appPort || await freePort();   // appPort: the caller's own stand-in app answers on it (row replay): this file starts no stub, and `answer`/`requests` stay unused
   const copy = copyExtension(port, extensionDir);
   // allowAllSites: a fresh test Chrome has not pressed the extension's Allow (the optional "any site" permission a person has granted once), so a site outside the
@@ -61,9 +61,22 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
       Promise.resolve(answers[route] ? answers[route](body, new URL(request.url, 'http://stand-in').searchParams) : answer[route] ? answer[route](body) : {}).then(found => { response.writeHead(200, headers); response.end(JSON.stringify(found)); });   // a case's answer may come late (page-replay.mjs answerFor _delayMs)
     });
   });
+  let context, worker, control;
+  const close = async () => {
+    try { await replayLimit('isolated browser.close', 3500, () => context?.close()); }
+    catch (error) {
+      // Why (2026-10-27): a stuck context close must not leave its browser alive after the case deadline.
+      if (control) await replayLimit('isolated browser force-close', 1000, () => control.send('Browser.close')).catch(() => {});
+      throw error;
+    } finally { stub?.closeAllConnections(); stub?.close(); }
+  };
+  // Cleanup is published before listening or launching, so a stalled partial startup remains reachable.
+  onCleanup(close);
+  const checkCancelled = async () => { if (signal?.aborted) { await close(); signal.throwIfAborted(); } };
+  await checkCancelled();
   if (stub) await new Promise(resolve => stub.listen(port, '127.0.0.1', resolve));
+  await checkCancelled();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-real-ext-'));
-  let context, worker;
   try {
     launchGuard.check();   // a browser that did not start earlier in this process: stop now, never wait again per case (lib/launch-guard.mjs)
     context = await chromium.launchPersistentContext(profile, {
@@ -72,23 +85,21 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
         // offline: a replay's pages come from routes; any host they do not serve resolves to nothing (11 Oct 2026: a route set while another tab loaded let one request out)
         ...(offline ? ['--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1 , EXCLUDE localhost'] : [])],
     });
+    await checkCancelled();
     worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
   } catch (error) {
     launchGuard.failed(error);
-    await context?.close().catch(() => {}); stub?.close();
+    await close().catch(() => {});
     throw error;
   }
+  await checkCancelled();
   await setExtensionStorage(worker, {workerUrl: `http://127.0.0.1:${port}`, token: 'e2e', ladderAct: true});   // ladderAct: the fill ladder's repair acts in test runs only (fake applicant; extension/ladder/fill-climb.js)
+  await checkCancelled();
   const page = await context.newPage();
-  const control = await context.newCDPSession(page);
-  const close = async () => {
-    try { await replayLimit('isolated browser.close', 3500, () => context.close()); }
-    catch (error) {
-      // Why (2026-10-27): a stuck context close must not leave its browser alive after the case deadline.
-      await replayLimit('isolated browser force-close', 1000, () => control.send('Browser.close')).catch(() => {});
-      throw error;
-    } finally { stub?.closeAllConnections(); stub?.close(); }
-  };
+  await checkCancelled();
+  control = await context.newCDPSession(page);
+  await checkCancelled();
+
 
   // Fails the run unless the extension talks to the stand-in only (isolationProblem).
   const assertIsolated = async () => {
@@ -98,6 +109,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   };
   await assertIsolated().catch(async error => { await close(); throw error; });
 
+  await checkCancelled();
   const panel = () => page.evaluate(() => {
     const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
     const text = selector => (root?.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();

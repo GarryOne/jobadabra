@@ -138,8 +138,24 @@ const readFieldsInPage = keys => {
 // The page's own visible required controls, by the HTML's structure (required, aria-required): a lower bound of what is required (a starred label without the attribute is not seen here).
 // Not read: a type-to-search box (its text is the search, emptied after a choice; react-select keeps a hidden required input only while nothing is chosen, which is read).
 // A choice option (role radio/checkbox/option) is answered when its group holds a checked one; an upload slot when it holds a file or shows the attached file's name (cvName).
+// Whether a frame's <iframe> is on the page a person sees: laid out, not visibility:hidden, no ancestor at opacity 0 (a closed sidebar fades out and keeps its forms). Only for frames: a
+// control's own opacity 0 stays read (react-select's required input). Runs in the page, so it is a plain function.
+// Why (27 Oct 2026, pool run 40497749589): a careers page's faded-out sidebar held HubSpot iframes with 15 empty required boxes; the check counted them, the panel (rightly) did not.
+function shownToPerson(el) {
+  const box = el.getBoundingClientRect();
+  if (!el.getClientRects().length || !box.width || !box.height) return false;
+  return el.checkVisibility ? el.checkVisibility({opacityProperty: true, visibilityProperty: true}) : getComputedStyle(el).visibility !== 'hidden';
+}
+// A frame is shown when its <iframe> is shown in its parent, up to the top (a nested frame needs every level).
+const frameShown = async frame => {
+  for (let one = frame; one.parentFrame(); one = one.parentFrame()) {
+    const box = await one.frameElement().catch(() => null);
+    if (!box || !await box.evaluate(shownToPerson).catch(() => false)) return false;
+  }
+  return true;
+};
 const readRequiredInPage = cvName => {
-  const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';   // opacity 0 stays read: react-select's own required input is one
   const on = '[aria-checked="true"], [aria-pressed="true"], [aria-selected="true"], input:checked';
   const shows = el => !!cvName && (el.textContent || '').includes(cvName);
   const slotEmpty = el => { const box = el.matches('input[type=file]') ? el : el.querySelector('input[type=file]'); return !(box?.files?.length) && !shows(el.closest('[aria-required="true"], .file-upload, label, div') || el); };
@@ -179,6 +195,7 @@ export async function readTab(page, keys, cvName = CV_NAME) {
   for (const frame of page.frames()) {
     const fields = await frame.evaluate(readFieldsInPage, keys).catch(() => ({}));
     for (const [key, value] of Object.entries(fields)) if (!read.has(key)) read.set(key, value);
+    if (!await frameShown(frame)) continue;   // its boxes are not on the page a person sees
     await frame.evaluate(OPTION_GROUPS).catch(() => {});   // an expression: Chrome's evaluate is not held by the page's CSP
     const found = await frame.evaluate(readRequiredInPage, cvName).catch(() => ({required: [], files: 0}));
     required.push(...found.required);

@@ -54,3 +54,22 @@ test('a segmented Yes/No (option roles around hidden native radios) is one contr
     assert.deepEqual(questions.filter(one => one.empty), [], JSON.stringify(questions));
   } finally { await browser.close(); }
 });
+
+// A form a person cannot see is not theirs to fill (pool run 40497749589, 27 Oct 2026: a careers page's closed floating sidebar, opacity 0 and no pointer events, held two
+// iframes with a contact form; the live check counted their 15 empty required boxes against the panel's 0 and called the panel's "ready" false).
+const frameForm = `<form><input required aria-label="Surname"><input type=email required aria-label="Mail"></form>`;
+const sidebarPage = style => `<!doctype html><html><body><form><input required aria-label="First name" value="Ada"></form>
+  <div id="side" style="position:fixed;bottom:0;left:0;width:400px;height:300px;${style}"><iframe style="border:0;width:100%;height:100%" srcdoc='${frameForm}'></iframe></div></body></html>`;
+
+test('required boxes of a frame a person cannot see (opacity 0, hidden, zero size) are not counted; a shown frame still is', {skip: !chromium && 'no playwright browser'}, async () => {
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    const counted = async style => { await page.setContent(sidebarPage(style)); await page.waitForTimeout(300); return (await readTab(page, [])).required.filter(one => one.empty).map(one => one.name); };
+    assert.deepEqual(await counted('opacity:0;pointer-events:none'), [], 'opacity 0 sidebar');
+    assert.deepEqual(await counted('visibility:hidden'), [], 'visibility hidden');
+    assert.deepEqual(await counted('display:none'), [], 'display none');
+    assert.deepEqual(await counted('width:0;height:0;overflow:hidden'), [], 'zero size');
+    assert.equal((await counted('')).length, 2, 'a shown frame counts its two empty required boxes');
+  } finally { await browser.close(); }
+});

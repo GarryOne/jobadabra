@@ -125,6 +125,12 @@
    ]
   },
   {
+   "shape": "Workable form whose Address box the page fills from the visitor",
+   "urls": [
+    "https://apply.workable.com/semios/j/0A6915AC27/apply/"
+   ]
+  },
+  {
    "shape": "Greenhouse board form with a robot-check field",
    "urls": [
     "https://job-boards.eu.greenhouse.io/coherentsolutions/jobs/4975295101"

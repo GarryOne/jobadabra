@@ -1,9 +1,11 @@
 name: CI · Prompt cases (Haiku re-ask)
-# A PR that changes a prompt of a live case set (tools/prompt-cases.json) re-asks that set with main's prompts and with the PR's, on Haiku 5.5 through the owner's
-# Claude subscription, and fails when a case got worse or the case it adds is wrong (tools/prompt-cases-live.mjs).
+# A PR that changes a prompt of a live case set (tools/prompt-cases.json) re-asks that set with main's prompts and with the PR's, on Haiku 5.5 through Claude Code
+# on the API key PR_PROOF_ANTHROPIC_KEY (its own workspace + spend limit), and fails when a case got worse, the case it adds is wrong, or the run passes its $ cap
+# (tools/prompt-cases-live.mjs). The run's measured cost is in its log and in the "Prompt cases" status line.
 # Why (owner, 27 Oct 2026): a session reworded a prompt to pass one benchmark case; "another session can come tomorrow and redo that prompt for a different use-case
-# and basically introducing a regression". AI in PR checks: "let them use my claude subscription" … "Haiku" … "To be very cheap … that's very important".
-# Never an API key or the production Workers AI token. Free AI runs qwen, not Haiku: this catches prompt regressions, not model ones.
+# and basically introducing a regression". AI in PR checks: "Haiku" … "To be very cheap … that's very important".
+# Why-changed (owner, 27 Oct 2026): asked "Use Haiku instead" instead of setting the subscription token, he chose "Haiku on an API key (Recommended)" over "let them use my claude subscription".
+# Never the production Workers AI token or another key. Free AI runs qwen, not Haiku: this catches prompt regressions, not model ones.
 on:
   pull_request:
     branches: [main]
@@ -51,27 +53,27 @@ jobs:
           sets=$(node tools/prompt-cases.mjs --live --base origin/main | tr '\n' ' ')
           echo "sets=$sets" >> "$GITHUB_OUTPUT"
           if [ -z "$sets" ]; then echo "No prompt of a live case set changed: nothing to ask."; else echo "Live case sets this PR reaches: $sets"; fi
-      - name: Say plainly when the subscription token is missing
+      - name: Say plainly when the API key is missing
         if: steps.sets.outputs.sets != ''
         id: token
         env:
-          HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_TOKEN: ${{ secrets.PR_PROOF_ANTHROPIC_KEY != '' }}
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "$HAS_TOKEN" = "true" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; exit 0; fi
-          msg="Prompt cases NOT run: no subscription token (CLAUDE_CODE_OAUTH_TOKEN)"
-          echo "::warning::$msg. The owner adds it as a repository secret; until then a prompt change is checked only by its case being added (tools/prompt-cases.mjs)."
+          msg="Prompt cases NOT run: no API key (PR_PROOF_ANTHROPIC_KEY)"
+          echo "::warning::$msg. The owner adds the repository secret; until then a prompt change is checked only by its case being added (tools/prompt-cases.mjs)."
           gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=error -f context="Prompt cases" -f description="$msg" >/dev/null
       - name: Install the worker and Claude Code
         if: steps.token.outputs.ok == '1'
         run: |
           npm ci --prefix worker
           npm install -g @anthropic-ai/claude-code@2.1.296
-      - name: Ask the cases with main's prompts and with this PR's (Haiku 5.5, the subscription)
+      - name: Ask the cases with main's prompts and with this PR's (Haiku 5.5, PR_PROOF_ANTHROPIC_KEY)
         if: steps.token.outputs.ok == '1'
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -80,9 +82,11 @@ jobs:
           node tools/prompt-cases-live.mjs --base-tree "$RUNNER_TEMP/base" --jobs 6 --max-calls 140 2>&1 | tee "$RUNNER_TEMP/prompt-cases.log"
           code=${PIPESTATUS[0]}
           set -e
-          line=$(grep -E '^Right on main' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-130)
+          line=$(grep -E '^Right on main' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-90)
+          cost=$(grep -E '^Cost:' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-40)
+          [ -n "$line" ] || line=$(grep -E 'cost cap|not set' "$RUNNER_TEMP/prompt-cases.log" | head -1 | cut -c1-100)
           state=success; [ "$code" = 0 ] || state=failure
-          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=$state -f context="Prompt cases" -f description="${line:-the run ended before asking}" >/dev/null || true
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=$state -f context="Prompt cases" -f description="${line:-the run ended before asking} ${cost}" >/dev/null || true
           exit "$code"
       # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
       - name: Write the PR's verdict

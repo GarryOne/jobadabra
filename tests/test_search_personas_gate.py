@@ -1,5 +1,5 @@
 """The search PR check (search-personas.yml, tools/persona-search/gate.py): red when a persona finds fewer right jobs than main's lowest of its last 3
-runs or a press runs past 3 minutes, on recorded numbers; every AI step on Haiku 5.5 on the plan, never an API key (owner, 27 Oct 2026)."""
+runs or a press runs past 3 minutes, on recorded numbers; every AI step on Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY with a $ cap (owner, 27 Oct 2026, "Haiku on an API key")."""
 import json
 import re
 import sys
@@ -21,7 +21,7 @@ def run(local, seconds, found=None):
             for n, (loc, sec) in enumerate(zip(local, seconds), 1)}
 
 
-# Recorded on CI (GarryOne/jobadabra-benchmarks "search ours", first press, Haiku 5.5; judged by the blind judge on the plan):
+# Recorded on CI (GarryOne/jobadabra-benchmarks "search ours", first press, Haiku 5.5; judged by the blind judge on the plan, before 27 Oct's switch to the key):
 BEFORE = run([0, 0, 0, 11, 0, 0], [179, 202, 299, 268, 210, 207])      # 40436945285: before the 3-minute changes (scout past its share)
 DROP = run([0, 0, 0, 1, 0, 0], [181, 180, 246, 228, 251, 210])         # 40446066828: the drop the owner saw (p4's jobup.ch jobs lost)
 FIRST_PRESS = run([0, 0, 0, 1, 0, 0], [143, 143, 158, 164, 132, 149])  # 40450152414: #2218 on main
@@ -64,7 +64,7 @@ class SilenceIsNeverGreen(unittest.TestCase):
             self.assertEqual(gate.compare(pr, [FIRST_PRESS])['state'], 'failure', change)
 
     def test_no_token_says_not_measured_never_a_measured_green(self):
-        pr = {n: {'persona': n, 'not_measured': 'CLAUDE_CODE_OAUTH_TOKEN is not set'} for n in range(1, 7)}
+        pr = {n: {'persona': n, 'not_measured': 'PR_PROOF_ANTHROPIC_KEY is not set'} for n in range(1, 7)}
         verdict = gate.compare(pr, [FIRST_PRESS])
         self.assertEqual(verdict['state'], 'neutral')
         self.assertIn('not measured', gate.table(verdict))
@@ -119,10 +119,36 @@ class TheFilesRoundTrip(unittest.TestCase):
             self.assertIn('p4 Warehouse Operator, Zurich', table)
 
 
-class TheJudgeIsBlindAndOnThePlan(unittest.TestCase):
-    def test_no_api_key_reaches_the_judge(self):
-        env = gate_judge.plan_env({'ANTHROPIC_API_KEY': 'x', 'ANTHROPIC_BASE_URL': 'y', 'OPENAI_API_KEY': 'z', 'CLAUDE_CODE_OAUTH_TOKEN': 't', 'PATH': '/bin'})
-        self.assertEqual(sorted(env), ['CLAUDE_CODE_OAUTH_TOKEN', 'PATH'])
+class TheJudgeIsBlindAndOnTheProofKey(unittest.TestCase):
+    def test_only_the_proof_key_reaches_the_judge(self):
+        env = gate_judge.judge_env({'ANTHROPIC_API_KEY': 'other', 'ANTHROPIC_BASE_URL': 'y', 'ANTHROPIC_AUTH_TOKEN': 'a', 'OPENAI_API_KEY': 'z', 'CLAUDE_CODE_OAUTH_TOKEN': 't',
+                                    'LAB_HEAL_ANTHROPIC_KEY': 'h', 'GITHUB_TOKEN': 'g', 'PR_PROOF_ANTHROPIC_KEY': 'proof', 'PATH': '/bin'})
+        self.assertEqual(env['ANTHROPIC_API_KEY'], 'proof', 'the proof key is the one key, handed over as the CLI reads it')
+        self.assertEqual(sorted(env), ['ANTHROPIC_API_KEY', 'MAX_THINKING_TOKENS', 'PATH'])
+        self.assertNotIn('other', env.values())
+
+    def test_without_the_proof_key_no_key_reaches_the_judge(self):
+        env = gate_judge.judge_env({'ANTHROPIC_API_KEY': 'other', 'CLAUDE_CODE_OAUTH_TOKEN': 't', 'PATH': '/bin'})
+        self.assertNotIn('ANTHROPIC_API_KEY', env)
+        self.assertNotIn('CLAUDE_CODE_OAUTH_TOKEN', env)
+
+    def test_the_judge_asks_haiku_and_stops_past_its_cost_cap(self):
+        self.assertEqual(gate_judge.MODEL, 'claude-haiku-5-5')
+        gate_judge.SPENT[:] = [gate_judge.JUDGE_CAP_USD + 0.01]
+        try:
+            with self.assertRaisesRegex(ValueError, 'judge over its cost cap'):
+                gate_judge.judge(4, [{'title': 'Lagerist', 'company': 'A', 'location': 'Zurich'}], asker=lambda profile, jobs: {})
+        finally:
+            gate_judge.SPENT[:] = []
+
+    def test_each_calls_cost_is_added_up(self):
+        class Out:
+            stdout = json.dumps({'result': '{"jobs":[{"n":1,"role":"yes","place":"yes"}]}', 'total_cost_usd': 0.0123})
+        gate_judge.SPENT[:] = []
+        got = gate_judge.ask('Profile', [{'n': 1, 'title': 't', 'company': 'c', 'location': 'l'}], run=lambda *a, **k: Out(), env={'PATH': '/bin'})
+        self.assertEqual(got[1]['role'], 'yes')
+        self.assertEqual(gate_judge.SPENT, [0.0123])
+        gate_judge.SPENT[:] = []
 
     def test_one_verdict_per_distinct_job_from_title_employer_and_place_only(self):
         asked, profiles = [], []
@@ -140,15 +166,31 @@ class TheJudgeIsBlindAndOnThePlan(unittest.TestCase):
         self.assertIn('Warehouse Operator, 6 years of experience, living in Zurich, Switzerland', profiles[0])
 
 
-class TheWorkflowRunsOnHaikuOnThePlan(unittest.TestCase):
-    def test_every_step_on_haiku_5_5_and_no_api_key(self):
+class TheWorkflowRunsOnHaikuOnTheProofKey(unittest.TestCase):
+    def test_every_step_on_haiku_5_5_on_the_proof_key_only(self):
         self.assertRegex(WORKFLOW, r'(?m)^  JOB_PILOTTO_MODEL_OVERRIDE: claude-haiku-5-5\b')
-        self.assertIn('CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}', WORKFLOW)
-        self.assertNotIn('secrets.ANTHROPIC', WORKFLOW)
-        self.assertNotRegex(WORKFLOW, r'ANTHROPIC_API_KEY:', 'no job is given an API key')
-        for program in ('tools/persona-search/run.mjs', 'tools/persona-search/gate_judge.py'):
-            line = next(line for line in WORKFLOW.splitlines() if program in line)
-            self.assertIn('env -u ANTHROPIC_API_KEY', line, program)
+        self.assertIn('PR_PROOF_ANTHROPIC_KEY: ${{ secrets.PR_PROOF_ANTHROPIC_KEY }}', WORKFLOW)
+        self.assertNotIn('CLAUDE_CODE_OAUTH_TOKEN', WORKFLOW, 'the subscription token is no longer used (owner, 27 Oct 2026)')
+        self.assertEqual(re.findall(r'secrets\.(\w+)', WORKFLOW), ['PR_PROOF_ANTHROPIC_KEY'] * 3, 'no other secret; only the three steps that ask Claude get the key')
+        self.assertNotRegex(WORKFLOW, r'(?m)^\s+ANTHROPIC_API_KEY:', 'no job is given a second key')
+        self.assertIn('--engine api', next(line for line in WORKFLOW.splitlines() if 'tools/persona-search/run.mjs' in line))
+        self.assertIn('is not set: the search check is not measured', WORKFLOW)
+
+    def test_a_persona_over_its_cost_cap_is_red_and_the_cost_is_in_the_table(self):
+        row = {'persona': 1, 'local': 5, 'seconds': 100, 'code': 0, 'crashes': 0, 'usd': gate.PERSONA_CAP_USD + 0.01}
+        reasons, _ = gate.judge_one(row, [])
+        self.assertTrue(any('over the' in r and 'cap' in r for r in reasons))
+        table = gate.table(gate.compare({1: row}, []))
+        self.assertIn('| Cost |', table)
+        self.assertIn('cost $', table)
+
+    def test_result_adds_the_press_and_the_judge_cost(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / 'draw').mkdir()
+            (out / 'draw' / 'presses.jsonl').write_text(json.dumps({'press': 1, 'code': 0, 'crashes': [], 'seconds': 150, 'funnel': {'ai_usd': 0.031}}) + '\n')
+            (out / 'judged.json').write_text(json.dumps({'usd': 0.009, 'rows': [{'role': 'yes', 'place': 'yes'}]}))
+            self.assertEqual(gate.result(1, out)['usd'], 0.04)
 
     def test_all_six_personas_in_parallel_and_the_same_paths_on_prs_and_main(self):
         self.assertIn('persona: [1, 2, 3, 4, 5, 6]', WORKFLOW)

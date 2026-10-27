@@ -17,7 +17,9 @@ PERSONAS = json.loads((HERE / 'gate-personas.json').read_text(encoding='utf-8'))
 PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take at most 3min" (CLAUDE.md, tests/test_three_minutes.py)
 MAIN_RUNS = 3       # Why (owner, 27 Oct 2026, "Below main's range"): one run is noise (the same commit found 53 and 20 jobs), so the floor is the
 #                     lowest of main's last 3 runs, never one run's number
-COST = '$0: subscription + Haiku 5.5'
+PERSONA_CAP_USD = 0.08   # Why (owner, 27 Oct 2026, "Haiku on an API key ... with a per-run $ cap"): 6 personas x $0.08 = $0.48, under the $0.50 the coordinator proposed;
+#                          TODO(AI): lower it to the first measured run's cost with headroom (27 Oct 2026, on the PR)
+COST = 'Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY'
 
 
 def label(n):
@@ -57,16 +59,22 @@ def result(n, out):
     a failed press (silence is not success), never a zero that looks measured."""
     out = Path(out)
     row = {'persona': int(n), 'label': label(n)}
+    press_usd = 0.0
     try:
         press = json.loads((out / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[0])
+        press_usd = float((press.get('funnel') or {}).get('ai_usd') or 0)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
-    except (OSError, IndexError, ValueError, KeyError):
+    except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
+    judge_usd = 0.0
     try:
-        judged = json.loads((out / 'judged.json').read_text(encoding='utf-8'))['rows']
+        judged_file = json.loads((out / 'judged.json').read_text(encoding='utf-8'))
+        judge_usd = float(judged_file.get('usd') or 0)
+        judged = judged_file['rows']
         row.update(found=len(judged), local=sum(1 for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes'))
     except (OSError, ValueError, KeyError):
         row.setdefault('error', 'the judge wrote no verdicts (see judge.log)')
+    row['usd'] = round(press_usd + float(judge_usd), 4)
     try:
         row['non_haiku'] = int((out / 'non-haiku-steps.txt').read_text().strip() or 0)
     except (OSError, ValueError):
@@ -103,6 +111,8 @@ def judge_one(row, mains):
         reasons.append(f"the press failed (exit {row.get('code')}, {row.get('crashes', 0)} crash(es))")
     if row.get('seconds', 0) > PRESS_LIMIT:
         reasons.append(f"press took {row['seconds']} s (> {PRESS_LIMIT})")
+    if row.get('usd', 0) > PERSONA_CAP_USD:
+        reasons.append(f"cost ${row['usd']:.3f} over the ${PERSONA_CAP_USD} cap")
     if row.get('non_haiku'):
         reasons.append(f"{row['non_haiku']} AI step(s) not on Haiku 5.5")
     seen = [m['local'] for m in mains if isinstance(m.get('local'), int)][:MAIN_RUNS]
@@ -120,7 +130,7 @@ def compare(pr, main_runs):
         unmeasured += bool(row and row.get('not_measured'))
         red += bool(reasons)
         rows.append({'persona': n, 'label': label(n), 'main': seen, 'local': (row or {}).get('local'), 'found': (row or {}).get('found'),
-                     'seconds': (row or {}).get('seconds'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
+                     'seconds': (row or {}).get('seconds'), 'usd': (row or {}).get('usd'), 'reasons': reasons, 'not_measured': (row or {}).get('not_measured')})
     if red:
         state, head = 'failure', f'🔴 {red} persona(s) red'
     elif unmeasured:
@@ -133,14 +143,15 @@ def compare(pr, main_runs):
 
 
 def table(verdict):
-    lines = [f"🔍 **Search check:** {verdict['head']} · {COST}", '',
-             f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | |", '|---|---|---|---|---|---|']
+    spent = sum(r['usd'] or 0 for r in verdict['rows'])
+    lines = [f"🔍 **Search check:** {verdict['head']} · {COST} · cost ${spent:.2f} (cap ${PERSONA_CAP_USD * len(PERSONAS):.2f})", '',
+             f"| Persona | Main (last {MAIN_RUNS}) | This PR | Found | Press | Cost | |", '|---|---|---|---|---|---|---|']
     for r in verdict['rows']:
         main = ' · '.join(str(x) for x in r['main']) or '—'
         mark = '🔴 ' + '; '.join(r['reasons']) if r['reasons'] else ('⚪' if r['not_measured'] else '🟢')
         cell = lambda v, unit='': '—' if v is None else f'{v}{unit}'   # noqa: E731
-        lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {mark} |")
-    lines += ['', '<sub>This PR / Main = jobs a blind judge (Sonnet on the plan) called right role AND right place, of the jobs found; one press each, '
+        lines.append(f"| {r['label']} | {main} | {cell(r['local'])} | {cell(r['found'])} | {cell(r['seconds'], ' s')} | {'—' if r['usd'] is None else '$%.3f' % r['usd']} | {mark} |")
+    lines += ['', '<sub>This PR / Main = jobs a blind judge (Haiku 5.5) called right role AND right place, of the jobs found; one press each, '
               'a fresh install. Red: a press over 180 s, or a persona below the lowest of main\'s last 3 runs.</sub>']
     return '\n'.join(lines) + '\n'
 

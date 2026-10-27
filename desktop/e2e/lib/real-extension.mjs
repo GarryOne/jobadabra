@@ -92,7 +92,7 @@ export async function startRealExtension({extensionDir = EXTENSION_DIR, cv = tru
   const panel = () => page.evaluate(() => {
     const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
     const text = selector => (root?.querySelector(selector)?.textContent || '').replace(/\s+/g, ' ').trim();
-    return {buttons: [...(root?.querySelectorAll('button') || [])].map(button => (button.textContent || '').trim()).filter(Boolean), pill: text('.pill'), progress: text('.progress-line'), note: text('.note')};
+    return {buttons: [...(root?.querySelectorAll('button') || [])].map(button => (button.textContent || '').trim()).filter(Boolean), pill: text('.pill'), progress: text('.progress-line'), note: text('.note:not(.trace-note)')};
   });
   // What the app does for "Apply" (the same tab, marked for the extension), then the person's own click on the panel's Fill button.
   const fillWithPanel = async (tab = page) => {

@@ -14,7 +14,9 @@ async function start(answer = {}) {
   await app.context.route('https://jobs.example.test/**', route => route.fulfill({status: 200, contentType: 'text/html', body: FORM}));
   await app.page.goto('https://jobs.example.test/apply#jobpilotto-fill');   // the app opens the tab with the mark: the recording starts as it loads
   await app.page.waitForFunction(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.report-btn'), null, {timeout: 20000});
-  await app.page.waitForTimeout(2500);
+  // The page's own first fill runs first: while it works, Report is not drawn (owner, 27 Oct 2026: a button that cannot act while working is hidden); its end brings it back.
+  await app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.jp.working'), null, {timeout: 30000});
+  await app.page.waitForTimeout(1000);
   return app;
 }
 const openPanel = page => page.evaluate(() => { const root = document.getElementById('jobpilotto-review-host').shadowRoot; if (root.querySelector('.card').hidden) root.querySelector('.pill').click(); });

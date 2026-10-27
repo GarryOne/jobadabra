@@ -46,7 +46,9 @@ for (const minimised of [false, true]) {
       if (minimised) await t.press('.min');
       await t.app.page.waitForTimeout(300);
       await t.press(minimised ? '.pill-stop' : '.stop-btn');
-      await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host'), null, {timeout: 10000}).catch(() => assert.fail('Stop did not halt the fill'));
+      // Stop keeps the panel, calm: "Stopped by you" with Check form again, no dim, no step row (0d0327b, owner 27 Oct 2026); it no longer removes the panel.
+      await t.app.page.waitForFunction(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot;
+        return !!root && !root.querySelector('.fill.is-busy') && !document.getElementById('jobpilotto-fill-overlay') && (root.querySelector('.card').hidden || !root.querySelector('.stopped').hidden); }, null, {timeout: 10000}).catch(() => assert.fail('Stop did not halt the fill'));
       assert.equal(await t.app.page.evaluate(() => !!document.getElementById('jobpilotto-stop-host')), false, 'the bottom-left chip is gone');
     } finally { await t.app.close(); }
   });

@@ -43,7 +43,7 @@ async function start(mode) {
     const box = await real.page.evaluate(sel => { const b = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector(sel).getBoundingClientRect(); return {x: b.x + b.width / 2, y: b.y + b.height / 2}; }, selector);
     await real.page.mouse.click(box.x, box.y);
   };
-  const noteText = () => real.page.evaluate(() => { const n = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note'); return n.hidden ? '' : n.textContent; });
+  const noteText = () => real.page.evaluate(() => { const n = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note:not(.trace-note)'); return n.hidden ? '' : n.textContent; });
   return {real, app, text, waitText, press, noteText};
 }
 
@@ -84,7 +84,7 @@ test('Tailor CV: an app that does not answer is said on the panel, not a dead li
   const t = await start('silent');
   try {
     await t.press('.t-btn');
-    await t.real.page.waitForFunction(() => /not answering/.test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note')?.textContent || ''), null, {timeout: 10000});
+    await t.real.page.waitForFunction(() => /not answering/.test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note:not(.trace-note)')?.textContent || ''), null, {timeout: 10000});
   } finally { await t.real.close(); }
 });
 
@@ -93,6 +93,6 @@ test('Open in Jobadabra: an app that refuses is said on the panel', async () => 
   try {
     await t.real.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.open-app').hidden, null, {timeout: 15000});
     await t.press('.open-app');
-    await t.real.page.waitForFunction(() => /not answering/.test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note')?.textContent || ''), null, {timeout: 10000});
+    await t.real.page.waitForFunction(() => /not answering/.test(document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.note:not(.trace-note)')?.textContent || ''), null, {timeout: 10000});
   } finally { await t.real.close(); }
 });

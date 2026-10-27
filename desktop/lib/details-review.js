@@ -210,7 +210,8 @@ async function answerUnclear(storage, ref, text, {fetcher, save}) {
 
 // The AI's word on each saved answer not judged yet (owner, 18 Oct 2026: "Every answered line, all 3 pages", "Once now + each save"): the Profile, the
 // answers page and Your details; a line is judged once and again only when its value changes (lib/answer-clarity.js). The first pass on a Profile moved
-// before automatic routing existed also organizes the legacy unplaced lines, using source context and validated destinations. No AI: originals stay intact.
+// before automatic routing existed also organizes legacy unplaced lines. New/edited lines use the same context-aware destination judgment on each save;
+// AI stay keeps a correctly placed line, unknown decisions keep originals for quiet retry. No AI: originals stay intact.
 // -> {judged, queued, unclear}.
 export async function judgeNew(storage, {fetcher, ai = {}, now = new Date(), copy} = {}) {
   if (!(ai.client || ai.apiKey)) return {judged: 0, queued: 0, unclear: 0};

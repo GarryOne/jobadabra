@@ -1,4 +1,4 @@
-// Automatically organize legacy unplaced saved lines through the existing AI seam, preserving exact sources until their destinations read back.
+// Automatically organize legacy unplaced and newly saved lines through the existing AI seam, preserving exact sources until their destinations read back.
 import {createHash} from 'node:crypto';
 import {openStore} from './store/index.js';
 import {itemsOf, judge, saveCopy, unsureKey} from './profile-move.js';

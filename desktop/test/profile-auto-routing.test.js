@@ -122,6 +122,25 @@ for (const adapter of ['sqlite', 'notion']) {
     assert.equal(outline.filter(each => each.text === 'Opaque saved line').length, 1);
   });
 
+  test(`${adapter}: newly saved instructions are automatically organized without legacy pending metadata or repeated moves`, async () => {
+    const env = await setup(adapter);
+    await review.judgeNew(env.storage, {...env, ai: fakeAi()});
+    env.storage.saveSettings({profileUnsure: []});
+    const page = openStore(env.storage, {fetcher: env.fetcher}).page('answers');
+    await page.appendHeading('Fresh import');
+    await page.append(['New instruction: keep the original voice']);
+    const ai = fakeAi({choose: line => line === 'New instruction: keep the original voice' ? 'writing' : 'stay'});
+    await review.judgeNew(env.storage, {...env, ai});
+    const outline = await page.outline(), style = outline.findIndex(item => item.text === 'Cover letter style'), imported = outline.findIndex(item => item.text === 'Fresh import');
+    const placed = outline.findIndex(item => item.text === 'New instruction: keep the original voice');
+    assert.ok(placed > style && placed < imported, 'new saved line reaches its real section automatically');
+    assert.equal(outline.filter(item => item.text === 'New instruction: keep the original voice').length, 1);
+    const after = await texts(env);
+    await review.judgeNew(env.storage, {...env, ai});
+    assert.equal(ai.requests.length, 1, 'subsequent reads do not rejudge or multiply the saved line');
+    assert.deepEqual(await texts(env), after);
+  });
+
   test(`${adapter}: first-run details migration does not mark unrouted writing rules as already organized`, async () => {
     const env = await setup(adapter);
     env.storage.saveSettings({profileMovedAt: '', profileUnsureAt: '', profileUnsure: [], answerClarity: {}});

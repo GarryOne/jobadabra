@@ -1,0 +1,47 @@
+{
+ "origin": "hand-cut",
+ "shape": "a text box the page fills itself on load with its guess of the visitor's place (an Address box from the visitor's IP), before the person or the fill types anything",
+ "why": "27 Oct 2026, benchmark form round (GarryOne/jobadabra-benchmarks run 40436942800, form 106, 3 runs of 3): the Address box kept the page's IP guess (Des Moines / Dulles Town Center, the runner's data-centre town) because the contact pass skipped every box that already held text; the saved street never went in. A place box holding text the fill never typed now takes the saved place when the two disagree, and the panel asks the person to check it.",
+ "control": {
+  "build": "0.9.627",
+  "failed": "valueIs: #address|Musterstrasse 12 (the box kept the page's own guess)"
+ },
+ "sample": "hand-written from the benchmark run's end screen and field list (no capture of the live page's markup was kept); the page's IP guess is a page script; fake applicant",
+ "pages": [
+  {
+   "url": "https://apply.example.com/acme/j/0A6915AC27/apply/",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "eligibility_note": "",
+   "answers": []
+  }
+ },
+ "contact": {
+  "street": "Musterstrasse 12",
+  "postal_code": "8001",
+  "location": "Zurich, Switzerland"
+ },
+ "expect": {
+  "valueIs": [
+   "#firstname|Test",
+   "#address|Musterstrasse 12"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ }
+}

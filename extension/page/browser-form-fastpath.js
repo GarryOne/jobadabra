@@ -51,6 +51,7 @@
   };
   window.__jobPilottoTypedSame = typedSame;   // for desktop/test/typed-match.test.js
   window.__jobPilottoLeaveAlone = element => { const record = typedHere.get(element); if (record) record.edited = true; };   // a box the fill decided on (a suggestion chosen, or left empty on purpose) is never typed again as plain text by the retype watch (page/fill-menus.js suggestPick)
+  window.__jobPilottoTypedHere = element => typedHere.has(element);   // the fill typed this box on this page before (the person's later edits included): its text is not the page's own guess (page/fill-read.js pageGuess)
   window.__jobPilottoNoteTyped = (element, value) => noteTyped(element, value);   // a box the fill picked a suggestion in now holds that choice, not the text first typed: retired as what we typed (page/fill-menus.js suggestPick)
   const follow = (element, record) => { typedHere.set(element, record); element.addEventListener('input', event => { if (event.isTrusted) { record.edited = true; element.removeAttribute?.('data-jobpilotto-typed'); } }, true); };
   const noteTyped = (element, value) => {

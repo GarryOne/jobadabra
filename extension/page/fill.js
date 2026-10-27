@@ -79,6 +79,8 @@
     }
     const typed = window.__jobPilottoFillKnownFields([...contact, ...plain]);
     filled += (typed.filled || []).length;
+    // A place the page had guessed, now the saved one: the person checks it (page/fill-read.js pageGuess). The page's old text never leaves the page.
+    for (const entry of contact) if (entry.pageGuess && (typed.filled || []).includes(entry.field)) review.push(`Check: ${rowOf[entry.field]?.label || entry.field} (it held the page's own text before the fill; your saved one is in now)`);
     // A box that empties itself when focus leaves took text it was not offered (a job board's own place widget takes only one of its suggestions): armed as a type-to-search box, typed for real
     // and chosen by meaning when its click comes (page/suggest-box.js, page/fill-menus.js suggestPick).
     for (const entry of await (window.__jobPilottoSuggest?.lostOnBlur([...contact, ...plain], typed.filled || []) ?? [])) {

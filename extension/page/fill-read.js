@@ -63,6 +63,21 @@
     }
     return null;
   };
+  // A place box that holds text the fill never typed, and that disagrees with the saved place: the page's own guess, not an answer (benchmark form 106,
+  // 27 Oct 2026: Workable fills "Address" from the visitor's IP, "Des Moines, United States of America", and the saved street never went in). Only the
+  // person's places: a page can guess where a visitor is, but a name, e-mail or phone it holds came from the person's own account there and is kept.
+  // A box the fill typed on this page before (the person may have changed it since) is never a guess. Agreeing text (another spelling, the city part) is kept.
+  const PLACE_KEYS = ['location', 'street', 'postal_code'];
+  const fold = text => (window.__jobPilottoFold?.(text) ?? String(text ?? '').toLowerCase()).replace(/[^\p{L}\p{N}]/gu, '');   // letters and digits, accents dropped (Zürich = Zurich; page/fold-text.js)
+  const pageGuess = (row, profile) => {
+    const key = (PROFILE_LABELS.find(([name, pattern]) => profile[name] && pattern.test(row.label || row.field)) || [])[0];
+    if (!PLACE_KEYS.includes(key) || asksQuestion(row.label)) return false;
+    const el = document.getElementById?.(row.field) || document.querySelector?.(`[name="${CSS.escape(row.field)}"]`);
+    if (!el || el.tagName === 'SELECT' || window.__jobPilottoTypedHere?.(el)) return false;
+    const forms = typeof profile.location_forms === 'string' ? profile.location_forms.split(',') : profile.location_forms || [];
+    const saved = [profile[key], ...(key === 'location' ? [String(profile.location).split(',')[0], ...forms] : [])].filter(Boolean);
+    return !saved.some(value => window.__jobPilottoTypedSame(fold(value), fold(el.value)));
+  };
   // Contact details by field label, for the fields every board names differently.
   window.__jobPilottoProfileEntries = (rows, profile, taken = []) => {
     const used = new Set(taken);
@@ -70,7 +85,9 @@
     window.__jobPilottoAliasUsed = {};   // field -> the phrase that placed it (reported as counts, never the answer)
     const parts = phoneParts(rows), split = [...parts.values()].includes('code');
     for (const row of rows) {
-      if (row.filled || row.legal || used.has(row.field) || !TEXT_TYPES.includes(row.type)) continue;
+      if (row.legal || used.has(row.field) || !TEXT_TYPES.includes(row.type)) continue;
+      const guess = row.filled && pageGuess(row, profile);
+      if (row.filled && !guess) continue;
       if (asksQuestion(row.label)) continue;   // a sentence is a question for the AI, whatever detail it names
       if (/middle|maiden|nick/i.test(row.label || '')) continue;  // "Preferred first name" = your first name
       const match = PROFILE_LABELS.find(([key, pattern]) => profile[key] && pattern.test(row.label || row.field));
@@ -81,7 +98,7 @@
       const part = key === 'phone' ? parts.get(row.field) || 'number' : '';
       const value = key === 'phone' ? phoneFor(part === 'number' && split ? 'split-number' : part, profile.phone) : String(profile[key]);
       if (!value) { used.add(row.field); continue; }   // the extension box: nothing to type, and no other detail takes it
-      entries.push({field: row.field, value});
+      entries.push({field: row.field, value, ...(guess ? {pageGuess: true} : {})});
       if (alias) window.__jobPilottoAliasUsed[row.field] = alias.phrase;
       used.add(row.field);
     }

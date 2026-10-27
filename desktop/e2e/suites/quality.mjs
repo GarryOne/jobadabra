@@ -34,7 +34,7 @@ const STEP = 60000;
 export const sameOnEveryOs = true;
 // On the Notion stand-in its Profile is drafted from the CV by the wizard, as on the real test page: the scores this suite judges read it (lib/context.mjs).
 export const standInFromWizard = true;
-export const watches = ['src/ai/score.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/e2e/fixtures/golden/'];
+export const watches = ['src/ai/score.py', 'src/ai/score_bands.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/e2e/fixtures/golden/'];
 // This suite measures what a user gets, so the app under test runs on the shipped model (about $0.3 a run); the other suites run on Haiku. For a cheap run:
 // E2E_APP_MODEL=claude-haiku-4-5 (Haiku 4.5 scored the same job up to 10 points apart between two scorings, Sonnet within 6).
 export const env = {JOB_PILOTTO_MODEL_OVERRIDE: process.env.E2E_APP_MODEL || 'claude-sonnet-5-5'};

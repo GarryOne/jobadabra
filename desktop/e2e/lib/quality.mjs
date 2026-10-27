@@ -130,11 +130,11 @@ export function stabilityVerdict(apart, compared) {
 }
 
 // -> {ok, allowed, tolerated}: `failed` are the judged texts that invent facts or contradict the posting, out of `judged`.
-// One text in six may be a slip of the judged model: 9 -> 1, 18 -> 3 (both scorings judged). Owner, 26 Oct 2026: "Fresh daily + rate gate"; measured on Free AI:
+// One text in six may be a slip of the judged model, to the nearest text: 9 -> 2, 18 -> 3, 5 -> 1, 2 -> 0. Owner, 26 Oct 2026: "Fresh daily + rate gate"; measured on Free AI:
 // at 11% invented per text (temperature 0) 3 of 18 passes 87% of runs, at today's 26% only 27%, where 1 of 9 failed one run in four even at 11%.
 export const JUDGE_SHARE = 1 / 6;
 export function judgeVerdict(failed, judged) {
-  const allowed = Math.floor(judged * JUDGE_SHARE + 1e-9);
+  const allowed = Math.round(judged * JUDGE_SHARE + 1e-9);   // rounded to the nearest text (owner, 27 Oct 2026: "2 of 9"): the gate judges one scoring, 9 texts
   return {ok: failed.length <= allowed, allowed, tolerated: failed.length <= allowed ? failed : []};
 }
 

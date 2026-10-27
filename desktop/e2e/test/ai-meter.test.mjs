@@ -244,3 +244,25 @@ test('fresh() asks the model for everything inside it, and replay comes back aft
     assert.equal('E2E_AI_REPLAY' in process.env, false);   // never the string 'undefined'
   } finally { process.env.E2E_AI_REPLAY = saved ?? ''; }
 });
+
+// The quality gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): on main (after a merge, a gate, a scheduled replay run) E2E_AI_STRICT=1. A recorded
+// answer never expires there (the nightly live run catches a model update); a question with no answer is asked so the run goes on, but never kept, so the
+// retry misses it too, and the suite names it (missedQuestions). Main 27 Oct 2026: a gate asked 8-12 questions live and turned red on their new answers.
+test('strict: a recorded answer never expires, a miss is not kept, and the misses are listed by question', async () => {
+  const {keep, keepMiss, missedQuestions, recall, strict} = await import('../lib/ai-meter.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'strict-'));
+  const env = {E2E_AI_REPLAY: '1', E2E_AI_CACHE: path.join(dir, 'cache'), E2E_ARTIFACTS: path.join(dir, 'art'), E2E_AI_STRICT: '1'};
+  assert.equal(strict(env), true);
+  assert.equal(strict({...env, E2E_AI_STRICT: ''}), false);
+  keep('old', {status: 200, contentType: 'application/json', body: Buffer.from('{"ok":1}')}, {...env, E2E_AI_STRICT: '0'});
+  const saved = Date.parse(JSON.parse(fs.readFileSync(path.join(dir, 'cache', 'old.json'), 'utf8')).savedAt);
+  assert.equal(recall('old', env, saved + 30 * 86400000)?.body.toString(), '{"ok":1}', 'strict: still replayed after 30 days');
+  assert.equal(recall('old', {...env, E2E_AI_STRICT: '0'}, saved + 30 * 86400000), null, 'positive control: expired when not strict');
+  keep('new', {status: 200, contentType: 'application/json', body: Buffer.from('{}')}, env);
+  assert.equal(fs.existsSync(path.join(dir, 'cache', 'new.json')), false, 'strict: a live answer is not kept');
+  const body = Buffer.from(JSON.stringify({model: 'm', system: 'You rank job postings.', messages: [{role: 'user', content: 'Title: Senior SRE (DE)\nCompany: E2E Quality Labs'}]}));
+  keepMiss('k9', '/v1/messages', body, env);
+  assert.deepEqual(missedQuestions(env), [{key: 'k9', url: '/v1/messages', about: 'Title: Senior SRE (DE) Company: E2E Quality Labs'}]);
+  assert.deepEqual(missedQuestions({...env, E2E_ARTIFACTS: path.join(dir, 'none')}), []);
+  fs.rmSync(dir, {recursive: true, force: true});
+});

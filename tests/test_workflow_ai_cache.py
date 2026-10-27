@@ -32,11 +32,12 @@ class AiAnswerCacheTests(unittest.TestCase):
                 self.assertNotIn('ai-answers-v2-', text)
                 self.assertIn("matrix.key == 'mailreading' && '-v2'", text)
 
-    def test_every_second_try_draws_fresh_answers(self):
+    # Quality's retry replays like its first try (owner, 27 Oct 2026: "Code gate + AI rate"; tests/test_quality_replay_gate.py); every other suite's draws fresh.
+    def test_every_second_try_but_qualitys_draws_fresh_answers(self):
         for name in ('e2e.yml', 'desktop.yml'):
             text = (WORKFLOWS / name).read_text()
             with self.subTest(file=name):
-                self.assertRegex(text, r'E2E_RERUN=1[^\n]*E2E_AI_REPLAY=0|E2E_AI_REPLAY=0[^\n]*E2E_RERUN=1')
+                self.assertRegex(text, r'replay=0; \[ "\$\{\{ matrix\.suite \}\}" != quality \] \|\| replay="\$E2E_AI_REPLAY"[^\n]*\n[^\n]*E2E_RERUN=1 E2E_AI_REPLAY="\$replay"')
 
     # Main cannot read a PR's cache (27 Oct 2026: #2180 green on its PR with 0 misses, main red after 8 live questions): the PR hands its answers over.
     def test_a_green_pr_job_hands_its_answers_to_main(self):

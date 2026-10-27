@@ -10,7 +10,7 @@ import {execFileSync} from 'node:child_process';
 import {python, pythonEnv} from '../lib/python.mjs';
 import {fileURLToPath} from 'node:url';
 import {sample, watch} from '../lib/activity.mjs';
-import {fresh} from '../lib/ai-meter.mjs';
+import {fresh, missedQuestions, replaying, strict} from '../lib/ai-meter.mjs';
 import {failures, judge} from '../lib/factjudge.mjs';
 import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf, rewriteTextLines} from '../lib/seed-texts.mjs';
@@ -24,6 +24,11 @@ import {quiet} from '../lib/activity-steps.mjs';
 export const name = 'quality';
 // About $0.03 a run on Haiku 5.5 (was ~$0.3 on Sonnet until 27 Oct 2026): the nightly release gate, and a push that touches what it judges (scoring and enrichment prompts, the model ids, its own fixtures), not the three-a-day schedule.
 export const cadence = 'nightly';
+// Each slow step has its own time limit (owner, 27 Oct 2026: "Code gate + AI rate"): a replayed gate takes ~2 min (the Jobs check 26 s); the night's live run
+// ~6-9 min (the Jobs check up to 330 s, the second scoring 120 s, 26-27 Oct 2026). The budget holds the live run; minutes holds it twice plus the setup.
+export const budgetMinutes = 10;
+export const minutes = 24;
+const STEP = 60000;
 // It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
 export const sameOnEveryOs = true;
 // On the Notion stand-in its Profile is drafted from the CV by the wizard, as on the real test page: the scores this suite judges read it (lib/context.mjs).
@@ -90,6 +95,8 @@ export async function run(ctx) {
   const scoresOf = () => Object.fromEntries(Object.entries(matchRows(truth, rows).byId).map(([id, list]) => [id, list[0].props.Score]));
 
   const late = [];   // the last checks are independent: each one reports, and the suite fails after all of them ran
+  // How steady the AI is (the same jobs scored twice) is measured where answers are live: the night's fresh run, a Mac. The gate replays (owner, 27 Oct 2026).
+  const LIVE = {name: 'live AI answers (the night\'s fresh run): the gate replays, so a second scoring would only repeat the first', value: !replaying()};
   const soft = async step => { try { await step(); } catch (error) { late.push(error); } };
   try {
     await ctx.run('this suite starts with no jobs and no runs in its Notion page', async () => {
@@ -133,7 +140,7 @@ export async function run(ctx) {
       await read2(); if (!rows.length) {
         const config = path.join(ctx.profile, 'config');
         throw new Error(`no Job Matches row was in ${ctx.store === 'sqlite' ? 'this Mac\'s store (matches.list)' : 'Notion'} a minute after the check (app's Notion: ${JSON.stringify(await page.evaluate(() => { const n = window.__jp?.shared?.state?.notion; return n && typeof n === 'object' ? Object.fromEntries(Object.entries(n).filter(([, v]) => typeof v === 'string' && /[0-9a-f]{8}-/.test(v)).map(([k, v]) => [k, v.slice(0, 13)])) : String(n); }))}; profile config: ${fs.existsSync(config) ? fs.readdirSync(config).join(', ') : 'none'}; sources.json: ${fs.existsSync(path.join(config, 'sources.json')) ? fs.readFileSync(path.join(config, 'sources.json'), 'utf8').replace(/\s+/g, ' ') : 'missing'}; feed folder: ${fs.readdirSync(ctx.feeds).join(', ')}; search.json: ${fs.readFileSync(path.join(config, 'search.json'), 'utf8').replace(/\s+/g, ' ').slice(0, 700)})`);
-      } }, {needs: ctx.needs});
+      } }, {needs: ctx.needs, limitMs: 6 * STEP});
 
     await ctx.run('every enriched fact equals the ground truth (seniority, work mode, location, languages, salary, role family)', async () => {
       const {byId} = matchRows(truth, rows);
@@ -214,7 +221,7 @@ export async function run(ctx) {
       const apart = unstable(first, second, 8), verdict = stabilityVerdict(apart, spread.length);
     if (apart.length) console.log(`  ${apart.length} of ${spread.length} jobs moved more than 8 points (allowed: ${verdict.allowed}): ${apart.map(item => `${item.id}: ${item.first} → ${item.second}`).join(', ')}`);
     if (!verdict.ok) throw new Error(`scores are not stable: ${verdict.problems.join('; ')}`);
-    }, {needs: ctx.needs}));
+    }, {needs: [...ctx.needs, LIVE], limitMs: 6 * STEP}));
 
     await soft(() => ctx.run('no job text, CV text or secret reached the logs', async () => {
       const logs = path.join(ctx.profile, 'logs');
@@ -253,7 +260,7 @@ export async function run(ctx) {
     const allowance = judgeVerdict(problems, verdicts.length);
     if (problems.length) console.log(`  ${problems.length} of ${verdicts.length} texts flagged (allowed: ${allowance.allowed}):\n    ${problems.join('\n    ')}`);
     if (!allowance.ok) throw new Error(`${problems.length} of ${verdicts.length} score texts invent facts or contradict the posting (at most ${allowance.allowed} allowed)`);
-    }, {needs: ctx.needs}));
+    }, {needs: ctx.needs, limitMs: 3 * STEP}));
 
     // The CV match (desktop/lib/match-check.js) on three golden postings with a fixed CV, judged by plain text rules, no second model: the terms the posting and the CV
     // both state must come back as found, and the code has to correct the model's claims about the CV only rarely (it corrects them; this watches how often).
@@ -282,7 +289,15 @@ export async function run(ctx) {
       console.log(`  CV match: ${got}/${expected} required terms found, ${corrected} claim(s) corrected by the guard`);
       if (expected && got / expected < 0.7) throw new Error(`only ${got} of ${expected} terms that the posting and the CV both state came back as found`);
       if (corrected > 4) throw new Error(`the guard had to correct ${corrected} claims about the CV on three postings (at most 4)`);
-    }, {needs: ctx.needs}));
+    }, {needs: ctx.needs, limitMs: 3 * STEP}));
+
+    // On main the gate replays only (E2E_AI_STRICT): a question with no recorded answer was asked live, so its answer tested the AI, not the code.
+    await soft(() => ctx.run('the gate asked the AI nothing new: every answer was a recorded one', async () => {
+      if (!process.env.E2E_ARTIFACTS) throw new Error('no artifacts folder (E2E_ARTIFACTS): the misses cannot be read, so this check would pass blind');
+      const missed = missedQuestions();
+      if (missed.length) throw new Error(`${missed.length} AI question(s) had no recorded answer (asked live, not kept): ${missed.slice(0, 6).map(item => `${item.url} "${item.about.slice(0, 60)}"`).join('; ')}. `
+        + 'The merged PR\'s green quality run records them (pr-answers.mjs); one that differs on every run never replays (its ai-misses/ show the field)');
+    }, {needs: [{name: 'a main run that replays only (E2E_AI_STRICT=1)', value: strict()}]}));
 
     if (late.length) throw new Error(`${late.length} quality check(s) failed: ${late.map(error => error.message.split('\n')[0].slice(0, 120)).join(' | ')}`);
   } finally {   // the one-line summary is printed whatever failed

@@ -47,7 +47,8 @@ A line that encodes a decision says why, so the next session does not undo it wi
 - **When:** an owner's choice, a fix for an incident, a guard, a "looks wrong but is right", a prompt sentence added for a case.
   Never a comment that narrates what the code does. `// Why a job has no score` (a function's description) is not one: only `Why:` and `Why (…):` count.
 - **Prompts:** a comment cannot sit inside the string, so the Why above the prompt const quotes its sentence in backticks:
-  ``// Why (#2203): `names neither a currency nor a period` — form 106 stayed empty``. The gate then guards those words, not the whole prompt line.
+  ``// Why (#2203): `names neither a currency nor a period` — form 106 stayed empty``. The gate then guards those words (3+ words, found in that const), not the whole prompt line.
+  A backticked name or path (`` `retryCount` ``) is not a sentence: the line under the Why stays guarded.
   A comment explains; the prompt's case set protects (a test that replays the case).
 - **What the gate guards** (`tools/why-changed.mjs`, in the push's fast checks): the Why's own lines, the first code line under them (not under a file's header),
   the line a trailing Why sits on, and a quoted prompt sentence. Deleting or rewriting one needs `Why-changed: <which Why> — <reason>` in a commit message

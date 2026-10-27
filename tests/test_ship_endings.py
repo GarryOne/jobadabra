@@ -34,7 +34,7 @@ class ShipEndingsTest(unittest.TestCase):
     def test_the_background_announcement_names_the_monitor_pattern(self):
         announce = next(line for line in (ROOT / 'tools' / 'ship.sh').read_text().splitlines() if 'its last line says how it ended' in line)
         for end in ENDS: self.assertIn(f'ship: {end}', announce)
-        self.assertIn('^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN)', announce)
+        self.assertIn('^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|COMMENT)', announce)
 
     def test_ship_prints_each_ending_it_announces(self):
         source = ''.join((ROOT / 'tools' / name).read_text() for name in ('ship.sh', 'ship-pr.sh', 'ship-watch.sh'))

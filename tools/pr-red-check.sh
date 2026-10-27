@@ -64,13 +64,15 @@ red_main() {
 # GitHub refuses main's counted workflow (tools/red-main.sh: "<workflow> did not start (startup_failure)", 26 Oct 2026: an hour of pushes ran no tests and no session heard
 # of it). Prints "<sha>\t<workflow>\t<run url>\t<pr>\t<branch>"; cached for $ttl seconds; a slow answer is not killed: it lands in the cache for the next prompt.
 . "$(cd "$(dirname "$0")" && pwd)/pr-comments-lib.sh"
+tbin="$(command -v gtimeout || command -v timeout || true)"   # Why (#2252, gitar-bot): stock macOS has no `timeout`; without one the call runs unlimited rather than never
+limit() { if [ -n "$tbin" ]; then "$tbin" "$((wait_tenths / 10 + 1))" "$@"; else "$@"; fi; }
 unanswered() {  # <branch> <worktree>: prints "<n>\t<owner+bot count>\t<first url>\t<other count>" when comments wait; cached for $ttl seconds like lookup()
   local branch="$1" wt="$2" file now stamp view lines n rows
   file="$dir/$(basename "$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null)")-${branch//\//-}.comments"; now="$(date +%s)"; stamp="$(head -n 1 "$file" 2>/dev/null)"
   if [ -n "$stamp" ] && [ "$((now - stamp))" -ge 0 ] 2>/dev/null && [ "$((now - stamp))" -lt "$ttl" ]; then tail -n +2 "$file"; return 0; fi
-  view="$(cd "$wt" && timeout "$((wait_tenths / 10 + 1))" gh pr view "$branch" --json number,url,comments,reviews,commits 2>/dev/null)" || return 0
-  n="$(jq -r '.number // empty' <<<"$view" 2>/dev/null)"; [ -n "$n" ] || return 0
-  lines="$(cd "$wt" && timeout "$((wait_tenths / 10 + 1))" gh api "repos/{owner}/{repo}/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
+  view="$(cd "$wt" && limit gh pr view "$branch" --json number,state,url,comments,reviews,commits 2>/dev/null)" || return 0
+  n="$(jq -r 'select(.state == "OPEN") | .number // empty' <<<"$view" 2>/dev/null)"; [ -n "$n" ] || return 0
+  lines="$(cd "$wt" && limit gh api "repos/{owner}/{repo}/pulls/$n/comments?per_page=100" 2>/dev/null)" || lines=""
   rows="$(pc_items "$view" "${lines:-null}")"
   # Why (#PR comments, owner 27 Oct 2026): answered = a session comment or a commit newer than the item; ISO times compare as text.
   rows="$(awk -F'\t' -v last="$(jq -r '[.commits[]?.committedDate // empty] | max // ""' <<<"$view")" '$2=="self" && $5>last {last=$5} {r[NR]=$0} END {for (i=1;i<=NR;i++) {split(r[i],f,"\t"); if (f[2]!="self" && f[5]>last) print r[i]}}' <<<"$rows")"
@@ -136,7 +138,7 @@ if [ -n "$refused" ]; then
   case "$seen" in
     *" $rbr "*) messages="${messages}Main's ${rwf} since your PR #${rpr} (${rsha}): GitHub refuses the workflow, so main runs no tests (${rurl}); fix it now (the run page names the error), push through tools/ship.sh --background
 " ;;
-    *) others="Main's ${rwf} since ${rsha} (PR #${rpr}, branch ${rbr}): main runs no tests and every landing waits (${rurl}); that PR's session fixes it; nobody within 5 min: tools/revert-red.sh ${rsha}
+    *) others="${others}Main's ${rwf} since ${rsha} (PR #${rpr}, branch ${rbr}): main runs no tests and every landing waits (${rurl}); that PR's session fixes it; nobody within 5 min: tools/revert-red.sh ${rsha}
 " ;;   # told at each prompt; not this session's to fix, so its stop is not blocked
   esac
 fi

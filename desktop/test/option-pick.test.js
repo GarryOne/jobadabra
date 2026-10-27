@@ -107,3 +107,21 @@ test('a kept banner choice the page contradicted is forgotten, then asked again'
   assert.deepEqual(await pickOption(storage, ask, {client: ai('OK')}), {choice: 'OK', how: 'ai'});
   assert.equal(sent.length, 2);
 });
+
+// Owner, 27 Oct 2026 (fair round form 102: Greenhouse's School list opens on its first 100 schools): "search, then Other".
+test('a search box: the AI may name what to type, in order; never a search already typed; nothing kept; the catch-all rule only in this mode', async () => {
+  const sent = [], storage = memory();
+  const reply = said => ({messages: {create: async request => { sent.push(request); return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify(said)}]}; }}});
+  const ask = {label: 'School', value: 'Example University', options: ['Ash Valley College 1', 'Ash Valley College 2'], searchable: true, tried: ['Other']};
+  const found = await pickOption(storage, ask, {client: reply({choice: '', searches: ['Example University', ' other ', 'x'.repeat(61), 'Example University']})});
+  assert.deepEqual(found, {choice: '', how: 'ai', searches: ['Example University']}, 'deduplicated, at most 60 characters, never one already tried');
+  assert.deepEqual(sent[0].output_config.format.schema.required, ['choice', 'searches']);
+  assert.deepEqual(JSON.parse(sent[0].messages[0].content).tried, ['Other']);
+  assert.match(sent[0].system, /search box[\s\S]*catch-all for answers it does not list/);
+  assert.equal(storage.readText('option-picks.json'), null, 'a search box\'s pick is never kept: its list changes with each search');
+  await pickOption(memory(), {label: 'Title', value: 'Mr', options: ['Mr.', 'Ms.']}, {client: reply({choice: 'Mr.'})});
+  assert.doesNotMatch(sent[1].system, /catch-all/, 'an ordinary menu is not told about catch-alls or searches');
+  assert.equal(sent[1].output_config.format.schema.properties.searches, undefined);
+  assert.deepEqual(await pickOption(memory(), {label: 'School', value: 'Example University', options: [], searchable: true}, {client: reply({choice: '', searches: ['Other']})}),
+    {choice: '', how: 'ai', searches: ['Other']}, 'a search that showed nothing still asks what to type next');
+});

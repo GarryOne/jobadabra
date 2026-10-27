@@ -11,7 +11,6 @@
 import {PAGE_FILES, apiFor, askEarly, clickCombos, forgetGivenUp, settings} from './flow.js';
 import {decide} from './log.js';
 import {laterLookIsForm} from './later-look.js';
-import {holdVerdict} from './working-mark.js';
 import {retireFill} from './one-fill.js';
 import {handoffKey} from './ready-handoff.js';
 import {noteRole} from './account.js';
@@ -178,9 +177,9 @@ export const fillKey = (tabId, url) => `${tabId} ${pageKey(url)}`;
 // again; once it has fields the panel is put back (a page that replaced its document lost it) and the page is judged again (a new shape for
 // the page-kind AI), then filled. Once per tab and page. Guard: desktop/test/extension-look-again.test.js.
 const lookedAgain = new Set();
-async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), looks = 10, seenHosts = null) {
+async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), looks = 10, seenHosts = null, onEnd = null) {   // onEnd: the verdict, said once the watch ends with no form
   const key = fillKey(tab.id, tab.url);
-  if (lookedAgain.has(key)) return false;
+  if (lookedAgain.has(key)) { if (onEnd) await onEnd(); return false; }   // looked at once already: the verdict stands
   // The frame hosts the judgment saw (its page shape); one that shows up since, even before this watch started, makes the page be judged again (twin, 9 Oct 2026:
   // the check's frame was there at the judgment with no address yet, so the sketch read nothing and the frame count never changed).
   const hadHosts = seenHosts === null ? (await pageShape(tab.id))?.frameHosts || [] : seenHosts, hadFrames = hadHosts.length > 0;
@@ -211,6 +210,7 @@ async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => s
     return true;
   }
   decide('fill', 'watch ended: no form and no new frame', {host: hostOf(tab.url), after: looks * 2});
+  if (onEnd) await onEnd();
   await sweepConsent(tab.id, 'the watch ended');   // the run ends here: no cookie layer is left open
   return false;
 }
@@ -422,15 +422,16 @@ export async function consider(tab, jobUrl) {
     }
     blindVerdict(blindLook, look, led);
   }
-  // A no-form end on a page that shows a form's fields: no verdict yet, the answer is forgotten and the page looked at once more (owner, 27 Oct 2026: "don't show a verdict").
-  if (holdVerdict({role, counts, lookedAgain: lookedAgain.has(key)})) { decide('fill', 'no form said, but the page shows fields: looking again before any verdict', {host}); await forgetKind(tab, kind, 'no form on a page with fields'); watchForFields(tab, jobUrl, undefined, 2, counts?.frameHosts || []).catch(() => {}); return; }
   if (role !== 'form') {
-    await markPage(tab.id, role, pressed, kind);   // stopped and sure: the verdict now
     await progress(tab.id, '');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
     // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two
     // minutes and filled once it shows (SmartRecruiters, 9 Oct 2026: the check was read as an empty page, "no form", and nobody was told).
     const botCheck = role === 'no-form' && kind?.botCheck === true;
-    if (botCheck || (role === 'no-form' && counts && emptyShape(counts))) watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || []).catch(() => {});   // judged while still empty: look again if fields come
+    const watching = botCheck || (role === 'no-form' && counts && emptyShape(counts));   // judged while still empty, or a check: look again if fields come
+    // No verdict while the flow still works (owner, 27 Oct 2026: "don't show a verdict" ... "IF the extension didn't stop thinking"): stopped and sure, the verdict now; a watch that
+    // may judge the page again keeps "Reading this page…" and says the verdict only when it ends with no form (Greenhouse: "no application", then filled seconds later).
+    await markPage(tab.id, role, pressed, kind, {working: !!watching});
+    if (watching) watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(() => markPage(tab.id, role, pressed, kind));
     if (late(tab, gen, 'page state')) return;   // a stale read never writes the page's state (worker/test/read-generation.test.js)
     await writeState(tab.id, {state: role});
     const said = stall || kind;   // the digest's answer at a stall, else what the page-kind said

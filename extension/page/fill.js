@@ -253,12 +253,13 @@
     const letterGiven = letterFileAttached || letterBoxes().some(el => String(el.value || '').trim());
     const manualLetter = manualLetterButton();
     manualLetter?.setAttribute('data-jobpilotto-letter-manual', '1');
+    manualLetter?.toggleAttribute('data-jobpilotto-letter-error', !!coverLetter && !letterGiven);
     for (const box of letterBoxes()) box.setAttribute('data-jobpilotto-letter', '1');
     for (const slot of (window.__jobPilottoUpload.slots?.() || [])) if (window.__jobPilottoUpload.meaningOf(slot, window.__jobPilottoAliases || []) === 'cover_letter') for (const el of new Set([slot.el, slot.input].filter(Boolean))) { el.setAttribute('data-jobpilotto-letter', '1'); el.toggleAttribute('data-jobpilotto-letter-error', !!(resume?.coverLetterFile && !slot.filled)); }
     if ((manualLetter || letterBoxes().length || uploads.some(item => item.meaning === 'cover_letter')) && coverLetterStatus && !coverLetterStatus.ready && !letterGiven) todo.unshift(`Important: cover letter — ${coverLetterStatus.reason} ${coverLetterStatus.action} in Jobadabra → Profile → Cover letter, then Fill again.`);
     const letterUploadFailed = resume?.coverLetterFile && uploads.some(item => item.meaning === 'cover_letter' && !item.ok);
     if (letterUploadFailed) todo.unshift('Important: cover letter upload did not keep the file. Attach the letter manually from Jobadabra, then check the form again.');
-    if (coverLetter && letterBoxes().some(el => !String(el.value || '').trim())) todo.unshift('Important: cover letter was available but the text box did not keep it. Paste it from Jobadabra → Profile → Cover letter, then check the form again.');
+    if (coverLetter && (manualLetter && !letterGiven || letterBoxes().some(el => !String(el.value || '').trim()))) todo.unshift('Important: cover letter was available but the text box did not keep it. Paste it from Jobadabra → Profile → Cover letter, then check the form again.');
     const unfilledRequired = open.filter(row => !(row.field === 'resume' && resumeAttached) && !row.legal).length;
     // A value we put in that the person then changes by hand is a correction: the label is kept (never the value) so the product learns
     // which questions it fills wrongly. The background drains window.__jobPilottoCorrections (extension/background.js reportTabs).

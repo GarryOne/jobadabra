@@ -108,12 +108,13 @@
     written.update(list);
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
-    const letterAsked = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1') || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual]')).some(el => el.getClientRects().length);
+    const letterAsked = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1') || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
     const letterGiven = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled);
-    const letterRejected = list.find(f => f.el?.hasAttribute('data-jobpilotto-letter-error') && !f.filled);
+    const failedManual = Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual][data-jobpilotto-letter-error]')).find(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+    const letterRejected = list.find(f => f.el?.hasAttribute('data-jobpilotto-letter-error') && !f.filled) || (failedManual && {el: failedManual});
     const letterMissing = !account && letterAsked && !letterGiven && (letterRejected || coverLetterStatus && !coverLetterStatus.ready);
     $('.letter-setup').hidden = moved || !letterMissing;
-    $('.letter-reason').textContent = letterRejected ? 'The letter upload did not keep the file. Attach it manually, then check the form again.' : letterMissing ? coverLetterStatus.reason : '';
+    $('.letter-reason').textContent = letterRejected ? 'The form did not keep the cover letter. Open its letter control and paste or attach it manually, then check again.' : letterMissing ? coverLetterStatus.reason : '';
     $('.letter-action').textContent = letterRejected ? 'Show on form' : coverLetterStatus?.action || 'Set cover letter';
     $('.letter-action').onclick = event => letterRejected ? flash(letterRejected.el) : ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: 'setup:cover-letter'}, APP_DOWN);
     const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobpilotto-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobpilotto-needs');

@@ -17,15 +17,15 @@ import {formGone} from './session-needs.js';  // cycle by design: used inside fu
 const fullKey = url => String(url || '').trim().replace(/\/$/, '');
 let beforeRead = 0; // only the latest card draw may use an asynchronous letter/CV answer
 const cvSeen = new Map();   // job url → {at, info}
-async function cvInfo(url, given) {
-  const key = `${url}:${!!given}`, known = cvSeen.get(key);
+async function cvInfo(url, given, failed) {
+  const key = `${url}:${!!given}:${!!failed}`, known = cvSeen.get(key);
   if (known && Date.now() - known.at < 4000) return known.info;
-  const info = await window.pilot.cvOf(url, !!given).catch(() => null);
+  const info = await window.pilot.cvOf(url, !!given, !!failed).catch(() => null);
   cvSeen.set(key, {at: Date.now(), info});
   return info;
 }
 // A knockout: the English words, or the AI that read the form in any language (extension/page/categories.js -> the panel's `knockouts`).
-function showBefore(item, left, account = false, aiKnockouts = [], letterGiven = false, letterAsked = false) {
+function showBefore(item, left, account = false, aiKnockouts = [], letterGiven = false, letterAsked = false, letterFailed = false) {
   const read = ++beforeRead;
   const knockouts = left.filter(label => KNOCKOUT.test(label) || aiKnockouts.includes(label));
   const submitted = isSubmitted(item);
@@ -39,7 +39,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
   show($('ss-before-letter'), false);
   // A sign-in or sign-up page is not the application: no CV goes there (owner, 8 Oct 2026).
   if (submitted || !item.url || account) return show($('ss-before'), !submitted && knockouts.length > 0);
-  cvInfo(item.url, letterGiven).then(info => {
+  cvInfo(item.url, letterGiven, letterFailed).then(info => {
     if (!info || read !== beforeRead) return;
     const letter = info.coverLetterStatus;
     const letterMissing = letterAsked && letter && !letter.ready;
@@ -73,7 +73,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
         if (added?.ok) { try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {} }
         button.textContent = added?.ok ? 'Tailor my CV' : 'Retry';
         button.disabled = false;
-        if (added?.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked);
+        if (added?.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked, letterFailed);
         else button.title = added?.text || '';
         return;
       }
@@ -81,8 +81,8 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
       const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, [job.url, item.url]);
       button.textContent = result.ok ? 'Tailored ✓' : 'Retry';
       button.disabled = !!result.ok;
-      cvSeen.delete(`${item.url}:false`); cvSeen.delete(`${item.url}:true`);
-      if (result.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked);
+      for (const given of [false, true]) for (const failed of [false, true]) cvSeen.delete(`${item.url}:${given}:${failed}`);
+      if (result.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked, letterFailed);
     };
     show($('ss-before'), true);
   });
@@ -105,7 +105,7 @@ export function showFormCard(item, state) {
   count.replaceChildren(el('b', '', String(done)), el('span', '', account ? account.count : ` of ${state.total} required fields`));
   $('ss-form-bar').style.width = `${Math.round(100 * done / state.total)}%`;
   card.classList.toggle('is-ready', !!state.ready);
-  showBefore(item, state.pending || state.missing || [], !!state.account, state.knockouts || [], state.letterGiven === true, state.letterAsked === true);
+  showBefore(item, state.pending || state.missing || [], !!state.account, state.knockouts || [], state.letterGiven === true, state.letterAsked === true, state.letterFailed === true);
   // An extension older than 0.8.12 sends no filled fields: then only what's left.
   const filled = [...(state.filled || [])].sort((a, b) => a.at - b.at);
   const left = account ? account.left : state.pending || state.missing || [];

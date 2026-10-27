@@ -116,29 +116,30 @@ test('a form with no letter field can be ready while the separate setup queue re
   } finally {w.close();}
 });
 
-for (const available of [false, true]) test(`a letter behind a manual entry control stays actionable (${available ? 'available' : 'missing'} draft)`, {skip}, async () => {
+for (const [available, reveal] of [[false, true], [true, true], [true, false]]) test(`a letter behind a manual entry control stays actionable (${available ? 'available' : 'missing'} draft, reveal ${reveal})`, {skip}, async () => {
   const {evalPanel} = await import('./helpers/panel.js');
   const w = openPage(JSDOM, '<form><label for="a">First name</label><input id="a" required value="Example"><label for="b">Last name</label><input id="b" required value="Person"><label for="c">Email</label><input id="c" required value="example@example.test"><div><h3>Cover letter</h3><button type="button" id="manual">Enter manually</button><textarea id="cover_letter" style="display:none"></textarea></div></form>');
   const status = available ? {state: 'ready', ready: true} : {state: 'missing', ready: false, reason: 'No usable letter.', action: 'Create cover letter'};
   const sent = [];
   let clicks = 0;
-  w.document.getElementById('manual').onclick = () => { clicks++; w.document.getElementById('cover_letter').style.display = ''; };
+  w.document.getElementById('manual').onclick = () => { clicks++; if (reveal) w.document.getElementById('cover_letter').style.display = ''; };
   w.chrome = {runtime: {id: 'test', getManifest: () => ({version: 'test'}), onMessage: {addListener() {}}, sendMessage: async m => {sent.push(m); return m.type === 'panelAllowed' ? {ok: true} : m.type === 'review' ? {session: {id: 'fictional', kind: 'form'}, coverLetterStatus: status} : {};}}};
   try {
     const result = await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status}, available ? LETTER : '');
-    assert.equal(result.todo.some(text => /^Important: cover letter/.test(text)), !available);
+    assert.equal(result.todo.some(text => /^Important: cover letter/.test(text)), !available || !reveal);
     assert.equal(clicks, available ? 1 : 0, 'missing content does not click the manual control');
-    assert.equal(w.document.getElementById('cover_letter').value, available ? LETTER : '');
+    assert.equal(w.document.getElementById('cover_letter').value, available && reveal ? LETTER : '');
     w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
     w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
     evalPanel(w);
     await new Promise(resolve => setTimeout(resolve, 60));
     const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
-    assert.equal(root.querySelector('.letter-setup').hidden, available);
+    assert.equal(root.querySelector('.letter-setup').hidden, available && reveal);
     assert.equal(sent.filter(m => m.type === 'review').at(-1)?.payload?.letterAsked, true, 'Applying receives the same letter observation');
-    assert.equal(/Ready to submit/.test(root.querySelector('.pill b').textContent), available);
+    assert.equal(/Ready to submit/.test(root.querySelector('.pill b').textContent), available && reveal);
+    assert.equal(sent.filter(m => m.type === 'review').at(-1)?.payload?.letterFailed, available && !reveal);
     if (!available) {
-      w.document.getElementById('manual').style.display = 'none';
+      w.document.getElementById('manual').style.visibility = 'hidden';
       w.document.getElementById('a').dispatchEvent(new w.Event('input', {bubbles: true}));
       await new Promise(resolve => setTimeout(resolve, 450));
       assert.equal(root.querySelector('.letter-setup').hidden, true, 'a manual control hidden on another step does not leave a stale warning');

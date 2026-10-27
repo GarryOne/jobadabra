@@ -9,6 +9,7 @@ import * as cvLook from './cv-look.js';
 import * as cvlib from './cv.js';
 import * as demo from './demo.js';
 import * as files from './files.js';
+import {availableLetter} from './letter-availability.js';
 import * as letters from './cover-letter.js';
 import * as matchCheck from './match-check.js';
 import * as pipeline from './pipeline.js';
@@ -42,7 +43,7 @@ export function registerCvAndLettersHandlers(ctx) {
       return {ok: true, ...matchCheck.save(storage, String(code), cv, job, {...result, usd: Math.round((result.usd + cost) * 100) / 100})};
     } catch (error) { return {ok: false, error: error.message}; }
   });
-  ipcMain.handle('cvOf', (_, url) => cvOf(String(url || '')));   // the session card: tailored for this job already, or being tailored now
+  ipcMain.handle('cvOf', (_, url, given = false, failed = false) => ({...cvOf(String(url || '')), coverLetterStatus: availableLetter(storage, String(url || ''), {given: given === true, failed: failed === true}).status}));   // the session card: tailored for this job already, or being tailored now
   // Every "Tailor my CV" in the window (the session page, where the form panel's "Tailor in Jobadabra" sends the person; Jobs; the job drawer): while it runs the form's panel says
   // "Tailoring in Jobadabra…" (cvOf → the review poll); when it is done, the job's open form starts again so the tailored CV is attached from the start (lib/tailored-restart.js).
   // Why (27 Oct 2026, owner): the panel no longer starts tailoring itself; "the extension is not that smart to adapt on the fly and replace the general CV with the tailored one".
@@ -108,6 +109,8 @@ export function registerCvAndLettersHandlers(ctx) {
   // reviewed by the user, approved -> PDF. See lib/cover-letter.js.
   ipcMain.handle('coverLetter', () => letters.status(storage));
   ipcMain.handle('coverLetterDraft', async (_, feedback = '') => {
+    if (DEMO) return {ok: false, error: demo.TEXT}; // demo setup must never reach an account or paid model
+
     const key = storage.secret('ANTHROPIC_API_KEY'), ai = claudeCode.client(storage);
     if (!key && !ai) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
     try {

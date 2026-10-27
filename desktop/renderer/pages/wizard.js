@@ -8,6 +8,7 @@ import {toDraft} from './strategy-review.js';
 import {hideCards} from './setup-strategy.js';
 import {mountEngine} from './ai-engine.js';
 import {canContinue} from '../ai-engine-view.js';
+import {showLetterStep, hideLetterStep} from './wizard-letter.js';
 import {initMagic, initWandBurst} from '../magic.js';
 
 // The AI step's engine chooser (pages/ai-engine.js): mounted the first time the step opens. Nothing is pre-selected;
@@ -59,6 +60,7 @@ async function saveOpenAiKey() {
 // ---------- wizard ----------
 export function goStep(name) {
   const index = STEPS.indexOf(name);
+  if (name === 'letter') showLetterStep(); else hideLetterStep();
   window.pilot.saveSettings({wizardStep: name});  // reopening the app continues here
   if (name === 'ai' && shared.state.secrets.ANTHROPIC_API_KEY && !$('anthropic-key').value) {
     message('ai-message', '✓ Your key is saved. Continue, or paste a new key to replace it.', 'ok');
@@ -102,7 +104,7 @@ export async function init() {
     if (li.dataset.step === 'draft') toDraft(); else goStep(li.dataset.step);
   }));
   // Setup was done before (Run setup again, Rebuild from CV): leave the wizard any time, nothing changes.
-  $('wizard-exit').addEventListener('click', () => { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); });
+  $('wizard-exit').addEventListener('click', () => { hideLetterStep(); hideCards(); show($('wizard'), false); show($('app')); loadJobs(); });
   // A key already there (e.g. Free AI already on): no AI step to do.
   document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => goStep(aiDone() ? 'cv' : 'ai')));
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => {
@@ -139,6 +141,7 @@ export async function init() {
     message('ai-message', 'Saved ✓', 'ok');
     goStep('cv');
   });
+  $('setup-letter-next').addEventListener('click', () => goStep('hosted'));
   $('ai-skip').addEventListener('click', () => goStep('cv'));
   // What's happening, line by line: finished pieces ✓, the one being written last.
   window.pilot.onDraftProgress(({part, percent, notes = []}) => {

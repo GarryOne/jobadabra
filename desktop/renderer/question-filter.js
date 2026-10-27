@@ -5,6 +5,8 @@
 export const keyOf = question => String(question || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 // The queue items that come from Your details (lib/details-review.js), not from a form: the Profile banner adds them to its own count of the answers page.
+/** Queue rows supplied by setup or Your details, counted alongside form questions on every review surface. */
+export const extrasIn = list => (list || []).filter(row => row?.details || row?.setup);
 export const detailsIn = list => (list || []).filter(row => row?.details);
 // The answer "Keep as is" on an answer the AI found unclear (lib/details-review.js): never asked again for that value.
 export const KEEP_AS_IS = 'Keep as is';
@@ -28,7 +30,7 @@ export function factScore(fact, verdicts = {}) {
 }
 // The queue in one order, highest score first; equal scores keep their place.
 export function ranked(list, verdicts = {}) {
-  const scoreOf = row => (row.details ? Math.max(row.details.weight || 0, factScore(row.details.fact || row.question, verdicts)) : weightOf(verdicts[keyOf(row.question)]));
+  const scoreOf = row => (row.setup ? row.weight || MUST : row.details ? Math.max(row.details.weight || 0, factScore(row.details.fact || row.question, verdicts)) : weightOf(verdicts[keyOf(row.question)]));
   return (list || []).map((row, at) => ({row, at, score: scoreOf(row)})).sort((a, b) => b.score - a.score || a.at - b.at).map(each => each.row);
 }
 

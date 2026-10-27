@@ -25,12 +25,13 @@ export function shortTitle(text, most = 56) {
 }
 
 // Where a question comes from: its Your details section, or the form that asked it.
-export const sourceOf = q => (q.details ? q.details.where || 'Your details' : [q.company, 'Application form'].filter(Boolean).join(' · '));
+export const sourceOf = q => (q.setup ? 'Application setup' : q.details ? q.details.where || 'Your details' : [q.company, 'Application form'].filter(Boolean).join(' · '));
 
 // Its state in the list: [words, tone] for pill(). Answered questions leave the queue, so these are the ones still open.
 export function stateOf(q, {aside = false, drafted = false} = {}) {
   if (aside) return ['Set aside', 'neutral'];
   if (drafted) return ['Draft', 'neutral'];
+  if (q.setup) return [q.priority, 'bad'];
   if (q.details) return [ASKS[q.details.kind] || 'Missing answer', 'warn'];
   return q.proposal ? ['Suggested', 'info'] : ['Missing', 'warn'];
 }

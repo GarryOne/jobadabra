@@ -52,13 +52,14 @@ async function readQuestions({force}) {
 function renderQuestions(list, error = '', hidden = [], consent = 0, fromDetails = null) {
   list = list.filter(item => item.details?.kind !== 'where');   // legacy cached home pickers: the app now organizes these sources itself
   Object.assign(now, {list, hidden, consent, error: error || '', ...(fromDetails === null ? {} : {fromDetails})});
-  const shown = JSON.stringify([list.length, error, now.fromDetails]);
+  const high = list.filter(row => row.priority === 'HIGH PRIORITY').length;
+  const shown = JSON.stringify([list.length, high, error, now.fromDetails]);
   if (shown === questionsShown) return;
   questionsShown = shown;
   // Shown whenever there's something to review or a read failed; the store not connected yet (trying only): nothing to read, so no error card.
   if (error && questionsProblem(error).hide) { show($('questions'), false); return; }
   show($('questions'), list.length > 0 || !!error);
-  $('questions-count').textContent = error ? 'couldn\'t load' : `${list.length} need${list.length === 1 ? 's' : ''} review`;
+  $('questions-count').textContent = error ? 'couldn\'t load' : `${list.length} need${list.length === 1 ? 's' : ''} review${high ? ` · ${high} HIGH PRIORITY` : ''}`;
   $('questions-details').textContent = fromDetailsLine(now.fromDetails);
   show($('questions-details'), !error && now.fromDetails > 0);
   $('questions-error').textContent = error ? questionsProblem(error).text : '';
@@ -66,3 +67,6 @@ function renderQuestions(list, error = '', hidden = [], consent = 0, fromDetails
   show($('questions-retry'), !!error);
   show($('questions-review'), !error);
 }
+
+// A letter was drafted, approved or its fallback choice changed: the derived setup action must refresh immediately.
+document.addEventListener('letter-updated', () => loadQuestions({force: true}));

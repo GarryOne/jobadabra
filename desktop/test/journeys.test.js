@@ -3,6 +3,7 @@
 // A live bug becomes one scenario here, failing first. The push hook runs this file when a flow-core file changed (tools/journey-gate.mjs).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import './journeys-profile.js';
 import * as terminals from '../lib/terminals.js';
 import * as apply from '../lib/apply.js';
 import * as review from '../lib/review.js';
@@ -455,34 +456,27 @@ test('scenario: Apply answers after its job is marked Applying: a list read aske
   terminals._reset();
 });
 
-// The owner must never classify imported writing instructions: real saved pages feed the canonical letter section before the queue is read.
-test('scenario: saved writing rules organize automatically, survive restart, and never become technical home questions', async () => {
-  const {openStore} = await import('../lib/store/index.js');
-  const {itemsOf} = await import('../lib/profile-move.js');
-  const {judgeNew} = await import('../lib/details-review.js');
+// The replay app does not run setup or the review queue: prove their shared missing-letter state through the desktop boundary.
+test('scenario: attached CV and complete required fields still leave missing cover-letter setup HIGH PRIORITY', async () => {
   const {openShown} = await import('../lib/question-lists.js');
-  const storage = storageOf();
-  storage.saveSettings({store: 'sqlite', telemetry: false, profileMovedAt: '2026-10-27', profileUnsureAt: '2026-10-27'});
-  const opened = openStore(storage);
-  await opened.page('profile').write('## Imported notes\n- Never mention: unrelated experience\n- Tone: direct\n');
-  await opened.page('answers').write('## Imported answers\n- Never mention: unrelated experience\n');
-  const lines = (await Promise.all(['profile', 'answers'].map(async page => itemsOf(await opened.page(page).outline(), page)))).flat();
-  storage.saveSettings({profileUnsure: lines.map(({page, label, value}) => ({page, label, value}))});
-  let calls = 0;
-  const ai = {client: {messages: {create: async request => {
-    calls++;
-    const {items} = JSON.parse(request.messages[0].content);
-    return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id}) => ({id, home: 'writing', topic: 'writing rule', clarity: 'clear'}))})}]};
-  }}}};
-  await judgeNew(storage, {ai, copy: async () => ({})});
-  const answers = await opened.page('answers').text();
-  assert.match(answers, /Cover letter style[\s\S]*Never mention: unrelated experience/);
-  assert.match(answers, /Tone: direct/);
-  assert.equal((answers.match(/Never mention/g) || []).length, 1);
-  assert.doesNotMatch(await opened.page('profile').text(), /Never mention|Tone: direct/);
-  await judgeNew(storage, {ai});
-  const restarted = createStorage(storage.dir, {encrypt: v => v, decrypt: v => v});
-  assert.ok(!(await openShown(restarted, {ai: {}})).list.some(row => row.details?.kind === 'where'));
-  assert.equal(await openStore(restarted).page('answers').text(), answers);
-  assert.equal(calls, 1, 'repeated reads do not multiply or rejudge unchanged sources');
+  const {me} = await import('../lib/server-contact.js');
+  const {availableLetter} = await import('../lib/letter-availability.js');
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-letter-journey-')), {encrypt: v => v, decrypt: v => v});
+  fs.writeFileSync(storage.path('cv.pdf'), '%PDF-fictional-CV');
+  const queue = await openShown(storage, {rows: [], groups: [], ai: {client: {messages: {create: async () => { throw new Error('This setup state never needs AI'); }}}}});
+  assert.equal(queue.list.filter(row => row.setup?.kind === 'cover-letter').length, 1);
+  assert.equal(queue.list[0].priority, 'HIGH PRIORITY');
+  const details = await me(storage, FORM);
+  assert.ok(details.resume, 'the CV is attached/available while the letter is missing');
+  assert.equal(details.coverLetterStatus.state, 'missing');
+  assert.equal(details.coverLetterFile, null);
+  review._reset();
+  const sessions = [{id: 'letter-journey', url: FORM, company: 'Example', kind: 'form', status: 'done'}];
+  const payload = {session: 'letter-journey', url: FORM, tab: 91, total: 3, left: 0, letterAsked: true, letterGiven: false};
+  review.report(sessions, payload);
+  const state = review.allStates().find(row => row.id === 'letter-journey');
+  assert.equal(availableLetter(storage, FORM, {given: state.letterGiven}).status.ready, false, 'filled required fields cannot stand in for a missing letter');
+  review.report(sessions, {...payload, letterGiven: true});
+  const written = review.allStates().find(row => row.id === 'letter-journey');
+  assert.equal(availableLetter(storage, FORM, {given: written.letterGiven}).status.source, 'form', 'a letter actually supplied satisfies this form without changing fallback consent');
 });

@@ -106,7 +106,7 @@ async function saveDraft(parts = null) {
     $('save-dialog').close();
     // The Strategy page read again: it still showed the strategy from before (7 Oct 2026: "Your Profile is empty" stayed after a rebuild filled it).
     if (replacing) { hideCards(); show($('wizard'), false); show($('app')); loadJobs(); import('./strategy.js').then(page => page.loadStrategy()); toastMessage('Strategy replaced ✓', byStore('The previous one is kept in Notion as “🗂 Previous strategy”.', 'The previous one is kept as “🗂 Previous strategy”.'), {view: 'strategy'}, 'good'); }
-    else goStep('hosted');
+    else goStep('letter');
   }, 900);
 }
 async function openRebuildReview() {

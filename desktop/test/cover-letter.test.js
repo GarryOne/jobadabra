@@ -86,3 +86,31 @@ test('a draft records who paid and its real cost; status returns both', async ()
   letters.edit(storage, 'Dear Hiring Team,\n\nMine.');
   assert.equal(letters.status(storage).paidBy, 'api', 'the last draft is still the last draft after an edit');
 });
+
+test('one availability decision delivers approved base text and PDF, or an actionable setup gap', async () => {
+  const storage = withCv(tempStorage());
+  const missing = await me(storage);
+  assert.equal(missing.coverLetterStatus?.state, 'missing');
+  assert.match(missing.coverLetterStatus?.action || '', /Create/);
+  await letters.generate(storage, {client: client('Dear Hiring Team,\n\nHello.')});
+  assert.equal((await me(storage)).coverLetterStatus?.state, 'draft');
+  letters.approve(storage, Buffer.from('%PDF-letter'));
+  assert.equal((await me(storage)).coverLetterStatus?.state, 'disabled');
+  storage.saveSettings({letterFallback: true});
+  const {letterQuestion} = await import('../lib/letter-availability.js');
+  assert.equal(letterQuestion(storage), null, 'usable approved fallback removes the derived queue item');
+  const ready = await me(storage);
+  assert.equal(ready.coverLetterStatus?.state, 'ready');
+  assert.equal(ready.coverLetterText, letters.status(storage).text);
+  assert.ok(ready.coverLetterFile);
+  fs.rmSync(letters.pdfPath(storage));
+  assert.equal((await me(storage)).coverLetterStatus?.state, 'unavailable');
+});
+
+
+test('failed generation never clears missing setup or approves a draft', async () => {
+  const storage = withCv(tempStorage());
+  await assert.rejects(letters.generate(storage, {client: {messages: {create: async () => { throw new Error('fictional generation failure'); }}}}), /fictional generation failure/);
+  assert.equal((await me(storage)).coverLetterStatus.state, 'missing');
+  assert.equal(letters.status(storage).state, 'none');
+});

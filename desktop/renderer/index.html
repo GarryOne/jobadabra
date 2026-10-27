@@ -50,6 +50,7 @@
       <li data-step="ai">AI</li>
       <li data-step="cv">Your CV</li>
       <li data-step="draft">Your strategy</li>
+      <li data-step="letter">Cover letter</li>
       <li data-step="extras">Optional extras</li>
     </ol>
     <div class="steps-foot">
@@ -236,6 +237,13 @@
         <button class="primary" id="draft-save" disabled>Save strategy &amp; continue</button>
       </div>
       <p class="message" id="draft-save-message"></p>
+    </div>
+
+    <div class="step" data-step="letter" hidden>
+      <header class="view-head step-head"><div><h1>Your cover letter</h1><p>Draft it, review it, then approve it for applications.</p></div></header>
+      <div id="setup-letter-slot"></div>
+      <p class="muted small">If you leave this unfinished, Application questions keeps it as HIGH PRIORITY. Using an approved base letter as a fallback is your choice below.</p>
+      <div class="actions sticky"><button class="secondary" data-back>Back</button><button class="primary" id="setup-letter-next">Continue</button></div>
     </div>
 
     <div class="step" data-step="extras">
@@ -526,6 +534,7 @@
             </div>
             <div class="ss-before" id="ss-before" hidden>
               <div class="ss-before-row" id="ss-before-knock" hidden><span class="ss-before-mark">⛔</span><div><b id="ss-before-knock-title"></b><small id="ss-before-knock-list"></small></div></div>
+              <div class="ss-before-row" id="ss-before-letter" hidden><span class="ss-before-mark">!</span><div><b id="ss-before-letter-title">HIGH PRIORITY · Cover letter</b><small id="ss-before-letter-sub"></small></div><button class="primary" id="ss-before-letter-btn">Set cover letter</button></div>
               <div class="ss-before-row" id="ss-before-cv" hidden><span class="ss-before-mark" id="ss-before-cv-mark"></span><div><b id="ss-before-cv-title"></b><small id="ss-before-cv-sub"></small></div>
                 <button class="secondary" id="ss-before-match-btn" hidden>Check match</button><button class="secondary" id="ss-before-cv-btn" hidden>Tailor my CV</button></div>
             </div>

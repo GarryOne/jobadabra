@@ -7,5 +7,8 @@ export async function init() {
   const box = document.getElementById('letter-fallback');
   if (!box) return;
   box.checked = fallbackOn((await window.pilot.state().catch(() => null))?.settings);
-  box.addEventListener('change', () => window.pilot.saveSettings({letterFallback: box.checked}));
+  box.addEventListener('change', async () => {
+    await window.pilot.saveSettings({letterFallback: box.checked});
+    document.dispatchEvent(new Event('letter-updated'));
+  });
 }

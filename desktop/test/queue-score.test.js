@@ -90,7 +90,8 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
     storage.saveSettings({questionVerdicts: VERDICTS, missingFacts: {since: '2020-01-01'}});   // past the fresh install's 14 days: no missing-fact items beside these
     assert.ok((await factsOf(storage, fetcher)).some(fact => fact.label === 'Work permit / visa' && fact.value === ''), 'a fact with no value is listed (for the AI to map questions to)');
     const {list, fromDetails} = await openShown(storage, {fetcher, ai: {}});
-    assert.deepEqual(list.map(row => row.question), ['First name', 'Last name', 'Email', 'Phone', 'Work permit / visa', 'Salary expectation', 'Rare question'], 'with no AI the schema\'s first empty fields lead, then the facts');
+    assert.equal(list[0].setup?.kind, 'cover-letter', 'important setup precedes missing facts');
+    assert.deepEqual(list.filter(row => !row.setup).map(row => row.question), ['First name', 'Last name', 'Email', 'Phone', 'Work permit / visa', 'Salary expectation', 'Rare question'], 'with no AI the schema\'s first empty fields lead, then the facts');
     assert.equal(fromDetails, 0, 'nothing is answered from Your details yet');
   });
 }

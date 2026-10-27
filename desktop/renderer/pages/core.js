@@ -8,7 +8,7 @@ import {shared} from './shared.js';
 export const $ = id => document.getElementById(id);
 export const osText = text => swap(text, window.pilot.platform);
 export const osPick = (mac, windows) => pick(mac, windows, window.pilot.platform);
-export const STEPS = ['welcome', 'ai', 'cv', 'draft', 'hosted', 'extras'];
+export const STEPS = ['welcome', 'ai', 'cv', 'draft', 'letter', 'hosted', 'extras'];
 // How old a saved screen is, in minutes (ago() rounds to hours): "just now", "4 min ago", "2 h ago".
 export const savedAgo = iso => {
   const minutes = Math.floor((Date.now() - Date.parse(iso)) / 60000);

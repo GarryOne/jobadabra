@@ -12,12 +12,12 @@ import json
 import os
 import subprocess
 import tempfile
-import threading
 import time
 from pathlib import Path
 
 from .contract import Adapter, AiError, AiLimit, Attachment, Response, SUBSCRIPTION, TextBlock, plus
 from .schema import parse_json, problems
+from .slots import Slots
 
 TIMEOUT_S = 240        # a hard stop per call; a call that reads files gets at least FILES_TIMEOUT_S
 FILES_TIMEOUT_S = 600
@@ -61,7 +61,7 @@ class CliAdapter(Adapter):
     folder = ''                # the call folders' name: job-pilotto-<folder>-…
     timeout_env = 'JOB_PILOTTO_CLI_TIMEOUT'
     missing_text = not_answering_text = ''
-    _slots = threading.BoundedSemaphore(2)   # a subclass sets its own
+    _slots = Slots(2)   # a subclass sets its own (src/ai/providers/slots.py: the main thread first)
 
     def __init__(self, binary='', fallback=None, run=subprocess.run, timeout=None, log=None):
         super().__init__(fallback=fallback, log=log)

@@ -8,10 +8,10 @@ import os
 import re
 import shutil
 import subprocess
-import threading
 from pathlib import Path
 
 from .cli_base import CliAdapter, CliError, CliLimitError
+from .slots import Slots
 from .contract import Usage, SUBSCRIPTION
 
 # Claude Code's model aliases for our model ids (the alias follows Claude Code's own latest model of that family).
@@ -135,7 +135,7 @@ class ClaudeCode(CliAdapter):
     label = 'Claude Code (your plan)'
     fallback_label = 'your Anthropic API key'
     missing_text, not_answering_text = MISSING_TEXT, NOT_ANSWERING_TEXT
-    _slots = threading.BoundedSemaphore(PARALLEL)
+    _slots = Slots(PARALLEL)
 
     def __init__(self, binary=None, fallback=None, run=subprocess.run, timeout=None, log=None):
         super().__init__(binary if binary is not None else find_binary(), fallback=fallback, run=run, timeout=timeout, log=log)

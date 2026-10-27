@@ -283,7 +283,7 @@ export function needRow(need, item) {
     const field = need.label ? unbold(need.label) : agreeLabel(need);
     const answer = async value => {   // your own answer (a saved one, or typed): into the form's field
       const sent = await sendAnswer(item, key, field, value, `${name}: ${value}`);
-      if (sent.ok) doneRow(li, key, sent.outcome); else toastMessage('Could not fill it in', sent.error);
+      if (sent.ok) doneRow(li, key, sent.outcome); else toastMessage('Could not fill it in', sent.error, sessionPlace(item), 'bad');
     };
     const pick = chosen => {
       if (chosen.kind === 'saved') { answer(chosen.value); return; }
@@ -366,7 +366,7 @@ export function askRow(need, item) {
     if (!value) { input.placeholder = 'Write an answer first'; input.focus(); return; }
     fill.disabled = true;
     const sent = await sendAnswer(item, key, need.question, value, `"${need.question}": ${value}`);
-    if (!sent.ok) { fill.disabled = false; toastMessage('Could not fill it in', sent.error); return; }
+    if (!sent.ok) { fill.disabled = false; toastMessage('Could not fill it in', sent.error, sessionPlace(item), 'bad'); return; }
     handled.set(key, sent.outcome);
     keep();
     done(sent.outcome);

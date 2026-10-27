@@ -35,7 +35,7 @@ const words = globalThis.document.createElement('div');
 words.className = 'card-words';
 words.append(heading);
 const edit = globalThis.document.createElement('button');
-edit.className = 'card-edit';
+edit.className = 'secondary small-btn with-icon card-edit';
 edit.addEventListener('click', () => { detailsCard.dataset.editing = 'true'; });
 const fact = globalThis.document.createElement('label');
 fact.className = 'fact-line';

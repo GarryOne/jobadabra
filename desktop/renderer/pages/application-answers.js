@@ -112,7 +112,7 @@ function destinationFor(where, fact, question, key) {
 
 function focusFact(panel, destination) {
   if (!panel) return;
-  panel.querySelector('.card-edit')?.click();
+  panel.querySelector('button.secondary.small-btn.with-icon')?.click();
   const field = (() => {
     if (panel.id === 'setting-contact' && destination.key) {
       try {

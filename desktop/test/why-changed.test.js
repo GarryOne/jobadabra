@@ -103,12 +103,22 @@ test('a prompt sentence: a Why quoting `words` guards those words in the code, n
   assert.match(push({'w/p.js': prompt}, {'w/p.js': prompt.replace('form 106 left', 'form 106 had')}), /w\/p\.js:1/, 'rewording the Why itself is a change to it');
 });
 
+// Why (#2217 review): a backticked name made the Why guard only that name, anywhere in the file, so the line under it changed freely.
+test('a Why naming code in backticks still guards the line under it; a prompt sentence counts only in its own block', () => {
+  const named = 'import x from "y";\n// Why (#1): keep `retryCount` at 3; `tools/why-changed.mjs` reads it.\nconst retryCount = 3;\nconst other = retryCount;\n';
+  assert.match(push({'lib/r.js': named}, {'lib/r.js': named.replace('= 3', '= 5')}), /lib\/r\.js:2/, 'the name is still in the code, the guarded line changed');
+  const prompt = '// Why (#2203): `names neither a currency nor a period` — form 106.\nexport const RULE = `A box that names neither a currency nor a period is asked.`;\n' +
+    '// Why (#7): the second rule.\nexport const OTHER = `It names neither a currency nor a period too.`;\n';
+  assert.match(push({'w/p.js': prompt}, {'w/p.js': prompt.replace('that names neither a currency nor a period is', 'with no currency is')}), /guarded words are gone/,
+    'the same words under another Why do not keep the first one guarded');
+});
+
 test('Markdown and other non-code files are not read', () => {
   assert.equal(push({'docs/a.md': '<!-- x -->\n# Why: a heading\ntext\n'}, {'docs/a.md': 'other\n'}), '');
 });
 
 test('the pure parts agree with the repo path', () => {
-  assert.deepEqual(guardedChanges('', () => '', () => ''), []);
+  assert.deepEqual(guardedChanges('', () => ''), []);
   assert.equal(missingWhyChanged([], []), '');
 });
 

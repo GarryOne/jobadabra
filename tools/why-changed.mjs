@@ -2,7 +2,8 @@
 // The Why gate (docs/rules/files.md "Comments" → "Why comments"): a push that deletes or rewrites a line guarded by a `Why (<PR or date>[, owner]): <reason>` comment says so on purpose:
 //   Why-changed: <which Why> — <reason>        (in any commit message of the push; tools/commit-trailers.mjs checks its value at commit time)
 // Guarded: the Why comment's own lines (it and the comment lines right under it); the first code line under them (not under a file's header comment); the code line a
-// trailing Why sits on. A Why that quotes `words in backticks` guards those words in the file's code instead of the line under it: a prompt sentence (a comment cannot sit inside the string).
+// trailing Why sits on. A Why that quotes `three or more words` found in its own block's code (to the next Why, at most 80 lines) guards those words instead of the line
+// under it: a prompt sentence (a comment cannot sit inside the string). A backticked name or path (`retryCount`) is not a sentence: the line under it stays guarded.
 // Free: a new Why, a pure move or re-indent (the same lines come back elsewhere in the push), any edit nowhere near a Why.
 // Usage: node tools/why-changed.mjs [--base origin/main]   exit 1 with the guarded lines when the trailer is missing. Guard: desktop/test/why-changed.test.js.
 import {execFileSync} from 'node:child_process';
@@ -16,11 +17,13 @@ const isComment = line => /^\s*(\/\/|#)/.test(line);
 // A comment line that starts another part of a header ("Usage:", "Tests:", "Used by ...") ends the Why's lines: editing it is not editing the reason.
 const NEW_PART = /^\s*(\/\/|#)\s*([A-Z][A-Za-z-]*(?: [A-Za-z-]+){0,2}:\s|Used by\b|Guards?\b|Tests?\b)/;
 const ANCHOR = /`([^`\n]{8,})`/g;
+const SENTENCE = /\S+\s+\S+\s+\S/;   // Why (#2217 review): a quoted name like `retryCount` would else unguard the line it names
+const REACH = 80;
 const TRAILER = /^Why-changed:[ \t]*(\S.{8,})$/m;
 const HOW = 'If the change is on purpose (you read the Why and its PR), add to a commit message of the push:\n  Why-changed: <which Why> — <why it no longer holds, or what replaces it>\nA pure move or re-indent needs nothing: keep the lines the same. (docs/rules/files.md "Comments" → "Why comments")';
 
-// text -> [{line, why, guarded, comments, code: [line numbers], anchors: [text]}] for each Why of a file (1-based lines). comments: the Why's own lines; code: the
-// code line it guards (a trailing Why's line is in both).
+// text -> [{line, why, guarded, comments, code: [line numbers], anchors: [{text, lines}]}] for each Why of a file (1-based lines). comments: the Why's own lines; code:
+// the code line it guards (a trailing Why's line is in both); anchors: each quoted sentence and the code lines of its block that hold it.
 export function whyBlocks(text) {
   const lines = String(text).split('\n'), blocks = [];
   for (let i = 0; i < lines.length; i++) {
@@ -29,13 +32,18 @@ export function whyBlocks(text) {
     if (isComment(lines[i])) {
       let end = i;
       while (end + 1 < lines.length && isComment(lines[end + 1]) && !WHY.test(lines[end + 1]) && !NEW_PART.test(lines[end + 1])) { block.guarded.push(++end + 1); block.comments.push(end + 1); }
-      for (const n of block.guarded) for (const found of lines[n - 1].matchAll(ANCHOR)) block.anchors.push(found[1]);
       const header = lines.slice(0, i).every(line => !line.trim() || isComment(line) || line.startsWith('#!'));
       let next = end + 1;
       while (next < lines.length && !lines[next].trim()) next++;
+      const reach = [];   // the block's code lines: to the next Why, at most REACH lines
+      for (let n = next; n < Math.min(lines.length, next + REACH) && !WHY.test(lines[n]); n++) if (!isComment(lines[n])) reach.push(n + 1);
+      for (const n of block.comments) for (const found of lines[n - 1].matchAll(ANCHOR)) {
+        const held = reach.filter(at => lines[at - 1].includes(found[1]));
+        if (SENTENCE.test(found[1]) && held.length) block.anchors.push({text: found[1], lines: held});
+      }
       if (!header && !block.anchors.length && next < lines.length && !isComment(lines[next])) { block.guarded.push(next + 1); block.code.push(next + 1); }   // quoted words guard only themselves
       i = end;
-    } else { block.code.push(i + 1); for (const found of lines[i].matchAll(ANCHOR)) block.anchors.push(found[1]); }
+    } else block.code.push(i + 1);
     blocks.push(block);
   }
   return blocks;
@@ -58,23 +66,22 @@ export function parseDiff(diff) {
   return {files, added};
 }
 
-// -> the guarded changes, [{where, stale}] (empty when none). oldText(path) / newText(path): a file's content before and after the push ('' when there is none).
+// -> the guarded changes, [{where, stale}] (empty when none). oldText(path): a file's content before the push ('' when there is none).
 // stale: the code (or the quoted prompt words) changed and the Why above it did not: an outdated Why misleads the next session more than none (owner, 27 Oct 2026).
-export function guardedChanges(diff, oldText, newText) {
+export function guardedChanges(diff, oldText) {
   const {files, added} = parseDiff(diff), hits = [];
   const addedText = [...added];
   for (const file of files) {
     if (!file.oldPath || !CODE_FILE.test(file.oldPath)) continue;
     const before = oldText(file.oldPath);
     if (!WHY.test(before)) continue;
-    const after = file.newPath ? newText(file.newPath) : '';
     const old = before.split('\n');
-    const inCode = (text, anchor) => text.split('\n').some(line => !isComment(line) && line.includes(anchor));   // the Why itself never counts as the words being there
     for (const block of whyBlocks(before)) {
       const comment = n => (n === block.line ? old[n - 1].slice(old[n - 1].search(WHY)) : old[n - 1]).trim();   // a trailing Why: only its comment part
       const whyEdited = block.comments.some(n => file.removed.has(n) && !addedText.some(line => line.includes(comment(n))));
       const codeGone = block.code.some(n => file.removed.has(n) && !added.has(file.removed.get(n).trim()));
-      const lost = block.anchors.filter(anchor => inCode(before, anchor) && !inCode(after, anchor) && !addedText.some(line => !isComment(line) && line.includes(anchor)));
+      // Lost: a line of the block that held the words is removed and no added code line brings them back (the same words elsewhere in the file do not count).
+      const lost = block.anchors.filter(anchor => anchor.lines.some(n => file.removed.has(n)) && !addedText.some(line => !isComment(line) && line.includes(anchor.text))).map(anchor => anchor.text);
       if (!whyEdited && !codeGone && !lost.length) continue;
       const where = `${file.oldPath}:${block.line} ${block.why}${lost.length ? ` (its guarded words are gone: "${lost[0]}")` : ''}`;
       hits.push({where, stale: (codeGone || lost.length > 0) && !whyEdited});
@@ -102,7 +109,7 @@ export function checkPush({root, base = 'origin/main'}) {
     diff = git('diff', '-U0', '-M', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', from, 'HEAD');
     messages = git('log', '--format=%B%x00', `${base}..HEAD`).split('\0');
   } catch { return ''; }   // no base to compare with (a fresh clone without origin/main): nothing to say
-  return missingWhyChanged(guardedChanges(diff, show(from), show('HEAD')), messages);
+  return missingWhyChanged(guardedChanges(diff, show(from)), messages);
 }
 
 function main() {

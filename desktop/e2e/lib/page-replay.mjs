@@ -181,10 +181,11 @@ export const contactOf = item => (item.contact ? {first_name: 'Test', last_name:
 
 // One case in its own browser (JP_REPLAY_TABS=1, and the run alone after a failure in parallel): the same checks over every request of that browser.
 export async function runCase(item, {extensionDir} = {}) {
-  let run;
+  const startupController = new AbortController();
+  let run, startupClose;
   return timedReplay(item, async step => {
     const navigation = syntheticNavigation(item);
-    run = await step('browser.start', () => startRealExtension({extensionDir, cv: item.cv !== false, ...(contactOf(item) ? {contact: contactOf(item)} : {}), allowAllSites: true, answer: answerFor(item), offline: true}), late => late.close());   // offline: nothing but the case's pages
+    run = await step('browser.start', () => startRealExtension({extensionDir, signal: startupController.signal, onCleanup: close => { startupClose = close; }, cv: item.cv !== false, ...(contactOf(item) ? {contact: contactOf(item)} : {}), allowAllSites: true, answer: answerFor(item), offline: true}), late => late.close());   // offline: nothing but the case's pages
     const pages = caseFiles(item), statuses = caseStatuses(item), delays = caseDelays(item);
     for (const host of caseHosts(item)) await run.context.route(`https://${host}/**`, route => answerPage(route, pages, statuses, delays, navigation.redirects));
     await routeSyntheticNavigation(run.context, run.page, item, route => answerPage(route, pages, statuses, delays, navigation.redirects));
@@ -195,5 +196,9 @@ export async function runCase(item, {extensionDir} = {}) {
     if (!(await step('isolation', () => run.assertIsolated()))) result.failures.push('isolation');
     await step('fillSettled', () => fillSettled(run.page));
     return {...result, ok: !result.failures.length, fillTime: () => fillSeconds(run.requests, caseHosts(item))};   // the fill's own clock (lib/replay-time.mjs)
-  }, async step => { if (run) await step('browser.close', () => run.close()); });
+  }, async step => {
+    startupController.abort();
+    const close = run?.close || startupClose;
+    if (close) await step('browser.close', close);
+  });
 }

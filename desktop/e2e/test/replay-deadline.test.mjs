@@ -104,3 +104,31 @@ test('a shared browser which finishes startup late is disposed', async () => {
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(closed, true);
 });
+
+test('an ordinary judge error plus hung teardown still retires the browser', async () => {
+  const {replayInTabs} = await import('../lib/replay-browser.mjs');
+  const items = ['first', 'successor'].map(name => ({name, pages: [{url: 'https://same.example/form'}]}));
+  let successorStarted = false;
+  const results = await replayInTabs(items, {tabs: 1, startBrowser: async () => ({
+    run: {assertIsolated: async () => true}, close: async () => {},
+    runInTab: item => {
+      if (item.name === 'successor') { successorStarted = true; return Promise.resolve({name: item.name, ok: true, failures: []}); }
+      return timedReplay(item, async () => { throw new Error('ordinary judge failure'); }, step => step('tab.close', never), {cleanupMs: 15, log: () => {}});
+    },
+  })});
+  assert.equal(results[0].ok, false);
+  assert.equal(results[1].ok, false);
+  assert.equal(successorStarted, false);
+});
+
+test('shared partial startup exposes cleanup before its factory returns', async () => {
+  const {replayInTabs} = await import('../lib/replay-browser.mjs');
+  let closed = false, startupSignal;
+  await assert.rejects(replayInTabs([], {startupMs: 15, startExtension: async ({onCleanup, signal}) => {
+    startupSignal = signal;
+    onCleanup(async () => { closed = true; });
+    await never();
+  }}), /browser startup timed out/);
+  assert.equal(closed, true);
+  assert.equal(startupSignal.aborted, true);
+});

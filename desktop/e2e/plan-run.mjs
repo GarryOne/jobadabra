@@ -11,6 +11,10 @@ import {suitesUsing} from './lib/import-graph.mjs';
 import {autoSuites, cadenceOf, exploreDecision, onWindows, runnerOf, noiseTripped, reviewNeeded, suitesFor, suitesNamed, waitingFindings} from './lib/plan.mjs';
 import {asIssues, REGISTER_LIST, registerEntries} from './lib/prejudge.mjs';
 import {shardLegs, suiteOfKey, windowsMatrix} from './lib/suite-shards.mjs';
+import {STORES, WHY} from './lib/pick-why.mjs';
+
+// A PR's (or an after-merge run's) pr_steps: {suite: [step names], "(stores)": {suite: store}, "(why)": [lines]} (pr-suites.mjs). Unreadable: none.
+export const prSteps = env => { try { const steps = JSON.parse(env.PR_STEPS || '{}'); return steps && typeof steps === 'object' && !Array.isArray(steps) ? steps : {}; } catch { return {}; } };
 
 const realGh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe']});   // gh's own error text stays out of the log (a failed call falls back below)
 
@@ -93,7 +97,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   // GATE_STORE_LEGS=one (the release run, desktop.yml): ONE job per suite. Its copy of the Mac job never passed `E2E_STORE` from the leg, so both legs ran the SAME store (the one the
   // run number picks): a duplicate that waited on its twin in the suite's group, and a third contender for GitHub's single waiting slot there when the Windows job of the suite
   // arrived (15 of 41 Mac jobs cancelled, 10 Oct 2026). Both stores in one job is the next step; until then one leg loses nothing the duplicate covered.
-  const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: '', key}]);
+  // A PR's run: each suite on the store its picked steps were recorded on (pr-suites.mjs "(stores)"; e2e.yml falls back to SQLite).
+  const prStores = String(env.PR_SUITES || '').trim() ? prSteps(env)[STORES] || {} : {};
+  const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
   for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
@@ -122,4 +128,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     ...(out.tag ? [`- **Promotes:** \`${out.tag}\` when all pass`] : []),
     `- **AI review:** ${out.review === '1' ? 'on' : 'off'}`,
     ...(out.why ? [`- **Note:** ${out.why}`] : []), ''].join('\n'));
+  // Why each picked step or whole suite runs, with the changed line that reached it (pr-suites.mjs; owner on #2156, 27 Oct 2026: "Is that correct?").
+  const reasons = prSteps(process.env)[WHY];
+  if (Array.isArray(reasons) && reasons.length) console.error(`Why each one runs (suite [store] · step ← the changed line that reached it):\n${reasons.map(line => `  ${line}`).join('\n')}\n`);
 }

@@ -179,6 +179,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           ONLY: ${{ inputs.suite || inputs.pr_suites }}
           PR_SUITES: ${{ inputs.pr_suites }}
+          PR_STEPS: ${{ inputs.pr_steps }}   # its "(stores)" and "(why)": the store each suite runs on, and the reasons printed below (desktop/e2e/pr-suites.mjs)
           TARGET_REF: ${{ inputs.target_ref || inputs.gate_tag }}
           GATE_TAG: ${{ inputs.gate_tag }}
           OVER: ${{ steps.spend.outputs.over }}
@@ -207,7 +208,7 @@ jobs:
       E2E_AI_FAMILY: ${{ (inputs.family == 'claude' || inputs.family == 'openai') && inputs.family || '' }}   # a manual run pinned to one family; else alternate
       # The store under test (lib/store.mjs pickStore): the gate's two jobs per suite pin one store each (plan-run.mjs legs); any other run alternates on bit 1 of the
       # run number (beside the AI family's bit 0), unless a run by hand pins one.
-      E2E_STORE: ${{ (inputs.pr_suites != '' && 'sqlite') || matrix.store || (inputs.store != 'alternate' && inputs.store) || 'alternate' }}   # a pull request: SQLite, a fresh database per run
+      E2E_STORE: ${{ matrix.store || (inputs.pr_suites != '' && 'sqlite') || (inputs.store != 'alternate' && inputs.store) || 'alternate' }}   # a pull request: the store its picked steps were recorded on (plan-run.mjs), else SQLite; both are fresh per run
       E2E_NOTION_TOKEN: ${{ secrets.E2E_NOTION_TOKEN }}
       E2E_NOTION_TOKEN_FAILURESNOTION: ${{ secrets.E2E_NOTION_TOKEN_FAILURESNOTION }}
       E2E_NOTION_TOKEN_FAILURESCHANNELS: ${{ secrets.E2E_NOTION_TOKEN_FAILURESCHANNELS }}
@@ -327,7 +328,7 @@ jobs:
           client-id: ${{ vars.CI_APP_CLIENT_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           permission-contents: write
-      - name: Take the suite's lock (it owns one Notion page; waits, never dropped)
+      - name: Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}

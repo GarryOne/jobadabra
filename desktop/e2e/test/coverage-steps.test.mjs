@@ -42,7 +42,7 @@ test('a line no suite ran: every suite that loads the file, whole', () => {
 
 test('a suite recorded before steps were runs whole by its lines', () => {
   const old = {suites: {cardstates: {sha: 'S', files: {'desktop/renderer/app.js': lines([1, 40])}}}};
-  assert.deepEqual(stepsCovering(old, {S: {'desktop/renderer/app.js': [[25, 25]]}}), {cardstates: {steps: [], setup: false, whole: true, reason: 'runs desktop/renderer/app.js:25'}});
+  assert.deepEqual(stepsCovering(old, {S: {'desktop/renderer/app.js': [[25, 25]]}}), {cardstates: {steps: [], setup: false, whole: true, reason: 'runs desktop/renderer/app.js:25', reach: {}}});
 });
 
 test('a line more than MAX_USERS suites ran is shared code (launch, the server): only the settings smoke runs it (#2118, #2119 ran 20 suites whole)', () => {

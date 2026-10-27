@@ -158,6 +158,7 @@
   "windows-smoke-pick.test.mjs",
   "owns-step.test.mjs",
   "pr-suites-steps.test.mjs",
+  "pr-store.test.mjs",
   "runner-picked-steps.test.mjs",
   "plan-gate-real.test.mjs",
   "suite-cadence.test.mjs",

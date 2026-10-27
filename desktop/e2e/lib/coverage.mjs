@@ -200,7 +200,7 @@ export async function saveCoverage(handle, dir, env = process.env) {
   const suite = env.E2E_SUITE || 'default';
   const file = path.join(dir, `coverage-${suite}-${handle.number}.json`);
   fs.mkdirSync(dir, {recursive: true});
-  fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps, partial: someSteps(env)}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
+  fs.writeFileSync(file, JSON.stringify({suite, sha: env.E2E_COVERAGE_SHA || env.GITHUB_SHA || '', files, steps: handle.steps, partial: someSteps(env), store: env.E2E_STORE_UNDER_TEST || ''}));   // the commit the suite ran (e2e.yml sets it to the plan's ref)
   console.log(`  coverage: ${Object.keys(files).length} app file(s), ${Object.keys(handle.steps).filter(name => name !== SETUP && name !== WHOLE).length} step(s), ${python} Python process(es) → ${path.basename(file)}`);
   return file;
 }

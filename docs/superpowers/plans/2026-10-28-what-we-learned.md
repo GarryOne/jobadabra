@@ -58,7 +58,9 @@ Owner's yes before the UI commit.
   fills log at render time (no second copy).
 - Writer: extend `lib/learn.js` (after each fill): `reusable` verdicts (`lib/question-reuse.js`) grouped by topic → one Q&A per
   topic, merged into the page: same topic + same meaning → evidence only; same topic + different answer → `conflict`.
-  `widget` / `meaning` notes stay in Form knowledge (internal).
+  Local site rules are **retired** (owner, 28 Oct 2026: "Retire now, no replay"; they duplicate the shared meanings pack and
+  recipe library): stop writing site notes in `lib/learn.js`, stop reading them at fill time, remove the Form knowledge page
+  writer/reader; the "about you" part becomes learnings. Existing notes are left in the store, unread (no data deleted).
 - Prompt change → add cases to the prompt's case set and replay the whole set (fixed cases: travel ×3 wordings, contract
   conflict, salary per country, a per-company question that must not be learned).
 - Salary: first version seeded from Strategy's minimum per country. Background checks: willingness = learning; criminal-record

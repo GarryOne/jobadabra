@@ -89,8 +89,8 @@ is never overwritten; drawer 1 asks which is right.
    in Reports), state chip (New / Confirmed / Two answers). Owner, 28 Oct 2026: "a column with chips, representing the form
    fills references from where did we make these conclusions".
 1b. The tab has no "Saved answers" box and no "Website-specific questions" section (owner, 28 Oct 2026: "It's getting dropped").
-   Site rules (Form knowledge `widget` / `option` / `meaning`) stay internal, used by fills, and are shown per row in Reports →
-   Form fills as "Learned on this site". PR B cleans broken site-rule lines: stray quotes in values, field ids as titles, a kind
+   Local site rules (Form knowledge `widget` / `option` / `meaning`) are retired in PR B (owner, 28 Oct 2026: "Retire now, no
+   replay"): site learning comes only from the shared meanings pack and recipe library. PR B cleans broken site-rule lines: stray quotes in values, field ids as titles, a kind
    in the site column, personal facts (name, phone) stored as rules instead of in Your details.
 2. No entry in that tab is a Your details fact, a per-company question, or a duplicate topic (fixture: today's 21-item queue from
    the owner's screenshot → expected entries listed in the plan).

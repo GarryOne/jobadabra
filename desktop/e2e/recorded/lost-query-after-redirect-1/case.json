@@ -1,0 +1,37 @@
+{
+ "origin": "hand-cut",
+ "shape": "an employer careers page that shows the job's application when its address carries the job id, and the whole list of openings when it does not; the first load is redirected to the address WITHOUT the query (http -> https that strips it)",
+ "why": "27 Oct 2026, fair round W44, form 264402: the redirect dropped ?gh_jid, the embedded board showed its list (Search / Department / Office boxes) and nothing was filled; Browser Use filled 7 of its fields. Proven on a plain GET: the https address with the query opens the application frame, the redirected one the list",
+ "control": {
+  "build": "origin/main at a608051",
+  "failed": "the page stays on the list: no field is filled"
+ },
+ "sample": "invented careers page; the redirect is emulated by the page itself (first load per session replaces its address with the one without the query), the harness cannot redirect",
+ "pages": [
+  {
+   "url": "https://careers.beispiel.example/careers?gh_jid=4711",
+   "file": "careers.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  }
+ },
+ "expect": {
+  "filled": [
+   "#first_name",
+   "#last_name",
+   "#email"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel"
+}

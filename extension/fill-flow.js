@@ -28,6 +28,7 @@ import {pageStill} from './page-still.js';
 import {STILL_MS, readWhileDrawing} from './ladder/still-drawing.js';
 import {bindSession, identityOf, sessionOf} from './tab-identity.js';
 import {formCame, pageKey, pageRole} from './tab-pages.js';
+import {restoreLostQuery} from './restore-query.js';
 import {restartFromPosting} from './restart-from-posting.js';
 import {applyPhrases, pressApply, wouldPress} from './apply-press.js';
 import {forgetNoEffect, noEffectOf, noteNoEffect} from './no-effect.js';
@@ -245,6 +246,7 @@ export async function consider(tab, jobUrl) {
   const key = fillKey(tab.id, tab.url);
   if (started.has(key)) return;
   started.add(key);
+  if (await restoreLostQuery(tab, jobUrl, {decide})) return;   // Why (27 Oct 2026, fair round form 264402): a redirect dropped the posting's ?job id, the embed showed its list; opened again with it, before anything is read (restore-query.js)
   notePage(tab.id, key, {job: jobUrl || tab.url, page: tab.url});   // a new page in the tab is progress, for this application (ladder/progress.js)
   await pageStill(tab.id, {maxMs: 1500});   // the form renders after the load event: read once the page has been still 0.5 s, at most the old 1.5 s (page-still.js)
   const live = await chrome.tabs.get(tab.id).catch(() => null);

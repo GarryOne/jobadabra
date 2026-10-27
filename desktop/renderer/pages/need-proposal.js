@@ -58,8 +58,7 @@ export function proposedRow(item, label, proposal, now = Date.now()) {
   if (proposal.options?.length) input.append(el('option', '', proposal.waiting ? 'Finding the matching choice…' : ''), ...proposal.options.map(option => el('option', '', option)));
   else { input.type = 'text'; input.placeholder = 'Your answer'; }
   input.value = picks.start(key, tried?.value || proposal.value);
-  input.addEventListener('input', () => picks.note(key, input.value));
-  input.addEventListener('change', () => picks.note(key, input.value));   // a menu fires change, a text box input
+  input.addEventListener('input', () => picks.note(key, input.value));   // a text box and a menu both fire input
   const note = el('span', 'ss-need-desc small', proposal.from);
   line.append(input, actions);
   body.append(titleLine(label.replace(/^\s*\*\s*|\s*\*\s*$/g, '')), note, line);

@@ -11,3 +11,8 @@ export function appLogText(profile) {
   return files.map(file => { try { return fs.readFileSync(file, 'utf8'); } catch { return ''; } }).filter(Boolean).join('\n');
 }
 export const appLogLines = profile => appLogText(profile).split('\n');
+/**
+ * The sessions whose menu the app armed again ("[fill] menu armed again ... {"id":"<session>"}", lib/menu-rearm.js), in a slice of the app log.
+ * @param {string} text app log text  @returns {Set<string>} session ids
+ */
+export const rearmedSessions = text => new Set([...text.matchAll(/\[fill\] menu armed again[^\n]*"id":"([^"]+)"/g)].map(found => found[1]));

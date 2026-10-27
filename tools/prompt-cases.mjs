@@ -79,10 +79,14 @@ export function missingCase(changes, addedTo, messages, registry) {
   return `this push changes ${problems.length > 1 ? 'AI prompts' : 'an AI prompt'} without a case that shows why:\n  ${problems.join('\n  ')}\nA prompt reworded for one case can undo an earlier one; its set replays on every prompt change (docs/rules/files.md "Prompts"). A typo or a pure move: "Prompt-case: none <why>".`;
 }
 
-// The live sets a push reaches: a changed prompt of the set, or a changed case file of it.
+// The tools that build and ask the live sets: a change to one re-asks every live set, since it can change every answer (27 Oct 2026: #2259 moved the asker to an API key and no set was asked).
+export const ASKERS = ['tools/prompt-cases-live.mjs', 'tools/free-ai-eval-claude.mjs', 'tools/free-ai-eval.mjs', 'tools/free-ai-form-cases.mjs'];
+
+// The live sets a push reaches: a changed prompt of the set, a changed case file of it, or a changed asker.
 export function liveSets(changes, changedFiles, registry) {
+  const asker = ASKERS.some(file => changedFiles.includes(file));
   return Object.entries(registry.sets).filter(([name, set]) => set.live &&
-    (changes.some(change => setOf(registry, change.file, change.name) === name) || set.cases.some(file => changedFiles.includes(file)))).map(([name]) => name);
+    (asker || changes.some(change => setOf(registry, change.file, change.name) === name) || set.cases.some(file => changedFiles.includes(file)))).map(([name]) => name);
 }
 
 // -> {changes, addedTo, changedFiles, messages} for base..HEAD of the repo at root.

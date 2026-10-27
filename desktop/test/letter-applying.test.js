@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import {install} from './tiny-dom.js';
 
 install();
+const {document, window} = globalThis;
 for (const name of ['setTimeout', 'setInterval']) { const real = globalThis[name]; globalThis[name] = (...args) => { const timer = real(...args); timer?.unref?.(); return timer; }; }
 const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
 for (const id of new Set([...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]))) document.body.append(Object.assign(document.createElement('div'), {id}));

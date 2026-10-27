@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';
 install();
+const {document, window} = globalThis;
 const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
 for (const id of new Set([...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]))) document.body.append(Object.assign(document.createElement('div'), {id}));
 document.getElementById('letter-draft').append(document.createElement('span'));

@@ -16,7 +16,7 @@ import { withholdOwner } from './owner-guard.js';
 import { BILLED, billedTo, learnings, runBlocks, runData, runRecord } from './extension-run-record.js';
 export { BILLED, billedTo, learnings, runData, runRecord };
 import { cvFactsBlock, CV_FACTS_RULE } from './cv-facts.js';
-import { FACT_KEYS, FACT_RULE, floorBoxGuess, floorInventedFigure, floorLinkKind, floorUngrounded, typeGuess } from './answer-facts.js';
+import { FACT_KEYS, FACT_RULE, LINK_RULE, floorBoxGuess, floorInventedFigure, floorLinkKind, floorUngrounded, typeGuess } from './answer-facts.js';
 import { applyPay } from './pay-convert.js';
 import { WRITTEN_RULE, reviewAnswer, draftWritten, writtenKinds } from './written-answer.js';
 import { ANSWER_EXAMPLES } from './answer-examples.js';
@@ -158,7 +158,7 @@ const ANSWER_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['field', 'value', 'confidence', 'note', 'category', 'use', 'fact'],
+        required: ['field', 'value', 'confidence', 'note', 'category', 'use', 'fact', 'link_box'],
         properties: {
           field: { type: 'string' },
           value: { type: 'string' },
@@ -167,6 +167,7 @@ const ANSWER_SCHEMA = {
           category: { type: 'string', enum: ['knockout', 'legal', 'demographic', 'contact', 'preference', 'normal', 'written'] },
           use: { type: 'string', enum: ['fill', 'propose'] },
           fact: { type: 'string', enum: FACT_KEYS },
+          link_box: { type: 'string', enum: ['work_page', 'own_site', 'other', 'none'] },   // the AI's reading of a link box (answer-facts.js LINK_RULE)
         },
       },
     },
@@ -186,6 +187,7 @@ For each form field you are given its id, label, type, whether it is required, a
 - combobox: its options are often not listed (the menu is closed); give the option wording the form most likely uses ("Yes", "No", a country or city name). When options are listed, copy one exactly.
 - checkbox: "checked" or "unchecked".
 ${FACT_RULE}
+${LINK_RULE}
 ${DECLARATION_RULE}
 ${LEGAL_CHOICE_RULE}
 Base a proposal on what is stated (their country, their CV, that they chose to apply to this job) and on what the posting expects (its hours, place, duties). Leave a field out (no answer) when nothing given points to an answer: never invent employers, dates, numbers, links, tools, projects, skills, experience or personal details: an experience or skill claim that <profile>, <standard_answers> and the CV facts do not state is not typed (use: "propose"), it is a suggestion the applicant checks. A legal question (a consent, terms, a certification or attestation, an acknowledgement) is never answered: return it with value "" and category "legal", so the applicant sees it is theirs to decide; never propose an answer to a demographic question or to a fact only the applicant can know (a criminal record, a registration with an office, their health). Voluntary demographic questions (gender, ethnicity, veteran, disability) are answered only from <standard_answers>; otherwise choose the "decline to answer" option if there is one. A demographic question with no answer in <standard_answers> and no decline option (a salutation Mr/Ms, Herr/Frau, a gender) is returned with value "" and category "demographic": never guess it from the applicant's name.

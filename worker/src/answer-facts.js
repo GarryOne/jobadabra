@@ -57,11 +57,15 @@ export function floorUngrounded(answer, given, { test = false, options = [] } = 
 // no list. Otherwise it is only proposed, and the applicant confirms it once (a wrong typed answer is worse than an empty one). Not a link, or already proposed: untouched.
 const GENERIC = new Set(['link', 'links', 'url', 'urls', 'profile', 'page', 'your', 'useful', 'other', 'additional', 'https', 'http', 'www', 'com']);
 const linkWords = (text) => wordsOf(text).filter((word) => word.length >= 4 && !GENERIC.has(word));
+// Also backed (owner, 27 Oct 2026, Greenhouse "Website" with only GitHub saved: "'Website / Portfolio' gets the GitHub link, 'Personal website' stays empty"): the AI's own reading,
+// link_box "work_page" (the box asks for a page showing the applicant's work and this saved link is one), for a link that is saved; "own_site" and the rest keep the word rule.
+export const LINK_RULE = `link_box: for a link you type, what the box asks for. "work_page" only when the box asks for a page that shows the applicant's work (a portfolio, code, projects; e.g. "Website / Portfolio", "Links to your work") AND the saved link you give is such a page (a code host or portfolio, never a profile on a social or job network); "own_site" when it asks for the applicant's own personal website; "other" for any other link; "none" when the answer is no link. Give a link only from what is saved.`;
 export function floorLinkKind(answer, label, given, { test = false } = {}) {
   const value = String(answer.value || '').trim();
   if (test || answer.use !== 'fill' || !/^(https?:\/\/|www\.)\S+$/i.test(value)) return answer;
   const key = plain(value).replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
   const lines = plain(given).split('\n').filter((line) => line.includes(key));
+  if (answer.link_box === 'work_page' && lines.length) return answer;   // the AI read the box as asking for a page of the person's work, and this saved link is one
   const wanted = new Set(linkWords(label));
   const backed = lines.some((line) => linkWords(line).some((word) => wanted.has(word)));
   return backed ? answer : { ...answer, use: 'propose' };

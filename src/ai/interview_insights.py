@@ -331,7 +331,7 @@ def _update(stores, *, client, model_, stats, now, force, budget_status):
     items = gather(stores, rows)
     model_ = model_ or model()
     if client is None:
-        client = engine.client(action='interview')
+        client = engine.client(action='interview_patterns')   # Why (27 Oct 2026, owner): its own step name, so Pro can route it apart from the call review ('interview')
     result, usage, model_ = generate(client, model_, items)
     cost.add(stats, model_, usage)
     usd = cost.usd(model_, usage)

@@ -29,6 +29,9 @@ test('every writing step keeps the model default (no temperature sent)', async (
 test('the interview review answers at 0 but keeps the stronger model when that is on', () => {
   assert.ok(STRONG_STEPS.has('interview'));
   assert.equal(temperatureFor('interview'), 0);
+  // Why (27 Oct 2026, owner): the patterns call got its own step name for the Pro route; Free answers it exactly as before.
+  assert.ok(STRONG_STEPS.has('interview_patterns'));
+  assert.equal(temperatureFor('interview_patterns'), 0);
 });
 
 test("a caller's own temperature wins", async () => {

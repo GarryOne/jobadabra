@@ -88,8 +88,8 @@ export function goStep(name) {
 }
 
 // The save window: a step is ● while it runs (with blocks written), ✓ when it's done; the bar sums them.
-const SAVE_STEPS = {snapshot: 15, local: 5, profile: 40, answers: 25, search: 15};
-export const saveState = {};
+const SAVE_STEPS = {snapshot: 15, local: 5, profile: 35, answers: 20, search: 15, details: 10};   // details: Your details read from the CV (lib/details-at-setup.js)
+export const saveState = {};   // step -> 0..1; "<step>:note": a finished step's result line (details: "5 filled from your CV, 2 to check in Your details"), counts only
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
@@ -149,13 +149,14 @@ export async function init() {
     $('draft-percent').textContent = percent ? `${percent}%` : '';
     $('draft-bar').style.width = `${Math.max(2, percent)}%`;
   });
-  window.pilot.onSaveProgress(({step, done, total, finished}) => {
+  window.pilot.onSaveProgress(({step, done, total, finished, note}) => {
     saveState[step] = finished ? 1 : total ? done / total : saveState[step] || 0;
+    if (note) saveState[`${step}:note`] = note;
     document.querySelectorAll('#save-steps li').forEach(li => {
       const name = li.dataset.saveStep, value = saveState[name];
       li.className = value === 1 ? 'done' : value !== undefined ? 'now' : '';
       const count = li.querySelector('.count');
-      if (count) count.textContent = name === step && total && !finished ? `· ${done} of ${total} blocks` : '';
+      if (count) count.textContent = name === step && total && !finished ? `· ${done} of ${total} blocks` : saveState[`${name}:note`] ? `· ${saveState[`${name}:note`]}` : '';
     });
     const percent = Object.entries(SAVE_STEPS).reduce((sum, [name, share]) => sum + share * (saveState[name] || 0), 0);
     $('save-bar').style.width = `${Math.max(3, Math.round(percent))}%`;

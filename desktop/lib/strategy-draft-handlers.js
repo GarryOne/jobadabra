@@ -12,6 +12,9 @@ import * as strategy from './strategy.js';
 import fs from 'node:fs';
 import {log as appLog} from './log.js';
 import {demoPath} from './demo.js';
+import {aiClient} from './confirmation.js';
+import {contactSaved} from './server-contact.js';
+import {detailsFromCvAtSetup, detailsNote} from './details-at-setup.js';
 
 export function registerStrategyDraftHandlers(ctx) {
   const writeHandle = (channel, fn) => ipcMain.handle(channel, afterWrite(fn));   // a finished write closes the running reads' join (shared-read.js)
@@ -71,6 +74,18 @@ export function registerStrategyDraftHandlers(ctx) {
     } catch (error) { return {ok: false, error: error.message}; }
   });
   // parts: the review's accepted groups (search, filters, profile, answers); null = everything (first setup).
+  // After a save that took the Profile: the details the draft left empty, from one CV read (lib/details-at-setup.js), as the save window's last step (owner, 27 Oct 2026:
+  // "Step in the save window"). At most DETAILS_WAIT_MS: a slower read finishes in the background and the window closes without its count.
+  const DETAILS_WAIT_MS = 30000;
+  const detailsAfter = async result => {
+    if (!result?.ok) return result;
+    if (DEMO) { toWindow('saveProgress', {step: 'details', finished: true, note: detailsNote({saved: Array(5).fill(''), left: Array(2).fill('')})}); return result; }   // demo: fictional counts, no AI
+    toWindow('saveProgress', {step: 'details'});
+    const read = detailsFromCvAtSetup(storage, {client: aiClient(storage), log: appLog, contactSaved: saved => contactSaved(storage, saved)}).catch(() => ({saved: [], left: []}));
+    const done = await Promise.race([read, new Promise(resolve => setTimeout(() => resolve(null), DETAILS_WAIT_MS))]);
+    toWindow('saveProgress', {step: 'details', finished: true, note: done ? detailsNote(done) : 'still reading: they appear in Your details shortly'});
+    return result;
+  };
   writeHandle('saveStrategy', (_, draft, parts = null) => {
     const take = part => !parts || parts.includes(part);
     saving ||= (async () => {
@@ -120,7 +135,7 @@ export function registerStrategyDraftHandlers(ctx) {
       { const before = storage.settings(); storage.saveSettings({setupDone: true}); trackSetup({setupDone: true}, before); }
       syncCv();  // the CV to the Profile page (Notion keeps every version)
       return {ok: true};
-    })().catch(error => ({ok: false, error: `Couldn't write to Notion: ${error.message}`})).finally(() => { saving = null; });
+    })().then(result => (take('profile') ? detailsAfter(result) : result)).catch(error => ({ok: false, error: `Couldn't write to Notion: ${error.message}`})).finally(() => { saving = null; });
     return saving;
   });
 }

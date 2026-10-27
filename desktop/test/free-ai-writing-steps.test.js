@@ -37,11 +37,16 @@ test('the patterns cases are the app\'s own request over valid reviewed-intervie
 // Why (27 Oct 2026, #2277): the form answers come from worker/src, whose package the desktop CI job does not install; that half runs where the worker's packages are.
 const workerInstalled = fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../worker/node_modules'));
 
-test('the textarea-form and tailoring cases are captured from the app\'s own calls, never copied', {skip: !workerInstalled && 'worker packages are not installed'}, async () => {
-  const answers = await answersCases(), tailors = await tailorCases();
-  check(answers, 'answers'); check(tailors, 'tailor');
+test('the textarea-form cases are captured from the app\'s own call, never copied', {skip: !workerInstalled && 'worker packages are not installed'}, async () => {
+  const answers = await answersCases();
+  check(answers, 'answers');
   assert.ok(answers.every(item => item.params.system[0].text.startsWith('You fill in a job application form')));
   assert.ok(answers.every(item => /textarea/.test(item.params.messages[0].content)), 'every form has a textarea');
+});
+
+test('the CV-tailoring cases are captured from the app\'s own call, never copied', async () => {
+  const tailors = await tailorCases();
+  check(tailors, 'tailor');
   assert.ok(tailors.every(item => item.params.system[0].text.startsWith("You tailor a candidate's CV")));
   assert.ok(tailors.every(item => !('model' in item.params)), 'the eval chooses the model');
 });

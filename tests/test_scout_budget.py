@@ -75,6 +75,37 @@ class ChecksUnderWayAtTheEnd(unittest.TestCase):
         self.assertIsNone(run_exit._own[0], 'the central scout keeps its own end (scout_overrun), not the process deadline')
         run_exit.until(None)
 
+    def run_late(self):
+        """(summary, seconds taken) for a 1 s scout whose 4 checks each take 4 s."""
+        import time
+
+        from src import run_exit
+
+        def slow(system, slug):
+            time.sleep(4)
+            return []
+        with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, contextlib_quiet(), \
+                mock.patch.object(scout_core, 'CENTRAL', True), mock.patch.object(scout, 'ai_ideas', lambda db, harvest_sources=None: None), \
+                mock.patch.object(scout.scout_role_search, 'guarded', lambda db, search, harvest_sources=None: None):
+            scout.harvest(db, SEEDS, sources=[lambda: [dict(name=f'Co{i}', origin='AI idea', priority=99 - i) for i in range(4)]])
+            began = time.monotonic()
+            summary, _ = scout.run(db, batch=4, harvest_sources=[], probe=slow, workers=2, budget=1)
+            took = time.monotonic() - began
+        run_exit.until(None)
+        return summary, took
+
+    def test_the_scout_ends_by_its_deadline_not_a_second_after(self):
+        """Rerun 40454138418 (p4, 27 Oct 2026): the scout's last check started at 172 s with 8 s left, the end waited 1 s more and the
+        press took 181 s of 180."""
+        _, took = self.run_late()
+        self.assertLess(took, 1.4, f'the scout took {took:.1f} s of its 1')
+
+    def test_the_set_aside_count_stays_a_count(self):
+        """The same run's message said "-0.0002545769999642289 set aside": the end's seconds left were returned as the employers set aside."""
+        summary, _ = self.run_late()
+        self.assertEqual(summary['left'], 0)
+        self.assertIsInstance(summary['left'], int)
+
 
 if __name__ == '__main__':
     unittest.main()

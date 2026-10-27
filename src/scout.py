@@ -259,9 +259,9 @@ def run(db, batch=DEFAULT_BATCH, stores=None, seeds=None, probe=ats.probe, harve
                 futures[future], began[future] = nxt[0], time.monotonic()
         more()
         while futures:
-            left = 5 if deadline is None else deadline - time.monotonic()   # at the end, what ends within 1 s is kept, the rest waits for the
-            late = left <= 0                                                  # next run (27 Oct 2026: 379 s of 180)
-            finished, _ = wait(list(futures), timeout=1 if late else min(5, left), return_when=ALL_COMPLETED if late else FIRST_COMPLETED)
+            remaining = 5 if deadline is None else deadline - time.monotonic()   # Why (27 Oct 2026: 379 s of 180; run 40454138418: 181 s): the end waits its
+            late = remaining <= 1   # last second, what ends by then is kept; not named `left`, the set-aside count the summary returns ("-0.00025 set aside")
+            finished, _ = wait(list(futures), timeout=max(0, remaining) if late else min(5, remaining - 1), return_when=ALL_COMPLETED if late else FIRST_COMPLETED)
             futures = {f: i for f, i in futures.items() if f in finished} if late else futures
             for future in finished:
                 i = futures.pop(future)

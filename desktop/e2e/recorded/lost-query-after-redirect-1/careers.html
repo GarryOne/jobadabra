@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Careers</title></head><body>
+<h1>Millions create with our technology</h1>
+<div id="board"></div>
+<script>
+  // The redirect that strips the query, emulated: the first load of a session lands on the address without it, as a server's redirect would.
+  const first = !sessionStorage.getItem('redirected');
+  if (first) { sessionStorage.setItem('redirected', '1'); history.replaceState(null, '', location.pathname + location.hash); }
+  const job = new URLSearchParams(location.search).get('gh_jid');
+  document.getElementById('board').innerHTML = job
+    ? '<h2>Apply for this job</h2><form action="/send" method="post"><div><label for="first_name">First Name *</label><input id="first_name" name="first_name" type="text" required></div><div><label for="last_name">Last Name *</label><input id="last_name" name="last_name" type="text" required></div><div><label for="email">Email *</label><input id="email" name="email" type="email" required></div></form>'
+    : '<h2>Current openings</h2><div><label for="keyword">Search</label><input id="keyword" name="keyword-filter" type="text"></div><ul><li><a href="/careers?gh_jid=4711">Accountant</a></li><li><a href="/careers?gh_jid=4712">Engineer</a></li></ul>';
+</script>
+</body></html>

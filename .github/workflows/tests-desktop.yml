@@ -84,6 +84,7 @@ on:
       - 'tools/pool-rows.mjs'
       - 'tools/pre-push-check.sh'
       - 'tools/recorded-cases.mjs'
+      - 'tools/e2e-cause-trailer.mjs'
       - 'tools/owner-report.mjs'
       - 'tools/recorded-fails-on-old.mjs'
       - 'tools/replay-files.mjs'

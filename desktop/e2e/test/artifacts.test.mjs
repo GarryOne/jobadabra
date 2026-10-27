@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {annotationLines, failureRecords, writeFindings, writeSuiteFailures} from '../lib/artifacts.mjs';
+import {annotationLines, codeLine, failureRecords, writeFindings, writeSuiteFailures} from '../lib/artifacts.mjs';
 
 const dir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-'));
 const results = [{name: 'a step that passed', status: 'passed'}, {name: 'a step that failed', status: 'failed', note: 'x'.repeat(900)}, {name: 'a skipped step', status: 'skipped'}];
@@ -44,4 +44,15 @@ test('each failed step is a GitHub annotation "<suite> · <step>" with its first
     writeSuiteFailures(dir(), 'quality', [{name: 'a step that failed', status: 'failed', note: 'why'}], {GITHUB_ACTIONS: 'true'});
     assert.deepEqual(printed, ['::error title=quality · a step that failed::why']);
   } finally { console.log = log; }
+});
+
+test('an unexpected error names its first line in our code, and the failure record carries it (#2266: "Unexpected end of JSON input" with no file)', () => {
+  let thrown;
+  try { JSON.parse(''); } catch (error) { thrown = error; }
+  assert.match(codeLine(thrown), /^desktop\/e2e\/test\/artifacts\.test\.mjs:\d+:\d+$/);
+  assert.equal(codeLine(new Error('the step\'s own check failed')), '', 'a step\'s own message needs no line');
+  assert.equal(codeLine('not an error'), '');
+  const [record] = failureRecords('apply', [{name: 'a step', status: 'failed', note: 'Unexpected end of JSON input', where: 'desktop/e2e/lib/x.mjs:3:9'}]);
+  assert.equal(record.where, 'desktop/e2e/lib/x.mjs:3:9');
+  assert.equal('where' in failureRecords('apply', [{name: 'a step', status: 'failed', note: 'why'}])[0], false);
 });

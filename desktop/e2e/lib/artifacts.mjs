@@ -38,7 +38,18 @@ export async function writeReplay(ctx, suite, env = process.env) {
 
 // The steps that failed, as records the loop files as issues (message cut to a readable length).
 export const failureRecords = (suite, results) => results.filter(result => result.status === 'failed')
-  .map(result => ({suite, step: result.name, message: String(result.note || '').slice(0, 600), ...(result.environment ? {environment: true} : {})}));
+  .map(result => ({suite, step: result.name, message: String(result.note || '').slice(0, 600), ...(result.where ? {where: result.where} : {}), ...(result.environment ? {environment: true} : {})}));
+
+// Why (#2266, 27 Oct 2026): apply's last step threw "Unexpected end of JSON input" once and the record named no file, so its source stayed unknown.
+/**
+ * Where an unexpected error (a SyntaxError, TypeError…, never a step's own `Error`) came from: its first frame in our code, repo-relative.
+ * @param {unknown} error  @returns {string} e.g. "desktop/e2e/lib/seed-data.mjs:30:25", or '' for a plain Error or no frame of ours
+ */
+export function codeLine(error) {
+  if (!(error instanceof Error) || error.constructor === Error) return '';
+  const frame = String(error.stack || '').split('\n').map(line => /\/((?:desktop|extension|worker|tools|src)\/[^\s):]+:\d+:\d+)/.exec(line)?.[1]).find(Boolean);
+  return frame || '';
+}
 
 // GitHub annotation lines for the failed steps (at most 3), titled "<suite> · <step>" with the step's first line: ci-alert.mjs stepCauses quotes them.
 // Why (27 Oct 2026, 6e): main's quality red alerted "the steps merge e7ab156 touched" while its step said "AI question(s) had no recorded answer" (#2234).

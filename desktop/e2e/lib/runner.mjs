@@ -4,6 +4,7 @@ import {ARTIFACTS} from './app.mjs';
 import {refusalNote} from './ai-refused.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
+import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
@@ -122,8 +123,9 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       // The AI refusing every call (a spend limit) is the cause, whatever symptom the step saw: say it first, and it is the test environment's failure, never a product bug (lib/ai-refused.mjs).
       const refused = faults ? '' : refusalNote(getSession()?.profile);
       const note = refused ? `${refused}; the step then failed: ${base}` : base;
-      results.push({name, status: 'failed', note, cause: causeOf(note), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
-      console.log(`✗ ${name}: ${note}`);
+      const where = codeLine(error);
+      results.push({name, status: 'failed', note, cause: causeOf(note), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
+      console.log(`✗ ${name}: ${note}${where ? ` (at ${where})` : ''}`);
       if (keepGoing && !critical) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;
     } finally { await getSession()?.coverageStep?.(name); await getSession()?.traceGroupEnd?.(); }

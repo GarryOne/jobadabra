@@ -197,6 +197,8 @@ export function formStates(ids, byLook = new Set()) {
 // Is `tab` older than the tab the session follows now? Its reports (progress, "no form") describe a page the session left.
 // The tab a session is bound to in this browser run, '' when none or bound in another run (the picker, lib/session-tab.js, takes it).
 export const tabOf = (id, boot = bootId) => (bound.has(id) && sameRun(id, boot) ? bound.get(id) : '');
+// The session that follows this tab in this browser run, '' when none (the person's start on a tab: lib/stop-all.js startForm).
+export const sessionOfTab = (tab, boot = bootId) => [...bound].find(([id, held]) => held === tab && sameRun(id, boot))?.[0] || '';
 export const olderTab = (id, tab, boot = bootId) => Number.isInteger(Number(tab)) && bound.has(id) && (!boot || !runOf.get(id) || runOf.get(id) === String(boot)) && Number(tab) < bound.get(id);
 let bindLog = () => {};
 // Told each time a session takes a tab as its own: which, the one before, and how it was decided (see pick).

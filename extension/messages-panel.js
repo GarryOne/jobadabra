@@ -46,7 +46,8 @@ export function createPanelMessages(ctx) {
     if (message?.type === 'applyHere' && Number.isInteger(message.tabId)) {
       (async () => {
         const tab = await chrome.tabs.get(message.tabId).catch(() => null);
-        const armed = tab && (await chrome.storage.session.get(`armed:${tab.id}`).catch(() => ({})))[`armed:${tab.id}`];
+        const kept = tab ? await chrome.storage.session.get([`armed:${tab.id}`, `stoppedTab:${tab.id}`]).catch(() => ({})) : {};
+        const armed = tab && (kept[`armed:${tab.id}`] || kept[`stoppedTab:${tab.id}`]);   // a tab Stop cleared is still the app's: the person starts it again here (stop.js)
         if (!tab || !/^https:/.test(tab.url || '') || !(armed || tab.url.includes('#jobpilotto-fill'))) return {ok: false, why: 'This page was not opened by the Jobadabra app: press Apply in the app.'};
         tabReloaded(tab.id);   // a page whose Apply press was tried once is pressed again: this is the person asking (a reload does the same, tab-report.js)
         decide('fill', 'Apply pressed in the extension popup', {host: new URL(tab.url).hostname});

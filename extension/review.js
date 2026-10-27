@@ -34,20 +34,28 @@
   const $ = selector => root.querySelector(selector);
   const jp = $('.jp'), card = $('.card'), pill = $('.pill');
   // While a fill step shows, the page is dimmed (panel-overlay.js) and the panel is centred, bigger, with what it is doing (owner, 19 Oct 2026); at the end the panel goes back to its corner.
+  // ONE look: look(true) dims AND centres, look(false) does neither; nothing else turns either on or off, and when the dim lifts by itself (Stop, the 3-minute backstop, a removal
+  // from outside) the step ends with it (owner, 27 Oct 2026: "everytime when the extension is working... it should be centered and there should be dark/glowing background").
+  // Working = a step shows: the worker's fill steps (panelStep), this panel's own fill, and the page being read or routed (WORKING_MARKS). Not working: done, stopped, needs you, stuck, closed.
   const overlay = window.__jobPilottoOverlay, HOME = host.style.cssText, steps = [];
   const WORKING_MARKS = ['reading', 'posting', 'opening', 'signing-in', 'signing-up'], MARK_STEP_MS = 60000; let markStepWords = '';
   const place = working => { host.style.cssText = working ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483646;pointer-events:none;' : HOME; jp.classList.toggle('working', working); };
+  const look = working => { const on = working && !host.hidden; if (on) overlay.on(); else overlay.off(); place(on); };   // a closed panel (its X) has no Stop on the page: never dimmed (#1558)
+  const stepShowing = () => $('.fill').classList.contains('is-busy');
+  overlay.onLift?.(() => { if (stepShowing()) endStep(); else look(false); });
   const drawSteps = () => $('.steps').replaceChildren(...steps.slice(-6, -1).map(text => Object.assign(document.createElement('li'), {textContent: text})));
   const written = window.__jobPilottoPanelWritten.start({send, alive: () => host.isConnected});   // Review my answer beside each written question's box (panel-written.js)
   window.__jobPilottoClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
   const SHOW_TIPS = false;   // the tip line (Fact / Recruiters say / Tip / Worth trying) is off for now (owner, 15 Oct 2026: "hide, disable it, we'll get back to it"); true brings it back
+  let stopped = false, stuckSince = 0, stepAt = 0, lastStuck = '', startedAt = 0;   // stopped: the person's Stop reached this page (stop.js), until they start again here (`started`); stuckSince/stepAt: which came last
   let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, asked = false, addMode = false, tipFor = null;
 
   const setOpen = value => { open = value; card.hidden = !open; if (open) render(); };
   pill.onclick = () => { userMoved = true; setOpen(!open); };
   $('.min').onclick = () => { userMoved = true; setOpen(false); };   // minimise: back to the pill
-  $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; overlay.off(); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
-  for (const button of root.querySelectorAll('.stop-btn, .pill-stop')) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = 'Stopping…'; send({type: 'stop', reason: 'the Stop button in the panel'}).catch(() => {}); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
+  $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
+  const stopButtons = [...root.querySelectorAll('.stop-btn, .pill-stop')], stopsBack = () => { for (const button of stopButtons) { button.disabled = false; button.textContent = 'Stop'; } };
+  for (const button of stopButtons) button.onclick = event => { if (event.isTrusted) { button.disabled = true; button.textContent = 'Stopping…'; const pressed = Date.now(); send({type: 'stop', reason: 'the Stop button in the panel'}).then(answer => { if (answer?.ok) stoppedHere(pressed); else stopsBack(); }, stopsBack); } };   // the one Stop (stop.js): in the live step row and beside the minimised pill
   // "Report", the one entry, in the footer of every state (owner, 16 Oct 2026): a popup on the panel (panel-report.js) that says what goes, takes a note and sends. A page script's click is ignored; a press that cannot open it says why.
   $('.report-btn').onclick = event => {
     if (!event.isTrusted) return;
@@ -70,13 +78,18 @@
       askedPassword = Date.now();
       send({type: 'sitePassword'}).catch(() => {});
     }
-    if (list.length < MIN_FIELDS && !document.documentElement.hasAttribute('data-jobpilotto-needs')) { overlay.off(); host.remove(); return null; }   // a sign-in page is too small for a panel, unless the AI says it needs the person
+    if (list.length < MIN_FIELDS && !document.documentElement.hasAttribute('data-jobpilotto-needs')) { look(false); host.remove(); return null; }   // a sign-in page is too small for a panel, unless the AI says it needs the person
     if (!host.isConnected) document.documentElement.append(host);
-    // The person is needed (a captcha, a question the page asks) or the page is stuck: the layer is lifted so they can act, whatever step is showing.
-    if (needsNow || (session?.stuck && !(session.live && ['running', 'input'].includes(session.status)))) { overlay.off(); place(false); }
+    // The person is needed (a captcha, a question the page asks) or the page is stuck: the step ends (no dim, the corner, no busy step row) so they can act. The app's "stuck" is
+    // an older word than a step the extension showed after it (it handed the page over, then fields appeared and it went on: owner, 27 Oct 2026), and never ends this panel's own fill.
+    const stuckNow = !!session?.stuck && !(session.live && ['running', 'input'].includes(session.status));
+    const stuckWord = stuckNow ? String(session.stuck) : '';
+    if (session && stuckWord !== lastStuck) { lastStuck = stuckWord; stuckSince = stuckWord ? Date.now() : 0; }   // from the app's answer changing, not from a sync that brought no session
+    const handed = !!needsNow || stopped || (stuckNow && !filling && stepAt <= stuckSince);
+    if (handed && stepShowing()) endStep(false);
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
-    const markWorks = WORKING_MARKS.includes(markNow) && !needsNow && !moved && !(session?.stuck && !(session.live && ['running', 'input'].includes(session.status)));
+    const markWorks = WORKING_MARKS.includes(markNow) && !handed && !moved;
     if (markWorks && !filling) { const words = MARK_WORDS[markNow] || 'Apply button detected. Redirecting…'; if (markStepWords !== words) { const first = !markStepWords; markStepWords = words; const was = stepped; showStep(words, MARK_STEP_MS); stepped = was; if (first && !userMoved && !open) setOpen(true); } }
     else if (markStepWords) { markStepWords = ''; endStep(); return null; }   // the mark moved on (or the person is needed): the layer lifts and the panel is drawn again
     // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
@@ -170,7 +183,7 @@
     if (SHOW_TIPS && tipFor !== prefer && connection?.connected) { tipFor = prefer; askTip(); }
     // actions + connection
     $('.open-app').hidden = !session;
-    window.__jobPilottoClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && !!session?.stuck && !(session?.live && ['running', 'input'].includes(session.status)), always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobPilottoReportOn, needs: () => shown[0] && flash(shown[0].el)});   // offered, never automatic unless "always" (panel-claude.js)
+    window.__jobPilottoClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && handed && !stopped, always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobPilottoReportOn, needs: () => shown[0] && flash(shown[0].el)});   // offered, never automatic unless "always" (panel-claude.js)
     // The footer, one component for every state (owner, 16 Oct 2026): the connection on the left (a dot and its word; the build stays in the line, it is in every screenshot), Report on the right.
     const foot = $('.foot'), stateLine = $('.foot .state');
     foot.classList.toggle('on', !!connection?.connected);
@@ -194,8 +207,8 @@
     stepped = true;
     $('.step-hint').textContent = /^check/i.test(text) ? 'Checking whether any fields need your input.' : /^(reading this page|putting back)/i.test(text) ? 'Looking for the application on this page.' : /^(apply button|logging in|creating your)/i.test(text) ? 'Taking you to the application form.' : 'Counts update as new fields appear.';   // our own step words, each with its sub-line (mockups 01/02)
     if (steps.at(-1) !== text) { steps.push(text); drawSteps(); }
-    if (!host.hidden) overlay.on();
-    place(true);
+    stepAt = Date.now();
+    look(true);
     const button = $('.fill');
     button.classList.add('is-busy');
     button.setAttribute('aria-busy', 'true');
@@ -204,19 +217,19 @@
     clearTimeout(stepTimer);
     if (!filling) stepTimer = setTimeout(endStep, wait);
   }
-  function endStep() {
+  function endStep(redraw = true) {
     clearTimeout(stepTimer);
-    overlay.off(); place(false); steps.length = 0; drawSteps();
+    look(false); steps.length = 0; drawSteps();
     const button = $('.fill');
     button.classList.remove('is-busy');
     button.removeAttribute('aria-busy');
     button.title = '';
     if (stepped) filledOnce = true;  // a fill ran here (this button, Claude's session or the popup) and is over
     $('.fill .label').textContent = filledOnce ? 'Fill again' : 'Fill this form';
-    render();
+    if (redraw) render();
   }
   async function fill(force = false) {
-    filling = true;
+    filling = true; stopped = false; startedAt = Date.now();   // the person's own start: this page works again (the worker clears its Stop and the page's: stop.js startTab)
     $('.note').hidden = true;
     stoppedCard(false);
     showStep('Reading the form…');
@@ -226,7 +239,7 @@
     filledOnce = true;
     endStep();
     if (result?.ineligible) note(`Not filled: ${result.note}`, true);
-    else if (!result?.ok && /^Stopped by you/.test(result?.error || '')) stoppedCard(true);   // the person's Stop: a calm state, not a failure (mockup 03)
+    else if (!result?.ok && /^Stopped by you/.test(result?.error || '')) { stopped = true; stoppedCard(true); }   // the person's Stop: a calm state, not a failure (mockup 03)
     else if (!result?.ok) note(`Couldn't fill: ${result?.error || 'try again'}`);
     else if (result.sharedNote) note(result.sharedNote);   // the service changed how a control was filled: say so
     render();
@@ -282,6 +295,22 @@
     if (message.text) { showStep(message.text); if (!open) setOpen(true); }
     else endStep();  // the fill is over: no step line left over a form that is ready
     reply({shown: true});
+    return false;
+  });
+
+  // Stop reached this page (stop.js): the step ends (no dim, the corner), the Stop buttons come back, and the panel says "Stopped by you" with Check form again, until the person
+  // starts again here (`started`: the Fill, Check form again, the popup's Apply on this page). The app's "stopped" goes with it (its next answer says so too).
+  // `at`: when the Stop happened; a Stop older than the person's last start here (its answer arriving late) changes nothing.
+  function stoppedHere(at = Date.now()) {
+    if (at < startedAt) return;
+    if (stopped && !stepShowing()) { stopsBack(); return; }
+    stopped = true; markStepWords = ''; endStep(false); stopsBack(); $('.note').hidden = true; stoppedCard(true);
+    if (!host.hidden && !open) setOpen(true);
+    render();
+  }
+  chrome.runtime.onMessage.addListener(message => {
+    if (message?.type === 'stopped') stoppedHere(Number(message.at) || Date.now());
+    else if (message?.type === 'started') { startedAt = Math.max(startedAt, Date.now()); stopped = false; stoppedCard(false); stopsBack(); if (session?.stuck === 'stopped') session = {...session, stuck: ''}; stuckSince = 0; lastStuck = ''; render(); }
     return false;
   });
 

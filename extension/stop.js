@@ -7,12 +7,13 @@
 // fill's entry, the worker's messages, a tab joining an application). Guard: desktop/test/extension-stop.test.js (it fails when a press or an attach skips these).
 import {IDENTITY_KEYS} from './tab-identity.js';
 import {decide} from './log.js';
-import {forgetDebuggerUsers, isStopped, markStopped, restart as restartState} from './stop-state.js';
+import {forgetDebuggerUsers, isStopped, markStopped, noteStarting, restart as restartState} from './stop-state.js';
 
 export {attachDebugger, isStopped, mayAct} from './stop-state.js';
 let lastRequest = '';
-const told = [];   // what to do once stopped, besides the above: tell the app (stop-messages.js registers it; this file owns no network)
+const told = [], toldStarted = [];   // what to do once stopped / started again on a tab, besides the above: tell the app (stop-messages.js registers both; this file owns no network)
 export const onStopped = fn => { told.push(fn); };
+export const onStarted = fn => { toldStarted.push(fn); };
 
 // The state after a worker restart: still stopped, and the app's request already answered stays answered.
 export const restored = (async () => {
@@ -28,20 +29,50 @@ export function restart(who) {
   return was;
 }
 
-// What a stopped tab shows: the page-side fill sees the flag between its stages (page/guard-gate.js) and at its start (page/fill.js); the mark goes off the address, the panel off the page.
+// What a stopped tab shows: the page-side fill sees the flag between its stages (page/guard-gate.js) and at its start (page/fill.js); the mark goes off the address.
+// The panel stays and says "Stopped by you" with "Check form again" itself (review.js hears `stopped`; owner mockup 03): the note below is only for a page without the panel,
+// never a second box beside it saying something else (owner, 27 Oct 2026: the panel came back centred and working, undimmed, under "Jobadabra is stopped on this page").
 function stoppedPage() {
   window.__jobPilottoStopped = true;
   try { const clean = location.href.replace(/#jobpilotto-fill(=[A-Za-z0-9_-]{1,64})?$/, ''); if (clean !== location.href) history.replaceState(history.state, '', clean); } catch { /* sandboxed page */ }
-  for (const id of ['jobpilotto-review-host', 'jobpilotto-progress', 'jobpilotto-note', 'jobpilotto-fill-overlay']) document.getElementById(id)?.remove();
+  for (const id of ['jobpilotto-progress', 'jobpilotto-note', 'jobpilotto-fill-overlay']) document.getElementById(id)?.remove();
   if (!document.documentElement) return;
   document.documentElement.dataset.jobpilottoFill = JSON.stringify({state: 'stopped'});
-  if (window.top !== window) return;
+  if (window.top !== window || document.getElementById('jobpilotto-review-host')) return;
   const box = document.createElement('div');
   box.id = 'jobpilotto-note';
+  box.dataset.stopped = '1';
   box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;max-width:320px;background:#132439;color:#fff;border-radius:10px;padding:12px 14px;font:13px/1.45 system-ui,sans-serif;box-shadow:0 6px 24px #0008';
   box.textContent = 'Jobadabra is stopped on this page. Press Apply in the app to start again.';
   box.onclick = () => box.remove();
   document.documentElement.append(box);
+}
+
+// A page the person starts again: its own Stop goes (the flag, the stopped mark, the stopped note). -> whether it was stopped. Runs in every frame.
+function startedPage() {
+  const was = !!window.__jobPilottoStopped;
+  delete window.__jobPilottoStopped;
+  document.querySelector('#jobpilotto-note[data-stopped]')?.remove();
+  try { if (JSON.parse(document.documentElement?.dataset.jobpilottoFill || '{}').state === 'stopped') delete document.documentElement.dataset.jobpilottoFill; } catch { /* not our mark */ }
+  return was;
+}
+
+// The person started again ON this tab (the panel's Fill, Fill again, Check form again, Fill anyway; the popup's Apply on this page): restart() lifts the worker's Stop,
+// this lifts the page's, whether or not the worker was still stopped (a Stop lifted from another tab leaves this page's flag behind). The panel hears `started` (it leaves
+// "Stopped by you" and works again) and the app is told (its session leaves "Stopped"). The fill waits for the page's part (stop-state.js pageStarted).
+// Owner, 27 Oct 2026: "I stopped the extension, then said fill again and then it still stays stopped". -> resolves once the page is clear.
+export function startTab(tabId, who = '', wasStopped = false) {
+  if (!Number.isInteger(tabId)) return Promise.resolve(false);
+  const page = chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: startedPage})
+    .then(rows => (rows || []).some(row => row?.result === true), () => false);
+  noteStarting(tabId, page);
+  page.then(async was => {
+    if (!was && !wasStopped) return;
+    decide('stop', 'started again on this tab', {who});
+    chrome.tabs.sendMessage(tabId, {type: 'started'}).catch(() => {});
+    for (const fn of toldStarted) await Promise.resolve(fn(tabId, who)).catch(() => {});
+  });
+  return page;
 }
 
 // Stop everything. -> {tabs}: how many tabs were cleared.
@@ -59,8 +90,9 @@ export async function stopAll(reason = 'the person pressed Stop') {
   forgetDebuggerUsers();   // nobody holds the attachment any more (the form trace is dropped by its own onStopped, messages-report.js)
   for (const tabId of ids) {
     await chrome.storage.session.remove([...IDENTITY_KEYS(tabId), `role:${tabId}`, `armed:${tabId}`, `carried:${tabId}`, `submit:${tabId}`, `judged:${tabId}`, `read:${tabId}`, `next:${tabId}`]).catch(() => {});
+    await chrome.storage.session.set({[`stoppedTab:${tabId}`]: at}).catch(() => {});   // still the app's tab for the person's own start (the popup's Apply on this page): its mark and arming are gone
     await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: stoppedPage}).catch(() => {});
-    chrome.tabs.sendMessage(tabId, {type: 'stopped'}).catch(() => {});
+    chrome.tabs.sendMessage(tabId, {type: 'stopped', at}).catch(() => {});   // at: the panel ignores a Stop older than the person's start on it (review.js)
   }
   for (const fn of told) await Promise.resolve(fn(reason, ids.size)).catch(() => {});
   return {tabs: ids.size};

@@ -11,6 +11,11 @@ export function restart() {
   chrome.storage.session.remove('stopped').catch(() => {});
   return true;
 }
+// The person's start on one tab clears that page's own Stop too (stop.js startTab); the page fill waits for it (flow.js pageStarted), so a fill pressed right after
+// Stop never meets the old flag and answers "Stopped by you." at once (owner, 27 Oct 2026: "Check form again is not working").
+const starting = new Map();   // tab id -> the page's clearing, on its way
+export function noteStarting(tabId, done) { starting.set(tabId, done); done.finally(() => { if (starting.get(tabId) === done) starting.delete(tabId); }); }
+export const pageStarted = tabId => starting.get(tabId) || Promise.resolve();
 // The one place the debugger is attached (it shows Chrome's "started debugging this browser" bar): never while stopped, and only on a tab the app opened for an application.
 // Several users share one attachment (the fill's menu clicks and typing, the repair clicks, the picture, the form trace: trace.js): each attachDebugger is matched by ONE detachDebugger, and
 // Chrome's detach happens when the last user leaves, so a menu click finishing never ends the trace (spec 2026-10-16-report-from-the-trace.md §1). Guard: desktop/test/trace-debugger.test.js.

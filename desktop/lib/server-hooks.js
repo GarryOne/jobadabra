@@ -69,6 +69,8 @@ export const stopAsked = () => (stopId && Date.now() - stopAt < STOP_ASK_MS ? st
 export function stopHeard() { stopId = ''; }
 export let stoppedHandler = () => {};   // the extension stopped (its Stop, the app's, Chrome's Cancel on the debugging bar): set by ext-server-handlers.js
 export function setStoppedHandler(fn) { stoppedHandler = fn; }
+export let startedHandler = () => {};   // the person started the extension again on a tab (its Fill, Check form again, the popup's Apply on this page): set by ext-server-handlers.js
+export function setStartedHandler(fn) { startedHandler = fn; }
 export let takeOverHandler = () => {};  // the panel's "Take over with Claude": the person asks for Claude on this application (set by main.js)
 export function setTakeOverHandler(fn) { takeOverHandler = fn; }
 export let claudeAutoHandler = () => {};  // the panel's "Always let Claude finish when I'm stuck" box (set by apply-handlers.js)

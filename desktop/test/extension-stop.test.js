@@ -8,7 +8,8 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 
 const store = {};
-const calls = {detached: [], attached: [], scripted: [], told: [], sent: []};
+const calls = {detached: [], attached: [], scripted: [], told: [], sent: [], funcs: []};
+let pageWasStopped = true;   // what startedPage answers from the page
 let attachedTargets = [], detachListener = null;
 globalThis.chrome = {
   runtime: {getManifest: () => ({version: 'test'}), sendMessage: async () => {}},
@@ -24,7 +25,7 @@ globalThis.chrome = {
     onDetach: {addListener(fn) { detachListener = fn; }},
   },
   tabs: {async get() { return null; }, async query() { return [{id: 5, url: 'https://github.com/x/y/pull/1#jobpilotto-fill=s1'}, {id: 6, url: 'https://example.com/'}]; }, async sendMessage(id, message) { calls.told.push([id, message.type]); }, onRemoved: {addListener() {}}},
-  scripting: {async executeScript(options) { calls.scripted.push(options.target.tabId); return []; }},
+  scripting: {async executeScript(options) { calls.scripted.push(options.target.tabId); calls.funcs.push([options.target.tabId, options.func?.name || '']); return options.func?.name === 'startedPage' ? [{result: pageWasStopped}] : []; }},
 };
 const stop = await import('../../extension/stop.js');
 const {isCurrent, beginRead} = await import('../../extension/read-gen.js');
@@ -140,7 +141,7 @@ test('the Stop button is on every page of the extension: the toolbar popup and t
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(read('popup.html'), /id="stop"/, 'the popup has a Stop button, shown on every tab the app opened (popup-controls.js; none on the person\'s own tabs, owner 16 Oct 2026)');
   assert.match(read('popup.js'), /type: 'stop'/, 'the popup sends stop');
-  assert.match(read('review.js'), /'\.stop-btn, \.pill-stop'\)\) button\.onclick[^\n]*type: 'stop'/, 'the panel\'s Stop (in the live step row, and on the minimised pill) sends stop');
+  assert.match(read('review.js'), /root\.querySelectorAll\('\.stop-btn, \.pill-stop'\)\][^\n]*\n\s*for \(const button of stopButtons\) button\.onclick[^\n]*type: 'stop'/, 'the panel\'s Stop (in the live step row, and on the minimised pill) sends stop');
   assert.match(read('panel-markup.js'), /class="stop-btn"[^]*class="pill-stop"/, 'a Stop in the step row and one beside the pill, so it is one press away open or minimised');
   assert.doesNotMatch(read('background.js'), /panel-stop\.js/, 'the bottom-left chip is gone (owner, 19 Oct 2026): Stop lives in the panel');
 });
@@ -156,4 +157,36 @@ test('every person-pressed start message clears Stop, Read this board included',
     assert.equal(handle({type}, {tab: {id: 5}}, () => {}), undefined, `${type} is left to its own group`);
     assert.equal(stop.isStopped(), false, `${type} clears Stop`);
   }
+});
+
+// 27 Oct 2026 (owner: "I stopped the extension, then said fill again and then it still stays stopped"; ""Check form again" is not working"): the worker's Stop was lifted, the page's
+// own flag was not, and the page fill answered "Stopped by you." at once. Each start on a tab clears that page, tells its panel and the app, and the fill waits for it.
+test('every person-pressed start on a tab clears that page\'s own Stop, tells its panel, and the page fill waits for it', async () => {
+  const {createStopMessages} = await import('../../extension/stop-messages.js');
+  const {pageStarted} = await import('../../extension/stop-state.js');
+  const handle = createStopMessages();
+  for (const [type, sender, extra] of [['panelFill', {tab: {id: 5}}, {}], ['fillAnyway', {tab: {id: 5}}, {}], ['panelTakeOver', {tab: {id: 5}}, {}], ['applyHere', {}, {tabId: 5}]]) {
+    reset();
+    await stop.stopAll('test');
+    assert.equal(store['stoppedTab:5'] > 0, true, 'a tab Stop cleared stays the app\'s for the person\'s own start (the popup\'s Apply on this page)');
+    calls.funcs.length = 0; calls.told.length = 0;
+    handle({type, ...extra}, sender, () => {});
+    await pageStarted(5);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(calls.funcs.filter(([, name]) => name === 'startedPage'), [[5, 'startedPage']], `${type}: the page's own Stop is cleared on the tab it was pressed for`);
+    assert.ok(calls.told.some(([id, what]) => id === 5 && what === 'started'), `${type}: the panel hears it and leaves "Stopped by you"`);
+  }
+  // Not stopped anywhere and the page never was: nothing to tell.
+  reset(); pageWasStopped = false; calls.told.length = 0;
+  handle({type: 'panelFill'}, {tab: {id: 5}}, () => {});
+  await pageStarted(5); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(calls.told.some(([, what]) => what === 'started'), false, 'a plain Fill on a page that was never stopped says nothing');
+  pageWasStopped = true;
+});
+
+test('the page fill waits for the page\'s Stop to clear before it starts', () => {
+  const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobPilottoExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
+  const stopFile = fs.readFileSync(new URL('../../extension/stop.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobpilotto-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');
 });

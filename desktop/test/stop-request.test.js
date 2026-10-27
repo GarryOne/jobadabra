@@ -9,7 +9,7 @@ import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import * as terminals from '../lib/terminals.js';
 import {journeyStep} from '../lib/application-journey.js';
-import {stopLiveForms} from '../lib/stop-all.js';
+import {startForm, stopLiveForms} from '../lib/stop-all.js';
 
 const freePort = () => new Promise(resolve => { const probe = net.createServer().listen(0, '127.0.0.1', () => { const {port} = probe.address(); probe.close(() => resolve(port)); }); });
 
@@ -52,4 +52,20 @@ test('a stopped extension marks every live application "Stopped", whatever step 
   assert.equal(stopLiveForms(terminals), 0, 'already said');
   terminals.clearStuck('a1');   // the person pressed Apply again: the fill's first report clears it (session-flow reported)
   assert.equal(terminals.get('a1').stuck, '');
+});
+
+// 27 Oct 2026: the app's card still said "You stopped the extension" while the person's Check form again filled the form.
+test('the person\'s start on a tab takes that tab\'s session out of "Stopped"; other stopped sessions stay stopped', () => {
+  terminals._reset();
+  terminals.startForm({id: 'b1', url: 'https://jobs.example.test/a', company: 'A'});
+  terminals.startForm({id: 'b2', url: 'https://jobs.example.test/b', company: 'B'});
+  assert.equal(stopLiveForms(terminals), 2);
+  const tabs = {11: 'b1', 12: 'b2'}, sessionOfTab = tab => tabs[tab] || '';
+  assert.equal(startForm(terminals, sessionOfTab, 11), 'b1');
+  assert.equal(terminals.get('b1').stuck, '', 'started again');
+  assert.equal(terminals.get('b2').stuck, 'stopped', 'its page is still stopped');
+  assert.equal(startForm(terminals, sessionOfTab, 11), '', 'not stopped any more: nothing to do');
+  assert.equal(startForm(terminals, sessionOfTab, 99), '', 'a tab no session follows');
+  terminals.noteStuck('b2', 'no-form');
+  assert.equal(terminals.get('b2').stuck, 'stopped', 'control: a page report never lifts Stop (invariant 8)');
 });

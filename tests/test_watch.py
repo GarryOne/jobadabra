@@ -5,15 +5,17 @@ from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.sources import feed_facts  # noqa: E402
+from src.sources import feed_facts, feeds  # noqa: E402
 from src.sources.feeds import database, scan, render
 
 
 class WatchTests(unittest.TestCase):
     def setUp(self):   # each scan here is a read: the 6-hour "unchanged" skip (src/sources/feed_facts.py) is off
-        patch = mock.patch.object(feed_facts, 'FRESH_HOURS', 0)
-        patch.start()
-        self.addCleanup(patch.stop)
+        # No AI title sort has run here: an earlier test in the same process (a CI shard, #2178) may have left its "asked" mark in the
+        # shared judged titles, and then every title the AI did not judge reads as unwanted. These tests check the words' floor.
+        for patch in (mock.patch.object(feed_facts, 'FRESH_HOURS', 0), mock.patch.object(feeds, 'TRIAGED', {})):
+            patch.start()
+            self.addCleanup(patch.stop)
 
     def test_dedup_changes_and_source_failures(self):
         sources = [{"company": "A", "board": "a"}, {"company": "B", "ats": "lever", "slug": "b"}]

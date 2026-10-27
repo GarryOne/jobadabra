@@ -3,6 +3,7 @@ With auto-merge on and no failing check pending, `gh pr view` merges the PR's br
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -39,6 +40,27 @@ def merge():
 
 
 pending = state.get('fail_check') or state.get('fail_check_once')
+if argv[:1] == ['api'] and '-i' in argv:   # tools/pr-rest-lib.sh's REST reads (27 Oct 2026): the PR, the head's check-runs and statuses
+    p = argv[-1]
+    if p.endswith('/check-runs?per_page=100'):
+        if pending:
+            state['step_red'] = bool(pending.get('step_red'))
+            status, conclusion = {'cancel': ('completed', 'cancelled'), 'pending': ('in_progress', None)}.get(pending.get('bucket', 'fail'), ('completed', 'failure'))
+            body = {'check_runs': [{'name': pending['name'], 'status': status, 'conclusion': conclusion, 'html_url': pending['link']}]}
+            state.pop('fail_check_once', None)
+        else:
+            body = {'check_runs': [{'name': 'python', 'status': 'completed', 'conclusion': 'success', 'html_url': ''}]}
+    elif p.endswith('/status'):
+        body = {'statuses': []}
+    elif re.search(r'/pulls/\d+$', p):
+        if state.get('auto') and not pending and state.get('state') == 'OPEN':
+            merge()
+        st = state.get('state', 'OPEN')
+        body = {'number': 1, 'html_url': 'https://example.test/pull/1', 'head': {'sha': 'h1', 'ref': state.get('head')}, 'state': 'open' if st == 'OPEN' else 'closed',
+                'merged_at': 't' if st == 'MERGED' else None, 'merge_commit_sha': state.get('merge_sha'), 'mergeable': True}
+    else:
+        print('HTTP/2.0 404 Not Found\n\n{}'); save(); sys.exit(1)
+    print('HTTP/2.0 200 OK\n\n' + json.dumps(body)); save(); sys.exit(0)
 if argv[:1] == ['api']:
     # --jq .full_name: the repository answers (ship_mode); --jq .allow_auto_merge: the switch for review by hand (ship_review)
     if any('.steps' in a for a in argv): print('Core flow files up to date with main' if state.get('step_red') else ''); save(); sys.exit(0)

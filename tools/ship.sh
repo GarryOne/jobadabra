@@ -99,8 +99,8 @@ ship_watch_start() {  # detached like the background run itself: the caller's en
   [ "${SHIP_WATCH:-1}" != 0 ] || return 0
   [ -z "${watching:-}" ] || return 0; watching=1   # started when the PR opened (ship_pr_land): the end of the run does not restart it
   local pidfile; pidfile="$(git rev-parse --path-format=absolute --git-common-dir)/ship-watch-${branch//\//-}.pid"
-  if command -v setsid >/dev/null; then setsid bash "$tools/ship-watch.sh" "$1" "$log" "$pidfile" > /dev/null 2>&1 < /dev/null &
-  else python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' bash "$tools/ship-watch.sh" "$1" "$log" "$pidfile" > /dev/null 2>&1 < /dev/null & fi
+  if command -v setsid >/dev/null; then setsid bash "$tools/ship-watch.sh" "$1" "$log" "$pidfile" "$(ship_repo)" > /dev/null 2>&1 < /dev/null &
+  else python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' bash "$tools/ship-watch.sh" "$1" "$log" "$pidfile" "$(ship_repo)" > /dev/null 2>&1 < /dev/null & fi
 }
 trap 'code=$?; landing_release; timeline_write "$code"; if [ "$code" -ne 0 ]; then echo "ship: FAILED ${fail_reason:-(exit $code)}, log: $log"; elif [ -n "${review_n:-}" ]; then echo "ship: REVIEW #$review_n ${review_url:-} (every check green; the owner reviews and merges)"; ship_watch_start "$review_n"; elif [ -n "$finished" ]; then echo "ship: DONE ${sha:-nothing to push}"; else echo "ship: FAILED (ended early without pushing or finishing), log: $log"; fi' EXIT   # from the PR's opening, tools/ship-watch.sh adds MERGED / CLOSED / RED / GREEN to the log
 

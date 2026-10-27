@@ -8,6 +8,7 @@
 # A required check that failed: `fail_reason` names it with its log link and the run exits 1, the PR stays open (fix, commit, run ship again: it finds the PR).
 # The step "Core flow files up to date with main" of the one required job failing, or a conflict with main, is no failure: the branch is rebased on the new main (extension version taken again) and pushed again, up to 5 times.
 #   SHIP_PR_POLL=<s> seconds between looks (default 15)      SHIP_PR_TIMEOUT=<s> give up waiting after (default 2700; the PR stays open with auto-merge on)
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pr-rest-lib.sh"
 ship_mode() {
   case "${SHIP_MODE:-auto}" in pr|direct) echo "$SHIP_MODE"; return ;; esac
   # main takes pull requests only (ruleset): a GitHub origin gh can read lands through a PR, with or without auto-merge (review mode, ship_review). No answer from gh = direct.
@@ -34,7 +35,7 @@ ship_pr_no_stacking() {
   [ -z "$hit" ] || ship_pr_fail "this branch carries commits of the open PR $hit; one PR per branch off main, no stacking: start from origin/main (tools/worktree.sh) and bring over only your own commits (git cherry-pick)"
 }
 ship_pr_land() {
-  local n="" out view state mergeable checks failing name link who tries=0 waited=0 last_say=0 body title poll="${SHIP_PR_POLL:-15}" limit="${SHIP_PR_TIMEOUT:-2700}"
+  local n="" repo out view state mergeable checks failing name link who tries=0 waited=0 last_say=0 body title poll="${SHIP_PR_POLL:-15}" limit="${SHIP_PR_TIMEOUT:-2700}"
   files="$(git diff --name-only origin/main HEAD)"
   ship_pr_no_stacking
   n="$(gh pr list --head "$branch" --state open --json number 2>/dev/null | jq -r '.[0].number // empty')" || n=""
@@ -81,8 +82,11 @@ ship_pr_land() {
     esac
   fi
   [ -n "$review" ] || step "auto-merge is on for #$n: waiting for the required checks and the merge"
+  # Why (27 Oct 2026, the owner's GraphQL budget ran out and PRs could not be opened): this wait looked every 15 s with two GraphQL queries; REST with the last ETag
+  #   (tools/pr-rest-lib.sh) costs about one call per look and nothing for an unchanged answer.
+  repo="$(ship_repo)"
   while :; do
-    view="$(gh pr view "$n" --json state,mergeable,mergeCommit,url 2>/dev/null)" || view=""
+    view="$(pr_view "$repo" "$n")" || view=""
     state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"; mergeable="$(jq -r '.mergeable // empty' <<<"$view" 2>/dev/null)"
     case "$state" in
       MERGED) sha="$(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; ship_fetch || true; [ -n "$sha" ] || sha="$(git rev-parse --short origin/main)"   # the PR is merged: a fetch that still fails must not turn it into FAILED
@@ -90,7 +94,7 @@ ship_pr_land() {
       CLOSED) ship_pr_fail "pull request #$n was closed without merging: $(jq -r '.url' <<<"$view")" ;;
     esac
     # Every check the PR started, not only the required ones (14 Oct 2026: only the 3 checks that start on every PR are required; the suites start by `paths:`).
-    checks="$(gh pr checks "$n" --json name,bucket,link 2>/dev/null || true)"
+    checks="$(pr_checks "$repo" "$(jq -r '.headRefOid // empty' <<<"$view" 2>/dev/null)" || true)"
     failing="$(jq -r '[.[]? | select(.bucket == "fail" or .bucket == "cancel")] | first // empty | "\(.name)\t\(.link)"' <<<"${checks:-[]}" 2>/dev/null)" || failing=""
     # A run the next push superseded shows as cancelled (every PR workflow cancels its older run, 15 Oct 2026): not a failure while a newer run may be starting. Only a check that
     # stays cancelled over 3 more looks (about a minute) counts, as one that failed.

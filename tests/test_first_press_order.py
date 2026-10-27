@@ -13,9 +13,18 @@ from pathlib import Path
 from unittest import mock
 
 from src import daily_search, first_jobs, time_budget
-from src.sources import aggregators, board_web, read_budget
+from src.sources import aggregators, board_web, careers, read_budget
 
 BUDGET = 3   # the app's 180 s, scaled (time_budget.part): the read cut is at 1.5 s
+_READER = careers.READER
+
+
+def setUpModule():   # no page read reaches a real model here (guard: tests/test_found_boards_ai.py)
+    careers.READER = None
+
+
+def tearDownModule():
+    careers.READER = _READER
 
 
 def job(key):

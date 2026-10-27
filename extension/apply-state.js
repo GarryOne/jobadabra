@@ -15,8 +15,11 @@ export const restored = (globalThis.chrome?.storage?.session?.get(null) || Promi
   for (const [key, state] of Object.entries(all || {})) if (key.startsWith('apply:') && !states.has(Number(key.slice(6)))) states.set(Number(key.slice(6)), state);
 }).catch(() => {});
 
+/** The tab's Apply state: 'working', a verdict ('done', 'stopped', 'your-turn'), or '' when it has none (or the worker has not restored yet: await `restored`). Reads the worker's memory only; never throws. */
 export const applyState = tabId => states.get(tabId) || '';
+/** Whether the tab's Apply is working (its pages are dimmed). Same source and failure as applyState: false when unknown. */
 export const isWorking = tabId => states.get(tabId) === WORKING;
+/** The ids of every tab whose Apply is working, for Stop to give each its verdict. Reads the worker's memory only; an empty list when none. */
 export const workingTabs = () => [...states].filter(([, state]) => state === WORKING).map(([tabId]) => tabId);
 
 /**

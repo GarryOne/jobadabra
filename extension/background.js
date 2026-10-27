@@ -210,6 +210,8 @@ chrome.tabs.onCreated.addListener(async tab => {
 // A progress panel on the page while a tab fills itself (the popup is closed then). `url`: the page being filled —
 // nothing is drawn when that tab has moved on to another site (or its id came back as a different tab).
 async function progress(tabId, text, url = '') {
+  // Why (#2262, review bot): a run's end frees the tab even when it has moved to another site (the check below returns early then): early-dim.js dims on a tab that has a step, so a stale one would dim every later page.
+  if (!text) stepNow.delete(tabId);
   if (url && !(await onPage(tabId, url))) return;
   // The page's panel (review.js) shows it when it is there; the floating box is for pages without one. Whichever
   // takes it, the other is cleared: a box drawn before the panel opened used to stay on the page for good, above a

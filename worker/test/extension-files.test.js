@@ -184,7 +184,8 @@ test('the form report sends the AI-read knockouts: its key is code, not the tail
 
 test('the panel\'s Claude offer (panel-claude.js) shows only when Claude is ready and the extension stuck; the app sends both, and the panel hands the offer its facts', () => {
   const panel = readPanel();
-  assert.match(panel, /__jobPilottoClaude\?\.render\(\{on: [^}]*!!claudeAsk\.help, stuck: !needsYou && !!session\?\.stuck/);
+  assert.match(panel, /__jobPilottoClaude\?\.render\(\{on: [^}]*!!claudeAsk\.help, stuck: !needsYou && handed && !stopped/);   // handed: the app's stuck, unless a newer step came after it (27 Oct 2026)
+  assert.match(panel, /const stuckNow = !!session\?\.stuck && /);
   assert.match(panel, /claudeAsk = \{takeover: reply\?\.claudeTakeover !== false, help: !!reply\?\.claudeHelp, always: !!reply\?\.claudeAlways, auto: !!reply\?\.claudeAuto, consent: !!reply\?\.claudeConsent\};/);
   assert.match(panel, /__jobPilottoClaude\?\.mount\(root, send\)/);
   assert.match(read('extension/background.js'), /'hook\.js', 'panel-claude\.js', 'page\/submit-press\.js', \.\.\.PANEL_FILES/);   // the offer's script is there before the panel mounts

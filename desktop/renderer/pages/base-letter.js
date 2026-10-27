@@ -108,14 +108,6 @@ async function draft(button) {
   try { return await draftPending; } finally { draftPending = null; }
 }
 
-/** Setup starts the existing drafting action only for an empty letter; saved drafts, approved text and edits are never replaced. */
-export async function draftLetterForSetup() {
-  if (saved.state !== 'none' || writing || $('letter-text').value.trim() || isReading) return;
-  const button = $('letter-start-ai') || $('letter-draft');
-  if (button.disabled) return;
-  await draft(button);
-}
-
 export function initLetter({openAiSettings} = {}) {
   if (openAiSettings) openAi = openAiSettings;
   letterFallback();

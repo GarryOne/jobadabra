@@ -36,6 +36,7 @@
 
 - [x] Replace the oversized shield/amber visual treatment with a compact neutral notice, a small icon, sentence-case heading, readable body text, and responsive inline link styling with visible focus.
 - [x] Keep missing-draft navigation on `panelOpenApp` with `session: "setup:cover-letter"`; keep delivery failure on `flash(letterRejected.el)` and concise truthful recovery copy.
-- [x] Verify route contract, the missing-draft and delivery-failed states, keyboard focus, dark/light readability, and normal/narrow render screenshots; focused tests pass 20/20.
+- [x] Verify rendered missing-draft and delivery-failed states, setup navigation without generation, manual recovery, keyboard focus, dark/light readability, and normal/narrow screenshots.
 - [x] Add and run the journey guard for the Profile route and manual failure recovery.
 - [x] Run changed-JS lint and focused tests; fast gate/commit/ship pending.
+- [x] Update the rendered-panel integration expectation for the calmer copy; focused tests pass 21/21 desktop and 10/10 worker.

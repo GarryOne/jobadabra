@@ -11,9 +11,9 @@ let current = {};   // the saved settings, as the app last answered them
 let ready = Promise.resolve();
 export const settingsNow = () => current;
 
-// The three modes as stacked choice cards (the dialog draws the same ones).
-export function modeCards(selected, onPick, {dialog = false, disabled = false, notes = {}} = {}) {
-  const modes = MODES.map(mode => ({...mode, ...(dialog ? {text: mode.dialogText || mode.text} : {}), ...(notes[mode.id] ? {note: notes[mode.id]} : {}), ...(disabled ? {disabled: true} : {})}));
+// The three saved modes as stacked choice cards; every Apply surface uses the same titles, badges and descriptions.
+export function modeCards(selected, onPick, {disabled = false} = {}) {
+  const modes = disabled ? MODES.map(mode => ({...mode, disabled: true})) : MODES;
   const group = choiceCards(modes, {selected, onPick, label: 'How applying works'});
   group.classList.add('is-single');
   return group;

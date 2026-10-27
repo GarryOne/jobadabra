@@ -86,9 +86,13 @@ test('the window: preload holds the pressed call, the dialog opens, and the same
   assert.match(preload, /pilot-apply-not-chosen/);
   const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
   for (const id of ['apply-choice-dialog', 'apply-choice-modes', 'apply-choice-go', 'apply-choice-adjust', 'apply-confirm-bar', 'apply-confirm-go', 'apply-confirm-cancel']) assert.ok(html.includes(`id="${id}"`), id);
+  assert.ok(!html.includes('apply-choice-today'), 'the first-Apply dialog has no extra coming-update paragraph');
+  assert.ok(!html.includes('You can change this any time in Settings → Apply.'), 'the mode cards stay the concise explanation');
   assert.match(html, /data-settings-go="apply"/);
   assert.match(html, /data-settings-page="apply"/);
   assert.match(fs.readFileSync(path.join(here, 'renderer/app.js'), 'utf8'), /applyChoice\(\)/);
+  assert.match(fs.readFileSync(path.join(here, 'renderer/pages/apply-choice.js'), 'utf8'), /modeCards\(pick,/);
+  assert.doesNotMatch(fs.readFileSync(path.join(here, 'renderer/pages/apply-choice.js'), 'utf8'), /dialog:\s*true/);
 });
 
 test('every window caller of an apply action stays quiet on Not now ({cancelled}), so no "Try again" follows the person\'s own choice', () => {

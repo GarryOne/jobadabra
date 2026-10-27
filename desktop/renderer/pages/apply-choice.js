@@ -4,7 +4,7 @@
 // Not now or Esc lets it go (pilot-apply-not-chosen). Guard: test/apply-choice-gate.test.js, test/apply-settings.test.js.
 import {$} from './core.js';
 import {applyOf} from '../apply-settings-model.js';
-import {askConfirm, confirming, modeCards, save, settingsNow, todayLine} from './apply-settings.js';
+import {askConfirm, confirming, modeCards, save, settingsNow} from './apply-settings.js';
 
 const answer = chosen => window.dispatchEvent(new Event(chosen ? 'pilot-apply-chosen' : 'pilot-apply-not-chosen'));
 
@@ -13,8 +13,7 @@ export function init() {
   if (!dialog) return;
   let pick = 'check';
   const draw = () => {
-    $('apply-choice-modes').replaceChildren(modeCards(pick, id => { pick = id; draw(); }, {dialog: true}));
-    todayLine($('apply-choice-today'), pick);
+    $('apply-choice-modes').replaceChildren(modeCards(pick, id => { pick = id; draw(); }));
   };
   window.addEventListener('pilot-needs-apply-choice', () => {
     if (dialog.open || confirming()) return;   // one question at a time: every press waiting goes on with the same answer

@@ -33,6 +33,9 @@ export function convertPay(ask, field, { rates }) {
   return String(field?.type || '') === 'number' ? String(figure) : `${ask.asked_currency} ${figure}`;
 }
 
+// A figure for a number box; in a text box the value names the ISO currency it is in (a bare figure there could be read in the job country's).
+const saysCurrency = (a, ask, field) => String(field?.type || '') === 'number' || (/^[A-Z]{3}$/.test(ask.currency || '') && new RegExp(`\\b${ask.currency}\\b`, 'i').test(String(a.value || '')));
+
 // Sets (typed) each answer a pay_ask converts; one it cannot convert is kept as a proposal.
 // A salary the AI typed without listing it in pay_asks (so without saying which currency and period the form asks) is only proposed: a figure in the wrong currency
 // is worse than an empty box.
@@ -46,7 +49,9 @@ export async function applyPay(answers, asks, fields, env = {}) {
     const ask = list.find((x) => x.field === a.field);
     if (unlisted(a)) return { ...a, use: 'propose' };
     if (!ask) return a;
-    if (ask.currency === ask.asked_currency && ask.per === ask.asked_per) return a.fact === 'salary' ? a : { ...a, fact: 'salary' };   // listed = a salary answer, whatever fact the AI named
+    // Listed = a salary answer, whatever fact the AI named. In the stated target's own currency and period it is the stated target: typed, also when the AI held it as a proposal
+    // (27 Oct 2026, fair round form 106: "salary expectations? A range is fine." left empty 3 of 3), as long as a text box's value says its currency.
+    if (ask.currency === ask.asked_currency && ask.per === ask.asked_per) return { ...a, fact: 'salary', ...(saysCurrency(a, ask, byId[a.field]) ? { use: 'fill' } : {}) };
     const value = convertPay(ask, byId[a.field], today);
     return value ? { ...a, value, use: 'fill', fact: 'salary', converted: { from: ask.currency, to: ask.asked_currency, rates: today.source } } : { ...a, use: 'propose' };
   });

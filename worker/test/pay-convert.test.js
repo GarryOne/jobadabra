@@ -78,3 +78,17 @@ test('a salary the code kept as a proposal is not typed back as a guess', () => 
   const kept = typeGuess({ field: 'a', value: '150000', use: 'propose', fact: 'salary', category: 'normal', confidence: 'high' });
   assert.equal(kept.use, 'propose'); assert.equal(kept.guess, undefined);
 });
+
+// 27 Oct 2026, fair round form 106: "What are your salary expectations for this role? A range is fine." (a text box, no currency or period named) left empty in 3 of 3 runs:
+// the AI gave the stated target in its own currency but held it as a proposal for the code to convert, and the code had nothing to convert.
+test('the stated target in its own currency and period is typed in a text box that names its currency, even when the AI held it as a proposal', async () => {
+  const fields = [{ field: 'a', type: 'text' }, { field: 'b', type: 'text' }, { field: 'c', type: 'number' }];
+  const ask = (field) => ({ field, amount: 150000, currency: 'CHF', per: 'year', asked_currency: 'CHF', asked_per: 'year', basis_clear: false });
+  const out = await applyPay([
+    { field: 'a', value: 'CHF 140,000–160,000 per year, gross', use: 'propose', fact: 'salary' },
+    { field: 'b', value: '140,000–160,000', use: 'propose', fact: 'salary' },   // a bare figure in a text box could be read in another currency: still a proposal
+    { field: 'c', value: '150000', use: 'propose', fact: 'salary' },
+  ], ['a', 'b', 'c'].map(ask), fields, {});
+  assert.deepEqual(out.map((a) => a.use), ['fill', 'propose', 'fill']);
+  assert.equal(typeGuess({ ...out[0], category: 'normal', confidence: 'medium' }).use, 'fill', 'the guess floor does not take it back');
+});

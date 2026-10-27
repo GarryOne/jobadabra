@@ -1,0 +1,89 @@
+// Hung page evaluation and tab closure must fail by case/phase while healthy sibling results survive.
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {timedReplay, replayLimit} from '../lib/replay-deadline.mjs';
+const never = () => new Promise(() => {});
+
+test('hung evaluation fails by deadline; a hung close cannot hide it or a healthy sibling', async () => {
+  const completed = [], logs = [];
+  const run = (name, body, cleanup) => timedReplay({name}, body, cleanup, {budgetMs: 25, cleanupMs: 15, log: line => logs.push(line)})
+    .then(value => completed.push({name, value}), error => completed.push({name, error}));
+  await replayLimit('test outer bound', 300, () => Promise.all([
+    run('hung', step => step('judge', never), step => step('close', never)),
+    run('healthy', step => step('judge', () => 'pass'), step => step('close', () => {})),
+  ]));
+  assert.equal(completed[0].name, 'healthy');
+  assert.equal(completed[0].value, 'pass');
+  assert.match(completed[1].error.message, /replay hung: judge timed out/);
+  assert.equal(completed[1].error.code, 'REPLAY_TIMEOUT');
+  assert.ok(logs.some(line => /hung.*FAIL.*judge timed out/.test(line)));
+  assert.ok(logs.some(line => /healthy.*done/.test(line)));
+});
+
+test('teardown failure makes a completed judgment red', async () => {
+  await assert.rejects(timedReplay({name: 'close-hung'}, step => step('judge', () => 'pass'), step => step('close', never),
+    {budgetMs: 25, cleanupMs: 15, log: () => {}}), /close-hung: close timed out/);
+});
+
+test('late operations cannot advance after their deadline', async () => {
+  let release, advanced = false;
+  await assert.rejects(timedReplay({name: 'late'}, async step => {
+    await step('newPage', () => new Promise(resolve => { release = resolve; }));
+    await step('goto', () => { advanced = true; });
+  }, async () => {}, {budgetMs: 15, log: () => {}}), /late: newPage timed out/);
+  release();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(advanced, false);
+});
+
+test('the real tab scheduler retains its healthy sibling while evaluation and closure hang', async () => {
+  const {EventEmitter} = await import('node:events');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const {replayInTabs} = await import('../lib/replay-browser.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'replay-deadline-'));
+  fs.writeFileSync(path.join(dir, 'page.html'), '<title>Fictional fixture</title>');
+  const items = ['hung', 'healthy'].map(name => ({name, dir, pages: [{url: `https://${name}.example/form`, file: 'page.html'}]}));
+  const context = new EventEmitter(), pages = [], base = {url: () => 'about:blank'};
+  context.route = async () => {};
+  context.pages = () => [base, ...pages];
+  context.newPage = async () => {
+    const page = new EventEmitter(); let url = 'about:blank';
+    page.url = () => url;
+    page.goto = async address => { url = address; };
+    page.opener = async () => null;
+    page.evaluate = () => url.includes('hung.example') ? never() : Promise.resolve(null);
+    page.close = () => url.includes('hung.example') ? never() : Promise.resolve();
+    pages.push(page); context.emit('page', page); return page;
+  };
+  const saved = [];
+  try {
+    const results = await replayLimit('scheduler test', 1000, () => replayInTabs(items, {
+      tabs: 2, caseBudgetMs: 30, cleanupMs: 15,
+      startExtension: async () => ({context, page: base, requests: [], assertIsolated: async () => true, close: async () => {}}),
+      judge: async (item, scope) => { await scope.page.evaluate(() => null); return {ok: true, failures: [], seen: {tabs: 1, opened: 0}}; },
+      onResult: result => saved.push({name: result.name, ok: result.ok, failures: [...result.failures]}),
+    }));
+    assert.equal(saved[0].name, 'healthy');
+    assert.equal(results[1].ok, true);
+    assert.equal(results[0].ok, false);
+    assert.match(results[0].failures.join(';'), /hung: judge timed out/);
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('the outer wall also bounds awaits outside named steps', async () => {
+  let cleaned = false;
+  await assert.rejects(timedReplay({name: 'between-steps'}, async step => {
+    await step('routes', () => {});
+    await never();
+  }, async () => { cleaned = true; }, {budgetMs: 15, log: () => {}}), /between-steps: routes timed out/);
+  assert.equal(cleaned, true);
+});
+
+test('late resources are closed after the failed case returns', async () => {
+  let release, closed = false;
+  await assert.rejects(timedReplay({name: 'late-resource'}, step => step('browser.start', () => new Promise(resolve => { release = resolve; }),
+    resource => resource.close()), async () => {}, {budgetMs: 15, log: () => {}}), /late-resource: browser.start timed out/);
+  release({close: () => { closed = true; }});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(closed, true);
+});

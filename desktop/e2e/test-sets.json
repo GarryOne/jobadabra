@@ -33,6 +33,7 @@
   "test-sets.test.mjs"
  ],
  "daily": [
+  "replay-deadline.test.mjs",
   "synthetic-navigation.test.mjs",
   "coverage-merge.test.mjs",
   "coverage-steps.test.mjs",

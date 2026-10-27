@@ -17,6 +17,18 @@ after(() => {
   if (process.env.JP_REPLAY_RESULTS) fs.writeFileSync(process.env.JP_REPLAY_RESULTS, JSON.stringify(results));
   else if (results.length) console.log(`replays report: not sent (${replayReason() || 'no JP_REPLAY_RESULTS'})`);
 });
+// Write a conservative partial verdict immediately: a completed case survives a later sibling stall.
+const remember = (item, result, pending = false) => {
+  const entry = {name: item.name, control: item.control, ...(typeof result.seconds === 'number' ? {seconds: Math.round(result.seconds)} : {}),
+    ok: pending ? false : result.ok, ...(Number.isInteger(item.rung) ? {rung: item.rung} : {}),
+    note: pending ? 'awaiting final replay verdict' : result.failures.join('; ').slice(0, 200),
+    fill: typeof result.fillTime === 'function' ? result.fillTime() : null,
+    moves: !pending && result.ok && typeof result.moves === 'function' ? result.moves() : [],
+    repairs: !pending && result.ok && typeof result.repairs === 'function' ? result.repairs() : []};
+  const index = results.findIndex(one => one.name === item.name);
+  if (index < 0) results.push(entry); else results[index] = entry;
+  if (process.env.JP_REPLAY_RESULTS) fs.writeFileSync(process.env.JP_REPLAY_RESULTS, JSON.stringify(results));
+};
 const only = process.env.REPLAY_ONLY || '';   // a part of a case name: replay just those
 // The cases run N tabs at a time in ONE browser (lib/replay-browser.mjs; JP_REPLAY_TABS, default 4; 1 = one browser per case, in turn, as before: said in the log). A case that fails in
 // parallel is run again alone in its own browser: it counts as passed only if it passes alone, and it is said as FLAKY (never a silent pass).
@@ -37,11 +49,19 @@ let batch = null;   // started by the first test, once: every test awaits its ow
 const alone = async list => {
   const queue = list.filter(one => !one.ok || one.confirm?.length), done = new Map();
   await Promise.all(Array.from({length: Math.min(2, queue.length)}, async () => {
-    for (let one = queue.shift(); one; one = queue.shift()) done.set(one.name, {first: one, again: await runCase(pageCases.find(item => item.name === one.name), {extensionDir})});
+    for (let one = queue.shift(); one; one = queue.shift()) {
+      console.log(`[replay ${one.name}] isolated retry start`);
+      let again;
+      try { again = await runCase(pageCases.find(item => item.name === one.name), {extensionDir}); }
+      catch (error) { again = {ok: false, failures: [String(error.message || error)], seen: {tabs: 0, opened: 0}}; }
+      done.set(one.name, {first: one, again});
+      remember(pageCases.find(item => item.name === one.name), again);
+      console.log(`[replay ${one.name}] isolated retry ${again.ok ? 'done' : 'FAIL'}`);
+    }
   }));
   return done;
 };
-const batchResults = () => batch ||= tabs === 1 ? Promise.resolve(null) : replayInTabs(pageCases, {tabs, extensionDir}).then(async list => {
+const batchResults = () => batch ||= tabs === 1 ? Promise.resolve(null) : replayInTabs(pageCases, {tabs, extensionDir, onResult: result => remember(pageCases.find(item => item.name === result.name), result, true)}).then(async list => {
   const slow = [...list].sort((a, b) => b.seconds - a.seconds).slice(0, 6).map(one => `${one.name} ${one.seconds.toFixed(0)}s`);   // where the batch's time goes
   console.log(`# recorded pages: ${list.length} cases in ${((Date.now() - batchStarted) / 1000).toFixed(0)} s; slowest: ${slow.join(', ')}`);
   const again = await alone(list);
@@ -59,7 +79,7 @@ for (const item of cases) {
     let result = isRowCase(item) ? await runRowCase(item, {extensionDir, ordinal: true}) : (await batchResults())?.get(item.name) || await runCase(item, {extensionDir});   // JP_REPLAY_TABS=1: one browser per case, in turn
     if (result.ordinal) console.log(`row case ${item.name}: WARNING: ${result.ordinal}`);
     if (result.loose) console.log(`row case ${item.name}: ${result.loose}`);   // a prompt or seed change since the capture: a warning, never a failure
-    results.push({name: item.name, control: item.control, ...(typeof result.seconds === 'number' ? {seconds: Math.round(result.seconds)} : {}), ok: result.ok, ...(Number.isInteger(item.rung) ? {rung: item.rung} : {}), note: result.failures.join('; ').slice(0, 200), fill: typeof result.fillTime === 'function' ? result.fillTime() : null, moves: result.ok && typeof result.moves === 'function' ? result.moves() : [], repairs: result.ok && typeof result.repairs === 'function' ? result.repairs() : []});   // a failed case confirms nothing; read after its run (lib/ladder-moves.mjs)
+    remember(item, result);
     assert.deepEqual(result.failures, [], `${item.name} (${item.why || ''})`);
   });
 }

@@ -13,7 +13,7 @@ import {movesFromRequests, repairsFromRequests} from './ladder-moves.mjs';
 import {falseReadings} from './replay-truth.mjs';
 import {fillSeconds} from './replay-time.mjs';
 import {linesOfCase, saysWord} from './replay-lines.mjs';
-import {syntheticNavigation, takeSyntheticRedirect} from './synthetic-navigation.mjs';
+import {syntheticNavigation, takeSyntheticRedirect, routeSyntheticNavigation} from './synthetic-navigation.mjs';
 
 export const REPLAY_DIR = path.join(E2E, 'recorded');
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -185,6 +185,7 @@ export async function runCase(item, {extensionDir} = {}) {
   const pages = caseFiles(item), statuses = caseStatuses(item), delays = caseDelays(item);
   try {
     for (const host of caseHosts(item)) await run.context.route(`https://${host}/**`, route => answerPage(route, pages, statuses, delays, navigation.redirects));
+    await routeSyntheticNavigation(run.context, run.page, item, route => answerPage(route, pages, statuses, delays, navigation.redirects));
     let opened = 0;   // every tab a page or the extension opened during the run (a tab loop closes the tab behind it: the count at the end stays 1)
     run.context.on('page', open => { if (!open.url().startsWith('chrome-extension://')) opened += 1; });
     await run.page.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});

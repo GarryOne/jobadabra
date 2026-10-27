@@ -1,10 +1,11 @@
 // The AI engine chooser's words and states (the setup wizard's AI step and Settings → Connections → AI), kept free of
 // the DOM so the tests can check them. The user picks; nothing is chosen for them (lib/claude-code.js engine()).
 import {costText, dollars} from './ai-cost.js';
+import {FREE_WEAKER, FREE_WEAKER_SHORT} from './ai-tier-words.js';
 const freeOn = settings => !!(settings?.aiFree || settings?.aiTrial);
 export const usingFree = settings => freeOn(settings) && (!settings.aiEngine || settings.aiEngine === 'api');   // Free is the engine in charge (a later pick of another engine wins)
 // The one-time hint after AI-written text on Free AI (renderer/own-key-hint.js): its words, and when it is wanted (Free, not shown yet).
-export const HINT = {text: 'Want stronger letters? Connect your Claude account or ChatGPT.', link: 'Open AI engine settings', dismiss: 'Dismiss'};
+export const HINT = {text: `Free AI wrote this, and it is ${FREE_WEAKER_SHORT}. Want stronger letters? Connect your Claude account or ChatGPT.`, link: 'Open AI engine settings', dismiss: 'Dismiss'};
 export const hintWanted = settings => usingFree(settings) && !settings?.ownKeyHintSeen;   // = lib/ai-free.js isOn (the renderer cannot import lib/)
 
 export const TEXT = {
@@ -25,7 +26,7 @@ export const TEXT = {
   codex: {title: 'Your OpenAI plan', text: 'Use the plan you already pay for, through Codex on this Mac. Nothing extra to pay.',
     short: 'Use the plan you already pay for.'},
   free: {title: 'Free', text: 'Nothing to set up: no account, no key, no cost. Jobadabra\'s AI tasks just work. '
-    + 'Want the best results? Add your own key any time.', short: 'No account, no key, no cost.'},
+    + `${FREE_WEAKER} Want the best results? Add your own key any time.`, short: `No account, no key, no cost. ${FREE_WEAKER_SHORT[0].toUpperCase()}${FREE_WEAKER_SHORT.slice(1)}.`},
   note: 'AI tasks run through your Claude Code and bill to your Claude subscription, not to API credits. Always on (GitHub) '
     + 'uses an API key. Tasks are retried later when your Claude usage window is exhausted.',
   codexNote: 'AI tasks run through your Codex and count against your ChatGPT plan, not API credits. Always on (GitHub) uses your OpenAI API key. '
@@ -43,7 +44,7 @@ export const TEXT = {
 
 // ⌘K: one entry per engine choice (the cards of pages/ai-engine.js, pressed by data-choice): [card, label, hint, search words, the family card to open first].
 export const ENGINE_CHOICES = [
-  ['free', 'Use Free AI', 'No account, no key, no cost', 'free no key'],
+  ['free', 'Use Free AI', `No account, no key, no cost. ${FREE_WEAKER_SHORT[0].toUpperCase()}${FREE_WEAKER_SHORT.slice(1)}.`, 'free no key'],
   ['family-claude', 'Use my own Claude account', 'Your Claude plan or API key', 'claude anthropic own key api'],
   ['family-openai', 'Use my own OpenAI account', 'Your ChatGPT plan or API key', 'openai chatgpt codex own key api'],
   ['cli', 'Use my Claude Code', 'Your Claude plan, for tasks on this Mac', 'claude code cli subscription', 'family-claude'],

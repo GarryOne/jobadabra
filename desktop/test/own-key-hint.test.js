@@ -30,7 +30,7 @@ test('the words are about quality: no number, never extra applications', () => {
     assert.doesNotMatch(text, /\d|%|percent|more applications|extra applications|free 20/i, text);
   }
   assert.match(TEXT.ownQuality, /^Better letters and interview prep; uses your own subscription or key\.$/);
-  assert.equal(HINT.text, 'Want stronger letters? Connect your Claude account or ChatGPT.');
+  assert.equal(HINT.text, 'Free AI wrote this, and it is a bit weaker than Pro\'s AI. Want stronger letters? Connect your Claude account or ChatGPT.');   // + the weaker line, owner 27 Oct 2026
 });
 
 test('Settings → Connections → AI shows the quality line under the Claude / ChatGPT cards', () => {

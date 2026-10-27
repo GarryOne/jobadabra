@@ -56,9 +56,10 @@
   window.__jobPilottoClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
   const SHOW_TIPS = false;   // the tip line (Fact / Recruiters say / Tip / Worth trying) is off for now (owner, 15 Oct 2026: "hide, disable it, we'll get back to it"); true brings it back
   let stopped = false, stuckSince = 0, stepAt = 0, lastStuck = '', startedAt = 0;   // stopped: the person's Stop reached this page (stop.js), until they start again here (`started`); stuckSince/stepAt: which came last
-  let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, tipFor = null;
+  let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, tipFor = null, coverLetterStatus = null;
 
   const setOpen = value => { open = value; card.hidden = !open; if (open) render(); };
+  $('.letter-action').onclick = () => send({type: 'panelOpenApp', session: 'setup:cover-letter'}).catch(() => {});
   pill.onclick = () => { userMoved = true; setOpen(!open); };
   $('.min').onclick = () => { userMoved = true; setOpen(false); };   // minimise: back to the pill
   $('.x').onclick = () => { userMoved = true; setOpen(false); host.hidden = true; look(false); if (applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {}); };   // close: the panel is out of the way until the page loads again; the overlay goes with it and a later step does not bring it back, as the Stop is on the panel (#1558)
@@ -108,7 +109,14 @@
     written.update(list);
     const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
     shown = needed.filter(f => !f.filled);
-    const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobpilotto-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0, needsYou = document.documentElement.getAttribute('data-jobpilotto-needs');
+    const letterGiven = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled);
+    const letterRejected = list.find(f => f.el?.hasAttribute('data-jobpilotto-letter-error') && !f.filled);
+    const letterMissing = !account && !letterGiven && (letterRejected || coverLetterStatus && !coverLetterStatus.ready);
+    $('.letter-setup').hidden = moved || !letterMissing;
+    $('.letter-reason').textContent = letterRejected ? 'The letter upload did not keep the file. Attach it manually, then check the form again.' : letterMissing ? coverLetterStatus.reason : '';
+    $('.letter-action').textContent = letterRejected ? 'Show on form' : coverLetterStatus?.action || 'Set cover letter';
+    $('.letter-action').onclick = () => letterRejected ? flash(letterRejected.el) : send({type: 'panelOpenApp', session: 'setup:cover-letter'}).catch(() => {});
+    const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobpilotto-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobpilotto-needs');
     counts = {total, left};   // the stopped note says what the page holds
     const done = total ? Math.round(100 * (total - left) / total) : 0;
     jp.classList.toggle('ready', ready && !needsYou);
@@ -116,7 +124,7 @@
     $('.ring span').textContent = moved ? '↗' : pageMark ? '…' : ready && !needsYou ? '✓' : total ? String(left) : '–';
     const readyWords = needsYou ? `Needs you: ${needsYou.replace(/^1$/, 'see what the page asks')}` : account ? (document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_up' ? 'Ready to create the account' : document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_in' ? 'Ready to sign in' : 'Ready to continue') : 'Ready to submit';   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
     // A tab the application has moved on from (the app bound another tab of it) never says Ready or counts: only the tab with the form does.
-    $('.pill b').textContent = moved ? 'Continues in another tab' : pageMark ? (MARK_WORDS[pageMark] || 'Apply button detected. Redirecting…') : ready || needsYou ? readyWords : total ? `${left} left` : 'Jobadabra';
+    $('.pill b').textContent = moved ? 'Continues in another tab' : pageMark ? (MARK_WORDS[pageMark] || 'Apply button detected. Redirecting…') : ready || needsYou ? readyWords : letterMissing ? 'Cover letter needs setup' : total ? `${left} left` : 'Jobadabra';
     $('.pill small').textContent = night() && !pageMark && !moved ? `Last night\u2019s fill is back${(job?.company || session?.company) ? ` · ${job?.company || session?.company}` : ''}` : (job?.company || session?.company) ? (job?.company || session?.company) : ready ? (account ? (document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_up' ? 'Review, then create it' : document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_in' ? 'Review, then sign in' : 'Review, then continue') : 'Review, then submit') : 'required fields';
     // A fill running (this panel's, Claude's, the popup's) or over: a field filled after it is yours.
     const busy = filling || (session?.live && session.status === 'running') || $('.fill').classList.contains('is-busy');
@@ -340,6 +348,7 @@
       moved = !!reply?.moved; movedTab = Number.isInteger(reply?.tab) ? reply.tab : null;
       session = reply?.session || null; claudeAsk = {takeover: reply?.claudeTakeover !== false, help: !!reply?.claudeHelp, always: !!reply?.claudeAlways, auto: !!reply?.claudeAuto, consent: !!reply?.claudeConsent};   // the app's Claude readiness and choices (lib/claude-ready.js)
       cv = reply?.cv || null;
+      coverLetterStatus = reply?.coverLetterStatus || null;
       if (reply?.theme === 'light' || reply?.theme === 'dark') jp.dataset.theme = reply.theme; else delete jp.dataset.theme;   // the app's setting, live; 'system' or no app: the system's (panel-markup.js)
       const before = JSON.stringify(watch);
       watch = Array.isArray(reply?.watch) ? reply.watch : [];

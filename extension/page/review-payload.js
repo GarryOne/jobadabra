@@ -3,7 +3,7 @@
 // Page world, loaded with the panel (background.js). Guard: worker/test/review-payload.test.js.
 (() => {
   window.__jobPilottoReviewPayload = (state, watch, {agree, find}) => {
-    return {url: location.href, title: document.title, page: (mark => mark || 'reading')(document.documentElement.getAttribute('data-jobpilotto-page') || ''), left: state.left, total: state.total, needs: document.documentElement.getAttribute('data-jobpilotto-needs') || '',   // the AI's veto of "ready" (form-ready.js)
+    return {letterGiven: state.list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled), url: location.href, title: document.title, page: (mark => mark || 'reading')(document.documentElement.getAttribute('data-jobpilotto-page') || ''), left: state.left, total: state.total, needs: document.documentElement.getAttribute('data-jobpilotto-needs') || '',   // the AI's veto of "ready" (form-ready.js)
         missing: state.list.filter(f => f.required && !f.filled).slice(0, 30).map(f => String(f.label || 'A required field').slice(0, 500)),
         // What is filled, so the app can tick each field off as it happens (it keeps the time it first saw each one).
         // What is left, counted as the ring counts it: required, or an answer Claude wrote that is empty again.

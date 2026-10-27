@@ -28,7 +28,7 @@ export function factScore(fact, verdicts = {}) {
 }
 // The queue in one order, highest score first; equal scores keep their place.
 export function ranked(list, verdicts = {}) {
-  const scoreOf = row => (row.details ? Math.max(row.details.weight || 0, factScore(row.details.fact || row.question, verdicts)) : weightOf(verdicts[keyOf(row.question)]));
+  const scoreOf = row => (row.setup ? row.weight || MUST : row.details ? Math.max(row.details.weight || 0, factScore(row.details.fact || row.question, verdicts)) : weightOf(verdicts[keyOf(row.question)]));
   return (list || []).map((row, at) => ({row, at, score: scoreOf(row)})).sort((a, b) => b.score - a.score || a.at - b.at).map(each => each.row);
 }
 

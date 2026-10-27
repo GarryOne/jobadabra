@@ -1,8 +1,7 @@
 // "Your details" for the extension (GET /extension/me): the contact, CV and cover letter it fills a form with, read from Notion with the last
 // good read kept on this Mac. Re-exported by server.js. Guarded by desktop/test/kept.test.js, cv.test.js and local-server.test.js.
 import * as cv from './cv.js';
-import * as letters from './cover-letter.js';
-import * as jobLetter from './job-letter.js';
+import {availableLetter} from './letter-availability.js';
 import fs from 'node:fs';
 import * as knowledge from './knowledge.js';
 import * as viewCache from './view-cache.js';
@@ -80,15 +79,8 @@ export async function me(storage, url = '') {
   // A tailored CV goes up under its own name (CV_<Name>_<Company>.pdf), so the form shows which one it got.
   const resume = pickCv({tailored: tailored ? {path: cv.pdfPath(storage, tailored.job.code), name: cv.finalName(storage, tailored)} : null,
     general: {path: storage.path('cv.pdf'), name: settings.cvName || 'CV.pdf'}, url});
-  // The cover letter as a file, for forms that ask to upload one: this job's own (made with its tailored CV), else the approved base letter only while its
-  // switch is on (owner, 18 Oct 2026: approving it and using it everywhere are two choices); never a draft, never one with a gap left to fill ("[Company]").
-  let coverLetterFile = null;
-  try {
-    const base = letters.status(storage);
-    if (tailored && jobLetter.hasPdf(storage, tailored.job.code) && !letters.hasGap(jobLetter.load(storage, tailored.job.code)?.text)) coverLetterFile = {name: jobLetter.finalName(storage, tailored), type: 'application/pdf',
-      data: fs.readFileSync(jobLetter.pdfPath(storage, tailored.job.code)).toString('base64'), tailored: true};
-    else if (letters.fallbackOn(settings) && base.pdf && !letters.hasGap(base.text)) coverLetterFile = {name: 'Cover letter.pdf', type: 'application/pdf', data: fs.readFileSync(letters.pdfPath(storage)).toString('base64')};
-  } catch {}
+  const letter = availableLetter(storage, url);
+  const coverLetterFile = letter.file, coverLetterText = letter.text, coverLetterStatus = letter.status;
   // Learned notes that answer a field directly (kind answer/option), for the extension to use at fill time.
   const notes = await kept(storage, 'knowledge', async () => {
     const list = (await knowledge.notes(storage)).map(({block, ...note}) => note);
@@ -99,12 +91,12 @@ export async function me(storage, url = '') {
   const details = withCvFallback(storage, await contactOf(storage));
   // Logged only when Notion was actually read or failed: an answer from the kept copy is the normal case (no noise).
   if (!details.contactSource?.startsWith('kept')) log('extension', `details for ${(() => { try { return new URL(url).hostname; } catch { return 'a form'; } })()}: ${Object.keys(details.contact).length} contact fields from ${details.contactSource}`,
-    {fields: Object.keys(details.contact), cv: resume?.name || null, tailored: !!resume?.tailored, coverLetter: !!coverLetterFile, tailoredLetter: !!coverLetterFile?.tailored, ...(details.contactError ? {error: details.contactError} : {})});
+    {fields: Object.keys(details.contact), cv: resume?.name || null, tailored: !!resume?.tailored, coverLetter: !!coverLetterFile, tailoredLetter: !!coverLetterFile?.tailored, coverLetterState: coverLetterStatus.state, ...(details.contactError ? {error: details.contactError} : {})});
   // Twin only: while the file "twin-no-files" is in its folder, no CV and no cover letter go to the form (owner, 9 Oct 2026: test fills on
   // employers outside the owner's list, where a slot that uploads on choice would send the CV to their server). Never checked by a real install.
   if (withholdFiles(storage)) {
     log('extension', 'files withheld for this form: a twin test run (twin-no-files)', {cv: !!resume, coverLetter: !!coverLetterFile});
-    return {...details, resume: null, coverLetterFile: null, knowledge: direct, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};
+    return {...details, resume: null, coverLetterFile: null, coverLetterText: '', coverLetterStatus: {...coverLetterStatus, ready: false, state: 'withheld', reason: 'Letters are withheld in this test run.'}, knowledge: direct, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};
   }
-  return {...details, resume, coverLetterFile, knowledge: direct, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};   // lib/menu-choices.js: all of them; the extension keeps the form tab's site (the url here is the posting's)
+  return {...details, resume, coverLetterFile, coverLetterText, coverLetterStatus, knowledge: direct, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};   // lib/menu-choices.js: all of them; the extension keeps the form tab's site (the url here is the posting's)
 }

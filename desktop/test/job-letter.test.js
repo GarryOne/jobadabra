@@ -69,7 +69,10 @@ test('the extension\'s upload slot gets the job\'s letter; the base letter only 
   storage.saveSettings({letterFallback: true});
   assert.equal(read((await me(storage, JOB.url)).coverLetterFile), '%PDF-general');   // tailored CV, no job letter yet
   jobLetter.save(storage, JOB.code, {job: JOB, text: 'Dear Hiring Team,\n\nKestrel.', source: 'ai'}, Buffer.from('%PDF-job'));
-  const file = (await me(storage, JOB.url)).coverLetterFile;
+  const delivered = await me(storage, JOB.url);
+  const file = delivered.coverLetterFile;
+  assert.equal(delivered.coverLetterText, jobLetter.load(storage, JOB.code).text);
+  assert.equal(delivered.coverLetterStatus.source, 'tailored');
   assert.equal(read(file), '%PDF-job');
   assert.match(file.name, /^Letter_Ada_Example_Kestrel\.pdf$/);
   assert.equal(read((await me(storage, 'https://jobs.other.test/x')).coverLetterFile), '%PDF-general');

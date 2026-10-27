@@ -54,7 +54,7 @@
   window.__jobPilottoClaude?.mount(root, send);   // the stuck page's Claude offer: its own script (panel-claude.js)
   const SHOW_TIPS = false;   // the tip line (Fact / Recruiters say / Tip / Worth trying) is off for now (owner, 15 Oct 2026: "hide, disable it, we'll get back to it"); true brings it back
   let stopped = false, stuckSince = 0, stepAt = 0, lastStuck = '', startedAt = 0;   // stopped: the person's Stop reached this page (stop.js), until they start again here (`started`); stuckSince/stepAt: which came last
-  let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, asked = false, addMode = false, tipFor = null;
+  let counts = {total: 0, left: 0}, moved = false, movedTab = null, open = false, shown = [], job = null, session = null, connection = null, build = null, claudeAsk = {}, filling = false, userMoved = false, cv = null, tipFor = null;
 
   const setOpen = value => { open = value; card.hidden = !open; if (open) render(); };
   pill.onclick = () => { userMoved = true; setOpen(!open); };
@@ -143,11 +143,9 @@
     $('.bar i').style.width = `${moved || pageMark ? 0 : ready ? 100 : done}%`;
     // fill (not while Claude is filling this form: it would fight it)
     const claudeFilling = session?.live && session.status === 'running';
-    // A tailored CV written after the form was filled still has to be attached: the button stays for that.
-    // A sign-in or sign-up page (a password box) is not the application: no CV goes there, so no "Tailor my CV" (owner, 8 Oct 2026).
+    // A sign-in or sign-up page (a password box) is not the application: no CV goes there, so no CV line (owner, 8 Oct 2026).
     const canTailor = !!session && !!connection?.connected && !!connection.app && !!cv && !account && !pageMark;
-    const readyNow = canTailor && cv.tailored && asked;
-    $('.fill-box').hidden = moved || claudeFilling || (ready && !filling && !readyNow);  // nothing left to fill
+    $('.fill-box').hidden = moved || claudeFilling || (ready && !filling);  // nothing left to fill
     $('.fill').disabled = filling;
     // What's left for you, once the filling is over: before and during it, nearly every field is still to be filled
     // by the extension or Claude, not by you (the ring and the bar show the progress meanwhile).
@@ -167,25 +165,14 @@
       row.onclick = () => flash(field.el);
       return row;
     }));
-    // A CV written for this job gets noticeably more replies than the general one: offered while the form is still open, the person's click (it costs a few cents).
-    // Once it is written the fill has to run again to attach it.
+    // Which CV this form gets, and a way to a tailored one IN THE APP: the panel never tailors itself (owner, 27 Oct 2026: "Send me to the app"; "I don't think the extension is that
+    // smart to adapt on the fly and replace the general CV with the tailored one"). The app restarts the form when the tailored CV is ready (desktop/lib/tailored-restart.js).
     const tailor = $('.tailor');
-    // What the app says it did with the press (desktop/lib/tailor-status.js): shown while it runs, and for the press made on this panel; every branch is said here.
-    const said = cv?.status && (asked || ['running', 'adding'].includes(cv.status.state)) ? cv.status : null;
-    const running = !!cv?.working || said?.state === 'running', adding = said?.state === 'adding';
-    tailor.hidden = !canTailor || (cv.tailored && !asked && !said);
+    tailor.hidden = !canTailor;
     if (!tailor.hidden) {
-      const letterNote = said?.letter === false ? ' (the letter was not made)' : '';
-      $('.t-text').textContent = adding ? 'Adding this job to your list…'
-        : running ? 'Tailoring your CV + cover letter for this job… about 1–2 minutes.'
-        : said?.state === 'not-listed' ? 'This job is not in your list yet.'
-        : said?.state === 'added' ? 'Added to your list. Now tailor the CV + letter.'
-        : said?.state === 'failed' ? `Not done: ${said.error || 'try again'}`
-        : readyNow ? `Tailored: CV + letter ready${letterNote}. Press Fill again to attach them.` : 'General CV attached';
-      $('.t-text').title = 'A CV tailored to this job gets noticeably more replies. The cover letter is attached only if the form asks for one.';
-      $('.t-btn').hidden = readyNow || running || adding;
-      addMode = said?.state === 'not-listed';
-      $('.t-btn').textContent = addMode ? 'Add this job' : said?.state === 'failed' ? 'Try again' : 'Tailor CV + letter';
+      $('.t-text').textContent = cv.tailored ? 'Tailored CV attached' : cv.working ? 'Tailoring in Jobadabra…' : 'General CV attached';
+      $('.t-text').title = cv.tailored ? 'A CV written for this job.' : 'A CV tailored to this job gets noticeably more replies. When it is ready, this form fills again from the start with it.';
+      $('.t-btn').hidden = cv.tailored || cv.working;
     }
     // One tip at the bottom, about what the form is at: knockout questions left, no tailored CV yet, else the CV. Click for the next one.
     const prefer = knockouts ? 'knockout' : canTailor && !cv.tailored ? 'tailor' : 'cv';
@@ -292,12 +279,7 @@
     return answer;
   }
   const APP_DOWN = 'Jobadabra is not answering: open the app, then try again.';
-  $('.t-btn').onclick = async event => {
-    const told = await ask(event.currentTarget, 'Asking Jobadabra…', {type: addMode ? 'panelAddJob' : 'panelTailor'}, APP_DOWN);
-    if (told?.ok) asked = true;
-    render();
-    sync();   // the app's answer (started / not in your list / failed) comes now, not on the next tick
-  };
+  $('.t-btn').onclick = event => session && ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: session.id, show: 'tailor'}, APP_DOWN);   // the session page, its Tailor button highlighted
   $('.go-there').onclick = () => Number.isInteger(movedTab) && send({type: 'panelGoTab', tab: movedTab}).catch(() => {});
   $('.open-app').onclick = event => session && ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: session.id}, APP_DOWN);
   // The extension's fill reports its steps here (instead of a floating box).

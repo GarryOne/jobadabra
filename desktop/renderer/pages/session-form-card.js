@@ -40,19 +40,35 @@ function showBefore(item, left, account = false, aiKnockouts = []) {
     if (!info) return;
     show($('ss-before-cv'), true);
     $('ss-before-cv-mark').textContent = info.tailored ? '✓' : '○';
-    $('ss-before-cv-title').textContent = info.tailored ? 'A CV tailored to this job is ready' : info.working ? 'Tailoring your CV for this job…' : 'This form gets your general CV';
-    $('ss-before-cv-sub').textContent = info.tailored ? 'Press Fill again on the form if it still shows your general CV.' : info.working ? 'About 1–2 minutes. Then fill the form again.'
-      : 'A CV written for the job gets noticeably more replies than a general one.';
+    // Why (27 Oct 2026, owner): the form's panel no longer tailors; its "Tailor in Jobadabra" opens this card, and a tailored CV restarts the form (lib/tailored-restart.js).
+    $('ss-before-cv-title').textContent = info.tailored ? 'A CV tailored to this job is ready' : info.working ? 'Tailoring your CV for this job…' : job?.code ? 'This form gets your general CV' : 'This job is not in your list yet';
+    $('ss-before-cv-sub').textContent = info.tailored ? 'The form fills again from the start with it.' : info.working ? 'About 1–2 minutes. Then the form fills again from the start with it.'
+      : job?.code ? 'A CV written for the job gets noticeably more replies than a general one.' : 'Add it to tailor a CV for it (the posting is read and scored, like Jobs → Add by link).';
     const compare = $('ss-before-match-btn');
     show(compare, !!job?.code);
     compare.onclick = () => openMatchCheck(job);
     const button = $('ss-before-cv-btn');
-    show(button, !info.tailored && !info.working && !!job?.code);
+    show(button, !info.tailored && !info.working);
     button.disabled = false;
+    button.textContent = job?.code ? 'Tailor my CV' : 'Add this job';
+    const suggested = button.dataset.suggested === item.id;   // the panel's "Tailor in Jobadabra" opened this session (session-show-tailor.js): its main button until pressed
+    button.classList.toggle('primary', suggested);
+    button.classList.toggle('secondary', !suggested);
     button.onclick = async () => {
+      delete button.dataset.suggested;
       button.disabled = true;
+      if (!job?.code) {   // the panel's old "Add this job", now here: once the job is listed, the same button tailors
+        button.textContent = 'Adding…';
+        const added = await window.pilot.importJob(String(item.url).split('#')[0]).catch(error => ({ok: false, text: error.message}));
+        if (added?.ok) { try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {} }
+        button.textContent = added?.ok ? 'Tailor my CV' : 'Retry';
+        button.disabled = false;
+        if (added?.ok) showBefore(item, left, account, aiKnockouts);
+        else button.title = added?.text || '';
+        return;
+      }
       button.textContent = 'Tailoring… (about 1–2 min)';
-      const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`);
+      const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, [job.url, item.url]);
       button.textContent = result.ok ? 'Tailored ✓' : 'Retry';
       button.disabled = !!result.ok;
       cvSeen.delete(item.url);

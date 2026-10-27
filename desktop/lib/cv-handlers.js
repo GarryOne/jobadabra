@@ -14,11 +14,11 @@ import * as matchCheck from './match-check.js';
 import * as pipeline from './pipeline.js';
 import * as server from './server.js';
 import * as strategy from './strategy.js';
-import * as tailorStatus from './tailor-status.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {log as appLog} from './log.js';
 import {configForPrompt} from './config-text.js';
+import {restartFormsOf} from './tailored-restart.js';
 import {writePrivate} from './private-file.js';
 
 export function registerCvAndLettersHandlers(ctx) {
@@ -43,28 +43,18 @@ export function registerCvAndLettersHandlers(ctx) {
     } catch (error) { return {ok: false, error: error.message}; }
   });
   ipcMain.handle('cvOf', (_, url) => cvOf(String(url || '')));   // the session card: tailored for this job already, or being tailored now
-  // The form panel's "Tailor CV + letter": the person's own click, the same work as the menu's Tailor CV (it makes the job's cover letter with the CV). Every branch is
-  // answered ON THE PANEL (lib/tailor-status.js → the review poll), never only as a toast in the app window.
-  server.setTailorHandler(async event => {
-    const job = event.job, urls = [event.url, event.page, job?.url].filter(Boolean);
-    appLog('extension', 'tailor CV asked from the form', {known: !!job?.code});
-    if (!job?.code) { tailorStatus.setStatus(urls, {state: 'not-listed'}); return; }
-    if (tailorStatus.isRunning(urls)) return;   // already running: the panel keeps showing it
-    for (const url of urls) tailoring.add(server.pageKey(url));
-    tailorStatus.setStatus(urls, {state: 'running'});
+  // Every "Tailor my CV" in the window (the session page, where the form panel's "Tailor in Jobadabra" sends the person; Jobs; the job drawer): while it runs the form's panel says
+  // "Tailoring in Jobadabra…" (cvOf → the review poll); when it is done, the job's open form starts again so the tailored CV is attached from the start (lib/tailored-restart.js).
+  // Why (27 Oct 2026, owner): the panel no longer starts tailoring itself; "the extension is not that smart to adapt on the fly and replace the general CV with the tailored one".
+  ipcMain.handle('tailorCv', async (_, code, name, url) => {
+    const keys = [...new Set([].concat(url || []).filter(Boolean).map(server.pageKey))];   // the job's posting and its form session's address (cvOf is asked by either)
+    for (const key of keys) tailoring.add(key);
     try {
-      const result = await tailorCv(job.code, `${job.title} · ${job.company}`, {show: false});
-      tailorStatus.setStatus(urls, result?.ok ? {state: 'done', letter: !!result.letter} : {state: 'failed', error: String(result?.error || 'it did not finish').slice(0, 160)});
-    } catch (error) { tailorStatus.setStatus(urls, {state: 'failed', error: String(error.message).slice(0, 160)}); }
-    finally { for (const url of urls) tailoring.delete(server.pageKey(url)); }
-  });
-  // The panel's "Add this job" (shown when the job is not in the list yet): the same read + score + Job Matches row as Jobs → Add by link, then Tailor works.
-  server.setAddJobHandler(async event => {
-    const urls = [event.url, event.page].filter(Boolean);
-    if (tailorStatus.statusOf(urls[0])?.state === 'adding') return;
-    tailorStatus.setStatus(urls, {state: 'adding'});
-    const result = await pipeline.importJob(storage, String(event.url || event.page).split('#')[0]).catch(error => ({ok: false, text: error.message}));
-    tailorStatus.setStatus(urls, result.ok ? {state: 'added'} : {state: 'failed', error: String(result.text || 'it could not be added').slice(0, 160)});
+      const result = await tailorCv(code, name);
+      const restarted = result?.ok ? restartFormsOf(storage, code) : [];
+      if (restarted.length) appLog('cv', 'tailored CV ready: the job\'s open form starts again with it', {code, forms: restarted.length});
+      return result;
+    } finally { for (const key of keys) tailoring.delete(key); }
   });
   // A job's code (the Jobs list) or its posting address (a Tailor CVs card knows only the link).
   ipcMain.handle('openTailoredCv', (_, which) => openTailoredCv(/^https?:/.test(String(which)) ? cvlib.forUrl(storage, String(which))?.job?.code : which));

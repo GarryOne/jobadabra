@@ -144,7 +144,7 @@
         <div class="note" hidden><span></span><button class="anyway" hidden>Fill anyway</button></div>
         <div class="left" hidden><h4>Left for you</h4><p class="knock" hidden></p><div class="list"></div></div>
         <button class="secondary recheck" type="button" hidden>Check form again</button>
-        <div class="tailor" hidden><span class="t-text"></span><button class="t-btn">Tailor CV + letter</button></div>
+        <div class="tailor" hidden><span class="t-text"></span><button class="t-btn">Tailor in Jobadabra</button></div>
         <div class="actions">
           <div class="claude-offer" hidden></div>
           <button class="link go-there" hidden>Go there</button>

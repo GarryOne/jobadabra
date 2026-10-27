@@ -8,7 +8,7 @@ import {jobLetterView} from './job-letter.js';
 import {docButton, docCard, docCopy, letterPanel, rows} from './documents-rows.js';
 
 const tailor = (job, redraw) => async () => {
-  const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`).catch(error => ({ok: false, error: error.message}));
+  const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, job.url).catch(error => ({ok: false, error: error.message}));
   if (result.ok) { job.tailored = true; redraw(); return null; }
   return result.error || 'Try again.';
 };

@@ -1,5 +1,5 @@
 /* global document, window */
-// The apply suite's tailored-CV steps (moved out of suites/apply.mjs, 8 Oct 2026): Tailor CV on a job, the panel's offer, Tailor CVs for top matches, Apply without a kit. Guards the CV flow in docs/flows/applying.md.
+// The apply suite's tailored-CV steps (moved out of suites/apply.mjs, 8 Oct 2026): Tailor CV on a job, the panel's way to it in the app, Tailor CVs for top matches, Apply without a kit. Guards the CV flow in docs/flows/applying.md.
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -45,7 +45,9 @@ export async function runCvSteps(ctx, h) {
     fail(cvProblems(await readForm(tab), {name: 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf', size}));   // the tailored file's bytes, under its own name: the form shows which CV it got
   }, {needs: ctx.needs});
 
-  await ctx.run('the form\'s panel offers a tailored CV: asked there, it is written, and filling again attaches it under its own name', async () => {
+  // Why (27 Oct 2026, owner: "Send me to the app"): the panel never tailors; its "Tailor in Jobadabra" opens the session page at its Tailor button, and the app restarts the form
+  // when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press.
+  await ctx.run('the form\'s panel sends you to the app to tailor: the session page opens at Tailor, and the tailored CV restarts the form with it under its own name', async () => {
     const form = FORMS.lever;
     const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
     const tailoredPdf = path.join(ctx.profile, 'cv', 'tailored', `${code}.pdf`);
@@ -54,25 +56,27 @@ export async function runCvSteps(ctx, h) {
     if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
     let panel = await panelOf(tab);
     for (let i = 0; i < 10 && !/general CV/i.test(panel?.tailor || ''); i++) { await pause(1500); panel = await readPanel(tab); }
-    // The panel says "General CV attached" while it offers the tailoring (extension/review.js): matched without case, so a capital never reads as no offer (stale since 18 Oct 2026).
     // The offer needs a session, the app connected, the CV state and no account page (extension/review.js canTailor): the panel's other lines say which is missing.
-    if (!/general CV/i.test(panel?.tailor || '')) throw new Error(`the panel does not offer a tailored CV (its tailor line: "${panel?.tailor}"; the panel: ${JSON.stringify({pill: panel?.pill, progress: panel?.progress, note: panel?.note, foot: panel?.foot, fill: panel?.fillLabel})})`);
-    await tab.locator('#jobpilotto-review-host .t-btn').click();
+    if (!/general CV/i.test(panel?.tailor || '')) throw new Error(`the panel does not say which CV goes in (its tailor line: "${panel?.tailor}"; the panel: ${JSON.stringify({pill: panel?.pill, progress: panel?.progress, note: panel?.note, foot: panel?.foot, fill: panel?.fillLabel})})`);
+    const offer = tab.locator('#jobpilotto-review-host .t-btn');
+    await offer.waitFor({state: 'visible', timeout: 60000}).catch(() => { throw new Error('the panel shows no "Tailor in Jobadabra" once its fill is over (hidden while it works)'); });
+    await offer.click();
+    const tailor = page.locator('#ss-before-cv-btn');
+    await tailor.waitFor({state: 'visible', timeout: 20000}).catch(() => { throw new Error('"Tailor in Jobadabra" did not open the session page with its Tailor button'); });
+    let focused = '';
+    for (let i = 0; i < 20 && focused !== 'ss-before-cv-btn'; i++) { await pause(300); focused = await page.evaluate(() => document.activeElement?.id || ''); }
+    if (focused !== 'ss-before-cv-btn') throw new Error(`the session page opened but its Tailor button is not highlighted (focus on "${focused}")`);
+    await tailor.click();
     for (let waited = 0; !fs.existsSync(tailoredPdf) && waited < 120000; waited += 1000) await pause(1000);
-    if (!fs.existsSync(tailoredPdf)) throw new Error('asking from the panel wrote no tailored CV within two minutes');
-    for (let i = 0; i < 20 && !/ready/.test(panel?.tailor || ''); i++) { await pause(1500); panel = await readPanel(tab); }
-    if (!/ready/.test(panel?.tailor || '')) throw new Error(`the panel never said the tailored CV is ready (its tailor line: "${panel?.tailor}")`);
-    await tab.locator('#jobpilotto-review-host .fill').click();
-    // Done when the form holds the tailored CV, or when the fill pressed here is over (the panel's Fill is disabled while it runs). Never the page's
-    // fill state: only the hand-off writes it, so it still said "done" from the first fill and ended the wait 2.5 s after the press, before a slower
-    // fill reached the upload (gate run 38251424138, seed 3891685770: a late field, the SQLite store; cv.pdf read while the second fill ran).
+    if (!fs.existsSync(tailoredPdf)) throw new Error('Tailor on the session page wrote no tailored CV within two minutes');
+    // No Fill press: the app reloads the form's tab and its mark fills it again from the start, now with the tailored CV.
     const expected = {name: 'CV_Ada_Tester_E2E_Lever_Systems.pdf', size: fs.statSync(tailoredPdf).size};
-    for (let waited = 0; waited < 90000; waited += 500) {
-      await pause(500);
-      if (!cvProblems(await readForm(tab).catch(() => ({})), expected).length || (waited >= 1000 && !(await readPanel(tab).catch(() => null))?.filling)) break;
+    for (let waited = 0; waited < 120000; waited += 1000) {
+      await pause(1000);
+      if (!cvProblems(await readForm(tab).catch(() => ({})), expected).length) break;
     }
     const after = await readPanel(tab).catch(() => null);
-    fail(cvProblems(await readForm(tab), expected).map(problem => (after?.note ? `${problem} (the panel says: "${after.note}")` : problem)));
+    fail(cvProblems(await readForm(tab), expected).map(problem => `${problem} (the form did not restart with the tailored CV${after?.note ? `; the panel says: "${after.note}"` : ''})`));
   }, {needs: ctx.needs});
 
   // Tailor CVs for top matches (Actions): the best open jobs without a tailored CV, in fit order, only as many as asked. The stand-in AI answers the tailoring.

@@ -1,5 +1,5 @@
 // The extension worker's messages from the page's panel (moved out of background.js, 8 Oct 2026): the job it shows, Fill, bringing the tab forward or closing it, taking over with
-// Claude, the tip, tailoring a CV and opening the app. Each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE
+// Claude, the tip and opening the app (also at its Tailor button). Each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE
 // (docs/flows/applying.md). Guards: the panel and review tests in desktop/test and the matrix (npm run flows).
 import {NO_APP} from './flow.js';
 import {plainWhy} from './ai-reply.js';
@@ -129,26 +129,6 @@ export function createPanelMessages(ctx) {
       })().catch(() => reply({ok: false}));
       return true;
     }
-    // "Tailor my CV for this job": the person asks the app to write a CV from this job's posting; the form is filled again afterwards.
-    if (message?.type === 'panelTailor' && sender.tab) {
-      (async () => {
-        const job = String(await jobOf(sender.tab)).split('#')[0];
-        decide('panel', 'asked the app to tailor the CV', {});
-        const data = await api(await settings(), '/extension/event', {method: 'POST', body: JSON.stringify({type: 'tailor-cv', url: job, page: sender.tab.url.split('#')[0]})});
-        reply({ok: !!data?.ok});
-      })().catch(() => reply({ok: false}));
-      return true;
-    }
-    // "Add this job" (shown when Tailor found the job not in the list): the app reads the posting and adds it, like Jobs → Add by link.
-    if (message?.type === 'panelAddJob' && sender.tab) {
-      (async () => {
-        const job = String(await jobOf(sender.tab)).split('#')[0];
-        decide('panel', 'asked the app to add this job to the list', {});
-        const data = await api(await settings(), '/extension/event', {method: 'POST', body: JSON.stringify({type: 'add-job', url: job, page: sender.tab.url.split('#')[0]})});
-        reply({ok: !!data?.ok});
-      })().catch(() => reply({ok: false}));
-      return true;
-    }
     // "Review my answer" on an open written question (panel-written.js): the app's AI reads the person's text or the draft; the answer is shown, never typed (worker/src/written-answer.js).
     if (message?.type === 'panelReviewAnswer' && sender.tab) {
       (async () => {
@@ -160,7 +140,7 @@ export function createPanelMessages(ctx) {
       return true;
     }
     if (message?.type === 'panelOpenApp') {
-      settings().then(config => api(config, '/extension/open', {method: 'POST', body: JSON.stringify({session: message.session})}))
+      settings().then(config => api(config, '/extension/open', {method: 'POST', body: JSON.stringify({session: message.session, ...(message.show === 'tailor' ? {show: 'tailor'} : {})})}))
         .then(data => reply({ok: !!data.ok}), () => reply({ok: false}));
       return true;
     }

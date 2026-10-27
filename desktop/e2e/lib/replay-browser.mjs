@@ -5,7 +5,7 @@
 // Isolation between tabs: told/asked/judged count only requests whose body names the case's host, notTold counts the case's own lines and the ones no case's host names (a line of another case's host is not its tab's; a failure in parallel is run again alone by the caller), and two cases that share a host never run at the same time (their pages, and the extension's per-host state, would meet).
 import {startRealExtension} from './real-extension.mjs';
 import {fillSeconds} from './replay-time.mjs';
-import {syntheticNavigation} from './synthetic-navigation.mjs';
+import {syntheticNavigation, routeSyntheticNavigation} from './synthetic-navigation.mjs';
 import {answerFor, answerPage, caseDelays, contactOf, caseFiles, caseHosts, caseStatuses, fillSettled, isExtensionPage, judgeCase} from './page-replay.mjs';
 
 const hostOfUrl = url => { try { return new URL(url).host; } catch { return ''; } };
@@ -99,6 +99,7 @@ export async function startReplayBrowser(items, {extensionDir, appPort = 0, cdp 
     };
     const ours = open => !isExtensionPage(open) && open !== run.page && (open === tab || state.shared === false || hosts.some(host => open.url().includes(host)) || !/^https?:/.test(open.url()));   // alone: every tab is the case's
     try {
+      await routeSyntheticNavigation(run.context, tab, item, route => answerPage(route, files, statuses, delays, redirects));
       await tab.goto(`${navigation.startUrl}#jobpilotto-fill`, {waitUntil: 'domcontentloaded'});
       const result = await judgeCase(item, {run, page: tab, pages: () => run.context.pages().filter(ours), mine: () => (state.shared ? loose() : run.requests.slice(first)), strict: state.shared ? strict : null, otherHosts: state.shared ? allHosts.filter(host => !hosts.includes(host)) : null,
         every: () => run.requests.slice(first), all: () => (state.shared ? loose() : run.requests.slice(first)), opened: () => theTabs().ours.length, unplacedTabs: () => theTabs().unplaced.length});   // the case's own tab is not one it opened (solo: the first tab, opened before the count starts)

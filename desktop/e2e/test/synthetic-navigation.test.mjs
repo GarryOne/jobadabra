@@ -1,7 +1,7 @@
 // Synthetic redirect fixtures construct invented queries without retaining captured query values.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {syntheticNavigation, takeSyntheticRedirect} from '../lib/synthetic-navigation.mjs';
+import {syntheticNavigation, takeSyntheticRedirect, routeSyntheticNavigation} from '../lib/synthetic-navigation.mjs';
 import {privacyFindings} from '../lib/row-case-gates.mjs';
 
 const item = () => ({origin: 'hand-cut', pages: [{url: 'https://careers.test.example/careers', file: 'page.html'}], syntheticNavigation: {queryKeys: ['job'], dropQueryOnce: true}});
@@ -55,4 +55,29 @@ test('captured hosts, stored query values and extra metadata fail closed', () =>
 test('ordinary recorded cases keep their address and have no redirect', () => {
   const fixture = {pages: [{url: 'https://employer.com/apply'}]};
   assert.deepEqual(syntheticNavigation(fixture), {startUrl: fixture.pages[0].url, redirects: new Map()});
+});
+
+
+test('browser follows the HTTP redirect offline and restores the query on a fresh load', {skip: !process.env.JP_REPLAY}, async () => {
+  const {chromium} = await import('playwright-core');
+  const {answerPage} = await import('../lib/page-replay.mjs');
+  const browser = await chromium.launch({headless: true, args: ['--host-resolver-rules=MAP * ~NOTFOUND']});
+  try {
+    const context = await browser.newContext(), page = await context.newPage();
+    const fixture = item(), navigation = syntheticNavigation(fixture), seen = [];
+    const files = new Map([['careers.test.example/careers', '<title>Offline fixture</title>']]);
+    await context.route('**/*', route => answerPage(route, files, new Map(), new Map(), navigation.redirects));
+    await routeSyntheticNavigation(context, page, fixture, route => answerPage({
+      request: route.request,
+      fulfill: response => { seen.push(response.status); return route.fulfill(response); },
+    }, files, new Map(), new Map(), navigation.redirects));
+    await page.goto(navigation.startUrl, {timeout: 3000});
+    assert.equal(page.url(), fixture.pages[0].url);
+    assert.equal(await page.title(), 'Offline fixture');
+    assert.deepEqual(seen, [302, 200]);
+    await page.goto(navigation.startUrl, {timeout: 3000});
+    assert.equal(page.url(), navigation.startUrl);
+    assert.equal(await page.title(), 'Offline fixture');
+    assert.deepEqual(seen, [302, 200, 200]);
+  } finally { await browser.close(); }
 });

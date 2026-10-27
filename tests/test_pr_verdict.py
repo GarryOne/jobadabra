@@ -100,10 +100,12 @@ class Workflows(unittest.TestCase):
             if re.search(r'(?m)^  pull_request:|^on:.*\bpull_request\b', trigger):
                 prs.add(re.search(r'(?m)^name:\s*(.+?)\s*$', text).group(1).strip('\'"'))
         self.assertIn('CI · Pull request', prs, 'positive control')
+        self.assertNotIn('CI · Prompt cases (Haiku re-ask)', prs, 'paid Haiku checks are manually dispatched, never an automatic PR workflow')
         verdict = (WORKFLOWS / 'pr-verdict.yml').read_text()
         listed = set(re.findall(r"(?m)^      - '(.+)'$", verdict))
         self.assertEqual(prs - listed, set(), 'add it to pr-verdict.yml workflow_run.workflows')
         self.assertIn('CI · End-to-end on Mac + Linux', listed, "the e2e run a PR starts (pr-suites.yml) is judged when it ends")
+        self.assertNotIn('CI · Prompt cases (Haiku re-ask)', listed, 'a manual run must not participate in the PR verdict')
 
     def test_no_pr_job_polls_for_other_workflows(self):
         gate = (WORKFLOWS / 'pr-gate.yml').read_text()

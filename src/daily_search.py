@@ -43,6 +43,11 @@ def search(args, stores=None):
         except Exception as error:
             print(f'Warning: budget check skipped: {type(error).__name__}: {error}')
     read_profile = scoring_plan(args, stores)   # read once, before any site: the time plan knows the search scores (time_budget.score_first)
+    if args.mode != 'more' and args.first_jobs and args.score_max and not args.only_visits and read_profile:
+        try:   # Why (27 Oct 2026, benchmark): asked in the slice, its boards started at 41-63 s of a 67 s read cut (first_jobs.propose_early)
+            first_jobs.propose_early()
+        except Exception as error:  # noqa: BLE001 — the slice asks the proposal itself
+            print(f'Warning: early board proposal skipped: {type(error).__name__}: {error}', flush=True)
     hidden, saved, dismissed = frozenset(), frozenset(), frozenset()
     stages = None   # job URL -> Stage: also what the pool's outcome counts read (src/contribute.py outcomes)
     try:

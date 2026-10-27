@@ -10,7 +10,7 @@ The search after it is unchanged; scored jobs are skipped by their hash, so the 
 Tests: tests/test_first_jobs.py, tests/test_proven_boards.py."""
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as Late
 
 from . import store
 from .ai import score
@@ -59,7 +59,8 @@ def board_jobs(say=print, search=None):
         say(f"First jobs: reading {', '.join(board['name'] for board in top)}, the job board{'s' if len(top) > 1 else ''} that gave people "
             'like you the most jobs')
     else:
-        proposed = _proposed(board_ideas, search)
+        proposed = _taken_early(search)
+        proposed = _proposed(board_ideas, search) if proposed is None else proposed
         top, spare = proposed[:SLICE_BOARDS], proposed[SLICE_BOARDS:2 * SLICE_BOARDS]
         if not top:
             return []
@@ -67,6 +68,45 @@ def board_jobs(say=print, search=None):
     # a board that refuses gives its place to the next proposed one at once, in the same read (19 Oct 2026: a second wave after the first
     # made Finance's slice wait 35 s)
     return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare)
+
+
+_early = {}   # the slice's board proposal asked at the search's start (propose_early): {'search': ..., 'future': ...}
+
+
+def propose_early(search=None):
+    """Ask the slice's board proposal (_proposed) now, in the background, while the search picks its employers -> its future, or None when
+    the slice needs none (proven boards, the end-to-end fixture mode). board_jobs takes its answer instead of asking again.
+    Why (#first-press-jobs, 27 Oct 2026, benchmark run 40446066828): asked inside the slice, its 2 AI calls waited for Claude's 2 slots behind
+    the employer titles and the web search, so the boards started at 41-63 s and the read cut (67 s) left them 5-26 s: 0 board jobs."""
+    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):
+        return None
+    from .ai import board_ideas
+    from .paths import load_search_config
+    search = search or load_search_config()
+    if board_ideas.proven(search, limit=SLICE_BOARDS):
+        return None
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='board-proposal')
+    future = pool.submit(_proposed, board_ideas, search)
+    pool.shutdown(wait=False)
+    _early.clear()
+    _early.update(search=search, future=future)
+    return future
+
+
+def _taken_early(search):
+    """The early proposal's boards for this same search (waited for until the read cut at most), or None: none started, another search,
+    or it failed (the slice asks itself). Taken once."""
+    if _early.get('search') != search:
+        return None
+    future = _early.pop('future', None)
+    _early.clear()
+    from .sources import read_budget
+    try:
+        return future.result(timeout=read_budget.seconds_left(read_budget.cut_at())) if future else None
+    except Late:   # past the read cut: no board would be read now anyway
+        return []
+    except Exception:  # noqa: BLE001 — the slice asks the proposal itself
+        return None
 
 
 def _refused(board_ideas):

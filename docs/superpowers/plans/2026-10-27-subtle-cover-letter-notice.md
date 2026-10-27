@@ -41,6 +41,6 @@
 - [x] Verify rendered missing-draft and delivery-failed states, setup navigation without generation, manual recovery, keyboard focus, dark/light readability, and normal/narrow screenshots.
 - [x] Add and run the journey guard for the Profile route and manual failure recovery.
 - [x] Run changed-JS lint and focused tests; fast gate/ship pending.
-- [x] Update the rendered-panel integration expectation for the calmer copy; focused tests pass 59/59 desktop and 10/10 worker.
-- [x] Fix the `.verify` cascade and test the production status-copy helper without a duplicate journey import; rerender and inspect fictional normal/narrow dark/light screens.
+- [x] Update the rendered-panel integration expectation for the calmer copy; focused tests pass 59/59 desktop and 36/36 worker.
+- [x] Fix the `.verify` cascade, test the production status-copy helper once, and guard against partial helper injection; rerender and inspect fictional normal/narrow dark/light screens.
 - [ ] Run the complete fast gate on the reviewed PR head; owner merges manually.

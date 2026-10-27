@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { loadJsdom, openPage } from './helpers/page.js';
 import { readPanel } from './helpers/panel.js';
+import { PANEL_FILES } from '../../extension/panel-files.js';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
 const JSDOM = await loadJsdom();
@@ -24,7 +25,12 @@ async function run(missing) {
   delete window[`__jobPilotto${missing}`];
   const warned = [];
   window.console.warn = (...args) => warned.push(args.join(' '));
-  try { window.eval(SOURCE); } catch (error) { errors.push(String(error)); }
+  try {
+    if (missing === 'CoverLetterNotice') {
+      for (const file of PANEL_FILES.filter(name => name !== 'letter-notice.js')) window.eval(read(`extension/${file}`));
+      window.eval(read('extension/review.js'));
+    } else window.eval(SOURCE);
+  } catch (error) { errors.push(String(error)); }
   await new Promise((resolve) => setTimeout(resolve, 100));
   const drawn = !!window.document.getElementById('jobpilotto-review-host');
   window.close();
@@ -46,4 +52,10 @@ test('without the option grouping the panel still draws (each box its own row); 
   const gone = await run('ReadBack');
   assert.equal(gone.drawn, false);
   assert.match(gone.warned.join('\n'), /ReadBack/);
+});
+
+test('without the cover-letter notice helper the panel draws nothing and names the missing helper', { skip: !JSDOM }, async () => {
+  const result = await run('CoverLetterNotice');
+  assert.equal(result.drawn, false);
+  assert.match(result.warned.join('\n'), /CoverLetterNotice/);
 });

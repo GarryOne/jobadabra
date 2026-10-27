@@ -39,11 +39,21 @@ export async function pool(items, jobs, task) {
   return out;
 }
 
-// The real-sized form cases a checkout builds with its own prompts (its tools/free-ai-form-cases.mjs, the demo profile: fictional data only).
+/**
+ * The node arguments that build a checkout's real-sized form cases (the demo profile: fictional data only).
+ * @param {string} tree a checkout (main's merge base, or the PR's)
+ * @param {string} out where the cases JSON goes
+ * @returns {string[]} the script (by its real path: its run-as-script check compares it) and every option it requires
+ */
+export function caseArgs(tree, out) {
+  return [fs.realpathSync(path.join(tree, 'tools/free-ai-form-cases.mjs')),
+    '--profile', path.join(tree, 'desktop/demo/profile.md'), '--answers', path.join(tree, 'desktop/demo/answers.md'), '--set', 'real', '--out', out];
+}
+
+// The real-sized form cases a checkout builds with its own prompts (its tools/free-ai-form-cases.mjs).
 function buildCases(tree) {
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'prompt-cases-')), 'cases.json');
-  execFileSync('node', [fs.realpathSync(path.join(tree, 'tools/free-ai-form-cases.mjs')),   // its run-as-script check compares the real path '--profile', path.join(tree, 'desktop/demo/profile.md'), '--answers', path.join(tree, 'desktop/demo/answers.md'),
-    '--set', 'real', '--out', out], {cwd: tree, stdio: ['ignore', 'ignore', 'inherit']});
+  execFileSync('node', caseArgs(tree, out), {cwd: tree, stdio: ['ignore', 'ignore', 'inherit']});
   if (!fs.existsSync(out)) throw new Error(`${tree}: tools/free-ai-form-cases.mjs wrote no cases`);
   return JSON.parse(fs.readFileSync(out, 'utf8'));
 }

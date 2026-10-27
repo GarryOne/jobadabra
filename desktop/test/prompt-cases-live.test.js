@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {compare, MODEL, pool, toRetry} from '../../tools/prompt-cases-live.mjs';
+import {fileURLToPath} from 'node:url';
+import {caseArgs, compare, MODEL, pool, toRetry} from '../../tools/prompt-cases-live.mjs';
 
 const root = new URL('../../', import.meta.url);
 const rows = map => Object.entries(map).map(([id, right]) => ({id, right}));
@@ -20,6 +21,19 @@ test('a case the PR adds must be right on the PR\'s prompt; its answer on main d
   assert.deepEqual(toRetry(base, head, ['a']), ['n']);
   assert.deepEqual(compare(base, head, ['a'], rows({n: false})).newWrong, ['n']);
   assert.deepEqual(compare(base, rows({a: true, n: true}), ['a']).newWrong, []);
+});
+
+// Why (#2223 review): a comment put mid-list swallowed --profile and --answers, so every case build threw before Haiku was asked; the unit tests never built a case.
+test('the case build passes every option tools/free-ai-form-cases.mjs requires, each pointing at a file that exists', () => {
+  const tree = fileURLToPath(root);
+  const args = caseArgs(tree, '/x/cases.json');
+  const required = [...fs.readFileSync(new URL('tools/free-ai-form-cases.mjs', root), 'utf8').matchAll(/need\('([a-z-]+)'\)/g)].map(found => found[1]);
+  assert.ok(required.length >= 3, 'the builder still names its required options with need()');
+  for (const name of required) {
+    const at = args.indexOf(`--${name}`);
+    assert.ok(at > 0 && args[at + 1], `--${name} is passed with a value`);
+    if (name !== 'out') assert.ok(fs.existsSync(args[at + 1]), `--${name} ${args[at + 1]} exists`);
+  }
 });
 
 test('the counts say how many cases each side gets right', () => {

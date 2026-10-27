@@ -122,8 +122,13 @@ jobs:
         run: |
           pip install --quiet -r requirements.txt
           (cd desktop && npm ci)
-          (cd desktop/e2e && (npm ci || npm install) && npx playwright-core install --with-deps chromium)
+          (cd desktop/e2e && (npm ci || npm install))
           npm install -g "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+      # Why (runs 40510577328, 40507593762, 27 Oct 2026): a bare --with-deps install crawled at 41 kB/s for 10 min and the persona hit its 12-min cap.
+      - name: The browser (cached; a stalled mirror is cut and retried)
+        if: steps.token.outputs.ok == 'yes'
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
       - name: The persona's fictional CV, then one Find jobs press (Haiku 5.5 for every step)
         if: steps.token.outputs.ok == 'yes'
         run: |

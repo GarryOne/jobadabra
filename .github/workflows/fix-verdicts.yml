@@ -131,11 +131,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Install the app, the tests and the browser
+      - name: Install the app and the tests
         run: |
           (cd desktop && npm ci) && (cd desktop/e2e && (npm ci || npm install))
           pip install --quiet -r requirements.txt
-          (cd desktop/e2e && npx playwright-core install --with-deps chromium)
+      - name: The browser (cached; a stalled mirror is cut and retried)
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
       - uses: actions/download-artifact@v7
         with:
           name: net-bundles-${{ github.run_id }}

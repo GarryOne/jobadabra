@@ -110,12 +110,13 @@ jobs:
         run: npm ci || npm install
       - name: Python packages the engine needs (the app's store)
         run: pip install --quiet -r requirements.txt
-      - name: Chromium for the real extension, and a virtual display
+      - name: Chromium for the real extension (cached; a stalled mirror is cut and retried)
+        uses: ./.github/actions/playwright-browser
+        with: {working-directory: desktop/e2e, mode: both}
+      - name: A virtual display
         working-directory: desktop/e2e
         timeout-minutes: 15
-        run: |
-          npx playwright-core install --with-deps chromium
-          bash ../../tools/apt-install.sh xvfb
+        run: bash ../../tools/apt-install.sh xvfb
       - name: Wait for the earlier pool runs (one at a time, oldest first, none dropped)
         env:
           GH_TOKEN: ${{ github.token }}

@@ -107,6 +107,30 @@ class WatcherCommentsTest(Base):
         self.answer(view(reviews=reviews), lines=[{'id': 55, 'user': {'login': 'gitar-bot[bot]'}, 'body': '/dev/null breaks Windows', 'html_url': 'https://x/l55', 'created_at': 't'}])
         self.assertEqual(self.watch(), [f'ship: COMMENT #7 bot review-approved {URL}', 'ship: COMMENT #7 bot line https://x/l55'])
 
+    def test_a_watcher_starting_on_an_old_pr_stays_silent_on_comments_already_answered(self):
+        """Session 32, #2241: the first start has an empty cursor and announced 3 gitar-bot comments fixed hours earlier. Answered = a session reply or a later commit."""
+        bot = comment('IC_1', 'gitar-bot', 'x', '2026-10-27T10:00:00Z')
+        reply = comment('IC_2', 'GarryOne', 'fixed it' + CLAUDE, '2026-10-27T10:05:00Z')
+        self.answer(view(comments=[bot, reply]))
+        self.assertEqual(self.watch(), [])
+        self.assertEqual((self.tmp / 'watch.pid.comments').read_text().split(), ['IC_1'], 'told (silently): a later look does not announce it either')
+
+    def test_a_pr_with_no_comments_logs_no_comment_line(self):
+        self.answer(view())
+        self.assertEqual(self.watch(), [])
+        self.assertEqual((self.tmp / 'watch.pid.comments').read_text(), '')
+
+    def test_a_comment_followed_by_a_push_is_silent_on_start(self):
+        self.answer(view(comments=[comment('IC_1', 'gitar-bot')], commits=[{'committedDate': '2026-10-27T10:30:00Z'}]))
+        self.assertEqual(self.watch(), [])
+
+    def test_an_unanswered_old_comment_is_still_told_once_on_start_and_a_newer_one_after_the_reply(self):
+        bot = comment('IC_1', 'gitar-bot', 'x', '2026-10-27T10:00:00Z')
+        reply = comment('IC_2', 'GarryOne', 'fixed it' + CLAUDE, '2026-10-27T10:05:00Z')
+        owner = comment('IC_3', 'GarryOne', 'also make it blue', '2026-10-27T11:00:00Z')
+        self.answer(view(comments=[bot, reply, owner]), lines=[{'id': 5, 'user': {'login': 'gitar-bot[bot]'}, 'body': 'x', 'html_url': 'https://x/l5', 'created_at': '2026-10-27T09:00:00Z'}])
+        self.assertEqual(self.watch(), [f'ship: COMMENT #7 owner comment {URL}#issuecomment-IC_3'])
+
     def test_one_extra_call_per_look_for_the_line_comments(self):
         self.answer(view(comments=[comment('IC_1', 'gitar-bot')]))
         self.watch()

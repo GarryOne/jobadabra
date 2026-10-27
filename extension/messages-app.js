@@ -8,9 +8,12 @@ import {formReady} from './form-ready.js';
 import {roleOf} from './account.js';
 import {settings} from './flow.js';
 import {isStopped, stopFromApp} from './stop.js';
+import {decide} from './log.js';
 
+/** Relay form reports without letting an empty child document replace the tab's application state. */
 export function createAppMessages(ctx) {
   const {bootId, jobOf} = ctx;
+  let frameSaid = false;   // one metadata-only diagnostic per worker, not a log on every frame poll
   return function messages_app(message, sender, reply) {
     // A sign-in or sign-up page in a tab the app opened: its empty password boxes are filled from the Keychain (owner, 8 Oct 2026),
     // as a browser's password manager would. The site is Chrome's own tab address, not the page's word; the value goes into the
@@ -21,6 +24,13 @@ export function createAppMessages(ctx) {
       return true;
     }
     if (message?.type === 'review' && sender.tab) {
+      // Why (2026-10-27, owner, Applying flicker): all-frame injection lets helper frames report "reading" with zero fields under the same tab/session. Only the top document may clear the app's form state with an empty page report.
+      // Frames with application fields or account state still report normally, including their watches and commands; no host or widget-name rule decides this.
+      if (Number.isInteger(sender.frameId) && sender.frameId > 0 && !(Number(message.payload?.total) > 0) && !message.payload?.account) {
+        if (!frameSaid) { frameSaid = true; decide('panel', 'empty child-frame review ignored: form state stays with its document', {tab: sender.tab.id, frame: sender.frameId, fields: Number(message.payload?.total) || 0}).catch(() => {}); }
+        reply({matched: null, frame: true});
+        return true;
+      }
       formReady(sender.tab, sender.frameId, message.payload).catch(() => {});   // the AI may veto "Ready to submit" (form-ready.js); never blocks the report
       (async () => {
         const config = await settings();

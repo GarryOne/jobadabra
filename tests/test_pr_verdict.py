@@ -179,7 +179,11 @@ class Workflows(unittest.TestCase):
         job = text.split('\n  verdict:\n', 1)[1]
         condition = job.split('    if: >-\n', 1)[1].split('\n    runs-on:', 1)[0]
         self.assertIn("github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha", condition, 'a replaced commit or a merged PR is skipped')
-        self.assertRegex(text.split('\njobs:\n', 1)[0], r"(?m)^concurrency:\n  group: pr-verdict-\$\{\{ github\.event\.workflow_run\.head_branch \}\}\n", 'one verdict per PR branch, not per commit')
+        header = text.split('\njobs:\n', 1)[0]
+        group = header.split('concurrency:\n', 1)[1].split('\n  cancel-in-progress:', 1)[0]
+        self.assertIn("&& github.event.workflow_run.head_branch || 'skipped'", group, 'one verdict per PR branch, not per commit')
+        # Review on #2248: concurrency applies before `if:`, so an event the job skips must not share the branch group (it would replace the head's waiting verdict).
+        self.assertIn(' '.join(condition.split()), ' '.join(group.split()), 'the group picks the branch by the same condition the job runs on')
 
     def test_the_budget_counts_running_time_not_the_wait_for_a_runner(self):
         # Owner, 27 Oct 2026: "Count running time only". #2215: 12.4 min in all, its jobs waited for runners most of it; a run of 11 min stays red.

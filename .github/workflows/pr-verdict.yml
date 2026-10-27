@@ -28,9 +28,12 @@ permissions:
   contents: read
 
 # One verdict per PR branch: one runs, the newest waits and replaces an older waiting one (it reads the same state; every PR job also writes it as its last step).
-# Why (27 Oct 2026): per commit (workflow_run.head_sha) every push kept its own runs.
+# Why (27 Oct 2026): per commit (workflow_run.head_sha) every push kept its own runs. An event the job below skips (a replaced commit, a merged PR) waits in its
+# own group: concurrency applies before the job's `if:`, so in the branch group it could replace the head's waiting verdict and then write nothing (review on #2248).
 concurrency:
-  group: pr-verdict-${{ github.event.workflow_run.head_branch }}
+  group: >-
+    pr-verdict-${{ ((github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_sha == github.event.workflow_run.pull_requests[0].head.sha)
+    || startsWith(github.event.workflow_run.display_title, 'E2E for PR · ')) && github.event.workflow_run.head_branch || 'skipped' }}
   cancel-in-progress: false
 
 jobs:

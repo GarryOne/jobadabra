@@ -2,7 +2,6 @@
 // otherwise shows the whole list) is undone once: the same page is opened with the posting's own query (fair round W44, form 264402, 27 Oct 2026; proven on a plain
 // GET: the https address with the query opens the application frame, the redirected one the list). Structure only: addresses compared, no page word.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {test} from 'node:test';
 
 const posting = 'http://careers.example.test/careers?gh_jid=4932950101';
@@ -46,7 +45,29 @@ test('what the app asked for is noted per tab, from the top frame of an app-open
   assert.equal(requestedOfNavigation({frameId: 0, url: 'chrome://newtab/#jobpilotto-fill'}), '');
 });
 
-test('the flow asks it before the page is read, once the tab is its own read', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
-  assert.match(flow, /started\.add\(key\);\n  if \(await restoreLostQuery\(tab, jobUrl, \{decide\}\)\) return;/);
+// The restore belongs to the first look, even when that look needs no navigation.
+for (const firstUrl of [
+  'https://careers.example.test/careers?gh_jid=4932950101#jobpilotto-fill=s9',
+  'https://careers.example.test/apply/form#jobpilotto-fill=s9',
+]) test(`a later queryless page is never reopened after the first look at ${new URL(firstUrl).pathname}`, async () => {
+  const stored = {}, moves = [];
+  const store = {get: async key => ({[key]: stored[key]}), set: async values => Object.assign(stored, values)};
+  const {restoreLostQuery} = await import('../../extension/restore-query.js');
+  const {noteRequested} = await import('../../extension/requested-url.js');
+  const options = {store, move: async (...args) => moves.push(args)};
+  await noteRequested({frameId: 0, tabId: 17, url: `${posting}#jobpilotto-fill=s9`}, store);
+  assert.equal(await restoreLostQuery({id: 17, url: firstUrl}, posting, options), false);
+  // A confirmation or Back to openings can return to this same path without its query.
+  assert.equal(await restoreLostQuery({id: 17, url: 'https://careers.example.test/careers#jobpilotto-fill=s9'}, posting, options), false);
+  assert.deepEqual(moves, []);
+});
+
+test('the first look also consumes the opportunity when only the kit supplies the posting URL', async () => {
+  const stored = {}, moves = [];
+  const store = {get: async key => ({[key]: stored[key]}), set: async values => Object.assign(stored, values)};
+  const {restoreLostQuery} = await import('../../extension/restore-query.js');
+  const options = {store, move: async (...args) => moves.push(args)};
+  await restoreLostQuery({id: 18, url: posting}, posting, options);
+  assert.equal(await restoreLostQuery({id: 18, url: 'https://careers.example.test/careers'}, posting, options), false);
+  assert.deepEqual(moves, []);
 });

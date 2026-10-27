@@ -15,6 +15,8 @@ LINUX_SUITES = {   # what a PR's workflow runs -> a line of its step in build.ym
     'page-cases.yml': 'node --test --test-concurrency=1 test/recorded-pages.test.mjs',
     'control-tests.yml': 'node widget-zoo.mjs --json widget-zoo.json',
 }
+# Why (owner, 27 Oct 2026: "Main, red on regression"): main runs the zoo inside the fill check (zoo + recorded pages vs main's last green), not the by-hand zoo command.
+ON_MAIN_INSTEAD = {'control-tests.yml': 'node check-fill.mjs --all --baseline'}
 
 
 class MainOneJob(unittest.TestCase):
@@ -27,7 +29,7 @@ class MainOneJob(unittest.TestCase):
     def test_every_linux_suite_a_pr_runs_is_a_step_of_the_one_job(self):
         for workflow, command in LINUX_SUITES.items():
             self.assertIn(command, (WORKFLOWS / workflow).read_text(encoding='utf-8'), f'{workflow}: the command moved, update this test and build.yml')
-            self.assertIn(command, BUILD, f'build.yml has no step for {workflow}')
+            self.assertIn(ON_MAIN_INSTEAD.get(workflow, command), BUILD, f'build.yml has no step for {workflow}')
 
     def test_each_suite_fails_alone_and_a_last_step_lists_the_red_ones(self):
         steps = re.findall(r'(?ms)^      - name: (Suite · [^\n]*)\n(.*?)(?=^      - )', BUILD)

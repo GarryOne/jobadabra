@@ -1,4 +1,4 @@
-"""The widget zoo (control tests) runs on main's every push inside build.yml, and by hand; never on a pull request (owner, 26 Oct 2026)."""
+"""The widget zoo (control tests) runs on main's every push inside build.yml (the fill check), and by hand; never on a pull request (owner, 26 Oct 2026)."""
 import unittest
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,7 +18,8 @@ class WidgetZooWorkflowTests(unittest.TestCase):
         self.assertNotIn('\n  pull_request', on)
         self.assertNotIn('\n  push:', on, 'main runs it inside CI · Tests, not as a push run of its own')
         self.assertIn('\n  workflow_dispatch:', on)
-        self.assertIn('widget-zoo.mjs', (ROOT / '.github' / 'workflows' / 'build.yml').read_text(), 'main runs the zoo on every push, in build.yml')
+        # Since 27 Oct 2026 (owner: "Main, red on regression") main runs the zoo inside the fill check, red when a page main had right is not.
+        self.assertIn('check-fill.mjs --all', (ROOT / '.github' / 'workflows' / 'build.yml').read_text(), 'main runs the zoo on every push, in build.yml')
 
     def test_no_shared_pick(self):
         self.assertNotIn('ci-needed', self.text)

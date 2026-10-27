@@ -2,6 +2,9 @@
 (run 40440720029): one red step on the first try, then a whole-suite retry on fresh AI ran out of the 7-minute budget and was called "a real failure".
 The step list comes from the first try's suite-failures.json (desktop/e2e/red-steps.mjs); with no step to name, the whole suite runs."""
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -33,6 +36,18 @@ class RetryRedStepsTests(unittest.TestCase):
             with self.subTest(file=path.name):
                 self.assertIn('node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json"', text)
                 self.assertIn('unset E2E_STEP_NAMES', text)
+
+    @unittest.skipUnless(shutil.which('bash'), 'needs bash')
+    def test_a_build_without_red_steps_retries_the_whole_suite(self):
+        # Stable canary 40503508863 (27 Oct 2026): main's workflow on tag desktop-v0.8.41, which has no red-steps.mjs; the retry crashed under bash -e.
+        for name in ('e2e.yml', 'desktop.yml'):
+            step = retry_steps((WORKFLOWS / name).read_text())[0]
+            lines = [line.strip() for line in step.splitlines() if line.strip().startswith(('red=', 'if [ -n "$red" ]'))]
+            with self.subTest(file=name), tempfile.TemporaryDirectory() as empty:
+                self.assertEqual(len(lines), 2, lines)
+                done = subprocess.run(['bash', '-e', '-c', 'first=.\n' + '\n'.join(lines)], cwd=empty, capture_output=True, text=True)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertIn('runs the whole suite', done.stdout)
 
 
 if __name__ == '__main__':

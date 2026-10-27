@@ -114,9 +114,20 @@ def _body(query, country, page):
             'otherBenefitsCodes': [], 'requiredLanguages': [], 'minNumberPost': None, 'sessionId': 'jobadabra'}
 
 
+def _where(codes, country):
+    """"<area>, <country>" for where the job IS: the area its own code names in Eurostat's table; the country alone when the table lacks it. Why (27 Oct
+    2026, search check 40528942517, persona Sofia): the location was the person's place word ("bulgaria, Bulgaria" on a job ~200 km away), so no place check
+    could tell where the job was; the portal gives no city, only this code."""
+    from . import nuts_names
+    table = nuts_names.names()
+    area = next((table[c] for c in sorted(codes, key=len, reverse=True) if c in table and c.startswith(country)), '')
+    name = geo.country_name(country) or country
+    return f'{area}, {name}' if area else name
+
+
 def eures(search, get=None, client=None):
-    """EURES vacancies for the user's role words, kept only where a job's region code lies in one of the user's places; each carries "<place word>,
-    <country>" as its location so the place check reads a real place. [] with no place in the portal's countries. `get(url, data, headers)` returns the parsed JSON."""
+    """EURES vacancies for the user's role words, kept only where a job's region code lies in one of the user's places; each carries "<area its own code names>,
+    <country>" as its location (the country alone when unnamed), never the person's place word. [] with no place in the portal's countries. `get(url, data, headers)` returns the parsed JSON."""
     from . import aggregators
     from ..notion.search_settings import readable, terms
     get = get or aggregators._get
@@ -151,7 +162,7 @@ def eures(search, get=None, client=None):
                         continue
                     seen.add(j['id'])
                     jobs.append(aggregators._job('eures', j['id'], j['title'], (j.get('employer') or {}).get('name'),
-                                                 f"{word}, {geo.country_name(country) or country}", DETAIL + urllib.parse.quote(j['id']) + '?lang=en',
+                                                 _where(codes, country), DETAIL + urllib.parse.quote(j['id']) + '?lang=en',
                                                  aggregators._when((j.get('creationDate') or 0) // 1000), j.get('description')))
                 if len(jobs) >= KEEP or len(listed) < PAGE_SIZE:
                     break

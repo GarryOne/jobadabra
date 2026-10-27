@@ -3,7 +3,7 @@
  "shape": "open questions answered in the person's own words whose drafted answer carries \"• Add: ...\" reminders: one with finished sentences and a reminder, one with reminders only",
  "why": "27 Oct 2026, benchmark fair round (jobadabra-benchmarks run 40440347913): 11 of our 17 wrong values were \"• Add: ...\" reminder lines typed into open-question boxes. Owner: \"Never type them\": the box gets only finished sentences, the reminders show beside it in the panel.",
  "control": {
-  "build": "f130e21",
+  "build": "0.9.629",
   "failed": "valueIs: #story|I aligned three teams' planning at Acme. (the reminder line was typed after it); empty: #why (reminders only were typed)"
  },
  "sample": "hand-written from the benchmark run's field list (no live capture kept); the AI's answer is the case's stub; fake applicant",

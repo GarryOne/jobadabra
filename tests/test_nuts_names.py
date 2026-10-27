@@ -38,6 +38,26 @@ class NutsNamesTest(unittest.TestCase):
         self.assertEqual((first['BG411'], second['BG411'], len(fetched)), ('Sofia (stolitsa)', 'Sofia (stolitsa)', 1))
         self.assertEqual(json.loads(nuts_names.STORE.read_text())['BG411'], 'Sofia (stolitsa)')
 
+    def test_failed_or_invalid_fetch_is_tried_once_for_all_jobs_in_a_run(self):
+        for failure in (OSError('offline'), {}):
+            with self.subTest(failure=failure):
+                nuts_names._loaded.clear()
+                fetch = mock.Mock(side_effect=failure) if isinstance(failure, Exception) else mock.Mock(return_value=failure)
+                for _ in range(5):  # the five EURES jobs in persona 1's search
+                    self.assertEqual(nuts_names.names(fetch), {})
+                self.assertEqual(fetch.call_count, 1)
+                self.assertFalse(nuts_names.STORE.exists(), 'a failure must not be kept on disk')
+                nuts_names._loaded.clear()  # a new engine process can retry
+                self.assertEqual(nuts_names.names(fetch), {})
+                self.assertEqual(fetch.call_count, 2)
+
+    def test_a_cache_write_failure_keeps_the_fetched_names_in_memory(self):
+        fetch = mock.Mock(return_value=nuts_names.parse(TABLE))
+        with mock.patch.object(Path, 'write_text', side_effect=OSError('disk full')):
+            self.assertEqual(nuts_names.names(fetch)['BG411'], 'Sofia (stolitsa)')
+            self.assertEqual(nuts_names.names(fetch)['BG411'], 'Sofia (stolitsa)')
+        self.assertEqual(fetch.call_count, 1)
+
     def test_a_failed_fetch_is_no_table_not_an_error(self):
         def down():
             raise OSError('offline')

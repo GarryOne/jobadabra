@@ -41,10 +41,10 @@ cities abroad. When they listed no such place, nothing is "inside".
 - "out": everything else, including a location naming only a country or an area wider than their places ("Switzerland" for someone who \
 wants only Geneva), and remote jobs unless they accept remote work and the posting does not limit it to a region outside their places.
 Being in the same country as their places does not make a town "inside". When unsure, answer "out".
-A location may list several places ("Vienna; London; Munich", "Remote; New York City - Hybrid; Toronto - Remote; Poland"): it is in their places only when \
-one listed place is theirs, or it says remote with no region at all or a region that holds their places. Other cities and remote limits to other \
-regions or countries ("Remote (South Africa)", "Ukraine, Remote", "Remote: UK", "Toronto - Remote", "Paris - Full Remote") say where the job is based \
-or who may take it: "out" for someone whose places are elsewhere, even when they accept remote work."""
+A location may list several places: it is in their places only when one listed place is theirs, or it says remote with no region at all or a \
+region that holds their places. Other cities, and remote limits to other regions or countries, say where the job is based or who may take it: \
+"out" for someone whose places are elsewhere, even when they accept remote work. Examples with other places: "Lima; Bogota; Quito", \
+"Remote (Brazil)", "Remote - Canada only"; for someone in Canada the last is "inside" if Canada holds their places."""
 VISA_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['visa'],
                'properties': {'visa': {'type': 'array', 'items': {'type': 'string'}, 'description': 'The countries, as given, where they need a visa'}}}
 VISA_SYSTEM = """You get a job seeker's work rights in their own words (a permit, a citizenship, "EU") and a list of countries. Answer the \
@@ -281,7 +281,8 @@ text). Find where the job is from the text: a store or site named, "at the Genev
 headquarters is not where the job is. For each posting say where it is, which of their places it is nearest to and how far by road in km; \
 then answer "best" (in one of their best places, or a suburb really part of that city's area: it touches the city; a separate town 15 km or \
 more away is not), "inside" (inside a place where anywhere is fine for them, or one of their cities abroad; when they listed none, nothing \
-is "inside"), "out" (elsewhere), or "unclear" (the text does not say where). Being in the same country does not make a job "inside"."""
+is "inside"), "out" (elsewhere), or "unclear" (the text does not say where). Being in the same country does not make a job "inside". \
+A posting open as remote from anywhere inside a place where anywhere is fine for them is "inside"; the text's own words ("work from anywhere in <that place>") count."""
 
 
 def _text_hash(job):

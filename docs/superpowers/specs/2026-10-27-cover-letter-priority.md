@@ -18,5 +18,5 @@ Existing records/preferences retain their existing owners. Queue and panel state
 - [x] Regression fails for wizard, queue, delivery and optional textarea/panel scenario. (proof: desktop/test/letter-priority.test.js, worker/test/cover-letter-priority.test.js)
 - [x] Implement shared availability and existing editor reuse; focused tests pass. (proof: desktop/test/cover-letter.test.js, desktop/test/letter-applying.test.js, desktop/test/wizard-letter.test.js)
 - [x] Fictional demo preview inspected. (proof: none: local fictional wizard/editor renders inspected; PR preview retains images)
-- [ ] Independent review checks the owner's scenario and opposite assertions.
+- [x] Independent review checks the owner's scenario and opposite assertions. (proof: worker/test/cover-letter-priority.test.js)
 - [ ] PR open with current-head checks green.

@@ -32,6 +32,7 @@
     "row-to-case": "bash ../../tools/heavy-lock.sh row-replay node row-to-case.mjs",
     "live": "bash live.sh",
     "twin-check": "node twin-check.mjs",
+    "check:fill": "JP_REPLAY=1 bash ../../tools/heavy-lock.sh check-fill node check-fill.mjs",
     "widget-zoo": "JP_REPLAY=1 bash ../../tools/heavy-lock.sh widget-zoo node widget-zoo.mjs"
   },
   "devDependencies": {

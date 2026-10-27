@@ -320,6 +320,7 @@
   "watch-list.test.mjs",
   "wide-local.test.mjs",
   "widget-zoo.test.mjs",
+  "check-fill.test.mjs",
   "wrong-values.test.mjs",
   "pr-linux.test.mjs"
  ]

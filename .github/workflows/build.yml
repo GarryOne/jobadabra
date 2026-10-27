@@ -90,31 +90,43 @@ jobs:
           REPLAYS_PUBLISH_KEY: ${{ secrets.REPLAYS_PUBLISH_KEY }}
           JP_REPLAYS_DRY: 'false'
         run: node replays-report.mjs 1 replay-results-1.json
-      - name: Suite · control tests (widget zoo)
-        id: zoo
+      # Why (owner, 27 Oct 2026: "Main, red on regression"): the widget zoo and every non-slow recorded page, each right / wrong / empty / not reached, against the
+      # baseline main's last green run wrote (artifact check-fill-baseline); red when a case that was right is not. Replaces the zoo's warning-only step. No baseline yet: it only counts.
+      - name: Suite · fill check (widget zoo + recorded pages vs main)
+        id: fillcheck
         continue-on-error: true
         working-directory: desktop/e2e
         env:
           JP_REPLAY: 1
           REPLAY_LOG: 1   # the extension's decision lines per page: why a miss happened
+          GH_TOKEN: ${{ github.token }}
         run: |
-          node widget-zoo.mjs --json widget-zoo.json || { echo "::warning title=Control tests missed::the widget zoo failed (a warning, never red)"; exit 1; }
+          run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=check-fill-baseline&per_page=20" --jq '[.artifacts[] | select((.expired | not) and .workflow_run.head_branch == "main")][0].workflow_run.id // empty' || true)
+          [ -z "$run_id" ] || gh run download "$run_id" -R "$GITHUB_REPOSITORY" -n check-fill-baseline -D last-green || true
+          node check-fill.mjs --all --baseline last-green/check-fill-baseline.json --write check-fill-baseline.json --json check-fill.json
+      - uses: actions/upload-artifact@v6
+        if: steps.fillcheck.outcome == 'success'
+        with:
+          name: check-fill-baseline
+          path: desktop/e2e/check-fill-baseline.json
+          if-no-files-found: ignore
+          retention-days: 30
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: widget-zoo
-          path: desktop/e2e/widget-zoo.json
+          name: check-fill
+          path: desktop/e2e/check-fill.json
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
       - name: Every suite passed
         if: always()
         env:
-          RESULTS: python=${{ steps.python.outcome }} worker=${{ steps.worker.outcome }} desktop=${{ steps.desktop.outcome }} replay-install=${{ steps.replay-install.outcome }} replay-chromium=${{ steps.replay-chromium.outcome }} page-cases=${{ steps.pages.outcome }}
-          WARNINGS: page-cases-report=${{ steps.pages-report.outcome }} control-tests=${{ steps.zoo.outcome }}
+          RESULTS: python=${{ steps.python.outcome }} worker=${{ steps.worker.outcome }} desktop=${{ steps.desktop.outcome }} replay-install=${{ steps.replay-install.outcome }} replay-chromium=${{ steps.replay-chromium.outcome }} page-cases=${{ steps.pages.outcome }} fill-check=${{ steps.fillcheck.outcome }}
+          WARNINGS: page-cases-report=${{ steps.pages-report.outcome }}
         run: |
           red=""
           for pair in $RESULTS; do case "${pair#*=}" in success|skipped) ;; *) red="$red ${pair%%=*}(${pair#*=})" ;; esac; done
-          # measured, never a verdict (control-tests.yml: "measure, not required"; the report is a publish): a warning, not a red main
+          # measured, never a verdict (the page-cases report is a publish): a warning, not a red main
           for pair in $WARNINGS; do case "${pair#*=}" in success|skipped) ;; *) echo "::warning::${pair%%=*} ${pair#*=}"; echo "Warning: ${pair%%=*} ${pair#*=}" ;; esac; done
           if [ -n "$red" ]; then echo "::error::red suites:$red"; echo "Red suites:$red"; exit 1; fi
           echo "every Linux suite passed"

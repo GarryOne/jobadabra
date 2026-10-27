@@ -244,7 +244,9 @@ jobs:
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11), and by force 3 min later (suite.mjs)
         run: |
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
-          node suite.mjs ${{ matrix.suite }}
+          # A picked step renamed since the coverage map is no red: when that is the only red, the whole suite runs now (red-steps.mjs --renamed-only, as e2e.yml's first try).
+          node suite.mjs ${{ matrix.suite }} || { [ -n "${E2E_STEP_NAMES:-}" ] && node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json" \
+            && echo "::notice title=Picked step renamed::A step picked for this PR has a new name: the whole ${{ matrix.suite }} suite runs now" && unset E2E_STEP_NAMES && node suite.mjs ${{ matrix.suite }}; }
       - name: The apply suite again in Microsoft Edge (the Windows default; preinstalled on the runner)
         if: matrix.suite == 'apply'
         working-directory: desktop/e2e

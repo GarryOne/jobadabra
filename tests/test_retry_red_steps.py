@@ -24,6 +24,16 @@ class RetryRedStepsTests(unittest.TestCase):
                 self.assertLess(pick, step.index('if again ${{ matrix.suite }}'))
                 self.assertNotIn('Red again with the whole suite', step)
 
+    def test_every_workflow_that_runs_picked_steps_runs_whole_on_a_renamed_pick(self):
+        # 26-27 Oct 2026: 19 of 54 e2e reds were a picked step renamed since the coverage map; on Windows (no retry) each one failed the PR.
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            text = path.read_text()
+            if 'E2E_STEP_NAMES:' not in text or 'pr_steps' not in text:
+                continue
+            with self.subTest(file=path.name):
+                self.assertIn('node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json"', text)
+                self.assertIn('unset E2E_STEP_NAMES', text)
+
 
 if __name__ == '__main__':
     unittest.main()

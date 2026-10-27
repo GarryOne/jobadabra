@@ -20,3 +20,5 @@ Existing records/preferences retain their existing owners. Queue and panel state
 - [x] Fictional demo preview inspected. (proof: none: local fictional wizard/editor renders inspected; PR preview retains images)
 - [x] Independent review checks the owner's scenario and opposite assertions. (proof: worker/test/cover-letter-priority.test.js)
 - [ ] PR open with current-head checks green.
+
+The wizard integration step was updated by session32 under the freeze. Local e2e execution is explicitly excluded by the owner; CI must verify the full prefill → explicit approval → PDF → continue path before review is complete.

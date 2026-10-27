@@ -1,6 +1,6 @@
 // One switch for every way into Claude (claude-help.js; owner, 9 Oct 2026). The class, not the case: every renderer file that draws a Claude entry point
 // (a button or menu item that starts, resumes or messages Claude) must ask claudeHelp(); a new one added without it fails here. Plus: off by default,
-// the extension preset and recommended in the Apply dialog, the Sessions empty state in the extension's words.
+// the Jobs batch dialog follows saved Apply mode, and the Sessions empty state uses the extension's words.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,14 +22,14 @@ test('every renderer file that draws a Claude entry point asks the one switch', 
   assert.match(sessions, /const pushResume = \(\) => \{ if \(resumeOffered\(\)\) actions\.push\(resume\(\)\); \};/);   // the resume entry asks resumeOffered, which wraps claudeHelp (claude-help.js)
 });
 
-test('the switch is "Claude is ready" (installed + signed in), not a setting; the Apply dialog presets and recommends the extension; the copy speaks of Apply', async () => {
+test('the switch is "Claude is ready" (installed + signed in), not a setting; the batch dialog has no second mode selector', async () => {
   const help = fs.readFileSync(new URL('claude-help.js', RENDERER), 'utf8');
   assert.match(help, /export const claudeHelp = \(\) => installed && claudeFeatures\(\);/);   // and the Claude family only
   const html = fs.readFileSync(new URL('index.html', RENDERER), 'utf8');
-  assert.match(html, /<b>Fill in Chrome with the extension<\/b> <span class="badge-recommended">Recommended<\/span>/);
+  assert.doesNotMatch(html, /name="apply-mode"/);
   assert.doesNotMatch(html, /<b>Apply with Claude<\/b> <span class="badge-recommended">/);
   assert.doesNotMatch(html, /press <b>Apply with Claude<\/b> to start one/);
-  assert.match(fs.readFileSync(new URL('pages/jobs.js', RENDERER), 'utf8'), /value="chrome"\]'\)\.checked = true;/);
+  assert.match(fs.readFileSync(new URL('pages/jobs.js', RENDERER), 'utf8'), /applyDialogCopy\(state\.settings\)/);
 });
 
 test('the Claude install checklist is under the Settings switch too, shown only while it is on', () => {

@@ -93,7 +93,9 @@ export async function runWizard(ctx) {
     // The cards are the Strategy page's own (pages/setup-strategy.js): Main goals names the roles, Locations the places.
     const goals = await page.locator('#setup-strategy-slot #strategy-main-goals .main-goals').innerText();
     if (!goals || /No roles yet/.test(goals)) throw new Error('the strategy has no roles to search for');
-    await page.click('#draft-save');
+  }, {needs: ctx.needs});
+  await ctx.run('setup drafts the base letter; explicit approval makes its PDF before continuing', async () => {
+    await completeWizardLetter(ctx);
     await ctx.expectStep('hosted', 180000);   // the daily-searches step (pages/hosted.js): Skip leaves hosted off, the extras step follows
     await page.click('#hosted-skip');
     await ctx.expectStep('extras');
@@ -188,4 +190,53 @@ async function connectNotion(ctx, {startedOnNotion = false} = {}) {
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     if (!await page.evaluate(() => !!window.__jp?.shared?.state?.notion?.NOTION_PROFILE_PAGE_ID)) throw new Error('the window does not know Notion is connected after a reload');
   }, {needs: ctx.needs});
+}
+
+
+/** Exercise auto-draft and explicit approval using the existing dummy-key API seam and a fictional letter. */
+export async function completeWizardLetter(ctx) {
+  const {page, proxy} = ctx;
+  if (!proxy?.setCanned || typeof ctx.withApi !== 'function') throw new Error('wizard letter proof requires the canned API seam');
+  const fixtures = JSON.parse(fs.readFileSync(new URL('../../demo/job-pages.json', import.meta.url), 'utf8'));
+  const section = Object.values(fixtures).flatMap(item => Object.values(item.sections || {})).find(text => String(text).includes('### ✉️ Cover letter'));
+  const letter = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
+  const previous = proxy.canned();
+  let answered = 0;
+  const cv = JSON.parse(fs.readFileSync(new URL('../fixtures/cv.json', import.meta.url), 'utf8'));
+  // Why (#2304): setup saves CV details before drafting; answer their distinct schemas and refuse unknown calls before auto-generation starts.
+  proxy.setCanned(body => {
+    const answer = wizardSetupAnswer(body, {letter, cv});
+    if (typeof answer === 'string' && Object.hasOwn(JSON.parse(answer), 'letter')) answered += 1;
+    return answer;
+  });
+  try {
+    await ctx.withApi(async () => {
+      await page.click('#draft-save');
+      await ctx.expectStep('letter', 180000);
+      await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
+      const draft = await page.evaluate(() => window.pilot.coverLetter());
+      if (!answered || draft.text !== letter) throw new Error('setup did not use the canned letter');
+      if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
+      await page.click('#letter-approve');
+      await page.waitForFunction(async () => {
+        const approved = await window.pilot.coverLetter();
+        return approved.state === 'approved' && approved.pdf;
+      }, null, {timeout: 30000});
+      await page.click('#setup-letter-next');
+    });
+  } finally { proxy.setCanned(previous); }
+}
+
+
+/** Answer only the setup's letter/details schemas from fictional fixtures; unknown calls are refused without model passthrough. */
+export function wizardSetupAnswer(body, {letter, cv}) {
+  const properties = body?.output_config?.format?.schema?.properties || {};
+  if (Object.keys(properties).length !== 1) return {refuse: 'no-credit'};
+  if (properties.letter) return JSON.stringify({letter});
+  if (properties.proposals) {
+    const [first, ...last] = cv.name.trim().split(/\s+/);
+    const stated = {first_name: first, last_name: last.join(' '), location: cv.location};
+    return JSON.stringify({proposals: Object.entries(stated).filter(([, value]) => value).map(([field, value]) => ({field, value, sure: true, source: 'cv', how: 'stated'}))});
+  }
+  return {refuse: 'no-credit'};
 }

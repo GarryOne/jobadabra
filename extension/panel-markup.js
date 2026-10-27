@@ -135,6 +135,7 @@
         <div class="progress"><div class="progress-line"><b></b><span></span></div><div class="bar"><i></i></div></div>
         <div class="stopped" hidden><span class="pause"><i></i><i></i></span><div><b>Stopped by you</b><span class="s-text"></span></div></div>
         <div class="verify" hidden><span class="shield"></span><div class="v-body"><b class="v-title"></b><span class="v-text">Finish it on the page, then press Check again.</span></div><button class="primary v-show" type="button">Show on form</button><button class="link v-again" type="button">Check again</button></div>
+        <div class="letter-setup verify" hidden><span class="shield"></span><div class="v-body"><b>HIGH PRIORITY · Cover letter</b><span class="letter-reason"></span></div><button class="primary letter-action" type="button">Create cover letter</button></div>
         <div class="live"><h4>Done so far</h4><ol class="steps"></ol></div>
         <div class="fill-box"><button class="primary fill"><i class="spin"></i><span class="label">Fill this form</span></button><button class="stop-btn" type="button" title="Stops everything Jobadabra does, on every tab, until you press Apply in the app again">Stop</button><p class="step-hint">Counts update as new fields appear.</p></div>
         <div class="note trace-note" hidden><span>Chrome shows a debugging bar while Jobadabra keeps a trace of this fill, so you can report a problem.</span><button class="got-it" type="button">Got it</button></div>

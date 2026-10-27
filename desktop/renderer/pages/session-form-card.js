@@ -15,16 +15,18 @@ import {formGone} from './session-needs.js';  // cycle by design: used inside fu
 // "Before you submit": what decides an application more than the CV, from what the form says is still open. The knockout questions (a hiring system can be set to
 // reject on them: private research jobadabra-lab:docs/research/ats-reddit-2026-10.md) and which CV goes in: the general one, or one tailored to this job, with a way to tailor it.
 const fullKey = url => String(url || '').trim().replace(/\/$/, '');
+let beforeRead = 0; // only the latest card draw may use an asynchronous letter/CV answer
 const cvSeen = new Map();   // job url → {at, info}
-async function cvInfo(url) {
-  const known = cvSeen.get(url);
+async function cvInfo(url, given, failed) {
+  const key = `${url}:${!!given}:${!!failed}`, known = cvSeen.get(key);
   if (known && Date.now() - known.at < 4000) return known.info;
-  const info = await window.pilot.cvOf(url).catch(() => null);
-  cvSeen.set(url, {at: Date.now(), info});
+  const info = await window.pilot.cvOf(url, !!given, !!failed).catch(() => null);
+  cvSeen.set(key, {at: Date.now(), info});
   return info;
 }
 // A knockout: the English words, or the AI that read the form in any language (extension/page/categories.js -> the panel's `knockouts`).
-function showBefore(item, left, account = false, aiKnockouts = []) {
+function showBefore(item, left, account = false, aiKnockouts = [], letterGiven = false, letterAsked = false, letterFailed = false) {
+  const read = ++beforeRead;
   const knockouts = left.filter(label => KNOCKOUT.test(label) || aiKnockouts.includes(label));
   const submitted = isSubmitted(item);
   show($('ss-before-knock'), !submitted && knockouts.length > 0);
@@ -34,10 +36,22 @@ function showBefore(item, left, account = false, aiKnockouts = []) {
   }
   const job = shared.allJobs.find(candidate => fullKey(candidate.url) === fullKey(item.url));
   show($('ss-before-cv'), false);
+  show($('ss-before-letter'), false);
   // A sign-in or sign-up page is not the application: no CV goes there (owner, 8 Oct 2026).
   if (submitted || !item.url || account) return show($('ss-before'), !submitted && knockouts.length > 0);
-  cvInfo(item.url).then(info => {
-    if (!info) return;
+  cvInfo(item.url, letterGiven, letterFailed).then(info => {
+    if (!info || read !== beforeRead) return;
+    const letter = info.coverLetterStatus;
+    const letterMissing = letterAsked && letter && !letter.ready;
+    show($('ss-before-letter'), !!letterMissing);
+    if (letterMissing) {
+      $('ss-before-letter-title').textContent = 'HIGH PRIORITY · Cover letter';
+      $('ss-before-letter-sub').textContent = letter.reason;
+      $('ss-before-letter-btn').textContent = letter.action;
+      $('ss-before-letter-btn').onclick = () => import('./settings.js').then(page => page.openSetting('letter'));
+      $('ss-form-pill').replaceChildren(pill('Cover letter needs setup', 'warn'));
+      $('ss-form-card').classList.remove('is-ready');
+    }
     show($('ss-before-cv'), true);
     $('ss-before-cv-mark').textContent = info.tailored ? '✓' : '○';
     // Why (27 Oct 2026, owner): the form's panel no longer tailors; its "Tailor in Jobadabra" opens this card, and a tailored CV restarts the form (lib/tailored-restart.js).
@@ -59,7 +73,7 @@ function showBefore(item, left, account = false, aiKnockouts = []) {
         if (added?.ok) { try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {} }
         button.textContent = added?.ok ? 'Tailor my CV' : 'Retry';
         button.disabled = false;
-        if (added?.ok) showBefore(item, left, account, aiKnockouts);
+        if (added?.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked, letterFailed);
         else button.title = added?.text || '';
         return;
       }
@@ -67,8 +81,8 @@ function showBefore(item, left, account = false, aiKnockouts = []) {
       const result = await window.pilot.tailorCv(job.code, `${job.title} · ${job.company}`, [job.url, item.url]);
       button.textContent = result.ok ? 'Tailored ✓' : 'Retry';
       button.disabled = !!result.ok;
-      cvSeen.delete(item.url);
-      if (result.ok) showBefore(item, left, account, aiKnockouts);
+      for (const given of [false, true]) for (const failed of [false, true]) cvSeen.delete(`${item.url}:${given}:${failed}`);
+      if (result.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked, letterFailed);
     };
     show($('ss-before'), true);
   });
@@ -91,7 +105,7 @@ export function showFormCard(item, state) {
   count.replaceChildren(el('b', '', String(done)), el('span', '', account ? account.count : ` of ${state.total} required fields`));
   $('ss-form-bar').style.width = `${Math.round(100 * done / state.total)}%`;
   card.classList.toggle('is-ready', !!state.ready);
-  showBefore(item, state.pending || state.missing || [], !!state.account, state.knockouts || []);
+  showBefore(item, state.pending || state.missing || [], !!state.account, state.knockouts || [], state.letterGiven === true, state.letterAsked === true, state.letterFailed === true);
   // An extension older than 0.8.12 sends no filled fields: then only what's left.
   const filled = [...(state.filled || [])].sort((a, b) => a.at - b.at);
   const left = account ? account.left : state.pending || state.missing || [];

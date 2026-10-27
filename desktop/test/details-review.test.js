@@ -14,7 +14,7 @@ import {hashOf} from '../lib/cv-check.js';
 import * as review from '../lib/details-review.js';
 import {openShown} from '../lib/question-lists.js';
 import * as questions from '../lib/questions.js';
-import {detailsIn, visibleQuestions} from '../renderer/question-filter.js';
+import {extrasIn, visibleQuestions} from '../renderer/question-filter.js';
 import {fakeNotion} from './fake-notion.js';
 
 const PROFILE = ['## Preferences', 'Relocation: open to moving within the EU', 'Industries to prefer / avoid: ❓', 'Need visa sponsorship?: ❓', 'Notice period: 2 months', 'Role types: SRE; ❓ DevOps?',
@@ -117,7 +117,7 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
       const {list} = await openShown(storage, {fetcher, ai: {}});
       assert.ok(list.some(each => each.key === item.key), 'the drawer walks it');
       const open = (await questions.list(storage, fetcher));
-      assert.equal(visibleQuestions(open, {}).shown.length + detailsIn(list).length, list.length, 'the Profile banner counts what the Jobs card counts');
+      assert.equal(visibleQuestions(open, {}).shown.length + extrasIn(list).length, list.length, 'the Profile banner counts what the Jobs card counts');
       const result = await review.answer(storage, item.key, FIXTURES[kind].answer(), {fetcher, ai});
       assert.equal(result.ok, true, result.error);
       await FIXTURES[kind].after(env);

@@ -126,7 +126,7 @@ async function clickCombosNow(tabId) {
 }
 
 // The approved cover letter PDF travels inside the resume argument: the page helper attaches it to a file input labelled Cover letter.
-const withLetterFile = (resume, file) => (file ? {...(resume || {}), coverLetterFile: file} : resume);
+const withLetterFile = (resume, file, status) => ({...(resume || {}), ...(file ? {coverLetterFile: file} : {}), ...(status ? {coverLetterStatus: status} : {})});
 
 export async function settings() {
   return chrome.storage.local.get(['workerUrl', 'token', 'profile', 'resume', 'checkEligibility', 'testMode', 'clickDropdowns', 'acceptConsents', 'ladderAct']);   // ladderAct: the e2e harness's switch only (ladder/fill-climb.js)
@@ -364,11 +364,11 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
   };
   useRemembered(answers);
   debug.answers = answers.map(({field, question, value, source, confidence, note}) => ({field, question, value, source, confidence, note}));
-  debug.details = {coverLetterFile: !!me?.coverLetterFile, fields: Object.keys(me?.contact || {}), source: me?.contactSource || null, cv: me?.resume?.name || null, tailoredCv: !!me?.resume?.tailored};
+  debug.details = {coverLetterState: me?.coverLetterStatus?.state || 'unknown', coverLetterSource: me?.coverLetterStatus?.source || '', coverLetterFile: !!me?.coverLetterFile, fields: Object.keys(me?.contact || {}), source: me?.contactSource || null, cv: me?.resume?.name || null, tailoredCv: !!me?.resume?.tailored};
   if (me?.contactError) debug.errors.push(`your details: ${me.contactError}`);
-  const letter = coverLetter || ai?.cover_letter || '';
+  const letter = coverLetter || ai?.cover_letter || me?.coverLetterText || '';
   const summary = await pageStarted(tab.id).then(() => inPage(tab.id, (list, profile, resume, letter, consents) => window.__jobPilottoExtensionFill(list, profile, resume, letter, consents),   // pageStarted: a start just now cleared the page's own Stop first (stop.js startTab)
-    [answers, me?.contact || config.profile || {}, withLetterFile(me?.resume || config.resume || null, me?.coverLetterFile), letter, (me?.acceptConsents ?? config.acceptConsents) !== false]));
+    [answers, me?.contact || config.profile || {}, withLetterFile(me?.resume || config.resume || null, me?.coverLetterFile, me?.coverLetterStatus), letter, (me?.acceptConsents ?? config.acceptConsents) !== false]));
   // The page fill threw or returned nothing (a control it did not expect, or the page went away): said as it is, never read as a result (page/fill.js reports the error and where).
   if (!summary || summary.error) {
     const why = summary?.error || 'the fill failed on this page: the page returned nothing';

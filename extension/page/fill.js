@@ -13,14 +13,20 @@
   const {LEGAL, asksQuestion, clean, norm, once, sleep, visible, labelOf, questionOf, radioOps, PROFILE_LABELS, aliasFor, DIAL, dialOf, armCombo, phoneParts,
     pickCheckboxOption, setCheckbox, wantsUnchecked, boxOf, tickConsents, fillConsentChoices, markAttention, markDraft} = window.__jobPilottoFillKit;
 
+  const letterBoxes = () => Array.from(document.querySelectorAll('textarea')).filter(el => visible(el) && window.__jobPilottoUpload.fileKind(`${el.id} ${el.name} ${labelOf(el)}`, window.__jobPilottoAliases || []) === 'cover_letter');
+
+  // The same visible manual-entry shape drives filling and missing-letter observation.
+  const manualLetterButton = () => {
+    const heading = Array.from(document.querySelectorAll('label, legend, h3, h4, div')).find(el => visible(el) && /^\s*cover\s*letter\s*\*?\s*$/i.test(el.textContent || ''));
+    return heading && Array.from(heading.parentElement.querySelectorAll('button, a')).find(el => visible(el) && /enter manually|type it|paste/i.test(el.textContent || ''));
+  };
+
   // Optional cover letter: a textarea labelled Cover letter, or behind an "Enter manually" button.
   const fillCoverLetter = async letter => {
-    const find = () => Array.from(document.querySelectorAll('textarea')).find(el => visible(el) && /cover\s*letter/i.test(`${el.id} ${el.name} ${labelOf(el)}`));
+    const find = () => letterBoxes()[0];
     let box = find();
     if (!box) {
-      const heading = Array.from(document.querySelectorAll('label, legend, h3, h4, div')).find(el => /^\s*cover\s*letter\s*\*?\s*$/i.test(el.textContent || ''));
-      const scope = heading?.parentElement || document;
-      const manual = Array.from(scope.querySelectorAll('button, a')).find(el => /enter manually|type it|paste/i.test(el.textContent || ''));
+      const manual = manualLetterButton();
       if (!manual) return false;
       (globalThis.__jobPilottoPress?.(manual) || manual.click());
       for (let i = 0; i < 10 && !box; i++) { await sleep(150); box = find(); }
@@ -244,7 +250,19 @@
     }
     const legal = [...after.filter(row => row.legal && !row.filled).map(row => `Your choice (legal): ${readable(row.label)}`),
       ...consented.map(text => `Ticked for you: ${text}`)];
-    const unfilledRequired = after.filter(row => row.required && !row.filled && !(row.field === 'resume' && resumeAttached)).length;
+    // Why (2026-10-27, owner): an optional letter is still important setup; employer requiredness must never hide the missing letter.
+    const coverLetterStatus = resume?.coverLetterStatus || null;
+    const letterGiven = letterFileAttached || letterBoxes().some(el => String(el.value || '').trim());
+    const manualLetter = manualLetterButton();
+    manualLetter?.setAttribute('data-jobpilotto-letter-manual', '1');
+    manualLetter?.toggleAttribute('data-jobpilotto-letter-error', !!coverLetter && !letterGiven);
+    for (const box of letterBoxes()) box.setAttribute('data-jobpilotto-letter', '1');
+    for (const slot of (window.__jobPilottoUpload.slots?.() || [])) if (window.__jobPilottoUpload.meaningOf(slot, window.__jobPilottoAliases || []) === 'cover_letter') for (const el of new Set([slot.el, slot.input].filter(Boolean))) { el.setAttribute('data-jobpilotto-letter', '1'); el.toggleAttribute('data-jobpilotto-letter-error', !!(resume?.coverLetterFile && !slot.filled)); }
+    if ((manualLetter || letterBoxes().length || uploads.some(item => item.meaning === 'cover_letter')) && coverLetterStatus && !coverLetterStatus.ready && !letterGiven) todo.unshift(`Important: cover letter — ${coverLetterStatus.reason} ${coverLetterStatus.action} in Jobadabra → Profile → Cover letter, then Fill again.`);
+    const letterUploadFailed = resume?.coverLetterFile && uploads.some(item => item.meaning === 'cover_letter' && !item.ok);
+    if (letterUploadFailed) todo.unshift('Important: cover letter upload did not keep the file. Attach the letter manually from Jobadabra, then check the form again.');
+    if (coverLetter && (manualLetter && !letterGiven || letterBoxes().some(el => !String(el.value || '').trim()))) todo.unshift('Important: cover letter was available but the text box did not keep it. Paste it from Jobadabra → Profile → Cover letter, then check the form again.');
+    const unfilledRequired = open.filter(row => !(row.field === 'resume' && resumeAttached) && !row.legal).length;
     // A value we put in that the person then changes by hand is a correction: the label is kept (never the value) so the product learns
     // which questions it fills wrongly. The background drains window.__jobPilottoCorrections (extension/background.js reportTabs).
     window.__jobPilottoCorrections = window.__jobPilottoCorrections || [];
@@ -314,7 +332,7 @@
     trace.push({label: 'CV', required: true, type: 'file', source: 'your CV', outcome: resumeAttached ? 'filled' : 'left',
       reason: resumeAttached ? '' : resume?.data ? 'no place to attach it was found on this page' : 'no CV in the app'});
     window.__jobPilottoValueClass?.mark([...contact, ...answers]);   // each answered control's kind of value, never the value: the fill check and the repair see it (page/value-class.js)
-    const summary = {reach, filled, unfilledRequired, starred: window.__jobPilottoRequired.starred(document), contact: contact.length, resumeAttached, trace, operated: window.__jobPilottoOperated || [], unknownUploads: window.__jobPilottoUnknownUploads || [], todo: [...new Set([...todo, ...review, ...legal])].slice(0, 25)};
+    const summary = {coverLetterStatus, reach, filled, unfilledRequired, starred: window.__jobPilottoRequired.starred(document), contact: contact.length, resumeAttached, trace, operated: window.__jobPilottoOperated || [], unknownUploads: window.__jobPilottoUnknownUploads || [], todo: [...new Set([...todo, ...review, ...legal])].slice(0, 25)};
     for (const item of answers) {
       const row = rowOf[item.field];
       if (!row || contactFields.has(item.field) || row.legal || /your details|standard answer/.test(item.source || '')) continue;
@@ -324,7 +342,7 @@
       if (long || unsure || item.draft) markAttention(item.field, row.label || item.question || item.field);
       if (item.draft) markDraft(item.field, item.draft);   // a written answer drafted from the person's facts: reviewed before it counts (page/fill-marks.js)
     }
-    const letterBox = Array.from(document.querySelectorAll('textarea')).find(el => /cover\s*letter/i.test(`${el.id} ${el.name} ${labelOf(el)}`));
+    const letterBox = letterBoxes()[0];
     if (coverLetter && letterBox?.value) markAttention(letterBox.id || letterBox.name, 'Cover letter');
     summary.held = held;   // a layer the extension could not close: nothing more was typed (flow.js turns it into the held result)
     return summary;

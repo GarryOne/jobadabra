@@ -189,3 +189,17 @@ test('no native select is used as a navigator anywhere in the renderer', () => {
       assert.doesNotMatch(hit, /jump|go to|navigate/i, `${file}: a select used to move between items; use the navigator (renderer/question-nav.js)`);
   }
 });
+
+test('a HIGH PRIORITY letter item opens setup rather than offering a fake answer or reuse switch', async () => {
+  LIST.unshift({key: 'setup:cover-letter', question: 'Set up your cover letter', priority: 'HIGH PRIORITY', hint: 'Your letter needs approval.', setup: {kind: 'cover-letter', action: 'Review cover letter'}});
+  try {
+    await loadQuestions({force: true});
+    assert.match($('questions-count').textContent, /1 HIGH PRIORITY/);
+    await review.openQuestionReview({start: 'setup:cover-letter'});
+    assert.match(panel().textContent, /HIGH PRIORITY/);
+    assert.ok(panel().querySelector('#qr-setup-letter'));
+    assert.equal(panel().querySelector('#qr-control'), null);
+    assert.equal(panel().querySelector('#qr-confirm'), null);
+    assert.equal(panel().querySelector('#qr-reuse'), null);
+  } finally { LIST.shift(); review.closeQuestionReview(); }
+});

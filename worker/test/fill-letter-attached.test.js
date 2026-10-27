@@ -10,11 +10,12 @@ const slot = (id, title, required) => `<div class="field"><label for="${id}">${t
 const formWith = (letterRequired, other = '') => `<form><div class="field"><label for="first">First name *</label><input id="first" required></div>${slot('cv', 'CV', true)}${slot('letter', 'Cover letter', letterRequired)}${other}</form>`;
 const CV = {name: 'cv.pdf', type: 'application/pdf', data: 'JVBERi0xLjQK'};
 
-async function fill(form, resume) {
+async function fill(form, resume, {rejectLetter = false} = {}) {
   const window = openPage(JSDOM, form);
   // jsdom has no DataTransfer and its input takes only a real FileList: the smallest stand-ins, so the attach runs as in a browser.
   window.DataTransfer = class { constructor() { this.files = []; this.items = {add: file => this.files.push(file)}; } };
   for (const el of window.document.querySelectorAll('input[type=file]')) { let files = []; Object.defineProperty(el, 'files', {get: () => files, set: list => { files = list; }}); }
+  if (rejectLetter) window.document.getElementById('letter').addEventListener('change', event => { event.target.files = []; });
   const summary = await window.__jobPilottoExtensionFill([], {}, resume, '', false);
   const out = {trace: Array.from(summary.trace).map(row => ({...row})), todo: Array.from(summary.todo)};
   window.close();
@@ -39,10 +40,10 @@ test('a required letter slot with no letter asks for one, and where to write it;
   assert.ok(!todo.some(line => /^Answer: cover letter/i.test(line)), 'a file slot is never "Answer:"');
 });
 
-test('an optional letter slot with no letter stays empty and asks nothing', { skip: !JSDOM }, async () => {
-  const {trace, todo} = await fill(formWith(false), CV);
+test('an optional letter slot with missing setup stays empty and asks for important setup', { skip: !JSDOM }, async () => {
+  const {trace, todo} = await fill(formWith(false), {...CV, coverLetterStatus: {state: 'missing', ready: false, reason: 'No usable cover letter has been created.', action: 'Create cover letter'}});
   assert.deepEqual([letterRow(trace)?.outcome, letterRow(trace)?.required], ['left', false]);
-  assert.ok(!todo.some(line => /cover letter/i.test(line)), JSON.stringify(todo));
+  assert.ok(todo.some(line => /^Important: cover letter/.test(line)), JSON.stringify(todo));
 });
 
 // The class: every required upload slot that is not the CV is asked as a file to attach, never as a question to answer.
@@ -50,4 +51,11 @@ test('any other required upload slot left empty is asked as "Attach: <its title>
   const {todo} = await fill(formWith(false, slot('cert', 'Certificates', true)), CV);
   assert.ok(todo.some(line => /^Attach: certificates/i.test(line)), JSON.stringify(todo));
   assert.ok(!todo.some(line => /^Answer: certificates/i.test(line)), JSON.stringify(todo));
+});
+
+
+test('a rejected optional cover-letter upload explains the important delivery gap', {skip: !JSDOM}, async () => {
+  const {trace, todo} = await fill(formWith(false), {...CV, coverLetterStatus: {state: 'ready', ready: true}, coverLetterFile: {...CV, name: 'Cover letter.pdf'}}, {rejectLetter: true});
+  assert.equal(letterRow(trace)?.outcome, 'left');
+  assert.ok(todo.some(text => /^Important: cover letter/.test(text) && /attach/i.test(text)), JSON.stringify(todo));
 });

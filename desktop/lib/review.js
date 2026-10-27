@@ -223,7 +223,7 @@ const behindBound = (id, tab, boot, payload) => {
 };
 // The steps a card shows as one line, with no counts (extension/page-mark.js): being read, a posting, Apply pressed, a sign-in or sign-up form, its button pressed.
 export const LINE_PAGES = ['reading', 'posting', 'opening', 'other', 'account', 'sign-up', 'signing-in', 'signing-up'];
-const EMPTY = {total: 0, left: 0, ready: false, needs: '', missing: [], pending: [], reasons: [], optional: [], knockouts: [], proposals: [], filled: []};
+const EMPTY = {letterFailed: false, letterAsked: false, letterGiven: false, total: 0, left: 0, ready: false, needs: '', missing: [], pending: [], reasons: [], optional: [], knockouts: [], proposals: [], filled: []};
 // The extension's word for a session's page, as it happens (the worker sends it, so a page with no panel moves the card too). 'form': the line goes, the panel's report brings the counts.
 export function notePage(id, page, now = Date.now()) {
   if (!id || ![...LINE_PAGES, 'form'].includes(page)) return false;
@@ -253,7 +253,7 @@ export function report(sessions, payload, now = Date.now()) {
   const tabAt = before?.tabAt && before.tab === tabId ? before.tabAt : now;
   const states = {};
   for (const item of Array.isArray(payload.watch) ? payload.watch : []) if (typeof item?.filled === 'boolean') states[String(item.id)] = item.filled;
-  const state = {id: session.id, url: page.url.split(/[?#]/)[0].slice(0, 300), tab: tabId, boot: Number.isInteger(tab) ? boot : before?.boot || '', tabAt, left: Math.max(0, Number(payload.left) || 0), total: Math.max(0, Number(payload.total) || 0), needs: String(payload.needs || '').replace(/\s+/g, ' ').trim().slice(0, 80), states,
+  const state = {letterFailed: payload.letterFailed === true, letterAsked: payload.letterAsked === true, letterGiven: payload.letterGiven === true, id: session.id, url: page.url.split(/[?#]/)[0].slice(0, 300), tab: tabId, boot: Number.isInteger(tab) ? boot : before?.boot || '', tabAt, left: Math.max(0, Number(payload.left) || 0), total: Math.max(0, Number(payload.total) || 0), needs: String(payload.needs || '').replace(/\s+/g, ' ').trim().slice(0, 80), states,
     missing: (Array.isArray(payload.missing) ? payload.missing : []).slice(0, 30).map(label => String(label).slice(0, 120)).filter(Boolean)};
   // What's left as the ring counts it (an older extension sends only the required ones, as missing).
   if (Array.isArray(payload.pending)) state.pending = payload.pending.slice(0, 30).map(label => String(label).slice(0, 120)).filter(Boolean);

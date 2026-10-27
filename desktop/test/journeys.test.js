@@ -454,3 +454,28 @@ test('scenario: Apply answers after its job is marked Applying: a list read aske
   assert.notEqual(jobs(), running, 'Apply answered while its Applying write was still running: the window re-read the old stage');
   terminals._reset();
 });
+
+// The replay app does not run setup or the review queue: prove their shared missing-letter state through the desktop boundary.
+test('scenario: attached CV and complete required fields still leave missing cover-letter setup HIGH PRIORITY', async () => {
+  const {openShown} = await import('../lib/question-lists.js');
+  const {me} = await import('../lib/server-contact.js');
+  const {availableLetter} = await import('../lib/letter-availability.js');
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-letter-journey-')), {encrypt: v => v, decrypt: v => v});
+  fs.writeFileSync(storage.path('cv.pdf'), '%PDF-fictional-CV');
+  const queue = await openShown(storage, {rows: [], groups: [], ai: {client: {messages: {create: async () => { throw new Error('This setup state never needs AI'); }}}}});
+  assert.equal(queue.list.filter(row => row.setup?.kind === 'cover-letter').length, 1);
+  assert.equal(queue.list[0].priority, 'HIGH PRIORITY');
+  const details = await me(storage, FORM);
+  assert.ok(details.resume, 'the CV is attached/available while the letter is missing');
+  assert.equal(details.coverLetterStatus.state, 'missing');
+  assert.equal(details.coverLetterFile, null);
+  review._reset();
+  const sessions = [{id: 'letter-journey', url: FORM, company: 'Example', kind: 'form', status: 'done'}];
+  const payload = {session: 'letter-journey', url: FORM, tab: 91, total: 3, left: 0, letterAsked: true, letterGiven: false};
+  review.report(sessions, payload);
+  const state = review.allStates().find(row => row.id === 'letter-journey');
+  assert.equal(availableLetter(storage, FORM, {given: state.letterGiven}).status.ready, false, 'filled required fields cannot stand in for a missing letter');
+  review.report(sessions, {...payload, letterGiven: true});
+  const written = review.allStates().find(row => row.id === 'letter-journey');
+  assert.equal(availableLetter(storage, FORM, {given: written.letterGiven}).status.source, 'form', 'a letter actually supplied satisfies this form without changing fallback consent');
+});

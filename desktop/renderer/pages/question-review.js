@@ -61,6 +61,16 @@ function go(kind, index) {
 
 function question(q) {
   const body = el('div', 'jd-body qr-body');
+  if (q.setup?.kind === 'cover-letter') {
+    body.append(pill(q.priority, 'bad'), el('h3', 'qr-question', q.question), el('p', 'rich-p', q.hint));
+    const confirm = button(q.setup.action, async () => {
+      closeQuestionReview();
+      const {openSetting} = await import('./settings.js');
+      openSetting('letter');
+    }, 'primary');
+    confirm.id = 'qr-setup-letter';
+    return {body, confirm};
+  }
   const mine = q.details;   // a Your details item: no form asked it, it is a fact about you
   const asked = el('p', 'muted small qr-asked', sourceOf(q));
   if (mine) asked.append(' ', pill(mine.source, 'warn'));

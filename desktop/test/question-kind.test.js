@@ -120,6 +120,9 @@ test('a date is saved in the person\'s words and read back; free text is not a d
   assert.equal(dateWords('2026-12-01'), '1 December 2026');
   assert.equal(dateIso('1 December 2026'), '2026-12-01');
   assert.equal(dateIso('2026-12-01'), '2026-12-01');
+  assert.equal(dateIso('2026-02-31'), '', 'invalid calendar dates stay unconverted');
+  assert.equal(dateIso('31 February 2026'), '', 'invalid saved dates stay visible as saved text');
+  assert.equal(dateIso('2024-02-29'), '2024-02-29', 'date-only ISO values do not shift through a timezone');
   assert.equal(dateIso('as soon as possible'), '');
   assert.deepEqual(splitConstraints('1 December 2026; no constraints'), {date: '1 December 2026', constraints: 'none'});
   assert.deepEqual(splitConstraints('1 December 2026; part-time until June'), {date: '1 December 2026', constraints: 'part-time until June'});

@@ -8,6 +8,7 @@ import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import * as questions from '../lib/questions.js';
 import * as formats from '../lib/question-formats.js';
+import {keyOf} from '../renderer/question-filter.js';
 import {fakeNotion} from './fake-notion.js';
 
 const plainCrypto = {encrypt: value => value, decrypt: value => value};
@@ -106,6 +107,20 @@ test('the AI judges a date, an amount and whether a date question also asks abou
   assert.deepEqual(formats.keptFor(storage, asked[0]).options, [], 'a date has no options');
 });
 
+test('older AI labels are rejudged with explicit calendar-day distinctions', async () => {
+  const labels = ['What is your date of birth?', 'How many years of experience do you have?', 'What is your notice period?', 'When can you start?'];
+  const storage = storageWith({questionFormats: Object.fromEntries(labels.map(label => [keyOf(label), {kind: 'text', options: [], list: '', constraints: false, from: 'ai', at: '2026-10-01', kinds: 3}]))});
+  let request;
+  const kinds = ['date', 'text', 'duration', 'text'];
+  await formats.ensure(storage, labels, {ai: {client: {messages: {create: async value => {
+    request = value;
+    return {content: [{type: 'text', text: JSON.stringify({formats: labels.map((label, i) => ({label, kind: kinds[i], options: [], list: '', constraints: false}))})}]};
+  }}}}});
+  assert.match(request.system, /one exact calendar day/i);
+  assert.match(request.system, /year without month\/day/i);
+  assert.deepEqual(labels.map(label => formats.keptFor(storage, label).kind), kinds);
+});
+
 test('a fill\'s date field keeps the AI\'s constraints judgment, and a fill-read date is judged once for it', async () => {
   const storage = storageWith({});
   const label = 'What is your earliest start date, and are there any constraints we should be aware of?';
@@ -121,4 +136,22 @@ test('a fill\'s date field keeps the AI\'s constraints judgment, and a fill-read
   assert.equal(formats.keptFor(storage, label).constraints, true, 'a later fill keeps the judgment');
   await formats.ensure(storage, [label], {ai: {client}});
   assert.equal(seen.length, 1, 'judged once');
+});
+
+test('a generic text field is semantically judged, while typed controls remain authoritative', async () => {
+  const storage = storageWith({});
+  const labels = ['What is your date of birth?', 'How many years of experience do you have?', 'What is your notice period?', 'Start date'];
+  formats.noteFields(storage, labels.map(label => ({label, type: label === 'Start date' ? 'date' : 'text'})));
+  let calls = 0;
+  const kinds = ['date', 'text', 'duration', 'date'];
+  const client = {messages: {create: async request => {
+    calls++;
+    const asked = JSON.parse(request.messages[0].content.split('\n').slice(1, -1).join('\n'));
+    return {content: [{type: 'text', text: JSON.stringify({formats: asked.map(label => ({label, kind: kinds[labels.indexOf(label)], options: [], list: '', constraints: false}))})}]};
+  }}};
+  await formats.ensure(storage, labels, {ai: {client}});
+  assert.deepEqual(labels.map(label => formats.keptFor(storage, label).kind), kinds);
+  assert.equal(formats.keptFor(storage, 'Start date').from, 'fill', 'a native date control remains the source of truth');
+  await formats.ensure(storage, labels, {ai: {client}});
+  assert.equal(calls, 1, 'each generic text label is judged once until a new fill reports it again');
 });

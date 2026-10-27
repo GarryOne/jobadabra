@@ -76,9 +76,9 @@ async function clickCombosNow(tabId) {
     if (keys) { for (const char of [...String(text)]) for (const key of keysFor(char)) await chrome.debugger.sendCommand(target, 'Input.dispatchKeyEvent', key); return; }
     await chrome.debugger.sendCommand(target, 'Input.insertText', {text});
   }));
-  const choose = bound('choose', async ({label, asked, choices}) => {
-    const config = await settings().catch(() => null);
-    return config ? (await apiFor(tabId, config, '/extension/pick-choice', {method: 'POST', body: JSON.stringify({label, value: asked, options: choices})}).catch(() => null))?.choice || '' : '';
+  const choose = bound('choose', async ({label, asked, choices, searchable = false, tried = []}) => {
+    const config = await settings().catch(() => null), reply = config ? await apiFor(tabId, config, '/extension/pick-choice', {method: 'POST', body: JSON.stringify({label, value: asked, options: choices, searchable, tried})}).catch(() => null) : null;
+    return searchable ? {choice: reply?.choice || '', searches: Array.isArray(reply?.searches) ? reply.searches.slice(0, 3) : []} : reply?.choice || '';   // a search box: also what to type in it next (page/fill-menus.js searchFor)
   });
   const skip = [];   // the ids of the menus passed over in this pass (page/fill-menus.js __jobPilottoNextCombo): never a count, a disarmed one shifted the rest
   try {

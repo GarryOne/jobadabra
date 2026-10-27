@@ -79,6 +79,31 @@
     return {option: null, shown};
   };
 
+  // A search box whose menu showed choices, none of them the answer (a long list's first page: Greenhouse's School opens on its first 100 schools; owner, 27 Oct 2026: "search,
+  // then Other"): each search the AI named is typed for real, in order (the answer's own name, then the list's catch-all), a search that found nothing is passed over, and the
+  // AI picks by meaning among what one found, told what was already typed. -> {option, shown}
+  const realOptions = () => optionNodes().filter(o => !o.matches('[class*="notice"], [class*="Notice"]'));   // a menu's "No options" / "Loading..." line is no choice
+  const searchFor = async (el, answer, searches) => {
+    const asked = String(answer).split(' || ')[0], tried = [];
+    for (const text of searches.slice(0, 3)) {
+      if (!(await need({kind: 'type', text}))) break;
+      tried.push(text);
+      let found = [];
+      for (let waited = 0; waited < 3000; waited += 250) {
+        await sleep(250);
+        if (matchOption(answer)) return {option: matchOption(answer), shown: found};
+        found = realOptions().map(o => clean(o.textContent)).filter(Boolean).slice(0, 60);
+        if (waited >= 1000 && found.length) break;
+      }
+      if (!found.length) continue;
+      const reply = await need({kind: 'choose', label: labelOf(el) || '', asked, choices: found, searchable: true, tried});
+      const choice = typeof reply === 'string' ? reply : reply?.choice || '';
+      const hit = choice && realOptions().find(o => clean(o.textContent) === choice);
+      if (hit) return {option: hit, shown: found};
+    }
+    return {option: null, shown: []};
+  };
+
   // A box that only takes a suggestion the page offers (page/suggest-box.js: it emptied itself when focus left): the answer typed for real, the options that appeared beside it awaited, the one that
   // means the applicant's own place chosen (the AI's pick: one of them or none; a place the page offers first, nearby or not, is never taken for the applicant's), then checked once focus has left again:
   // a box the page empties reads as empty, never as filled. Nothing chosen: the box is left empty for the person (page/propose.js menuMissed). -> {selectedAfter, trusted}
@@ -150,7 +175,10 @@
           for (let waited = 0; waited < 4000 && !option; waited += 250) { loadMoreOptions(); await sleep(250); option = matchOption(answer); }
           // Nothing matched the answer's text, scrolled to ("Yes" asked, "I have the right to work here" offered): the AI picks the choice that means the same from the menu as it opened; the filter text goes first so they are all shown again.
           if (!option && menuAsOpened.length) {
-            const choice = await need({kind: 'choose', label: labelOf(el) || '', asked: String(answer).split(' || ')[0], choices: menuAsOpened});
+            const searchable = el.tagName === 'INPUT';   // a box the menu searches as you type: what it showed may be only the start of its list (searchFor)
+            const reply = await need({kind: 'choose', label: labelOf(el) || '', asked: String(answer).split(' || ')[0], choices: menuAsOpened, ...(searchable ? {searchable, tried: []} : {})});
+            const choice = typeof reply === 'string' ? reply : reply?.choice || '';
+            if (!choice && reply?.searches?.length) { const found = await searchFor(el, answer, reply.searches); option = found.option; if (found.shown.length) shown = found.shown; }
             if (choice) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ''); el.dispatchEvent(new Event('input', {bubbles: true})); for (let waited = 0; waited < 2000 && !option; waited += 250) { await sleep(250); option = optionNodes().find(o => clean(o.textContent) === choice) || null; } }
           }
           // A type-to-search box ignores that scripted typing (its options come from a server after real keystrokes, so it showed none when it opened): the extension types for real. A menu that did show its choices is asked about by meaning above, not typed at again and again.

@@ -18,7 +18,7 @@ export async function clickCombo({page, click, spot, skip = 0, type = null, choo
   const began = now();
   let busy = 0;   // ms spent inside calls that answered slowly (the page's main thread was blocked); only the excess over slowCall counts, so there is no cliff at the threshold. Calls are awaited one at a time here: run in parallel they would count twice, `hard` still bounds that
   const timed = fn => async (...args) => { const t = now(); try { return await fn(...args); } finally { const d = now() - t; if (d > PATIENCE.slowCall) busy += d - PATIENCE.slowCall; } };
-  page = timed(page); click = timed(click);
+  page = timed(page); click = timed(click); if (choose) choose = timed(choose);   // the AI's pick is the AI's time, not the menu's: a search box asks it more than once (page/fill-menus.js searchFor)
   const sleepFor = sleep;
   sleep = async ms => { const t = now(); await sleepFor(ms); const late = now() - t - ms; if (late > PATIENCE.slowCall) busy += late - PATIENCE.slowCall; };   // a starved worker wakes late too
   const over = () => now() - began >= PATIENCE.hard || now() - began - busy >= PATIENCE.ceiling;

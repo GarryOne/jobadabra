@@ -218,3 +218,16 @@ test('every spelling of a real address is still scrubbed when the body also hold
   scrubRecordDir(split, values);
   assert.deepEqual(gateRecordDir(split, values), [], 'a name split by a non-breaking space is still found');
 });
+
+// 27 Oct 2026 (gitar review on #2272): the person's OWN address in a recorded page also keeps its length, and a real placeholder like test@example.com is no scrub fake (memo keys must not move for it).
+test('the person\'s own e-mail keeps its length too, and a real example placeholder is not folded by the memo key', async () => {
+  const {normalise} = await import('../../lib/ai/model-memo.js');
+  const own = 'owner.name+jp@gmail.com', page = `<p>Signed in as ${own}; placeholder test@example.com, t@example.com</p>`;
+  const dir = recordIn([{url: 'https://site.example.test/me', type: 'text/html', body: page}]);
+  scrubRecordDir(dir, new Map([...values, [own, 'email']]));
+  const [entry] = JSON.parse(fs.readFileSync(path.join(dir, 'record.json'), 'utf8')).entries, out = fs.readFileSync(path.join(dir, 'bodies', entry.hash), 'utf8');
+  assert.equal(out.length, page.length, 'the page is exactly as long as before');
+  assert.ok(!out.includes('owner.name') && out.includes('placeholder test@example.com, t@example.com'), 'the own address is gone, the placeholders stay');
+  assert.equal(normalise(JSON.stringify({text: page})), normalise(JSON.stringify({text: out})), 'the memo key does not move');
+  assert.ok(normalise('a test@example.com b').includes('test@example.com') && normalise('x t@example.com').includes(' t@example.com'), 'a real example address is kept by the key');
+});

@@ -23,3 +23,17 @@ test('setup shares the editor and starts a draft, leaving approval to the person
   assert.equal(editor.parentNode, home);
   assert.equal(editor.hidden, true);
 });
+
+test('leaving and reopening while a first draft is pending shares one generation request', async () => {
+  let finish, started = 0;
+  window.pilot.coverLetterDraft = () => { started += 1; return new Promise(resolve => { finish = resolve; }); };
+  const first = showLetterStep();
+  await new Promise(resolve => setImmediate(resolve));
+  hideLetterStep();
+  const second = showLetterStep();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(started, 1, 'navigation cannot spend twice on concurrent drafts');
+  finish({ok: false, error: 'Fictional generation failure'});
+  await Promise.all([first, second]);
+  hideLetterStep();
+});

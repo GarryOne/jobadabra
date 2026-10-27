@@ -283,7 +283,8 @@ export function addQuestion() {
 }
 // The question review's "Manage saved answers" / "View source": the tab opens searched for that answer.
 let wanted = null;   // the tab a jump named (Saved, Needs review), used by the next load instead of All
-export function searchAnswers(query = '', view = null) { filters.query = String(query || ''); wanted = view; }
+/** Plan an explicit answer-search jump; omitted view opens All, while data refresh preserves the selected view. */
+export function searchAnswers(query = '', view = null) { filters.query = String(query || ''); wanted = view || 'all'; }
 export function addRule() { newRule(); rulesOpen = true; tab?.redraw(); }
 
 export async function loadApplicationAnswers() {

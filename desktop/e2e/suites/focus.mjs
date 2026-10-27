@@ -22,6 +22,7 @@ export const run = ctx => runFocus(ctx, ['main']);
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.
 export const keepGoing = true;
 
+const LIST_LAG_MS = 15000;   // the stand-in's listing lag for the dismissal steps (lib/notion-fake.mjs setLag)
 const ERROR_WORDS = /\b(undefined|null|NaN|\[object|TypeError|Traceback|ENOENT|ECONN|could not load|stack)\b/i;
 
 export async function runFocus(ctx, parts) {
@@ -235,6 +236,9 @@ export async function runFocus(ctx, parts) {
   const actions = actionScenario(now, ` r${String(process.env.GITHUB_RUN_ID || Date.now().toString(36)).slice(-5)}`);   // names unique to this run
   await ctx.run('five more Up next cards, one for each way to finish one, are written to Notion', async () => {
     await addFocusData(ctx, actions);
+    // Notion lists a write late (CI 6 Oct 2026: up to 2 min), which is what the in-app hold covers. The stand-in lags from here on, longer than a hold
+    // cut short would last, so a dismissal the app does not hold comes back (27 Oct 2026: with no lag the three hold mutants survived, #1907 #1908 #1909).
+    ctx.standIn?.setLag(LIST_LAG_MS);
     await page.addInitScript(() => {
       const watch = () => { try { return JSON.parse(localStorage.getItem('__e2eWatch') || '[]'); } catch { return []; } };
       new MutationObserver(() => {

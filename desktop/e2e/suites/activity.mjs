@@ -127,10 +127,22 @@ export async function run(ctx) {
 
   // 5 Oct 2026: a run sent to Telegram (--send) leaves no message in this Mac's record; the report lives on its Notion page only.
   // With Always on off, the Search analysis opened to an empty pane. Same record, message stripped: the result must still be drawn.
+  let reportLine = '';
   await ctx.run('a run recorded on this Mac without its message still shows its result from the Notion page', async () => {
     await ctx.relaunch({}, profile => {
       const file = path.join(profile, 'runs.json');
-      const runs = JSON.parse(fs.readFileSync(file, 'utf8')).map(run => ({...run, message: null, report: undefined}));
+      // A run sent to Telegram has no message in its record AND none in its log (no <<<message block: lib/pipeline-lines.js appMessage). With the block left
+      // in, the window read the result from the log and never needed the page: the local-run-skips-notion-page mutant survived (#1910, 27 Oct 2026).
+      const noBlock = log => { const lines = Array.isArray(log) ? log : String(log || '').split('\n'); const kept = []; let inside = false;
+        for (const line of lines) { if (/^<<<message/.test(String(line))) inside = true; else if (/^message>>>/.test(String(line))) inside = false; else if (!inside) kept.push(line); }
+        return Array.isArray(log) ? kept : kept.join('\n'); };
+      const before = JSON.parse(fs.readFileSync(file, 'utf8'));
+      // A line of the full report that only its page holds (not the one-line summary the card falls back to since 18 Oct 2026, which made "any 20 characters" pass).
+      const weekly = before.find(run => run.kind === 'weekly' && run.message);
+      reportLine = String(weekly?.message || '').split('\n').map(line => line.trim()).map(line => line.replace(/^[A-Z][\w ]{0,20}:\s+/, ''))   // "Finding: …": the card draws the label as an icon (💡)
+        .find(line => line.length >= 25 && !String(weekly?.summary || '').includes(line) && !/^https?:|notion\.so/.test(line)) || '';
+      const runs = before.map(run => ({...run, message: null, report: undefined, log: noBlock(run.log)}));
+      if (runs.some(run => JSON.stringify(run.log).includes('<<<message'))) throw new Error('the test left a message block in a run\'s log: it would test nothing');
       fs.writeFileSync(file, JSON.stringify(runs));
     });
     await appReady(ctx);
@@ -139,6 +151,11 @@ export async function run(ctx) {
     // The report drawn from the page (its card or message), not the list's one-line result: that line is there without the page, so a run that never read its
     // page passed (#353, the local-run-skips-notion-page mutant).
     const words = `${opened.message} ${opened.card}`.trim();
+    if (!reportLine) console.log('  note: the weekly report had no line beyond its summary this time; only the length check below applies');
+    // The line's last words: a label before it ("Finding:", "Not enough data yet:") is drawn as an icon or a heading, and the AI words each report anew.
+    const flat = text => String(text).replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const tail = flat(reportLine).replace(/[.!…]+$/, '').slice(-30);
+    if (reportLine && !flat(words).includes(tail)) throw new Error(`a local run without its message shows only its summary, not its report ("${reportLine}" missing): its Notion page is not read. Shown: "${words.slice(0, 200)}"`);
     if (words.length < 20) throw new Error(`a local run without its message opens to no result ("${words}"): its Notion page is not read. State: ${JSON.stringify(opened.state)}; page errors: ${[...journey.pageErrors, ...journey.consoleErrors].slice(-3).join(' | ') || 'none'}`);
     if (!opened.log.trim()) throw new Error('reading the Notion page replaced the run\'s own log with nothing');
   }, {needs: ctx.needs});

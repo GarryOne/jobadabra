@@ -3,6 +3,13 @@
 // catch it). mutation.yml runs each mutant's suite on the mutated app (e2e.yml input `mutant`); a red suite KILLS the mutant, a green one lets it SURVIVE:
 // a serious bug the Finder would miss. Each suite also runs once unmutated (`baseline`): a suite that is red anyway says nothing, so its mutants are "unknown". Pure.
 export const BASELINE = 'baseline';
+// A mutant runs on the store its bug lives on (mutants.json `store`, 27 Oct 2026), and is judged against its suite's baseline on that same store.
+export const baselineKey = (suite, store = '') => `${BASELINE}:${suite}${store ? `:${store}` : ''}`;
+// What a mutation run does, in order: one baseline per suite and store, then every mutant. -> [{mutant, suite, store}]
+export function plan(mutants) {
+  const legs = [...new Map(mutants.map(item => [`${item.suite}:${item.store || ''}`, {mutant: BASELINE, suite: item.suite, store: item.store || ''}])).values()];
+  return [...legs, ...mutants.map(item => ({mutant: item.id, suite: item.suite, store: item.store || ''}))];
+}
 
 // The mutated text, or an error that names why the mutant no longer applies (the code moved on: the mutant must be updated, never silently skipped).
 export function applyMutant(source, mutant) {
@@ -18,13 +25,13 @@ export function applyMutant(source, mutant) {
 const read = value => (typeof value === 'string' ? {conclusion: value, findings: []} : {conclusion: value?.conclusion, findings: value?.findings || []});
 export function score(mutants, runs) {
   const rows = mutants.map(mutant => {
-    const base = read(runs[`${BASELINE}:${mutant.suite}`]), own = read(runs[mutant.id]);
+    const base = read(runs[baselineKey(mutant.suite, mutant.store)] ?? runs[baselineKey(mutant.suite)]), own = read(runs[mutant.id]);
     const raised = own.findings.filter(item => !base.findings.includes(item));
     const outcome = base.conclusion !== 'success' ? 'unknown' : own.conclusion === 'failure' || (own.conclusion === 'success' && raised.length) ? 'killed'
       : own.conclusion === 'success' ? 'survived' : 'unknown';
     const why = base.conclusion !== 'success' ? `the ${mutant.suite} suite is not green without the mutant (${base.conclusion || 'not run'})` : outcome === 'unknown' ? `the mutant run ended "${own.conclusion || 'not run'}"`
       : outcome === 'killed' ? (own.conclusion === 'failure' ? 'the suite went red' : `found: ${raised.slice(0, 2).join(', ')}`) : '';
-    return {id: mutant.id, suite: mutant.suite, what: mutant.what, outcome, why};
+    return {id: mutant.id, suite: mutant.suite, store: mutant.store || '', what: mutant.what, outcome, why};
   });
   const count = outcome => rows.filter(row => row.outcome === outcome).length;
   const judged = count('killed') + count('survived');
@@ -36,4 +43,14 @@ export function summary(result) {
   return [`## 🧬 Mutation test: ${result.score === null ? 'no result' : `${result.score}% of the planted code bugs caught`} (${result.killed} caught, ${result.survived} missed, ${result.unknown} unknown)`, '',
     '| Mutant | Suite | The bug | Result |', '|---|---|---|---|',
     ...result.rows.map(row => `| \`${row.id}\` | ${row.suite} | ${row.what} | ${icon[row.outcome]}${row.why ? ` (${row.why})` : ''} |`)].join('\n');
+}
+
+// The issues a scored run leaves (mutation-score.mjs): one per missed mutant (a comment on its open one), and the open issue of a mutant caught now is closed.
+// An unknown outcome (its suite red without the mutant) changes nothing. open: [{number, title}] -> {create: [row], comment: [{number, row}], close: [{number, row}]}
+export const issueTitle = id => `[mutation] ${id} survived: no suite caught it`;
+export function issueActions(result, open) {
+  const known = row => open.find(issue => issue.title === issueTitle(row.id));
+  const survived = result.rows.filter(row => row.outcome === 'survived'), killed = result.rows.filter(row => row.outcome === 'killed' && known(row));
+  return {create: survived.filter(row => !known(row)), comment: survived.filter(known).map(row => ({number: known(row).number, row})),
+    close: killed.map(row => ({number: known(row).number, row}))};
 }

@@ -1,7 +1,8 @@
 // An in-memory Notion for the e2e suites (6 Oct 2026, the hybrid plan): fresh, private and instant for every suite run, so no token, no shared page, no leftovers
 // and no lag. It answers exactly the requests the app and the engine make (docs/notion-surface.md), in Notion's own response shapes, at the URL the app already
 // honours in a test run (JOB_PILOTTO_E2E_NOTION_BASE_URL). Real Notion behaviour the app must handle is kept where it is cheap (editing an archived page fails);
-// lag and eventual consistency are NOT simulated: the real-Notion contract suites cover those. `seed(snapshot)` loads a scenario as plain data.
+// lag is off unless a suite turns it on (`setLag(ms)`, 27 Oct 2026: focusdismiss, which is about Notion listing a write late): then a database query answers
+// each row as it stood `ms` ago, as Notion's query does, while a page read by its id is fresh. `seed(snapshot)` loads a scenario as plain data.
 import crypto from 'node:crypto';
 import http from 'node:http';
 
@@ -34,13 +35,20 @@ function valueOut(type, written) {
 }
 const typeOfWritten = value => Object.keys(value || {}).find(key => !['id', 'type', 'name'].includes(key));
 
-export function createNotionFake() {
+export function createNotionFake({clock = () => Date.now()} = {}) {
   // Notion takes an id with or without dashes: so does the stand-in (the app sends both).
   const key = id => String(id).replace(/-/g, '');
   const store = new Map(), lists = new Map();
   const objects = {get: id => store.get(key(id)), set: (id, value) => store.set(key(id), value), has: id => store.has(key(id)), values: () => store.values()};
   const children = {has: id => lists.has(key(id)), get: id => lists.get(key(id)), set: (id, value) => lists.set(key(id), value)};
   const uploads = new Map();
+  // The listing lag: each database row's states while it is on ({at, json}); a row with none is listed as it is (it predates the lag).
+  let lagMs = 0;
+  const past = new Map();
+  const dbRows = () => [...store.values()].filter(item => item.object === 'page' && item.parent?.type === 'database_id');
+  const remember = at => { for (const item of dbRows()) { const list = past.get(item.id) || [], json = JSON.stringify(item); if (list.at(-1)?.json !== json) { list.push({at, json}); past.set(item.id, list); } } };
+  const asListed = item => { if (!lagMs || !past.has(item.id)) return item; const seen = past.get(item.id).filter(state => state.at <= clock() - lagMs).at(-1); return seen ? JSON.parse(seen.json) : null; };
+  const setLag = ms => { lagMs = Math.max(0, Number(ms) || 0); past.clear(); if (lagMs) remember(-Infinity); };
   let base = '';   // the server's own URL (startNotionFake sets it): an uploaded file is served from there, as Notion serves it from its storage
   const stats = {calls: 0, writes: 0, unknown: []};   // unknown: what the stand-in could not answer as Notion would (a gap to add, never the app's fault)
   const gap = (status, code, message) => { if (!stats.unknown.includes(message)) stats.unknown.push(message); return error(status, code, message); };
@@ -169,6 +177,11 @@ export function createNotionFake() {
   }
 
   function handle(method, path, body, query, raw) {
+    const out = respond(method, path, body, query, raw);
+    if (lagMs && method !== 'GET' && !path.endsWith('/query')) remember(clock());
+    return out;
+  }
+  function respond(method, path, body, query, raw) {
     stats.calls++;
     if (method !== 'GET') stats.writes++;
     let m;
@@ -192,7 +205,7 @@ export function createNotionFake() {
     }
     if ((m = /^databases\/([^/]+)\/query$/.exec(path)) && method === 'POST') {
       const db = objects.get(m[1]); if (!live(db) || db.object !== 'database') return error(404, 'object_not_found', `Could not find database with ID: ${m[1]}.`);
-      let rows = [...objects.values()].filter(item => item.object === 'page' && live(item) && key(item.parent?.database_id || '') === key(db.id));
+      let rows = [...objects.values()].filter(item => item.object === 'page').map(asListed).filter(item => live(item) && key(item.parent?.database_id || '') === key(db.id));
       try { rows = rows.filter(row => matches(row, body.filter)); } catch (problem) { return (problem.unknown ? gap : error)(400, 'validation_error', problem.message); }
       for (const sort of [...(body.sorts || [])].reverse()) rows.sort((a, b) => { const x = sortKey(a, sort), y = sortKey(b, sort); return (x < y ? -1 : x > y ? 1 : 0) * (sort.direction === 'descending' ? -1 : 1); });
       if (!body.sorts?.length) rows.sort((a, b) => (a.created_time < b.created_time ? 1 : -1));   // Notion: newest first by default
@@ -279,7 +292,7 @@ export function createNotionFake() {
   const dump = () => [...store.values()].filter(item => item.object !== 'block' || item.type === 'child_page' || item.type === 'child_database').map(item => ({object: item.object, id: item.id,
     parent: item.parent, archived: !!item.archived, title: item.object === 'database' ? plain(item.title) : plain(Object.values(item.properties || {}).find(p => p.type === 'title')?.title),
     ...(item.object === 'database' ? {rows: [...store.values()].filter(row => row.object === 'page' && key(row.parent?.database_id || '') === key(item.id)).length} : {})})).filter(item => item.object !== 'page' || item.parent?.type !== 'database_id');
-  return {root, objects, stats, handle, seed, dump, setBase: url => { base = url; }};
+  return {root, objects, stats, handle, seed, dump, setLag, setBase: url => { base = url; }};
 }
 
 // The file part of a multipart upload body: its bytes and type (Buffer in, Buffer out; no parser for one part).

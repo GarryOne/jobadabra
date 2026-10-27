@@ -2,6 +2,7 @@
  {
   "id": "calendar-day-dropped",
   "suite": "calendar",
+  "store": "sqlite",
   "file": "desktop/renderer/calendar.js",
   "find": "inMonth: date.getUTCMonth() === month,",
   "replace": "inMonth: date.getUTCMonth() === month && date.getUTCDate() !== 4,",
@@ -11,6 +12,7 @@
  {
   "id": "failed-run-ticked",
   "suite": "activityfailures",
+  "store": "sqlite",
   "file": "desktop/renderer/run-status.js",
   "find": "if (i === at && !live && !run?.waiting && (!run?.ok || run?.off)) return 'fail';",
   "replace": "if (i === at && !live && !run?.waiting && (!run?.ok || run?.off)) return 'done';",
@@ -20,6 +22,7 @@
  {
   "id": "raw-api-error",
   "suite": "activityfailures",
+  "store": "sqlite",
   "file": "desktop/renderer/run-warnings.js",
   "find": "  if (!PROVIDER.test(raw)) return raw.replace(",
   "replace": "  if (raw) return raw;\n  if (!PROVIDER.test(raw)) return raw.replace(",
@@ -29,6 +32,7 @@
  {
   "id": "focus-count-off-by-one",
   "suite": "focus",
+  "store": "sqlite",
   "file": "desktop/renderer/pages/focus.js",
   "find": "$('focus-count').textContent = String(today.applied);",
   "replace": "$('focus-count').textContent = String(today.applied + 1);",
@@ -38,6 +42,7 @@
  {
   "id": "target-not-written",
   "suite": "focus",
+  "store": "standin",
   "file": "desktop/lib/strategy-settings.js",
   "find": "    await publishSearchSettings(storage, {run, ensurePage, writePage});\n  } catch (error) {\n    storage.writeText('config/preferences.json', before);",
   "replace": "    void publishSearchSettings;\n  } catch (error) {\n    storage.writeText('config/preferences.json', before);",
@@ -47,6 +52,7 @@
  {
   "id": "scout-silent",
   "suite": "activity",
+  "store": "sqlite",
   "file": "src/scout.py",
   "find": "    # Each step says so as it starts:",
   "replace": "    print = lambda *args, **kwargs: None\n    # Each step says so as it starts:",
@@ -55,7 +61,8 @@
  },
  {
   "id": "focus-hold-not-kept",
-  "suite": "focus",
+  "suite": "focusdismiss",
+  "store": "standin",
   "file": "desktop/renderer/pages/focus.js",
   "find": "  settled.set(itemKey(item), Date.now() + HOLD_MS);\n  keepHolds();",
   "replace": "  settled.set(itemKey(item), Date.now() + HOLD_MS);",
@@ -64,7 +71,8 @@
  },
  {
   "id": "focus-hold-one-minute",
-  "suite": "focus",
+  "suite": "focusdismiss",
+  "store": "standin",
   "file": "desktop/renderer/pages/focus.js",
   "find": "const HOLD_MS = 10 * 60000,",
   "replace": "const HOLD_MS = 5000,",
@@ -73,7 +81,8 @@
  },
  {
   "id": "feedback-skip-not-held",
-  "suite": "focus",
+  "suite": "focusdismiss",
+  "store": "standin",
   "file": "desktop/renderer/pages/focus.js",
   "find": "    dismiss(item);   // it leaves at once, like Done and Skip; undone if Notion refuses it\n",
   "replace": "",
@@ -83,6 +92,7 @@
  {
   "id": "local-run-skips-notion-page",
   "suite": "activity",
+  "store": "standin",
   "file": "desktop/renderer/pages/activity-render.js",
   "find": "(!r.log || !r.message || (kindOf(r) === 'mail' && !r.report?.length))",
   "replace": "!r.log",
@@ -92,6 +102,7 @@
  {
   "id": "weekly-plain-layout-unread",
   "suite": "activity",
+  "store": "sqlite",
   "file": "desktop/renderer/weekly-card.js",
   "find": "const FINDING = /^(?:💡\\s*|Finding:\\s*)(.+)$/;",
   "replace": "const FINDING = /^💡\\s*(.+)$/;",
@@ -101,6 +112,7 @@
  {
   "id": "raw-http-error",
   "suite": "failuresnotion",
+  "store": "standin",
   "file": "desktop/renderer/run-warnings.js",
   "find": "  if (!PROVIDER.test(raw) && (HTTP.test(raw) || HTML.test(raw))) {",
   "replace": "  if (false) {",

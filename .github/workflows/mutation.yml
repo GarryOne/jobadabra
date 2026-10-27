@@ -37,10 +37,11 @@ jobs:
           node desktop/e2e/mutate.mjs --plan > plan.json
           count=$(jq length plan.json)
           for i in $(seq 0 $((count - 1))); do
-            mutant=$(jq -r ".[$i].mutant" plan.json); suite=$(jq -r ".[$i].suite" plan.json)
-            key="$mutant"; [ "$mutant" = baseline ] && key="baseline:$suite"
+            mutant=$(jq -r ".[$i].mutant" plan.json); suite=$(jq -r ".[$i].suite" plan.json); store=$(jq -r ".[$i].store // \"\"" plan.json)
+            # Each mutant runs on the store its bug lives on (mutants.json "store"), against its suite's baseline on that store (lib/mutation.mjs baselineKey).
+            key="$mutant"; [ "$mutant" = baseline ] && key="baseline:$suite${store:+:$store}"
             since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-            gh workflow run e2e.yml --ref main -f suite="$suite" -f mutant="$mutant"
+            gh workflow run e2e.yml --ref main -f suite="$suite" -f mutant="$mutant" -f store="${store:-alternate}"
             id=""
             for _ in $(seq 1 30); do
               sleep 10

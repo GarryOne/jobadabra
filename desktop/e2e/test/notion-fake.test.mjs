@@ -177,3 +177,31 @@ test('a date that is not ISO 8601 or a number that is not a number is refused be
   assert.equal(call(fake, 'PATCH', `pages/${row.id}`, {properties: {Started: {date: {start: 'Invalid Date'}}}}).status, 400);
   assert.equal(call(fake, 'POST', `databases/${db.id}/query`, {}).body.results.length, 3, 'nothing was written by a refused request');
 });
+
+// 27 Oct 2026: focusdismiss is about Notion's lag after a write (a query lists a write late), but on the stand-in nothing lagged, so the three in-app hold
+// mutants (#1907 #1908 #1909) survived every run. With a lag on, a query answers each row as it stood that long ago; a page read by its id is fresh at once.
+test('a listing lag: a query sees each row as it stood that long ago, a page read by its id is fresh', () => {
+  let t = 1_000_000;
+  const fake = createNotionFake({clock: () => t});
+  const db = call(fake, 'POST', 'databases', {parent: {page_id: fake.root.id}, title: text('T'), properties: {Name: {title: {}}, Stage: {select: {}}}}).body;
+  const old = call(fake, 'POST', 'pages', {parent: {database_id: db.id}, properties: {Name: {title: text('old')}, Stage: {select: {name: 'Saved'}}}}).body;
+  fake.setLag(10_000);
+  const names = filter => call(fake, 'POST', `databases/${db.id}/query`, filter ? {filter} : {}).body.results.map(row => row.properties.Name.title[0].plain_text).sort();
+  assert.deepEqual(names(), ['old'], 'a row from before the lag is listed as it is');
+  const row = call(fake, 'POST', 'pages', {parent: {database_id: db.id}, properties: {Name: {title: text('new')}, Stage: {select: {name: 'Saved'}}}}).body;
+  t += 1_000;
+  assert.deepEqual(names(), ['old'], 'a row written a second ago is not listed yet');
+  t += 10_000;
+  assert.deepEqual(names(), ['new', 'old']);
+  call(fake, 'PATCH', `pages/${row.id}`, {properties: {Stage: {select: {name: 'Done'}}}});
+  call(fake, 'PATCH', `pages/${old.id}`, {archived: true});
+  t += 1_000;
+  assert.deepEqual(names({property: 'Stage', select: {equals: 'Saved'}}), ['new', 'old'], 'a change and an archive are listed late too');
+  assert.equal(call(fake, 'GET', `pages/${row.id}`).body.properties.Stage.select.name, 'Done', 'a page read by its id is fresh');
+  t += 10_000;
+  assert.deepEqual(names({property: 'Stage', select: {equals: 'Saved'}}), []);
+  assert.deepEqual(names(), ['new']);
+  fake.setLag(0);
+  call(fake, 'POST', 'pages', {parent: {database_id: db.id}, properties: {Name: {title: text('now')}}});
+  assert.deepEqual(names(), ['new', 'now'], 'no lag: listed at once');
+});

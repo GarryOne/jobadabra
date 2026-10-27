@@ -17,13 +17,14 @@ import {PARTS, splitNote} from '../renderer/experience-profile-model.js';
 import * as clarity from './answer-clarity.js';
 import * as contactReview from './contact-review.js';
 import * as contactDetails from './contact.js';
+import * as cvQueue from './cv-queue.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 
 export const PREFIX = 'details:';
-export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing', 'contact'];
+export const KINDS = ['which', 'where', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck'];
 export const KEEP = 'Keep on the Profile';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
-const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form'};
+const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
 const PAGES = {profile: 'Profile', answers: 'Application answers'};
 const plain = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 const same = text => plain(text).toLowerCase();
@@ -62,8 +63,12 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const outline = async page => (outlines[page] ||= await opened.page(page).outline());
   const out = [];
   const client = ai.client || (ai.apiKey ? anthropicApi(ai.apiKey) : null);
+  await cvQueue.readOnce(storage, {client}).catch(() => false);   // an install set up before the CV read: once per CV file
   const have = [...Object.values(found).flat().map(line => line.label), ...itemsOf(outlines.profile, 'profile', {withOpen: true}).map(each => each.label)];
-  for (const each of await contactReview.asks(storage, await contactReview.emptyKeys(storage, {fetcher}).catch(() => []), {client, have}).catch(() => [])) {   // generated from what is missing, weighted by importance
+  const proposedFrom = await cvQueue.items(storage, {fetcher, client, have, never: storage.settings().missingFacts?.never || []}).catch(() => []);   // what the CV states or implies, to check
+  const cvFields = new Set(proposedFrom.map(each => parse(each.key).ref.contact).filter(Boolean));   // a field the CV proposes is asked there, once
+  const emptyKeys = (await contactReview.emptyKeys(storage, {fetcher}).catch(() => [])).filter(key => !cvFields.has(key));
+  for (const each of await contactReview.asks(storage, emptyKeys, {client, have}).catch(() => [])) {   // generated from what is missing, weighted by importance
     out.push(item('contact', {field: each.field}, {question: each.question, format: contactReview.format, hint: each.hint, details: {where: 'Your details → Contact details', fact: contactDetails.LABELS[each.field], weight: contactReview.weightOf(each.importance)}}));
   }
   const conflicts = await openConflicts(storage, {fetcher}).catch(() => []);
@@ -105,7 +110,9 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   }
   // The facts forms ask that nothing holds yet (lib/missing-facts.js): a few a day, the queue's most important first.
   const covered = await missingFacts.covered(storage, have, {ai});
-  for (const fact of missingFacts.pick(storage, have, {now, covered, shares: factAsks.shares(storage)})) {
+  const proposed = new Set(proposedFrom.map(each => parse(each.key).ref.fact).filter(Boolean));   // a fact the CV proposes is asked there, not again as an empty one
+  out.push(...proposedFrom);
+  for (const fact of missingFacts.pick(storage, have, {now, covered, shares: factAsks.shares(storage)}).filter(each => !proposed.has(each.id))) {
     out.push(item('missing', {id: fact.id}, {question: fact.question, format: fact.format, hint: fact.hint, details: {where: HOME_NAMES[fact.home], fact: fact.label}}));
   }
   return out;
@@ -166,6 +173,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     else await line.page.setText(line.block, `${ref.label}: ${text}`);
     return {ok: true, homeName: 'your Profile'};
   }
+  if (kind === 'cvcheck') return cvQueue.answer(storage, ref, text, {fetcher, save});
   if (kind === 'contact') return contactReview.answer(storage, ref.field, text, {fetcher});
   if (kind === 'missing') {
     const fact = missingFacts.byId(ref.id);

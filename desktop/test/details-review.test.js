@@ -10,6 +10,7 @@ import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import * as sections from '../lib/profile-sections.js';
 import * as contactDetails from '../lib/contact.js';
+import {hashOf} from '../lib/cv-check.js';
 import * as review from '../lib/details-review.js';
 import {openShown} from '../lib/question-lists.js';
 import * as questions from '../lib/questions.js';
@@ -38,9 +39,16 @@ const ai = {client: {messages: {create: async request => {
 
 const plainCrypto = {encrypt: v => v, decrypt: v => v};
 const fresh = settings => { const s = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-review-')), plainCrypto); s.saveSettings(settings); return s; };
+// A CV read for a base fact, kept as the read keeps it (lib/cv-queue.js): the queue shows it as a "check it" item without an AI call.
+const seedCv = storage => {
+  fs.writeFileSync(storage.path('cv.pdf'), 'fake cv');
+  fs.mkdirSync(path.dirname(storage.path('cv/fact-proposals.json')), {recursive: true});
+  storage.writeText('cv/fact-proposals.json', JSON.stringify({cv: hashOf(storage), proposals: [{id: 'languages', value: 'Romanian (native), English', how: 'inferred', reason: 'Written in Romanian'}]}));
+  return storage;
+};
 const ADAPTERS = {
   sqlite: async () => {
-    const storage = fresh({store: 'sqlite', telemetry: false, ...SETTINGS});
+    const storage = seedCv(fresh({store: 'sqlite', telemetry: false, ...SETTINGS}));
     const opened = store.openStore(storage);
     await opened.page('profile').write(markdown(PROFILE));
     await opened.page('answers').write(markdown(ANSWERS));
@@ -51,6 +59,7 @@ const ADAPTERS = {
     const fetcher = (url, init) => (url.includes('blocks/profile') || url.includes('blocks/P') ? pages.profile : pages.answers).fetcher(url, init);
     const storage = fresh({store: 'notion', telemetry: false, notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_ANSWERS_PAGE_ID: 'answers'}, ...SETTINGS});
     storage.setSecret('NOTION_TOKEN', 'secret');
+    seedCv(storage);
     return {storage, fetcher};
   },
 };
@@ -82,6 +91,9 @@ const FIXTURES = {
   }},
   contact: {match: /^First name/, answer: () => 'Ana Maria', after: async env => {
     assert.equal((await contactDetails.read(env.storage, env.fetcher)).first_name, 'Ana Maria', 'the answer goes to its Contact details field');
+  }},
+  cvcheck: {match: /^Languages: is this right/, answer: () => 'Romanian (native), English (fluent)', after: async env => {
+    assert.ok((await sections.read(env.storage, env.fetcher)).languages.some(line => line.label === 'Languages' && /fluent/.test(line.value)), 'the confirmed fact goes to its section');
   }},
   missing: {match: /^Earliest start date/, answer: () => '1 December 2026', after: async env => {
     assert.ok((await sections.read(env.storage, env.fetcher)).availability.some(line => line.label === 'Earliest start date' && line.value === '1 December 2026'), 'a fact nobody had given goes to its section');

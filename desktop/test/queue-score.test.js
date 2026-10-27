@@ -11,6 +11,7 @@ import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import {openShown} from '../lib/question-lists.js';
 import {factsOf} from '../lib/base-facts.js';
+import {hashOf} from '../lib/cv-check.js';
 import * as review from '../lib/details-review.js';
 import {BLOCKED, MUST, factScore, keyOf, ranked, visibleQuestions, weightOf} from '../renderer/question-filter.js';
 import {fakeNotion} from './fake-notion.js';
@@ -100,6 +101,8 @@ test('every kind of Your details item names its fact (the class: what the score 
   await opened.page('profile').write(markdown([...PROFILE, 'Target: 10k or so [salary]', '## Preferences', 'Notice: 1 month', 'Relocation: maybe', 'Industries: ❓']));
   await opened.page('answers').write(markdown(['## Pay', 'Notice period: 3 months']));
   storage.saveSettings({profileUnsure: [{page: 'profile', label: 'Relocation', value: 'maybe'}], answerClarity: {'notice period\n2 months': 'guess'}});
+  fs.writeFileSync(storage.path('cv.pdf'), 'fake cv');
+  storage.writeText('cv/fact-proposals.json', JSON.stringify({cv: hashOf(storage), proposals: [{id: 'languages', value: 'English', how: 'stated', reason: 'A language line'}]}));
   const items = await review.pending(storage);
   assert.deepEqual([...new Set(items.map(item => item.details.kind))].sort(), [...review.KINDS].sort(), 'every kind is drawn here');
   for (const item of items) assert.ok(item.details.fact, `${item.details.kind} "${item.question}" names its fact`);

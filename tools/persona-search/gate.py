@@ -18,7 +18,7 @@ PRESS_LIMIT = 180   # Why (owner, 26 Oct 2026): "A find jobs session should take
 MAIN_RUNS = 3       # Why (owner, 27 Oct 2026, "Below main's range"): one run is noise (the same commit found 53 and 20 jobs), so the floor is the
 #                     lowest of main's last 3 runs, never one run's number
 PERSONA_CAP_USD = 0.08   # Why (owner, 27 Oct 2026, "Haiku on an API key ... with a per-run $ cap"): 6 personas x $0.08 = $0.48, under the $0.50 the coordinator proposed;
-#                          TODO(AI): lower it to the first measured run's cost with headroom (27 Oct 2026, on the PR)
+#                          TODO(AI): lower it to the first measured run's cost with headroom (27 Oct 2026)
 COST = 'Haiku 5.5 on PR_PROOF_ANTHROPIC_KEY'
 
 

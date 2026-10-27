@@ -1,5 +1,5 @@
 {
- "_about": "Which harness test file runs where: \"pr\" = the safety-critical set every harness PR runs (privacy scrub, records publish and fetch, discovery pick and judge, journey check, gates, ledgers, owner guards); \"daily\" = everything else, run by harness-daily.yml. Every file in test/ is in exactly one list (test/test-sets.test.mjs).",
+ "_about": "Which harness test file runs where: \"pr\" = the safety-critical set every harness PR runs (privacy scrub, records publish and fetch, discovery pick and judge, journey check, gates, ledgers, owner guards, the fill overlay); \"daily\" = everything else, run by harness-daily.yml. Every file in test/ is in exactly one list (test/test-sets.test.mjs).",
  "pr": [
   "app-words-ratchet.test.mjs",
   "coverage.test.mjs",
@@ -30,7 +30,8 @@
   "row-case-gates.test.mjs",
   "server-closes-on-failure.test.mjs",
   "site-ledger.test.mjs",
-  "test-sets.test.mjs"
+  "test-sets.test.mjs",
+  "fill-overlay.test.mjs"
  ],
  "daily": [
   "coverage-merge.test.mjs",
@@ -86,7 +87,6 @@
   "field-names-one-reader.test.mjs",
   "fill-memo.test.mjs",
   "fill-overlay-run.test.mjs",
-  "fill-overlay.test.mjs",
   "finder-causes.test.mjs",
   "finder-changes.test.mjs",
   "finder-review.test.mjs",

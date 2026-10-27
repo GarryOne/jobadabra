@@ -16,6 +16,8 @@ test('every test file is in exactly one set, and no set names a missing file', (
   assert.deepEqual([...seen.keys()].filter((f) => !onDisk.includes(f)), [], 'listed but missing');
 });
 
+// Why (owner, 27 Oct 2026: "add only what we're missing on the CI"): fill-overlay.test.mjs (the overlay that holds back the person's clicks while the extension fills,
+// 19 tests, about 100 s with a browser) joined the PR set as a missing check; the rest of the set still takes about a minute.
 test('the PR set stays small', () => {
-  assert.ok(testSets().pr.length <= 30, 'the PR set is meant to take about a minute');
+  assert.ok(testSets().pr.length <= 31, 'the PR set is meant to take about a minute, plus the fill overlay');
 });

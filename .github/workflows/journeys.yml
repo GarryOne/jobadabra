@@ -126,8 +126,7 @@ jobs:
         with:
           node-version: '22'
       - name: Tell the owner on Telegram (a failure, or back to green)
-        # Why (owner, 27 Oct 2026, via the coordinator): a run cancelled by hand is no failure; it sent "🔴 … the estimate is above the cap, or the key is missing" (refill 40451220954). cancelled() is the run's own cancel, never a job's timeout. Guard: tests/test_ci_alert_cancel.py.
-        # Why (27 Oct 2026, coordinator): a by-hand run on a PR branch alerted the owner (harness-daily run 40457998294). A dispatch on a branch other than main sends no alert; a tag (the gate) and main still do. Guard: tests/test_ci_alert_cancel.py
+        # Why (owner, 27 Oct 2026, via the coordinator): a run cancelled by hand is no failure; it sent "🔴 … the estimate is above the cap, or the key is missing" (refill 40451220954). cancelled() is the run's own cancel, never a job's timeout. Also (27 Oct 2026, coordinator): a by-hand run on a PR branch alerted the owner (harness-daily 40457998294), so a dispatch on a branch other than main sends none; a tag (the gate) and main still do. Guard: tests/test_ci_alert_cancel.py.
         if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || !startsWith(github.ref, 'refs/heads/') || github.ref == 'refs/heads/main') }}
         working-directory: desktop/e2e
         env:

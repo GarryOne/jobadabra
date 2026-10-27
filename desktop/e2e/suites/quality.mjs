@@ -1,7 +1,7 @@
 /* global document, window */
 // Quality: not whether the Jobs check ran, but whether what it produced is RIGHT. Twelve fictional postings with a known ground truth (fixtures/golden/truth.json)
 // go through the real check; the Notion Job Matches rows and the app's own list are then compared with the truth: facts exact, a duplicate collapsed, relevant jobs
-// above irrelevant ones, scores in range and stable, every column filled, no programming accident in any text, no job text in the logs. A Sonnet judge reads the
+// above irrelevant ones, scores in range and stable, every column filled, no programming accident in any text, no job text in the logs. A Haiku judge reads the
 // free text (reason, strengths, gaps) for invented facts. Starts from a set-up install; resets only its own job and run rows.
 import {modelClient} from '../lib/model.mjs';
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ import {withRoles} from '../lib/search-roles.mjs';
 import {quiet} from '../lib/activity-steps.mjs';
 
 export const name = 'quality';
-// About $0.3 a run on Sonnet 5.5: the nightly release gate, and a push that touches what it judges (scoring and enrichment prompts, the model ids, its own fixtures), not the three-a-day schedule.
+// About $0.03 a run on Haiku 5.5 (was ~$0.3 on Sonnet until 27 Oct 2026): the nightly release gate, and a push that touches what it judges (scoring and enrichment prompts, the model ids, its own fixtures), not the three-a-day schedule.
 export const cadence = 'nightly';
 // It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
 export const sameOnEveryOs = true;
@@ -225,7 +225,7 @@ export async function run(ctx) {
       if (found.length) throw new Error(`${found.length} piece(s) of private data are in the logs: ${found.map(needle => needle === ctx.appKey || needle === ctx.token ? '(a secret)' : `"${needle.slice(0, 40)}"`).join(', ')}`);
     }, {needs: ctx.needs}));
 
-    await soft(() => ctx.run('the score reasons say nothing invented or untrue (Sonnet judge)', async () => {
+    await soft(() => ctx.run('the score reasons say nothing invented or untrue (Haiku judge)', async () => {
       const {byId} = matchRows(truth, rows);
       // The candidate as the scoring knows them: only the Profile page it read (src/ai/score.py scores "using only the profile and the posting").
       // The CV text is left out: with it, a gap such as "Datadog is not named in your profile" was judged invented whenever the CV had the skill and

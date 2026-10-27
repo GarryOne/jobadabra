@@ -237,7 +237,7 @@ jobs:
       # which measures Sonnet's scoring.
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
       E2E_AI_REPLAY: '1'   # every run replays an answer it has seen; only a request never seen goes to the model (owner, 7 Oct 2026: "$30 a week"; the schedule used to ask live)
-      E2E_JUDGE_MODEL: ${{ matrix.suite == 'quality' && 'claude-sonnet-5-5' || 'claude-haiku-5-5' }}
+      E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       JOB_PILOTTO_E2E_EXPECTS_FAILURES: ${{ inputs.mutant && '1' || '' }}   # a mutant run breaks the app on purpose: its crash reports are tagged expected, so the Sentry loop ignores them

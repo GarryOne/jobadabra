@@ -1,7 +1,7 @@
-// A Sonnet judge for the free text the app writes (a job's score reason, strengths and gaps): is it true to the posting and the candidate? Pure functions here
+// A judge (Haiku 5.5) for the free text the app writes (a job's score reason, strengths and gaps): is it true to the posting and the candidate? Pure functions here
 // (build the request, parse and rule on the verdict); judge() makes the call. The verdict has a fixed shape, so a rambling or broken reply can never pass as "fine".
 import {modelFetch} from './model.mjs';
-export const JUDGE_MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku unless a suite asks (quality: Sonnet, set in the workflows); 7 Oct 2026, "$30 a week"
+export const JUDGE_MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku in every suite (owner, 27 Oct 2026: the quality judge too; was Sonnet there since 7 Oct)
 const FLAGS = ['grounded', 'contradicts_posting', 'invents_facts', 'useful'];
 
 export const SYSTEM = `You are a strict fact-checker for a job-search tool. You get a job POSTING, the FACTS the tool extracted from it (the scorer was given these too, so they count as grounded), the CANDIDATE's profile and a TEXT the tool wrote about how well the job fits the candidate.

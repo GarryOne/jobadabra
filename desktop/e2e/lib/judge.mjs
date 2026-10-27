@@ -1,7 +1,7 @@
-// A Sonnet judge for what a feature wrote: it reads the rows and says, per item, whether they make sense for a stated person. Pure functions here (build the request,
-// validate the answer, apply the verdict); `judge` makes the one call. Sonnet only as a judge, never inside the app under test (that runs on Haiku).
+// A judge (Haiku 5.5) for what a feature wrote: it reads the rows and says, per item, whether they make sense for a stated person. Pure functions here (build the request,
+// validate the answer, apply the verdict); `judge` makes the one call. The judge never runs inside the app under test.
 import {modelFetch} from './model.mjs';
-export const MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku unless a suite asks (quality: Sonnet, set in the workflows); 7 Oct 2026, "$30 a week"
+export const MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku in every suite (owner, 27 Oct 2026: the quality judge too; was Sonnet there since 7 Oct)
 
 export const SYSTEM = `You are a strict reviewer of what a job-search tool wrote down for one person. You get the person and a list of items the tool wrote (each with its facts).
 For EACH item decide whether it makes sense for THIS person, using only the facts shown. An item makes no sense when its facts contradict each other, a field is empty or says

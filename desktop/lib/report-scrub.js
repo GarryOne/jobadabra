@@ -101,12 +101,12 @@ function replaceValue(text, re, replacement, counts) {
   return hit ? out.normalize('NFC') : text;
 }
 
-function ownOut(text, values, code, counts, report = false) {
+function ownOut(text, values, code, counts, report = false, fakeEmail = () => FAKE_EMAIL) {
   let out = code && nameRun(values) ? text.replace(nameRun(values), () => { counts.own += 1; return NAME; }) : text;
   for (const [value, kind] of (report ? [...values] : usable(values, code))) {
     if (kind === 'phone') continue;   // a phone is scrubbed by shape below (any 9+ digits), whatever its separators
     if (kind === 'email' || kind === 'account') {
-      out = out.replace(new RegExp(escape(value), 'giu'), () => { counts.own += 1; return FAKE_EMAIL; });
+      out = out.replace(new RegExp(escape(value), 'giu'), found => { counts.own += 1; return fakeEmail(found); });
       continue;
     }
     out = replaceValue(out, valueMatcher(value, code), kind === 'location' ? PLACE : NAME, counts);   // every case: a name in capitals is still the name
@@ -135,7 +135,7 @@ export function scrubPersonal(text, {type = '', url = '', values = new Map()} = 
   // kept answers are keyed by the page text and Personio's posting stopped matching them (0 of 6) after every one became a space.
   const pass = spaces => {
     const found = {own: 0, contacts: 0, phones: 0};
-    let out = ownOut(plainSeparators(original, {spaces}), values, code, found);
+    let out = ownOut(plainSeparators(original, {spaces}), values, code, found, false, sameLengthFake);
     EMAIL.lastIndex = 0;
     out = out.replace(EMAIL, (email, at, whole) => { if (EXAMPLE.test(email)) return email; const lead = escapeLead(email, at, whole), rest = email.slice(lead.length); if (rest.startsWith('@')) return email; found.contacts += 1; return lead + sameLengthFake(rest); });
     out = b64EmailsOut(out, found);

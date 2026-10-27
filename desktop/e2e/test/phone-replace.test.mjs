@@ -1,4 +1,5 @@
 // Real debugger typing must replace a prefilled telephone number and stay idempotent.
+/* global window, document, chrome */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';

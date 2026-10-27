@@ -73,8 +73,8 @@ jobs:
             if [ "$PLATFORM" = windows ]; then find e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-*' ! -name 'e2e-artifacts-windows-*' -exec rm -rf {} +
             else find e2e-artifacts -mindepth 1 -maxdepth 1 -name 'e2e-artifacts-windows-*' -exec rm -rf {} +; fi
           fi
-      # JUDGE BEFORE FILING (desktop/e2e/lib/prejudge.mjs): the run's new findings (at most 3) are judged in one Claude session before any issue opens; noise is
-      # never filed. Only with JOB_PILOTTO_FIXER_VERDICTS = "on" (AI credit) and while the AI budget breaker is closed; otherwise everything is filed as before.
+      # JUDGE BEFORE FILING (desktop/e2e/lib/prejudge.mjs): the run's new findings (at most 3) are judged before any issue opens; noise is
+      # never filed. Only with JOB_PILOTTO_FIXER_VERDICTS = "on" and while the AI budget breaker is closed; otherwise everything is filed as before.
       - name: New findings to judge before filing
         id: pending
         if: vars.JOB_PILOTTO_FIXER_VERDICTS == 'on' && env.PLANT == ''
@@ -85,30 +85,23 @@ jobs:
           node desktop/e2e/triage.mjs --artifacts e2e-artifacts --run-url "$RUN_URL" --out .heal --platform "$PLATFORM" --pending-out .heal/pending.json
           node desktop/e2e/reversals.mjs --out .heal/lessons.md   # the owner's corrections, appended to the prompt
           node desktop/e2e/prejudge.mjs --pending .heal/pending.json --out .heal
-      - name: Claude judges them (read-only)
+      # One plain AI call per finding (desktop/e2e/judge.mjs, owner 27 Oct 2026: "Free AI, own key"), no agent session: Free AI first, Haiku 5.5 only when Free AI is
+      # unsure and vars.UI_JUDGE_SETUP is "free+haiku" with a UI loop key. A provider limit trips the breaker (ai-budget.mjs --judge); no verdict = filed as before.
+      - name: Judge them (one call each, read-only)
         id: judge
-        timeout-minutes: 15   # a slow judgement must never cost the run its filing: on timeout the findings are filed as before
+        timeout-minutes: 10   # a slow judgement must never cost the run its filing
         if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0'
-        continue-on-error: true   # no verdict: the findings are filed as before and judged later (ui-verdict.yml)
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.UI_FINDINGS_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 30
-            --allowedTools "Read,Glob,Grep,Write,Bash(git log:*),Bash(git show:*)"
-          prompt: Read .heal/prejudge-prompt.md and follow it exactly. Write only .heal/verdicts.md.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        run: python3 tools/claude-failure-reason.py
-      - name: Read the verdicts, and the cost of judging
-        if: steps.pending.outputs.pending != '' && steps.pending.outputs.pending != '0'
+        continue-on-error: true
         env:
+          UI_JUDGE_SETUP: ${{ vars.UI_JUDGE_SETUP || 'haiku' }}
+          UI_LOOP_FREE_AI_CF_TOKEN: ${{ secrets.UI_LOOP_FREE_AI_CF_TOKEN }}   # the UI loop's own Workers AI-only token, never production's
+          UI_LOOP_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.UI_LOOP_FREE_AI_CF_ACCOUNT_ID }}
+          UI_LOOP_ANTHROPIC_KEY: ${{ secrets.UI_LOOP_ANTHROPIC_KEY }}   # Haiku 5.5, its own workspace with a monthly spend limit; unset = Free AI alone
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
         run: |
-          node desktop/e2e/prejudge.mjs --parse .heal/verdicts.md --pending .heal/pending.json --out .heal/verdicts.json || true
-          node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "judging ${{ steps.pending.outputs.pending }} finding(s) before filing" || true
-          node desktop/e2e/ai-cost-report.mjs --job ui-prejudge --execution /home/runner/work/_temp/claude-execution-output.json --suffix "$RUN_ID" || true
+          node desktop/e2e/judge.mjs --pending .heal/pending.json --out .heal/verdicts.json --lessons .heal/lessons.md
+          node desktop/e2e/ai-budget.mjs --judge "$RUNNER_TEMP/judge-run.json" --job "judging ${{ steps.pending.outputs.pending }} finding(s) before filing" || true
+          node desktop/e2e/ai-cost-report.mjs --job ui-prejudge --file "$RUNNER_TEMP/judge-haiku-cost.json" --suffix "$RUN_ID" || true
       - name: File the findings
         run: |
           mkdir -p .heal

@@ -1,6 +1,6 @@
 // The verdict pass's exam (lib/judge-exam.mjs), run by judge-exam.yml:
 //   node judge-exam.mjs --prepare .heal                                  -> .heal/pending.json, .heal/exam/<id>/code/, .heal/exam-prompt.md
-//   node judge-exam.mjs --score --verdicts .heal/verdicts.md --out .heal/judge-exam.json
+//   node judge-exam.mjs --score --verdicts .heal/verdicts.json --out .heal/judge-exam.json   (verdicts from judge.mjs --exam: {id: text}; a .md file is the old agent's)
 import fs from 'node:fs';
 import path from 'node:path';
 import {loadExam, examPending, scoreExam} from './lib/judge-exam.mjs';
@@ -19,7 +19,8 @@ if (args.includes('--prepare')) {
   console.log(`${pending.length} planted finding(s) to judge: ${path.join(out, 'exam-prompt.md')}`);
 } else if (args.includes('--score')) {
   const text = fs.existsSync(at('--verdicts')) ? fs.readFileSync(at('--verdicts'), 'utf8') : '';
-  const result = scoreExam(items, parseVerdicts(text, items.map(item => item.id)));
+  const verdicts = at('--verdicts').endsWith('.json') ? JSON.parse(text || '{}') : parseVerdicts(text, items.map(item => item.id));
+  const result = scoreExam(items, verdicts);
   fs.writeFileSync(at('--out'), JSON.stringify(result, null, 2));
   const line = `Judge exam: ${result.right} of ${result.total} right (${result.dismissed} real bug(s) dismissed, ${result.believed} false alarm(s) believed, ${result.missing} unanswered).`;
   console.log(`${line}\n${result.rows.map(row => `- ${row.right ? '✅' : '❌'} ${row.id}: expected ${row.expect}, got ${row.got}`).join('\n')}\n`);

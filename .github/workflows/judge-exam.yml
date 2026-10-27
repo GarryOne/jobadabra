@@ -2,7 +2,7 @@ name: CI · Judge exam
 
 # The verdict pass's exam (desktop/e2e/lib/judge-exam.mjs): ten findings from this loop's own history, each with the code as it was at its build and a known answer (four real, six false),
 # judged by the same prompt as a real finding and scored. A judge that dismisses a real bug or believes a false alarm shows it as a number on /self-heal, without anyone ticking a box.
-# It costs one judgement per finding (about ten), so it is OFF until the owner turns it on:  gh variable set JOB_PILOTTO_JUDGE_EXAM --body on
+# It costs one judgement per finding (about eleven, ~$0.02 on Haiku), so it is OFF until the owner turns it on:  gh variable set JOB_PILOTTO_JUDGE_EXAM --body on
 on:
   schedule:
     - cron: '17 8 * * 0'   # Sunday morning, before the Saturday audit is read
@@ -36,27 +36,23 @@ jobs:
           if grep -q '^skip=true' "$GITHUB_OUTPUT"; then echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           node desktop/e2e/judge-exam.mjs --prepare .heal
         id: prepare
-      - name: Claude judges the planted findings (read-only)
+      - name: Judge the planted findings (one call each, read-only)
         if: steps.prepare.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.JUDGE_EXAM_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 40
-            --allowedTools "Read,Glob,Grep,Write"
-          prompt: Read .heal/exam-prompt.md and follow it exactly. Write only .heal/verdicts.md.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        run: python3 tools/claude-failure-reason.py
-      - name: Score it
-        if: steps.prepare.outputs.skip != 'true'
+        timeout-minutes: 10
         env:
+          # The same judge, keys and setup as the UI loop's passes (desktop/e2e/judge.mjs; owner, 27 Oct 2026: "Haiku, safe drop", $5 a month).
+          UI_JUDGE_SETUP: ${{ vars.UI_JUDGE_SETUP || 'haiku' }}
+          UI_LOOP_FREE_AI_CF_TOKEN: ${{ secrets.UI_LOOP_FREE_AI_CF_TOKEN }}
+          UI_LOOP_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.UI_LOOP_FREE_AI_CF_ACCOUNT_ID }}
+          UI_LOOP_ANTHROPIC_KEY: ${{ secrets.UI_LOOP_ANTHROPIC_KEY }}
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
         run: |
-          node desktop/e2e/judge-exam.mjs --score --verdicts .heal/verdicts.md --out .heal/judge-exam.json
-          node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "judge exam" || true
-          node desktop/e2e/ai-cost-report.mjs --job judge-exam --execution /home/runner/work/_temp/claude-execution-output.json --suffix "${{ github.run_id }}" || true
+          node desktop/e2e/judge.mjs --exam --out .heal/verdicts.json
+          node desktop/e2e/ai-budget.mjs --judge "$RUNNER_TEMP/judge-run.json" --job "judge exam" || true
+          node desktop/e2e/ai-cost-report.mjs --job judge-exam --file "$RUNNER_TEMP/judge-haiku-cost.json" --suffix "${{ github.run_id }}" || true
+      - name: Score it
+        if: steps.prepare.outputs.skip != 'true'
+        run: node desktop/e2e/judge-exam.mjs --score --verdicts .heal/verdicts.json --out .heal/judge-exam.json
       - uses: actions/upload-artifact@v6
         if: always() && hashFiles('.heal/judge-exam.json') != ''
         with:

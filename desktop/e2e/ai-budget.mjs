@@ -3,6 +3,7 @@
 // tries once; the first job whose call succeeds closes it. On 3-4 Oct 2026 the loop hit the limit twice and kept starting jobs that could not think.
 //   node ai-budget.mjs --check                 -> GITHUB_OUTPUT skip=true|false
 //   node ai-budget.mjs --after <execution.json> --job <name>   -> trips or clears the breaker from a Claude run's result, writes its cost to the summary
+//   node ai-budget.mjs --judge <judge-run.json> --job <name>   -> the same from a plain-call judge run (judge.mjs: Free AI's or Anthropic's limit, 27 Oct 2026)
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,6 +22,14 @@ export function outcome(text) {
   const result = (Array.isArray(list) ? list : []).filter(item => item && item.type === 'result').at(-1) || {};
   const error = result.is_error ? String(result.result || 'error') : '';
   return {usd: Number(result.total_cost_usd) || 0, turns: Number(result.num_turns) || 0, error, limit: !!error && LIMIT.test(error)};
+}
+
+// A judge.mjs run's record -> the same outcome shape: a provider limit trips the breaker, a run with any verdict clears it.
+export function judgeOutcome(text) {
+  let run = null;
+  try { run = JSON.parse(text); } catch { return {usd: 0, turns: 0, error: 'no judge record', limit: false, answered: false}; }
+  const answered = Object.values(run.by || {}).some(n => n > 0);
+  return {usd: Number(run.usd) || 0, turns: Number(run.calls) || 0, error: run.limit || '', limit: !!run.limit, answered};
 }
 
 export function shouldSkip(issues, now = Date.now()) {
@@ -45,7 +54,7 @@ export function trip({gh = realGh, job, error}) {
   const line = `${new Date().toISOString().slice(0, 16)}Z · ${job}: ${String(error).slice(0, 200)}`;
   if (open) gh(['issue', 'comment', String(open.number), '--body', `Still at the limit: ${line}`]);
   else gh(['issue', 'create', '--label', LABEL, '--title', '💸 The AI limit is reached: the loop\'s AI jobs are paused', '--body',
-    `The AI provider refused a call because the account's usage limit is reached.\n\n> ${line}\n\nThe fixer, the verdict pass and the code review skip while this is open (they try again every ${PAUSE_HOURS} hours). Raise the limit in the Anthropic console (Settings → Limits); the first job that gets through closes this issue.`]);
+    `The AI provider refused a call because the account's usage limit is reached.\n\n> ${line}\n\nThe fixer, the verdict pass and the code review skip while this is open (they try again every ${PAUSE_HOURS} hours). Raise the limit where the line above points: the Anthropic console (Settings → Limits) for Claude, the Cloudflare dashboard (Workers AI) for Free AI; the first job that gets through closes this issue.`]);
 }
 
 export function clear({gh = realGh, job}) {
@@ -61,6 +70,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     try { skip = shouldSkip(list(realGh)); } catch { /* cannot tell: run */ }
     out('skip', String(skip));
     if (skip) summary(`Skipped: the AI limit was reached in the last ${PAUSE_HOURS} hours (issue labelled ${LABEL}); this job tries again later.`);
+  } else if (args.includes('--judge')) {
+    const result = judgeOutcome((() => { try { return fs.readFileSync(at('--judge'), 'utf8'); } catch { return ''; } })()), job = at('--job') || 'the judge';
+    summary(`AI cost: $${result.usd.toFixed(4)} in ${result.turns} call(s) (${job}).`);
+    try { if (result.limit) trip({job, error: result.error}); else if (result.answered) clear({job}); } catch (error) { console.log(`breaker not updated: ${error.message}`); }
   } else if (args.includes('--after')) {
     let text = '';
     try { text = fs.readFileSync(at('--after'), 'utf8'); } catch { /* none */ }

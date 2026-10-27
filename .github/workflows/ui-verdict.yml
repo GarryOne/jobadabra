@@ -1,9 +1,9 @@
 name: CI · UI verdicts
 
 # THE VERDICT PASS, in parallel. After every filing of the UI loop (ui-findings.yml), up to five one-off findings (seen on one build, not yet judged) are
-# read by Claude, one job each, read-only: it opens the code and the screenshot and answers real / false-positive / needs-human. A real one is labelled
+# judged by one plain AI call each (desktop/e2e/judge.mjs: Free AI, Haiku when unsure; the code excerpts and the screenshot go in), read-only: real / false-positive / needs-human. A real one is labelled
 # `confirmed` (the fixer takes it next), a false positive is closed `wontfix-auto`, the rest `needs-human`. Why: the fixer judged one finding per run, so a run
-# that filed a dozen took days to sort (4 Oct 2026). Only with the repo variable JOB_PILOTTO_FIXER_VERDICTS = "on" (it spends AI credit).
+# that filed a dozen took days to sort (4 Oct 2026). Only with the repo variable JOB_PILOTTO_FIXER_VERDICTS = "on".
 on:
   workflow_run:
     workflows: ['CI · UI findings']
@@ -63,27 +63,19 @@ jobs:
           node desktop/e2e/pick.mjs --out .heal --issue "$NUMBER"
           shot=$(jq -r '.screenshot // ""' .heal/candidate.json)
           if [ -n "$shot" ]; then curl -fsSL -o .heal/screenshot.png "$shot" || echo "screenshot not downloaded"; fi
-      - name: Claude judges it (read-only)
-        id: claude
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.UI_VERDICT_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 25
-            --allowedTools "Read,Glob,Grep,Write,Bash(git log:*),Bash(git show:*)"
-          prompt: Read .heal/prompt.md and follow it exactly. Write only .heal/verdict.md.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        run: python3 tools/claude-failure-reason.py
-      - name: AI budget and cost of this run
-        if: always()
-        run: node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job "verdict of issue $NUMBER"
-      - name: Report the AI cost to /ai-cost
-        if: always()
+      - name: Judge it (one call, read-only)
+        id: judge
         env:
+          UI_JUDGE_SETUP: ${{ vars.UI_JUDGE_SETUP || 'haiku' }}
+          UI_LOOP_FREE_AI_CF_TOKEN: ${{ secrets.UI_LOOP_FREE_AI_CF_TOKEN }}   # the UI loop's own Workers AI-only token, never production's
+          UI_LOOP_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.UI_LOOP_FREE_AI_CF_ACCOUNT_ID }}
+          UI_LOOP_ANTHROPIC_KEY: ${{ secrets.UI_LOOP_ANTHROPIC_KEY }}
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: node desktop/e2e/ai-cost-report.mjs --job ui-verdict --execution /home/runner/work/_temp/claude-execution-output.json --suffix "${{ matrix.issue }}"
+        run: |
+          node desktop/e2e/judge.mjs --issue "$NUMBER" --screenshot .heal/screenshot.png --out .heal/verdict.md --lessons .heal/lessons.md
+          node desktop/e2e/ai-budget.mjs --judge "$RUNNER_TEMP/judge-run.json" --job "verdict of issue $NUMBER" || true
+          node desktop/e2e/ai-cost-report.mjs --job ui-verdict --file "$RUNNER_TEMP/judge-haiku-cost.json" --suffix "$NUMBER" || true
+          cp "$RUNNER_TEMP/judge-run.json" "$RUNNER_TEMP/ai-cost.json" || true
       - uses: actions/upload-artifact@v6
         if: always()
         with:
@@ -91,7 +83,7 @@ jobs:
           path: ${{ runner.temp }}/ai-cost.json
           if-no-files-found: ignore
       - name: Apply the verdict
-        if: steps.claude.outcome == 'success'
+        if: steps.judge.outcome == 'success' && hashFiles('.heal/verdict.md') != ''
         run: |
           set -euo pipefail
           # Comment, severity, labels, close: one script, shared with the triage-github-open-issues skill (desktop/e2e/apply-verdict.sh).

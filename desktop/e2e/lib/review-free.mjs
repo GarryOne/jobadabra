@@ -4,7 +4,7 @@
 // Its cost comes from the answer's own token counts at Cloudflare's list price. Guarded by test/review-free.test.mjs.
 export const FREE_MODEL = process.env.E2E_REVIEW_FREE_MODEL || '@cf/meta/llama-4-scout-17b-16e-instruct';
 // USD per million tokens (Cloudflare Workers AI pricing, Oct 2026: neurons per million tokens x $0.011 per 1000 neurons).
-export const FREE_PRICES = {'@cf/meta/llama-4-scout-17b-16e-instruct': {input: 0.27, output: 0.85}, '@cf/mistralai/mistral-small-3.1-24b-instruct': {input: 0.351, output: 0.555}};
+export const FREE_PRICES = {'@cf/meta/llama-4-scout-17b-16e-instruct': {input: 0.27, output: 0.85}, '@cf/qwen/qwen3-30b-a3b-fp8': {input: 0.0509, output: 0.335}, '@cf/mistralai/mistral-small-3.1-24b-instruct': {input: 0.351, output: 0.555}};
 const API = process.env.E2E_REVIEW_FREE_URL || 'https://api.cloudflare.com/client/v4';   // a test points this at a fake
 const MAX_TOKENS = 1500;   // no thinking on these models: the JSON answer alone (at most 3 findings) fits
 

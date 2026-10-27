@@ -34,7 +34,7 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
    State instead of pixels: `--eval "…JSON.stringify(…)" --no-picture`.
    For the PR: one table row per change, `| What changed | Before | After |`, the card cropped (`--select`) and the change framed (`--mark '<css>'`, same on both builds): docs/rules/desktop-ui.md.
 5. Commit (trailers from the session), then `tools/ship.sh --background [--title="<the whole PR>" if 2+ commits] --body=<file>` (rebase, fast checks, a PR; CI runs the suites)
-   and a Monitor on `^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN)`. The owner merges every PR by hand: never push to main, never merge.
+   and a Monitor on `^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|COMMENT)`. The owner merges every PR by hand: never push to main, never merge.
 6. Tell the owner **⌘R** (window only) or **restart** (main.js, lib/, preload.cjs, Python changed).
 
 ## Traps that caused real bugs

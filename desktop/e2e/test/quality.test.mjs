@@ -137,3 +137,22 @@ test('Compensation fit may be empty only for a posting that states no salary; Gr
   assert.deepEqual(mayBeEmptyFor({salary: ['95000', '120000']}), []);
   assert.deepEqual(missingColumns(withProps({'Compensation fit': null, Growth: null}), mayBeEmptyFor({salary: []})), ['Growth']);
 });
+
+// Main red, 26-27 Oct 2026 (runs 40421937350, 40423209526): Free AI took ~50 s to place 6 locations, the first refresh ran out of time with
+// "⏱ No time left in this refresh for these: 10 title(s) wait for the next one", and the suite did not refresh again: it knew only two of the
+// engine's out-of-time lines. The engine's rule is one mark: every line about work left over starts with "⏱ " (src/time_budget.py).
+test('workLeft: every out-of-time line the engine prints asks for another refresh, and nothing else does', async () => {
+  const {workLeft} = await import('../lib/quality.mjs');
+  const retry = ['Run counts: looked=12 matches=0 scored=0 good=0', '⏱ No time left in this refresh for these: 10 title(s) wait for the next one',
+    '⏱ Time is up (1 min 36 s) for employer sites: 1 sites waits for the next search', 'Job Matches: 0 created, 0 updated'].join('\n');
+  assert.equal(workLeft(retry), true, 'the retry log of run 40423209526 had work left');
+  const src = new URL('../../../src/', import.meta.url), lines = [];
+  for (const file of fs.readdirSync(src, {recursive: true}).filter(name => String(name).endsWith('.py'))) {
+    for (const match of fs.readFileSync(new URL(String(file).replaceAll('\\', '/'), src), 'utf8').matchAll(/['"](⏱ [^'"{]*)/g)) lines.push(`${file}: ${match[1]}`);
+  }
+  assert.ok(lines.length >= 7, `found only ${lines.length} "⏱ " lines in src/: the scan broke`);
+  for (const line of lines) assert.equal(workLeft(line.replace(/^[^:]+: /, '')), true, line);
+  for (const done of ['Time budget: this search stops its AI steps at 3 min 00 s; what is left waits for the next one', 'Cronjob run logged: ⏱️ Search runs row', 'Job Matches: 9 created, 0 updated']) {
+    assert.equal(workLeft(done), false, done);
+  }
+});

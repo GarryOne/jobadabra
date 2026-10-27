@@ -85,7 +85,8 @@ def ended(now=None):
 
 
 def later(stage, n, noun):
-    """Say once per search that `stage` (one of STAGES) stopped at the run's time and `n` `noun` wait for the next search (the panel shows
+    """Every line about work left over starts with "⏱ ": the e2e quality suite refreshes again on that mark (desktop/e2e/lib/quality.mjs workLeft).
+    Say once per search that `stage` (one of STAGES) stopped at the run's time and `n` `noun` wait for the next search (the panel shows
     it, desktop/renderer/human-log.js). Returns True, so a stage can `return` on it."""
     if stage not in _said and n:
         _said.add(stage)

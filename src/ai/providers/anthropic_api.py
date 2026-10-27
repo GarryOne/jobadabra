@@ -8,7 +8,7 @@ import os
 from .contract import Adapter
 from .schema import without_limits
 
-ACTIONS = ('enrich', 'score', 'kit', 'prep', 'insight', 'mail', 'inbox', 'review', 'interview', 'opportunity', 'added', 'import', 'scout', 'decide', 'tailor', 'cover_letter', 'answer', 'answer_review', 'web_search',
+ACTIONS = ('enrich', 'score', 'kit', 'prep', 'insight', 'mail', 'inbox', 'review', 'interview', 'interview_patterns', 'opportunity', 'added', 'import', 'scout', 'decide', 'tailor', 'cover_letter', 'answer', 'answer_review', 'web_search',
            # The engine's other steps (26 Oct 2026: sent with no name, Free AI logged 517 of their calls as one "other" row). Guard: tests/test_engine_action.py.
            'title_triage', 'place_triage', 'place_vague', 'place_reading', 'visit_reader', 'visit_reader_second', 'visit_relevant', 'visit_filters', 'visit_unblock',
            'visit_unblock_second', 'role_ideas', 'role_counts', 'job_page_pick', 'field_redraft', 'few_jobs', 'board_queries')

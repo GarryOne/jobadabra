@@ -80,6 +80,9 @@ test('jobs on this Mac get the choice; the plan-limit fallback only when ticked 
   assert.equal(env.JOB_PILOTTO_AI_ENGINE, 'cli');
   assert.equal(env.JOB_PILOTTO_SCORE_MODEL, 'claude-sonnet-5-5');
   assert.equal(env.ANTHROPIC_API_KEY, undefined);
+  // Claude Code's headless sign-in reaches the engine (a runner or Linux has no Keychain sign-in); absent, nothing is added.
+  assert.equal(pipeline.pipelineEnv(storage({aiEngine: 'cli', claudeCode: {path: '/x/claude'}}), {PATH: '/usr/bin', CLAUDE_CODE_OAUTH_TOKEN: 't'}).CLAUDE_CODE_OAUTH_TOKEN, 't');
+  assert.equal(env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
   assert.ok(pipeline.dailyArgs(storage({aiEngine: 'cli'}), {mode: 'run'}).includes('--score-max'));
   assert.ok(!pipeline.dailyArgs(storage({}), {mode: 'run'}).includes('--score-max'));
 });

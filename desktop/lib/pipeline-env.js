@@ -55,7 +55,11 @@ export function ensureConfig(storage) {
 const SYSTEM = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'LANG', 'LC_ALL', 'LC_CTYPE', 'SSL_CERT_FILE',
   'SystemRoot', 'SYSTEMROOT', 'windir', 'USERPROFILE', 'USERNAME', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'ComSpec', 'PATHEXT',
   'JOB_PILOTTO_FIXTURE_DIR', 'JOB_PILOTTO_LOCATIONS_FILE',   // these two: the end-to-end journey's fixture feeds and fictional candidate (desktop/e2e), never set for a user
-  'JOB_PILOTTO_SEARCH_TAPE', 'JOB_PILOTTO_SEARCH_TAPE_MODE', 'JOB_PILOTTO_TAPE_WAIT_SCALE', 'JOB_PILOTTO_TAPE_LIVE'];   // the persona search check's tape (src/search_tape.py, tools/persona-search), never set for a user
+  'JOB_PILOTTO_SEARCH_TAPE', 'JOB_PILOTTO_SEARCH_TAPE_MODE', 'JOB_PILOTTO_TAPE_WAIT_SCALE', 'JOB_PILOTTO_TAPE_LIVE',   // the persona search check's tape (src/search_tape.py, tools/persona-search), never set for a user
+  // Claude Code's own headless sign-in (`claude setup-token`): where there is no Keychain sign-in (Linux, a CI runner) it is the only way
+  // the user's Claude Code answers. It goes to the engine only to reach the user's own `claude -p` (27 Oct 2026: on a runner every AI step
+  // of a search failed as "signed out" because this was left out).
+  'CLAUDE_CODE_OAUTH_TOKEN'];
 
 // Crash reports from the engine: the app sets this (main.js) only for an installed build with Technical reports on; the engine reports
 // unhandled errors to it (src/crash_reporting.py). The install id and version ride along as tags.
@@ -128,7 +132,9 @@ export function pipelineEnv(storage, parent = process.env) {
   }
   // The end-to-end journey: every other AI step the engine has (interview review, prep, rejection review) on the same cheap model, so a step added to
   // the journey later can never quietly run on Opus or Sonnet.
-  if (OVERRIDE) Object.assign(env, {JOB_PILOTTO_INTERVIEW_MODEL: OVERRIDE, JOB_PILOTTO_PREP_MODEL: OVERRIDE, JOB_PILOTTO_REJECTION_MODEL: OVERRIDE});
+  // The engine's main and big tiers too (src/ai/models.py: the job-boards proposal ran Sonnet under the override, 27 Oct 2026).
+  if (OVERRIDE) Object.assign(env, {JOB_PILOTTO_INTERVIEW_MODEL: OVERRIDE, JOB_PILOTTO_PREP_MODEL: OVERRIDE, JOB_PILOTTO_REJECTION_MODEL: OVERRIDE,
+    JOB_PILOTTO_MAIN_MODEL: OVERRIDE, JOB_PILOTTO_BIG_MODEL: OVERRIDE});
   Object.assign(env, poolShare.variables(storage) || {});  // "Help the pool grow": only when the user turned it on
   if (settings.telegramChatId) env.TELEGRAM_CHAT_ID = String(settings.telegramChatId);
   Object.assign(env, notifyEnv(storage));   // how the person wants to be told (Settings → Automation → Notifications): src/notify.py

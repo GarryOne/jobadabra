@@ -10,8 +10,10 @@ small gpt-6-luna (= Haiku 5.5), main gpt-6.1-sol (= Sonnet 5.5), big gpt-6.1-sol
 import os
 
 SMALL_MODEL = os.getenv('JOB_PILOTTO_SMALL_MODEL') or 'claude-haiku-5-5'
-MAIN_MODEL = 'claude-sonnet-5-5'
-BIG_MODEL = 'claude-opus-5-5'
+# Main and big read their variables only for the end-to-end journey's and the benchmarks' one-model override (desktop/lib/pipeline-env.js
+# sets them from JOB_PILOTTO_MODEL_OVERRIDE; 27 Oct 2026: the job-boards step still ran Sonnet in a Haiku-only benchmark). Users never set them.
+MAIN_MODEL = os.getenv('JOB_PILOTTO_MAIN_MODEL') or 'claude-sonnet-5-5'
+BIG_MODEL = os.getenv('JOB_PILOTTO_BIG_MODEL') or 'claude-opus-5-5'
 
 # A model id's tier, by its family's naming.
 TIER_OF = (('claude-haiku', 'small'), ('claude-sonnet', 'main'), ('claude-opus', 'big'))

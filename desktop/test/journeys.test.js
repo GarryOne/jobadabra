@@ -471,7 +471,7 @@ test('scenario: attached CV and complete required fields still leave missing cov
   assert.equal(details.coverLetterFile, null);
   review._reset();
   const sessions = [{id: 'letter-journey', url: FORM, company: 'Example', kind: 'form', status: 'done'}];
-  const payload = {session: 'letter-journey', url: FORM, tab: 91, total: 3, left: 0, letterGiven: false};
+  const payload = {session: 'letter-journey', url: FORM, tab: 91, total: 3, left: 0, letterAsked: true, letterGiven: false};
   review.report(sessions, payload);
   const state = review.allStates().find(row => row.id === 'letter-journey');
   assert.equal(availableLetter(storage, FORM, {given: state.letterGiven}).status.ready, false, 'filled required fields cannot stand in for a missing letter');

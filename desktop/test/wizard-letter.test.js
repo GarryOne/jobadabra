@@ -38,3 +38,39 @@ test('leaving and reopening while a first draft is pending shares one generation
   await Promise.all([first, second]);
   hideLetterStep();
 });
+
+test('fake AI prefills the existing wizard textbox; only the person’s approval makes it usable', async () => {
+  const os = await import('node:os'), path = await import('node:path');
+  const {createStorage} = await import('../lib/storage.js');
+  const letters = await import('../lib/cover-letter.js');
+  const {letterQuestion} = await import('../lib/letter-availability.js');
+  const pages = JSON.parse(fs.readFileSync(new URL('../demo/job-pages.json', import.meta.url), 'utf8'));
+  const section = Object.values(pages).flatMap(page => Object.values(page.sections || {})).find(text => String(text).includes('### ✉️ Cover letter'));
+  const text = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'wizard-letter-fake-')), {encrypt: v => v, decrypt: v => v});
+  fs.mkdirSync(storage.path('cv'));
+  fs.writeFileSync(storage.path('cv/cv.json'), JSON.stringify({name: 'Example Person', jobs: [], skills: [], languages: []}));
+  let generations = 0, approvals = 0;
+  window.pilot.state = async () => ({settings: {}});
+  window.pilot.coverLetter = async () => letters.status(storage);
+  window.pilot.coverLetterDraft = async () => {
+    await letters.generate(storage, {client: {messages: {create: async () => { generations += 1; return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({letter: text})}]}; }}}});
+    return {ok: true, ...letters.status(storage)};
+  };
+  window.pilot.coverLetterApprove = async value => {approvals += 1; letters.edit(storage, value); letters.approve(storage, Buffer.from('%PDF-fictional')); return {ok: true, ...letters.status(storage)};};
+  const {initLetter} = await import('../renderer/pages/base-letter.js');
+  initLetter();
+  await showLetterStep();
+  assert.equal(document.getElementById('letter-text').value, text);
+  assert.equal(generations, 1);
+  assert.equal(approvals, 0);
+  assert.equal(letterQuestion(storage).setup.state, 'draft');
+  document.getElementById('letter-approve').click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(approvals, 1);
+  assert.equal(letters.status(storage).state, 'approved');
+  assert.equal(letterQuestion(storage).setup.state, 'disabled', 'approval never opts the base into fallback');
+  storage.saveSettings({letterFallback: true});
+  assert.equal(letterQuestion(storage), null);
+  hideLetterStep();
+});

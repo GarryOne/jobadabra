@@ -79,8 +79,8 @@ test('without a regular install key nothing is sent, and export writes the data 
 
 test('the wizard step sits after the strategy and before the extras; its words follow the owner\'s wording and never name GitHub or dollars', () => {
   const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
-  assert.match(read('renderer/pages/core.js'), /'draft', 'hosted', 'extras'/);
-  assert.match(read('renderer/pages/strategy-review.js'), /else goStep\('hosted'\)/);
+  assert.match(read('renderer/pages/core.js'), /'draft', 'letter', 'hosted', 'extras'/);
+  assert.match(read('renderer/pages/strategy-review.js'), /else goStep\('letter'\)/);
   const view = read('renderer/pages/hosted.js');
   assert.match(view, /New matching jobs every morning, even when your Mac is off/);
   assert.match(view, /Search for me every day/);   // the wizard's own switch label (owner's wording)

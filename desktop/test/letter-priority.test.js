@@ -23,11 +23,3 @@ test('the queue derives exactly one HIGH PRIORITY create action, ahead of blocke
     assert.equal(letters[0].setup.action, 'Create cover letter');
   }
 });
-
-test('wizard has a letter step after saved strategy, reusing the explicit approval editor', () => {
-  const read = file => fs.readFileSync(new URL(`../renderer/${file}`, import.meta.url), 'utf8');
-  assert.match(read('pages/core.js'), /'draft', 'letter', 'hosted'/);
-  assert.match(read('pages/strategy-review.js'), /else goStep\('letter'\)/);
-  assert.match(read('index.html'), /id="setup-letter-slot"/);
-  assert.match(read('pages/wizard.js'), /showLetterStep/);
-});

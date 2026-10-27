@@ -10,7 +10,7 @@ import {changeFor, kindChange, lineFor, matches, sections, shown} from '../answe
 import {profileBar} from './profile-save-bar.js';
 import {outlineTab} from './outline-tab.js';
 import {isStyle} from './letter-style.js';
-import {detailsIn, keyOf, visibleQuestions} from '../question-filter.js';
+import {extrasIn, keyOf, visibleQuestions} from '../question-filter.js';
 import {loadQuestions, questionsNow} from './jobs-questions.js';
 import {fromDetailsLine} from '../answered-from-details.js';
 import {ASKS} from '../question-nav.js';
@@ -177,8 +177,9 @@ function draw(view, into) {
   // Your details' unclear items, as the review drawer walks them. Website rules with no value are listed apart, under their own count.
   lastView = view;
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().catch(() => {}); }
-  const detailRows = detailsIn(questionsNow().list).filter(each => matches({question: each.question, value: each.details?.line || ''}, {query: filters.query}));
-  const reviewCount = shownRows.length + detailRows.length;
+  const extraRows = extrasIn(questionsNow().list).filter(each => matches({question: each.question, value: each.details?.line || ''}, {query: filters.query}));
+  const detailRows = extraRows.filter(each => each.details), setupRows = extraRows.filter(each => each.setup);
+  const reviewCount = shownRows.length + extraRows.length;
 
   toolbar(view, into, reviewCount);
   for (const key of [...drafts.keys()].filter(k => String(k).startsWith('new-'))) into.append(newQuestion(view, key, list));
@@ -207,6 +208,11 @@ function draw(view, into) {
         field: () => answerField(view, item, item.hint ? `e.g. ${shown(item.hint)}` : 'Your answer', entry), kind: () => kindField(view, item)}));
     }
     // Your details' unclear items: answered in the review drawer, at that item (its one review flow).
+    for (const each of setupRows) {
+      review.append(...row(view, {key: each.key, title: shown(each.question), under: each.hint, value: '', needs: true,
+        status: statusPill(each.priority, 'bad', 'alert'), action: each.setup.action,
+        run: () => import('./question-review.js').then(page => page.openQuestionReview({start: each.key}))}));
+    }
     for (const each of detailRows) {
       review.append(...row(view, {key: `details:${each.key}`, title: shown(each.question), under: [each.details?.where || 'Your details', each.details?.line].filter(Boolean).join(' · '), value: '', needs: true,
         status: statusPill(ASKS[each.details?.kind] || 'Review saved answer', 'info', 'info'), action: 'Review', run: () => import('./question-review.js').then(drawer => drawer.openQuestionReview({start: each.key})), field: () => el('span')}));

@@ -18,7 +18,7 @@ shared.formsOpen = new Set();
 const {showFormCard} = await import('../renderer/pages/session-form-card.js');
 
 test('Applying shows HIGH PRIORITY, the approval action and no ready badge for a missing approved letter', async () => {
-  showFormCard({id: 'fictional', url: 'https://example.test/job', kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true});
+  showFormCard({id: 'fictional', url: 'https://example.test/job', kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true, letterAsked: true});
   await new Promise(resolve => setImmediate(resolve));
   const row = document.getElementById('ss-before-letter');
   assert.ok(row, 'missing-letter row exists');
@@ -31,6 +31,27 @@ test('Applying shows HIGH PRIORITY, the approval action and no ready badge for a
 
 test('an observed written letter on this form clears setup without changing the base fallback preference', async () => {
   showFormCard({id: 'fictional', url: 'https://example.test/job', kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true, letterGiven: true});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(document.getElementById('ss-before-letter').hidden, true);
+  assert.match(document.getElementById('ss-form-pill').textContent, /Ready to submit/);
+});
+
+test('tailoring redraw retains the observed written letter', async () => {
+  const calls = [];
+  window.pilot.cvOf = async (_url, given) => {calls.push(given); return {tailored: false, coverLetterStatus: given ? {state: 'ready', ready: true} : status};};
+  window.pilot.tailorCv = async () => ({ok: true});
+  const url = 'https://example.test/tailor-letter';
+  shared.allJobs = [{url, code: 'fictional', title: 'Example role', company: 'Example'}];
+  showFormCard({id: 'fictional', url, kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true, letterGiven: true, letterAsked: true});
+  await new Promise(resolve => setImmediate(resolve));
+  await document.getElementById('ss-before-cv-btn').onclick();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(calls, [true, true]);
+  assert.equal(document.getElementById('ss-before-letter').hidden, true);
+});
+
+test('a form that asks for no letter remains ready while general letter setup is pending', async () => {
+  showFormCard({id: 'fictional', url: 'https://example.test/no-letter', kind: 'form', status: 'done', inChrome: true}, {total: 3, left: 0, ready: true, letterAsked: false});
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(document.getElementById('ss-before-letter').hidden, true);
   assert.match(document.getElementById('ss-form-pill').textContent, /Ready to submit/);

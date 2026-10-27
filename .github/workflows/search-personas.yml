@@ -80,9 +80,9 @@ permissions:
   pull-requests: read
   statuses: write       # the PR's "All checks passed"
 
-concurrency:   # a PR's newer push replaces its older run; each merge to main keeps its own run (its numbers are the next floor)
-  group: search-personas-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+concurrency:   # a PR's newer push replaces its older run; a newer merge replaces main's older run (tests/test_main_runs_finish.py); a by-hand run is its own group
+  group: search-personas-${{ github.event_name == 'pull_request' && github.head_ref || github.event_name == 'push' && 'main' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
   CLAUDE_CODE_VERSION: 2.1.311
@@ -188,7 +188,6 @@ jobs:
           mapfile -t mains < <(find main -mindepth 1 -maxdepth 1 -type d | sort -t/ -k2 -nr)   # newest run first
           python3 tools/persona-search/gate.py compare results result "${mains[@]}"
           echo "code=$?" >> "$GITHUB_OUTPUT"
-          cat result/table.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v6
         if: always()
         with: {name: search-personas-result, path: result/verdict.json, retention-days: 90}

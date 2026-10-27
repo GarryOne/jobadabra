@@ -2456,16 +2456,13 @@
 <dialog id="apply-dialog">
   <form method="dialog" id="apply-form">
     <h2>Apply to jobs</h2>
-    <p class="muted">Takes your best open matches (saved ones first). Nothing is ever submitted for you.</p>
+    <p class="muted">Takes your best open matches (saved ones first).</p>
+    <section class="apply-mode-summary" aria-live="polite">
+      <h3 id="apply-mode-title"></h3>
+      <p id="apply-mode-description"></p>
+    </section>
     <label for="apply-n">How many jobs</label>
-    <input id="apply-n" type="number" min="1" max="10" value="3">
-    <fieldset>
-      <legend>How to fill them</legend>
-      <label class="radio" hidden><input type="radio" name="apply-mode" value="agents">
-        <span><b>Apply with Claude</b><br><span class="muted">One Claude session per job in its own window, driving Chrome. Follows a job board's Apply to the employer's site, creates an account there if needed (password saved in your Keychain) and fills every page. You solve CAPTCHAs, tick the terms and submit. Minutes per job; needs Claude Code and <span data-about-notion>Notion</span>.</span></span></label>
-      <label class="radio"><input type="radio" name="apply-mode" value="chrome">
-        <span><b>Fill in Chrome with the extension</b> <span class="badge-recommended">Recommended</span><br><span class="muted">Opens each job as a tab and fills forms that are right on the page. Seconds per form; stops at sign-in pages.</span></span></label>
-    </fieldset>
+    <input id="apply-n" type="number" min="1" max="10" step="1" required value="3">
     <p class="message" id="apply-message"></p>
     <div class="actions"><button class="secondary" value="cancel">Close</button><button class="primary" id="apply-go" value="default">Start</button></div>
   </form>

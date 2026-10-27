@@ -1,7 +1,6 @@
 // Jobs: loading and reloading the list, adding jobs, init(); the pieces are jobs-state/-render/-fit/-lead/-questions.js. Guarded by: search-changed, live-status-line, live-count, activity-selection-kept tests.
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
-import {resumeOffered} from '../claude-help.js';
 import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
@@ -33,6 +32,7 @@ import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
+import {applyDialogCopy, applyDialogStart} from '../apply-dialog-model.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -59,6 +59,24 @@ async function linkToJob(dialogId, messageId, result) {
 }
 
 const WALLED = /(^|\.)(linkedin\.com|glassdoor\.[a-z.]+|indeed\.[a-z.]+|levels\.fyi|reddit\.com)$/i;
+let applyDialogSettings = null;
+
+function drawApplyDialogMode(settings) {
+  applyDialogSettings = settings || null;
+  const go = $('apply-go'), count = $('apply-n').value || '3';
+  if (!applyDialogSettings) {   // Why (27 Oct 2026, owner): do not offer a fallback action when the persisted mode could not be read.
+    $('apply-mode-title').textContent = 'Apply mode unavailable';
+    $('apply-mode-description').textContent = 'Could not read your saved Apply mode. Close this dialog and try again.';
+    go.disabled = true;
+    go.textContent = 'Unavailable';
+    return;
+  }
+  const mode = applyDialogCopy(applyDialogSettings);
+  $('apply-mode-title').textContent = mode.title;
+  $('apply-mode-description').textContent = mode.description;
+  go.disabled = !mode.canStart;   // Why (27 Oct 2026, owner): a confirmed unsupported mode cannot start; an unconfirmed choice still reaches the first-choice gate.
+  go.textContent = mode.available ? `Start ${count} for review` : mode.chosen ? 'Unavailable' : 'Confirm Apply mode';
+}
 
 // List density: Comfortable (columns) or Compact (one block per job); remembered on this computer.
 function setDensity(value) {
@@ -357,25 +375,35 @@ export async function init() {
   paintFindCardFirst();
 
   $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
-  $('apply-open').addEventListener('click', () => {
+  $('apply-open').addEventListener('click', async () => {
     message('apply-message', '');
-    // The extension first; Claude is a choice only with Claude help on (claude-help.js), and never the preset one.
-    document.querySelector('input[name="apply-mode"][value="agents"]').closest('label').hidden = !(jobsState.claudeReady && resumeOffered());
-    document.querySelector('input[name="apply-mode"][value="chrome"]').checked = true;
+    const state = await window.pilot.state().catch(() => null);
+    drawApplyDialogMode(state?.settings);
     $('apply-dialog').showModal();
   });
+  $('apply-n').addEventListener('input', () => drawApplyDialogMode(applyDialogSettings));
   window.pilot.onApplyProgress(text => message('apply-message', text, 'waiting'));   // "Drafting kit 2 of 3…" while the batch drafts what is missing
   $('apply-go').addEventListener('click', async event => {
     event.preventDefault();
-    const mode = document.querySelector('input[name="apply-mode"]:checked').value;
-    const n = Math.max(1, Number($('apply-n').value) || 1);
+    const state = await window.pilot.state().catch(() => null);
+    if (!state?.settings) { drawApplyDialogMode(null); return; }   // Why (27 Oct 2026, owner): fail closed if saved Apply mode is unavailable.
+    drawApplyDialogMode(state.settings);
+    const n = Number($('apply-n').value);
+    if (!Number.isInteger(n) || n < 1 || n > 10) {   // Why (27 Oct 2026, owner): keep the batch's 1–10 integer bounds before the first-choice gate or runner.
+      $('apply-n').reportValidity();
+      message('apply-message', 'Choose between 1 and 10 jobs.', 'error');
+      return;
+    }
     // Feedback at once: picking the jobs reads Notion and checks each posting is still open (a few seconds).
     $('apply-go').disabled = true;
     $('apply-go').classList.add('busy');
     $('apply-go').textContent = 'Starting…';
-    message('apply-message', `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`, 'waiting');
+    const applyMode = applyDialogCopy(state.settings);
+    message('apply-message', applyMode.chosen
+      ? `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`
+      : 'Confirming how Jobadabra applies before starting…', 'waiting');
     try {
-      const result = await window.pilot.apply({n, mode});
+      const result = await applyDialogStart({settings: state.settings, count: n, start: options => window.pilot.apply(options)});
       if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
       if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
       if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
@@ -386,9 +414,9 @@ export async function init() {
       }
       message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
     } finally {
-      $('apply-go').disabled = false;
       $('apply-go').classList.remove('busy');
-      $('apply-go').textContent = 'Start';
+      const latest = await window.pilot.state().catch(() => null);
+      drawApplyDialogMode(latest?.settings || null);
     }
   });
 }

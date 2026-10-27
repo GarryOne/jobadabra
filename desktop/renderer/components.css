@@ -198,6 +198,9 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 /* Settings → Apply (pages/apply-settings.js) and the first-Apply dialog (pages/apply-choice.js): the checks one per row, the dialog's cards spaced from its note. */
 .apply-checks { display: grid; gap: var(--sp-2); justify-items: start; }
 .apply-choice-dialog #apply-choice-modes { margin-bottom: var(--sp-3); }
+.apply-mode-summary { margin: var(--sp-3) 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.apply-mode-summary h3 { margin: 0; font-size: var(--fs-md); }
+.apply-mode-summary p { margin: var(--sp-1) 0 0; color: var(--muted); font-size: var(--fs-sm); }
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */
 .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }

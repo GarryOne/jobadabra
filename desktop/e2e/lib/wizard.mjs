@@ -94,6 +94,18 @@ export async function runWizard(ctx) {
     const goals = await page.locator('#setup-strategy-slot #strategy-main-goals .main-goals').innerText();
     if (!goals || /No roles yet/.test(goals)) throw new Error('the strategy has no roles to search for');
     await page.click('#draft-save');
+    await ctx.expectStep('letter', 180000);
+  }, {needs: ctx.needs});
+  await ctx.run('setup drafts the base letter; explicit approval makes its PDF before continuing', async () => {
+    await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
+    const draft = await page.evaluate(() => window.pilot.coverLetter());
+    if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
+    await page.click('#letter-approve');
+    await page.waitForFunction(async () => {
+      const letter = await window.pilot.coverLetter();
+      return letter.state === 'approved' && letter.pdf;
+    }, null, {timeout: 30000});
+    await page.click('#setup-letter-next');
     await ctx.expectStep('hosted', 180000);   // the daily-searches step (pages/hosted.js): Skip leaves hosted off, the extras step follows
     await page.click('#hosted-skip');
     await ctx.expectStep('extras');

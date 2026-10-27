@@ -25,7 +25,7 @@ async function cvInfo(url, given) {
   return info;
 }
 // A knockout: the English words, or the AI that read the form in any language (extension/page/categories.js -> the panel's `knockouts`).
-function showBefore(item, left, account = false, aiKnockouts = [], letterGiven = false) {
+function showBefore(item, left, account = false, aiKnockouts = [], letterGiven = false, letterAsked = false) {
   const read = ++beforeRead;
   const knockouts = left.filter(label => KNOCKOUT.test(label) || aiKnockouts.includes(label));
   const submitted = isSubmitted(item);
@@ -42,7 +42,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
   cvInfo(item.url, letterGiven).then(info => {
     if (!info || read !== beforeRead) return;
     const letter = info.coverLetterStatus;
-    const letterMissing = letter && !letter.ready;
+    const letterMissing = letterAsked && letter && !letter.ready;
     show($('ss-before-letter'), !!letterMissing);
     if (letterMissing) {
       $('ss-before-letter-title').textContent = 'HIGH PRIORITY · Cover letter';
@@ -73,7 +73,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
         if (added?.ok) { try { const fresh = (await window.pilot.jobs()).jobs; if (Array.isArray(fresh)) shared.allJobs = fresh; } catch {} }
         button.textContent = added?.ok ? 'Tailor my CV' : 'Retry';
         button.disabled = false;
-        if (added?.ok) showBefore(item, left, account, aiKnockouts);
+        if (added?.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked);
         else button.title = added?.text || '';
         return;
       }
@@ -82,7 +82,7 @@ function showBefore(item, left, account = false, aiKnockouts = [], letterGiven =
       button.textContent = result.ok ? 'Tailored ✓' : 'Retry';
       button.disabled = !!result.ok;
       cvSeen.delete(`${item.url}:false`); cvSeen.delete(`${item.url}:true`);
-      if (result.ok) showBefore(item, left, account, aiKnockouts);
+      if (result.ok) showBefore(item, left, account, aiKnockouts, letterGiven, letterAsked);
     };
     show($('ss-before'), true);
   });
@@ -105,7 +105,7 @@ export function showFormCard(item, state) {
   count.replaceChildren(el('b', '', String(done)), el('span', '', account ? account.count : ` of ${state.total} required fields`));
   $('ss-form-bar').style.width = `${Math.round(100 * done / state.total)}%`;
   card.classList.toggle('is-ready', !!state.ready);
-  showBefore(item, state.pending || state.missing || [], !!state.account, state.knockouts || [], state.letterGiven === true);
+  showBefore(item, state.pending || state.missing || [], !!state.account, state.knockouts || [], state.letterGiven === true, state.letterAsked === true);
   // An extension older than 0.8.12 sends no filled fields: then only what's left.
   const filled = [...(state.filled || [])].sort((a, b) => a.at - b.at);
   const left = account ? account.left : state.pending || state.missing || [];

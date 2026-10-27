@@ -33,6 +33,7 @@ test('Applying panel prominently offers missing-letter setup even when required 
     return {};
   }}};
   try {
+    await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status});
     w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
     w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
     evalPanel(w);
@@ -94,5 +95,23 @@ for (const hidden of [false, true]) test(`a rejected optional letter upload is a
     assert.equal(root.querySelector('.letter-setup').hidden, false);
     assert.equal(root.querySelector('.letter-action').textContent, 'Show on form');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
+  } finally {w.close();}
+});
+
+test('a form with no letter field can be ready while the separate setup queue remains outstanding', {skip}, async () => {
+  const {evalPanel} = await import('./helpers/panel.js');
+  const w = openPage(JSDOM, '<form><label for="a">First name</label><input id="a" required value="Example"><label for="b">Last name</label><input id="b" required value="Person"><label for="c">Email</label><input id="c" required value="example@example.test"></form>');
+  const status = {state: 'missing', ready: false, reason: 'No usable letter.', action: 'Create cover letter'};
+  w.chrome = {runtime: {id: 'test', getManifest: () => ({version: 'test'}), onMessage: {addListener() {}}, sendMessage: async m => m.type === 'panelAllowed' ? {ok: true} : m.type === 'review' ? {session: {id: 'fictional', kind: 'form'}, coverLetterStatus: status} : {}}};
+  try {
+    const result = await w.__jobPilottoExtensionFill([], {}, {coverLetterStatus: status});
+    assert.equal(result.todo.some(text => /^Important: cover letter/.test(text)), false);
+    w.eval(fs.readFileSync(new URL('../../extension/page/review-payload.js', import.meta.url), 'utf8'));
+    w.document.documentElement.setAttribute('data-jobpilotto-page', 'form');
+    evalPanel(w);
+    await new Promise(resolve => setTimeout(resolve, 60));
+    const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
+    assert.equal(root.querySelector('.letter-setup').hidden, true);
+    assert.match(root.querySelector('.pill b').textContent, /Ready to submit/);
   } finally {w.close();}
 });

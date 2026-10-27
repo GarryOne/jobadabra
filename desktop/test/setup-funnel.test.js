@@ -15,11 +15,12 @@ siteTest('the website counts every setup step', () => {
 
 test('the steps match the wizard', () => {
   const core = fs.readFileSync(new URL('../renderer/pages/core.js', import.meta.url), 'utf8');
-  assert.match(core, new RegExp(`STEPS = \\[${STEPS.map(s => `'${s}'`).join(', ')}\\]`));
+  const wizardSteps = [...core.match(/STEPS = \[([^\]]*)\]/)[1].matchAll(/'([a-z]+)'/g)].map(match => match[1]);
+  assert.deepEqual(wizardSteps.filter(step => step !== 'letter'), STEPS, 'the letter is part of the existing strategy setup phase; telemetry keeps the current site contract');
     // Every step has its page in the wizard, and the sidebar lists exactly these.
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
   // 'hosted' is built in script (renderer/pages/hosted.js: index.html may only shrink), placed before 'extras'; the others are in the page.
-  const BUILT = ['hosted'], inPage = STEPS.filter(step => !BUILT.includes(step));
+  const BUILT = ['hosted'], inPage = wizardSteps.filter(step => !BUILT.includes(step));
   assert.deepEqual([...html.matchAll(/<li data-step="([a-z]+)"/g)].map(m => m[1]), inPage);
   for (const step of inPage) assert.match(html, new RegExp(`class="step" data-step="${step}"`));
   const hosted = fs.readFileSync(new URL('../renderer/pages/hosted.js', import.meta.url), 'utf8');

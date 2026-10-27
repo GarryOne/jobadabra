@@ -23,7 +23,8 @@ Before a PR, make ONE side-by-side image: reference (the owner's mockup, or toda
 1. `tools/worktree.sh <topic>` (a worktree from origin/main with node_modules linked; never `npm install` in it);
    keep it after landing (`tools/worktree.sh prune` tidies landed ones older than 7 days).
 2. **A line with a `Why (...)` comment** (above it or trailing it): read the Why and its PR (`gh pr view <n>`) before changing it; change it only on purpose,
-   with `Why-changed: <which Why> — <reason>` in the commit (`tools/why-changed.mjs`). A decision you add gets its own Why (docs/rules/files.md "Why comments").
+   updating or removing the Why in the same commit, with `Why-changed: <which Why> — <reason>` (`tools/why-changed.mjs`). A decision you add gets its own Why;
+   a new exported function a doc comment; debt is `TODO(AI): <what> (<date or #PR>)` (docs/rules/files.md "Comments", `tools/new-code-comments.mjs`).
    Edit with anchored replacements: check the anchor exists (`assert old in s`). **Never cut code by index ranges**
    (`s[a:b]`) without printing the range first: it once deleted a whole render block.
 3. While editing, `node --test test/<the file you changed>` (after `node scripts/stage.mjs --files-only` in a fresh worktree) and `npm run lint`; the whole

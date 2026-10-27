@@ -95,6 +95,9 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 - 27 Oct 2026: a session first built the Website box by its label, against the owner's choice that the AI judges the box (#2201); another reworded a prompt
   to pass one benchmark case. Owner: "next time an AI agent/session comes, doesn't get overwrite with no reasoning/understanding why that code was like that";
   asked "rule + gate", he chose it. Hence the Why comment and `tools/why-changed.mjs` (guard: `desktop/test/why-changed.test.js`).
+- Same day, the owner on stale comments ("an outdated comment misleads an AI more than no comment"): a Why left above changed code is refused.
+  Then "let's adopt all these rules/recommendations": why-not-what, doc comments on new exported functions, invariants, tagged debt
+  (`tools/new-code-comments.mjs`, guard `desktop/test/new-code-comments.test.js`; over main's last 150 commits it would have asked on 29, 55 functions).
 
 ## Change loop
 - **Superpowers plugin dropped** (30 Sep 2026): its process cost more tokens than it saved. **No subagents** (30 Sep 2026): they ate most of the

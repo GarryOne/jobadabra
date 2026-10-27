@@ -90,6 +90,7 @@ on:
       - 'tools/recorded-fails-on-old.mjs'
       - 'tools/replay-files.mjs'
       - 'tools/rung-trailer.mjs'
+      - 'tools/new-code-comments.mjs'
       - 'tools/why-changed.mjs'
       - 'tools/sentry-fixer/lib.mjs'
       - 'tools/spec-proof.mjs'

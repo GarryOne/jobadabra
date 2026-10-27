@@ -64,8 +64,9 @@ decides that through their own permission settings.
   to check, even when an answer is supplied for them.
 - Never invent experience, numbers, employers, or credentials. Only facts from the Profile,
   Application Answers, the CV, and the posting.
-- A line that encodes a decision carries `// Why (<PR or date>[, owner]): <reason>`; read it and its PR before changing that line, and say
-  `Why-changed: <which> — <reason>` in the commit (the push gate `tools/why-changed.mjs` asks; docs/rules/files.md "Why comments").
+- A line that encodes a decision carries `// Why (<PR or date>[, owner]): <reason>`; read it and its PR before changing that line, update or remove the
+  Why in the same commit, and say `Why-changed: <which> — <reason>` (the push gate `tools/why-changed.mjs` asks). New code: a doc comment on each new
+  exported function, invariants stated, debt as `TODO(AI): <what> (<date or #PR>)` / `FIXME: <what>` (`tools/new-code-comments.mjs`; docs/rules/files.md "Comments").
 - Ask before spending money on AI models or large re-runs; this project already has three tiers
   running (Haiku extraction, Sonnet scoring, Sonnet kit drafting) — a fourth or a big re-run needs
   the owner's sign-off first.

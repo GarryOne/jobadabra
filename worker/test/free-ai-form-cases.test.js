@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {formCases} from '../../tools/free-ai-form-cases.mjs';
+import {APPLICANTS} from '../../tools/free-ai-form-applicants.mjs';
 
 const demo = name => fs.readFileSync(new URL(`../../desktop/demo/${name}`, import.meta.url), 'utf8');
 
@@ -12,7 +13,9 @@ test('each case carries the real answer prompt, the demo profile, its fields and
   for (const item of cases) {
     const system = item.params.system.map(block => block.text).join('\n');
     assert.match(system, /You fill in a job application form/, `${item.id}: the app's own instructions`);
-    assert.match(system, /Alex Morgan/, `${item.id}: the fictional demo profile`);
+    // A case with its own fictional applicant (tools/free-ai-form-applicants.mjs) carries that applicant's profile instead of the demo's.
+    if (item.applicant) assert.ok(system.includes(APPLICANTS[item.applicant].profile.split('\n').find(line => line.length > 40)), `${item.id}: its own applicant's profile`);
+    else assert.match(system, /Alex Morgan/, `${item.id}: the fictional demo profile`);
     const asked = JSON.parse(item.params.messages[0].content.match(/<form_fields>\n([\s\S]*?)\n<\/form_fields>/)[1]).map(f => f.field);
     for (const id of Object.keys(item.expect)) assert.ok(asked.includes(id), `${item.id}: expects ${id}, which is not asked`);
     assert.equal(item.params.output_config.format.type, 'json_schema');

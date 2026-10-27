@@ -30,7 +30,17 @@ a quiet window). `tools/file-size.mjs` warns (never blocks) when a change touche
 - **Land fast:** rebase right before the push and port what others changed in the moved range.
 - **A migration or move is its own pure commit**, in a quiet window announced to all peers, never mixed with behaviour changes.
 
-## Why comments
+## Comments
+Comments carry what the code cannot say: why, and what must stay true (owner, 27 Oct 2026). For code a commit writes or touches; never a mass rewrite.
+- **Why, not what:** business rules, hidden dependencies, constraints. Never restate the syntax or narrate the steps.
+- **New exported function:** a doc comment right above it (or a Python docstring): what it takes, what it returns, what it does on a failure, where its
+  data comes from. The repo's one-line form is fine (`// -> the pick, or null when none (read from the store)`).
+- **Invariants and assumptions:** say them where they hold ("input sorted, non-empty", "the heavy lock is held"); the 5 flow-core files keep their
+  `Invariants:` blocks (docs/rules/applying.md).
+- **Debt:** `TODO(AI): <what is left> (<date or #PR>)` or `FIXME: <what is wrong>`; never a bare "TODO" or "fix later".
+- **Gate** (`tools/new-code-comments.mjs`, the push's fast checks): a new exported function with no doc comment, a debt note without its tag. The rest is this rule.
+
+### Why comments
 A line that encodes a decision says why, so the next session does not undo it without knowing (owner, 27 Oct 2026).
 - **Form:** one line, `// Why (<PR or date>[, owner]): <reason>` (`#` in Python, shell, YAML), right above the line or trailing it. `owner` when it was his choice.
   More lines may follow as plain comment lines; a labelled line (`Usage:`, `Tests:`, `Used by`) ends them.
@@ -42,5 +52,7 @@ A line that encodes a decision says why, so the next session does not undo it wi
 - **What the gate guards** (`tools/why-changed.mjs`, in the push's fast checks): the Why's own lines, the first code line under them (not under a file's header),
   the line a trailing Why sits on, and a quoted prompt sentence. Deleting or rewriting one needs `Why-changed: <which Why> — <reason>` in a commit message
   of the push. Free: a new Why, a pure move or re-indent (the same lines come back elsewhere in the push), any other line.
-- **Before you change a guarded line:** read the Why and its PR (`gh pr view <n>`). Still wrong? Change it, update or drop the Why, and say it in the trailer.
-  Over main's last 300 commits the gate would have asked 4 times, each an edit of a Why or the line under it.
+- **Before you change a guarded line:** read the Why and its PR (`gh pr view <n>`). Still wrong? Change it, and in the same commit update the Why to the new
+  reason or remove it, then say it in the trailer. **A stale Why is refused even with the trailer** (the line under it changed, the Why did not): an
+  outdated comment misleads the next session more than none, because it trusts the comment over the code.
+  Over main's last 300 commits the gate would have asked 4 times, each an edit of a Why or the line under it (one of them stale).

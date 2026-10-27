@@ -52,6 +52,18 @@ test('with "Why-changed: <which> — <reason>" in a commit message it passes; an
   assert.match(push({'lib/a.js': OLD}, after, 'Drop it\n\nWhy-changed: x'), /Why-changed:/);
 });
 
+test('a stale Why is refused even with the trailer: the line under it changed and the Why did not (owner, 27 Oct 2026)', () => {
+  const trailer = 'Change the box rule\n\nWhy-changed: #2201 link box — the owner moved it to the shared link rule';
+  const code = OLD.replace('"work_page") return a', '"work_page" || a.label === "Website") return a');
+  assert.match(push({'lib/a.js': OLD}, {'lib/a.js': code}, trailer), /leaves the Why as it was:\n  lib\/a\.js:4/);
+  assert.equal(push({'lib/a.js': OLD}, {'lib/a.js': code.replace('never a label word list.', 'or the box\'s own "Website" label (#3000).')}, trailer), '', 'the Why updated with it: fine');
+  assert.equal(push({'lib/a.js': OLD}, {'lib/a.js': code.replace(/  \/\/ Why.*\n/, '')}, trailer), '', 'the Why removed with it: fine');
+  const tail = 'x = 1  # Why (#5): one, not zero\n';
+  assert.match(push({'w/a.py': tail}, {'w/a.py': 'x = 0  # Why (#5): one, not zero\n'}, trailer), /leaves the Why as it was/, 'a trailing Why kept on a changed line');
+  const prompt = '// Why (#2203): `names neither a currency nor a period` — form 106.\nexport const RULE = `A box that names neither a currency nor a period is asked.`;\n';
+  assert.match(push({'w/p.js': prompt}, {'w/p.js': prompt.replace('that names neither a currency nor a period is', 'with no currency is')}, trailer), /leaves the Why as it was/, 'a prompt sentence reworded under its Why');
+});
+
 test('a pure move passes: a renamed file, a function moved to another file, a re-indent', () => {
   assert.equal(push({'lib/a.js': OLD}, {'lib/a.js': null, 'lib/b.js': OLD}), '');
   const rest = 'import x from "y";\n\nexport { pick } from "./pick.js";\n';

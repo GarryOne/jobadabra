@@ -77,7 +77,7 @@ export function requestKey(url, body) {
 
 const cacheDir = (env = process.env) => env.E2E_AI_CACHE || '';
 export const replaying = (env = process.env) => env.E2E_AI_REPLAY === '1' && !!cacheDir(env);
-// The quality gate on main replays only (owner, 27 Oct 2026: "Code gate + AI rate"; e2e.yml E2E_AI_STRICT): a recorded answer never expires, a question with
+// Why (#2210, owner 27 Oct 2026: "Code gate + AI rate"): the quality gate on main replays only (e2e.yml E2E_AI_STRICT): a recorded answer never expires, a question with
 // no answer is asked (the run goes on) but never kept, so the retry misses it too, and the suite names it (missedQuestions). Guard: test/ai-meter.test.mjs.
 export const strict = (env = process.env) => env.E2E_AI_STRICT === '1';
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
@@ -135,7 +135,7 @@ export function missedQuestions(env = process.env) {
 }
 
 // Keep a successful answer (CI only: E2E_AI_CACHE is set by the workflow; a Mac never records).
-// An answer that says nothing is never kept: Free AI's relay once answered a quality judge with a 200 and an empty text, it was kept, and every retry replayed
+// Why (#2231): an answer that says nothing is never kept: Free AI's relay once answered a quality judge with a 200 and an empty text, it was kept, and every retry replayed
 // the same "did not answer with JSON" (#2205's run 40451177894, 27 Oct 2026; quality's answers never expire). A JSON Messages or OpenAI answer counts when one
 // block holds text or a tool call; any other answer (a stream, another shape) is kept as it came. Guard: test/ai-meter.test.mjs.
 export function usable(contentType, body) {

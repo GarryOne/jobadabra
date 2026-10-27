@@ -190,7 +190,7 @@ export function stepsCovering(map, hunksBySha, {smoke = 'settings', maxUsers = M
     for (const [file, ranges] of Object.entries(hunks)) {
       if (!entry.files[file]) continue;
       for (const range of ranges) {
-        const shared = (watched[suite] || []).includes(file) ? null : runner(file, range);   // a suite's own watched file: never shared
+        const shared = (watched[suite] || []).includes(file) ? null : runner(file, range);   // Why (#2212): a suite's own watched file is never shared code (quality skipped after #2194)
         if (shared && shared.suite !== suite) continue;
         if (shared?.loadOnly) { if (entry.steps) setupOnly.push({suite, key: `${file}:${range[0]}`}); else pick(suite, {whole: true}, `loads ${file} (line ${range[0]} ran in no suite)`); continue; }
         if (!entry.steps) { if (ran(entry.files[file].lines, range)) pick(suite, {whole: true}, `runs ${file}:${range[0]}`); continue; }

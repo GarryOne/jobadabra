@@ -98,6 +98,7 @@
    "devops",
    "cloud_infrastructure"
   ],
+  "maxScore": 49,
   "fit": "low",
   "mustMention": "german|deutsch|language",
   "description": "Senior SRE for our Swiss public-sector platform. Fliessend Deutsch (C1) is required: the team, the documentation and all meetings are in German, English alone is not enough. Kubernetes, Terraform, incident response. Hybrid in Bern, two days a week in the office."

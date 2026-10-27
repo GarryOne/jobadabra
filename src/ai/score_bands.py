@@ -1,7 +1,8 @@
 """The scorer's bands: what an overall fit score means, the same for every candidate and model (part of src/ai/score.py SYSTEM).
 Moved out of score.py as a pure move (27 Oct 2026, the file was at 499 lines), then UNMET added. Guard: tests/test_score_bands.py."""
 
-# Golden job 3005 (German C1 required, the profile has B1) scored 70, 45 and 35 on the same input (27 Oct 2026): the bands gave it no place.
+# Why (#2205, owner 27 Oct 2026: "Allow, capped at 20+20"): golden job 3005 (German C1 required, the profile has B1) scored 70, 45 and 35 on the same input:
+# the bands gave it no place. Measured on 20 scorings each: 51% -> 90% of pairs within 8; the gate checks its cap (truth.json maxScore).
 UNMET = ('  A requirement the posting states that the profile shows is unmet (a language at a higher level than the profile gives, or one the '
          'profile says disqualifies; a licence, permit or degree the profile says the candidate lacks) is a core gap: at most 49, Tier C, '
          'however well the rest matches, and name it in gaps. A requirement not mentioned in the profile is a gap of its own, not this.\n')

@@ -248,7 +248,7 @@ jobs:
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       # Quality's gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): its recorded answers never expire, and on main a question with no recorded
       # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). How steady the AI is: the night's fresh run. Guard: tests/test_quality_replay_gate.py
-      E2E_AI_STRICT: ${{ matrix.suite == 'quality' && (inputs.pr_suites == '' || inputs.after_merge != '') && '1' || '' }}
+      E2E_AI_STRICT: ${{ matrix.suite == 'quality' && (inputs.pr_suites == '' || inputs.after_merge != '') && '1' || '' }}   # Why (#2210, owner 27 Oct 2026): a PR asks a new question once and records it; main only replays
       E2E_AI_MAX_AGE_DAYS: ${{ matrix.suite == 'quality' && '3650' || '' }}
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'quality' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}   # lib/quality-rate.mjs
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)

@@ -45,6 +45,14 @@ Owner's yes before the UI commit.
 
 ## PR B · Learnings (hand-off brief after A is up)
 
+**Open facts settled from code (coordinator, 28 Oct 2026):**
+- **Where:** the `answers` page (`lib/store/index.js` TEXTS: `profile | answers | knowledge`). Every adapter already supports it,
+  so the store contract (`test/store-contract.test.js`) stays unchanged. No new page.
+- **Topic key:** fixed Your details facts keep the meanings pack's fixed `KEYS` (`shared/alias-schema.js`, `lib/aliases.js`).
+  Open topics use the verdict's AI `topic` (`lib/question-reuse.js`), BUT a free topic drifts between batches ("willing to travel" vs
+  "travel willingness"), so the learning call gets **the existing topics as a closed list** and must pick one or say "new". The
+  code validates the pick against the list (repo rule "The AI decides; code validates"). This is what keeps one topic per entry.
+
 - Store: learnings live on the `answers` page (it already is Q&A, one copy, every store). A line keeps `Question: answer` and gains
   a state mark beside the existing ❓ convention (`new`, `guessed`, `conflict`); confirmed = no mark. Evidence is read from the Form
   fills log at render time (no second copy).

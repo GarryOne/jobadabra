@@ -21,7 +21,7 @@ test('a blank optional letter is an important setup action, not a silently compl
   } finally { w.close(); }
 });
 
-test('Applying panel prominently offers missing-letter setup even when required fields and CV are complete', {skip}, async () => {
+test('Applying panel quietly offers missing-letter setup even when required fields and CV are complete', {skip}, async () => {
   const {evalPanel} = await import('./helpers/panel.js');
   const w = openPage(JSDOM, '<form><label for="a">First name</label><input id="a" required value="Example"><label for="b">Last name</label><input id="b" required value="Person"><label for="c">Email</label><input id="c" required value="example@example.test">' + FORM + '</form>');
   const sent = [];
@@ -42,11 +42,13 @@ test('Applying panel prominently offers missing-letter setup even when required 
     const banner = root.querySelector('.letter-setup');
     assert.ok(banner, 'the important setup action exists');
     assert.equal(banner.hidden, false, JSON.stringify(sent.map(m => m.type))); 
-    assert.match(banner.textContent, /HIGH PRIORITY/);
-    assert.match(banner.textContent, /Create cover letter/);
+    assert.equal(root.querySelector('.letter-title').textContent, 'Cover letter needed');
+    assert.equal(root.querySelector('.letter-reason').textContent, 'Create and review a cover letter before applying.');
+    assert.equal(root.querySelector('.letter-action').textContent, 'Create in Profile');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
     banner.querySelector('button').click();
     assert.ok(sent.some(message => message.type === 'panelOpenApp' && message.session === 'setup:cover-letter'));
+    assert.equal(sent.some(message => /cover.?letter.*(draft|generate)|(?:draft|generate).*cover.?letter/i.test(message.type)), false, 'setup navigation does not start letter generation');
     // A kit or the person's written letter satisfies this form even when the general setup is still missing.
     const box = w.document.getElementById('cover_letter');
     box.value = LETTER;
@@ -93,8 +95,12 @@ for (const hidden of [false, true]) test(`a rejected optional letter upload is a
     await new Promise(resolve => setTimeout(resolve, 60));
     const root = w.document.getElementById('jobpilotto-review-host').shadowRoot;
     assert.equal(root.querySelector('.letter-setup').hidden, false);
+    assert.equal(root.querySelector('.letter-title').textContent, 'Cover letter wasn’t kept');
+    assert.equal(root.querySelector('.letter-reason').textContent, 'Paste or attach it manually, then check again.');
     assert.equal(root.querySelector('.letter-action').textContent, 'Show on form');
     assert.doesNotMatch(root.querySelector('.pill b').textContent, /Ready to submit/);
+    root.querySelector('.letter-action').click();
+    assert.ok(w.document.querySelector('.jobpilotto-flash'), 'manual recovery highlights the failed letter control');
   } finally {w.close();}
 });
 

@@ -29,9 +29,16 @@ class AlertSkipsCancelledRun(unittest.TestCase):
         for path in sorted(WORKFLOWS.glob('*.yml')):
             for name, cond in alert_steps(path.read_text(encoding='utf-8')):
                 seen.append(path.name)
-                guarded = '!cancelled()' in cond.replace(' ', '') or re.fullmatch(r'(\$\{\{\s*)?failure\(\)(\s*\}\})?', cond)
+                guarded = '!cancelled()' in cond.replace(' ', '') or re.match(r'(\$\{\{\s*)?failure\(\)', cond)
                 self.assertTrue(guarded, f'{path.name}: step "{name}" sends a failure alert without skipping a cancelled run (if: {cond or "none"})')
         self.assertGreaterEqual(len(set(seen)), 5, f'the alerting workflows were not found: {sorted(set(seen))}')
+
+    def test_a_by_hand_run_on_a_branch_sends_no_alert(self):
+        # Why (27 Oct 2026, coordinator): a by-hand harness-daily run on a PR branch sent the owner a red alert. A tag (the gate) and main still alert.
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            for name, cond in alert_steps(path.read_text(encoding='utf-8')):
+                flat = cond.replace(' ', '')
+                self.assertTrue("github.ref=='refs/heads/main'" in flat, f'{path.name}: step "{name}" alerts on a by-hand branch run (if: {cond})')
 
     def test_the_refill_alert_names_failed_jobs_never_a_guessed_cause(self):
         text = (WORKFLOWS / 'replay-refill.yml').read_text(encoding='utf-8')

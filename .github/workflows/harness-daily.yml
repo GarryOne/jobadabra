@@ -38,7 +38,8 @@ jobs:
         working-directory: desktop/e2e
         run: node --test --test-reporter=spec test/*.test.mjs
       - name: One message to the CI alerts chat when a test failed
-        if: failure()
+        # Why (27 Oct 2026, coordinator): a by-hand run on a PR branch alerted the owner (harness-daily run 40457998294). A dispatch on a branch other than main sends no alert; a tag (the gate) and main still do. Guard: tests/test_ci_alert_cancel.py
+        if: ${{ failure() && (github.event_name != 'workflow_dispatch' || !startsWith(github.ref, 'refs/heads/') || github.ref == 'refs/heads/main') }}
         working-directory: desktop/e2e
         env:
           GH_TOKEN: ${{ github.token }}

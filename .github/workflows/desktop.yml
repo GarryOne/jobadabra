@@ -502,7 +502,7 @@ jobs:
       # which measures Sonnet's scoring.
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
       E2E_AI_REPLAY: '1'   # the gate replays AI answers it has seen (lib/ai-meter.mjs)
-      E2E_JUDGE_MODEL: ${{ matrix.suite == 'quality' && 'claude-sonnet-5-5' || 'claude-haiku-5-5' }}
+      E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate   # how an issue names the run (lib/replay.mjs)
       E2E_SEED: '0'   # the fixed path (lib/variation.mjs), on both platforms
@@ -733,7 +733,7 @@ jobs:
       # AI cost: as e2e.yml. A Windows run follows a Mac run that already asked live, so it always replays what it has seen (its own cache: paths differ).
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
       E2E_AI_REPLAY: '1'
-      E2E_JUDGE_MODEL: ${{ matrix.suite == 'quality' && 'claude-sonnet-5-5' || 'claude-haiku-5-5' }}
+      E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate
     permissions:

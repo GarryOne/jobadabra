@@ -5,7 +5,7 @@
 // its quotes must really be on the page (a quote it made up is dropped), and an unreadable reply is never a pass. Pure functions here; `judge` makes the one call.
 import {modelFetch} from './model.mjs';
 import {goView} from './go-view.mjs';
-export const MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku unless a suite asks (quality: Sonnet, set in the workflows); 7 Oct 2026, "$30 a week"
+export const MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku in every suite (owner, 27 Oct 2026: the quality judge too; was Sonnet there since 7 Oct)
 const MAX_PAGE_CHARS = 6000;
 
 export const SYSTEM = `You review a job-search app for ONE candidate. You get the candidate (profession, roles, places, languages) and the text the app showed on its screens.

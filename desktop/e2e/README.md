@@ -79,7 +79,7 @@ It costs about $0.3 a run, like the default (the SRE). It is how scoring is prov
 - **Personas.** `E2E_EMPLOYERS_PERSONA=nurse npm run all -- --only employers` runs the same suite for a band 6 nurse in Manchester: `fixtures/feeds/employers-nurse/` replaces the SRE boards of the same names (same counts, same expectations), so the scout, its Notion rows and the judge are proven for another profession. The default is the SRE in Zurich. `tests/test_e2e_employers_fixtures.py` proves both without the app, in seconds.
 - Fixtures: `fixtures/feeds/employers/` (the boards, `scout_seeds.json`, `person.json` = the fictional SRE in Zurich the scout judges for, via `JOB_PILOTTO_LOCATIONS_FILE`, so the test workspace's own search settings cannot change the outcome). A suite may export `env` for the app.
 - The expected outcomes are also proven without the app or Notion in `tests/test_e2e_employers_fixtures.py` (seconds).
-- `lib/judge.mjs`: a Sonnet judge (no `temperature`) that says per added employer whether it suits the person; a missing or unreadable verdict is a failure, never a pass. `lib/employers.mjs` holds the pure row/run-line checks, tested in `test/employers.test.mjs`.
+- `lib/judge.mjs`: a Haiku judge (no `temperature`) that says per added employer whether it suits the person; a missing or unreadable verdict is a failure, never a pass. `lib/employers.mjs` holds the pure row/run-line checks, tested in `test/employers.test.mjs`.
 - It empties only the Employers & Sources and run rows of its own page. Never run it on the wizard page while another suite uses that page (the fallback is for one suite at a time).
 
 ## What is real, what is faked
@@ -99,7 +99,7 @@ It costs about $0.3 a run, like the default (the SRE). It is how scoring is prov
 - `E2E_ANTHROPIC_KEY`: a dedicated Anthropic key with a small monthly spend limit. **CI only**: a Mac never uses it.
   What it pays is counted per suite (`lib/ai-meter.mjs`: the app under test through the AI proxy, the judges through `lib/model.mjs`) and reported to /ai-cost as
   `e2e-app` and `e2e-judges`. Only scheduled runs ask the model live; every other CI run replays an answer it has seen (`E2E_AI_REPLAY=1`, cache `.ai-cache/`,
-  kept between runs by actions/cache) and pays only for new requests. CI judges run on Haiku (`E2E_JUDGE_MODEL`), except in the quality suite.
+  kept between runs by actions/cache) and pays only for new requests. CI judges run on Haiku (`E2E_JUDGE_MODEL`), the quality suite's too since 27 Oct 2026.
 - `E2E_NOTION_TOKEN`: the test connection's token. Never use your own Notion.
 Both live in GitHub (Settings → Secrets → Actions) and, for local runs, in the macOS Keychain
 (`job-pilotto.e2e.anthropic_key`, `job-pilotto.e2e.notion_token`). Never in code.

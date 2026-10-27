@@ -27,9 +27,9 @@ test('every tab has a panel, and every panel names a tab', () => {
   for (const [id, tab] of panels) assert.ok(keys.includes(tab), `${id} names a tab that does not exist: ${tab}`);
 });
 
-test('CV is the default tab and draws the CV; Your details keeps unsaved edits', () => {
+test('CV is the first-window fallback and draws the CV; Your details keeps unsaved edits', () => {
   const settings = read('renderer/pages/settings.js'), profile = read('renderer/pages/profile.js');
-  assert.match(settings, /profileTab\('cv', \{byDefault: true\}\)/);
+  assert.match(settings, /profileTab\(remembered\('profileTab'\) \|\| 'cv', \{byDefault: true\}\)/);
   assert.match(profile, /else if \(name === 'cv'\) \{ loadCvSetting\(\); showCvChanged\(\); \}/);
   assert.doesNotMatch(profile.match(/export function profileTab[\s\S]*?\n}/)[0], /showContact/, 'switching to Your details never redraws it: unsaved edits stay');
 });

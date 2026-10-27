@@ -41,6 +41,28 @@ test('a reload of the same URL retires the old fill: the new document gets its o
   await oneFillPerTab(11, 'https://x.test/form', slow); assert.equal(starts, 3, 'the old fill ending did not remove the new fill\'s entry early or block the next ask');
 });
 
+// A stopped page fill can still be reporting its result when the person presses Check form again.
+test('Stop then restart never joins the stopped fill still finishing on the same page', async () => {
+  const {markStopped, restart} = await import('../../extension/stop-state.js');
+  let finishOld;
+  const old = oneFillPerTab(27, 'https://x.test/form', () => new Promise(resolve => { finishOld = resolve; }));
+  await Promise.resolve();
+  markStopped(123);
+  const savedChrome = globalThis.chrome;
+  globalThis.chrome = {storage: {session: {remove: async () => {}}}};
+  try { restart(); } finally { globalThis.chrome = savedChrome; }
+  let starts = 0;
+  const fresh = oneFillPerTab(27, 'https://x.test/form', async () => { starts++; return {filled: 4}; });
+  const duplicate = oneFillPerTab(27, 'https://x.test/form', async () => assert.fail('a duplicate restart must join the new fill'));
+  await Promise.resolve();
+  assert.equal(starts, 0, 'the stopped predecessor finishes cleanup before the new fill starts');
+  finishOld({error: 'Stopped by you.', stopped: true});
+  assert.deepEqual(await old, {error: 'Stopped by you.', stopped: true});
+  assert.deepEqual(await fresh, {filled: 4}, 'the restart must not inherit the stopped result');
+  assert.deepEqual(await duplicate, {filled: 4});
+  assert.equal(starts, 1);
+});
+
 test('the class: the extension retires a tab\'s fill on every committed top-frame navigation', () => {
   const bg = fs.readFileSync(new URL('../../extension/background.js', import.meta.url), 'utf8');
   assert.match(bg, /onCommitted\.addListener\(async details => \{\s*if \(details\.frameId !== 0\) return;\s*retireFill\(details\.tabId\)/);

@@ -1,9 +1,12 @@
 // Whether the extension is stopped, and the one door the debugger goes through (extension/stop.js says why and does the stopping). A leaf with no imports on purpose: the files that
 // act (the fill, the presses, the debugger users) check it without pulling the worker in. Guard: desktop/test/extension-stop.test.js.
-let stoppedAt = 0;
+let stoppedAt = 0, generation = 0;
 export const isStopped = () => stoppedAt > 0;
 export const mayAct = () => stoppedAt === 0;
-export const markStopped = when => { stoppedAt = when; };
+/** The Stop generation never rewinds on restart: work from before Stop stays retired. */
+export const stopGeneration = () => generation;
+/** Record a Stop timestamp supplied by the worker or storage restore and retire earlier work; returns nothing. */
+export const markStopped = when => { stoppedAt = when; generation++; };
 // The person starts it again (Apply in the app, the panel's Fill, the popup's Apply on this page). -> whether it was stopped.
 export function restart() {
   if (!stoppedAt) return false;

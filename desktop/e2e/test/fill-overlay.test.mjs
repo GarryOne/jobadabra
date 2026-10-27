@@ -251,7 +251,8 @@ test('after Stop, every restart on the page works again: Check form again, Fill 
       await restart();
       await t.app.page.waitForFunction(() => !window.__jobPilottoStopped, null, {timeout: 10000}).catch(() => assert.fail(`${name}: the page kept its Stop`));
       await t.lookIs({stopped: false}, `${name}: the panel leaves "Stopped by you"`);
-      await t.app.page.waitForFunction(() => !document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.fill.is-busy'), null, {timeout: 60000}).catch(() => {});
+      // The worker's final verdict can lift busy before panelFill's reply: the next iteration must wait for its button to be actionable too.
+      await t.app.page.waitForFunction(() => { const button = document.getElementById('jobpilotto-review-host').shadowRoot.querySelector('.fill'); return !button.classList.contains('is-busy') && !button.disabled; }, null, {timeout: 60000});
       assert.equal((await t.look()).stopped, false, `${name}: the fill ran instead of answering "Stopped by you." at once`);
       assert.ok(t.app.requests.slice(sent).some(request => request.route === '/extension/event' && /"type":"started"/.test(request.body)), `${name}: the app is told, so its session leaves "Stopped"`);
     }

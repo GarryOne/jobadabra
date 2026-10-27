@@ -131,11 +131,34 @@ test('a Notion block becomes a line: text, and table rows as their cells (the Pr
   assert.equal(blockLine({type: 'child_page', child_page: {title: 'Answers'}}), 'Answers');
 });
 
-test('Compensation fit may be empty only for a posting that states no salary; Growth never', () => {
-  assert.deepEqual(mayBeEmptyFor({salary: []}), ['Compensation fit']);
-  assert.deepEqual(mayBeEmptyFor({mayBeEmpty: ['Technologies']}), ['Technologies', 'Compensation fit']);
-  assert.deepEqual(mayBeEmptyFor({salary: ['95000', '120000']}), []);
-  assert.deepEqual(missingColumns(withProps({'Compensation fit': null, Growth: null}), mayBeEmptyFor({salary: []})), ['Growth']);
+test('Compensation fit may be empty only for a posting that states no salary; Growth only for one that states no level', () => {
+  assert.deepEqual(mayBeEmptyFor({salary: [], seniority: 'Senior'}), ['Compensation fit']);
+  assert.deepEqual(mayBeEmptyFor({mayBeEmpty: ['Technologies'], seniority: 'Mid'}), ['Technologies', 'Compensation fit']);
+  assert.deepEqual(mayBeEmptyFor({salary: ['95000', '120000'], seniority: 'Senior'}), []);
+  assert.deepEqual(missingColumns(withProps({'Compensation fit': null, Growth: null}), mayBeEmptyFor({salary: [], seniority: 'Senior'})), ['Growth']);
+  // src/ai/score.py HAS_BASIS: Growth is N/A by design when the posting gives no level (04ce823). Main red 27 Oct 2026 (run 40435903584): the
+  // helpdesk posting 3006 ("Customer Care", no level) got a null Growth and the suite called it a bug.
+  assert.deepEqual(mayBeEmptyFor({salary: ['1'], seniority: null}), ['Growth']);
+});
+
+test('every golden posting with no level may leave Growth empty; every one with a level may not', () => {
+  for (const name of ['golden', 'golden-photographer']) {
+    const postings = JSON.parse(fs.readFileSync(new URL(`../fixtures/${name}/truth.json`, import.meta.url), 'utf8'));
+    for (const posting of postings) assert.equal(mayBeEmptyFor(posting).includes('Growth'), posting.seniority == null, `${name} ${posting.id} (${posting.title})`);
+  }
+});
+
+// The AI judges whether a posting is in the person's places; a remote job beyond their country ("Remote - Europe" for a Zurich search) is not local
+// (owner, 24 Oct 2026: "at most remote in that specific country"), so the suite may not demand it. Main red 27 Oct 2026 (runs 40421937350, 40434477266):
+// a fresh Places answer dropped 3003 and the facts step called it "missing from Notion"; the PR had replayed an older answer that kept it.
+test('a golden posting that is remote beyond the search\'s country may be dropped', () => {
+  for (const name of ['golden', 'golden-photographer']) {
+    const postings = JSON.parse(fs.readFileSync(new URL(`../fixtures/${name}/truth.json`, import.meta.url), 'utf8'));
+    for (const posting of postings.filter(item => item.workMode === 'Remote' && !/switzerland/i.test(item.location))) {
+      assert.equal(posting.filterMayDrop, true, `${name} ${posting.id} "${posting.location}" must be filterMayDrop`);
+    }
+  }
+  assert.ok(truth.some(item => item.workMode === 'Remote' && !/switzerland/i.test(item.location)), 'the golden set keeps one remote-beyond-the-country posting');
 });
 
 // Main red, 26-27 Oct 2026 (runs 40421937350, 40423209526): Free AI took ~50 s to place 6 locations, the first refresh ran out of time with

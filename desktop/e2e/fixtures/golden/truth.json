@@ -60,6 +60,7 @@
    "cloud_infrastructure"
   ],
   "fit": "mid",
+  "filterMayDrop": true,
   "description": "Fully remote within Europe, no office. Run CI/CD, Kubernetes and AWS infrastructure for a fintech product. Terraform, Prometheus, Grafana, on-call rotation one week in six. Senior level, English only. Compensation: EUR 95,000 - 120,000."
  },
  {

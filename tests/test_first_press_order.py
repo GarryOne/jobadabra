@@ -24,12 +24,12 @@ def tearDownModule():
 
 
 class TheSliceNeverWaitsForTheWebSearch(unittest.TestCase):
-    def test_a_first_press_reads_its_slice_then_takes_the_web_searchs_boards(self):
+    def test_a_first_press_reads_its_slice_then_the_known_and_web_searchs_boards(self):
         source = (Path(__file__).resolve().parents[1] / 'src' / 'daily_search.py').read_text()
         body = source[source.index('def search('):]
         self.assertIn('if full_read and not slice_first:', body, 'the wait for the web search (boards_first.run) is not in front of a slice')
-        self.assertLess(body.index('first_jobs.run('), body.index('boards_first.web_boards('))
-        self.assertLess(body.index('boards_first.web_boards('), body.index('boards_ahead.scan_beside('), 'still before the employer read')
+        self.assertLess(body.index('first_jobs.run('), body.rindex('boards_first.run('), 'the boards are still read on a first press, after its slice')
+        self.assertLess(body.rindex('boards_first.run('), body.index('boards_ahead.scan_beside('), 'still before the employer read')
 
 
 class TheTitlesThatFeedScoringAreSorted(unittest.TestCase):

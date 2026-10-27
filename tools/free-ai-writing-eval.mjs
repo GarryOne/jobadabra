@@ -48,7 +48,7 @@ async function main(argv) {
   const out = option('out') || (() => { throw new Error('--out <dir> is required'); })();
   fs.mkdirSync(out, {recursive: true});
   const wanted = (option('features') || 'letter,review,prep,weekly,rejection').split(',');
-  const cases = allCases().filter(item => wanted.includes(item.feature));
+  const cases = allCases({more: process.argv.includes('--more-letters')}).filter(item => wanted.includes(item.feature));
   const raw = {};
   const again = option('again') ? {raw: JSON.parse(fs.readFileSync(path.join(option('again'), 'raw.json'), 'utf8')), judged: JSON.parse(fs.readFileSync(path.join(option('again'), 'judged.json'), 'utf8'))} : null;   // judge only what has no verdict yet; no Free call
   const old = option('sonnet-from') ? JSON.parse(fs.readFileSync(option('sonnet-from'), 'utf8')) : {};

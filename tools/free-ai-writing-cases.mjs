@@ -16,9 +16,10 @@ const shape = schema => ({format: {type: 'json_schema', schema}});
 const ask = (feature, id, system, user, schema, trap, maxTokens = 6000) => ({feature, id, trap, params: {max_tokens: maxTokens, system: [{type: 'text', text: system}], messages: [{role: 'user', content: user}], output_config: shape(schema)}});
 
 // Kit: the letter, answers and highlights, over the app's own request builder (tools/free-ai-kit-cases.py).
-function kitCases() {
+// more: ten more letter cases (15 in all) for a close call between two models, on the same demo profile.
+function kitCases(more = false) {
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'writing-kit-')), 'kit.json');
-  execFileSync(process.platform === 'win32' ? 'python' : 'python3', [path.join(here, 'free-ai-kit-cases.py'), '--jobs', path.join(here, 'free-ai-eval-jobs.json'), '--profile', path.join(root, 'desktop/demo/profile.md'), '--answers', path.join(root, 'desktop/demo/answers.md'), '--out', out], {stdio: ['ignore', 'ignore', 'inherit']});
+  execFileSync(process.platform === 'win32' ? 'python' : 'python3', [path.join(here, 'free-ai-kit-cases.py'), '--jobs', path.join(here, 'free-ai-eval-jobs.json'), '--profile', path.join(root, 'desktop/demo/profile.md'), '--answers', path.join(root, 'desktop/demo/answers.md'), '--out', out, ...(more ? ['--all-jobs'] : [])], {stdio: ['ignore', 'ignore', 'inherit']});
   const traps = {
     'fx-01': 'A clean fit with a stated salary range of CHF 150-175k, above the profile minimum: the letter must not mention salary at all.',
     'fx-05': 'Remote Europe job: the profile prefers hybrid in Switzerland; the letter must not claim a salary position, a hybrid preference mismatch, or anything the posting does not say.',
@@ -26,6 +27,18 @@ function kitCases() {
     'fx-13': 'The posting requires fluent French; the profile shows English, German B1 and Spanish only: the person is ruled out, so it must say so (eligible=false) and not write a stretched letter.',
     'fx-22': 'A nurse job: nothing in the profile fits. The honest output is "not a match" (eligible=false, a clear note), never a letter claiming patient care aligns with SRE work.',
   };
+  if (more) Object.assign(traps, {
+    'fx-02': 'The platform serves 40 product teams; the profile moved 40 services to Kubernetes, not 40 teams. The letter must not claim platform-team ownership, golden paths or internal-developer-platform experience.',
+    'fx-04': 'German is "a plus": the profile has German B1 only. The letter may say so plainly, never claim fluent German; the monitoring migration and Argo CD are real matches.',
+    'fx-07': 'A Geneva streaming company: no streaming experience in the profile (alert-noise reduction is a real match). The letter must not invent streaming or video-delivery work, or a Geneva preference.',
+    'fx-09': 'Leading a team of 4 SREs: the profile shows on-call leadership but no people management. The letter must not claim managing a team, a headcount or hiring.',
+    'fx-11': 'A mid-level role (2-4 years, CHF 105-120k): the person has 8 years and a CHF 130k minimum. The honest output names the level and pay mismatch, never a stretched letter or a salary claim.',
+    'fx-12': 'Mostly on-site in Berlin at EUR 95-115k: a deal-breaker (on-site outside Switzerland) and below the CHF 130k minimum. The honest output says it is not a match instead of selling the job.',
+    'fx-14': 'Milan, 3 days on site at EUR 80-95k: below the minimum and mostly on-site outside Switzerland. The letter must not claim Italian or an interest in relocating.',
+    'fx-15': 'A Go backend role: the profile shows no Go and no backend product work. The letter must not claim Go experience; transferable Kubernetes and on-call skills only, said honestly.',
+    'fx-17': 'Spark and Airflow platform, German B2 required: the profile has German B1 and no Spark or Airflow. The letter must not claim B2 or those tools; it must name the gap or say it is not a match.',
+    'fx-20': 'German fluent required for a sysadmin job on VMware: the person is ruled out (German B1), so it must say so (eligible=false) and not write a stretched letter.',
+  });
   const all = JSON.parse(fs.readFileSync(out, 'utf8'));
   return Object.keys(traps).map(id => ({feature: 'letter', id, trap: traps[id], params: all.find(item => item.id === id).params}));
 }
@@ -93,7 +106,7 @@ function reviewCases() {
   ];
 }
 
-export const allCases = () => [...kitCases(), ...reviewCases(), ...prepCases(), ...weeklyCases(), ...rejectionCases()];
+export const allCases = ({more = false} = {}) => [...kitCases(more), ...reviewCases(), ...prepCases(), ...weeklyCases(), ...rejectionCases()];
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const cases = allCases();

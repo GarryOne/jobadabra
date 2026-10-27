@@ -14,11 +14,11 @@ ELIGIBLE = {f'fx-{n:02d}': True for n in range(1, 11)}
 RULED_OUT = {'fx-13': False, 'fx-20': False, 'fx-21': False, 'fx-22': False}   # fluent French or German required
 
 
-def cases(jobs, profile, answers):
+def cases(jobs, profile, answers, all_jobs=False):
     out = []
     for job in jobs:
         truth = {**ELIGIBLE, **RULED_OUT}.get(job['id'])
-        if truth is None:
+        if truth is None and not all_jobs:   # all_jobs: the writing eval (tools/free-ai-writing-cases.mjs) needs the letter request of postings whose eligibility is not asserted here
             continue
         facts = f"Title: {job['title']}\nCompany: {job['company']}\nLocation: {job.get('location') or ''}\n"
         ground = f"{profile}\n{answers}\n{facts}{job['description']}"
@@ -37,5 +37,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     for name in ('jobs', 'profile', 'answers', 'out'):
         parser.add_argument(f'--{name}', required=True)
+    parser.add_argument('--all-jobs', action='store_true')
     args = parser.parse_args()
-    Path(args.out).write_text(json.dumps(cases(json.loads(Path(args.jobs).read_text()), Path(args.profile).read_text(), Path(args.answers).read_text()), ensure_ascii=False))
+    Path(args.out).write_text(json.dumps(cases(json.loads(Path(args.jobs).read_text()), Path(args.profile).read_text(), Path(args.answers).read_text(), args.all_jobs), ensure_ascii=False))

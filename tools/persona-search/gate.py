@@ -59,10 +59,11 @@ def result(n, out):
     a failed press (silence is not success), never a zero that looks measured."""
     out = Path(out)
     row = {'persona': int(n), 'label': label(n)}
-    press_usd = 0.0
+    press_usd = None   # None = the press's cost was not measured; never shown or counted as $0 (gitar on #2259)
     try:
         press = json.loads((out / 'draw' / 'presses.jsonl').read_text(encoding='utf-8').splitlines()[0])
-        press_usd = float((press.get('funnel') or {}).get('ai_usd') or 0)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
+        ai = (press.get('funnel') or {}).get('ai_usd')
+        press_usd = None if ai is None else float(ai)   # the press's measured AI cost (funnel.py ai_usd); the strategy draft before it is not counted
         row.update(seconds=int(press['seconds']), code=int(press.get('code') or 0), crashes=len(press.get('crashes') or []))
     except (OSError, IndexError, ValueError, KeyError, TypeError):
         row['error'] = 'the press wrote no numbers (see run.log)'
@@ -74,7 +75,9 @@ def result(n, out):
         row.update(found=len(judged), local=sum(1 for r in judged if r.get('role') == 'yes' and r.get('place') == 'yes'))
     except (OSError, ValueError, KeyError):
         row.setdefault('error', 'the judge wrote no verdicts (see judge.log)')
-    row['usd'] = round(press_usd + float(judge_usd), 4)
+    row['usd'] = None if press_usd is None else round(press_usd + float(judge_usd), 4)
+    if press_usd is None:
+        row['cost_unmeasured'] = True
     try:
         row['non_haiku'] = int((out / 'non-haiku-steps.txt').read_text().strip() or 0)
     except (OSError, ValueError):
@@ -111,7 +114,9 @@ def judge_one(row, mains):
         reasons.append(f"the press failed (exit {row.get('code')}, {row.get('crashes', 0)} crash(es))")
     if row.get('seconds', 0) > PRESS_LIMIT:
         reasons.append(f"press took {row['seconds']} s (> {PRESS_LIMIT})")
-    if row.get('usd', 0) > PERSONA_CAP_USD:
+    if row.get('cost_unmeasured'):
+        reasons.append('the press cost was not measured')
+    if (row.get('usd') or 0) > PERSONA_CAP_USD:
         reasons.append(f"cost ${row['usd']:.3f} over the ${PERSONA_CAP_USD} cap")
     if row.get('non_haiku'):
         reasons.append(f"{row['non_haiku']} AI step(s) not on Haiku 5.5")

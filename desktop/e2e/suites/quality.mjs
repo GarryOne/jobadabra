@@ -11,7 +11,7 @@ import {python, pythonEnv} from '../lib/python.mjs';
 import {fileURLToPath} from 'node:url';
 import {sample, watch} from '../lib/activity.mjs';
 import {fresh, missedQuestions, replaying, strict} from '../lib/ai-meter.mjs';
-import {addNight, nightOf, rateOf, rateVerdict, readHistory, writeHistory} from '../lib/quality-rate.mjs';
+import {factsVerdict, flagsVerdict, nightOf, rateOf, rateVerdict, recordNight} from '../lib/quality-rate.mjs';
 import {failures, judge} from '../lib/factjudge.mjs';
 import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf, rewriteTextLines} from '../lib/seed-texts.mjs';
@@ -98,6 +98,10 @@ export async function run(ctx) {
   const late = [];   // the last checks are independent: each one reports, and the suite fails after all of them ran
   // How steady the AI is (the same jobs scored twice) is measured where answers are live: the night's fresh run, a Mac. The gate replays (owner, 27 Oct 2026).
   const LIVE = {name: 'live AI answers (the night\'s fresh run): the gate replays, so a second scoring would only repeat the first', value: !replaying()};
+  // The night's live run judges the AI by rates over many nights (lib/quality-rate.mjs; owner, 27 Oct 2026); the gate's replayed answers never change, so it
+  // checks every fact and the judge allowance exactly. Each step adds its own part of the night once: a retry on the same run measures the same history.
+  const night = {runId: Number(process.env.GITHUB_RUN_ID) || `local-${Date.now()}`, day: new Date().toISOString().slice(0, 10)};
+  const record = part => rateOf(recordNight(process.env.E2E_QUALITY_HISTORY || '', {...night, ...part}));
   const soft = async step => { try { await step(); } catch (error) { late.push(error); } };
   try {
     await ctx.run('this suite starts with no jobs and no runs in its Notion page', async () => {
@@ -146,16 +150,24 @@ export async function run(ctx) {
     await ctx.run('every enriched fact equals the ground truth (seniority, work mode, location, languages, salary, role family)', async () => {
       const {byId} = matchRows(truth, rows);
       const problems = [];
+      let missed = 0;
       for (const item of postings) {
         const found = byId[item.id];
-        if (!found) { if (!item.filterMayDrop) problems.push(`"${item.title}" is missing from Notion`); continue; }
+        if (!found) {   // a job the store lost: every fact it holds counts as missed in the rate
+          if (!item.filterMayDrop) { problems.push(`"${item.title}" is missing from Notion`); missed += checkFacts(item, {props: {}}).length; }
+          continue;
+        }
         for (const result of checkFacts(item, found[0])) {
           summary.facts.total++;
           if (result.ok) summary.facts.exact++; else problems.push(`"${result.posting}": ${result.fact} should be ${JSON.stringify(result.expected)}, the app wrote ${JSON.stringify(result.actual)}`);
         }
       }
       console.log(`  ${summary.facts.exact}/${summary.facts.total} facts exact${notKeptNote(rows) ? `; ${notKeptNote(rows)}` : ''}`);
-      if (problems.length) throw new Error(`${problems.length} wrong or missing fact(s):\n    ${problems.join('\n    ')}`);
+      if (replaying()) { if (problems.length) throw new Error(`${problems.length} wrong or missing fact(s):\n    ${problems.join('\n    ')}`); return; }
+      if (problems.length) console.log(`  ${problems.length} wrong or missing fact(s) tonight:\n    ${problems.join('\n    ')}`);
+      const rate = factsVerdict(record({factsExact: summary.facts.exact, factsTotal: summary.facts.total + missed}));
+      console.log(`  facts: ${rate.line}`);
+      if (!rate.ok) throw new Error(`the facts are not exact over the last nights: ${rate.problems.join('; ')}`);
     }, {needs: ctx.needs});
 
     await ctx.run('the duplicate posting is one job, everywhere', async () => {
@@ -222,10 +234,7 @@ export async function run(ctx) {
       const apart = unstable(first, second, 8);
       if (apart.length) console.log(`  ${apart.length} of ${spread.length} jobs moved more than 8 points: ${apart.map(item => `${item.id}: ${item.first} → ${item.second}`).join(', ')}`);
       // A rate over the last 90 pairs of the night's live runs (lib/quality-rate.mjs), not this run alone: one wobbly night never turns main red by itself.
-      const file = process.env.E2E_QUALITY_HISTORY || '', runId = Number(process.env.GITHUB_RUN_ID) || `local-${Date.now()}`;
-      const history = addNight(readHistory(file), nightOf(first, second, {runId, day: new Date().toISOString().slice(0, 10)}));
-      writeHistory(file, history);
-      const rate = rateVerdict(rateOf(history));
+      const rate = rateVerdict(record(nightOf(first, second, night)));
       console.log(`  score steadiness: ${rate.line}`);
       if (!rate.ok) throw new Error(`the AI's scores are not steady over the last nights: ${rate.problems.join('; ')}`);
     }, {needs: [...ctx.needs, LIVE], limitMs: 6 * STEP}));
@@ -264,9 +273,16 @@ export async function run(ctx) {
       // The profile the judge read, once: with the golden postings and each verdict's facts, any model can re-judge the same texts (owner, 27 Oct 2026: keep Haiku, but measure it).
       fs.writeFileSync(path.join(ctx.ARTIFACTS, 'quality-judge-profile.txt'), profile);
       console.log(`  judged ${verdicts.length} score texts: ${verdicts.filter(v => v.verdict.grounded).length} grounded, ${verdicts.filter(v => v.verdict.useful).length} useful, ${summary.invented} with invented facts`);
-    const allowance = judgeVerdict(problems, verdicts.length);
-    if (problems.length) console.log(`  ${problems.length} of ${verdicts.length} texts flagged (allowed: ${allowance.allowed}):\n    ${problems.join('\n    ')}`);
-    if (!allowance.ok) throw new Error(`${problems.length} of ${verdicts.length} score texts invent facts or contradict the posting (at most ${allowance.allowed} allowed)`);
+      if (!replaying()) {   // the night's live run: a rate over the last 90 texts (owner, 27 Oct 2026: "≤ 10% of last 90 texts")
+        if (problems.length) console.log(`  ${problems.length} of ${verdicts.length} texts flagged tonight:\n    ${problems.join('\n    ')}`);
+        const rate = flagsVerdict(record({judged: verdicts.length, flagged: problems.length}));
+        console.log(`  judge flags: ${rate.line}`);
+        if (!rate.ok) throw new Error(`the score texts invent or contradict too often over the last nights: ${rate.problems.join('; ')}`);
+        return;
+      }
+      const allowance = judgeVerdict(problems, verdicts.length);
+      if (problems.length) console.log(`  ${problems.length} of ${verdicts.length} texts flagged (allowed: ${allowance.allowed}):\n    ${problems.join('\n    ')}`);
+      if (!allowance.ok) throw new Error(`${problems.length} of ${verdicts.length} score texts invent facts or contradict the posting (at most ${allowance.allowed} allowed)`);
     }, {needs: ctx.needs, limitMs: 3 * STEP}));
 
     // The CV match (desktop/lib/match-check.js) on three golden postings with a fixed CV, judged by plain text rules, no second model: the terms the posting and the CV

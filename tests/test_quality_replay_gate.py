@@ -57,6 +57,14 @@ class QualityReplayGateTests(unittest.TestCase):
             self.assertIn(condition, save[0])
         self.assertLess(text.index(restore[0]), text.index('- name: Run the ${{ matrix.key }} suite (first try)'))
 
+    def test_the_nights_live_run_judges_facts_and_judge_flags_by_rate(self):
+        # Owner, 27 Oct 2026: facts and judge flags as rates too ("Yes, same shape"); the gate's replayed answers are still checked exactly.
+        suite = (WORKFLOWS.parent.parent / 'desktop/e2e/suites/quality.mjs').read_text()
+        self.assertIn('factsVerdict(record(', suite)
+        self.assertIn('flagsVerdict(record(', suite)
+        self.assertIn('if (replaying()) { if (problems.length) throw', suite, 'the gate still fails on any wrong fact')
+        self.assertIn('const allowance = judgeVerdict(problems, verdicts.length);', suite, 'the gate keeps the judge allowance')
+
 
 if __name__ == '__main__':
     unittest.main()

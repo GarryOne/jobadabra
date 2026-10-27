@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {BARS, MIN_PAIRS, addNight, nightOf, rateOf, rateVerdict, readHistory, writeHistory} from '../lib/quality-rate.mjs';
+import {BARS, MIN_FACT_NIGHTS, MIN_PAIRS, MIN_TEXTS, addNight, factsVerdict, flagsVerdict, nightOf, rateOf, rateVerdict, readHistory, recordNight, writeHistory} from '../lib/quality-rate.mjs';
 
 const night = (runId, pairs, within8, over20 = 0) => ({runId, day: '2026-10-27', pairs, within8, over20});
 
@@ -51,5 +51,48 @@ test('the history file: missing or broken reads as empty; written back as JSON',
   assert.deepEqual(readHistory(file), []);
   fs.writeFileSync(file, JSON.stringify([night(1, 9, 9), {runId: 'x'}, night(2, 9, 10)]));
   assert.deepEqual(readHistory(file), [night(1, 9, 9)], 'a night that does not add up is dropped');
+  fs.rmSync(dir, {recursive: true, force: true});
+});
+
+// Facts and judge flags (owner, 27 Oct 2026: "Yes, same shape"; bars "≥ 99.5% of ~10 nights", "≤ 10% of last 90 texts"). Measured on 34 live runs, 24-27 Oct:
+// 2,079 of 2,079 facts exact; 33 of 558 texts flagged, the worst 90 texts in a row 8 flagged.
+const facts = (runId, exact, total = 63) => ({runId, day: '2026-10-27', factsExact: exact, factsTotal: total});
+const flags = (runId, flagged, judged = 18) => ({runId, day: '2026-10-27', judged, flagged});
+
+test('facts: exact over the last 10 nights, red under 99.5%; a short history is reported, not judged', () => {
+  assert.deepEqual([BARS.factNights, BARS.facts, MIN_FACT_NIGHTS], [10, 0.995, 5]);
+  const clean = Array.from({length: 12}, (_, i) => facts(100 - i, 63));
+  assert.deepEqual(rateOf(clean).facts, {nights: 10, exact: 630, total: 630});
+  assert.ok(factsVerdict(rateOf([facts(200, 60), ...clean])).ok, '3 of 630 missed (99.5%) holds the bar: one stray slip is not red');
+  const broken = factsVerdict(rateOf([facts(200, 56), ...clean]));
+  assert.ok(!broken.ok, 'a broken fact reader (7 of 63 tonight) is red at once');
+  assert.match(broken.problems.join(), /623 of 630 facts .* under the 99.5% bar/);
+  const short = factsVerdict(rateOf([facts(1, 40)]));
+  assert.deepEqual([short.ok, short.judged], [true, false]);
+});
+
+test('judge flags: the last 90 texts, red above 10%; the measured noise holds the bar', () => {
+  assert.deepEqual([BARS.texts, BARS.flagged, MIN_TEXTS], [90, 0.1, 45]);
+  const worst = [flags(5, 3), flags(4, 2), flags(3, 2), flags(2, 1), flags(1, 0)];   // 8 of 90: the worst window measured
+  assert.deepEqual(rateOf(worst).flags, {nights: 5, texts: 90, flagged: 8});
+  assert.ok(flagsVerdict(rateOf(worst)).ok);
+  assert.ok(flagsVerdict(rateOf([flags(6, 1), ...worst.slice(0, 4)])).ok, '9 of 90 (10%) holds it');
+  const red = flagsVerdict(rateOf([flags(6, 2), ...worst.slice(0, 4)]));
+  assert.ok(!red.ok, '10 of 90 is over 10%');
+  assert.match(red.problems.join(), /10 of 90 score texts .* over the 10% bar/);
+  assert.deepEqual(flagsVerdict(rateOf([flags(1, 3)])).judged, false, '18 texts: reported, not judged');
+});
+
+test('each step adds its own part of the night once: scores, facts and flags meet in one night, and a retry keeps the first values', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quality-rate-')), file = path.join(dir, 'history.json');
+  recordNight(file, facts(7, 56));
+  recordNight(file, night(7, 9, 9));
+  recordNight(file, flags(7, 2));
+  const again = recordNight(file, facts(7, 63));   // the retry of a red facts step: the same run, a luckier draw
+  assert.deepEqual(again, [{runId: 7, day: '2026-10-27', factsExact: 56, factsTotal: 63, pairs: 9, within8: 9, over20: 0, judged: 18, flagged: 2}]);
+  assert.deepEqual(readHistory(file), again, 'the merged night reads back');
+  assert.deepEqual(rateOf(again).facts, {nights: 1, exact: 56, total: 63});
+  fs.writeFileSync(file, JSON.stringify([flags(1, 19), facts(2, 64), {...facts(3, 5), pairs: 0, within8: 0, over20: 0}, flags(4, 1)]));
+  assert.deepEqual(readHistory(file), [flags(4, 1)], 'flagged over judged, exact over total and an empty score part are dropped');
   fs.rmSync(dir, {recursive: true, force: true});
 });

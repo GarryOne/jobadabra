@@ -80,6 +80,9 @@ One choice (Settings → Profile → Application assistant, `renderer/assistant-
 - Before writing code that decides anything about a page, say in one line which decisions are AI, which are structure, which are floors.
   Guard: `tools/hardcoded-page-words.mjs`.
 - One page decision: the AI's kind (`page-kind.js`; `extension/tab-pages.js` `pageRole` only without AI). Never add a second page classifier.
+- **What a contact box means is the AI's reading too** (owner, 27 Oct 2026: "AI reads contact boxes"; form 103 "Preferred First & Last Name" typed "Tester"): the quick step's label patterns
+  (`page/fill-read.js` PROFILE_LABELS) type first, so a details-only fill still works; contact boxes ride along in the answers call when it is made anyway (never a call of their own,
+  `extension/flow.js` openQuestions), and where the AI's answer disagrees the AI's is typed (`page/fill.js`), never over the person's own edit. Guard: `worker/test/fill-contact-ai-meaning.test.js`.
 
 ## Applying flows: change one, run them all (owner, 8 + 10 Oct 2026)
 - **The journey gate**: a push touching any flow file runs the applying scenarios as event sequences (`tools/journey-gate.mjs`, `JOURNEY_TESTS` in

@@ -66,7 +66,17 @@
       if (rows.length === 1 && !(all || []).some(other => other !== item && other.field === rows[0].field)) { item.field = rows[0].field; reach.byQuestion++; } else reach.lost++;
     }
     proposedOf = Object.fromEntries((all || []).filter(a => a.use === 'propose').map(a => [a.field, a]));
-    const contact = window.__jobPilottoProfileEntries(form, profile || {});
+    // The AI's reading of what a contact box means wins over the quick step's label pattern (owner, 27 Oct 2026; form 103 "Preferred First & Last Name" typed "Tester"):
+    // where its answer disagrees, the AI's is typed, now (the pattern's entry is dropped) or over the box the quick step typed earlier (data-jobpilotto-contact), never over the person's edit.
+    const alnum = text => String(text ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const byAI = Object.fromEntries(answers.filter(a => a.use === 'fill' && typeof a.value === 'string' && a.value.trim() && !/^(your details|standard answer)/.test(a.source || '')).map(a => [a.field, a.value]));
+    const sameReading = (a, b) => a === b || (/^\d{8,}$/.test(a) && /^\d{8,}$/.test(b) && a.slice(-8) === b.slice(-8));   // strict: "Tester" is not "Ada Tester" (a containment test would say it is)
+    const disagrees = (field, value) => byAI[field] !== undefined && !sameReading(alnum(value), alnum(byAI[field]));
+    const contact = window.__jobPilottoProfileEntries(form, profile || {}).filter(entry => !disagrees(entry.field, entry.value));
+    for (const row of form) {
+      const el = row.filled && document.getElementById(row.field), typed = el?.getAttribute?.('data-jobpilotto-typed');
+      if (typed && el.hasAttribute('data-jobpilotto-contact') && disagrees(row.field, typed)) row.filled = false;
+    }
     const contactFields = new Set(contact.map(entry => entry.field)), fromCvFields = new Set(contact.filter(entry => entry.fromCv).map(entry => entry.field));
     const todo = [], review = [], armed = []; document.querySelectorAll('.job-pilotto-badge').forEach(badge => badge.remove());
     let filled = 0;
@@ -79,6 +89,7 @@
     }
     const typed = window.__jobPilottoFillKnownFields([...contact, ...plain]);
     filled += (typed.filled || []).length;
+    for (const entry of contact) if ((typed.filled || []).includes(entry.field)) (document.getElementById(entry.field) || document.querySelector(`[name="${CSS.escape(entry.field)}"]`))?.setAttribute('data-jobpilotto-contact', '');   // typed by the quick step: the AI's reading may replace it
     // A place the page had guessed, now the saved one: the person checks it (page/fill-read.js pageGuess). The page's old text never leaves the page.
     for (const entry of contact) if (entry.pageGuess && (typed.filled || []).includes(entry.field)) review.push(`Check: ${rowOf[entry.field]?.label || entry.field} (it held the page's own text before the fill; your saved one is in now)`);
     // A box that empties itself when focus leaves took text it was not offered (a job board's own place widget takes only one of its suggestions): armed as a type-to-search box, typed for real

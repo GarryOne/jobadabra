@@ -19,6 +19,13 @@ const NEW_PART = /^\s*(\/\/|#)\s*([A-Z][A-Za-z-]*(?: [A-Za-z-]+){0,2}:\s|Used by
 const ANCHOR = /`([^`\n]{8,})`/g;
 const SENTENCE = /\S+\s+\S+\s+\S/;   // Why (#2217 review): a quoted name like `retryCount` would else unguard the line it names
 const REACH = 80;
+// lines (0-based from) -> the 1-based numbers of the code lines below, to the next Why, at most REACH of them. One window for the guard and the push check
+// (Why (#2223 review): the guard counted raw lines and the check code lines, so a sentence the check accepted could go unguarded).
+const codeBelow = (lines, from) => {
+  const found = [];
+  for (let n = from; n < lines.length && found.length < REACH && !WHY.test(lines[n]); n++) if (!isComment(lines[n])) found.push(n + 1);
+  return found;
+};
 const TRAILER = /^Why-changed:[ \t]*(\S.{8,})$/m;
 const HOW = 'If the change is on purpose (you read the Why and its PR), add to a commit message of the push:\n  Why-changed: <which Why> — <why it no longer holds, or what replaces it>\nA pure move or re-indent needs nothing: keep the lines the same. (docs/rules/files.md "Comments" → "Why comments")';
 
@@ -35,8 +42,7 @@ export function whyBlocks(text) {
       const header = lines.slice(0, i).every(line => !line.trim() || isComment(line) || line.startsWith('#!'));
       let next = end + 1;
       while (next < lines.length && !lines[next].trim()) next++;
-      const reach = [];   // the block's code lines: to the next Why, at most REACH lines
-      for (let n = next; n < Math.min(lines.length, next + REACH) && !WHY.test(lines[n]); n++) if (!isComment(lines[n])) reach.push(n + 1);
+      const reach = codeBelow(lines, next);   // the block's code lines
       for (const n of block.comments) for (const found of lines[n - 1].matchAll(ANCHOR)) {
         const held = reach.filter(at => lines[at - 1].includes(found[1]));
         if (SENTENCE.test(found[1]) && held.length) block.anchors.push({text: found[1], lines: held});
@@ -104,8 +110,7 @@ export function misplacedAnchors(diff, newText) {
     if (!CODE_FILE.test(file) || !WHY.test(text) || !isComment(text)) continue;
     const anchors = [...text.matchAll(ANCHOR)].map(found => found[1]).filter(anchor => SENTENCE.test(anchor));   // a quoted name or path is not an anchor
     if (!anchors.length) continue;
-    const below = [];
-    for (const next of newText(file).split('\n').slice(at)) { if (WHY.test(next)) break; if (!isComment(next)) below.push(next); if (below.length >= 80) break; }
+    const fileLines = newText(file).split('\n'), below = codeBelow(fileLines, at).map(n => fileLines[n - 1]);
     const missing = anchors.filter(anchor => !below.some(code => code.includes(anchor)));
     if (missing.length) problems.push(`${file}:${at} quotes "${missing[0]}", which is not in the code right under it: put the Why above the prompt that holds those words`);
   }

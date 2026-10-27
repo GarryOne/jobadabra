@@ -62,6 +62,13 @@ class SecondLookTest(unittest.TestCase):
         self.assertTrue(got['senior sre'], 'the other answers are kept')
         self.assertFalse(got['pastry chef'])
 
+    def test_a_local_title_sorted_past_the_clock_takes_its_second_look_too(self):
+        # gitar-bot on #2267: the sort's local-title exemption (time_budget.local_titles) must hold for the second look, or those titles never settle
+        client = Client(first=['senior sre'], second=['staff platform', 'infrastructure'])
+        with mock.patch('src.time_budget.over', return_value=True), mock.patch('src.time_budget.local_titles', return_value=10):
+            got = title_triage.decide(TITLES, SEARCH, client, local=True)
+        self.assertTrue(got['staff platform engineer, kubernetes'], 'asked again though the clock is up, as its first sort was')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -38,6 +38,7 @@ on:
       - 'desktop/lib/pdf-edit/fonts.js'
       - 'desktop/lib/pipeline-env.js'
       - 'desktop/lib/pipeline-run.js'
+      - 'desktop/lib/private-file.js'
       - 'desktop/lib/reports.js'
       - 'desktop/lib/sentry.js'
       - 'desktop/lib/site-password.js'

@@ -298,8 +298,7 @@ export function saveNow() {
     fs.mkdirSync(path.dirname(saveFile), {recursive: true});
     const next = [...sessions.values()].map(saved);
     keepPrevious(next);
-    writePrivate(saveFile + '.tmp', JSON.stringify(next));  // output can hold form answers
-    fs.renameSync(saveFile + '.tmp', saveFile);
+    writePrivate(saveFile, JSON.stringify(next));  // output can hold form answers; written whole or not at all (lib/private-file.js)
   } catch { /* not saved this time; the next change tries again */ }
 }
 function save() {

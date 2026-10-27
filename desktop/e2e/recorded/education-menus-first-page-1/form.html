@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Application: Cloud Engineer</title>
+<style>body{font:15px system-ui;margin:24px;max-width:640px} .field{margin:14px 0} label.q{display:block;font-weight:600;margin-bottom:4px} .required::after{content:" *";color:#c00}</style></head><body>
+<h1>Your application</h1>
+<!-- The REAL react-select 5.8.0 (vendored): an Education section of three required menus. School opens on the first 100 of a long list; the rest, and its
+     "Other", only come up when typed. Degree lists degree levels ("Bachelor's Degree"), not the CV's own wording. Discipline is a long list. Hand-made, no real data. -->
+<form id="application" onsubmit="return false">
+<div class="field"><label class="q required" for="first">First name</label><input id="first" name="first_name" required></div>
+<div class="field"><label class="q required" for="last">Last name</label><input id="last" name="last_name" required></div>
+<div class="field"><label class="q required" for="mail">Email</label><input id="mail" name="email" type="email" required></div>
+<h2>Education</h2>
+<div class="field"><label class="q required" for="school--0">School</label><div id="school-root"></div></div>
+<div class="field"><label class="q required" for="degree--0">Degree</label><div id="degree-root"></div></div>
+<div class="field"><label class="q required" for="discipline--0">Discipline</label><div id="discipline-root"></div></div>
+<button type="submit">Submit application</button>
+</form>
+<script src="vendor:react.production.min.js"></script>
+<script src="vendor:react-dom.production.min.js"></script>
+<script src="vendor:react-select.min.js"></script>
+<script>
+const opt = label => ({value: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), label});
+const schools = [...Array.from({length: 140}, (_, i) => `Ash Valley College ${i + 1}`), 'Christian Brothers University', 'Other'].map(opt);
+const degrees = ["Associate's Degree", "Bachelor's Degree", 'Doctor of Medicine (M.D.)', 'Doctor of Philosophy (Ph.D.)', "Engineer's Degree", 'High School', 'Juris Doctor (J.D.)', 'Master of Business Administration (M.B.A.)', "Master's Degree", 'Other'].map(opt);
+const disciplines = ['Accounting', 'African Studies', 'Agriculture', 'Anthropology', 'Applied Health Services', 'Architecture', 'Art', 'Asian Studies', 'Biology', 'Business', 'Business Administration', 'Chemistry', 'Classical Languages', 'Communications & Film', 'Computer Science', 'Dentistry', 'Developing Nations', 'Economics', 'Education', 'Engineering', 'English', 'Finance', 'Geography', 'History', 'Mathematics', 'Physics', 'Other'].map(opt);
+// The first page only, until something is typed (a list the server sends page by page): the 101st school and "Other" are found by typing.
+const firstPage = (option, input) => input ? option.label.toLowerCase().includes(input.toLowerCase()) : schools.indexOf(option.data) < 100;
+const menu = (root, inputId, name, options, extra = {}) => ReactDOM.createRoot(document.getElementById(root)).render(React.createElement(ReactSelect, {inputId, name, options, classNamePrefix: 'select', placeholder: 'Select...', required: true, ...extra}));
+menu('school-root', 'school--0', 'school', schools, {filterOption: firstPage});
+menu('degree-root', 'degree--0', 'degree', degrees);
+menu('discipline-root', 'discipline--0', 'discipline', disciplines);
+</script>
+</body></html>

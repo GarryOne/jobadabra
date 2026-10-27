@@ -1,0 +1,86 @@
+{
+ "origin": "hand-cut",
+ "shape": "three required react-select menus of an Education section: a school list that opens on its first page and does not hold the CV's school, then a degree list of levels the CV words differently (BSc), then a long discipline list",
+ "why": "27 Oct 2026, fair round run 40440347913, form 102 (Greenhouse): School and Degree empty in 3 of 3 runs although the CV states the education",
+ "control": {
+  "build": "a281e3d",
+  "failed": "to be measured on main"
+ },
+ "sample": "react-select 5.8.0 as a hosted application form's education section initialises it (names and values made up)",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/acme/education-menus/application",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.99
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "answers": [
+    {
+     "field": "school--0",
+     "question": "School",
+     "value": "Example University",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    },
+    {
+     "field": "degree--0",
+     "question": "Degree",
+     "value": "BSc",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    },
+    {
+     "field": "discipline--0",
+     "question": "Discipline",
+     "value": "Computer Science",
+     "confidence": "high",
+     "note": "",
+     "category": "other",
+     "use": "fill"
+    }
+   ]
+  },
+  "/extension/pick-choice": [
+   {
+    "when": {
+     "value": "BSc"
+    },
+    "answer": {
+     "ok": true,
+     "choice": "Bachelor's Degree"
+    }
+   },
+   {
+    "answer": {
+     "ok": true,
+     "choice": ""
+    }
+   }
+  ]
+ },
+ "expect": {
+  "present": [
+   "input[name=\"degree\"][value=\"bachelor-s-degree\"]",
+   "input[name=\"discipline\"][value=\"computer-science\"]"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ },
+ "start": "panel"
+}

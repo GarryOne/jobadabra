@@ -96,7 +96,7 @@
     const stuckWord = stuckNow ? String(session.stuck) : '';
     if (session && stuckWord !== lastStuck) { lastStuck = stuckWord; stuckSince = stuckWord ? Date.now() : 0; }   // from the app's answer changing, not from a sync that brought no session
     const handed = (!!needsNow && !filling) || stopped || (stuckNow && !filling && stepAt <= stuckSince);   // this panel's own fill (Check again, Fill again) reads the page anew: the AI's older "needs you" waits for its end
-    // Why (2026-10-27, CI red on #2281 "after Stop, every restart"): only the worker says `stopped` (stop.js); this page's `stopped` flag is stale while a restart is on its way (the worker's `working` arrives before `started`), and a verdict sent from it ended the restarted run.
+    // Why (2026-10-27, red CI on #2281): only the worker says stopped; this page's own stopped flag is stale while a restart is on its way, and a verdict sent from it ended the restarted run.
     if (handed && !stopped && stepShowing() && applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {});   // the person must act: a verdict, which the worker answers by lifting every page
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';

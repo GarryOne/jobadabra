@@ -8,7 +8,7 @@
 
 **Tech Stack:** Electron renderer ES modules, Node test runner, tiny DOM tests, CSS variables and existing reduced-motion media query conventions.
 
-**Spec:** [2026-10-27-answers-review-save-completion-design.md](../specs/2026-10-27-answers-review-save-completion-design.md)
+**Spec:** [2026-10-27-answers-review-save-completion.md](../specs/2026-10-27-answers-review-save-completion.md)
 
 ## Global Constraints
 
@@ -31,7 +31,7 @@
 
 **Files:**
 - Modify: `desktop/test/question-review.test.js`
-- Modify: `desktop/test/profile-tabs-render.test.js`
+- Add: `desktop/test/answers-review-completion.test.js`
 
 - [ ] **Step 1: Assert successful drawer save publishes completion and advances count immediately; failed/empty saves do not.**
 - [ ] **Step 2: Run only the changed test files and confirm the new assertion fails for missing immediate bridge.**
@@ -43,7 +43,7 @@
 - Modify: `desktop/renderer/pages/application-answers.js`
 - Modify: `desktop/renderer/style.css`
 - Modify: `desktop/test/question-review.test.js`
-- Modify: `desktop/test/profile-tabs-render.test.js`
+- Modify: `desktop/test/answers-review-completion.test.js`
 
 - [ ] **Step 1: After a successful usable answer, dispatch question identity/value/home metadata and keep the drawer's existing local queue progression.**
 - [ ] **Step 2: Capture the matching visible row in Application Answers, decrement its Needs review count immediately, render Set, then fade/remove after roughly 1.5 seconds.**
@@ -53,7 +53,7 @@
 
 ### Task 3: Verify and ship
 
-**Files:** changed files above and spec progress.
+**Files:** changed files above, spec progress, and this plan.
 
 - [ ] **Step 1: Run changed-JS lint, adjacent save/filter/modal tests and the repository fast gate in this worktree.**
 - [ ] **Step 2: Update spec evidence, prepare PR body/assets, register exact ship log and open PR using `tools/ship.sh`.**

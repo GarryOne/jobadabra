@@ -39,7 +39,11 @@ const kinds = new Map();   // answer id → the kind the person picked ("Answer 
 
 const valueOf = item => drafts.get(item.id) ?? item.value;
 const missing = item => item.open && !item.optional && !valueOf(item);
-const identityOf = question => { const label = keyOf(question); return label ? `question:${label}` : ''; };
+// Why (2026-10-27): punctuation can distinguish separate questions, so completion identity preserves it while normalizing only case and spacing.
+const identityOf = question => {
+  const label = String(question || '').normalize('NFKC').toLowerCase().trim().replace(/\s+/gu, ' ');
+  return label ? `question:${label}` : '';
+};
 const keyIdentity = key => key ? `key:${String(key)}` : '';
 const isResolved = (question, key = '') => [identityOf(question), keyIdentity(key)].filter(Boolean).some(identity => resolved.has(identity) || completions.has(identity));
 
@@ -252,7 +256,8 @@ function draw(view, into) {
     reviewRowsByQuestion.set(identityOf(entry.question), snapshot);
     reviewRowsByQuestion.set(keyIdentity(entry.key), snapshot);
   }
-  const currentShownRows = shownRows.filter(entry => !isResolved(entry.item.question, entry.item.id));
+  // Why (2026-10-27): reusable-answer row ids and question keys are separate identity spaces; match these rows by wording only.
+  const currentShownRows = shownRows.filter(entry => !isResolved(entry.item.question));
   const currentDetailRows = detailRows.filter(entry => !isResolved(entry.question, entry.key));
   const currentSetupRows = setupRows.filter(entry => !isResolved(entry.question, entry.key));
   const currentExtraRows = extraRows.filter(entry => !isResolved(entry.question, entry.key));

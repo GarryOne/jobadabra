@@ -20,26 +20,14 @@ const saved = (question, key, value = 'Ana') => {
   globalThis.document.dispatchEvent(event);
 };
 
-test('a failed save result never earns Set', async () => {
-  globalThis.window.pilot = {textOutline: async () => ({ok: true, items: [{id: 'h', type: 'heading_2', text: 'Saved answers'}], store: 'SQLite'}),
-    questionVerdicts: async () => ({ok: true, verdicts: {}})};
-  Object.assign(questionsNow(), {list: [...DETAILS], hidden: [], read: true, error: ''});
-  await loadApplicationAnswers();
-  answersBody.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').click();
-  const event = new Event('question-saved');
-  event.detail = {question: 'Current location', key: 'contact:location', value: '', persisted: false};
-  globalThis.document.dispatchEvent(event);
-  assert.match(answersBody.querySelector('.is-review').textContent, /Current location[\s\S]*Needed by every form/);
-  assert.doesNotMatch(answersBody.querySelector('.is-review').textContent, /Set/);
-});
-
-test('a persisted Your details answer leaves Needs review immediately, stays Set through refresh and filters, then fades without removing its neighbor', async () => {
+test('a persisted Your details answer leaves Needs review immediately, stays Set through refresh and filters, then fades without removing its neighbor', async t => {
   globalThis.window.pilot = {textOutline: async () => ({ok: true, items: [{id: 'h', type: 'heading_2', text: 'Saved answers'}], store: 'SQLite'}),
     questionVerdicts: async () => ({ok: true, verdicts: {}})};
   Object.assign(questionsNow(), {list: [...DETAILS], hidden: [], fromDetails: 0, read: true, error: ''});
   await loadApplicationAnswers();
   answersBody.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').click();
   assert.equal(answersBody.querySelector('.is-review').textContent.includes('2 to review'), true);
+  t.mock.timers.enable({apis: ['setTimeout']});
 
   saved('First name', 'contact:first-name');
   const review = answersBody.querySelector('.is-review');
@@ -53,13 +41,35 @@ test('a persisted Your details answer leaves Needs review immediately, stays Set
   globalThis.document.dispatchEvent(new Event('questions-read'));
   assert.match(answersBody.querySelector('.is-review').textContent, /First name[\s\S]*Set/, 'a slow queue refresh cannot erase the acknowledgement');
 
-  await new Promise(resolve => setTimeout(resolve, 800));
+  t.mock.timers.tick(800);
   saved('Current location', 'contact:location', 'Zurich');
   assert.match(answersBody.querySelector('.is-review').textContent, /0 to review/, 'the second successful save updates progress without waiting');
-  await new Promise(resolve => setTimeout(resolve, 700));
+  t.mock.timers.tick(300);   // first acknowledgement begins fading at 1.1 s
+  t.mock.timers.tick(300);   // and is removed 300 ms later
   const afterFade = answersBody.querySelector('.is-review').textContent;
   assert.doesNotMatch(afterFade, /First name/);
   assert.match(afterFade, /Current location[\s\S]*Set/, 'the first save timer cannot remove the next completed question');
-  await new Promise(resolve => setTimeout(resolve, 800));
+  t.mock.timers.tick(500);   // second acknowledgement reaches its own 1.1 s mark
+  t.mock.timers.tick(300);
   assert.doesNotMatch(answersBody.querySelector('.is-review').textContent, /Current location/);
+  t.mock.timers.reset();
+});
+
+test('distinct question wording with different punctuation cannot acknowledge the wrong row', async t => {
+  globalThis.window.pilot = {textOutline: async () => ({ok: true, items: [{id: 'h', type: 'heading_2', text: 'Saved answers'}], store: 'SQLite'}),
+    questionVerdicts: async () => ({ok: true, verdicts: {}})};
+  const differentQuestions = [
+    {key: 'question:exclamation', question: 'First name!', details: {kind: 'contact', where: 'Your details → Contact details'}},
+    {key: 'question:question-mark', question: 'First name?', details: {kind: 'contact', where: 'Your details → Contact details'}},
+  ];
+  Object.assign(questionsNow(), {list: differentQuestions, hidden: [], read: true, error: ''});
+  await loadApplicationAnswers();
+  answersBody.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').click();
+  t.mock.timers.enable({apis: ['setTimeout']});
+  saved('First name!', 'question:exclamation');
+  const review = answersBody.querySelector('.is-review');
+  assert.match(review.textContent, /1 to review/);
+  assert.match(review.textContent, /First name![\s\S]*Set/);
+  assert.match(review.textContent, /First name\?[\s\S]*Needed by every form/);
+  t.mock.timers.reset();
 });

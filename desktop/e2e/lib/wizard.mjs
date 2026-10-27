@@ -93,19 +93,9 @@ export async function runWizard(ctx) {
     // The cards are the Strategy page's own (pages/setup-strategy.js): Main goals names the roles, Locations the places.
     const goals = await page.locator('#setup-strategy-slot #strategy-main-goals .main-goals').innerText();
     if (!goals || /No roles yet/.test(goals)) throw new Error('the strategy has no roles to search for');
-    await page.click('#draft-save');
-    await ctx.expectStep('letter', 180000);
   }, {needs: ctx.needs});
   await ctx.run('setup drafts the base letter; explicit approval makes its PDF before continuing', async () => {
-    await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
-    const draft = await page.evaluate(() => window.pilot.coverLetter());
-    if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
-    await page.click('#letter-approve');
-    await page.waitForFunction(async () => {
-      const letter = await window.pilot.coverLetter();
-      return letter.state === 'approved' && letter.pdf;
-    }, null, {timeout: 30000});
-    await page.click('#setup-letter-next');
+    await completeWizardLetter(ctx);
     await ctx.expectStep('hosted', 180000);   // the daily-searches step (pages/hosted.js): Skip leaves hosted off, the extras step follows
     await page.click('#hosted-skip');
     await ctx.expectStep('extras');
@@ -200,4 +190,32 @@ async function connectNotion(ctx, {startedOnNotion = false} = {}) {
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     if (!await page.evaluate(() => !!window.__jp?.shared?.state?.notion?.NOTION_PROFILE_PAGE_ID)) throw new Error('the window does not know Notion is connected after a reload');
   }, {needs: ctx.needs});
+}
+
+
+/** Exercise auto-draft and explicit approval using an existing fictional letter; refuse engines that bypass the canned proxy. */
+export async function completeWizardLetter(ctx) {
+  const {page, proxy} = ctx;
+  if (!['api', 'openai'].includes(ctx.engine) || !proxy?.setCanned) throw new Error('wizard letter proof requires the canned API proxy');
+  const fixtures = JSON.parse(fs.readFileSync(new URL('../../demo/job-pages.json', import.meta.url), 'utf8'));
+  const section = Object.values(fixtures).flatMap(item => Object.values(item.sections || {})).find(text => String(text).includes('### ✉️ Cover letter'));
+  const letter = JSON.parse(section.match(/```json\n([\s\S]*?)\n```/)[1]).cover_letter;
+  const previous = proxy.canned();
+  let answered = 0;
+  // Why (2026-10-27): entering setup starts generation immediately; arm the stub before the transition so this test never asks a model.
+  proxy.setCanned(() => { answered += 1; return JSON.stringify({letter}); });
+  try {
+    await page.click('#draft-save');
+    await ctx.expectStep('letter', 180000);
+    await page.waitForFunction(() => !!document.getElementById('letter-text')?.value.trim(), null, {timeout: 120000});
+    const draft = await page.evaluate(() => window.pilot.coverLetter());
+    if (!answered || draft.text !== letter) throw new Error('setup did not use the canned letter');
+    if (draft.state === 'approved' || draft.pdf) throw new Error('setup approved the letter without the person');
+    await page.click('#letter-approve');
+    await page.waitForFunction(async () => {
+      const approved = await window.pilot.coverLetter();
+      return approved.state === 'approved' && approved.pdf;
+    }, null, {timeout: 30000});
+    await page.click('#setup-letter-next');
+  } finally { proxy.setCanned(previous); }
 }

@@ -192,6 +192,11 @@ case "$command" in *E2E_ISSUE_OK=1*) ;; *)
     links="$(cd "$repo" && timed "e2e issue links" node tools/e2e-issue-links.mjs --base origin/main 2>&1)" || { echo "Push blocked: $links" >&2; exit 2; }
   fi ;;
 esac
+# A push that changes an e2e suite or its lib says why the suite was red, in /admin/operations/e2e's words (owner, 27 Oct 2026: "let's improve the process"; the page
+# could only guess drift, test bug or product bug from a fix): "E2E-cause: <cause> [suites]" or "E2E-cause: none <why>" (tools/e2e-cause-trailer.mjs).
+if command -v node >/dev/null && [ -f "$repo/tools/e2e-cause-trailer.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  ecause="$(cd "$repo" && timed "e2e cause trailer" node tools/e2e-cause-trailer.mjs --base origin/main 2>&1)" || { echo "Push blocked: $ecause" >&2; exit 2; }
+fi
 # A push to a pull request branch (tools/ship.sh, 12 Oct 2026: `SHIP_PR=1 git push`) stops here: everything above is seconds. The suites, the journey and ladder gates and the
 # recorded-page replays run in CI on the PR (.github/workflows/pr-gate.yml, build.yml, page-cases.yml), in parallel, not on this Mac behind the heavy lock.
 # CI runs this same script for the pure checks above: CI_GATES=1 (no red-main look, no AI place check, no local-run proof of new e2e steps). Only the workflow lint stays local.

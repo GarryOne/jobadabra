@@ -10,6 +10,7 @@ duplicate what's here — read these instead, and update them if something's mis
 - **The website and /admin are not in this repo** — they live in the private repo `GarryOne/jobadabra-web` (`~/jobadabra-web`). Never recreate `site/` here; a site change is a PR there; private reads public, public never reads private; the route contract is `docs/site-routes.json` here; for a change on both sides the site PR lands first, then the public one (owner, 21 Oct 2026). Read `docs/rules/private-site.md`.
 - **`CLAUDE.md`** — the rules every session needs, one line each (safety, working rules, the change loop, tests), linking to
   **`docs/rules/`** for detail and `docs/rules/why.md` for the incident behind each rule. Written for Claude Code but applies to any agent.
+- **`docs/spec-driven-development.md`** — Spec Kit and Superpowers entrypoints, canonical feature artifact location, and the lightweight path for small fixes.
 - **notion-map** skill (private, `~/.claude/skills/notion-map` on the owner's Mac) — every Notion page/database ID this project uses, and
   which one answers which kind of question. Read this instead of searching Notion from scratch.
 - **`.claude/skills/apply-to-job/SKILL.md`** — how to fill a job application form from an

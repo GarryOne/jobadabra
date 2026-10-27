@@ -21,5 +21,13 @@ node_modules
 # The playwright blob report a harness test writes (it was committed by mistake)
 desktop/e2e/blob-report/
 
+# Why (27 Oct 2026, owner): commit only reviewed Spec Kit skill files; keep agent state and credentials local.
+.agents/**
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/speckit-*/
+.agents/skills/speckit-*/**
+!.agents/skills/speckit-*/SKILL.md
+
 # The design system page, built locally from the repository (npm run design-system); never committed
 desktop/.design-system/

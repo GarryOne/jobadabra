@@ -41,8 +41,9 @@ test('the needs count is neutral: the rows carry the state', () => {
   assert.match(read('pages/session-needs.js'), /remaining`, 'neutral'/);
 });
 
-test('Focus Up next: a row\'s main action is solid green (is-main), never the amber primary', () => {
-  const focus = read('pages/focus.js');
-  assert.match(focus, /for \(const button of actions\.querySelectorAll\('button\.primary'\)\) button\.classList\.replace\('primary', 'is-main'\);/);
-  assert.match(read('style.css'), /button\.is-main \{[^}]*background: var\(--good\);[^}]*color: var\(--on-bright\)/);
+test('a button\'s solid fill is amber, never green (owner, 27 Oct 2026: "let\'s revert here to amber color"; green is a done state, not an action)', () => {
+  const css = read('style.css') + read('components.css');
+  const green = [...css.matchAll(/([^{}]*button[^{}]*)\{([^}]*)\}/g)].filter(([, , body]) => /background:\s*var\(--good\)/.test(body)).map(([, selector]) => selector.trim());
+  assert.deepEqual(green, [], 'a button filled green');
+  assert.match(read('style.css'), /\.ss-need-button\.is-answer \{[^}]*background: var\(--signal-solid\);[^}]*color: var\(--on-signal\)/);
 });

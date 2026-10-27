@@ -24,6 +24,24 @@ def ai_ready():
     """An AI is ready: unscored jobs wait for a score and the digest leaves them out, as the app's Jobs list does."""
     return _engine.ready()
 
+def early_reads(slice_first, full_read):
+    """The fast, high-yield sources started at the search's start, each in its own thread, while the employers' AI set-up runs (pool labels,
+    employer kinds): the web search for trade and local boards, the free job APIs and, on a first press, the slice's job boards. 27 Oct
+    2026, the search benchmark: they started at 38-80 s, behind that set-up, and met the read cut (67 s of a 135 s first press) unread;
+    6 fresh personas found 0-2 jobs. -> the slice's boards (first_jobs.run `boards`), None when there is no slice."""
+    if not full_read:
+        return None
+    from .sources import aggregators, board_web
+    search = load_search_config()
+    board_web.early(search)
+    try:
+        with feeds.database(DATA / 'jobs.sqlite') as feed_db:
+            aggregators.prefetch(feed_db, search)
+    except Exception as error:  # noqa: BLE001 — the scan asks them itself
+        print(f'Warning: free job APIs not asked early: {type(error).__name__}: {error}', flush=True)
+    return first_jobs.begin(search) if slice_first else None
+
+
 def search(args, stores=None):
     stores = stores or open_run()
     run_counts.reset()   # this search's own counts start at 0
@@ -61,6 +79,9 @@ def search(args, stores=None):
         if args.mode != 'more':
             # The feed watcher and canonical store intentionally have different schemas.
             # Keep the source-specific history separate, then import the report.
+            slice_first = args.first_jobs and args.score_max and not args.only_visits and read_profile
+            full_read = args.mode in ('scheduled', 'run') and not args.only_visits
+            slice_boards = early_reads(slice_first, full_read)   # the fast sources start here, beside the employers' AI set-up below
             # sources.json plus every active feed the scout found (local table + Notion Source Registry).
             feed_list = scout.active_sources(db, stores, sources, [] if args.only_visits else downloaded_index())
             if args.only_visits:
@@ -69,24 +90,26 @@ def search(args, stores=None):
             if employer_index.problem:  # said on the run, not only in its log: the check then crawled a small list
                 run['warnings'].append(f'Employer index not downloaded ({employer_index.problem}): this check crawled {len(feed_list)} feeds, not the full list')
             with feeds.database(DATA / 'jobs.sqlite') as feed_db:
-                if args.mode in ('scheduled', 'run') and not args.only_visits:   # the board web search at second 0, beside the first jobs (src/sources/board_web.py early)
-                    from .sources import board_web
-                    board_web.early(load_search_config())
                 so_far = jobs_so_far.SoFar(db)   # each source's jobs in the list as soon as it is read, not all at the end (owner, 18 Oct 2026); before the slice, so its jobs stay "new" in the count
                 first_boards = []
-                if args.mode in ('scheduled', 'run') and not args.only_visits:   # the web search's boards read before any employer site (src/sources/boards_first.py)
-                    from .sources import boards_first
-                    try:
+                from .sources import boards_first
+                if full_read and not slice_first:   # the web search's boards read before any employer site (src/sources/boards_first.py); a first
+                    try:   # press reads its slice first and the web search's boards after it, never waiting in front of it (27 Oct 2026, the benchmark)
                         first_boards = boards_first.run(feed_db, load_search_config(), so_far.listener('job boards'))
                     except Exception as error:  # noqa: BLE001 — the full board read reads them
                         print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
-                if args.first_jobs and args.score_max and not args.only_visits and (read_first := read_profile):
+                if slice_first:
                     try:   # a new user's first jobs in seconds: a slice of fast feeds, 3 jobs scored and synced one by one, then the full crawl below
-                        first_jobs.run(db, feed_db, feed_list, read_first(), hidden, sync=lambda: stores.matches.sync(
-                            db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True),
+                        first_jobs.run(db, feed_db, feed_list, read_profile(), hidden, sync=lambda: stores.matches.sync(
+                            db, for_job_matches(db, hidden), hidden - dismissed, None, dismissed, partial=True), boards=slice_boards,
                                         import_jobs=lambda slice_report: so_far.add(slice_report.get('jobs') or [], 'employer sites'))
                     except Exception as error:  # noqa: BLE001 — the full search does everything the slice did
                         print(f'Warning: first jobs skipped: {type(error).__name__}: {error}', flush=True)
+                    if full_read:
+                        try:
+                            first_boards = boards_first.web_boards(feed_db, load_search_config(), so_far.listener('job boards'))
+                        except Exception as error:  # noqa: BLE001 — the full board read reads them
+                            print(f'Warning: job boards first skipped: {type(error).__name__}: {error}', flush=True)
                 from .sources import boards_ahead   # the found boards read beside the employer sites, not after them (owner, 19 Oct 2026)
                 report, ahead = boards_ahead.scan_beside(feed_list, feed_db, load_search_config(), so_far, due=args.mode in ('scheduled', 'run'))
                 report['jobs'] += first_boards

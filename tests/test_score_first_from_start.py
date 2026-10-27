@@ -25,6 +25,9 @@ class ScoreFirstFromTheStart(unittest.TestCase):
         self.assertTrue(time_budget.SCORE_FIRST)
         time_budget.start(180, now=time.monotonic() - 100)
         time_budget.score_first()
+        from src import run_counts
+        self.addCleanup(run_counts.reset)
+        run_counts.matched([{'url': 'https://x.test/1'}])   # a job to score: the floor's titles wait (without one, one batch: test_first_press_order.py)
         self.assertEqual(time_budget.local_titles(10), 0, "past 95 s the title floor leaves scoring its share (stop 140 s, SCORING 45 s)")
 
     def test_nothing_to_score_plans_no_score_first(self):

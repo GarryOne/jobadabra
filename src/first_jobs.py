@@ -7,7 +7,10 @@ cached AI call, the same the full read makes; owner, 18 Oct 2026: a driver's job
 read at once and while the employer sites are (18 Oct 2026: Chisinau's first 2 boards gave nothing; SRE's 70+ waited for 2 boards), each
 one that refuses automated reading replaced by the next proposed board (19 Oct 2026: 4 of music's first boards refused, XING was 7th).
 The search after it is unchanged; scored jobs are skipped by their hash, so the total AI calls are the same.
-Tests: tests/test_first_jobs.py, tests/test_proven_boards.py."""
+The slice's boards start with the search (begin), beside its AI set-up (pool labels, employer kinds, the web search): 27 Oct 2026, the search
+benchmark's first presses asked for their boards at 80 s, past the search's read cut (67 s of a 135 s press), and found 0-2 jobs where the
+20 Oct round found 49-1,459.
+Tests: tests/test_first_jobs.py, tests/test_proven_boards.py, tests/test_first_press_order.py."""
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -67,6 +70,21 @@ def board_jobs(say=print, search=None):
     # a board that refuses gives its place to the next proposed one at once, in the same read (19 Oct 2026: a second wave after the first
     # made Finance's slice wait 35 s)
     return found_boards.read(search, top, early=True, workers=SLICE_BOARDS, spare=spare)
+
+
+def begin(search, say=print):
+    """The slice's boards (board_jobs) started now, in their own thread: the proposal's AI call and the boards' first pages run while the search
+    works out its employers. -> what run() takes as `boards`: it waits for that read (which ends by the search's read cut, found_boards.read)."""
+    from concurrent.futures import ThreadPoolExecutor
+    from .ai import batch_scope
+
+    def read():
+        with batch_scope.reader('boards'):
+            return board_jobs(say, search)
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='first-boards')
+    reading = pool.submit(read)
+    pool.shutdown(wait=False)
+    return lambda _say: reading.result()
 
 
 def _refused(board_ideas):

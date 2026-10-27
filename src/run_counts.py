@@ -28,6 +28,12 @@ def _add(kind, keys):
             print(line(), flush=True)   # the card shows the latest one (desktop/renderer/find-card-model.js runCounts)
 
 
+def any_match():
+    """This search matched a job already (src/time_budget.py local_titles: the title floor then leaves scoring its share)."""
+    with _lock:
+        return bool(_sets['matches'])
+
+
 def looked(jobs):
     _add('looked', [job.get('url') or job.get('id') for job in jobs])
 

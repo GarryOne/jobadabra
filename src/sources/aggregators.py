@@ -265,6 +265,32 @@ def kept(db, name, found, now=None):
     return matched
 
 
+_asked = {}   # {reader name: Future of its jobs as read}: the free job APIs asked when the search started (prefetch), taken by scan
+
+
+def prefetch(db, search, now=None):
+    """The due free job APIs asked now, each in its own thread, while the search works out its employers (27 Oct 2026, the search benchmark:
+    asked after the employer read, past the read cut, they were "Time is up" on every first press). Only their pages are fetched here; scan
+    takes them (what was read is kept and shown, also past the cut) and judges them in the search's own thread."""
+    from concurrent.futures import ThreadPoolExecutor
+    _asked.clear()
+    if os.getenv('JOB_PILOTTO_FIXTURE_DIR'):   # as scan: the fixture mode never reaches a live site
+        return
+    db.execute(TABLE)
+    due = [(name, read) for name, read in sources() if name != boards_ahead.NAME and not read_lately(db, name, now, search)]
+    if not due:
+        return
+    pool = ThreadPoolExecutor(max_workers=len(due), thread_name_prefix='job-apis')
+    for name, read in due:
+        _asked[name] = pool.submit(read, search)
+    pool.shutdown(wait=False)
+
+
+def _taken(name, readers):
+    """The prefetched read of `name` (a Future), or None (scan's own readers given: a test of scan itself)."""
+    return _asked.pop(name, None) if readers is None else None
+
+
 def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
     """A feeds.scan-style report ({'jobs', 'sources'}) from the aggregators that are due; your roles and places only, source named on each job.
     on_jobs(jobs): each reader's jobs as soon as it is read (owner, 18 Oct 2026: jobs shown as quickly as possible). ahead: the found boards
@@ -283,7 +309,8 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
         lately = read_lately(db, name, now, search)
         if lately and name != boards_ahead.NAME:   # the found boards rest one by one (board_yield.not_read_since)
             continue
-        if read_budget.past_cut() and not (ahead is not None and name == boards_ahead.NAME):   # the boards read beside the employers are only taken
+        asked = _taken(name, readers)   # asked when the search started: taken until the cut, and after it once its read has ended
+        if read_budget.past_cut() and not (ahead is not None and name == boards_ahead.NAME) and not (asked and asked.done()):   # the boards read beside the employers are only taken
             late.append(name)
             continue
         try:
@@ -293,8 +320,12 @@ def scan(db, search, now=None, readers=None, on_jobs=None, ahead=None):
                 if name == boards_ahead.NAME:   # the found boards count one by one (found_boards.read_board)
                     found = read(search, since=now - timedelta(hours=SPACING_HOURS)) if lately else read(search)
                 else:
+                    early = read_budget.result(asked, read_budget.cut_at()) if asked else None   # not waited for past the cut
+                    if early is read_budget.LEFT:
+                        late.append(name)
+                        continue
                     with read_methods.reading(name, 'feed_api') as counted:   # a free job API is a feed
-                        found = read(search)
+                        found = early if asked else read(search)
                         counted.jobs = read_methods.in_places(found)
                 matched = kept(db, name, found, now)
             mark_read(db, name, now, search)

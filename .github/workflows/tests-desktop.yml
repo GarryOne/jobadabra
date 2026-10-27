@@ -72,6 +72,8 @@ on:
       - 'tools/free-ai-form-list.mjs'
       - 'tools/free-ai-form-applicants.mjs'
       - 'tools/free-ai-writing-cases.mjs'
+      - 'tools/free-ai-writing-cases-forms.mjs'   # split from free-ai-writing-cases.mjs (ac, branch ai-tier-new-steps); a desktop test imports them
+      - 'tools/free-ai-writing-cases-interview.mjs'
       - 'tools/free-ai-writing-eval.mjs'
       - 'tools/free-ai-writing-judge.mjs'
       - 'tools/free-ai-writing-pairwise.mjs'

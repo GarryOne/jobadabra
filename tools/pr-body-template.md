@@ -2,6 +2,8 @@
 
 **Why:** <the incident, measurement or owner request behind it>
 **Unblocks:** <exactly what this solves or lets happen next: a PR, a session, a number, a person's step>
+**Root cause:** <a fix only, else delete this line: the cause in one sentence (file:line, log line or measurement); why this is not a symptom patch; what let it through (the rule, test or check that missed it)>
+**Design:** <a fix whose AREA-CIRCLES line (pr-body.sh adds it) shows 7d=2 or more, else delete: the states, their one owner, the verdicts that change them>
 
 | Area | Impact | How |
 |---|---|---|

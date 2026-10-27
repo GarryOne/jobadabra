@@ -1,0 +1,63 @@
+{
+ "origin": "hand-cut",
+ "shape": "a contact box whose label names more than one part of a name (\"Preferred First & Last Name\"): the quick step's label pattern reads one part, the AI reads the whole",
+ "why": "27 Oct 2026, benchmark fair round (jobadabra-benchmarks run 40440347913, form 103, 3 runs of 3): \"Preferred First & Last Name\" was typed with the last name only; the quick step's pattern matched \"Last Name\" and contact boxes never reached the AI. Owner: the AI reads contact boxes (in the answers call made anyway) and its reading wins where it disagrees.",
+ "control": {
+  "build": "a281e3d",
+  "failed": "valueIs: #preferred|Test Candidate (the box held the last name only)"
+ },
+ "sample": "hand-written from the benchmark run's field list (no live capture kept); the AI's answer is the case's stub; fake applicant",
+ "pages": [
+  {
+   "url": "https://jobs.example.com/acme/88/application",
+   "file": "form.html"
+  }
+ ],
+ "ai": {
+  "/extension/page-kind": {
+   "ok": true,
+   "kind": "form",
+   "role": "form",
+   "by": "ai",
+   "confidence": 0.95,
+   "rung": 2
+  },
+  "/extension/answer": {
+   "ok": true,
+   "eligible": true,
+   "eligibility_note": "",
+   "answers": [
+    {
+     "field": "preferred",
+     "question": "Preferred First & Last Name",
+     "value": "Test Candidate",
+     "confidence": "high",
+     "category": "contact",
+     "use": "fill",
+     "fact": "contact"
+    },
+    {
+     "field": "legal-first",
+     "question": "Legal First Name",
+     "value": "Test",
+     "confidence": "high",
+     "category": "contact",
+     "use": "fill",
+     "fact": "contact"
+    }
+   ]
+  }
+ },
+ "contact": {},
+ "expect": {
+  "valueIs": [
+   "#preferred|Test Candidate",
+   "#legal-first|Test",
+   "#legal-last|Candidate"
+  ],
+  "notTold": [
+   "pressed the submit"
+  ],
+  "seconds": 60
+ }
+}

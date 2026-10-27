@@ -365,7 +365,7 @@ export async function consider(tab, jobUrl) {
           if (afterRoute) { role = 'form'; pressed = true; await noteRole(tab.id, tab.url, role); } else noteNoEffect(key, chosen.pressed);
         }
         // The look after the press says this page IS the form, as sure as the first answer: filled, never handed over as a bot check (later-look.js).
-        if (role === 'no-form' && laterLookIsForm(kind, lookAfterPress)) {
+        if (laterLookIsForm(kind, lookAfterPress)) {   // also after a form came by the route: the later look is the newer answer
           decide('fill', 'a later look says this page is the form: filled', {host, first: kind?.kind || '', confidence: lookAfterPress.confidence});
           await forgetKind(tab, kind, 'a later look says form'); kind = lookAfterPress; role = 'form'; await noteRole(tab.id, tab.url, role);
         }

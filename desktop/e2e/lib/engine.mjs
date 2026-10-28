@@ -12,7 +12,7 @@ const claudeInstalled = () => { try { execFileSync('claude', ['--version'], {env
 // THE RULE (owner, 5 Oct 2026): the e2e key is for CI only. On a Mac no suite loads, reads or spends an Anthropic key: the app under test and every judge use this Mac's
 // Claude Code (the plan, a fixed price). A step that needs the proxy in front of the app (a refusal, a delay) runs on the API engine with DUMMY_KEY, so it costs nothing.
 export const isCi = (env = process.env) => !!env.CI;
-export const testKey = (env = process.env, engine = 'api', family = '') => !isCi(env) ? '' : family === 'free' ? env.E2E_FREE_AI_KEY || '' : env[liveKeyName(env, engine)] || '';   // a live run's own key when it has one (liveKeyName)
+export const testKey = (env = process.env, engine = 'api', family = '') => !isCi(env) ? '' : aiProvider(env, 'app').provider === 'codex' ? DUMMY_KEY : family === 'free' ? env.E2E_FREE_AI_KEY || '' : env[liveKeyName(env, engine)] || '';   // a live run's own key when it has one (liveKeyName)
 export const appKey = (key, env = process.env) => isCi(env) ? key : DUMMY_KEY;
 
 // The app's models under test. CI forces every step onto one cheap model (Haiku) to save credit; a Mac has no per-token cost, so the app uses its own production models
@@ -27,6 +27,7 @@ export function pickFamily(env = process.env) {
   if (pinned && !['claude', 'openai', 'free', 'rotate'].includes(pinned)) throw new Error(`E2E_AI_FAMILY must be claude, openai, free or rotate, not "${pinned}"`);
   if (pinned === 'free' && !isCi(env)) throw new Error('E2E_AI_FAMILY=free is for CI only: the relay runs on the runner with CI\'s own Workers AI token');
   if (pinned === 'claude' || pinned === 'openai' || pinned === 'free') return pinned;
+  if (isCi(env) && aiProvider(env, 'app').provider === 'codex') return 'claude';   // Why (#2427, Gitar): the broker relay speaks Messages; no Free AI or OpenAI path may bill the app beside it
   if (freeAi(env)) return 'free';   // CI on Free AI (below): every run, both run parities
   if (!isCi(env) && pinned !== 'rotate') return 'claude';
   const turn = Number(env.GITHUB_RUN_NUMBER || 0) % 2 === 1 ? 'openai' : 'claude';

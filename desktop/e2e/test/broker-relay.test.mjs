@@ -60,3 +60,21 @@ test('pdfText reads the words out of a real PDF', async () => {
   const {pdfText} = await import('../lib/broker-relay.mjs');
   assert.match(await pdfText(Buffer.from(await doc.save()).toString('base64')), /Jane Doe nurse/);
 });
+
+test('a relay that throws (a bad body, a bad PDF) is a 502 answer and the proxy keeps serving', async () => {
+  const proxy = await startAiProxy({kind: 'app-codex', relay: async () => { throw new Error('bad pdf'); }});
+  try {
+    const first = await fetch(`${proxy.url}/v1/messages`, {method: 'POST', headers: {'content-type': 'application/json'}, body: '{}'});
+    assert.equal(first.status, 502);
+    assert.match((await first.json()).error.message, /relay: bad pdf/);
+    assert.equal((await fetch(`${proxy.url}/v1/messages`, {method: 'POST', body: '{}'})).status, 502);
+  } finally { await proxy.close(); }
+});
+
+test('with the app on codex in CI no other family bills it and its key is the placeholder', async () => {
+  const {pickFamily, testKey, DUMMY_KEY} = await import('../lib/engine.mjs');
+  const env = {CI: 'true', GITHUB_RUN_NUMBER: '1', E2E_OPENAI_KEY: 'k', E2E_FREE_AI_URL: 'http://x', E2E_FREE_AI_KEY: 'k', CI_AI_PROVIDER: 'codex'};
+  assert.equal(pickFamily(env), 'claude');
+  assert.equal(testKey(env), DUMMY_KEY);
+  assert.equal(pickFamily({...env, CI_AI_PROVIDER: 'free'}), 'free');
+});

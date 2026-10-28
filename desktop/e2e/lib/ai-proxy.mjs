@@ -75,7 +75,9 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     }
     if (relay && metered.test(req.url)) {   // the owner's Codex plan through the broker (lib/broker-relay.mjs); a refusal is an error answer, never another provider
       stats.paid = (stats.paid || 0) + 1;
-      const answered = await relay(JSON.parse(body.toString('utf8') || '{}'));
+      let answered;
+      try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
+      catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
       if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } keep(key, {status: 200, contentType: answered.contentType, body: answered.body}); }
       res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
     }

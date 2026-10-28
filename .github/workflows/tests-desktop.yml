@@ -26,6 +26,7 @@ on:
       - 'hosted/**'   # ready-fill.test.js imports the night's filler; site-routes.test.js reads every shipped folder
       - 'src/**'   # settings-paths-exist, bridge-registry, plan-promo, run-lines-plain, site-routes and identity-rule read engine text (#2099 changed only src/ai/decide.py and main went red)
       - 'worker/src/**'   # identity-rule.test.js, site-routes.test.js
+      - 'worker/test/helpers/**'   # the panel tests load the panel scripts through readPanel (panel.js) and draw it in jsdom (page.js)
       - 'tests/fixtures/audience_cases.json'   # audience.test.js
       - 'tests/fixtures/swiss_cases.json'
       - 'tools/ship.sh'   # merge-baseline.test.js

@@ -13,6 +13,9 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
     });
   const named = [...document.querySelectorAll('button, a, [role=button], input[type=submit], input[type=button]')].filter(el => visible(el) && clean(el.innerText || el.textContent || el.value || el.getAttribute?.('aria-label')).toLowerCase() === clean(control).toLowerCase());
   const button = named.length === 1 ? named[0] : null;
+  // Why (2026-10-28, e2e proof of Background automation, measured): a Submit button below the fold has no element at its point, so every filled form read as not safe and went to the person;
+  // in view first, then asked what is on top (the live view's own press does the same: hosted/ready-fill/live.mjs BUTTON_AT).
+  button?.scrollIntoView?.({block: 'center', behavior: 'instant'});
   const rect = button?.getBoundingClientRect(), onTop = rect && document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
   const blocked = fields.some(el => el.type === 'password') || [...document.querySelectorAll('[data-jobpilotto-draft]')].some(visible);
   const safe = !!button && !button.disabled && button.getAttribute?.('aria-disabled') !== 'true' && (onTop === button || button.contains(onTop)) && !blocked && !globalThis.__jobPilottoStopped;

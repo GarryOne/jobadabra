@@ -15,6 +15,7 @@ import {appKey, appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFami
 import {checkRelay} from './free-ai-check.mjs';
 import {copyExtension, freePort, makeOpenShim, opensIntoSpool} from './extension.mjs';
 import {startForms} from './forms.mjs';
+import {hiddenBrowserEnv} from './hidden-browser-env.mjs';
 import {createVariation, placeOf} from './variation.mjs';
 import {ARTIFACTS, E2E, launch, pickFile, step} from './app.mjs';
 import {clearRoot, testRoot, workspaceReady} from './notion.mjs';
@@ -122,6 +123,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
     ctx.extensionDir = copyExtension(ctx.appPort);
     ctx.forms = await startForms({vary: ctx.vary});
     browserEnv.JOB_PILOTTO_PORT = String(ctx.appPort);
+    Object.assign(browserEnv, hiddenBrowserEnv(ctx.forms.port));   // the app's hidden browser reaches the fixture sites only (lib/background-proof.mjs)
   }
   const env = {...appModelEnv(), JOB_PILOTTO_FIXTURE_DIR: ctx.feeds, JOB_PILOTTO_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOB_PILOTTO_E2E_FREE_AI_KEY: key} : {}), ...(ctx.openaiProxy ? {JOB_PILOTTO_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
     ...(ctx.releases ? {JOB_PILOTTO_E2E_UPDATES_URL: ctx.releases.url} : {}), ...(ctx.google ? {JOB_PILOTTO_E2E_GOOGLE_BASE_URL: ctx.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'} : {}), ...browserEnv, ...suiteEnv};

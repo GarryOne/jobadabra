@@ -20,6 +20,8 @@ test('without git the manifest version stands', () => {
 test('every report and the reload compare use the running version, never the bare manifest', () => {
   const code = fs.readFileSync(new URL('../../extension/tab-report.js', import.meta.url), 'utf8');
   assert.match(code, /version: running/);
-  assert.match(code, /newer\(answer\.latest, running\)/);
+  // Why (2026-10-28, #2364): the compare moved to extension/self-reload.js (the hidden browser's copy never reloads); the report still hands it the running version.
+  assert.match(code, /mayReloadSelf\(\{latest: answer\?\.latest, running,/);
+  assert.match(fs.readFileSync(new URL('../../extension/self-reload.js', import.meta.url), 'utf8'), /newer\(latest, running\)/);
   assert.doesNotMatch(code, /newer\(answer\.latest, chrome\.runtime\.getManifest/);
 });

@@ -21,7 +21,8 @@ export async function submissionPage(action, {control = '', seal = ''} = {}) {
   const safe = !!button && !button.disabled && button.getAttribute?.('aria-disabled') !== 'true' && (onTop === button || button.contains(onTop)) && !blocked && !globalThis.__jobPilottoStopped;
   const factsOnly = document.querySelectorAll('[data-jobpilotto-grounding=unknown], [data-jobpilotto-guess]').length === 0 && fields.every(el => {
     if (['submit', 'button', 'reset'].includes(el.type)) return true;
-    if (el.type === 'file') return !el.files?.length || el.getAttribute?.('data-jobpilotto-file') === el.files[0].name;
+    // Why (2026-10-28, found by the Full automation e2e): upload.js writes the input's own mark as dataset.jobPilottoFile and only the slot's as data-jobpilotto-file (read-back.js reads both); reading the slot's attribute on the input matched no CV, so every attachment handed the application over.
+    if (el.type === 'file') return !el.files?.length || (el.dataset?.jobPilottoFile || el.closest?.('[data-jobpilotto-file]')?.dataset?.jobpilottoFile || el.getAttribute?.('data-jobpilotto-file')) === el.files[0].name;
     if (['checkbox', 'radio'].includes(el.type) && !el.checked) return true;
     return !clean(el.value || el.getAttribute?.('aria-valuetext') || el.textContent) || el.getAttribute?.('data-jobpilotto-grounding') === 'known';
   });

@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {GATHERED, LIVE, PAGES, PARTS, READERS, aboutYou, readersTable} from '../lib/about-you.js';
 import {createStorage} from '../lib/storage.js';
+import * as store from '../lib/store/index.js';
 
 test('the exported JSON is the app\'s READERS: run node tools/about-you-readers.mjs when this fails', () => {
   assert.equal(fs.readFileSync(FILE, 'utf8'), text());
@@ -32,11 +33,17 @@ test('live readers: kit answers (D1b) and Your portrait; every other reader is b
   for (const key of Object.keys(PAGES)) assert.ok(key === 'form' || READERS[key], key);
 });
 
-test('a part aboutYou() does not gather yet is always lacked, so the page never claims it', async () => {
+// Why (Gitar on #2361): seeded with every source aboutYou() reads, so the gathered parts must really come back and the rest must really be lacked; an empty store would pass whatever GATHERED says.
+test('GATHERED is what a real aboutYou() call returns from a seeded store: those parts present, every other part lacked', async () => {
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-readers-')), {encrypt: v => v, decrypt: v => v});
   storage.saveSettings({store: 'sqlite'});
-  const {lacked} = await aboutYou(storage, 'portrait');
-  assert.deepEqual(READERS.portrait.parts.filter(part => !GATHERED.includes(part)).every(part => lacked.includes(part)), true);
-  const portrait = readersTable().readers.find(reader => reader.key === 'portrait');
-  assert.deepEqual(portrait.through, READERS.portrait.parts.filter(part => GATHERED.includes(part)));
+  const opened = store.openStore(storage);
+  await opened.page('answers').write('## Learned from forms\n| Question | Answer |\n|---|---|\n| Willing to travel | Yes, up to 20% |\n');
+  await opened.page('profile').write('## Targets\n- **Roles:** Data engineer\n');
+  fs.mkdirSync(storage.path('cv'), {recursive: true});
+  fs.writeFileSync(path.join(storage.path('cv'), 'cv.json'), JSON.stringify({name: 'Alex Morgan', jobs: []}));
+  const {parts, lacked} = await aboutYou(storage, 'portrait');
+  const want = READERS.portrait.parts.filter(part => GATHERED.includes(part));
+  assert.deepEqual(Object.keys(parts).sort(), [...want].sort());
+  assert.deepEqual([...lacked].sort(), READERS.portrait.parts.filter(part => !want.includes(part)).sort());
 });

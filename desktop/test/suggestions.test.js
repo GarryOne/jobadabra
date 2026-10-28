@@ -77,3 +77,15 @@ test('Tune and Analyze left the Actions page and stay in ⌘K; Focus has Suggest
   assert.match(nav, /add\('Strategy', 'Tune my strategy', [^\n]*\(\) => openTune\(\)\);/);
   assert.match(nav, /add\('Reports', 'Analyze my job search', [^\n]*\(\) => runCommand\('weekly'\)\);/);
 });
+
+test('a Not true on role ideas reaches the engine, which Focus reads (#2350, Gitar: kept in one window, Focus offered them again)', async () => {
+  const sent = [];
+  globalThis.window = {pilot: {roleIdeasAside: async words => { sent.push(words); return {ok: true}; }}};
+  const {setAside} = await import('../renderer/ideas-aside.js');
+  setAside(['caissier']);
+  assert.deepEqual(sent, [['caissier']]);
+  assert.match(read('../preload.cjs'), /roleIdeasAside: call\('roleIdeasAside'\)/);
+  assert.match(read('../lib/search-tuning-handlers.js'), /handle\('roleIdeasAside'[\s\S]*?'src\.desktop', 'role-ideas-aside'/);
+  assert.match(read('../../src/desktop.py'), /args\.command == 'role-ideas-aside':\s*\n\s*from \.ai import role_ideas\s*\n\s*role_ideas\.put_aside\(/);
+  delete globalThis.window;
+});

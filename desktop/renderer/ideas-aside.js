@@ -1,12 +1,11 @@
-// Role ideas set aside (src/ai/role_ideas.py set_aside): kept on this Mac and sent with every ask, so the AI never proposes them again.
-// Written by a Not true on role ideas, on Strategy or Focus (src/suggestions_search.py entry `aside`); read by Strategy's ideas row.
+// Role ideas set aside with a Not true, on Strategy or Focus (src/suggestions_search.py entry `aside`): the engine keeps them (src/ai/role_ideas.py
+// put_aside), so the AI never proposes them and Focus never shows them again. Why (#2350, Gitar): this window's storage held them, and Focus read the engine.
 const IDEAS_ASIDE = 'jp.ideas.aside';
-const KEPT = 60;
 
-/** The words set aside so far. */
+/** The words an older version set aside in this window's storage: sent with the next ask, which keeps them in the engine. */
 export const aside = () => { try { return JSON.parse(localStorage.getItem(IDEAS_ASIDE) || '[]'); } catch { return []; } };
 
-/** Sets these words aside too (the newest KEPT are kept). */
+/** Sets these words aside in the engine. */
 export function setAside(words) {
-  try { localStorage.setItem(IDEAS_ASIDE, JSON.stringify([...new Set([...aside(), ...words])].slice(-KEPT))); } catch { /* proposed again next time */ }
+  window.pilot.roleIdeasAside?.(words)?.catch(() => { /* proposed again next time */ });
 }

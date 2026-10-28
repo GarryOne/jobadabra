@@ -83,6 +83,7 @@ def main(argv=None):
     sub.add_parser('visit-understand').add_argument('file')   # a page outline the extension could not read: Claude's recipe, kept per site
     sub.add_parser('visit-recipe').add_argument('file')   # the recipe kept for a site (JSON: url, forget), or null   # a page the extension sent (JSON: url, html, cards, title, session): its jobs, kept as a feed
     sub.add_parser('role-ideas').add_argument('file', nargs='?')   # roles suggested from the Profile (JSON: set_aside), counted in the places' titles
+    sub.add_parser('role-ideas-aside').add_argument('file')   # role ideas a Not true set aside (JSON: words), kept by the engine for Strategy and Focus
     sub.add_parser('coverage')   # how much of the market the role keywords catch, and what adding a term would add (src/coverage.py)
     args = parser.parse_args(argv)
     with store.connect(JOBS_DB) as db:
@@ -114,11 +115,17 @@ def main(argv=None):
             # One read for Strategy's rows and Focus's (src/suggestions_search.py): the same verdict, each row's key for its Not now / Not true
             print(json.dumps(suggestions_search.checked(load_search_config(), coverage.load(), extras=True), ensure_ascii=False))
             return 0
+        if args.command == 'role-ideas-aside':
+            from .ai import role_ideas
+            role_ideas.put_aside((json.loads(Path(args.file).read_text()) or {}).get('words') or [])
+            print(json.dumps({'ok': True}))
+            return 0
         if args.command == 'role-ideas':
             from . import coverage, features
             from .ai import engine, role_ideas
             from .paths import load_search_config, local_profile
             asked = json.loads(Path(args.file).read_text()) if args.file else {}
+            role_ideas.put_aside(asked.get('set_aside') or [])   # a list an older window kept in its own storage
             if not _role_ideas_on():
                 print(json.dumps({'ok': True, 'ideas': []}))
                 return 0

@@ -33,11 +33,19 @@ export function wantedLabel(body, commentUpdatedAt, headCommittedAt) {
 const gh = (...args) => execFileSync('gh', args, {encoding: 'utf8'});
 const pages = path => JSON.parse(gh('api', path, '--paginate', '--slurp')).flat();
 
+/** When the head became the head: the later of its commit date and the first check suite created for it (a commit made at 10:00 and pushed at 11:00 counts as 11:00; Gitar on web#216). */
+function headTime(repo, sha) {
+  const committed = JSON.parse(gh('api', `repos/${repo}/commits/${sha}`)).commit.committer.date;
+  const suites = JSON.parse(gh('api', `repos/${repo}/commits/${sha}/check-suites`)).check_suites.map(c => c.created_at);
+  return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
+}
+
 function main(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   const reviews = pages(`repos/${repo}/issues/${pr}/comments`).filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
-  const head = pages(`repos/${repo}/pulls/${pr}/commits`).at(-1).commit.committer.date;
+  const sha = JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)).head.sha;
+  const head = headTime(repo, sha);
   const want = latest ? wantedLabel(latest.body, latest.updated_at, head) : null;
   const have = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   for (const l of Object.values(LABELS)) {

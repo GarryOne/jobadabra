@@ -34,7 +34,7 @@ async function eslint() {
   } catch (error) {
     if (error.code !== 'MODULE_NOT_FOUND') throw error;
     // Why (28 Oct 2026, #2414): the shared desktop/node_modules in a worktree can predate the lock that added the plugin.
-    throw new Error(`clean-code: ${error.message.split('\n')[0]}. desktop/node_modules is older than desktop/package-lock.json: run \`npm ci\` in desktop/ (in the primary checkout, never through a worktree link: tools/worktree.sh own-modules desktop first).`);
+    throw new Error(`clean-code: ${error.message.split('\n')[0]}. The shared node_modules is older than the lock: cd ~/jobadabra/desktop && npm ci (primary checkout only, never through a worktree link).`);
   }
   linter = new ESLint({
     overrideConfigFile: true,

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import fs from 'node:fs';
 import {LOOK, jobsBarWords} from '../renderer/suggestions.js';
-import {QUESTION_DOES, foldedLine, questionEntries, withQuestions} from '../renderer/question-entries.js';
+import {QUESTION_DOES, drawerRows, foldedLine, questionEntries, withQuestions} from '../renderer/question-entries.js';
 
 const asked = {details: [{}, {}, {}, {}], learned: [{}, {}, {}, {}, {}, {}], letter: {hint: 'Forms ask for one', setup: {action: 'Create cover letter', state: 'missing'}}, error: '', fromDetails: 0, read: true};
 
@@ -23,10 +23,10 @@ test('every state of today\'s cards stays: hidden at zero, answered-from-details
   assert.deepEqual(questionEntries({...asked, details: [], learned: [], letter: null}), [], 'hidden at zero');
   const some = questionEntries({...asked, letter: null, fromDetails: 3});
   assert.match(some[0].detail, /3/, 'the "answered from your details" line stays on the details row');
-  const failed = questionEntries({...asked, error: 'notion 500'});
+  const failed = questionEntries({...asked, details: [], learned: [], letter: null, error: 'notion 500'});
   assert.deepEqual(failed.map(row => row.kind), ['questions-error'], 'a failed read shows one row, no counts');
   assert.deepEqual(failed[0].actions.map(action => action.do), ['retry_questions']);
-  assert.deepEqual(questionEntries({...asked, error: 'Connect Notion first'}), [], 'the store not connected yet (trying only): no error row');
+  assert.deepEqual(questionEntries({details: [], learned: [], letter: null, error: 'Connect Notion first'}), [], 'the store not connected yet (trying only): no error row');
 });
 
 test('the rows answer Not now only, and every do they write has a handler and a look', () => {
@@ -34,7 +34,7 @@ test('the rows answer Not now only, and every do they write has a handler and a 
   for (const kind of ['letter', 'details', 'learned', 'questions-error']) assert.ok(LOOK[kind], `${kind} has a look`);
   const page = fs.readFileSync(new URL('../renderer/pages/focus-suggestions.js', import.meta.url), 'utf8');
   const run = page.slice(page.indexOf('export const RUN = {'), page.indexOf('\n};', page.indexOf('export const RUN = {')));
-  const written = new Set(questionEntries(asked).concat(questionEntries({...asked, error: 'x'})).flatMap(row => row.actions.map(action => action.do)));
+  const written = new Set(questionEntries(asked).concat(questionEntries({error: 'x'})).flatMap(row => row.actions.map(action => action.do)));
   assert.deepEqual([...written].sort(), QUESTION_DOES.slice().sort(), 'QUESTION_DOES lists what the rows write');
   for (const name of QUESTION_DOES) assert.match(run, new RegExp(`\\n  ${name}: `), `${name} has a handler in RUN`);
 });
@@ -57,4 +57,17 @@ test('the folded line names them, the blocking one first, then the search sugges
 test('a row answered Not now leaves every place at once: held keys drop it from withQuestions', () => {
   const rows = questionEntries(asked), held = new Set([rows[1].key]);
   assert.deepEqual(withQuestions([], rows, held).map(row => row.kind), ['letter', 'learned']);
+});
+
+test('a failed refresh keeps the saved rows (Gitar on #2366): the error row shows only when nothing saved is left', () => {
+  const saved = questionEntries({...asked, error: 'notion 500'});
+  assert.deepEqual(saved.map(row => row.kind), ['letter', 'details', 'learned'], 'the counts kept on this Mac stay, as the old cards kept them');
+  assert.deepEqual(questionEntries({...asked, error: 'Connect Notion first'}).map(row => row.kind), ['letter', 'details', 'learned']);
+});
+
+test('the drawer rows wait until Focus has said which keys a Not now hides (Gitar on #2366), then drop those and the ones held here', () => {
+  const rows = questionEntries(asked);
+  assert.deepEqual(drawerRows(rows, {held: new Set(), hidden: new Set(), known: false}), [], 'a Not now from another Mac or an earlier run must not show again before Focus is read');
+  assert.deepEqual(drawerRows(rows, {held: new Set(), hidden: new Set(), known: true}).map(row => row.kind), ['letter', 'details', 'learned']);
+  assert.deepEqual(drawerRows(rows, {held: new Set(['letter:setup']), hidden: new Set(['details:open']), known: true}).map(row => row.kind), ['learned']);
 });

@@ -5,7 +5,7 @@
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries} from '../suggestions.js';
-import {foldedLine, questionEntries, withQuestions} from '../question-entries.js';
+import {drawerRows, foldedLine, questionEntries, withQuestions} from '../question-entries.js';
 import {NO_PLACE} from '../targets.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';
@@ -114,7 +114,7 @@ export function entryRow(entry) {
 
 const shownPool = () => pool.filter(entry => !held.has(entry.key));
 // Focus and the Jobs bar: the drawers' rows first (the blocking one at the top), then the engine's. A Not now leaves them at once (held) and stays gone (Focus's `suggestions_hidden`).
-const rowsNow = () => questionEntries(questionsNow()).filter(row => !held.has(row.key) && !hiddenKeys.has(row.key));
+const rowsNow = () => drawerRows(questionEntries(questionsNow()), {held, hidden: hiddenKeys, known: Boolean(lastArgs)});
 const withRows = () => withQuestions(shownPool(), rowsNow());
 let lastArgs = null;
 let questionsAsked = false;

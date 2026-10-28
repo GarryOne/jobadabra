@@ -12,11 +12,12 @@ const COUNT = {details: n => `${n} missing`, learned: n => `${n} to check`};   /
 const row = (kind, fields) => ({kind, home: 'jobs', topic: 'applying', source: 'Applying', evidence: [], answers: ['Not now'], blocking: false, ...fields});
 
 /**
- * The drawers' rows from what Jobs read ({details, learned, letter, error, fromDetails}): [] while each is at zero, one error row when the read failed
- * (and the store is connected), else letter, details, learned. Never throws: a window that has not read yet has nothing to say.
+ * The drawers' rows from what Jobs read ({details, learned, letter, error, fromDetails}): [] while each is at zero, one error row when the read failed with
+ * nothing saved to show (and the store is connected), else letter, details, learned. A failed refresh keeps the counts saved on this Mac, as the old cards
+ * did (Gitar on #2366). Never throws: a window that has not read yet has nothing to say.
  */
 export function questionEntries({details = [], learned = [], letter = null, error = '', fromDetails = 0} = {}) {
-  if (error) {
+  if (error && !details.length && !learned.length && !letter) {
     if (questionsProblem(error).hide) return [];   // the store not connected yet (trying only): no error row, as the card
     return [row('questions-error', {key: 'questions:error', title: 'Couldn\'t load your details', short: 'Couldn\'t load your details', detail: questionsProblem(error).text,
       actions: [{label: 'Retry', do: 'retry_questions'}], answers: []})];
@@ -36,6 +37,12 @@ export function questionEntries({details = [], learned = [], letter = null, erro
   }
   return found;
 }
+
+/**
+ * The rows a screen may draw: none until Focus has said which keys a Not now still hides (`known`), then without those and the ones answered here (`held`).
+ * Why (#2366, Gitar): the Jobs bar drew a row answered Not now on another Mac, or before a restart, until Focus was read.
+ */
+export const drawerRows = (rows, {held, hidden, known}) => (known ? rows.filter(row => !held.has(row.key) && !hidden.has(row.key)) : []);
 
 /** The pool with the question rows on top (the blocking one first), without the keys answered Not now here: [rows..., entries...]. */
 export const withQuestions = (entries, rows, held = new Set()) => [...rows.filter(item => !held.has(item.key)), ...(entries || [])];

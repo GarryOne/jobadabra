@@ -8,9 +8,9 @@ import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requireDesktop = createRequire(path.join(root, 'desktop/package.json'));
 
 /** The most a new function may score before it is split (sonarjs default is 15; 20 keeps the first gate to clearly tangled code). */

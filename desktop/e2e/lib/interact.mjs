@@ -179,11 +179,18 @@ export async function probePage({page, view, ipc, scope = 'body', settleMs = 150
       const result = {view, control: control.text || control.label, label: control.label, effects, calls: calls.map(call => ({channel: call.channel, ms: call.ms})), loading, errors: [...errors]};
       return {result, flagged: classify({view, control, effects, calls: result.calls, loading, errors: result.errors})};
     };
+    // Why (28 Oct 2026, wander red on main): `discover` hands out every tag again each time the page is read, so a tag read before a redraw sat on another control and the
+    // press by tag alone clicked "Look around first", which restarts the app. A tag counts only while its element still has the words the probe vetted.
+    const holds = control => page.evaluate(({id, text}) => {
+      const el = document.querySelector(`[data-probe="${id}"]`);
+      return !!el && (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80) === text;
+    }, {id: control.id, text: control.text}).then(same => same && page.locator(`[data-probe="${control.id}"]`).isVisible(), () => false).catch(() => false);
+    const refind = async control => (await page.evaluate(discover, {scope, max: look})).find(item => item.text === control.text && item.label === control.label && isSafe(item));
     for (const control of controls) {
       // A page that drew itself again (or a dialog a press left open) loses the tags: go back to the page, find the control again by its words.
-      if (!(await page.locator(`[data-probe="${control.id}"]`).isVisible().catch(() => false))) {
+      if (!(await holds(control))) {
         if (reset) await reset();
-        const again = (await page.evaluate(discover, {scope, max: look})).find(item => item.text === control.text && item.label === control.label);
+        const again = await refind(control);
         if (!again) { skipped.push(`${control.text || control.label} (gone)`); continue; }
         control.id = again.id;
       }
@@ -194,8 +201,7 @@ export async function probePage({page, view, ipc, scope = 'body', settleMs = 150
       if (flagged.some(item => RECHECK.has(item.kind))) {
         await recover(page);
         if (reset) await reset();
-        const tagged = await page.locator(`[data-probe="${control.id}"]`).isVisible().catch(() => false);
-        const again = tagged ? control : (await page.evaluate(discover, {scope, max: look})).find(item => item.text === control.text && item.label === control.label);
+        const again = (await holds(control)) ? control : await refind(control);
         const second = again ? await press({...control, id: again.id}) : {skip: 'gone'};
         const kept = second.skip ? [] : new Set(second.flagged.map(item => item.kind));
         // A silent press fails again when it does something (a call, a hidden change) and the person still sees nothing: its hidden answer is often already there.

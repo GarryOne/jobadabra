@@ -10,6 +10,7 @@ import * as pipeline from './pipeline.js';
 import * as poolShare from './pool-share.js';
 import * as reminders from './interview-reminders.js';
 import * as runHistory from './run-history.js';
+import * as startupMove from './startup-move.js';
 import * as telegramCloud from './telegram-cloud.js';
 import * as viewCache from './view-cache.js';
 import {e2eMs} from './e2e-timing.js';
@@ -27,7 +28,9 @@ export function registerBackgroundHandlers(ctx) {
   if (!DEMO) {
     // User data left on this Mac -> Notion (source of truth), once. It runs while the window loads, so the
     // window reads again what moved (e.g. open questions read before they reached Notion looked like none).
-    critical.during('Moving your data to Notion', () => migrate.run(storage, log)).then(moved => { if (moved.length) toWindow('moved', moved); });
+    // Why (2026-10-28, red main after #2339): the move runs for seconds behind the first reads and drops this Mac's profile.md and answers.md once Notion has them, so anything
+    // that writes or packs those files must know when it is over: the line below is that signal (desktop/e2e/suites/settings.mjs waits for it; guard test/startup-moves-signal.test.js).
+    startupMove.track(critical.during('Moving your data to Notion', () => migrate.run(storage, log))).then(moved => { appLog('migrate', 'startup moves finished', {moved: moved.length}); if (moved.length) toWindow('moved', moved); });
     syncCv();
     // Recent activity from Notion ⏱️ Search runs (every run's row, wherever it ran), every 15 s.
     let notionTimer;

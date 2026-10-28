@@ -3,6 +3,7 @@
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
 import {appLogText} from '../lib/app-log.mjs';
+import {waitForLogLine} from '../lib/wait-on-state.mjs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {FIXTURES} from '../lib/cvfixtures.mjs';
@@ -168,6 +169,9 @@ async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the a
   const file = backupFile || path.join(os.tmpdir(), `jp-e2e-export-${process.pid}-${Date.now()}.tar.gz`);
   const at = name => path.join(ctx.profile, name);
   const digest = name => fs.existsSync(at(name)) ? crypto.createHash('sha256').update(fs.readFileSync(at(name))).digest('hex') : null;
+  // The app's start-up move into the store drops these two files once Notion has them (lib/migrate.js, 'profile copies'); writing them while it runs lost them under the
+  // export (main's settings, 28 Oct 2026: "[files] local copies dropped" 48 ms before "tar failed (2)"; the 25 Oct beta 0.8.30 failure). It tells when it is over.
+  await waitForLogLine(ctx.profile, /startup moves finished/g, {what: 'the app\'s start-up move into the store'});
   // What a person who has not connected Notion yet keeps only here (the wizard's "Notion later"): written if this install has none.
   for (const name of ['profile.md', 'answers.md']) if (!fs.existsSync(at(name))) fs.writeFileSync(at(name), `# e2e ${name}\nkept across an export\n`);
   const FILES = ['profile.md', 'answers.md', 'cv.pdf'];

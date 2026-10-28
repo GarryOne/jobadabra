@@ -1,5 +1,6 @@
 // Probe (try 1 on the Windows EPERM): does a reader holding settings.json open for 1.5 s make writePrivate's rename throw, and after how long? Deleted before ship.
 import {spawn} from 'node:child_process';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,5 +18,6 @@ for (const hold of [0, 1500]) {
     try { writePrivate(file, '{"n":1}'); } catch (error) { result = `threw ${error.code}`; }
     console.log(`PROBE platform=${process.platform} hold=${hold}ms result=${result} after=${Date.now() - start}ms temp-left=${fs.readdirSync(path.dirname(file)).length - 1}`);
     await new Promise(done => holder.on('exit', done));
+    assert.fail(`PROBE platform=${process.platform} hold=${hold}ms result=${result} after=${Date.now() - start}ms`);
   });
 }

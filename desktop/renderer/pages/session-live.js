@@ -40,7 +40,6 @@ function viewFor(item) {
   const mine = view;
   // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
   mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; });
-  // Only the newest picture is painted, once per display refresh (renderer/live-frames.js): a busy window never runs behind the stream.
   const lag = createLagMeter();
   let reported = Date.now();
   // Pictures reach the image only through the sink: the newest, once per display refresh (renderer/live-frames.js).

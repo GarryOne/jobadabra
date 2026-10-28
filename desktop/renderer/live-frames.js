@@ -22,7 +22,7 @@ export function createFramePacer(paint, schedule = requestAnimationFrame) {
 
 /**
  * The window's picture: first(message) paints at once, frame(message) paints the newest once per refresh; both set `img.src` and call onShown(message) (size and lag bookkeeping).
- * The one place a stream picture reaches the image. Guard: test/live-frames.test.js.
+ * session-live.js sets the live image only through this sink; test/live-frames.test.js pins the sink's own behaviour.
  */
 export function createPictureSink(img, schedule = requestAnimationFrame, onShown = () => {}) {
   const show = message => { img.src = `data:image/jpeg;base64,${message.data}`; onShown(message); };

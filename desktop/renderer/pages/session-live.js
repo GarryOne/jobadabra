@@ -9,7 +9,7 @@ import {$} from './core.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
 import {createLiveOpener} from '../live-opener.js';
-import {createFramePacer} from '../live-frames.js';
+import {createFramePacer, createLagMeter} from '../live-frames.js';
 
 const ZOOMS = [50, 75, 100, 125, 150];
 
@@ -41,7 +41,14 @@ function viewFor(item) {
   // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
   mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; });
   // Only the newest picture is painted, once per display refresh (renderer/live-frames.js): a busy window never runs behind the stream.
-  mine.frames = createFramePacer(message => { if (view !== mine) return; showPicture(mine, message); });
+  const lag = createLagMeter();
+  let reported = Date.now();
+  mine.frames = createFramePacer(message => {
+    if (view !== mine) return;
+    showPicture(mine, message);
+    lag.record(message.at);
+    if (Date.now() - reported > 10000) { reported = Date.now(); window.pilot.uiLog('live view: picture age at paint (ms) and pictures a second', lag.take()).catch(() => {}); }   // the app log has the numbers when it feels slow
+  });
   wireInput(view);
   return view;
 }

@@ -2,7 +2,7 @@
 // and the window shows about 45 a second when idle, so on a busy window the old pictures queue up and the view runs seconds behind. renderer/live-frames.js drops what is stale.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createFramePacer} from '../renderer/live-frames.js';
+import {createFramePacer, createLagMeter} from '../renderer/live-frames.js';
 
 // A manual clock: schedule() queues the paint, tick() is one display refresh.
 const clock = () => { const queue = []; return {schedule: fn => { queue.push(fn); return queue.length; }, tick: () => queue.splice(0).forEach(fn => fn()), pending: () => queue.length}; };
@@ -48,4 +48,14 @@ test('the window paints stream pictures only through the pacer: no picture is se
   const page = readFileSync(new URL('../renderer/pages/session-live.js', import.meta.url), 'utf8');
   assert.equal((page.match(/\.img\.src\s*=|v\.img\.src\s*=/g) || []).length, 1, 'one place sets the picture: showPicture');
   assert.match(page, /kind === 'frame'\) view\.frames\.push\(message\)/, 'a frame goes to the pacer, not to the image');
+});
+
+test('the lag meter reports how old the painted pictures were and how many a second, then starts over', () => {
+  let t = 10000;
+  const meter = createLagMeter(() => t);
+  for (let i = 0; i < 100; i++) { t += 20; meter.record(t - (i < 90 ? 30 : 400)); }   // 90 pictures 30 ms old, 10 pictures 400 ms old, over 2 s
+  assert.deepEqual(meter.take(), {frames: 100, fps: 50, p50: 30, p95: 400, max: 400});
+  assert.deepEqual(meter.take(), {frames: 0, fps: 0, p50: 0, p95: 0, max: 0}, 'a taken window starts empty');
+  meter.record(undefined);
+  assert.equal(meter.take().frames, 0, 'a picture with no stamp is not counted');
 });

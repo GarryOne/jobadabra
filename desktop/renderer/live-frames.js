@@ -19,3 +19,20 @@ export function createFramePacer(paint, schedule = requestAnimationFrame) {
     clear() { newest = null; },
   };
 }
+
+/**
+ * Picture age at paint: record(sentAt) when a picture is painted (sentAt = the Date.now() main stamped on it), take() every few seconds -> {frames, fps, p50, p95, max} and start over.
+ * Why (2026-10-28, owner: "the live view it's very laggish", no numbers from his machine): the app log now says how old the painted picture was, so the next report has data, not a guess.
+ */
+export function createLagMeter(now = Date.now) {
+  let ages = [], since = now();
+  return {
+    record(sentAt) { if (Number.isFinite(sentAt)) ages.push(Math.max(0, now() - sentAt)); },
+    take() {
+      const sorted = ages.sort((a, b) => a - b), seconds = Math.max(0.001, (now() - since) / 1000), at = share => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * share))] ?? 0;
+      const out = {frames: sorted.length, fps: Math.round((sorted.length / seconds) * 10) / 10, p50: at(0.5), p95: at(0.95), max: sorted.at(-1) ?? 0};
+      ages = []; since = now();
+      return out;
+    },
+  };
+}

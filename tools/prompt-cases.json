@@ -47,6 +47,12 @@
       "cases": ["desktop/test/fixtures/question-reuse-cases.json"],
       "prompts": {"desktop/lib/question-reuse.js": ["INSTRUCTIONS"]}
     },
+    "kit": {
+      "live": false,
+      "about": "an application kit's letter and answers (src/ai/kit.py draft): answers that rest on a main-CV or Experience bank bullet (owner's case, About you D1b, 28 Oct 2026), no claim nothing states, the letter never recaps the CV's numbers or names a salary. Replayed before/after on the Claude plan (tools/kit-cases.py, $0)",
+      "cases": ["tests/fixtures/kit-cases.json", "tools/kit-cases.py"],
+      "prompts": {"src/ai/kit.py": ["SYSTEM"]}
+    },
     "learnings": {
       "live": false,
       "about": "what one form fill teaches (desktop/lib/learnings.js): each answer against the kept learnings, given as a closed topic list: same, extends (the AI widens it), conflicts (Two answers), new, or not ours (owned by Your details or Strategy, private, one job's). Travel in 3 wordings, a contract conflict, salary per country, a per-company question, an employment type Strategy owns (owner, 28 Oct 2026, PR B2). Replayed on Haiku through claude -p",

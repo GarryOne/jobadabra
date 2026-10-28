@@ -46,6 +46,11 @@ export function dailyArgs(storage, inputs = {}) {
 // (src/notion/matches.py, hash-keyed over every scored job in the cache) puts what was scored before Notion there.
 // `--mode today` is the no-AI path that reaches that sync; it also reads the feeds, which is free.
 const AI_MODES = ['scheduled', 'run', 'today'];   // the modes that read, score and enrich with AI
+/** Whether an engine run may draft an application kit (src/daily_modes.py prepare and kits, a search's --auto-kit-max): it then gets About you's kit bundle. */
+export function draftsKits(args) {
+  const valueOf = flag => (args.includes(flag) ? String(args[args.indexOf(flag) + 1] ?? '') : '');
+  return ['prepare', 'kits'].includes(valueOf('--mode')) || Number(valueOf('--auto-kit-max')) > 0;
+}
 export const SEARCH_BUDGET_S = 180;
 // Find new employers starts no new check after 3 minutes (owner, 7 Oct 2026: "runs for too long"); each check is saved as it ends (src/scout.py).
 export const SCOUT_BUDGET_S = 180;

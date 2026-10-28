@@ -24,14 +24,21 @@ and becomes the build PR (owner, 28 Oct 2026: "open individual PRs with their sp
   a learning whose kind was never judged stays out of them too. No word list.
 - **Three PRs** (owner, 28 Oct 2026): D1a = this PR (interface, sensitive flag, interface tests); D1b = form filling + kit answers + the class
   test; D1c = CV tailoring + letters with their new case sets.
+- **D1b, option A** (owner, 28 Oct 2026, sketch https://claude.ai/artifact/CXDYvPtDtjbB3rpMo8bej4, table https://claude.ai/artifact/4Wbd1RQ667BmdesQdbGhmz):
+  measured on the demo Profile, the bundle kept 9 of its 38 lines (deal-breakers, surveys, CV gaps, Strengths dropped), while form filling
+  already read all four parts and kits read no CV at all. So form filling and kits keep reading the full Profile and answers pages; kits take
+  the CV + Experience bank from About you (a per-run file, `JOB_PILOTTO_ABOUT_YOU_FILE`); Strategy gains deal-breakers and other preferences.
+  Before D1c switches a reader: the Profile's "CV gaps" and free notes get a part, or are decided out.
+- **Readers page** (owner via the coordinator, 28 Oct 2026: "publish on the website … this table"): a separate page, linked from Intelligence,
+  every cell generated from `READERS` (exported as data the class test checks), live only. Builder: session 64, after D1b; site PR first.
 
 ## PR D1 · interface + writers
 
 | Task | Files | Test (written first) |
 |---|---|---|
 | Interface: parts, readers table, exclusions, budget priority (details > learned > cv > strategy > history) | new `desktop/lib/about-you.js` (or the engine twin per step 1) | new `desktop/test/about-you.test.js`: one unique fact per part; each reader gets exactly its parts; salary/sensitive exclusions; conflicts left out |
-| Form filling | `desktop/lib/server-contact.js` | extension `/extension/me` carries `learned` + bank bullets for open answers |
-| Kit answers | `src/ai/kit.py` (+ how the app passes the bundle) | `tests/test_kit*.py`: prompt holds the bundle's parts |
+| Form filling | none (option A: reads the pages, CV + bank since 16 Oct) | — |
+| Kit answers | `src/ai/kit.py`, `lib/pipeline-run.js` (per-run bundle file) | `tests/test_kit_about_you.py`, `test/kit-bundle-run.test.js`; set `kit` (`tools/kit-cases.py`) |
 | CV tailoring | `desktop/lib/kit-handlers.js:65-75`, `desktop/lib/cv.js` | the summary may use a learning; roles never take one; salary absent |
 | Letters | `desktop/lib/job-letter.js`, `desktop/lib/cover-letter.js` | base letter + Writing preferences as voice; no salary |
 | Class test | one loop over every reader through a recording fake AI client | fails when any reader reads knowledge outside the interface |
@@ -40,6 +47,13 @@ Prompt cases (spec criterion 4): a letter that must not mention salary; a CV sum
 uses an Experience bank bullet. Replay each changed prompt's whole set.
 
 Cost: measure the added input tokens per reader on the fixed sets; show the owner before shipping.
+
+## Readers page (after D1b)
+
+| Task | Where | Test |
+|---|---|---|
+| Export `READERS` (parts, exclusions) as data | public repo, e.g. `docs/about-you-readers.json` | the class test checks it equals `READERS` |
+| The page, linked from Intelligence | `jobadabra-web` (site PR first) | reads the export; shows only what ships |
 
 ## PR D2 · analysis readers
 

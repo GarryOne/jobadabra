@@ -28,11 +28,13 @@ const PRESS_FAILED = {covered: 'Something on the page covers its Submit button. 
  */
 export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWindow, page, submitControl = async () => '', stop = () => false, getWindow = () => null, dialog, log = () => {},
   openCdp = openCdpSession, attach = null, core = null}) {
-  const views = new Map();   // session -> {input, close}
-  // Why (2026-10-28, Gitar on #2339): a close or a newer open that lands while an open awaits (the page's address, the CDP session) must stop it: each open takes a token,
-  // re-checked after every await, and a stale open detaches what it opened instead of registering it.
+  // Why (2026-10-28, Gitar on #2339, twice): a close or a newer open can land at ANY await of an open (the page's address, the CDP session, the attach). Each open takes
+  // its token BEFORE the first await and re-checks it after each; a stale open detaches what it opened and attaches nothing. Guard: the class test in test/live-view-handlers.test.js.
   const tokens = new Map();  // session -> the token of the open (or close) that is current
-  const close = id => { tokens.set(id, Symbol('live')); const view = views.get(id); views.delete(id); view?.close(); };
+  const views = new Map();   // session -> {input, close}
+  const stale = (id, mine) => tokens.get(id) !== mine;
+  const retire = id => { const view = views.get(id); views.delete(id); view?.close(); };
+  const close = id => { tokens.set(id, Symbol('live')); retire(id); };
   const resolveFile = async choice => {
     if (choice === 'cv') { const file = storage.path('cv.pdf'); return fs.existsSync(file) ? file : null; }
     if (choice !== 'pick') return null;
@@ -42,25 +44,27 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
   ipcMain.handle('liveOpen', async (_, session) => {
     const id = String(session || '');
     if (DEMO) return {ok: false, error: 'The demo app has no hidden browser.'};
-    const address = await page(id).catch(() => null);
-    if (!address) return {ok: false, error: 'This application\'s hidden form is not open.'};
-    close(id);
-    const mine = tokens.get(id), current = () => tokens.get(id) === mine;
-    const cdp = await openCdp(address);
+    const mine = Symbol('live');
+    tokens.set(id, mine); retire(id);
     const dropped = {ok: false, error: 'The live page was closed before it opened.'};
-    if (!current()) { await cdp.detach().catch(() => {}); return dropped; }
+    const address = await page(id).catch(() => null);
+    if (stale(id, mine)) return dropped;
+    if (!address) return {ok: false, error: 'This application\'s hidden form is not open.'};
+    const cdp = await openCdp(address);
+    if (stale(id, mine)) { await cdp.detach().catch(() => {}); return dropped; }
     let input = () => {}, ended = () => {};
     const channel = {send: message => toWindow('liveEvent', {session: id, message}), onMessage: fn => { input = fn; }, onClose: fn => { ended = fn; }};
     views.set(id, {input: message => input(message), close: () => ended()});
     try {
       await (attach || (await liveModule()).attachLive)(channel, cdp, {resolveFile});
     } catch (error) {
-      if (current()) { views.delete(id); ended(); }
+      if (!stale(id, mine)) views.delete(id);
+      ended();
       await cdp.detach().catch(() => {});
       log('apply', 'the live page could not be opened', {session: id});
       return {ok: false, error: 'The live page could not be opened. Try again, or use Open in my browser.'};
     }
-    if (!current()) { ended(); await cdp.detach().catch(() => {}); return dropped; }
+    if (stale(id, mine)) { ended(); await cdp.detach().catch(() => {}); return dropped; }
     return {ok: true};
   });
   ipcMain.handle('liveInput', (_, session, message) => { views.get(String(session || ''))?.input(message); return true; });

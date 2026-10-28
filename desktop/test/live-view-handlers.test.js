@@ -8,14 +8,15 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {registerLiveViewHandlers} from '../lib/live-view-handlers.js';
 
-function setup({page = async id => (id === 's1' ? 'ws://127.0.0.1:9/devtools/page/A' : null), DEMO = false, picked = null, openGate = null, failAttach = false} = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-live-')), handles = new Map(), sent = [], attached = [], closed = [];
+function setup({page = async id => (id === 's1' ? 'ws://127.0.0.1:9/devtools/page/A' : null), DEMO = false, picked = null, openGate = null, attachGate = null, failAttach = false} = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-live-')), handles = new Map(), sent = [], attached = [], closed = [], opened = [];
   const storage = {path: name => path.join(root, name)};
   registerLiveViewHandlers({DEMO, storage, ipcMain: {handle: (name, fn) => handles.set(name, fn)}, toWindow: (channel, payload) => sent.push([channel, payload]),
     page, getWindow: () => null, dialog: {showOpenDialog: async () => (picked ? {canceled: false, filePaths: [picked]} : {canceled: true, filePaths: []})},
-    openCdp: async url => { await openGate?.(); return {url, detach: async () => closed.push(url)}; },
-    attach: async (channel, cdp, options) => { if (failAttach) throw new Error('attach failed'); const row = {channel, cdp, options, inputs: []}; channel.onMessage(message => row.inputs.push(message)); channel.onClose(() => closed.push('channel')); attached.push(row); }});
-  return {root, handles, sent, attached, closed, call: (name, ...args) => handles.get(name)(null, ...args)};
+    openCdp: async url => { opened.push(url); await openGate?.(); let detached = false; return {url, detach: async () => { if (!detached) closed.push(url); detached = true; }}; },   // idempotent like a real CDP session
+    // hosted/ready-fill/live.mjs:160: a closed channel detaches its CDP session
+    attach: async (channel, cdp, options) => { if (failAttach) throw new Error('attach failed'); const row = {channel, cdp, options, inputs: []}; channel.onMessage(message => row.inputs.push(message)); channel.onClose(() => { closed.push('channel'); cdp.detach(); }); attached.push(row); await attachGate?.(); }});
+  return {root, handles, sent, attached, closed, opened, call: (name, ...args) => handles.get(name)(null, ...args)};
 }
 
 test('opening a session attaches its held tab; its events reach the window tagged with the session; input reaches only it', async () => {
@@ -149,4 +150,41 @@ test('two opens of one session that overlap leave one stream: the older one is d
   assert.equal(two.ok, true);
   assert.equal(s.attached.length, 1, 'one stream');
   assert.equal(s.closed.length, 1, 'the older CDP session is detached');
+});
+
+test('a close that lands while the page lookup is still pending stops the open before it connects anything', async () => {
+  const wait = later(), opened = [];
+  const s = setup({page: async () => { await wait.gate(); return 'ws://127.0.0.1:9/devtools/page/A'; }, openGate: async () => { opened.push('cdp'); }});
+  const opening = s.call('liveOpen', 's1');
+  await new Promise(resolve => setImmediate(resolve));
+  await s.call('liveClose', 's1');
+  wait.release();
+  const result = await opening;
+  assert.equal(result.ok, false);
+  assert.deepEqual(opened, [], 'no CDP session is even opened for a view the person already closed');
+  assert.equal(s.attached.length, 0);
+});
+
+// The class (Gitar twice on #2339, 28 Oct 2026): at EVERY await of liveOpen (the page's address, the CDP session, the attach), a close or a second open of the same
+// session may land. Whatever happens: no stream stays after a close, every CDP session that was opened is detached unless it is the one live view, and the latest open wins.
+test('class: a close or a second open at any await point of liveOpen leaves no leaked CDP session and at most the latest view', async () => {
+  for (const point of ['page', 'cdp', 'attach']) {
+    for (const interrupt of ['close', 'reopen']) {
+      const hold = later(); let held = false;
+      const gateAt = name => async () => { if (name === point && !held) { held = true; await hold.gate(); } };
+      const s = setup({page: async () => { await gateAt('page')(); return 'ws://127.0.0.1:9/devtools/page/A'; }, openGate: gateAt('cdp'), attachGate: gateAt('attach')});
+      const first = s.call('liveOpen', 's1');
+      for (let turn = 0; turn < 5; turn++) await new Promise(resolve => setImmediate(resolve));
+      assert.ok(held, `${point}/${interrupt}: the first open reached its ${point} await`);
+      const second = interrupt === 'close' ? s.call('liveClose', 's1') : s.call('liveOpen', 's1');
+      hold.release();
+      const [one, two] = await Promise.all([first, second]);
+      const live = interrupt === 'reopen' ? 1 : 0;
+      assert.equal(one.ok, false, `${point}/${interrupt}: the interrupted open does not report success`);
+      if (interrupt === 'reopen') assert.equal(two.ok, true, `${point}/${interrupt}: the latest open wins`);
+      assert.equal(s.opened.length - s.closed.filter(entry => entry !== 'channel').length, live, `${point}/${interrupt}: every opened CDP session but the live view is detached`);
+      await s.call('liveClose', 's1');
+      assert.equal(s.opened.length, s.closed.filter(entry => entry !== 'channel').length, `${point}/${interrupt}: after the last close none is left`);
+    }
+  }
 });

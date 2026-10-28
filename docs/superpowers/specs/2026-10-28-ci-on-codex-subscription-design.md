@@ -6,7 +6,7 @@ Owner, 28 Oct 2026 (exact words): "Let's use/switch to Codex subscription. for a
 Supersedes: fbadf96 (26 Oct, CI on Free AI), memory `feedback-pr-ai-checks-subscription-haiku` for CI.
 
 ## Progress
-- [x] PR 0 measure: tokens per call (~18k), latency, 4-way concurrency, ≥ ~40 calls per 1% (done 28 Oct); per-consumer calls/day still open
+- [x] PR 0 measure: tokens per call (~18k), latency, 4-way concurrency, ≥ ~40 calls per 1% (done 28 Oct); per-consumer calls/day still open (proof: docs/superpowers/specs/2026-10-28-ci-on-codex-subscription-design.md)
 - [ ] PR 1 broker + `codex` engine in `desktop/e2e/lib/engine.mjs`; e2e app-under-test and judges off the Free AI relay (stops the neuron bill)
 - [ ] PR 2 screenshot review (`.github/actions/e2e-review`)
 - [ ] PR 3 code review, ui-prejudge, ui-verdict, test judges

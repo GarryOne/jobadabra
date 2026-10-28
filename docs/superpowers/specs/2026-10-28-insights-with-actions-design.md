@@ -163,10 +163,10 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 
 ## Progress
 
-- [x] Spec approved by the owner (28 Oct 2026)
-- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D; Focus Suggestions + Jobs collapsed bar approved (v4)
-- [x] PR 1 decisions: Up next sort, Your week's door, answers in the store, split 1a/1b/1c (28 Oct 2026, sketch https://claude.ai/artifact/MopQ4et4oe9mwxMAZheZ5e)
-- [ ] PR 1a · Suggestions, Jobs bar, answers, Tune and Analyze come to you
+- [x] Spec approved by the owner (28 Oct 2026) (proof: none: an owner decision in the session, recorded here)
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D; Focus Suggestions + Jobs collapsed bar approved (v4) (proof: none: an owner decision on the sketch, recorded here)
+- [x] PR 1 decisions: Up next sort, Your week's door, answers in the store, split 1a/1b/1c (28 Oct 2026, sketch https://claude.ai/artifact/MopQ4et4oe9mwxMAZheZ5e) (proof: none: owner answers in the session, recorded here)
+- [x] PR 1a · Suggestions, Jobs bar, answers, Tune and Analyze come to you (proof: desktop/test/suggestions.test.js)
 - [ ] PR 1b · Strategy rows on the producers
 - [ ] PR 1c · Jobs drawers into the bar
 - [ ] PR 2 · CV

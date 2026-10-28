@@ -152,6 +152,12 @@ class PrBodyTest(unittest.TestCase):
             result = run(body(skip=area)); self.assertEqual(result.returncode, 2, area); self.assertIn(area, result.stderr)
         self.assertFalse(any('mermaid' in line for line in open(ROOT / 'tools' / 'pr-body.sh')), 'the diagram is no longer asked for')
 
+    def test_why_unblocks_and_root_cause_are_three_panels_in_three_colours(self):
+        # Owner, 28 Oct 2026: "Why, What it Unblockes and Root cause, should be 3 panels with 3 differnt colors".
+        raw = '🐛 X\n\n**Why:** the owner saw it\n**Unblocks:** #1\n**Root cause:** `a.js:3` did y\n\n- ✅ one\n'
+        laid = subprocess.run(['python3', str(ROOT / 'tools' / 'pr-body-format.py'), ''], input=raw, capture_output=True, text=True, check=True).stdout
+        self.assertIn('> [!NOTE]\n> **Why:** the owner saw it\n\n> [!TIP]\n> **Unblocks:** #1\n\n> [!CAUTION]\n> **Root cause:** `a.js:3` did y', laid)
+
     def test_the_summary_is_laid_out_with_headings_a_callout_and_linked_runs(self):
         # Owner, 15 Oct 2026: "use headings, different font size, proper spacing/formatting"; "run 38756824411 should be a hyperlink, not plain text".
         git(self.repo, 'remote', 'add', 'origin', 'https://github.com/owner/repo.git')
@@ -162,7 +168,7 @@ class PrBodyTest(unittest.TestCase):
         text = self.body(f'--body={summary}')
         self.assertTrue(text.startswith('## 🧱 The old build replays as a whole\n'), text[:80])
         self.assertIn('> [!NOTE]\n> **Why:** [run 38756824411](https://github.com/owner/repo/actions/runs/38756824411): 12 rows', text)
-        self.assertIn('>\n> **Unblocks:** #860', text)
+        self.assertIn('\n\n> [!TIP]\n> **Unblocks:** #860', text)
         for heading in ('### 📊 Impact', '### ✅ What changed', '### 🔍 Before → After'):
             self.assertEqual(text.count(heading), 1, heading)
         self.assertLess(text.index('### 📊 Impact'), text.index('### ✅ What changed'))

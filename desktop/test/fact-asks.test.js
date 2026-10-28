@@ -23,14 +23,14 @@ test('only the facts a form asked leave this Mac, as catalogue ids, once a day',
 });
 
 test('the pack\'s shares are cleaned to the catalogue and a share in (0, 1]', () => {
-  assert.deepEqual(factAsks.clean([{fact: 'notice', share: 0.756}, {fact: 'made-up', share: 0.5}, {fact: 'salary', share: 0}, {fact: 'permit', share: 2}, {fact: 'start', share: 0.2, text: 'x'}]),
+  assert.deepEqual(factAsks.clean([{fact: 'notice', share: 0.756}, {fact: 'made-up', share: 0.5}, {fact: 'salary', share: 0}, {fact: 'nationality', share: 2}, {fact: 'start', share: 0.2, text: 'x'}]),
     [{fact: 'notice', share: 0.76}, {fact: 'start', share: 0.2}]);
   assert.deepEqual(factAsks.clean(null), []);
 });
 
 test('the server share orders the missing facts after the local score and before the catalogue order', () => {
   const storage = fresh({});
-  assert.deepEqual(missing.pick(storage, [], {now: D1, shares: {languages: 0.9, salary: 0.5}}).map(item => item.id), ['languages', 'salary', 'permit']);
+  assert.deepEqual(missing.pick(storage, [], {now: D1, shares: {languages: 0.9, salary: 0.5}}).map(item => item.id), ['languages', 'salary', 'nationality']);
   const blocked = fresh({questionVerdicts: {a: {reuse: 'details', fact: 'Notice period', asked: 1, blocked: true}}});
   assert.equal(missing.pick(blocked, [], {now: D1, shares: {languages: 0.9}})[0].id, 'notice', 'a fill blocked here beats the shares');
 });

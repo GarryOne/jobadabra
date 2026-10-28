@@ -32,7 +32,8 @@ const client = {messages: {create: async request => {
     return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({asks: keys.map(field => ({field, question: `Q-${field}`, hint: '', importance: field === 'last_name' ? 3 : field === 'github' ? 0 : 2, held: field === 'phone'}))})}]};
   }
   const text = JSON.stringify(request.system.includes('job-application facts')
-    ? {facts: [{id: 'permit', value: 'Citizen of Moldova', how: 'inferred', reason: 'Studied and worked only in Moldova'}, {id: 'languages', value: 'Romanian (native), English', how: 'stated', reason: 'Language lines'}, {id: 'nope', value: 'x', how: 'stated', reason: ''}]}
+    ? {facts: [{id: 'nationality', value: 'Moldova', how: 'inferred', reason: 'Studied and worked only in Moldova'}, {id: 'languages', value: 'Romanian (native), English', how: 'stated', reason: 'Language lines'}, {id: 'nope', value: 'x', how: 'stated', reason: ''},
+      {id: 'zone_eu', value: 'EU citizen', how: 'inferred', reason: 'Moldova borders the EU'}]}
     : {proposals: [{field: 'first_name', value: 'Ana', sure: true, source: 'cv', how: 'stated'}, {field: 'location', value: 'Chișinău, Moldova', sure: false, source: 'cv', how: 'inferred'}]});
   return {stop_reason: 'end_turn', content: [{type: 'text', text}]};
 }}};
@@ -43,7 +44,7 @@ test('the CV read gives base-fact proposals, once per CV file, only for known fa
   const wanted = cvQueue.wantedFacts(['Languages']);
   assert.ok(!wanted.includes('languages'), 'a fact Your details holds is not asked');
   const first = await cvQueue.factProposals(storage, {client, wanted: cvQueue.wantedFacts([])});
-  assert.deepEqual(first.map(each => each.id).sort(), ['languages', 'permit'], 'an id the AI invented keeps nothing');
+  assert.deepEqual(first.map(each => each.id).sort(), ['languages', 'nationality'], 'an id the AI invented, or a zone value outside the fixed statuses (#2322), keeps nothing');
   await cvQueue.factProposals(storage, {client, wanted: cvQueue.wantedFacts([])});
   assert.equal(calls.length, 1, 'the same CV is not read twice');
 });
@@ -54,32 +55,48 @@ test('an install set up before the CV read: the queue opening reads it once, sav
   const items = await review.pending(storage, {ai: {client}});
   assert.equal((await contactDetails.read(storage)).first_name, 'Ana', 'what the CV states plainly is saved');
   const kinds = items.filter(each => each.details.kind === 'cvcheck');
-  assert.deepEqual(kinds.map(each => each.question).sort(), ['Q-languages', 'Q-location', 'Q-permit'], 'worded by the question writer, never typed');
-  const permit = kinds.find(each => each.question === 'Q-permit');
-  assert.equal(permit.value, 'Citizen of Moldova');
+  assert.deepEqual(kinds.map(each => each.question).sort(), ['Q-languages', 'Q-location', 'Q-nationality'], 'worded by the question writer, never typed');
+  const permit = kinds.find(each => each.question === 'Q-nationality');
+  assert.equal(permit.value, 'Moldova');
   assert.match(permit.details.source, /Inferred from your CV/);
   assert.match(permit.hint, /only in Moldova/, 'the AI says why');
   const reads = calls.length;
   await review.pending(storage, {ai: {client}});
   assert.equal(calls.length, reads, 'a second list asks the AI nothing again (contact read, facts read and question writer are kept)');
-  assert.ok(!items.some(each => each.details.kind === 'missing' && /permit|languages/.test(each.question)), 'a fact the CV proposes is not asked again as an empty one');
+  assert.ok(!items.some(each => each.details.kind === 'missing' && /nationality|languages/.test(each.question)), 'a fact the CV proposes is not asked again as an empty one');
 });
 
 test('Confirm saves a base fact into its section and a contact value into Contact details; both leave the queue', async () => {
   const storage = fresh();
   const items = await review.pending(storage, {ai: {client}});
-  const permit = items.find(each => each.question === 'Q-permit'), place = items.find(each => each.details.kind === 'cvcheck' && each.question === 'Q-location');
-  assert.equal((await review.answer(storage, permit.key, 'Citizen of Moldova')).ok, true);
+  const permit = items.find(each => each.question === 'Q-nationality'), place = items.find(each => each.details.kind === 'cvcheck' && each.question === 'Q-location');
+  assert.equal((await review.answer(storage, permit.key, 'Moldova')).ok, true);
   assert.equal((await review.answer(storage, place.key, 'Chișinău')).ok, true, 'an edit replaces the proposal');
-  assert.ok((await sections.read(storage)).eligibility.some(line => line.label === 'Work permit / visa' && line.value === 'Citizen of Moldova'));
+  assert.ok((await sections.read(storage)).eligibility.some(line => line.label === 'Nationality' && line.value === 'Moldova'));
   assert.equal((await contactDetails.read(storage)).location, 'Chișinău');
   const left = (await review.pending(storage, {ai: {client}})).filter(each => each.details.kind === 'cvcheck');
   assert.deepEqual(left.map(each => each.question), ['Q-languages']);
 });
 
+// Why (28 Oct 2026, owner, #2322): "Questions name a country, never a city": a nationality that is a city, or a zone without a fixed status, is never proposed.
+test('a city is never a nationality, and a zone needs one of its fixed statuses', async () => {
+  const storage = fresh();
+  const cityClient = {messages: {create: async () => ({stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({facts: [{id: 'nationality', value: 'Iasi', how: 'inferred', reason: 'Lives in Iasi'},
+    {id: 'zone_uk', value: 'yes, with a permit, valid until 2027-06-30', how: 'stated', reason: 'Skilled Worker visa'}]})}]})}};
+  const got = await cvQueue.factProposals(storage, {client: cityClient, wanted: cvQueue.wantedFacts([])});
+  assert.deepEqual(got.map(each => [each.id, each.value]), [['zone_uk', 'yes, with a permit, valid until 2027-06-30']]);
+});
+
+test('a nationality comes as ISO codes and is saved by the country names, whatever the spelling would have been', async () => {
+  const client = {messages: {create: async () => ({stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({facts: [{id: 'nationality', value: 'CZ, TR', how: 'stated', reason: 'Passports'}]})}]})}};
+  const got = await cvQueue.factProposals(fresh(), {client, wanted: cvQueue.wantedFacts([])});
+  const english = new Intl.DisplayNames(['en'], {type: 'region'});
+  assert.deepEqual(got.map(each => each.value), [`${english.of('CZ')}, ${english.of('TR')}`]);
+});
+
 test('a name nobody gave stays the first question; "check it" items rank after it', async () => {
   const storage = fresh();
-  const nameless = {messages: {create: async request => ({stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify(request.system.includes('job-application facts') ? {facts: [{id: 'permit', value: 'EU citizen', how: 'inferred', reason: 'Jobs in the EU'}]} : {proposals: [{field: 'location', value: 'Chisinau', sure: false, source: 'cv', how: 'inferred'}]})}]})}};
+  const nameless = {messages: {create: async request => ({stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify(request.system.includes('job-application facts') ? {facts: [{id: 'nationality', value: 'Romania', how: 'inferred', reason: 'Jobs in Romania'}]} : {proposals: [{field: 'location', value: 'Chisinau', sure: false, source: 'cv', how: 'inferred'}]})}]})}};
   const list = ranked(await review.pending(storage, {ai: {client: nameless}}));
   assert.equal(list[0].question, 'First name', 'the name comes first');
   assert.ok(list.some(each => each.details.kind === 'cvcheck'), 'and the CV items follow');

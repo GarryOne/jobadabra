@@ -118,3 +118,27 @@ test('the screen paints the quick read first, waits for the settled one after it
   assert.match(card, /'details-sorting'[\s\S]*reread\('details'\)/);
   assert.match(read('preload.cjs'), /detailsFactsNow: call\('detailsFactsNow'\)/);
 });
+
+// Why (28 Oct 2026, owner, #2322: "we can deduce any of them, once we know the answer for the 3 above"; never delete a saved value silently): the owner's
+// path through the handlers. Opening reads the older lines once and changes nothing; Save without them backs up first; Undo puts them back. Fictional values.
+test('handlers: older eligibility lines are read on open, kept until Save, backed up on Save, and Undo restores them', async () => {
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
+  storage.saveSettings({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z'});
+  const OLD = [{label: 'Work permit / visa', value: 'EU citizen (Romania)'}, {label: 'Remote from your base for a foreign employer?', value: 'Yes'}];
+  await sections.save(storage, 'eligibility', OLD);
+  const reading = {lines: [{id: '0', about: 'eligibility', nationality: ['RO'], rows: []}, {id: '1', about: 'other', nationality: [], rows: []}]};
+  const client = {messages: {create: async request => ({content: [{type: 'text', text: JSON.stringify(/right to work/.test(request.system) ? reading : {})}]})}};
+  const handlers = {}, copies = [];
+  registerDetailsFactsHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = (...args) => fn(null, ...args); }}, storage, DEMO: false, connected: () => true,
+    needsNotion: () => null, log: () => {}, ai: () => ({client}), copy: async () => { copies.push(1); }});
+  const opened = await handlers.detailsFacts();
+  assert.deepEqual(opened.older.map(line => [line.about, line.nationality]), [['eligibility', ['Romania']], ['other', []]]);
+  assert.deepEqual((await sections.read(storage)).eligibility.map(line => line.label), OLD.map(line => line.label), 'opening never removes a line');
+  const saved = [{label: 'Nationality', value: 'Romania'}, OLD[1]];
+  assert.deepEqual(await handlers.saveDetailsFacts({eligibility: saved}), {ok: true});
+  assert.equal(copies.length, 1, 'both pages are copied before a line leaves');
+  assert.deepEqual((await sections.read(storage)).eligibility.map(line => line.label), ['Nationality', OLD[1].label]);
+  assert.equal((await handlers.detailsFacts()).tidied.changed >= 1, true, 'the fold is offered with Undo');
+  assert.deepEqual(await handlers.undoDetailsTidy(), {ok: true});
+  assert.deepEqual((await sections.read(storage)).eligibility.map(line => line.label), OLD.map(line => line.label));
+});

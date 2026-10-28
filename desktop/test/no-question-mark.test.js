@@ -13,7 +13,8 @@ const walk = dir => fs.readdirSync(dir, {withFileTypes: true}).flatMap(entry => 
 
 // Files that READ or WRITE the marker as data (the Profile / answers text format). A new file here needs a reason; a screen never does.
 const PARSERS = ['answers-model.js', 'answer-options.js', 'compensation.js', 'experience-profile-model.js', 'job-page-view.js', 'mail-report.js', 'no-mark.js',
-  'preferences-model.js', 'profile-model.js', 'session-message.js', 'strategy-parts.js', 'pages/strategy-review.js'];
+  'preferences-model.js', 'profile-model.js', 'session-message.js', 'strategy-parts.js', 'pages/strategy-review.js',
+  'work-eligibility.js'];   // #2322: reads a zone or Nationality value still asked in the Profile text, never draws it
 
 test('only the listed parsers mention the marker; no html, css or other renderer file does', () => {
   const renderer = path.join(desktop, 'renderer');

@@ -3,12 +3,14 @@
 // writes it back the same way; text the code cannot read gives empty parts, so the control shows it as it was written and nothing is lost.
 // Pure (no DOM): guarded by test/question-kinds-composite.test.js.
 import {COMPOSITE} from './question-kind.js';
+import {OLDER, STATUSES} from './work-eligibility.js';
+
+export {STATUSES};
 
 export const CURRENCIES_ALL = ['CHF', 'EUR', 'USD', 'GBP', 'AED', 'AUD', 'CAD', 'SEK'];
 export const PERIODS = ['hour', 'day', 'week', 'month', 'year'];
 export const BASES = ['gross', 'net'];
 export const UNITS = ['day', 'week', 'month', 'year'];
-export const STATUSES = ['allowed', 'needs visa'];
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'native'];
 export const hasNumber = text => /\d/.test(String(text ?? ''));
 
@@ -34,12 +36,17 @@ export function joinDuration({number = '', unit = '', monthEnd = false} = {}) {
   return count && unit ? `${count} ${unit}${Number(count) === 1 ? '' : 's'}${monthEnd ? ', ends at month-end' : ''}` : '';
 }
 
-const PERMIT = /^(allowed|needs visa)(?:\s*,\s*(.+))?$/i;
+// Why (28 Oct 2026, owner, #2322): one status per zone or country, the fixed set of renderer/work-eligibility.js; "needs visa" (the older word) reads as
+// "no, needs sponsorship", "allowed" (which never said how) stays as written with a Check.
+const PERMIT = new RegExp(String.raw`^(${[...STATUSES, ...Object.keys(OLDER)].join('|')})((?:\s*,.*)?)$`, 'i');
+// "yes, with a permit" -> {status}; the words after a permit's status ("yes, with a permit, B permit") are the person's own and read as that status. Text the
+// code cannot read -> {status: ''}, so the line is kept as written, never cut.
 export function splitPermit(value) {
-  const match = String(value ?? '').trim().match(PERMIT);
-  return match ? {status: match[1].toLowerCase(), permit: (match[2] || '').trim()} : {status: '', permit: ''};
+  const match = String(value ?? '').trim().match(PERMIT), word = match?.[1].toLowerCase() || '';
+  return {status: (word in OLDER ? OLDER[word] : word) || ''};
 }
-export const joinPermit = ({status = '', permit = ''} = {}) => (status ? `${status}${String(permit).trim() ? `, ${String(permit).trim()}` : ''}` : '');
+/** {status} -> the one saved value ("yes, with a permit"); '' for a status outside STATUSES. */
+export const joinPermit = ({status = ''} = {}) => (STATUSES.includes(status) ? status : '');
 
 const RANGE = /^(\d{1,3})\s*[-–]\s*(\d{1,3})\s*%?$/;
 export function splitRange(value) {

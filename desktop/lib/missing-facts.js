@@ -9,6 +9,7 @@ import {MODEL} from './question-reuse.js';
 import {BLOCKED, factScore} from '../renderer/question-filter.js';
 import {CATALOG, byId} from './fact-catalog.js';
 import {written} from './queue-wording.js';
+import {NATIONALITY} from '../renderer/work-eligibility.js';
 
 export {CATALOG, byId};
 
@@ -19,10 +20,10 @@ const plain = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' 
 const day = date => date.toISOString().slice(0, 10);
 const state = storage => ({never: [], seen: {}, today: [], ...(storage.settings().missingFacts || {})});
 
-// Which facts the saved lines already answer, whatever their wording or language ("Work permit: EU citizen" answers "Work permit / visa"): the AI's one fixed answer,
+// Which facts the saved lines already answer, whatever their wording or language ("Citizenship: Romanian" answers "Nationality"): the AI's one fixed answer,
 // kept per set of labels (settings.missingFacts.covered), so a Profile is read once, not on every list. No AI: only a line with the fact's own label counts.
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['covered'], properties: {covered: {type: 'array', items: {type: 'string'}}}};
-const INSTRUCTIONS = 'Facts a job application asks about are listed in <facts> (id: label). <lines> are the labels of what the applicant already saved. Answer covered: the ids of the facts that one of the saved lines already answers, in any language or wording (a line "Work permit" answers "Work permit / visa"; "Languages I can work in" answers "Languages"). A fact no line answers is not listed.';
+const INSTRUCTIONS = 'Facts a job application asks about are listed in <facts> (id: label). <lines> are the labels of what the applicant already saved. Answer covered: the ids of the facts that one of the saved lines already answers, in any language or wording (a line "Citizenship" answers "Nationality"; "Languages I can work in" answers "Languages"). A fact no line answers is not listed.';
 export async function covered(storage, labels, {ai = {}} = {}) {
   const held = new Set(labels.map(plain)), open = CATALOG.filter(fact => !held.has(plain(fact.label)));
   const lines = [...new Set(labels.map(label => String(label).trim()).filter(Boolean))].sort(), sig = [...open.map(fact => fact.id), '|', ...lines].join('~');
@@ -65,7 +66,9 @@ export function listed(storage, known = []) {
 export function pick(storage, have, {now = new Date(), covered: known = [], shares = {}, words = new Map()} = {}) {
   const held = new Set([...have].map(plain)), mine = state(storage), today = day(now), verdicts = storage.settings().questionVerdicts || {};
   const since = mine.since || today, fresh = (now - new Date(`${since}T00:00:00Z`)) / 864e5 < FRESH_DAYS;
-  const open = CATALOG.filter(fact => !held.has(plain(fact.label)) && !known.includes(fact.id) && !mine.never.includes(fact.id)).map((fact, order) => ({fact, order, score: factScore(fact.label, verdicts)}));
+  // Why (28 Oct 2026, owner, #2322: "ask as less as possible"): a zone waits for Nationality, which may answer it (have then holds the zones it opens).
+  const waits = fact => fact.kind === 'per_country' && !held.has(plain(NATIONALITY)) && !mine.never.includes('nationality');
+  const open = CATALOG.filter(fact => !held.has(plain(fact.label)) && !known.includes(fact.id) && !mine.never.includes(fact.id) && !waits(fact)).map((fact, order) => ({fact, order, score: factScore(fact.label, verdicts)}));
   const blocked = open.filter(each => each.score >= BLOCKED);
   const rank = (a, b) => b.score - a.score || (shares[b.fact.id] || 0) - (shares[a.fact.id] || 0) || (mine.seen[a.fact.id] || '').localeCompare(mine.seen[b.fact.id] || '') || a.order - b.order;
   let chosen;

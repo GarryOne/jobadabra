@@ -4,7 +4,7 @@
 // bar decides, and Save all / Discard all close the editors. Contact and Links read as columns (mockup 05: icon · small grey label · value); the fact cards as a calm two-column summary (renderer/fact-summary.js). Guarded by test/details-read.test.js.
 import {CARD_EDIT, el} from '../components.js';
 import {chipLine, doneButton, factColumns, isEditing, setEditing} from '../card-shell.js';
-import {checkBadge, checkCount, languagesView, summaryView} from '../fact-summary.js';
+import {checkBadge, checkCount, eligibilityView, languagesView, summaryView} from '../fact-summary.js';
 import {icon} from '../icons.js';
 import {factOf} from '../fact-line.js';
 
@@ -55,17 +55,18 @@ export function linksView(read = value, visible = shown) {
 }
 
 const linesOf = key => [...(document.querySelector(`[data-facts="${key}"]`)?.querySelectorAll('.fact-line') || [])]
-  .map(row => ({...factOf(row), check: Boolean(row.querySelector('.ui-pill'))}));
+  .map(row => ({...factOf(row), check: Boolean(row.querySelector('.ui-pill.tone-warn')), earlier: Boolean(row.querySelector('.ui-pill.tone-info'))}));
 
 function drawFacts(key) {
   const into = document.querySelector(`[data-facts-read="${key}"]`);
   if (!into || into.dataset.loading) return;
   const lines = linesOf(key).filter(line => line.label);
-  into.replaceChildren(!lines.length ? el('p', 'muted', 'Nothing yet. Edit to add a line.') : key === 'languages' ? languagesView(lines, chipLine) : summaryView(lines));
+  const eligibility = key === 'eligibility' ? eligibilityView(lines, chipLine) : null;
+  into.replaceChildren(eligibility ? eligibility.node : !lines.length ? el('p', 'muted', 'Nothing yet. Edit to add a line.') : key === 'languages' ? languagesView(lines, chipLine) : summaryView(lines));
   // One count in the card's title, not a mark on every line.
   const heading = into.closest('.panel')?.querySelector('.card-words h3');
   heading?.querySelector('.fact-check')?.remove();
-  const badge = checkBadge(checkCount(lines));
+  const badge = checkBadge(eligibility ? eligibility.check : checkCount(lines));
   if (badge) { badge.classList.add('fact-check'); heading?.append(badge); }
 }
 

@@ -43,7 +43,7 @@ export function noteFields(storage, rows = []) {
 const schemaFor = (allow = []) => ({type: 'object', additionalProperties: false, required: ['formats'], properties: {formats: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['label', 'kind', 'constraints', 'options', 'list'], properties: {label: {type: 'string'}, kind: {type: 'string', enum: [...AI_KINDS, ...allow]}, constraints: {type: 'boolean'}, list: {type: 'string', enum: LISTS},
     options: {type: 'array', items: {type: 'string'}}}}}}});
-const EXTRA = {per_country: '- "per_country": whether the person may work in a country (allowed, or needs a visa), with the permit.', language: '- "language": how well the person speaks a language (a level such as B2 or native).'};
+const EXTRA = {per_country: '- "per_country": a line named by a zone (EU / EEA + Switzerland, United Kingdom, United States) or one country, never a city: whether the person may work there (yes freely, yes with a permit, or needs sponsorship).', language: '- "language": how well the person speaks a language (a level such as B2 or native).'};
 const INSTRUCTIONS = `A job-application form asked these questions; we no longer have the form, only each question's words, in any language. For each, say how such a question is answered on a form:
 - "text": a short typed answer (a name, a date, a number, a city, a link).
 - "long_text": a written paragraph (a motivation, a description).

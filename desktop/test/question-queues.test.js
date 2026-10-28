@@ -74,7 +74,8 @@ test('drawer 1: ranked by the queue score, name and email before everything else
 // a Your details fact, one job's or consent is named in notLearned (the tab leaves it out; PR B moves it home), a stance stays a learning.
 test('saved answers judged a Your details fact or one job\'s are no learning; a stance is, all in one AI call', async () => {
   // The AI's verdict enum has no "details": a known fact named in `fact` makes it one (lib/question-reuse.js classify).
-  const saved = [['Authorised to work in Switzerland?', 'Yes, B permit', 'reusable', 'Work permit / visa'], ['Need visa sponsorship?', 'No', 'reusable', 'Need visa sponsorship?'],
+  // Since #2322 the catalogue's eligibility facts are Nationality and the zones: the AI names the zone a Swiss question is about.
+  const saved = [['Authorised to work in Switzerland?', 'Yes, B permit', 'reusable', 'EU / EEA + Switzerland'], ['Need visa sponsorship?', 'No', 'reusable', 'EU / EEA + Switzerland'],
     ['Notice period / earliest start', '3 months', 'reusable', 'Notice period'], ['Previously worked for / applied to this company?', 'Answered per job', 'one_job', ''],
     ['Remote from your base for a foreign employer?', 'Yes', 'reusable', '']];
   const said = [...VERDICTS, ...saved.map(([label, , verdict, fact]) => ({label, verdict, topic: label.toLowerCase(), covered_by: '', value: '', fact}))];

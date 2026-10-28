@@ -130,4 +130,17 @@
 [data-facts] > .fact-line > [data-fact-label]:not([hidden]) { grid-column: 1 / -1; }
 [data-facts] > .fact-line > .ui-pill { justify-self: start; }
 [data-facts] > .fact-line .qa-note-fold > summary { font-size: var(--fs-sm); }
-@container (max-width: 560px) { [data-facts] > .fact-line { grid-template-columns: minmax(0, 1fr); } [data-facts] > .fact-line > * { grid-column: 1; } }
+/* Work eligibility's rows (#2322): the zone, then its three status chips. */
+.fact-line .qa-permit .segmented { flex: 0 1 auto; max-width: 100%; flex-wrap: wrap; }
+.fact-line .qa-permit .segmented button { padding: var(--sp-2) var(--sp-4); }
+[data-facts] > .fact-derived { display: grid; grid-template-columns: 220px minmax(0, 1fr); column-gap: var(--sp-4); align-items: center; min-height: 36px; }
+[data-facts] > .fact-derived > :first-child { font-weight: 600; }
+.qa-nationality { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.qa-nationality select { flex: 0 1 220px; min-height: 36px; }
+.fact-eligibility-part { display: grid; gap: var(--sp-1); justify-items: start; }
+.fact-eligibility { display: grid; gap: var(--sp-3); margin-left: calc(var(--tile-lg) + var(--sp-3)); }
+.panel.roomy .fact-eligibility .fact-sum { margin-left: 0; }
+.panel.roomy .fact-eligibility .read-values { margin-left: calc(-1 * (var(--chip-pad-x) + 1px)); }   /* chip text lines up with its label */
+@container (max-width: 520px) { .fact-eligibility { margin-left: 0; } }
+.fact-eligibility p { margin: 0; }
+@container (max-width: 560px) { [data-facts] > .fact-line, [data-facts] > .fact-derived { grid-template-columns: minmax(0, 1fr); } [data-facts] > .fact-line > * { grid-column: 1; } }

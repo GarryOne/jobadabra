@@ -60,13 +60,15 @@ test('duration: number, unit, and "ends at month-end"', () => {
   assert.equal(joinDuration({number: '3', unit: 'month', monthEnd: false}), '3 months');
 });
 
-test('per country: allowed or needs visa, with a permit', () => {
+// Why (28 Oct 2026, owner, #2322): one fixed status per zone or country; "needs visa" reads as needs sponsorship, "allowed" never said how and stays as written.
+// Why (28 Oct 2026, owner): a status only, no permit date or "only in" ("a bit too much, too in depth").
+test('per country: yes freely, yes with a permit, or needs sponsorship; nothing more', () => {
   const {splitPermit, joinPermit} = values;
-  assert.deepEqual(splitPermit('allowed, B permit'), {status: 'allowed', permit: 'B permit'});
-  assert.deepEqual(splitPermit('Needs visa'), {status: 'needs visa', permit: ''});
-  assert.deepEqual(splitPermit('Swiss B Permit Authorized To Work'), {status: '', permit: ''});
-  assert.equal(joinPermit({status: 'allowed', permit: 'B permit'}), 'allowed, B permit');
-  assert.equal(joinPermit({status: '', permit: 'B permit'}), '');
+  assert.deepEqual(splitPermit('Yes, with a permit'), {status: 'yes, with a permit'});
+  assert.deepEqual(splitPermit('Needs visa'), {status: 'no, needs sponsorship'});
+  for (const unread of ['allowed, B permit', 'Swiss B Permit Authorized To Work', 'maybe']) assert.deepEqual(splitPermit(unread), {status: ''}, unread);
+  assert.equal(joinPermit({status: 'yes, freely'}), 'yes, freely');
+  assert.equal(joinPermit({status: ''}), '');
 });
 
 test('range and link', () => {

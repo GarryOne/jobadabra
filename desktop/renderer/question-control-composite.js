@@ -4,7 +4,8 @@
 // written and still counts as an answer, so nothing is lost. Layout in question-review.css (.qa-values). Guarded by test/question-kinds-composite.test.js.
 import {el} from './components.js';
 import {composite, refresh, savedAs, segmented} from './question-control-values.js';
-import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, STATUSES, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';
+import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';
+import {STATUSES, STATUS_HINTS, STATUS_NAMES} from './work-eligibility.js';
 
 const input = (type, value, ariaLabel, placeholder = '') => Object.assign(el('input', ''), {type, value, ariaLabel, placeholder});
 function menu(options, value, ariaLabel, blank = '') {
@@ -14,7 +15,6 @@ function menu(options, value, ariaLabel, blank = '') {
   node.value = value;
   return node;
 }
-const cap = text => text.charAt(0).toUpperCase() + text.slice(1);
 
 // An unreadable saved text is the answer until a part is chosen.
 const readable = (raw, parts) => raw && !parts;
@@ -50,15 +50,19 @@ function duration(raw, onChange, label) {
   return node;
 }
 
+// A zone's status (renderer/work-eligibility.js): three chips, nothing more. Why (28 Oct 2026, owner): a permit's date or country is "a bit too much".
 function permit(raw, onChange, label) {
   const start = splitPermit(raw), state = {...start};
-  const answer = () => (state.status ? joinPermit(state) : readable(raw, start.status) ? raw : '');
+  // A saved value with words after its status ("yes, with a permit, B permit") is kept as written until another status is picked: never cut in silence.
+  const answer = () => (state.status ? (state.status === start.status ? String(raw).trim() : joinPermit(state)) : readable(raw, start.status) ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
-  const isOn = option => option.toLowerCase() === state.status;
-  const group = segmented(STATUSES.map(cap), isOn, (option, each) => { state.status = isOn(option) ? '' : option.toLowerCase(); refresh(each, isOn); onChange(answer()); }, label);
-  const kind = input('text', state.permit, `${label}: permit`, 'Permit, e.g. B permit');
-  kind.addEventListener('input', () => { state.permit = kind.value; onChange(answer()); });
-  node.append(group, kind);
+  node.classList.add('qa-permit');
+  const isOn = option => STATUS_NAMES[state.status] === option;
+  const group = segmented(STATUSES.map(each => STATUS_NAMES[each]), isOn, (option, each) => {
+    state.status = isOn(option) ? '' : STATUSES.find(key => STATUS_NAMES[key] === option); refresh(each, isOn); onChange(answer());
+  }, label);
+  group.querySelectorAll('button').forEach(button => { button.title = STATUS_HINTS[STATUSES.find(key => STATUS_NAMES[key] === button.textContent)] || ''; });
+  node.append(group);
   if (readable(raw, start.status)) node.append(savedAs(raw));
   return node;
 }

@@ -2,6 +2,7 @@
 // exclusions split by what they do, and the suggestion rows' options in order. Data in, words out; strategy.js draws them.
 
 import {LEVELS, splitPermit, splitSalary} from './question-values.js';
+import {NATIONALITY, eligibilityOf, isRowName} from './work-eligibility.js';
 
 // src/role_kinds.py KINDS, in words. A role the engine did not label (an older read) is "Other roles".
 export const KIND_LABELS = {software: 'Software', sales_b2b: 'Business sales', sales_retail: 'Retail', logistics: 'Logistics', hospitality: 'Hospitality',
@@ -116,11 +117,14 @@ const listed = items => (items.length > SHOWN ? `${items.slice(0, SHOWN).join(',
 const placeOf = label => (bare(label).replace(/\([^)]*\)/g, '').replace(/[?:\s]+$/, '').match(/(?:\p{Lu}[\p{L}.'-]*)(?:\s*(?:\/|\s)\s*\p{Lu}[\p{L}.'-]*)*$/u) || [''])[0];
 function eligibility(lines) {
   const works = [], needs = [];
-  for (const line of lines || []) {
-    const value = bare(line.value), place = placeOf(line.label), {status} = splitPermit(value);
-    const answer = status || (value.match(/^(yes|no)\b/i)?.[1] || '').toLowerCase();
-    const to = answer === 'allowed' || answer === 'yes' ? works : answer === 'needs visa' || answer === 'no' ? needs : null;
-    if (to && place && !works.includes(place) && !needs.includes(place)) to.push(place);
+  const add = (to, place) => { if (place && !works.includes(place) && !needs.includes(place)) to.push(place); };
+  const clean = (lines || []).map(line => ({...line, value: bare(line.value), kind: line.kind || (/\[per country\]\s*$/.test(String(line.value)) ? 'per_country' : '')}));
+  // Nationality and the zones (#2322), concluded ones included; then the older lines, by their own yes / no.
+  // Why (28 Oct 2026, #2322 review): only a status says works or needs; a row without one ("allowed, B permit") is read by its own words below, never "Works in".
+  for (const row of eligibilityOf(clean).rows) { const status = splitPermit(row.value).status; if (status) add(status === 'no, needs sponsorship' ? needs : works, row.label); }
+  for (const line of clean.filter(each => each.label !== NATIONALITY && !(each.kind === 'per_country' && isRowName(each.label) && splitPermit(each.value).status))) {
+    const answer = (line.value.match(/^(yes|no|allowed|needs visa)\b/i)?.[1] || '').toLowerCase();
+    if (['yes', 'allowed', 'no', 'needs visa'].includes(answer)) add(['yes', 'allowed'].includes(answer) ? works : needs, placeOf(line.label));
   }
   return [works.length && `Works in: ${listed(works)}`, needs.length && `Needs sponsorship: ${listed(needs)}`].filter(Boolean).join(' · ');
 }

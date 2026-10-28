@@ -11,6 +11,8 @@ import {CATALOG, byId} from './fact-catalog.js';
 import {HOME_NAMES, writeHome} from './answer-home.js';
 import {hashOf} from './cv-check.js';
 import {formatFor} from '../renderer/question-kind.js';
+import {splitPermit} from '../renderer/question-values.js';
+import {nameOfCode, nationalityOf} from '../renderer/work-eligibility.js';
 import {detailsFromCvAtSetup} from './details-at-setup.js';
 
 export const FILE = 'cv/fact-proposals.json';
@@ -18,15 +20,21 @@ export const MODEL = fromCv.MODEL;
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['facts'], properties: {facts: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['id', 'value', 'how', 'reason'], properties: {id: {type: 'string', enum: CATALOG.map(fact => fact.id)}, value: {type: 'string'}, how: {type: 'string', enum: ['stated', 'inferred']}, reason: {type: 'string'}}}}}};
 const INSTRUCTIONS = `You read a CV and say what it states or plainly implies about the applicant's job-application facts listed in <facts> (id: the fact's name; answer: the kind of answer).
-Return one entry per fact the CV gives or implies, with value written as a form would take it, how = stated (the CV says it) or inferred (the CV implies it: e.g. a work permit or sponsorship need
-from the countries of citizenship, studies and jobs; languages from the CV's language lines and the language it is written in), and reason = one short sentence of the evidence.
+Return one entry per fact the CV gives or implies, with value written as a form would take it, how = stated (the CV says it) or inferred (the CV implies it: e.g. the nationality
+from the country of birth, schooling and every job; languages from the CV's language lines and the language it is written in), and reason = one short sentence of the evidence.
+nationality: the ISO 3166 alpha-2 codes of the countries of citizenship, joined with ", " ("RO, MD"), never a city or a region. A zone (per_country: EU / EEA + Switzerland, United Kingdom,
+United States): only when the CV states a permit or visa for it: "yes, with a permit"; never from the nationality, which the app reads itself.
 Use only this CV; never guess from a name alone. Leave out a fact the CV neither gives nor implies. Copy values as written; a yes/no fact is "Yes" or "No".`;
 
+// Why (28 Oct 2026, #2322): a nationality is country names and a zone one fixed status, checked here; anything else (a city, "EU citizen") keeps nothing.
+const fits = (id, value) => (id === 'nationality' ? Boolean(nationalityOf(value)) : byId(id)?.kind === 'per_country' ? Boolean(splitPermit(value).status) : true);
+// Why (28 Oct 2026, #2322 review): the AI names a nationality by ISO code, so "Czech Republic" or "Turkey" is never lost to a spelling; the code writes the name.
+const named = (id, value) => (id === 'nationality' ? value.split(/\s*,\s*/).map(part => nameOfCode(part) || part).join(', ') : value);
 const clean = (raw, wanted) => {
   const seen = new Set();
   return (Array.isArray(raw) ? raw : []).flatMap(item => {
-    const id = String(item?.id || ''), value = String(item?.value || '').trim().slice(0, 300);
-    if (!wanted.includes(id) || !value || seen.has(id)) return [];
+    const id = String(item?.id || ''), value = named(id, String(item?.value || '').trim().slice(0, 300));
+    if (!wanted.includes(id) || !value || seen.has(id) || !fits(id, value)) return [];
     seen.add(id);
     return [{id, value, how: item?.how === 'stated' ? 'stated' : 'inferred', reason: String(item?.reason || '').trim().slice(0, 200)}];
   });
@@ -94,7 +102,7 @@ export async function answer(storage, ref, value, {fetcher, save} = {}) {
   }
   const fact = byId(ref.fact);
   if (!fact) return {ok: false, error: 'That question is no longer open'};
-  return await writeHome(storage, fact.home, fact.label, text, fetcher, save) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: 'It did not save; nothing else changed'};
+  return await writeHome(storage, fact.home, fact.label, text, fetcher, save, fact.kind) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: 'It did not save; nothing else changed'};
 }
 
 // An install whose CV was never read for its details (it was set up before the wizard step): the same read the setup runs, once per CV file, when the queue opens

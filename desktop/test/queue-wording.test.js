@@ -23,7 +23,7 @@ const fresh = () => {
   return storage;
 };
 const listed = (request, tag) => [...(request.messages[0].content.match?.(new RegExp(`<${tag}>\\n([\\s\\S]*?)\\n</${tag}>`))?.[1] || '').matchAll(/^(\w+):/gm)].map(each => each[1]);
-// The writer words each field "Q-<field>"; the CV read proposes a work permit (a base fact) and a location (a contact field).
+// The writer words each field "Q-<field>"; the CV read proposes a nationality (a base fact) and a location (a contact field).
 const fakeClient = (calls = []) => ({messages: {create: async request => {
   calls.push(request);
   const text = typeof request.messages[0].content === 'string' ? request.messages[0].content : '';
@@ -32,10 +32,11 @@ const fakeClient = (calls = []) => ({messages: {create: async request => {
     return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({asks: keys.map(field => ({field, question: `Q-${field}`, hint: `H-${field}`, importance: 3, held: false}))})}]};
   }
   const answer = request.system.includes('job-application facts')
-    ? {facts: [{id: 'permit', value: 'Citizen of Moldova', how: 'inferred', reason: 'Studied and worked only in Moldova'}]}
+    ? {facts: [{id: 'nationality', value: 'Moldova', how: 'inferred', reason: 'Studied and worked only in Moldova'}]}
     : {proposals: [{field: 'location', value: 'Chișinău, Moldova', sure: false, source: 'cv', how: 'inferred'}]};
   return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify(answer)}]};
 }}});
+const ZONE = fact => fact.kind === 'per_country';
 const FACT_KINDS = new Set(['missing', 'cvcheck', 'contact']);
 const factOf = item => { const ref = JSON.parse(item.key.slice(item.key.indexOf('{'))); return ref.field || ref.contact || ref.id || ref.fact; };   // the fact or field an item asks
 
@@ -48,11 +49,11 @@ test('every fact the queue asks is worded by the question writer: all six base f
   const items = (await review.pending(storage, {ai: {client: fakeClient()}})).filter(each => FACT_KINDS.has(each.details.kind));
   for (const item of items) assert.equal(item.question, `Q-${factOf(item)}`, `${item.details.kind} words its question itself: ${item.question}`);
   const asked = new Set(items.map(factOf));
-  for (const fact of CATALOG) assert.ok(asked.has(fact.id), `${fact.id} is asked: ${[...asked]}`);
+  for (const fact of CATALOG) assert.equal(asked.has(fact.id), !ZONE(fact), `${fact.id}: asked unless a zone, which waits for Nationality (#2322): ${[...asked]}`);
   for (const field of ['first_name', 'last_name', 'email', 'phone', 'location']) assert.ok(asked.has(field), `${field} is asked: ${[...asked]}`);
-  const permit = items.find(each => factOf(each) === 'permit');
+  const permit = items.find(each => factOf(each) === 'nationality');
   assert.equal(permit.details.kind, 'cvcheck', 'a fact the CV proposes is checked there, once');
-  assert.equal(permit.value, 'Citizen of Moldova');
+  assert.equal(permit.value, 'Moldova');
   assert.match(permit.hint, /only in Moldova/, 'a CV check keeps the AI\'s evidence as its hint');
   const notice = items.find(each => factOf(each) === 'notice');
   assert.equal(notice.hint, 'H-notice', 'a missing fact takes the writer\'s hint');
@@ -61,7 +62,7 @@ test('every fact the queue asks is worded by the question writer: all six base f
 test('each base fact keeps its value kind and control; the writer is told the kind and words the catalogue once', async () => {
   const storage = fresh(), calls = [];
   const items = (await review.pending(storage, {ai: {client: fakeClient(calls)}})).filter(each => ['missing', 'cvcheck'].includes(each.details.kind));
-  for (const fact of CATALOG) {
+  for (const fact of CATALOG.filter(each => !ZONE(each))) {
     const item = items.find(each => factOf(each) === fact.id);
     assert.deepEqual(item.format, formatFor({marked: {kind: fact.kind}}), `${fact.id} keeps its ${fact.kind} control`);
   }
@@ -74,7 +75,7 @@ test('each base fact keeps its value kind and control; the writer is told the ki
 
 test('no AI: a base fact is asked by its own name, with no typed hint', () => {
   const list = missing.pick(fresh(), [], {now: new Date('2026-10-27T09:00:00Z')});
-  assert.equal(list.length, CATALOG.length);
+  assert.equal(list.length, CATALOG.filter(each => !ZONE(each)).length, 'the zones wait for Nationality');
   for (const item of list) {
     assert.equal(item.question, item.label);
     assert.equal(item.hint, '');

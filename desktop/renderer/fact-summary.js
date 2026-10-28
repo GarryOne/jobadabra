@@ -4,6 +4,8 @@
 // Guarded by test/fact-summary.test.js.
 import {el, pill} from './components.js';
 import {shortLabel, valueAndNote} from './survey-rows.js';
+import {splitPermit} from './question-values.js';
+import {NATIONALITY, STATUS_NAMES, ZONES, eligibilityOf, isRowName, zoneOfLabel} from './work-eligibility.js';
 
 export const SHOWN = 4;   // lines before "Show all N"
 const VALUE_MAX = 48;
@@ -66,6 +68,27 @@ export function summaryView(lines, {shown = SHOWN} = {}) {
 // Languages: one line of chips (English · B2), never a column each.
 export function languagesView(lines, chipLine) {
   return chipLine(lines.filter(line => line.label && String(line.value ?? '').trim()).map(line => ({text: line.label, detail: String(line.value).trim()})));
+}
+
+// Work eligibility's read view (#2322): Nationality, then the three zones, each a chip with its status ("United Kingdom · Yes, freely"; a zone your nationality
+// opens "· from your nationality"; one not set says so); then any other line (one saved before the zones) as a summary. -> {node, check} (check: the lines to look at, for the card's one count).
+export function eligibilityView(lines, chipLine) {
+  const detail = value => STATUS_NAMES[splitPermit(value).status] || shortValue(value);
+  const {nationality, rows} = eligibilityOf(lines);
+  const rest = lines.filter(line => line.label !== NATIONALITY && !(line.kind === 'per_country' && zoneOfLabel(line.label)) && String(line.value ?? '').trim());
+  const zoneChip = zone => {
+    const row = rows.find(each => zoneOfLabel(each.label) === zone);
+    if (!row) return {text: zone.label, detail: 'Not set', tone: 'warn'};
+    return {text: zone.label, detail: row.from === 'nationality' ? 'Yes, freely · from your nationality' : detail(row.value)};
+  };
+  const box = el('div', 'fact-eligibility');
+  const head = (words, node) => { const part = el('div', 'fact-eligibility-part'); part.append(el('span', 'fact-sum-label', words), node); return part; };
+  box.append(head('Nationality', nationality?.length ? chipLine(nationality) : pill('Not set', 'warn')),
+    head('Where you may work', chipLine(ZONES.map(zoneChip))));
+  if (rest.length) box.append(summaryView(rest));
+  const earlier = lines.some(line => line.earlier);
+  if (earlier) box.append(el('p', 'muted small', 'Filled from your earlier answers: check them, then Save. The older lines are folded in, with Undo.'));
+  return {node: box, check: lines.filter(line => line.check || line.earlier || (line.kind === 'per_country' && line.label && !isRowName(line.label))).length};
 }
 
 // The one count of lines to check, in the card's title: "2 to check" (a pill), none when nothing is unclear.

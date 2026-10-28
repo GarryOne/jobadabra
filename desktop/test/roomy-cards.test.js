@@ -106,7 +106,7 @@ test('class: every panel of a restyled Profile tab is .panel.roomy with the card
     for (const part of cards) {
       const id = part.match(/id="([^"]+)"/)[1];
       assert.match(part.split('\n')[0], /class="setting panel roomy[ "]/, id);
-      assert.match(part, /<div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="[\w-]+"><\/i><\/span><div class="card-words"><h3>[^<]+(<span[^>]*>[^<]*<\/span>)?<\/h3><p class="muted small">[^<]+<\/p><\/div><\/div>/, id);
+      assert.match(part, /<div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="[\w-]+"><\/i><\/span><div class="card-words"><h3>[^<]+(<span[^>]*>[^<]*<\/span>)?<\/h3><p class="muted small">[^<]+(<button type="button" class="link"[^>]*>[^<]+<\/button>[^<]*)?<\/p><\/div><\/div>/, id);   // Why (PR #2334, 28 Oct 2026): a lead may carry one text link to another Profile tab (What we learned → Your portrait)
       assert.doesNotMatch(part.split(/(?=<div class="setting[ "])/)[0], /panel-lead/, `${id}: the lead is in the header`);
     }
   }

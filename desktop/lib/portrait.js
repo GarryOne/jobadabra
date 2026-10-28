@@ -136,6 +136,11 @@ export function parse(blocks) {
       if (cited) section.statements.push({text: cited[1], evidence: cited[2].split(',').map(id => id.trim()).filter(Boolean)});
     }
   }
+  for (const section of record.sections) {   // code validates the citations: an id missing from the evidence list is dropped, and a statement left with none goes (spec criterion 3)
+    for (const each of section.statements) each.evidence = each.evidence.filter(id => record.evidence[id]);
+    section.statements = section.statements.filter(each => each.evidence.length);
+  }
+  record.sections = record.sections.filter(section => section.statements.length);
   return found ? record : null;
 }
 

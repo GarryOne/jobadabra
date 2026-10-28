@@ -34,3 +34,11 @@ test('two views of one text: Structured and Plain text; the plain letter draws n
   assert.match(source, /Settings → Connections → AI/);   // a first portrait with no AI says what to do (Gitar on #2334)
   assert.match(source, /if \(!status\.sections\.length\)/);
 });
+
+test('What we learned names the portrait in its lead and the link opens that Profile tab (PR B2b note, owner 28 Oct 2026)', () => {
+  const html = read('index.html');
+  const lead = html.match(/<h3>What we learned about you<\/h3><p class="muted small">([^<]*(?:<button[^>]*>[^<]*<\/button>[^<]*)*)<\/p>/)[1];
+  assert.match(lead, /<button type="button" class="link" data-open-profile-tab="portrait">Your portrait<\/button>/);
+  assert.ok(html.includes('data-profile-tab="portrait"'), 'the tab the link opens exists');
+  assert.match(read('pages/profile.js'), /querySelectorAll\('\[data-open-profile-tab\]'\)[\s\S]*profileTab\(link\.dataset\.openProfileTab\)/);
+});

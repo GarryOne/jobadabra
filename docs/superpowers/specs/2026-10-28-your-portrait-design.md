@@ -85,4 +85,5 @@ One PR after What we learned PR D: writer + store + tab. UI preview and the owne
 
 - [x] Spec approved by the owner (28 Oct 2026) (proof: none: the owner's yes in the coordinator session, 28 Oct 2026)
 - [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/NbLpTtcz3XNSuR3gEBDjNw): "you", last tab, sensitive facts kept out, one update a day at most (proof: none: the owner's yes on the sketch)
-- [ ] PR · writer, store, tab
+- [x] PR · writer, store, tab (proof: #2334 merged aa6692c, 28 Oct 2026; desktop/test/portrait.test.js, portrait-tab.test.js, store-contract.test.js; owner's look: Structured + Plain text views)
+- [x] The What we learned note links to Your portrait (proof: desktop/test/portrait-tab.test.js "What we learned names the portrait in its lead")

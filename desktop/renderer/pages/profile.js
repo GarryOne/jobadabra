@@ -190,6 +190,7 @@ export function showContact() {
 export async function init() {
   initLetter({openAiSettings: () => openSetting('ai')});
   document.querySelectorAll('[data-profile-tab]').forEach(tab => tab.addEventListener('click', () => profileTab(tab.dataset.profileTab)));
+  document.querySelectorAll('[data-open-profile-tab]').forEach(link => link.addEventListener('click', () => profileTab(link.dataset.openProfileTab)));   // a note's link to another Profile tab
   initExperience();
   startOfficeProgress();   // the LibreOffice download for a Word CV, under the CV card (office-progress.js)
   mountProfileMenu($('profile-more'), profileTab);   // Fill from my CV and View source in Notion, quiet in the header (profile-menu.js)

@@ -8,6 +8,7 @@ import {icon} from '../icons.js';
 import {$} from './core.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
+import {createLiveOpener} from '../live-opener.js';
 
 const ZOOMS = [50, 75, 100, 125, 150];
 
@@ -34,9 +35,11 @@ function viewFor(item) {
   strip.append(liveDot('live'), el('b', '', 'Live'), address, el('span', 'live-gap'), zoomButton('−', 'Zoom out', -1), zoomText, zoomButton('+', 'Zoom in', 1), expand);
   const root = el('div', 'live-view');
   root.append(strip, stage);
-  view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, w: 0, h: 0, facts: null, zoom: 100, item};
+  view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, w: 0, h: 0, facts: null, zoom: 100, item, error: ''};
+  const mine = view;
+  // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
+  mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; });
   wireInput(view);
-  window.pilot.liveOpen(item.id).then(result => { if (!result?.ok && view?.id === item.id) address.textContent = result?.error || 'The hidden form is not open.'; });
   return view;
 }
 function setZoom(step) {
@@ -90,6 +93,9 @@ export function liveEvent({session, message} = {}) {
   } else if (message.kind === 'needs') {
     view.facts = message;
     renderLive(view.item, view.on);   // Submit turns on, a count changes: the actions follow the page
+  } else if (message.kind === 'closed') {
+    view.opener.reset();
+    renderLive(view.item, view.on);   // asks again
   } else if (message.kind === 'select' || message.kind === 'file') showAsk(view, message);
 }
 /** Close the open live view (another session shown, or none): the stream stops in main. */
@@ -117,7 +123,8 @@ function drawCard(item) {
   $('ss-form-state').replaceChildren();
   v.root.dataset.frame = card.frame;
   v.root.classList.toggle('is-filling', card.kind === 'filling');
-  v.address.textContent = v.facts?.address || '';
+  v.address.textContent = v.facts?.address || v.error;
+  v.opener.ensure();
   v.filling.hidden = !card.filling;
   v.filling.replaceChildren(el('span', 'spinner'), el('span', '', `Filling "${card.filling}"…`));
   v.marks.replaceChildren(...(card.marks ? (v.facts?.left || []) : []).map(box => Object.assign(el('span', 'live-mark'), {title: box.label,

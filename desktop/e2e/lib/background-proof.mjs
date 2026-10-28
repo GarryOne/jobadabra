@@ -1,4 +1,4 @@
-/* global window */
+/* global document, window */
 // Job: wait on state. The end-to-end proof of Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills a fictional
 // form, the person's Submit (liveSubmit, after the app re-reads the page) lands, the job becomes Applied. Only the fixture server and the proxy's stand-ins answer; every
 // wait is on a state the app shows (the session's background state, the stage), the cap only catches a hang.
@@ -134,6 +134,28 @@ export async function proveBackground(ctx, {form, seed, until}) {
     const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
     if (process.env.E2E_KEEP_HIDDEN === '1') for (const seconds of [6, 20]) setTimeout(() => describeHidden(ctx.profile).then(text => console.log(`  [${seconds}s after Start] ${text}`)), seconds * 1000);   // local debugging only: the hidden browser's state early, not only at the failure
     if (started?.ok === false) throw new Error(`the app refused to start Background automation: ${started.error}`);
+    // The owner's scenario (28 Oct 2026 screenshot, "Filling the application" with a broken picture): the session is opened in the window while the fill runs, when the hidden form may not be open yet;
+    // the live view must still end up showing the page (renderer/live-opener.js asks again on every redraw).
+    await until('the application never got a session', async () => !!(await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url)), 60000);
+    // The way e2e/suites/apply.mjs opens a session (proven on CI): the dock card, expanding the collapsed dock first; the Sessions page when the dock does not show this one.
+    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).first();
+    if (await card.count()) {
+      if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');
+      await card.click();
+    } else {
+      await page.click('.nav[data-view="sessions"]');
+      await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000});
+    }
+    const shown = await page.evaluate(async () => {
+      for (let waited = 0; waited < 40000; waited += 250) {
+        const img = document.querySelector('.live-img');
+        if (img?.complete && img.naturalWidth > 0) return {ok: true, w: img.naturalWidth};
+        await new Promise(done => setTimeout(done, 250));
+      }
+      const img = document.querySelector('.live-img');
+      return {ok: false, img: !!img, srcChars: String(img?.getAttribute('src') || '').length, address: document.querySelector('.live-url')?.textContent || ''};
+    });
+    if (!shown.ok) throw new Error(`the live view shows no picture of the hidden page: ${JSON.stringify(shown)}`);
     await until('the hidden form never reached Ready to review', async () => (await backgroundStateOf(page, form.url)) === 'ready_for_review', 120000)
       .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(page, form.url) || 'none'}`); });
     if (forms.posts.length !== posted) throw new Error('the form was posted before the person pressed Submit');

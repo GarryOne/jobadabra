@@ -20,7 +20,7 @@ export async function openCdpSession(socketUrl, {WebSocketClass = globalThis.Web
     }
     for (const fn of listeners.get(row.method) || []) fn(row.params || {});
   });
-  socket.addEventListener('close', () => { closed = true; for (const {reject} of waiting.values()) reject(new Error('Owned browser connection closed.')); waiting.clear(); });
+  socket.addEventListener('close', () => { closed = true; for (const {reject} of waiting.values()) reject(new Error('Owned browser connection closed.')); waiting.clear(); for (const fn of listeners.get('Session.closed') || []) fn({}); });   // 'Session.closed' is ours, not CDP's: the page went away or detach() ran
   return {
     send(method, params = {}) {
       if (closed) return Promise.reject(new Error('Owned browser connection closed.'));

@@ -13,7 +13,7 @@ function setup({page = async id => (id === 's1' ? 'ws://127.0.0.1:9/devtools/pag
   const storage = {path: name => path.join(root, name)};
   registerLiveViewHandlers({DEMO, storage, ipcMain: {handle: (name, fn) => handles.set(name, fn)}, toWindow: (channel, payload) => sent.push([channel, payload]),
     page, getWindow: () => null, dialog: {showOpenDialog: async () => (picked ? {canceled: false, filePaths: [picked]} : {canceled: true, filePaths: []})},
-    openCdp: async url => { opened.push(url); await openGate?.(); let detached = false; return {url, detach: async () => { if (!detached) closed.push(url); detached = true; }}; },   // idempotent like a real CDP session
+    openCdp: async url => { opened.push(url); await openGate?.(); let detached = false; const ons = {}; return {url, ons, on: (event, fn) => { ons[event] = fn; }, detach: async () => { if (!detached) closed.push(url); detached = true; }}; },   // idempotent like a real CDP session
     // hosted/ready-fill/live.mjs:160: a closed channel detaches its CDP session
     attach: async (channel, cdp, options) => { if (failAttach) throw new Error('attach failed'); const row = {channel, cdp, options, inputs: []}; channel.onMessage(message => row.inputs.push(message)); channel.onClose(() => { closed.push('channel'); cdp.detach(); }); attached.push(row); await attachGate?.(); }});
   return {root, handles, sent, attached, closed, opened, call: (name, ...args) => handles.get(name)(null, ...args)};
@@ -187,4 +187,16 @@ test('class: a close or a second open at any await point of liveOpen leaves no l
       assert.equal(s.opened.length, s.closed.filter(entry => entry !== 'channel').length, `${point}/${interrupt}: after the last close none is left`);
     }
   }
+});
+
+test('the page going away on its own tells the window, once; our own close tells nothing (the window asks again)', async () => {
+  const s = setup();
+  await s.call('liveOpen', 's1');
+  s.attached[0].cdp.ons['Session.closed']();
+  s.attached[0].cdp.ons['Session.closed']();
+  assert.deepEqual(s.sent.filter(([, p]) => p.message.kind === 'closed'), [['liveEvent', {session: 's1', message: {kind: 'closed'}}]]);
+  const t = setup();
+  await t.call('liveOpen', 's1'); await t.call('liveClose', 's1');
+  t.attached[0].cdp.ons['Session.closed']();
+  assert.equal(t.sent.length, 0);
 });

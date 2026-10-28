@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Sets the one "Gitar: …" label on a PR from Gitar's verdict, so the PR list shows red / yellow / green without opening the PR.
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
-// Why (28 Oct 2026): Gitar records no approving review (#2377 had none), so only its own comment line `<summary><b>Code Review</b> <kbd>…</kbd>` says approved; a verdict older than the head commit is stale and gets no label.
+// Why (28 Oct 2026): Gitar records no approving review (#2377 had none), so only the verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>   needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';

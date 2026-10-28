@@ -38,7 +38,11 @@ report_comments() {  # <view json>
     [ -n "$id" ] && [ "$who" != self ] || continue   # a PR with no comments still feeds the loop one empty row
     grep -qxF "$id" "$seen" 2>/dev/null && continue
     echo "$id" >> "$seen"
-    if [[ "$t" > "$started" ]] || grep -qxF "$id" <<<"$open"; then say "COMMENT #$n $who $kind $url"; fi
+    if [[ "$t" > "$started" ]] || grep -qxF "$id" <<<"$open"; then
+      say "COMMENT #$n $who $kind $url"
+      # Why (#2386, owner 28 Oct 2026): the PR list shows "Working on PR comments" while a session handles feedback; a push or Gitar's approval clears it (gitar-label.yml).
+      [ "$who" = other ] || GITHUB_REPOSITORY="$repo" node "$here/gitar-label.mjs" working "$n" >/dev/null 2>&1 || true
+    fi
   done <<<"$rows"
 }
 waited=0; red=""; green=""; conflict=""

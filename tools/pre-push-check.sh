@@ -191,7 +191,6 @@ fi
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"
 if command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
-  # renderer class tests
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || { echo "Push blocked: a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)" >&2; exit 2; }
 fi

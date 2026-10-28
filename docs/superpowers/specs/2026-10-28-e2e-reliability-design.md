@@ -156,8 +156,9 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - Every workflow and e2e lib module has a `Job:` line; the module count is measured before and after each shrink step.
 
 ## PR plan
-Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/34 <what it does>`, and its body ends with a "Plan progress" section (done, next, left). The total moves only with a reason written in the PR that moves it.
-**34 PRs: 13 merged, 21 to go** (this one included). Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/29 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
+**29 PRs: 13 merged, 16 to go** (this one included). Why the total is 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+Who builds what: the verdict session takes rows 16-17 and the push-checks session rows 15 and 18 (owner's yes, 28 Oct 2026); `fl` keeps the backbone itself and the rest.
 
 | n | PR | Step | State |
 |---|---|---|---|
@@ -175,26 +176,21 @@ Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know
 | 12 | A test app ends with its runner | 7 | ✅ #2384 |
 | 13 | Rule E on lane entries | 2 | ✅ #2398 |
 | 14 | Renderer class tests on push | 9 | 🔨 this PR |
-| 15 | Rule E for test edits: citation check and Gitar review file | 3 |  |
-| 16 | Rule F: `Job:` lines and the harness-PR trailer | 3 |  |
-| 17 | Health greys: AI credit, runner, install | 2 |  |
-| 18 | At most 5 suites picked by the scorecard | 2 |  |
-| 19 | Suspension on a red-then-green flip, with an owner issue | 2 |  |
-| 20 | Stored AI answers keyed by question; no live AI call in the backbone | 4 |  |
-| 21 | quality cut at the seam; the AI rate as a number in the check summary | 4 |  |
-| 22 | applyflows: state waits, hang caps, Notion stubbed, races as issues | 5 |  |
-| 23 | settings the same way | 6 |  |
-| 24 | apply the same way | 6 |  |
-| 25 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 |  |
-| 26 | Beta gate on tolerant rates | 7 |  |
-| 27 | Speed medians in the weekly summary | 7 |  |
-| 28 | Outside-world suite nightly | 7 |  |
-| 29 | `tools/revert-red.sh` wired to a backbone red | 8 |  |
-| 30 | Bug Tracker "escaped e2e" field | 1 |  |
-| 31 | Retire `e2e_weekly.py` after the first Monday post | 1 |  |
-| 32 | Harness shrink, first step (module count before and after) | 10 |  |
-| 33 | Harness shrink, second step | 10 |  |
-| 34 | Harness shrink, third step | 10 |  |
+| 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | push-checks session |
+| 16 | Health greys: AI credit, runner, install | 2 | verdict session |
+| 17 | At most 5 suites picked by the scorecard, and suspension on a red-then-green flip | 2 | verdict session |
+| 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
+| 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
+| 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | fl |
+| 21 | applyflows: state waits, hang caps, Notion stubbed, races as issues | 5 | fl |
+| 22 | settings the same way | 6 | fl |
+| 23 | apply the same way | 6 | fl |
+| 24 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 | fl |
+| 25 | Beta gate on tolerant rates, and speed medians in the weekly summary | 7 | fl |
+| 26 | Outside-world suite nightly | 7 | fl |
+| 27 | Bug Tracker "escaped e2e" field, and retire `e2e_weekly.py` after the first Monday post | 1 | fl |
+| 28 | Harness shrink, first half (module count before and after) | 10 | fl |
+| 29 | Harness shrink, second half | 10 | fl |
 
 ## Progress
 One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).

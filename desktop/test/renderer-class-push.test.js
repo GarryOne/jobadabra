@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const script = fs.readFileSync(path.join(root, 'tools/pre-push-check.sh'), 'utf8');
 const listed = (/class_tests="([^"]+)"/.exec(script) || [])[1];
-const trigger = (/diff --name-only origin\/main\.\.\.HEAD[^\n]*\| grep -qE '([^']+)'[^\n]*\n[^\n]*renderer class tests/.exec(script) || [])[1];
+const trigger = (/diff --name-only origin\/main\.\.\.HEAD[^\n]*\| grep -qE '([^']+)'[^\n]*\n[^\n]*timed "renderer class tests"/.exec(script) || [])[1];
 
 test('the push script names the class tests and the files whose change runs them', () => {
   assert.ok(listed, 'tools/pre-push-check.sh has no class_tests="..." list');

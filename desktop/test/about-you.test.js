@@ -89,3 +89,17 @@ test('aboutYou reads each part from its one source on a local store: Your detail
   const form = await aboutYou(storage, 'form');
   assert.deepEqual(form.parts.learned.map(each => each.question), ['Willing to travel', 'Gender'], 'a form fills the sensitive field itself; the conflict waits');
 });
+
+// Gitar on #2337: over budget, an object part (the CV) stays an object, trimmed inside (its longest list loses items), never a cut-off JSON string; every part,
+// voice and this job included, is in the cut order.
+test('over budget, the CV stays a CV: its longest lists lose items, its basics stay; voice and this job are cut too', () => {
+  const work = Array.from({length: 60}, (_, at) => ({name: `Employer ${at}`, highlights: Array.from({length: 8}, (__, each) => `Shipped thing ${each} at employer ${at}, measured`)}));
+  const big = {...SOURCES, cv: {basics: {name: 'Alex Morgan'}, work}, voice: 'V'.repeat(30000), this_job: {sent: 'T'.repeat(30000)}};
+  for (const reader of ['kit', 'letter', 'prep']) {
+    const {parts} = bundleOf(big, reader);
+    assert.ok(JSON.stringify(parts).length <= (READERS[reader].budget || 12000), `${reader} within budget`);
+    assert.equal(typeof parts.cv, 'object', `${reader}: the CV is still an object`);
+    assert.equal(parts.cv.basics.name, 'Alex Morgan');
+    assert.match(JSON.stringify(parts), /DETAILSWORD/, `${reader}: facts stay`);
+  }
+});

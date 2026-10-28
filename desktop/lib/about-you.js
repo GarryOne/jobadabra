@@ -12,7 +12,7 @@ import {baseCv} from './cv.js';
 import {openStore} from './store/index.js';
 
 export const PARTS = ['details', 'cv', 'learned', 'strategy', 'history', 'voice', 'this_job'];
-export const PRIORITY = ['details', 'learned', 'cv', 'strategy', 'history'];   // a budget cuts from the end: a long history never pushes out facts
+export const PRIORITY = ['details', 'learned', 'cv', 'strategy', 'history', 'voice', 'this_job'];   // a budget cuts from the end: a long history never pushes out facts
 const BUDGET = 12000;   // characters of the rendered bundle per reader unless it names its own
 
 // Who takes what (spec table; ★ owner decisions): keepSensitive only where a form field is the place for it; noSalary: CV tailoring and letters (★).
@@ -20,7 +20,8 @@ const BUDGET = 12000;   // characters of the rendered bundle per reader unless i
 export const READERS = {
   form: {parts: ['details', 'cv', 'learned', 'strategy'], keepSensitive: true},
   kit: {parts: ['details', 'cv', 'learned', 'strategy'], keepSensitive: true},
-  cv_tailor: {parts: ['details', 'cv', 'learned', 'strategy'], noSalary: true, learnedUse: 'summary'},
+  // Why (Gitar on #2337): the CV is CV tailoring's material, so it fits whole. TODO(AI): set each reader's budget from D1b/D1c's measured cost (28 Oct 2026)
+  cv_tailor: {parts: ['details', 'cv', 'learned', 'strategy'], noSalary: true, learnedUse: 'summary', budget: 40000},
   letter: {parts: ['details', 'cv', 'learned', 'strategy', 'voice'], noSalary: true},
   score: {parts: ['details', 'cv', 'learned', 'strategy']},
   insights: {parts: ['details', 'cv', 'learned', 'strategy', 'history']},
@@ -29,8 +30,27 @@ export const READERS = {
   portrait: {parts: ['details', 'cv', 'learned', 'strategy', 'history', 'voice']},
 };
 
-const text = value => (typeof value === 'string' ? value : JSON.stringify(value));
 const sizeOf = parts => JSON.stringify(parts).length;   // the bundle as a prompt carries it
+
+// A copy of value one step smaller, keeping its shape: its longest list (a CV's work, a role's highlights) loses its last item; with no list left, its longest
+// text loses a tenth. null when nothing is left to shrink.
+function shorter(value) {
+  let list = null, words = null;
+  const walk = (node, trail) => {
+    if (Array.isArray(node)) { if (node.length && (!list || node.length > list.node.length)) list = {node, trail}; node.forEach((each, at) => walk(each, [...trail, at])); }
+    else if (typeof node === 'string') { if (node.length && (!words || node.length > words.node.length)) words = {node, trail}; }
+    else if (node && typeof node === 'object') for (const [key, each] of Object.entries(node)) walk(each, [...trail, key]);
+  };
+  walk(value, []);
+  const pick = list || words;
+  if (!pick) return null;
+  const cut = node => (Array.isArray(node) ? node.slice(0, -1) : node.slice(0, Math.floor(node.length * 0.9)));
+  if (!pick.trail.length) return cut(value);
+  const copy = structuredClone(value), at = pick.trail.at(-1);
+  const holder = pick.trail.slice(0, -1).reduce((node, step) => node[step], copy);
+  holder[at] = cut(holder[at]);
+  return copy;
+}
 
 /**
  * The bundle one reader gets, pure. sources: {details: [{label, value, kind}], learned: [{question, answer, state, sensitive, kind}], strategy: [{label, value, group}],
@@ -54,8 +74,8 @@ export function bundleOf(sources, reader) {
   }
   const budget = rule.budget || BUDGET;
   for (const name of [...PRIORITY].reverse()) {
-    while (sizeOf(parts) > budget && Array.isArray(parts[name]) && parts[name].length) parts[name] = parts[name].slice(0, -1);
-    if (sizeOf(parts) > budget && parts[name] !== undefined && !Array.isArray(parts[name])) parts[name] = text(parts[name]).slice(0, Math.max(0, budget - sizeOf({...parts, [name]: ''})));
+    // Why (Gitar on #2337): a part keeps its shape (the CV stays an object a reader can read) and shrinks before any higher part does.
+    for (let next = parts[name]; sizeOf(parts) > budget && parts[name] !== undefined && (next = shorter(parts[name])) !== null;) parts[name] = next;
   }
   return {reader, parts, lacked, ...(rule.learnedUse ? {learnedUse: rule.learnedUse} : {})};
 }

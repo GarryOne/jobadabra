@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {readPanel} from '../../worker/test/helpers/panel.js';
 import {restartFormsOf} from '../lib/tailored-restart.js';
 
 const read = path => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -52,7 +53,7 @@ test('every panel control that asks the app goes through ask(), which says progr
 });
 
 test('the panel draws no CV row and no "Tailor in Jobadabra"; "Open in Jobadabra" is centred', () => {
-  const markup = read('extension/panel-markup.js'), review = read('extension/review.js');
+  const markup = read('extension/panel-markup.js'), review = readPanel();
   assert.doesNotMatch(markup, /class="tailor"|\.tailor\b|Tailor in Jobadabra/);
   assert.doesNotMatch(review, /\.t-btn|\.t-text|show: 'tailor'/);
   assert.match(markup, /\.actions \{ border-top: 1px solid var\(--line\); padding-top: 6px; justify-content: center; \}/);

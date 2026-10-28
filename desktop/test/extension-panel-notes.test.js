@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {readPanel} from '../../worker/test/helpers/panel.js';
 
 const read = name => fs.readFileSync(new URL(`../../extension/${name}`, import.meta.url), 'utf8');
 
@@ -27,7 +28,7 @@ test('class: every toast the worker draws asks the panel first, and the panel an
 });
 
 test('a page mark of posting or opening is never Ready and never counts; the fill flow sets it from the AI\'s kind', async () => {
-  const panel = read('review.js');
+  const panel = readPanel();
   assert.match(panel, /ready = !moved && !pageMark && total > 0 && left === 0/);
   assert.match(panel, /pageMark \? \(MARK_WORDS\[pageMark\] \|\| 'Apply button detected\. Redirecting…'\)/g);   // the owner's own words for a posting; a page not judged yet is only being read
   assert.match(panel, /pageMark = \(m => \(\['form', 'account', 'sign-up'\]\.includes\(m\) \? '' : m \|\| 'reading'\)\)\(document\.documentElement\.getAttribute\('data-jobpilotto-page'\) \|\| ''\)/, 'default-deny: Ready only on a page judged to be a form');

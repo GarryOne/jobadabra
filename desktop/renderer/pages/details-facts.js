@@ -11,7 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
-import {NATIONALITY, ZONES, isAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
+import {NATIONALITY, ZONES, isAnswered, isAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -55,10 +55,11 @@ function drawEligibility(into, lines, row) {
   into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
   into.addEventListener('click', event => { if (event.composedPath?.().some(node => node.classList?.contains('qa-nationality'))) redrawConcluded(into); });   // the chip is gone by now: its path
 }
-// A zone: its saved row, else "from your nationality" when the nationality opens it (a quiet Change turns it into the chips), else the empty chips.
+// A zone: its answered row, else "from your nationality" when the nationality opens it (a quiet Change turns it into the chips), else its row or the empty
+// chips (a template "❓" row is still the one asked).
 function zoneRow(into, zone, rows) {
   const saved = rows.find(line => zoneOfLabel(line.label) === zone);
-  if (saved || !zonesOpenedBy(nationalityNow(into)).includes(zone.id)) return eligibilityRow(saved || {label: zone.label, value: '', kind: 'per_country'});
+  if (isAnswered(saved?.value) || !zonesOpenedBy(nationalityNow(into)).includes(zone.id)) return eligibilityRow(saved || {label: zone.label, value: '', kind: 'per_country'});
   const node = el('div', 'fact-derived country-row');
   node.dataset.zone = zone.id;
   const change = Object.assign(el('button', 'secondary small-btn', 'Change'), {type: 'button'});
@@ -69,13 +70,13 @@ function zoneRow(into, zone, rows) {
   return node;
 }
 const nationalityNow = into => nationalityOf(into.querySelector('.qa-nationality')?.value || '') || [];
-// The nationality changed: a zone it now opens, still empty, reads as concluded; one it no longer opens gets its chips back.
+// The nationality changed: a zone it now opens, still unanswered, reads as concluded; one it no longer opens gets its chips back.
 function redrawConcluded(into) {
   for (const zone of ZONES) {
     const derived = into.querySelector(`.fact-derived[data-zone="${zone.id}"]`), line = [...into.querySelectorAll('.country-row.fact-line')].find(each => zoneOfLabel(factOf(each).label) === zone);
     const opens = zonesOpenedBy(nationalityNow(into)).includes(zone.id);
     if (derived && !opens) derived.replaceWith(eligibilityRow({label: zone.label, value: '', kind: 'per_country'}));
-    if (!derived && opens && line && !factOf(line).value) line.replaceWith(zoneRow(into, zone, []));
+    if (!derived && opens && line && !isAnswered(factOf(line).value)) line.replaceWith(zoneRow(into, zone, []));
   }
 }
 

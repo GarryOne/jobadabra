@@ -4,7 +4,7 @@
 import {anthropicApi} from './ai/anthropic-api.js';
 import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';
 import {splitPermit} from '../renderer/question-values.js';
-import {NATIONALITY, eligibilityOf, rowFor, settles} from '../renderer/work-eligibility.js';
+import {NATIONALITY, ZONES, eligibilityOf, rowFor, settles} from '../renderer/work-eligibility.js';
 
 export {looksLikeFieldId};
 export const MODEL = 'claude-haiku-5-5';
@@ -66,7 +66,7 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
     // Why (28 Oct 2026, Gitar on #2322): a country no saved zone or nationality covers keeps the question asked; the generic fact path below would hide it
     // and fill it from a row that does not answer it. The row and its value are kept, so an answer added later judges it again (lib/question-verdicts.js).
     if (eligible?.asked) { out.set(label, {reuse: verdict, covered_by: '', proposal: '', from: eligible.from, topic: topicOf(topic), fact: '', asks, row: eligible.row}); continue; }
-    if (eligible) { out.set(label, {reuse: DETAILS, covered_by: '', proposal: eligible.value, from: eligible.from, topic: topicOf(topic), fact: eligible.fact, asks}); continue; }
+    if (eligible) { out.set(label, {reuse: DETAILS, covered_by: '', proposal: eligible.value, from: eligible.from, topic: topicOf(topic), fact: eligible.fact, asks, row: ''}); continue; }   // Why (#2322 review): '' drops an asked verdict's row in ensure's merge
     const answer = byQuestion.get(covered) || '', own = known.has(fact) && verdict !== 'consent' ? fact : '';   // a fact the AI invented keeps nothing
     out.set(label, {reuse: own ? DETAILS : verdict, covered_by: answer ? covered : '', proposal: answer ? String(value).trim() || answer : '', from: answer, topic: topicOf(topic), fact: own});
   }
@@ -76,7 +76,7 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
 // Why (28 Oct 2026, owner, #2322): "authorised to work in X?", "eligible in the location you apply for?" and "need sponsorship?" are answered from Nationality and
 // the zones. The AI says only what the question asks and which country (any language); the code finds the row that covers that country and reads the answer
 // from its fixed status (renderer/work-eligibility.js settles). No country named: answered per job from the same rows. -> {fact, value, from}; {asked: true, row,
-// from} when Nationality or a zone is saved but settles nothing for that country; null when neither is saved (an older line may still answer it).
+// from} (row: the zone that covers the country, '' for none) when Nationality or a zone is saved but settles nothing for that country; null when neither is saved (an older line may still answer it).
 function fromEligibility(asks, country, facts) {
   const {nationality, rows} = eligibilityOf(facts), code = String(country || '').trim().toUpperCase();
   if (!nationality && !rows.length) return null;
@@ -85,7 +85,10 @@ function fromEligibility(asks, country, facts) {
   // A row with no status (an older "allowed, B permit") answers nothing, so the nationality may (#2322 review).
   const row = rowFor(code, facts.filter(fact => fact.kind !== 'per_country' || splitPermit(fact.value).status)), value = row ? settles(splitPermit(row.value), asks) : '';
   const from = row ? String(facts.find(fact => fact.label === row.label)?.value ?? row.value) : '';   // the saved line, to see it change
-  return value ? {fact: row.label, value, from} : {asked: true, row: row?.label || '', from};
+  if (value) return {fact: row.label, value, from};
+  // Why (28 Oct 2026, #2322): asked, it keeps the zone that covers the country and its value now ("❓" or none), so answering that zone judges it again.
+  const zone = ZONES.find(each => each.codes.includes(code))?.label || '';
+  return {asked: true, row: zone, from: zone ? String(facts.find(fact => fact.label === zone)?.value ?? '') : ''};
 }
 
 // The older shape the fill-time collect uses: the Set of labels worth saving (reusable and not already covered).

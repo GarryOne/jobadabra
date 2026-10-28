@@ -2,7 +2,7 @@
 // sponsorship by a fixed table, and a row is a zone or a country, never a city. Values are fictional.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {countryCode, eligibilityOf, isRowName, nationalityOf, rowFor, settles, zonesOpenedBy} from '../renderer/work-eligibility.js';
+import {countryCode, eligibilityOf, isAnswered, isRowName, nationalityOf, rowFor, settles, zonesOpenedBy} from '../renderer/work-eligibility.js';
 import {joinPermit, splitPermit} from '../renderer/question-values.js';
 
 test('a country is known by its English name, never a city or a mix; a row is one of the three zones only', () => {
@@ -61,4 +61,11 @@ test('a permit value is its status only; words after it are kept by the control 
   assert.deepEqual(splitPermit('yes, with a permit, valid until 2027-06-30'), {status: 'yes, with a permit'});
   assert.deepEqual(splitPermit('needs visa'), {status: 'no, needs sponsorship'}, 'the older word');
   assert.equal(splitPermit('maybe a B permit').status, '');
+});
+
+// Why (28 Oct 2026, Gitar on #2322): the template writes each zone as "❓"; that is no answer, so a zone the nationality opens is still concluded.
+test('a template "❓" zone is no answer: the nationality still concludes it', () => {
+  assert.deepEqual(['yes, freely', '❓', '❓ yes, freely / no', '', '  '].map(isAnswered), [true, false, false, false, false]);
+  const lines = [{label: 'Nationality', value: 'Romania'}, {label: 'EU / EEA + Switzerland', value: '❓', kind: 'per_country'}];
+  assert.deepEqual(eligibilityOf(lines).rows, [{label: 'EU / EEA + Switzerland', value: 'yes, freely', from: 'nationality'}]);
 });

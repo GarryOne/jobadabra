@@ -132,3 +132,20 @@ test('ensure: an answer from a zone is judged again when the row changes', async
   await ensure(s, ['Authorised in Germany?'], {facts: facts('no, needs sponsorship'), ai: {client}});
   assert.equal(calls.length, 2, 'the row changed: judged again');
 });
+
+// Why (28 Oct 2026, #2322): a question kept asked because its zone was "❓" is judged again once that zone is answered (no label changes, so the facts'
+// signature alone never saw it), and an answer read from the zone then stays cached.
+test('ensure: a question asked for a "❓" zone is judged again when the zone is answered, then kept', async () => {
+  const {ensure} = await import('../lib/question-verdicts.js');
+  const s = storage(), calls = [];
+  const client = {messages: {create: async () => { calls.push(1); return {content: [{type: 'text', text: JSON.stringify({verdicts: [{label: 'Authorised in Germany?', verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks: 'work_right', country: 'DE'}]})}]}; }}};
+  const facts = value => [{label: 'Nationality', value: 'Japan'}, {label: 'EU / EEA + Switzerland', value, kind: 'per_country'}];
+  const first = await ensure(s, ['Authorised in Germany?'], {facts: facts('❓'), ai: {client}});
+  assert.equal(Object.values(first.verdicts)[0].reuse, 'reusable', 'asked while the zone is "❓"');
+  await ensure(s, ['Authorised in Germany?'], {facts: facts('❓'), ai: {client}});
+  assert.equal(calls.length, 1, 'still "❓": kept');
+  const next = await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit'), ai: {client}});
+  assert.deepEqual([calls.length, Object.values(next.verdicts)[0].proposal, Object.values(next.verdicts)[0].row], [2, 'Yes', ''], 'answered: judged again, no row left behind');
+  await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit'), ai: {client}});
+  assert.equal(calls.length, 2, 'the same row: kept');
+});

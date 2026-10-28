@@ -2,7 +2,8 @@
 
 Spec: [2026-10-28-your-portrait-design.md](../specs/2026-10-28-your-portrait-design.md) (approved 28 Oct 2026; sketch
 https://claude.ai/artifact/NbLpTtcz3XNSuR3gEBDjNw). Builder: not chosen yet. Starts after About you, everywhere PR D1 (the
-interface it reads). This draft PR carries the spec and plan and becomes the build PR (owner, 28 Oct 2026: "open individual
+interface it reads; PR D of the What we learned plan, split into D1/D2 in
+[2026-10-28-about-you-everywhere.md](2026-10-28-about-you-everywhere.md), draft PR #2333). This draft PR carries the spec and plan and becomes the build PR (owner, 28 Oct 2026: "open individual
 PRs with their specs and plans. To not forget about them").
 
 ## Tasks (one PR)
@@ -14,7 +15,7 @@ PRs with their specs and plans. To not forget about them").
 | Store: derived text + evidence list + date, one copy, both adapters | `desktop/lib/store/index.js` (new text page or section), SQLite + Notion adapters | `desktop/test/store-contract.test.js` extended: roundtrip on both |
 | Tab: last Profile tab "Your portrait", subtitle, no editable control, chips open their source | `desktop/renderer/pages/profile-save-bar.js` (`PROFILE_TABS`), new `desktop/renderer/pages/portrait.js`, `desktop/renderer/index.html`, ⌘K entry | renderer test: no input/button that edits; every statement has a chip; chip opens its source |
 | Nothing reads the portrait | `desktop/lib/about-you.js` has no portrait part | class test from PR D1 asserts it |
-| What we learned note links here | `desktop/renderer/pages/application-answers.js` (note added in PR B2b) | link test |
+| What we learned note links here | `desktop/renderer/pages/application-answers.js` (note added in PR B2b, the second half of the What we learned plan's B2) | link test |
 
 ## Before shipping
 

@@ -19,9 +19,9 @@ const LOG = [
 ].join('\n');
 
 test('refusals are counted, with the time of the run that met the first one', () => {
-  assert.deepEqual(aiRefusals(LOG), {count: 3, firstAt: '2026-10-17T10:29:15.000Z'});
-  assert.deepEqual(aiRefusals('Scored 2 of 2 job(s)\nDone.'), {count: 0, firstAt: ''});
-  assert.deepEqual(aiRefusals(''), {count: 0, firstAt: ''});
+  assert.deepEqual(aiRefusals(LOG), {count: 3, firstAt: '2026-10-17T10:29:15.000Z', limit: 0});
+  assert.deepEqual(aiRefusals('Scored 2 of 2 job(s)\nDone.'), {count: 0, firstAt: '', limit: 0});
+  assert.deepEqual(aiRefusals(''), {count: 0, firstAt: '', limit: 0});
 });
 
 test('a usage-limit or credit message counts too, and a refusal before any run header has no time', () => {
@@ -31,6 +31,16 @@ test('a usage-limit or credit message counts too, and a refusal before any run h
 });
 
 const profileWith = text => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-refused-')); fs.mkdirSync(path.join(dir, 'logs')); fs.writeFileSync(path.join(dir, 'logs', 'engine.log'), text); return dir; };
+
+test('the note names "spend limit or credit" only when EVERY refusal line carried that message, and never under an armed stub (tools/pr-verdict.py greys on this exact text)', () => {
+  const header = '2026-10-17T10:29:15.000Z ---- python -m src daily --mode run run_id=1';
+  const every = [header, 'Error: Your credit balance is too low to access the Anthropic API (BadRequestError)', 'Error: invalid_request_error: You have reached your specified API usage limits.'].join('\n');
+  const mixed = [LOG, '2026-10-17T10:30:00.000Z ---- python -m src daily --mode run run_id=2', 'Error: Your credit balance is too low to access the Anthropic API (BadRequestError)'].join('\n');
+  assert.equal(refusalNote(profileWith(every), new Set()), 'the AI refused (400) 2 times, first at 2026-10-17T10:29:15.000Z, spend limit or credit');
+  assert.doesNotMatch(refusalNote(profileWith(mixed), new Set()), /spend limit or credit/);   // 3 bare 400s (a request of ours that is wrong) beside one credit line: stays red
+  assert.doesNotMatch(refusalNote(profileWith(LOG), new Set()), /spend limit or credit/);
+  assert.doesNotMatch(refusalNote(profileWith(every), new Set(['no-credit'])), /spend limit or credit/);
+});
 
 test('the note names the count and the first time; no log or no refusal gives no note', () => {
   assert.equal(refusalNote(profileWith(LOG)), 'the AI refused (400) 3 times, first at 2026-10-17T10:29:15.000Z');

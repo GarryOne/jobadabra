@@ -414,7 +414,7 @@ export async function runJourneys(ctx, h) {
     const filled = async tab => { for (let waited = 0; waited < 90000; waited += 500) { const state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') return state; await pause(500); } return null; };
     let tab = null;
     for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = tabOf(); await pause(1000); }
-    if (!tab) throw new Error('the form never opened');
+    if (!tab) throw new Error(`the form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}; the app's forms open: ${JSON.stringify(await page.evaluate(() => window.pilot.formsOpen()).catch(() => null))}`);   // Why (28 Oct 2026, beta 2, Mac applyflows): the red said only "never opened"; the app's log showed a live tab the test's list never held, so the next red must carry both sides
     if ((await filled(tab))?.state !== 'done') throw new Error('the form was not filled the first time');
     const session = (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
     if (!session) throw new Error('no session for the job');
@@ -445,7 +445,7 @@ export async function runJourneys(ctx, h) {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
     let tab = null;
     for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null; await pause(1000); }
-    if (!tab) throw new Error('the form never opened');
+    if (!tab) throw new Error(`the form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
     const session = (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === ONEPAGE.url);
     if (!session) throw new Error('no session for the job');
     const openNow = async () => { const forms = await page.evaluate(() => window.pilot.formsOpen()); return forms?.known && forms.ids.includes(session.id); };
@@ -478,7 +478,7 @@ export async function runJourneys(ctx, h) {
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [MISLABELLED.url, {title: MISLABELLED.title, company: MISLABELLED.company}]);
     let tab = null;
     for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(MISLABELLED.url)) || null; await pause(1000); }
-    if (!tab) throw new Error('the mislabelled form never opened');
+    if (!tab) throw new Error(`the mislabelled form never opened. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`);
     let state = null;
     for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (['done', 'error', 'no-form', 'account'].includes(state?.state)) break; await pause(500); }
     const problems = [];

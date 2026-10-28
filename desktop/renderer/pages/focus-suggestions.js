@@ -114,7 +114,7 @@ export function entryRow(entry) {
 
 const shownPool = () => pool.filter(entry => !held.has(entry.key));
 // Focus and the Jobs bar: the drawers' rows first (the blocking one at the top), then the engine's. A Not now leaves them at once (held) and stays gone (Focus's `suggestions_hidden`).
-const rowsNow = () => drawerRows(questionEntries(questionsNow()), {held, hidden: hiddenKeys, known: Boolean(lastArgs)});
+const rowsNow = () => drawerRows(questionEntries(questionsNow()), {held, hidden: hiddenKeys});
 const withRows = () => withQuestions(shownPool(), rowsNow());
 let lastArgs = null;
 let questionsAsked = false;

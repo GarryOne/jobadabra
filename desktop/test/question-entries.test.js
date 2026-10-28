@@ -65,9 +65,8 @@ test('a failed refresh keeps the saved rows (Gitar on #2366): the error row show
   assert.deepEqual(questionEntries({...asked, error: 'Connect Notion first'}).map(row => row.kind), ['letter', 'details', 'learned']);
 });
 
-test('the drawer rows wait until Focus has said which keys a Not now hides (Gitar on #2366), then drop those and the ones held here', () => {
+test('the drawer rows drop the keys a Not now hides (Focus\'s) and the ones held here; "Focus read" is barView\'s alone', () => {
   const rows = questionEntries(asked);
-  assert.deepEqual(drawerRows(rows, {held: new Set(), hidden: new Set(), known: false}), [], 'a Not now from another Mac or an earlier run must not show again before Focus is read');
-  assert.deepEqual(drawerRows(rows, {held: new Set(), hidden: new Set(), known: true}).map(row => row.kind), ['letter', 'details', 'learned']);
-  assert.deepEqual(drawerRows(rows, {held: new Set(['letter:setup']), hidden: new Set(['details:open']), known: true}).map(row => row.kind), ['learned']);
+  assert.deepEqual(drawerRows(rows, {held: new Set(), hidden: new Set()}).map(row => row.kind), ['letter', 'details', 'learned']);
+  assert.deepEqual(drawerRows(rows, {held: new Set(['letter:setup']), hidden: new Set(['details:open'])}).map(row => row.kind), ['learned']);
 });

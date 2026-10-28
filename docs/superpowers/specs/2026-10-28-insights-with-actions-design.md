@@ -54,7 +54,6 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
 | 6 | Profile → CV | Skills your target jobs ask for that are only in the Experience bank | Use in my CVs | Experience bank, postings | counts |
 | 7 | Profile → Cover letter | Letter check against your Writing preferences: length, generic lines | Fix it (redraft to your preferences) | Base letter, Writing preferences | AI |
 | 9 | Profile → What we learned | A stance that may cost you jobs: "'needs sponsorship' on 9 UK forms, 8 no replies" | Review this answer | What we learned, outcomes | counts + AI |
-| 11 | Applying | The question that stops your fills most: "12 of your last 30 fills waited on 'expected start date'" | Answer it once now (goes to Your details or a learning) | Form fills | counts |
 | 14 | Interviews | Watch-outs by round type tied to outcomes: "3 of 4 rejections after a system-design round" | Add to my prep | Interviews, outcomes | counts + AI |
 | 15 | Search strategy | Salary floor hiding matches: "14 jobs scored 80+ just under your floor" | Show these 14 jobs · Lower the floor to X | Strategy, scores | counts |
 | A2 | Applying (Apply dialog) | "4 of the 10 jobs you picked ask for a cover letter; none tailored yet" | Tailor 4 letters | postings, letters | counts |
@@ -76,7 +75,9 @@ through `withExtras` / `knownText` (`desktop/lib/experience.js`). When the perso
 | 13 | "Tell me about yourself" / "why leaving" drafts go into the prep kit, in your words |
 | 16 | Focus's daily insight is the strongest open insight from every screen |
 
-**Dropped for the person:** #12 where applications stall (ours to fix: /admin). **Later:** #8 letters that got replies (needs
+**Dropped for the person:** #12 where applications stall (ours to fix: /admin). #11 "the question that stops your fills
+most" (owner, 28 Oct 2026: "I don't see this valuable to be displayed in Applying"): it repeats drawer 1 "Fill your details",
+which already ranks missing facts by how often forms ask. **Later:** #8 letters that got replies (needs
 ~20 sent letters; only with an action such as "Write letters like these").
 
 ## Acceptance criteria
@@ -113,7 +114,7 @@ through `withExtras` / `knownText` (`desktop/lib/experience.js`). When the perso
 | 2 | Profile → CV: #4, #5, #6 | yes |
 | 3 | Strategy and Jobs: #2, #15; #1, #10 silently | yes |
 | 4 | Interviews: #14; #3, #13 silently | yes |
-| 5 | Applying, Cover letter, What we learned: #11, A2, A5, #7, #9 | yes |
+| 5 | Applying, Cover letter, What we learned: A2, A5, #7, #9 | yes |
 | 6 | Focus picks the strongest (#16) | after 2-5 |
 
 ## Progress

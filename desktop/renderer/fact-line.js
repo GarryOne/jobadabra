@@ -1,33 +1,43 @@
 // One line of Your details' fact sections (owner, 17 Oct 2026: "Base facts fixed, AI the rest"): its label and the control of its kind (the mark on the line,
 // else the kind judged for the label on this Mac; renderer/question-control.js), and what the Save bar reads back. A kind the code can't read the line in keeps
 // the words as written with a "Check" chip: nothing is lost. Guarded by test/fact-line.test.js.
-import {el, pill} from './components.js';
+import {chip, el, pill} from './components.js';
 import {answerControl} from './question-control.js';
 import {COMPOSITE, formatFor} from './question-kind.js';
 import {keyOf} from './question-filter.js';
 import {needsCheck} from './question-values.js';
+import {COUNTRY_NAMES, NATIONALITY, isCountry, isRowName, nationalityOf, zoneOfLabel} from './work-eligibility.js';
 
 const LONG = 60;   // characters: past this a text value wraps in a growing box
 
 // key: the section; line: {label, value, kind}; formats: the kinds judged for labels ({[keyOf(label)]: {kind, options}}); onChange(): marks the page dirty.
 export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}, formats = {}, onChange = () => {}) {
-  const row = el('label', 'fact-line');
   if (!label && !kind && key === 'languages') kind = 'language';   // a new line in Languages is a language: its name, then level chips
   const format = formatFor({marked: kind ? {kind} : null, kept: formats[keyOf(label)]});
   const composite = COMPOSITE.includes(format.kind);
-  const name = Object.assign(document.createElement('input'), {type: 'text', value: label, placeholder: 'What (e.g. Notice period)'});
+  // Why (28 Oct 2026, owner, #2322): a Work eligibility row is one of the fixed zones, or a country picked from the list (never typed), so no row is about a city.
+  const perCountry = key === 'eligibility' && format.kind === 'per_country', zone = perCountry && zoneOfLabel(label);
+  const row = el(perCountry ? 'div' : 'label', perCountry ? 'fact-line country-row' : 'fact-line');
+  const name = perCountry && !zone ? countryPick(label, onChange) : Object.assign(document.createElement('input'), {type: 'text', value: label, placeholder: 'What (e.g. Notice period)'});
   name.dataset.factLabel = key;
   // A line read from the Profile keeps its words as its label; a new one is named by you.
-  if (label) { name.hidden = true; row.append(el('span', '', label)); }
+  if (label && !(perCountry && !zone)) { name.hidden = true; row.append(el('span', '', label)); }
   name.addEventListener('input', onChange);
   // A long value in words is a box that grows, never cut by a one-line field.
   const long = format.control === 'text' && (String(value).length > LONG || String(value).includes('\n'));
-  const control = answerControl(long ? {...format, control: 'textarea'} : format, value, onChange, {ariaLabel: label || 'Answer'});
+  const citizenship = key === 'eligibility' && label === NATIONALITY && (!String(value).trim() || nationalityOf(value));
+  const control = citizenship ? nationalityPick(value, onChange) : answerControl(long ? {...format, control: 'textarea'} : format, value, onChange, {ariaLabel: label || 'Answer'});
   if (long) { control.rows = 1; row.classList.add('span-all'); }   // the whole row of the grid
   control.dataset.factValue = key;
   row.dataset.kind = composite ? format.kind : '';
   row.append(name, control);
-  if (needsCheck(format.kind, value)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the parts to make it exact'}));
+  if (perCountry && !zone) {
+    const remove = Object.assign(el('button', 'secondary small-btn', 'Remove'), {type: 'button', ariaLabel: `Remove ${label || 'this country'}`});
+    remove.addEventListener('click', () => { row.remove(); onChange(); });
+    row.append(remove);
+  }
+  if (perCountry && label && !isRowName(label)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the country it is about'}));
+  else if (needsCheck(format.kind, value)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the parts to make it exact'}));
   // The words the value does not hold (a rule, a date it was confirmed) sit under it, never in it: folded as "Note for the AI" in a box that grows
   // (owner, 18 Oct 2026: "Folded Note for the AI"; the same fold as Profile → Application answers).
   if (note) {
@@ -38,6 +48,30 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
     row.append(fold);
   }
   return row;
+}
+
+// The country menu of a per-country row; a saved name that is not a country ("Germany / EU") stays as a choice until another is picked.
+function countryPick(label, onChange) {
+  const pick = Object.assign(el('select', 'country-pick'), {ariaLabel: 'Country'});
+  pick.append(new Option('Country…', ''), ...(label && !isCountry(label) ? [new Option(label, label)] : []), ...COUNTRY_NAMES.map(name => new Option(name, name)));
+  pick.value = COUNTRY_NAMES.find(name => name.toLowerCase() === label.toLowerCase()) || label;
+  pick.addEventListener('change', onChange);
+  return pick;
+}
+
+// Nationality (#2322): one or more countries as chips, "Add a country…" to add one; .value is "Romania, Moldova".
+function nationalityPick(value, onChange) {
+  let names = nationalityOf(value) || [];
+  const node = el('div', 'qa-values qa-nationality');
+  const pick = Object.assign(el('select', ''), {ariaLabel: 'Add a nationality'});
+  const draw = () => {
+    pick.replaceChildren(new Option(names.length ? 'Add another…' : 'Add a country…', ''), ...COUNTRY_NAMES.filter(name => !names.includes(name)).map(name => new Option(name, name)));
+    node.replaceChildren(...names.map(name => chip(name, {onRemove: () => { names = names.filter(each => each !== name); draw(); onChange(); }})), pick);
+  };
+  pick.addEventListener('change', () => { if (pick.value) { names = [...names, pick.value]; draw(); onChange(); } });
+  Object.defineProperty(node, 'value', {get: () => names.join(', '), configurable: true});
+  draw();
+  return node;
 }
 
 // -> {label, value, kind, note?}; kind only for a base-fact kind (the others ride on this Mac's judgment, never in the line).

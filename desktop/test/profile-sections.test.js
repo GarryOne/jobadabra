@@ -44,6 +44,16 @@ for (const [name, make] of Object.entries(ADAPTERS)) {
     for (const kept of ['📇 Contact details', 'Email: a@b.c', 'Targets stay here']) assert.ok(texts.includes(kept), kept);
     assert.equal(texts.filter(text => text === sections.SECTIONS.eligibility).length, 1, 'one heading per section');
   });
+
+  // Why (28 Oct 2026, owner, #2322): Nationality and each zone, a permit's date and "only in" included, read back the same on every store.
+  test(`${name}: Nationality and each zone row read back whole, with their kind`, async () => {
+    const {storage, fetcher} = make();
+    const rows = [{label: 'Nationality', value: 'Romania, Moldova'}, {label: 'EU / EEA + Switzerland', value: 'yes, freely', kind: 'per_country'},
+      {label: 'United Kingdom', value: 'yes, with a permit, valid until 2027-06-30, only in United Kingdom', kind: 'per_country'},
+      {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}, {label: 'Canada', value: 'yes, with a permit', kind: 'per_country'}];
+    await sections.save(storage, 'eligibility', rows, fetcher);
+    assert.deepEqual((await sections.read(storage, fetcher)).eligibility, rows);
+  });
 }
 
 test('a value with a colon in it reads back whole; an unknown section is refused', async () => {

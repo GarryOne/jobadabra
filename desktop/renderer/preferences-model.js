@@ -32,6 +32,7 @@ export const FIELDS = [
   {key: 'mode', side: '', editedIn: 'goals', label: 'Work modes', match: /^work mode/i, widget: 'modes', group: 'location'},
   {key: 'relocation', side: '', editedIn: 'locations', label: 'Relocation', match: /relocat/i, widget: 'select', options: ['Yes', 'No', 'Within my country'], group: 'location'},
   {key: 'permit', side: '', editedIn: 'details', label: 'Work permit / visa', match: /permit|visa/i, widget: 'text', group: 'location'},
+  {key: 'nationality', side: '', editedIn: 'details', label: 'Nationality', match: /^nationality|citizenship/i, widget: 'text', group: 'location'},   // Why (28 Oct 2026, #2322): Your details' Nationality, never a deal-breaker here
   {key: 'languages', side: '', editedIn: 'details', label: 'Languages', match: /^languages/i, widget: 'languages', group: 'languages'},
   {key: 'roles', side: 'rank', label: 'Role priorities', match: /^(target )?roles?\b|^role priorit/i, widget: 'chips', group: 'roles', add: 'Add a role'},
   {key: 'employment', side: 'must', label: 'Employment type', match: /^employment|^contract/i, widget: 'select', options: SUGGESTIONS['employment type'], group: 'roles'},

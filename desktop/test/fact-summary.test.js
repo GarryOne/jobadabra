@@ -56,7 +56,8 @@ test('class: every fact card of Your details draws through the shared summary (a
   assert.deepEqual(facts, ['eligibility', 'availability', 'languages']);
   assert.match(source, /languagesView\(lines, chipLine\) : summaryView\(lines\)/);
   assert.doesNotMatch(source, /factColumns\(factRows/, 'no per-cell grid of saved questions');
-  assert.match(source, /checkBadge\(checkCount\(lines\)\)/);
+  assert.match(source, /checkBadge\(eligibility \? eligibility\.check : checkCount\(lines\)\)/);
+  assert.match(source, /eligibilityView\(lines, chipLine\)/, 'Work eligibility reads as Nationality + where you may work (#2322)');
 });
 
 test('class: the fact editors and the survey editor are one aligned grid with a footer for Done', () => {

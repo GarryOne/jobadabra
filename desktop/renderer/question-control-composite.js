@@ -4,7 +4,8 @@
 // written and still counts as an answer, so nothing is lost. Layout in question-review.css (.qa-values). Guarded by test/question-kinds-composite.test.js.
 import {el} from './components.js';
 import {composite, refresh, savedAs, segmented} from './question-control-values.js';
-import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, STATUSES, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';
+import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';
+import {COUNTRY_NAMES, STATUSES, STATUS_HINTS, STATUS_NAMES} from './work-eligibility.js';
 
 const input = (type, value, ariaLabel, placeholder = '') => Object.assign(el('input', ''), {type, value, ariaLabel, placeholder});
 function menu(options, value, ariaLabel, blank = '') {
@@ -14,7 +15,6 @@ function menu(options, value, ariaLabel, blank = '') {
   node.value = value;
   return node;
 }
-const cap = text => text.charAt(0).toUpperCase() + text.slice(1);
 
 // An unreadable saved text is the answer until a part is chosen.
 const readable = (raw, parts) => raw && !parts;
@@ -50,15 +50,27 @@ function duration(raw, onChange, label) {
   return node;
 }
 
+// A zone's or a country's status (renderer/work-eligibility.js): three chips; with a permit, its "valid until" and the one country it may be limited to
+// (a Swiss B permit held by a non-EU national: "Only in Switzerland").
 function permit(raw, onChange, label) {
   const start = splitPermit(raw), state = {...start};
   const answer = () => (state.status ? joinPermit(state) : readable(raw, start.status) ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
-  const isOn = option => option.toLowerCase() === state.status;
-  const group = segmented(STATUSES.map(cap), isOn, (option, each) => { state.status = isOn(option) ? '' : option.toLowerCase(); refresh(each, isOn); onChange(answer()); }, label);
-  const kind = input('text', state.permit, `${label}: permit`, 'Permit, e.g. B permit');
-  kind.addEventListener('input', () => { state.permit = kind.value; onChange(answer()); });
-  node.append(group, kind);
+  node.classList.add('qa-permit');
+  const isOn = option => STATUS_NAMES[state.status] === option;
+  const until = Object.assign(input('date', state.until, `${label}: valid until`), {title: 'Valid until'});
+  const only = menu(COUNTRY_NAMES, state.only, `${label}: only in`, 'Anywhere here');
+  const parts = el('div', 'qa-permit-parts');
+  for (const [words, field] of [['Valid until', until], ['Only in', only]]) { const part = el('div', 'qa-permit-part'); part.append(el('span', 'muted small', words), field); parts.append(part); }
+  const shown = () => { parts.hidden = state.status !== 'yes, with a permit'; };
+  const group = segmented(STATUSES.map(each => STATUS_NAMES[each]), isOn, (option, each) => {
+    state.status = isOn(option) ? '' : STATUSES.find(key => STATUS_NAMES[key] === option); refresh(each, isOn); shown(); onChange(answer());
+  }, label);
+  group.querySelectorAll('button').forEach(button => { button.title = STATUS_HINTS[STATUSES.find(key => STATUS_NAMES[key] === button.textContent)] || ''; });
+  until.addEventListener('input', () => { state.until = until.value; onChange(answer()); });
+  only.addEventListener('change', () => { state.only = only.value; onChange(answer()); });
+  shown();
+  node.append(group, parts);
   if (readable(raw, start.status)) node.append(savedAs(raw));
   return node;
 }

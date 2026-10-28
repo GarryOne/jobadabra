@@ -13,7 +13,7 @@ const NOTION_OUTLINE = [
   {id: 'd2', type: 'paragraph', text: 'Jobs that break these are filtered out before any AI scoring.'},
   {id: 'd3', type: 'table', header: true, rows: [row('r0', 'Constraint', 'Value'), row('r1', 'Countries', 'Switzerland (anywhere), plus Berlin, London, or remote roles'),
     row('r2', 'Home base', 'Zurich today; open to relocating'), row('r3', 'Work mode', 'On-site, hybrid or remote'), row('r4', 'Work permit / visa', 'EU citizen; no sponsorship needed in the EU'),
-    row('r5', 'Languages I can work in', 'English (fluent), German (B1)'), row('r6', 'Minimum seniority', 'Senior'), row('r7', 'Workload', '❓ full-time or a percentage'),
+    row('r4b', 'Nationality', 'Romania'), row('r5', 'Languages I can work in', 'English (fluent), German (B1)'), row('r6', 'Minimum seniority', 'Senior'), row('r7', 'Workload', '❓ full-time or a percentage'),
     row('r8', 'Recruiter listings', '❓ allow, down-rank or exclude')]},
   {id: 'd4', type: 'heading_1', text: 'Compensation'},
   {id: 'd5', type: 'bulleted_list_item', text: 'Target: CHF 150k gross'},
@@ -22,13 +22,14 @@ const NOTION_OUTLINE = [
   {id: 'd8', type: 'paragraph', text: 'Site reliability engineer with 8 years of AWS, Kubernetes and observability.'},
 ];
 
-const LOCAL = `# Hard constraints\n\nJobs that break these are filtered out before any AI scoring.\n\n| Constraint | Value |\n|---|---|\n| Countries | Switzerland (anywhere), plus Berlin, London, or remote roles |\n| Home base | Zurich today; open to relocating |\n| Work mode | On-site, hybrid or remote |\n| Work permit / visa | EU citizen; no sponsorship needed in the EU |\n| Languages I can work in | English (fluent), German (B1) |\n| Minimum seniority | Senior |\n| Workload | ❓ full-time or a percentage |\n| Recruiter listings | ❓ allow, down-rank or exclude |\n\n# Compensation\n\n- Target: CHF 150k gross\n- Minimum acceptable: CHF 130k gross\n\n# Summary (from CV)\n\nSite reliability engineer with 8 years of AWS, Kubernetes and observability.\n`;
+const LOCAL = `# Hard constraints\n\nJobs that break these are filtered out before any AI scoring.\n\n| Constraint | Value |\n|---|---|\n| Countries | Switzerland (anywhere), plus Berlin, London, or remote roles |\n| Home base | Zurich today; open to relocating |\n| Work mode | On-site, hybrid or remote |\n| Work permit / visa | EU citizen; no sponsorship needed in the EU |\n| Nationality | Romania |\n| Languages I can work in | English (fluent), German (B1) |\n| Minimum seniority | Senior |\n| Workload | ❓ full-time or a percentage |\n| Recruiter listings | ❓ allow, down-rank or exclude |\n\n# Compensation\n\n- Target: CHF 150k gross\n- Minimum acceptable: CHF 130k gross\n\n# Summary (from CV)\n\nSite reliability engineer with 8 years of AWS, Kubernetes and observability.\n`;
 
 test('this Mac and Notion: the same fields, other rows and rest', () => {
   const shapes = [readProfile(outline(LOCAL)), readProfile(NOTION_OUTLINE)];
   for (const read of shapes) {
     assert.equal(read.fields.countries.value, 'Switzerland (anywhere), plus Berlin, London, or remote roles');
     assert.equal(read.fields.seniority.value, 'Senior');
+    assert.equal(read.fields.nationality.value, 'Romania', 'Your details\' Nationality, not an other row (#2322)');
     assert.equal(read.fields.workload.open, true, '❓ = not set');
     assert.equal(read.fields.workload.value, '');
     assert.equal(read.fields.target.value, 'CHF 150k gross');

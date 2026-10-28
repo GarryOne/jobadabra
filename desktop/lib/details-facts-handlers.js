@@ -9,13 +9,11 @@ import * as kinds from './details-kinds.js';
 import * as notes from './details-notes.js';
 import * as surveys from './survey-move.js';
 import {list} from './set-aside.js';
+import {beforeSave, older, undoFold} from './eligibility-older.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
-const AUTH = 'Authorised to work in', SPONSOR = 'No, I will require visa sponsorship';
-const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'British'}, {label: 'Switzerland', value: 'allowed, B permit', kind: 'per_country'}, {label: 'United States', value: 'needs visa', kind: 'per_country'},
-    {label: `${AUTH} Switzerland?`, value: 'Yes — B permit, EU citizen (Romania). No sponsorship needed.'}, {label: `${AUTH} Germany / EU?`, value: 'Yes — EU citizen. No sponsorship needed.'},
-    {label: `${AUTH} the UK?`, value: SPONSOR}, {label: `${AUTH} Australia?`, value: SPONSOR}, {label: `${AUTH} the UAE (Dubai)?`, value: SPONSOR},
-    {label: 'Remote from Switzerland for a foreign employer?', value: 'Yes'}, {label: 'Will you now or in the future require visa sponsorship?', value: 'Yes for UK, US, Australia, UAE roles; No for Switzerland and EU roles'}],
+const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'}, {label: 'EU / EEA + Switzerland', value: 'yes, with a permit, valid until 2027-06-30, only in Switzerland', kind: 'per_country'},
+    {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}, {label: 'Remote from Switzerland for a foreign employer?', value: 'Yes'}],
   availability: [{label: 'Target', value: '10000 CHF/month net', kind: 'salary', note: 'Treat as a target, not a posted field.'},
     {label: 'Salary expectation, UK', value: '120000 GBP/year', kind: 'salary', note: 'Minimum · Confirmed 26 Sep 2026.'},
     {label: 'Notice period', value: '1 month, ends at month-end', kind: 'duration', note: 'For a start-date field, give a concrete date.'},
@@ -24,20 +22,22 @@ const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'British'}, {lab
     {label: 'Open to remote work?', value: 'Yes. Remote roles: CHF 140,000, EUR 105,000, GBP 120,000, USD 150,000 per year, depending on the employer\'s country.'}],
   languages: [{label: 'English', value: 'B2', kind: 'language'}, {label: 'Romanian', value: 'native', kind: 'language'}, {label: 'Russian', value: 'B1', kind: 'language'},
     {label: 'Languages I can work in (note)', value: 'No French, German or Italian.'}]};
+// What the AI read in the older lines (lib/eligibility-older.js): fictional, for the screenshots.
+const DEMO_OLDER = [{label: 'Remote from Switzerland for a foreign employer?', value: 'Yes', about: 'other', nationality: [], rows: []}];
 const DEMO_WHICH = [{home: 'availability', topic: 'notice period', choices: [{label: 'Notice period', value: '2 months', page: 'profile'}, {label: 'Notice period / earliest start', value: '3 months', page: 'answers'}]}];
 const empty = () => Object.fromEntries(Object.keys(sections.SECTIONS).map(key => [key, []]));
 
 // ai/copy: a test passes its own.
 export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected, needsNotion, log, ai = () => claudeAi(storage), copy}) {
   const tidied = () => {
-    const {detailsTidy: lines, surveyTidy: survey} = storage.settings(), live = [lines, survey].filter(done => done && !done.undone);
+    const {detailsTidy: lines, surveyTidy: survey, eligibilityFold: fold} = storage.settings(), live = [lines, survey, fold].filter(done => done && !done.undone);
     return live.length ? {changed: live.reduce((sum, done) => sum + done.changed, 0), at: live.map(done => done.at).sort().at(-1)} : null;
   };
   // One open at a time: the moves read, change and read back the same lines, so a second open in the middle (a slow Notion open takes ~45 s) saw the first's
   // lines as "did not save" and rolled them back (owner's app.log, 17 Oct 2026). A second open gets the first's answer.
   let opening = null;
   const open = async () => {
-    if (DEMO) return {ok: true, sections: storage.settings().demoFacts || DEMO_FACTS, conflicts: storage.settings().demoWhich ?? DEMO_WHICH, setAside: storage.settings().demoSetAside || []};
+    if (DEMO) return {ok: true, sections: storage.settings().demoFacts || DEMO_FACTS, older: storage.settings().demoOlder || DEMO_OLDER, conflicts: storage.settings().demoWhich ?? DEMO_WHICH, setAside: storage.settings().demoSetAside || []};
     if (!connected()) return {ok: true, sections: empty(), conflicts: [], setAside: []};
     let error = '', changed = 0;
     const started = Date.now();
@@ -60,8 +60,10 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
       const judged = await judgeNew(storage, {ai: ai()}).catch(failed => { log('profile', 'the answers check stopped', {error: failed.message}); return {judged: 0}; });
       if (judged.judged) log('profile', 'answers checked', {judged: judged.judged, unclear: judged.unclear, unsure: judged.queued});   // counts, never a value
       const found = await sections.read(storage);
+      // What the older Work eligibility lines say for the zones (#2322): shown beside them, never written without your Save.
+      const olderLines = await older(storage, found.eligibility, {ai: ai()}).catch(() => []);
       if (changed || Date.now() - started > 2000) log('profile', 'Your details settled', {ms: Date.now() - started, changed});   // (only when something moved or it was slow) timing and a count, never a value
-      return {ok: !error, error, changed, sections: found, formats: await kinds.formatsOf(storage, found, ai()), tidied: tidied(), conflicts: await openConflicts(storage).catch(() => storage.settings().profileConflicts || []), setAside: list(storage).filter(each => each.source === 'profile')};
+      return {ok: !error, error, changed, sections: found, older: olderLines, formats: await kinds.formatsOf(storage, found, ai()), tidied: tidied(), conflicts: await openConflicts(storage).catch(() => storage.settings().profileConflicts || []), setAside: list(storage).filter(each => each.source === 'profile')};
     } catch (failed) { return {ok: false, error: failed.message, sections: empty(), conflicts: [], setAside: []}; }
   };
   ipcMain.handle('detailsFacts', () => opening ||= open().finally(() => { opening = null; }));
@@ -75,13 +77,15 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
     if (DEMO) return {ok: true};
     const gate = needsNotion('profile');
     if (gate) return gate;
-    const [lines, survey] = await Promise.all([kinds.undo(storage), surveys.undo(storage)].map(done => done.catch(failed => ({ok: false, error: failed.message}))));
-    return lines.ok || survey.ok ? {ok: true} : lines;
+    const [lines, survey, fold] = await Promise.all([kinds.undo(storage), surveys.undo(storage), undoFold(storage)].map(done => done.catch(failed => ({ok: false, error: failed.message}))));
+    return lines.ok || survey.ok || fold.ok ? {ok: true} : lines;
   });
   ipcMain.handle('saveDetailsFacts', async (_, facts) => {
     const gate = needsNotion('profile');
     if (gate) return gate;
     try {
+      // Older eligibility lines folded into Nationality and the zones (#2322): a backup first, Undo after.
+      if (Array.isArray(facts?.eligibility)) await beforeSave(storage, facts.eligibility, copy ? {copy} : {});
       for (const key of Object.keys(sections.SECTIONS)) if (Array.isArray(facts?.[key])) await sections.save(storage, key, facts[key].map(line => ({label: String(line?.label || ''), value: String(line?.value || ''), ...(kinds.COMPOSITE_KINDS.includes(line?.kind) ? {kind: line.kind} : {}), ...(String(line?.note || '').trim() ? {note: String(line.note)} : {})})));
       return {ok: true};
     } catch (error) { return {ok: false, error: error.message}; }

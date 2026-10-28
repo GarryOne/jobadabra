@@ -75,10 +75,11 @@ invents experience.
 
 ## 🛂 Work eligibility
 
-- Work permit / visa: ❓ your citizenship and status, and whether you need sponsorship anywhere you're applying (the digest's "visa sponsorship needed" flag follows ⚙️ Search settings → "Where you can work without a visa")
-- Authorised to work in [your home country/region]?: ❓
-- Authorised to work in [each other region/country you apply to]?: ❓ add one line per country you're likely to apply in
-- Remote from your base for a foreign employer?: ❓
+- Nationality: ❓ your citizenships, as country names (e.g. "Romania, Moldova")
+- EU / EEA + Switzerland: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]
+- United Kingdom: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]
+- United States: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]
+- Remote from your country for a foreign employer?: ❓
 
 ## 💶 Availability & compensation
 

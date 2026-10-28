@@ -19,6 +19,8 @@ import * as clarity from './answer-clarity.js';
 import * as contactReview from './contact-review.js';
 import * as contactDetails from './contact.js';
 import * as cvQueue from './cv-queue.js';
+import {folded} from './eligibility-older.js';
+import {eligibilityOf} from '../renderer/work-eligibility.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import {log} from './log.js';
 import {organize} from './profile-routing.js';
@@ -67,7 +69,9 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const out = [];
   const client = ai.client || (ai.apiKey ? anthropicApi(ai.apiKey) : null);
   await cvQueue.readOnce(storage, {client}).catch(() => false);   // an install set up before the CV read: once per CV file
-  const have = [...Object.values(found).flat().map(line => line.label), ...itemsOf(outlines.profile, 'profile', {withOpen: true}).map(each => each.label)];
+  // Why (28 Oct 2026, owner, #2322): a zone your nationality opens is answered ("conclude as much as possible, by ourselves"), so it is never asked.
+  const concluded = eligibilityOf(found.eligibility).rows.map(row => row.label);
+  const have = [...Object.values(found).flat().map(line => line.label), ...concluded, ...itemsOf(outlines.profile, 'profile', {withOpen: true}).map(each => each.label)];
   // Every question about a fact is worded by the queue's one question writer (lib/queue-wording.js), never typed: the contact fields and the base facts.
   const emptyKeys = await contactReview.emptyKeys(storage, {fetcher}).catch(() => []);
   const words = {contact: await contactReview.wordsFor(storage, emptyKeys, {client, have}).catch(() => new Map()), facts: await missingFacts.wording(storage, {client}).catch(() => new Map())};
@@ -88,6 +92,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   };
   for (const [home, lines] of Object.entries(found)) {
     for (const line of lines) {
+      if (home === 'eligibility' && folded(storage, line)) continue;   // an older eligibility line the zones answer: folded into them on Save, never asked (#2322)
       const format = formatFor({marked: line.kind ? {kind: line.kind} : null, kept: kept[keyOf(line.label)]});
       if (asked(line.value)) out.push(item('open', {home, label: line.label}, {question: line.label, format, hint: hintOf(line.value), details: {where: HOME_NAMES[home], fact: line.label}}));
       else if (needsCheck(format.kind, line.value)) out.push(item('check', {home, label: line.label, kind: format.kind}, {question: `${line.label}: make it exact`, format, value: line.value, details: {where: HOME_NAMES[home], fact: line.label}}));
@@ -192,7 +197,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     const fact = missingFacts.byId(ref.id);
     if (!fact) return {ok: false, error: 'That question is no longer open'};
     if (!text) { missingFacts.never(storage, fact.id); return {ok: true}; }   // "Don't keep": never asked again
-    return await writeHome(storage, fact.home, fact.label, text, fetcher, save) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: 'It did not save; nothing else changed'};
+    return await writeHome(storage, fact.home, fact.label, text, fetcher, save, fact.kind) ? {ok: true, homeName: HOME_NAMES[fact.home]} : {ok: false, error: 'It did not save; nothing else changed'};
   }
   return {ok: false, error: 'That question is no longer open'};
 }

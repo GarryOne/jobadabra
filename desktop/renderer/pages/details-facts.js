@@ -3,7 +3,7 @@
 // unclear details (a fact said two ways, a line with no clear home, a value to make exact, an unanswered mark) that opens the Fill your details drawer (owner,
 // 28 Oct 2026, superseding 18 Oct "One queue for all"; lib/details-review.js). Saved through the Profile page's one save bar (pages/details-drafts.js). Guarded by
 // test/details-facts.test.js and test/details-review.test.js.
-import {el, loadingCard} from '../components.js';
+import {el, loadingCard, pill} from '../components.js';
 import {keep, swr} from '../swr.js';
 import {$} from './core.js';
 import {showOnTab} from './tab-part.js';
@@ -11,6 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
+import {NATIONALITY, ZONES, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -29,11 +30,81 @@ function draw(sections, formats = {}) {
   for (const key of KEYS) {
     const into = box(key);
     if (!into) continue;
+    const row = line => factRow(key, line, formats, () => detailsChanged());
+    if (key === 'eligibility') { drawEligibility(into, sections[key] || [], row); continue; }
     const add = el('button', 'link span-all', '+ Add a line');
     add.type = 'button';
-    add.addEventListener('click', () => { into.insertBefore(factRow(key, {}, formats, () => detailsChanged()), add); detailsChanged(); });
-    into.replaceChildren(...(sections[key] || []).map(line => factRow(key, line, formats, () => detailsChanged())), add);
+    add.addEventListener('click', () => { into.insertBefore(row({}), add); detailsChanged(); });
+    into.replaceChildren(...(sections[key] || []).map(row), add);
   }
+}
+
+// Work eligibility (owner, 28 Oct 2026, #2322: "ask as less as possible the user and … conclude as much as possible, by ourselves"): Nationality, the three
+// zones (one your nationality opens reads "Yes, freely · from your nationality", never asked), any country you add, and the other lines as they are.
+let eligibilityRow = null;
+function drawEligibility(into, lines, row) {
+  eligibilityRow = row;
+  const own = lines.find(line => line.label === NATIONALITY), rows = lines.filter(line => line.kind === 'per_country' && line.label !== NATIONALITY);
+  const rest = lines.filter(line => line !== own && !rows.includes(line));
+  const add = Object.assign(el('button', 'link span-all', '+ Add a country'), {type: 'button'});
+  add.addEventListener('click', () => { into.insertBefore(row({kind: 'per_country'}), add); detailsChanged(); });
+  const nationality = row(own && nationalityOf(own.value) ? own : {label: NATIONALITY, value: ''});
+  into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rows.filter(line => !zoneOfLabel(line.label)).map(row), add,
+    ...(own && !nationalityOf(own.value) ? [own] : []).map(row), ...rest.map(row));
+  if (into.dataset.concluding) return;
+  into.dataset.concluding = '1';   // once per box: a nationality picked or removed redraws the zones it opens
+  into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
+  into.addEventListener('click', event => { if (event.composedPath?.().some(node => node.classList?.contains('qa-nationality'))) redrawConcluded(into); });   // the chip is gone by now: its path
+}
+// A zone: its saved row, else "from your nationality" when the nationality opens it (a quiet Change turns it into the chips), else the empty chips.
+function zoneRow(into, zone, rows) {
+  const saved = rows.find(line => zoneOfLabel(line.label) === zone);
+  if (saved || !zonesOpenedBy(nationalityNow(into)).includes(zone.id)) return eligibilityRow(saved || {label: zone.label, value: '', kind: 'per_country'});
+  const node = el('div', 'fact-derived country-row');
+  node.dataset.zone = zone.id;
+  const change = Object.assign(el('button', 'link small', 'Change'), {type: 'button'});
+  change.addEventListener('click', () => { node.replaceWith(eligibilityRow({label: zone.label, value: '', kind: 'per_country'})); detailsChanged(); });
+  const words = el('span', 'fact-derived-value');
+  words.append(el('strong', '', 'Yes, freely'), el('span', 'muted', ' · from your nationality '), change);
+  node.append(el('span', '', zone.label), words);
+  return node;
+}
+const nationalityNow = into => nationalityOf(into.querySelector('.qa-nationality')?.value || '') || [];
+// The nationality changed: a zone it now opens, still empty, reads as concluded; one it no longer opens gets its chips back.
+function redrawConcluded(into) {
+  for (const zone of ZONES) {
+    const derived = into.querySelector(`.fact-derived[data-zone="${zone.id}"]`), line = [...into.querySelectorAll('.country-row.fact-line')].find(each => zoneOfLabel(factOf(each).label) === zone);
+    const opens = zonesOpenedBy(nationalityNow(into)).includes(zone.id);
+    if (derived && !opens) derived.replaceWith(eligibilityRow({label: zone.label, value: '', kind: 'per_country'}));
+    if (!derived && opens && line && !factOf(line).value) line.replaceWith(zoneRow(into, zone, []));
+  }
+}
+
+/**
+ * After a paint from the store: the older lines the AI read as eligibility (lib/eligibility-older.js) fill Nationality and the empty zones, marked "From your
+ * earlier answers", and leave the card; all as unsaved drafts, so Save folds them in (a backup first, Undo after) and Discard keeps them as they were.
+ */
+export function foldOlder(readings = []) {
+  const into = box('eligibility'), used = readings.filter(each => each.about === 'eligibility' || each.about === 'per_job');
+  if (!into || !used.length) return;
+  const mark = node => node.append(pill('From your earlier answers', 'info', {title: 'Read from the lines you saved before; Save to keep it'}));
+  const lines = [...into.querySelectorAll('.fact-line')];
+  for (const line of lines) if (used.some(each => each.label === factOf(line).label && each.value === factOf(line).value)) line.remove();
+  const names = [...new Set(used.flatMap(each => each.nationality || []))], citizenship = into.querySelector('.qa-nationality')?.closest('.fact-line');
+  if (names.length && citizenship && !nationalityNow(into).length) {
+    const next = eligibilityRow({label: NATIONALITY, value: names.join(', ')});
+    citizenship.replaceWith(next);
+    mark(next);
+  }
+  redrawConcluded(into);
+  for (const proposal of used.flatMap(each => each.rows || [])) {
+    const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => factOf(each).label.toLowerCase() === proposal.label.toLowerCase());
+    if (line && factOf(line).value) continue;
+    const next = eligibilityRow({...proposal, kind: 'per_country'});
+    if (line) line.replaceWith(next); else if (!into.querySelector(`.fact-derived[data-zone="${zoneOfLabel(proposal.label)?.id}"]`)) into.insertBefore(next, into.querySelector('.link.span-all'));
+    if (next.isConnected) mark(next);
+  }
+  detailsChanged();
 }
 
 // "Tidied": the lines that got their kind, or their note for the AI, on first open, with Undo (lib/details-kinds.js, lib/details-notes.js).
@@ -78,6 +149,7 @@ const paintFacts = (result, kept) => {
   $('facts-message').textContent = '';
   draw(result.sections || {}, result.formats || {});
   factsRead();   // the drafts count from what is drawn now (details-drafts.js)
+  if (!redrawing) foldOlder(result.older || []);   // after the count: what it folds is a draft you save (Discard all redraws without it)
   drawWhich(result.setAside || [], result.tidied || null);
 };
 export async function showFacts({redraw = false} = {}) {

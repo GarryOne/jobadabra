@@ -5,8 +5,12 @@
 
 // What Your details holds, in the order a fresh install is asked.
 export const CATALOG = [
-  {id: 'permit', home: 'eligibility', label: 'Work permit / visa', kind: 'text'},
-  {id: 'sponsorship', home: 'eligibility', label: 'Need visa sponsorship?', kind: 'yes_no'},
+  // Why (28 Oct 2026, owner, #2322): eligibility is Nationality plus three zones; sponsorship and a single "work permit" line are concluded from them, never asked.
+  // Labels kept equal to renderer/work-eligibility.js NATIONALITY and ZONES (this file imports nothing: the site loads it).
+  {id: 'nationality', home: 'eligibility', label: 'Nationality', kind: 'text'},
+  {id: 'zone_eu', home: 'eligibility', label: 'EU / EEA + Switzerland', kind: 'per_country'},
+  {id: 'zone_uk', home: 'eligibility', label: 'United Kingdom', kind: 'per_country'},
+  {id: 'zone_us', home: 'eligibility', label: 'United States', kind: 'per_country'},
   {id: 'notice', home: 'availability', label: 'Notice period', kind: 'duration'},
   {id: 'start', home: 'availability', label: 'Earliest start date', kind: 'date'},
   {id: 'salary', home: 'availability', label: 'Salary expectation', kind: 'salary'},

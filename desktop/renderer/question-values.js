@@ -3,12 +3,14 @@
 // writes it back the same way; text the code cannot read gives empty parts, so the control shows it as it was written and nothing is lost.
 // Pure (no DOM): guarded by test/question-kinds-composite.test.js.
 import {COMPOSITE} from './question-kind.js';
+import {COUNTRY_NAMES, OLDER, STATUSES, isCountry} from './work-eligibility.js';
+
+export {STATUSES};
 
 export const CURRENCIES_ALL = ['CHF', 'EUR', 'USD', 'GBP', 'AED', 'AUD', 'CAD', 'SEK'];
 export const PERIODS = ['hour', 'day', 'week', 'month', 'year'];
 export const BASES = ['gross', 'net'];
 export const UNITS = ['day', 'week', 'month', 'year'];
-export const STATUSES = ['allowed', 'needs visa'];
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'native'];
 export const hasNumber = text => /\d/.test(String(text ?? ''));
 
@@ -34,12 +36,21 @@ export function joinDuration({number = '', unit = '', monthEnd = false} = {}) {
   return count && unit ? `${count} ${unit}${Number(count) === 1 ? '' : 's'}${monthEnd ? ', ends at month-end' : ''}` : '';
 }
 
-const PERMIT = /^(allowed|needs visa)(?:\s*,\s*(.+))?$/i;
+// Why (28 Oct 2026, owner, #2322): one status per zone or country, the fixed set of renderer/work-eligibility.js; "needs visa" (the older word) reads as
+// "no, needs sponsorship", "allowed" (which never said how) stays as written with a Check.
+const PERMIT = new RegExp(String.raw`^(${[...STATUSES, ...Object.keys(OLDER)].join('|')})((?:\s*,.*)?)$`, 'i');
+const PARTS = /^(?:\s*,\s*valid until\s+(\d{4}-\d{2}-\d{2}))?(?:\s*,\s*only in\s+([^,]+?))?\s*$/i;
+// "yes, with a permit, valid until 2027-06-30, only in Switzerland" -> {status, until, only}; text the code cannot read (a part this status cannot hold, a
+// country it does not know) -> empty parts, so the line is kept as written, never cut.
 export function splitPermit(value) {
-  const match = String(value ?? '').trim().match(PERMIT);
-  return match ? {status: match[1].toLowerCase(), permit: (match[2] || '').trim()} : {status: '', permit: ''};
+  const none = {status: '', until: '', only: ''}, match = String(value ?? '').trim().match(PERMIT);
+  if (!match) return none;
+  const word = match[1].toLowerCase(), status = word in OLDER ? OLDER[word] : word, parts = match[2].match(PARTS);
+  if (!status || !parts || ((parts[1] || parts[2]) && status !== 'yes, with a permit') || (parts[2] && !isCountry(parts[2]))) return none;
+  return {status, until: parts[1] || '', only: parts[2] ? COUNTRY_NAMES.find(name => name.toLowerCase() === parts[2].trim().toLowerCase()) : ''};
 }
-export const joinPermit = ({status = '', permit = ''} = {}) => (status ? `${status}${String(permit).trim() ? `, ${String(permit).trim()}` : ''}` : '');
+export const joinPermit = ({status = '', until = '', only = ''} = {}) => (STATUSES.includes(status)
+  ? [status, status === 'yes, with a permit' && /^\d{4}-\d{2}-\d{2}$/.test(until) && `valid until ${until}`, status === 'yes, with a permit' && isCountry(only) && `only in ${only}`].filter(Boolean).join(', ') : '');
 
 const RANGE = /^(\d{1,3})\s*[-–]\s*(\d{1,3})\s*%?$/;
 export function splitRange(value) {

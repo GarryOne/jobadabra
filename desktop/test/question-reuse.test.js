@@ -94,3 +94,23 @@ test('many labels are judged in chunks; a reply cut at max_tokens leaves its lab
   assert.equal(sizes.reduce((a, b) => a + b, 0), 70, 'every label asked once');
   assert.equal(found.size, 70 - sizes[1], 'only the cut chunk is left unjudged');
 });
+
+// Why (28 Oct 2026, owner, #2322: "conclude as much as possible, by ourselves"): a right-to-work or sponsorship question is answered from Nationality and the
+// zones. The AI says what it asks and which country; the code reads the row. A Romanian national (fictional) with a UK permit only until 2020 and a US "No".
+test('classify: right to work and sponsorship come from Nationality and the zones, by the country the AI names', async () => {
+  const facts = [{label: 'Nationality', value: 'Romania'}, {label: 'United Kingdom', value: 'yes, with a permit, valid until 2020-01-31', kind: 'per_country'},
+    {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}];
+  const ask = (label, asks, country) => ({label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks, country});
+  const labels = ['Authorised to work in Germany?', 'Brauchen Sie ein Visum für Berlin?', 'Eligible in the US?', 'Sponsorship for the US?', 'Right to work in the UK?',
+    'Eligible in the location you apply for?', 'Authorised in Mars?'];
+  const got = await classify({labels, facts, client: fake([ask(labels[0], 'work_right', 'DE'), ask(labels[1], 'sponsorship', 'de'), ask(labels[2], 'work_right', 'US'),
+    ask(labels[3], 'sponsorship', 'US'), ask(labels[4], 'work_right', 'GB'), ask(labels[5], 'work_right', ''), ask(labels[6], 'work_right', 'Mars')])});
+  const of = label => [got.get(label).reuse, got.get(label).fact, got.get(label).proposal];
+  assert.deepEqual(of(labels[0]), ['details', 'EU / EEA + Switzerland', 'Yes'], 'Germany is in the zone a Romanian citizenship opens');
+  assert.deepEqual(of(labels[1]), ['details', 'EU / EEA + Switzerland', 'No'], 'sponsorship is derived, in any language');
+  assert.deepEqual(of(labels[2]), ['details', 'United States', 'No']);
+  assert.deepEqual(of(labels[3]), ['details', 'United States', 'Yes']);
+  assert.equal(got.get(labels[4]).reuse, 'reusable', 'a permit past its date settles nothing: still asked');
+  assert.deepEqual(of(labels[5]), ['details', 'Nationality', ''], 'no country named: answered per job from the same rows');
+  assert.equal(got.get(labels[6]).reuse, 'reusable', 'a code that is not ISO is never read');
+});

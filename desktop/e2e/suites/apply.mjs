@@ -427,7 +427,7 @@ export async function runApply(ctx, parts) {
     const form = FORMS.submitter;
     await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
        await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});
-  }, {needs: ctx.needs});
+  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});   // Why (2026-10-28, Gitar on #2364): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
   // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.

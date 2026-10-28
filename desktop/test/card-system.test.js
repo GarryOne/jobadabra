@@ -61,6 +61,6 @@ test('class: no card Edit is filled orange (code and markup)', () => {
 // Every outline tab saves through its page's one bar (D's swap, 18 Oct 2026): a new caller without `bar:` would fall back to a bar in its own card.
 test('every outlineTab caller names its page bar', () => {
   const callers = files('').filter(file => /outlineTab\('/.test(source(file)) && file !== 'pages/outline-tab.js');
-  assert.ok(callers.length >= 3, `found ${callers}`);
+  assert.ok(callers.length >= 2, `found ${callers}`);   // Why (#2328): Writing preferences left outlineTab for its own file (pages/letter-style.js)
   for (const file of callers) assert.match(source(file), /outlineTab\('[^']+',[\s\S]*?bar: [\w.]+\(\)/, `${file} passes its page bar`);   // profileBar(), strategyBarNow(), Strategy's barFor()
 });

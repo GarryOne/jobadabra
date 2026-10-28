@@ -47,7 +47,7 @@ export async function loadLetterStyle() {
   if (!source) {
     source = profileBar().register({id: 'letter-style', tab: 'letter', label: 'Writing preferences', count: changes,
       save: async () => {
-        const result = await window.pilot.letterStyleSave(drafted()).catch(error => ({ok: false, error: error.message}));
+        const result = await window.pilot.letterStyleSave(drafted(), saved).catch(error => ({ok: false, error: error.message}));
         if (!result?.ok) return {ok: false, error: result?.error || 'The writing preferences were not saved.'};
         saved = result.lines; typed.clear(); setEditing(card(), false); draw();
         return {ok: true};

@@ -225,20 +225,24 @@ def _is_style(title):
 def with_style(answers, path=None):
     """The answers text with the cover letter style as its one "Cover letter style" section, read from the file beside the letter
     (desktop/lib/letter-style.js withStyle does the same). Why (PR B1b, owner 28 Oct 2026: "everything about the cover letter should be
-    only in Cover Letter tab"): the rules left the answers page; an old copy still in the text is replaced, never doubled."""
+    only in Cover Letter tab"): the rules left the answers page. Why (Gitar on #2328): a section still on the page (the Strategy draft or the
+    organizer wrote it before the app moved it) joins the file's rules, de-duplicated, as the app's letterStyle.read returns them; never doubled."""
     path = path or os.getenv('JOB_PILOTTO_LETTER_STYLE_FILE', '')
     try:
         with open(path, encoding='utf-8') as handle:
             lines = [str(line).strip() for line in json.load(handle).get('lines') or [] if str(line).strip()]
     except (OSError, ValueError, AttributeError):
         return answers
-    kept, inside = [], False
+    kept, inside, page = [], False, []
     for line in (answers or '').split('\n'):
         heading = re.match(r'^#{1,6}\s+(.*)$', line)
         if heading:
             inside = _is_style(heading.group(1))
+        elif inside and line.strip():
+            page.append(re.sub(r'^[-*]\s+', '', line).strip())
         if not inside:
             kept.append(line)
+    lines = list(dict.fromkeys(lines + page))
     text = '\n'.join(kept).rstrip()
     return f'{text}\n\n## Cover letter style\n' + '\n'.join(f'- {line}' for line in lines) if lines else text
 

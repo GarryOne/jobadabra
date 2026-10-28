@@ -27,6 +27,16 @@ export function save(storage, lines) {
   return kept;
 }
 
+/**
+ * Saves an edit of the rules the editor was opened on (was): its lines, then every rule of the file now that the editor never showed. Why (Gitar on
+ * #2328): a rule moved into the file while the editor was open (a letter's read of a section the Strategy draft or the organizer wrote) is kept; a
+ * rule the editor showed and changed or removed leaves. -> the rules kept.
+ */
+export async function saveEdit(storage, lines, was = []) {
+  const shown = new Set(clean(was)), next = clean(lines);
+  return save(storage, [...next, ...(await read(storage)).filter(line => !shown.has(line))]);
+}
+
 // The "Cover letter style" heading and its lines on the answers page: [{block, lines}], last section first (removal order).
 function sectionsOn(blocks) {
   const found = [];

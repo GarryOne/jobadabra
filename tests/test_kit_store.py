@@ -168,15 +168,16 @@ class TestSiteRulesRetired(unittest.TestCase):
 
 class TestLetterStyleBesideTheLetter(unittest.TestCase):
     def test_a_kit_letter_follows_the_style_kept_beside_the_letter_once(self):
-        """PR B1b (owner, 28 Oct 2026: "Beside the letter"): the rules come from cover-letter/style.json (the app passes its path); an old copy
-        of the section in the answers is replaced, never doubled; no file leaves the answers as they are."""
+        """PR B1b (owner, 28 Oct 2026: "Beside the letter"): the rules come from cover-letter/style.json (the app passes its path) plus any
+        section still on the answers page, de-duplicated, in one section (what the app's letterStyle.read returns: Gitar on #2328, the Strategy draft
+        or the organizer may write a section before the app moves it); no file leaves the answers as they are."""
         folder = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, folder, True)
         style = folder / 'style.json'
         style.write_text(json.dumps({'lines': ['Tone: direct', 'Never mention: salary']}), encoding='utf-8')
-        answers = '- Notice period: 3 months\n\n## ✍️ Cover letter style\n- Tone: old\n\n## Other\n- Pets: none'
+        answers = '- Notice period: 3 months\n\n## ✍️ Cover letter style\n- Tone: warm\n- Tone: direct\n\n## Other\n- Pets: none'
         self.assertEqual(kit.with_style(answers, str(style)),
-                         '- Notice period: 3 months\n\n## Other\n- Pets: none\n\n## Cover letter style\n- Tone: direct\n- Never mention: salary')
+                         '- Notice period: 3 months\n\n## Other\n- Pets: none\n\n## Cover letter style\n- Tone: direct\n- Never mention: salary\n- Tone: warm')
         self.assertEqual(kit.with_style('- Notice period: 3 months', str(folder / 'none.json')), '- Notice period: 3 months')
         stores = mock.Mock(texts=mock.Mock(get={'answers': 'Driving license: B'}.__getitem__))
         with mock.patch.dict(os.environ, {'JOB_PILOTTO_LETTER_STYLE_FILE': str(style)}):

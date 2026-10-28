@@ -9,9 +9,9 @@ import {install} from './tiny-dom.js';
 const body = install();
 const RULES = ['Length: 130–170 words', 'Never mention: salary'];
 
-async function open(rules, sent = []) {
+async function open(rules, sent = [], shown = []) {
   globalThis.window.pilot = new Proxy({letterStyle: async () => ({ok: true, lines: [...rules]}),
-    letterStyleSave: async lines => { sent.push(lines); return {ok: true, lines}; }}, {get: (all, key) => all[key] || (() => null)});
+    letterStyleSave: async (lines, was) => { sent.push(lines); shown.push(was); return {ok: true, lines}; }}, {get: (all, key) => all[key] || (() => null)});
   const card = globalThis.document.createElement('div'), edit = globalThis.document.createElement('button'), node = globalThis.document.createElement('div');
   card.id = 'setting-letter-style'; edit.id = 'letter-style-edit'; node.id = 'letter-style-body';
   card.append(edit, node);
@@ -31,8 +31,8 @@ test('the card reads first: each rule as a column, label over value; the inputs 
 });
 
 test('an edited rule and a new one are saved whole, beside the letter, from the save bar', async () => {
-  const sent = [];
-  const {node} = await open(RULES, sent);
+  const sent = [], shown = [];
+  const {node} = await open(RULES, sent, shown);
   const field = node.querySelectorAll('input').find(input => input.value === 'salary');
   field.value = 'salary, notice period';
   field.dispatch('input');
@@ -41,6 +41,7 @@ test('an edited rule and a new one are saved whole, beside the letter, from the 
   add.dispatch('input');
   await pressSave(node);
   assert.deepEqual(sent, [['Length: 130–170 words', 'Never mention: salary, notice period', 'Tone: direct']]);
+  assert.deepEqual(shown, [RULES], 'with the rules the editor was opened on (a rule moved in meanwhile is kept: lib/letter-style.js saveEdit)');
   assert.deepEqual(node.querySelectorAll('.card-read .fact-col-label').map(term => term.textContent), ['Length', 'Never mention', 'Tone'], 'the card reads what was saved');
 });
 

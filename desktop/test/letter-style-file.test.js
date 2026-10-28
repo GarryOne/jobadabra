@@ -41,6 +41,18 @@ test('saving replaces the rules; an empty line is dropped; no file and no sectio
   assert.deepEqual(await letterStyle.read(s), ['Tone: direct']);
 });
 
+// Gitar on #2328: the editor saves what it was opened on plus the edit; a rule moved into the file meanwhile (a letter's read of a section the Strategy
+// draft or the organizer wrote) is kept, never written over by the editor's older copy.
+test('saving an edit keeps a rule moved into the file while the editor was open; an edited or removed rule leaves', async () => {
+  const s = fresh();
+  const was = letterStyle.save(s, ['Length: short', 'Tone: warm']);
+  await answers(s).write('## Cover letter style\n- Never mention: salary\n');
+  await letterStyle.read(s);   // a letter is written meanwhile: the new rule moves into the file
+  assert.deepEqual(await letterStyle.saveEdit(s, ['Length: 130–170 words'], was), ['Length: 130–170 words', 'Never mention: salary']);
+  assert.deepEqual(await letterStyle.read(s), ['Length: 130–170 words', 'Never mention: salary']);
+  assert.deepEqual(await letterStyle.saveEdit(s, ['Length: 130–170 words'], ['Length: 130–170 words', 'Never mention: salary']), ['Length: 130–170 words'], 'a rule the editor showed and removed leaves');
+});
+
 test('letter writers get the rules as the Cover letter style section of the answers text they already read', () => {
   assert.equal(letterStyle.withStyle('- Notice period: 3 months', ['Tone: direct']), '- Notice period: 3 months\n\n## Cover letter style\n- Tone: direct');
   assert.equal(letterStyle.withStyle('- Notice period: 3 months', []), '- Notice period: 3 months');

@@ -111,9 +111,11 @@ export function registerCvAndLettersHandlers(ctx) {
   ipcMain.handle('coverLetter', () => letters.status(storage));
   // Writing preferences (Profile → Cover letter): the rules beside the letter (lib/letter-style.js).
   ipcMain.handle('letterStyle', async () => ({ok: true, lines: await letterStyle.read(storage, {demo: DEMO})}));
-  ipcMain.handle('letterStyleSave', (_, lines) => {
+  // was: the rules the editor was opened on (a rule moved into the file since is kept: letterStyle.saveEdit).
+  ipcMain.handle('letterStyleSave', async (_, lines, was) => {
     if (DEMO) return {ok: false, error: demo.TEXT};   // the demo folder is the app's own files
-    try { return {ok: true, lines: letterStyle.save(storage, Array.isArray(lines) ? lines.map(String).slice(0, 50) : [])}; } catch (error) { return {ok: false, error: error.message}; }
+    const list = value => (Array.isArray(value) ? value.map(String).slice(0, 50) : []);
+    try { return {ok: true, lines: await letterStyle.saveEdit(storage, list(lines), list(was))}; } catch (error) { return {ok: false, error: error.message}; }
   });
   ipcMain.handle('coverLetterDraft', async (_, feedback = '') => {
     if (DEMO) return {ok: false, error: demo.TEXT}; // demo setup must never reach an account or paid model

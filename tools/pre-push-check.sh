@@ -191,7 +191,7 @@ fi
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || { echo "Push blocked: $proof" >&2; exit 2; }
 fi
-# A list CI checks against the files it must cover (LOCK_PATHS, red-main CLASSIFIED, HOW-IT-RUNS) fails here in about a second, not ~10 min later on the PR (18 Oct 2026: three PRs red on one missing LOCK_PATHS entry): tools/registry-check.py.
+# A list CI checks against the files it must cover (LOCK_PATHS, red-main CLASSIFIED) fails here in about a second, not ~10 min later on the PR (18 Oct 2026: three PRs red on one missing LOCK_PATHS entry): tools/registry-check.py.
 if command -v python3 >/dev/null && [ -f "$repo/tools/registry-check.py" ]; then
   registry="$(cd "$repo" && timed "registry lists" python3 tools/registry-check.py 2>&1)" || { echo "Push blocked: $registry" >&2; exit 2; }
 fi

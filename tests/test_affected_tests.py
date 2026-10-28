@@ -37,9 +37,9 @@ class AffectedTests(unittest.TestCase):
         self.assertTrue(all(got[a] != 'all' for a in ('python', 'desktop', 'worker', 'site')))
 
     def test_a_workflow_file_selects_the_tests_that_scan_the_workflows_folder(self):
-        # 11 Oct 2026: page-cases.yml went in with no row in docs/HOW-IT-RUNS.md; test_how_it_runs reads the folder, names no file, and was not picked: main went red
+        # 11 Oct 2026: page-cases.yml went in unclassified; a test that reads the folder, names no file, was not picked: main went red
         picked = affected.select(['.github/workflows/page-cases.yml'])['python']
-        for test in ('test_how_it_runs', 'test_workflow_runners', 'test_workflow_node24'):
+        for test in ('test_workflow_runners', 'test_workflow_node24'):
             self.assertIn(test, picked, test)
 
     def test_an_edit_to_a_python_test_file_picks_no_desktop_tests_but_engine_and_fixture_edits_still_do(self):

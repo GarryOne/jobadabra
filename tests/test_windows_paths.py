@@ -49,7 +49,7 @@ class WindowsPaths(unittest.TestCase):
             self.assertTrue(starts(NAME, [file]), file)
 
     def test_a_change_that_cannot_reach_windows_does_not_start_it(self):
-        for file in ('extension/fill-flow.js', 'worker/src/index.js', 'docs/HOW-IT-RUNS.md', 'desktop/e2e/lib/forms.mjs', 'desktop/e2e/recorded/x/case.json', 'src/daily.py', 'desktop/renderer/pages/activity.js'):
+        for file in ('extension/fill-flow.js', 'worker/src/index.js', 'docs/ARCHITECTURE.md', 'desktop/e2e/lib/forms.mjs', 'desktop/e2e/recorded/x/case.json', 'src/daily.py', 'desktop/renderer/pages/activity.js'):
             self.assertFalse(starts(NAME, [file]), file)
 
     def test_main_runs_it_on_every_push(self):

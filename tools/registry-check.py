@@ -13,8 +13,6 @@ CHECKS = [
      'add the tools/ file named above to LOCK_PATHS in tools/py-shards.py', 'tools/py-shards.py', r'^LOCK_PATHS\b'),
     ('tests.test_red_main.RedMainTest.test_every_workflow_is_classified_and_the_counted_ones_are_the_scripts_list',
      'add the workflow named above to CLASSIFIED in tests/test_red_main.py (counted, or ignored with the reason)', 'tests/test_red_main.py', r'^CLASSIFIED\b'),
-    ('tests.test_how_it_runs.HowItRunsTest.test_every_workflow_is_listed',
-     'add the workflow named above to the loops table of docs/HOW-IT-RUNS.md', 'docs/HOW-IT-RUNS.md', r'^\|'),
 ]
 
 

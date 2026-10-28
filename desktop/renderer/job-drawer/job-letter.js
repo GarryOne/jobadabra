@@ -31,8 +31,11 @@ export function jobLetterView(job) {
       again.textContent = 'Writing…';
       message.textContent = '';
       state.replaceWith(writingPill);
-      const stop = aiWriting(text.hidden ? shown : text, {title: 'Writing a new letter for this job', note: 'The letter below stays until the new one is ready.'});
-      const done = await Promise.resolve().then(() => window.pilot.jobLetterAgain(key)).catch(error => ({ok: false, error: error.message}));
+      let stop = () => {}, done;
+      try {
+        stop = aiWriting(text.hidden ? shown : text, {title: 'Writing a new letter for this job', note: 'The letter below stays until the new one is ready.'});
+        done = await window.pilot.jobLetterAgain(key);
+      } catch (error) { done = {ok: false, error: error.message}; }   // a throw before the call must still unlock the buttons (28 Oct 2026, code review)
       stop();
       writingPill.replaceWith(state);
       again.removeAttribute('aria-busy');

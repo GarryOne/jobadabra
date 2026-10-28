@@ -195,6 +195,24 @@ test("the owner's redraft: nothing on the card says Approved while the AI writes
   assert.equal($('letter-feedback').disabled, false);
 });
 
+test('a kept draft being redrafted: Approve stays locked until the new draft lands (a press would approve the old text under the new one)', async () => {
+  const $ = freshCard();
+  let finish;
+  globalThis.window.pilot = {state: async () => ({settings: {}}), coverLetter: async () => ({state: 'draft', text: 'Fictional draft', pdf: false}),
+    coverLetterApprove: async () => ({ok: true, state: 'approved', text: 'Fictional draft', pdf: true}),
+    coverLetterDraft: () => new Promise(resolve => { finish = resolve; })};
+  const {initLetter, loadLetter} = await import('../renderer/pages/base-letter.js');
+  initLetter();
+  await loadLetter();
+  assert.equal($('letter-approve').disabled, false, 'a kept draft can be approved');
+  $('letter-draft').click();
+  await settle();
+  assert.equal($('letter-approve').disabled, true, 'not while the new draft is written');
+  finish({ok: true, state: 'draft', text: 'Fictional new draft', pdf: false});
+  await settle();
+  assert.equal($('letter-approve').disabled, false, 'and open again once it landed');
+});
+
 test('a first draft from the empty state: the editor opens on letter-shaped skeleton lines under the strip; a failure brings the empty state back', async () => {
   const $ = freshCard();
   let finish;

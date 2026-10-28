@@ -58,7 +58,8 @@ function paint() {
 const typedChange = () => { const text = $('letter-text').value.trim(); return text && text !== (saved.text || '').trim() ? 1 : 0; };
 function buttons() {
   const text = $('letter-text').value.trim();
-  $('letter-approve').disabled = !text || (saved.state === 'approved' && saved.pdf && text === (saved.text || '').trim());
+  // Why (28 Oct 2026, code review): paint() runs mid-draft; Approve stays locked until the draft lands, or it would approve the old text under the new one.
+  $('letter-approve').disabled = drafting || !text || (saved.state === 'approved' && saved.pdf && text === (saved.text || '').trim());
   draftSource?.changed();
 }
 function showLetter(status) {
@@ -94,18 +95,21 @@ async function act(button, working, run, {drafts = false} = {}) {
   const editor = $('letter-text'), feedback = $('letter-feedback');
   const wasReadOnly = editor.readOnly;
   let stop = () => {};
-  if (drafts) {
-    drafting = true;
-    editor.readOnly = true;
-    feedback.disabled = true;
-    message('letter-message', '');   // the last action's line ("Approved ✓ …") is not true while a new draft is written
-    paint();
-    const first = !editor.value.trim();
-    stop = aiWriting(editor, {title: first ? 'Writing your first draft' : 'Writing a new draft',
-      note: first ? 'From your CV, Profile and writing preferences.' : 'Your current letter stays until the new one is ready.'});
-  } else message('letter-message', working);
   let result;
-  try { result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message})); }
+  // Why (28 Oct 2026, code review): the writing state starts inside the try, so a throw there still reaches the finally and never leaves the card locked.
+  try {
+    if (drafts) {
+      drafting = true;
+      editor.readOnly = true;
+      feedback.disabled = true;
+      message('letter-message', '');   // the last action's line ("Approved ✓ …") is not true while a new draft is written
+      paint();
+      const first = !editor.value.trim();
+      stop = aiWriting(editor, {title: first ? 'Writing your first draft' : 'Writing a new draft',
+        note: first ? 'From your CV, Profile and writing preferences.' : 'Your current letter stays until the new one is ready.'});
+    } else message('letter-message', working);
+    result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
+  } catch (error) { result = {ok: false, error: error.message}; }
   finally {
     pressed.removeAttribute('aria-busy');
     if (drafts) { stop(); drafting = false; editor.readOnly = wasReadOnly; feedback.disabled = false; }

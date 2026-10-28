@@ -12,7 +12,7 @@ import {keysFor, typeNotTakenOnTab} from './fill-verify.js';
 import {climbFill} from './ladder/fill-climb.js';
 import {kitStance} from './tab-pages.js';
 import {driving} from './input-gap.js';
-import {fillCard} from './fill-card.js';
+import {fillCard, markCardId} from './fill-card.js';
 import {readBackCounts, settleTrace} from './trace-settle.js';
 import {armRecordUpdate, runUpdateBody} from './ladder/record-update.js';
 import {expandSections} from './sections.js';
@@ -474,7 +474,7 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
     sent: [...(debug.sentToClaude || []), ...later.map(f => f.field)], ai, aiError, useAI, kit: withKit, version: debug.version, startedAt});
   await markCauses(inPage, tab.id, summary.card);   // each left control carries its cause for the panel (ladder/control-marks.js)
   // Only into the page this fill filled: a tab that moved on (the sign-up's form) shows another page, whose own fill writes its own mark (extension/one-fill.js).
-  if (stillOnPage(tab.url, await addressNow(tab.id))) await inPage(tab.id, id => { document.documentElement.dataset.jobpilottoFill = id; }, [summary.card.id]).catch(() => {});
+  if (stillOnPage(tab.url, await addressNow(tab.id))) await inPage(tab.id, markCardId, [summary.card.id]).catch(() => {});
   event('fill-done', {filled: summary.filled || 0, left: (summary.todo || []).length});
   // One row in 🎏 Job Apply — Agent Runs (Agent = Extension), comparable with the agent runs there.
   const runBody = {url: job, pageUrl: tab.url, started: startedAt.toISOString(),

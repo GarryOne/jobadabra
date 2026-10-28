@@ -80,3 +80,7 @@ export function cleanCard(card) {
     unread: n(card.unread), optional: n(card.optional), optionalFilled: n(card.optionalFilled), causes: counts(card.causes, CAUSES), gaps: gapCounts(card.gaps), kinds: counts(card.kinds),
     ai: ['used', 'none', 'off', 'error'].includes(card.ai) ? card.ai : 'none', kit: !!card.kit, seconds: n(card.seconds, 3600)};
 }
+
+// The card's id on the page, in <html data-jobpilotto-fill-id>, which the panel sends at Submit (panel-learn.js). Runs inside the page (executeScript): it names nothing from this module.
+// Why (28 Oct 2026, beta 40748263936): the id used to share <html data-jobpilotto-fill> with the state JSON; `done` came after it and erased it, so the Submit report carried no fill id.
+export function markCardId(id) { document.documentElement.dataset.jobpilottoFillId = id; }

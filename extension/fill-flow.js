@@ -117,7 +117,7 @@ export async function askKind(tab, {fresh = false, digest = false, shadow = fals
     return answer?.role ? answer : null;
   } catch (error) { decide('fill', 'page kind: the app could not be asked', {class: String(error?.name || 'Error').slice(0, 40), ms: Date.now() - askedAt, digest}); return null; }   // the class only: a message can carry page text
 }
-// Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: worker/test/fill-mark-own-page.test.js.
+// Claude reads this on <html data-jobpilotto-fill>. States: running, done, error, no-form, account. A fill's end goes only into the page it started on (its token, kept in this script world; 13 Oct 2026: a sign-up page's "done" landed on the form after it). Guard: worker/test/fill-mark-own-page.test.js. Only JSON states go here; the fill's card id has its own <html data-jobpilotto-fill-id> (fill-card.js markCardId).
 export function writeState(tabId, value, token = '') {
   return chrome.scripting.executeScript({target: {tabId}, args: [JSON.stringify(value), token, value.state],
     func: (text, token, now) => { if (now === 'running') window.__jobPilottoFillToken = token; else if (token && window.__jobPilottoFillToken !== token) return false; if (document.documentElement) document.documentElement.dataset.jobpilottoFill = text; return true; }})

@@ -1,0 +1,2 @@
+// Real Submit-count guard from desktop/e2e/suites/apply.mjs (round 2 fixture).
+if (forms.posts.length !== 1) throw new Error(`expected the person's one Submit, the server saw ${forms.posts.length}`);

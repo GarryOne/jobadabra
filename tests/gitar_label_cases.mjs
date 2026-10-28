@@ -22,10 +22,12 @@ test('a verdict written before the head commit is stale', () => {
   assert.equal(wantedLabel(APPROVED, '2026-10-28T19:50:00Z', '2026-10-28T19:56:45Z'), null);
   assert.equal(wantedLabel('no verdict', '2026-10-28T19:59:08Z', '2026-10-28T19:56:45Z'), null);
 });
+const HEAD = '2026-10-28T20:00:00Z', BEFORE = '2026-10-28T19:00:00Z', AFTER = '2026-10-28T20:05:00Z';
 test('no current verdict shows "reviewing"; working ends with a push or an approval, never with a red verdict', () => {
-  assert.deepEqual(wantedLabels({verdict: null, working: false, push: false}), [WAITING.name]);
-  assert.deepEqual(wantedLabels({verdict: LABELS.changes.name, working: true, push: false}), [LABELS.changes.name, WORKING.name]);
-  assert.deepEqual(wantedLabels({verdict: null, working: true, push: true}), [WAITING.name]);
-  assert.deepEqual(wantedLabels({verdict: LABELS.approved.name, working: true, push: false}), [LABELS.approved.name]);
-  assert.deepEqual(wantedLabels({verdict: LABELS.suggestions.name, working: true, push: false}), [LABELS.suggestions.name, WORKING.name]);
+  const w = (verdict, workingSince) => wantedLabels({verdict, workingSince, headTime: HEAD});
+  assert.deepEqual(w(null, null), [WAITING.name]);
+  assert.deepEqual(w(LABELS.changes.name, AFTER), [LABELS.changes.name, WORKING.name]);
+  assert.deepEqual(w(null, BEFORE), [WAITING.name]);   // set before the head was pushed: the push ended it, even if no push event ran
+  assert.deepEqual(w(LABELS.approved.name, AFTER), [LABELS.approved.name]);
+  assert.deepEqual(w(LABELS.suggestions.name, AFTER), [LABELS.suggestions.name, WORKING.name]);
 });

@@ -2,7 +2,7 @@
 // Sets the one "Gitar: …" label on a PR from Gitar's verdict, so the PR list shows red / yellow / green without opening the PR.
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
 // Why (28 Oct 2026): Gitar records no approving review (#2377 had none), so only the verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
-// Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>   (GITAR_PUSH=1 on a push: clears "working")
+// Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>
 //   node tools/gitar-label.mjs working <pr-number>   a session says it is handling the comments (tools/ship-watch.sh). Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -44,10 +44,10 @@ function headTime(repo, sha) {
   return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
 }
 
-/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" stays only while a session handles comments, and ends with a push or Gitar's approval (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label, meaning we did our job"). */
-export function wantedLabels({verdict, working, push}) {
+/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or an approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
+export function wantedLabels({verdict, workingSince, headTime}) {
   const names = [verdict || WAITING.name];
-  if (working && !push && verdict !== LABELS.approved.name) names.push(WORKING.name);
+  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && verdict !== LABELS.approved.name) names.push(WORKING.name);
   return names;
 }
 
@@ -67,9 +67,11 @@ function main(pr) {
   if (info.state !== 'open') return console.log(`gitar-label: #${pr} is ${info.state}, left as it is`);
   const reviews = pages(`repos/${repo}/issues/${pr}/comments`).filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
-  const verdict = latest ? wantedLabel(latest.body, latest.updated_at, headTime(repo, info.head.sha)) : null;
+  const head = headTime(repo, info.head.sha);
+  const verdict = latest ? wantedLabel(latest.body, latest.updated_at, head) : null;
   const have = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
-  const wanted = wantedLabels({verdict, working: have.includes(WORKING.name), push: process.env.GITAR_PUSH === '1'});
+  const workingSince = have.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
+  const wanted = wantedLabels({verdict, workingSince, headTime: head});
   setLabels(repo, pr, wanted, have);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
 }

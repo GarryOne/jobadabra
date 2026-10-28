@@ -34,7 +34,6 @@ jobs:
       - name: Set the label from Gitar's verdict
         env:
           GH_TOKEN: ${{ github.token }}
-          GITAR_PUSH: ${{ github.event_name == 'pull_request_target' && github.event.action == 'synchronize' && '1' || '0' }}   # a push ends "working"
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: node tools/gitar-label.mjs "$PR"

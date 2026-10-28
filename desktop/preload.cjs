@@ -93,6 +93,7 @@ contextBridge.exposeInMainWorld('pilot', {
   onSaveProgress: callback => ipcRenderer.on('saveProgress', (_, progress) => callback(progress)),
   onSettingsProgress: callback => ipcRenderer.on('settingsProgress', (_, progress) => callback(progress)),   // a Search settings save, as it goes (renderer/save-progress.js)
   onApplyProgress: callback => ipcRenderer.on('applyProgress', (_, text) => callback(text)),
+  retrySave: call('retrySave'),
   onToast: callback => ipcRenderer.on('toast', (_, toast) => callback(toast)),
   onOpenTarget: callback => ipcRenderer.on('openTarget', (_, target) => callback(target)),   // a clicked notification (lib/targets.js)
   onReview: callback => ipcRenderer.on('review', (_, state) => callback(state)),

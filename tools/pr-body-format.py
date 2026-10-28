@@ -11,7 +11,8 @@ HEADINGS = [   # (what starts the block, its heading)
     (re.compile(r'^\|\s*Area\s*\|\s*Impact\b', re.I), '### 📊 Impact'),
     (re.compile(r'^\|\s*What changed\s*\|\s*Before\s*\|\s*After\b', re.I), '### 🖼️ Screens'),   # the screens table (tools/pr-screens.py), before the numbers table
     (re.compile(r'^\|(?!\s*What changed\s*\|)[^|]*\|[^|]*\bBefore\s*\|[^|]*\bAfter\b', re.I), '### 🔍 Before → After'),   # also after style_before_after's emoji headers
-    (re.compile(r'^\*\*Design checks\*\*'), '### 🎨 Design checks'),   # the desktop window's 6 checks (tools/pr-body.sh); its bold title becomes the heading
+    (re.compile(r'^\*\*Design checks\*\*'), '### 🎨 Design checks'),
+    (re.compile(r'^\*\*Plan progress\*\*'), '### 🗺️ Plan progress'),   # a PR titled "[xx] n/N ..." (tools/pr-body-check.py plan_gap)   # the desktop window's 6 checks (tools/pr-body.sh); its bold title becomes the heading
     (re.compile(r'^- '), '### ✅ What changed'),
     (re.compile(r'^(\*\*Before\*\*|!\[|<img |\|\s*!\[)', re.I), '### 🖼️ Screens'),
 ]
@@ -94,7 +95,7 @@ def lay_out(text, repo=''):
                     out.append('')
                 out += ['---', '', heading, '']   # a rule between sections (owner, 15 Oct 2026); the blank line above keeps it a rule, never a setext heading
                 break
-        if line.startswith('**Design checks**'):
+        if line.startswith('**Design checks**') or line.startswith('**Plan progress**'):
             continue
         out.append(line)
     if note:

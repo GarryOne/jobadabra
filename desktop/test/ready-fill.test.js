@@ -31,6 +31,16 @@ test('the night copy holds the account press, points at the stand-in and leaves 
   assert.throws(() => holdAccountPress('no press line here'), /no longer contains the press guard/);
 });
 
+test('an app on the default port 47111 gets its copy too, owned or not (owner, 28 Oct 2026: "the night\'s extension still mentions 127.0.0.1:47111 in flow.js")', () => {
+  for (const owned of [false, true]) {
+    const copy = copyForNight(47111, EXTENSION, '', {owned});
+    try {
+      assert.ok(fs.readFileSync(path.join(copy, 'flow.js'), 'utf8').includes('http://127.0.0.1:47111'), 'the copy still talks to the app\'s own port');
+      assert.equal(fs.existsSync(path.join(copy, 'owned-bootstrap.js')), owned);
+    } finally { fs.rmSync(path.dirname(copy), {recursive: true, force: true}); }
+  }
+});
+
 test('a submit is refused and an upload is not', () => {
   assert.equal(looksLikeSubmit({method: 'POST', url: 'https://jobs.example.com/anything', navigation: true}), true);   // a form submission that navigates
   assert.equal(looksLikeSubmit({method: 'POST', url: 'https://boards-api.example.com/v1/boards/acme/jobs/1/applications', navigation: false}), true);

@@ -9,6 +9,7 @@ on:
       # Exactly what this workflow loads (tools/replay-files.mjs --paths page-cases.yml prints it; desktop/test/replay-workflow-paths.test.js fails when it drifts), plus its install files.
       - 'desktop/cv/template.js'
       - 'desktop/e2e/fixtures/cv.json'
+      - 'desktop/e2e/lib/ai-provider.mjs'
       - 'desktop/e2e/lib/app-front.mjs'
       - 'desktop/e2e/lib/app-log.mjs'
       - 'desktop/e2e/lib/app.mjs'

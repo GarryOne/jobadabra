@@ -73,6 +73,10 @@ Owner's yes before the UI commit.
 - **B1 · One place per thing:** retire the local site rules (writer, reader, served notes, Form knowledge page, Website rules
   table, `job-answers.js save`) and move the cover letter style to `cover-letter/style.json` beside `letter.json` (owner: "Beside
   the letter"); every letter writer reads it there; the old notes and the old style section stay in the store, unread.
+- **B1 ships as two PRs** (28 Oct 2026, found in code): B1 = the site-rule retirement; B1b = the style move, which also touches the
+  Strategy draft's answers section and the line organizer's "writing" destination (`lib/profile-destinations.js:26`); both are
+  redirected in code to `style.json`, the prompts stay as they are (no replay). Letter writers get the style as the same "Cover letter
+  style" section of the answers text they read today.
 - **B2 · Learnings with evidence:** the writer, evidence and state chips, salary seed, migration.
 - **The AI owns the whole learning step** (owner, 28 Oct 2026: "All of this flow/logic/learning should be heavily
   controlled/manipulated by the AI. He should interpret meanings. He should understand if a learning already exists partially and

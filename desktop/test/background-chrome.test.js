@@ -39,3 +39,9 @@ test('quitting takes a pid it has just reported, never a bare number from a call
   const failed = await chrome.quit(42, {list, kill: () => { throw new Error('not permitted'); }});
   assert.deepEqual(failed, {ok: false, error: 'not permitted'});
 });
+
+test("Jobadabra's own hidden browser is never a stray: it is another app, so it holds no Chrome scripting link and is never offered to quit", () => {
+  // Why (2026-10-28, Background apply B): it outlives the app on purpose (a held form keeps its tab), headless and orphaned like a stray, but it is Chrome for Testing.
+  const own = '/Users/x/Library/Application Support/Jobadabra/background-browser-runtime/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing --user-data-dir=/x/profile --headless=new --no-startup-window';
+  assert.deepEqual(chrome.parseChromeProcesses(line(51000, 1, own)), []);
+});

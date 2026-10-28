@@ -77,7 +77,8 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] B0: measure native dropdown pop-up and file picker through the live stream; result written above. (proof: none: measured with a scratch CDP probe on a fictional form, table above)
 - [x] B1: the owned extension runs in headless Chromium with no window, Dock entry or focus change; result written above. (proof: none: measured with a scratch CDP probe, table above)
 - [x] The hidden browser starts for real: headless flag, unfocused normal windows (a minimized headless tab repainted 2 of 5 changes, normal all 5), real `start()` on Chrome for Testing ready in 0.76 s with the token stored, reused on a second start, no page, no focus change. (proof: desktop/test/background-browser.test.js)
-- [ ] First-use Chromium download with consent, progress and Cancel (never in the installer).
+- [x] First-use Chromium download: module and IPC on the shared add-on (lib/optional-addon.js, LibreOffice's), digest-checked; the real install of Chrome for Testing 156 (195 MB) took 37 s, and the real `start()` on it loaded the extension in 0.88 s with no focus change. (proof: desktop/test/background-browser-download.test.js)
+- [ ] The download's bar with Cancel on the Applying page, started only by the person's press (part of the screen's side-by-side).
 - [ ] Mode dispatch through `MODES[].runner` (one dispatch).
 - [ ] Live view channel: stream + input over a plain message channel, any client.
 - [ ] Native dropdown bridge.

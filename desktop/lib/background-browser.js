@@ -6,6 +6,7 @@ import {spawn as spawnProcess} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {ROOT} from './root.js';
 import {writePrivate} from './private-file.js';
+import {findBackgroundBrowser} from './background-browser-download.js';
 
 /** Return launch flags for an owned profile and extension, never a system profile or a visible startup page. */
 export function browserArguments(profile, extension) {
@@ -38,7 +39,7 @@ export function browserCommand(socketUrl, method, params = {}, {WebSocketClass =
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** Own one persistent browser per app profile; reuse only verified processes and keep review/challenge sessions alive when the app exits. */
-export function createBackgroundBrowser(storage, {find = () => null,   // Why (2026-10-28, owner): the first-use download that finds the runtime is step B; until then no browser can start
+export function createBackgroundBrowser(storage, {find = findBackgroundBrowser,   // only the runtime the person downloaded into the app folder; never a system browser
    spawn = spawnProcess, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
   const folder = storage.path('background-browser'), profile = path.join(folder, 'profile'), extension = path.join(folder, 'extension');
   const portFile = path.join(profile, 'DevToolsActivePort'), ownerFile = path.join(folder, 'owner.json');

@@ -15,12 +15,14 @@ test('background browser launch uses only its owned profile and starts without a
 });
 
 test('the e2e harness may point the hidden browser at the test forms, nobody else: only under the e2e flag, only a host map and the test certificate', () => {
-  const extra = JSON.stringify(['--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5', '--ignore-certificate-errors', '--proxy-server=http://evil.example', '--remote-debugging-address=0.0.0.0']);
+  const extra = JSON.stringify(['--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5', '--ignore-certificate-errors', '--no-sandbox', '--proxy-server=http://evil.example', '--remote-debugging-address=0.0.0.0']);
   const asked = {JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: extra};
   assert.deepEqual(browserArguments('/p', '/e', asked), browserArguments('/p', '/e', {}), 'a person\'s environment never changes the launch, even with the variable set');
   const args = browserArguments('/p', '/e', {...asked, JOB_PILOTTO_E2E: '1'});
   assert.ok(args.includes('--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5'));
   assert.ok(args.includes('--ignore-certificate-errors'));
+  assert.ok(args.includes('--no-sandbox'), 'under e2e only: a CI runner may not allow the sandbox');
+  assert.equal(browserArguments('/p', '/e', {}).includes('--no-sandbox'), false, 'a person\'s browser keeps its sandbox');
   assert.equal(args.some(arg => /proxy-server|remote-debugging-address/.test(arg)), false, 'nothing else is let through');
   assert.deepEqual(browserArguments('/p', '/e', {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: 'not json'}), browserArguments('/p', '/e', {}));
 });

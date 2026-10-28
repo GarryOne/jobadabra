@@ -100,7 +100,8 @@ export async function describeHidden(profile) {
     return `hidden browser on port ${port} holds: ${targets.map(item => `${item.type} ${String(item.url).slice(0, 80)}`).join(' | ') || 'nothing'} | its form reads: ${form ? await valuesOf(form.webSocketDebuggerUrl) : 'no page'} | its console: ${form ? await consoleOf(form.webSocketDebuggerUrl) : 'no page'} | the extension says: ${await askExtension(profile, port)}`;
   } catch (error) {
     let held = ''; try { held = fs.readdirSync(folder).join(', '); } catch { held = 'no folder'; }
-    return `hidden browser not reachable (${String(error?.message || error).slice(0, 80)}); its folder holds: ${held}`;
+    let said = ''; try { said = fs.readFileSync(path.join(folder, 'e2e-browser.log'), 'utf8').trim().split('\n').slice(-6).join(' // ').slice(0, 600); } catch { said = 'no log'; }
+    return `hidden browser not reachable (${String(error?.message || error).slice(0, 80)}); its folder holds: ${held}; it said: ${said}`;
   }
 }
 

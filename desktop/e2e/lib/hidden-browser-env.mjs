@@ -4,4 +4,4 @@
 import {hostRules} from './forms.mjs';
 
 /** -> the env entries that give the hidden browser the fixture host map for the forms server on `port`. */
-export const hiddenBrowserEnv = port => ({JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify([`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors'])});
+export const hiddenBrowserEnv = port => ({JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify([`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors', ...(process.platform === 'linux' ? ['--no-sandbox'] : [])])});

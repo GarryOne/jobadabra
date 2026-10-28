@@ -155,6 +155,47 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - The scorecard lists catches, false reds and minutes per suite; prune candidates and gap ranking appear in the weekly summary.
 - Every workflow and e2e lib module has a `Job:` line; the module count is measured before and after each shrink step.
 
+## PR plan
+Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/34 <what it does>`, and its body ends with a "Plan progress" section (done, next, left). The total moves only with a reason written in the PR that moves it.
+**34 PRs: 13 merged, 21 to go** (this one included). Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+
+| n | PR | Step | State |
+|---|---|---|---|
+| 1 | Spec and plan | 0 | ✅ #2336 |
+| 2 | Grey a PR suite that fails exactly as main does | 2 | ✅ #2349 |
+| 3 | A PR runs each suite whole | 2 | ✅ #2359 |
+| 4 | Press only the control the probe vetted | 0 | ✅ #2360 |
+| 5 | A local run records Electron calls | 7 | ✅ #2363 |
+| 6 | Shell stand-ins in one place | 7 | ✅ #2367 |
+| 7 | Changed files from git, not the API | 0 | ✅ #2369 |
+| 8 | Scorecard and the "Where e2e work goes" card (private repo) | 1 | ✅ web#210 |
+| 9 | Weekly Telegram message and GitHub issue (private repo) | 1 | ✅ web#211 |
+| 10 | Lane registry first cut | 2 | ✅ #2376 |
+| 11 | Plan checklist where the progress tool reads it | 0 | ✅ #2379 |
+| 12 | A test app ends with its runner | 7 | ✅ #2384 |
+| 13 | Rule E on lane entries | 2 | ✅ #2398 |
+| 14 | Renderer class tests on push | 9 | 🔨 this PR |
+| 15 | Rule E for test edits: citation check and Gitar review file | 3 |  |
+| 16 | Rule F: `Job:` lines and the harness-PR trailer | 3 |  |
+| 17 | Health greys: AI credit, runner, install | 2 |  |
+| 18 | At most 5 suites picked by the scorecard | 2 |  |
+| 19 | Suspension on a red-then-green flip, with an owner issue | 2 |  |
+| 20 | Stored AI answers keyed by question; no live AI call in the backbone | 4 |  |
+| 21 | quality cut at the seam; the AI rate as a number in the check summary | 4 |  |
+| 22 | applyflows: state waits, hang caps, Notion stubbed, races as issues | 5 |  |
+| 23 | settings the same way | 6 |  |
+| 24 | apply the same way | 6 |  |
+| 25 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 |  |
+| 26 | Beta gate on tolerant rates | 7 |  |
+| 27 | Speed medians in the weekly summary | 7 |  |
+| 28 | Outside-world suite nightly | 7 |  |
+| 29 | `tools/revert-red.sh` wired to a backbone red | 8 |  |
+| 30 | Bug Tracker "escaped e2e" field | 1 |  |
+| 31 | Retire `e2e_weekly.py` after the first Monday post | 1 |  |
+| 32 | Harness shrink, first step (module count before and after) | 10 |  |
+| 33 | Harness shrink, second step | 10 |  |
+| 34 | Harness shrink, third step | 10 |  |
+
 ## Progress
 One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).
 
@@ -209,7 +250,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 
 ### 9. Pure checks on push (rule H)
 - [x] Measured the affected desktop unit tests on a PR push: 108 s here against 2.3 min in CI; not done, the owner's 12 Oct rule stands. (proof: none: measured 28 Oct 2026 with tools/check.sh on #2367, numbers in rule H)
-- [ ] The renderer class tests (no-question-mark, solid-buttons) run on push when a renderer file changes (#2322 class; seconds).
+- [x] The renderer class tests (no-question-mark, solid-buttons) run on push when a renderer file changes (#2322 class; seconds): seven files, 0.4 s, chosen from 34 measured reds. (proof: desktop/test/renderer-class-push.test.js)
 
 ### 10. Harness shrink
 - [ ] Delete what the design replaced, one step at a time, the module count measured before and after.

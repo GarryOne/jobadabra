@@ -71,7 +71,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SUITES: ${{ steps.plan.outputs.suites }}
           LEFT: ${{ steps.plan.outputs.left }}
-          STEPS: ${{ steps.plan.outputs.steps }}   # {suite: [step names]}: only the steps this PR's changed lines reach (desktop/e2e/pr-suites.mjs)
+          STEPS: ${{ steps.plan.outputs.steps }}   # a PR: no step names, every suite whole, only the "(why)" reasons (desktop/e2e/lib/pr-suites.mjs stepLists, spec rule G2)
           WINDOWS: ${{ steps.plan.outputs.windows }}   # the Windows check's steps (JSON) when this PR changes CI plumbing or shell; empty: none
           HEAD_REF: ${{ github.head_ref }}   # a branch name is untrusted text: never inline in the script
           PR: ${{ github.event.pull_request.number }}

@@ -103,6 +103,11 @@ go green. Legitimate plumbing (a runner image, a new suite) names its job.
 most bugs for the files it touches; the rest run on main after merge. 10–20 suites run only on main, scheduled, or before a beta. Suites compete for the
 budget: a new suite earns its place by covering a gap better than one already there.
 
+**G2 · A suite is a journey; a PR runs it whole.** (owner, 28 Oct 2026: "journeys … I'm fine with that. I agree".) A step stands on the steps before it, so a PR never
+runs a step alone: #2342's "Edit target" had no target, #2350's "Up next" no earlier state (15 of 149 red runs were picker reds). After a merge the picked steps still
+run. A red names the first failing step; later ones did not run. Every PR suite job is under 8 minutes on a green run (medians 3.9–7.5 min, 28 Oct); a suite that
+passes 8 is cut in two by journey, never picked. `recorded` is not run on PRs (page-cases.yml replays those cases there). Code: `lib/pr-suites.mjs stepLists`.
+
 **H · Cheapest place.** A pure check that runs in seconds (no browser, no app, no e2e) runs on push when its files changed (`tools/pre-push-check.sh`); a CI red
 that push could have caught is a harness bug (#2322: no-question-mark, solid-buttons). E2E suites never run on the Mac except one: fixing a real backbone red,
 that one suite or step (the owner's memory is tight).
@@ -144,7 +149,7 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - [x] Measured 14 days of reds by cause, harness churn, suites per PR. (proof: none: numbers in this spec, from D1 and git on 28 Oct 2026)
 - [x] Design discussed and approved by the owner in session `fl`. (proof: none: the owner's answers in the session, 28 Oct 2026)
 - [ ] 1 · Measure in one place: one classifier, scorecard, "Where e2e work goes" card, weekly Telegram + issue, Bug Tracker "escaped e2e".
-- [ ] 2 · Lane registry; PR verdict red only from backbone; grey for health; ≤ 5 suites picked by the scorecard.
+- [ ] 2 · Lane registry; PR verdict red only from backbone; grey for health; ≤ 5 suites picked by the scorecard. Landed: main's own red is grey (#2349); a PR runs each picked suite whole (G2).
 - [ ] 3 · Expectation rule + plumbing brake (mechanical + `.gitar/review/e2e-reliability.md`), `Job:` lines on every workflow and harness module.
 - [ ] 4 · quality cut at the seam: stored answers by question in the backbone; AI rate tolerant; the PR's AI number in the check summary.
 - [ ] 5 · applyflows: state waits + hang caps, Notion stubbed, its races as owner issues.

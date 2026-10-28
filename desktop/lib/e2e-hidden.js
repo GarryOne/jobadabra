@@ -8,15 +8,18 @@ export const hiddenRun = (env = process.env) => (!!env.JOB_PILOTTO_E2E && env.JO
 // one-time overlays (renderer/menu-tour.js captureRun). Never for a user or an e2e run, which must see what a user sees.
 export const captureQuery = (env = process.env) => (env.JOB_PILOTTO_SMOKE ? {capture: '1'} : undefined);
 
-export function hideWindows({app, BrowserWindow, shell, env = process.env, platform = process.platform}) {
+/**
+ * On a hidden test run, stops the app taking the screen: windows never show, focus or rise,
+ * and on a Mac the app has no Dock icon and is never the active app.
+ * Takes the Electron `app` and `BrowserWindow` (plus `env`/`platform` for tests); returns true when it hid
+ * them, false when this is not a hidden run (nothing is touched). It throws nothing of its own.
+ * Invariant: only windows are handled here; the browser, Finder, clipboard and login-item stand-ins live in lib/e2e-host.js.
+ */
+export function hideWindows({app, BrowserWindow, env = process.env, platform = process.platform}) {
   if (!hiddenRun(env)) return false;
   for (const name of ['show', 'focus', 'moveTop']) BrowserWindow.prototype[name] = function () {};
   app.focus = () => {};
   if (platform === 'darwin') app.setActivationPolicy('accessory');   // no Dock icon or menu bar, never the active app
-  // Files and links the app would hand to Preview, Finder or the browser: kept here instead (suites may stub these again).
-  globalThis.__e2eShell = [];
-  for (const name of ['openPath', 'openExternal', 'showItemInFolder']) {
-    shell[name] = async target => { globalThis.__e2eShell.push({name, target: String(target)}); return name === 'openPath' ? '' : undefined; };
-  }
+  // Files and links the app would hand to Preview, Finder or the browser are kept by lib/e2e-host.js (every test run, hidden or not; #2363).
   return true;
 }

@@ -30,14 +30,17 @@ feature smarter silently or is dropped (memory `feedback-insight-needs-an-action
 `desktop/renderer/insight-card.js`), showing its strongest open insight and "+N more". Focus shows the strongest across all
 screens (#16). Every insight shows its evidence (what it saw, with links) and its action buttons. No new page.
 
-**Actions come to you** (Tune my strategy, Analyze my job search): every action has a trigger (its evidence is ready) and a
-home. "More" on Actions stays as a fallback, never the only door.
-- **Tune my strategy** (`src/tune.py`, counts only, no AI, free): runs after every search. When it finds at least one change
-  your results support, a Strategy → Suggestions row "N changes your results support · Review" appears, and it competes for
-  the Focus slot.
+**Actions come to you** (Tune my strategy, Analyze my job search): both **leave the Actions page** (owner, 28 Oct 2026: "we can
+remove from the Actions … show it in Focus or Jobs only if the circumstances are met and make sense"). Each shows only when its
+trigger holds, in its home; the ⌘K palette keeps both as the one manual door (repo rule: every action is in ⌘K).
+- **Tune my strategy** (`src/tune.py`, counts only, no AI, free): runs after every search. Trigger: at least one change your
+  results support. Shown as a Strategy → Suggestions row "N changes your results support · Review"; also on Jobs when the list
+  is thin (few 70+ jobs in the last searches), and it competes for the Focus slot. Zero changes → shown nowhere.
 - **Analyze my job search** (the weekly report, already run on Mondays with the insights cadence, `desktop/lib/cadence.js:10`):
-  its result becomes a Focus card on Monday, "Your week: what works, what to change", with its top action as a button. Today it
-  only lands in Recent activity and Reports.
+  Monday's result is a Focus card "Your week: what works, what to change" with its top action as a button (today it lands
+  only in Recent activity and Reports). Between Mondays, "Analyze now" is offered on Focus or Jobs only when enough happened
+  since the last analysis (e.g. 10+ new applications or outcomes, or replies stopped after a run of applications; thresholds
+  stated in code and tested). Otherwise shown nowhere.
 
 ## The insights (owner approved the list and the grouping, 28 Oct 2026)
 
@@ -77,8 +80,9 @@ home. "More" on Actions stays as a fallback, never the only door.
 2. Each action changes the thing it names, visible where it landed (place added, CV bullet added, answer saved), and the
    insight leaves its slot.
 3. Not now hides 14 days; Not true never shows the same evidence again; both survive a restart (store, both adapters).
-4. Tune my strategy's changes appear in Strategy → Suggestions without opening More; zero changes → no row.
-5. On Monday, Focus shows the weekly analysis card with its top action; "More" still has both buttons.
+4. Tune my strategy's changes appear in Strategy → Suggestions (and Jobs when the list is thin); zero changes → shown nowhere.
+5. On Monday, Focus shows the weekly analysis card with its top action; "Analyze now" appears between Mondays only past its
+   trigger. Neither is on the Actions page any more; both stay in ⌘K.
 6. Salary, demographics and criminal-record facts never appear in an insight shown outside their own screen.
 7. Counts-only insights make no AI call (test with a client that throws). Each AI insight runs only when its evidence
    changed; its cost per run is measured on its PR before shipping.

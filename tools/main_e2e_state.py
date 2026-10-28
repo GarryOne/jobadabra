@@ -39,20 +39,23 @@ def counts_green(run):
 
 
 def state(runs, jobs_of):
-    """runs: e2e.yml runs newest first ({id, head_branch, head_sha, conclusion, display_title, created_at, html_url}); jobs_of(run_id) → [{name, conclusion}].
-    Returns {suite: {'conclusion', 'sha', 'url', 'at'}} from each suite's newest finished job."""
+    """runs: e2e.yml runs newest first ({id, head_branch, head_sha, conclusion, display_title, created_at, html_url}); jobs_of(run_id) → [{id, name, conclusion}].
+    Returns {suite: {'conclusion', 'sha', 'url', 'at', 'jobs'}} from each suite's newest finished job; 'jobs': the ids of its red jobs in that run
+    (tools/pr-verdict.py reads their failure lines to tell main's own red from a PR's)."""
     out = {}
     for run in [r for r in runs if is_main_check(r)][:MAX_RUNS]:
-        slices = {}
+        slices, reds = {}, {}
         for job in jobs_of(run['id']):
             if job.get('name') in NOT_SUITE or job.get('conclusion') not in ('success', 'failure'):
                 continue
             suite = suite_of(job['name'])
             slices[suite] = 'failure' if job['conclusion'] == 'failure' or slices.get(suite) == 'failure' else 'success'
+            if job['conclusion'] == 'failure':
+                reds.setdefault(suite, []).append(job.get('id'))
         for suite, conclusion in slices.items():
             if conclusion == 'success' and not counts_green(run):
                 continue
-            out.setdefault(suite, {'conclusion': conclusion, 'sha': run['head_sha'], 'url': run.get('html_url', ''), 'at': run.get('created_at', '')})
+            out.setdefault(suite, {'conclusion': conclusion, 'sha': run['head_sha'], 'url': run.get('html_url', ''), 'at': run.get('created_at', ''), 'jobs': reds.get(suite, [])})
     return out
 
 

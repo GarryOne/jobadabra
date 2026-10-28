@@ -156,8 +156,9 @@ jobs:
         id: changed
         if: github.event_name == 'pull_request'
         # Why (28 Oct 2026, #2367/#2364 went red on "API rate limit exceeded for installation"): the checkout is the merge commit, so its first parent is the base and
-        # the PR's files are one git diff away; a call to the API let the shared token budget decide a PR's red. The list is read BEFORE the block is opened: a failure
-        # stops the step with git's own message, not "Matching delimiter not found" (tests/test_page_cases_workflow.py plays both).
+        # the PR's files are one git diff away; a call to the API let the shared token budget decide a PR's red. HEAD must have two parents (Gitar on #2369: a head-ref
+        # checkout would give the last commit's files) and the list is read BEFORE the block is opened: a failure stops the step saying so, not "Matching delimiter not found"
+        # (tests/test_page_cases_workflow.py plays both).
         run: |
           [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3 ] || { echo "HEAD is not the pull request's merge commit (one commit and its two parents): its changed files cannot be read from git" >&2; exit 1; }
           files="$(git diff --name-only HEAD^1 HEAD)"

@@ -89,7 +89,7 @@ class RecordedPagesWorkflow(unittest.TestCase):
             self.assertEqual(out.read_text(), 'files<<CHANGED_END\ndesktop/changed.js\nCHANGED_END\n',
                              "the PR's files only, as the API's list was: not what main moved on by (other.txt)")
 
-            # a checkout too shallow to have the base (HEAD has no first parent): the step stops with git's own message, before any line of the block is written
+            # a checkout too shallow to have the base (HEAD has no parents): the two-parent guard stops the step with its own message, before any line of the block is written
             shallow = Path(tmp) / 'shallow'
             git('clone', '-q', '--depth=1', 'file://' + repo.as_posix(), shallow.as_posix())
             out.write_text('')

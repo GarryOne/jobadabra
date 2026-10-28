@@ -149,7 +149,7 @@ export async function run(ctx) {
   await ctx.run('Automatic backup: a due backup runs once at start and once on the weekly tick', () => backupTimerStep(ctx), {needs: ctx.needs});
   // Last: it restarts the app twice (the steps above hold the first window).
   await ctx.run('Your data: export with keys, reset, then import from the setup brings this computer back as it was', () => roundTrip(ctx), {needs: ctx.needs});
-  await ctx.run('Automatic backup: the backup file, imported after a reset, brings this computer back as it was', async () => roundTrip(ctx, await makeBackupFile(ctx)), {needs: ctx.needs});
+  await ctx.run('Automatic backup: the backup file, imported after a reset, brings this computer back as it was', async () => roundTrip(ctx, () => makeBackupFile(ctx)), {needs: ctx.needs});
 }
 
 // Export -> reset (kept as a backup) -> the app opens at the setup -> "Import an export…" on its Welcome -> restart: the user's files come back
@@ -165,8 +165,7 @@ function whereItWent(file, dir) {
   try { removed = appLogText(dir).split('\n').filter(line => /local copies dropped/.test(line)).slice(-3).join(' / '); } catch { /* no log */ }
   return ` | the file holds: ${held || 'nothing listed'} | the folder holds: ${folder} | ${removed || 'the app logged no drop of the local copies'}`;
 }
-async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the automatic backup made, imported instead of an export
-  const file = backupFile || path.join(os.tmpdir(), `jp-e2e-export-${process.pid}-${Date.now()}.tar.gz`);
+async function roundTrip(ctx, makeBackup = null) {   // makeBackup: makes the automatic backup whose file is imported instead of an export
   const at = name => path.join(ctx.profile, name);
   const digest = name => fs.existsSync(at(name)) ? crypto.createHash('sha256').update(fs.readFileSync(at(name))).digest('hex') : null;
   // The app's start-up move into the store drops these two files once Notion has them (lib/migrate.js, 'profile copies'); writing them while it runs lost them under the
@@ -180,6 +179,10 @@ async function roundTrip(ctx, backupFile = '') {   // backupFile: the file the a
     return {secrets: state.secrets, notionIds: state.settings.notionIds || null, jobs: (await window.pilot.jobs())?.total ?? null};
   })};
   if (!Object.values(before.secrets).some(Boolean)) throw new Error('the set-up install has no key saved: nothing to prove about keys');
+  // Why (28 Oct 2026, beta 3: settings red on Mac+Linux and Windows, "export archive omitted profile.md"): the one order is wait, seed, capture, then make the file. The backup used to be made
+  // by the caller before the wait and the seed, so on a store that holds the two files (the beta's) it was made without them and the round trip then expected them in it.
+  const backupFile = makeBackup ? await makeBackup() : '';
+  const file = backupFile || path.join(os.tmpdir(), `jp-e2e-export-${process.pid}-${Date.now()}.tar.gz`);
   const standIn = () => ctx.app.evaluate(({app, dialog}, filePath) => {
     dialog.showSaveDialog = async () => ({canceled: false, filePath});
     dialog.showOpenDialog = async () => ({canceled: false, filePaths: [filePath]});

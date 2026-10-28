@@ -21,14 +21,15 @@ Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were t
 4. **A line with a `Why (...)` comment is a decision:** read the Why and its PR before changing it (the red may be the test's drift, not that line);
    change it only on purpose, update or remove the Why with it, and say `Why-changed: <which Why> — <reason>` in the commit (`tools/why-changed.mjs`).
    **Prove the step alone, in seconds:** `cd desktop/e2e && E2E_STEPS="<step>,<its prerequisites>" node run-all.mjs --only <suite>`. Prove the repro first (your setup took effect).
-5. **Then the whole fixed suite plus the siblings, on CI, from your PR:** the PR's own "E2E suites for a PR" run (`pr-suites.yml`) starts the Linux suites your changed files and removed UI text point at, plus every suite (macOS too) that runs the lines you changed (the coverage map, gate G1b), on your branch, and waits: a red suite blocks the merge (gate G1a, 26 Oct 2026). Open the PR early and read that run; do not start a beta to check a test fix. A by-hand `gh workflow run e2e.yml -f suite=...` is against `docs/rules/change-loop.md` rule 7 unless the owner asks for it. A Mac suite the map did not pick waits for the gate.
+5. **Then the whole fixed suite plus the siblings, on CI, from your PR:** the PR's own "E2E suites for a PR" run (`pr-suites.yml`) starts the Linux suites your changed files and removed UI text point at, plus every suite (macOS too) that runs the lines you changed (the coverage map, gate G1b), on your branch, and waits: a red suite blocks the merge (gate G1a, 26 Oct 2026). Open the PR early and read that run; do not start a beta to check a test fix. A by-hand `gh workflow run e2e.yml -f suite=...` is against `docs/rules/change-loop.md` rule 7 except its one exception (owner, 24 Oct 2026): the one fixed Linux suite, on your own branch (`--ref <branch>`).
+   **Use it for a fix a PR run cannot see** (28 Oct 2026, beta 3: 6 suites red on "neuron count unreadable" because #2375 put the cap's env on the preflight step only; three betas went by on "the secret exists"): a by-hand run has `E2E_FULL=1`, so it fails what a PR run skips (the AI cap). Read the job's env listing for the names you added and check `grep -c ai-capped <log>` is 0 before any beta. A Mac suite the map did not pick waits for the gate.
 6. **Ship** with `tools/ship.sh --background [--title="<the whole PR>" if 2+ commits]`. The PR is what starts the suites of step 5.
 7. **Say the cause in the fix's commit** (before step 6 pushes it), so /admin/operations/e2e reads it instead of guessing (owner, 27 Oct 2026): `E2E-cause: <drift | test | product | flake | timing | ai | ci | picker | runner> [suite, suite]`.
    A product fix that touches no test says it too (`E2E-cause: product apply`). A suite or lib change with no red behind it: `E2E-cause: none <why>`.
    The push gate refuses an e2e suite or lib change without it (`tools/e2e-cause-trailer.mjs`).
 
 ## Never
-- Re-run the full `run-all` or a beta to look at a failure, or start `e2e.yml` by hand without the owner asking.
+- Re-run the full `run-all` or a beta to look at a failure, or start `e2e.yml` by hand beyond rule 7's one fixed suite on your branch (step 5).
 - Change a test's expectation to match a wrong product.
 - Raise a time budget without a measured reason (applyflows: split it, do not stretch it).
 - Touch the beta workflow while another session owns it; ask them.

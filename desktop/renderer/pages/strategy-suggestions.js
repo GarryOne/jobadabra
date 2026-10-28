@@ -3,6 +3,7 @@
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
+import {wand} from '../magic.js';
 import {$, show} from './core.js';
 import {openView} from './nav.js';
 import {toastMessage} from './startup.js';
@@ -309,13 +310,14 @@ const paintCoverage = verdict => {
         const link = el('button', 'link', hostOf(page.url) || page.url);
         Object.assign(link, {type: 'button', title: page.title});
         link.addEventListener('click', openPage(page));
-        return link;
+        return wand(link);   // a site read starts AI work, like Find jobs using your browser (test/wand-cursor.test.js)
       }));
       words.append(name, links);
       const open = el('button', 'secondary with-icon', 'Open');
       Object.assign(open, {type: 'button', title: site.pages[0].title});
       open.append(icon('external'));
       open.addEventListener('click', openPage(site.pages[0]));
+      wand(open);
       line.append(el('span', `ui-tile tone-${TINTS[i % TINTS.length]} site-avatar`, site.name.trim()[0]?.toUpperCase() || '?'), words, open);
       return line;
     };

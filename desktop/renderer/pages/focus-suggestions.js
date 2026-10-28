@@ -51,6 +51,8 @@ export const RUN = {
     const button = event.currentTarget;
     return import('./strategy-suggestions.js').then(page => page.changeSearch(action, button, 'focus'));
   },
+  // A site only you can open: read in your Chrome, the same press as Strategy's Open (changeSearch's visit).
+  read_site: (action, event) => RUN.change_search(action, event),
   see_all: action => import('./strategy-suggestions.js').then(page => page.reviewSuggestion(action.row)),
 };
 
@@ -68,7 +70,7 @@ export async function answerEntry(entry, state) {
   loadFocus();
 }
 
-const AI = new Set(['analyze', 'find_jobs', 'tailor', 'prep']);   // buttons that start AI work carry the wand (test/wand-cursor.test.js)
+const AI = new Set(['analyze', 'find_jobs', 'tailor', 'prep', 'read_site']);   // buttons that start AI work carry the wand (test/wand-cursor.test.js)
 const button = (label, className, run) => {
   const node = el('button', className, label);
   node.type = 'button';

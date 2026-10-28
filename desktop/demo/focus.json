@@ -498,7 +498,7 @@
           "label": "Read Coop",
           "kind": "visit",
           "value": "https://jobs.coop.ch",
-          "do": "change_search"
+          "do": "read_site"
         },
         {
           "label": "See all 3",

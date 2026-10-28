@@ -58,7 +58,7 @@ def _see_all(row, count):
 
 def _search_entry(kind, key, title, detail, evidence, first, count, **extra):
     return {**_entry(kind, home='strategy', topic='search', source=SOURCE, title=title, detail=detail, evidence=evidence, key=key,
-                     actions=[{**first, 'do': 'change_search'}] + _see_all(kind, count)), **extra}
+                     actions=[{'do': 'change_search', **first}] + _see_all(kind, count)), **extra}
 
 
 def places_entry(verdict):
@@ -110,7 +110,9 @@ def visits_entry(verdict):
     name = top['name'] if len(top['name']) <= LABEL_MAX else top['name'][:LABEL_MAX - 1].rstrip() + '…'
     return _search_entry('visits', keys(verdict)['visits'], f"{len(names)} {_s(len(names), 'site')} only you can open",
                          ' · '.join(names[:3]) + (f' and {len(names) - 3} more' if len(names) > 3 else ''),
-                         [f"{v['name']}: {v['why']}" for _, v in found], {'label': f'Read {name}', 'kind': 'visit', 'value': top['url']}, len(names))
+                         [f"{v['name']}: {v['why']}" for _, v in found],
+                         # Why (#2350): its own do: the read starts AI work in Chrome, so its button carries the wand and no probe presses it.
+                         {'label': f'Read {name}', 'do': 'read_site', 'kind': 'visit', 'value': top['url']}, len(names))
 
 
 def ideas_key(search):

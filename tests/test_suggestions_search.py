@@ -53,7 +53,7 @@ class RowsTests(unittest.TestCase):
         self.assertEqual(found['filters']['actions'], [{'label': 'Remove "lead"', 'do': 'change_search', 'kind': 'exclude', 'value': '\\blead\\b'},
                                                        {'label': 'See both', 'do': 'see_all', 'row': 'filters'}])
         self.assertEqual(found['visits']['title'], '2 sites only you can open', 'one per company, as Strategy lists them')
-        self.assertEqual(found['visits']['actions'][0], {'label': 'Read Helvetia Studios', 'do': 'change_search', 'kind': 'visit',
+        self.assertEqual(found['visits']['actions'][0], {'label': 'Read Helvetia Studios', 'do': 'read_site', 'kind': 'visit',
                                                          'value': 'https://jobs.helvetia.example/list'})
         self.assertEqual(found['ideas']['actions'][0], {'label': 'Add role', 'do': 'change_search', 'kind': 'role', 'value': 'caissier'})
         self.assertEqual(found['ideas']['aside'], ['caissier', 'retouche'], 'a Not true sets them aside for the AI')

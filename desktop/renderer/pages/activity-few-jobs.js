@@ -3,6 +3,7 @@
 import {ai} from '../ai-name.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
+import {wand} from '../magic.js';
 import {adviceEvent, fewJobsGroups, runAction} from '../coverage-actions.js';
 import {openSetting} from './settings.js';
 import {openView} from './nav.js';
@@ -60,7 +61,7 @@ export function withFewJobsHelp(runId) {
       if (action.row?.review) { reviewSuggestion(action.row.review); return; }
       await busyWhile(action.label, () => runAction(action, {pilot: window.pilot, openSetting})).catch(error => ({ok: false, error: error.message}));
     });
-    return button;
+    return action.kind === 'visit' ? wand(button) : button;   // a site read starts AI work (test/wand-cursor.test.js)
   };
   const answer = el('div', 'muted small few-answer');
   const showAnswer = result => answer.replaceChildren(el('p', '', result.why), ...(result.first_steps || []).map((step, i) => el('p', '', `${i + 1}. ${step}`)));

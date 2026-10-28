@@ -5,7 +5,7 @@
 export const SHOWN = 3;                              // Focus shows the 3 first, then "Show all N" (spec)
 export const JOBS_TOPICS = ['search', 'applying'];   // the Jobs bar's (spec: "only the search- and applying-related ones")
 // Every actions[].do the engine writes (src/suggestions.py, src/suggestions_search.py), each run by pages/focus-suggestions.js RUN.
-export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep', 'change_search', 'see_all'];
+export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep', 'change_search', 'read_site', 'see_all'];
 // Each producer's row: its icon, its edge colour and its badge.
 export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, rejection: {icon: 'alert', tone: 'warn', badge: 'Rejection'},
   week: {icon: 'chart', tone: 'good', badge: 'Your week'}, analyze: {icon: 'chart', tone: 'info', badge: 'Analyze'}, tune: {icon: 'sliders', tone: 'info', badge: 'Tune'},

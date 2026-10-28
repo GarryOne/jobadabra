@@ -18,8 +18,10 @@ const RECHECK = new Set(['dead-control', 'silent-control', 'expand-broken', 'no-
 const UNSAFE_TEXT = /\b(delete|remove|quit|exit|restart|relaunch|look around|set up my own|sign\s?(in|out)|log\s?(in|out)|connect|disconnect|install|update|upgrade|apply|submit|send|record|import|replace|run|reset|clear|discard|stop|cancel|retry|start|generate|draft|scan|export|download|unlink|revoke|buy|pay|copy|open in|open settings|folder|finder|explorer|reveal|show in|check|refresh|rebuild|redo|find|search|review|score|prepare|sync|rescan|test)\b/i;
 const UNSAFE_CLASS = /danger|destructive/i;
 
-export function isSafe({text = '', cls = '', href = '', command = ''}) {
-  if (command) return false;
+export function isSafe({text = '', cls = '', href = '', command = '', wand = false}) {
+  // data-wand: the app's own mark for a press that starts AI work (renderer/magic.js wand; test/wand-cursor.test.js lists them). Why (#2350, 28 Oct 2026): Focus's
+  // one-press "Read Indeed" starts a site read in Chrome; pressed on Focus, Jobs and Strategy it waited 30 s each for an extension and ran the suite over budget.
+  if (command || wand) return false;
   if (UNSAFE_TEXT.test(text) || UNSAFE_CLASS.test(cls)) return false;
   return !/^(https?:|mailto:)/i.test(href);
 }
@@ -55,7 +57,7 @@ function discover({scope, max}) {
     el.setAttribute('data-probe', String(seen.length));
     const text = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80);
     seen.push({
-      id: seen.length, text, cls: String(el.className || ''), href: el.getAttribute('href') || '', command: el.getAttribute('data-command') || '',
+      id: seen.length, text, cls: String(el.className || ''), href: el.getAttribute('href') || '', command: el.getAttribute('data-command') || '', wand: el.hasAttribute('data-wand'),
       label: `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${typeof el.className === 'string' && el.className ? `.${el.className.trim().split(/\s+/)[0]}` : ''}`,
       expandable: el.hasAttribute('aria-expanded') || el.tagName === 'SUMMARY' || el.hasAttribute('aria-controls'),
     });

@@ -14,7 +14,10 @@ const STATIC = ['id="refresh"', 'data-refresh-jobs>', 'data-command="run"', 'id=
   'id="cvc-ai-run"', 'id="strategy-redo"', 'id="profile-empty-rebuild"', 'id="prep-go"', 'id="check-mail"', 'id="jobs-unscored-go"',
   'id="iv-save-review"', 'id="rescore-go"', 'id="ss-needs-send-btn"', 'id="draft-build"', 'id="draft-redraft"', 'id="draft-again"', 'id="letter-draft"'];
 const BUILT = [['pages/activity-visits.js', "const claude = el('button'"], ['pages/strategy-rescore.js', "const go = el('button'"],
-  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/activity-mail.js', "'Build prep kit'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"], ['pages/focus-suggestions.js', 'const node = button(action.label']];
+  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/activity-mail.js', "'Build prep kit'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"], ['pages/focus-suggestions.js', 'const node = button(action.label'],
+  // A site read in Chrome (its AI filter and reading): Strategy's Open and page links, and the few-jobs card's site button (#2350).
+  ['pages/strategy-suggestions.js', "const link = el('button', 'link'"], ['pages/strategy-suggestions.js', "const open = el('button', 'secondary with-icon', 'Open')"],
+  ['pages/activity-few-jobs.js', 'const act = (action, button)']];
 
 test('every AI action in index.html carries data-wand', () => {
   for (const key of STATIC) {

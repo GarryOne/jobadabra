@@ -11,7 +11,8 @@ import {ensureSetUp} from '../lib/seed.mjs';
 
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
-export const stepNeeds = {'in-app hold': ['five more Up next', 'removes it for good'], 'removes it for good': ['five more Up next']};
+export const stepNeeds = {'in-app hold': ['five more Up next', 'removes it for good'], 'removes it for good': ['five more Up next'],
+  'Edit target': ['Focus finishes loading']};   // the app may open on Jobs: a re-run of the step alone found no Edit target (#2338)
 export const name = 'focus';
 // Two suites from this file (6 Oct 2026, under 5 minutes each): `focus` (lists, numbers, target, Done, Skip, hand edits, a fresh account) and `focusdismiss`
 // (suites/focusdismiss.mjs: the five ways to dismiss a card, the hold, Dismiss in process), each on its own real Notion page. `focus` moves to the in-memory Notion next.
@@ -193,6 +194,15 @@ export async function runFocus(ctx, parts) {
     await page.evaluate(() => { window.__toasts = []; new MutationObserver(() => document.querySelectorAll('#toasts .toast').forEach(toast => { if (!window.__toasts.includes(toast.textContent)) window.__toasts.push(toast.textContent); })).observe(document.querySelector('#toasts'), {childList: true}); });
     await page.click('#focus-edit-target');
     await page.fill('#focus-target', '3');
+    // Focus drawn again while the box is being typed in (a Gmail check ending, the page's own late load) keeps what was typed: on main after #2331
+    // a load that landed mid-edit put 5 back and Tab saved nothing (issue #2338). Refresh is pressed from the page, so the box keeps the keyboard.
+    await page.evaluate(() => new Promise(resolve => {
+      window.addEventListener('focus-updated', resolve, {once: true});
+      document.querySelector('#focus-refresh').click();
+      setTimeout(resolve, 20000);
+    }));
+    const typed = await page.inputValue('#focus-target');
+    if (typed !== '3') throw new Error(`Focus drawn again while the target was being typed put "${typed}" back in the box, not the "3" typed`);
     await page.press('#focus-target', 'Tab');
     await page.waitForFunction(() => document.querySelector('#focus-of').textContent.includes('/ 3 '), null, {timeout: 60000})
       .catch(async () => { throw new Error(`the page never showed the new target. Messages the app showed: ${JSON.stringify(await page.evaluate(() => window.__toasts))}. State: ${JSON.stringify(await page.evaluate(() => ({of: document.querySelector('#focus-of').textContent, input: document.querySelector('#focus-target').value, rowHidden: document.querySelector('#focus-target-row').hidden, disabled: document.querySelector('#focus-target').disabled, status: document.querySelector('#focus-status').textContent})))}`); });

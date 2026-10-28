@@ -14,6 +14,7 @@ import {writePrivate} from './private-file.js';
 import {WRITING_RULES} from '../shared/worker/writing-rules.js';
 
 const PRICE = {input: 2, output: 10};  // USD per million tokens
+// USD cost of one response's usage ({input_tokens, output_tokens, billing}), rounded to a cent; 0 on a subscription or without usage. Shared by the letter and the portrait.
 export const usdOf = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
 
 export const dir = storage => storage.path('cover-letter');

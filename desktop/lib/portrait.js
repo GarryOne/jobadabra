@@ -14,8 +14,9 @@ import {WRITING_RULES} from '../shared/worker/writing-rules.js';
 const PAGE = 'portrait';
 const TAB = {details: 'details', cv: 'cv', learned: 'answers', strategy: 'details', history: 'details', voice: 'letter'};   // the Profile tab where a source can be corrected
 
-// Each section appears once the evidence reaches its minimum (spec table). Counts come from the bundle. TODO(AI): interview reviews and outcomes come with
-// the 'history' part (PR D1c); until then both count 0 and only the CV and learning minimums can open a section (28 Oct 2026).
+// TODO(AI): count interview reviews and outcomes once the 'history' part exists, PR D1c (28 Oct 2026)
+
+// Each section appears once the evidence reaches its minimum (spec table); the counts come from the bundle, and a part not yet readable counts 0.
 export const SECTIONS = [
   {key: 'short', title: 'In short', need: c => c.cv},
   {key: 'strengths', title: 'Strengths', need: c => c.cv && (c.learnings >= 5 || c.reviews >= 1)},
@@ -33,6 +34,7 @@ export function countsOf(parts = {}) {
   return {cv: !!parts.cv, learnings: learned.length, reviews: history.filter(each => kindOf(each) === 'interview_review').length,
     outcomes: history.filter(each => kindOf(each) === 'outcome').length, written: learned.filter(each => kindOf(each) === 'text').length, voice: !!parts.voice};
 }
+/** The sections whose minimum evidence the counts reach (countsOf), in page order; [] when none does. Pure. */
 export const qualifying = counts => SECTIONS.filter(section => section.need(counts));
 
 /** What the person still needs for a first portrait, with progress: [{label, have, need}]. */

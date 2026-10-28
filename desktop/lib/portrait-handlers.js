@@ -5,6 +5,7 @@ import * as portrait from './portrait.js';
 import * as md from './store/markdown-page.js';
 import {log as appLog} from './log.js';
 
+/** Registers the 'portrait' (what the tab draws) and 'portraitRefresh' (one writer run, at most a day) IPC handlers; both answer {ok: false, error} or a status instead of throwing. */
 export function registerPortraitHandlers({DEMO, ipcMain, storage}) {
   const fail = error => ({ok: false, error: error.message});
   ipcMain.handle('portrait', async () => {

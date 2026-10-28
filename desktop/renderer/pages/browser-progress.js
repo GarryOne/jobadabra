@@ -3,7 +3,7 @@
 // downloaded only on the person's press, its progress with Cancel. Drawn with the LibreOffice download's block (office-progress.js drawProgress);
 // fed by main's 'backgroundBrowserProgress' event (lib/background-browser-download.js). Guard: test/browser-progress.test.js.
 import {Eta} from '../eta.js';
-import {drawProgress} from './office-progress.js';
+import {computerOf, drawProgress} from './office-progress.js';
 
 const MB = bytes => Math.round(bytes / 1048576);
 const etas = new Map();
@@ -26,7 +26,7 @@ export function browserView(event = {}, {offer = false, platform = 'darwin', now
   const sizes = total ? `${MB(bytes)} of ${MB(total)} MB` : `${MB(bytes)} MB`;
   const share = step === 'download' ? (total ? bytes / total : null) : step === 'unpack' ? 1 : null;
   const texts = [step === 'checking' ? 'Finding the right version for your computer' : `Downloading it: ${sizes}${leftText}`,
-    'Checking the download is the genuine one', `Unpacking it inside the app: nothing is installed on ${platform === 'win32' ? 'your PC' : 'your Mac'}, no password asked`];
+    'Checking the download is the genuine one', `Unpacking it inside the app: nothing is installed on ${computerOf(platform)}, no password asked`];
   return {title: 'Getting Jobadabra\'s browser (Google\'s Chrome for Testing) for Background automation', right: step === 'download' ? `${share === null ? '' : `${Math.floor(share * 100)}% · `}${sizes}` : '', share,
     steps: texts.map((text, i) => ({text, kind: i < at ? 'done' : i === at ? 'now' : 'next'})), fine: 'Once only. Applications you start meanwhile wait for it.', action: 'Cancel'};
 }

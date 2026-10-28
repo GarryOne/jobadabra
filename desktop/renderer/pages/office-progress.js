@@ -8,12 +8,14 @@ const MB = bytes => Math.round(bytes / 1048576);
 const etas = new Map();
 const etaOf = started => { if (!etas.has(started)) etas.set(started, new Eta(0)); return etas.get(started); };
 const ORDER = ['download', 'check', 'unpack', 'ready'];
+/** The person's computer in words ("your PC" on Windows, else "your Mac"); shared with browser-progress.js so one file holds the platform branch. */
+export const computerOf = platform => (platform === 'win32' ? 'your PC' : 'your Mac');
 
 // One event -> what the block shows: {hidden} or {title, right, share, steps: [{text, kind: done|now|next}], fine, action}
 export function officeView(event = {}, {platform = 'darwin', now = Date.now()} = {}) {
   const {step = 'none', bytes = 0, total = 0, started = now, error = ''} = event;
   if (step === 'none' || step === 'ready') return {hidden: true};
-  const computer = platform === 'win32' ? 'your PC' : 'your Mac';
+  const computer = computerOf(platform);
   if (step === 'failed' || step === 'cancelled') {
     return {title: step === 'failed' ? 'LibreOffice could not be downloaded' : 'LibreOffice download cancelled', right: '', share: null, steps: [],
       fine: `${step === 'failed' ? `${error} ` : ''}Your Word CV still works: the app draws its PDF itself, a little less like Word.`, action: 'Try again'};

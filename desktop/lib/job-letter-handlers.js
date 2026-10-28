@@ -8,13 +8,10 @@ import * as jobLetter from './job-letter.js';
 import * as jobPages from './job-page-handlers.js';
 import * as pipeline from './pipeline.js';
 import * as storeFiles from './store/files.js';
-import * as strategy from './strategy.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import {configForPrompt} from './config-text.js';
 import {log as appLog} from './log.js';
 import {writePrivate} from './private-file.js';
-import * as letterStyle from './letter-style.js';
 
 export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, storage}) {
   const codeOf = which => (/^https?:/.test(String(which)) ? cvlib.forUrl(storage, String(which))?.job?.code : which);
@@ -32,13 +29,13 @@ export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, stora
       appLog('cover-letter', 'job letter not kept on the job', {code: job.code, error: error.message}));
   }
   // After the tailored CV: the kit's letter when the job has one, else drafted from the tailored CV. -> {ok, usd, source} (never throws: the CV stands alone).
-  async function makeFor(job, tailoredCv, {profile, answers, feedback = '', previous = ''} = {}) {
+  async function makeFor(job, tailoredCv, {feedback = '', previous = ''} = {}) {
     try {
       let kitLetter = '';
       if (!feedback) kitLetter = (await jobPages.jobPage(storage, job.url).catch(() => null))?.kit?.cover_letter || '';
       const contact = await contactDetails.read(storage).catch(() => ({}));
-      const made = await jobLetter.draft(storage, {job, cv: tailoredCv, kitLetter, profile, answers: letterStyle.withStyle(answers, await letterStyle.read(storage)), feedback, previous,
-        preferences: configForPrompt(storage, 'search.json'), name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' '),
+      const made = await jobLetter.draft(storage, {job, cv: tailoredCv, kitLetter, feedback, previous,
+        name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' '),
         apiKey: storage.secret('ANTHROPIC_API_KEY'), client: claudeCode.client(storage)});
       await keep(job, {job: {code: job.code, title: job.title, company: job.company, url: job.url}, text: made.text, source: made.source, createdAt: new Date().toISOString(),
         model: made.model, usd: made.usd, tokens: made.tokens, warnings: made.warnings});
@@ -66,11 +63,10 @@ export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, stora
   ipcMain.handle('jobLetterAgain', async (_, which, feedback = '') => {
     const code = codeOf(which), record = jobLetter.load(storage, code), tailored = cvlib.load(storage, code);
     if (!record || !tailored) return {ok: false, error: 'Tailor the CV for this job first.'};
-    const {profile, answers} = await strategy.profileTexts(storage);
     const job = await pipeline.posting(storage, code);
     if (!job.ok) return {ok: false, error: job.error};
     const result = await makeFor({...record.job, description: job.description, location: job.location}, tailored.cv,
-      {profile, answers, feedback: String(feedback || 'Write it again, fresh.').slice(0, 1000), previous: record.text});
+      {feedback: String(feedback || 'Write it again, fresh.').slice(0, 1000), previous: record.text});
     return result.ok ? {ok: true, ...jobLetter.status(storage, code)} : result;
   });
   return {makeFor};

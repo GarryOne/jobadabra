@@ -84,6 +84,7 @@ on:
       - 'desktop/renderer/run-warnings.js'
       - 'desktop/renderer/store-name.js'
       - 'desktop/renderer/work-eligibility.js'
+      - 'desktop/renderer/writing-preferences-model.js'
       - 'desktop/scripts/extension-stamp.mjs'
       - 'extension/**'
       - 'worker/src/ai-prices.js'

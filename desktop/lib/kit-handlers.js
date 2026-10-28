@@ -96,8 +96,7 @@ export function registerKitHandlers(ctx) {
       if (edited) try { cvlib.savePages(storage, code, await pageImages(cvlib.pdfPath(storage, code), edited.inPlace.pages.length)); }
       catch (error) { appLog('cv', 'review pages not drawn', {code, error: error.message}); }
       // The job's cover letter with it (kit's or drafted from this CV); a failure leaves the CV standing and is said in the notification.
-      const {answers} = await strategy.profileTexts(storage);
-      const letter = await makeJobLetter({...job, code}, applied.cv, {profile, answers});
+      const letter = await makeJobLetter({...job, code}, applied.cv);
       cost += letter.usd || 0;
       // Notion too, on the job's Applications row (the PDF isn't only on this Mac); no row yet -> said below.
       // With the data on this Mac (lib/store) the PDF is kept here only, and nothing is said about Notion.

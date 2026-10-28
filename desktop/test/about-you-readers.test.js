@@ -26,9 +26,9 @@ test('every reader and part has a name; a cell is claimed only for a live reader
 });
 
 // Why (28 Oct 2026, Gitar on #2361): a reader joins LIVE in the PR that wires its step; this list is the one place that says which are wired, so the page cannot get ahead of
-// the app. Portrait is wired (lib/portrait.js reads aboutYou('portrait')), but gets only the parts aboutYou gathers: history and voice are still named as lacked.
-test('live readers: kit answers (D1b) and Your portrait; every other reader is built but not wired yet', () => {
-  assert.deepEqual(LIVE, ['kit', 'portrait', 'cv_tailor']);
+// the app. Portrait is wired (lib/portrait.js reads aboutYou('portrait')), but gets only the parts aboutYou gathers: history is still named as lacked.
+test('live readers: kit answers, Your portrait, CV tailoring and letters; every other reader is built but not wired yet', () => {
+  assert.deepEqual(LIVE, ['kit', 'portrait', 'cv_tailor', 'letter']);
   for (const key of LIVE) assert.ok(READERS[key], key);
   for (const key of Object.keys(PAGES)) assert.ok(key === 'form' || READERS[key], key);
 });

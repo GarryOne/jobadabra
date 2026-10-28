@@ -14,9 +14,10 @@ const withCv = storage => { fs.mkdirSync(path.join(storage.path('cv')), {recursi
 const client = (letter, seen = []) => ({messages: {create: async request => { seen.push(request); return {stop_reason: 'end_turn', usage: {input_tokens: 1000, output_tokens: 300},
   content: [{type: 'text', text: JSON.stringify({letter})}]}; }}});
 
-test('a generated letter is a draft, built from the CV, Profile and answers', async () => {
+test('a generated letter is a draft, built from the CV and the About you bundle', async () => {
   const storage = withCv(tempStorage()), seen = [];
-  const result = await letters.generate(storage, {client: client('Dear Hiring Team,\n\nI cut costs by 50%.', seen), profile: 'Prefers remote SRE roles', answers: 'Direct voice'});
+  const result = await letters.generate(storage, {client: client('Dear Hiring Team,\n\nI cut costs by 50%.', seen),
+    about: {parts: {strategy: [{label: 'Roles', value: 'Prefers remote SRE roles'}], voice: {preferences: ['Direct voice']}}, lacked: []}});
   assert.match(result.text, /50%/);
   assert.deepEqual([letters.status(storage).state, letters.status(storage).pdf], ['draft', false]);
   const prompt = seen[0].messages[0].content;

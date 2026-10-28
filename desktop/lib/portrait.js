@@ -32,7 +32,7 @@ export function countsOf(parts = {}) {
   const history = Array.isArray(parts.history) ? parts.history : [];
   const learned = Array.isArray(parts.learned) ? parts.learned : [];
   return {cv: !!parts.cv, learnings: learned.length, reviews: history.filter(each => kindOf(each) === 'interview_review').length,
-    outcomes: history.filter(each => kindOf(each) === 'outcome').length, written: learned.filter(each => kindOf(each) === 'text').length, voice: !!parts.voice};
+    outcomes: history.filter(each => kindOf(each) === 'outcome').length, written: learned.filter(each => kindOf(each) === 'text').length, voice: !!parts.voice?.example};
 }
 /** The sections whose minimum evidence the counts reach (countsOf), in page order; [] when none does. Pure. */
 export const qualifying = counts => SECTIONS.filter(section => section.need(counts));
@@ -45,7 +45,7 @@ export const progressOf = counts => [{label: 'Your CV', have: Number(counts.cv),
 export function evidenceOf(parts = {}) {
   const found = new Map();
   if (parts.cv) found.set('cv', {label: 'Your CV', tab: TAB.cv});
-  if (parts.voice) found.set('voice', {label: 'Your base letter', tab: TAB.voice});
+  if (parts.voice?.example) found.set('voice', {label: 'Your base letter', tab: TAB.voice});
   const label = {details: item => item.label, learned: item => item.question, strategy: item => item.label, history: item => item.title || item.company || item.kind || 'History'};
   for (const [part, name] of Object.entries(label)) {
     (Array.isArray(parts[part]) ? parts[part] : []).forEach((item, at) => found.set(`${part}:${at}`, {label: String(name(item) || part).slice(0, 80), tab: TAB[part]}));

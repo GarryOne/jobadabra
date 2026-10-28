@@ -78,8 +78,14 @@
     {
       "key": "letter",
       "label": "Letters",
-      "live": false,
-      "through": [],
+      "live": true,
+      "through": [
+        "details",
+        "cv",
+        "learned",
+        "strategy",
+        "voice"
+      ],
       "pages": [],
       "never": [
         "salary",
@@ -134,7 +140,8 @@
         "details",
         "cv",
         "learned",
-        "strategy"
+        "strategy",
+        "voice"
       ],
       "pages": [],
       "never": [

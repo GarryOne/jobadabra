@@ -63,3 +63,10 @@ test('every host call in the app is a closed door or on the reviewed list', () =
   assert.deepEqual([...unknown], [], 'a call that reaches the owner\'s computer needs a door in lib/e2e-host.js or an entry (with its reason) in REVIEWED');
   assert.ok(Object.keys(REVIEWED).length > 0);
 });
+
+test('a screenshot run (JOB_PILOTTO_SMOKE) is a test run too: its shell calls stay recorded, as lib/e2e-hidden.js did before #2363', async () => {
+  const {host, called} = fresh();
+  assert.ok(standInHost(host, {JOB_PILOTTO_SMOKE: '/tmp/a.png'}).includes('shell.openExternal'));
+  await host.shell.openExternal('https://example.com');
+  assert.deepEqual(called, []);
+});

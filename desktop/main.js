@@ -131,7 +131,7 @@ const LOOK_AROUND = !!DEMO_FOLDER;
 const DEMO = !!process.env.JOB_PILOTTO_DEMO || LOOK_AROUND;
 const {licenseState, allowanceBlock, allowanceGate, aiGate, aiCaps, watchAiCaps, readSites, scoreVisitJobs, healthOnce, getPlan} = createAppAllowance({DEMO, getLicense: () => license, log: line => log(line), getStorage: () => storage, getTelemetry: () => telemetry, toWindow});   // lib/app-allowance.js
 const JOBS_PAGE = 200;   // the Jobs list's first page; each "Show more" adds 500
-const HIDDEN = hideWindows({app, BrowserWindow, shell});   // an e2e run: windows never show or take focus (lib/e2e-hidden.js)
+const HIDDEN = hideWindows({app, BrowserWindow});   // an e2e run: windows never show or take focus (lib/e2e-hidden.js)
 pipeline.setDemo(DEMO);  // Python: only the jobs that read the demo folder
 // Always on also gives the repo the Google sign-in (kept in the Keychain by the Python side, not the app's store).
 github.setExtraSecrets(() => (DEMO ? {} : googleSecrets()));

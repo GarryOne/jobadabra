@@ -8,8 +8,7 @@ import {browserCommand} from '../lib/browser-launch.js';
 const fakes = () => {
   class BrowserWindow { show() { return 'shown'; } focus() { return 'focused'; } moveTop() { return 'top'; } }
   const app = {policy: 'regular', focus: () => 'stolen', setActivationPolicy(policy) { this.policy = policy; }};
-  const shell = {openPath: async () => 'opened', openExternal: async () => 'opened', showItemInFolder: () => 'opened'};
-  return {app, BrowserWindow, shell};
+  return {app, BrowserWindow};
 };
 
 test('hidden only in an e2e run that asks for it', () => {
@@ -21,8 +20,8 @@ test('hidden only in an e2e run that asks for it', () => {
 
 test('a screenshot run is hidden too: no Dock icon, no show, no focus', () => {
   assert.equal(hiddenRun({JOB_PILOTTO_SMOKE: '/tmp/a.png'}), true);
-  const {app, BrowserWindow, shell} = fakes();
-  assert.equal(hideWindows({app, BrowserWindow, shell, env: {JOB_PILOTTO_SMOKE: '/tmp/a.png'}, platform: 'darwin'}), true);
+  const {app, BrowserWindow} = fakes();
+  assert.equal(hideWindows({app, BrowserWindow, env: {JOB_PILOTTO_SMOKE: '/tmp/a.png'}, platform: 'darwin'}), true);
   assert.equal(new BrowserWindow().show(), undefined);
   assert.equal(new BrowserWindow().focus(), undefined);
   assert.equal(app.focus(), undefined);
@@ -36,22 +35,19 @@ test('every script that starts electron for a picture sets JOB_PILOTTO_SMOKE (so
   }
 });
 
-test('a hidden run never shows, focuses or opens anything', async () => {
-  const {app, BrowserWindow, shell} = fakes();
-  assert.equal(hideWindows({app, BrowserWindow, shell, env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_HIDDEN: '1'}, platform: 'darwin'}), true);
+test('a hidden run never shows or focuses anything', async () => {
+  const {app, BrowserWindow} = fakes();
+  assert.equal(hideWindows({app, BrowserWindow, env: {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_HIDDEN: '1'}, platform: 'darwin'}), true);
   const window = new BrowserWindow();
   assert.equal(window.show(), undefined);
   assert.equal(window.focus(), undefined);
   assert.equal(app.focus(), undefined);
   assert.equal(app.policy, 'accessory');
-  assert.equal(await shell.openPath('/tmp/cv.pdf'), '');
-  await shell.openExternal('https://example.com');
-  assert.deepEqual(globalThis.__e2eShell.map(call => call.name), ['openPath', 'openExternal']);
 });
 
 test('otherwise the app is left alone', () => {
-  const {app, BrowserWindow, shell} = fakes();
-  assert.equal(hideWindows({app, BrowserWindow, shell, env: {JOB_PILOTTO_E2E: '1'}, platform: 'darwin'}), false);
+  const {app, BrowserWindow} = fakes();
+  assert.equal(hideWindows({app, BrowserWindow, env: {JOB_PILOTTO_E2E: '1'}, platform: 'darwin'}), false);
   assert.equal(new BrowserWindow().show(), 'shown');
   assert.equal(app.policy, 'regular');
 });

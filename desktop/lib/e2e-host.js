@@ -1,4 +1,4 @@
-// E2E only: stands in for the Electron calls that reach the owner's own computer (a page in their default browser, a Finder window, their clipboard, their login items).
+// Test runs only (an e2e run, or a screenshot run): stands in for the Electron calls that reach the owner's own computer (a page in their default browser, a Finder window, their clipboard, their login items).
 // A test run never opens, writes or registers anything there; each call is recorded instead (globalThis.__jpHost, and host.log in the run's spool when there is one).
 // Why (#2362 / 28 Oct 2026, owner): a local interactions run put ch.indeed.com in the owner's Chrome three times. The PATH stand-in for `open` (e2e/lib/extension.mjs)
 // covers only the `open` that lib/browser-launch.js runs; shell.openExternal and the rest reach the OS through LaunchServices and never read PATH.
@@ -17,11 +17,11 @@ export const DOORS = [
 ];
 
 /**
- * Replaces each door on `host` ({shell, clipboard, app}) with a recorder, only when `env.JOB_PILOTTO_E2E` is set: an app a person runs is never touched.
+ * Replaces each door on `host` ({shell, clipboard, app}) with a recorder, only in a test run (`JOB_PILOTTO_E2E`, or `JOB_PILOTTO_SMOKE` for a screenshot): an app a person runs is never touched.
  * @param {{shell?: object, clipboard?: object, app?: object}} host  @param {NodeJS.ProcessEnv} env  @returns {string[]} the doors closed, as "shell.openExternal"
  */
 export function standInHost(host, env = process.env) {
-  if (!env.JOB_PILOTTO_E2E) return [];
+  if (!env.JOB_PILOTTO_E2E && !env.JOB_PILOTTO_SMOKE) return [];   // Why (#2367, Gitar on #2363): the three shell stand-ins lived in lib/e2e-hidden.js and covered hidden runs only; one list now, for every test run
   const log = globalThis.__jpHost = globalThis.__jpHost || [];
   const spool = env.JOB_PILOTTO_E2E_OPEN_DIR;
   const closed = [];

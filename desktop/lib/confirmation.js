@@ -9,7 +9,7 @@ export const MODEL = 'claude-haiku-5-5';
 const PRICE = {input: 0.1, output: 0.5}; // USD per million tokens, same haiku price as form learning
 
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['confirmation', 'bot_check'], properties: {
-  bot_check: {type: 'boolean', description: 'True when the page actually shows a CAPTCHA/human verification challenge; never guess from its host.'},   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  bot_check: {type: 'boolean', description: 'True when the page actually shows a CAPTCHA/human verification challenge; never guess from its host.'},   // words-ok: the question put to the AI, not a rule on page words
   confirmation: {type: 'boolean', description: 'True only when this page is the site acknowledging that the application was submitted.'},
 }};
 

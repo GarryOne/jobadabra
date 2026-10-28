@@ -19,13 +19,11 @@ one stopped. Nothing here applies to jobs; it only finds where jobs are posted.
 import argparse
 import json
 import os
-import re  # noqa: F401 -- retained public names; scout_run uses the scout dependency seam
 import sys
 import threading
 import time
 from collections import Counter
-from concurrent.futures import ALL_COMPLETED, FIRST_COMPLETED, ThreadPoolExecutor, wait  # noqa: F401 -- retained public names; scout_run uses the scout dependency seam
-from datetime import timedelta  # noqa: F401 -- retained public names; scout_run uses the scout dependency seam
+from concurrent.futures import ThreadPoolExecutor, wait  # noqa: F401 -- scout_run and tests reach scout.ThreadPoolExecutor / scout.wait
 from html import escape
 from pathlib import Path
 from . import budget_tape, read_methods, run_exit, contribute, employer_index, scout_carry, scout_need, scout_overrun, scout_queue, scout_role_search, run_log, scout_core, store, telegram, tgcard  # noqa: F401 -- retained public names; scout_run uses the scout dependency seam

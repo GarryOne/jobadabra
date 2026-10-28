@@ -32,8 +32,9 @@ class RankTest(unittest.TestCase):
     def test_a_ranked_job_costs_a_bounded_amount_of_work_whatever_its_posting_length(self):
         """CI, 18 Oct 2026: 20,000 postings took 17.5 s (feeds.plain on 4,000 characters each); a first search lists ~60,000.
         Why (28 Oct 2026, beta 40567101285, Build · Mac: 21.8 s against a 14x timing limit, "22x the baseline"; the 22 Oct baseline ratio still moved with a loaded runner): the guard counts the
-        function calls one ranked job makes, not seconds, so no runner's speed can change it (owner's rule B: no wall-clock assertion). Measured 28 Oct: 41 (ascii) and 52 (accented) calls a job
-        for 1,500 and for 5,400 characters alike (the TEXT cap); the 18 Oct per-character strip (feeds.plain) 3,243."""
+        function calls one ranked job makes, not seconds, so no runner's speed can change it (owner's rule B: no wall-clock assertion). Two halves of the 18 Oct regression, one guard each:
+        the count (measured 28 Oct: 41 ascii, 52 accented; the per-character strip feeds.plain 3,243) sees a Python-level per-character strip; the length of the text handed to plain() sees a
+        removed TEXT cap (a count cannot: one normalize call costs one call at any length; Gitar on #2393)."""
         def calls(posting, jobs=40):
             close, count = job_rank.ranker(SEARCH), [0]
             def tick(frame, event, arg):
@@ -49,7 +50,14 @@ class RankTest(unittest.TestCase):
         accented, plain = 'Développeur à Genève, java ' * 200, 'Lorem ipsum dolor sit amet, java ' * 200
         for posting in (accented, plain):
             self.assertLess(calls(posting), 120, f'{posting[:12]}: one ranked job makes too many calls: the per-job work is no longer bounded')
-        self.assertEqual(calls(accented), calls(accented[:1500]), 'a longer posting costs more: the TEXT cap no longer bounds the work')
+        def longest_scanned():   # the longest text one ranked job hands to plain(): the title and the first TEXT characters of the posting
+            seen, real = [], job_rank.plain
+            with mock.patch.object(job_rank, 'plain', lambda text: seen.append(len(text)) or real(text)):
+                job_rank.ranker(SEARCH)(job('Développeur', accented))
+            return max(seen)
+        self.assertLessEqual(longest_scanned(), len('Développeur\n') + job_rank.TEXT, 'the TEXT cap no longer bounds the text each job scans')
+        with mock.patch.object(job_rank, 'TEXT', 10 ** 9):   # positive control: a removed cap is seen by that check (5,400+ characters scanned)
+            self.assertGreater(longest_scanned(), len('Développeur\n') + 1500)
         with mock.patch.object(job_rank, 'plain', feeds.plain):   # positive control: the 18 Oct slow code is seen by this guard (62x here)
             self.assertGreater(calls(accented), 20 * calls(plain), 'the guard cannot tell the 18 Oct per-character strip from the one-pass one')
 

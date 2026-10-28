@@ -165,6 +165,12 @@ export function openSearchReport(runId) {
   return loadReports('searches');
 }
 
+// Opens Reports on Form fills with one fill's detail (What we learned's evidence chips, PR B2b).
+export async function openFormFill(id) {
+  (await import('./form-fills.js')).openFill(id);
+  return loadReports('fills');
+}
+
 export function init() {
   document.querySelectorAll('[data-reports-tab]').forEach(tab => tab.addEventListener('click', () => { state.tab = tab.dataset.reportsTab; draw(); }));
 }

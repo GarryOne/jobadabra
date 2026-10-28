@@ -278,6 +278,8 @@ export function registerApplyHandlers(ctx) {
     hidden: storage.settings().hiddenQuestions || [], notLearned: storage.settings().demoNotLearned || []}) : questionLists.openShown(storage))
     .then(({details, learned, letter = null, hidden, consent = 0, fromDetails = 0, notLearned = []}) => ({ok: true, details, learned, letter, hidden, consent, fromDetails, notLearned}),
       error => ({ok: false, error: error.message, details: [], learned: [], letter: null, hidden: [], notLearned: []})));
+  // Why (PR B2b): each form label's learning (lib/learnings.js wrote it in the verdict cache), for What we learned's evidence chips (renderer/learning-evidence.js).
+  ipcMain.handle('learnedLabels', () => Object.fromEntries(Object.entries(storage.settings().questionVerdicts || {}).filter(([, entry]) => entry?.learned).map(([key, entry]) => [key, entry.learned])));
   ipcMain.handle('jobQuestions', (_, url) => questionLists.jobQuestions(storage, url));
   ipcMain.handle('jobQuestionOnly', (_, question) => (DEMO ? {ok: true} : needsNotion('profile') || questionLists.onlyThisJob(storage, String(question || '')).catch(error => ({ok: false, error: error.message}))));
   // mark: the kind the window drew it with ({kind, options, list}), written with the first answer of a question that had none (lib/questions.js answer).

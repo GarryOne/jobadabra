@@ -97,6 +97,14 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
   // from the kept pages (lib/notion.js), or this Mac's files: only when a request needs them (getters), not on every poll.
   const text = name => openStore(storage).page(name).text();
   const kept = (name, id) => (!notionTexts ? text(name) : id ? notion.pageText(notionToken, id) : Promise.resolve(''));
+  // Strategy's minimum as the first salary to state (lib/learnings.js salarySeed): judged once per minimum and places, after a fill. -> learnings added.
+  const seedSalary = async () => {
+    const seed = learnings.salarySeed(await openStore(storage).page('profile').outline(), storage.settings().salarySeed || '');
+    if (!seed) return 0;
+    const done = await learnings.learn(storage, {answers: seed.answers, client: engineClient(storage), job: {place: seed.place}});
+    if (done?.judged.length) storage.saveSettings({salarySeed: seed.sig});
+    return done ? done.counts.added + done.counts.extended + done.counts.conflicts : 0;
+  };
   return {
     // With the data on this Mac: the job, its kit and the fill's record from the store (worker/src/extension.js env.store).
     ...(!notionTexts && notionGate.tracking(storage) ? {store: extensionStore(storage)} : {}),
@@ -169,7 +177,8 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       const learnt = await learnings.learn(storage, {answers: learnings.fromFill(run), client: engineClient(storage), owned: (await factsOf(storage).catch(() => [])).map(fact => fact.label),
         job: {company: job?.company || '', place: job?.location || ''}, propose: items => proposalReporter(items)}).catch(error => { console.error('Learnings:', error.message); return null; });
       if (learnt) verdicts.noteLearned(storage, learnt.evidence, {url: run.url, company: job?.company || ''});
-      const taught = learnt ? learnt.counts.added + learnt.counts.extended + learnt.counts.conflicts : 0;
+      const seeded = await seedSalary().catch(error => { console.error('Salary seed:', error.message); return 0; });
+      const taught = (learnt ? learnt.counts.added + learnt.counts.extended + learnt.counts.conflicts : 0) + seeded;
       if (added || taught) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
       if (taught) notify('Learned from this form', `${taught} answer${taught > 1 ? 's' : ''} from ${job?.company || 'a form'} kept for the next forms. Check them in Profile → What we learned.`, {view: 'settings', section: 'profile'}, 'good');
       if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'}, 'warn');

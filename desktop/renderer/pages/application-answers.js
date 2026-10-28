@@ -7,7 +7,7 @@
 // heading) is shown small, never as answers. Never the not-answered mark on screen (renderer/answers-model.js). Same on every store: block edits through
 // pages/outline-tab.js. Guarded by test/answers-layout.test.js and test/profile-tabs-render.test.js.
 import {remembered} from '../view-memory.js';
-import {el, pill, toggleOnBar} from '../components.js';
+import {chip as tag, el, pill, toggleOnBar} from '../components.js';
 import {icon} from '../icons.js';
 import {changeFor, kindChange, lineFor, matches, sections, shown} from '../answers-model.js';
 import {profileBar} from './profile-save-bar.js';
@@ -20,6 +20,7 @@ import {ASKS} from '../question-nav.js';
 import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
 import {input, labelled, select} from './form-controls.js';
+import {SHOWN, evidenceFor, shortDay} from '../learning-evidence.js';
 
 const TEXT = 'answers';
 const VIEWS = ['all', 'new', 'confirmed'];
@@ -32,6 +33,26 @@ document.addEventListener?.('questions-read', () => lastView?.redraw());
 const kinds = new Map();   // answer id → the kind the person picked ("Answer as"), written with the question
 
 const valueOf = item => drafts.get(item.id) ?? item.value;
+let evidence = new Map();   // learning question key -> the Form fills that taught it (renderer/learning-evidence.js), read once per load
+
+// Why (PR B2b, owner 28 Oct 2026: "Acme · 26 Oct", max 3 then +N, each opens that Form fill): a row's state pill, then the fills that taught it.
+function stateAndEvidence(state, question) {
+  const fills = evidence.get(keyOf(question)) || [];
+  if (!fills.length) return state;
+  const box = el('div', 'chip-row qa-evidence');
+  box.append(state, ...fills.slice(0, SHOWN).map(fill => {
+    const go = Object.assign(el('button', 'chip-button', [fill.company, shortDay(fill.day)].filter(Boolean).join(' · ')), {type: 'button', title: 'Open this form fill in Reports'});
+    go.addEventListener('click', event => { event.stopPropagation(); import('./form-fill-link.js').then(link => link.showFormFill(fill.id)); });   // Why (B2b, 28 Oct 2026): Reports binds the window when loaded; read on press, like openDrawer
+    return go;
+  }));
+  if (fills.length > SHOWN) box.append(tag(`+${fills.length - SHOWN}`, {title: fills.slice(SHOWN).map(fill => fill.company).join(', ')}));
+  return box;
+}
+async function readEvidence() {
+  const [fills, learned] = await Promise.all([window.pilot.formFills?.().catch(() => null), window.pilot.learnedLabels?.().catch(() => null)]);
+  evidence = evidenceFor(fills?.runs || [], learned || {});
+  lastView?.redraw();
+}
 const missing = item => item.open && !item.optional && !valueOf(item);
 
 // The kind a row is answered with: the person's pick, else its mark in the store, else what this Mac kept (a fill's reading, else the AI's one judgment).
@@ -177,7 +198,7 @@ function draw(view, into) {
     for (const each of fresh) {
       const sure = statusOf(each);
       box.append(...row(view, {key: `new:${each.key}`, title: titleOf(each.question), under: [each.company, each.details?.line, cutNote(each.question)].filter(Boolean).join(' · '),
-        value: '', needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), chip: each.details?.kind === 'conflict' ? pill('Two answers', 'warn') : pill('New', 'info'), action: sure.action, run: () => openDrawer(each.key)}));
+        value: '', needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), chip: stateAndEvidence(each.details?.kind === 'conflict' ? pill('Two answers', 'warn') : pill('New', 'info'), each.question), action: sure.action, run: () => openDrawer(each.key)}));
     }
   }
   if (filters.view !== 'new') {
@@ -188,7 +209,7 @@ function draw(view, into) {
       if (!items.length && !notes.length) continue;
       box.append(el('h5', 'qa-group', shown(section.title) || 'Answers'));
       if (notes.length) box.append(noteFold(notes));
-      for (const item of items) box.append(...answerRow(view, item, item.guess ? pill('Guessed', 'info') : pill('Confirmed', 'good')));   // a guess is not confirmed (spec: states)
+      for (const item of items) box.append(...answerRow(view, item, stateAndEvidence(item.guess ? pill('Guessed', 'info') : pill('Confirmed', 'good'), item.question)));   // a guess is not confirmed (spec: states)
     }
   }
   const shownRows = (filters.view !== 'confirmed' ? fresh.length : 0) + (filters.view !== 'new' ? confirmedCount : 0);
@@ -218,6 +239,7 @@ export async function loadApplicationAnswers() {
   const named = wanted;
   // Why (2026-10-27, owner; views All / New / Confirmed since 28 Oct 2026): refreshing data keeps the selected view; an explicit jump can change it.
   if (VIEWS.includes(named)) { filters.view = named; remembered('answersView', named); }
+  readEvidence().catch(() => {});   // the chips come when the fills are read (a Notion store takes a few seconds)
   await tab.load();
   if (named) { setTimeout(() => { if (wanted === named) wanted = null; }, 2000); node.querySelector('.segmented')?.scrollIntoView?.({block: 'nearest'}); }   // later loads of the same jump keep it
 }

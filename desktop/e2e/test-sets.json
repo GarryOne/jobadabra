@@ -199,7 +199,7 @@
   "proposals-to-use.test.mjs",
   "python-env.test.mjs",
   "quality-judge-input.test.mjs", "quality-rate.test.mjs",
-  "quality-rows.test.mjs",
+  "quality-rows.test.mjs", "quality-watches-prompts.test.mjs",
   "quality.test.mjs",
   "read-back-equivalence.test.mjs",
   "real-claude.test.mjs",

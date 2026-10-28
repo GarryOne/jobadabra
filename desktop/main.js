@@ -100,7 +100,7 @@ import {registerSetupHandlers} from './lib/setup-handlers.js';
 import {registerExtServerHandlers} from './lib/ext-server-handlers.js';
 import {registerBackgroundHandlers} from './lib/background-handlers.js';
 import {createAppNotify} from './lib/app-notify.js';
-import {watchSaves} from './lib/save-notice.js';
+import {retrySave, watchSaves} from './lib/save-notice.js';
 import {createAppUpdates} from './lib/app-updates.js'; import {createZoom} from './lib/zoom-handlers.js';
 import {createMainWindow} from './lib/main-window.js';
 import {createAppReminders} from './lib/app-reminders.js';
@@ -172,7 +172,7 @@ const dispatchCloud = (why, inputs, workflow) =>
   github.cloudDispatch(storage, log, {note: dispatchNote})(inputs, workflow, why);
 
 const {keepLook, printPdf, renderDocx, openTailoredCv, readCvPdf, pageImages} = createCvWindows({BrowserWindow, HIDDEN, clipboard, shell, getStorage: () => storage});   // lib/cv-windows.js
-watchSaves({ipcMain, app, dialog, toWindow});   // a private file Windows holds too long: pop-up with Retry, last try at quit (lib/save-notice.js)
+watchSaves({app, dialog, toWindow}); ipcMain.handle('retrySave', retrySave);   // a private file Windows holds too long: pop-up with Retry, last try at quit (lib/save-notice.js)
 const {notify, activity, announceRuns} = createAppNotify({DEMO, Notification, app, getStorage: () => storage, targets, toWindow, getWindow: () => window});   // lib/app-notify.js
 
 function handlers() {

@@ -16,12 +16,13 @@ export function quitMessage(files) {
 }
 
 /**
- * Starts the notice: a 'could not save' pop-up to the window (toWindow('toast', ...)), the 'retrySave' IPC (true when a waiting save was retried, false when none waits),
- * and at 'will-quit' a last try whose leftovers go into a native message box. Takes the Electron parts from main.js; returns nothing; a listener error never stops a save.
+ * Starts the notice: a 'could not save' pop-up to the window (toWindow('toast', ...)), and at 'will-quit' a last try whose leftovers go into a native message box. Takes the Electron parts from main.js; returns nothing; a listener error never stops a save.
  */
-export function watchSaves({ipcMain, app, dialog, toWindow}) {
+/** The 'retrySave' IPC (registered in main.js): true when a waiting save was retried, false when none waits for `file`. */
+export const retrySave = (_, file) => retryPrivate(String(file));
+
+export function watchSaves({app, dialog, toWindow}) {
   onChange(({file, state}) => { if (state !== 'failed') return; const toast = failedToast(file); toWindow('toast', toast); });
-  ipcMain.handle('retrySave', (_, file) => retryPrivate(String(file)));   // only a file that is waiting can be retried
   app.on('will-quit', () => {
     const left = flushPending();
     if (left.length) dialog.showMessageBoxSync({type: 'warning', message: 'Some changes were not saved', detail: quitMessage(left), buttons: ['OK']});

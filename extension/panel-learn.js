@@ -133,13 +133,13 @@
     submitNoted = Date.now();
     const answered = byYou(fields());
     // The fill's record (fill-card.js), so the digest knows this form was submitted and what you answered yourself.
-    const fillId = document.documentElement.dataset.jobpilottoFill || '';
+    const fillId = document.documentElement.dataset.jobpilottoFillId || '';
     if (answered.length || fillId) send({type: 'formLearning', url: location.href, byYou: answered, fillId, submitted: true, account: accountNow()}).catch(() => {});
     // Still here a moment later: the page refused the submit; what it flags is what was missed or wrong.
     setTimeout(() => {
       if (!alive()) return;
       const invalid = flagged();
-      if (invalid.length) send({type: 'formLearning', url: location.href, invalid, fillId: document.documentElement.dataset.jobpilottoFill || '', account: accountNow()}).catch(() => {});
+      if (invalid.length) send({type: 'formLearning', url: location.href, invalid, fillId: document.documentElement.dataset.jobpilottoFillId || '', account: accountNow()}).catch(() => {});
     }, 2500);
   };
   const noteSubmit = () => { noteLearned(); noteMissed(); send({type: 'submitted', url: location.href, snapshot: snapshot(), account: accountNow()}).catch(() => {}); };

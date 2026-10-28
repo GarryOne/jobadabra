@@ -86,6 +86,6 @@ test('the class: every fill starts through oneFillPerTab, and flow.js writes the
   assert.equal([...bg.matchAll(/fillOpenedTabNow\(/g)].length, 2, 'defined once, called once (inside oneFillPerTab)');
   assert.match(bg, /oneFillPerTab\(tab\.id, tab\.url, async \(\) => \{\s*fillsNow\.add\(tab\.id\);\s*try \{ return await fillOpenedTabNow/);
   const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
-  const writers = [...flow.matchAll(/dataset\.jobpilottoFill = id/g)].length;
-  assert.equal(writers, 1); assert.match(flow, /if \(stillOnPage\(tab\.url, [^\n]*dataset\.jobpilottoFill = id/);
+  const writers = [...flow.matchAll(/inPage\(tab\.id, markCardId,/g)].length;   // the id has its own attribute (fill-mark-own-page.test.js): the state attribute is never written here
+  assert.equal(writers, 1); assert.match(flow, /if \(stillOnPage\(tab\.url, [^\n]*inPage\(tab\.id, markCardId,/);
 });

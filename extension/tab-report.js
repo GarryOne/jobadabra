@@ -137,7 +137,7 @@ export function createTabReport(ctx) {
     for (const key of Object.keys(stored).filter(name => name.startsWith('armed:') && stored[name])) {
       const tab = await chrome.tabs.get(Number(key.slice(6))).catch(() => null);
       if (!tab || tab.status !== 'complete' || !/^https:/.test(tab.url || '') || neverForm(tab.url) || started.has(tab.id) || started.has(fillKey(tab.id, tab.url))) continue;
-      const [row] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => document.documentElement?.dataset.jobpilottoFill || ''}).catch(() => []);
+      const [row] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => document.documentElement?.dataset.jobpilottoFill || document.documentElement?.dataset.jobpilottoFillId || ''}).catch(() => []);
       if (!row || row.result) continue;   // unreadable, or it already has a state
       let host = '';
       try { host = new URL(tab.url).hostname; } catch { /* not a url */ }

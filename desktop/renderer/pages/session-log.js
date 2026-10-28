@@ -10,6 +10,7 @@ import {$, show} from './core.js';
 import {renderJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
 import {isSubmitted, pageLine, tabAddress} from '../session-state.js';
+import {backgroundStatus} from '../background-status.js';
 import {checkingTab, tabLost, formGone, formReady, redirecting, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
 import {nudgeMissingDetails} from './contact-proposals.js';
 import {sessionPanels} from '../sessions-cache.js';
@@ -43,7 +44,7 @@ function clearHeader() {
   $('ss-more').replaceChildren();
 }
 // A form session whose Chrome tab was closed is not "Form open" any more (the tab report says so within seconds).
-const stateOf = item => (checkingTab(item) ? ['Checking…', 'neutral'] : redirecting(item) ? [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'] : waitingChrome(item) ? ['Waiting for Chrome…', 'neutral'] : silentChrome(item) ? ['Chrome not reporting', 'warn'] : tabLost(item) ? ['Tab not found', 'warn'] : formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
+const stateOf = item => (backgroundStatus(item) ? backgroundStatus(item) : checkingTab(item) ? ['Checking…', 'neutral'] : redirecting(item) ? [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'] : waitingChrome(item) ? ['Waiting for Chrome…', 'neutral'] : silentChrome(item) ? ['Chrome not reporting', 'warn'] : tabLost(item) ? ['Tab not found', 'warn'] : formGone(item) ? ['Form closed', 'neutral'] : sessionState(item));
 export function renderSessionPage() {
   // The session shown is the open one; after a reload (⌘R) the one open before it, else the first. It becomes the
   // open session, so the log, replies and buttons act on the session you see (with none set, the log stayed empty).

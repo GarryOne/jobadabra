@@ -1,6 +1,7 @@
 // A session's state as the window shows it, from what the app reports (lib/terminals.js publicView) and Claude's
 // last message. No window needed: tested in desktop/test/session-state.test.js.
 import {READY_LINE, readSessionMessage} from './session-message.js';
+import {backgroundStatus} from './background-status.js';
 
 export const SESSION_STATE = {running: ['Applying', 'info'], input: ['Question for you', 'warn'], done: ['Ready for review', 'warn'],
   ended: ['Ended', 'neutral'], failed: ['Stopped', 'bad'], submit: ['Ready to submit', 'good'], submitted: ['Submitted', 'good']};
@@ -58,9 +59,9 @@ export const sessionState = (item, formReady = false) => (item?.outcome === 'sub
 // The dock's two pills and its card order, from the same state the sessions list shows: a form whose Chrome tab was closed
 // (`gone`) is neither active nor waiting, and sorts last, so an open form is never hidden behind closed ones (2 Oct 2026:
 // the dock said "Form open" for two closed forms and left out the one that was open).
-const WORKING = ['Applying', 'Form open', 'Ready to submit'];
+const WORKING = ['Applying', 'Form open', 'Ready to submit', 'Filling', 'Submitting soon', 'Submitting…'];   // a queued hidden-browser job ("Queued") only waits: not active
 export const dockCounts = (items, gone = () => false) => ({
-  active: items.filter(item => !gone(item) && WORKING.includes(sessionState(item)[0])).length,
+  active: items.filter(item => !gone(item) && WORKING.includes((backgroundStatus(item) || sessionState(item))[0])).length,
   waiting: items.filter(item => !gone(item) && item.status === 'input').length,
 });
 // Applying in the menu: the number is every card the Applying list shows, whatever its state (owner, 8 Oct 2026: it said 2
@@ -127,7 +128,7 @@ export function sessionStage(item, ready = false) {
 // tab of a Claude session that is no longer running (a running one may not have opened its tab yet). Owner, 8 Oct 2026: after
 // closing every tab, a Claude session stuck on a sign-up page still showed its question as if the tab were there.
 export function tabClosed(item, formsOpen, seen = false, now = Date.now()) {
-  if (!item || !formsOpen?.known || formsOpen.ids.includes(item.id) || isSubmitted(item) || item.outcome) return false;
+  if (!item || item.background || !formsOpen?.known || formsOpen.ids.includes(item.id) || isSubmitted(item) || item.outcome) return false;   // a hidden-browser session has no Chrome tab to lose (renderer/background-status.js)
   if (formsOpen.unsure?.includes(item.id)) return false;   // no tab known for it and none that looks like it: not known, never "closed"
   if (seen) return true;
   if (item.kind === 'form') return now - (Date.parse(item.startedAt || '') || now) > 60 * 1000;

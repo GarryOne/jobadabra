@@ -19,6 +19,17 @@ test('no injector lists review.js alone: each one spreads PANEL_FILES (or names 
   assert.match(read('extension/background.js'), /files: \[[^\]]*\.\.\.PANEL_FILES[^\]]*\]/, 'the worker injects the whole list');
 });
 
+// Why (#2429, Gitar): review.js called the new __jobPilottoPanelView unconditionally but its guard did not name it, so a partial
+// injection after a reload removed the panel and threw instead of drawing nothing.
+test('review.js guards every panel helper it calls without ?. so a partial injection draws nothing instead of throwing', () => {
+  const review = read('extension/review.js');
+  const guarded = JSON.parse(review.match(/\|\| (\[[^\]]*\])\.some\(name => !window\['__jobPilotto' \+ name\]/)[1].replaceAll("'", '"'));
+  const defined = PANEL_FILES.filter((file) => file !== 'review.js').flatMap((file) => [...read(`extension/${file}`).matchAll(/window\.__jobPilotto(\w+) *=[^=]/g)].map((m) => m[1]));
+  const optional = (name) => [...review.matchAll(new RegExp(`window\\.__jobPilotto${name}\\b(\\?\\.|\\))?`, 'g'))].every((m) => m[1] || review.includes(`if (window.__jobPilotto${name})`));
+  const unguarded = defined.filter((name) => review.includes(`__jobPilotto${name}`) && !guarded.includes(name) && !optional(name));
+  assert.deepEqual(unguarded, [], 'add these to the helper-script guard at the top of extension/review.js');
+});
+
 test('a panel part the worker injects is never loaded by another page script list', () => {
   for (const name of PANEL_FILES.filter((file) => file !== 'review.js')) assert.ok(!read('extension/page-files.js').includes(name), `${name} is a panel script, not a page script`);
 });

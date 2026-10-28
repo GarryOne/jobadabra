@@ -142,6 +142,8 @@ FORMS.submitter = {
   title: 'Platform Engineer (Submit test)', company: 'E2E Submit Co', host: 'e2e.recruitee.com', path: '/o/submit-form',
   kit: [{field: 'question_4001', question: 'Years of experience with Linux', answer: '9', needs_review: false}],
   legal: [], submits: true,
+  // Why (2026-10-28, Full automation e2e): the same form at a second path with only the person's details and CV, so every field is a saved fact (a kit answer is never one, extension/flow.js `source: 'kit'`).
+  autoPath: '/o/auto-submit-form',
 };
 // REAL forms (5 Oct 2026): the shapes of forms the extension failed on for a real person, rebuilt from the fill log by tools/fixture-from-fills.py (field
 // labels and kinds only, never a value: public form wording). Each is a job with no kit answers: the extension fills the person's details and must list every
@@ -337,9 +339,9 @@ const PAGES = {
   ${wd('input-7', 'questionnaire_aws', form.kit[0].question)}${wd('input-9', 'questionnaire_notice', form.kit[1].question, {tag: 'textarea'})}
   <div class="field"><button type="submit" id="submit_app" data-automation-id="bottom-navigation-next-button">Submit</button></div></form></div>`);
   },
-  submitter: (form, done = false) => page(form, `${done ? '<p id="done" style="padding:8px;background:#e6f4ea">Your application has been successfully submitted. Thank you, we have received your application.</p>' : ''}<form id="application_form" method="post" action="${form.path}">
+  submitter: (form, done = false, bare = false) => page(form, `${done ? '<p id="done" style="padding:8px;background:#e6f4ea">Your application has been successfully submitted. Thank you, we have received your application.</p>' : ''}<form id="application_form" method="post" action="${bare ? form.autoPath : form.path}">
   ${field('first_name', 'First name', {required: true})}${field('last_name', 'Last name', {required: true})}${field('email', 'Email', {type: 'email', required: true})}${resume}
-  ${field('question_4001', 'Years of experience with Linux', {required: true})}${submit}</form>`, '', {realSubmit: true}),
+  ${bare ? '' : field('question_4001', 'Years of experience with Linux', {required: true})}${submit}</form>`, '', {realSubmit: true}),
   // A required control the form reader has no operator for: a custom slider (a div with role=slider).
   unknown: form => page(form, `<form id="application_form">
   ${field('first_name', 'First Name', {required: true})}${field('last_name', 'Last Name', {required: true})}${field('email', 'Email', {type: 'email', required: true})}${resume}
@@ -412,14 +414,15 @@ export async function startForms({vary = null} = {}) {
       return;
     }
     if (host === SIGNUP.accountHost && signup === SIGNUP.formPath) { res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); res.end(SIGNUP_PAGES.form()); return; }
-    if (req.method === 'POST' && host === FORMS.submitter.host && url.pathname === FORMS.submitter.path) {
+    const bare = host === FORMS.submitter.host && url.pathname === FORMS.submitter.autoPath;   // the details-only variant of the submitter
+    if (req.method === 'POST' && host === FORMS.submitter.host && (url.pathname === FORMS.submitter.path || bare)) {
       posts.push({host, path: url.pathname});
       req.resume();
-      req.on('end', () => { res.writeHead(303, {location: `${FORMS.submitter.path}?sent=1`}).end(); });   // post, redirect, get: the way most sites answer a form
+      req.on('end', () => { res.writeHead(303, {location: `${url.pathname}?sent=1`}).end(); });   // post, redirect, get: the way most sites answer a form
       return;
     }
-    if (host === FORMS.submitter.host && url.pathname === FORMS.submitter.path && url.searchParams.get('sent')) {
-      res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); res.end(PAGES.submitter(FORMS.submitter, true));
+    if (host === FORMS.submitter.host && (url.pathname === FORMS.submitter.path || bare) && (url.searchParams.get('sent') || bare)) {
+      res.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); res.end(PAGES.submitter(FORMS.submitter, !!url.searchParams.get('sent'), bare));
       return;
     }
     const chain = host === CHAIN.host && url.pathname.replace(/(.)\/$/, '$1') === CHAIN.path ? 'posting' : host === CHAIN.stepHost && url.pathname.replace(/(.)\/$/, '$1') === CHAIN.stepPath ? 'step'

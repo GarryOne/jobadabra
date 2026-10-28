@@ -6,12 +6,15 @@
 // runner: the batch runner the main process starts for the mode (lib/apply-handlers.js); a mode with none is not built. Why (28 Oct 2026, owner, #2317
 // rework): a mode not built is drawn disabled with "Coming soon" and can never be the saved mode, so no screen offers a choice that does nothing.
 // The PR that ships a mode's runner names it here.
+// Why (2026-10-28, owner: "Yes, go" to the fake-endpoint e2e green on CI before the switch): Full automation has a runner only in a test run that asks for it (the main process
+// under JOB_PILOTTO_E2E + JOB_PILOTTO_E2E_FULL_AUTOMATION=1, the same pair lib/background-apply-controller.js reads); the window has no `process`, so no screen offers it. The switch PR makes this 'background'.
+const FULL_AUTOMATION_RUNNER = typeof process !== 'undefined' && process.env?.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_FULL_AUTOMATION === '1' ? 'background' : '';
 export const MODES = Object.freeze([
   {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], runner: 'chrome',
     text: 'Fills in a visible browser; you review and submit.'},
   {id: 'fill', icon: 'layers', title: 'Background automation', runner: 'background',
     text: 'Fills in a hidden browser; you review and submit when ready.'},
-  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'],
+  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'], runner: FULL_AUTOMATION_RUNNER,
     text: 'Fills and submits in a hidden browser when your checks pass.'},
 ]);
 export const MODE_IDS = MODES.map(mode => mode.id);

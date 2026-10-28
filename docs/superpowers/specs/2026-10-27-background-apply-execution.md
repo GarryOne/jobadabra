@@ -98,9 +98,9 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] Settings → Apply checks wired to the one-shot reservation (no required empty, saved facts, fit 80+, 20 a day, 1 per employer). (proof: desktop/test/background-apply-store.test.js @a231206)
 - [x] Wait before the automatic press (default 2 minutes, the person's to change) with Stop, shown on the Applying card. (proof: desktop/test/live-countdown.test.js @8f27e3e)
 - [x] `bot_check` in form-judge with a ladder fixture (owner's yes on its measured cost, 28 Oct 2026: same call, +329 characters, no extra call; form_ready 6/6 on the plan path; the automatic press reserves only on an explicit "no bot check"): the last check before an automatic press. Moved from B (28 Oct 2026): in B a bot check is already handed to the person where the page is read (`fill-flow.js` 300: the account judge, 436: rung 2's page kind, incl. a robot check among the form's own fields), and a challenge raised by Submit shows in the person's own live view. (proof: desktop/test/form-judge.test.js)
-- [ ] The automatic Submit press in the hidden browser, one attempt, never retried.
+- [x] The automatic Submit press in the hidden browser, one attempt, never retried. Behind a test-only switch until the switch PR. (proof: desktop/e2e/lib/background-auto-proof.mjs)
 - [ ] Applied only from a receipt the confirmation judge reads; anything else goes to the person.
-- [ ] End-to-end proof against a fake local submit endpoint (never a real site).
+- [x] End-to-end proof against a fake local submit endpoint (never a real site). One POST on the happy path, none after Stop; the failed-check, restart and page-change rows are still to add. (proof: desktop/e2e/lib/background-auto-proof.mjs)
 - [ ] README and privacy wording change from "never submits".
 - [ ] Each submitted job's answers and receipt reach the store for the What-we-learned recap.
 - [ ] `auto` gets its runner, after the recap screen exists; PR C green and Gitar approved.

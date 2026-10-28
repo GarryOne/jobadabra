@@ -6,8 +6,6 @@ import {api, settings} from './flow.js';
 import {isStopped, stopGeneration} from './stop-state.js';
 import {submissionPage} from './background-submit.js';
 import {formNext, forgetJudged} from './form-ready.js';
-import {sketchOf} from './judge-sketch.js';
-import {onTop} from './on-top.js';
 
 let runner = null, watcher = () => {}, polling = false;
 const owned = () => (runner ||= createBackgroundSession({chrome, parseMark}));
@@ -77,7 +75,7 @@ export async function pollBackgroundApply(config) {
   } finally { polling = false; }
 }
 /** Accept the current server judgment, inspect the real form, then consume at most one persisted Full automation permit. */
-export async function backgroundFormReady(tab, frameId, answer, sig) {
+export async function backgroundFormReady(tab, frameId, answer) {
   const context = await backgroundContext(tab.id);
   if (!context) return false;
   const row = await owned().inspect(context.session);
@@ -94,12 +92,12 @@ export async function backgroundFormReady(tab, frameId, answer, sig) {
   if (!permit.submit) { if (permit.review) await owned().patch(context.session, {reviewReady: true}); return true; }
   // Persist locally before the click too: a worker restart/lost reply can never consume this permit a second time.
   await owned().patch(context.session, {attempt: permit.attempt});
-  const live = await chrome.tabs.get(tab.id).catch(() => null), current = await sketchOf(tab.id, frameId, 'MAIN');
-  if (current) current.onTop = await script(tab.id, frameId, onTop).catch(() => null) || null;
-  const fresh = current && JSON.stringify([current.controls, current.buttons, current.texts, current.frames, current.onTop]);
-  if (!live || pageKey(live.url) !== pageKey(tab.url) || fresh !== sig || isStopped() || stopGeneration() !== generation || (await owned().inspect(context.session))?.manualRequired === true) {
-    await backgroundChallenge(tab.id, 'page_changed_or_stopped'); return true;
-  }
+  // Why (2026-10-28, owner chose "compare what the click depends on" after the Full automation e2e: the AI sketch's field labels and required marks drift after a fill, and refused every press): the page must still
+  // be the tab's own address and nobody asked to stop; the press itself (background-submit.js) then re-checks the value seal, the visible enabled Submit on top, the required fields and Stop. The sketch is no longer compared.
+  const live = await chrome.tabs.get(tab.id).catch(() => null);
+  const refusal = !live ? 'page_unavailable' : isStopped() || stopGeneration() !== generation ? 'stopped' : pageKey(live.url) !== pageKey(tab.url) ? 'page_moved'
+    : (await owned().inspect(context.session))?.manualRequired === true ? 'needs_user' : '';
+  if (refusal) { await backgroundChallenge(tab.id, refusal); return true; }
   const at = Date.now();
   await chrome.storage.session.set({[`submit:${tab.id}`]: {at, url: pageKey(tab.url), fingerprint: pageFingerprint(inspected.snapshot), calls: 0, automation: true, attempt: permit.attempt}});
   const pressed = await script(tab.id, frameId, submissionPage, ['press', {control: permit.control, seal: inspected.seal}]).catch(() => null);

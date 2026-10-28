@@ -88,7 +88,7 @@ async function askForm(tab, frameId, again = false) {
     if (handedToPerson(answer)) endSilence(tab.id);   // handed to the person: Submit or their choice is next (ladder/silence.js)
     await run(tab, frameId, flagAccount, [answer.answer === 'blocked' ? blockedWords(answer.blockedKind) : answer.answer === 'needs_person' ? answer.needs || '' : null]);
     if (answer.answer === 'blocked') decide('fill', `the page is blocked after the fill: ${answer.blockedKind || 'overlay'}`, {host});   // the fill log and the smoke verdict read this line
-    if (await backgroundFormReady(tab, frameId, answer, sig)) return;
+    if (await backgroundFormReady(tab, frameId, answer)) return;
     // The site's own error about what was entered, on a phone number: it is typed again in another writing the AI names from the error text (format-retry.js, at most twice), then the page is judged anew.
     if (answer.answer === 'blocked' && answer.blockedKind === 'error' && await retryRefusedFormats(tab, frameId, config)) { setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, again).catch(() => {}); }, 2500); return; }
     if (answer.answer === 'blocked' && !again) setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, true).catch(() => {}); }, timing.recheckMs);

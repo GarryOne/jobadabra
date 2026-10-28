@@ -5,7 +5,7 @@
 import {el, pill} from './components.js';
 import {shortLabel, valueAndNote} from './survey-rows.js';
 import {splitPermit} from './question-values.js';
-import {NATIONALITY, STATUS_NAMES, ZONES, eligibilityOf, isRowName, zoneOfLabel} from './work-eligibility.js';
+import {NATIONALITY, STATUS_NAMES, ZONES, eligibilityOf, isOldAsked, isRowName, zoneOfLabel} from './work-eligibility.js';
 
 export const SHOWN = 4;   // lines before "Show all N"
 const VALUE_MAX = 48;
@@ -75,7 +75,7 @@ export function languagesView(lines, chipLine) {
 export function eligibilityView(lines, chipLine) {
   const detail = value => STATUS_NAMES[splitPermit(value).status] || shortValue(value);
   const {nationality, rows} = eligibilityOf(lines);
-  const rest = lines.filter(line => line.label !== NATIONALITY && !(line.kind === 'per_country' && zoneOfLabel(line.label)) && String(line.value ?? '').trim());
+  const rest = lines.filter(line => line.label !== NATIONALITY && !(line.kind === 'per_country' && zoneOfLabel(line.label)) && String(line.value ?? '').trim() && !isOldAsked(line));
   const zoneChip = zone => {
     const row = rows.find(each => zoneOfLabel(each.label) === zone);
     if (!row) return {text: zone.label, detail: 'Not set', tone: 'warn'};
@@ -88,7 +88,7 @@ export function eligibilityView(lines, chipLine) {
   if (rest.length) box.append(summaryView(rest));
   const earlier = lines.some(line => line.earlier);
   if (earlier) box.append(el('p', 'muted small', 'Filled from your earlier answers: check them, then Save. The older lines are folded in, with Undo.'));
-  return {node: box, check: lines.filter(line => line.check || line.earlier || (line.kind === 'per_country' && line.label && !isRowName(line.label))).length};
+  return {node: box, check: lines.filter(line => line.check || line.earlier || (line.kind === 'per_country' && line.label && !isRowName(line.label) && !isOldAsked(line))).length};
 }
 
 // The one count of lines to check, in the card's title: "2 to check" (a pill), none when nothing is unclear.

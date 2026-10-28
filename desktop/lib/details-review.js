@@ -21,7 +21,7 @@ import * as contactReview from './contact-review.js';
 import * as contactDetails from './contact.js';
 import * as cvQueue from './cv-queue.js';
 import {folded} from './eligibility-older.js';
-import {eligibilityOf, zoneOfLabel} from '../renderer/work-eligibility.js';
+import {eligibilityOf, isOldLine, zoneOfLabel} from '../renderer/work-eligibility.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import {log} from './log.js';
 import {organize} from './profile-routing.js';
@@ -106,7 +106,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   };
   for (const [home, lines] of Object.entries(found)) {
     for (const line of lines) {
-      if (home === 'eligibility' && (folded(storage, line) || (asked(line.value) && zoneWaits(line)))) continue;   // an older eligibility line the zones answer: folded into them on Save, never asked (#2322)
+      if (home === 'eligibility' && (folded(storage, line) || (asked(line.value) && (isOldLine(line) || zoneWaits(line))))) continue;   // an older eligibility line the zones answer: folded into them on Save, never asked (#2322)
       const format = formatFor({marked: line.kind ? {kind: line.kind} : null, kept: kept[keyOf(line.label)]});
       if (asked(line.value)) out.push(item('open', {home, label: line.label}, {question: line.label, format, hint: hintOf(line.value), details: {where: HOME_NAMES[home], fact: line.label}}));
       else if (needsCheck(format.kind, line.value)) out.push(item('check', {home, label: line.label, kind: format.kind}, {question: `${line.label}: make it exact`, format, value: line.value, details: {where: HOME_NAMES[home], fact: line.label}}));

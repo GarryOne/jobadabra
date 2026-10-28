@@ -33,6 +33,10 @@ export const isAnswered = value => Boolean(String(value ?? '').trim()) && !isAsk
 export const zoneOfLabel = label => ZONES.find(zone => zone.label.toLowerCase() === String(label ?? '').trim().toLowerCase()) || null;
 /** A row's own name: one of the zones (a country line saved before #2322 is an older line, read once and folded on Save). */
 export const isRowName = label => Boolean(zoneOfLabel(label));
+/** An older Work eligibility line: neither Nationality nor a zone row. Why (28 Oct 2026, owner: "let's remove these 3 fields"): Nationality and the zones answer it, so it is never asked. */
+export const isOldLine = line => Boolean(line?.label) && line.label !== NATIONALITY && !isRowName(line.label);
+/** An older line still asked ("❓"): no answer to show or to ask; every screen that draws Work eligibility leaves it out (the store keeps it until Save folds it). */
+export const isOldAsked = line => isOldLine(line) && isAsked(line.value);
 
 // What a row's status settles: the right to work, and whether sponsorship is needed (derived, owner 28 Oct 2026: "freely → No; permit → No; No → Yes").
 // row: {status} (lib: splitPermit); asks: 'work_right' | 'sponsorship' -> 'Yes' | 'No' | ''.

@@ -7,7 +7,7 @@ import {install} from './tiny-dom.js';
 
 install();
 const read = file => fs.readFileSync(new URL(`../renderer/${file}`, import.meta.url), 'utf8');
-const {SHOWN, shortValue, summaryLines, summaryView, checkBadge, checkCount} = await import('../renderer/fact-summary.js');
+const {SHOWN, shortValue, summaryLines, summaryView, eligibilityView, checkBadge, checkCount} = await import('../renderer/fact-summary.js');
 
 const SPONSOR = 'No, I will require visa sponsorship';
 const MANY = [{label: 'Nationality', value: 'British'}, {label: 'Switzerland', value: 'allowed, B permit', check: true},
@@ -67,4 +67,13 @@ test('class: the fact editors and the survey editor are one aligned grid with a 
   assert.match(read('card-shell.css'), /\.card-done-slot:not\(:empty\) \{[^}]*border-top/);
   const survey = read('survey-rows.js');
   assert.match(survey, /\+ Add another note/, 'one Notes for the AI box, never an empty twin');
+});
+
+// Why (28 Oct 2026, owner: "let's remove these 3 fields"): neither the read view nor the editor draws an old line still asked; the editor's filter is asserted from source.
+test('the 3 old ❓ eligibility lines are drawn on no Work eligibility screen', () => {
+  const OLD = ['Work permit / visa', 'Authorised to work in Iasi, Romania?', 'Remote from your base for a foreign employer?'].map(label => ({label, value: '❓ your citizenship and status'}));
+  const view = eligibilityView([{label: 'Nationality', value: 'Romania'}, ...OLD], lines => lines.map(line => line.text).join(' '));
+  assert.doesNotMatch(view.node.textContent,/Work permit|Iasi|Remote from/);
+  assert.equal(view.check, 0);
+  assert.match(read('pages/details-facts.js'), /!rows\.includes\(line\) && !isOldAsked\(line\)/, 'the editor leaves them out too');
 });

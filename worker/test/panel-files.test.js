@@ -20,7 +20,7 @@ test('no injector lists review.js alone: each one spreads PANEL_FILES (or names 
 });
 
 // Why (#2429, Gitar): review.js called the new __jobPilottoPanelView unconditionally but its guard did not name it, so a partial
-// injection after a reload removed the panel and threw instead of drawing nothing.
+// injection after a reload removed the panel and blanked it silently (mount() runs under .catch(() => {})) instead of naming the helper.
 test('review.js guards every panel helper it calls without ?. so a partial injection draws nothing instead of throwing', () => {
   const review = read('extension/review.js');
   const guarded = JSON.parse(review.match(/\|\| (\[[^\]]*\])\.some\(name => !window\['__jobPilotto' \+ name\]/)[1].replaceAll("'", '"'));

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {test} from 'node:test';
-import {loadJsdom, openPage} from '../../worker/test/helpers/page.js';
+import {loadJsdom, openPage} from './helpers/page.js';
 import {PANEL_FILES} from '../../extension/panel-files.js';
 
 const JSDOM = await loadJsdom();

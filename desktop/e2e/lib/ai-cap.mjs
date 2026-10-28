@@ -40,6 +40,10 @@ export async function capReached({env = process.env, fetchImpl = fetch, now = Da
   return neurons == null ? {capped: true, neurons: null, unreadable: true} : {capped: neurons >= capOf(env), neurons};
 }
 
+// True on a run that gates a release or is the night's full run (E2E_RUN_KIND=gate: the beta and the release gates in desktop.yml, e2e.yml, e2e-windows.yml; E2E_FULL=1: the paid judge steps):
+// there a capped step FAILS, so a release never approves with AI steps unrun. A PR run is neither: its capped steps are skipped (Gitar on #2375: E2E_FULL alone missed the Windows beta).
+export const releaseGate = (env = process.env) => env.E2E_RUN_KIND === 'gate' || env.E2E_FULL === '1';
+
 // The caps this process has hit and the steps it skipped for them: one list, written to ai-capped.json (the beta and release gates read it as "not run").
 let fired = null;
 const skipped = [];

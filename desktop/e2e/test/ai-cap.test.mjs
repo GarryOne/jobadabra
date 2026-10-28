@@ -75,11 +75,14 @@ test('a step the cap refused is skipped with its cause, counted, and the suite g
     assert.match(runner.results[0].note, /^ai-capped:/);
     assert.deepEqual(ran, ['next']);
     assert.equal(runner.summary(), 0, 'skipped is neither passed nor failed');
-    process.env.E2E_FULL = '1';
-    const full = createRunner(() => null, {keepGoing: true});
-    await full.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
-    assert.equal(full.results[0].status, 'failed', 'a release never approves with its AI steps unrun');
-    assert.equal(full.summary(), 1);
+    for (const gate of [{E2E_FULL: '1'}, {E2E_RUN_KIND: 'gate', E2E_FULL: ''}]) {   // the night's full run, and a release gate (the Windows beta sets E2E_FULL empty)
+      Object.assign(process.env, gate);
+      const full = createRunner(() => null, {keepGoing: true});
+      await full.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
+      assert.equal(full.results[0].status, 'failed', `a release never approves with its AI steps unrun (${JSON.stringify(gate)})`);
+      assert.equal(full.summary(), 1);
+      delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND;
+    }
     await runner.run('plain failure', async () => { throw new Error('boom'); }).then(() => assert.fail('a failure with no cap behind it is still red'), error => assert.equal(error.message, 'boom'));
-  } finally { console.log = quiet; delete process.env.E2E_FULL; }
+  } finally { console.log = quiet; delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND; }
 });

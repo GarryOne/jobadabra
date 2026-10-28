@@ -47,6 +47,7 @@ export function offerBrowser(box, offer) {
   box.dataset.browserProgress = offer ? 'offer' : 'quiet';
   showBrowserProgress();
 }
+/** Listen for main's download events and draw the current state once at start-up; a failed state read leaves the spots quiet (the caller catches). */
 export async function startBrowserProgress() {
   window.pilot.onBackgroundBrowserProgress(showBrowserProgress);
   showBrowserProgress(await window.pilot.backgroundBrowserState());

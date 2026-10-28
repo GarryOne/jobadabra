@@ -24,7 +24,7 @@ const FACTS_MS = 500;
 // What the viewer draws over the picture, read from the page's structure only (never judged here): how many fields, how many hold a value, the required
 // ones still empty (each a box as a share of the viewport, so any picture size maps it) and the field being typed in. A radio group is one field.
 // Why (28 Oct 2026, owner's live view design): the app's Submit stays off while a required field is empty; this is that floor, ANDed with the form judge's ready.
-// TODO(AI): fields inside a frame are not counted; the form judge's ready still gates Submit there (28 Oct 2026, PR B).
+// TODO(AI): count the fields inside a frame too; until then the form judge's ready still gates Submit there (2026-10-28)
 const PAGE_FACTS = `(() => {
   const shown = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
   const all = [...document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]),select,textarea')].filter(e => !e.disabled && shown(e));

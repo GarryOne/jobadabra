@@ -132,7 +132,7 @@ async function loadFocusOnce() {
   $('focus-refresh').disabled = true;
   focusStatus('Syncing your jobs…', true);
   const setting = await window.pilot.dailyTarget();
-  $('focus-target').value = setting.target;
+  showTarget(setting.target);
   $('focus-remind').checked = setting.reminders;
   $('focus-of').textContent = `/ ${setting.target} applications today`;
   if (!focusShown) {  // the last good Focus at once (lib/view-cache.js), else the skeleton; the fresh one follows
@@ -325,7 +325,7 @@ function renderFocus(data) {
   const pct = Math.min(100, Math.round(100 * today.applied / Math.max(today.target, 1)));
   $('focus-count').textContent = String(today.applied);
   $('focus-of').textContent = `/ ${today.target} applications today`;
-  $('focus-target').value = today.target;
+  showTarget(today.target);
   $('focus-bar').style.width = `${pct}%`;
   progressChart(today.history || [], today.target);
   $('focus-pct').textContent = `${pct}%`;
@@ -366,6 +366,11 @@ function renderFunnel(funnel) {
   full.dataset.notionLabel ||= full.textContent;
   full.textContent = funnel.notion_url ? full.dataset.notionLabel : 'Open in Reports';
   show(full, true);
+}
+// The target box shows the saved target, except while it is being typed in: Focus drawn again then (a Gmail check ending, a late load)
+// put the old number back and Tab saved nothing (issue #2338, 28 Oct 2026).
+function showTarget(value) {
+  if (document.activeElement !== $('focus-target')) $('focus-target').value = value;
 }
 function editTarget() {
   show($('focus-target-row'));

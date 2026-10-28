@@ -1170,9 +1170,10 @@
             </div>
           </div>
           <div class="setting panel roomy" id="setting-answers" data-profile-panel="answers" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job. Confirm or change any answer.</p><p class="muted small qa-only-fills">Only your form fills teach this list; each answer shows the forms it came from.</p><!-- Why (PR B2b, owner 28 Oct 2026): learnings come only from form fills. TODO(AI): link "Your portrait" here once that Profile tab ships (spec 2026-10-28-your-portrait-design.md) (28 Oct 2026) --></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job; each answer shows the forms it came from. Confirm or change any answer.</p></div></div>
               <div class="panel-actions"><button class="secondary with-icon" id="answers-add"><i data-icon="plus"></i>Add answer</button>
                 <button class="secondary ui-more" id="answers-review" data-notion-only title="More actions" aria-label="More actions" aria-haspopup="menu"><i data-icon="more"></i></button></div></div>
+            <!-- Why (PR B2b, owner 28 Oct 2026): learnings come only from form fills, so the lead names where each came from (one lead line: test/roomy-cards.test.js). TODO(AI): link "Your portrait" in the lead once that Profile tab ships (spec 2026-10-28-your-portrait-design.md) (28 Oct 2026) -->
             <div class="outline-body" id="answers-body"></div>
           </div>
           <!-- One sticky dock at the bottom: the fold bar, then the page save bar (pages/profile-save-bar.js puts it here), so neither covers the other. -->

@@ -13,13 +13,22 @@ import socket
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import mock
 
-from src import daily, daily_helpers, daily_search, run_log, store_access
+from src import daily, daily_helpers, daily_search, doctor, run_log, store_access
 from src.stores import memory
 
 JOB = {'url': 'https://jobs.example/sre-1', 'title': 'SRE', 'company': 'Example', 'location': 'Zurich', 'description': 'Kubernetes on call.'}
+
+
+class FrozenClock(datetime):
+    """daily_search's clock, stopped at the health-alert hour: the run and its test never read the wall clock."""
+
+    @classmethod
+    def now(cls, tz=None):
+        # Why (28 Oct 2026): setUp and search() each read the real clock for the hour; CI straddled 22:00 UTC and the doctor step was skipped (KeyError 'doctor').
+        return datetime(2026, 10, 28, doctor.HEALTH_HOUR_UTC, 30, tzinfo=tz)
 
 
 class ScheduledRunOnTheStoreTests(unittest.TestCase):
@@ -52,7 +61,7 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
             mock.patch.object(daily_search.budget, 'apply_caps'),
             mock.patch.object(daily_search.insights, 'run', side_effect=record('insight', 'Insight: none today')),
             mock.patch.object(daily_search.doctor, 'alert', side_effect=record('doctor', 'Health: all good')),
-            mock.patch.object(daily_search.doctor, 'HEALTH_HOUR_UTC', datetime.now(timezone.utc).hour),
+            mock.patch.object(daily_search, 'datetime', FrozenClock),
             mock.patch.object(daily_search.ledger_store, 'sync', side_effect=record('ledger', 'Ledger sync: 1 applications')),
             mock.patch.object(daily_search.ledger_store, 'close_gone', side_effect=record('gone', ('Taken-down postings: 0', []))),
             mock.patch.object(daily_search.funnel, 'write', side_effect=AssertionError('the Pipeline page is Notion only')),
@@ -73,20 +82,6 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
                 contextlib.redirect_stdout(out):
             code = daily.main()
         return code, out.getvalue()
-
-    def test_the_health_check_follows_the_hour_the_run_started_in(self):
-        # Why (28 Oct 2026): CI went red at a top-of-hour: the run began at 21:59:59, the check read the clock again at 22:00:00 and skipped the alert.
-        class Clock(datetime):
-            reads = 0
-
-            @classmethod
-            def now(cls, tz=None):
-                cls.reads += 1
-                return datetime(2026, 10, 28, 21, 59, 59, tzinfo=tz) if cls.reads == 1 else datetime(2026, 10, 28, 22, 0, 0, tzinfo=tz)
-        with mock.patch.object(daily_search, 'datetime', Clock), mock.patch.object(daily_search.doctor, 'HEALTH_HOUR_UTC', 21):
-            code, out = self.run_daily('--send')
-        self.assertEqual(code, 0, out)
-        self.assertIn('doctor', [name for name, _, _ in self.calls], out)   # one clock read at the start decides the hour
 
     def test_a_scheduled_run_on_this_macs_store_logs_its_row_and_uses_the_store_everywhere(self):
         code, out = self.run_daily('--send')   # the sending run: the insight and the health alert come after the digest

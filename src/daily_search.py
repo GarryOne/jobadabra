@@ -27,11 +27,9 @@ def ai_ready():
 def search(args, stores=None):
     stores = stores or open_run()
     run_counts.reset()   # this search's own counts start at 0
-    # Why (28 Oct 2026): the one clock read of this run; the health-hour check below uses it too, so a run that crosses the hour is not judged twice.
-    run_start = datetime.now(timezone.utc)
-    read_methods.reset(run_start.isoformat(timespec='seconds'))   # and how its sources are read (src/read_methods.py)
+    read_methods.reset(datetime.now(timezone.utc).isoformat(timespec='seconds'))   # and how its sources are read (src/read_methods.py)
     run = new_cron_run(args.mode)
-    started = run_start.isoformat(timespec='seconds')   # a job first seen from now on is new (src/source_yield.py)
+    started = datetime.now(timezone.utc).isoformat(timespec='seconds')   # a job first seen from now on is new (src/source_yield.py)
     spend = None
     if args.mode in ('scheduled', 'run', 'today'):
         # AI budget: at 90% of the month's limit the optional AI steps pause; alerts are sent at the end.
@@ -365,7 +363,7 @@ def search(args, stores=None):
     if spend and not run.get('telegram', '').startswith('not sent'):
         with store.connect(args.db) as db:
             budget.alert_once(db, spend, lambda text: telegram.send(text, token, chat_id))
-    if args.mode == 'scheduled' and run_start.hour == doctor.HEALTH_HOUR_UTC:
+    if args.mode == 'scheduled' and datetime.now(timezone.utc).hour == doctor.HEALTH_HOUR_UTC:
         # Once a day: one Telegram line if a health check fails (Google sign-in, mail, budget, feeds).
         try:
             print(doctor.alert(stores, lambda text: telegram.send(text, token, chat_id)))

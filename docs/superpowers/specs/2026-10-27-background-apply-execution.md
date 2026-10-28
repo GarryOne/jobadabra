@@ -80,9 +80,9 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] First-use Chromium download: module and IPC on the shared add-on (lib/optional-addon.js, LibreOffice's), digest-checked; the real install of Chrome for Testing 156 (195 MB) took 37 s, and the real `start()` on it loaded the extension in 0.88 s with no focus change. (proof: desktop/test/background-browser-download.test.js)
 - [ ] The download's bar with Cancel on the Applying page, started only by the person's press (part of the screen's side-by-side).
 - [x] Mode dispatch through `MODES[].runner` (one dispatch): the `background` runner comes only from the saved mode, skips the person's-Chrome extension gate, hands the chosen jobs to the hidden browser's queue, never falls through to the visible launcher, and refuses before any write while the browser is not downloaded. (proof: desktop/test/apply-dialog-mode.test.js)
-- [ ] Live view channel: stream + input over a plain message channel, any client.
-- [ ] Native dropdown bridge.
-- [ ] File picker bridge (choose another CV).
+- [x] Live view channel: `attachLive(channel, cdp)` in `live.mjs` (Ready to send's `attach` now wraps it): frames out, the person's mouse and keys in, over a plain message channel any client can carry; measured on Chrome for Testing 156 headless through the app's own CDP session (lib/cdp-session.js), fictional form: 7 frames, no error. (proof: desktop/test/live-view.test.js)
+- [x] Native dropdown bridge: a press on a `<select>` sends its label and options to the viewer, the pick is set with input + change; measured on Chrome for Testing 156 headless through the app's own CDP session (lib/cdp-session.js), fictional form: 6 options, label "Country", Gamma set, 1 change. (proof: desktop/test/live-view.test.js)
+- [x] File picker bridge: the chooser asks the viewer; only a path the app resolves is set, never one the viewer sends; measured on Chrome for Testing 156 headless through the app's own CDP session (lib/cdp-session.js), fictional form: `/etc/hosts` refused, the fictional CV set, 1 change. (proof: desktop/test/live-view.test.js)
 - [ ] Live view screen on the Applying card; owner's yes on the light/dark, wide/narrow side-by-side.
 - [ ] `bot_check`/`submit_control` in form-judge with a ladder fixture (owner's yes on its measured cost).
 - [ ] End-to-end proof on a fictional local form: fill hidden, review in the live view, the person's Submit lands.

@@ -11,7 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
-import {NATIONALITY, ZONES, isAnswered, isAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
+import {NATIONALITY, ZONES, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -46,7 +46,7 @@ let eligibilityRow = null;
 function drawEligibility(into, lines, row) {
   eligibilityRow = row;
   const own = lines.find(line => line.label === NATIONALITY), rows = lines.filter(line => line.kind === 'per_country' && zoneOfLabel(line.label));
-  const rest = lines.filter(line => line !== own && !rows.includes(line));
+  const rest = lines.filter(line => line !== own && !rows.includes(line) && !isOldAsked(line));   // Why (28 Oct 2026, owner: "let's remove these 3 fields"): an old line still asked is no answer; the zones ask instead
   // Why (28 Oct 2026, #2322 review): one Nationality row. Words that are not country names ("British") stay as written with a Check, never a second row.
   const nationality = row(own && !isAsked(own.value) ? own : {label: NATIONALITY, value: ''});
   into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rest.map(row));

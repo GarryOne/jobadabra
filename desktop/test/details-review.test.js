@@ -17,7 +17,7 @@ import {openShown} from '../lib/question-lists.js';
 import {fakeNotion} from './fake-notion.js';
 
 const PROFILE = ['## Preferences', 'Relocation: open to moving within the EU', 'Industries to prefer / avoid: ❓', 'Need visa sponsorship?: ❓', 'Notice period: 2 months', 'Role types: SRE; ❓ DevOps?',
-  '## 💶 Availability & compensation', 'Target: 10k CHF or so [salary]', '## 🛂 Work eligibility', 'Work permit / visa: ❓ your citizenship and status',
+  '## 💶 Availability & compensation', 'Target: 10k CHF or so [salary]', 'Earliest start: ❓', '## 🛂 Work eligibility', 'Work permit / visa: ❓ your citizenship and status', 'Authorised to work in Iasi, Romania?: ❓', 'Remote from your base for a foreign employer?: ❓',
   '## ❓ Possible CV gaps', 'Prometheus: ❓ Have you used it?'];
 const ANSWERS = ['## Availability and pay', {table: [['Question', 'Answer'], ['Notice period / earliest start', '3 months'], ['Years of experience with Kubernetes', 'maybe 3?']]},
   '## ❓ Questions to answer', 'Do you have a driving licence?: ❓ (asked by Acme)',
@@ -137,11 +137,19 @@ for (const [name, setup] of Object.entries(ADAPTERS)) {
 for (const [name, setup] of Object.entries(ADAPTERS)) {
   test(`${name}: a ❓ inside a Your details section is answered on that section's line`, async () => {
     const env = await setup();
-    const item = (await review.pending(env.storage, {fetcher: env.fetcher})).find(each => /Work permit/.test(each.question));
+    const item = (await review.pending(env.storage, {fetcher: env.fetcher})).find(each => /Earliest start/.test(each.question));
     assert.equal(item.details.kind, 'open');
-    assert.equal((await review.answer(env.storage, item.key, 'EU citizen', {fetcher: env.fetcher, ai})).ok, true);
-    const lines = (await sections.read(env.storage, env.fetcher)).eligibility.filter(line => line.label === 'Work permit / visa');
-    assert.deepEqual(lines.map(line => line.value), ['EU citizen']);
+    assert.equal((await review.answer(env.storage, item.key, 'In March', {fetcher: env.fetcher, ai})).ok, true);
+    const lines = (await sections.read(env.storage, env.fetcher)).availability.filter(line => line.label === 'Earliest start');
+    assert.deepEqual(lines.map(line => line.value), ['In March']);
+  });
+
+  // Why (28 Oct 2026, owner: "let's remove these 3 fields"): the lines saved before Nationality and the zones are never asked, with or without the AI's reading;
+// Nationality and the zones answer them. The owner's three, as fictional ❓ lines.
+test(`${name}: the 3 old eligibility lines are never asked`, async () => {
+    const env = await setup();
+    const asked = (await review.pending(env.storage, {fetcher: env.fetcher})).map(each => each.question);
+    for (const old of ['Work permit / visa', 'Authorised to work in Iasi, Romania?', 'Remote from your base for a foreign employer?']) assert.ok(!asked.includes(old), old);
   });
 
   test(`${name}: a ❓ on the Profile whose fact is Your details' goes to its section, and the ❓ line leaves the Profile`, async () => {

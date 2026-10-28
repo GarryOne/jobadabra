@@ -2,6 +2,7 @@
 import path from 'node:path';
 import {ARTIFACTS} from './app.mjs';
 import {refusalNote} from './ai-refused.mjs';
+import {capMessage, releaseGate, skipStepForCap, takeCapped} from './ai-cap.mjs';
 import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
@@ -88,6 +89,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
     if (buildsOn ? !critical && doneBefore : only.length && !critical && !only.some(word => name.toLowerCase().includes(word))) return;
     const missing = needs.filter(item => !item.value);
     if (missing.length) { results.push({name, status: 'skipped'}); console.log(`- ${name}: skipped (needs ${missing.map(item => item.name).join(', ')})`); await report?.skipStep(name).catch(() => {}); return; }
+    takeCapped();   // a cap refusal seen from here on belongs to this step
     const started = Date.now(), before = faultTally?.();
     const unfired = () => faultCheck(before, faultTally?.(), {faults});
     let retried = '';
@@ -118,6 +120,14 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       results.push({name, status: 'passed', seconds, ...(retried ? {retried} : {}), ...(vacuous ? {faultNeverFired: true} : {})});
       console.log(`✓ ${name} (${seconds}s)${retried ? ' after one retry' : ''}${vacuous ? ` ⚠ passed, but ${NEVER_FIRED}: it may test nothing` : ''}`);
     } catch (error) {
+      // Why (28 Oct 2026, owner + fl): a step the AI cap refused is SKIPPED with its cause, never failed and never passed; the nightly and every release gate (releaseGate: E2E_FULL or E2E_RUN_KIND=gate) fail it instead, so a release never approves with AI steps unrun.
+      const capped = takeCapped();
+      if (capped && !releaseGate()) {
+        results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons)});
+        skipStepForCap(name, capped.neurons);
+        await report?.skipStep(`${name} (AI capped)`).catch(() => {});
+        return;
+      }
       await getSession()?.keepLogs();   // the app's and the engine's own logs: a screenshot says "nothing new", the log says why
       const base = unfired() ? `${error.message} ${neverFiredNote}` : error.message;
       // The AI refusing every call (a spend limit) is the cause, whatever symptom the step saw: say it first, and it is the test environment's failure, never a product bug (lib/ai-refused.mjs).

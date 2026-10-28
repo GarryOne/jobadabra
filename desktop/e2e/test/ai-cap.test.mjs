@@ -1,0 +1,88 @@
+// The day's $1 cap on CI's Workers AI (lib/ai-cap.mjs): over it a live Free AI ask is refused and named grey; under it, unreadable or not Free AI, nothing changes.
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {CAP_NEURONS, capMessage, capReached, noteCapped, resetCap, takeCapped} from '../lib/ai-cap.mjs';
+import {createRunner} from '../lib/runner.mjs';
+import {askFree} from '../lib/review-free.mjs';
+import {startAiProxy} from '../lib/ai-proxy.mjs';
+
+const env = {CI_CF_ANALYTICS_TOKEN: 'an', CI_FREE_AI_CF_ACCOUNT_ID: 'acct'};
+const analytics = neurons => async () => ({json: async () => ({data: {viewer: {accounts: [{aiInferenceAdaptiveGroups: [{sum: {totalNeurons: neurons}}]}]}}})});
+
+test('under the cap it is open, at the cap it is closed, and stays closed for the day', async () => {
+  resetCap();
+  assert.deepEqual(await capReached({env, fetchImpl: analytics(CAP_NEURONS - 1), now: Date.parse('2026-10-28T10:00:00Z')}), {capped: false, neurons: CAP_NEURONS - 1});
+  const over = await capReached({env, fetchImpl: analytics(CAP_NEURONS), now: Date.parse('2026-10-28T10:02:00Z')});
+  assert.equal(over.capped, true);
+  let asked = 0;
+  assert.equal((await capReached({env, fetchImpl: async () => { asked++; return analytics(0)(); }, now: Date.parse('2026-10-28T23:00:00Z')})).capped, true, 'over once, over for the day');
+  assert.equal(asked, 0);
+  assert.equal((await capReached({env, fetchImpl: analytics(5), now: Date.parse('2026-10-29T00:01:00Z')})).capped, false, 'a new UTC day opens it');
+});
+
+test('an unreadable count fails closed, with the cause and the fix in the grey line', async () => {
+  resetCap();
+  assert.deepEqual(await capReached({env: {}, fetchImpl: analytics(1e9)}), {capped: true, neurons: null, unreadable: true}, 'no analytics token');
+  resetCap();
+  assert.equal((await capReached({env, fetchImpl: async () => { throw new Error('down'); }})).capped, true, 'Cloudflare unreachable');
+  resetCap();
+  assert.equal((await capReached({env, fetchImpl: async () => ({json: async () => ({errors: [{message: 'not authorized for that account'}]})})})).unreadable, true, 'a token without the scope');
+  assert.match(capMessage(null), /CI_CF_ANALYTICS_TOKEN/);
+  const lines = [], log = console.log;
+  console.log = line => lines.push(line);
+  try { noteCapped(null, {E2E_SUITE: 'quality'}); } finally { console.log = log; }
+  assert.match(lines[0], /^ai-capped: quality \(neuron count unreadable, set CI_CF_ANALYTICS_TOKEN/);
+  assert.equal(takeCapped().neurons, null);
+  assert.equal(takeCapped(), null, 'taken once');
+});
+
+test('the screenshot review is refused past the cap and spends nothing', async () => {
+  resetCap();
+  let ai = 0;
+  const fetchImpl = async url => (/graphql/.test(url) ? analytics(CAP_NEURONS + 5)() : (ai++, {ok: true, json: async () => ({})}));
+  const answer = await askFree({messages: []}, {token: 'cf', account: 'acct', fetchImpl, cap: () => capReached({env, fetchImpl})});
+  assert.equal(answer.ok, false);
+  assert.equal(answer.status, 'capped');
+  assert.match(answer.detail, new RegExp(capMessage(CAP_NEURONS + 5).slice(0, 30)));
+  assert.equal(ai, 0);
+});
+
+test('the app\'s proxy on Free AI answers 503 ai-capped for a question replay cannot answer', async () => {
+  resetCap();
+  Object.assign(process.env, env, {E2E_SUITE: 'x'});
+  const real = globalThis.fetch;
+  let forwarded = 0;
+  globalThis.fetch = async (url, init) => (/graphql/.test(String(url)) ? analytics(CAP_NEURONS + 1)() : (forwarded++, real(url, init)));
+  const proxy = await startAiProxy({target: 'http://127.0.0.1:9', kind: 'app-free'});
+  try {
+    const answer = await real(`${proxy.url}/v1/messages`, {method: 'POST', body: '{"messages":[]}'});
+    assert.equal(answer.status, 503);
+    assert.match((await answer.json()).error.message, /^ai-capped:/);
+    assert.equal(forwarded, 0, 'nothing went on to the relay');
+  } finally { globalThis.fetch = real; await proxy.close(); delete process.env.CI_CF_ANALYTICS_TOKEN; delete process.env.CI_FREE_AI_CF_ACCOUNT_ID; delete process.env.E2E_SUITE; }
+});
+
+test('a step the cap refused is skipped with its cause, counted, and the suite goes on; the nightly and beta fail it instead', async () => {
+  const quiet = console.log;
+  console.log = () => {};
+  try {
+    const runner = createRunner(() => null, {keepGoing: false});
+    await runner.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
+    const ran = [];
+    await runner.run('next', async () => { ran.push('next'); });
+    assert.deepEqual(runner.results.map(item => item.status), ['skipped', 'passed']);
+    assert.equal(runner.results[0].aiCapped, true);
+    assert.match(runner.results[0].note, /^ai-capped:/);
+    assert.deepEqual(ran, ['next']);
+    assert.equal(runner.summary(), 0, 'skipped is neither passed nor failed');
+    for (const gate of [{E2E_FULL: '1'}, {E2E_RUN_KIND: 'gate', E2E_FULL: ''}]) {   // the night's full run, and a release gate (the Windows beta sets E2E_FULL empty)
+      Object.assign(process.env, gate);
+      const full = createRunner(() => null, {keepGoing: true});
+      await full.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
+      assert.equal(full.results[0].status, 'failed', `a release never approves with its AI steps unrun (${JSON.stringify(gate)})`);
+      assert.equal(full.summary(), 1);
+      delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND;
+    }
+    await runner.run('plain failure', async () => { throw new Error('boom'); }).then(() => assert.fail('a failure with no cap behind it is still red'), error => assert.equal(error.message, 'boom'));
+  } finally { console.log = quiet; delete process.env.E2E_FULL; delete process.env.E2E_RUN_KIND; }
+});

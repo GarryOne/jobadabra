@@ -5,6 +5,7 @@
 import http from 'node:http';
 import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 import {keyFingerprint} from './key-check.mjs';
+import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 import {count, countError, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
 
 // The stub modes any proxy of this run was armed with: a refusal that matches one came from the suite's own stub, not from the account (lib/ai-refused.mjs).
@@ -71,6 +72,10 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       res.writeHead(kept.status, {'content-type': kept.contentType, 'content-length': kept.body.length});
       res.end(kept.body);
       return;
+    }
+    if (kind === 'app-free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs): a miss past it is refused, never paid
+      const cap = await capReached();
+      if (cap.capped) { noteCapped(cap.neurons); res.writeHead(503, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: capMessage(cap.neurons)}})); return; }
     }
     if (maxCalls && stats.paid >= maxCalls) { res.writeHead(400, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'invalid_request_error', message: `proxy: the cap of ${maxCalls} paid calls is reached`}})); return; }
     stats.paid = (stats.paid || 0) + 1;

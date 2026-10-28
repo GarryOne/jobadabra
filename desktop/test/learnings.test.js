@@ -12,6 +12,7 @@ import * as store from '../lib/store/index.js';
 import * as learnings from '../lib/learnings.js';
 import * as review from '../lib/details-review.js';
 import {save} from '../lib/learned.js';
+import * as contactDetails from '../lib/contact.js';
 import {cached} from '../lib/question-verdicts.js';
 
 const fresh = () => { const s = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-learn-')), {encrypt: v => v, decrypt: v => v}); s.saveSettings({store: 'sqlite', telemetry: false}); return s; };
@@ -138,4 +139,15 @@ test('Strategy\'s minimum is judged once as the first salary to state, with Stra
   await learn(s, seed.answers, ai, {job: {place: seed.place}});
   assert.equal((await lines(s)).at(-1), 'Salary expectation in Switzerland: CHF 130,000 a year (new)');
   assert.match(ai.sent[0].messages[0].content, /<job>\{"company":"","place":"Zurich first, then anywhere in Switzerland"\}<\/job>/, 'the AI names the country from the places');
+});
+
+test('Remember off keeps an answer and a personal detail out of What we learned and Your details, marked this job only (PR C, Gitar on #2351)', async () => {
+  const s = fresh(), ai = fakeAi({});
+  await save(s, {job: 'https://x.test/j/1', items: [{label: 'Street', value: 'Rue du Lac 4', remember: false}, {label: 'Why Acme?', value: 'The mission', remember: false}]}, {client: ai.client});
+  assert.equal(ai.sent.length, 0, 'the AI is never asked about an answer the person did not want kept');
+  assert.deepEqual(await lines(s), [], 'nothing is written to What we learned');
+  const marks = cached(s);
+  assert.equal(marks['why acme']?.jobOnly?.[0]?.url, 'https://x.test/j/1');
+  assert.equal(marks.street?.jobOnly?.[0]?.url, 'https://x.test/j/1');
+  assert.equal((await contactDetails.read(s)).street || '', '', 'the street is not saved to Your details');
 });

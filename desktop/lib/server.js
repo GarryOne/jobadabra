@@ -16,7 +16,7 @@ import {me} from './server-contact.js';
 import {extensionBuild} from './build-state.js';
 import {packagedBuild} from './build-handlers.js';
 import {pageKey, sessionOfJob, markReportedConfirmations, judgeConfirmation, decidePageKind, decideAccountJudge, decideEscalation, pickUploadSlot, pickChoice, pickPopup} from './server-pages.js';
-import {formIssue, jobName, notify, renderer, sessionReporter, tabsHandler, openHandler, joinHandler, focusHandler, learnedHandler, recipesHandler,
+import {formIssue, jobName, notify, renderer, sessionReporter, tabsHandler, openHandler, joinHandler, focusHandler, learnedHandler, recipesHandler, rememberHandler,
   aliasesHandler, controlsHandler, missesHandler, visitMore, visitFilters, visitHandler, sitePasswordHandler, reviewHandler,
   accountPressedHandler, pageHandler, stuckHandler, takeOverHandler, claudeAutoHandler, accountFactHandler, accountCodeHandler, stopAsked, stopHeard, stoppedHandler, startedHandler} from './server-hooks.js';
 
@@ -25,7 +25,7 @@ export {kept, contactSaved, me} from './server-contact.js';
 export {sessionOfJob, pageKey, markReportedConfirmations, judgeConfirmation, decidePageKind, decideAccountJudge, decideEscalation} from './server-pages.js';
 export {setNotifier, setWindowSignal, setAppliedHook, setRenderer, setTabsHandler, setSharedLogger, setProposalReporter, setAnswerReporter, setSessionReporter,
   setSitePasswordHandler, setReviewHandler, setLearnedHandler, setVisitHandler, setVisitRoute, setVisitFilters, setMissesHandler,
-  setControlsHandler, setAliasesHandler, setRecipesHandler, setJoinHandler, setFocusHandler, setStuckHandler, setClaudeAutoHandler, setAccountFactHandler, setAccountPressedHandler, setPageHandler, setTakeOverHandler,
+  setControlsHandler, setAliasesHandler, setRecipesHandler, setRememberHandler, setJoinHandler, setFocusHandler, setStuckHandler, setClaudeAutoHandler, setAccountFactHandler, setAccountPressedHandler, setPageHandler, setTakeOverHandler,
   setErrorWatcher, setFormIssueHandler, setOpenHandler, setAccountCodeHandler, setStoppedHandler, setStartedHandler, requestStop} from './server-hooks.js';
 
 export const DEFAULT_PORT = 47111;
@@ -181,6 +181,16 @@ export function start(storage, onError = () => {}) {
         res.writeHead(ok ? 200 : 401, {'Content-Type': 'application/json', ...cors});
         res.end(JSON.stringify({ok}));
         if (ok) learnedHandler(payload);
+        return;
+      }
+      if (req.url === '/extension/remember') {
+        const cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Authorization, Content-Type'};
+        if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
+        const ok = req.headers.authorization === `Bearer ${extensionToken(storage)}`;
+        const payload = (() => { try { return JSON.parse(body?.toString() || '{}'); } catch { return {}; } })();
+        res.writeHead(ok ? 200 : 401, {'Content-Type': 'application/json', ...cors});
+        res.end(JSON.stringify(ok ? {remember: await rememberHandler(payload)} : {error: 'Wrong token'}));
         return;
       }
       if (req.url === '/extension/recipes') {

@@ -82,6 +82,20 @@ export function noteLearned(storage, pairs, {url = '', company = ''} = {}) {
   storage.saveSettings({questionVerdicts: next});
 }
 
+/**
+ * Why (PR C, owner 28 Oct 2026: Remember on by default): an answer the person typed with Remember switched off stays with its job. Kept per label as
+ * `jobOnly` [{url, at}]; What we learned never reads it. Labels only, never the answer.
+ */
+export function noteJobOnly(storage, labels, {url = ''} = {}) {
+  if (!labels?.length) return;
+  const next = {...cached(storage)};
+  for (const label of labels) {
+    const key = keyOf(label), entry = next[key] || {question: label, asked: 0};
+    next[key] = {...entry, jobOnly: [...(entry.jobOnly || []).filter(each => each.url !== url), {url, at: new Date().toISOString().slice(0, 10)}].slice(-10)};
+  }
+  storage.saveSettings({questionVerdicts: next});
+}
+
 // "Only this job" (the Undo of a remembered question): never kept as a standard answer again.
 export function onlyThisJob(storage, question) {
   const known = cached(storage), entry = known[keyOf(question)];

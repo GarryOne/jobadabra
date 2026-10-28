@@ -124,10 +124,12 @@ test('Stop during the 10-minute wait hands the job to the person, and the elapse
 test('at start every background job left mid-press is handed to the person with its words, and nothing launches or presses', async () => {
   const records = {s1: {id: 's1'}, s2: {id: 's2'}, s3: {id: 's3'}}, reports = [], notices = [], launched = [];
   const interrupted = {s1: {state: 'needs_user_handoff', reason: 'submission_outcome_unknown', mode: 'auto', manualOverride: true}};
+  interrupted.s5 = interrupted.s1;   // a press this run started: in flight, not cut off
   const controller = createBackgroundApplyController({}, {
     store: {interrupted: async (url, session) => interrupted[session] || null, ready: spy('store.ready'), reserve: spy('store.reserve')},
     browser: {start: (...args) => launched.push(args)},
-    terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/1', background: {}, outcome: ''}, {id: 's2', url: 'https://jobs.example.test/2', background: {}, outcome: ''},
+    terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/1', background: {}, outcome: '', startedAt: '2020-01-01T00:00:00Z'}, {id: 's2', url: 'https://jobs.example.test/2', background: {}, outcome: '', startedAt: '2020-01-01T00:00:00Z'},
+      {id: 's5', url: 'https://jobs.example.test/5', background: {}, outcome: '', startedAt: new Date().toISOString()},
       {id: 's3', url: 'https://jobs.example.test/3', background: {}, outcome: 'Applied'}, {id: 'v', url: 'https://jobs.example.test/4', outcome: ''}], record: id => records[id] || null, report: (id, event) => reports.push([id, event])},
     notify: (...args) => notices.push(args)});
   touched.length = 0;

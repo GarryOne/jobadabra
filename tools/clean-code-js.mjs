@@ -53,7 +53,8 @@ export async function check(files) {
   return found;
 }
 
-const git = (...args) => execFileSync('git', args, {cwd: root, encoding: 'utf8', maxBuffer: 1 << 28});
+const gitIn = (cwd, ...args) => execFileSync('git', args, {cwd, encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe']});
+const git = (...args) => gitIn(root, ...args);
 
 /** Line numbers a diff adds to one file (`@@ -a,b +c,d @@` hunks, no context). */
 export function addedLines(diff) {
@@ -64,8 +65,21 @@ export function addedLines(diff) {
   return added;
 }
 
+/**
+ * The commit a change is measured from: the merge base with origin/main, else origin/main's tip (a shallow CI checkout of the PR's merge
+ * commit has no common history, and there the tip is exactly what the PR adds). Fetches main once when the ref is missing; null when it cannot.
+ */
+export function baseCommit(cwd = root) {
+  // Why (28 Oct 2026, #2414): the desktop CI job checks out the PR with no origin/main ref, and `git merge-base` threw there.
+  const has = () => { try { gitIn(cwd, 'rev-parse', '--verify', '-q', 'origin/main'); return true; } catch { return false; } };
+  if (!has()) { try { gitIn(cwd, 'fetch', '-q', 'origin', 'main'); } catch { /* offline */ } }
+  if (!has()) return null;
+  try { return gitIn(cwd, 'merge-base', 'origin/main', 'HEAD').trim(); } catch { return 'origin/main'; }
+}
+
 async function main() {
-  const base = process.argv[2] || git('merge-base', 'origin/main', 'HEAD').trim();
+  const base = process.argv[2] || baseCommit();
+  if (!base) { console.error('clean-code: no origin/main to compare with, nothing checked'); return; }
   const names = git('diff', '--name-only', '--diff-filter=AM', base).split('\n').filter(n => SCOPE.test(n) && !SKIP.test(n));
   const files = names.map(name => ({path: name, source: fs.readFileSync(path.join(root, name), 'utf8'), added: addedLines(git('diff', '-U0', base, '--', name))}));
   const found = await check(files);

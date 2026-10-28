@@ -6,7 +6,8 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {test} from 'node:test';
 import {browserCommand} from '../../lib/browser-launch.js';
-import {makeOpenShim} from '../lib/extension.mjs';
+import path from 'node:path';
+import {makeOpenShim, opensIntoSpool} from '../lib/extension.mjs';
 
 const URL = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobpilotto-fill=abc';
 const recorded = spool => fs.readdirSync(spool).filter(name => name.endsWith('.url')).map(name => fs.readFileSync(`${spool}/${name}`, 'utf8'));
@@ -37,4 +38,14 @@ test('the Windows stand-in (node script) reads the URL the same way', () => {
     execFileSync(process.execPath, [shim.script, ...args], {env: {...process.env, JOB_PILOTTO_E2E_OPEN_DIR: shim.spool}});
     assert.deepEqual(recorded(shim.spool), args.includes(URL) ? [URL] : [], args.join(' '));
   }
+});
+
+test('a run opens into the spool only with the shim first on PATH: the owner\'s own PATH or a missing spool fails the guard (#2350)', () => {
+  const shim = makeOpenShim(), owners = process.env.PATH;
+  const env = {PATH: `${shim.bin}${path.delimiter}${owners}`, JOB_PILOTTO_E2E_OPEN_DIR: shim.spool, JOB_PILOTTO_E2E_OPENER: shim.script};
+  assert.equal(opensIntoSpool(env, 'darwin'), true);
+  assert.equal(opensIntoSpool(env, 'win32'), true);
+  assert.equal(opensIntoSpool({...env, PATH: owners}, 'darwin'), false, 'the real open first: a page would reach the owner\'s Chrome');
+  assert.equal(opensIntoSpool({...env, JOB_PILOTTO_E2E_OPEN_DIR: ''}, 'darwin'), false);
+  assert.equal(opensIntoSpool({...env, JOB_PILOTTO_E2E_OPENER: ''}, 'win32'), false);
 });

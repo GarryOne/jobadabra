@@ -13,7 +13,7 @@ import {buildStandIn, startNotionFake} from './notion-fake.mjs';
 import {useNotionAt} from './notion.mjs';
 import {appKey, appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFamily, testKey} from './engine.mjs';
 import {checkRelay} from './free-ai-check.mjs';
-import {copyExtension, freePort, makeOpenShim} from './extension.mjs';
+import {copyExtension, freePort, makeOpenShim, opensIntoSpool} from './extension.mjs';
 import {startForms} from './forms.mjs';
 import {createVariation, placeOf} from './variation.mjs';
 import {ARTIFACTS, E2E, launch, pickFile, step} from './app.mjs';
@@ -111,14 +111,17 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // The automatic backup's folder likewise: the app backs up at its start once set up, and must never write to the owner's iCloud Drive or Documents (lib/backup.js folder).
   ctx.backupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-backups-'));
   const browserEnv = {JOB_PILOTTO_BROWSER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-browser-data-')), JOB_PILOTTO_BACKUP_DIR: ctx.backupDir};
+  // Every suite, with or without a browser: a page the app opens lands in the stand-in's spool, never in the owner's Chrome. Why (#2350, 28 Oct 2026): the shim was
+  // put only on browser suites, so the interactions probe's press on Focus's "Read Indeed" ran the real `open` and put ch.indeed.com in the owner's Chrome.
+  ctx.shim = makeOpenShim();
+  Object.assign(browserEnv, {PATH: `${ctx.shim.bin}${path.delimiter}${process.env.PATH}`, JOB_PILOTTO_E2E_OPEN_DIR: ctx.shim.spool});
+  if (process.platform === 'win32') browserEnv.JOB_PILOTTO_E2E_OPENER = ctx.shim.script;   // no `open` on Windows (lib/apply.js chromeCommand)
   if (browser) {
     // The app and the extension copy share a free port, so the test never meets the user's own app on 47111.
     ctx.appPort = await freePort();
     ctx.extensionDir = copyExtension(ctx.appPort);
     ctx.forms = await startForms({vary: ctx.vary});
-    ctx.shim = makeOpenShim();
-    Object.assign(browserEnv, {PATH: `${ctx.shim.bin}${path.delimiter}${process.env.PATH}`, JOB_PILOTTO_E2E_OPEN_DIR: ctx.shim.spool, JOB_PILOTTO_PORT: String(ctx.appPort)});
-    if (process.platform === 'win32') browserEnv.JOB_PILOTTO_E2E_OPENER = ctx.shim.script;   // no `open` on Windows (lib/apply.js chromeCommand)
+    browserEnv.JOB_PILOTTO_PORT = String(ctx.appPort);
   }
   const env = {...appModelEnv(), JOB_PILOTTO_FIXTURE_DIR: ctx.feeds, JOB_PILOTTO_E2E_AI_BASE_URL: ctx.proxy.url, ...(family === 'free' ? {JOB_PILOTTO_E2E_FREE_AI_KEY: key} : {}), ...(ctx.openaiProxy ? {JOB_PILOTTO_E2E_OPENAI_BASE_URL: `${ctx.openaiProxy.url}/v1`} : {}), ...(ctx.notion ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.notion.url} : ctx.standIn ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: ctx.standIn.url} : store && store !== 'notion' ? {JOB_PILOTTO_E2E_NOTION_BASE_URL: notionFarSide({store})} : {}), ...(ctx.telegram ? {JOB_PILOTTO_E2E_TELEGRAM_BASE_URL: ctx.telegram.url} : {}),
     ...(ctx.releases ? {JOB_PILOTTO_E2E_UPDATES_URL: ctx.releases.url} : {}), ...(ctx.google ? {JOB_PILOTTO_E2E_GOOGLE_BASE_URL: ctx.google.url, GOOGLE_CLIENT_ID: 'e2e-client', GOOGLE_CLIENT_SECRET: 'e2e-secret', GOOGLE_REFRESH_TOKEN: 'e2e-refresh'} : {}), ...browserEnv, ...suiteEnv};
@@ -126,6 +129,8 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   if (!env.JOB_PILOTTO_BROWSER_DATA || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'Library')) || path.resolve(env.JOB_PILOTTO_BROWSER_DATA).startsWith(path.join(os.homedir(), 'AppData'))) {
     throw new Error(`a test run must not read the owner's browser profiles (JOB_PILOTTO_BROWSER_DATA is ${env.JOB_PILOTTO_BROWSER_DATA || 'unset'})`);
   }
+  // A page the app opens goes to this run's spool, never to the owner's browser (lib/browser-launch.js runs `open`, found first on PATH, or the Windows opener).
+  if (!opensIntoSpool(env)) throw new Error(`a test run must not open pages in the owner's browser (PATH starts ${String(env.PATH).split(path.delimiter)[0]})`);
   // P7: off the real workspace a run holds no token but the stand-in's own (lib/store.mjs runToken); the run fails here, before the app starts, if it ever does.
   if (store && store !== 'notion' && token && token !== standIn?.token) throw new Error(`the ${store} store must not hold a Notion token from the environment`);
   // P7: a run off the real workspace reaches no Notion but a local one (the stand-in, or the fault proxy in front of it). Fails the run before the app starts.

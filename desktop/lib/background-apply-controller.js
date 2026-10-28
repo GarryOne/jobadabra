@@ -2,7 +2,7 @@
 import {randomUUID, createHash} from 'node:crypto';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
-import {applyOf} from '../renderer/apply-settings-model.js';
+import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
@@ -34,7 +34,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     const record = terminals.record(item.id);
     if (!record || !state) return;
     record.background = {mode: state.mode, state: state.state, reason: state.reason || '', readyAt: state.readyAt || 0,
-      dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? 10) * 60000 : 0, manualOverride: !!state.manualOverride};
+      dueAt: state.mode === 'auto' && state.readyAt ? state.readyAt + (config().auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000 : 0, manualOverride: !!state.manualOverride};
     const words = state.state === 'ready_for_review' ? 'Form filled — review the same background form and Submit' : state.state === 'waiting_to_submit' ? 'Filled — waiting before automatic submission; Stop is available' : state.state === 'submitting' ? 'Submission attempted — waiting for the site receipt' : HANDOFF.has(state.state) ? NOTICES[state.reason] || 'This application needs you. Review and submit the same form yourself.' : 'Filling in the background';
     terminals.report(item.id, {event: 'note', message: words});
   };
@@ -92,7 +92,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
       if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
-      if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? 10) * 60000) checks.push({session: item.id});
+      if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? AUTO_DEFAULTS.waitMin) * 60000) checks.push({session: item.id});
       if (['queued', 'preflight'].includes(state.state) && !filling) {
         const claim = await store.claim(item.url, item.id, owner);
         if (claim.ok) { filling = true; state = claim.state; jobs.push({session: item.id, url: sessionTabUrl(item.url, item.id), mode: state.mode}); }

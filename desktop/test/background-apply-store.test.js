@@ -160,3 +160,17 @@ test('queue refuses a Recruiter lead with a typed not-eligible error, and accept
   const strict = r.add('strict'); strict.stage = '';
   await assert.rejects(() => store.queue(strict.url, 's-strict', 'auto', {...config, mode: 'auto'}), error => error.code === 'NOT_ELIGIBLE', 'Full automation never queues a job with no stage: its submit gate would refuse it');
 });
+
+// Why (2026-10-28, owner: "Why 10 minutes? Why not 1 minute?" → 2 minutes): one default for the wait; a config that does not name it gets AUTO_DEFAULTS.waitMin, in the store and in the controller alike.
+test('with no wait saved the press waits the shared default (2 minutes), not 10', async () => {
+  const {AUTO_DEFAULTS} = await import('../renderer/apply-settings-model.js');
+  assert.equal(AUTO_DEFAULTS.waitMin, 2);
+  const unset = {...config, auto: {...config.auto, waitMin: undefined}};
+  const r = rig(), {store, job, session} = await prepared(r, r.add(), 'auto', unset);
+  r.advance(119000);
+  const early = await store.reserve(job.url, session, 'owned-browser', ready, unset);
+  assert.equal(early.submit, false, 'still inside the wait');
+  r.advance(2000);
+  const later = await store.reserve(job.url, session, 'owned-browser', ready, unset);
+  assert.equal(later.submit, true, 'after 2 minutes the checks decide, not a 10-minute fallback');
+});

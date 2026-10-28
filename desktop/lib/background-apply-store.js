@@ -3,6 +3,7 @@ import {call as engineCall} from './store/engine.js';
 import {KIT_SECTION, kitOf} from './store/kit-section.js';
 import {randomUUID} from 'node:crypto';
 import {canStart, STARTABLE_STAGES} from './apply-eligibility.js';
+import {AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
@@ -87,7 +88,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       const kit = kitOf(await ask('applications', 'section', {app_id: app.id, name: KIT_SECTION}));
       const match = typeof app.fit === 'number' ? app : await ask('matches', 'get', {url});
       if (!STARTABLE_STAGES.includes(app.stage) || kit?.eligible !== true || !Number.isFinite(match?.fit) || match.fit < (checks.minFit ?? 80)) return stop('not_eligible');
-      const waitMs = Math.max(0, Number(checks.waitMin ?? 10)) * 60000;
+      const waitMs = Math.max(0, Number(checks.waitMin ?? AUTO_DEFAULTS.waitMin)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
       const rows = await ask('applications', 'list'), reservations = await ask('events', 'list', {kind: RESERVED});
       const today = dayOf(now()), company = employer(app.company);

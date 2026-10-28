@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
 const page = name => { const at = html.indexOf(`data-settings-page="${name}"`); return html.slice(at, html.indexOf('data-settings-page="', at + 10)); };
 
 test('nothing saved: Standard automation, facts only, the owner\'s defaults, not chosen', () => {
-  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 10}, chosenAt: ''});
+  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 2}, chosenAt: ''});
   assert.deepEqual(AUTO_DEFAULTS, applyOf(undefined).auto);
   assert.equal(applyChosen({}), false);
   assert.equal(applyChosen({apply: {mode: 'check'}}), false, 'a mode saved from Settings without Confirm is not the choice');

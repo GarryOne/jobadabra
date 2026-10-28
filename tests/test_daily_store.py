@@ -13,13 +13,22 @@ import socket
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import mock
 
-from src import daily, daily_helpers, daily_search, run_log, store_access
+from src import daily, daily_helpers, daily_search, doctor, run_log, store_access
 from src.stores import memory
 
 JOB = {'url': 'https://jobs.example/sre-1', 'title': 'SRE', 'company': 'Example', 'location': 'Zurich', 'description': 'Kubernetes on call.'}
+
+
+class FrozenClock(datetime):
+    """daily_search's clock, stopped at the health-alert hour: the run and its test never read the wall clock."""
+
+    @classmethod
+    def now(cls, tz=None):
+        # Why (28 Oct 2026): setUp and search() each read the real clock for the hour; CI straddled 22:00 UTC and the doctor step was skipped (KeyError 'doctor').
+        return datetime(2026, 10, 28, doctor.HEALTH_HOUR_UTC, 30, tzinfo=tz)
 
 
 class ScheduledRunOnTheStoreTests(unittest.TestCase):
@@ -52,7 +61,7 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
             mock.patch.object(daily_search.budget, 'apply_caps'),
             mock.patch.object(daily_search.insights, 'run', side_effect=record('insight', 'Insight: none today')),
             mock.patch.object(daily_search.doctor, 'alert', side_effect=record('doctor', 'Health: all good')),
-            mock.patch.object(daily_search.doctor, 'HEALTH_HOUR_UTC', datetime.now(timezone.utc).hour),
+            mock.patch.object(daily_search, 'datetime', FrozenClock),
             mock.patch.object(daily_search.ledger_store, 'sync', side_effect=record('ledger', 'Ledger sync: 1 applications')),
             mock.patch.object(daily_search.ledger_store, 'close_gone', side_effect=record('gone', ('Taken-down postings: 0', []))),
             mock.patch.object(daily_search.funnel, 'write', side_effect=AssertionError('the Pipeline page is Notion only')),

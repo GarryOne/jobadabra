@@ -18,8 +18,8 @@ import {initFocusCheck} from './focus-check.js';
 import {refusal} from '../refusal.js';
 
 // A pressed task button is held off (syncRunButtons in runs-page.js turns it on again when its task ends); a refusal releases it at once.
-const hold = button => { button.disabled = true; button.dataset.runBusy = '1'; };
-const release = button => { button.disabled = false; delete button.dataset.runBusy; };
+const hold = button => { if (button) { button.disabled = true; button.dataset.runBusy = '1'; } };
+const release = button => { if (button) { button.disabled = false; delete button.dataset.runBusy; } };
 
 // ---------- actions (every Telegram command) ----------
 export function answer(text) { const box = $('command-answer'); delete box.dataset.fallback; show(box); box.textContent = text; box.scrollIntoView({behavior: 'smooth'}); }
@@ -27,42 +27,55 @@ export function answer(text) { const box = $('command-answer'); delete box.datas
 const COMMAND_FILTER = {saved: 'saved', applied: 'applied'};
 
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
+/**
+ * One Telegram command, from its Actions button, ⌘K or a Focus suggestion (Analyze now: 'weekly'); button: the one to hold off while it runs, if any.
+ * -> {started} for a task now running, else {text} (its answer, or why it did not start), also said on the Actions page.
+ */
+export async function runCommand(command, button = null) {
+  if (COMMAND_FILTER[command]) {
+    openView('jobs');
+    setFilters([COMMAND_FILTER[command]]);
+    document.dispatchEvent(new CustomEvent('jobs-rerender'));
+    return {text: ''};
+  }
+  // Only a task that runs in the background opens Recent activity (its row and log); an instant answer
+  // (Status, Help) shows right here, not behind the panel.
+  const task = !!COMMAND_KIND[command];
+  if (task) {
+    // On the Actions page its banner and Recent runs follow it; from elsewhere (⌘K, Focus), Recent activity opens.
+    if (document.querySelector('.view[data-view="actions"]').hidden) openActivity(true);
+    show($('actions-result'), false);  // the last result makes way for the one coming
+    refreshActivity();
+  }
+  if (command === 'status') { showStatusCard(); return {text: ''}; }
+  hold(button);
+  const result = await window.pilot.command(command).catch(error => ({ok: false, error: error.message}));
+  const refused = refusal(result);   // no AI credit, trial over, Notion (renderer/refusal.js): said here, never taken for a started task
+  if (task && !refused && !/^⚠️/.test(result?.text || '')) { refreshActivity(); show($('command-answer'), false); return {started: true}; }   // a started task keeps its button off until it ends (syncRunButtons)
+  release(button);  // its row, then its result, show in Recent activity
+  const text = refused ? `⚠️ ${refused.text}` : (result.text || result.error || '') + (result.telegram ? '\n\n(Also sent to Telegram.)' : '');
+  answer(text);
+  return {text};
+}
+/**
+ * Tailor CVs for top matches (its card's count, 5 when empty), from its card or Your week's door: a tracked task like the others, so the banner,
+ * Recent activity and the result follow it; only a refusal (Notion, allowance, nothing to do) is answered. -> {started} or {text}.
+ */
+export async function startTailor() {
+  const button = $('tailor-top'), count = Math.max(1, Math.min(10, Number($('tailor-top-n').value) || 5));
+  show($('actions-result'), false);
+  hold(button);
+  const result = await window.pilot.tailorTop(count).catch(error => ({text: `⚠️ ${error.message}`}));
+  if (result?.started) { refreshActivity(); show($('command-answer'), false); return {started: true}; }   // the Actions page keeps Run off while the task runs, and on again when it ends
+  release(button);
+  const text = result?.text || result?.error || 'Done.';
+  answer(text);
+  return {text};
+}
+
 export async function init() {
-  document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', async () => {
-    const command = button.dataset.command;
-    if (COMMAND_FILTER[command]) {
-      openView('jobs');
-      setFilters([COMMAND_FILTER[command]]);
-      document.dispatchEvent(new CustomEvent('jobs-rerender'));
-      return;
-    }
-    // Only a task that runs in the background opens Recent activity (its row and log); an instant answer
-    // (Status, Help) shows right here, not behind the panel.
-    const task = !!COMMAND_KIND[command];
-    if (task) {
-      // On the Actions page its banner and Recent runs follow it; from elsewhere (⌘K), Recent activity opens.
-      if (document.querySelector('.view[data-view="actions"]').hidden) openActivity(true);
-      show($('actions-result'), false);  // the last result makes way for the one coming
-      refreshActivity();
-    }
-    if (command === 'status') { showStatusCard(); return; }
-    hold(button);
-    const result = await window.pilot.command(command).catch(error => ({ok: false, error: error.message}));
-    const refused = refusal(result);   // no AI credit, trial over, Notion (renderer/refusal.js): said here, never taken for a started task
-    if (task && !refused && !/^⚠️/.test(result?.text || '')) { refreshActivity(); show($('command-answer'), false); return; }   // a started task keeps its button off until it ends (syncRunButtons)
-    release(button);  // its row, then its result, show in Recent activity
-    answer(refused ? `⚠️ ${refused.text}` : result.text + (result.telegram ? '\n\n(Also sent to Telegram.)' : ''));
-  }));
-  // Tailor CVs for top matches: a tracked task like the others, so the banner, Recent activity and the result follow it; only a refusal (Notion, allowance, nothing to do) is answered here.
-  $('tailor-top').addEventListener('click', async event => {
-    const button = event.currentTarget, count = Math.max(1, Math.min(10, Number($('tailor-top-n').value) || 5));
-    show($('actions-result'), false);
-    hold(button);
-    const result = await window.pilot.tailorTop(count).catch(error => ({text: `⚠️ ${error.message}`}));
-    if (result?.started) { refreshActivity(); show($('command-answer'), false); return; }   // the Actions page keeps Run off while the task runs, and on again when it ends
-    release(button);
-    answer(result?.text || result?.error || 'Done.');
-  });
+  document.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => runCommand(button.dataset.command, button)));
+  $('tailor-top').addEventListener('click', () => startTailor());
   $('tailor-top-n').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); $('tailor-top').click(); } });   // Enter in the count box = Run
   // Find jobs using your browser (owner, 7 Oct 2026): Run opens a dialog with the sites from the engine, all ticked but the ones read in the
   // last week; "Read N sites" opens them in Chrome `at once` at a time, where the extension filters and reads each; a tracked task like

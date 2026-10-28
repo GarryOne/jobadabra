@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {EXPECTED_UP_NEXT, HAND_EDITS, compareNumbers, expectedNumbers, readData, resetFocusData, scenario, zurichAt, zurichDay} from '../lib/focus-data.mjs';
+import {EXPECTED_SUGGESTIONS, EXPECTED_UP_NEXT, HAND_EDITS, compareNumbers, expectedNumbers, readData, resetFocusData, scenario, zurichAt, zurichDay} from '../lib/focus-data.mjs';
 import {buildStandIn, startNotionFake} from '../lib/notion-fake.mjs';
 import {storeCall} from '../lib/store-call.mjs';
 
@@ -67,8 +67,10 @@ test('Zurich days and offsets follow daylight saving', () => {
   assert.equal(zurichAt('2026-10-03', '10:00'), '2026-10-03T10:00:00+02:00');
   assert.equal(zurichAt('2026-10-30', '10:00'), '2026-10-30T10:00:00+01:00');
 });
-test('every Up next row names a button list', () => {
-  assert.equal(EXPECTED_UP_NEXT.length, 6);
+test('every Up next and Suggestions row names a button list; Up next holds only what can\'t wait', () => {
+  assert.equal(EXPECTED_UP_NEXT.length, 2);
+  assert.equal(EXPECTED_SUGGESTIONS.length, 5);
+  for (const row of [...EXPECTED_UP_NEXT, ...EXPECTED_SUGGESTIONS]) assert.ok(row.buttons.length, row.who);
 });
 
 test('the hand-edited rows are what people type: an unknown stage, an empty title, a 2,000-character note, other scripts', () => {

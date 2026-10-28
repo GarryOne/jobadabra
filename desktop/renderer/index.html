@@ -355,6 +355,11 @@
         <button class="stat sky" data-stat="inbound" aria-pressed="false" title="Opportunities that found you (a recruiter, a LinkedIn message, a call), every stage"><span class="stat-icon"><i data-icon="chat"></i></span><div><b id="stat-inbound">–</b><span>Inbound</span></div></button>
         <button class="stat violet" data-stat="companies" aria-pressed="false"><span class="stat-icon"><i data-icon="building"></i></span><div><b id="stat-companies">–</b><span>Unique companies</span></div></button>
       </div>
+      <!-- Suggestions for your search: Focus's search- and applying-related ones, folded to one line (pages/focus-suggestions.js; owner, 28 Oct 2026). -->
+      <details class="card jobs-fold" id="jobs-suggestions" hidden>
+        <summary><h2 id="jobs-suggestions-title">Suggestions for your search</h2><span class="muted small" id="jobs-suggestions-count"></span></summary>
+        <ol class="focus-list" id="jobs-suggestions-list"></ol>
+      </details>
       <!-- Two drawers and the cover letter (pages/jobs-questions.js; owner, 28 Oct 2026): Fill your details (amber), What we learned (blue), each hidden at zero;
            the questions are answered one at a time in the drawer (pages/question-review.js). -->
       <section class="card qr-card" id="questions" hidden aria-labelledby="questions-title">
@@ -386,7 +391,7 @@
         </div>
         <div class="qr-card-actions"><button class="primary" id="letter-setup-go" type="button"></button></div>
       </section>
-      <details class="card jobs-talking" id="jobs-talking" hidden>
+      <details class="card jobs-fold jobs-talking" id="jobs-talking" hidden>
         <summary><h2 id="jobs-talking-title">In conversation</h2><span class="muted small" id="jobs-talking-count"></span></summary>
         <ol class="focus-list" id="jobs-talking-list"></ol>
       </details>
@@ -459,9 +464,11 @@
             <p class="empty" id="focus-empty" hidden>Nothing waits for you right now.</p>
             <ol class="focus-history" id="focus-history" hidden></ol>
           </section>
-          <section class="card" id="focus-insight-card" hidden>
-            <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="bulb"></i>Insight</h2></div>
-            <div class="focus-insight" id="focus-insight"></div>
+          <!-- Suggestions: every call to action that can wait, from every screen (pages/focus-suggestions.js; spec 2026-10-28-insights-with-actions-design.md). -->
+          <section class="card" id="focus-suggestions" hidden>
+            <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="bulb"></i>Suggestions</h2>
+              <span class="focus-head-side"><span class="muted small" id="focus-suggestions-count"></span><button class="secondary small-button" id="focus-suggestions-all" type="button" hidden>Show all</button></span></div>
+            <ol class="focus-list" id="focus-suggestions-list"></ol>
           </section>
           <section class="card" id="focus-funnel" hidden>
             <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="chart"></i>Application funnel <span class="muted small" title="Each application counts at every step it ever reached, even if it was rejected later: the counts only grow. What's open now: the Jobs boxes.">· ever reached</span></h2>
@@ -680,18 +687,6 @@
             <div class="task-body"><span class="task-tile"><i data-icon="globe"></i></span>
               <div class="task-words"><b>Find jobs using your browser</b><span class="muted">Like Find jobs, for the sites and job portals that block it: read in your browser by the extension</span></div>
               <button class="secondary action" id="visits-run" data-palette="visits" data-wand><b hidden>Find jobs using your browser</b>Run</button></div>
-          </div>
-<div class="task-card is-row">
-            <span class="task-category">INSIGHTS</span>
-            <div class="task-body"><span class="task-tile"><i data-icon="sliders"></i></span>
-              <div class="task-words"><b>Tune my strategy</b><span class="muted">Changes your own results support, for you to accept</span><span class="task-hint small" id="tune-hint" hidden>Works best after your first week of results</span></div>
-              <button class="secondary action" id="tune-open" data-palette="tune" data-wand><b hidden>Tune my strategy</b>Run</button></div>
-          </div>
-<div class="task-card is-row">
-            <span class="task-category">INSIGHTS</span>
-            <div class="task-body"><span class="task-tile"><i data-icon="chart"></i></span>
-              <div class="task-words"><b>Analyze my job search</b><span class="muted">Last 7 days: what works, what to change</span></div>
-              <button class="secondary action" data-command="weekly" data-wand><b hidden>Analyze my job search</b>Run</button></div>
           </div>
           </div>
         </div>

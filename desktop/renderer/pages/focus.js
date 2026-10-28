@@ -1,4 +1,5 @@
-// Focus page: what needs you today (up next, history, interviews, follow-ups, feedback to add) and the daily target.
+// Focus page: what can't wait (Up next: offers, calls to book, replies, interview prep, follow-ups), what can (Suggestions:
+// pages/focus-suggestions.js), history, and the daily target.
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
@@ -12,6 +13,8 @@ import {openJobPanel} from './job-panel.js';
 import {loadReports} from './reports.js';
 import {openSetting} from './settings.js';
 import {toastMessage} from './startup.js';
+import {initSuggestions, renderFocusSuggestions} from './focus-suggestions.js';
+import {upNext} from '../suggestions.js';
 import {openFeedback, saveFeedbackAction} from './feedback.js';
 import {dismissInterview, openHappened} from './happened.js';
 import {moveEmail, whichJob} from './reassign.js';
@@ -32,7 +35,8 @@ export function focusButton(label, className, run) {
   button.addEventListener('click', run);
   return button;
 }
-function openLink(url, event) {
+/** Opens a store page: a Notion one in the Notion app (⌘-click: a new tab), any other link in the browser. Used by Focus and its Suggestions. */
+export function openLink(url, event) {
   if (/notion\.(so|com)\//.test(url)) window.pilot.openNotion(url, event?.metaKey); else window.pilot.openExternal(url);
 }
 export const bone = (className = '') => el('span', `skeleton ${className}`);  // a grey placeholder bar while loading
@@ -51,10 +55,10 @@ function focusSkeleton() {
   $('focus-count').replaceChildren(bone('w-number tall'));
   $('focus-pct').textContent = '';
   $('focus-summary').replaceChildren(bone('w-80'), bone('w-60'));
-  const insight = el('div', 'focus-insight-box is-loading');
-  insight.append(el('span', 'focus-round skeleton-round'), (() => { const d = el('div', 'focus-body'); d.append(bone('w-60 tall'), bone('w-80')); return d; })());
-  $('focus-insight').replaceChildren(insight);
-  show($('focus-insight-card'));
+  const suggestion = el('li', 'focus-item is-loading');
+  suggestion.append(el('span', 'focus-round skeleton-round'), (() => { const d = el('div', 'focus-body'); d.append(bone('w-60 tall'), bone('w-80')); return d; })());
+  $('focus-suggestions-list').replaceChildren(suggestion);
+  show($('focus-suggestions'));
   $('funnel-steps').replaceChildren(...[0, 1, 2, 3, 4].map(() => {
     const li = el('li', 'funnel-step is-loading');
     li.append(bone('w-40'), bone('w-30 tall'), bone('w-80'));
@@ -303,7 +307,7 @@ export function markPrep(pageId, state) {
   renderFocus(lastFocus);
 }
 function renderFocus(data) {
-  const {today, funnel, insight, summary} = data;
+  const {today, funnel, summary} = data;
   // A kit still building keeps its state when Focus is read again meanwhile.
   for (const item of data.items) {
     const before = lastFocus?.items?.find(one => one.kind === 'prepare' && one.page_id === item.page_id && one.building);
@@ -311,12 +315,13 @@ function renderFocus(data) {
   }
   lastFocus = data;
   document.dispatchEvent(new Event('focus-rendered'));   // Recent activity's Gmail card shows the questions' state
-  const items = hideSettled(data.items);
+  const all = hideSettled(data.items), items = upNext(all);
   window.dispatchEvent(new Event('focus-updated'));
   focusShown = true;
   $('focus-count-note').replaceChildren(pill(`${items.length} action${items.length === 1 ? '' : 's'}`, 'neutral'));
   $('focus-list').replaceChildren(...items.map(focusCard));
   show($('focus-empty'), !items.length && !historyShown);
+  renderFocusSuggestions({entries: data.suggestions, items: all, card: focusCard});
   const pct = Math.min(100, Math.round(100 * today.applied / Math.max(today.target, 1)));
   $('focus-count').textContent = String(today.applied);
   $('focus-of').textContent = `/ ${today.target} applications today`;
@@ -325,27 +330,8 @@ function renderFocus(data) {
   progressChart(today.history || [], today.target);
   $('focus-pct').textContent = `${pct}%`;
   $('focus-summary').textContent = summary || '';
-  renderInsight(insight);
   renderFunnel(funnel);
   renderOnboarding({funnel});
-}
-// The latest rejection lesson, as the page's one insight.
-function renderInsight(insight) {
-  show($('focus-insight-card'), !!insight);
-  if (!insight) return;
-  const box = el('div', 'focus-insight-box');
-  const round = el('span', 'focus-round tone-warn');
-  round.append(icon('alert'));
-  const body = el('div', 'focus-body');
-  body.append(el('div', 'focus-source', insight.reason), el('div', 'focus-headline', insight.headline), el('div', 'muted small focus-detail', insight.detail));
-  body.title = insight.lesson || '';
-  box.append(round, body);
-  // Its Notion page when the store has one (as before); else the same thing in the app: an insight in Reports, a rejection on its job's Review tab.
-  const open = insight.notion_url ? event => openLink(insight.notion_url, event)
-    : insight.report ? () => { openView('reports'); loadReports(insight.reason === 'Weekly report' ? 'weekly' : 'insights'); }
-      : insight.url ? () => { openView('jobs'); openJobPanel({url: insight.url, title: insight.title, company: insight.company}, 'review'); } : null;
-  if (open) box.append(focusButton(insight.issue ? 'Review evidence' : insight.report ? 'Open insight' : 'Review rejection', 'secondary', open));
-  $('focus-insight').replaceChildren(box);
 }
 function showInJobs(label, urls) {  // a funnel step's click: those opportunities in the Jobs list
   openView('jobs');
@@ -401,6 +387,7 @@ export async function saveDailyTarget(input) {
 // Run at start-up, in the order the window has always done it (app.js calls each page's init in turn).
 export async function init() {
   paintChartFirst();   // as last drawn: nothing below it moves when Focus is read
+  initSuggestions();
   $('focus-history-toggle').addEventListener('click', () => showHistory(!historyShown));
   window.addEventListener('activity-updated', () => renderOnboarding());
   $('onboarding-hide').addEventListener('click', () => {

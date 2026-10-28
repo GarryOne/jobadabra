@@ -15,13 +15,13 @@ const zone = (open, close) => grid.slice(grid.indexOf(open), grid.indexOf(close)
 const main = zone('<div class="task-main">', '<div class="task-pair">'), pair = zone('<div class="task-pair">', '<!-- More'), rows = grid.slice(grid.indexOf('id="actions-more-list"'));
 const titles = part => [...part.matchAll(/<div class="task-words"><b>([^<]+)<\/b>/g)].map(m => m[1].replace('&amp;', '&'));
 
-test('importance: Find jobs large, Tailor CVs and Check Gmail medium, four smaller ones under More', () => {
+test('importance: Find jobs large, Tailor CVs and Check Gmail medium, the smaller ones under More', () => {
   assert.deepEqual(titles(main), ['Find jobs']);
   assert.match(main, /task-card is-large/);
   assert.deepEqual(titles(pair), ['Tailor CV + cover letter for top matches', 'Check Gmail & Calendar']);
   assert.equal((pair.match(/task-card is-medium/g) || []).length, 2);
   assert.match(pair, /id="tailor-top-n"/);   // Tailor keeps its number field
-  assert.deepEqual(titles(rows), ['Find jobs using your browser', 'Tune my strategy', 'Analyze my job search']);   // + Read this board, added by actions-board.js: four
+  assert.deepEqual(titles(rows), ['Find jobs using your browser']);   // + Read this board, added by actions-board.js; Tune and Analyze left for Focus and ⌘K (28 Oct 2026)
   assert.match(read('pages/actions-board.js'), /\$\('actions-more-list'\) \|\| /);
 });
 
@@ -34,23 +34,23 @@ test('More starts closed, its state is remembered, and its count is the rows in 
   assert.match(layout, /more\?\.draw\(smallRows\(\)\)/);
 });
 
-test('every Run button is reachable and kept off while a task runs: tracked commands, the TASK_BUTTONS ids, or Tune (a dialog)', () => {
+test('every Run button is reachable and kept off while a task runs: tracked commands or the TASK_BUTTONS ids', () => {
   const basics = activitySource();
   const kinds = basics.match(/export const COMMAND_KIND = \{([^}]*)\}/)[1];
   const tracked = basics.match(/export const TASK_BUTTONS = (\[\[.*\]\]);/)[1];
   const buttons = [...grid.matchAll(/<button[^>]*class="[^"]*\baction\b[^"]*"[^>]*>/g)].map(m => m[0]);
-  assert.equal(buttons.length, 6);
+  assert.equal(buttons.length, 4);
   for (const button of buttons) {
     const command = button.match(/data-command="(\w+)"/)?.[1], id = button.match(/id="([\w-]+)"/)?.[1];
     if (command) assert.match(kinds, new RegExp(`\\b${command}:`), `${command} is held off while its task runs (COMMAND_KIND)`);
-    else assert.ok(id === 'tune-open' || tracked.includes(`#${id}`), `${id} is held off while a task runs (TASK_BUTTONS)`);
+    else assert.ok(tracked.includes(`#${id}`), `${id} is held off while a task runs (TASK_BUTTONS)`);
   }
   assert.match(tracked, /#board-run/);   // the dynamic one too
 });
 
 test('every task keeps its ⌘K entry: the buttons keep their data-command / data-palette', () => {
-  for (const id of ['visits-run', 'tailor-top', 'tune-open']) assert.match(grid, new RegExp(`id="${id}"[^>]*data-palette="`), id);
-  for (const command of ['run', 'mail', 'weekly']) assert.match(grid, new RegExp(`data-command="${command}"`), command);
+  for (const id of ['visits-run', 'tailor-top']) assert.match(grid, new RegExp(`id="${id}"[^>]*data-palette="`), id);
+  for (const command of ['run', 'mail']) assert.match(grid, new RegExp(`data-command="${command}"`), command);
   assert.match(read('pages/actions-board.js'), /dataset\.palette = 'board'/);
 });
 
@@ -63,9 +63,4 @@ test('the schedule lines come from the real schedule and the next run', () => {
   assert.equal(scheduleLine(undefined, undefined, now), '');   // no saved frequency: no line
   assert.match(grid, /data-task-schedule="search"/);
   assert.match(grid, /data-task-schedule="mail"/);
-});
-
-test('Tune shows a hint until there is a week of results, and stays enabled', () => {
-  assert.match(grid, /id="tune-hint" hidden>Works best after your first week/);
-  assert.doesNotMatch(read('pages/actions-layout.js'), /tune-open[^;]*disabled/);
 });

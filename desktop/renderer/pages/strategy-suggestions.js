@@ -1,4 +1,5 @@
-// Strategy page, suggestions: the Improve-your-search rows, coverage verdict, ideas, rescore confirm. Guarded by: test/advice-events.test.js, test/coverage-card.test.js, test/filters-card.test.js.
+// Strategy page, suggestions: the Improve-your-search rows, coverage verdict, ideas, rescore confirm, and Tune my strategy's row from Focus's pool
+// (pages/focus-suggestions.js). Guarded by: test/advice-events.test.js, test/coverage-card.test.js, test/filters-card.test.js, test/suggestions.test.js.
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
@@ -18,6 +19,7 @@ import {dirty, strategyBarNow} from './strategy-cards.js';
 import {byStore} from '../store-words.js';
 import {countOf, defineCount, paintCount} from '../shared-counts.js';
 import {NO_PLACE} from '../targets.js';
+import {RUN, answerEntry, homeSuggestions} from './focus-suggestions.js';
 // Where else the change shows: Notion's ⚙️ Search settings page, only while Notion holds the data (on this Mac they are the app's own).
 const alsoInSettings = () => byStore(' (also in your Search settings in Notion)', '');
 
@@ -37,7 +39,7 @@ const LAST = 'jp.coverage.last';
 const lastVerdict = () => { try { const saved = JSON.parse(localStorage.getItem(LAST) || 'null'); return saved && 'verdict' in saved ? saved : null; } catch { return null; } };
 let checking = false;
 const rows = {};   // kind → the row's element, or null when it has nothing to say
-const ORDER = ['places', 'ideas', 'coverage', 'filters', 'sources', 'visits', 'foryou'];
+const ORDER = ['tune', 'places', 'ideas', 'coverage', 'filters', 'sources', 'visits', 'foryou'];   // tune first: it rests on your own results
 // One count of the suggestions, painted wherever it shows (shared-counts.js): the Suggestions tab's badge and the line under the tabs.
 const SUGGESTIONS = 'strategy-suggestions';
 defineCount(SUGGESTIONS, () => ORDER.filter(kind => rows[kind]).length);
@@ -120,7 +122,7 @@ const ROW_IDS = {coverage: ['strategy-coverage', 'coverage-chips'], places: ['st
   sources: ['strategy-sources', 'sources-chips'], visits: ['strategy-visits', 'visits-chips'], foryou: ['strategy-foryou', 'foryou-chips'], ideas: ['strategy-ideas', 'ideas-chips']};
 // Each kind's colour (owner, 7 Oct 2026: "bring this page to life"): blue for sources, teal for locations, violet for roles, amber for manual
 // browsing; orange stays the action colour. Used by its tile here and in Improve your search.
-const TONE = {places: 'teal', ideas: 'violet', coverage: 'violet', filters: 'neutral', sources: 'info', visits: 'warn', foryou: 'good'};
+const TONE = {tune: 'violet', places: 'teal', ideas: 'violet', coverage: 'violet', filters: 'neutral', sources: 'info', visits: 'warn', foryou: 'good'};
 // Numbers carry the meaning ("30 matching roles", "8 suggestions"): bold, the words around them muted.
 function emphasize(text) {
   const box = el('span', 'muted');
@@ -183,6 +185,32 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
   adviceEvent('shown', kind, 'strategy');
   return row;
 }
+// Tune my strategy (src/tune.py, counts only; spec PR 1a): "N changes your results support", Review opens the Tune dialog, ⋯ keeps Not now or
+// Not true in your store. Shown only while your results support a change; drawn again only when that changes (a Focus read with the same
+// changes leaves the rows alone).
+function tuneRow(entry) {
+  briefs.tune = {glyph: 'sliders', title: entry.title, text: entry.detail, cta: 'Review'};
+  const row = el('section', `suggestion-card tone-${TONE.tune}`);
+  Object.assign(row, {id: 'strategy-tune'});
+  row.dataset.key = entry.key;
+  const head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words'), name = el('div', 'suggestion-title');
+  name.append(el('h3', '', entry.title));
+  words.append(name, emphasize(entry.detail));
+  const review = el('button', 'secondary', 'Review');
+  review.type = 'button';
+  review.addEventListener('click', () => RUN.tune());
+  head.append(tile('sliders', TONE.tune), words, review, moreButton([
+    {icon: 'clock', label: 'Not now', title: 'Hidden for 14 days, then shown again if your results still support it', run: () => answerEntry(entry, 'Not now')},
+    {icon: 'close', label: 'Not true', title: 'Never shown again for these changes', run: () => answerEntry(entry, 'Not true')}], 'More about tuning'));
+  row.append(head);
+  return row;
+}
+window.addEventListener('suggestions-updated', () => {
+  const [entry] = homeSuggestions('strategy').filter(one => one.kind === 'tune');
+  if ((rows.tune?.dataset.key || '') === (entry?.key || '')) return;
+  rows.tune = entry ? tuneRow(entry) : null;
+  drawSuggestions();
+});
 // ⋯ → hide this row until the next search brings a new verdict (its `at`): what "Not now" did, said plainly.
 const hideItem = (kind, id, key, at) => ({label: 'Hide until the next search', icon: 'eye',
   title: 'This row comes back when a search brings new numbers. Your settings do not change.',

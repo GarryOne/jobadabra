@@ -116,7 +116,7 @@ class Neighbours(unittest.TestCase):
             'Insight': {'type': 'title', 'title': [{'plain_text': 'Interview patterns headline'}]},
             'Category': select('Interview patterns'), 'Date': {'type': 'date', 'date': {'start': '2026-09-30'}}}}
         built = focus.build([], [], [], now=NOW, insights=[patterns])
-        self.assertIsNone(built['insight'])
+        self.assertEqual(built['suggestions'], [])
 
     def test_a_review_run_updates_the_insights_and_counts_their_cost(self):
         from src import daily, daily_modes

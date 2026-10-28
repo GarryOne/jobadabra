@@ -27,10 +27,10 @@ test('the judge reads the text the person would read: the prose fields in order,
   assert.equal(proseOf('letter', {eligible: false, cover_letter: 'Hello', answers: [{answer: 'A1', category: 'normal'}]}), 'eligible: false\ncover_letter: Hello\nanswer: A1\ncategory: normal');
 });
 
-test('the cases: 5 for each prose feature, every one with the trap the judge is told about and the real prompt in the request', {skip: process.platform === 'win32' && 'the cases are built by the Python engine (mac and Linux run this)'}, () => {
+test('the cases: 5 for each prose feature (weekly 6: its door), every one with the trap the judge is told about and the real prompt in the request', {skip: process.platform === 'win32' && 'the cases are built by the Python engine (mac and Linux run this)'}, () => {
   const cases = allCases();
   const byFeature = Object.groupBy(cases, item => item.feature);
-  assert.deepEqual(Object.fromEntries(Object.entries(byFeature).map(([name, list]) => [name, list.length])), {letter: 5, review: 5, prep: 5, weekly: 5, rejection: 5});
+  assert.deepEqual(Object.fromEntries(Object.entries(byFeature).map(([name, list]) => [name, list.length])), {letter: 5, review: 5, prep: 5, weekly: 6, rejection: 5});
   for (const item of cases) {
     assert.ok(item.trap.length > 30, item.id);
     assert.match(item.params.system.map(part => part.text).join('\n'), /Writing rules \(every text you write for the person\)/, `${item.id} carries the shared writing rules`);

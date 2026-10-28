@@ -10,11 +10,11 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const html = read('index.html');
 
 // The registry: each AI action, found by the text that identifies its button in index.html or its builder in a script.
-const STATIC = ['id="refresh"', 'data-refresh-jobs>', 'data-command="run"', 'id="tailor-top"', 'data-command="mail"', 'id="visits-run"', 'id="tune-open"',
-  'data-command="weekly"', 'id="cvc-ai-run"', 'id="strategy-redo"', 'id="profile-empty-rebuild"', 'id="prep-go"', 'id="check-mail"', 'id="jobs-unscored-go"',
+const STATIC = ['id="refresh"', 'data-refresh-jobs>', 'data-command="run"', 'id="tailor-top"', 'data-command="mail"', 'id="visits-run"',
+  'id="cvc-ai-run"', 'id="strategy-redo"', 'id="profile-empty-rebuild"', 'id="prep-go"', 'id="check-mail"', 'id="jobs-unscored-go"',
   'id="iv-save-review"', 'id="rescore-go"', 'id="ss-needs-send-btn"', 'id="draft-build"', 'id="draft-redraft"', 'id="draft-again"', 'id="letter-draft"'];
 const BUILT = [['pages/activity-visits.js', "const claude = el('button'"], ['pages/strategy-rescore.js', "const go = el('button'"],
-  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/activity-mail.js', "'Build prep kit'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"]];
+  ['job-drawer/tab-documents.js', 'function tailorButton'], ['pages/jobs-find.js', "button('Full report →'"], ['pages/jobs-find.js', 'const again = label'], ['pages/ready-card.js', "'Fill tonight on the server'"], ['pages/activity-mail.js', "'Build prep kit'"], ['pages/jobs-render.js', "label: 'Prepare only'"], ['pages/jobs-render.js', "label: job.tailored ? 'Re-tailor"], ['pages/focus-suggestions.js', 'const node = button(action.label']];
 
 test('every AI action in index.html carries data-wand', () => {
   for (const key of STATIC) {
@@ -64,7 +64,7 @@ test('the cursor light over every Actions task card: one listener for the .task-
   assert.match(css, /\(hover: hover\) and \(pointer: fine\)\s*\{\s*:is\([^)]*\)\)?:hover::before/);
   assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*:is\([^)]*\)\)?::before/);
   const cards = [...html.matchAll(/class="[^"]*\btask-card\b[^"]*"/g)];
-  assert.ok(cards.length >= 6, 'the Actions cards are found');
+  assert.ok(cards.length >= 4, 'the Actions cards are found');
 });
 
 test('a press on any wand button bursts sparks and flashes it: one delegated listener, started at start-up, still for reduced motion', () => {

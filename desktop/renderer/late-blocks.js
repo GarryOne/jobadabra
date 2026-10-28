@@ -7,6 +7,7 @@
 export const LATE_BLOCKS = {
   'find-card': 'Jobs: the Find jobs card (pages/jobs-find.js)',
   'jobs-talking': 'Jobs: In conversation (pages/jobs-talking.js)',
+  'jobs-suggestions': 'Jobs: Suggestions for your search, read with Focus (pages/focus-suggestions.js)',
   'focus-chart-block': 'Focus: the last 14 days chart in Today\'s progress (pages/focus-chart.js)',
 };
 const KEY = 'jp-late-blocks';

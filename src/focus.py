@@ -29,6 +29,7 @@ import argparse
 from datetime import date, datetime, timedelta, timezone
 from html import escape
 import json
+import os
 import re
 import sys
 from zoneinfo import ZoneInfo
@@ -42,6 +43,7 @@ from .notion import client as notion
 from .notion import funnel as funnel_steps
 from .notion.ledger import OUTCOME_STAGES, REPLY
 from .stores import base
+from . import suggestions
 # The helpers live in focus_items.py and focus_state.py; every name stays importable from here.
 from .focus_items import (  # noqa: F401
     TZ, DEFAULT_TARGET, REPLIED, ENDED, NEEDS_ANSWER, WAITING_DAYS, QUIET_DAYS, SOON_HOURS, STALE_DAYS,
@@ -53,9 +55,10 @@ from .focus_state import (  # noqa: F401
     _skipped_details, follow_up, funnel, origin_of, _key)
 
 
-def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True):
-    """{'items': [...], 'today': {...}}: the focus list, most important first. Pure: no I/O. rows, events, interviews,
-    insights: store records (an application's or insight's 'link' is its page, when the store has one)."""
+def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True, tune=None):
+    """{'items': [...], 'suggestions': [...], 'today': {...}}: the focus list, most important first, each item with its place
+    (Up next or Suggestions, src/suggestions.py), and the engine's suggestions. Pure: no I/O. rows, events, interviews,
+    insights: store records (an application's or insight's 'link' is its page, when the store has one); tune: src/tune.py's answer."""
     now = now or datetime.now(timezone.utc)
     today = now.astimezone(TZ).date()
     by_app, interviewed, items = _events_by_app(events), _interviewed(interviews), []
@@ -211,29 +214,6 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
                                                                   f'{f" ({names}…)" if names else ""}.' if kits else
                                                                   ' Prepare kits from your best matches (Jobs).'),
                            applied=done_today, left=left, kits=len(kits), target=target))
-    # The latest rejection lesson (last 3 days) is the page's Insight, not a to-do.
-    reviewed = [r for r in rows if _field(r, 'stage') == 'Rejected' and _field(r, 'rejection_lesson')]
-    recent = [r for r in reviewed if (_when(r.get('updated_at') or '') or now) > now - timedelta(days=3)]
-    insight = None
-    if recent:
-        row = max(recent, key=lambda r: r.get('updated_at') or '')
-        lesson = _field(row, 'rejection_lesson')
-        first = re.split(r'(?<=[.;])\s', lesson, maxsplit=1)[0].rstrip('.;')
-        insight = {'reason': _field(row, 'rejection'), 'headline': _short(first, 220),
-                   'detail': f"{_field(row, 'company')} — {_role(row)}", 'lesson': lesson,
-                   'notion_url': row.get('link') or '', 'page_id': row['id'],
-                   # The job, so the app can open its page's Review tab when there is no Notion page (renderer/pages/focus.js renderInsight).
-                   'url': _field(row, 'url'), 'title': _field(row, 'title'), 'company': _field(row, 'company')}
-    fresh = [r for r in insights if _field(r, 'day')[:10] >= (now - timedelta(days=7)).date().isoformat()
-             and _field(r, 'category') != 'Interview patterns']  # that one is shown on the Interviews page
-    if fresh:
-        extra = lambda r, name: (r.get('fields') or {}).get(name)  # noqa: E731
-        row = max(fresh, key=lambda r: (bool(extra(r, 'issue_detected')), _field(r, 'day'), r.get('created_at') or ''))
-        issue = bool(extra(row, 'issue_detected'))
-        action, evidence = extra(row, 'action') or '', extra(row, 'evidence') or ''
-        insight = {'reason': 'Issue detected' if issue else _field(row, 'category') or 'Insight',
-                   'headline': _field(row, 'title'), 'detail': action,
-                   'lesson': evidence, 'notion_url': row.get('link') or '', 'page_id': row['id'], 'issue': issue, 'report': True}
     waiting = [r for r in rows if _field(r, 'stage') in ('Applied', 'Confirmation received')
                and (applied := _when(_field(r, 'applied_on'))) and (now - applied).days >= WAITING_DAYS]
     if waiting:
@@ -244,10 +224,13 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
              'follow_up': 4.5, 'feedback_review': 5,
              'feedback': 6, 'nudge': 7, 'apply': 8, 'learn': 9, 'feedback_wait': 10, 'waiting': 11}
     items.sort(key=lambda i: (i['priority'], order[i['kind']]))
-    items = [present(item, gmail) for item in items]
+    items = [{**present(item, gmail), 'place': suggestions.place(item['kind']), 'topic': suggestions.item_topic(item['kind'])} for item in items]
+    # The weekly report's door counts only when the app can carry it out now (src/suggestions.py DOORS).
+    doors = {'find_jobs', 'tailor'} | ({'tune'} if suggestions.tune_entry(tune) else set()) | ({'prep'} if any(i['kind'] == 'prepare' for i in items) else set())
     return {'items': items, 'today': {'applied': done_today, 'target': target, 'kits_ready': len(kits),
                                       'history': _applied_by_day(rows, by_app, today)},
-            'insight': insight, 'summary': summary(items), 'funnel': funnel(rows, events),
+            'suggestions': suggestions.pool(insights=insights, tune=tune, events=events, now=now, doors=doors, rows=rows),
+            'summary': summary(items), 'funnel': funnel(rows, events),
             'answered_questions': answered_questions(rows, events),
             'generated_at': now.isoformat(timespec='seconds')}
 
@@ -277,18 +260,32 @@ def _linked(stores, records):
     return [{**r, 'link': stores.link(r['id']) or ''} for r in records]
 
 
+def _tune(rows):
+    """Tune my strategy's answer (src/tune.py, counts only, no AI) from the applications already read; None when there is no jobs cache
+    yet or it can't be read: Focus never fails on Tune. Why (insights PR 1a, 28 Oct 2026): Tune comes to you after every search."""
+    from . import store, tune
+    from .paths import jobs_db, load_search_config
+    path = jobs_db()
+    if not os.path.exists(path):
+        return None
+    try:
+        with store.connect(path) as db:
+            return tune.run(db, None, load_search_config(), stages={r['url'].strip(): r.get('stage') or None for r in rows if r.get('url')})
+    except Exception:  # noqa: BLE001 - a missing table or settings file: no Tune entry
+        return None
+
+
 def load(stores, *, target=None, now=None, gmail=None):
-    """Applications, events, interviews, the last week's insights and (without a target given) the Search settings
-    target, read at once from the store."""
-    since = ((now or datetime.now(timezone.utc)) - timedelta(days=8)).date().isoformat()
+    """Applications, events, interviews, every insight (answers to suggestions can be old) and (without a target given) the
+    Search settings target, read at once from the store; Tune from the jobs cache on this Mac."""
     # Side by side only for a store reached over the network (Notion: a page load waits for the slowest read, not the sum); a store on
     # this Mac is read in turn: its sqlite connection refuses another thread (the SQLite store's Focus and Reports failed, 9 Oct 2026).
     read = notion.together if base.CLOUD in (stores.caps or ()) else (lambda *calls: [call() for call in calls])
     rows, events, interviews, target, insights = read(
         stores.applications.list, stores.events.list, stores.interviews.list,
-        lambda: target or settings_target(), lambda: stores.insights.list(since=since))
+        lambda: target or settings_target(), stores.insights.list)
     return build(_linked(stores, rows), events, _linked(stores, interviews), target=target, now=now,
-                 insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail)
+                 insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail, tune=_tune(rows))
 
 
 def reminder(focus, now=None):

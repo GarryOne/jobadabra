@@ -24,14 +24,14 @@ test('no step presses a nav button for a page chosen at run time or for a page t
 export const directTaskClicks = text => text.split('\n').map((line, at) => ({line, at: at + 1})).filter(({line}) => /\.click\(/.test(line) && (/data-command=\\?["']?\$\{/.test(line) || MORE_BUTTONS.some(sel => line.includes(sel))));
 
 test('no step presses a task button that can sit under More without opening More first', () => {
-  assert.ok(MORE_BUTTONS.length >= 3, `the page's More group lists ${MORE_BUTTONS.join(', ')}`);
+  assert.ok(MORE_BUTTONS.length >= 1, `the page's More group lists ${MORE_BUTTONS.join(', ')}`);
   const found = files.filter(file => file !== path.join('lib', 'task-card.mjs')).flatMap(file => directTaskClicks(fs.readFileSync(path.join(root, file), 'utf8')).map(({line, at}) => `${file}:${at}: ${line.trim().slice(0, 100)}`));
   assert.deepEqual(found, [], `use pressTask(page, selector) from lib/task-card.mjs:\n${found.join('\n')}`);
 });
 
 test('the task scan catches the shapes it is for', () => {
   assert.equal(directTaskClicks('await page.click(`[data-command="${command}"]`);').length, 1);
-  assert.equal(directTaskClicks("await page.click('#tune-open');").length, 1);
+  assert.equal(directTaskClicks("await page.click('#visits-run');").length, 1);
   assert.equal(directTaskClicks("await page.click('[data-command=\"run\"]');").length, 0);
 });
 

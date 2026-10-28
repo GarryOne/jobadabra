@@ -30,8 +30,8 @@ const TINT = /background(?:-color)?:[^;]*(?:-soft\b|--amber-rgb|--next\b)/;
 
 test('rows and cards that wait for you: no tone-tinted fill (state is an edge or a pill)', () => {
   // The blocks that are a whole row, list or card on the page: the session list's row, the next step, the needs card and its rows.
-  // Also the same class on other screens (27 Oct 2026 follow-up): Gmail cards, the next-step band, Focus's Insight box and Your focus, Add-a-lead fields.
-  const BLOCK = /^\.(?:ss-(?:row|next|needs?)|mail-(?:confirm|ai|ask|question)|insight-next|focus-insight-box|focus-summary|lead-field)(?:\.[\w-]+|\[[^\]]+\])*$/;
+  // Also the same class on other screens (27 Oct 2026 follow-up): Gmail cards, the next-step band, Your focus, Add-a-lead fields (Focus's Insight box left, 28 Oct 2026).
+  const BLOCK = /^\.(?:ss-(?:row|next|needs?)|mail-(?:confirm|ai|ask|question)|insight-next|focus-summary|lead-field)(?:\.[\w-]+|\[[^\]]+\])*$/;
   const tinted = [...rules(read('style.css')), ...rules(read('components.css'))].flatMap(([selectors, body]) => selectors.split(',').map(s => s.trim())
     .filter(s => BLOCK.test(s) && TINT.test(body)));
   assert.deepEqual(tinted, [], 'a row or card that waits for you is filled with a tone tint again');

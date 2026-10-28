@@ -69,7 +69,8 @@ export function sessionLogo(item) {
 }
 // The sessions most worth opening first: waiting for your answer, a review whose form isn't complete yet, working,
 // ready to submit, then the rest (latest first).
-const urgency = item => (item.status === 'input' && !sessionReview(item, formReady(item)) ? 0 : sessionReview(item, formReady(item)) && !formReady(item) ? 1
+const urgency = item => (backgroundStatus(item)?.[0] === 'Queued' ? 4   // Why (2026-10-28, #2392 review): a queued hidden job only waits its turn, so the nav badge does not count it as working
+  : item.status === 'input' && !sessionReview(item, formReady(item)) ? 0 : sessionReview(item, formReady(item)) && !formReady(item) ? 1
   : isLive(item) && item.status === 'running' ? 2 : sessionReview(item, formReady(item)) ? 3 : 4);
 export function bestSession() {
   return [...sessionList].sort((a, b) => urgency(a) - urgency(b) || Date.parse(b.startedAt || 0) - Date.parse(a.startedAt || 0))[0] || null;

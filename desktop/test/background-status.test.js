@@ -38,3 +38,13 @@ test('the dock counts a filling hidden-browser job as active, a queued one as wa
   assert.equal(tabClosed({...filling, background: undefined}, forms, true), true, 'a Chrome session still reads closed');
   assert.ok(dockOrder(filling, item => tabClosed(item, forms, true)) < 9, 'the filling job is not sorted last as if closed');
 });
+
+test('one table: the card\'s pill is the list\'s words, only more exact when the page facts are known (Gitar, #2392)', () => {
+  for (const state of ['queued', 'preflight', 'filling', 'ready_for_review', 'needs_user_handoff', 'manual_submit_required']) {
+    assert.deepEqual(liveCard({state}, null).pill, backgroundStatus({background: {state}}), `${state}: card and list say the same`);
+  }
+  const done = {left: [], fields: 4, filled: 4, active: ''};
+  assert.deepEqual(liveCard({state: 'ready_for_review'}, done).pill, ['Ready to submit', 'good'], 'the card knows no required field is left');
+  assert.deepEqual(backgroundStatus({background: {state: 'ready_for_review'}}, {ready: true}), ['Ready to submit', 'good']);
+  assert.deepEqual(liveCard({state: 'filling'}, {left: [], fields: 4, filled: 2}).pill, ['Filling · 2 of 4 fields', 'info']);
+});

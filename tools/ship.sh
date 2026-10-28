@@ -51,7 +51,11 @@ if ! git diff --quiet || ! git diff --cached --quiet; then echo "ship: uncommitt
 # The PR description first (26 Oct 2026, c5: 139 s of push checks and a push, then "no Before/After table"): a bad --body stops here in about a second, before
 # any check, rebase or push. Once per landing: the background child skips it (SHIP_BODY_CHECKED). tests/test_ship_pr.py "a bad body stops ship".
 if [ -n "${SHIP_PR_BODY:-}" ] && [ -z "${SHIP_BODY_CHECKED:-}" ] && [ -f "$tools/pr-body.sh" ]; then
-  body_err="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY" 2>&1 >/dev/null)" || {
+  # Why (28 Oct 2026, fl: #2400's body passed here and went red on the PR gate): the laid-out body also goes through tools/pr-body-check.py, the check
+  # CI runs, with the title the PR will get: --title= or the subject tools/ship-pr.sh takes, tagged once (an n/N plan title needs the Plan progress block).
+  gate_title="${SHIP_PR_TITLE:-$(bash "$tools/pr-title.sh" origin/main 2>/dev/null || true)}"
+  case "$gate_title" in ''|'['*'] '*) ;; *) gate_title="[xx] $gate_title" ;; esac
+  body_err="$( { body_out="$(bash "$tools/pr-body.sh" origin/main "--body=$SHIP_PR_BODY")" && printf '%s' "$body_out" | PR_TITLE="$gate_title" python3 "$tools/pr-body-check.py" >/dev/null; } 2>&1 >/dev/null)" || {
     echo "ship: the PR description is not laid out ($SHIP_PR_BODY), nothing was pushed:" >&2; echo "$body_err" >&2
     echo "ship: fix the file (template: tools/pr-body-template.md), then run ship again" >&2; exit 2; }
   export SHIP_BODY_CHECKED=1

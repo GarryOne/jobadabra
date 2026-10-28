@@ -37,7 +37,9 @@ test('a test app ends when its runner is killed, and one without the watch does 
     runner.kill('SIGKILL');   // a runner that died or timed out: no handler runs, no close()
     assert.ok(await until(() => !alive(pids.watched), 8000), 'the watched app is still alive after its runner was killed');
     assert.ok(await until(() => !alive(pids.stubborn), 8000), 'an app that ignores the quit call is still alive (the watch ends it by force after its grace)');
-    assert.ok(alive(pids.control), 'positive control: the kill did leave a child with no watch alive (a test that proves nothing otherwise)');
+    // Why (#2384, Windows CI): libuv puts every non-detached child of a Node process in a job object that kills it with its parent, so on Windows the OS ends the control too
+    // and there is no orphan to guard against; the control only means something where a child outlives its parent.
+    if (process.platform !== 'win32') assert.ok(alive(pids.control), 'positive control: the kill did leave a child with no watch alive (a test that proves nothing otherwise)');
   } finally {
     runner.kill('SIGKILL');
     for (const pid of Object.values(pids || {})) { try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ } }

@@ -82,7 +82,7 @@ def main(argv=None):
     sub.add_parser('refused-outcome').add_argument('file')   # what the extension's fetch of one of them brought (JSON: url, status, html, title, final)
     sub.add_parser('visit-understand').add_argument('file')   # a page outline the extension could not read: Claude's recipe, kept per site
     sub.add_parser('visit-recipe').add_argument('file')   # the recipe kept for a site (JSON: url, forget), or null   # a page the extension sent (JSON: url, html, cards, title, session): its jobs, kept as a feed
-    sub.add_parser('role-ideas').add_argument('file', nargs='?')   # roles suggested from the Profile (JSON: set_aside), counted in the places' titles
+    sub.add_parser('role-ideas')   # roles suggested from the Profile, counted in the places' titles; the words set aside come from the store
     sub.add_parser('coverage')   # how much of the market the role keywords catch, and what adding a term would add (src/coverage.py)
     args = parser.parse_args(argv)
     with store.connect(JOBS_DB) as db:
@@ -118,7 +118,6 @@ def main(argv=None):
             from . import coverage, features
             from .ai import engine, role_ideas
             from .paths import load_search_config, local_profile
-            asked = json.loads(Path(args.file).read_text()) if args.file else {}
             if not _role_ideas_on():
                 print(json.dumps({'ok': True, 'ideas': []}))
                 return 0
@@ -131,7 +130,11 @@ def main(argv=None):
                 if not profile:   # the active store's Profile (Notion's page as before)
                     read = profile_source(stores)
                     profile = read() if read else ''
-                aside = set_aside(stores.insights.list(category=ANSWER_CATEGORY)) + list(asked.get('set_aside') or [])   # a Not true's words, kept in the store
+                try:
+                    aside = set_aside(stores.insights.list(category=ANSWER_CATEGORY))   # a Not true's words, kept in the store
+                except Exception as error:  # noqa: BLE001 - Why (#2350, Gitar): the ideas still come; a set-aside word is left out again at the next read
+                    print(f'Warning: set-aside roles not read ({type(error).__name__}: {error})', file=sys.stderr)
+                    aside = []
                 found = role_ideas.ideas(profile or '', load_search_config(), (coverage.load() or {}).get('missed_titles') or [], aside)
             except Exception as error:  # noqa: BLE001 — no ideas this time, said; never the fixed words' guess instead (audit PR 6)
                 print(json.dumps({'ok': False, 'ideas': [], 'error': f'No role ideas this time ({type(error).__name__})'}))

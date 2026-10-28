@@ -14,8 +14,6 @@ import {registerLocationsHandlers} from './locations-handlers.js';
 import {registerListMeaningsHandlers} from './list-meanings-handlers.js';
 import * as viewCache from './view-cache.js';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {log as appLog} from './log.js';
 import {sharedRead} from './shared-read.js';
 import {demoPath} from './demo.js';
@@ -33,23 +31,19 @@ export function registerSearchTuningHandlers(ctx) {
   });
   // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; the words a
   // Not true set aside are read from the store by the engine (src/suggestions.py set_aside), never proposed again.
-  ipcMain.handle('roleIdeas', async (_, setAside = []) => {
+  ipcMain.handle('roleIdeas', async () => {
     if (DEMO) {   // the ideas the demo Focus offers (tests/test_suggestions_search.py); a persona folder without them has none, not another person's
       let demo = {ideas: [], key: ''};
       try { demo = JSON.parse(fs.readFileSync(demoPath(here, 'role-ideas.json'), 'utf8')); } catch { /* no ideas for this persona */ }
-      return {ok: true, key: demo.key, ideas: demo.ideas.filter(idea => !(setAside || []).includes(idea.word))};
+      return {ok: true, key: demo.key, ideas: demo.ideas};
     }
-    const file = path.join(os.tmpdir(), `jp-role-ideas-${process.pid}-${Date.now()}.json`);
-    fs.writeFileSync(file, JSON.stringify({set_aside: (Array.isArray(setAside) ? setAside : []).map(String).slice(0, 60)}));
     try {
-      const {stdout} = await pipeline.run(storage, ['src.desktop', 'role-ideas', file]);
+      const {stdout} = await pipeline.run(storage, ['src.desktop', 'role-ideas']);
       const answer = JSON.parse(String(stdout).trim().split('\n').pop());
       appLog('strategy', 'role ideas', {count: answer.ideas?.length ?? 0, ok: !!answer.ok});
       return answer;
     } catch (error) {
       return {ok: false, ideas: [], error: error.message};
-    } finally {
-      fs.rmSync(file, {force: true});
     }
   });
   // "Your filters drop jobs": only what the engine's own coverage listed can be removed (never a word typed elsewhere).

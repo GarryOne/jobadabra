@@ -13,6 +13,7 @@ import {registryPathDirs} from './win-path.js';
 import * as session from './claude-session.js';
 import * as terminals from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
+import {canStart} from './apply-eligibility.js';
 import {browserCommand, browserOf} from './browser-launch.js';
 import * as extensionInstall from './extension-install.js';
 import {log as appLog} from './log.js';
@@ -25,15 +26,16 @@ export const FILL_MARK = 'jobpilotto-fill'; // must match extension/background.j
 // Saved jobs first, then by fit.
 const best = (a, b) => (b.status === 'saved') - (a.status === 'saved') || (b.fit ?? -1) - (a.fit ?? -1);
 const open = job => ['unreviewed', 'saved'].includes(job.status) && job.url;
+const startable = job => open(job) && canStart(job.stage);   // what an Apply batch may take: a job in process is never picked (lib/apply-eligibility.js)
 
 // Only jobs with a drafted kit (their form is already answered), best first.
 export function pick(jobs, n) {
-  return jobs.filter(job => open(job) && job.kit).sort(best).slice(0, n);
+  return jobs.filter(job => startable(job) && job.kit).sort(best).slice(0, n);
 }
 
 // The best open jobs that still have no kit: what an Apply batch drafts first when fewer than N are ready.
 export function pickMissing(jobs, n) {
-  return jobs.filter(job => open(job) && job.code && !job.kit).sort(best).slice(0, n);
+  return jobs.filter(job => startable(job) && job.code && !job.kit).sort(best).slice(0, n);
 }
 
 // What to say when "Tailor CVs for top matches" finds nothing to do: every open job has its CV, or there is no open job at all (then no CV is "ready").

@@ -78,3 +78,30 @@ test('Open in my browser reads the hand-off from the held tab before it closes, 
   const unreadable = held({session: 'bg', owner: 'o1', state: 'filling'});
   assert.deepEqual(await unreadable.controller.handOver('bg', async () => { throw new Error('page gone'); }), {ok: true, handoff: null}, 'a page that cannot be read still hands the job over; the fill starts again in Chrome');
 });
+
+const refuse = () => { throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'}); };
+const fillConfig = () => ({mode: 'fill', chosenAt: '2026-10-28T10:00:00Z'});
+
+test('a job the store refuses as not eligible comes back as a plain answer with what to do, never a thrown error, and starts no browser', async () => {
+  touched.length = 0;
+  const result = await make({config: fillConfig, store: {queue: async () => refuse()}, browser: {ready: () => true, start: spy('browser.start')}})
+    .enqueue([{url: 'https://jobs.example.test/lead'}], 'fill');
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'This job is not eligible to start another application. Pick another job in Jobs and try again.');
+  assert.deepEqual(touched, [], 'no session started, no browser launched');
+});
+
+test('in a batch, an ineligible job is skipped and said while the others still start; any other failure stops the batch with its own words', async () => {
+  touched.length = 0;
+  const queue = async url => (url.endsWith('/lead') ? refuse() : {session: `s-${url.slice(-1)}`});
+  const terminals = {list: () => [], byUrl: () => null, record: () => null, startForm: ({id}) => { touched.push(`startForm ${id}`); return {id}; }};
+  const result = await make({config: fillConfig, store: {queue}, terminals, token: () => 'test-token', log: () => {}, browser: {ready: () => true, start: async () => { touched.push('browser.start'); return {owner: 'o'}; }}})
+    .enqueue([{url: 'https://jobs.example.test/lead'}, {url: 'https://jobs.example.test/b'}], 'fill');
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.sessions, ['s-b']);
+  assert.match(result.message, /1 application queued.*1 job was skipped: not eligible/);
+  assert.deepEqual(touched, ['startForm s-b', 'browser.start']);
+  const broken = await make({config: fillConfig, store: {queue: async () => { throw new Error('Could not write the application record.'); }}, browser: {ready: () => true, start: spy('browser.start')}})
+    .enqueue([{url: 'https://jobs.example.test/a'}, {url: 'https://jobs.example.test/b'}], 'fill');
+  assert.deepEqual(broken, {ok: false, error: 'Could not write the application record.'}, 'a real failure is not called "not eligible" and is not hidden');
+});

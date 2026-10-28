@@ -168,12 +168,13 @@ def now(set_aside=()):
     set_aside); [] before the first search, or when they can't be read: Focus never fails on them. Why (insights PR 1b, owner 28 Oct 2026):
     the rows come to you, read from what the last search kept."""
     from . import coverage
-    from .ai import role_ideas
+    from .ai import decide, role_ideas
     from .paths import load_search_config
     try:
         search, summary = load_search_config(), coverage.load()
         kept = role_ideas.kept(search, (summary or {}).get('missed_titles') or [], set_aside) if ideas_on() else []
-        return entries(checked(search, summary), kept, ideas_key(search))
+        with decide.cache_only():   # what the last search and Strategy's check judged; no model call on a Focus load (#2350)
+            return entries(checked(search, summary), kept, ideas_key(search))
     except Exception as error:  # noqa: BLE001 - said in the engine log, then no search entries
         print(f'Warning: search suggestions not read ({type(error).__name__}: {error})', file=sys.stderr)
         return []

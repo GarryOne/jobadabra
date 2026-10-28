@@ -116,6 +116,26 @@ class FocusTests(unittest.TestCase):
         self.assertEqual([entry['kind'] for entry in found], list(search.KINDS))
         self.assertTrue(found[1]['key'].startswith('ideas:') and kept.called)
 
+    def test_focus_recomputes_the_check_with_no_model_call_even_where_the_ai_would_judge(self):
+        """The test above stubs `checked`; this one runs the real coverage verdict, whose places and kinds of role ask the AI (decide).
+        Why (#2350, 28 Oct 2026): every Focus load asked the AI (17 s on a fresh install) and ran the interactions suite over its budget."""
+        import sqlite3
+        from src import coverage, desktop_strategy   # imported before the config is patched: digest reads it at import
+        from src.ai import decide
+        summary = {'at': '2026-10-02T10:00:00+00:00', 'feeds': 10, 'fetched': 400, 'in_places': 120, 'matched': 30, 'title_hits': 40, 'elsewhere': 3,
+                   'places': [{'place': 'Ireland', 'count': 6, 'examples': ['Site Reliability Engineer'], 'locations': ['Dublin, Ireland'], 'fragment': 'ireland'}],
+                   'suggestions': [{'term': 'platform engineer', 'count': 12, 'examples': ['Platform Engineer']}], 'missed_titles': []}
+        with mock.patch('src.ai.engine.ready', return_value=True), \
+                mock.patch('src.ai.engine.client', side_effect=AssertionError('a Focus load asked the AI')), \
+                mock.patch.object(decide, '_db', side_effect=lambda: sqlite3.connect(':memory:')), \
+                mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['sre'], 'locations': {'ch': ['zurich']}}), \
+                mock.patch.object(coverage, 'load', return_value=summary), mock.patch.object(search, 'ideas_on', return_value=False), \
+                mock.patch.object(desktop_strategy, '_visits', return_value=[]):
+            with self.assertRaises(AssertionError, msg='the verdict outside Focus does ask (the check this test relies on)'):
+                coverage.verdict(summary, ['sre'], ['zurich'])
+            found = search.now()
+        self.assertEqual([e['kind'] for e in found], ['places'], 'read with no error: an error also gives []')
+
     def test_focus_says_which_strategy_rows_are_answered(self):
         from src import focus
         answers = [answer('Not true', 'places:zurich'), answer('Not true', 'tune:x')]

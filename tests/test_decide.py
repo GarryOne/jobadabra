@@ -50,6 +50,15 @@ class DecideTests(unittest.TestCase):
         decide._calls['n'] = decide.MAX_CALLS_PER_RUN
         self.assertEqual(decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', FakeClient(lambda t: 'yes'), self.db), {})   # past the cap: unknown, not None
 
+    def test_cache_only_answers_what_was_judged_and_asks_nothing(self):
+        """#2350: a Focus load reads the search rows with no model call; what an earlier run judged still answers."""
+        client = FakeClient(lambda text: 'yes')
+        decide.decide('t', {'a': 'x'}, ('yes', 'no'), 'task', client, self.db)
+        with decide.cache_only():
+            self.assertEqual(decide.decide('t', {'a': 'x', 'b': 'y'}, ('yes', 'no'), 'task', client, self.db), {'a': 'yes'})   # b: unknown
+        self.assertEqual(len(client.calls), 1, 'only the call before cache_only')
+        self.assertFalse(decide.CACHE_ONLY['on'], 'restored on the way out')
+
 
 class UsersTests(unittest.TestCase):
     def test_a_sign_up_code_is_one_of_the_emails_own_tokens(self):

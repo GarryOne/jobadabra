@@ -46,7 +46,7 @@ function drawEligibility(into, lines, row) {
   eligibilityRow = row;
   const own = lines.find(line => line.label === NATIONALITY), rows = lines.filter(line => line.kind === 'per_country' && line.label !== NATIONALITY);
   const rest = lines.filter(line => line !== own && !rows.includes(line));
-  const add = Object.assign(el('button', 'link span-all', '+ Add a country'), {type: 'button'});
+  const add = Object.assign(el('button', 'secondary small-btn span-all fact-add', '+ Add a country'), {type: 'button'});   // solid (owner, 27 Oct 2026)
   add.addEventListener('click', () => { into.insertBefore(row({kind: 'per_country'}), add); detailsChanged(); });
   // Why (28 Oct 2026, #2322 review): one Nationality row. Words that are not country names ("British") stay as written with a Check, never a second row.
   const nationality = row(own && !isAsked(own.value) ? own : {label: NATIONALITY, value: ''});
@@ -62,7 +62,7 @@ function zoneRow(into, zone, rows) {
   if (saved || !zonesOpenedBy(nationalityNow(into)).includes(zone.id)) return eligibilityRow(saved || {label: zone.label, value: '', kind: 'per_country'});
   const node = el('div', 'fact-derived country-row');
   node.dataset.zone = zone.id;
-  const change = Object.assign(el('button', 'link small', 'Change'), {type: 'button'});
+  const change = Object.assign(el('button', 'secondary small-btn', 'Change'), {type: 'button'});
   change.addEventListener('click', () => { node.replaceWith(eligibilityRow({label: zone.label, value: '', kind: 'per_country'})); detailsChanged(); });
   const words = el('span', 'fact-derived-value');
   words.append(el('strong', '', 'Yes, freely'), el('span', 'muted', ' · from your nationality '), change);
@@ -101,7 +101,7 @@ export function foldOlder(readings = []) {
     const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => factOf(each).label.toLowerCase() === proposal.label.toLowerCase());
     if (line && factOf(line).value) continue;
     const next = eligibilityRow({...proposal, kind: 'per_country'});
-    if (line) line.replaceWith(next); else if (!into.querySelector(`.fact-derived[data-zone="${zoneOfLabel(proposal.label)?.id}"]`)) into.insertBefore(next, into.querySelector('.link.span-all'));
+    if (line) line.replaceWith(next); else if (!into.querySelector(`.fact-derived[data-zone="${zoneOfLabel(proposal.label)?.id}"]`)) into.insertBefore(next, into.querySelector('.fact-add'));
     if (next.isConnected) mark(next);
   }
   detailsChanged();

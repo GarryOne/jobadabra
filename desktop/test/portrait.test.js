@@ -110,7 +110,7 @@ test('the plain letter is stored beside the statements, as clean paragraphs with
   const made = storage();
   await portrait.refresh(made, {client: client(), bundle: bundle(), now: new Date()});
   const shown = await portrait.status(made, {bundle: bundle()});
-  assert.deepEqual(shown.letter, ['You build platforms .', 'You answer with a concrete example first.', 'You prefer small teams.']);
+  assert.deepEqual(shown.letter, ['You build platforms.', 'You answer with a concrete example first.', 'You prefer small teams.']);
   assert.ok(!shown.letter.join(' ').includes('['));
   assert.deepEqual(shown.sections.map(s => s.key), ['short', 'strengths', 'looking', 'work']);   // the letter never becomes a section
 });

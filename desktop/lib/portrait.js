@@ -100,7 +100,7 @@ export async function write(parts, allowed, {client, apiKey} = {}) {
   }
   const used = new Map();
   for (const id of sections.flatMap(section => section.statements.flatMap(each => each.evidence))) used.set(id, known.get(id));
-  const letter = String(answer.letter || '').replace(/\[[^\]]*\]/g, '').split(/\n\s*\n/).map(each => each.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 8);
+  const letter = String(answer.letter || '').replace(/\s*\[[^\]]*\]/g, '').split(/\n\s*\n/).map(each => each.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 8);
   return {sections, letter, evidence: used, usd: usdOf(response.usage)};
 }
 

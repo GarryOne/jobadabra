@@ -35,11 +35,11 @@
 - The setup prompt and the Profile template carry Nationality + zones, never a home-region or city line.
 
 ## Progress
-- [x] Pure rules: `renderer/work-eligibility.js` (`test/work-eligibility.test.js`)
-- [x] Card: Nationality chips, zone rows, derived rows, permit date + only-in (`pages/details-facts.js`, `fact-line.js`, `fact-summary.js`)
-- [x] Fold of older lines with backup + Undo (`lib/eligibility-older.js`, `test/eligibility-older.test.js`)
-- [x] Form answers from zones (`lib/question-reuse.js`, test in `question-reuse.test.js`)
-- [x] Queue: zones wait for Nationality; CV proposes Nationality (`missing-facts.js`, `cv-queue.js`)
-- [x] Setup prompt + template (`strategy.js`, `docs/notion-profile-template.md`, `profile-template-typed.test.js`)
-- [x] Store round trip SQLite + Notion (`profile-sections.test.js`)
+- [x] Pure rules: `renderer/work-eligibility.js` (proof: desktop/test/work-eligibility.test.js)
+- [x] Card: Nationality chips, zone rows, derived rows, permit date + only-in (proof: desktop/test/question-kinds-composite.test.js)
+- [x] Fold of older lines with backup + Undo (proof: desktop/test/details-facts.test.js)
+- [x] Form answers from zones (proof: desktop/test/journeys-eligibility.js)
+- [x] Queue: zones wait for Nationality; CV proposes Nationality (proof: desktop/test/details-review.test.js)
+- [x] Setup prompt + template (proof: desktop/test/profile-template-typed.test.js)
+- [x] Store round trip SQLite + Notion (proof: desktop/test/profile-sections.test.js)
 - [ ] PR B: "Remote from your country" moves out of Work eligibility (later)

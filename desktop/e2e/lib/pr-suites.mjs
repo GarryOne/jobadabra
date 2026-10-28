@@ -89,6 +89,25 @@ export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cad
   return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
 }
 
+/**
+ * The step names each picked suite runs (E2E_STEP_NAMES); a suite left out runs whole. A pull request runs every suite whole: a suite is a journey, a step stands on
+ * the ones before it. Why (owner, 28 Oct 2026, design #2336: "To be as journeys? … I'm fine with that. I agree"): steps picked alone went red where the app was fine
+ * (#2342 "Edit target" with no target, #2350 "Up next"; 15 of 149 red runs, 14–28 Oct). After a merge (main-steps.yml) the picked steps still run.
+ * By kind: pointedElse (a helper, the extension, the harness), a quote or change outside a named step, a line nobody ran → whole; else the steps the changed lines,
+ * removed quotes and the suite's own file reach. Guard: test/pr-suites-whole.test.mjs
+ */
+export function stepLists({suites, pullRequest = false, pointedElse = [], quoting = {}, picked = {}, byLines = {}, own = {}}) {
+  const steps = {};
+  if (pullRequest) return steps;
+  for (const suite of suites) {
+    if (pointedElse.includes(suite) || quoting[suite]?.whole || (picked[suite] && !byLines[suite])) continue;
+    const names = [...(byLines[suite] || []), ...(quoting[suite]?.steps || []), ...(own[suite] || [])];
+    const real = names.filter(name => name !== '(setup)');
+    steps[suite] = real.length ? [...new Set(real)] : names;
+  }
+  return steps;
+}
+
 // The step that quotes each removed UI text (PR 2 of the PR-checks plan): in a suite file, the `ctx.run('<name>', ...)` call whose text holds the quote. A quote outside
 // any step with a literal name (a helper, a lib file, a `${}` name) → the whole suite. -> {suite: {steps: [names], whole: bool}}
 export function stepCalls(text) {

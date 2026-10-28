@@ -1,11 +1,12 @@
 // Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites pr-suites.yml starts and waits for (they block the merge since 26 Oct 2026, gate G1a). Always exits 0: the e2e run decides.
 //   node pr-suites.mjs --base origin/main          the table
-//   node pr-suites.mjs --base origin/main --plan   also: `suites=a,b` and `steps={suite: [step names]}` for the PR run (workflow pr-suites.yml; needs the staged app files and installs, like e2e.yml's plan)
+//   node pr-suites.mjs --base origin/main --plan   also: `suites=a,b` and `steps={suite: [step names]}` for the run (workflow pr-suites.yml with --pull-request: no step names, every suite whole;
+//                                                  main-steps.yml after a merge: the picked steps). Needs the staged app files and installs, like e2e.yml's plan
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
@@ -82,15 +83,8 @@ try {
     const pointed = [...new Set([...pointedElse, ...Object.keys(own)])];
     const pullRequest = process.argv.includes('--pull-request');   // pr-suites.yml; main-steps.yml (after a merge) leaves it out
     const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
-    // Steps per suite: those its changed lines reach, those that quote removed UI text, those its own file's change touches. Whole: a suite a helper, the extension
-    // or the harness points at, a change or a quote outside a named step, a line nobody ran.
-    const byLines = stepNamesFor(picked), steps = {};
-    for (const suite of plan.suites) {
-      if (pointedElse.includes(suite) || quoting[suite]?.whole || (picked[suite] && !byLines[suite])) continue;
-      const names = [...(byLines[suite] || []), ...(quoting[suite]?.steps || []), ...(own[suite] || [])];
-      const real = names.filter(name => name !== '(setup)');
-      steps[suite] = real.length ? [...new Set(real)] : names;
-    }
+    // Steps per suite after a merge; a pull request runs each suite whole (lib/pr-suites.mjs stepLists).
+    const steps = stepLists({suites: plan.suites, pullRequest, pointedElse, quoting, picked, byLines: stepNamesFor(picked), own});
     // The store each suite's picked steps run on: the one they were recorded on (lib/coverage-pick.mjs storeFor; #2156's settings and strategy picked steps that exist
     // only on the Notion stand-in, failed "not found" on SQLite and ran whole again). A step no store of the run has is named and left out.
     const stores = {}, dropped = {};

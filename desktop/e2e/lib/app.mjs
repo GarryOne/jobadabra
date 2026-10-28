@@ -49,6 +49,9 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   });
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
+  // Why (28 Oct 2026, owner): a test run must never reach the owner's browser, Finder, clipboard or login items. The app closes those doors itself under JOB_PILOTTO_E2E
+  // (desktop/lib/e2e-host.js; Electron's own shell.openExternal and openPath print "[native code]", the stand-ins do not); a run that finds them open stops here, before any step. A packaged build named by executablePath may be older than that code: not checked.
+  if (!executablePath && !(await app.evaluate(({shell}) => Array.isArray(globalThis.__jpHost) && ![shell.openExternal, shell.openPath].some(call => /\[native code\]/.test(Function.prototype.toString.call(call)))).catch(() => false))) { await closeApp(app); throw new Error("a test run must not reach the owner's browser, Finder or clipboard: the app's host stand-in (lib/e2e-host.js) is not active"); }
   page.on('pageerror', error => { console.log(`  ! page error: ${error.message}`); journey.pageErrors.push(`${error.name || 'Error'}: ${error.message}`); });
   page.on('console', message => { if (message.type() === 'error') journey.consoleErrors.push(message.text()); });
   // Only the app's own files (the window's scripts, styles, images): an outside address failing is not the app's bug.

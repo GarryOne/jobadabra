@@ -26,7 +26,7 @@ class HeldBackTests(unittest.TestCase):
 class EntryTests(unittest.TestCase):
     def test_three_jobs_make_the_row_with_show_and_edit(self):
         found = pay.entry(pay.held_back([job(n) for n in range(1, 6)]))
-        self.assertEqual(found['title'], '5 jobs match you but their pay is under your minimum')
+        self.assertEqual(found['title'], '5 jobs match you but pay keeps them under High fit')
         self.assertEqual([a['do'] for a in found['actions']], ['show_jobs', 'edit_minimum'])
         self.assertEqual(found['actions'][0]['label'], 'Show these 5 jobs')
         self.assertEqual(len(found['actions'][0]['urls']), 5)

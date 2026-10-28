@@ -486,8 +486,8 @@
       "topic": "search",
       "strength": 52,
       "source": "Search strategy",
-      "title": "5 jobs match you but their pay is under your minimum",
-      "detail": "They fit your role and place (80+), and pay is what keeps them under High fit (70).",
+      "title": "5 jobs match you but pay keeps them under High fit",
+      "detail": "They fit your role and place (80+); their pay part is their lowest and keeps them under High fit (70).",
       "evidence": [
         "Senior Platform Engineer at Helvetia Cloud",
         "SRE Lead at Alpine Labs",
@@ -507,7 +507,7 @@
           ]
         },
         {
-          "label": "Edit minimum salary",
+          "label": "Review minimum salary",
           "do": "edit_minimum"
         }
       ],

@@ -2,7 +2,7 @@
 
 Your minimum salary is a line of your Profile that the scorer compares a posting's stated pay with (src/ai/score.py): no number is filtered
 by it. When jobs that match your role and place (80+) score under the app's High fit (70) and their Compensation part is the lowest of their
-parts, the pay is what pulls them down: the row names them, opens them in Jobs, and opens the minimum for you to change. Counts of saved
+parts, the pay is what pulls them down: the row names them, opens them in Jobs, and opens the minimum for you to review. It says only what the scores show: the scorer compares pay with your minimum and your target, and this code does not. Counts of saved
 scores only: no AI call. Guarded by tests/test_suggestions_pay.py.
 """
 import os
@@ -34,17 +34,17 @@ def held_back(scored, stages=None):
 
 
 def entry(jobs):
-    """The pay row: Show these N jobs · Edit minimum salary; None under MIN_JOBS."""
+    """The pay row: Show these N jobs · Review minimum salary; None under MIN_JOBS."""
     if len(jobs) < MIN_JOBS:
         return None
     count = len(jobs)
     names = [f"{job.get('title') or 'A job'} at {job.get('company') or 'an employer'}" for job in jobs[:SHOWN]]
     return _entry(KIND, home='strategy', topic='search', source='Search strategy', key='pay:minimum',
-                  title=f'{count} jobs match you but their pay is under your minimum',
-                  detail='They fit your role and place (80+), and pay is what keeps them under High fit (70).',
+                  title=f'{count} jobs match you but pay keeps them under High fit',
+                  detail='They fit your role and place (80+); their pay part is their lowest and keeps them under High fit (70).',
                   evidence=[*names, f'and {count - SHOWN} more' if count > SHOWN else ''],
                   actions=[{'label': f'Show these {count} jobs', 'do': 'show_jobs', 'urls': [job['url'] for job in jobs if job.get('url')]},
-                           {'label': 'Edit minimum salary', 'do': 'edit_minimum'}])
+                           {'label': 'Review minimum salary', 'do': 'edit_minimum'}])
 
 
 def now(rows):

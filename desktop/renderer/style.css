@@ -2516,7 +2516,8 @@ button.is-busy { cursor: progress; opacity: .7; }
    rows without a button, "Answer as" under Advanced options, a review banner. */
 .qa-row.no-action { grid-template-columns: auto minmax(0, 2fr) minmax(0, 2fr); }
 .qa-row.no-action > .ui-pill { justify-self: start; }
-.qa-row > .ui-pill { justify-self: start; }   /* a status chip (Missing answer, Suggested answer) keeps its own width */
+.qa-row > .ui-pill { justify-self: start; }
+.qa-words > .ui-pill { align-self: flex-start; margin-top: var(--sp-1); }   /* a row's New / Confirmed / Guessed chip (What we learned, 28 Oct 2026) */   /* a status chip (Missing answer, Suggested answer) keeps its own width */
 .qa-row.is-open > .ui-pill { border: 1px solid var(--signal-line); }   /* "Editing" on the open row's own tint */
 .qa-saved .qa-group, .qa-section.is-review .qa-group { margin: 0; padding: var(--sp-2) var(--sp-4); background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
 .qa-saved .qa-intro, .qa-saved .qa-note { margin: 0; padding: var(--sp-1) var(--sp-4); }

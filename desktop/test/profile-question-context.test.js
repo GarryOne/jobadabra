@@ -33,7 +33,7 @@ async function setup(adapter) {
   const read = async () => (await Promise.all(['profile', 'answers'].map(async page => itemsOf(await openStore(storage, {fetcher}).page(page).outline(), page)))).flat();
   return {storage, fetcher, read};
 }
-const queued = async env => (await openShown(env.storage, {fetcher: env.fetcher, ai: {}})).list.filter(item => item.details?.kind === 'where');
+const queued = async env => Object.values(await openShown(env.storage, {fetcher: env.fetcher, ai: {}})).filter(Array.isArray).flat().filter(item => item.details?.kind === 'where');
 const legacy = (value = 'EU only') => ({key: `details:where:${JSON.stringify({pages: ['answers', 'profile'], label: 'Relocation', value})}`});
 
 for (const adapter of ['sqlite', 'notion']) {
@@ -118,7 +118,7 @@ test('a stale cached home picker cannot reappear when the store is offline; orig
     const node = globalThis.document.createElement('div'); node.id = id; body.append(node);
   }
   const cached = [{...legacy(), question: 'Where does this line go?', details: {kind: 'where', line: 'Relocation: EU only'}}];
-  globalThis.localStorage = {getItem: key => key === 'questionsCache' ? JSON.stringify(cached) : null, setItem: () => {}};
+  globalThis.localStorage = {getItem: key => key === 'questionsCache' ? JSON.stringify(cached) : null, setItem: () => {}};   // the one-list cache of before 28 Oct 2026: never read
   globalThis.window.pilot = new Proxy({
     textOutline: async name => ({ok: true, items: name === 'answers' ? await openStore(env.storage).page('answers').outline() : [], store: 'sqlite', link: null}),
     openQuestions: async () => ({error: 'fictional offline store'}),
@@ -126,7 +126,7 @@ test('a stale cached home picker cannot reappear when the store is offline; orig
   const answers = await import('../renderer/pages/application-answers.js');
   const jobs = await import('../renderer/pages/jobs-questions.js');
   await jobs.loadQuestions({force: true});
-  assert.equal(jobs.questionsNow().list.length, 0);
+  assert.equal(jobs.questionsNow().details.length + jobs.questionsNow().learned.length, 0);
   await answers.loadApplicationAnswers();
   assert.match(globalThis.document.getElementById('answers-body').textContent, /Relocation/);
   assert.ok(!globalThis.document.getElementById('answers-body').textContent.includes('Where does this line go?'));

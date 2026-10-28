@@ -101,7 +101,7 @@ const PALETTE_KEYWORDS = {mail: 'email inbox replies confirmations calendar goog
 export const labelOf = node => {
   if (!node) return '';
   const copy = node.cloneNode(true);
-  copy.querySelectorAll('.nav-badge, .nav-dot').forEach(child => child.remove());
+  copy.querySelectorAll('.nav-badge, .nav-dot, .tab-count').forEach(child => child.remove());   // a tab's count is not its name
   return copy.textContent.replace(/\s+/g, ' ').trim();
 };
 // A row's path, each step without its leading emoji ("💬 Telegram" → Telegram), a step equal to the one before it once (Settings → Plan, not Plan → Plan).
@@ -187,9 +187,11 @@ export function paletteCommands() {
   button('sessions', 'ss-stop', 'stop freeze halt panic extension chrome everything cancel emergency', 'Stops everything the extension does, on every tab');
   button('jobs', 'refresh', 'find jobs scan');
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');
-  // Application questions, one at a time (pages/question-review.js): the same drawer as Jobs' card and Profile → Application answers.
-  add('Jobs', 'Review application questions', 'Answer the questions forms asked, one at a time', 'questions answers review answer once missing facts details notice period salary permit suggested forms application',
-    () => openQuestionReview());
+  // The two drawers, one question at a time (pages/question-review.js; owner, 28 Oct 2026): the same drawers as Jobs' cards and the Profile tabs.
+  add('Jobs', 'Fill your details', 'The details forms ask every time, one at a time', 'questions missing facts details contact name email phone notice period permit eligibility languages fill',
+    () => openQuestionReview({queue: 'details'}));
+  add('Jobs', 'Check what we learned', 'The answers forms reuse: confirm, change or add them', 'questions answers review learned reusable suggested forms application what we learned check',
+    () => openQuestionReview({queue: 'learned'}));
   button('strategy', 'open-profile', 'edit roles locations places cities country skills targeting preferences');
   // Strategy → Job preferences (pages/job-preferences.js; was Profile → Preferences, 17 Oct 2026): the card, and its Review button.
   add('Strategy', 'Job preferences', 'Must-haves, deal-breakers and the preferences that rank jobs', 'deal-breakers must-haves preferences ranking on-call industries workload',

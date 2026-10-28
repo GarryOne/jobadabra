@@ -13,7 +13,7 @@ for (const id of ['questions', 'questions-count', 'questions-details', 'question
 const START = {key: 'start', question: 'What is your earliest start date, and are there any constraints we should be aware of?', company: 'Acme AG', proposal: '1 December 2026',
   format: formatFor({marked: {kind: 'date', constraints: true}})};
 globalThis.window.pilot = new Proxy({
-  openQuestions: async () => ({list: [{...START}], hidden: []}),
+  openQuestions: async () => ({details: [], learned: [{...START}], hidden: []}),
   answerQuestion: async (key, value, mark) => { asked.push([key, value, mark]); return {ok: true, homeName: ''}; },
 }, {get: (all, key) => all[key] || (() => null)});
 const review = await import('../renderer/pages/question-review.js');
@@ -21,7 +21,7 @@ const panel = () => globalThis.document.getElementById('review-panel');
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 test('a suggested date alone cannot be confirmed; "No constraints" completes it and the mark keeps the constraints flag', async () => {
-  await review.openQuestionReview();
+  await review.openQuestionReview({queue: 'learned'});
   const confirm = () => panel().querySelector('#qr-confirm');
   assert.equal(panel().querySelector('#qr-control').dataset.answerKind, 'date');
   assert.equal(confirm().disabled, true, 'a date alone is not complete');

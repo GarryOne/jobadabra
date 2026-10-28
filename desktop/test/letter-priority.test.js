@@ -1,4 +1,4 @@
-// Missing cover letters stay high priority in the real question queue, independently of employer requiredness.
+// Missing cover letters stay high priority, independently of employer requiredness: one setup action of its own, never a drawer row (owner, 28 Oct 2026).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,16 +11,16 @@ import {MUST} from '../renderer/question-filter.js';
 const storage = () => createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'letter-priority-')), {encrypt: v => v, decrypt: v => v});
 const ai = {client: {messages: {create: async () => { throw new Error('No generation or classification is needed for a setup action'); }}}};
 
-test('the queue derives exactly one HIGH PRIORITY create action, ahead of blocked form questions', async () => {
+test('the queues derive exactly one HIGH PRIORITY create action, its own card and in neither drawer', async () => {
   const s = storage();
   for (let i = 0; i < 2; i++) {
     const result = await openShown(s, {rows: [], groups: [], ai});
-    const letters = result.list.filter(row => row.setup?.kind === 'cover-letter');
-    assert.equal(letters.length, 1);
-    assert.equal(result.list[0], letters[0]);
-    assert.equal(letters[0].priority, 'HIGH PRIORITY');
-    assert.ok(letters[0].weight > MUST);
-    assert.equal(letters[0].setup.action, 'Create cover letter');
+    const letter = result.letter;
+    assert.equal(letter?.setup?.kind, 'cover-letter');
+    assert.ok(![...result.details, ...result.learned].some(row => row.setup), 'in neither drawer');
+    assert.equal(letter.priority, 'HIGH PRIORITY');
+    assert.ok(letter.weight > MUST);
+    assert.equal(letter.setup.action, 'Create cover letter');
   }
 });
 

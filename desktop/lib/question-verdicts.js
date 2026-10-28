@@ -1,11 +1,12 @@
 // The AI's verdict per question, kept on this Mac so a question is never asked twice (settings.questionVerdicts, keyed by the question's normalized words),
-// and the one place that turns the page's open questions into what every list shows: Jobs → Answer once, Profile → Needs review and the session's
-// "what Claude needs" read it through renderer/question-filter.js. Guarded by test/question-verdicts.test.js.
+// what every list shows reads through renderer/question-filter.js: the two drawers and the saved answers that are no learning (lib/question-lists.js openShown),
+// and the session's "what Claude needs". Guarded by test/question-lists.test.js and test/question-queues.test.js.
 import {classify} from './question-reuse.js';
-import {keyOf, looksLikeFieldId, visibleQuestions} from '../renderer/question-filter.js';
+import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';
 
 const MAX = 600;
-const VERSION = 4;   // 2: covered_by also by deduction (a saved permit settles "need sponsorship?"), with the saved answer it came from; 3: a topic (seen twice); 4: a fact of Your details
+const VERSION = 5;   // 2: covered_by also by deduction (a saved permit settles "need sponsorship?"), with the saved answer it came from; 3: a topic (seen twice); 4: a fact of Your details
+// 5: Why (28 Oct 2026, owner: "Yes, re-judge once"): how they heard and worked here before are one job's (lib/question-reuse.js), judged again once per install
 export const cached = storage => storage.settings().questionVerdicts || {};
 
 // Classifies the labels with no verdict yet (one small call), keeps the verdicts, returns the whole map. ai: {client, apiKey} (none: nothing new).
@@ -26,12 +27,6 @@ export async function ensure(storage, labels, {answered = [], facts = [], compan
   for (const key of keys.slice(0, Math.max(0, keys.length - MAX))) delete next[key];
   storage.saveSettings({questionVerdicts: next});
   return {verdicts: next, usage: found.usage || null};
-}
-
-// The shown / hidden split of rows ({question}) through the shared filter, classifying new ones first when an AI is available.
-export async function split(storage, rows, options = {}) {
-  const {verdicts, usage} = await ensure(storage, rows.map(row => row.question), options);
-  return {...visibleQuestions(rows, verdicts, {open: (options.facts || []).filter(fact => !fact.value).map(fact => fact.label)}), usage};
 }
 
 // The questions the standard answers already answer ([{question, answer}]): what "covered" is judged against.

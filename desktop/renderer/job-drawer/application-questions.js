@@ -11,7 +11,7 @@ function row(item) {
   const line = el('div', 'iv-moment', item.question);
   const note = el('small', 'muted', NOTE[item.state] || '');
   line.append(note);
-  // The answer kept for this job only (the review drawer's "Reuse for matching questions" off): shown here, never offered on other forms.
+  // The answer kept for this job only (the review drawer's "Reuse for matching questions" off, until 28 Oct 2026): shown here, never offered on other forms.
   if (item.answer) line.append(el('small', 'job-answer', `Your answer: ${item.answer}`));
   if (item.state === 'remembered' && window.pilot?.jobQuestionOnly) {
     const undo = el('button', 'link', 'Undo');

@@ -8,7 +8,7 @@ const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url),
 
 test('a failed read opens the card and has a Retry button wired to loadQuestions', () => {
   assert.match(html, /id="questions-retry"/);
-  assert.match(page, /show\(\$\('questions'\), list\.length > 0 \|\| !!error\)/);   // a failed read shows the card (no fold to open since 17 Oct 2026)
+  assert.match(page, /show\(\$\('questions'\), details\.length > 0 \|\| !!error\)/);   // a failed read shows the Fill your details card (no fold to open since 17 Oct 2026)
   assert.match(page, /questions-retry'\)\?\.addEventListener\('click'/);
   assert.match(page, /show\(\$\('questions-retry'\), !!error\)/);
 });

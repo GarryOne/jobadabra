@@ -1,7 +1,7 @@
 // Settings → Profile → Your details: the Work eligibility, Availability & compensation and Languages sections (owner, 17 Oct 2026: "Your details =
 // facts, in 3 sections"), each line as it is on the Profile page (label, then its value to edit), "Add a line", and "To check": one line counting the
-// unclear details (a fact said two ways, a line with no clear home, a value to make exact, an unanswered mark) that opens the one review queue (owner, 18 Oct 2026:
-// "One queue for all"; lib/details-review.js). Saved through the Profile page's one save bar (pages/details-drafts.js). Guarded by
+// unclear details (a fact said two ways, a line with no clear home, a value to make exact, an unanswered mark) that opens the Fill your details drawer (owner,
+// 28 Oct 2026, superseding 18 Oct "One queue for all"; lib/details-review.js). Saved through the Profile page's one save bar (pages/details-drafts.js). Guarded by
 // test/details-facts.test.js and test/details-review.test.js.
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
@@ -10,8 +10,7 @@ import {showOnTab} from './tab-part.js';
 import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
-import {detailsIn} from '../question-filter.js';
-import {loadQuestions, questionsNow} from './jobs-questions.js';
+import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -51,21 +50,21 @@ function drawTidied(tidied) {
   box_.replaceChildren(el('p', 'muted small', `${tidied.changed} of your details were tidied: a typed control, or the rules folded as a note for the AI. The words you saved are kept, and the copy from before is backed up.`), undo);
 }
 
-// "To check": the review queue's Your details items, counted from the queue's own list (read once when Jobs has not read it yet), Review opens it at the first.
+// "N missing": Fill your details' items, counted from the drawer's own list (read once when Jobs has not read it yet), Review opens it at the first.
 let last = {aside: [], tidied: null}, queueAsked = false;
 document.addEventListener?.('questions-read', () => drawWhich(last.aside, last.tidied));
 function drawWhich(aside = [], tidied = null) {
   last = {aside, tidied};
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().then(() => drawWhich(last.aside, last.tidied)).catch(() => {}); }
-  const items = detailsIn(questionsNow().list);
+  const items = questionsNow().details;   // Fill your details' list: the card's and the tab's count
   showOnTab($('setting-which'), items.length > 0 || aside.length > 0 || Boolean(tidied));
   drawTidied(tidied);
   $('facts-set-aside').replaceChildren(...setAsideRows(aside, showFacts, text => { $('facts-message').textContent = text; }));
   if (!items.length) { $('which-list').replaceChildren(); return; }
   const banner = el('div', 'notice qa-banner');
   const go = Object.assign(el('button', 'primary small-btn', 'Review'), {type: 'button', id: 'details-review-go'});
-  go.addEventListener('click', () => import('./question-review.js').then(review => review.openQuestionReview({start: items[0].key})));
-  banner.append(el('span', '', `⚠ ${items.length} detail${items.length === 1 ? '' : 's'} to check`), go);
+  go.addEventListener('click', () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details', start: items[0].key})));
+  banner.append(el('span', '', `⚠ ${countText.details(items.length)}`), go);
   $('which-list').replaceChildren(banner);
 }
 

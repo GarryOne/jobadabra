@@ -12,8 +12,8 @@ const tabs = [...html.matchAll(/data-profile-tab="(\w+)"[^>]*>([^<]+)</g)].map(m
 const panels = [...html.matchAll(/id="([\w-]+)"[^>]*data-profile-panel="(\w+)"/g)].map(match => [match[1], match[2]]);
 const panelOf = id => panels.find(([each]) => each === id)?.[1];
 
-test('five tabs, CV first, then Your details; no Preferences tab (owner, 17 Oct 2026: "CV · Your details · Experience · Application answers · Cover letter")', () => {
-  assert.deepEqual(tabs, [['cv', 'CV'], ['details', 'Your details'], ['experience', 'Experience'], ['answers', 'Application answers'], ['letter', 'Cover letter']]);
+test('five tabs, CV first, then Your details; no Preferences tab (owner, 17 Oct 2026; 28 Oct 2026: Application answers is "What we learned")', () => {
+  assert.deepEqual(tabs, [['cv', 'CV'], ['details', 'Your details'], ['experience', 'Experience'], ['answers', 'What we learned'], ['letter', 'Cover letter']]);
 });
 
 test('the CV parts sit on CV, your details on Your details', () => {

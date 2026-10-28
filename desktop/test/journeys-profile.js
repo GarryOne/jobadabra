@@ -33,7 +33,8 @@ test('scenario: saved writing rules organize automatically, survive restart, and
   assert.doesNotMatch(await opened.page('profile').text(), /Never mention|Tone: direct/);
   await judgeNew(storage, {ai});
   const restarted = createStorage(storage.dir, {encrypt: v => v, decrypt: v => v});
-  assert.ok(!(await openShown(restarted, {ai: {}})).list.some(row => row.details?.kind === 'where'));
+  const queues = await openShown(restarted, {ai: {}});
+  assert.ok(![...queues.details, ...queues.learned].some(row => row.details?.kind === 'where'));
   assert.equal(await openStore(restarted).page('answers').text(), answers);
   assert.equal(calls, 1, 'repeated reads do not multiply or rejudge unchanged sources');
 });

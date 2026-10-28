@@ -1,6 +1,6 @@
-// One review queue (owner, 18 Oct 2026: "One queue for all"): every kind of unclear Your details field is an item of the Application questions queue,
-// on every store: it shows in the list the Jobs card and the drawer walk (lib/question-lists.js openShown), the Profile banner counts it, and its answer
-// goes to its home. The class, not the case: one fixture per kind in KINDS; a kind added without one fails here. The AI is a fake (no spend).
+// Every kind of unclear Your details field is a review item on every store (owner, 18 Oct 2026; two drawers since 28 Oct 2026, superseding "One queue for
+// all"): it shows in its drawer's one list (lib/question-lists.js openShown: Fill your details, or What we learned for a line of the Profile or answers page),
+// which its Jobs card, the drawer and its Profile tab count, and its answer goes to its home. The class, not the case: one fixture per kind in KINDS; a kind added without one fails here. The AI is a fake (no spend).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,8 +13,7 @@ import * as contactDetails from '../lib/contact.js';
 import {hashOf} from '../lib/cv-check.js';
 import * as review from '../lib/details-review.js';
 import {openShown} from '../lib/question-lists.js';
-import * as questions from '../lib/questions.js';
-import {extrasIn, visibleQuestions} from '../renderer/question-filter.js';
+
 import {fakeNotion} from './fake-notion.js';
 
 const PROFILE = ['## Preferences', 'Relocation: open to moving within the EU', 'Industries to prefer / avoid: ❓', 'Need visa sponsorship?: ❓', 'Notice period: 2 months', 'Role types: SRE; ❓ DevOps?',
@@ -102,18 +101,19 @@ test('every kind of unclear field has a fixture here (a new kind must join the q
 
 for (const [name, setup] of Object.entries(ADAPTERS)) {
   for (const kind of review.KINDS) {
-    test(`${name} · ${kind}: in the queue, counted by the Jobs card, the drawer and the Profile banner, answered into its home`, async () => {
+    test(`${name} · ${kind}: in its drawer, counted by its Jobs card, the drawer and its Profile tab, answered into its home`, async () => {
       const env = await setup();
       const {storage, fetcher} = env;
       const items = await review.pending(storage, {fetcher});
       const item = items.find(each => each.details.kind === kind && FIXTURES[kind].match.test(each.question));
       assert.ok(item, `a ${kind} item: ${JSON.stringify(items.map(each => [each.details.kind, each.question]))}`);
       assert.ok(item.key.startsWith(review.PREFIX));
-      // Jobs card + drawer: one list. The Profile banner: the answers page's shown questions + the details items of that same list.
-      const {list} = await openShown(storage, {fetcher, ai: {}});
-      assert.ok(list.some(each => each.key === item.key), 'the drawer walks it');
-      const open = (await questions.list(storage, fetcher));
-      assert.equal(visibleQuestions(open, {}).shown.length + extrasIn(list).length, list.length, 'the Profile banner counts what the Jobs card counts');
+      // Each drawer is one list its card, its tab and its header count (owner, 28 Oct 2026): a Your details item is in Fill your details; a saved answer of the
+      // Profile or the answers page is in What we learned (lib/question-lists.js openShown).
+      const {details, learned} = await openShown(storage, {fetcher, ai: {}});
+      const page = /"page":/.test(item.key);
+      assert.ok((page ? learned : details).some(each => each.key === item.key), `the ${page ? 'What we learned' : 'Fill your details'} drawer walks it`);
+      assert.ok(!(page ? details : learned).some(each => each.key === item.key), 'and only that drawer');
       const result = await review.answer(storage, item.key, FIXTURES[kind].answer(), {fetcher, ai});
       assert.equal(result.ok, true, result.error);
       await FIXTURES[kind].after(env);

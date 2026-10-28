@@ -14,7 +14,7 @@ for (const id of ['questions', 'questions-count', 'questions-details', 'question
 }
 let reads = 0, release = null;
 globalThis.window.pilot = new Proxy({
-  openQuestions: () => { reads++; return new Promise(resolve => { release = () => resolve({list: fresh.map(q => ({...q})), hidden: [], consent: 0}); }); },
+  openQuestions: () => { reads++; return new Promise(resolve => { release = () => resolve({details: [], learned: fresh.map(q => ({...q})), hidden: [], consent: 0}); }); },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions} = await import('../renderer/pages/jobs-questions.js');
 const review = await import('../renderer/pages/question-review.js');
@@ -23,7 +23,7 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 test('no questions saved yet: a loading card until the store answers; the Jobs card and the drawer share one read', async () => {
   const jobs = loadQuestions();
-  const opened = review.openQuestionReview();
+  const opened = review.openQuestionReview({queue: 'learned'});
   await flush();
   assert.equal(reads, 1, 'one store read for both');
   assert.ok($('review-panel').querySelector('.skeleton'), 'a loading card, no question yet');

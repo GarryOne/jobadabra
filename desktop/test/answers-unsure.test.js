@@ -48,7 +48,7 @@ test('a label that ended in its own colon reads and writes with one colon (every
   assert.doesNotMatch(storage.readText(TEXT_FILES.answers), /:\s*:/);
 });
 
-test('Application answers: a guessed answer says "Unconfirmed" under its question, with its value shown', async () => {
+test('What we learned: a guessed answer says "Unconfirmed" under its question, chip Guessed, never Confirmed, with its value shown', async () => {
   const {install} = await import('./tiny-dom.js');
   const body = install();
   const items = [{id: 'h', type: 'heading_2', text: 'Education'}, {id: 'g', type: 'bulleted_list_item', text: 'How did you perform in mathematics at high school?: "Cannot recall" (guess).'}];
@@ -57,7 +57,9 @@ test('Application answers: a guessed answer says "Unconfirmed" under its questio
   node.id = 'answers-body';
   body.replaceChildren(node);
   await (await import('../renderer/pages/application-answers.js')).loadApplicationAnswers();
-  const row = node.querySelectorAll('.qa-saved .qa-row').find(each => /mathematics/.test(each.textContent));
+  const row = node.querySelectorAll('.qa-learned .qa-row').find(each => /mathematics/.test(each.textContent));
   assert.match(row.textContent, /Unconfirmed: saved as a guess/);
+  assert.match(row.textContent, /Guessed/);
+  assert.doesNotMatch(row.textContent, /Confirmed/);
   assert.match(row.querySelector('.qa-value').textContent, /^"Cannot recall"$/);
 });

@@ -19,17 +19,17 @@ const tabs = ['cv', 'details', 'experience', 'answers', 'letter'].map(name => no
 node('div', {}, 'answers-body');
 for (const id of ['claude-auto-line', 'claude-auto', 'contact-cv', 'contact-panel-message']) node('div', {}, id);
 
-test('Profile → Application answers → Needs review stays selected on a data refresh and reopening Profile', async () => {
+test('Profile → What we learned → New stays selected on a data refresh and reopening Profile', async () => {
   profileTab('answers');
   await loadApplicationAnswers();
-  document.querySelectorAll('#answers-body .segmented button').find(button => button.dataset.view === 'review').click();
+  document.querySelectorAll('#answers-body .segmented button').find(button => button.dataset.view === 'new').click();
   await loadApplicationAnswers();
-  assert.equal(document.querySelector('#answers-body .segmented .is-active')?.dataset.view, 'review', 'data refresh preserves Needs review');
+  assert.equal(document.querySelector('#answers-body .segmented .is-active')?.dataset.view, 'new', 'data refresh preserves New');
   settingsPage('profile');
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(tabs.find(tab => tab.classList.contains('is-active'))?.dataset.profileTab, 'answers', 'async Profile initialization preserves the tab');
   assert.equal(memory.get('profileTab'), 'answers');
-  assert.equal(memory.get('answersView'), 'review');
+  assert.equal(memory.get('answersView'), 'new');
 });
 
 test('a new renderer restores Profile and another page; absent, stale and malformed destinations fall back safely', async () => {

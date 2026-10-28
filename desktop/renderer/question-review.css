@@ -2,7 +2,7 @@
    The drawer is the job drawer's frame (job-drawer.css: .job-drawer-layer, .job-drawer, .jd-head, .jd-body, .jd-foot) at a review width;
    16 px padding, 12 px gaps, 36 px controls (owner's spec). Guarded by test/question-review.test.js. */
 
-/* Jobs: one compact card, the attention edge of a card that waits for you. */
+/* Jobs: compact cards (Fill your details, What we learned, the cover letter), the attention edge of a card that waits for you. */
 .qr-card { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; border-left: 4px solid var(--signal-edge); }
 .qr-card-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-md); background: var(--signal-soft); color: var(--signal-ink); }
 .qr-card-text { flex: 1; min-width: 220px; display: grid; gap: 2px; }
@@ -11,6 +11,12 @@
 .qr-card-actions { display: flex; align-items: center; gap: var(--sp-2); }
 .qr-card-actions .primary { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .qr-card.is-loading #questions-count { background: transparent; padding: 0; }
+/* What we learned is feedback, not a chore (owner, 28 Oct 2026): the info edge; the cover letter keeps the bad edge of a HIGH PRIORITY action. */
+.qr-card.is-info { border-left-color: var(--info); }
+.qr-card.is-info .qr-card-icon { background: var(--info-soft); color: var(--info); }
+.qr-card.is-bad { border-left-color: var(--bad); }
+.qr-card.is-bad .qr-card-icon { background: var(--bad-soft); color: var(--bad); }
+[data-profile-tab] .tab-count { margin-left: var(--sp-2); padding: 0 var(--sp-2); }
 .questions-skeleton { width: 90px; height: 18px; }
 
 /* The drawer: narrower than a job's, the same frame. */
@@ -50,6 +56,8 @@
 .qr-answer { display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
 .qr-answer.is-suggested { border-color: var(--info-line); background: var(--info-soft); }
 .qr-answer.is-missing { border-color: var(--warn-line); }
+.qr-cases { margin: 0; }   /* What we learned's ask for the cases, above its textarea (owner, 28 Oct 2026) */
+.qr-answer textarea { resize: vertical; min-height: 5.5em; }
 .qr-answer-kind { display: flex; align-items: center; gap: var(--sp-1); margin: 0; font-size: var(--fs-sm); font-weight: 600; }
 .qr-answer.is-suggested .qr-answer-kind { color: var(--info); }
 .qr-answer.is-missing .qr-answer-kind { color: var(--warn); }
@@ -67,9 +75,6 @@
 .qa-values.is-amount { grid-template-columns: minmax(0, 1fr) 96px; }
 .qa-values .qa-saved-as { margin: 0; grid-column: 1 / -1; }
 
-/* "Reuse for matching questions" (the shared .switch-row): a card of the answer box's own frame. */
-.qr-reuse { padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
-.qr-reuse > span:last-child { gap: 2px; }
 
 /* A multi-part answer on a Your details line (renderer/fact-line.js): its parts sit in one wrapping row, not one under another. */
 .fact-line .qa-values { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }

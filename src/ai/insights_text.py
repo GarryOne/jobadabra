@@ -47,10 +47,11 @@ WEEKLY_SCHEMA['properties']['next_action'] = {
     'properties': {
         'door': {'type': 'string', 'enum': [*DOORS, 'none'],
                  'description': 'find_jobs: search for new jobs now. tune: review the changes to your search that your results support. '
-                                'tailor: tailor your CV to a job you are about to apply to. prep: prepare for an interview coming up. '
+                                'tailor: tailor CVs and cover letters for your top matches (several jobs at once, never one you name). '
+                                'prep: prepare for an interview coming up. '
                                 'none: none of these serves the focus; never pick one that only loosely fits'},
         'label': {'type': 'string', 'description': f'The button, at most {DOOR_LABEL_MAX} characters, starting with a verb ("Find jobs now"); '
-                                                   'empty when door is none'}}}
+                                                   'it says what the button does, never one job or employer; empty when door is none'}}}
 
 WEEKLY_SYSTEM = """You write the owner's search analysis inside Jobadabra (on Mondays, or whenever they ask: "Analyze my job search"). Look back at the \
 last 7 days (applications sent, replies, the market, the daily insights and how the owner rated them) \

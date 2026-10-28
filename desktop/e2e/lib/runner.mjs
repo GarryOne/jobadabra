@@ -123,7 +123,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       // Why (28 Oct 2026, owner + fl): a step the AI cap refused is SKIPPED with its cause, never failed and never passed; the nightly and every release gate (releaseGate: E2E_FULL or E2E_RUN_KIND=gate) fail it instead, so a release never approves with AI steps unrun.
       const capped = takeCapped();
       if (capped && !releaseGate()) {
-        results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons)});
+        results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons, process.env, capped.why)});
         skipStepForCap(name, capped.neurons);
         await report?.skipStep(`${name} (AI capped)`).catch(() => {});
         return;

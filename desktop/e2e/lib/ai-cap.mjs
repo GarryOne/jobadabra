@@ -18,7 +18,7 @@ export const resetCap = () => { seen = {at: 0, day: '', neurons: null}; };
 // The day's cap in neurons: E2E_AI_CAP_NEURONS from env when it is a number, else CAP_NEURONS. Takes env, returns a number.
 export const capOf = (env = process.env) => Number(env.E2E_AI_CAP_NEURONS) || CAP_NEURONS;
 // The refusal text a capped ask gets: takes the neuron count (null = unreadable) and env, returns the string; it names the fix when the count is unreadable.
-export const capMessage = (neurons, env = process.env) => (neurons == null
+export const capMessage = (neurons, env = process.env, why = '') => (why ? `ai-capped: the Codex broker said no (${why}); it answers from saved replies or the step goes grey (never another provider by itself)` : neurons == null
   ? 'ai-capped: the account\'s neuron count is unreadable here (CI_CF_ANALYTICS_TOKEN missing or not Account Analytics: Read), so the $1/day cap fails closed; set that secret'
   : `ai-capped: CI's Workers AI is at ${neurons} of ${capOf(env)} neurons today (about $1 a day, owner 28 Oct 2026); it answers from saved replies or the step goes grey`);
 
@@ -56,7 +56,14 @@ export function noteCapped(neurons, env = process.env) {
   writeNote(neurons, env);
 }
 
-// -> {neurons} when a live ask was refused for the cap since the last call (and clears it), else null. The runner calls it before a step and in its catch.
+// The Codex broker refused a call (its budget, a lost login: jobadabra-web workers/codex-broker): the same skip-or-fail path as the neuron cap, with the broker's reason. Takes the reason and env; returns nothing.
+export function noteBrokerCapped(why, env = process.env) {
+  fired = {neurons: null, why};
+  console.log(`ai-capped: ${env.E2E_SUITE || env.E2E_STEPS_SUITE || 'e2e'} (Codex broker: ${why})`);
+  writeNote(null, env);
+}
+
+// -> {neurons, why?} when a live ask was refused for the cap since the last call (and clears it), else null. The runner calls it before a step and in its catch.
 export function takeCapped() { const was = fired; fired = null; return was; }
 
 // The runner skipped `name` because of the cap (never failed, never passed: owner/fl 28 Oct 2026). Counts it and rewrites ai-capped.json.

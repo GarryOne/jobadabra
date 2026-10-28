@@ -257,6 +257,7 @@ jobs:
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
+      CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
       JOB_PILOTTO_E2E_EXPECTS_FAILURES: ${{ inputs.mutant && '1' || '' }}   # a mutant run breaks the app on purpose: its crash reports are tagged expected, so the Sentry loop ignores them
       E2E_SEED: ${{ (inputs.fixed || inputs.canary || inputs.soak || inputs.gate_tag || inputs.mutant) && '0' || github.run_id }}   # a different path in every scheduled, top-up or manual run; the release gate, the soak top-ups (their three green runs must be comparable) and the stable canary walk the fixed one (lib/variation.mjs)
       # Which app lines the suite runs (gate G1b, owner's yes 26 Oct 2026; lib/coverage.mjs): main checks, a PR's suites and runs by hand of the newest code, never a release,
@@ -268,6 +269,7 @@ jobs:
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
+      id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs); a fork run gets none and cannot spend the owner's plan
       statuses: write   # the PR's "All checks passed", written as the job ends (tools/pr-verdict.py)
       actions: read     # the commit's runs and jobs, for that verdict
       pull-requests: read

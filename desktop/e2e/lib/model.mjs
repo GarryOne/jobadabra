@@ -4,7 +4,9 @@ import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
+import {capMessage, capReached, noteBrokerCapped, noteCapped} from './ai-cap.mjs';
+import {aiProvider} from './ai-provider.mjs';
+import {askBroker} from './broker-client.mjs';
 import {judgeFamily, pickEngine} from './engine.mjs';
 import {count, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
@@ -74,6 +76,16 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
       return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});
     }
     keepMiss(key, `judge ${new URL(url).pathname}`, body, env);
+    if (aiProvider(env, 'judges').provider === 'codex') {   // the owner's Codex plan through the broker (lib/broker-client.mjs); a refusal is a skip with its reason, never another provider
+      const asked = await askBroker(JSON.parse(init.body), {env});
+      if (!asked.ok) {
+        if (asked.status === 'capped') noteBrokerCapped(asked.detail, env);
+        return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: asked.status === 'capped' ? capMessage(null, env, asked.detail) : asked.detail}}), {status: 503, headers: {'content-type': 'application/json'}});
+      }
+      const answer = JSON.stringify({type: 'message', role: 'assistant', model: asked.model, ...asked.message});   // TODO(AI): count the broker's calls in the judges' ai-meter and /admin/ai-cost (spec PR 7, 28 Oct 2026)
+      keep(key, {status: 200, contentType: 'application/json', body: Buffer.from(answer)}, env);
+      return new Response(answer, {status: 200, headers: {'content-type': 'application/json'}});
+    }
     if (judgeFamily(env) === 'free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
       const cap = await capReached({env});
       if (cap.capped) { noteCapped(cap.neurons, env); return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: capMessage(cap.neurons, env)}}), {status: 503, headers: {'content-type': 'application/json'}}); }

@@ -34,6 +34,7 @@
  ],
  "daily": [
   "ai-cap.test.mjs",
+  "ai-provider.test.mjs",
   "context-imports-no-app-code.test.mjs",
   "export-snapshot.test.mjs",
   "replay-deadline.test.mjs",

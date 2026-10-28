@@ -78,14 +78,21 @@ test('Tune and Analyze left the Actions page and stay in ⌘K; Focus has Suggest
   assert.match(nav, /add\('Reports', 'Analyze my job search', [^\n]*\(\) => runCommand\('weekly'\)\);/);
 });
 
-test('a Not true on role ideas reaches the engine, which Focus reads (#2350, Gitar: kept in one window, Focus offered them again)', async () => {
-  const sent = [];
-  globalThis.window = {pilot: {roleIdeasAside: async words => { sent.push(words); return {ok: true}; }}};
-  const {setAside} = await import('../renderer/ideas-aside.js');
-  setAside(['caissier']);
-  assert.deepEqual(sent, [['caissier']]);
-  assert.match(read('../preload.cjs'), /roleIdeasAside: call\('roleIdeasAside'\)/);
-  assert.match(read('../lib/search-tuning-handlers.js'), /handle\('roleIdeasAside'[\s\S]*?'src\.desktop', 'role-ideas-aside'/);
-  assert.match(read('../../src/desktop.py'), /args\.command == 'role-ideas-aside':\s*\n\s*from \.ai import role_ideas\s*\n\s*role_ideas\.put_aside\(/);
+test('a Not true on role ideas sends their words with the answer, and an older window\'s list moves into the store once (#2350, Gitar)', async () => {
+  assert.match(read('../renderer/pages/focus-suggestions.js'), /suggestionAnswer\(\{key: entry\.key, title: entry\.title, aside: entry\.aside\}/);
+  assert.match(read('../lib/reports-handlers.js'), /answer\(storage, \{key: entry\?\.key, title: entry\?\.title, aside: entry\?\.aside\}/);
+  const kept = new Map([['jp.ideas.aside', '["caissier"]']]), sent = [];
+  globalThis.localStorage = {getItem: key => kept.get(key) ?? null, removeItem: key => kept.delete(key)};
+  let ok = false;
+  globalThis.window = {pilot: {suggestionAnswer: async (entry, state) => { sent.push([entry, state]); return {ok}; }}};
+  const {MOVED_KEY, moveOldAside} = await import('../renderer/ideas-aside.js');
+  await moveOldAside();
+  assert.ok(kept.has('jp.ideas.aside'), 'kept until the store has it');
+  ok = true;
+  await moveOldAside();
+  await moveOldAside();
+  assert.deepEqual(sent.map(([entry, state]) => [entry.key, entry.aside, state]), [[MOVED_KEY, ['caissier'], 'Not true'], [MOVED_KEY, ['caissier'], 'Not true']]);
+  assert.ok(!kept.has('jp.ideas.aside'), 'cleared once moved: never sent again');
   delete globalThis.window;
+  delete globalThis.localStorage;
 });

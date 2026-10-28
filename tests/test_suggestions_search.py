@@ -124,6 +124,30 @@ class FocusTests(unittest.TestCase):
         self.assertEqual(out['suggestions_hidden'], ['places:zurich'], "only Strategy's rows: the rest never grows Focus's answer")
 
 
+    def test_a_role_set_aside_on_focus_stays_aside_after_a_new_role_word_on_every_mac(self):
+        """Gitar on #2350: Not true on role ideas, then a role word added (a new key): the kept answer offered the role again. The answer row
+        keeps the words in the store (its Data, desktop/lib/suggestion-answers.js), and Focus reads them from there, not from one Mac."""
+        import json as _json
+        import tempfile
+        from src import focus
+        from src.ai import role_ideas
+        from src.sources import feeds  # noqa: F401 - read the search settings at import, before the patched ones below
+        from src.stores import open_stores
+        with tempfile.TemporaryDirectory() as tmp:
+            stores = open_stores({'JOB_PILOTTO_STORE': 'sqlite', 'JOB_PILOTTO_DATA_DIR': tmp})
+            stores.insights.add({'day': NOW.date().isoformat(), 'category': suggestions.ANSWER_CATEGORY, 'title': 'Add Cashier to your roles',
+                                 'fields': {'state': 'Not true', 'hidden_until': '', 'data': _json.dumps({'aside': ['caissier', 'retouche']}), 'input_hash': 'ideas:old'}})
+            kept = pathlib.Path(tmp) / 'role_ideas.json'
+            ideas = [{'role': 'Cashier', 'word': 'caissier', 'why': 'Retail'}, {'role': 'Seller', 'word': 'vendeur', 'why': 'Shop'}]
+            kept.write_text(_json.dumps({'old': {'day': '2026-10-27', 'roles': ['sre'], 'ideas': ideas, 'counted': {'counts': {'caissier': 6, 'vendeur': 3}}}}))
+            with mock.patch.object(role_ideas, 'STORE', kept), mock.patch.object(search, 'ideas_on', return_value=True), \
+                    mock.patch.object(search, 'checked', return_value={}), mock.patch('src.coverage.load', return_value={'missed_titles': []}), \
+                    mock.patch('src.paths.load_search_config', return_value={'role_keywords': ['sre', 'devops'], 'locations': {}}):
+                found = focus.load(stores, target=5, now=NOW, gmail=False)['suggestions']
+        entry, = [e for e in found if e['kind'] == 'ideas']
+        self.assertEqual(entry['aside'], ['vendeur'], 'Cashier was set aside before the new role word')
+
+
 class DemoTests(unittest.TestCase):
     def test_the_demo_is_drawn_from_the_engines_own_words(self):
         """The demo's Strategy keys and Focus rows are what this engine makes of the demo's check, so a screenshot shows real wording."""

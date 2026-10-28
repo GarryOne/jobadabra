@@ -18,7 +18,6 @@ import {openActivity} from './activity.js';
 import {openTune} from './tune.js';
 import {toastMessage} from './startup.js';
 import {wand} from '../magic.js';
-import {setAside} from '../ideas-aside.js';
 
 let pool = [];              // the engine's entries as last read (Focus's `suggestions`)
 const ALL = 'jp.focus.suggestions.all';   // Show all stays as you left it (this Mac), like Actions' More
@@ -58,9 +57,8 @@ export const RUN = {
 /** Keeps a person's Not now / Not true for one entry; it leaves every place at once, and comes back if the store refuses it. */
 export async function answerEntry(entry, state) {
   held.add(entry.key);
-  if (state === 'Not true' && entry.aside?.length) setAside(entry.aside);   // role ideas: the AI is told not to propose them again
   redraw();
-  const done = await window.pilot.suggestionAnswer({key: entry.key, title: entry.title}, state).catch(error => ({ok: false, error: error.message}));
+  const done = await window.pilot.suggestionAnswer({key: entry.key, title: entry.title, aside: entry.aside}, state).catch(error => ({ok: false, error: error.message}));
   if (!done?.ok) {
     held.delete(entry.key);
     redraw();

@@ -33,15 +33,11 @@ class Client:
 
 class RoleIdeasTest(unittest.TestCase):
     def setUp(self):
-        folder = pathlib.Path(tempfile.mkdtemp())
-        self.store = mock.patch.object(role_ideas, 'STORE', folder / 'r.json')
-        self.aside = mock.patch.object(role_ideas, 'ASIDE', folder / 'aside.json')
+        self.store = mock.patch.object(role_ideas, 'STORE', pathlib.Path(tempfile.mkdtemp()) / 'r.json')
         self.store.start()
-        self.aside.start()
 
     def tearDown(self):
         self.store.stop()
-        self.aside.stop()
 
     def test_ideas_are_counted_once_a_day_and_never_a_searched_or_set_aside_role(self):
         client = Client()
@@ -69,18 +65,14 @@ class RoleIdeasTest(unittest.TestCase):
         self.assertEqual([i['word'] for i in grown], ['retouche'], 'an idea added as a role is not offered again; the others stay')
         self.assertNotEqual(role_ideas.search_key(SEARCH), role_ideas.search_key({**SEARCH, 'role_keywords': ['x']}))
 
-    def test_a_role_set_aside_on_focus_is_never_offered_again_even_after_a_new_role_word(self):
-        """Gitar on #2350: a Not true on Focus set the words aside in the window only; after a new role word the kept answer offered them
-        again. The engine keeps the list now: kept() and ideas() leave them out, and Claude is told."""
+    def test_a_role_set_aside_is_never_shown_by_the_kept_answer_even_after_a_new_role_word(self):
+        """Gitar on #2350: after a new role word, kept() fell back to the earlier answer and offered a role set aside with Not true. The
+        words come from the store (src/suggestions.py set_aside) and kept() leaves them out, as ideas() does."""
         titles = ['caissier 50%', 'caissière auxiliaire', 'retouche photo e-commerce']
-        client = Client()
-        role_ideas.ideas('Photographer and shop seller', SEARCH, titles, client=client, today='2026-10-07')
-        role_ideas.put_aside(['Caissier'])
+        role_ideas.ideas('Photographer and shop seller', SEARCH, titles, client=Client(), today='2026-10-07')
         grown = {**SEARCH, 'role_keywords': SEARCH['role_keywords'] + ['retoucheur']}
-        self.assertEqual([i['word'] for i in role_ideas.kept(grown, titles)], ['retouche'])
-        self.assertEqual([i['word'] for i in role_ideas.ideas('x', SEARCH, titles, client=client, today='2026-10-07')], ['retouche'])
-        role_ideas.ideas('x', SEARCH, titles, client=client, today='2026-10-08')
-        self.assertEqual(client.calls[-1]['set_aside'], ['caissier'], 'Claude is told the next day')
+        self.assertEqual([i['word'] for i in role_ideas.kept(grown, titles)], ['caissier', 'retouche'], 'the earlier answer holds')
+        self.assertEqual([i['word'] for i in role_ideas.kept(grown, titles, ['Caissier'])], ['retouche'])
 
     def test_adding_a_suggested_role_keeps_todays_ideas_without_asking_again(self):
         client = Client()

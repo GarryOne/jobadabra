@@ -31,20 +31,8 @@ export function registerSearchTuningHandlers(ctx) {
     if (code !== 0) return {ok: false, error: 'Could not read the coverage (see the activity log)'};
     try { return {ok: true, coverage: JSON.parse(stdout.trim().split('\n').pop())}; } catch { return {ok: true, coverage: null}; }
   });
-  // A Not true on role ideas, on Strategy or Focus: the engine keeps the words (src/ai/role_ideas.py put_aside), so neither offers them again.
-  ipcMain.handle('roleIdeasAside', async (_, words = []) => {
-    if (DEMO) return {ok: true};
-    const file = path.join(os.tmpdir(), `jp-role-ideas-aside-${process.pid}-${Date.now()}.json`);
-    fs.writeFileSync(file, JSON.stringify({words: (Array.isArray(words) ? words : []).map(String).slice(0, 60)}));
-    try {
-      const {code} = await pipeline.run(storage, ['src.desktop', 'role-ideas-aside', file]);
-      return {ok: code === 0};
-    } finally {
-      fs.rmSync(file, {force: true});
-    }
-  });
-  // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; a list an
-  // older window set aside in its own storage is sent once more, and the engine keeps it.
+  // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; the words a
+  // Not true set aside are read from the store by the engine (src/suggestions.py set_aside), never proposed again.
   ipcMain.handle('roleIdeas', async (_, setAside = []) => {
     if (DEMO) {   // the ideas the demo Focus offers (tests/test_suggestions_search.py); a persona folder without them has none, not another person's
       let demo = {ideas: [], key: ''};

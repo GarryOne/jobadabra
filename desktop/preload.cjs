@@ -63,7 +63,7 @@ contextBridge.exposeInMainWorld('pilot', {
   onLeadStep: callback => ipcRenderer.on('leadStep', (_, step) => callback(step)),
   onPrepStep: callback => ipcRenderer.on('prepStep', (_, step) => callback(step)),
   markOutcome: call('markOutcome'),
-  searchCoverage: call('searchCoverage'), roleIdeas: call('roleIdeas'), roleIdeasAside: call('roleIdeasAside'), addRoles: call('addRoles'), editTargets: call('editTargets'), editGoal: call('editGoal'), stopTask: call('stopTask'), unqueueTask: call('unqueueTask'), loosenSearch: call('loosenSearch'), explainCoverage: call('explainCoverage'), addPlaces: call('addPlaces'),
+  searchCoverage: call('searchCoverage'), roleIdeas: call('roleIdeas'), addRoles: call('addRoles'), editTargets: call('editTargets'), editGoal: call('editGoal'), stopTask: call('stopTask'), unqueueTask: call('unqueueTask'), loosenSearch: call('loosenSearch'), explainCoverage: call('explainCoverage'), addPlaces: call('addPlaces'),
   dismissReason: call('dismissReason'), intelSnapshot: call('intelSnapshot'), benchmarkLines: call('benchmarkLines'),
   license: call('license'), licenseSet: call('licenseSet'), licenseRemove: call('licenseRemove'), planState: call('planState'), planCheckout: call('planCheckout'), planSignin: call('planSignin'), planRedeem: call('planRedeem'), proWaitlistJoin: call('proWaitlistJoin'),
   onAllowance: callback => ipcRenderer.on('allowance', (_, state) => callback(state)),

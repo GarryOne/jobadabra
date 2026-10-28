@@ -193,17 +193,37 @@ def tune_entry(answer):
                   actions=[{'label': 'Review', 'do': 'tune'}])
 
 
-def hidden(insights, now):
-    """The keys the person's answers hide now: Not now until its day, Not true / Done / Stale for good. Strategy's rows read it too (Focus's
-    `suggestions_hidden`), so a row answered on Focus is gone there as well."""
+def _answers(insights):
+    """{key: the newest answer's fields} for every entry the person answered."""
     answers = {}
     for record in sorted(insights, key=_stamp):
         fields = record.get('fields') or {}
         if fields.get('state'):
             key = fields.get('input_hash') if record.get('category') == ANSWER_CATEGORY else f"row:{record['id']}"
             answers[key] = fields
+    return answers
+
+
+def hidden(insights, now):
+    """The keys the person's answers hide now: Not now until its day, Not true / Done / Stale for good. Strategy's rows read it too (Focus's
+    `suggestions_hidden`), so a row answered on Focus is gone there as well."""
     today = now.date().isoformat() if isinstance(now, datetime) else str(now)
-    return {key for key, found in answers.items() if not (found['state'] == 'Not now' and (found.get('hidden_until') or '')[:10] <= today)}
+    return {key for key, found in _answers(insights).items() if not (found['state'] == 'Not now' and (found.get('hidden_until') or '')[:10] <= today)}
+
+
+def _aside(found):
+    """The words an answer set aside: its `data` JSON's `aside` list (desktop/lib/suggestion-answers.js), [] for any other data."""
+    try:
+        data = json.loads(found.get('data') or '{}')
+    except (TypeError, ValueError):
+        return []
+    return [str(word) for word in data.get('aside') or []] if isinstance(data, dict) else []
+
+
+def set_aside(insights):
+    """The role-idea words a Not true set aside: its answer row keeps them in `data` (a column in every store), so they hold after the role
+    words change the row's key, on every Mac of the store. Why (#2350, Gitar): a copy on one Mac let Focus offer them again."""
+    return sorted({word.lower() for found in _answers(insights).values() if found['state'] == 'Not true' for word in _aside(found)})
 
 
 def answered(entries, insights, now):

@@ -83,7 +83,6 @@ def main(argv=None):
     sub.add_parser('visit-understand').add_argument('file')   # a page outline the extension could not read: Claude's recipe, kept per site
     sub.add_parser('visit-recipe').add_argument('file')   # the recipe kept for a site (JSON: url, forget), or null   # a page the extension sent (JSON: url, html, cards, title, session): its jobs, kept as a feed
     sub.add_parser('role-ideas').add_argument('file', nargs='?')   # roles suggested from the Profile (JSON: set_aside), counted in the places' titles
-    sub.add_parser('role-ideas-aside').add_argument('file')   # role ideas a Not true set aside (JSON: words), kept by the engine for Strategy and Focus
     sub.add_parser('coverage')   # how much of the market the role keywords catch, and what adding a term would add (src/coverage.py)
     args = parser.parse_args(argv)
     with store.connect(JOBS_DB) as db:
@@ -115,27 +114,25 @@ def main(argv=None):
             # One read for Strategy's rows and Focus's (src/suggestions_search.py): the same verdict, each row's key for its Not now / Not true
             print(json.dumps(suggestions_search.checked(load_search_config(), coverage.load(), extras=True), ensure_ascii=False))
             return 0
-        if args.command == 'role-ideas-aside':
-            from .ai import role_ideas
-            role_ideas.put_aside((json.loads(Path(args.file).read_text()) or {}).get('words') or [])
-            print(json.dumps({'ok': True}))
-            return 0
         if args.command == 'role-ideas':
             from . import coverage, features
             from .ai import engine, role_ideas
             from .paths import load_search_config, local_profile
             asked = json.loads(Path(args.file).read_text()) if args.file else {}
-            role_ideas.put_aside(asked.get('set_aside') or [])   # a list an older window kept in its own storage
             if not _role_ideas_on():
                 print(json.dumps({'ok': True, 'ideas': []}))
                 return 0
             try:
+                from .ai.insights_data import ANSWER_CATEGORY
+                from .store_access import open_run, profile_source
+                from .suggestions import set_aside
+                stores = open_run()
                 profile = local_profile()
                 if not profile:   # the active store's Profile (Notion's page as before)
-                    from .store_access import open_run, profile_source
-                    read = profile_source(open_run())
+                    read = profile_source(stores)
                     profile = read() if read else ''
-                found = role_ideas.ideas(profile or '', load_search_config(), (coverage.load() or {}).get('missed_titles') or [], asked.get('set_aside') or [])
+                aside = set_aside(stores.insights.list(category=ANSWER_CATEGORY)) + list(asked.get('set_aside') or [])   # a Not true's words, kept in the store
+                found = role_ideas.ideas(profile or '', load_search_config(), (coverage.load() or {}).get('missed_titles') or [], aside)
             except Exception as error:  # noqa: BLE001 — no ideas this time, said; never the fixed words' guess instead (audit PR 6)
                 print(json.dumps({'ok': False, 'ideas': [], 'error': f'No role ideas this time ({type(error).__name__})'}))
                 return 0

@@ -290,7 +290,8 @@ def load(stores, *, target=None, now=None, gmail=None):
         stores.applications.list, stores.events.list, stores.interviews.list,
         lambda: target or settings_target(), stores.insights.list)
     return build(_linked(stores, rows), events, _linked(stores, interviews), target=target, now=now,
-                 insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail, tune=_tune(rows), search=suggestions_search.now())
+                 insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail, tune=_tune(rows),
+                 search=suggestions_search.now(suggestions.set_aside(insights)))
 
 
 def reminder(focus, now=None):

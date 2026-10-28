@@ -20,7 +20,7 @@ import {countOf, defineCount, paintCount} from '../shared-counts.js';
 import {NO_PLACE} from '../targets.js';
 import {RUN, answerEntry, answered, homeSuggestions} from './focus-suggestions.js';
 import {bone, loadFocus} from './focus.js';
-import {aside} from '../ideas-aside.js';
+import {moveOldAside} from '../ideas-aside.js';
 // Where else the change shows: Notion's ⚙️ Search settings page, only while Notion holds the data (on this Mac they are the app's own).
 const alsoInSettings = () => byStore(' (also in your Search settings in Notion)', '');
 
@@ -363,8 +363,8 @@ export async function loadCoverage({first = false} = {}) {
   pendingReview = '';   // the row it asked for is not there any more (hidden, or the search changed): nothing opens later by surprise
 }
 // "Explore related roles" (src/ai/role_ideas.py, owner 7 Oct 2026: "suggest potential roles"): roles from the Profile with how many open jobs in
-// your places each would add; those with openings first, the empty ones behind "Show more". ⋯ Not true sets them aside too (ideas-aside.js): the
-// engine never proposes them again.
+// your places each would add; those with openings first, the empty ones behind "Show more". ⋯ Not true sets them aside too: its answer in your
+// store keeps the words, and the engine never proposes them again (src/suggestions.py set_aside).
 // The last answer, kept: the engine asks Claude at most once a day (src/ai/role_ideas.py), so the kept ideas are today's and the row shows at
 // the first paint (owner, 7 Oct 2026: the rows "add up after 5-10 seconds"). The fresh answer then replaces them quietly.
 // Kept with the answer's key (src/suggestions_search.py ideas_key): the row's Not now / Not true. A list kept before keys has none until the next answer.
@@ -377,7 +377,8 @@ async function loadIdeas() {
   const kept = keptIdeas();
   if (kept) { ideasKey = kept.key; paintIdeas(kept.ideas); }
   else { pendingImprove.add('ideas'); drawImprove(); }   // nothing kept yet: a placeholder holds its place while the engine answers
-  const answer = await window.pilot.roleIdeas?.(aside()).catch(() => null);
+  await moveOldAside();
+  const answer = await window.pilot.roleIdeas?.().catch(() => null);
   pendingImprove.delete('ideas');
   const fresh = answer?.ok && Array.isArray(answer.ideas);
   if (fresh) { ideasKey = answer.key || ''; try { localStorage.setItem(IDEAS_LAST, JSON.stringify({ideas: answer.ideas, key: ideasKey})); } catch { /* shown when it answers */ } }
@@ -388,7 +389,7 @@ function paintIdeas(ideas) {
   shownIdeas = ideas;
   // A kept idea already added as a role is not offered again (the engine leaves it out of its next answer too).
   const searched = new Set(entriesOf(strategyState.lastStrategy, 'roles').map(entry => String(entry.fragment).toLowerCase()));
-  const card = unanswered(ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), aside(), strategyState.shownVerdict), ideasKey);
+  const card = unanswered(ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), [], strategyState.shownVerdict), ideasKey);
   if (!card) { rows.ideas = null; drawSuggestions(); return; }
   // A card each: the role, why it fits, its openings; the word it is searched by under "Search details" (owner mockup, 7 Oct 2026).
   const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: '+ Add role', accent: true,

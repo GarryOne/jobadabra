@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "about": "The lane registry (spec docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, lanes table). A suite NOT listed is backbone: red or green, a PR's red when its diff reaches it. A listed suite is tolerant (its result depends on an AI answer, the clock or the outside world, named in `input`), suspended (flips red then green on one commit; shown, never blocks) or retired. tools/pr-verdict.py shows a red tolerant or suspended suite grey on a PR; it reads this file from the PR's BASE branch, so a PR that edits it is judged by main's copy and its entry counts after it merges. Moving a suite out of the backbone is an expectation change (spec rule E): the PR names the input and why. First cut 28 Oct 2026, from the week's reds (tools/e2e_weekly.py).",
+  "suites": {
+    "quality": {
+      "lane": "tolerant",
+      "input": "ai",
+      "since": "2026-10-28",
+      "why": "Twelve golden postings go through the real Jobs check and the model's facts and scores are compared with a ground truth; a Haiku judge reads the free text. 4 of its 7 red rows in the week of 2026-W44 were an AI answer, a key or the 7-minute budget."
+    },
+    "notion-real": {
+      "lane": "tolerant",
+      "input": "outside",
+      "since": "2026-10-28",
+      "why": "The one suite on a real Notion workspace (cadence manual): what the in-memory stand-in cannot prove depends on Notion's own pages and rate limits, which are not ours."
+    }
+  }
+}

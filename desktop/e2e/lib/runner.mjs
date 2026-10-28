@@ -7,6 +7,7 @@ import {isEnvironment, RETRY_WAIT_MS} from './environment.mjs';
 import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
+import {providerLine} from './ai-provider.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
 // (5 Oct 2026: one outdated step hid fifteen, twice). A step marked `critical` (the setup the others need) still stops the suite.
@@ -67,6 +68,7 @@ const pictureOf = async session => (session?.page ? Promise.race([session.page.s
 // the golden postings): a picked run then runs every step up to the last picked one and skips only the rest (#2108, 26 Oct 2026). Declared (even {}): the precise pick.
 export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, stepNeeds = null, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
+  if (process.env.CI) console.log(providerLine(process.env, 'judges'));   // Why (#2416, Gitar): who decided the judges' provider is never a guess
   const buildsOn = stepNeeds == null && picked.length > 0 && !String(process.env.E2E_STEPS || '').trim();
   const allFound = () => picked.every(name => name === PICK_SETUP || found.has(name));
   let overBudget = false;
@@ -123,7 +125,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       // Why (28 Oct 2026, owner + fl): a step the AI cap refused is SKIPPED with its cause, never failed and never passed; the nightly and every release gate (releaseGate: E2E_FULL or E2E_RUN_KIND=gate) fail it instead, so a release never approves with AI steps unrun.
       const capped = takeCapped();
       if (capped && !releaseGate()) {
-        results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons)});
+        results.push({name, status: 'skipped', aiCapped: true, note: capMessage(capped.neurons, process.env, capped.why)});
         skipStepForCap(name, capped.neurons);
         await report?.skipStep(`${name} (AI capped)`).catch(() => {});
         return;

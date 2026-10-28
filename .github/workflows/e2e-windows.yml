@@ -10,6 +10,10 @@ run-name: ${{ inputs.pr_steps && format('E2E for PR · windows {0} · {1}', inpu
 on:
   workflow_dispatch:
     inputs:
+      ai_provider:
+        description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
+        type: string
+        default: ''
       suites:
         description: 'Suites to run on Windows, comma-separated (empty = all)'
         required: false
@@ -38,6 +42,10 @@ on:
   # The release run (desktop.yml) calls this as its "E2E · Windows" job: the Windows beta gate for the release it built.
   workflow_call:
     inputs:
+      ai_provider:
+        description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
+        type: string
+        default: ''
       pr_steps:
         description: 'Never set by a release run: the PR check only (pr-suites.yml dispatches it)'
         type: string
@@ -168,12 +176,15 @@ jobs:
       E2E_RUN_KIND: ${{ inputs.tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs), as e2e.yml
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
+      CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
+      E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
       # A PR's short Windows check (pr-suites.yml, owner's yes 26 Oct 2026): only these steps (lib/runner.mjs), on a fresh SQLite store, so no Notion page and no lock.
       E2E_STEP_NAMES: ${{ inputs.pr_steps }}
       E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
+      id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs); a fork run gets none and cannot spend the owner's plan
       statuses: write   # a PR check: the PR's "All checks passed", written as the job ends (tools/pr-verdict.py)
       actions: read
       pull-requests: read

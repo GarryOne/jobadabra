@@ -1,5 +1,6 @@
 // Which AI engine the app under test uses (the app's own "AI engine" setting: its API key, or the user's Claude Code on this Mac).
 import {execFileSync} from 'node:child_process';
+import {aiProvider} from './ai-provider.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
 
 // A saved key that is never valid: with the CLI engine chosen the key is not used, and a step that needs the API engine (the AI proxy answering 429, 500, a delay)
@@ -47,7 +48,8 @@ export const freeToken = (env = process.env) => (isCi(env) ? env.CI_FREE_AI_CF_T
 export function judgeFamily(env = process.env) {
   const pinned = env.E2E_JUDGE_FAMILY;
   if (pinned && !['claude', 'free'].includes(pinned)) throw new Error(`E2E_JUDGE_FAMILY must be claude or free, not "${pinned}"`);
-  return pinned === 'claude' || !freeAi(env) ? 'claude' : 'free';
+  // Why (#2416, Gitar): the provider switch (lib/ai-provider.mjs) decides here too; 'claude' puts the judges on Claude even while the relay is up, 'codex' is answered before this runs (lib/model.mjs).
+  return pinned === 'claude' || aiProvider(env, 'judges').provider === 'claude' || !freeAi(env) ? 'claude' : 'free';
 }
 // 'api' | 'cli' | 'openai' | 'codex'. CI: the family's API key, as it ships to users. A Mac: the family's own CLI (Claude Code, Codex), always. A suite may pin 'api' (its
 // steps are answered by the Anthropic-shaped AI proxy), which on a Mac runs with the placeholder key, whatever the family. E2E_AI_ENGINE forces one engine; an API engine is

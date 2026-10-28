@@ -1,6 +1,7 @@
 // The experience bank's IPC (Settings → Profile → Experience): what the window shows, adding another CV version, removing one, matching
 // again after the main CV changed. The data and the AI match are lib/experience.js; guarded by test/experience.test.js.
 import * as claudeCode from './claude-code.js';
+import * as added from './experience-added.js';
 import * as experience from './experience.js';
 import * as linkedinOAuth from './linkedin-oauth.js';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ const DEMO_VIEW = {main: {name: 'Ada Example', roles: 2, skills: 'AWS, Terraform
   roles: [{company: 'Acme', title: 'Site Reliability Engineer', period: '2024 – Present', place: 'Zurich', bullets: [
     {text: 'Cut monitoring costs by **50%** with Datadog.', from: 'Main CV'}, {text: 'Built Spark pipelines for 2 TB of logs a day.', from: 'Data and ML CV'}]},
     {company: 'Beta', title: 'Developer', period: '2020 – 2023', place: 'Remote', bullets: [{text: 'Built APIs in Node.js.', from: 'Main CV'}]}],
-  extraSkills: 'Python, Spark'};
+  extraSkills: 'CI/CD, Spark', added: [{id: 'demo1', kind: 'skill', text: 'Kafka'}, {id: 'demo2', kind: 'correction', text: 'Python: 3 years'}]};
 
 export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, shell, storage}) {
   const ai = () => ({apiKey: storage.secret('ANTHROPIC_API_KEY'), client: claudeCode.client(storage)});
@@ -62,6 +63,16 @@ export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, sh
     if (ok) appLog('experience', 'source removed', {id: String(id)});
     return withChanges(before, ok, {removed: before.sources.find(s => s.id === String(id))?.name || ''});
   });
+  // "Use in my CVs" (Insights PR 2, renderer/skill-entries.js): the skills become "Added by you" entries; the main CV file is never edited.
+  ipcMain.handle('experienceAddSkills', (_, skills) => {
+    const before = experience.view(storage), list = (Array.isArray(skills) ? skills : []).map(skill => String(skill || '').trim()).filter(Boolean).slice(0, 10);
+    if (!list.length) return {ok: false, error: 'No skills to add.'};
+    if (DEMO) return {ok: true, ...before};
+    try { for (const skill of list) added.addSkill(storage, skill); } catch (error) { return {ok: false, error: error.message}; }
+    appLog('experience', 'skills added by you', {count: list.length});
+    return withChanges(before);
+  });
+  ipcMain.handle('experienceRemoveAdded', (_, id) => (DEMO ? {ok: true, ...experience.view(storage), added: DEMO_VIEW.added.filter(item => item.id !== String(id))} : withChanges(experience.view(storage), added.removeAdded(storage, id))));
   ipcMain.handle('experienceRematch', async () => {
     if (noAi()) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
     try {

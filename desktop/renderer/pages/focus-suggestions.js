@@ -6,6 +6,8 @@ import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, barView, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
 import {drawerRows, foldedLine, questionEntries, withQuestions} from '../question-entries.js';
+import {skillEntries} from '../skill-entries.js';
+import {jobsState} from './jobs-state.js';
 import {NO_PLACE} from '../targets.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';
@@ -57,6 +59,7 @@ export const RUN = {
   read_site: (action, event) => RUN.change_search(action, event),
   see_all: action => import('./strategy-suggestions.js').then(page => page.reviewSuggestion(action.row)),
   // The Jobs drawers' rows (renderer/question-entries.js, PR 1c): each opens what its card opened.
+  use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage('Could not add the skills', result?.error || 'Try again.', NO_PLACE.itself, 'warn'); },
   open_letter: () => import('./settings.js').then(({openSetting}) => openSetting('letter')),   // the cover letter is a setting, as the card's button did
   open_details: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details'})),
   open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
@@ -114,7 +117,11 @@ export function entryRow(entry) {
 
 const shownPool = () => pool.filter(entry => !held.has(entry.key));
 // Focus and the Jobs bar: the drawers' rows first (the blocking one at the top), then the engine's. A Not now leaves them at once (held) and stays gone (Focus's `suggestions_hidden`).
-const rowsNow = () => drawerRows(questionEntries(questionsNow()), {held, hidden: hiddenKeys});
+// Insight #6 (PR 2): the bank's skills against the target jobs on this screen; the bank is read once and again after "Use in my CVs".
+let bank = null;
+const loadBank = () => window.pilot.experienceGet().then(view => { bank = view; redraw(); }).catch(() => {});
+const skillsNow = () => (bank ? skillEntries({jobs: jobsState.lastJobsData?.jobs, extraSkills: bank.extraSkills, mainSkills: bank.main?.skills, added: bank.added}) : []);
+const rowsNow = () => drawerRows([...questionEntries(questionsNow()), ...skillsNow()], {held, hidden: hiddenKeys});
 const withRows = () => withQuestions(shownPool(), rowsNow());
 let lastArgs = null;
 let questionsAsked = false;
@@ -128,6 +135,7 @@ export function renderFocusSuggestions({entries, items, card, hidden}) {
   pool = entries || [];
   hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
+  if (!bank) loadBank();
   if (!questionsAsked) { questionsAsked = true; loadQuestions().catch(() => {}); }   // Jobs' count: cached on this Mac, read again after 10 minutes (jobs-questions.js)
   const rows = focusRows(withRows(), items);
   show($('focus-suggestions'), rows.length > 0);
@@ -174,5 +182,6 @@ export function initSuggestions() {
     redraw();
   });
   $('jobs-suggestions').addEventListener('toggle', renderJobsSuggestions);
+  window.addEventListener('experience-changed', () => { loadBank(); });
   document.addEventListener('questions-read', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // the count arrived, or changed
 }

@@ -114,6 +114,7 @@ export function showChanges(answer) {
 }
 
 export function showExperience(view) {
+  window.dispatchEvent(new Event('experience-changed'));   // Why (#2397, Gitar): Focus and the Jobs bar read the bank once; they read it again when this page shows a new one
   const rows = view.sources.map(sourceRow);
   for (const [i, source] of view.sources.entries()) {
     const row = rows[i];
@@ -131,13 +132,36 @@ export function showExperience(view) {
     row.append(button);
   }
   $('exp-sources').replaceChildren(...(view.main ? [sourceRow({reference: true, name: 'Main CV', roles: view.main.roles})] : [el('li', 'muted', 'Read your main CV first (CV → Read my CV PDF).')]));
-  $('exp-versions').replaceChildren(...(view.sources.length ? [versionsBlock(rows, view.sources.length)] : []));
+  const removeAdded = async id => {
+    const answer = await window.pilot.experienceRemoveAdded(id).catch(error => ({ok: false, error: error.message}));
+    if (answer.ok) showExperience(answer); else message('exp-message', answer.error || 'Could not remove it.', 'error');
+  };
+  $('exp-versions').replaceChildren(...(view.sources.length ? [versionsBlock(rows, view.sources.length)] : []), ...addedBlock(view.added, removeAdded));
   const extras = view.roles.reduce((n, r) => n + r.bullets.filter(b => b.from !== 'Main CV').length, 0);
   $('exp-count').textContent = view.roles.length ? `${plural(view.roles.length, 'role')}${extras ? ` · ${plural(extras, 'detail')} from other versions` : ''}` : '';
   $('setting-experience-sources').dataset.summary = sourcesSummary(view);   // the folded card's one line (profile-fold.js)
   const notInMain = onlyHereBlock(view.sources);
   $('exp-roles').replaceChildren(...(view.roles.length ? view.roles.map(roleBlock) : [el('p', 'muted', 'Nothing yet: your main CV is read the first time you tailor one, or on the CV tab.')]), ...(notInMain ? [notInMain] : []));
   $('exp-add').disabled = $('exp-add-linkedin').disabled = !view.main;
+}
+
+// "Added by you" (Insights PR 2, lib/experience-added.js): the skills, bullets and corrections the person added after an insight, each removable.
+// The main CV is not changed by any of them. Hidden when there are none.
+export function addedBlock(items, remove) {
+  if (!items?.length) return [];
+  const KIND = {skill: 'Skill', bullet: 'Detail', correction: 'Correction'};
+  const list = el('ul', 'item-rows');
+  for (const item of items) {
+    const row = el('li'), words = el('div', 'item-words');
+    const name = el('b', '', item.text);
+    name.append(' ', pill(KIND[item.kind] || 'Added', 'info'));
+    words.append(name, el('span', 'muted', 'Tailored CVs may use this. Your main CV is not changed.'));
+    const button = Object.assign(el('button', 'secondary item-action', 'Remove'), {type: 'button'});
+    button.addEventListener('click', () => { button.disabled = true; remove(item.id); });
+    row.append(tile('user', 'signal'), words, button);
+    list.append(row);
+  }
+  return [el('h4', '', 'Added by you'), list];
 }
 
 // The words for one live step from the app (experienceStep): which file of how many, and what it is doing now.

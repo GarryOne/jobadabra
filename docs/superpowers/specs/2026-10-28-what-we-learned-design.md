@@ -129,9 +129,9 @@ is never overwritten; drawer 1 asks which is right.
 
 ## Progress
 
-- [x] Design agreed with the owner (27–28 Oct 2026)
-- [x] Existing mechanisms read (learn, knowledge, learned, question-reuse, missing-facts)
-- [x] Design sketch approved by the owner (28 Oct 2026, https://claude.ai/artifact/3Bzz5uTwPLssMNodQsdbMn)
-- [x] Plan written (`docs/superpowers/plans/2026-10-28-what-we-learned.md`): PR A two drawers, B learnings, C remember
+- [x] Design agreed with the owner (27–28 Oct 2026) (proof: none: the owner's answers in the session, quoted in this spec)
+- [x] Existing mechanisms read (learn, knowledge, learned, question-reuse, missing-facts) (proof: none: reading; listed under "What exists and is reused")
+- [x] Design sketch approved by the owner (28 Oct 2026, https://claude.ai/artifact/3Bzz5uTwPLssMNodQsdbMn) (proof: none: the owner's yes on the sketch)
+- [x] Plan written (`docs/superpowers/plans/2026-10-28-what-we-learned.md`): PR A two drawers, B learnings, C remember (proof: docs/superpowers/plans/2026-10-28-what-we-learned.md)
 - [ ] Implementation + tests
 - [ ] Before/after screenshots in the PR

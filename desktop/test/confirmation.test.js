@@ -110,3 +110,21 @@ test('actual challenge evidence overrides a contradictory receipt answer and han
   assert.equal(handed[0].reason, 'captcha_runtime');
   assert.deepEqual(marked, []);
 });
+
+// Applied for a background job comes only from a page the judge reads as the site's confirmation (spec 2026-10-27 "Applied only from a receipt").
+test('a background job is marked Applied only after the judge reads the page as a confirmation', async () => {
+  const run = async verdict => {
+    const receipts = [], marked = [];
+    const answer = await judgeConfirmation({}, {job: 'https://jobs.example.test/app', page: 'https://jobs.example.test/result', background: {session: 'fictional', owner: 'owned'}}, {
+      client: null, judge: async () => verdict, mark: async url => { marked.push(url); return {ok: true}; },
+      background: {outcome: async (context, confirmed) => { receipts.push(confirmed); return {ok: true}; }, handle: async () => ({ok: true})},
+    });
+    return {answer, receipts, marked};
+  };
+  const no = await run({confirmation: false, botCheck: false, host: 'jobs.example.test', path: '/result'});
+  assert.deepEqual([no.receipts, no.marked, no.answer.confirmation], [[], [], false]);
+  const unread = await run({confirmation: false, error: 'AI busy'});
+  assert.deepEqual([unread.receipts, unread.marked], [[], []]);
+  const yes = await run({confirmation: true, botCheck: false, host: 'jobs.example.test', path: '/result'});
+  assert.deepEqual([yes.receipts, yes.marked.length, yes.answer.confirmation], [[true], 1, true]);
+});

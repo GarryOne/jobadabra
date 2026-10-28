@@ -30,7 +30,8 @@ export function registerBackgroundHandlers(ctx) {
     // window reads again what moved (e.g. open questions read before they reached Notion looked like none).
     // Why (2026-10-28, red main after #2339): the move runs for seconds behind the first reads and drops this Mac's profile.md and answers.md once Notion has them, so anything
     // that writes or packs those files must know when it is over: the line below is that signal (desktop/e2e/suites/settings.mjs waits for it; guard test/startup-moves-signal.test.js).
-    startupMove.track(critical.during('Moving your data to Notion', () => migrate.run(storage, log))).then(moved => { appLog('migrate', 'startup moves finished', {moved: moved.length}); if (moved.length) toWindow('moved', moved); });
+    startupMove.track(critical.during('Moving your data to Notion', () => migrate.run(storage, log)), outcome => appLog('migrate', 'startup moves finished', outcome))
+      .then(moved => { if (moved.length) toWindow('moved', moved); }, () => {});   // a failed move is already in the log line above
     syncCv();
     // Recent activity from Notion ⏱️ Search runs (every run's row, wherever it ran), every 15 s.
     let notionTimer;

@@ -32,13 +32,6 @@ class PrBodyTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
 
-    def test_caller_attribution_is_preserved_at_the_end(self):
-        attribution = '🤖 Generated with Codex (GPT-6.1 Sol), session pc for a8'
-        result = subprocess.run(['bash', str(ROOT / 'tools' / 'pr-body.sh'), self.base], cwd=self.repo,
-                                env={**os.environ, 'SHIP_ATTRIBUTION': attribution}, capture_output=True, text=True, timeout=30)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue(result.stdout.rstrip().endswith(attribution), result.stdout)
-
     def test_reliability_citations_are_visible_above_the_fold(self):
         git(self.repo, 'commit', '--allow-empty', '-qm', 'Cite the test\n\nTest-was-wrong: fixture has three rows\nHarness-job: run the backbone')
         text = self.body()

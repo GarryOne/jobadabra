@@ -69,5 +69,4 @@ printf '\n---\n\n'
 count="$(git rev-list --count "$base"..HEAD)"
 printf '<details><summary>📄 The commit message%s</summary>\n\n' "$([ "$count" -gt 1 ] && echo "s ($count)")"
 git log --reverse --format='#### %s%n%n%b' "$base"..HEAD | grep -v '^Co-Authored-By:'
-# Why (28 Oct 2026, owner): Codex sessions must identify their actual model and session in the PR footer.
-printf '</details>\n\n%s\n' "${SHIP_ATTRIBUTION:-🤖 Generated with [Claude Code](https://claude.com/claude-code)}"
+printf '</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n'

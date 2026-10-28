@@ -31,7 +31,8 @@ export function refusalNote(profile, stubbed = STUBBED) {
   if (!count) return '';
   const stub = stubbed.size ? ` (the suite armed the stub ${[...stubbed].join(', ')} on purpose: these refusals are by design, not the account's money or limit)` : '';
   // Why (28 Oct 2026, Gitar on #2415): tools/pr-verdict.py greys a job only when the failure line names the cause; a bare "(400)" can be a request of ours that is wrong, so the
-  // phrase "spend limit or credit" is added only when the engine log itself carried the limit or credit message, and never under an armed stub.
-  const cause = limit && !stubbed.size ? ', spend limit or credit' : '';
+  // phrase "spend limit or credit" is added only when EVERY refusal line carried the limit or credit message (round 2, Gitar: one such line must not excuse bare 400s next to it), and never under an armed stub.
+  // A real out-of-credit log whose refusals do not each carry the message stays red, as before this grey existed; a recorded log of one decides whether to relax it.
+  const cause = limit === count && !stubbed.size ? ', spend limit or credit' : '';
   return `the AI refused (400) ${count} time${count === 1 ? '' : 's'}${firstAt ? `, first at ${firstAt}` : ''}${cause}${stub}`;
 }

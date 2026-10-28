@@ -35,7 +35,7 @@ test('a told word on a line placed on the case\'s own tab is attributed; one on 
 
 test('the extension\'s decision lines a replay case tells by carry the tab they came from', async () => {
   const fs = await import('node:fs'), path = await import('node:path'), root = path.join(import.meta.dirname, '../../../extension');
-  const sites = [['fill-flow.js', "'closed a popup'"], ['flow.js', "'typed for real a box that did not take its answer'"], ['flow.js', "'closed a dialog before the fill'"], ['flow.js', "'a menu showed no choice that matched'"], ['consent.js', "'popup: the press left the page, went back'"],
+  const sites = [['fill-flow-read.js', "'closed a popup'"], ['flow.js', "'typed for real a box that did not take its answer'"], ['flow.js', "'closed a dialog before the fill'"], ['flow.js', "'a menu showed no choice that matched'"], ['consent.js', "'popup: the press left the page, went back'"],
     ['popup-guard.js', "'closed a dialog during the fill'"], ['dialog-after-fill.js', "'closed a dialog opened by the fill'"], ['ladder/rung4-picture.js', '`closer look: ${action}`'], ['ladder/rung4-picture.js', '`closer look: pressed (${result})`'],
     ['ladder/progress.js', '`progress: ${kind}`'], ['ladder/fill-climb.js', '`fill: ${row.verb} on control ${row.n}`']];
   for (const [file, text] of sites) {

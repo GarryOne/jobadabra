@@ -153,7 +153,7 @@ test('a page with a bot check in front says what the person must do, on the card
   terminals.startForm({id: 'f2', url: URL1, company: 'Plain'});
   terminals.noteStuck('f2', 'no-form');
   assert.ok(sessionSteps(terminals.get('f2')).some(step => step.text === 'No application form found on the page yet'), 'no need: the old wording');
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(flow, /const botCheck = role === 'no-form' && kind\?\.botCheck === true;/);
   assert.match(flow, /watchForFields\(tab, jobUrl, undefined, botCheck \? 60 : 10, counts\?\.frameHosts \|\| \[\], \(\) => markPage\(tab\.id, role, pressed, kind\)\)/);
   assert.match(flow, /deadEndHere\(tab, jobUrl, host, role === 'account' \? 'account' : 'no-form', botCheck \? BOT_CHECK_NEED : '',/, 'the no-form dead end carries the bot check\'s need');

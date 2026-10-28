@@ -7,7 +7,7 @@ import test from 'node:test';
 const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 
 test('a blind page is looked at with its picture only under the test switch; the look says what it confirmed', () => {
-  const flow = read('extension/fill-flow.js');
+  const flow = ['extension/fill-flow.js', 'extension/fill-flow-read.js', 'extension/fill-flow-steps.js'].map(read).join('\n');
   assert.match(flow, /const blindLook = blindOn\(tab\.id\) && \(await settings\(\)\.catch\(\(\) => null\)\)\?\.ladderAct === true;/);
   assert.match(flow, /closerLook\(tab, 0, 'the ladder ended at the person', \{kind: 'page', picture: blindLook\}\)/);
   assert.match(flow, /const blindVerdict = \(blindLook, look, led\) => \{ if \(blindLook\) decide\('fill', led \? "blind spot confirmed: the picture's control led to a form" : 'blind spot not confirmed: the picture found no way on', \{look\}\); \};/);

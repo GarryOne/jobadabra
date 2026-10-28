@@ -14,6 +14,7 @@ let contact = null, facts = null;
 const tell = name => globalThis.document?.dispatchEvent?.(new Event(name));
 // What is on screen right after a read or a save: the drafts count from here.
 export function contactRead() { savedContact = contactNow(); contact?.changed(); tell('details-changed'); }
+/** The facts on screen are now the baseline the drafts count from: reads the boxes, minus a zone only suggested (a draft, not saved); no failure path. */
 export function factsRead() { savedFacts = factsNow({saved: true}); facts?.changed(); tell('details-changed'); }
 export const contactDirty = () => countContact(savedContact, contactNow()) > 0;
 export const factsDirty = () => countFacts(savedFacts, factsNow()) > 0;

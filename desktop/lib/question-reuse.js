@@ -76,7 +76,7 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
 // Why (28 Oct 2026, owner, #2322): "authorised to work in X?", "eligible in the location you apply for?" and "need sponsorship?" are answered from Nationality and
 // the zones. The AI says only what the question asks and which country (any language); the code finds the row that covers that country and reads the answer
 // from its fixed status (renderer/work-eligibility.js settles). No country named: answered per job from the same rows. -> {fact, value, from}; {asked: true, row,
-// from} (row: the zone that covers the country, '' for none) when Nationality or a zone is saved but settles nothing for that country; null when neither is saved (an older line may still answer it).
+// from} (row: the zone that covers the country, else Nationality) when Nationality or a zone is saved but settles nothing for that country; null when neither is saved (an older line may still answer it).
 function fromEligibility(asks, country, facts) {
   const {nationality, rows} = eligibilityOf(facts), code = String(country || '').trim().toUpperCase();
   if (!nationality && !rows.length) return null;
@@ -86,9 +86,10 @@ function fromEligibility(asks, country, facts) {
   const row = rowFor(code, facts.filter(fact => fact.kind !== 'per_country' || splitPermit(fact.value).status)), value = row ? settles(splitPermit(row.value), asks) : '';
   const from = row ? String(facts.find(fact => fact.label === row.label)?.value ?? row.value) : '';   // the saved line, to see it change
   if (value) return {fact: row.label, value, from};
-  // Why (28 Oct 2026, #2322): asked, it keeps the zone that covers the country and its value now ("❓" or none), so answering that zone judges it again.
-  const zone = ZONES.find(each => each.codes.includes(code))?.label || '';
-  return {asked: true, row: zone, from: zone ? String(facts.find(fact => fact.label === zone)?.value ?? '') : ''};
+  // Why (28 Oct 2026, #2322 + Gitar): asked, it keeps the one line that could answer it (the zone that covers the country, else Nationality: a country in
+  // no zone is answered only by a citizenship of it) and that line's value now, so a change there judges it again.
+  const on = ZONES.find(each => each.codes.includes(code))?.label || NATIONALITY;
+  return {asked: true, row: on, from: String(facts.find(fact => fact.label === on)?.value ?? '')};
 }
 
 // The older shape the fill-time collect uses: the Set of labels worth saving (reusable and not already covered).

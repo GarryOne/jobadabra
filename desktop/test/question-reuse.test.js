@@ -113,7 +113,7 @@ test('classify: right to work and sponsorship come from Nationality and the zone
   assert.deepEqual(of(labels[2]), ['details', 'United States', 'No']);
   assert.deepEqual(of(labels[3]), ['details', 'United States', 'Yes']);
   assert.deepEqual(of(labels[4]), ['details', 'United Kingdom', 'Yes'], 'a permit settles the right to work');
-  assert.deepEqual([got.get(labels[7]).reuse, got.get(labels[7]).fact, got.get(labels[7]).proposal, got.get(labels[7]).row], ['reusable', '', '', ''],
+  assert.deepEqual([got.get(labels[7]).reuse, got.get(labels[7]).fact, got.get(labels[7]).proposal, got.get(labels[7]).row], ['reusable', '', '', 'Nationality'],
     'a country in no zone settles nothing: still asked, never filled from the fact the AI named');
   assert.deepEqual(of(labels[5]), ['details', 'Nationality', ''], 'no country named: answered per job from the same rows');
   assert.equal(got.get(labels[6]).reuse, 'reusable', 'a code that is not ISO is never read');
@@ -148,4 +148,17 @@ test('ensure: a question asked for a "❓" zone is judged again when the zone is
   assert.deepEqual([calls.length, Object.values(next.verdicts)[0].proposal, Object.values(next.verdicts)[0].row], [2, 'Yes', ''], 'answered: judged again, no row left behind');
   await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit'), ai: {client}});
   assert.equal(calls.length, 2, 'the same row: kept');
+});
+
+// Why (28 Oct 2026, Gitar on #2322): a country in no zone is answered only by a citizenship of it, so a question about it is tied to the Nationality line.
+test('ensure: a question about a country in no zone is judged again when Nationality changes', async () => {
+  const {ensure} = await import('../lib/question-verdicts.js');
+  const s = storage(), calls = [];
+  const client = {messages: {create: async () => { calls.push(1); return {content: [{type: 'text', text: JSON.stringify({verdicts: [{label: 'Authorised in Japan?', verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks: 'work_right', country: 'JP'}]})}]}; }}};
+  const facts = value => [{label: 'Nationality', value}, {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}];
+  assert.equal(Object.values((await ensure(s, ['Authorised in Japan?'], {facts: facts('Canada'), ai: {client}})).verdicts)[0].reuse, 'reusable');
+  await ensure(s, ['Authorised in Japan?'], {facts: facts('Canada'), ai: {client}});
+  assert.equal(calls.length, 1, 'the same Nationality: kept');
+  const next = await ensure(s, ['Authorised in Japan?'], {facts: facts('Canada, Japan'), ai: {client}});
+  assert.deepEqual([calls.length, Object.values(next.verdicts)[0].proposal], [2, 'Yes'], 'a Japanese citizenship added: judged again, answered');
 });

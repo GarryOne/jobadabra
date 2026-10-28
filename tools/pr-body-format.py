@@ -1,5 +1,5 @@
 """Lays out a PR summary for GitHub (owner, 15 Oct 2026: "use headings, font sizes, proper spacing; a run number is a link, not plain text").
-Reads the session's summary (tools/pr-body-template.md shape) on stdin, prints it with: the verdict as a big heading, Why/Unblocks in a callout,
+Reads the session's summary (tools/pr-body-template.md shape) on stdin, prints it with: the verdict as a big heading, Why / Unblocks / Root cause each in its own coloured callout,
 a small heading over each block (impact, what changed, before/after, screens), a quiet "No screenshots" line, and every "run <id>" linked
 to its Actions run. Lines the CI reads (live-row: ...) and anything already under a heading stay as written. Guard: tests/test_pr_body.py.
 Usage: python3 tools/pr-body-format.py <owner/repo or ''> < summary.md"""
@@ -15,7 +15,17 @@ HEADINGS = [   # (what starts the block, its heading)
     (re.compile(r'^- '), '### ✅ What changed'),
     (re.compile(r'^(\*\*Before\*\*|!\[|<img |\|\s*!\[)', re.I), '### 🖼️ Screens'),
 ]
-NOTE = re.compile(r'^\*\*(Why|Unblocks):?\*\*:?', re.I)
+NOTE = re.compile(r'^\*\*(Why|Unblocks|Root cause):?\*\*:?', re.I)
+# Why (owner, 28 Oct 2026: "Why, What it Unblockes and Root cause, should be 3 panels with 3 differnt colors"): GitHub alert kinds.
+PANEL = {'why': 'NOTE', 'unblocks': 'TIP', 'root cause': 'CAUTION'}   # blue, green, red
+
+
+def panels(note):
+    """One GitHub alert per Why / Unblocks / Root cause line, each in its own colour, a blank line between them."""
+    out = []
+    for line in note:
+        out += ['', f'> [!{PANEL[NOTE.match(line).group(1).lower()]}]', '> ' + line]
+    return out
 
 
 def link_runs(line, repo):
@@ -71,8 +81,8 @@ def lay_out(text, repo=''):
             continue
         if note and not line.strip():
             continue
-        if note:   # the Why/Unblocks lines end: one callout, a blank line between them
-            out += ['', '> [!NOTE]', *sum((['> ' + n, '>'] for n in note), [])[:-1], '']
+        if note:   # the Why/Unblocks/Root cause lines end: one callout each
+            out += panels(note) + ['']
             note = []
         if line.startswith('No screenshots:') or line.startswith('No visual:'):
             out.append('<sub>📷 ' + line + '</sub>')
@@ -88,7 +98,7 @@ def lay_out(text, repo=''):
             continue
         out.append(line)
     if note:
-        out += ['', '> [!NOTE]', *sum((['> ' + n, '>'] for n in note), [])[:-1]]
+        out += panels(note)
     return re.sub(r'\n{3,}', '\n\n', '\n'.join(out)).strip('\n') + '\n'
 
 

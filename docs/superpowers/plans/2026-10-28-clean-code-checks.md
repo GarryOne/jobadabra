@@ -20,3 +20,12 @@ functions over McCabe 10. Rule: new code only, old code is never blocked. A rule
 - [ ] 2/4 sonarjs on new code
 - [ ] 3/4 Ruff on new code
 - [ ] 4/4 SonarQube Cloud
+
+## Baseline: rerun on `bacbe2a`
+Tools (installed outside the repo): jscpd, eslint 9.39.5 + eslint-plugin-sonarjs 4.2.2, Ruff 0.17.3. Run on a `git archive bacbe2a` copy.
+
+| Number | Command | Result |
+|---|---|---|
+| Duplication | `jscpd --min-lines 5 --min-tokens 50 --format javascript,python --ignore "**/vendor/**,**/shared/**,**/.design-system/**,**/node_modules/**" .` | 363 clones, 3,405 of 327,226 lines (1.04%) |
+| JS cognitive complexity | eslint `-c` a config enabling only `sonarjs/cognitive-complexity: ['warn', 15]` over `desktop extension worker tools`, ignoring vendor/shared/.design-system/dist/build; count non-test files (path has no `/test/`, `/e2e/`, `.test.`) | 288 |
+| Python complexity | `ruff check --isolated --select C901 src tools tests worker` (default max 10) | 92 |

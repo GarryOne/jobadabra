@@ -7,11 +7,11 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 
 const page = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../extension/page');
-for (const file of ['fill.js', 'fill-marks.js', 'review-payload.js']) {
+for (const file of ['fill.js', 'fill-report.js', 'fill-marks.js', 'review-payload.js']) {
   test(`${file}: no label is cut at 120 characters`, () => {
     const code = fs.readFileSync(path.join(page, file), 'utf8');
     const cuts = code.split('\n').flatMap((line, at) => [...line.matchAll(/(?:\blabel|clean\(label\)|f\.label \|\| '[^']*'\)|f\.label)\)?\.slice\(0, *(\d+)\)/g)].map(match => ({at: at + 1, size: Number(match[1])})));
     for (const cut of cuts) assert.ok(cut.size >= 300, `${file}:${cut.at} cuts a label at ${cut.size}`);
-    if (file === 'fill.js') assert.match(code, /TRACE_LABEL_MAX = (\d+)/);
+    if (file === 'fill-report.js') assert.match(code, /TRACE_LABEL_MAX = (\d+)/);
   });
 }

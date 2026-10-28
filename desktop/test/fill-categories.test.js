@@ -17,7 +17,7 @@ test('a consent the AI read as legal is never ticked, in any language; its kind 
 });
 
 test('a voluntary question the AI read as demographic is declined, in any language, like the English words', async () => {
-  const fill = fs.readFileSync(new URL('../../extension/page/fill.js', import.meta.url), 'utf8');
+  const fill = fs.readFileSync(new URL('../../extension/page/fill-plan.js', import.meta.url), 'utf8');
   assert.match(fill, /!\(row\.demographic \|\| DEMOGRAPHIC\.test\(row\.label/);
   const categories = fs.readFileSync(new URL('../../extension/page/categories.js', import.meta.url), 'utf8');
   assert.match(categories, /if \(item\.category === 'demographic'\) row\.demographic = true;/);

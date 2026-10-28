@@ -14,7 +14,7 @@
  "extension/ladder/press-why.js": 1,
  "extension/page/fill-checks.js": 1,
  "extension/page/fill-read.js": 3,
- "extension/page/fill.js": 1,
+ "extension/page/fill-report.js": 1,
  "extension/page/skeleton.js": 1,
  "extension/page/snapshot.js": 2,
  "extension/page/upload.js": 1,

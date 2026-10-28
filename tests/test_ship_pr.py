@@ -261,6 +261,18 @@ class ShipPrTest(ShipFixture):
         self.assertNotIn('topic', git(self.origin, 'branch', '--list', 'topic'), 'the branch never reached origin')
         self.assertFalse(any(call.startswith('pr create') for call in self.calls()))
 
+    def test_a_plan_title_without_its_progress_block_stops_ship_before_any_push(self):
+        # 28 Oct 2026, fl: #2400's body passed ship's check and went red on the PR gate; ship now runs the gate's own check, with the --title.
+        self.change(self.tree, 'mine.txt', 'y\n', 'My change')
+        rows = ''.join(f'| {area} | — None | — |\n' for area in ('Real users', 'Form filling', 'Admin data accuracy', 'Offline replays', 'Tests & harness', 'Development speed', 'Cost'))
+        good = self.tmp / 'good.md'
+        good.write_text(f'🟢 A change\n\n**Why:** a test.\n**Unblocks:** nothing.\n\n| Area | Impact | How |\n|---|---|---|\n{rows}\n- ✅ a bullet\n\n| | Before | After |\n|---|---|---|\n| x | a | b |\n')
+        result = self.pr_ship(None, f'--body={good}', '--title=3/5 A plan step')
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn('Plan progress', result.stderr)
+        self.assertIn('nothing was pushed', result.stderr)
+        self.assertFalse(any(call.startswith('pr create') for call in self.calls()))
+
     def test_a_failed_flow_check_rebases_and_pushes_again_by_itself(self):
         self.change(self.tree, 'mine.txt', 'y\n', 'My change')
         self.change(self.other, 'theirs.txt', 'x\n', 'Landed meanwhile')

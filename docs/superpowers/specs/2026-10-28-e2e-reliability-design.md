@@ -178,7 +178,7 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 14 | Renderer class tests on push | 9 | ✅ #2400 |
 | 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | 🔨 #2419 |
 | 16 | Health greys: AI credit, runner, install | 2 | ✅ #2415 |
-| 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | 🔨 #2421 |
+| 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | ✅ #2421 |
 | 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
 | 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
 | 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | fl |

@@ -4,7 +4,7 @@
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/suggestions.test.js.
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {SHOWN, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries} from '../suggestions.js';
+import {SHOWN, barState, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries} from '../suggestions.js';
 import {drawerRows, foldedLine, questionEntries, withQuestions} from '../question-entries.js';
 import {NO_PLACE} from '../targets.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
@@ -149,8 +149,10 @@ const barLine = entries => foldedLine(entries.filter(entry => 'blocking' in entr
 export function renderJobsSuggestions() {
   const bar = $('jobs-suggestions');
   if (!bar) return;
-  const entries = jobsEntries(withRows());
-  show(bar, entries.length > 0);
+  const state = barState(Boolean(lastArgs), jobsEntries(withRows()));
+  if (!state) return;   // Focus not read yet: the kept paint stays (paintJobsSuggestionsFirst)
+  const {entries} = state;
+  show(bar, state.shown);
   const words = jobsBarWords(entries.length, bar.open, barLine(entries));
   $('jobs-suggestions-title').textContent = words.title;
   $('jobs-suggestions-count').textContent = words.detail;

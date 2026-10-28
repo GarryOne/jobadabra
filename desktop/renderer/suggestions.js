@@ -28,6 +28,13 @@ export const focusRows = (entries, items) => [...(entries || []).map(entry => ({
 /** The Jobs bar's entries: the search- and applying-related ones. */
 export const jobsEntries = entries => (entries || []).filter(entry => JOBS_TOPICS.includes(entry.topic));
 
+/**
+ * What the Jobs bar may do on a render: `null` = leave it as it is drawn (Focus has not been read, so the drawer rows are still withheld and the entries
+ * would be empty), else {shown, entries}. Why (owner, 28 Oct 2026: "I clicked on it. It vanished"): the bar is painted from the kept state at start; the first
+ * render before Focus arrived (the click, the questions count) hid it.
+ */
+export const barState = (known, entries) => (known ? {shown: entries.length > 0, entries} : null);
+
 /** A home screen's own entries (Strategy's Tune row). */
 export const homeEntries = (entries, home) => (entries || []).filter(entry => entry.home === home);
 

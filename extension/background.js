@@ -436,7 +436,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
 });
 
 // Just loaded: open the settings page, which connects to the Jobadabra Mac app by itself.
-chrome.runtime.onInstalled.addListener(({reason}) => { if (reason === 'install') chrome.runtime.openOptionsPage(); });
+chrome.runtime.onInstalled.addListener(({reason}) => { if (reason === 'install' && !globalThis.__jobPilottoBackgroundOwned) chrome.runtime.openOptionsPage(); });
 
 const settleOpenTabs = createSettleOpenTabs({arm, memoryReady: () => memoryReady});   // settle-tabs.js: after a reload the panel is put back on the app's tabs and taken off every other page
 chrome.runtime.onInstalled.addListener(settleOpenTabs);

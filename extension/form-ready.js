@@ -2,6 +2,7 @@
 // everything is filled, the AI reads the page's real state (a consent that is a link, a custom picklist, an error shown) and may say "needs you: <label>"; the worker then sets the page's
 // data-jobpilotto-needs, which the panel shows instead of "Ready". It only ever VETOES a ready claim: it never accepts a consent, never presses Submit, and without AI nothing changes.
 // The answer is kept per tab for the sketch it was given (asked again only when the page changed), one look at a time. Guards: worker/test/form-ready.test.js, desktop/test/form-judge.test.js.
+import {backgroundContext, backgroundFormReady} from './background-apply.js';
 import {apiFor, gaveUpOn, settings} from './flow.js';
 import {decide} from './log.js';
 import {flagAccount} from './account-fill.js';
@@ -77,7 +78,7 @@ async function askForm(tab, frameId, again = false) {
     if (judged.get(tab.id) === sig) return;   // the page is as it was when it was judged: the flag stays as it is
     const silent = unanswered.get(tab.id);
     if (silent?.sig === sig && silent.n >= MAX_NO_ANSWER) return;   // asked enough times without an answer: the same page is not asked again
-    const answer = await apiFor(tab.id, config, '/extension/account-judge', {method: 'POST', body: JSON.stringify({phase: 'form', sketch})}).catch(() => null);
+    const answer = await apiFor(tab.id, config, '/extension/account-judge', {method: 'POST', body: JSON.stringify({phase: 'form', sketch, background: await backgroundContext(tab.id)})}).catch(() => null);
     if (!answer?.answer) { unanswered.set(tab.id, {sig, n: silent?.sig === sig ? silent.n + 1 : 1}); return; }   // no AI or no answer: the panel keeps its own count
     unanswered.delete(tab.id);
     judged.set(tab.id, sig);
@@ -87,6 +88,7 @@ async function askForm(tab, frameId, again = false) {
     if (handedToPerson(answer)) endSilence(tab.id);   // handed to the person: Submit or their choice is next (ladder/silence.js)
     await run(tab, frameId, flagAccount, [answer.answer === 'blocked' ? blockedWords(answer.blockedKind) : answer.answer === 'needs_person' ? answer.needs || '' : null]);
     if (answer.answer === 'blocked') decide('fill', `the page is blocked after the fill: ${answer.blockedKind || 'overlay'}`, {host});   // the fill log and the smoke verdict read this line
+    if (await backgroundFormReady(tab, frameId, answer, sig)) return;
     // The site's own error about what was entered, on a phone number: it is typed again in another writing the AI names from the error text (format-retry.js, at most twice), then the page is judged anew.
     if (answer.answer === 'blocked' && answer.blockedKind === 'error' && await retryRefusedFormats(tab, frameId, config)) { setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, again).catch(() => {}); }, 2500); return; }
     if (answer.answer === 'blocked' && !again) setTimeout(() => { judged.delete(tab.id); askForm(tab, frameId, true).catch(() => {}); }, timing.recheckMs);

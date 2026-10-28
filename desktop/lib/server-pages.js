@@ -1,6 +1,7 @@
 // Which page the extension is on: the open session of a job, the confirmation-page check that marks an application Applied, and the AI's
 // "what kind of page is this". Re-exported by server.js. Guarded by desktop/test/confirmation.test.js, page-kind.test.js and targets.test.js.
 import * as terminals from './terminals.js';
+import {backgroundApplyFor} from './background-apply-controller.js';
 import * as contactDetails from './contact.js';
 import * as notionGate from './notion-gate.js';
 import {log as appLog} from './log.js';
@@ -52,13 +53,18 @@ export async function markReportedConfirmations(_storage, tabUrls, {
 // The extension saw a submit press and then the page changed (a redirect, or new content where the form was).
 // Read that page; mark Applied only when the read says it is the site's confirmation. `judge` is injectable
 // so a test never calls a model.
-export async function judgeConfirmation(storage, body, {judge = judgePage, client, mark} = {}) {
+export async function judgeConfirmation(storage, body, {judge = judgePage, client, mark, background} = {}) {
   const job = String(body?.job || '');
   if (!/^https?:\/\//.test(job)) return {ok: false, confirmation: false, error: 'job url is required'};
   const verdict = await judge(client === undefined ? aiClient(storage, {lane: 'page'}) : client, {url: body?.page || '', title: body?.title, headings: body?.headings, text: body?.text, inputs: body?.inputs});
   appLog('extension', verdict.confirmation ? 'page after submit read as a confirmation' : `page after submit is not a confirmation${verdict.error ? `: ${verdict.error}` : ''}`,
     {host: verdict.host, path: verdict.path, inputs: verdict.inputs, ...(verdict.usd != null ? {usd: verdict.usd} : {})});
+  if (body?.background && verdict.botCheck) {
+    await (background || backgroundApplyFor(storage)).handle({...body.background, action: 'manual', reason: 'captcha_runtime'});   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+    return {ok: true, confirmation: false, manual: true, reason: 'captcha_runtime'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  }
   if (!verdict.confirmation) return {ok: true, confirmation: false, error: verdict.error || ''};
+  if (body?.background && !(await (background || backgroundApplyFor(storage)).outcome(body.background, true)).ok) return {ok: false, confirmation: false, error: 'No matching submission attempt.'};
   const marker = mark || (url => localEnv(storage).markApplied(url, `submit, then a page change read as a confirmation (${verdict.host}${verdict.path})`));
   const result = await marker(job);
   return {ok: !!result?.ok, confirmation: true, error: result?.ok ? '' : (result?.error || 'not marked'), message: result?.message || ''};
@@ -208,8 +214,9 @@ export async function decideAccountJudge(storage, body, {judge = judgeAccount, c
   appLog('extension', answer.error ? `account judgment ${phase}: none (${answer.error})` : `account judgment ${phase}: ${answer.answer}`, {botCheck: !!answer.botCheck, ...(answer.needs ? {needs: answer.needs.slice(0, 60)} : {}), ...(answer.needsKind ? {needsKind: answer.needsKind} : {}), ...(answer.unlisted ? {unlisted: answer.unlisted} : {})});   // the page's own labels (and a label the AI named that the page lacks), never a value
   const judged = {rung: 2, signal: signalOf(answer)}, climb = ladderLine(judged);   // the same fixed signals as page-kind
   if (climb) appLog('extension', climb, {phase});
-  const next = phase === 'form' && !answer.error ? {step: answer.step || 'unsure', nextControl: answer.nextControl || '', blockedKind: answer.blockedKind || ''} : {};   // extension/next-step.js
-  return answer.error ? {ok: true, answer: '', error: answer.error, ...judged} : {ok: true, ...judged, answer: answer.answer, needs: answer.needs, needsKind: answer.needsKind || '', consentRequired: !!answer.consentRequired, botCheck: answer.botCheck, ...next};
+  const next = phase === 'form' && !answer.error ? {step: answer.step || 'unsure', nextControl: answer.nextControl || '', submitControl: answer.submitControl || '', confidence: answer.confidence || 0, blockedKind: answer.blockedKind || ''} : {};   // extension/next-step.js
+  const background = phase === 'form' && body?.background ? await backgroundApplyFor(storage).judgment(body, answer) : null;
+  return answer.error ? {ok: true, answer: '', error: answer.error, ...judged} : {ok: true, ...judged, answer: answer.answer, needs: answer.needs, needsKind: answer.needsKind || '', consentRequired: !!answer.consentRequired, botCheck: answer.botCheck, ...next, ...(background ? {background} : {})};
 }
 
 // The closer look (lib/ladder/rung4-picture.js): a picture with typed values hidden, one fixed action back; opt-in, capped, account pages only. A feedback body remembers what worked.

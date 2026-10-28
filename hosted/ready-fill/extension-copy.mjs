@@ -19,13 +19,18 @@ export function pointAtStandIn(text, port) {
 }
 
 // -> the folder of the copy.
-export function copyForNight(port, from, into = '') {
+export function copyForNight(port, from, into = '', {owned = false} = {}) {
   const dir = into || path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-night-ext-')), 'extension');
   fs.cpSync(from, dir, {recursive: true});
   const edit = (file, change) => { const target = path.join(dir, file); fs.writeFileSync(target, change(fs.readFileSync(target, 'utf8'))); };
   edit('flow.js', text => pointAtStandIn(text, port));
   edit('account-step.js', holdAccountPress);
   edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://*/*'])]; return JSON.stringify(manifest, null, 2); });
+  if (owned) {
+    fs.writeFileSync(path.join(dir, 'owned-bootstrap.js'), '// Owned background browser: suppress first-install setup windows.\nglobalThis.__jobPilottoBackgroundOwned = true;\n');
+    fs.writeFileSync(path.join(dir, 'background-owned.js'), "// Reuse the actual extension worker after the owned-browser flag is installed.\nimport './owned-bootstrap.js';\nimport './background.js';\n");
+    edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.background.service_worker = 'background-owned.js'; return JSON.stringify(manifest, null, 2); });
+  }
   const left = fs.readdirSync(dir).filter(file => file.endsWith('.js') && fs.readFileSync(path.join(dir, file), 'utf8').includes('127.0.0.1:47111'));
   if (left.length) throw new Error(`the night's extension still mentions 127.0.0.1:47111 in ${left.join(', ')}`);
   return dir;

@@ -52,6 +52,7 @@ if (process.argv.includes('--app')) {
   fs.rmSync(pilot, {recursive: true, force: true});
   fs.mkdirSync(pilot, {recursive: true});
   for (const item of ['src', 'config', 'tools', 'extension', 'templates', 'requirements.txt', 'requirements-transcribe.txt']) copy(item, path.join(pilot, item));
+  for (const file of ['extension-copy.mjs', 'extension-storage.mjs']) copy(`hosted/ready-fill/${file}`, path.join(pilot, 'hosted', 'ready-fill', file));
   // The extension's version is stamped here, never in a PR (scripts/extension-stamp.mjs): a shallow clone without EXTENSION_VERSION fails the build.
   const extensionVersion = forBuild();
   stamp(path.join(pilot, 'extension'), extensionVersion);

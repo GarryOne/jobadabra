@@ -8,6 +8,7 @@
 //  2. A popup is closed before the page is read, and a link that leaves the page is never pressed (fdd9638; worker/test/visit-consent.test.js, worker/test/popup-page.test.js).
 //  3. A fill that put nothing in climbs the closer-look ladder, then reports 'incomplete', kept until something is filled (c1a2fcc; desktop/test/session-flow.test.js).
 //  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (worker/test/form-ready.test.js).
+import {backgroundMayFill, backgroundPage} from './background-apply.js';
 import {PAGE_FILES, apiFor, askEarly, clickCombos, forgetGivenUp, settings} from './flow.js';
 import {decide} from './log.js';
 import {laterLookIsForm} from './later-look.js';
@@ -153,6 +154,7 @@ export async function stuck(job, host, why, tabId = null, page = '', needs = '',
 useReporter(stuck);   // the only way to it: every give-up goes through ladder/dead-end.js deadEnd (worker/test/dead-end.test.js)
 // In the CI pool only (the harness's ladderAct switch), the move the one rule lets act is pressed through the live Apply press and its effect checked: a form on the page, or a new page with fields.
 const actOnMove = async (tab, move) => {
+  if (!(await backgroundMayFill(tab.id))) return;
   const key = fillKey(tab.id, tab.url);
   applyPressed.set(tab.id, {at: Date.now(), url: tab.url});
   const before = await pageShape(tab.id);   // the controls the page had before this press: not a form the press brought
@@ -243,6 +245,7 @@ export async function readAgain(tab, jobUrl) {
 }
 export async function consider(tab, jobUrl) {
   if (isStopped()) return;   // stopped by the person: nothing is read, pressed or filled until they press Apply again (stop.js)
+  if (!(await backgroundMayFill(tab.id))) return;
   const key = fillKey(tab.id, tab.url);
   if (started.has(key)) return;
   started.add(key);
@@ -294,6 +297,7 @@ export async function consider(tab, jobUrl) {
   // The AI says the page is still being drawn (a placeholder, a cover over an empty shell): read it again once it is still, never plan a fill from it (ladder/still-drawing.js).
   const asked = await readWhileDrawing(firstAsked, {again: () => askKind(tab, {fresh: true}), still: () => pageStill(tab.id, STILL_MS), unanswered: async () => { const now = await pageShape(tab.id); return !!now && emptyShape(now); }, log: decide, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
   if (late(tab, gen, 'page kind, read again')) return;
+  if (await backgroundPage(tab.id, asked?.role || pageRole(counts, tab.url), asked?.botCheck === true)) return;
   // The application form: fill it now; what became of the sign-up before it is the account AI's word a moment later, for the card only (owner, 9 Oct 2026: the fill
   // waited 40 s on it on Migros while the page was already the form). Any other page (an account page, a posting, nothing known) waits for it, as the sign-in →
   // sign-up switch and the account step go by it. Guard: worker/test/account-step.test.js.
@@ -429,6 +433,7 @@ export async function consider(tab, jobUrl) {
     }
     blindVerdict(blindLook, look, led);
   }
+  if (await backgroundPage(tab.id, role, kind?.botCheck === true)) return;
   if (role !== 'form') {
     await progress(tab.id, '', '', 'your-turn');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
     // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two

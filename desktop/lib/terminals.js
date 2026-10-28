@@ -116,7 +116,7 @@ let asksOff = false;   // set by main.js from the ONE flag of Claude's takeover 
 export const hideAsks = on => { asksOff = !!on; };
 const asksHidden = s => asksOff && (s.kind || 'claude') !== 'form' && !isLive(s);
 const publicView = s => assertSession({id: s.id, kind: asksHidden(s) ? 'form' : s.kind || 'claude', url: s.url, title: s.title || '', company: s.company || '', status: asksHidden(s) && ['input', 'ended', 'failed'].includes(s.status) ? 'done' : s.status, note: asksHidden(s) && s.status === 'input' ? '' : s.note || '',   // Claude Code's own "waiting for your input" note
-  outcome: s.outcome || '',
+  outcome: s.outcome || '', background: s.background || null,
   live: isLive(s), resumable: !!s.claudeId && !isLive(s) && s.outcome !== 'submitted',
   // Came back from the last run (the app closed, or was killed) and you weren't asked yet what to do with it.
   askAtStart: !!s.restored && !s.asked && !isLive(s),
@@ -268,7 +268,9 @@ export async function resume(id, launch) {
 // ---- Saving and restoring (sessions.json in the data folder; a cache of runtime state, never the only copy of
 // anything the user owns: the run's result is in Notion and the filled form is in Chrome) ----
 export function persist(file) { saveFile = file; }
-const saved = s => ({id: s.id, kind: s.kind || 'claude', stuck: s.stuck || '', inChrome: !!s.inChrome, url: s.url, title: s.title, company: s.company, location: s.location, workMode: s.workMode,
+const saved = s => ({
+  background: s.background || null,
+  id: s.id, kind: s.kind || 'claude', stuck: s.stuck || '', inChrome: !!s.inChrome, url: s.url, title: s.title, company: s.company, location: s.location, workMode: s.workMode,
   stage: s.stage || '', accountHost: s.accountHost || '', accountState: s.accountState || '', accountStep: s.accountStep || '',
   accountNeeds: s.accountNeeds || '', accountTerms: s.accountTerms || [], accountCode: !!s.accountCode,
   claudeId: s.claudeId || '', asked: !!s.asked, transcript: s.transcript || '', events: s.events || [], outcome: s.outcome || '',

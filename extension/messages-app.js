@@ -1,6 +1,7 @@
 // The extension worker's messages from the page: the site password for a sign-in page and the form review relay to the app (moved out of background.js, 8 Oct 2026).
 // A group of createXMessages: each returns a function that answers the messages it owns and returns undefined for any other. A FLOW FILE (docs/flows/applying.md).
 // Guards: the credentials and review tests in desktop/test and the matrix (npm run flows).
+import {backgroundContext, backgroundChallenge} from './background-apply.js';
 import {bindSession, sessionOf} from './tab-identity.js';
 import {api} from './flow.js';
 import {accountStep} from './account-step.js';
@@ -20,7 +21,7 @@ export function createAppMessages(ctx) {
     // boxes only, never back to the page's scripts or the panel.
     if (isStopped() && (message?.type === 'sitePassword' || message?.type === 'review')) { reply({filled: 0, matched: null, stopped: true}); return true; }   // stopped by the person (stop.js): no password typed, no judgment, no report
     if (message?.type === 'sitePassword' && sender.tab) {
-      accountStep(sender.tab, sender.frameId).then(reply, () => reply({filled: 0}));
+      (async () => { if (await backgroundContext(sender.tab.id)) { await backgroundChallenge(sender.tab.id, 'sign_in_required'); return {filled: 0, needsUser: true}; } return accountStep(sender.tab, sender.frameId); })().then(reply, () => reply({filled: 0}));
       return true;
     }
     if (message?.type === 'review' && sender.tab) {

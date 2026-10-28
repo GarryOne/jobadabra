@@ -1,6 +1,7 @@
 // Register the real session IPC flows with injected app services, so scenarios exercise the same handlers as Electron.
 import fs from 'node:fs';
 import path from 'node:path';
+import {backgroundApplyFor} from './background-apply-controller.js';
 import * as terminals from './terminals.js';
 import * as sessionRuns from './session-runs.js';
 import * as transcript from './transcript.js';
@@ -24,7 +25,7 @@ import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 const REOPEN_MS = 15 * 1000;
 export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, dialog, nativeImage, here,
   DEMO, extensionGate = () => null, apply, pipeline, review, server, claudeConsent, getRecipeReporter = () => null, version = '',
-  closeTab = closeFormTab, focusTab = openFormTab}) {
+  closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage)}) {
   const reopenedAt = new Map();   // session id -> when Reopen last opened its form: a second press inside REOPEN_MS opens nothing
   const checkedSessions = sessionIpc(ipcMain, appLog);
   checkedSessions.handle('sessionCancel', async (_, id) => {
@@ -37,7 +38,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     const started = Date.now();
     terminals.stop(old.id);
     review.queueClose(old.id);
-    const closed = await closeSessionTab({review, closeTab}, old);
+    const closed = old.background ? (await background().cancel(old.id)).closed : await closeSessionTab({review, closeTab}, old);
     const reset = DEMO ? {ok: true} : await pipeline.unapply(storage, old.url).catch(error => ({ok: false, error: error.message}));
     if (!reset.ok) return {ok: false, error: `Notion: ${reset.error || 'not updated'}. The session stays; try again.`, closed};
     appLog('sessions', 'cancelled by the user: job back to Kit ready, session removed', {id: old.id, closed: !!closed, ms: Date.now() - started});
@@ -53,7 +54,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     const started = Date.now();
     terminals.stop(old.id);
     review.queueClose(old.id);
-    const closed = await closeSessionTab({review, closeTab}, old);
+    const closed = old.background ? (await background().cancel(old.id)).closed : await closeSessionTab({review, closeTab}, old);
     // Applying is undone first (back to what it was: Kit ready), then the job is dismissed.
     const reset = DEMO ? {ok: true} : await pipeline.unapply(storage, old.url).catch(error => ({ok: false, error: error.message}));
     if (!reset.ok) return {ok: false, error: `Notion: ${reset.error || 'not updated'}. The session stays; try again.`, closed};
@@ -86,7 +87,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     if (!old) return {ok: false, error: 'This session is no longer in the list.'};
     // Always in Chrome, no question (owner, 9 Oct 2026: "start with Chrome always; Claude should be only a safety net"): the extension fills the
     // form; where it can't finish, the card and the panel offer Claude as they already do.
-    return restartAs(old, 'chrome');
+    return old.background ? background().reveal(old.id) : restartAs(old, 'chrome');
   });
   // The session's form tab was closed (a button looked for it and Chrome has none): the form opens again in a new tab with
   // the fill mark, so the extension's panel follows it. What the page held from the closed tab (`stale`: answers, form
@@ -123,6 +124,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   checkedSessions.handle('sessionReopen', async (_, id, stale) => {
     const old = terminals.get(String(id));
     if (!old) return {ok: false, error: 'This session is no longer in the list.'};
+    if (old.background) return background().reveal(old.id);
     // No question (owner, 8 Oct 2026): the card already says Reopen fills the form again from your kit, so what the page held
     // from the closed tab is cleared and the form opens in a new tab. Claude is never started here; Start again is for that.
     // The tab may still be open under another address (redirected to the employer's own site, 15 Oct 2026: two presses opened two new tabs): its fill mark
@@ -170,13 +172,21 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   checkedSessions.handle('sessionResize', (_, id, cols, rows) => terminals.resize(String(id), Number(cols), Number(rows)));
   checkedSessions.handle('sessionStop', (_, id) => terminals.stop(String(id)));
   checkedSessions.handle('sessionResume', async (_, id) => (await claudeConsent()) ? apply.resumeSession(storage, String(id)) : {ok: false, error: 'Cancelled.'});
-  checkedSessions.handle('sessionRemove', (_, id) => terminals.remove(String(id)));
+  checkedSessions.handle('sessionRemove', async (_, id) => {
+    const old = terminals.get(String(id));
+    if (old?.background) {
+      const retired = await background().cancel(old.id);
+      if (!retired.ok) throw new Error(retired.error || 'The background application could not be stopped.');
+    }
+    terminals.remove(String(id));
+  });
   // Its job is already Applied: the form was submitted, so the session ends (recorded as submitted, then gone).
   checkedSessions.handle('sessionSubmitted', (_, url) => (DEMO ? null : server.sessionSubmitted(String(url))));
   // Removing a session whose job is still Applying: was it submitted? Notion first; the session goes only if that worked.
   checkedSessions.handle('sessionFinish', async (_, id) => {
     const found = terminals.get(String(id));
     if (!found) return {ok: true};
+    if (found.background) return {ok: false, error: 'Open the same form to review it. Jobadabra marks it Applied only when the site confirms submission.'};
     const {message, detail, buttons} = quitDialog.submitted(found.company);
     const {response} = await dialog.showMessageBox(getWindow() && !getWindow().isDestroyed() ? getWindow() : undefined,
       {type: 'none', icon: nativeImage.createFromPath(path.join(here, 'assets', 'icon.png')), buttons, defaultId: 0, cancelId: 2, message, detail});

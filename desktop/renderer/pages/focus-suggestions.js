@@ -13,7 +13,7 @@ import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';
 import {focusItems, loadFocus, openLink, prepAction} from './focus.js';
 import {openJobPanel} from './job-panel.js';
-import {startSearch} from './jobs.js';
+import {showJobsIn, startSearch} from './jobs.js';
 import {loadQuestions, questionsNow} from './jobs-questions.js';
 import {openView} from './nav.js';
 import {loadReports} from './reports.js';
@@ -58,6 +58,9 @@ export const RUN = {
   // A site only you can open: read in your Chrome, the same press as Strategy's Open (changeSearch's visit).
   read_site: (action, event) => RUN.change_search(action, event),
   see_all: action => import('./strategy-suggestions.js').then(page => page.reviewSuggestion(action.row)),
+  // The pay row (src/suggestions_pay.py): the jobs it names, listed in Jobs; the minimum salary opened for editing on Strategy.
+  show_jobs: action => { openView('jobs'); showJobsIn(action.label.replace(/^Show /, ''), action.urls, 'focus'); },
+  edit_minimum: () => import('./strategy-state.js').then(async ({showTab}) => { openView('strategy'); showTab('strategy-yours'); (await import('./strategy-cards.js')).openCard('goals'); }),
   // The Jobs drawers' rows (renderer/question-entries.js, PR 1c): each opens what its card opened.
   use_bank_skills: async action => { const result = await window.pilot.experienceAddSkills(action.skills); if (result?.ok) await loadBank(); else toastMessage('Could not add the skills', result?.error || 'Try again.', NO_PLACE.itself, 'warn'); },
   open_letter: () => import('./settings.js').then(({openSetting}) => openSetting('letter')),   // the cover letter is a setting, as the card's button did

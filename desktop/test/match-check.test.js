@@ -56,3 +56,11 @@ test('a claim the CV does not bear out is corrected before it is shown', () => {
   assert.equal(out.knockouts[0].status, 'conflict', 'a judgement is left as the model gave it');
   assert.equal(out.corrected, 3);
 });
+
+test('a term only the Experience bank has is "bank", not implied or missing; the CV still wins', () => {
+  const musts = [{term: 'Prometheus', status: 'missing', evidence: ''}, {term: 'Kubernetes', status: 'implied', evidence: ''}, {term: 'Go', status: 'implied', evidence: ''}];
+  const out = guard({musts}, cvText(cv), '["Prometheus alerts for the on-call rota"]').musts;
+  assert.deepEqual(out.map(item => item.status), ['bank', 'found', 'implied']);
+  assert.equal(out[0].evidence, 'In your Experience bank');
+  assert.deepEqual(guard({musts: [musts[0]]}, cvText(cv)).musts[0].status, 'missing', 'no bank, no change');
+});

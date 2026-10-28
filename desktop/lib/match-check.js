@@ -51,19 +51,25 @@ export function cvText(cv) {
 // What the model claims is checked against the CV's own words, so a wrong claim never reaches the screen: "found" needs the term or its quoted evidence in the CV
 // (else it is only implied), and a term that is in the CV is never "missing" or merely "implied". A knockout is a judgement and stays as the model gave it.
 const plain = text => String(text || '').toLowerCase().replace(/[^\p{L}\p{N}+#.]+/gu, ' ').replace(/\s+/g, ' ').trim();
-export function guard(result, text) {
+// bank: the Experience bank's words (lib/experience.js knownText). Why (Insights PR 3, #10, 28 Oct 2026): a term the CV does not state but the person's bank
+// does is "bank", not "implied" or "missing": tailoring reads the bank, so the CV they send can carry it. The main CV file is never changed.
+export function guard(result, text, bank = '') {
   const hay = ` ${plain(text)} `, has = phrase => { const p = plain(phrase); return p.length >= 2 && hay.includes(` ${p} `); };
+  const bankHay = ` ${plain(bank)} `, inBank = phrase => { const p = plain(phrase); return p.length >= 2 && bankHay.includes(` ${p} `); };
   let corrected = 0;   // how often the model was wrong about the CV: the nightly quality check watches it
   const musts = result.musts.map(item => {
     const stated = has(item.term) || (item.evidence && has(item.evidence));
     if (item.status === 'found' && !stated) { corrected++; return {...item, status: 'implied'}; }
     if (item.status !== 'found' && has(item.term)) { corrected++; return {...item, status: 'found'}; }
+    if ((item.status === 'implied' || item.status === 'missing') && inBank(item.term)) return {...item, status: 'bank', evidence: item.evidence || 'In your Experience bank'};
     return item;
   });
   return {...result, musts, corrected};
 }
 
-export async function check(storage, apiKey, {job, cv, profile = '', client = null}) {
+/** Compares the CV with a posting through the AI, then checks its claims against the CV's words (guard). Takes the job, the CV, the Profile text and bank
+ *  (the Experience bank's words, lib/experience.js knownText); returns the answer plus its price in usd. Throws when the AI declines or answers badly. */
+export async function check(storage, apiKey, {job, cv, profile = '', client = null, bank = ''}) {
   const anthropic = client || anthropicApi(apiKey);
   const response = await anthropic.messages.create({
     model: MODEL, max_tokens: 5000, system: INSTRUCTIONS,
@@ -73,7 +79,7 @@ export async function check(storage, apiKey, {job, cv, profile = '', client = nu
   });
   if (response.stop_reason === 'refusal') throw new Error(`${nameOfClient(anthropic)} declined to compare this CV and posting`);
   const result = JSON.parse(response.content.find(block => block.type === 'text').text);
-  return {...guard({...result, musts: result.musts.slice(0, 10), knockouts: result.knockouts.slice(0, 8), advice: result.advice.slice(0, 4)}, cvText(cv)), usd: usd(response.usage)};
+  return {...guard({...result, musts: result.musts.slice(0, 10), knockouts: result.knockouts.slice(0, 8), advice: result.advice.slice(0, 4)}, cvText(cv), bank), usd: usd(response.usage)};
 }
 
 // ---------- the last answer per job (cv/match/<code>.json), for the CV it was made with ----------

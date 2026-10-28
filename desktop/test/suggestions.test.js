@@ -8,9 +8,9 @@ import {test} from 'node:test';
 import {DOES, LOOK, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries, movedItems, upNext} from '../renderer/suggestions.js';
 
 const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
-const engine = read('../../src/suggestions.py'), searchRows = read('../../src/suggestions_search.py');
+const engine = read('../../src/suggestions.py'), searchRows = read('../../src/suggestions_search.py') + read('../../src/suggestions_pay.py');
 const tuple = name => [...engine.match(new RegExp(`^${name} = \\(([^)]*)\\)`, 'm'))[1].matchAll(/'(\w+)'/g)].map(match => match[1]);
-const SEARCH_ROWS = ['places', 'ideas', 'coverage', 'filters', 'visits'];   // src/suggestions_search.py KINDS: Strategy's rows, PR 1b
+const SEARCH_ROWS = ['places', 'ideas', 'coverage', 'filters', 'visits', 'pay'];   // src/suggestions_search.py KINDS: Strategy's rows, PR 1b; pay: src/suggestions_pay.py, PR 3
 const PRODUCERS = tuple('PRODUCERS'), HOMES = {insight: 'focus', rejection: 'jobs', week: 'focus', analyze: 'focus', tune: 'strategy',
   ...Object.fromEntries(SEARCH_ROWS.map(kind => [kind, 'strategy']))};
 const TOPICS = {insight: 'profile', rejection: 'applying', week: 'search', analyze: 'search', tune: 'search', ...Object.fromEntries(SEARCH_ROWS.map(kind => [kind, 'search']))};

@@ -43,7 +43,7 @@ from .notion import client as notion
 from .notion import funnel as funnel_steps
 from .notion.ledger import OUTCOME_STAGES, REPLY
 from .stores import base
-from . import suggestions, suggestions_search
+from . import suggestions, suggestions_pay, suggestions_search
 # The helpers live in focus_items.py and focus_state.py; every name stays importable from here.
 from .focus_items import (  # noqa: F401
     TZ, DEFAULT_TARGET, REPLIED, ENDED, NEEDS_ANSWER, WAITING_DAYS, QUIET_DAYS, SOON_HOURS, STALE_DAYS,
@@ -293,7 +293,7 @@ def load(stores, *, target=None, now=None, gmail=None):
         lambda: target or settings_target(), stores.insights.list)
     return build(_linked(stores, rows), events, _linked(stores, interviews), target=target, now=now,
                  insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail, tune=_tune(rows),
-                 search=suggestions_search.now(suggestions.set_aside(insights)))
+                 search=[*suggestions_search.now(suggestions.set_aside(insights)), *suggestions_pay.now(rows)])
 
 
 def reminder(focus, now=None):

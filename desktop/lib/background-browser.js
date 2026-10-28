@@ -108,5 +108,5 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     return result.result?.value === true;
   }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  return {start, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
+  return {ready: () => !!find(storage.path('background-browser-runtime')), start, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
 }

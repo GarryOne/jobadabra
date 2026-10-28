@@ -16,6 +16,15 @@ test('Full automation cannot be queued before its gates ship: no store write, no
   assert.deepEqual(touched, []);
 });
 
+test('Background automation without the downloaded browser refuses before any store write, session or launch', async () => {
+  touched.length = 0;
+  const result = await make({config: () => ({mode: 'fill', chosenAt: '2026-10-28T10:00:00Z'}), browser: {ready: () => false, start: spy('browser.start')}})
+    .enqueue([{url: 'https://jobs.example.test/b'}], 'fill');
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'BACKGROUND_BROWSER_MISSING');
+  assert.deepEqual(touched, []);
+});
+
 test('registering the apply handlers creates the controller without touching storage paths', () => {
   assert.doesNotThrow(() => createBackgroundApplyController({}, {store: {}}));   // CI #2324: a storage with no path() crashed handler registration
 });

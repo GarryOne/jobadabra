@@ -51,6 +51,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     return serial(async () => {
       // Why (2026-10-28, owner): nothing submits until step C ships Full automation's gates, its wait with Stop and the receipt recap; `fullAutomation` is that switch.
       if (mode === 'auto' && !fullAutomation) return {ok: false, error: 'Full automation is not available in this version.'};
+      if (!browserOf().ready()) return {ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: "Download Jobadabra's browser first: about 200 MB, only once."};   // before any store write, so nothing waits on a browser that is not there
       const chosen = config();
       if (chosen.mode !== mode || !chosen.chosenAt) return {ok: false, error: 'Confirm the saved Apply mode first.'};
       const held = terminals.list().filter(item => item.background && !item.outcome);

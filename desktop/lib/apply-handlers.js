@@ -45,14 +45,17 @@ export function registerApplyHandlers(ctx) {
   server.setVisitRoute('/extension/background-apply', payload => background.handle(payload));
   ipcMain.handle('apply', async (_, options) => {
     const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
-    const mode = fromSettings ? modeRunner(applyOf(storage.settings()).mode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
-    const agents = mode === 'agents';
-    const blocked = needsNotion('apply') || await allowanceBlock() || (agents ? null : needExtension());   // (an earlier one-line form sent these answers through the "Claude is off" branch)
+    const applyMode = fromSettings ? applyOf(storage.settings()).mode : '';
+    const mode = fromSettings ? modeRunner(applyMode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
+    // Why (2026-10-28, Background apply B): the hidden browser runs only the person's saved mode, never a runner name the window sends.
+    if (mode === 'background' && !fromSettings) return {ok: false, error: 'Choose Background automation in Settings → Apply first.'};
+    const agents = mode === 'agents', hidden = mode === 'background';
+    const blocked = needsNotion('apply') || await allowanceBlock() || (agents || hidden ? null : needExtension());   // the hidden browser carries its own copy of the extension
     if (blocked) return blocked;
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
-    return applyRunner.start(storage, {...options, mode}, undefined, undefined, undefined, undefined,
-      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text));
+    return applyRunner.start(storage, {...options, mode, applyMode}, undefined, undefined, undefined, undefined,
+      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text), {enqueue: (jobs, which) => background.enqueue(jobs, which)});
   });
   ipcMain.handle('applyOne', async (_, url, details) => {
     const gate = needsNotion('apply');

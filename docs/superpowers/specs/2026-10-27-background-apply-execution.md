@@ -79,7 +79,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] The hidden browser starts for real: headless flag, unfocused normal windows (a minimized headless tab repainted 2 of 5 changes, normal all 5), real `start()` on Chrome for Testing ready in 0.76 s with the token stored, reused on a second start, no page, no focus change. (proof: desktop/test/background-browser.test.js)
 - [x] First-use Chromium download: module and IPC on the shared add-on (lib/optional-addon.js, LibreOffice's), digest-checked; the real install of Chrome for Testing 156 (195 MB) took 37 s, and the real `start()` on it loaded the extension in 0.88 s with no focus change. (proof: desktop/test/background-browser-download.test.js)
 - [ ] The download's bar with Cancel on the Applying page, started only by the person's press (part of the screen's side-by-side).
-- [ ] Mode dispatch through `MODES[].runner` (one dispatch).
+- [x] Mode dispatch through `MODES[].runner` (one dispatch): the `background` runner comes only from the saved mode, skips the person's-Chrome extension gate, hands the chosen jobs to the hidden browser's queue, never falls through to the visible launcher, and refuses before any write while the browser is not downloaded. (proof: desktop/test/apply-dialog-mode.test.js)
 - [ ] Live view channel: stream + input over a plain message channel, any client.
 - [ ] Native dropdown bridge.
 - [ ] File picker bridge (choose another CV).

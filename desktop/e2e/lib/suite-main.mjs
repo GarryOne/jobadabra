@@ -1,6 +1,7 @@
 // One suite, start to end: open its context, run its steps, leave its artifacts, close; -> {code, skipped}. Called by suite.mjs directly (E2E_REPORT=0) or inside
 // Playwright's test runner (report/suite.spec.mjs), which passes `report` so each step is a step of the Playwright HTML report: {step, skipStep, attach}.
 // It never exits the process: the caller does (a Playwright worker must not be killed from inside).
+// Job: run the backbone
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -19,7 +20,7 @@ export async function runSuite(name, report = null) {
     // Start-up and close-down are one step each in the report, so its top level is the suite's own steps, not Playwright's calls.
     const {keychainChanges, snapshot} = await import('./keychain-guard.mjs');
     const keychainBefore = snapshot();   // the owner's real Keychain, names and dates only (lib/keychain-guard.mjs); null on CI
-    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
+    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
     ctx = await (report ? report.step('Start the app and its test services', open) : open());
     if (ctx.skipAll) {
       const message = skipMessage(name, ctx.needs.filter(item => !item.value).map(item => item.name));

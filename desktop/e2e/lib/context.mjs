@@ -1,6 +1,7 @@
 /* global document, window */
 // Everything a suite needs, built once: its own Notion test page (token per suite), the fixture feeds (a copy a step can change), the slow-AI proxy, and the
 // launched app. A suite is a short file in suites/ that calls ctx.run(...) with its steps. See README.md.
+// Job: run the backbone
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -46,7 +47,7 @@ export function notionToken(suite, {own: ownOnly = false, env = process.env} = {
 
 // browser: the suite drives a real Chromium with the extension (lib/extension.mjs): the fixture forms are served, and the app's `open` reaches that browser.
 // engine: a suite whose steps the AI proxy answers pins 'api' (a placeholder key on a Mac); otherwise a Mac uses Claude Code, CI the API key (lib/engine.mjs).
-export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, stepNeeds = null, report = null} = {}) {
+export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});
@@ -85,9 +86,8 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // The real workspace names the page it may empty (`notionPage`): a token that sees another page fails here, before `fresh` trashes anything.
   if (store === 'notion' && (!notionPage || ctx.root.title !== notionPage)) throw new Error(`refusing the Notion page "${ctx.root.title}": the ${suite} suite may only use "${notionPage || '(its notionPage export is missing)'}"`);
   if (fresh && ctx.root) console.log(`Notion test page "${ctx.root.title}": ${await clearRoot(token, ctx.root.id)} item(s) moved to the trash`);
-  // The stand-in starts empty: built once here unless the suite tests a fresh setup (the wizard), like the real test page that is built already. A suite that
-  // reads what the setup drafted from the CV (the Profile: `standInFromWizard = true`, quality) builds it through the wizard, as a first real run did.
-  if (store === 'standin' && !fresh && !standInFromWizard) await buildStandIn(standIn);
+  // The stand-in starts empty: built once here unless the suite tests a fresh setup (the wizard), like the real test page that is built already.
+  if (store === 'standin' && !fresh) await buildStandIn(standIn);
   ctx.built = onNotion && !fresh && await workspaceReady(token);
   ctx.feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-feeds-'));
   fs.cpSync(path.join(E2E, 'fixtures', 'feeds'), ctx.feeds, {recursive: true});

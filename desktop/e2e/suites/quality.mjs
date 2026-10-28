@@ -23,6 +23,9 @@ import {withRoles} from '../lib/search-roles.mjs';
 import {quiet} from '../lib/activity-steps.mjs';
 
 export const name = 'quality';
+// Why (29 Oct 2026, a8, beta 4 run 40776424584): strict replay answers were recorded on SQLite; alternating to the stand-in
+// changes setup requests and leaves questions without stored answers, so every run must follow the recorded SQLite path.
+export const store = 'sqlite';
 // About $0.03 a run on Haiku 5.5 (was ~$0.3 on Sonnet until 27 Oct 2026): the nightly release gate, and a push that touches what it judges (scoring and enrichment prompts, the model ids, its own fixtures), not the three-a-day schedule.
 export const cadence = 'nightly';
 // Each slow step has its own time limit (owner, 27 Oct 2026: "Code gate + AI rate"): a replayed gate takes ~2 min (the Jobs check 26 s); the night's live run
@@ -32,8 +35,6 @@ export const minutes = 24;
 const STEP = 60000;
 // It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
 export const sameOnEveryOs = true;
-// On the Notion stand-in its Profile is drafted from the CV by the wizard, as on the real test page: the scores this suite judges read it (lib/context.mjs).
-export const standInFromWizard = true;
 // Why (27 Oct 2026, #2234): the AI files this suite judges. Its answers are replayed strictly, so a changed prompt it ran must run its own steps on the PR (which records
 // the new answers for main); a line in them is never "shared code" another suite runs for it (lib/coverage-pick.mjs stepsCovering). #2234 changed place_triage.py
 // and only activity ran it; main's quality then asked 1-6 questions live and went red.
@@ -62,7 +63,7 @@ export async function run(ctx) {
   let rows = [], appJobs = [], firstTexts = {};   // firstTexts: the first scoring's texts, judged too (both scorings: 18 texts)
   ctx.findings = [];
   await ensureSetUp(ctx);
-  // Set up through the wizard (the stand-in: standInFromWizard; or an empty test page), the wizard run presses Find jobs (e2e/lib/wizard.mjs): the Jobs checks below wait for that first search to end.
+  // Wait for any search started during setup before checking the golden postings.
   if (!ctx.built) await ctx.run('the first search after the setup has ended', () => quiet(ctx, {forMs: 3000, maxMs: 300000}), {needs: ctx.needs, critical: true});
 
   const check = async label => {   // one Jobs check; ends when the task is no longer running

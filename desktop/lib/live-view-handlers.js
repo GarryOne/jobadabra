@@ -21,12 +21,12 @@ const PRESS_FAILED = {covered: 'Something on the page covers its Submit button. 
   not_found: 'The page\'s Submit button is not where it was. Use the page\'s own button in the live view.'};
 
 /**
- * Register liveOpen(session), liveInput(session, message), liveClose(session) and liveSubmit(session). page(session) -> the held tab's loopback CDP address
- * or null; submitControl(session) -> the page's own sending button the form judge named while its ready stands, else ''.
+ * Register liveOpen(session), liveInput(session, message), liveClose(session), liveSubmit(session) and liveStop(session). page(session) -> the held tab's loopback CDP address
+ * or null; submitControl(session) -> the page's own sending button the form judge named while its ready stands, else ''; stop(session) marks that one stopped.
  * Invariants: one view per session; input reaches only the session it names; a file is answered only from the person's CV or the app's own Open dialog;
  * Submit presses only the judge's button, only after a fresh read of the page finds no required field empty (the person's press: never retried).
  */
-export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWindow, page, submitControl = async () => '', getWindow = () => null, dialog, log = () => {},
+export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWindow, page, submitControl = async () => '', stop = () => false, getWindow = () => null, dialog, log = () => {},
   openCdp = openCdpSession, attach = null, core = null}) {
   const views = new Map();   // session -> {input, close}
   const close = id => { const view = views.get(id); views.delete(id); view?.close(); };
@@ -51,6 +51,8 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
   });
   ipcMain.handle('liveInput', (_, session, message) => { views.get(String(session || ''))?.input(message); return true; });
   ipcMain.handle('liveClose', (_, session) => { close(String(session || '')); return true; });
+  // Stop while the hidden fill runs: this application only; the controller hands it to the person at its next look (lib/background-apply-controller.js poll).
+  ipcMain.handle('liveStop', (_, session) => (DEMO ? {ok: false, error: 'The demo app has no hidden browser.'} : {ok: !!stop(String(session || ''))}));
   ipcMain.handle('liveSubmit', async (_, session) => {
     const id = String(session || '');
     if (DEMO) return {ok: false, error: 'The demo app has no hidden browser.'};

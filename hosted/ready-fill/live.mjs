@@ -38,9 +38,9 @@ const PAGE_FACTS = `(() => {
     return {x: r4(x / W), y: r4(y / H), w: r4((Math.max(...rs.map(r => r.right)) - x) / W), h: r4((Math.max(...rs.map(r => r.bottom)) - y) / H)}; };
   const a = document.activeElement;
   const unitLabel = u => (u.length > 1 && u[0].closest('fieldset')?.querySelector('legend')?.textContent.replace(/\s+/g, ' ').trim().slice(0, 80)) || labelOf(u[0]);   // a radio group: its question
-  return {fields: units.length, filled: units.filter(filled).length, left: units.filter(u => required(u) && !filled(u)).map(u => ({label: unitLabel(u), ...box(u)})), active: a && all.includes(a) ? labelOf(a) : ''};
+  return {address: (location.host + location.pathname).slice(0, 200), fields: units.length, filled: units.filter(filled).length, left: units.filter(u => required(u) && !filled(u)).map(u => ({label: unitLabel(u), ...box(u)})), active: a && all.includes(a) ? labelOf(a) : ''};
 })()`;
-/** The page's facts for the viewer ({fields, filled, left: [{label, x, y, w, h}], active}), or null when the page cannot be read. */
+/** The page's facts for the viewer ({address, fields, filled, left: [{label, x, y, w, h}], active}; the address never has its query), or null when the page cannot be read. */
 export async function pageFacts(cdp) {
   const {result} = await cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true}).catch(() => ({}));
   return result?.value && typeof result.value === 'object' ? result.value : null;
@@ -96,7 +96,7 @@ export function wsChannel(ws) {
 
 /**
  * The live view of one held tab over any channel ({send, onMessage, onClose}: the Mac app's screen now, a phone later) and any CDP session
- * ({send, on, detach}: Playwright's, or the app's own to its hidden browser). Out: {kind: 'first'|'frame', data} pictures, {kind: 'needs'} the page's
+ * ({send, on, detach}: Playwright's, or the app's own to its hidden browser). Out: {kind: 'first'|'frame', data, w, h} pictures (w/h: the viewport in CSS pixels), {kind: 'needs'} the page's
  * facts (pageFacts), {kind: 'select'} a native dropdown's list to draw, {kind: 'file'} a file chooser to answer. In: mouse and key ({t: 'mouse'|'key'}), {t: 'choose', id, value}, {t: 'file', id, choice}.
  * resolveFile(choice) -> a path the APP allows (the person's CVs, a file they picked in the app's own dialog) or null; a path from the channel is never used.
  * Invariant: every page change here follows one message from the person; nothing presses, picks or uploads on its own.
@@ -113,11 +113,13 @@ export async function attachLive(channel, cdp, {resolveFile = () => null} = {}) 
     if (facts && JSON.stringify(facts) !== lastFacts) { lastFacts = JSON.stringify(facts); send('needs', facts); }
   };
   const factsSoon = () => { if (!factsTimer && !closed) factsTimer = setTimeout(() => readFacts().catch(() => {}), FACTS_MS); };
-  cdp.on('Page.screencastFrame', async frame => { send('frame', {data: frame.data}); factsSoon(); await cdp.send('Page.screencastFrameAck', {sessionId: frame.sessionId}).catch(() => {}); });
+  // w/h: the page's viewport in CSS pixels, so a viewer maps a press on its picture back to the page (any picture size).
+  cdp.on('Page.screencastFrame', async frame => { send('frame', {data: frame.data, w: frame.metadata?.deviceWidth || 0, h: frame.metadata?.deviceHeight || 0}); factsSoon(); await cdp.send('Page.screencastFrameAck', {sessionId: frame.sessionId}).catch(() => {}); });
   cdp.on('Page.fileChooserOpened', ({backendNodeId, mode}) => { const id = ++nextId; choosers.clear(); choosers.set(id, backendNodeId); send('file', {id, multiple: mode === 'selectMultiple'}); });
   await cdp.send('Page.enable').catch(() => {});
   await cdp.send('Page.setInterceptFileChooserDialog', {enabled: true}).catch(() => {});   // a hidden browser opens no dialog: the viewer is asked instead
-  send('first', {data: (await cdp.send('Page.captureScreenshot', {format: 'jpeg', quality: 60})).data});
+  const {cssVisualViewport: view = {}} = await cdp.send('Page.getLayoutMetrics').catch(() => ({}));
+  send('first', {data: (await cdp.send('Page.captureScreenshot', {format: 'jpeg', quality: 60})).data, w: view.clientWidth || 0, h: view.clientHeight || 0});
   await readFacts();
   await cdp.send('Page.startScreencast', {format: 'jpeg', quality: 60, everyNthFrame: 1});
   // -> the objectId of the native <select> under (x, y), or null

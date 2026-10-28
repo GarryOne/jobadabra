@@ -23,6 +23,7 @@ import {registerOfficeHandlers} from './office-handlers.js';
 import {backgroundBrowserAddon} from './background-browser-download.js';
 import {registerBackgroundBrowserHandlers} from './background-browser-handlers.js';   // Jobadabra's browser, downloaded on use
 import {registerLiveViewHandlers} from './live-view-handlers.js';
+import * as terminals from './terminals.js';
 import {backgroundApplyFor} from './background-apply-controller.js';
 import {isDocx, setDocxCv} from './cv-docx.js';
 
@@ -33,7 +34,7 @@ export function registerSetupHandlers(ctx) {
   registerOfficeHandlers({ipcMain, addon: office, DEMO});
   registerBackgroundBrowserHandlers({ipcMain, addon: backgroundBrowserAddon(storage, {toWindow, toast: body => toWindow('toast', body)}), DEMO});
   registerLiveViewHandlers({DEMO, storage, ipcMain, toWindow, dialog, getWindow, log: appLog, page: id => backgroundApplyFor(storage).page(id),   // a hidden-browser session's held tab, in the app
-    submitControl: id => backgroundApplyFor(storage).submitControl(id)});
+    submitControl: id => backgroundApplyFor(storage).submitControl(id), stop: id => terminals.noteStopped(id)});
   handleImportant('notionConnect', 'Connecting Notion', async (_, pasted) => {   // about Notion
     const {value: token, error} = cleanSecret(pasted);
     if (error) return {ok: false, error};

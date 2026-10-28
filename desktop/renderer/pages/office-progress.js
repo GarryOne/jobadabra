@@ -39,7 +39,8 @@ export function officeView(event = {}, {platform = 'darwin', now = Date.now()} =
   };
 }
 
-function draw(box, view) {
+/** Draw a download's view (see officeView) into one box: head, bar, steps, the fine line with its one action. Shared with browser-progress.js. */
+export function drawProgress(box, view, {start, cancel}) {
   box.hidden = !!view.hidden;
   if (view.hidden) return;
   const make = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? {className: cls} : {}, text === undefined ? {} : {textContent: text});
@@ -49,9 +50,10 @@ function draw(box, view) {
   bar.append(fill);
   bar.hidden = !view.steps.length;
   feed.append(...view.steps.map(s => make('li', s.kind, s.text)));
-  const link = make('a', 'link', view.action);
-  link.href = '#';
-  link.addEventListener('click', event => { event.preventDefault(); if (view.action === 'Cancel') window.pilot.officeCancel(); else window.pilot.officeStart(); });
+  feed.hidden = !view.steps.length;
+  // Why (28 Oct 2026, owner 27 Oct "buttons are solid"): the line's one action (Download, Cancel, Try again) is a solid button, never a text link.
+  const link = make('button', 'secondary', view.action);
+  link.addEventListener('click', event => { event.preventDefault(); if (view.action === 'Cancel') cancel(); else start(); });
   fine.append(link);
   box.replaceChildren(head, bar, feed, fine);
 }
@@ -61,7 +63,7 @@ export function showOffice(event) {
   const view = officeView(event, {platform: window.pilot.platform});
   for (const box of document.querySelectorAll('[data-office-progress]')) {
     box.classList.add('progress', 'office-progress'); box.setAttribute('role', 'status');
-    draw(box, view);
+    drawProgress(box, view, {start: () => window.pilot.officeStart(), cancel: () => window.pilot.officeCancel()});
   }
 }
 

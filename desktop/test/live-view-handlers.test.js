@@ -99,3 +99,14 @@ test('a covered or vanished button is said in words the person can act on', asyn
   assert.match((await submitRig({pressed: {ok: false, why: 'covered'}}).submit('s1')).error, /covers/);
   assert.match((await submitRig({pressed: {ok: false, why: 'not_found'}}).submit('s1')).error, /page's own/);
 });
+
+test('Stop while the hidden fill runs stops that one application, never the others, and never in the demo app', async () => {
+  const handles = new Map(), stopped = [];
+  registerLiveViewHandlers({storage: {path: n => n}, ipcMain: {handle: (n, fn) => handles.set(n, fn)}, toWindow: () => {}, dialog: {}, page: async () => null, stop: id => { stopped.push(id); return true; }});
+  assert.deepEqual(await handles.get('liveStop')(null, 's1'), {ok: true});
+  assert.deepEqual(stopped, ['s1']);
+  const demo = new Map();
+  registerLiveViewHandlers({DEMO: true, storage: {path: n => n}, ipcMain: {handle: (n, fn) => demo.set(n, fn)}, toWindow: () => {}, dialog: {}, page: async () => null, stop: id => { stopped.push(id); return true; }});
+  assert.equal((await demo.get('liveStop')(null, 's2')).ok, false);
+  assert.deepEqual(stopped, ['s1']);
+});

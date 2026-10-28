@@ -1,6 +1,7 @@
 // Jobs' "Apply to jobs" dialog (owner, 28 Oct 2026 rework of #2317): how many jobs, how Jobadabra applies (Settings → Apply's own cards), "Apply to N jobs".
 // A card pick saves through Settings → Apply's writer; a mode not built yet is a disabled "Coming soon" card. Pure parts: renderer/apply-dialog-model.js.
 // Guard: test/apply-dialog-mode.test.js.
+import {offerBrowser} from './browser-progress.js';
 import {$, message} from './core.js';
 import {applyOf} from '../apply-settings-model.js';
 import {applyButtonLabel, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
@@ -57,6 +58,7 @@ export function wireApplyDialog({startedApplying}) {
         if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
         message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
+        offerBrowser($('apply-browser'), result.code === 'BACKGROUND_BROWSER_MISSING');   // the download, right where it was asked for
       } catch (error) {   // the call itself failed (e.g. the app updated while open): say so, the button comes back below
         message('apply-message', `Could not start applying: ${error.message}`, 'error');
       } finally {

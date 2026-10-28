@@ -16,6 +16,7 @@ function fakes({nodeAt = () => null, evaluate = () => ({}), cookies = []} = {}) 
     send: async (method, params = {}) => {
       calls.push([method, params]);
       if (method === 'Page.captureScreenshot') return {data: 'first-jpeg'};
+      if (method === 'Page.getLayoutMetrics') return {cssVisualViewport: {clientWidth: 1280, clientHeight: 720}};
       if (method === 'Runtime.evaluate') return evaluate(params.expression);
       if (method === 'Network.getCookies') return {cookies};
       if (method === 'DOM.getNodeForLocation') { const node = nodeAt(params.x, params.y); return node ? {backendNodeId: node.id} : {}; }
@@ -38,10 +39,9 @@ const at = (node) => Object.assign((x, y) => (x === 50 && y === 30 ? node : null
 test('frames go out as plain messages, each acknowledged; the first is a screenshot at once', async () => {
   const f = fakes();
   await attachLive(f.channel, f.cdp);
-  assert.deepEqual(f.sent[0].kind, 'first');
-  await f.emit('Page.screencastFrame', {data: 'jpeg-1', sessionId: 3});
-  assert.equal(f.sent.at(-1).kind, 'frame');
-  assert.equal(f.sent.at(-1).data, 'jpeg-1');
+  assert.deepEqual([f.sent[0].kind, f.sent[0].w, f.sent[0].h], ['first', 1280, 720], 'the viewport size goes with the picture: a press maps back to the page');
+  await f.emit('Page.screencastFrame', {data: 'jpeg-1', sessionId: 3, metadata: {deviceWidth: 1024, deviceHeight: 600}});
+  assert.deepEqual([f.sent.at(-1).kind, f.sent.at(-1).data, f.sent.at(-1).w, f.sent.at(-1).h], ['frame', 'jpeg-1', 1024, 600]);
   assert.ok(f.calls.some(([method, params]) => method === 'Page.screencastFrameAck' && params.sessionId === 3));
   assert.ok(f.calls.some(([method, params]) => method === 'Page.setInterceptFileChooserDialog' && params.enabled === true));
 });

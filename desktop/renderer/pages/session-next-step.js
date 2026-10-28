@@ -17,7 +17,8 @@ import {richText} from './rich-text.js';
 import {openSession, renderSessionPage, say} from './session-log.js';
 import {applyFormStates, askRow, reviewStates, opening, openForm, reopenClosedTab, checkingTab, redirecting, silentChrome, waitingChrome, tabLost, formGone, formReady, emptyFields, emptyRow, explainExtension, needRow, showFormState, updateNeedsCount, watchAgreements} from './session-needs.js'; import {showSendBar} from './need-send.js';
 import {toastMessage} from './startup.js';
-import {pauseSession, removeSession, resumeSession, skipSession} from './session-actions.js';
+import {pauseSession, removeSession, restartSession, resumeSession, skipSession} from './session-actions.js';
+import {closeLive, renderLive} from './session-live.js';
 import {storeName} from '../store-words.js';
 import {INFORM_STUCK} from '../session-steps-list.js';
 import {openLog, refreshSessions, sessionCompany, sessionJob, sessionTail, ticking} from './sessions.js';
@@ -120,6 +121,15 @@ function renderLost(item) {
   $('ss-actions').replaceChildren(sessionButton('Open it again', 'primary', event => reopenClosedTab(item, event.currentTarget), 'link'));
 }
 export function renderNextStep(item) {
+  // A hidden-browser session (spec 2026-10-27-background-apply-execution, step B) has no Chrome tab of the person's: its card is the live page.
+  if (item.background && !isSubmitted(item)) {
+    renderLive(item, {open: () => restartSession(item), skip: () => skipSession(item), problem: (title, text) => toastMessage(title, text, sessionPlace(item), 'bad')});
+    show($('ss-full-toggle'), false); $('ss-full').hidden = true;
+    const {checks, needs: forYou, audit, done} = readSessionMessage(item.question);
+    renderCards(item, {checks, forYou, audit, done, review: true, asking: false, gone: false});
+    return;
+  }
+  closeLive();
   if (checkingTab(item)) { renderChecking(); return; }
   if (waitingChrome(item)) { renderWaiting(); return; }
   if (redirecting(item)) { renderRedirecting(item); return; }
@@ -305,6 +315,11 @@ export function renderNextStep(item) {
     if (toIt) { toIt.classList.replace('secondary', 'primary'); actions.splice(actions.indexOf(toIt), 1); actions.unshift(toIt); }
   }
   $('ss-actions').replaceChildren(...actions);
+  renderCards(item, {checks, forYou, audit, done, review, asking, gone});
+}
+
+// The cards under the step: what Claude needs from you (answer, agree, confirm), then what happened (moved out of renderNextStep, 28 Oct 2026, for the live card).
+function renderCards(item, {checks, forYou, audit, done, review, asking, gone}) {
   // Two sections under the step: what Claude needs from you (answer, agree, confirm), then what happened
   // (what it filled, the problems it hit, its audit). Its other report sections join what happened.
   const sorted = sortChecks(checks), mine = sortChecks(forYou, {forYou: true});

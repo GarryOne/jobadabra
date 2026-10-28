@@ -55,6 +55,8 @@ contextBridge.exposeInMainWorld('pilot', {
   onExperienceStep: callback => ipcRenderer.on('experienceStep', (_, step) => callback(step)),
   onCloudStep: callback => ipcRenderer.on('cloudStep', (_, step) => callback(step)),
   officeState: call('officeState'), officeStart: call('officeStart'), officeCancel: call('officeCancel'), onOfficeProgress: callback => ipcRenderer.on('officeProgress', (_, step) => callback(step)),
+  liveOpen: call('liveOpen'), liveInput: call('liveInput'), liveClose: call('liveClose'), liveSubmit: call('liveSubmit'), liveStop: call('liveStop'), onLiveEvent: callback => ipcRenderer.on('liveEvent', (_, event) => callback(event)),
+  backgroundBrowserState: call('backgroundBrowserState'), backgroundBrowserStart: call('backgroundBrowserStart'), backgroundBrowserCancel: call('backgroundBrowserCancel'), onBackgroundBrowserProgress: callback => ipcRenderer.on('backgroundBrowserProgress', (_, step) => callback(step)),
   dataCancel: call('dataCancel'), showFile: call('showFile'), onDataProgress: callback => ipcRenderer.on('dataProgress', (_, progress) => callback(progress)),
   onStoreMoveProgress: callback => ipcRenderer.on('storeMoveProgress', (_, progress) => callback(progress)),
   onLeadStep: callback => ipcRenderer.on('leadStep', (_, step) => callback(step)),

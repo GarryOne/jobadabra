@@ -76,10 +76,12 @@
  "note": "expectation set to middle AFTER the first live answer (I had guessed final without reading the page): the page is \"Persönliche Daten bitte hier erfassen\" with one button, \"Weiter\", the first step of a multi-step Umantis application",
  "answer": {
   "answer": "needs_person",
+  "blocked_kind": "",
   "needs": "Vorname*:",
   "needs_kind": "field",
   "step": "middle",
   "next_control": "Weiter",
+  "submit_control": "",
   "confidence": 0.9
  },
  "answer_path": "app"

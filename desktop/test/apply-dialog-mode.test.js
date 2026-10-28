@@ -56,10 +56,12 @@ test('a built mode is saved through Settings → Apply\'s writer, keeping the fi
   assert.doesNotMatch(page, /saveSettings\(/, 'no second writer of settings.apply');
 });
 
-test('a mode is built exactly when it names its batch runner; Standard\'s is the visible Chrome batch, the others have none', () => {
-  assert.deepEqual(Object.fromEntries(MODES.map(mode => [mode.id, modeRunner(mode.id)])), {check: 'chrome', fill: '', auto: ''});
+test('a mode is built exactly when it names its batch runner; Standard\'s is the visible Chrome batch, Background\'s the hidden browser', () => {
+  assert.deepEqual(Object.fromEntries(MODES.map(mode => [mode.id, modeRunner(mode.id)])), {check: 'chrome', fill: 'background', auto: ''});
   for (const mode of MODES) assert.equal(modeBuilt(mode.id), !!modeRunner(mode.id), mode.id);
-  assert.match(read('lib/apply-handlers.js'), /modeRunner\(applyOf\(storage\.settings\(\)\)\.mode\)/, 'main starts the runner the saved (built) mode names');
+  const handlers = read('lib/apply-handlers.js');
+  assert.match(handlers, /applyMode = fromSettings \? applyOf\(storage\.settings\(\)\)\.mode/, 'main reads the saved (built) mode');
+  assert.match(handlers, /fromSettings \? modeRunner\(applyMode\)/, 'main starts the runner that mode names');
 });
 
 test('a save that fails is said, never shown as picked', async () => {
@@ -79,15 +81,22 @@ test('Start sends the validated count; the main process runs the saved mode\'s o
   const registered = register('check');
   const result = await applyDialogStart({count: '3', start: args => registered.handles.get('apply')({}, args)});
   assert.equal(result.ok, true);
-  assert.deepEqual(registered.starts, [{n: 3, mode: 'chrome'}]);
+  assert.deepEqual(registered.starts, [{n: 3, mode: 'chrome', applyMode: 'check'}]);
+});
+
+test('a saved Background automation starts the hidden browser\'s runner (no extension needed: it carries its own copy)', async () => {
+  const registered = register('fill');
+  const result = await applyDialogStart({count: '2', start: args => registered.handles.get('apply')({}, args)});
+  assert.equal(result.ok, true);
+  assert.deepEqual(registered.starts, [{n: 2, mode: 'background', applyMode: 'fill'}]);
 });
 
 test('an older save of an unbuilt mode reads as Standard automation in the cards and the runner alike', async () => {
-  for (const mode of ['fill', 'auto']) {
+  for (const mode of ['auto']) {
     assert.equal(applyOf({apply: {mode}}).mode, 'check', 'the cards draw Standard selected');
     const registered = register(mode);
     await applyDialogStart({count: '2', start: args => registered.handles.get('apply')({}, args)});
-    assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome'}], 'the runner is the one the cards showed');
+    assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check'}], 'the runner is the one the cards showed');
   }
 });
 
@@ -98,7 +107,7 @@ test('the first-choice gate holds Start, then the main process reads the mode ch
   assert.deepEqual(registered.starts, []);
   registered.setSettings({apply: {mode: 'check', chosenAt: '2026-10-28T01:00:00.000Z'}});
   assert.equal((await send()).ok, true);
-  assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome'}]);
+  assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check'}]);
 });
 
 test('invalid counts and cancel do not start a job batch', async () => {
@@ -138,4 +147,11 @@ test('the dialog: count, the shared mode cards, a native Close, one primary butt
   assert.ok(dialog.indexOf('id="apply-n"') < dialog.indexOf('id="apply-mode-cards"'), 'how many jobs first: the dialog is about applying');
   assert.doesNotMatch(dialog + read('renderer/components.css'), /apply-mode-description|is-apply-saved-badge|apply-mode-summary/);
   assert.match(read('renderer/pages/jobs-apply.js'), /modeCards\(applyOf\(/);
+});
+
+test('the window cannot start the hidden browser by naming its runner: only the saved mode reaches it', async () => {
+  const {handles, starts} = register('check');
+  const result = await handles.get('apply')(null, {n: 1, mode: 'background', applyMode: 'auto'});
+  assert.equal(result.ok, false);
+  assert.deepEqual(starts, []);
 });

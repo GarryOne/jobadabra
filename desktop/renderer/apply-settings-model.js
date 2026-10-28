@@ -9,7 +9,7 @@
 export const MODES = Object.freeze([
   {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], runner: 'chrome',
     text: 'Fills in a visible browser; you review and submit.'},
-  {id: 'fill', icon: 'layers', title: 'Background automation',
+  {id: 'fill', icon: 'layers', title: 'Background automation', runner: 'background',
     text: 'Fills in a hidden browser; you review and submit when ready.'},
   {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'],
     text: 'Fills and submits in a hidden browser when your checks pass.'},

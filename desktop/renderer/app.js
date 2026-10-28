@@ -2,6 +2,8 @@
 // (pages/). It only talks to the app through window.pilot (preload.cjs); it never sees a key's value.
 // Each page's start-up code runs here in the order it always has.
 import {init as core} from './pages/core.js';
+import {liveEvent} from './pages/session-live.js';   // __jp.liveEvent: a shot feeds the live card the pictures main would send
+import {offerBrowser, showBrowserProgress} from './pages/browser-progress.js';   // __jp.browserProgress: a shot draws a download step
 import {shared} from './pages/shared.js';
 import {sessionList} from './pages/sessions.js';
 import {init as wizard} from './pages/wizard.js';
@@ -116,7 +118,7 @@ await runsPage();
 employers();
 
 // For checks and debugging (npm run shot -- --eval, the DevTools console): the window's state, read-only by convention.
-window.__jp = {findCard: renderFindCard, paletteCommands, shared, openJob: (url, tab) => { const job = shared.allJobs.find(each => each.url === url); return job ? openJobPanel(job, tab) : null; }, get sessions() { return sessionList; }, get openSession() { return sessionList.find(item => item.id === shared.openSessionId) || null; },
+window.__jp = {liveEvent, browserProgress: event => { offerBrowser(document.getElementById('ss-browser'), true); showBrowserProgress(event); }, findCard: renderFindCard, paletteCommands, shared, openJob: (url, tab) => { const job = shared.allJobs.find(each => each.url === url); return job ? openJobPanel(job, tab) : null; }, get sessions() { return sessionList; }, get openSession() { return sessionList.find(item => item.id === shared.openSessionId) || null; },
   terminal: () => { const term = shared.xterm; if (!term) return null; const buffer = term.buffer.active;
     return {rows: term.rows, cols: term.cols, screen: buffer.type, mouse: term.modes.mouseTrackingMode, viewportY: buffer.viewportY,
       lines: Array.from({length: term.rows}, (_, i) => buffer.getLine(buffer.viewportY + i)?.translateToString(true) || '')}; }};

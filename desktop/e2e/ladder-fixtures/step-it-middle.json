@@ -43,10 +43,12 @@
  },
  "answer": {
   "answer": "ready",
+  "blocked_kind": "",
   "needs": "",
   "needs_kind": "",
   "step": "middle",
   "next_control": "Avanti",
+  "submit_control": "",
   "confidence": 0.9
  },
  "answer_path": "app"

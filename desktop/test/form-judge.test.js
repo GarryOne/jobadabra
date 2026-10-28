@@ -46,6 +46,20 @@ test('a middle step keeps the next control the page lists; a final step, an inve
   assert.equal((await ask({step: 'maybe', next_control: 'Continuer'})).step, 'unsure');
 });
 
+test('a ready final step names the page\'s own sending button; any other answer, an invented button or a field label never does', async () => {
+  const ask = answer => judgeForm(fake({answer: 'ready', needs: '', needs_kind: '', confidence: 0.9, ...answer}), steps);
+  assert.equal((await ask({step: 'final', submit_control: 'envoyer'})).submitControl, 'Envoyer');   // the page's own wording
+  assert.equal((await ask({step: 'middle', submit_control: 'Envoyer'})).submitControl, '');
+  assert.equal((await ask({answer: 'needs_person', step: 'final', submit_control: 'Envoyer'})).submitControl, '');
+  assert.equal((await ask({step: 'final', submit_control: 'Submit application'})).submitControl, '');   // not on the page
+  assert.equal((await ask({step: 'final', submit_control: 'Prénom'})).submitControl, '');              // a field, not a button
+  assert.equal((await ask({step: 'final'})).submitControl, '');                                         // a stored answer without it
+  const seen = [];
+  await judgeForm(fake({answer: 'ready', step: 'final', submit_control: 'Envoyer', confidence: 0.9}, seen), steps);
+  assert.ok(seen[0].output_config.format.schema.required.includes('submit_control'));
+  assert.match(seen[0].system, /submit_control/);
+});
+
 test('the route passes a middle step\'s control on and has no mode: there is no setting to say otherwise', async () => {
   const client = fake({answer: 'ready', needs: '', needs_kind: '', confidence: 0.9, step: 'middle', next_control: 'Continuer'});
   const answer = await decideAccountJudge({settings: () => ({})}, {phase: 'form', sketch: steps}, {client});

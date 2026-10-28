@@ -3,21 +3,19 @@
 // (accountAutomation) keep their own keys: the extension reads them. Guard: test/apply-settings.test.js.
 
 // Why (27 Oct 2026, owner): approved labels state browser visibility and who submits; persisted mode IDs stay stable.
+// built: the mode has a runner in this version (lib/apply-handlers.js BATCH_RUNNER). Why (28 Oct 2026, owner, #2317 rework): a mode not built is drawn
+// disabled with "Coming soon" and can never be the saved mode, so no screen offers a choice that does nothing. Flip it in the PR that ships the runner.
 export const MODES = Object.freeze([
-  {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'],
+  {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], built: true,
     text: 'Fills in a visible browser; you review and submit.'},
-  {id: 'fill', icon: 'layers', title: 'Background automation',
+  {id: 'fill', icon: 'layers', title: 'Background automation', built: false,
     text: 'Fills in a hidden browser; you review and submit when ready.'},
-  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'],
+  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'], built: false,
     text: 'Fills and submits in a hidden browser when your checks pass.'},
 ]);
 export const MODE_IDS = MODES.map(mode => mode.id);
-// What each mode does in this version (background fills and sending by themselves arrive in later steps): said under the choice, never hidden.
-export const MODE_TODAY = {
-  check: '',
-  fill: 'Background fills arrive in a coming update. Until then each form opens in a tab, filled, for you to check.',
-  auto: 'Sending by itself arrives in a coming update. Until then each form opens in a tab, filled, and you press Submit.',
-};
+/** True when the mode with this id runs in this version; an unknown id is not built. */
+export const modeBuilt = id => !!MODES.find(mode => mode.id === id)?.built;
 
 export const ANSWERS = Object.freeze([
   {id: 'facts', label: 'Only from my saved facts'},
@@ -37,13 +35,14 @@ const clamp = (key, value) => {
 };
 
 // settings -> {mode, answers, auto, chosenAt}: nothing saved yet is Standard automation (pre-selected, owner 26 Oct 2026) with facts only.
+// Invariant: mode is always a built mode; an older save of one not built yet reads as Standard automation, the mode that runs and the cards show.
 export function applyOf(settings) {
   const saved = settings?.apply || {}, auto = {...AUTO_DEFAULTS};
   for (const key of Object.keys(AUTO_DEFAULTS)) {
     if (!(key in (saved.auto || {}))) continue;
     auto[key] = key in LIMITS ? clamp(key, saved.auto[key]) : saved.auto[key] !== false;
   }
-  return {mode: MODE_IDS.includes(saved.mode) ? saved.mode : 'check', answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || ''};
+  return {mode: modeBuilt(saved.mode) ? saved.mode : 'check', answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || ''};
 }
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
 

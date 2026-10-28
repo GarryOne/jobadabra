@@ -4,24 +4,22 @@
 // Guards: test/apply-settings.test.js, test/apply-choice-gate.test.js.
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
-import {ANSWERS_TEXT, MODES, MODE_TODAY, applyOf, applyPatch} from '../apply-settings-model.js';
+import {ANSWERS_TEXT, MODES, applyOf, applyPatch, modeBuilt} from '../apply-settings-model.js';
 import {openSetting} from './settings.js';
 
 let current = {};   // the saved settings, as the app last answered them
 let ready = Promise.resolve();
 export const settingsNow = () => current;
 
-// The three saved modes as stacked choice cards; every Apply surface uses the same titles, badges and descriptions.
-export function modeCards(selected, onPick, {disabled = false} = {}) {
-  const modes = disabled ? MODES.map(mode => ({...mode, disabled: true})) : MODES;
+/**
+ * The three modes as stacked choice cards, the same on every Apply surface (Settings → Apply, the first-Apply dialog, Jobs' Apply to jobs).
+ * A mode not built yet is disabled with a "Coming soon" pill in place of its badge; busy: every card off (a save or a start in flight).
+ */
+export function modeCards(selected, onPick, {busy = false} = {}) {
+  const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : ['Coming soon', 'neutral']}));
   const group = choiceCards(modes, {selected, onPick, label: 'How applying works'});
   group.classList.add('is-single');
   return group;
-}
-// What the picked mode does in this version, said under the cards (background fills and sending by itself come in later steps).
-export function todayLine(node, mode) {
-  node.textContent = MODE_TODAY[mode] || '';
-  node.hidden = !MODE_TODAY[mode];
 }
 
 // The checks, each the person's to change (CLAUDE.md "The app submits only in Full automation"): numbers as a short field, yes/no as a switch.
@@ -60,7 +58,6 @@ function checkRow(check) {
 export function draw(settings = current) {
   const apply = applyOf(settings);
   $('apply-modes')?.replaceChildren(modeCards(apply.mode, mode => save({mode})));
-  if ($('apply-mode-today')) todayLine($('apply-mode-today'), apply.mode);
   document.querySelectorAll('[data-apply-answers]').forEach(button => button.classList.toggle('is-active', button.dataset.applyAnswers === apply.answers));
   if ($('apply-answers-text')) $('apply-answers-text').textContent = ANSWERS_TEXT[apply.answers];
   document.querySelectorAll('[data-apply-check]').forEach(box => {

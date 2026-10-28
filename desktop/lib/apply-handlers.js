@@ -37,19 +37,22 @@ import {demoFormsOpen, demoPath} from './demo.js';
 import {applyOf} from '../renderer/apply-settings-model.js';
 
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
+// The batch runner of each built Apply mode (renderer/apply-settings-model.js `built`). Why (28 Oct 2026, owner, #2317 rework): a mode with no runner
+// is not built, so it never reaches the visible Chrome path; test/apply-dialog-mode.test.js fails when `built` and this map disagree.
+export const BATCH_RUNNER = Object.freeze({check: 'chrome'});
 export function registerApplyHandlers(ctx) {
   const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   ipcMain.handle('apply', async (_, options) => {
-    const mode = options?.mode === 'settings' ? applyOf(storage.settings()).mode : options?.mode;   // Why (27 Oct 2026, owner): resolve after the first-choice gate replays the held IPC call, so Start cannot use a stale mode.
-    if (options?.mode === 'settings' && mode !== 'check') return {ok: false,   // Why (27 Oct 2026, owner): fill and auto have no batch runner; never fall through to visible Chrome.
-      error: `${mode === 'auto' ? 'Full automation' : 'Background filling'} is not available in this build. Change the mode in Settings → Apply to start jobs.`};
+    const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
+    const mode = fromSettings ? BATCH_RUNNER[applyOf(storage.settings()).mode] : options?.mode;
+    if (fromSettings && !mode) return {ok: false, error: 'This way of applying is coming soon. Choose Standard automation in Settings → Apply.'};
     const agents = mode === 'agents';
     const blocked = needsNotion('apply') || await allowanceBlock() || (agents ? null : needExtension());   // (an earlier one-line form sent these answers through the "Claude is off" branch)
     if (blocked) return blocked;
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
-    return applyRunner.start(storage, {...options, mode: options?.mode === 'settings' ? 'chrome' : mode}, undefined, undefined, undefined, undefined,   // Why (27 Oct 2026, owner): only the confirmed manual-review setting maps to the existing Chrome batch runner.
+    return applyRunner.start(storage, {...options, mode}, undefined, undefined, undefined, undefined,
       (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text));
   });
   ipcMain.handle('applyOne', async (_, url, details) => {

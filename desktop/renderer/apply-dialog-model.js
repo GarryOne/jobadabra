@@ -1,38 +1,34 @@
-// The Jobs batch dialog's copy, eligibility and dispatch from the canonical Settings → Apply choice.
-import {MODES, applyChosen, applyOf} from './apply-settings-model.js';
+// The Jobs "Apply to jobs" dialog, pure: the count's bounds, the primary button's words, a mode pick and what Start sends. Guard: test/apply-dialog-mode.test.js.
+import {modeBuilt} from './apply-settings-model.js';
 
-const modeById = new Map(MODES.map(mode => [mode.id, mode]));
-
-// Returns the actual mode and action the Jobs dialog can offer without inventing a second selector.
-export function applyDialogCopy(settings) {
-  const apply = applyOf(settings), mode = apply.mode, chosen = applyChosen(settings);
-  const title = modeById.get(mode)?.title || modeById.get('check').title;
-  const available = mode === 'check';   // Why (27 Oct 2026, owner): only check has a batch runner in this build; fill and auto must not launch visible Chrome.
-  const description = mode === 'check'
-    ? 'Standard automation uses a visible Chrome tab. Jobadabra does not submit forms in this mode.'
-    : mode === 'fill'
-      ? 'Background filling is not available in this build. No jobs start in this mode.'
-      : 'Full automation is not available in this build. No jobs start in this mode.';
-  return {mode, title, description, available, chosen, canStart: available || !chosen};   // Why (27 Oct 2026, owner): an unconfirmed saved choice still needs to reach the first-Apply gate.
+/** The count as a whole number of jobs from 1 to 10, or null for anything else (empty, 0, 11, 1.5). */
+export function validCount(value) {
+  const n = value === '' || value == null ? NaN : Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= 10 ? n : null;
 }
 
-// Saves a card choice through the same Settings → Apply writer and verifies the returned canonical mode.
+/** The primary button: "Apply to 3 jobs" (owner, 28 Oct 2026: the dialog applies to jobs; it is not a settings editor). */
+export function applyButtonLabel(count) {
+  const n = validCount(count);
+  return n ? `Apply to ${n} job${n === 1 ? '' : 's'}` : 'Apply to jobs';
+}
+
+/** A card pick: saved through Settings → Apply's writer (`save`), only for a built mode; the saved settings come back to draw. */
 export async function applyDialogSelectMode({mode, save}) {
-  if (!modeById.has(mode)) return {ok: false, error: 'Choose one of the available Apply modes.'};
+  if (!modeBuilt(mode)) return {ok: false};   // Why (28 Oct 2026, owner): a mode that does nothing yet can never be chosen or saved
   const saved = await save({mode});
-  return saved?.apply && applyOf(saved).mode === mode ? {ok: true, settings: saved} : {ok: false, error: 'Could not save the selected Apply mode.'};
+  return saved?.apply ? {ok: true, settings: saved} : {ok: false, error: 'Could not save how Jobadabra applies. Try again.'};
 }
 
-// Validates a requested batch and passes a settings token so the main process reads the mode again after the first-choice gate.
-export async function applyDialogStart({settings, count, cancelled = false, start}) {
+/** Start: a valid count goes to the main process, which reads the saved mode itself after the first-choice gate (lib/apply-handlers.js). */
+export async function applyDialogStart({count, cancelled = false, start}) {
   if (cancelled) return {cancelled: true};
-  const n = Number(count), copy = applyDialogCopy(settings);
-  if (!Number.isInteger(n) || n < 1 || n > 10) return {ok: false, error: 'Choose between 1 and 10 jobs.'};
-  if (!copy.canStart) return {ok: false, error: copy.description};   // Why (27 Oct 2026, owner): a confirmed unsupported mode cannot start any batch.
-  return start({n, mode: 'settings'});   // Why (27 Oct 2026, owner): main resolves the mode after first-choice confirmation, before selecting a runner.
+  const n = validCount(count);
+  if (!n) return {ok: false, error: 'Choose between 1 and 10 jobs.'};
+  return start({n, mode: 'settings'});
 }
 
-// Prevents overlapping batch starts while leaving later deliberate starts available after completion.
+/** One start at a time: a second press while the first batch starts is ignored; a later deliberate start is not. */
 export function createApplyStartGate() {
   let starting = false;
   return {

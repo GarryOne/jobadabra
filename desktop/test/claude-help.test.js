@@ -29,7 +29,7 @@ test('the switch is "Claude is ready" (installed + signed in), not a setting; th
   assert.doesNotMatch(html, /name="apply-mode"/);
   assert.doesNotMatch(html, /<b>Apply with Claude<\/b> <span class="badge-recommended">/);
   assert.doesNotMatch(html, /press <b>Apply with Claude<\/b> to start one/);
-  assert.match(fs.readFileSync(new URL('pages/jobs.js', RENDERER), 'utf8'), /applyDialogCopy\(state\.settings\)/);
+  assert.match(fs.readFileSync(new URL('pages/jobs-apply.js', RENDERER), 'utf8'), /modeCards\(applyOf\(settings\)\.mode/);
 });
 
 test('the Claude install checklist is under the Settings switch too, shown only while it is on', () => {

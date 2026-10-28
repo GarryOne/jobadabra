@@ -22,3 +22,9 @@ Spec: [2026-10-27-apply-dialog-mode-design.md](../specs/2026-10-27-apply-dialog-
 
 ## Dependencies and review focus
 No runner dependency exists in fetched `origin/main` or visible active branches. Review: stale saved settings on dialog reopen, unsupported mode dispatch, manual-review copy, cancel and invalid count, first-choice gate, fake-runner realism. No broad local suites, real applications, submissions, or paid model calls.
+
+## Rework (28 Oct 2026, owner)
+1. Tests first in `desktop/test/apply-dialog-mode.test.js` and `apply-settings.test.js`: unbuilt mode not selectable, "Apply to N jobs", one writer, `built` ↔ `BATCH_RUNNER`.
+2. `MODES[].built` + `modeBuilt` (apply-settings-model.js); shared `modeCards` draws unbuilt modes disabled with "Coming soon"; `applyOf` returns only built modes; `MODE_TODAY` removed.
+3. Dialog wiring moved from `pages/jobs.js` (464 lines) to `pages/jobs-apply.js`; count first, cards second, no saved badge.
+4. Side-by-side `r17-apply-dialog.png`, owner's yes, one `/code-review`, push to `apply-dialog-mode`.

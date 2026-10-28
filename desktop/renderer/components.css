@@ -198,11 +198,7 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 /* Settings → Apply (pages/apply-settings.js) and the first-Apply dialog (pages/apply-choice.js): the checks one per row, the dialog's cards spaced from its note. */
 .apply-checks { display: grid; gap: var(--sp-2); justify-items: start; }
 .apply-choice-dialog #apply-choice-modes { margin-bottom: var(--sp-3); }
-.apply-mode-summary { margin: var(--sp-3) 0; }
-.apply-mode-summary p { margin: var(--sp-2) 0 0; color: var(--muted); font-size: var(--fs-sm); }
-#apply-dialog .message.ok.is-apply-saved-badge { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; min-height: 0;
-  margin-top: var(--sp-2); padding: var(--sp-1) var(--sp-2); border: 1px solid color-mix(in srgb, var(--good) 35%, transparent);
-  border-radius: var(--r-pill); background: var(--good-soft); color: var(--good); }
+#apply-dialog legend { padding: 0; color: var(--label); }   /* Jobs' Apply to jobs (pages/jobs-apply.js): the cards' heading reads like the count's label above it */
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */
 .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }

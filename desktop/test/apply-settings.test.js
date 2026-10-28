@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {AUTO_DEFAULTS, MODES, MODE_TODAY, applyChosen, applyOf, applyPatch} from '../renderer/apply-settings-model.js';
+import {AUTO_DEFAULTS, MODES, applyChosen, applyOf, applyPatch, modeBuilt} from '../renderer/apply-settings-model.js';
 
 const here = path.resolve(import.meta.dirname, '..');
 const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
@@ -19,13 +19,13 @@ test('nothing saved: Standard automation, facts only, the owner\'s defaults, not
 
 test('a change keeps the rest; numbers stay in range; Confirm stamps the choice', () => {
   const now = new Date('2026-10-26T10:00:00Z');
-  const one = applyPatch({}, {mode: 'auto', auto: {perDay: '500'}});
-  assert.equal(one.apply.mode, 'auto');
+  const one = applyPatch({}, {mode: 'check', auto: {perDay: '500'}});
+  assert.equal(one.apply.mode, 'check');
   assert.equal(one.apply.auto.perDay, 200, 'clamped');
   assert.equal(one.apply.auto.minFit, 80, 'the other checks kept');
   assert.equal(one.apply.chosenAt, '');
   const two = applyPatch({apply: one.apply}, {auto: {noEmpty: false, minFit: 'x'}}, {chosen: true, now});
-  assert.equal(two.apply.mode, 'auto');
+  assert.equal(two.apply.mode, 'check');
   assert.equal(two.apply.auto.noEmpty, false);
   assert.equal(two.apply.auto.minFit, 80, 'not a number: the default');
   assert.equal(two.apply.chosenAt, now.toISOString());
@@ -33,7 +33,7 @@ test('a change keeps the rest; numbers stay in range; Confirm stamps the choice'
   assert.equal(applyOf({apply: {mode: 'nonsense', answers: 'nonsense'}}).mode, 'check');
 });
 
-test('three modes; the two that come later say what happens until then', () => {
+test('three modes; only a built one can be the saved mode, the others are Coming soon', () => {
   assert.deepEqual(MODES.map(mode => mode.id), ['check', 'fill', 'auto']);
   assert.deepEqual(MODES.map(mode => mode.title), ['Standard automation', 'Background automation', 'Full automation']);
   assert.deepEqual(MODES.map(mode => mode.text), [
@@ -41,9 +41,15 @@ test('three modes; the two that come later say what happens until then', () => {
     'Fills in a hidden browser; you review and submit when ready.',
     'Fills and submits in a hidden browser when your checks pass.',
   ]);
-  assert.equal(MODE_TODAY.check, '');
-  for (const id of ['fill', 'auto']) assert.match(MODE_TODAY[id], /coming update[\s\S]*opens in a tab/);
-  assert.match(MODES.find(mode => mode.id === 'auto').text, /hidden browser when your checks pass/i);
+  assert.deepEqual(MODES.filter(mode => modeBuilt(mode.id)).map(mode => mode.id), ['check']);
+  for (const id of ['fill', 'auto']) {
+    assert.equal(applyPatch({}, {mode: id}).apply.mode, 'check', `${id} cannot be saved before it is built`);
+    assert.equal(applyOf({apply: {mode: id, chosenAt: '2026-10-27T00:00:00.000Z'}}).mode, 'check', `an older save of ${id} reads as the mode that runs`);
+  }
+  const settings = fs.readFileSync(path.join(here, 'renderer/pages/apply-settings.js'), 'utf8');
+  assert.match(settings, /disabled: [^,]*!modeBuilt\(mode\.id\)/, 'every surface draws an unbuilt mode disabled (modeCards)');
+  assert.match(settings, /\['Coming soon', 'neutral'\]/);
+  assert.doesNotMatch(settings + html, /MODE_TODAY|apply-mode-today|todayLine/, 'no "until then" line: an unbuilt mode cannot be picked');
 });
 
 test('every applying setting is on the Apply tab, and nowhere else', () => {

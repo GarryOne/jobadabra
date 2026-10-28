@@ -18,11 +18,11 @@ export async function ensure(storage, labels, {answered = [], facts = [], compan
   const known = cached(storage), now = new Map(answered.map(a => [a.question, a.answer])), sig = sigOf(facts), have = new Set(facts.map(fact => fact.label));
   const values = new Map(facts.map(fact => [fact.label, String(fact.value ?? '')])), today = new Date().toISOString().slice(0, 10);
   // Why (28 Oct 2026, #2322 review): an eligibility answer is read from its row's status, so a changed row or a permit past its date judges it again.
-  const moved = entry => Boolean(entry.asks) && (values.get(entry.fact) !== (entry.from || values.get(entry.fact)) || (splitPermit(entry.from || '').until || '9999') < today);
+  const moved = entry => { const on = entry.row || entry.fact; return Boolean(entry.asks) && (values.get(on) !== (entry.from || values.get(on)) || (entry.reuse === 'details' && (splitPermit(entry.from || '').until || '9999') < today)); };
   // judged again: never judged, judged before answers could be deduced (no v: once), the saved answer its proposal came from changed (or is gone),
   // its Your details fact was emptied, or a fact was added since it was judged (a question kept as asked may now be answered from there)
   const stale = entry => entry && (entry.v !== VERSION || (entry.covered_by && now.get(entry.covered_by) !== entry.from)
-    || (entry.reuse === 'details' ? !have.has(entry.fact) || moved(entry) : (entry.sig || '') !== sig));
+    || moved(entry) || (entry.reuse === 'details' ? !have.has(entry.fact) : (entry.sig || '') !== sig));
   const fresh = [...new Set(labels.filter(label => label && !looksLikeFieldId(label) && (!known[keyOf(label)] || stale(known[keyOf(label)]))))];
   if (!fresh.length || !(ai.client || ai.apiKey)) return {verdicts: known, usage: null};
   const found = await classify({labels: fresh, answered, facts, company, host, apiKey: ai.apiKey, client: ai.client});

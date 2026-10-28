@@ -63,6 +63,9 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
   for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = '', asks = '', country = ''} of verdicts) {
     if (!labels.includes(label) || !VERDICTS.includes(verdict)) continue;
     const eligible = ASKS.includes(asks) && verdict !== 'consent' ? fromEligibility(asks, country, facts) : null;
+    // Why (28 Oct 2026, Gitar on #2322): rows that settle nothing (a permit past its date, or only for another country) keep the question asked; the generic
+    // fact path below would hide it and fill it from that row. The row and its value are kept, so a renewed permit judges it again (lib/question-verdicts.js).
+    if (eligible?.asked) { out.set(label, {reuse: verdict, covered_by: '', proposal: '', from: eligible.from, topic: topicOf(topic), fact: '', asks, row: eligible.row}); continue; }
     if (eligible) { out.set(label, {reuse: DETAILS, covered_by: '', proposal: eligible.value, from: eligible.from, topic: topicOf(topic), fact: eligible.fact, asks}); continue; }
     const answer = byQuestion.get(covered) || '', own = known.has(fact) && verdict !== 'consent' ? fact : '';   // a fact the AI invented keeps nothing
     out.set(label, {reuse: own ? DETAILS : verdict, covered_by: answer ? covered : '', proposal: answer ? String(value).trim() || answer : '', from: answer, topic: topicOf(topic), fact: own});
@@ -72,15 +75,17 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
 
 // Why (28 Oct 2026, owner, #2322): "authorised to work in X?", "eligible in the location you apply for?" and "need sponsorship?" are answered from Nationality and
 // the zones. The AI says only what the question asks and which country (any language); the code finds the row that covers that country and reads the answer
-// from its fixed status (renderer/work-eligibility.js settles). No country named: answered per job from the same rows. -> {fact, value} or null (still asked).
+// from its fixed status (renderer/work-eligibility.js settles). No country named: answered per job from the same rows. -> {fact, value, from}; {asked: true, row,
+// from} when Nationality or a zone is saved but settles nothing for that country; null when neither is saved (an older line may still answer it).
 function fromEligibility(asks, country, facts) {
   const {nationality, rows} = eligibilityOf(facts), code = String(country || '').trim().toUpperCase();
   if (!nationality && !rows.length) return null;
   if (!code) return {fact: nationality ? NATIONALITY : rows[0].label, value: '', from: ''};
-  if (!/^[A-Z]{2}$/.test(code)) return null;
+  if (!/^[A-Z]{2}$/.test(code)) return {asked: true, row: '', from: ''};
   // A row with no status (an older "allowed, B permit") answers nothing, so its zone or nationality may (#2322 review).
   const row = rowFor(code, facts.filter(fact => fact.kind !== 'per_country' || splitPermit(fact.value).status)), value = row ? settles(splitPermit(row.value), asks, code) : '';
-  return value ? {fact: row.label, value, from: String(facts.find(fact => fact.label === row.label)?.value ?? row.value)} : null;   // from: the saved line, to see it change
+  const from = row ? String(facts.find(fact => fact.label === row.label)?.value ?? row.value) : '';   // the saved line, to see it change
+  return value ? {fact: row.label, value, from} : {asked: true, row: row?.label || '', from};
 }
 
 // The older shape the fill-time collect uses: the Set of labels worth saving (reusable and not already covered).

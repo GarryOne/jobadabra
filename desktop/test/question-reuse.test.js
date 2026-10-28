@@ -100,7 +100,8 @@ test('many labels are judged in chunks; a reply cut at max_tokens leaves its lab
 test('classify: right to work and sponsorship come from Nationality and the zones, by the country the AI names', async () => {
   const facts = [{label: 'Nationality', value: 'Romania'}, {label: 'United Kingdom', value: 'yes, with a permit, valid until 2020-01-31', kind: 'per_country'},
     {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}];
-  const ask = (label, asks, country) => ({label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks, country});
+  // The fact the AI names for each, as a real model does (Gitar, #2322): the generic path must never answer an unsettled row from it.
+  const ask = (label, asks, country) => ({label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: country === 'GB' ? 'United Kingdom' : '', asks, country});
   const labels = ['Authorised to work in Germany?', 'Brauchen Sie ein Visum für Berlin?', 'Eligible in the US?', 'Sponsorship for the US?', 'Right to work in the UK?',
     'Eligible in the location you apply for?', 'Authorised in Mars?'];
   const got = await classify({labels, facts, client: fake([ask(labels[0], 'work_right', 'DE'), ask(labels[1], 'sponsorship', 'de'), ask(labels[2], 'work_right', 'US'),
@@ -110,7 +111,8 @@ test('classify: right to work and sponsorship come from Nationality and the zone
   assert.deepEqual(of(labels[1]), ['details', 'EU / EEA + Switzerland', 'No'], 'sponsorship is derived, in any language');
   assert.deepEqual(of(labels[2]), ['details', 'United States', 'No']);
   assert.deepEqual(of(labels[3]), ['details', 'United States', 'Yes']);
-  assert.equal(got.get(labels[4]).reuse, 'reusable', 'a permit past its date settles nothing: still asked');
+  assert.deepEqual([got.get(labels[4]).reuse, got.get(labels[4]).fact, got.get(labels[4]).proposal], ['reusable', '', ''], 'a permit past its date settles nothing: still asked, never filled from the row');
+  assert.deepEqual([got.get(labels[4]).row, got.get(labels[4]).from], ['United Kingdom', 'yes, with a permit, valid until 2020-01-31'], 'kept with its row: a renewed permit judges it again');
   assert.deepEqual(of(labels[5]), ['details', 'Nationality', ''], 'no country named: answered per job from the same rows');
   assert.equal(got.get(labels[6]).reuse, 'reusable', 'a code that is not ISO is never read');
 });

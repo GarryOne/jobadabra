@@ -12,8 +12,9 @@ const tabs = [...html.matchAll(/data-profile-tab="(\w+)"[^>]*>([^<]+)</g)].map(m
 const panels = [...html.matchAll(/id="([\w-]+)"[^>]*data-profile-panel="(\w+)"/g)].map(match => [match[1], match[2]]);
 const panelOf = id => panels.find(([each]) => each === id)?.[1];
 
-test('five tabs, CV first, then Your details; no Preferences tab (owner, 17 Oct 2026; 28 Oct 2026: Application answers is "What we learned")', () => {
-  assert.deepEqual(tabs, [['cv', 'CV'], ['details', 'Your details'], ['experience', 'Experience'], ['answers', 'What we learned'], ['letter', 'Cover letter']]);
+// Why (#2334, owner 28 Oct 2026): Your portrait is the sixth and last Profile tab (spec 2026-10-28-your-portrait-design.md: "its own Profile tab"); the tab list is the owner-approved order, so a new tab is added here on purpose, never by bumping a count.
+test('six tabs, CV first, then Your details, Your portrait last; no Preferences tab (owner, 17 Oct 2026; 28 Oct 2026: Application answers is "What we learned")', () => {
+  assert.deepEqual(tabs, [['cv', 'CV'], ['details', 'Your details'], ['experience', 'Experience'], ['answers', 'What we learned'], ['letter', 'Cover letter'], ['portrait', 'Your portrait']]);
 });
 
 test('the CV parts sit on CV, your details on Your details', () => {

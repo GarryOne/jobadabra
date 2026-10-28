@@ -14,7 +14,8 @@ import {writePrivate} from './private-file.js';
 import {WRITING_RULES} from '../shared/worker/writing-rules.js';
 
 const PRICE = {input: 2, output: 10};  // USD per million tokens
-const usd = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
+// USD cost of one response's usage ({input_tokens, output_tokens, billing}), rounded to a cent; 0 on a subscription or without usage. Shared by the letter and the portrait.
+export const usdOf = usage => (usage?.billing === 'subscription' ? 0 : Math.round(((usage?.input_tokens || 0) * priceOf(usage, PRICE).input + (usage?.output_tokens || 0) * priceOf(usage, PRICE).output) / 1e4) / 100);
 
 export const dir = storage => storage.path('cover-letter');
 const jsonPath = storage => path.join(dir(storage), 'letter.json');
@@ -73,7 +74,7 @@ export async function generate(storage, {apiKey, client = null, profile = '', an
   if (response.stop_reason === 'max_tokens') throw new Error('The letter was cut off; try again');
   const text = JSON.parse(response.content.find(block => block.type === 'text').text).letter.trim();
   if (!text) throw new Error('The letter came back empty; try again');
-  const cost = usd(response.usage);
+  const cost = usdOf(response.usage);
   write(storage, {text, status: 'draft', createdAt: new Date().toISOString(), model: MODEL, usd: cost, paidBy});
   fs.rmSync(pdfPath(storage), {force: true});
   return {text, usd: cost};

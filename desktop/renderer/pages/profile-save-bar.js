@@ -3,7 +3,7 @@
 // module can register without an import order. It sits in the page's bottom dock under the fold bar (#profile-dock: one sticky box, so neither covers the other). Leaving Profile with drafts asks (pages/settings.js settingsPage, nav.js guardLeave). Guarded by test/profile-page.test.js.
 import {pageSaveBar} from '../save-bar.js';
 
-export const PROFILE_TABS = {cv: 'CV', details: 'Your details', experience: 'Experience', answers: 'What we learned', letter: 'Cover letter'};
+export const PROFILE_TABS = {cv: 'CV', details: 'Your details', experience: 'Experience', answers: 'What we learned', letter: 'Cover letter', portrait: 'Your portrait'};
 const tabButton = key => document.querySelector(`[data-profile-tab="${key}"]`);
 let bar = null;
 export function profileBar() {

@@ -8,6 +8,7 @@ import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import * as md from '../lib/store/markdown-page.js';
+import {parse, render} from '../lib/portrait.js';
 import {fakeNotion} from './fake-notion.js';
 
 const plainCrypto = {encrypt: value => value, decrypt: value => value};
@@ -22,7 +23,7 @@ const ADAPTERS = {
   sqlite: () => ({store: store.openStore(storageWith({store: 'sqlite'}))}),
   notion: () => {
     const page = fakeNotion();
-    const storage = storageWith({store: 'notion', notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_ANSWERS_PAGE_ID: 'answers'}}, {NOTION_TOKEN: 'secret'});
+    const storage = storageWith({store: 'notion', notionIds: {NOTION_PROFILE_PAGE_ID: 'profile', NOTION_ANSWERS_PAGE_ID: 'answers', NOTION_PORTRAIT_PAGE: 'portrait'}}, {NOTION_TOKEN: 'secret'});
     return {store: store.openStore(storage, {fetcher: page.fetcher})};
   },
 };
@@ -45,6 +46,20 @@ for (const [name, make] of Object.entries(ADAPTERS)) {
     assert.deepEqual((await page.blocks()).map(b => b.text), ['📇 Contact details', 'Email: a@b.c', 'Notice period: 3 months']);
     assert.match(await page.text(), /Email: a@b\.c\nNotice period: 3 months/);
     assert.deepEqual((await page.outline()).map(item => item.text), ['📇 Contact details', 'Email: a@b.c', 'Notice period: 3 months']);
+  });
+
+  test(`${name}: the derived portrait is one text page that reads back with its evidence`, async () => {
+    const {store: opened} = make(), page = opened.page('portrait');
+    assert.deepEqual(await page.blocks(), []);
+    const written = {sections: [{key: 'short', title: 'In short', statements: [{text: 'You build platforms.', evidence: ['cv', 'learned:0']}]}],
+      evidence: new Map([['cv', {label: 'Your CV', tab: 'cv'}], ['learned:0', {label: 'Willing to travel', tab: 'answers'}]])};
+    await page.write(render(written, {date: '2026-10-28', hash: 'abc123'}));
+    const read = parse(await page.blocks());
+    assert.deepEqual([read.date, read.hash], ['2026-10-28', 'abc123']);
+    assert.deepEqual(read.sections[0].statements, [{text: 'You build platforms.', evidence: ['cv', 'learned:0']}]);
+    assert.deepEqual(read.evidence['learned:0'], {label: 'Willing to travel', tab: 'answers'});
+    await page.write(render({...written, sections: []}, {date: '2026-10-29', hash: 'def456'}));   // a rewrite replaces, never appends
+    assert.equal(parse(await page.blocks()).sections.length, 0);
   });
 
   test(`${name}: conditional removal compares the entire current value, not a shared label or substring`, async () => {

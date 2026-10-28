@@ -60,6 +60,12 @@
       "prompts": {
         "src/ai/place_triage.py": ["SYSTEM", "READ_SYSTEM", "VAGUE_SYSTEM"]
       }
+    },
+    "portrait": {
+      "live": false,
+      "about": "Your portrait (desktop/lib/portrait.js): second person, every statement cited, soft skills as observed behaviour never a type label, no demographic or protected facts, contradictions stated as neither (owner, 28 Oct 2026). Offline: fake-client cases check what is sent and what is kept",
+      "cases": ["desktop/test/portrait.test.js"],
+      "prompts": {"desktop/lib/portrait.js": ["INSTRUCTIONS"]}
     }
   }
 }

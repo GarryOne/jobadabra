@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="card-shell.css">
 <link rel="stylesheet" href="page-parts.css">
 <link rel="stylesheet" href="profile-page.css">
+<link rel="stylesheet" href="portrait-tab.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="roomy-cards.css">
 <link rel="stylesheet" href="strategy-cards.css">
@@ -1024,6 +1025,7 @@
             <button role="tab" data-profile-tab="experience">Experience</button>
             <button role="tab" data-profile-tab="answers">What we learned<span class="ui-pill tone-info tab-count" id="tab-count-answers" hidden></span></button>
             <button role="tab" data-profile-tab="letter">Cover letter</button>
+            <button role="tab" data-profile-tab="portrait">Your portrait</button>
           </div>
           <div class="setting cv-card" id="setting-cv" data-profile-panel="cv">
             <span class="file-tile"><i data-icon="file-text"></i></span>
@@ -1170,6 +1172,10 @@
               <span class="letter-busy-sparkles" aria-hidden="true"><i data-icon="sparkle"></i><i data-icon="sparkle"></i><i data-icon="sparkle"></i></span>
               <span class="ui-pill tone-info letter-busy-copy">Writing your cover letter…</span>
             </div>
+          </div>
+          <div id="setting-portrait" data-profile-panel="portrait" hidden>
+            <p class="muted small portrait-subtitle">How you come across, written by AI from everything we know. Updated as we learn.</p>
+            <div id="portrait-body"></div>
           </div>
           <div class="setting panel roomy" id="setting-answers" data-profile-panel="answers" hidden>
             <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job; each answer shows the forms it came from, and salary starts from your Strategy minimum. Confirm or change any answer.</p></div></div>

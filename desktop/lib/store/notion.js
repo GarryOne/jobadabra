@@ -10,11 +10,12 @@ export const CAPS = new Set([LINKS, CLOUD, FILES]);
 export const LABEL = 'Notion';   // what the window calls this store
 
 // Each text and its page id in settings.notionIds. Form knowledge is made beside the Profile on its first write (nothing writes it since PR B1; the store keeps the text).
-const PAGE_IDS = {profile: 'NOTION_PROFILE_PAGE_ID', answers: 'NOTION_ANSWERS_PAGE_ID', knowledge: 'NOTION_KNOWLEDGE_PAGE'};
+const PAGE_IDS = {profile: 'NOTION_PROFILE_PAGE_ID', answers: 'NOTION_ANSWERS_PAGE_ID', knowledge: 'NOTION_KNOWLEDGE_PAGE', portrait: 'NOTION_PORTRAIT_PAGE'};
 const MISSING = {
   profile: 'Connect Notion first: your contact details live in your Profile page.',
   answers: 'Connect Notion first: your questions live in the standard answers page.',
   knowledge: 'Connect Notion first: form knowledge lives there.',
+  portrait: 'Connect Notion first: your portrait lives there.',
 };
 const KNOWLEDGE_INTRO = 'What Jobadabra learned from your form fills, used by every later kit and fill. Fix or delete a line to change what it does.';
 
@@ -30,6 +31,7 @@ function item(block) {
   return each;
 }
 
+const PORTRAIT_INTRO = 'Written by Jobadabra from everything it knows about you. Read-only: it is rewritten as it learns, so correct a source, not this page.';
 const KNOWLEDGE_TITLE = '🧠 Form knowledge';   // the page's name in Notion (the store keeps the text; PR B1 retired its writer and readers)
 
 // The Knowledge page, made beside the Profile and remembered when missing; its id. Also before a move to Notion
@@ -42,6 +44,15 @@ export async function ensureKnowledgePage(storage, {fetcher} = {}) {
   return page;
 }
 
+// The Portrait page (derived text, one copy), made beside the Profile on its first write and remembered; its id.
+export async function ensurePortraitPage(storage, {fetcher} = {}) {
+  const ids = storage.settings().notionIds || {};
+  if (ids.NOTION_PORTRAIT_PAGE) return ids.NOTION_PORTRAIT_PAGE;
+  const page = await notion.ensurePage(storage.secret('NOTION_TOKEN'), ids.NOTION_PROFILE_PAGE_ID, '🪞 Your portrait', PORTRAIT_INTRO, fetcher);
+  storage.saveSettings({notionIds: {...(storage.settings().notionIds || {}), NOTION_PORTRAIT_PAGE: page}});
+  return page;
+}
+
 export function open(storage, {fetcher, cache} = {}) {
   const kept = cache === undefined ? undefined : {cache};   // tests turn the kept page trees on for a fake fetcher; the app leaves it to the real fetch
   const token = () => storage.secret('NOTION_TOKEN');
@@ -51,14 +62,15 @@ export function open(storage, {fetcher, cache} = {}) {
     if (!t || !connected) throw new Error(MISSING[name] || 'Connect Notion first.');
     return {token: t, page: ids()[PAGE_IDS[name]] || null};
   };
-  // The knowledge page is made on the first write, beside the Profile, and remembered.
+  // The knowledge and portrait pages are made on the first write, beside the Profile, and remembered.
+  const made = {knowledge: ensureKnowledgePage, portrait: ensurePortraitPage};
   const writable = async name => {
     const t = target(name);
-    if (t.page || name !== 'knowledge') {
+    if (t.page || !made[name]) {
       if (!t.page) throw new Error(MISSING[name]);
       return t;
     }
-    return {token: t.token, page: await ensureKnowledgePage(storage, {fetcher})};
+    return {token: t.token, page: await made[name](storage, {fetcher})};
   };
   const readable = name => {
     const t = target(name);

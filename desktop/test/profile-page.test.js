@@ -32,9 +32,9 @@ test('class: every way into Profile goes through settingsPage, and only settings
   assert.doesNotMatch(html, /data-settings-go="profile"/, 'Settings\' side menu does not list Profile (the main menu does)');
 });
 
-test('the Profile bar names the 5 tabs as the tab strip does', () => {
+test('the Profile bar names the 6 tabs as the tab strip does', () => {
   const tabs = [...page('profile').matchAll(/data-profile-tab="(\w+)"[^>]*>([^<]+)</g)].map(([, key, label]) => [key, label]);
-  assert.equal(tabs.length, 5);
+  assert.equal(tabs.length, 6);
   const bar = read('pages/profile-save-bar.js');
   for (const [key, label] of tabs) assert.match(bar, new RegExp(`${key}: '${label}'`), `${key} → ${label}`);
   assert.match(read('pages/settings.js'), /profileBar\(\)\.leave\(/, 'leaving Profile for another Settings page asks');

@@ -98,6 +98,7 @@ on:
       - 'tools/new-code-comments.mjs'
       - 'tools/why-changed.mjs'
       - 'tools/lanes-check.mjs'
+      - 'tools/e2e-reliability-check.mjs'
       - '.github/workflows/prompt-cases.yml'
       - 'src/ai/insights_text.py'
       - 'src/ai/mail_config.py'

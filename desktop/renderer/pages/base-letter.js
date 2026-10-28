@@ -11,22 +11,27 @@ import {reading} from '../contact-reading.js';
 import {swr} from '../swr.js';
 import {hintAfter} from '../own-key-hint.js';
 import {lastCost, usageAfter, usageBefore} from '../ai-engine-view.js';
+import {aiWriting} from '../ai-writing.js';
 
 let saved = {state: 'none', text: ''};   // the letter as stored: the buttons and the view follow what differs from it
 let draftPending = null; // one generation across clicks and wizard navigation; never spend twice for the same in-flight draft
 let writing = false;                     // "Write my own" pressed: the editor stays open on an empty letter
 let isReading = false;
+let drafting = false;                    // the AI is writing a draft: the pill says so, the kept letter shows faded under the strip (ai-writing.js)
 let draftSource = null;                 // the typed letter as a draft on Profile's one save bar
 let openAi = () => {};                   // Settings → Connections → AI, passed in by pages/profile.js (no import of the settings page here)
 
-// The state as a pill: neutral while none exists (owner, 18 Oct 2026: never a green dot for "not written").
-export function statePill(status) {
+// The state as a pill: neutral while none exists (owner, 18 Oct 2026: never a green dot for "not written"); Writing… while a draft is written.
+// Why (28 Oct 2026, owner's shot): the card said "Approved · Today 19:40" while a new draft was being written over it.
+export function statePill(status, {drafting: busy = false} = {}) {
+  if (busy) return pill('Writing…', 'info');
   if (status.state === 'approved') return pill(`Approved${status.approvedAt ? ` · ${runWhen(status.approvedAt)}` : ''}`, 'good');
   if (status.state === 'draft') return pill('Draft · approve to use it', 'warn');
   return pill('Not created');
 }
-// Which part shows: the empty state (two choices) or the editor. Reading shows the editor, its box a skeleton (contact-reading.js).
-export const showsEditor = (status, {writing: own = false, reading: busy = false, typed = ''} = {}) => busy || own || status.state !== 'none' || !!String(typed).trim();
+// Which part shows: the empty state (two choices) or the editor. Reading shows the editor, its box a skeleton (contact-reading.js); a first draft being
+// written shows it too, the letter's shape in skeleton lines under the strip (ai-writing.js).
+export const showsEditor = (status, {writing: own = false, reading: busy = false, typed = '', drafting: ai = false} = {}) => ai || busy || own || status.state !== 'none' || !!String(typed).trim();
 
 const usageLine = () => [usageBefore(shared.state?.settings, !!shared.state?.secrets?.ANTHROPIC_API_KEY), lastCost(saved)].filter(Boolean).join(' ');
 
@@ -40,12 +45,12 @@ function drawEmpty() {
   $('letter-empty').replaceChildren(box);
 }
 function paint() {
-  const editor = showsEditor(saved, {writing, reading: isReading, typed: $('letter-text').value});
+  const editor = showsEditor(saved, {writing, reading: isReading, typed: $('letter-text').value, drafting});
   show($('letter-editor'), editor);
   show($('letter-empty'), !editor);
   if (!editor) drawEmpty();
-  $('letter-state').replaceChildren(isReading ? pill('Reading…') : statePill(saved));
-  $('letter-draft').querySelector('span').textContent = saved.text ? 'Redraft with AI' : 'Draft with AI';
+  $('letter-state').replaceChildren(isReading ? pill('Reading…') : statePill(saved, {drafting}));
+  $('letter-draft').querySelector('span').textContent = drafting ? 'Writing…' : saved.text ? 'Redraft with AI' : 'Draft with AI';
   show($('letter-pdf'), !!saved.pdf);
   document.querySelectorAll('[data-letter-usage]').forEach(node => { node.textContent = usageLine(); });
   buttons();
@@ -53,7 +58,8 @@ function paint() {
 const typedChange = () => { const text = $('letter-text').value.trim(); return text && text !== (saved.text || '').trim() ? 1 : 0; };
 function buttons() {
   const text = $('letter-text').value.trim();
-  $('letter-approve').disabled = !text || (saved.state === 'approved' && saved.pdf && text === (saved.text || '').trim());
+  // Why (28 Oct 2026, code review): paint() runs mid-draft; Approve stays locked until the draft lands, or it would approve the old text under the new one.
+  $('letter-approve').disabled = drafting || !text || (saved.state === 'approved' && saved.pdf && text === (saved.text || '').trim());
   draftSource?.changed();
 }
 function showLetter(status) {
@@ -79,26 +85,37 @@ export async function loadLetter() {
   });
 }
 
-async function act(button, working, run, {cardBusy = false} = {}) {
+// One action at a time: its buttons locked, the pressed one with the shared spinner (components.css button[aria-busy]). A draft (drafts) shows the shared
+// AI-writing state over the kept letter (ai-writing.js) instead of a message; on failure the card is drawn again from the saved letter.
+async function act(button, working, run, {drafts = false} = {}) {
   const all = ['letter-draft', 'letter-start-ai', 'letter-approve', 'letter-pdf'].map($).filter(Boolean);
   all.forEach(each => { each.disabled = true; });
-  button.classList.add('busy');
-  const card = $('setting-letter'), overlay = $('letter-busy'), editor = $('letter-text');
+  const pressed = drafts ? $('letter-draft') : button;   // a first draft is asked from the empty state, which the editor replaces at once
+  pressed.setAttribute('aria-busy', 'true');
+  const editor = $('letter-text'), feedback = $('letter-feedback');
   const wasReadOnly = editor.readOnly;
-  if (cardBusy) {
-    card.setAttribute('aria-busy', 'true');
-    overlay.hidden = false;
-    overlay.querySelector('.letter-busy-copy').textContent = working;
-    editor.readOnly = true;
-  } else message('letter-message', working);
+  let stop = () => {};
   let result;
-  try { result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message})); }
+  // Why (28 Oct 2026, code review): the writing state starts inside the try, so a throw there still reaches the finally and never leaves the card locked.
+  try {
+    if (drafts) {
+      drafting = true;
+      editor.readOnly = true;
+      feedback.disabled = true;
+      message('letter-message', '');   // the last action's line ("Approved ✓ …") is not true while a new draft is written
+      paint();
+      const first = !editor.value.trim();
+      stop = aiWriting(editor, {title: first ? 'Writing your first draft' : 'Writing a new draft',
+        note: first ? 'From your CV, Profile and writing preferences.' : 'Your current letter stays until the new one is ready.'});
+    } else message('letter-message', working);
+    result = await Promise.resolve().then(run).catch(error => ({ok: false, error: error.message}));
+  } catch (error) { result = {ok: false, error: error.message}; }
   finally {
-    button.classList.remove('busy');
-    if (cardBusy) { card.removeAttribute('aria-busy'); overlay.hidden = true; editor.readOnly = wasReadOnly; }
+    pressed.removeAttribute('aria-busy');
+    if (drafts) { stop(); drafting = false; editor.readOnly = wasReadOnly; feedback.disabled = false; }
     all.forEach(each => { each.disabled = false; });
   }
-  if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); } else buttons();
+  if (result.ok) { showLetter(result); document.dispatchEvent(new Event('letter-updated')); } else paint();
   return result;
 }
 
@@ -107,7 +124,7 @@ async function draft(button) {
   const text = $('letter-text').value.trim();
   if (text && text !== (saved.text || '').trim() && !confirm('Replace the text you changed with a new draft?')) return;
   draftPending = (async () => {
-    const result = await act(button, 'Writing your cover letter…', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()), {cardBusy: true});
+    const result = await act(button, '', () => window.pilot.coverLetterDraft($('letter-feedback').value.trim()), {drafts: true});
     if (result.ok) $('letter-feedback').value = '';
     const used = result.ok ? usageAfter(result) : '';
     message('letter-message', result.ok ? `Here is a draft. Read it, change what you like, then approve.${used ? ` · ${used}` : ''}` : result.error, result.ok ? 'ok' : 'error');

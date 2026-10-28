@@ -114,7 +114,8 @@
 .summary-rows.doc-rows > :nth-child(n+3) { border-top: 1px solid var(--line); }
 .doc-rows > dt.is-top { align-items: flex-start; padding-top: var(--sp-4); }
 .doc-rows .doc-value { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); overflow: visible; }
-.doc-rows .doc-value > .letter-shown { flex: 1 1 100%; }
+.doc-rows .doc-value > .letter-shown, .doc-rows .doc-value > .ai-writing-strip, .doc-rows .doc-value > .ai-writing-frame { flex: 1 1 100%; }
+.doc-rows .doc-value > .ai-writing-strip { margin-bottom: 0; }   /* the row's own gap spaces it from the letter */
 .letter-shown { max-height: 240px; overflow: auto; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); }
 .letter-shown p { margin: 0 0 var(--sp-3); max-width: 72ch; }
 .letter-shown p:last-child { margin-bottom: 0; }

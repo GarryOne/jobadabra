@@ -67,7 +67,7 @@ export function install() {
   const body = new Element('body');
   globalThis.Node = Element;
   globalThis.Option = class extends Element { constructor(text = '', value = text) { super('option'); this.append(String(text)); this.value = String(value); } };
-  globalThis.document = {body, createElement: tag => new Element(tag), createElementNS: (_, tag) => new Element(tag), listeners: {},
+  globalThis.document = {body, createElement: tag => new Element(tag), createElementNS: (_, tag) => new Element(tag), createTextNode: text => new Text(String(text)), listeners: {},
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
     dispatchEvent(event) { for (const fn of this.listeners[event.type] || []) fn(event); return true; },
     getElementById: id => body.all().find(node => node.id === id) || null, querySelector: s => body.querySelector(s), querySelectorAll: s => body.querySelectorAll(s)};

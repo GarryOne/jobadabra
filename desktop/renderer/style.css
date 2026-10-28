@@ -2595,20 +2595,3 @@ details.qa-section { margin-top: var(--sp-3); }
 
 /* Profile → Cover letter → Base letter: no reserved line when nothing is said (the empty state is page-parts.js emptyState). */
 #setting-letter .letter-usage:empty, #setting-letter > .message:empty { display: none; }   /* no reserved line under the card when nothing is said */
-#setting-letter { position: relative; overflow: hidden; }
-.letter-card-busy { position: absolute; inset: 0; z-index: 5; display: grid; align-content: center; justify-items: center; gap: var(--sp-3);
-  padding: var(--card-pad); overflow: hidden; border-radius: inherit; background: transparent;
-  box-shadow: inset 0 0 0 1px var(--signal-edge); cursor: progress; pointer-events: auto; }
-.letter-card-busy::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 48%, var(--lit-glow), transparent 68%); animation: letter-aura 3.8s ease-in-out infinite; }
-.letter-busy-sparkles { display: flex; align-items: center; gap: var(--sp-4); color: var(--signal-edge); }
-.letter-busy-sparkles .icon { width: var(--fs-xl); height: var(--fs-xl); animation: letter-spark 2.8s ease-in-out infinite; }
-.letter-busy-sparkles .icon:nth-child(2) { color: var(--teal); animation-delay: -0.9s; }
-.letter-busy-sparkles .icon:nth-child(3) { animation-delay: -1.8s; }
-.letter-busy-copy { position: relative; padding: var(--sp-2) var(--sp-4); background: color-mix(in srgb, var(--surface) 88%, transparent); font-size: var(--fs-lg); font-weight: 600; text-align: center; }
-@keyframes letter-aura { 0%, 100% { opacity: .45; transform: scale(.96); } 50% { opacity: .9; transform: scale(1.02); } }
-@keyframes letter-spark { 0%, 100% { opacity: .55; transform: scale(.82) rotate(-8deg); } 50% { opacity: 1; transform: scale(1.08) rotate(8deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .letter-card-busy::before, .letter-busy-sparkles .icon { animation: none; }
-  .letter-card-busy::before { opacity: .2; }
-}

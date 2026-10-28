@@ -3,6 +3,7 @@ import {fillIcons, icon} from './icons.js';
 import {chipRow, kindsTable} from './gallery-kinds.js';
 import {cardSystem, pageBlocks, roomyCards} from './gallery-cards.js';
 import {cardHead, choiceCards, el, moreButton, notionBenefits, notionGate, numberStrip, pill, tag, tile, TONES} from './components.js';
+import {aiWriting} from './ai-writing.js';
 
 const root = document.getElementById('gallery');
 const section = (title, note, ...children) => {
@@ -63,6 +64,19 @@ section('Card shell', 'Read summary → quiet Edit (cardEdit) → editor in plac
 section('Roomy cards', 'roomy-cards.css + card-shell.js cardHead, readRows icons; page-parts.js summaryTiles divided (mockup 03): icon tile headers, every label on its own line over its value, chip text aligned with plain text, dividers full width. Strategy and Profile cards', roomyCards());
 section('Page blocks', 'page-parts.js: reviewList (pending first, done folded), emptyState (Not created + two actions), summaryTiles (icon, label, big value), referenceRow (From Your details + one link); shared-counts.js: one count for banner, chip and badge', pageBlocks());
 
+section('AI writing', 'aiWriting(box, {title, note}) from ai-writing.js: a strip with a live m:ss above a box the AI rewrites, its kept text faded under a slow sweep, skeleton lines when it is empty; returns stop(). The base letter and a job\'s letter', (() => {
+  const box = el('div', 'card');
+  box.style.display = 'grid';
+  box.style.gap = 'var(--sp-3)';
+  // Text panels, not textareas: a free text box here would count against text-fields-allowed.json (a gallery demo is no screen's input).
+  const panel = text => Object.assign(el('div', '', text), {style: 'white-space: pre-wrap; min-height: 90px; padding: var(--sp-3); background: var(--field); border: 1px solid var(--field-line); border-radius: var(--r-md);'});
+  const kept = panel('Dear hiring team,\n\nFour years of running dispatch in Lyon taught me that a plan is only as good as the morning it meets.');
+  const empty = panel('');
+  box.append(kept, empty);
+  aiWriting(kept, {title: 'Writing a new draft', note: 'Your current letter stays until the new one is ready.'});
+  aiWriting(empty, {title: 'Writing your first draft', note: 'From your CV, Profile and writing preferences.'});
+  return box;
+})());
 section('Lit panel', '.is-lit (also .card.is-lit, .panel.is-lit): dot grid, amber glow from the top-left, thin amber edge. The one thing on a page that says "start here"', (() => {
   const box = document.createElement('div');
   box.className = 'card is-lit';

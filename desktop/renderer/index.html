@@ -27,6 +27,7 @@
 <link rel="stylesheet" href="actions-layout.css">
 <link rel="stylesheet" href="magic.css">
 <link rel="stylesheet" href="find-card.css">
+<link rel="stylesheet" href="ai-writing.css">
 <link rel="stylesheet" href="reports-searches.css">
 <link rel="stylesheet" href="activity-drawer.css">
 <link rel="stylesheet" href="runs-tab.css">
@@ -1133,15 +1134,11 @@
               <div class="inline">
                 <button type="button" class="secondary with-icon" id="letter-draft" data-wand><i data-icon="refresh"></i><span>Redraft with AI</span></button>
                 <button type="button" class="primary" id="letter-approve" disabled>Approve &amp; make PDF</button>
-                <button type="button" class="link with-icon" id="letter-pdf" hidden><i data-icon="eye"></i><span>Open PDF</span></button>
+                <button type="button" class="secondary with-icon" id="letter-pdf" hidden><i data-icon="eye"></i><span>Open PDF</span></button>
               </div>
               <p class="muted small letter-usage" data-letter-usage></p>
             </div>
             <p class="message" id="letter-message"></p>
-            <div class="letter-card-busy" id="letter-busy" hidden role="status" aria-live="polite" aria-atomic="true" aria-label="Cover letter draft status">
-              <span class="letter-busy-sparkles" aria-hidden="true"><i data-icon="sparkle"></i><i data-icon="sparkle"></i><i data-icon="sparkle"></i></span>
-              <span class="ui-pill tone-info letter-busy-copy">Writing your cover letter…</span>
-            </div>
           </div>
           <div id="setting-portrait" data-profile-panel="portrait" hidden>
             <p class="muted small portrait-subtitle">How you come across, written by AI from everything we know. Updated as we learn.</p>

@@ -40,11 +40,26 @@ export async function capReached({env = process.env, fetchImpl = fetch, now = Da
   return neurons == null ? {capped: true, neurons: null, unreadable: true} : {capped: neurons >= capOf(env), neurons};
 }
 
-// The line the PR verdict reads (grey: <suite> (<reason>)), and the file kept with the suite's artifacts.
+// The caps this process has hit and the steps it skipped for them: one list, written to ai-capped.json (the beta and release gates read it as "not run").
+let fired = null;
+const skipped = [];
+
+// The line for the log, and the file kept with the suite's artifacts. Marks that a live ask was refused since the runner last looked (takeCapped).
 export function noteCapped(neurons, env = process.env) {
+  fired = {neurons};
   const suite = env.E2E_SUITE || env.E2E_STEPS_SUITE || 'e2e';
-  console.log(`grey: ${suite} (${neurons == null ? 'AI capped: neuron count unreadable, set CI_CF_ANALYTICS_TOKEN (Account Analytics: Read)' : `AI capped: ${neurons} of ${capOf(env)} neurons today`})`);
+  console.log(`ai-capped: ${suite} (${neurons == null ? 'neuron count unreadable, set CI_CF_ANALYTICS_TOKEN (Account Analytics: Read)' : `${neurons} of ${capOf(env)} neurons today`})`);
+  writeNote(neurons, env);
+}
+
+// -> {neurons} when a live ask was refused for the cap since the last call (and clears it), else null. The runner calls it before a step and in its catch.
+export function takeCapped() { const was = fired; fired = null; return was; }
+
+// The runner skipped `name` because of the cap (never failed, never passed: owner/fl 28 Oct 2026). Counts it and rewrites ai-capped.json.
+export function skipStepForCap(name, neurons, env = process.env) { skipped.push(name); console.log(`- ${name}: skipped (AI capped; ${skipped.length} step(s) skipped in this run)`); writeNote(neurons, env); }
+
+function writeNote(neurons, env) {
   try {
-    if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), at: new Date().toISOString()})); }
+    if (env.E2E_ARTIFACTS) { fs.mkdirSync(env.E2E_ARTIFACTS, {recursive: true}); fs.writeFileSync(path.join(env.E2E_ARTIFACTS, 'ai-capped.json'), JSON.stringify({neurons, cap: capOf(env), skipped: skipped.length, steps: skipped, at: new Date().toISOString()})); }
   } catch { /* a note never breaks the run */ }
 }

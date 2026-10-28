@@ -1,7 +1,8 @@
 // The day's $1 cap on CI's Workers AI (lib/ai-cap.mjs): over it a live Free AI ask is refused and named grey; under it, unreadable or not Free AI, nothing changes.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CAP_NEURONS, capMessage, capReached, noteCapped, resetCap} from '../lib/ai-cap.mjs';
+import {CAP_NEURONS, capMessage, capReached, noteCapped, resetCap, takeCapped} from '../lib/ai-cap.mjs';
+import {createRunner} from '../lib/runner.mjs';
 import {askFree} from '../lib/review-free.mjs';
 import {startAiProxy} from '../lib/ai-proxy.mjs';
 
@@ -30,7 +31,9 @@ test('an unreadable count fails closed, with the cause and the fix in the grey l
   const lines = [], log = console.log;
   console.log = line => lines.push(line);
   try { noteCapped(null, {E2E_SUITE: 'quality'}); } finally { console.log = log; }
-  assert.match(lines[0], /^grey: quality \(AI capped: neuron count unreadable, set CI_CF_ANALYTICS_TOKEN/);
+  assert.match(lines[0], /^ai-capped: quality \(neuron count unreadable, set CI_CF_ANALYTICS_TOKEN/);
+  assert.equal(takeCapped().neurons, null);
+  assert.equal(takeCapped(), null, 'taken once');
 });
 
 test('the screenshot review is refused past the cap and spends nothing', async () => {
@@ -57,4 +60,26 @@ test('the app\'s proxy on Free AI answers 503 ai-capped for a question replay ca
     assert.match((await answer.json()).error.message, /^ai-capped:/);
     assert.equal(forwarded, 0, 'nothing went on to the relay');
   } finally { globalThis.fetch = real; await proxy.close(); delete process.env.CI_CF_ANALYTICS_TOKEN; delete process.env.CI_FREE_AI_CF_ACCOUNT_ID; delete process.env.E2E_SUITE; }
+});
+
+test('a step the cap refused is skipped with its cause, counted, and the suite goes on; the nightly and beta fail it instead', async () => {
+  const quiet = console.log;
+  console.log = () => {};
+  try {
+    const runner = createRunner(() => null, {keepGoing: false});
+    await runner.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
+    const ran = [];
+    await runner.run('next', async () => { ran.push('next'); });
+    assert.deepEqual(runner.results.map(item => item.status), ['skipped', 'passed']);
+    assert.equal(runner.results[0].aiCapped, true);
+    assert.match(runner.results[0].note, /^ai-capped:/);
+    assert.deepEqual(ran, ['next']);
+    assert.equal(runner.summary(), 0, 'skipped is neither passed nor failed');
+    process.env.E2E_FULL = '1';
+    const full = createRunner(() => null, {keepGoing: true});
+    await full.run('asks the AI', async () => { noteCapped(CAP_NEURONS + 1); throw new Error('the AI said 503'); });
+    assert.equal(full.results[0].status, 'failed', 'a release never approves with its AI steps unrun');
+    assert.equal(full.summary(), 1);
+    await runner.run('plain failure', async () => { throw new Error('boom'); }).then(() => assert.fail('a failure with no cap behind it is still red'), error => assert.equal(error.message, 'boom'));
+  } finally { console.log = quiet; delete process.env.E2E_FULL; }
 });

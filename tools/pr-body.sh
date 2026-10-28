@@ -62,9 +62,12 @@ fact() {   # emoji, label, trailer key
 }
 fact '🎯' 'Pool row' Pool-row; fact '🪜' 'Rung' Rung; fact '🧪' 'Fixture' Fixture; fact '🔧' 'Fix of' Fix-commit; fact '📌' 'Pins' Recorded-pins
 fact '📼' 'No recorded page' Recorded-unneeded; fact '🐞' 'E2E issue' E2E-issue
+fact '🧪' 'Expectation changed by' Expect-changed-by; fact '🧪' 'Test was wrong' Test-was-wrong
+fact '🔧' 'Harness job' Harness-job; fact '🔴' 'Backbone red' Fixes-backbone-red
 if [ -n "$facts" ]; then printf '\n---\n\n### 🧾 Facts\n\n| | |\n|---|---|\n%s\n' "$facts"; fi
 printf '\n---\n\n'
 count="$(git rev-list --count "$base"..HEAD)"
 printf '<details><summary>📄 The commit message%s</summary>\n\n' "$([ "$count" -gt 1 ] && echo "s ($count)")"
 git log --reverse --format='#### %s%n%n%b' "$base"..HEAD | grep -v '^Co-Authored-By:'
-printf '</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n'
+# Why (28 Oct 2026, owner): Codex sessions must identify their actual model and session in the PR footer.
+printf '</details>\n\n%s\n' "${SHIP_ATTRIBUTION:-🤖 Generated with [Claude Code](https://claude.com/claude-code)}"

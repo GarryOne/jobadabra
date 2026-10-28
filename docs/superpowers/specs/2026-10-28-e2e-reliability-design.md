@@ -94,7 +94,7 @@ backbone test to a tolerant lane, carries one of:
 Without one the PR cannot go green. A real fix in product code leaves the test untouched and never meets this rule. `5395279` ("allowance for model noise
 (1 in 9)") is the case it refuses.
 
-**F · The plumbing brake.** Every workflow and e2e harness module carries one `Job:` line naming which of the design's jobs it does (run the backbone, serve
+**F · The plumbing brake.** Every e2e workflow (the list in `tools/e2e-reliability-check.mjs`; label, mail and site workflows have no e2e job) and e2e harness module carries one `Job:` line naming which of the design's jobs it does (run the backbone, serve
 stored answers, wait on state, pick the suites, run tolerant suites as rates, keep the scorecard, report health). A harness PR carries `Harness-job: <job>`
 or `Fixes-backbone-red: <run>` (a backbone red seen twice on the same commit). A PR that answers a tolerant result, a red already gone, or names no job cannot
 go green. Legitimate plumbing (a runner image, a new suite) names its job.
@@ -175,8 +175,8 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 11 | Plan checklist where the progress tool reads it | 0 | ✅ #2379 |
 | 12 | A test app ends with its runner | 7 | ✅ #2384 |
 | 13 | Rule E on lane entries | 2 | ✅ #2398 |
-| 14 | Renderer class tests on push | 9 | 🔨 this PR |
-| 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | push-checks session |
+| 14 | Renderer class tests on push | 9 | ✅ #2400 |
+| 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | 🔨 #2419 |
 | 16 | Health greys: AI credit, runner, install | 2 | ✅ #2415 |
 | 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | 🔨 #2421 |
 | 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
@@ -219,8 +219,8 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue. The tool is built and dry-run by default (`tools/suspend-flip.mjs`, test `desktop/e2e/test/suspend-flip.test.mjs`); this box is ticked when a workflow calls it after a re-run.
 
 ### 3. Expectation rule and plumbing brake
-- [ ] Rule E: a PR that changes what a backbone test expects carries its citation (mechanical check plus `.gitar/review/e2e-reliability.md`).
-- [ ] Rule F: a `Job:` line on every workflow and e2e lib module; `Harness-job:` or `Fixes-backbone-red:` on a harness PR.
+- [x] Rule E: a PR that changes what a backbone test expects carries its citation (mechanical check plus `.gitar/review/e2e-reliability.md`). (proof: desktop/test/e2e-reliability-check.test.js)
+- [x] Rule F: a `Job:` line on new/changed workflows and e2e harness modules; `Harness-job:` or `Fixes-backbone-red:` on a harness PR; untouched inventory stays in step 10. (proof: desktop/test/e2e-reliability-check.test.js)
 
 ### 4. quality cut at the seam
 - [ ] Stored answers keyed by question in the backbone, not by request hash; no live AI call in a backbone run (asserted by a harness test).

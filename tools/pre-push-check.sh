@@ -196,6 +196,10 @@ fi
 if command -v node >/dev/null && [ -f "$repo/tools/prompt-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || { echo "Push blocked: $promptcases" >&2; exit 2; }
 fi
+# Rules E/F: expectation edits cite their reason; changed harness modules name their job (push and CI use this same fast gate).
+if command -v node >/dev/null && [ -f "$repo/tools/e2e-reliability-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  reliability="$(cd "$repo" && timed "e2e reliability" node tools/e2e-reliability-check.mjs --base origin/main 2>&1)" || { echo "Push blocked: $reliability" >&2; exit 2; }
+fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"

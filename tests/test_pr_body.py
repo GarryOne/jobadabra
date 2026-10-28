@@ -32,6 +32,19 @@ class PrBodyTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return result.stdout
 
+    def test_caller_attribution_is_preserved_at_the_end(self):
+        attribution = '🤖 Generated with Codex (GPT-6.1 Sol), session pc for a8'
+        result = subprocess.run(['bash', str(ROOT / 'tools' / 'pr-body.sh'), self.base], cwd=self.repo,
+                                env={**os.environ, 'SHIP_ATTRIBUTION': attribution}, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.rstrip().endswith(attribution), result.stdout)
+
+    def test_reliability_citations_are_visible_above_the_fold(self):
+        git(self.repo, 'commit', '--allow-empty', '-qm', 'Cite the test\n\nTest-was-wrong: fixture has three rows\nHarness-job: run the backbone')
+        text = self.body()
+        self.assertLess(text.index('| 🧪 Test was wrong | fixture has three rows |'), text.index('<details>'))
+        self.assertLess(text.index('| 🔧 Harness job | run the backbone |'), text.index('<details>'))
+
     def test_the_summary_comes_first_and_the_commit_message_is_folded(self):
         summary = self.tmp / 'summary.md'
         summary.write_text('### ✅ Ocado: menus picked by meaning\n\n- **Why:** the 11 Oct pool run left 3 menus empty\n- **Impact:** 3 more required menus filled on Ocado-like forms\n\n**Unblocks:** the next PR\n\n| Area | Impact | How |\n|---|---|---|\n| Real users | ⚪ Low | x |\n| Form filling | — None | x |\n| Admin data accuracy | — None | x |\n| Offline replays | — None | x |\n| Tests & harness | 🟢 High | x |\n| Development speed | ⚪ Low | x |\n| Cost | — None | x |\n\nNo visual: a one-line fix\n\n| | Before | After |\n|---|---|---|\n| filled | 8 | 11 |\n')

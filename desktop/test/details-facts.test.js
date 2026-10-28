@@ -9,6 +9,8 @@ import {createStorage} from '../lib/storage.js';
 import {registerDetailsFactsHandlers} from '../lib/details-facts-handlers.js';
 import * as sections from '../lib/profile-sections.js';
 import * as store from '../lib/store/index.js';
+import {openShown} from '../lib/question-lists.js';
+import {keyOf} from '../renderer/question-filter.js';
 
 const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 
@@ -56,7 +58,7 @@ test('handlers: once the move ran, opening Your details never moves again for th
 
 // PR B2c (owner 28 Oct 2026, What we learned: "nothing deleted", fact lines go to their home): an answer saved after the first move and judged a Your
 // details fact (lib/question-lists.js factsWaiting) is moved on the next open, by the same move; then that set is done.
-test('handlers: a fact answer saved after the move goes to Your details on the next open, word for word, once', async () => {
+test('a fact answer saved after the move: What we learned reads it, Your details\' next open moves it word for word, once', async () => {
   const calls = [];
   const ai = () => ({client: {messages: {create: async request => {
     const items = JSON.parse(request.messages[0].content);
@@ -64,11 +66,14 @@ test('handlers: a fact answer saved after the move goes to Your details on the n
     return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id, line}) => ({id, home: /notice/i.test(line) ? 'availability' : 'stay', topic: 'x', clarity: 'clear'}))})}]};
   }}}});
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
-  storage.saveSettings({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z', factsWaiting: 'notice period'});
+  // The AI's verdict on the saved answer (lib/question-verdicts.js, its own call): a Your details fact.
+  storage.saveSettings({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z', questionVerdicts: {[keyOf('Notice period')]: {reuse: 'details', fact: 'Notice period', question: 'Notice period', asked: 0}}});
   const handlers = {}, logged = [];
   registerDetailsFactsHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = (...args) => fn(null, ...args); }}, storage, DEMO: false,
     connected: () => true, needsNotion: () => null, log: (...line) => logged.push(line), ai, copy: async () => ({dir: 'copy'})});
   await store.openStore(storage).page('answers').write('## Common questions\n| Question | Answer |\n|---|---|\n| Notice period | 3 months |\n| How did you hear about us? | LinkedIn |\n');
+  await openShown(storage, {ai: {}});   // What we learned reads the answers: the fact waits for the move (Gitar on #2340: the producer, not a seeded setting)
+  assert.equal(storage.settings().factsWaiting, keyOf('Notice period'));
   const got = await handlers.detailsFacts();
   assert.deepEqual(got.sections.availability, [{label: 'Notice period', value: '3 months'}]);
   const answers = await store.openStore(storage).page('answers').text();

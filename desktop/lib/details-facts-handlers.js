@@ -1,5 +1,5 @@
-// Settings → Profile → Your details' fact sections over IPC (lib/profile-sections.js): read them (the first time, the facts move in once:
-// lib/profile-move.js, copy and backup first), save them with Contact, and the owner's pick for "Which is right?". Registered by
+// Settings → Profile → Your details' fact sections over IPC (lib/profile-sections.js): read them (the facts move in on the first open and again
+// when new fact answers wait: lib/profile-move.js moveDue, copy and backup first), save them with Contact, and the owner's pick for "Which is right?". Registered by
 // lib/contact-handlers.js. Guarded by test/details-facts.test.js and test/ipc.test.js.
 import * as sections from './profile-sections.js';
 import {move, moveDue, openConflicts, resolve} from './profile-move.js';

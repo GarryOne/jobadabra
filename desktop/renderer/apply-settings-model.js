@@ -30,7 +30,7 @@ export const ANSWERS_TEXT = {
 };
 
 // Full automation's checks: each one the person's to change (CLAUDE.md "The app submits only in Full automation").
-export const AUTO_DEFAULTS = Object.freeze({minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 10});
+export const AUTO_DEFAULTS = Object.freeze({minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 2});   // Why (2026-10-28, owner: "Why 10 minutes? Why not 1 minute?", chose 2): the wait is a review window before an irreversible Submit, not bot evasion; long enough to see the notice and press Stop, short enough for a batch; the person's to change
 const LIMITS = {minFit: [0, 100], perDay: [1, 200], perEmployer: [1, 20], waitMin: [0, 120]};
 const clamp = (key, value) => {
   const [low, high] = LIMITS[key], n = Math.round(Number(value));

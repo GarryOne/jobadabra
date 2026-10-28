@@ -11,8 +11,12 @@ import {ensureSetUp} from '../lib/seed.mjs';
 
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
-export const stepNeeds = {'in-app hold': ['five more Up next', 'removes it for good'], 'removes it for good': ['five more Up next'],
-  'Edit target': ['Focus finishes loading']};   // the app may open on Jobs: a re-run of the step alone found no Edit target (#2338)
+// Why (#2338, #2350): a step that reads Focus without opening it needs the step that opens it; the app may open on Jobs (a re-run of "Edit target"
+// alone found no Edit target, #2338), and picked alone on a PR, "Up next" read a Focus drawn mid-seed (#2350).
+const OPENS_FOCUS = 'Focus finishes loading';
+const READS_OPEN_FOCUS = ['"Up next" lists', 'every number on Focus', 'Suggestions lead with', 'clicking an Up next', '"Edit target"', 'marking an action Done', 'Skip dismisses', 'a fresh account'];
+export const stepNeeds = {...Object.fromEntries(READS_OPEN_FOCUS.map(step => [step, [OPENS_FOCUS]])),
+  'in-app hold': ['five more Up next', 'removes it for good'], 'removes it for good': ['five more Up next']};
 export const name = 'focus';
 // Two suites from this file (6 Oct 2026, under 5 minutes each): `focus` (lists, numbers, target, Done, Skip, hand edits, a fresh account) and `focusdismiss`
 // (suites/focusdismiss.mjs: the five ways to dismiss a card, the hold, Dismiss in process), each on its own real Notion page. `focus` moves to the in-memory Notion next.

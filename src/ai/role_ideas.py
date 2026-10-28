@@ -2,7 +2,8 @@
 titles ("social media", "graphic designer"), which did not fit the owner. Here Claude reads the Profile and the search's role words and
 proposes up to MAX_IDEAS neighbouring roles this person could do, each with the word to search for (in the language jobs in their places use);
 each is counted in the titles of their places that the role words miss (src/coverage.py missed_titles). At most once a day, kept in
-data/role_ideas.json; ideas the person set aside are never proposed again.
+data/role_ideas.json; ideas the person set aside (their Not true answer keeps the words: src/suggestions.py set_aside) are never proposed
+or shown again.
 
 What Claude sees: the Profile text, the role words, places and words ruled out; never the jobs or employers.
 """
@@ -133,6 +134,25 @@ def ideas(profile, search, titles, set_aside=(), client=None, today=None):
             print(f'Roles: {providers.who()} could not count them ({reason(error)}); counting the title word', flush=True)
             detail('role counts', error)
             counted = {}
-    counts = counted.get('counts') or {}
+    return _counted(shown, counted.get('counts') or {}, titles)
+
+
+def _counted(shown, counts, titles):
     out = [{**i, 'count': counts[i['word']] if i['word'] in counts else count(i['word'], titles)} for i in shown]
     return sorted(out, key=lambda i: -i['count'])
+
+
+def search_key(search):
+    """Which search an answer belongs to (its role words): Focus keeps a Not now or Not true on role ideas against it (src/suggestions_search.py)."""
+    return _key(search)
+
+
+def kept(search, titles, set_aside=()):
+    """The ideas kept for this search, as ideas() last counted them, without asking Claude: Focus's Suggestions never wait for an AI (insights
+    PR 1b). The answer of a search whose roles only grew since (an idea added) still holds; a word set aside is never shown.
+    -> [{role, word, why, count}], most openings first."""
+    data = _load()
+    have = {str(w).lower() for w in search.get('role_keywords') or []} | {str(w).lower() for w in set_aside}
+    found = data.get(_key(search)) or next((entry for entry in data.values() if entry.get('roles') is not None and set(entry['roles']) <= have), {})
+    shown = [i for i in found.get('ideas') or [] if i.get('word') and i['word'].lower() not in have]
+    return _counted(shown, (found.get('counted') or {}).get('counts') or {}, titles)

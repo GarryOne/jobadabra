@@ -102,5 +102,11 @@
   "matched": 3,
   "pending": 14,
   "last_scout": "2026-10-06T20:00:00+00:00"
+ },
+ "keys": {
+  "places": "places:france",
+  "filters": "filters:\\bsenior\\b",
+  "visits": "visits:https://jobs.coop.ch",
+  "foryou": "foryou:helvetia studios"
  }
 }

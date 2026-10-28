@@ -51,7 +51,7 @@ export function registerReportsHandlers({ipcMain, storage, DEMO, here, log, call
   ipcMain.handle('suggestionAnswer', async (_, entry, state) => {
     if (DEMO) return {ok: ANSWERS.includes(state)};
     try {
-      const done = await answer(storage, {key: entry?.key, title: entry?.title}, state, {call});
+      const done = await answer(storage, {key: entry?.key, title: entry?.title, aside: entry?.aside}, state, {call});
       log('reports', done.ok ? 'suggestion answer saved' : 'suggestion answer refused', {state: String(state)});
       return done;
     } catch (error) {

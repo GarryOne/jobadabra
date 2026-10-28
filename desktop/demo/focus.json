@@ -381,6 +381,137 @@
         "Not now",
         "Not true"
       ]
+    },
+    {
+      "kind": "places",
+      "home": "strategy",
+      "topic": "search",
+      "strength": 60,
+      "source": "Search strategy",
+      "title": "Add France to your places",
+      "detail": "5 matching roles outside your places",
+      "evidence": [
+        "France: 5 open roles, e.g. Vendeur, Annemasse"
+      ],
+      "actions": [
+        {
+          "label": "Add France",
+          "kind": "place",
+          "value": "France",
+          "do": "change_search"
+        }
+      ],
+      "key": "places:france",
+      "row_id": "",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
+    },
+    {
+      "kind": "ideas",
+      "home": "strategy",
+      "topic": "search",
+      "strength": 58,
+      "source": "Search strategy",
+      "title": "Add Cashier to your roles",
+      "detail": "6 openings now in your places · and 2 more roles",
+      "evidence": [
+        "Cashier: Retail sales experience in a camera shop (6 openings)",
+        "Visual merchandiser: Eye for images plus retail experience (3 openings)",
+        "Image retoucher: Strong Photoshop and Lightroom retouching (2 openings)",
+        "Photo lab assistant: Camera shop background (0 openings)"
+      ],
+      "actions": [
+        {
+          "label": "Add role",
+          "kind": "role",
+          "value": "caissier",
+          "do": "change_search"
+        },
+        {
+          "label": "See all 4",
+          "do": "see_all",
+          "row": "ideas"
+        }
+      ],
+      "key": "ideas:demo",
+      "row_id": "",
+      "answers": [
+        "Not now",
+        "Not true"
+      ],
+      "aside": [
+        "caissier",
+        "merchandiser",
+        "retouche",
+        "laboratoire photo"
+      ]
+    },
+    {
+      "kind": "filters",
+      "home": "strategy",
+      "topic": "search",
+      "strength": 54,
+      "source": "Search strategy",
+      "title": "2 of your filters hide 13 matching jobs",
+      "detail": "Titles with \"senior\" · jobs requiring English",
+      "evidence": [
+        "Titles with \"senior\": 4 jobs",
+        "jobs requiring English: 9 jobs"
+      ],
+      "actions": [
+        {
+          "label": "Remove \"senior\"",
+          "kind": "exclude",
+          "value": "\\bsenior\\b",
+          "do": "change_search"
+        },
+        {
+          "label": "See both",
+          "do": "see_all",
+          "row": "filters"
+        }
+      ],
+      "key": "filters:\\bsenior\\b",
+      "row_id": "",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
+    },
+    {
+      "kind": "visits",
+      "home": "strategy",
+      "topic": "search",
+      "strength": 50,
+      "source": "Search strategy",
+      "title": "3 sites only you can open",
+      "detail": "Coop · Indeed · LinkedIn",
+      "evidence": [
+        "Coop: refuses automated visitors",
+        "Indeed: no way in but your own visit",
+        "LinkedIn: no way in but your own visit"
+      ],
+      "actions": [
+        {
+          "label": "Read Coop",
+          "kind": "visit",
+          "value": "https://jobs.coop.ch",
+          "do": "read_site"
+        },
+        {
+          "label": "See all 3",
+          "do": "see_all",
+          "row": "visits"
+        }
+      ],
+      "key": "visits:https://jobs.coop.ch",
+      "row_id": "",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
     }
   ],
   "summary": "Reply to recruiters first, then review ready applications.",
@@ -453,5 +584,6 @@
         }
       ]
     }
-  }
+  },
+  "suggestions_hidden": []
 }

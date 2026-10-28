@@ -10,6 +10,16 @@ test('a chosen step brings its needs, transitively, and nothing else', () => {
   assert.deepEqual(wantedWords(['palette'], needs), ['palette']);
 });
 
+test('a Focus step picked alone brings the step that opens Focus, unless it opens a page itself (#2350: "Up next" read a Focus drawn mid-seed)', async () => {
+  const {stepNeeds} = await import('../suites/focus.mjs');
+  const source = fs.readFileSync(new URL('../suites/focus.mjs', import.meta.url), 'utf8');
+  const names = [...source.matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(match => match[1].replace(/\\'/g, "'"));
+  const opensItself = ['a search with applications', 'Focus finishes loading', 'five more Up next', 'once the in-app hold', 'Dismiss on a job in process', 'rows edited by hand', 'Focus renders without layout problems'];
+  const reads = names.filter(name => !opensItself.some(words => name.startsWith(words)));
+  assert.ok(reads.length >= 8, `found ${reads.length} Focus steps that read the open page`);
+  for (const name of reads) assert.ok(wantedWords([name], stepNeeds).includes('focus finishes loading'), `"${name.slice(0, 60)}" picked alone reads a Focus nobody opened`);
+});
+
 test('every step a suite declares as a need, or as needing one, is in that suite', async () => {
   const dir = new URL('../suites/', import.meta.url);
   for (const file of fs.readdirSync(dir).filter(name => name.endsWith('.mjs'))) {

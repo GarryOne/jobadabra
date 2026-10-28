@@ -65,10 +65,11 @@ export async function run(ctx) {
       if (await page.locator('#strategy-sources').count()) throw new Error('the job sources row is drawn although key sources are not offered');
     });
 
-    await ctx.run('⋯ "Hide until the next search" hides the employers row, records it, and it stays hidden on the next visit', async () => {
+    // Insights PR 1b (owner, 28 Oct 2026): "Hide until the next search" became Not now (14 days) / Not true, the answer every suggestion takes.
+    await ctx.run('⋯ Not now hides the employers row, records it, and it stays hidden on the next visit', async () => {
       await page.click('#strategy-foryou .ui-more');
-      await page.getByRole('menuitem', {name: 'Hide until the next search'}).click();
-      if (await page.locator('#strategy-foryou:visible').count()) throw new Error('still shown after "Hide until the next search"');
+      await page.getByRole('menuitem', {name: 'Not now'}).click();
+      if (await page.locator('#strategy-foryou:visible').count()) throw new Error('still shown after "Not now"');
       if (!await waitFor(async () => advice(profile).some(line => /dismissed employer on strategy/.test(line)))) throw new Error('no "dismissed employer" in app.log');
       await page.click('.nav[data-view=focus]');
       await page.click('.nav[data-view=strategy]');
@@ -130,12 +131,37 @@ export async function run(ctx) {
       if (!await waitFor(() => next.count().then(n => n > 0), 8000)) throw new Error(`no Find jobs in the pop-up: ${await text(page, '#toasts')}`);
     });
 
+    // Insights PR 1b (owner, 28 Oct 2026): Strategy's search rows also on Focus, the top option in one press and See all for the rest; one answer
+    // for both places (the row's key in the store; held in this window in the demo).
+    await ctx.run('Focus offers Strategy\'s search rows: the top option in one press, See both opens that row on Strategy, Not now hides it there too', async () => {
+      await page.click('.nav[data-view=focus]');
+      const row = kind => `#focus-suggestions-list .focus-item[data-suggestion="${kind}"]`;
+      const all = page.locator('#focus-suggestions-all');
+      if (!await waitFor(() => all.isVisible(), 15000)) throw new Error(`Focus has no Show all: ${await text(page, '#focus-suggestions')}`);
+      if (/Show all/.test(await all.innerText())) await all.click();
+      if (!await waitFor(() => page.locator(row('filters')).count().then(n => n > 0), 15000)) throw new Error(`no search rows on Focus: ${await text(page, '#focus-suggestions-list')}`);
+      const buttons = kind => page.locator(`${row(kind)} .focus-actions > button:not(.ui-more)`).allInnerTexts();
+      const places = await buttons('places'), filters = await buttons('filters');
+      if (places[0] !== 'Add France') throw new Error(`the places row offers ${JSON.stringify(places)}, not "Add France" in one press`);
+      if (JSON.stringify(filters) !== JSON.stringify(['Remove "senior"', 'See both'])) throw new Error(`the filters row offers ${JSON.stringify(filters)}`);
+      await page.locator(`${row('filters')} .focus-actions > button`, {hasText: 'See both'}).click();
+      if (!await waitFor(() => page.locator('#strategy-filters-detail:visible').count().then(n => n > 0), 15000)) throw new Error('See both did not open the filters row on Strategy');
+      await page.click('.nav[data-view=focus]');
+      await page.click(`${row('places')} .ui-more`);
+      await page.getByRole('menuitem', {name: 'Not now'}).click();
+      if (await page.locator(row('places')).count()) throw new Error('the places row is still on Focus after Not now');
+      await page.click('.nav[data-view=strategy]');
+      await page.click('[data-tab=strategy-suggestions]');
+      await page.waitForTimeout(1500);
+      if (await page.locator('#strategy-places:visible').count()) throw new Error('the places row is still on Strategy after Not now on Focus');
+    });
+
     await ctx.run('what is recorded holds fixed words only: never a role word, a place or an employer\'s name', async () => {
       const lines = advice(profile);
       if (!lines.length) throw new Error('nothing recorded');
       const leaked = lines.filter(line => line.includes(first.company) || /Gen[eè]v|Zurich|photograph/i.test(line));
       if (leaked.length) throw new Error(`free words in: ${leaked.join(' | ')}`);
-      const odd = lines.filter(line => !/(shown|taken|dismissed) (role|place|filter|source|explain|employer|visit) on (strategy|few-jobs)/.test(line));
+      const odd = lines.filter(line => !/(shown|taken|dismissed) (role|place|filter|source|explain|employer|visit) on (strategy|few-jobs|focus)/.test(line));
       if (odd.length) throw new Error(`not in the fixed shape: ${odd.join(' | ')}`);
     });
   } finally {

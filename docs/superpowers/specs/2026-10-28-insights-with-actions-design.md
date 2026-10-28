@@ -83,6 +83,16 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
   when the person answers it. A dismissed suggestion (Not now while hidden, Not true) leaves Reports too.
 - **Split:** PR 1 ships as 1a (the frame, Tune and Analyze come to you, the Up next sort), 1b (Strategy's rows move onto the
   producers), 1c (the Jobs drawers and the cover letter card move into the Jobs bar).
+- **1b, decided by the owner (28 Oct 2026, sketch https://claude.ai/artifact/W6JoQf5fCfop8oxKwnRzrK, all four recommendations):**
+  1. On Focus and the Jobs bar: the five rows whose button changes something in one press: places (Add Zurich), role ideas
+     (Add role), role words (Add role word), filters (Remove "Lead"), sites only you can open (Read <site> in Chrome).
+     Employers hiring people like you and more job sources stay on Strategy (their button only opens a list or a screen).
+  2. Hiding: Not now (14 days) and Not true, kept in the store as every other suggestion; "Hide until the next search" goes.
+     The key is the row's top option (role ideas: the search's role words), so new counts keep an answer and a new top is new evidence.
+  3. Buttons: the top option in one press plus "See all N", which opens the row on Strategy with every option.
+  4. Numbers: from the last coverage check the engine keeps after each search (src/coverage.py summary, read against today's
+     settings) and the kept role ideas; Focus reads them at once, never waits and never asks the AI (src/suggestions_search.py).
+  Found while building (in the PR): a site with a caution note (an account a read may put at risk) is never the one-press option.
 
 ## The insights (owner approved the list and the grouping, 28 Oct 2026)
 
@@ -167,7 +177,8 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 - [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D; Focus Suggestions + Jobs collapsed bar approved (v4) (proof: none: an owner decision on the sketch, recorded here)
 - [x] PR 1 decisions: Up next sort, Your week's door, answers in the store, split 1a/1b/1c (28 Oct 2026, sketch https://claude.ai/artifact/MopQ4et4oe9mwxMAZheZ5e) (proof: none: owner answers in the session, recorded here)
 - [x] PR 1a · Suggestions, Jobs bar, answers, Tune and Analyze come to you (proof: desktop/test/suggestions.test.js)
-- [ ] PR 1b · Strategy rows on the producers
+- [x] PR 1b decisions: which rows, Not now / Not true by key, top option + See all, numbers from the kept check (28 Oct 2026, sketch https://claude.ai/artifact/W6JoQf5fCfop8oxKwnRzrK) (proof: none: owner answers in the session, recorded here)
+- [x] PR 1b · Strategy rows on the producers (proof: tests/test_suggestions_search.py)
 - [ ] PR 1c · Jobs drawers into the bar
 - [ ] PR 2 · CV
 - [ ] PR 3 · Strategy + Jobs

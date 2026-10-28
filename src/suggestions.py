@@ -18,10 +18,11 @@ from .ai.insights_data import ANSWER_CATEGORY, WEEKLY, is_finding
 from .focus_items import _field, _role, _short, _when
 from .notion.ledger import EVENT_KINDS, REPLY
 
-PRODUCERS = ('insight', 'rejection', 'week', 'analyze', 'tune')
+PRODUCERS = ('insight', 'rejection', 'week', 'analyze', 'tune', 'places', 'ideas', 'coverage', 'filters', 'visits')   # the last five: suggestions_search.py
 HOMES = ('focus', 'jobs', 'strategy', 'profile', 'interviews')
 TOPICS = ('search', 'applying', 'profile', 'interviews')
-STRENGTH = {'insight': 100, 'rejection': 95, 'week': 90, 'analyze': 80, 'tune': 70}   # PR 6 ranks by evidence; until then by kind
+STRENGTH = {'insight': 100, 'rejection': 95, 'week': 90, 'analyze': 80, 'tune': 70,   # PR 6 ranks by evidence; until then by kind
+            'places': 60, 'ideas': 58, 'coverage': 56, 'filters': 54, 'visits': 50}   # Strategy's order: Tune, then these
 NOT_NOW_DAYS = 14   # owner, 28 Oct 2026 (sketch Jpf5gETGzQsee5WoaTKZXy)
 FRESH_DAYS = 7      # today's insight and Your week stay this long, as Focus's Insight card did
 # Up next holds only what can't wait (owner, 28 Oct 2026: "very important, that cannot wait"); "waiting" has no button and leaves Focus.
@@ -192,25 +193,47 @@ def tune_entry(answer):
                   actions=[{'label': 'Review', 'do': 'tune'}])
 
 
-def answered(entries, insights, now):
-    """The entries the person has not set aside: Not now hides until its day, Not true / Done / Stale for good (for that key)."""
+def _answers(insights):
+    """{key: the newest answer's fields} for every entry the person answered."""
     answers = {}
     for record in sorted(insights, key=_stamp):
         fields = record.get('fields') or {}
         if fields.get('state'):
             key = fields.get('input_hash') if record.get('category') == ANSWER_CATEGORY else f"row:{record['id']}"
             answers[key] = fields
+    return answers
+
+
+def hidden(insights, now):
+    """The keys the person's answers hide now: Not now until its day, Not true / Done / Stale for good. Strategy's rows read it too (Focus's
+    `suggestions_hidden`), so a row answered on Focus is gone there as well."""
     today = now.date().isoformat() if isinstance(now, datetime) else str(now)
-    def shown(entry):
-        found = answers.get(entry['key'])
-        if not found:
-            return True
-        return found['state'] == 'Not now' and (found.get('hidden_until') or '')[:10] <= today
-    return [entry for entry in entries if shown(entry)]
+    return {key for key, found in _answers(insights).items() if not (found['state'] == 'Not now' and (found.get('hidden_until') or '')[:10] <= today)}
 
 
-def pool(*, insights, tune, events, now, doors, rows=()):
-    """Every engine producer's entry that holds now, answers applied, strongest first."""
+def _aside(found):
+    """The words an answer set aside: its `data` JSON's `aside` list (desktop/lib/suggestion-answers.js), [] for any other data."""
+    try:
+        data = json.loads(found.get('data') or '{}')
+    except (TypeError, ValueError):
+        return []
+    return [str(word) for word in data.get('aside') or []] if isinstance(data, dict) else []
+
+
+def set_aside(insights):
+    """The role-idea words a Not true set aside: its answer row keeps them in `data` (a column in every store), so they hold after the role
+    words change the row's key, on every Mac of the store. Why (#2350, Gitar): a copy on one Mac let Focus offer them again."""
+    return sorted({word.lower() for found in _answers(insights).values() if found['state'] == 'Not true' for word in _aside(found)})
+
+
+def answered(entries, insights, now):
+    """The entries the person has not set aside (hidden)."""
+    gone = hidden(insights, now)
+    return [entry for entry in entries if entry['key'] not in gone]
+
+
+def pool(*, insights, tune, events, now, doors, rows=(), search=()):
+    """Every engine producer's entry that holds now, answers applied, strongest first. search: Strategy's search entries (suggestions_search.now)."""
     entries = [insight_entry(insights, now), rejection_entry(rows, now), week_entry(insights, now, doors),
-               analyze_entry(events, insights, now), tune_entry(tune)]
+               analyze_entry(events, insights, now), tune_entry(tune), *search]
     return sorted(answered([e for e in entries if e], insights, now), key=lambda e: -e['strength'])

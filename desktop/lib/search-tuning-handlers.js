@@ -14,8 +14,6 @@ import {registerLocationsHandlers} from './locations-handlers.js';
 import {registerListMeaningsHandlers} from './list-meanings-handlers.js';
 import * as viewCache from './view-cache.js';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {log as appLog} from './log.js';
 import {sharedRead} from './shared-read.js';
 import {demoPath} from './demo.js';
@@ -31,24 +29,21 @@ export function registerSearchTuningHandlers(ctx) {
     if (code !== 0) return {ok: false, error: 'Could not read the coverage (see the activity log)'};
     try { return {ok: true, coverage: JSON.parse(stdout.trim().split('\n').pop())}; } catch { return {ok: true, coverage: null}; }
   });
-  // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; the ones the
-  // person set aside ("Not now") are sent back so they are never proposed again.
-  ipcMain.handle('roleIdeas', async (_, setAside = []) => {
-    if (DEMO) return {ok: true, ideas: [{role: 'Cashier', word: 'caissier', why: 'Retail sales experience in a camera shop', count: 6},
-      {role: 'Visual merchandiser', word: 'merchandiser', why: 'Eye for images plus retail experience', count: 3},
-      {role: 'Image retoucher', word: 'retouche', why: 'Strong Photoshop and Lightroom retouching', count: 2},
-      {role: 'Photo lab assistant', word: 'laboratoire photo', why: 'Camera shop background', count: 0}].filter(idea => !(setAside || []).includes(idea.word))};
-    const file = path.join(os.tmpdir(), `jp-role-ideas-${process.pid}-${Date.now()}.json`);
-    fs.writeFileSync(file, JSON.stringify({set_aside: (Array.isArray(setAside) ? setAside : []).map(String).slice(0, 60)}));
+  // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; the words a
+  // Not true set aside are read from the store by the engine (src/suggestions.py set_aside), never proposed again.
+  ipcMain.handle('roleIdeas', async () => {
+    if (DEMO) {   // the ideas the demo Focus offers (tests/test_suggestions_search.py); a persona folder without them has none, not another person's
+      let demo = {ideas: [], key: ''};
+      try { demo = JSON.parse(fs.readFileSync(demoPath(here, 'role-ideas.json'), 'utf8')); } catch { /* no ideas for this persona */ }
+      return {ok: true, key: demo.key, ideas: demo.ideas};
+    }
     try {
-      const {stdout} = await pipeline.run(storage, ['src.desktop', 'role-ideas', file]);
+      const {stdout} = await pipeline.run(storage, ['src.desktop', 'role-ideas']);
       const answer = JSON.parse(String(stdout).trim().split('\n').pop());
       appLog('strategy', 'role ideas', {count: answer.ideas?.length ?? 0, ok: !!answer.ok});
       return answer;
     } catch (error) {
       return {ok: false, ideas: [], error: error.message};
-    } finally {
-      fs.rmSync(file, {force: true});
     }
   });
   // "Your filters drop jobs": only what the engine's own coverage listed can be removed (never a word typed elsewhere).

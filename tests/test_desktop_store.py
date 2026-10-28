@@ -75,5 +75,31 @@ class DesktopOnThisMacsStoreTests(unittest.TestCase):
             self.assertEqual(self.command('calendar'), {'jobs': [], 'error': 'Notion is not connected.'})
 
 
+    def role_ideas(self):
+        """The role-ideas command on this store: the words it hands the ideas as set aside, and what it prints."""
+        sent = []
+        def ideas(profile, search, titles, set_aside=()):
+            sent.append(list(set_aside))
+            return [{'role': 'Seller', 'word': 'vendeur', 'why': 'Shop', 'count': 3}]
+        with mock.patch.object(desktop, '_role_ideas_on', return_value=True), mock.patch('src.ai.role_ideas.ideas', ideas), \
+                mock.patch('src.coverage.load', return_value={}), mock.patch('src.paths.load_search_config', lambda matching=True: {'role_keywords': ['sre']}):
+            return self.command('role-ideas'), sent
+
+    def test_role_ideas_leave_out_the_words_a_not_true_kept_in_the_store(self):
+        """#2350 (Gitar): the words live on the answer row in the store, so every Mac of it reads the same; nothing else sends them."""
+        self.stores.insights.add({'day': '2026-10-28', 'category': 'Suggestion', 'title': 'Add Cashier',
+                                  'fields': {'state': 'Not true', 'data': json.dumps({'aside': ['Caissier']}), 'input_hash': 'ideas:old'}})
+        said, sent = self.role_ideas()
+        self.assertEqual(sent, [['caissier']])
+        self.assertTrue(said['ok'] and said['key'].startswith('ideas:'))
+
+    def test_role_ideas_still_come_when_the_store_cannot_list_the_answers(self):
+        """#2350 (Gitar): a failed read of the answers costs only their filter this time, never the whole row."""
+        err = io.StringIO()
+        with mock.patch.object(type(self.stores.insights), 'list', side_effect=OSError('offline')), contextlib.redirect_stderr(err):
+            said, sent = self.role_ideas()
+        self.assertEqual((said['ok'], [i['word'] for i in said['ideas']], sent), (True, ['vendeur'], [[]]))
+        self.assertIn('set-aside roles not read', err.getvalue())
+
 if __name__ == '__main__':
     unittest.main()

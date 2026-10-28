@@ -10,18 +10,21 @@ export const NOT_NOW_DAYS = 14;                   // src/suggestions.NOT_NOW_DAY
 export const ANSWER_CATEGORY = 'Suggestion';      // src/ai/insights_data.ANSWER_CATEGORY
 
 const isoDay = ms => new Date(ms).toISOString().slice(0, 10);
+const asideOf = row => { try { return JSON.parse(row?.fields?.data || '{}').aside || []; } catch { return []; } };
 
 /** The day a Not now pressed at `now` ends (YYYY-MM-DD), as the engine counts it. */
 export const hiddenUntil = now => isoDay(now + NOT_NOW_DAYS * 86400000);
 
 /**
- * Keeps one answer for one Suggestions entry ({key, title}); -> {ok} or {ok: false, error}.
+ * Keeps one answer for one Suggestions entry ({key, title, aside}); -> {ok} or {ok: false, error}. A Not true on role ideas keeps their words
+ * in the row's Data ({"aside": [...]}, a column in every store), which src/suggestions.set_aside reads back after the role words change the key.
  * Invariant: one row carries a key's answer (its finding row, else its one Suggestion row), so the newest answer is the one read.
  */
 export async function answer(storage, entry, state, {call = engine.call, now = Date.now()} = {}) {
   if (!ANSWERS.includes(state)) return {ok: false, error: `An answer is one of: ${ANSWERS.join(', ')}`};
   const key = String(entry?.key || '');
   if (!key) return {ok: false, error: 'That suggestion has no key.'};
+  const words = state === 'Not true' && Array.isArray(entry?.aside) ? entry.aside.map(String).slice(0, 60) : [];
   const said = {state, hidden_until: state === 'Not now' ? hiddenUntil(now) : ''};
   if (key.startsWith('row:')) {
     const id = key.slice(4);
@@ -31,6 +34,7 @@ export async function answer(storage, entry, state, {call = engine.call, now = D
     return {ok: true};
   }
   const kept = (await call(storage, 'insights', 'list', {category: ANSWER_CATEGORY}) || []).find(row => row.fields?.input_hash === key);
+  if (words.length) said.data = JSON.stringify({aside: [...new Set([...asideOf(kept), ...words])].slice(-60)});   // Not true again: the words add up
   if (kept) await call(storage, 'insights', 'update', {insight_id: kept.id, fields: {day: isoDay(now), fields: {...(kept.fields || {}), ...said}}});
   else await call(storage, 'insights', 'add', {record: {day: isoDay(now), category: ANSWER_CATEGORY, title: String(entry.title || key).slice(0, 200),
     fields: {...said, input_hash: key}}});

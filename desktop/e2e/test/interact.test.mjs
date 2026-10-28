@@ -38,6 +38,7 @@ test('the safe controls are the ones that cannot delete, send, quit or leave the
   for (const text of ['Delete everything', 'Remove job', 'Quit', 'Send to Telegram', 'Apply', 'Submit', 'Sign in with Google', 'Open in Notion ↗', 'Run', 'Record interview', 'Replace CV', 'Check for new jobs', 'Refresh', 'Rebuild from CV…']) assert.equal(isSafe({text}), false, text);
   assert.equal(isSafe({text: 'Details', cls: 'danger'}), false);
   assert.equal(isSafe({text: 'Link', href: 'https://example.com/x'}), false, 'an external link leaves the app');
+  assert.equal(isSafe({text: 'Read Indeed', wand: true}), false, 'a press that starts AI work (data-wand) spends credit (#2350)');
 });
 
 test('classify names each kind of bug and says nothing for a working control', () => {

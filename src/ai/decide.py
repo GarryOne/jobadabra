@@ -99,6 +99,22 @@ def own_allowance(name, n):
         SCOPE.update(before)
 
 
+CACHE_ONLY = {'on': False}   # cache_only(): every decide() inside answers from the cache and the pack, as ask=False does
+
+
+@contextlib.contextmanager
+def cache_only():
+    """Inside, decide() makes no model call: what earlier runs judged (the cache) and the pack answer; the rest stays unknown and is not
+    counted as waiting. Why (#2350, 28 Oct 2026): Focus reads the search rows on every load and must spend no AI; recomputing the coverage
+    verdict asked the AI on each load (17 s on a fresh install), while Strategy's coverage check and the search judge them."""
+    before = CACHE_ONLY['on']
+    CACHE_ONLY['on'] = True
+    try:
+        yield
+    finally:
+        CACHE_ONLY['on'] = before
+
+
 def reset_run():
     """A new run's state (tests simulate several runs in one process; the engine starts a fresh process per run)."""
     STOPPED['why'] = ''
@@ -204,7 +220,7 @@ def decide(topic, items, answers, instructions, client=None, db=None, since='', 
             if key not in out and (known := meanings_pack.first(topic, items[key], patterns=not late)):
                 out[key] = known
         todo = [key for key in items if key not in out]
-        if not todo or not ask:
+        if not todo or not ask or CACHE_ONLY['on']:
             return out or None
         if STOPPED['why']:
             return _wait(out, len(todo))

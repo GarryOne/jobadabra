@@ -321,7 +321,7 @@ function renderFocus(data) {
   $('focus-count-note').replaceChildren(pill(`${items.length} action${items.length === 1 ? '' : 's'}`, 'neutral'));
   $('focus-list').replaceChildren(...items.map(focusCard));
   show($('focus-empty'), !items.length && !historyShown);
-  renderFocusSuggestions({entries: data.suggestions, items: all, card: focusCard});
+  renderFocusSuggestions({entries: data.suggestions, hidden: data.suggestions_hidden, items: all, card: focusCard});
   const pct = Math.min(100, Math.round(100 * today.applied / Math.max(today.target, 1)));
   $('focus-count').textContent = String(today.applied);
   $('focus-of').textContent = `/ ${today.target} applications today`;

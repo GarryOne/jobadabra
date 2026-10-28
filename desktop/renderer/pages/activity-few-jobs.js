@@ -3,6 +3,7 @@
 import {ai} from '../ai-name.js';
 import {el} from '../components.js';
 import {icon} from '../icons.js';
+import {wand} from '../magic.js';
 import {adviceEvent, fewJobsGroups, runAction} from '../coverage-actions.js';
 import {openSetting} from './settings.js';
 import {openView} from './nav.js';
@@ -122,7 +123,8 @@ export function withFewJobsHelp(runId) {
       const names = groups.siteNames;
       const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? ` and ${names.length - 2} more` : '');
       adviceEvent('shown', 'visit', 'few-jobs');
-      const read = Object.assign(el('button', 'secondary', 'Read them in Chrome'), {type: 'button', title: 'Opens them in your Chrome, two at a time; the Jobadabra extension filters and reads each, then your next check scores the jobs'});
+      // Why (#2350, Gitar): a site read starts AI work in Chrome, so its button carries the wand (test/wand-cursor.test.js).
+      const read = wand(Object.assign(el('button', 'secondary', 'Read them in Chrome'), {type: 'button', title: 'Opens them in your Chrome, two at a time; the Jobadabra extension filters and reads each, then your next check scores the jobs'}));
       keepButton('read-sites', read);
       read.addEventListener('click', async () => {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));

@@ -3,12 +3,12 @@
 import {withSaveProgress} from '../save-progress.js';
 import {el, moreButton, pill, tile} from '../components.js';
 import {icon} from '../icons.js';
+import {wand} from '../magic.js';
 import {$, show} from './core.js';
-import {bone} from './focus.js';
 import {openView} from './nav.js';
 import {toastMessage} from './startup.js';
 import {coverageCard, employersCard, filtersCard, ideasCard, placesCard, sourcesCard, visitCard} from '../coverage-card.js';
-import {adviceEvent, readSiteInChrome} from '../coverage-actions.js';
+import {adviceEvent, readSiteInChrome, runAction} from '../coverage-actions.js';
 import {byOpenings, hostOf, improveWords, sitesByName} from '../strategy-parts.js';
 import {openSetting} from './settings.js';
 import {startSearch} from './jobs.js';
@@ -19,20 +19,15 @@ import {dirty, strategyBarNow} from './strategy-cards.js';
 import {byStore} from '../store-words.js';
 import {countOf, defineCount, paintCount} from '../shared-counts.js';
 import {NO_PLACE} from '../targets.js';
-import {RUN, answerEntry, homeSuggestions} from './focus-suggestions.js';
+import {RUN, answerEntry, answered, homeSuggestions} from './focus-suggestions.js';
+import {bone, loadFocus} from './focus.js';
+import {moveOldAside} from '../ideas-aside.js';
 // Where else the change shows: Notion's ⚙️ Search settings page, only while Notion holds the data (on this Mac they are the app's own).
 const alsoInSettings = () => byStore(' (also in your Search settings in Notion)', '');
 
 // ---------- Suggestions: one row per kind (owner mockup, 7 Oct 2026: five banners pushed your own settings below the fold) ----------
 // The engine's coverage verdict (src/coverage.py, read after the strategy: a Python start) and the roles from your Profile (src/ai/role_ideas.py)
-// give the rows; each row says what it is in a line, Review opens what would change (one button per option), ⋯ hides it.
-const DISMISSED = 'jp.coverage.dismissed';
-const SOURCES_DISMISSED = 'jp.sources.dismissed';
-const FILTERS_DISMISSED = 'jp.filters.dismissed';
-const FORYOU_DISMISSED = 'jp.foryou.dismissed';
-const VISITS_DISMISSED = 'jp.visits.dismissed';
-const PLACES_DISMISSED = 'jp.places.dismissed';
-const remembered = (key = DISMISSED) => { try { return localStorage.getItem(key) || ''; } catch { return ''; } };
+// give the rows; each row says what it is in a line, Review opens what would change (one button per option), ⋯ answers it (Not now, Not true).
 // The last verdict, kept so the rows are in place at the FIRST paint: the engine's answer takes seconds, and a card that arrived after the page had
 // stood still pushed everything down while it was being read (5 Oct 2026). With nothing kept yet, a "Checking…" row holds the place.
 const LAST = 'jp.coverage.last';
@@ -64,6 +59,7 @@ function openPending() {
   pendingReview = '';
 }
 function drawSuggestions() {
+  answeredShown = answeredKeys();
   const list = ORDER.map(kind => rows[kind]).filter(Boolean);
   const box = $('suggestion-rows');
   if (checking) {
@@ -179,7 +175,7 @@ function suggestionRow({kind, id, glyph, title, summary, text, options = [], hid
   const head = el('div', 'suggestion-head'), words = el('div', 'suggestion-words'), name = el('div', 'suggestion-title');
   name.append(el('h3', '', title), ...(count ? [pill(String(count), tone)] : []));
   words.append(name, typeof summary === 'string' ? emphasize(summary) : summary);
-  head.append(tile(glyph, tone), words, toggle, moreButton(menu, `More about ${title.toLowerCase()}`));
+  head.append(tile(glyph, tone), words, toggle, ...(menu.length ? [moreButton(menu, `More about ${title.toLowerCase()}`)] : []));
   row.append(head, detail);
   if (openRows.has(id)) setOpen(true);
   adviceEvent('shown', kind, 'strategy');
@@ -207,17 +203,39 @@ function tuneRow(entry) {
 }
 window.addEventListener('suggestions-updated', () => {
   const [entry] = homeSuggestions('strategy').filter(one => one.kind === 'tune');
-  if ((rows.tune?.dataset.key || '') === (entry?.key || '')) return;
-  rows.tune = entry ? tuneRow(entry) : null;
-  drawSuggestions();
+  const tune = (rows.tune?.dataset.key || '') !== (entry?.key || '');
+  if (tune) rows.tune = entry ? tuneRow(entry) : null;
+  if (answeredKeys() !== answeredShown) repaint();   // a row answered on Focus leaves here too, or comes back when the store refused it
+  else if (tune) drawSuggestions();
 });
-// ⋯ → hide this row until the next search brings a new verdict (its `at`): what "Not now" did, said plainly.
-const hideItem = (kind, id, key, at) => ({label: 'Hide until the next search', icon: 'eye',
-  title: 'This row comes back when a search brings new numbers. Your settings do not change.',
-  run: () => { adviceEvent('dismissed', kind, 'strategy'); try { localStorage.setItem(key, at); } catch { /* shown again next time */ } rows[id] = null; drawSuggestions(); }});
-// An option that changes your search (a role word, a place, a filter removed): saved to Search settings, then the rows are read again.
+// ⋯ on a row: Not now (14 days) and Not true (never for this top option), kept in your store against the row's key (src/suggestions_search.py
+// keys), the same answer its Focus row takes. Why (insights PR 1b, owner 28 Oct 2026): "Hide until the next search" went; one answer everywhere.
+const rowKeys = () => [...Object.values(strategyState.shownVerdict?.keys || {}), ideasKey].filter(Boolean);
+const answeredKeys = () => rowKeys().filter(answered).join('\n');
+let answeredShown = '';
+const repaint = () => (strategyState.shownVerdict ? paintCoverage(strategyState.shownVerdict) : shownIdeas && paintIdeas(shownIdeas));
+const answerItems = (advice, key, title, aside = []) => (key ? [['clock', 'Not now', 'Hidden for 14 days, then shown again if it still holds. Your settings do not change.'],
+  ['close', 'Not true', 'Never shown again for this suggestion; a new one can still come.']].map(([glyph, state, hint]) => ({icon: glyph, label: state, title: hint,
+  run: () => { adviceEvent('dismissed', advice, 'strategy'); answerEntry({key, title, aside}, state); repaint(); }})) : []);
+// One option done, from Strategy or from Focus's one press (where): a change to your search (a role word, a place, a filter removed) is saved to
+// Search settings, said, and both pages read again; a site opens in your Chrome. action: {kind, value, note?} (coverage-actions.js runAction).
 // While a draft changes the same list, applying waits: reviewing is fine, the change itself asks for Save or Discard first (owner, 7 Oct 2026).
-const widen = (kind, act, done, list = '') => async button => {
+const CHANGES = {
+  place: value => ({list: 'places', done: `${value} is now one of your places${alsoInSettings()}. Jobs you already have stay.`}),
+  role: value => ({list: 'roles', done: `"${value}" is now a role word${alsoInSettings()}.`}),
+  exclude: value => ({list: '', done: `Titles with "${value.replace(/\\b/g, '')}" are no longer left out${alsoInSettings()}.`}),
+  language: value => ({list: 'languages', done: `Jobs that require ${value} are no longer hidden${alsoInSettings()}.`}),
+};
+/** Does one search suggestion's option (Strategy's button, or Focus's one press: src/suggestions_search.py actions). */
+export async function changeSearch(action, button, where = 'strategy') {
+  if (action.kind === 'visit') {
+    adviceEvent('taken', 'visit', where);
+    const opened = await readSiteInChrome(window.pilot, action.value);
+    if (opened.started) toastMessage('Reading in Chrome', `Jobadabra reads its jobs there by itself; follow it in Recent activity.${action.note ? ` ${action.note}.` : ''}`, {activity: true}, 'info');
+    else toastMessage(opened.ok ? 'Opened in Chrome' : 'Not opened', opened.ok ? opened.why || 'It could not start the read.' : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
+    return;
+  }
+  const {list, done} = CHANGES[action.kind](action.value);
   if (list && dirty().has(list)) {
     toastMessage('Save or discard your changes first', `This changes your ${LIST_WORDS[list]}, which you are editing now. Save or discard that draft, then add it.`, {view: 'strategy'}, 'warn');
     const bar = strategyBarNow()?.node;
@@ -226,64 +244,63 @@ const widen = (kind, act, done, list = '') => async button => {
   }
   const label = button.textContent;
   button.disabled = true;
-  const result = await withSaveProgress(words => { button.textContent = words; }, act).catch(error => ({ok: false, error: error.message}));
+  const result = await withSaveProgress(words => { button.textContent = words; }, () => runAction(action, {pilot: window.pilot, openSetting}))
+    .catch(error => ({ok: false, error: error.message}));
   button.textContent = label;
-  if (result.ok) adviceEvent('taken', kind, 'strategy');
   if (!result.ok) { toastMessage('Not added', result.error, {view: 'strategy'}, 'bad'); button.disabled = false; return; }
+  adviceEvent('taken', action.kind, where);
   // The next step with it: a refresh searches with the change (7 Oct 2026: the pop-up said only "Search widened").
   toastMessage({title: 'Search widened', body: `${done} Refresh your jobs to search with it.`, action: refreshAction, target: {view: 'strategy'}, tone: 'good'});
-  loadStrategy();   // the cards show it at once, not after the next visit (it re-reads the suggestions too)
-};
+  if (where === 'strategy') loadStrategy();   // the cards show it at once, not after the next visit (it re-reads the suggestions too)
+  loadFocus();   // Focus's row offers the next option, or leaves
+}
+const press = action => button => changeSearch(action, button);
 
 export const refreshAction = {label: 'Find jobs', run: () => startSearch()};
 const LIST_WORDS = {roles: 'roles', places: 'places', languages: 'excluded languages'};
+// A row is drawn while its key is not answered (a verdict kept from before its keys draws every row, without the answers, until the fresh one).
+const unanswered = (card, key) => (card && !(key && answered(key)) ? card : null);
 const paintCoverage = verdict => {
   strategyState.shownVerdict = verdict;
-  const coverage = coverageCard(verdict, remembered());
+  const keys = verdict?.keys || {};
+  const coverage = unanswered(coverageCard(verdict), keys.coverage);
   rows.coverage = coverage && suggestionRow({kind: 'coverage', id: 'coverage', glyph: 'search', title: verdict.local ? 'Catch titles in other languages' : 'Add role words',
     summary: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, text: coverage.text,
     options: coverage.chips.map(chip => ({label: plain(chip.label), button: 'Add role word', preview: `Adds "${chip.term}" to your role words. ${chip.title}`,
-      run: widen('coverage', () => window.pilot.addRoles([chip.term]), `"${chip.term}" is now a role word${alsoInSettings()}.`, 'roles')})),
+      run: press({kind: 'role', value: chip.term})})),
     brief: {title: verdict.local ? 'Catch titles in other languages' : 'Add role words', text: `Your keywords catch ${number(verdict.matched)} of ${number(verdict.in_places)} postings in your places`, cta: 'Review role words'},
-    menu: [hideItem('coverage', 'coverage', DISMISSED, coverage.at)]});
-  const places = placesCard(verdict, remembered(PLACES_DISMISSED));
+    menu: answerItems('coverage', keys.coverage, 'Add role words')});
+  const places = unanswered(placesCard(verdict), keys.places);
   const topPlace = places?.chips[0];
   rows.places = places && suggestionRow({kind: 'places', id: 'places', glyph: 'pin', title: 'Broaden locations',
     summary: `${topPlace.place} · ${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} outside your places${places.chips.length > 1 ? `, and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`,
     text: places.text,
     options: places.chips.map(chip => ({label: plain(chip.label), button: 'Add place', preview: `Adds ${chip.place} to your places; jobs you already have stay. ${chip.title}`,
-      run: widen('places', () => window.pilot.addPlaces([chip.place]), `${chip.place} is now one of your places${alsoInSettings()}. Jobs you already have stay.`, 'places')})),
+      run: press({kind: 'place', value: chip.place})})),
     brief: {title: 'Expand your locations', text: `${number(topPlace.count)} matching role${topPlace.count === 1 ? '' : 's'} in ${topPlace.place}${places.chips.length > 1 ? ` and ${places.chips.length - 1} more place${places.chips.length > 2 ? 's' : ''}` : ''}`, cta: 'Review location'},
-    menu: [hideItem('places', 'places', PLACES_DISMISSED, places.at)]});
+    menu: answerItems('places', keys.places, 'Broaden locations')});
   // Filters of the user's own that hide matching jobs: an option removes that filter.
-  const filters = filtersCard(verdict, remembered(FILTERS_DISMISSED));
+  const filters = unanswered(filtersCard(verdict), keys.filters);
   const filterHidden = filters ? filters.chips.reduce((sum, chip) => sum + chip.count, 0) : 0;
   rows.filters = filters && suggestionRow({kind: 'filters', id: 'filters', glyph: 'sliders', title: 'Loosen your filters',
     summary: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, text: filters.text,
     options: filters.chips.map(chip => ({label: plain(chip.label), button: 'Remove filter', preview: chip.title,
-      run: widen('filters', () => window.pilot.loosenSearch(chip.exclude ? {excludes: [chip.exclude]} : {languages: [chip.language]}),
-        chip.exclude ? `Titles with "${chip.exclude}" are no longer left out${alsoInSettings()}.`
-          : `Jobs that require ${chip.language} are no longer hidden${alsoInSettings()}.`, chip.language ? 'languages' : '')})),
+      run: press(chip.exclude ? {kind: 'exclude', value: chip.exclude} : {kind: 'language', value: chip.language})})),
     brief: {title: 'Loosen your filters', text: `${filters.chips.length} of your filters hide ${number(filterHidden)} matching job${filterHidden === 1 ? '' : 's'}`, cta: 'Review filters'},
-    menu: [hideItem('filters', 'filters', FILTERS_DISMISSED, filters.at)]});
+    menu: answerItems('filters', keys.filters, 'Loosen your filters')});
   // Unused job sources: an option opens its panel in Settings → Connections (a key to add there); nothing is turned on from here.
-  const sources = sourcesCard(verdict, remembered(SOURCES_DISMISSED));
+  const sources = unanswered(sourcesCard(verdict), keys.sources);
   rows.sources = sources && suggestionRow({kind: 'source', id: 'sources', glyph: 'link', title: 'Connect more job sources', review: 'Set up',
     summary: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(' · '), text: sources.text,
     options: sources.chips.map(chip => ({label: plain(chip.label), button: 'Open in Settings', preview: chip.title,
       run: () => { adviceEvent('taken', 'source', 'strategy', {source: chip.id}); openSetting(chip.id); }})),
     brief: {title: 'Connect more sources', text: sources.chips.map(chip => plain(chip.label).split(' · ')[0]).join(', '), cta: 'Set up'},
-    menu: [hideItem('source', 'sources', SOURCES_DISMISSED, sources.at)]});
+    menu: answerItems('source', keys.sources, 'Connect more job sources')});
   // Sites only you can open: one chip per company in the row; Review lists every page (a company can have two genuinely different ones).
-  const visits = visitCard(verdict, remembered(VISITS_DISMISSED));
+  const visits = unanswered(visitCard(verdict), keys.visits);
   if (visits) {
     const sites = sitesByName(visits.chips);
-    const openPage = chip => async () => {
-      adviceEvent('taken', 'visit', 'strategy');
-      const opened = await readSiteInChrome(window.pilot, chip.url);
-      if (opened.started) toastMessage('Reading in Chrome', `Jobadabra reads its jobs there by itself; follow it in Recent activity.${chip.note ? ` ${chip.note}.` : ''}`, {activity: true}, 'info');
-      else toastMessage(opened.ok ? 'Opened in Chrome' : 'Not opened', opened.ok ? opened.why || 'It could not start the read.' : opened.error, NO_PLACE.outside, opened.ok ? 'info' : 'bad');
-    };
+    const openPage = chip => event => changeSearch({kind: 'visit', value: chip.url, note: chip.note}, event.currentTarget);
     // By company (owner mockup, 7 Oct 2026): a letter tile, the name, how many pages, each page's own link (its real address), Open for the first.
     const TINTS = ['info', 'teal', 'violet', 'good'];
     const company = (site, i) => {
@@ -293,13 +310,14 @@ const paintCoverage = verdict => {
         const link = el('button', 'link', hostOf(page.url) || page.url);
         Object.assign(link, {type: 'button', title: page.title});
         link.addEventListener('click', openPage(page));
-        return link;
+        return wand(link);   // a site read starts AI work, like Find jobs using your browser (test/wand-cursor.test.js)
       }));
       words.append(name, links);
       const open = el('button', 'secondary with-icon', 'Open');
       Object.assign(open, {type: 'button', title: site.pages[0].title});
       open.append(icon('external'));
       open.addEventListener('click', openPage(site.pages[0]));
+      wand(open);
       line.append(el('span', `ui-tile tone-${TINTS[i % TINTS.length]} site-avatar`, site.name.trim()[0]?.toUpperCase() || '?'), words, open);
       return line;
     };
@@ -314,10 +332,10 @@ const paintCoverage = verdict => {
     rows.visits = suggestionRow({kind: 'visit', id: 'visits', glyph: 'external', title: 'Browse sites manually', count: sites.length,
       summary: 'Open a site: Jobadabra reads its jobs in Chrome by itself.', text: '', body: list,
       brief: {title: `${sites.length} site${sites.length === 1 ? ' needs' : 's need'} manual browsing`, text: 'Use the Chrome extension', cta: 'View sites'},
-      menu: [hideItem('visit', 'visits', VISITS_DISMISSED, visits.at)]});
+      menu: answerItems('visit', keys.visits, 'Browse sites manually')});
   } else rows.visits = null;
   // Employers where people like you got interviews (shared pool): an option shows that employer's jobs in the Jobs list.
-  const forYou = employersCard(verdict, remembered(FORYOU_DISMISSED));
+  const forYou = unanswered(employersCard(verdict), keys.foryou);
   rows.foryou = forYou && suggestionRow({kind: 'employer', id: 'foryou', glyph: 'building', title: 'Employers hiring people like you',
     summary: forYou.chips.slice(0, 3).map(chip => chip.company).join(' · ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), text: forYou.text,
     options: forYou.chips.map(chip => ({label: chip.label, button: 'See their jobs', preview: chip.title, run: () => {
@@ -327,7 +345,7 @@ const paintCoverage = verdict => {
       if (box) { box.value = chip.company; box.dispatchEvent(new Event('input', {bubbles: true})); }
     }})),
     brief: {title: 'Employers hiring people like you', text: forYou.chips.slice(0, 3).map(chip => chip.company).join(', ') + (forYou.chips.length > 3 ? ` and ${forYou.chips.length - 3} more` : ''), cta: 'See employers'},
-    menu: [hideItem('employer', 'foryou', FORYOU_DISMISSED, forYou.at)]});
+    menu: answerItems('employer', keys.foryou, 'Employers hiring people like you')});
   if (shownIdeas) paintIdeas(shownIdeas);   // drawn before this check answered: its "your role words catch" line comes now
   drawSuggestions();
   if (strategyState.strategyShown && !strategyState.editing) renderTargets();   // the exclusions card says what the languages hid
@@ -347,35 +365,39 @@ export async function loadCoverage({first = false} = {}) {
   pendingReview = '';   // the row it asked for is not there any more (hidden, or the search changed): nothing opens later by surprise
 }
 // "Explore related roles" (src/ai/role_ideas.py, owner 7 Oct 2026: "suggest potential roles"): roles from the Profile with how many open jobs in
-// your places each would add; those with openings first, the empty ones behind "Show more". ⋯ sets them aside: the engine never proposes them again.
-const IDEAS_ASIDE = 'jp.ideas.aside';
-const aside = () => { try { return JSON.parse(localStorage.getItem(IDEAS_ASIDE) || '[]'); } catch { return []; } };
+// your places each would add; those with openings first, the empty ones behind "Show more". ⋯ Not true sets them aside too: its answer in your
+// store keeps the words, and the engine never proposes them again (src/suggestions.py set_aside).
 // The last answer, kept: the engine asks Claude at most once a day (src/ai/role_ideas.py), so the kept ideas are today's and the row shows at
 // the first paint (owner, 7 Oct 2026: the rows "add up after 5-10 seconds"). The fresh answer then replaces them quietly.
+// Kept with the answer's key (src/suggestions_search.py ideas_key): the row's Not now / Not true. A list kept before keys has none until the next answer.
 const IDEAS_LAST = 'jp.ideas.last';
-const keptIdeas = () => { try { const kept = JSON.parse(localStorage.getItem(IDEAS_LAST) || 'null'); return Array.isArray(kept) ? kept : null; } catch { return null; } };
+const keptIdeas = () => {
+  try { const kept = JSON.parse(localStorage.getItem(IDEAS_LAST) || 'null'); return Array.isArray(kept) ? {ideas: kept, key: ''} : Array.isArray(kept?.ideas) ? kept : null; } catch { return null; }
+};
+let ideasKey = '';
 async function loadIdeas() {
   const kept = keptIdeas();
-  if (kept) paintIdeas(kept);
+  if (kept) { ideasKey = kept.key; paintIdeas(kept.ideas); }
   else { pendingImprove.add('ideas'); drawImprove(); }   // nothing kept yet: a placeholder holds its place while the engine answers
-  const answer = await window.pilot.roleIdeas?.(aside()).catch(() => null);
+  await moveOldAside();
+  const answer = await window.pilot.roleIdeas?.().catch(() => null);
   pendingImprove.delete('ideas');
   const fresh = answer?.ok && Array.isArray(answer.ideas);
-  if (fresh) { try { localStorage.setItem(IDEAS_LAST, JSON.stringify(answer.ideas)); } catch { /* shown when it answers */ } }
-  paintIdeas(fresh ? answer.ideas : kept || []);   // the engine could not answer: the kept ideas stay
+  if (fresh) { ideasKey = answer.key || ''; try { localStorage.setItem(IDEAS_LAST, JSON.stringify({ideas: answer.ideas, key: ideasKey})); } catch { /* shown when it answers */ } }
+  paintIdeas(fresh ? answer.ideas : kept?.ideas || []);   // the engine could not answer: the kept ideas stay
 }
 let shownIdeas = null;
 function paintIdeas(ideas) {
   shownIdeas = ideas;
   // A kept idea already added as a role is not offered again (the engine leaves it out of its next answer too).
   const searched = new Set(entriesOf(strategyState.lastStrategy, 'roles').map(entry => String(entry.fragment).toLowerCase()));
-  const card = ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), aside(), strategyState.shownVerdict);
+  const card = unanswered(ideasCard((ideas || []).filter(idea => !searched.has(String(idea.word).toLowerCase())), [], strategyState.shownVerdict), ideasKey);
   if (!card) { rows.ideas = null; drawSuggestions(); return; }
   // A card each: the role, why it fits, its openings; the word it is searched by under "Search details" (owner mockup, 7 Oct 2026).
   const option = chip => ({label: chip.role || plain(chip.label).replace(/ · \d+$/, ''), why: String(chip.why || '').replace(/\.+$/, '.'), button: '+ Add role', accent: true,
     meta: `${chip.count} opening${chip.count === 1 ? '' : 's'} now in your places`, tech: `Searched as "${chip.term}" in job titles. Adding it makes the next searches look for it.`,
     preview: `Adds "${chip.term}" to your role words: ${chip.title}`,
-    run: widen('ideas', () => window.pilot.addRoles([chip.term]), `"${chip.term}" is now a role word${alsoInSettings()}.`, 'roles')});
+    run: press({kind: 'role', value: chip.term})});
   const {open, empty} = byOpenings(card.chips);
   const top = open[0];
   rows.ideas = suggestionRow({kind: 'ideas', id: 'ideas', glyph: 'briefcase', title: 'Explore related roles', count: card.chips.length,
@@ -385,11 +407,6 @@ function paintIdeas(ideas) {
     text: 'Based on your Profile. A role you add is included in your future searches.', options: (open.length ? open : empty).map(option), hidden: open.length ? empty.map(option) : [],
     hiddenLabel: 'Show roles with no current openings',
     brief: {title: 'Explore related roles', text: `${card.chips.length} suggestion${card.chips.length === 1 ? '' : 's'}${open.length ? `, ${open.length} with openings in your places` : ', no current openings in your places'}`, cta: 'Review roles'},
-    menu: [{label: 'Don’t suggest these roles again', icon: 'close', title: 'Sets these roles aside for good; new ones can still be suggested.', run: () => {
-      adviceEvent('dismissed', 'ideas', 'strategy');
-      try { localStorage.setItem(IDEAS_ASIDE, JSON.stringify([...new Set([...aside(), ...card.chips.map(chip => chip.term)])].slice(-60))); } catch { /* shown again next time */ }
-      rows.ideas = null;
-      drawSuggestions();
-    }}]});
+    menu: answerItems('ideas', ideasKey, 'Explore related roles', card.chips.map(chip => chip.term))});
   drawSuggestions();
 }

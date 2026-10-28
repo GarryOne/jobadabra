@@ -22,15 +22,18 @@ test('fixed kinds only, shown once per place a session, never the role word or p
 test('every recommending card records shown and taken (a new card without it fails here)', () => {
   const strategy = readFileSync(new URL('../renderer/pages/strategy-suggestions.js', import.meta.url), 'utf8');
   const activity = activitySource();
-  // Every Strategy suggestion is a row drawn by suggestionRow (records shown); each kind records taken (widen or its own call) and dismissed (⋯).
+  // Every Strategy suggestion is a row drawn by suggestionRow (records shown); each kind records taken (changeSearch, which Focus's one press
+  // runs too, or its own call) and dismissed (⋯ Not now / Not true, answerItems).
   assert.match(strategy, /function suggestionRow[\s\S]*?adviceEvent\('shown', kind/);
-  assert.match(strategy, /const widen = [\s\S]*?adviceEvent\('taken', kind/);
-  assert.match(strategy, /const hideItem = [\s\S]*?adviceEvent\('dismissed', kind/);
+  assert.match(strategy, /export async function changeSearch[\s\S]*?adviceEvent\('taken', 'visit', where\)[\s\S]*?adviceEvent\('taken', action\.kind, where\)/);
+  assert.match(strategy, /const answerItems = [\s\S]*?adviceEvent\('dismissed', advice/);
   const kinds = [...strategy.matchAll(/suggestionRow\(\{kind: '(\w+)'/g)].map(match => match[1]);
-  assert.deepEqual([...kinds].sort(), ['coverage', 'employer', 'filters', 'ideas', 'places', 'source', 'visit']);
+  const TAKEN = {coverage: "press({kind: 'role'", ideas: "press({kind: 'role'", places: "press({kind: 'place'", filters: "press(chip.exclude ? {kind: 'exclude'",
+    visit: "changeSearch({kind: 'visit'", employer: "adviceEvent('taken', 'employer'", source: "adviceEvent('taken', 'source'"};
+  assert.deepEqual([...kinds].sort(), Object.keys(TAKEN).sort(), 'a new row says here how it records "taken"');
   for (const kind of kinds) {
-    assert.match(strategy, new RegExp(`widen\\('${kind}'|adviceEvent\\('taken', '${kind}'`), `${kind}: no "taken"`);
-    assert.match(strategy, new RegExp(`hideItem\\('${kind}'|adviceEvent\\('dismissed', '${kind}'`), `${kind}: no "dismissed"`);
+    assert.ok(strategy.includes(TAKEN[kind]), `${kind}: no "taken"`);
+    assert.ok(strategy.includes(`answerItems('${kind}'`), `${kind}: no "dismissed"`);
   }
   assert.match(activity, /adviceEvent\('shown', action\.kind[\s\S]*?adviceEvent\('taken', action\.kind/);
 });

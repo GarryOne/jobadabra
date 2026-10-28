@@ -41,6 +41,18 @@ test('a computed entry gets one answer row per key: added once, then updated', a
   assert.deepEqual(again.writes, [['update', {insight_id: 'a1', fields: {day: '2026-10-28', fields: {state: 'Not now', hidden_until: '2026-11-11', input_hash: 'tune:a|b'}}}]]);
 });
 
+test('a Not true on role ideas keeps their words in the row\'s Data, and a second one adds to them (#2350, Gitar: they held on one Mac only)', async () => {
+  const first = store([]);
+  await answer({}, {key: 'ideas:k1', title: 'Add Cashier', aside: ['caissier', 'vendeur']}, 'Not true', {call: first.call, now: NOW});
+  assert.deepEqual(first.writes[0][1].record.fields, {state: 'Not true', hidden_until: '', data: '{"aside":["caissier","vendeur"]}', input_hash: 'ideas:k1'});
+  const again = store([{id: 'a1', category: 'Suggestion', fields: {state: 'Not true', data: '{"aside":["caissier"]}', input_hash: 'ideas:k1'}}]);
+  await answer({}, {key: 'ideas:k1', aside: ['retouche']}, 'Not true', {call: again.call, now: NOW});
+  assert.equal(again.writes[0][1].fields.fields.data, '{"aside":["caissier","retouche"]}');
+  const later = store([]);
+  await answer({}, {key: 'ideas:k2', aside: ['caissier']}, 'Not now', {call: later.call, now: NOW});
+  assert.equal(later.writes[0][1].record.fields.data, undefined, 'a Not now sets nothing aside');
+});
+
 test('only Not now and Not true are a person\'s answers', async () => {
   const {call, writes} = store([]);
   for (const state of ['Done', 'Stale', 'Hide', '']) assert.equal((await answer({}, {key: 'tune:x'}, state, {call})).ok, false, state);

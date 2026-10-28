@@ -1,5 +1,6 @@
 # Puts one coloured "Gitar: …" label on a PR from Gitar's verdict comment, so the PR list shows changes requested / approved with suggestions / approved (owner, 28 Oct 2026).
 # Runs main's copy (pull_request_target, issue_comment; Gitar's verdict arrives as a comment, so no pull_request_review trigger) and NEVER checks out or runs the PR's code; its only writes are labels. Cost per event: a few seconds on ubuntu.
+# Gray labels: "reviewing" while Gitar has no verdict for the head, "working on PR comments" while a session handles feedback (set by tools/ship-watch.sh; a push or approval clears it).
 # A push removes a stale green/yellow at once (the verdict is older than the head commit); Gitar's re-review edits its comment, which sets the label again. Parser and cases: tools/gitar-label.mjs, tests/test_gitar_label.py.
 name: CI · Gitar label
 run-name: Gitar label on #${{ github.event.pull_request.number || github.event.issue.number }}
@@ -12,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  checks: read   # the head's first check suite gives its push time (tools/gitar-label.mjs)
   pull-requests: write
   issues: write
 
@@ -32,5 +34,7 @@ jobs:
       - name: Set the label from Gitar's verdict
         env:
           GH_TOKEN: ${{ github.token }}
+          GITAR_PUSH: ${{ github.event_name == 'pull_request_target' && github.event.action == 'synchronize' && '1' || '0' }}   # a push ends "working"
+          GITHUB_REPOSITORY: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: node tools/gitar-label.mjs "$PR"

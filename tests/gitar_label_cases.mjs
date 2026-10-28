@@ -1,7 +1,7 @@
 // Cases for tools/gitar-label.mjs, run by tests/test_gitar_label.py: Gitar's real verdict lines map to one label, and a verdict older than the head commit gets none.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {verdictKind, wantedLabel, LABELS} from '../tools/gitar-label.mjs';
+import {verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
 const wrap = kbd => `<details>\n<summary><b>Code Review</b> ${kbd}</summary>\n\nBody\n</details>`;
 const APPROVED = wrap('<kbd>✅ Approved</kbd>');   // #2377, #2380
 const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 3 findings</kbd>');   // #2381
@@ -21,4 +21,11 @@ test('a verdict written before the head commit is stale', () => {
   assert.equal(wantedLabel(APPROVED, '2026-10-28T19:59:08Z', '2026-10-28T19:56:45Z'), LABELS.approved.name);
   assert.equal(wantedLabel(APPROVED, '2026-10-28T19:50:00Z', '2026-10-28T19:56:45Z'), null);
   assert.equal(wantedLabel('no verdict', '2026-10-28T19:59:08Z', '2026-10-28T19:56:45Z'), null);
+});
+test('no current verdict shows "reviewing"; working ends with a push or an approval, never with a red verdict', () => {
+  assert.deepEqual(wantedLabels({verdict: null, working: false, push: false}), [WAITING.name]);
+  assert.deepEqual(wantedLabels({verdict: LABELS.changes.name, working: true, push: false}), [LABELS.changes.name, WORKING.name]);
+  assert.deepEqual(wantedLabels({verdict: null, working: true, push: true}), [WAITING.name]);
+  assert.deepEqual(wantedLabels({verdict: LABELS.approved.name, working: true, push: false}), [LABELS.approved.name]);
+  assert.deepEqual(wantedLabels({verdict: LABELS.suggestions.name, working: true, push: false}), [LABELS.suggestions.name, WORKING.name]);
 });

@@ -8,6 +8,7 @@ import {ROOT} from './root.js';
 import {writePrivate} from './private-file.js';
 import {findBackgroundBrowser} from './background-browser-download.js';
 import {tabOfSession} from './session-tab.js';
+import {startReaper} from './browser-reaper.js';
 
 // Why (2026-10-28, e2e proof of Background automation): the test forms use real site names (boards.greenhouse.io), so the hidden browser under e2e must be
 // pointed at the fixture server or it would reach the real sites. The harness passes a JSON list in JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS; it counts only with
@@ -48,9 +49,9 @@ export function browserCommand(socketUrl, method, params = {}, {WebSocketClass =
 }
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-/** Own one persistent browser per app profile; reuse only verified processes and keep review/challenge sessions alive when the app exits. */
+/** Own one persistent browser per app profile; reuse only verified processes and it dies with the app (browser-reaper.js). */
 export function createBackgroundBrowser(storage, {find = findBackgroundBrowser,   // only the runtime the person downloaded into the app folder; never a system browser
-   spawn = spawnProcess, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
+   spawn = spawnProcess, reaper = startReaper, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
   const folder = storage.path('background-browser'), profile = path.join(folder, 'profile'), extension = path.join(folder, 'extension');
   const portFile = path.join(profile, 'DevToolsActivePort'), ownerFile = path.join(folder, 'owner.json');
   let pending = null, ownChild = null;
@@ -85,6 +86,7 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
         let spawnError = null;
         ownChild.on('error', error => { spawnError = error; });
         ownChild.unref();
+        if (ownChild.pid) reaper(process.pid, ownChild.pid);   // Why (2026-10-28, owner: "Always close it"): the browser dies with the app, however the app ends; it is detached only so the supervisor, not the OS, decides when
         const until = Date.now() + 20000;
         while (!live && Date.now() < until) {
           if (spawnError) throw new Error('The background browser could not start.');

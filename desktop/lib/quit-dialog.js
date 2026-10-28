@@ -34,13 +34,15 @@ export function sessionLines(sessions, label) {
 }
 
 const AFTER = 'Filled forms stay in Chrome. After restarting, open Application sessions to review them.';
+// Why (2026-10-28, owner: "Always close it"): the hidden browser closes with the app, so its forms do not stay anywhere.
+const afterOf = sessions => sessions.some(session => session.background) ? 'The hidden browser closes with the app. Applications it was filling start again next time.' : AFTER;
 
 // Only Claude sessions are working (the queue is empty): keep them, or stop them and quit.
 export function sessionsOnly(sessions, label) {
   const one = sessions.length === 1;
   return {
     message: one ? 'Claude is still filling an application' : `Claude is still filling ${sessions.length} applications`,
-    detail: `${sessionLines(sessions, label).join('\n')}\n\nQuitting stops ${one ? 'it' : 'them'} where ${one ? 'it is' : 'they are'}. ${AFTER}`,
+    detail: `${sessionLines(sessions, label).join('\n')}\n\nQuitting stops ${one ? 'it' : 'them'} where ${one ? 'it is' : 'they are'}. ${afterOf(sessions)}`,
     buttons: ['Keep working', 'Stop and quit'],
   };
 }
@@ -59,7 +61,7 @@ export function working({busy = null, queue = [], sessions = [], important = [],
     message: 'Jobadabra is still working',
     detail: `${lines.join('\n')}\n\nQuit when done: closes by itself once these finish.\n` +
       `Quit now: stops them, and the jobs you started run again next time. What's saved stays saved.` +
-      (sessions.length ? `\n\n${AFTER}` : ''),
+      (sessions.length ? `\n\n${afterOf(sessions)}` : ''),
     buttons: ['Quit when done', 'Quit now', 'Cancel'],
   };
 }

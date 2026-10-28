@@ -17,6 +17,7 @@ import {isFormOf} from './apply.js';
 import {render} from '../cv/template.js';
 import {pagesDocument} from './cv-inplace-review.js';
 import {writePrivate} from './private-file.js';
+import {log as appLog} from './log.js';
 
 export const MODEL = process.env.JOB_PILOTTO_MODEL_OVERRIDE || 'claude-sonnet-5-5';   // the override: the end-to-end journey (desktop/e2e)
 const PRICE = {input: 2, output: 10};  // USD per million tokens
@@ -139,14 +140,19 @@ const numbered = (cv, room = null) => ({summary: cv.summary || '', ...(room?.sum
   ...(cv.skills ? {skills: cv.skills} : {}), ...(cv.extraSkills ? {extra_skills: cv.extraSkills} : {})});
 
 // What the candidate told us, as this prompt takes it: the About you bundle of CV tailoring (lib/about-you.js: details and strategy without salary, learnings
-// without sensitive ones, conflicts or pay) minus the CV, which the prompt already carries numbered. about: a bundle (tests); else read here, lazily
-// (about-you.js imports this file). A part that could not be read is named, never filled from anywhere else.
+// without sensitive ones, conflicts or pay) minus the CV, which the prompt already carries numbered (so it is skipped, not read and trimmed to be dropped). about: a bundle (tests, or the
+// caller's one read for both attempts); else read here, lazily (about-you.js imports this file). A part that could not be read is named, never filled from anywhere else.
+export async function aboutFor(storage) {
+  const {aboutYou} = await import('./about-you.js');
+  return aboutYou(storage, 'cv_tailor', {skip: ['cv']});
+}
 async function aboutText(storage, about) {
-  const bundle = about || await import('./about-you.js').then(mod => mod.aboutYou(storage, 'cv_tailor')).catch(() => null);
+  let bundle = about;
+  if (!bundle) bundle = await aboutFor(storage).catch(error => { appLog('cv', 'About you could not be read for tailoring', {error: error.message}); return null; });
   if (!bundle) return '(not available this time)';
   const parts = {...bundle.parts};
-  delete parts.cv;
-  return JSON.stringify(parts).slice(0, 40000) + (bundle.lacked.filter(name => name !== 'cv').length ? `\n(not available this time: ${bundle.lacked.filter(name => name !== 'cv').join(', ')})` : '');
+  delete parts.cv;   // a bundle from a test may carry one
+  return JSON.stringify(parts).slice(0, 40000) + (bundle.lacked.length ? `\n(not available this time: ${bundle.lacked.join(', ')})` : '');
 }
 
 // base: the main CV with the experience bank's extra bullets (lib/experience.js withExtras); the main CV itself when none.

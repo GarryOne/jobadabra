@@ -68,8 +68,9 @@ export function registerKitHandlers(ctx) {
       const own = readCvPdf ? await inPlace.prepare(storage, base, readCvPdf) : {why: 'no PDF reader'};
       if (own.why) appLog('cv', 'tailored CV from the template', {code, why: own.why});
       let feedback = '', result, applied, printed, edited = null;
+      const about = await cvlib.aboutFor(storage).catch(error => { appLog('cv', 'About you could not be read for tailoring', {error: error.message}); return null; });   // read once, for both attempts
       for (let attempt = 0; attempt < 2; attempt++) {
-        const answer = await cvlib.tailor(storage, job, key, {client: ai, feedback, base, room: own.room});   // Why (owner, 28 Oct 2026, About you D1c): the prompt takes the About you bundle, not the whole Profile (salary stays out)
+        const answer = await cvlib.tailor(storage, job, key, {client: ai, feedback, base, room: own.room, about});   // Why (owner, 28 Oct 2026, About you D1c): the prompt takes the About you bundle, not the whole Profile (salary stays out)
         cost += answer.usd;
         result = answer.result;
         applied = cvlib.applyTailoring(base, result, `${profile} ${experience.knownText(storage, main)}`);

@@ -79,6 +79,7 @@ function main(pr) {
 function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   ensure(repo, WORKING);
+  if (pages(`repos/${repo}/issues/${pr}/labels`).some(l => l.name === WORKING.name)) gh('pr', 'edit', String(pr), '--remove-label', WORKING.name, '-R', repo);   // Why (#2386, Gitar): re-adding a present label makes no new labeled event, so its time would stay old
   gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
   main(pr);   // Why (#2386, Gitar): an approved PR must not keep "working"; the sync drops it again
 }

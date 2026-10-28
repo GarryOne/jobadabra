@@ -24,7 +24,7 @@ const FACTS_MS = 500;
 // What the viewer draws over the picture, read from the page's structure only (never judged here): how many fields, how many hold a value, the required
 // ones still empty (each a box as a share of the viewport, so any picture size maps it) and the field being typed in. A radio group is one field.
 // Why (28 Oct 2026, owner's live view design): the app's Submit stays off while a required field is empty; this is that floor, ANDed with the form judge's ready.
-// TODO(AI): count the fields inside a frame too; until then the form judge's ready still gates Submit there (2026-10-28)
+// Fields inside a frame count too (B follow-up 3, 28 Oct 2026): pageFacts reads each direct child frame and maps its boxes onto the main picture. TODO(AI): frames inside frames are not read (2026-10-28)
 const PAGE_FACTS = `(() => {
   const shown = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
   const all = [...document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]),select,textarea')].filter(e => !e.disabled && shown(e));
@@ -43,7 +43,36 @@ const PAGE_FACTS = `(() => {
 /** The page's facts for the viewer ({address, fields, filled, left: [{label, x, y, w, h}], active}; the address never has its query), or null when the page cannot be read. */
 export async function pageFacts(cdp) {
   const {result} = await cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true}).catch(() => ({}));
-  return result?.value && typeof result.value === 'object' ? result.value : null;
+  const main = result?.value && typeof result.value === 'object' ? result.value : null;
+  return main ? withFrames(cdp, main) : null;
+}
+
+// Facts of the direct child frames folded into the main page's: counts summed, empty required boxes mapped from the frame's own viewport onto the main one.
+// Why (28 Oct 2026, B follow-up 3): an application form in an iframe showed 0 fields, so the person could not see what was left. A frame that cannot be read is skipped.
+async function withFrames(cdp, main) {
+  const tree = await cdp.send('Page.getFrameTree').catch(() => null);
+  const children = tree?.frameTree?.childFrames || [];
+  if (!children.length) return main;
+  const size = await cdp.send('Runtime.evaluate', {expression: '[innerWidth || 1, innerHeight || 1]', returnByValue: true}).catch(() => null);
+  const [W, H] = Array.isArray(size?.result?.value) ? size.result.value : [1, 1];
+  const r4 = n => Math.round(n * 1e4) / 1e4, merged = {...main, left: [...main.left]};
+  for (const {frame} of children) {
+    try {
+      const {backendNodeId} = await cdp.send('DOM.getFrameOwner', {frameId: frame.id});
+      const {model} = await cdp.send('DOM.getBoxModel', {backendNodeId});
+      const [x0, y0, , , x1, y1] = model.content;
+      const {executionContextId} = await cdp.send('Page.createIsolatedWorld', {frameId: frame.id, worldName: 'jobadabra-facts'});
+      const {result: inFrame} = await cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true, contextId: executionContextId});
+      const facts = inFrame?.value;
+      if (!facts || typeof facts !== 'object') continue;
+      const [fw, fh] = [x1 - x0, y1 - y0];
+      merged.fields += facts.fields;
+      merged.filled += facts.filled;
+      merged.left.push(...facts.left.map(box => ({label: box.label, x: r4((x0 + box.x * fw) / W), y: r4((y0 + box.y * fh) / H), w: r4(box.w * fw / W), h: r4(box.h * fh / H)})));
+      if (!merged.active) merged.active = facts.active;
+    } catch { /* this frame cannot be read: the form judge's ready still gates Submit */ }
+  }
+  return merged;
 }
 
 // The one button whose words are `text` (the form judge's submit_control, copied from the page's own Buttons list), scrolled into view: its centre, or why not.

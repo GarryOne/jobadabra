@@ -4,7 +4,8 @@
 // Guards: test/apply-settings.test.js, test/apply-choice-gate.test.js.
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
-import {ANSWERS_TEXT, MODES, applyOf, applyPatch, modeBuilt} from '../apply-settings-model.js';
+import {ANSWERS_TEXT, MODES, applyOf, applyPatch, modeBuilt, needsBrowser} from '../apply-settings-model.js';
+import {offerBrowser} from './browser-progress.js';
 import {openSetting} from './settings.js';
 
 let current = {};   // the saved settings, as the app last answered them
@@ -73,6 +74,7 @@ export async function save(change = {}, {chosen = false} = {}) {
   const saved = await window.pilot.saveSettings(applyPatch(current, change, {chosen})).catch(() => null);
   if (saved) current = saved;
   draw();
+  if (saved) offerBrowser($('ss-browser'), needsBrowser(saved));   // Why (2026-10-28, B follow-up 2): the offer was decided once at start-up, so choosing Background automation later showed none until a restart
   return saved ? current : null;
 }
 

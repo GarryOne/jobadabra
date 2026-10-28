@@ -17,6 +17,7 @@ import {loadCalendar} from './calendar.js';
 import {loadInterviews} from './interviews.js';
 import {loadEmployers} from './employers.js';
 import {closeJobPanel, openJobPanel} from './job-panel.js';
+import {leaveView} from './view-leave.js';
 import {usage} from '../usage-signals.js';
 import {REPORT_TABS, loadReports} from './reports.js';
 import {applyViewGate, openInNotion} from './notion-connect.js';
@@ -61,6 +62,7 @@ export const guardLeave = (view, guard) => { leaveGuards[view] = guard; };
 export function openView(name, {fromHistory = false} = {}) {
   const leaving = currentView;
   if (leaving && leaving !== name && leaveGuards[leaving] && !leaveGuards[leaving](() => { currentView = ''; openView(name, {fromHistory}); })) return;
+  leaveView(leaving, name);   // a page stops what runs behind it (the live view's stream on Applying: pages/view-leave.js)
   if (leaving !== name) closeJobPanel();   // the job's drawer covers the page it was opened from: going to another page closes it (a callback that opens a job does openView first)
   currentView = name;
   if (!fromHistory) history = viewHistory.visit(history, name);

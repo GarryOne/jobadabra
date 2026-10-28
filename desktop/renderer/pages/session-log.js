@@ -21,7 +21,7 @@ import {syncTips} from '../tips.js';
 import {storeName} from '../store-words.js';
 import {NO_PLACE} from '../targets.js';
 import {offerBrowser, startBrowserProgress} from './browser-progress.js';
-import {applyOf} from '../apply-settings-model.js';
+import {needsBrowser} from '../apply-settings-model.js';
 
 export async function openSession(id) {
   if (!id) return;
@@ -261,5 +261,5 @@ export async function init() {
   if (!sessionList.length) renderSessionPage();  // nothing remembered: the spinner, not an empty workspace
   refreshSessions();
   // Background automation chosen and its browser not there yet: the Applying page offers the download (the person's press starts it).
-  startBrowserProgress().then(async () => offerBrowser($('ss-browser'), applyOf((await window.pilot.state().catch(() => null))?.settings).mode === 'fill')).catch(() => {});
+  startBrowserProgress().then(async () => offerBrowser($('ss-browser'), needsBrowser((await window.pilot.state().catch(() => null))?.settings))).catch(() => {});
 }

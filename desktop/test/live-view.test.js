@@ -157,3 +157,38 @@ test('Open in my browser from a hidden tab: the shape ready-handoff keeps, with 
   assert.deepEqual(f.calls.find(([method]) => method === 'Network.getCookies')[1], {urls: [page.url]});
   assert.equal(await handoffOf(fakes().cdp), null, 'a page that cannot be read hands nothing off');
 });
+
+// B follow-up 3 (28 Oct 2026): fields inside a frame were not counted, so an iframe form read "0 fields" and Submit's floor saw nothing.
+function framed({frames, failing = []}) {
+  const main = {address: 'x.test/apply', fields: 1, filled: 1, left: [], active: ''};
+  const sent = [];
+  const cdp = {send: async (method, params = {}) => {
+    sent.push(method);
+    if (method === 'Page.getFrameTree') return {frameTree: {frame: {id: 'top'}, childFrames: frames.map(id => ({frame: {id}}))}};
+    if (method === 'Runtime.evaluate' && params.contextId) return {result: {value: failing.includes(params.contextId) ? undefined : {fields: 3, filled: 1, left: [{label: 'Email', x: 0.1, y: 0.5, w: 0.5, h: 0.1}], active: 'Email'}}};
+    if (method === 'Runtime.evaluate') return {result: {value: /innerWidth \|\| 1, innerHeight/.test(params.expression) ? [1000, 800] : main}};
+    if (method === 'DOM.getFrameOwner') return {backendNodeId: 5};
+    if (method === 'DOM.getBoxModel') return {model: {content: [100, 200, 500, 200, 500, 600, 100, 600]}};
+    if (method === 'Page.createIsolatedWorld') return {executionContextId: params.frameId};
+    return {};
+  }};
+  return {cdp, sent};
+}
+
+test('a frame\'s fields are added and its empty required boxes are mapped onto the main picture', async () => {
+  const {cdp} = framed({frames: ['f1']});
+  const facts = await pageFacts(cdp);
+  assert.equal(facts.fields, 4);
+  assert.equal(facts.filled, 2);
+  assert.equal(facts.active, 'Email', 'the frame\'s field being typed in shows when the page has none');
+  // frame at (100,200) 400x400 inside a 1000x800 page: x = (100 + .1*400)/1000, y = (200 + .5*400)/800, w = .5*400/1000, h = .1*400/800
+  assert.deepEqual(facts.left, [{label: 'Email', x: 0.14, y: 0.5, w: 0.2, h: 0.05}]);
+});
+
+test('a frame that cannot be read is skipped, and a page without frames makes no frame call', async () => {
+  const skipped = await pageFacts(framed({frames: ['f1', 'f2'], failing: ['f1']}).cdp);
+  assert.equal(skipped.fields, 4, 'only the readable frame is added');
+  const none = framed({frames: []});
+  assert.equal((await pageFacts(none.cdp)).fields, 1);
+  assert.equal(none.sent.some(method => /^(DOM|Page\.createIsolatedWorld)/.test(method)), false);
+});

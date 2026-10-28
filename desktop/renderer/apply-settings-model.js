@@ -48,6 +48,8 @@ export function applyOf(settings) {
   return {mode: modeBuilt(saved.mode) ? saved.mode : 'check', answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || ''};
 }
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
+/** Background automation (the mode that runs in Jobadabra's own browser) is the saved mode, so the Applying page offers that browser's download. One rule for the start-up and for a change in Settings. */
+export const needsBrowser = settings => applyOf(settings).mode === 'fill';
 
 // The settings patch for a change: the whole apply object (saveSettings merges one level). `chosen` stamps the confirmation.
 export function applyPatch(settings, change = {}, {chosen = false, now = new Date()} = {}) {

@@ -62,7 +62,7 @@ function arrived(card) {
   card.classList.add('is-arrived');
   setTimeout(() => card.classList.remove('is-arrived'), 2400);
 }
-// Settings → Profile: CV, Your details and Application answers. What goes into applications; nothing here re-scores jobs.
+// Settings → Profile: CV, Your details and What we learned. What goes into applications; nothing here re-scores jobs.
 async function openProfile() {
   const stillDefault = startDefault();   // "CV" is only the default: a tab picked while the state loads stays (tab-choice.js)
   shared.state = await window.pilot.state();

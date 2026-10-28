@@ -97,7 +97,7 @@ test('class: divided summary tiles are one column at every width, no rule gives 
 
 // Profile tabs restyled from the mockups (owner approved 18 Oct 2026: Your details 05, Experience 09/06, CV 08, Application answers 02/04/10, Cover letter 07): the class is every panel of those tabs;
 // a new one fails until it has the roomy header. Every Profile tab is in ROOMY_TABS now; a new tab joins it.
-const ROOMY_TABS = {details: 7, experience: 3, cv: 1, answers: 2, letter: 2};
+const ROOMY_TABS = {details: 7, experience: 3, cv: 1, answers: 1, letter: 2};   // answers: one card since 28 Oct 2026 (no Profile facts used in forms)
 test('class: every panel of a restyled Profile tab is .panel.roomy with the cardHead shape (teal tile, title over its lead), no lead line outside the header', () => {
   const html = read('index.html');
   for (const [tab, least] of Object.entries(ROOMY_TABS)) {

@@ -1,6 +1,6 @@
-// The three lists of open questions, each through the one shared filter (renderer/question-filter.js): Jobs → Answer once (list), Profile → Needs review
-// (verdicts, filtered in the window) and the session's "what Claude needs" (groups). Nothing is deleted; `hidden` is what the filter set aside.
-// Guarded by test/question-lists.test.js.
+// The lists of open questions, each through the one shared filter (renderer/question-filter.js): the two drawers (openShown: Fill your details, What we learned)
+// and the session's "what Claude needs" (groups). Nothing is deleted; `hidden` is what the filter set aside.
+// Guarded by test/question-queues.test.js and test/question-lists.test.js.
 import * as questions from './questions.js';
 import * as verdicts from './question-verdicts.js';
 import * as jobAnswers from './job-answers.js';
@@ -13,6 +13,7 @@ import {formatFor, proposalIn} from '../renderer/question-kind.js';
 import {letterQuestion} from './letter-availability.js';
 import * as detailsReview from './details-review.js';
 
+const NOT_LEARNED = new Set(['details', 'one_job', 'consent']);   // lib/question-reuse.js verdicts that are never a learning
 const answeredNow = async (storage, groups, fetcher) => verdicts.answeredOf(storage, groups ?? await questions.standardAnswers(storage, fetcher));
 
 // The kinds of answer for these labels: what this Mac kept (the last fill's, else the AI's one judgment, asked here for labels with no mark and none kept).
@@ -28,26 +29,40 @@ const withFormat = (rows, kept) => rows.map(row => {
   return proposal ? {...row, format, proposal} : {...row, format, proposal: undefined, coveredBy: undefined};
 });
 
-// Jobs → Answer once: {list: shown (a covered question carries .proposal; each row its .format) and Your details' unclear fields (lib/details-review.js:
-// one queue, owner 18 Oct 2026), in one scored order, hidden: [...], usage}. A failed read of those leaves the form questions as they are.
-export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows = null, groups = null} = {}) {
-  if (!rows) await tidy(storage, {fetcher}).catch(() => {});   // the junk an older fill saved goes first (lib/answers-tidy.js)
-  const {shown, hidden, fromDetails, usage} = await verdicts.split(storage, rows || await questions.list(storage, fetcher), {answered: await answeredNow(storage, groups, fetcher), facts: await factsOf(storage, fetcher), ai});
-  const kept = await keptFormats(storage, shown, ai);
-  if (!rows) await detailsReview.judgeNew(storage, {fetcher, ai}).catch(() => {});   // each save: answers saved since the last load get the AI's word (no new line: no call)
-  const details = rows ? [] : await detailsReview.pending(storage, {fetcher, ai}).catch(() => []);
-  // One score for the whole list (owner, 18 Oct 2026): form questions and Your details items in one order (renderer/question-filter.js ranked).
-  return {list: ranked([...withFormat(shown, kept), ...details, ...[letterQuestion(storage)].filter(Boolean)], verdicts.cached(storage)), hidden: withFormat(hidden, kept), fromDetails: fromDetails.length, usage, consent: hidden.filter(row => verdicts.cached(storage)[keyOf(row.question)]?.reuse === 'consent').length};
-}
+// A details item's place (lib/details-review.js keys: `details:<kind>:<ref JSON>`): a ref with a page is a line of the Profile or the answers page, never a Your details home.
+const pageOf = row => { try { return JSON.parse(String(row.key).replace(/^details:[^:]*:/, '')).page || ''; } catch { return ''; } };
 
-// Profile → Needs review: the verdict map for these labels (classifying new ones), the window filters with visibleQuestions; and the kinds this Mac kept for
-// them ({[keyOf]: {kind, options, list}}), the window drawing each row with formatFor (its store mark first). unmarked: the labels whose line has no mark (the AI judges those once).
-export async function reviewVerdicts(storage, labels, {ai = claudeAi(storage), groups = null, unmarked = labels} = {}) {
-  if (!groups) await tidy(storage).catch(() => {});
-  const {verdicts: map, usage} = await verdicts.ensure(storage, labels, {answered: await answeredNow(storage, groups), facts: await factsOf(storage), ai});
-  const kept = await keptFormats(storage, unmarked.map(question => ({question})), ai);
-  return {verdicts: Object.fromEntries(labels.map(label => [keyOf(label), map[keyOf(label)]]).filter(([, v]) => v)), usage,
-    formats: Object.fromEntries(labels.map(label => [keyOf(label), kept[keyOf(label)]]).filter(([, v]) => v))};
+// The two drawers (Why (28 Oct 2026, owner, superseding 18 Oct "One queue for all"): "Fill your details" holds only Your details facts; "What we learned"
+// everything else that stays reusable, one row per topic, never a per-company question; the cover letter is its own card).
+// -> {details: Your details items, ranked; learned: form questions and the Profile's own ❓ lines through the one filter (renderer/question-filter.js) plus the
+// saved answers the AI found unclear, ranked; letter: the cover-letter setup action or null; hidden, fromDetails, usage, consent; notLearned: the
+// saved answers' questions that are no learning}. A failed read of the
+// details leaves the form questions as they are. details: the items as given (tests), else lib/details-review.js pending().
+export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows = null, groups = null, details = null} = {}) {
+  if (!rows) await tidy(storage, {fetcher}).catch(() => {});   // the junk an older fill saved goes first (lib/answers-tidy.js)
+  if (!rows) await detailsReview.judgeNew(storage, {fetcher, ai}).catch(() => {});   // each save: answers saved since the last load get the AI's word (no new line: no call)
+  const items = details || (rows ? [] : await detailsReview.pending(storage, {fetcher, ai}).catch(() => []));
+  // The Profile's own ❓ lines are questions like a form's: the same AI verdict decides (one job's, consent, a Your details fact, one topic), never their place.
+  const asks = items.filter(row => row.details?.kind === 'open' && pageOf(row)), saved = items.filter(row => row.details?.kind !== 'open' && pageOf(row));
+  const facts = items.filter(row => !pageOf(row));
+  const formRows = [...(rows || await questions.list(storage, fetcher)), ...asks], answered = await answeredNow(storage, groups, fetcher), baseFacts = await factsOf(storage, fetcher);
+  // The saved answers get the same verdict in the same one call (AC2: the tab lists no Your details fact, no one job's, no consent); then the one filter.
+  const {verdicts: judged, usage} = await verdicts.ensure(storage, [...formRows, ...saved, ...answered].map(row => row.question), {answered, facts: baseFacts, ai});
+  const {shown, hidden, fromDetails} = visibleQuestions(formRows, judged, {open: baseFacts.filter(fact => !fact.value).map(fact => fact.label)});
+  const kept = await keptFormats(storage, shown.filter(row => !row.details), ai);   // the kinds of what is shown only: a hidden row costs no call
+  const known = verdicts.cached(storage), formatted = rows => rows.map(row => (row.details ? row : withFormat([row], kept)[0]));
+  // A Profile line merged into a form question's topic is that topic's copy: never answered as another wording (lib/questions.js answers the answers page only).
+  const learned = shown.map(row => (row.also?.some(each => each.details) ? {...row, also: row.also.filter(each => !each.details)} : row));
+  // Why (28 Oct 2026, spec AC2): a saved answer the AI judged a Your details fact, one job's or consent is not a learning; PR A only leaves it out of the
+  // tab; moving it to its Your details home is PR B. Nothing is deleted.
+  const notLearned = answered.map(each => each.question).filter(question => NOT_LEARNED.has(known[keyOf(question)]?.reuse));
+  // An unclear saved line by the same verdict (PR A review): a Your details fact is checked in Fill your details, one job's or consent is set aside.
+  const verdictOf = row => known[keyOf(row.question)]?.reuse;
+  const savedFacts = saved.filter(row => verdictOf(row) === 'details'), savedAside = saved.filter(row => NOT_LEARNED.has(verdictOf(row)) && verdictOf(row) !== 'details');
+  const savedLearned = saved.filter(row => !NOT_LEARNED.has(verdictOf(row)));
+  return {details: ranked([...facts, ...savedFacts], known), learned: ranked([...formatted(learned), ...savedLearned], known), letter: letterQuestion(storage),
+    hidden: [...formatted(hidden), ...savedAside],
+    fromDetails: fromDetails.length, usage, consent: hidden.filter(row => known[keyOf(row.question)]?.reuse === 'consent').length, notLearned};
 }
 
 // "What Claude needs": the standard answers' groups with the open questions the filter hides left out (cached verdicts only, no AI call here).

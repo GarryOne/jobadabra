@@ -1,5 +1,6 @@
-// Settings → Profile → Application answers → Website-specific rules (owner's Form knowledge mockup, 16 Oct 2026, merged into Application answers
-// the same day): the rules Jobadabra remembered from forms as a table (Field · Saved value or rule · Website · Edit · ⋮), filtered by website and
+// Website-specific rules (owner's Form knowledge mockup, 16 Oct 2026). TODO(AI): PR B shows site rules in Reports → Form fills, else this table goes (28 Oct 2026)
+// Not drawn on Profile since 28 Oct 2026 (owner: "It's getting dropped… since we have Form fills"); its form helpers (select, input, labelled) are shared.
+// Was: the rules Jobadabra remembered from forms as a table (Field · Saved value or rule · Website · Edit · ⋮), filtered by website and
 // type; Edit opens the row (field label, applies to, saved value, rule type, why, technical details, Delete rule); "Add rule" adds one. A rule
 // whose value is missing is also listed under Needs review (reviewRows). Rules come from renderer/knowledge-model.js; a line that is not a rule
 // is listed under the table, never dropped. Writes: view.change('knowledge', …) (pages/outline-tab.js). Guarded by test/profile-tabs-render.test.js.

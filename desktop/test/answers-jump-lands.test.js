@@ -1,5 +1,5 @@
-// Every jump into Profile → Application answers lands on the tab it names (owner, 19 Oct 2026: "Manage saved answers doesn't focus the Saved tab"):
-// the drawer's Saved answers and a question's "covered by" → Saved; a plain open → All. One loop over the jumps, asserting the selected tab.
+// Every jump into Profile → What we learned lands on the view it names (owner, 19 Oct 2026: "Manage saved answers doesn't focus the Saved tab"; Saved is
+// Confirmed since 28 Oct 2026): the drawer's Saved answers and a question's "covered by" → Confirmed; a plain open → All. One loop over the jumps, asserting the selected tab.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';
@@ -11,9 +11,9 @@ const answers = await import('../renderer/pages/application-answers.js');
 
 // jump → the tab it must land on (the same calls manageAnswers makes: searchAnswers(query, view), then the tab loads)
 const JUMPS = [
-  ['Saved answers (drawer header, done state)', () => answers.searchAnswers('', 'saved'), 'saved'],
-  ['a question\'s covered-by link', () => answers.searchAnswers('Notice period', 'saved'), 'saved'],
-  ['a jump naming Needs review', () => answers.searchAnswers('', 'review'), 'review'],
+  ['Saved answers (drawer header, done state)', () => answers.searchAnswers('', 'confirmed'), 'confirmed'],
+  ['a question\'s covered-by link', () => answers.searchAnswers('Notice period', 'confirmed'), 'confirmed'],
+  ['a jump naming New', () => answers.searchAnswers('', 'new'), 'new'],
   ['a plain open of the tab', () => answers.searchAnswers(''), 'all'],
 ];
 
@@ -30,8 +30,8 @@ for (const [name, jump, want] of JUMPS) {
   });
 }
 
-test('manageAnswers names the Saved tab by default', async () => {
+test('manageAnswers names the Confirmed view by default', async () => {
   const fs = await import('node:fs');
   const src = fs.readFileSync(new URL('../renderer/pages/question-review.js', import.meta.url), 'utf8');
-  assert.match(src, /manageAnswers\(query = '', view = 'saved'\)/);
+  assert.match(src, /manageAnswers\(query = '', view = 'confirmed'\)/);
 });

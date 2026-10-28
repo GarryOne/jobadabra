@@ -6,7 +6,6 @@ import {contactHints} from '../audience.js';
 import {openInNotion, showNotionPanel} from './notion-connect.js';
 import {showStoreParts} from './store-parts.js';
 import {addQuestion, loadApplicationAnswers} from './application-answers.js';
-import {loadAnswersFacts} from './answers-facts.js';
 import {pick} from '../tab-choice.js';
 import {remembered} from '../view-memory.js';
 import {initExperience, loadExperience} from './experience.js';
@@ -41,7 +40,7 @@ import {swr} from '../swr.js';
 import {foldProfilePanels, initFoldBar, showFoldBar} from '../profile-fold.js';
 import {showNotify} from './notify-settings.js';
 
-// ---------- Settings → Application profile: tabs (CV, Your details, Experience, Application answers, Cover letter) ----------
+// ---------- Settings → Application profile: tabs (CV, Your details, Experience, What we learned, Cover letter) ----------
 // Your details is drawn once with the settings (showContact): switching to it never redraws the form, so unsaved edits stay.
 // Strategy → Job preferences, through the sidebar's own Strategy button (nav.js imports this file).
 const openJobPreferences = () => { document.querySelector('.nav[data-view=strategy]')?.click(); setTimeout(() => $('strategy-job-prefs')?.scrollIntoView({block: 'start'}), 300); };
@@ -58,12 +57,12 @@ export function profileTab(name, {byDefault = false} = {}) {
   });
   showStoreParts();
   showFoldBar();
-  if (name === 'answers') { loadAnswersFacts(); loadApplicationAnswers(); }
+  if (name === 'answers') loadApplicationAnswers();
   else if (name === 'experience') loadExperience();
   else if (name === 'letter') { loadLetterStyle(); loadLetter(); }
   else if (name === 'cv') { loadCvSetting(); showCvChanged(); }
 }
-// Application answers' ⋯ (one "View source" link per page, in a menu: owner, 18 Oct 2026, fix 10); the button shows only where the store has pages.
+// What we learned's ⋯ (one "View source" link per page, in a menu: owner, 18 Oct 2026, fix 10); the button shows only where the store has pages.
 function answersMenu() {
   openMenu($('answers-review'), [{label: `View source in ${storeName()}`, icon: 'external', run: () => openInNotion('NOTION_ANSWERS_PAGE_ID')}]);
 }

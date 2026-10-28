@@ -4,10 +4,6 @@
 // Pure (no DOM, no AI); guarded by test/question-filter.test.js.
 export const keyOf = question => String(question || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
-// The queue items that come from Your details (lib/details-review.js), not from a form: the Profile banner adds them to its own count of the answers page.
-/** Queue rows supplied by setup or Your details, counted alongside form questions on every review surface. */
-export const extrasIn = list => (list || []).filter(row => row?.details || row?.setup);
-export const detailsIn = list => (list || []).filter(row => row?.details);
 // The answer "Keep as is" on an answer the AI found unclear (lib/details-review.js): never asked again for that value.
 export const KEEP_AS_IS = 'Keep as is';
 
@@ -17,7 +13,7 @@ export const looksLikeFieldId = text => {
   return !label || (!/\s/.test(label) && /\d/.test(label) && /^[\w.:[\]-]+$/.test(label));
 };
 
-// One score for the whole queue (owner, 18 Oct 2026: "sorted by the most important/urgent. Basically scored"). A form question: a fill it blocked first, then
+// One score, used inside each drawer (owner, 18 Oct 2026: "sorted by the most important/urgent. Basically scored"; two drawers since 28 Oct 2026, lib/question-lists.js). A form question: a fill it blocked first, then
 // how many forms asked. A Your details item ("From its form questions"): the sum of the form questions the AI mapped to its fact; one no form asked yet ranks
 // right after the blocked questions. Guarded by test/queue-score.test.js.
 export const BLOCKED = 1e6;

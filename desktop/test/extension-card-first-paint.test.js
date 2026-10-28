@@ -66,7 +66,6 @@ const FOLD_SETTERS = {
   'pages/job-preferences.js': 'remembers the person\'s toggle per side',
   'pages/activity.js': 'the person\'s View technical log press',
   'pages/activity-render.js': 'only when another run is shown (dataset.for), and an empty log has nothing to open',
-  'pages/application-answers.js': 'remembers the person\'s toggle; a search opens it',
   'pages/jobs.js': 'In conversation: the person\'s last toggle, kept',
   'pages/nav.js': 'opens what the person asked to go to',
   'pages/strategy-cards.js': 'opens the card the person asked to go to',

@@ -1,8 +1,9 @@
-// The unclear fields of Your details as items of the one review queue (owner, 18 Oct 2026: "One queue for all"): "Which is right?" (two copies of a fact
+// The unclear fields of Your details as review items (owner, 18 Oct 2026; since 28 Oct 2026 the "Fill your details" drawer, owner: "only missing Your details facts",
+// superseding "One queue for all"; a line of the Profile or answers page goes to "What we learned", lib/question-lists.js): "Which is right?" (two copies of a fact
 // disagree, lib/profile-move.js openConflicts), "Where does this go?" (the move's AI answered "unsure"), a kind to check (a typed line kept as written: the
 // "Check" chip of renderer/fact-line.js, one rule: needsCheck) and a ❓ on the Profile that nothing asked. Each item has the queue's shape ({key, question,
-// format, hint, value}) plus .details {kind, source, where, fact (the label it is scored by)}; lib/question-lists.js openShown adds them to the list the Jobs card, the drawer and the Profile
-// banner count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/details-review.test.js.
+// format, hint, value}) plus .details {kind, source, where, fact (the label it is scored by)}; lib/question-lists.js openShown sorts them into the two drawers the Jobs cards,
+// the drawers and the Profile tabs count. answer() saves into the item's home: a Your details section, else the line's own place on the Profile. Guarded by test/details-review.test.js.
 import {openStore} from './store/index.js';
 import * as sections from './profile-sections.js';
 import {itemsOf, openConflicts, resolve, unsureKey} from './profile-move.js';
@@ -27,7 +28,7 @@ export const KINDS = ['which', 'check', 'open', 'unclear', 'missing', 'contact',
 export const KEEP = 'Keep where it is';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
 const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
-const PAGES = {profile: 'Profile', answers: 'Application answers'};
+const PAGES = {profile: 'Profile', answers: 'What we learned'};   // the answers page's tab name since 28 Oct 2026 (owner)
 const plain = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 const same = text => plain(text).toLowerCase();
 const asked = value => /^❓/.test(plain(value));

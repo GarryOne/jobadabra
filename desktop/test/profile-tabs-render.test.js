@@ -33,7 +33,7 @@ const TABS = {answers: {load: 'loadApplicationAnswers', file: 'application-answe
   preferences: {load: 'loadPreferences', file: 'job-preferences', body: 'preferences-body'}};   // Strategy's Job preferences (was this page's tab)
 
 for (const [store, items] of Object.entries({sqlite: LOCAL, notion: NOTION})) {
-  test(`${store}: Application answers shows the review banner, the saved answers and the website questions, with no textarea and no ❓`, async () => {
+  test(`${store}: What we learned shows one list of confirmed answers, no site rules, no textarea and no ❓; an edit is one block edit`, async () => {
     const sent = [];
     const calls = {textOutline: async name => ({ok: true, items: items[name], store, link: null}),
       textEdit: async (name, changes) => { sent.push([name, changes]); return {ok: true, items: items[name], store}; }};
@@ -47,18 +47,13 @@ for (const [store, items] of Object.entries({sqlite: LOCAL, notion: NOTION})) {
     const text = node.textContent;
     assert.equal(node.querySelectorAll('textarea').length, 0, 'no textarea');
     assert.ok(!text.includes('❓'), 'no ❓ on screen');
-    assert.match(text, /\d+ questions? needs? your review/, 'one banner instead of the Needs review list');
-    assert.match(text, /Website-specific questions/);
-    assert.match(text, /Not set/);
-    // Saved answers: one card, a header per section, one line per answer with no button (owner's mockup, 17 Oct 2026).
-    const saved = node.querySelector('.qa-saved');
-    assert.ok(saved.querySelectorAll('.qa-group').length, 'section headers drawn');
-    assert.equal(saved.querySelectorAll('.qa-row button.qa-add').length, 0, 'no per-row button');
-    // Needs review: an optional row is not in it (owner, 17 Oct 2026).
-    assert.ok(node.querySelector('#answers-review-go'), 'the banner opens the question review (pages/question-review.js)');
-    node.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').listeners.click[0]();   // the Needs review list
-    assert.ok(!/portfolio/i.test(node.querySelector('.is-review').textContent), 'an optional row is not in Needs review');
-    node.querySelector('.qa-add').click();
+    // Owner, 28 Oct 2026: no Saved answers box, no Website-specific questions; an unanswered line is never "Not set" here (it is New once a form asks it).
+    assert.doesNotMatch(text, /Website-specific questions|Saved answers|portfolio/i);
+    const list = node.querySelector('.qa-learned');
+    assert.ok(!list.querySelectorAll('.qa-value').some(value => value.textContent === 'Not set'), 'no row "Not set"');
+    assert.ok(list.querySelectorAll('.qa-group').length, 'section headers drawn');
+    assert.equal(list.querySelectorAll('.qa-row button.qa-add').length, 0, 'no per-row button on a confirmed answer');
+    list.querySelector('.qa-row .qa-chevron').listeners.click[0]();
     const field = node.querySelector('.qa-edit input');
     field.value = 'Yes, EU citizen';
     field.dispatch('input');

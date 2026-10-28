@@ -9,9 +9,6 @@ import * as kinds from './details-kinds.js';
 import * as notes from './details-notes.js';
 import * as surveys from './survey-move.js';
 import {list} from './set-aside.js';
-import {factsOf} from './base-facts.js';
-import {cached} from './question-verdicts.js';
-import {usedInForms} from './form-facts.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
 const AUTH = 'Authorised to work in', SPONSOR = 'No, I will require visa sponsorship';
@@ -28,9 +25,6 @@ const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'British'}, {lab
   languages: [{label: 'English', value: 'B2', kind: 'language'}, {label: 'Romanian', value: 'native', kind: 'language'}, {label: 'Russian', value: 'B1', kind: 'language'},
     {label: 'Languages I can work in (note)', value: 'No French, German or Italian.'}]};
 const DEMO_WHICH = [{home: 'availability', topic: 'notice period', choices: [{label: 'Notice period', value: '2 months', page: 'profile'}, {label: 'Notice period / earliest start', value: '3 months', page: 'answers'}]}];
-// The facts forms asked for (Application answers' "Profile facts used in forms"): fictional, for the screenshots.
-const DEMO_FORM_FACTS = [{label: 'Location', value: 'London, United Kingdom', asked: 6}, {label: 'Notice period', value: '1 month, ends at month-end', asked: 4},
-  {label: 'Switzerland', value: 'allowed, B permit', asked: 3}, {label: 'LinkedIn', value: 'linkedin.com/in/alex-demo', asked: 2}];
 const empty = () => Object.fromEntries(Object.keys(sections.SECTIONS).map(key => [key, []]));
 
 // ai/copy: a test passes its own.
@@ -70,12 +64,6 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
       return {ok: !error, error, changed, sections: found, formats: await kinds.formatsOf(storage, found, ai()), tidied: tidied(), conflicts: await openConflicts(storage).catch(() => storage.settings().profileConflicts || []), setAside: list(storage).filter(each => each.source === 'profile')};
     } catch (failed) { return {ok: false, error: failed.message, sections: empty(), conflicts: [], setAside: []}; }
   };
-  // The Your details facts a form asked for, with their values read now (lib/form-facts.js): no AI, no copy.
-  ipcMain.handle('formFacts', async () => {
-    if (DEMO) return {ok: true, facts: storage.settings().demoFormFacts ?? DEMO_FORM_FACTS};
-    if (!connected()) return {ok: true, facts: []};
-    try { return {ok: true, facts: usedInForms(cached(storage), await factsOf(storage))}; } catch (error) { return {ok: false, error: error.message}; }
-  });
   ipcMain.handle('detailsFacts', () => opening ||= open().finally(() => { opening = null; }));
   // The fast read the screen paints first (owner's app.log 18 Oct 2026: one open waited 3 min 10 s on four AI and Notion steps in a row, and the survey card never redrew when they
   // finished): the saved lines as they are now, no AI, no move. `settling` says the moves are still to come: the screen then asks 'detailsFacts' and redraws with its answer.

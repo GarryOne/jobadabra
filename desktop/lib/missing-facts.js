@@ -1,4 +1,4 @@
-// The facts of Your details that forms ask most and the person has not given, as items of the one review queue (owner, 18 Oct 2026: "on a fresh install, a queue
+// The facts of Your details that forms ask most and the person has not given, as items of the Fill your details drawer (owner, 28 Oct 2026; 18 Oct 2026: "on a fresh install, a queue
 // of the most important things not filled; step by step, don't overwhelm; be proactive"). The kind "missing" of lib/details-review.js. Most important first =
 // the queue's own score (renderer/question-filter.js factScore: form questions that mean this fact, blocked a fill first, then how many forms asked), then the share of installs whose forms asked it (the alias pack, lib/fact-asks.js), else the catalogue's
 // order. Paced: at most PER_DAY new facts a day (a fact that blocked a fill is asked at once, beyond the cap), never again after "Don't keep", and only for

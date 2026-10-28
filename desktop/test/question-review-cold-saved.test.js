@@ -7,14 +7,14 @@ import {install} from './tiny-dom.js';
 const body = install();
 const saved = [{key: 'salary', question: 'What is your salary expectation? (In USD monthly)', company: 'Colonist', format: {kind: 'text', control: 'text', options: []}}];
 const fresh = [{key: 'permit', question: 'Do you have a valid permission to work in Switzerland?', company: 'DeepJudge AG', format: {kind: 'yes_no', control: 'yes_no', options: ['Yes', 'No']}}, ...saved];
-const disk = new Map([['questionsCache', JSON.stringify(saved)]]);
+const disk = new Map([['questionsCache2', JSON.stringify({details: [], learned: saved, letter: null})]]);
 globalThis.localStorage = {getItem: k => disk.get(k) ?? null, setItem: (k, v) => disk.set(k, String(v)), removeItem: k => disk.delete(k)};
 for (const id of ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'questions-manage', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel']) {
   const node = globalThis.document.createElement('div'); node.id = id; body.append(node);
 }
 let reads = 0, release = null;
 globalThis.window.pilot = new Proxy({
-  openQuestions: () => { reads++; return new Promise(resolve => { release = () => resolve({list: fresh.map(q => ({...q})), hidden: [], consent: 0}); }); },
+  openQuestions: () => { reads++; return new Promise(resolve => { release = () => resolve({details: [], learned: fresh.map(q => ({...q})), hidden: [], consent: 0}); }); },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions} = await import('../renderer/pages/jobs-questions.js');
 const review = await import('../renderer/pages/question-review.js');
@@ -26,7 +26,7 @@ test('questions saved last time: the drawer shows Question 1 before the store an
   reads = 0;
   again.loadQuestions();   // Jobs' load at start: shows the saved list, the store read stays open
   await flush();
-  const opened = drawer.openQuestionReview();
+  const opened = drawer.openQuestionReview({queue: 'learned'});
   await flush();
   assert.match($('review-panel').textContent, /Question 1 of 1/, 'drawn from what is kept, the store has not answered');
   assert.match($('review-panel').textContent, /salary expectation/);

@@ -83,7 +83,7 @@ for (const adapter of ['sqlite', 'notion']) {
     assert.deepEqual(env.copies[0], before);
     assert.deepEqual(env.storage.settings().profileUnsure.map(line => line.value), ['Opaque saved line'], 'only the unresolved source remains for a quiet retry');
     const queue = await openShown(env.storage, {fetcher: env.fetcher, ai: {}});
-    assert.ok(!queue.list.some(item => item.details?.kind === 'where'), 'no technical home selection for the applicant');
+    assert.ok(![...queue.details, ...queue.learned].some(item => item.details?.kind === 'where'), 'no technical home selection for the applicant (either drawer)');
     const request = ai.requests[0], input = JSON.parse(request.messages[0].content).items;
     assert.ok(input.every(item => item.context?.length), 'AI sees actual source section context');
     assert.ok(request.output_config.format.schema.properties.items.items.properties.home.enum.includes('writing'));

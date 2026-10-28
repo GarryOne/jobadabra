@@ -8,14 +8,14 @@ const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
 const html = read('../renderer/index.html'), profile = read('../renderer/pages/profile.js');
 const page = html.slice(html.indexOf('data-settings-page="profile"'), html.indexOf('data-settings-page="automation"'));
 
-test('the tabs: Application answers opens its outline tab, the old Preferences name opens Strategy; Form knowledge is a section, its old tab name still lands there', () => {
+test('the tabs: What we learned opens its outline tab, the old Preferences name opens Strategy; Form knowledge is a section, its old tab name still lands there', () => {
   assert.doesNotMatch(html, /data-profile-tab="profiletext"/, 'the Preferences tab is gone');
-  assert.match(html, /data-profile-tab="answers">Application answers</);
+  assert.match(html, /data-profile-tab="answers">What we learned</);
   assert.doesNotMatch(html, /data-profile-tab="knowledge"/);
   assert.match(profile, /if \(name === 'knowledge'\) name = 'answers';/);
-  assert.match(profile, /if \(name === 'answers'\) \{ loadAnswersFacts\(\); loadApplicationAnswers\(\); \}/, 'the facts used in forms, then the answers');
+  assert.match(profile, /if \(name === 'answers'\) loadApplicationAnswers\(\);/, 'no Profile facts used in forms card (owner, 28 Oct 2026)');
   assert.match(profile, /if \(name === 'profiletext'\) \{ openJobPreferences\(\); return; \}/, 'its old name opens Strategy → Job preferences');
-  for (const [file, texts] of [['application-answers', "\\[TEXT, 'knowledge'\\]"], ['job-preferences', '\\[TEXT\\]']]) {
+  for (const [file, texts] of [['application-answers', '\\[TEXT\\]'], ['job-preferences', '\\[TEXT\\]']]) {   // site rules are not drawn on Profile (owner, 28 Oct 2026)
     assert.match(read(`../renderer/pages/${file}.js`), new RegExp(`outlineTab\\('\\w+', ${texts}`), file);
   }
 });

@@ -28,13 +28,13 @@ function card(title, editing) {
 export function cardSystem() {
   const box = el('div', 'settings-page');
   const tabs = el('div', 'tabs');
-  const buttons = Object.fromEntries([['details', 'Your details'], ['experience', 'Experience'], ['answers', 'Application answers']].map(([key, label]) => {
+  const buttons = Object.fromEntries([['details', 'Your details'], ['experience', 'Experience'], ['answers', 'What we learned']].map(([key, label]) => {
     const button = el('button', '', label);
     tabs.append(button);
     return [key, button];
   }));
   box.append(tabs, card('Languages', false), card('Languages', true));
-  const bar = pageSaveBar({host: box, tabs: {details: 'Your details', experience: 'Experience', answers: 'Application answers'}, tabButton: key => buttons[key],
+  const bar = pageSaveBar({host: box, tabs: {details: 'Your details', experience: 'Experience', answers: 'What we learned'}, tabButton: key => buttons[key],
     words: 'Your drafts are kept while you switch tabs.'});
   for (const [id, tab] of [['languages', 'details'], ['summary', 'experience']]) bar.register({id, tab, label: id, count: () => 1, save: async () => ({ok: true}), discard: () => {}});
   return box;

@@ -11,13 +11,14 @@ export const topicOf = text => String(text || '').toLowerCase().replace(/[^\p{L}
 export const VERDICTS = ['reusable', 'one_job', 'consent'];
 // A label that means a fact of Your details is answered from there and never asked (owner, 17 Oct 2026): its verdict is "details", with the fact's label.
 export const DETAILS = 'details';
+const CHUNK = 25;   // labels per call: 25 verdicts (~45 tokens each) fit max_tokens 2000 with room
 
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['verdicts'], properties: {verdicts: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['label', 'verdict', 'covered_by', 'value', 'topic', 'fact'], properties: {label: {type: 'string'}, verdict: {type: 'string', enum: VERDICTS}, covered_by: {type: 'string'}, value: {type: 'string'},
   topic: {type: 'string'}, fact: {type: 'string'}}}}}};
 const INSTRUCTIONS = `A job-application form asked these questions. For each decide its verdict:
-- "reusable": a fact about the applicant or a stable stance they will want to give again on OTHER employers' forms (notice period, visa, salary, how they heard of jobs, a degree).
-- "one_job": it belongs to this one job or employer (it names the company or its product, asks why this company, a motivation or essay written for this role, a trivia or skill test).
+- "reusable": a fact about the applicant or a stable stance they will want to give again on OTHER employers' forms (notice period, visa, salary, willingness to relocate, a degree).
+- "one_job": it belongs to this one job or employer, even when it does not name it (it names the company or its product, asks why this company, how they heard about this job or employer, whether they worked for or applied to this employer before, which of its offices or teams, a motivation or essay written for this role, a trivia or skill test).
 - "consent": a legal or privacy consent / agreement checkbox or statement.
 Then covered_by: when one of the applicant's saved answers already settles it, the EXACT saved question (a differently worded notice-period question is covered by the notice period answer; "Do you need visa sponsorship?" by a saved work permit); otherwise "".
 And value: the answer to THIS question that saved answer gives: "" when the saved answer answers it as it is; otherwise the short answer it implies (a permanent permit -> "No" to needing sponsorship). Only when it follows for sure: otherwise covered_by "" and value "".
@@ -32,19 +33,34 @@ export async function classify({labels, answered = [], facts = [], company = '',
   if (!labels.length) return out;
   const ai = client || (apiKey ? anthropicApi(apiKey) : null);
   if (!ai) return out;
+  out.usage = {};
+  // Why (28 Oct 2026, PR A review): one call for every label hit max_tokens past ~44 verdicts and the cut JSON threw on every read; chunks of CHUNK fit.
+  for (let at = 0; at < labels.length; at += CHUNK) {
+    const part = await classifyChunk(ai, {labels: labels.slice(at, at + CHUNK), answered, facts, company, host});
+    for (const [label, verdict] of part) out.set(label, verdict);
+    for (const [name, value] of Object.entries(part.usage || {})) if (typeof value === 'number') out.usage[name] = (out.usage[name] || 0) + value;
+  }
+  return out;
+}
+
+// One call for at most CHUNK labels; a reply cut at max_tokens (or not JSON) judges none of them: they stay unjudged and are asked again on the next read.
+async function classifyChunk(ai, {labels, answered, facts, company, host}) {
+  const out = new Map();
   const response = await ai.messages.create({
     model: MODEL, max_tokens: 2000, system: INSTRUCTIONS,
     messages: [{role: 'user', content: `<employer>${company}</employer>\n<site>${host}</site>\n<saved_answers>\n${JSON.stringify(answered.map(a => ({question: a.question, answer: String(a.answer || '').slice(0, 300)}))).slice(0, 12000)}\n</saved_answers>\n<facts>\n${JSON.stringify(facts.map(fact => fact.label))}\n</facts>\n<questions>\n${JSON.stringify(labels)}\n</questions>`}],
     output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'},
   });
+  out.usage = response.usage || {};
   const text = response.content?.find(block => block.type === 'text')?.text || '{"verdicts":[]}';
+  let verdicts = [];
+  try { verdicts = response.stop_reason === 'max_tokens' ? [] : JSON.parse(text).verdicts || []; } catch { verdicts = []; }
   const byQuestion = new Map(answered.map(a => [a.question, a.answer])), known = new Set(facts.map(fact => fact.label));
-  for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = ''} of JSON.parse(text).verdicts || []) {
+  for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = ''} of verdicts) {
     if (!labels.includes(label) || !VERDICTS.includes(verdict)) continue;
     const answer = byQuestion.get(covered) || '', own = known.has(fact) && verdict !== 'consent' ? fact : '';   // a fact the AI invented keeps nothing
     out.set(label, {reuse: own ? DETAILS : verdict, covered_by: answer ? covered : '', proposal: answer ? String(value).trim() || answer : '', from: answer, topic: topicOf(topic), fact: own});
   }
-  out.usage = response.usage || {};
   return out;
 }
 

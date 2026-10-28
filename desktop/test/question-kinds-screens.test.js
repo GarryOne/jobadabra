@@ -30,30 +30,32 @@ const SCREENS = {
       node.id = id;
       body.append(node);
     }
-    const calls = {state: async () => ({settings: {}}), openQuestions: async () => ({list: EXAMPLES.map((each, i) => ({key: `b${i}`, question: each.question, company: 'Adnovum', format: formatFor({marked: each.mark})})), hidden: []})};
+    const calls = {state: async () => ({settings: {}}), openQuestions: async () => ({details: [], learned: EXAMPLES.map((each, i) => ({key: `b${i}`, question: each.question, company: 'Adnovum', format: formatFor({marked: each.mark})})), hidden: []})};
     globalThis.window.pilot = new Proxy(calls, {get: (all, key) => all[key] || (() => null)});
     const {openQuestionReview} = await import('../renderer/pages/question-review.js');
-    await openQuestionReview({force: true});
+    await openQuestionReview({queue: 'learned', force: true});
     const seen = globalThis.document.createElement('div');
     const panel = globalThis.document.getElementById('review-panel');
     for (const _ of EXAMPLES) { seen.append(panel.querySelector('[data-answer-kind]')); panel.querySelector('#qr-skip').click(); }
     return seen;
   },
-  'Profile → Application answers → Needs review': async () => {
+  // Owner, 28 Oct 2026: an open question is answered in the drawer only; the tab edits a confirmed answer in place, with the control of its kind.
+  'Profile → What we learned → a confirmed answer opened': async () => {
     const node = globalThis.document.createElement('div');
     node.id = 'answers-body';
     body.append(node);
-    const lines = EXAMPLES.map((each, i) => ({id: `l${i}`, type: 'bulleted_list_item', text: `${each.question}: ❓ (asked by Adnovum)${each.mark ? ` ${markOf(each.mark)}` : ''}`}));
-    globalThis.window.pilot = new Proxy({textOutline: async name => ({ok: true, items: name === 'answers' ? [{id: 'h', type: 'heading_2', text: 'Asked on forms'}, ...lines] : [], store: 'sqlite', link: null}),
-      questionVerdicts: async labels => ({ok: true, verdicts: Object.fromEntries(labels.map(label => [label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(), {reuse: 'reusable', covered_by: ''}])), formats: {}})},
-    {get: (all, key) => all[key] || (() => null)});
+    const valueOf = each => ({yes_no: 'Yes', single: each.mark?.options[0] || 'Switzerland', date: '2026-12-01', amount: '90000'})[each.want] || 'One month';   // a fictional answer of its kind
+    const lines = EXAMPLES.map((each, i) => ({id: `l${i}`, type: 'bulleted_list_item', text: `${each.question}: ${valueOf(each)}${each.mark ? ` ${markOf(each.mark)}` : ''}`}));
+    globalThis.window.pilot = new Proxy({textOutline: async name => ({ok: true, items: name === 'answers' ? [{id: 'h', type: 'heading_2', text: 'Asked on forms'}, ...lines] : [], store: 'sqlite', link: null})},
+      {get: (all, key) => all[key] || (() => null)});
     const {loadApplicationAnswers} = await import('../renderer/pages/application-answers.js');
     await loadApplicationAnswers();
-    await new Promise(resolve => setTimeout(resolve, 10));   // the verdicts arrive and the tab redraws
-    // Open every Needs review row: its answer control is drawn open.
-    node.querySelectorAll('.segmented button').find(button => button.dataset.view === 'review').listeners.click[0]();   // the Needs review list
-    for (const button of node.querySelectorAll('.is-review .qa-add')) button.listeners.click?.forEach(fn => fn({}));
-    return node.querySelector('.is-review');
+    node.querySelectorAll('.segmented button').find(button => button.dataset.view === 'confirmed').listeners.click[0]();
+    for (let i = 0; i < EXAMPLES.length; i++) {   // each opened row redraws the list: open the next closed one
+      const closed = node.querySelectorAll('.qa-learned .qa-row').find(row => !row.classList.contains('is-open'));
+      closed?.querySelector('.qa-chevron').listeners.click[0]();
+    }
+    return node.querySelector('.qa-learned');
   },
 };
 

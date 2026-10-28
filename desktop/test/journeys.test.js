@@ -478,8 +478,8 @@ test('scenario: attached CV and complete required fields still leave missing cov
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-letter-journey-')), {encrypt: v => v, decrypt: v => v});
   fs.writeFileSync(storage.path('cv.pdf'), '%PDF-fictional-CV');
   const queue = await openShown(storage, {rows: [], groups: [], ai: {client: {messages: {create: async () => { throw new Error('This setup state never needs AI'); }}}}});
-  assert.equal(queue.list.filter(row => row.setup?.kind === 'cover-letter').length, 1);
-  assert.equal(queue.list[0].priority, 'HIGH PRIORITY');
+  assert.equal(queue.letter?.setup?.kind, 'cover-letter', 'its own card (owner, 28 Oct 2026)');
+  assert.equal(queue.letter.priority, 'HIGH PRIORITY');
   const details = await me(storage, FORM);
   assert.ok(details.resume, 'the CV is attached/available while the letter is missing');
   assert.equal(details.coverLetterStatus.state, 'missing');

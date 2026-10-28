@@ -355,19 +355,36 @@
         <button class="stat sky" data-stat="inbound" aria-pressed="false" title="Opportunities that found you (a recruiter, a LinkedIn message, a call), every stage"><span class="stat-icon"><i data-icon="chat"></i></span><div><b id="stat-inbound">–</b><span>Inbound</span></div></button>
         <button class="stat violet" data-stat="companies" aria-pressed="false"><span class="stat-icon"><i data-icon="building"></i></span><div><b id="stat-companies">–</b><span>Unique companies</span></div></button>
       </div>
-      <!-- Application questions (pages/jobs-questions.js): one compact card; the questions are reviewed one at a time in a drawer (pages/question-review.js). -->
+      <!-- Two drawers and the cover letter (pages/jobs-questions.js; owner, 28 Oct 2026): Fill your details (amber), What we learned (blue), each hidden at zero;
+           the questions are answered one at a time in the drawer (pages/question-review.js). -->
       <section class="card qr-card" id="questions" hidden aria-labelledby="questions-title">
-        <span class="qr-card-icon"><i data-icon="chat"></i></span>
+        <span class="qr-card-icon"><i data-icon="user"></i></span>
         <div class="qr-card-text">
-          <p class="qr-card-title"><b id="questions-title">Application questions</b><span class="ui-pill tone-warn" id="questions-count"></span></p>
-          <p class="muted">Review missing answers and suggested matches.</p>
+          <p class="qr-card-title"><b id="questions-title">Fill your details</b><span class="ui-pill tone-warn" id="questions-count"></span></p>
+          <p class="muted">Forms ask these every time. About a minute.</p>
           <p class="muted small" id="questions-details" hidden></p>
           <p class="message error" id="questions-error" hidden></p>
         </div>
         <div class="qr-card-actions">
-          <button class="primary" id="questions-review" type="button">Review questions <i data-icon="chevron"></i></button>
+          <button class="primary" id="questions-review" type="button">Fill now <i data-icon="chevron"></i></button>
           <button class="secondary" id="questions-retry" type="button" hidden>Retry</button>
         </div>
+      </section>
+      <section class="card qr-card is-info" id="learned" hidden aria-labelledby="learned-title">
+        <span class="qr-card-icon"><i data-icon="sparkle"></i></span>
+        <div class="qr-card-text">
+          <p class="qr-card-title"><b id="learned-title">What we learned</b><span class="ui-pill tone-info" id="learned-count"></span></p>
+          <p class="muted">Answers forms reuse. Check or add them.</p>
+        </div>
+        <div class="qr-card-actions"><button class="secondary" id="learned-review" type="button">Check <i data-icon="chevron"></i></button></div>
+      </section>
+      <section class="card qr-card is-bad" id="letter-setup" hidden aria-labelledby="letter-setup-title">
+        <span class="qr-card-icon"><i data-icon="file"></i></span>
+        <div class="qr-card-text">
+          <p class="qr-card-title"><b id="letter-setup-title">Cover letter</b><span class="ui-pill tone-bad">HIGH PRIORITY</span></p>
+          <p class="muted" id="letter-setup-hint"></p>
+        </div>
+        <div class="qr-card-actions"><button class="primary" id="letter-setup-go" type="button"></button></div>
       </section>
       <details class="card jobs-talking" id="jobs-talking" hidden>
         <summary><h2 id="jobs-talking-title">In conversation</h2><span class="muted small" id="jobs-talking-count"></span></summary>
@@ -1006,9 +1023,9 @@
 
           <div class="tabs" role="tablist">
             <button role="tab" data-profile-tab="cv" class="is-active">CV</button>
-            <button role="tab" data-profile-tab="details">Your details</button>
+            <button role="tab" data-profile-tab="details">Your details<span class="ui-pill tone-warn tab-count" id="tab-count-details" hidden></span></button>
             <button role="tab" data-profile-tab="experience">Experience</button>
-            <button role="tab" data-profile-tab="answers">Application answers</button>
+            <button role="tab" data-profile-tab="answers">What we learned<span class="ui-pill tone-info tab-count" id="tab-count-answers" hidden></span></button>
             <button role="tab" data-profile-tab="letter">Cover letter</button>
           </div>
           <div class="setting cv-card" id="setting-cv" data-profile-panel="cv">
@@ -1157,13 +1174,8 @@
               <span class="ui-pill tone-info letter-busy-copy">Writing your cover letter…</span>
             </div>
           </div>
-          <div class="setting panel roomy" id="setting-answers-facts" data-profile-panel="answers" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="user"></i></span><div class="card-words"><h3>Profile facts used in forms</h3><p class="muted small">Forms answer these from Your details, their one home: a change there reaches every form.</p></div></div>
-              <div class="panel-actions"><button type="button" class="link small" id="answers-facts-open">Edit in Your details →</button></div></div>
-            <div class="card-read" id="answers-facts-body"></div>
-          </div>
           <div class="setting panel roomy" id="setting-answers" data-profile-panel="answers" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>Application answers</h3><p class="muted small">Reusable answers for application forms; one job's own answers live in its preparation kit.</p></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job. Confirm or change any answer.</p></div></div>
               <div class="panel-actions"><button class="secondary with-icon" id="answers-add"><i data-icon="plus"></i>Add answer</button>
                 <button class="secondary ui-more" id="answers-review" data-notion-only title="More actions" aria-label="More actions" aria-haspopup="menu"><i data-icon="more"></i></button></div></div>
             <div class="outline-body" id="answers-body"></div>
@@ -1742,7 +1754,7 @@
   <!-- Application questions, one at a time (pages/question-review.js): the job drawer's frame and overlay slot, never stacked over it or Recent activity. -->
   <div class="job-drawer-layer" id="review-drawer-layer" hidden>
     <div class="job-drawer-backdrop" id="review-drawer-backdrop"></div>
-    <aside class="job-drawer review-drawer" id="review-panel" role="dialog" aria-label="Application questions"></aside>
+    <aside class="job-drawer review-drawer" id="review-panel" role="dialog" aria-label="Questions to review"></aside>
   </div>
 
   <!-- Always visible: what's running now (your searches and scheduled ones), or the last and next search. -->

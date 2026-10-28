@@ -1,6 +1,7 @@
-// Application questions (owner's mockup, 17 Oct 2026: "THIS IS TOO CROWDED/OVERWHELMING... Move the questionnaire out of the Jobs page"): Jobs shows
-// one compact card whose count is the review queue (never the set-aside ones), and the questions are answered one at a time in a drawer
-// (pages/question-review.js) that shares the job drawer's overlay slot. Every way in (Jobs' card, Profile → Application answers, ⌘K) opens it.
+// The review drawer (owner's mockup, 17 Oct 2026: "THIS IS TOO CROWDED/OVERWHELMING... Move the questionnaire out of the Jobs page"), here What we learned's
+// (owner, 28 Oct 2026: two drawers; test/question-drawers.test.js holds the two side by side): Jobs shows a compact card whose count is the drawer's (never the
+// set-aside ones), and the questions are answered one at a time in a drawer (pages/question-review.js) that shares the job drawer's overlay slot. Every way in
+// (Jobs' card, Profile → What we learned, ⌘K) opens it.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
@@ -14,10 +15,10 @@ const LIST = [
 ];
 const HIDDEN = [{key: 'title', question: 'Title', company: 'Adnovum', format: {kind: 'single', control: 'single', options: ['Mr', 'Ms']}}];
 const calls = [];
-const ids = ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'questions-manage', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
+const ids = ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'learned', 'learned-count', 'learned-review', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
 for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
 globalThis.window.pilot = new Proxy({
-  openQuestions: async () => ({list: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2}),
+  openQuestions: async () => ({details: [], learned: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2}),
   answerQuestion: async (key, value) => { calls.push([key, value]); return {ok: true, homeName: key === 'start' ? 'Your details → 💶 Availability & compensation' : ''}; },
 }, {get: (all, key) => all[key] || (() => null)});
 const {loadQuestions} = await import('../renderer/pages/jobs-questions.js');
@@ -26,26 +27,28 @@ const slot = await import('../renderer/overlay-slot.js');
 const $ = id => globalThis.document.getElementById(id);
 const panel = () => $('review-panel');
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+const open = (options = {}) => review.openQuestionReview({queue: 'learned', ...options});
 
-test('Jobs: one compact card, its count is the review queue (3), not the queue plus the set-aside one; no inputs, no Notion, no "every application"', async () => {
+test('Jobs: a compact card, its count is the drawer (3), not the drawer plus the set-aside one; no inputs, no Notion, no "every application"', async () => {
   await loadQuestions({force: true});
-  assert.equal($('questions').hidden, false);
-  assert.equal($('questions-count').textContent, '3 need review');
-  assert.equal($('questions').querySelectorAll('input').length + $('questions').querySelectorAll('select').length, 0);
+  assert.equal($('learned').hidden, false);
+  assert.equal($('questions').hidden, true, 'Fill your details has nothing: hidden at zero');
+  assert.equal($('learned-count').textContent, '3 to check');
+  assert.equal($('learned').querySelectorAll('input').length + $('learned').querySelectorAll('select').length, 0);
   const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
-  const card = html.slice(html.indexOf('id="questions"'), html.indexOf('</section>', html.indexOf('id="questions"')));
-  assert.match(card, /Application questions/);
-  assert.match(card, /Review missing answers and suggested matches\./);
-  assert.match(card, /Review questions/);
+  const card = html.slice(html.indexOf('id="learned"'), html.indexOf('</section>', html.indexOf('id="learned"')));
+  assert.match(card, /What we learned/);
+  assert.match(card, /Answers forms reuse\. Check or add them\./);
+  assert.match(card, />Check </);
   assert.doesNotMatch(card, /Manage saved answers/, 'one action on the card; Saved answers lives in the drawer header');
   assert.doesNotMatch(card, /Notion|every application|Answer once/);
 });
 
 test('the drawer: Question 1 of 3, a suggested answer told apart from a missing one', async () => {
-  await review.openQuestionReview();
+  await open();
   assert.equal($('review-drawer-layer').hidden, false);
   assert.match(panel().textContent, /Question 1 of 3/);
-  assert.ok(panel().querySelector('#review-saved-answers'), 'Saved answers is in the header while a question is open too');
+  assert.equal(panel().querySelector('#review-learned-tab')?.textContent, 'What we learned', 'the header opens the What we learned tab while a question is open too');
   assert.ok(panel().querySelector('.qr-answer.is-suggested'), 'a proposal is a suggestion');
   assert.match(panel().textContent, /Suggested from saved answer/);
   assert.match(panel().querySelector('.qr-source').textContent, /Notice period \/ earliest start/);
@@ -61,7 +64,7 @@ test('the drawer: Question 1 of 3, a suggested answer told apart from a missing 
 
 test('a draft is kept when the drawer closes; Confirm & next saves, says where, and the queue shrinks; Don’t keep saves an empty answer', async () => {
   calls.length = 0;
-  await review.openQuestionReview();
+  await open();
   panel().querySelector('#qr-skip').click();   // the salary question
   const field = panel().querySelector('#qr-control');
   field.value = '9000';
@@ -69,13 +72,13 @@ test('a draft is kept when the drawer closes; Confirm & next saves, says where, 
   assert.equal(panel().querySelector('#qr-confirm').disabled, false);
   review.closeQuestionReview();
   assert.equal($('review-drawer-layer').hidden, true);
-  await review.openQuestionReview({start: 'salary'});
+  await open({start: 'salary'});
   assert.equal(panel().querySelector('#qr-control').value, '9000', 'the draft came back');
   panel().querySelector('#qr-confirm').click();
   await flush();
   assert.deepEqual(calls, [['salary', '9000']]);
   assert.match(panel().textContent, /Question 2 of 2/);
-  assert.match(panel().textContent, /✓ Saved to your application answers/);
+  assert.match(panel().textContent, /✓ Saved to What we learned/);
   panel().querySelector('#qr-back').click();
   panel().querySelector('#qr-confirm').click();   // accept the suggested start date
   await flush();
@@ -84,23 +87,24 @@ test('a draft is kept when the drawer closes; Confirm & next saves, says where, 
   panel().querySelector('#qr-drop').click();
   await flush();
   assert.deepEqual(calls[2], ['permit', '']);
-  assert.match(panel().textContent, /All questions reviewed/);
+  assert.match(panel().textContent, /Nothing to check/);
 });
 
 test('it shares the job drawer\'s overlay slot: opening it closes a job or Recent activity, never stacks', async () => {
   let closed = 0;
   slot.registerOverlay('job', {close: () => { closed++; }, open() {}});
   slot.claimOverlay('job');
-  await review.openQuestionReview();
+  await open();
   assert.equal(closed, 1);
   review.closeQuestionReview();
 });
 
-test('every way in opens the same drawer: Jobs\' card, Profile → Application answers, ⌘K', () => {
+test('every way in opens the same drawer: Jobs\' card, Profile → What we learned, ⌘K', () => {
   const read = file => fs.readFileSync(new URL(`../renderer/pages/${file}`, import.meta.url), 'utf8');
-  assert.match(read('question-review.js'), /\$\('questions-review'\)\?\.addEventListener\('click', \(\) => openQuestionReview\(\)\)/);
-  assert.match(read('application-answers.js'), /answers-review-go[\s\S]{0,400}openQuestionReview\(\)/);
-  assert.match(read('nav.js'), /'Review application questions'[\s\S]{0,300}openQuestionReview\(\)/);
+  assert.match(read('question-review.js'), /\$\('learned-review'\)\?\.addEventListener\('click', \(\) => openQuestionReview\(\{queue: 'learned'\}\)\)/);
+  assert.match(read('application-answers.js'), /const openDrawer = start => [^\n]*openQuestionReview\(\{queue: 'learned', start\}\)/);
+  assert.match(read('application-answers.js'), /answers-review-go[\s\S]{0,200}openDrawer\(\)/);
+  assert.match(read('nav.js'), /'Check what we learned'[\s\S]{0,300}openQuestionReview\(\{queue: 'learned'\}\)/);
 });
 
 // The navigator (owner, 18 Oct 2026: "I don't like this dropdown... make it nice. Modern." → option A of
@@ -110,7 +114,7 @@ const menu = () => globalThis.document.body.querySelector('.ui-menu');
 const rows = () => menu().querySelectorAll('.ui-menu-row');
 
 test('navigator: no native select; one segment per question, the current one marked; a segment jumps there', async () => {
-  await review.openQuestionReview();
+  await open();
   assert.equal(panel().querySelector('.qr-head select'), null, 'no dropdown in the header');
   const segs = panel().querySelectorAll('.qr-seg');
   assert.equal(segs.length, 3);
@@ -126,7 +130,7 @@ test('navigator: no native select; one segment per question, the current one mar
 });
 
 test('navigator: the button names the question; its list shows kind, source and state, the set-aside one apart, and jumps', async () => {
-  await review.openQuestionReview();
+  await open();
   const nav = panel().querySelector('#qr-nav');
   assert.match(nav.textContent, /What is your earliest start date/);
   assert.match(nav.textContent, /1 \/ 3/);
@@ -148,7 +152,7 @@ test('navigator: the button names the question; its list shows kind, source and 
 });
 
 test('navigator: a question you typed into and left shows as Draft, in the list and its segment', async () => {
-  await review.openQuestionReview();
+  await open();
   panel().querySelector('#qr-skip').click();
   const field = panel().querySelector('#qr-control');
   field.value = '8000';
@@ -164,8 +168,8 @@ test('navigator: a Your details item says what it asks; from 9 questions the lis
   const many = n => Array.from({length: n}, (_, i) => ({key: `q${i}`, question: `Question number ${i + 1}`, company: 'Acme', format: {kind: 'date', control: 'date', options: []},
     ...(i === 0 ? {details: {kind: 'which', where: 'Your details → Work permit', source: 'Two copies disagree'}} : {})}));
   for (const [n, search, segs] of [[9, true, 9], [31, true, 0]]) {
-    globalThis.window.pilot.openQuestions = async () => ({list: many(n), hidden: [], consent: 0});
-    await review.openQuestionReview({force: true});
+    globalThis.window.pilot.openQuestions = async () => ({details: [], learned: many(n), hidden: [], consent: 0});
+    await open({force: true});
     assert.equal(panel().querySelectorAll('.qr-seg').length, segs, `${n} questions`);
     assert.equal(Boolean(panel().querySelector('.qr-bar')), segs === 0, `${n}: the plain bar only past 30`);
     panel().querySelector('#qr-nav').click();
@@ -174,7 +178,7 @@ test('navigator: a Your details item says what it asks; from 9 questions the lis
     assert.match(rows()[0].querySelector('.ui-menu-detail').textContent, /Your details → Work permit/);
     menu().querySelector('.ui-menu-row').click();
   }
-  globalThis.window.pilot.openQuestions = async () => ({list: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2});
+  globalThis.window.pilot.openQuestions = async () => ({details: [], learned: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2});
   review.closeQuestionReview();
 });
 
@@ -189,17 +193,4 @@ test('no native select is used as a navigator anywhere in the renderer', () => {
       assert.doesNotMatch(hit, /jump|go to|navigate/i, `${file}: a select used to move between items; use the navigator (renderer/question-nav.js)`);
   }
 });
-
-test('a HIGH PRIORITY letter item opens setup rather than offering a fake answer or reuse switch', async () => {
-  LIST.unshift({key: 'setup:cover-letter', question: 'Set up your cover letter', priority: 'HIGH PRIORITY', hint: 'Your letter needs approval.', setup: {kind: 'cover-letter', action: 'Review cover letter'}});
-  try {
-    await loadQuestions({force: true});
-    assert.match($('questions-count').textContent, /1 HIGH PRIORITY/);
-    await review.openQuestionReview({start: 'setup:cover-letter'});
-    assert.match(panel().textContent, /HIGH PRIORITY/);
-    assert.ok(panel().querySelector('#qr-setup-letter'));
-    assert.equal(panel().querySelector('#qr-control'), null);
-    assert.equal(panel().querySelector('#qr-confirm'), null);
-    assert.equal(panel().querySelector('#qr-reuse'), null);
-  } finally { LIST.shift(); review.closeQuestionReview(); }
-});
+// The cover letter is its own Jobs card, never a drawer item (owner, 28 Oct 2026): test/question-drawers.test.js.

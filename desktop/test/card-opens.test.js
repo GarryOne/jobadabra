@@ -11,7 +11,7 @@ const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url),
 
 // card id → its main action's id. Left out on purpose: the Actions task cards (Run starts a paid or long task: a stray click must not start it)
 // and cards with two equal actions.
-const CARDS = {questions: 'questions-review'};
+const CARDS = {questions: 'questions-review', learned: 'learned-review', 'letter-setup': 'letter-setup-go'};   // the drawers' and the cover letter's (28 Oct 2026)
 
 // Scanned but left out, with the reason: a live status banner with Stop, View activity and a log link (several equal actions).
 const LEFT_OUT = {'run-banner': 'a progress banner: Stop, View activity and View log are equal actions'};
@@ -59,11 +59,12 @@ test('every compact card with one primary button in index.html is listed (or mar
     assert.ok(id in CARDS, `#${id} is a compact card with one primary action: add it to cardOpens (pages/…) and to CARDS here`);
     assert.doesNotMatch(inner, /class="link|<a /, `#${id}: no link under the one button; a second action moves into what the button opens`);
   }
-  assert.ok(compact.some(([, , id]) => id === 'questions'), 'the scan finds the Application questions card');
+  assert.ok(compact.some(([, , id]) => id === 'questions'), 'the scan finds the Fill your details card');
 });
 
-test('the drawer header keeps Saved answers on every state', () => {
+test('the drawer header opens the What we learned tab, never a Saved answers box (owner, 28 Oct 2026)', () => {
   const src = fs.readFileSync(new URL('../renderer/pages/question-review.js', import.meta.url), 'utf8');
-  assert.match(src, /review-saved-answers/);
+  assert.match(src, /review-learned-tab/);
+  assert.doesNotMatch(src, /'Saved answers'/);
   assert.doesNotMatch(src, /button\('Manage saved answers'/);
 });

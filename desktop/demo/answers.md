@@ -31,7 +31,7 @@
 
 | Question | Answer |
 |---|---|
-| How did you hear about us? | Company careers page |
+| How did you hear about us? | Answered per job |
 | Previously worked for or applied to this company? | Answered per job |
 | Demographic / EEO questions | Decline to self-identify |
 | Pronouns | ❓ |

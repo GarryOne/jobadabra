@@ -46,3 +46,15 @@ export function createLagMeter(now = Date.now) {
     },
   };
 }
+
+/**
+ * What the live stage shows right now: the picture, an "opening" note, or why the page is not available. {kind: picture|waiting|unavailable, title, text, retry}.
+ * `shown`: a picture has been painted (set only by the picture sink); `error`: main's last refusal to open the page ('' when none).
+ * Why (2026-10-28, owner screenshot: a broken image icon with its alt text where the live page should be): the image exists before any picture does, so the stage decides what to draw;
+ * a picture already on screen is never covered (a later refusal only means the next ask failed).
+ */
+export function stageState({shown = false, error = ''} = {}) {
+  if (shown) return {kind: 'picture'};
+  if (error) return {kind: 'unavailable', title: 'The live page is not available right now', text: error, retry: true};
+  return {kind: 'waiting', title: 'Opening the page…', text: 'The picture appears as soon as the page answers.', retry: false};
+}

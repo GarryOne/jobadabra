@@ -9,7 +9,7 @@ import {$} from './core.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
 import {createLiveOpener} from '../live-opener.js';
-import {createLagMeter, createPictureSink} from '../live-frames.js';
+import {createLagMeter, createPictureSink, stageState} from '../live-frames.js';
 
 const ZOOMS = [50, 75, 100, 125, 150];
 
@@ -22,10 +22,11 @@ function viewFor(item) {
   closeLive();
   const img = Object.assign(el('img', 'live-img'), {alt: 'The application page, live', draggable: false});
   const marks = el('div', 'live-marks'), page = el('div', 'live-page'), screen = el('div', 'live-screen'), strip = el('div', 'live-strip');
+  const empty = el('div', 'live-empty');
   const ask = el('div', 'live-ask'), filling = el('div', 'live-filling'), zoomText = el('span', 'live-zoom-text', '100%'), address = el('span', 'live-url', '');
   ask.hidden = true; filling.hidden = true;
   page.append(img, marks);
-  screen.append(page);
+  screen.append(empty, page);
   screen.tabIndex = 0;
   const stage = el('div', 'live-stage');   // the strip and an ask stay put while the picture scrolls
   stage.append(screen, filling, ask);
@@ -36,21 +37,33 @@ function viewFor(item) {
   strip.append(liveDot('live'), el('b', '', 'Live'), address, el('span', 'live-gap'), zoomButton('−', 'Zoom out', -1), zoomText, zoomButton('+', 'Zoom in', 1), expand);
   const root = el('div', 'live-view');
   root.append(strip, stage);
-  view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, w: 0, h: 0, facts: null, zoom: 100, item, error: ''};
+  view = {id: item.id, root, img, marks, ask, filling, address, zoomText, screen, page, empty, w: 0, h: 0, facts: null, zoom: 100, item, error: '', shown: false};
   const mine = view;
   // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
-  mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; });
+  mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; drawStage(mine); });
   const lag = createLagMeter();
   let reported = Date.now();
   // Pictures reach the image only through the sink: the newest, once per display refresh (renderer/live-frames.js).
   mine.pictures = createPictureSink(img, requestAnimationFrame, message => {
     if (view !== mine) return;
     if (message.w && message.h) { mine.w = message.w; mine.h = message.h; }
+    if (!mine.shown) { mine.shown = true; drawStage(mine); }   // the first painted picture ends the placeholder
     lag.record(message.at);
     if (Date.now() - reported > 10000) { reported = Date.now(); window.pilot.uiLog('live view: picture age at paint (ms) and pictures a second', lag.take()).catch(() => {}); }   // the app log has the numbers when it feels slow
   });
   wireInput(view);
+  drawStage(view);
   return view;
+}
+// The stage is the picture once one is painted; before that, what is going on or why the page cannot be shown (stageState); never a broken image.
+function drawStage(v) {
+  const state = stageState({shown: v.shown, error: v.error});
+  v.root.classList.toggle('is-empty', state.kind !== 'picture');
+  if (state.kind === 'picture') { v.empty.replaceChildren(); return; }
+  const lead = state.kind === 'waiting' ? el('span', 'spinner') : icon('alert');
+  const parts = [lead, el('b', 'live-empty-title', state.title), el('p', 'muted small', state.text)];
+  if (state.retry) parts.push(button('Try again', 'secondary', () => { v.error = ''; drawStage(v); v.opener.ensure(); }));
+  v.empty.replaceChildren(...parts);
 }
 function setZoom(step) {
   if (!view) return;

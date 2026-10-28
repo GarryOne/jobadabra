@@ -34,6 +34,30 @@ export const READERS = {
   portrait: {parts: ['details', 'cv', 'learned', 'strategy', 'history', 'voice']},
 };
 
+// What the readers page on the website shows (owner via the coordinator, 28 Oct 2026: "publish on the website … this table", live only, nothing claimed before it works).
+// LIVE: the readers whose bundle a step really receives today (a reader in READERS but not here is built, not wired). PAGES: parts a step still reads straight from a page or file.
+// Add a reader to LIVE in the PR that wires it; test/about-you-readers.test.js fails when the exported JSON (docs/about-you-readers.json) is out of date.
+export const LIVE = ['kit'];
+export const PAGES = {form: ['details', 'cv', 'learned', 'strategy'], kit: ['details', 'learned', 'strategy']};
+export const NAMES = {
+  parts: {details: 'Your details', cv: 'CV + Experience bank', learned: 'What we learned', strategy: 'Strategy', history: 'History', voice: 'Voice', this_job: 'This job'},
+  readers: {form: 'Form filling', kit: 'Kit answers', cv_tailor: 'CV tailoring', letter: 'Letters', score: 'Job fit score', insights: 'Insights and Analyze my search',
+    prep: 'Interview prep', review: 'Interview insights and rejection review', portrait: 'Your portrait'},
+};
+
+/** The readers table as data, for the website: every reader (form filling too), its parts through About you (only when live), the parts it still reads from a page, what it never gets. */
+export function readersTable() {
+  const names = [...new Set(['form', ...Object.keys(READERS)])];
+  return {
+    parts: PARTS.map(key => ({key, label: NAMES.parts[key]})),
+    readers: names.map(key => {
+      const rule = READERS[key], live = LIVE.includes(key);
+      return {key, label: NAMES.readers[key], live, through: live ? rule.parts : [], pages: PAGES[key] || [],
+        never: rule ? [...(rule.noSalary ? ['salary'] : []), 'sensitive answers'] : []};   // form filling reads its pages itself, sensitive fields included
+    }),
+  };
+}
+
 const sizeOf = parts => JSON.stringify(parts).length;   // the bundle as a prompt carries it
 
 // A copy of value one step smaller, keeping its shape: a text longer than LONG_TEXT loses a tenth first (Gitar on #2337: one long summary is cut before any

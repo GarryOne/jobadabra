@@ -82,6 +82,10 @@ Owner's yes before the UI commit.
   compare, no word list decides a merge. A test asserts the merge follows the AI's verdict even when the wordings match.
 - **Evidence chips by meaning:** the writer records label → topic in the verdict cache; the tab matches each Form fill's labels to
   topics when it draws (Form fills keep labels only, never answers: `src/ai/apply_record.py:5`).
+- **Strategy owns its fields too** (owner, 28 Oct 2026: "the employment type should be part of the search strategy"): employment
+  type, work modes, workload and the search minimum salary live in Strategy (`renderer/preferences-model.js` FIELDS, e.g.
+  "Employment type" at :37). The learning call gets them, with Your details, as topics owned elsewhere: a form question on one of
+  them is answered from there and never becomes a learning (test: an employment-type answer from a fill adds no learning).
 - **Sources:** what the person typed or confirmed in a form, and answers the AI wrote from their material (`new`, guessed). Never
   right to work, criminal record or demographics.
 - **Note at the top of What we learned** (owner, 28 Oct 2026): these learnings come only from form fills; what we know about you

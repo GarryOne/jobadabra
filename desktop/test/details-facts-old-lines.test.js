@@ -1,5 +1,6 @@
 // Your details' Work eligibility editor never draws the old lines still asked (owner, 28 Oct 2026: "let's remove these 3 fields"): the owner's three, as
 // fictional asked lines, are read into the editor and absent from its rows and from what Save would write (renderer/pages/details-facts.js).
+/* global document, window */
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';

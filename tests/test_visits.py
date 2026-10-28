@@ -57,7 +57,9 @@ class VisitsTest(unittest.TestCase):
         second = visits.read('https://www.linkedin.com/jobs/search/?keywords=photographe&start=25', '<html></html>', CARDS, now=NOW, session='s1')
         self.assertEqual((first['added'], second['added'], len(second['jobs'])), (1, 1, 2))
         self.assertEqual(second['feed'], 'https://www.linkedin.com/jobs/search/?keywords=photographe', 'one feed for the whole paging session')
-        jobs = {job['title']: job for job in ats.FETCHERS['visit'](second['feed'])}
+        # Why (28 Oct 2026): the feed ages out after KEEP_DAYS against the real clock; with NOW fixed at 7 Oct this test went empty on 28 Oct.
+        with mock.patch.object(visits, '_now', lambda: NOW):
+            jobs = {job['title']: job for job in ats.FETCHERS['visit'](second['feed'])}
         self.assertEqual((jobs['Photographe de mode']['employer'], jobs['Photographe de mode']['location']), ('Studio Lumière', 'Genève, Suisse'))
         self.assertEqual(jobs['Retoucheur photo']['url'], 'https://www.linkedin.com/jobs/view/222')
         names = [item['name'] for item in visits.visit_list(SEARCH, {'creative_media'}, now=NOW + timedelta(days=1), picks=[])]

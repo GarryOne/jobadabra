@@ -67,7 +67,8 @@ export function addedLines(diff) {
 
 /**
  * The commit a change is measured from: the merge base with origin/main, else origin/main's tip (a shallow CI checkout of the PR's merge
- * commit has no common history, and there the tip is exactly what the PR adds). Fetches main once when the ref is missing; null when it cannot.
+ * commit has no common history, and there the tip is what the PR adds while main has not moved). Fetches main once when the ref is missing; null when it cannot.
+ * Limit: if main moved after the merge ref was built (a re-run job), lines main changed since can count as added; update the branch and re-run.
  */
 export function baseCommit(cwd = root) {
   // Why (28 Oct 2026, #2414): the desktop CI job checks out the PR with no origin/main ref, and `git merge-base` threw there.

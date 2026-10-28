@@ -428,6 +428,17 @@
    "kind": "owner"
   },
   {
+   "path": "/admin/mail/release",
+   "kind": "owner"
+  },
+  {
+   "path": "/release-mail/draft",
+   "methods": [
+    "POST"
+   ],
+   "kind": "ci"
+  },
+  {
    "path": "/api/guard",
    "kind": "owner"
   },

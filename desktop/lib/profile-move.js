@@ -178,7 +178,13 @@ const texts = async opened => (await Promise.all(['profile', 'answers'].map(name
 
 // The whole move. → {moved, conflicts, copy} ({moved: 0} when there is nothing to move or no AI). Throws when a value is missing after it.
 // save: the section writer (a test passes one that fails).
+// Why (PR B2c, owner 28 Oct 2026: a fact line goes to its home, nothing deleted): the move ran once (17 Oct), so an answer saved later and judged a Your details
+// fact (lib/question-lists.js factsWaiting: those questions' keys) stayed on the answers page, hidden from What we learned. It runs again when that set changes.
+/** settings -> true when the move has not run, or answers judged Your details facts wait that it has not judged yet. */
+export const moveDue = settings => !settings.profileMovedAt || Boolean(settings.factsWaiting && settings.factsWaiting !== settings.factsMovedFor);
+
 export async function move(storage, {fetcher, ai = {}, copy = saveCopy, save = sections.save, now = new Date()} = {}) {
+  const waiting = storage.settings().factsWaiting || '';   // the set this run judges (moveDue)
   const opened = openStore(storage, {fetcher});
   const all = [...itemsOf(await opened.page('profile').outline(), 'profile', {withOpen: true}), ...itemsOf(await opened.page('answers').outline(), 'answers', {withOpen: true})];
   const items = all.filter(item => !item.open), open = all.filter(item => item.open);
@@ -191,7 +197,7 @@ export async function move(storage, {fetcher, ai = {}, copy = saveCopy, save = s
   if (judgedNow) keepUnsure(storage, items.filter(item => !item.home && judged.get(item.id)?.home === 'unsure'), now);
   // Why (2026-10-27, owner): this narrow migration only organized Your details; other lines still need the context-aware Profile router.
   if (judgedNow) clarity.record(storage, items.filter(item => item.home || placed(judged.get(item.id))), judged, {now});
-  if (!moves.length && !stale.length) { if (judgedNow) storage.saveSettings({profileMovedAt: now.toISOString()}); return {moved: 0, conflicts, cleared: 0}; }
+  if (!moves.length && !stale.length) { if (judgedNow) storage.saveSettings({profileMovedAt: now.toISOString(), factsMovedFor: waiting}); return {moved: 0, conflicts, cleared: 0}; }
   const kept = await copy(storage, {fetcher, now});
   const before = items.map(item => same(item.value));
   const current = await sections.read(storage, fetcher);
@@ -212,7 +218,7 @@ export async function move(storage, {fetcher, ai = {}, copy = saveCopy, save = s
   const after = same(await texts(opened));
   const lost = before.filter(value => !after.includes(value));
   if (lost.length) throw new Error(`Your details move: ${lost.length} value(s) not found after it; the pages before it are in ${kept.dir}`);
-  storage.saveSettings({profileMovedAt: now.toISOString()});
+  storage.saveSettings({profileMovedAt: now.toISOString(), factsMovedFor: waiting});
   return {moved: moves.length, conflicts, cleared: stale.length, copy: kept};
 }
 

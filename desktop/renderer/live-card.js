@@ -6,17 +6,30 @@ const HANDOFF = new Set(['needs_user_handoff', 'manual_submit_required']);
 const clock = ms => (ms ? new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '');
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** "9:41" for the time left until `dueAt` (a started second counts); '' when there is no due time or it has passed. */
+export function countdownLabel(dueAt, now) {
+  const left = Math.ceil((dueAt - now) / 1000);
+  if (!dueAt || left <= 0) return '';
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+}
+
 /**
  * Pure: what the card says for a session's background state and the page's latest facts (null until read).
- * -> {kind: waiting|filling|check|review|ready, live (the page exists: draw its picture), title, meta, pill: [text, tone], tone, frame: ''|'warn'|'good', note, input, filling, submit: {on, hint}|null, marks}
+ * -> {kind: waiting|filling|countdown|check|review|ready, live (the page exists: draw its picture), title, meta, pill: [text, tone], tone, frame: ''|'warn'|'good', note, input, filling, submit: {on, hint}|null, marks}
  * Invariant: Submit is on only in Ready to submit: the form judge's ready stands AND the page has no required field empty (main checks both again at the press).
  */
-export function liveCard(background = {}, facts = null, {note = '', at = clock} = {}) {
+export function liveCard(background = {}, facts = null, {note = '', at = clock, now = Date.now} = {}) {
   const left = facts ? facts.left.length : null, filled = at(background.readyAt);
   // Why (2026-10-28, owner screenshot: Air France, queued behind GLOCK, drew "Filling" and a broken picture): one job fills at a time; a queued one has no page yet, so no picture is asked for.
   if (background.state === 'queued') {
     return {kind: 'waiting', live: false, title: 'Waiting for its turn', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}), tone: 'neutral', frame: '',
       note: 'Jobadabra fills one application at a time. This one starts when the one before it is done.', input: false, filling: '', submit: null, marks: false};
+  }
+  // Why (2026-10-28, owner: "Finish the 'Full automation' flow"; project safety rule): Full automation waits before it presses Submit; the person sees the clock and can Stop. Stop keeps the filled form for them (a hand-off), it never discards it.
+  if (background.state === 'waiting_to_submit') {
+    const left = countdownLabel(background.dueAt, now());
+    return {kind: 'countdown', live: true, title: left ? `Submitting in ${left}` : 'Submitting now…', meta: '· every check passed', pill: backgroundStatus({background}), tone: 'info', frame: '', stop: true,
+      note: 'Nothing is sent until the timer ends. Stop keeps the filled form here for you to review and submit yourself.', input: false, filling: '', submit: null, marks: false, due: background.dueAt || 0};
   }
   if (FILLING.has(background.state)) {
     return {kind: 'filling', live: true, title: 'Filling the application', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}, {fields: facts?.fields ? {done: facts.filled, of: facts.fields} : null}),

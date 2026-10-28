@@ -9,6 +9,7 @@ import {$} from './core.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
 import {createLiveOpener} from '../live-opener.js';
+import {createLagMeter, createPictureSink} from '../live-frames.js';
 
 const ZOOMS = [50, 75, 100, 125, 150];
 
@@ -39,6 +40,15 @@ function viewFor(item) {
   const mine = view;
   // Asked on every redraw until main says open (lib/live-view-handlers.js liveOpen): the hidden form may not exist yet when the card is first drawn (renderer/live-opener.js).
   mine.opener = createLiveOpener(() => window.pilot.liveOpen(item.id), result => { if (view !== mine) return; mine.error = result.error; mine.address.textContent = mine.facts?.address || mine.error; });
+  const lag = createLagMeter();
+  let reported = Date.now();
+  // Pictures reach the image only through the sink: the newest, once per display refresh (renderer/live-frames.js).
+  mine.pictures = createPictureSink(img, requestAnimationFrame, message => {
+    if (view !== mine) return;
+    if (message.w && message.h) { mine.w = message.w; mine.h = message.h; }
+    lag.record(message.at);
+    if (Date.now() - reported > 10000) { reported = Date.now(); window.pilot.uiLog('live view: picture age at paint (ms) and pictures a second', lag.take()).catch(() => {}); }   // the app log has the numbers when it feels slow
+  });
   wireInput(view);
   return view;
 }
@@ -87,10 +97,9 @@ function showAsk(v, message) {
 // One event from main for the open view: a picture, the page's facts, or an ask.
 export function liveEvent({session, message} = {}) {
   if (!view || session !== view.id || !message) return;
-  if (message.kind === 'first' || message.kind === 'frame') {
-    view.img.src = `data:image/jpeg;base64,${message.data}`;
-    if (message.w && message.h) { view.w = message.w; view.h = message.h; }
-  } else if (message.kind === 'needs') {
+  if (message.kind === 'first') view.pictures.first(message);
+  else if (message.kind === 'frame') view.pictures.frame(message);
+  else if (message.kind === 'needs') {
     view.facts = message;
     renderLive(view.item, view.on);   // Submit turns on, a count changes: the actions follow the page
   } else if (message.kind === 'closed') {
@@ -102,6 +111,7 @@ export function liveEvent({session, message} = {}) {
 export function closeLive() {
   if (!view) return;
   window.pilot.liveClose(view.id);
+  view.pictures.clear();
   view = null;
 }
 onLeaveView('sessions', closeLive);   // Why (2026-10-28, B follow-up 1): going to another page closes the stream too, not only drawing another session

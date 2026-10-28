@@ -162,7 +162,7 @@ export async function attachLive(channel, cdp, {resolveFile = () => null, frameT
   };
   const factsSoon = () => { if (!factsTimer && !closed) factsTimer = setTimeout(() => readFacts().catch(() => {}), FACTS_MS); };
   // w/h: the page's viewport in CSS pixels, so a viewer maps a press on its picture back to the page (any picture size).
-  cdp.on('Page.screencastFrame', async frame => { send('frame', {data: frame.data, w: frame.metadata?.deviceWidth || 0, h: frame.metadata?.deviceHeight || 0}); factsSoon(); await cdp.send('Page.screencastFrameAck', {sessionId: frame.sessionId}).catch(() => {}); });
+  cdp.on('Page.screencastFrame', async frame => { send('frame', {at: Date.now(), data: frame.data, w: frame.metadata?.deviceWidth || 0, h: frame.metadata?.deviceHeight || 0}); factsSoon(); await cdp.send('Page.screencastFrameAck', {sessionId: frame.sessionId}).catch(() => {}); });
   cdp.on('Page.fileChooserOpened', ({backendNodeId, mode}) => { const id = ++nextId; choosers.clear(); choosers.set(id, backendNodeId); send('file', {id, multiple: mode === 'selectMultiple'}); });
   await cdp.send('Page.enable').catch(() => {});
   await cdp.send('Page.setInterceptFileChooserDialog', {enabled: true}).catch(() => {});   // a hidden browser opens no dialog: the viewer is asked instead

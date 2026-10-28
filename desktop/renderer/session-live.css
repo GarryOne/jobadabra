@@ -15,7 +15,11 @@
 .live-screen:focus-visible { box-shadow: inset 0 0 0 2px var(--info); }
 .live-page { position: relative; width: 100%; }
 .live-img { display: block; width: 100%; height: auto; user-select: none; }
-.live-img:not([src]) { min-height: 240px; }
+/* Until a picture is painted the stage is a calm note, never the browser's broken-image icon (owner, 28 Oct 2026). */
+.live-empty { display: none; }
+.live-view.is-empty .live-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 240px; padding: var(--sp-4); text-align: center; color: var(--muted); }
+.live-view.is-empty .live-img, .live-view.is-empty .live-marks { display: none; }
+.live-empty-title { color: var(--ink); }
 .live-view.is-filling .live-img { cursor: progress; opacity: .85; }
 .live-marks { position: absolute; inset: 0; pointer-events: none; }
 .live-mark { position: absolute; border: 2px solid var(--warn); border-radius: var(--r-sm); box-shadow: 0 0 0 2px var(--surface); }

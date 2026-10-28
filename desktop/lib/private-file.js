@@ -63,6 +63,7 @@ function schedule(file, entry) {
 export function retryPrivate(file) {
   const entry = waiting.get(file);
   if (!entry) return false;
+  clearTimeout(entry.timer);   // Why (#2395, gitar-bot): a Retry while a timer is live must not start a second loop that could write an older value later
   entry.failed = false; entry.since = Date.now();
   tell(file, 'waiting');
   schedule(file, entry);
@@ -111,7 +112,12 @@ export function writePrivate(file, data) {
   sweepLeftovers(file);
   const before = waiting.get(file);
   if (before) clearTimeout(before.timer);
-  if (attempt(file, data, timing.briefTries)) {
+  let done;
+  try { done = attempt(file, data, timing.briefTries); } catch (error) {
+    if (before) schedule(file, before);   // Why (#2395, gitar-bot): a different error on this save must not strand the earlier waiting one without a timer
+    throw error;
+  }
+  if (done) {
     if (before) settle(file, before);
     return 'saved';
   }

@@ -85,7 +85,10 @@ export async function init() {
   }
 
   // In-window notifications (when macOS blocks system ones).
-  window.pilot.onToast(toast => toastMessage(toast.retrySave ? {...toast, action: {label: 'Retry', run: () => window.pilot.retrySave(toast.retrySave)}} : toast));   // a save Windows held too long: the click retries (lib/save-notice.js)
+window.pilot.onToast(toast => {
+  const shown = toast.retrySave ? {...toast, action: {label: 'Retry', run: () => window.pilot.retrySave(toast.retrySave)}} : toast;   // a save Windows held too long: the click retries (lib/save-notice.js)
+  toastMessage(shown);
+});
   window.pilot.onOpenTarget(openTarget);   // a clicked system notification
 
   // Help improve Jobadabra (opt-in anonymous form reports).

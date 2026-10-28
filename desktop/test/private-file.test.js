@@ -176,3 +176,18 @@ test('a reader holding the file for 1.5 s does not make the save throw; the newe
   assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}');
   assert.deepEqual(fs.readdirSync(path.dirname(file)), ['settings.json']);
 });
+
+// #2395, gitar-bot: a Retry pressed while the wait is still running must not leave two loops (an older value written after a newer one), and a save that throws a
+// different error must not strand the earlier waiting save.
+test('Retry during the wait keeps one loop; a throwing save does not strand the waiting one', () => held(async hold => {
+  const file = path.join(dirOf(), 'settings.json');
+  hold.on = false; writePrivate(file, '{"v":0}'); hold.on = true;
+  writePrivate(file, '{"v":1}');
+  assert.equal(retryPrivate(file), true); assert.equal(retryPrivate(file), true);
+  const open = fs.openSync;
+  fs.openSync = () => { throw Object.assign(new Error('disk full'), {code: 'ENOSPC'}); };
+  try { assert.throws(() => writePrivate(file, '{"v":2}'), /disk full/); } finally { fs.openSync = open; }
+  hold.on = false;
+  await sleep(150);
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}', 'the waiting save still lands, once');
+}));

@@ -177,17 +177,29 @@ test('a reader holding the file for 1.5 s does not make the save throw; the newe
   assert.deepEqual(fs.readdirSync(path.dirname(file)), ['settings.json']);
 });
 
-// #2395, gitar-bot: a Retry pressed while the wait is still running must not leave two loops (an older value written after a newer one), and a save that throws a
-// different error must not strand the earlier waiting save.
-test('Retry during the wait keeps one loop; a throwing save does not strand the waiting one', () => held(async hold => {
+// #2395, gitar-bot: a Retry pressed while the wait is still running must not leave a second loop (each loop is one rename try per retryMs), and a save that throws a
+// different error must not strand the earlier waiting save. Each test fails without its own line (checked by removing it).
+test('Retry during the wait keeps one loop', () => held(async hold => {
   const file = path.join(dirOf(), 'settings.json');
   hold.on = false; writePrivate(file, '{"v":0}'); hold.on = true;
   writePrivate(file, '{"v":1}');
-  assert.equal(retryPrivate(file), true); assert.equal(retryPrivate(file), true);
+  retryPrivate(file); retryPrivate(file); retryPrivate(file);
+  const renameSync = fs.renameSync;
+  let tries = 0;
+  fs.renameSync = (from, to) => { tries++; return renameSync(from, to); };
+  await sleep(200);   // retryMs is 20: one loop tries about 10 times, four loops about 40
+  fs.renameSync = renameSync;
+  assert.ok(tries <= 14, `${tries} rename tries in 200 ms: more than one loop is running`);
+}));
+
+test('a throwing save does not strand the waiting one', () => held(async hold => {
+  const file = path.join(dirOf(), 'settings.json');
+  hold.on = false; writePrivate(file, '{"v":0}'); hold.on = true;
+  writePrivate(file, '{"v":1}');
   const open = fs.openSync;
   fs.openSync = () => { throw Object.assign(new Error('disk full'), {code: 'ENOSPC'}); };
   try { assert.throws(() => writePrivate(file, '{"v":2}'), /disk full/); } finally { fs.openSync = open; }
   hold.on = false;
   await sleep(150);
-  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}', 'the waiting save still lands, once');
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}');
 }));

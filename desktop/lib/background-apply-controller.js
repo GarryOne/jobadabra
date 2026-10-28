@@ -2,7 +2,7 @@
 import {randomUUID, createHash} from 'node:crypto';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
-import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
+import {applyOf, AUTO_DEFAULTS, e2eFullAutomation} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
@@ -14,12 +14,7 @@ const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
 const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
-/**
- * True only in a test run that asks for it (JOB_PILOTTO_E2E and JOB_PILOTTO_E2E_FULL_AUTOMATION=1, set by desktop/e2e/lib/background-auto-proof.mjs). Why (2026-10-28, owner: "Yes, go" to a
- * fake-endpoint e2e green on CI before the switch): the automatic press is proven against a local fake submit endpoint before any user can turn it on; the variable alone, without
- * JOB_PILOTTO_E2E, changes nothing, and the switch PR replaces this with the person's choice in Settings → Apply.
- */
-export const e2eFullAutomation = (env = process.env) => !!(env.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_FULL_AUTOMATION === '1');
+export {e2eFullAutomation};
 /** Return this app profile's single serialized controller; settings and store are rechecked for each proposed submit. */
 export function backgroundApplyFor(storage) {
   if (!instances.has(storage)) instances.set(storage, createBackgroundApplyController(storage));

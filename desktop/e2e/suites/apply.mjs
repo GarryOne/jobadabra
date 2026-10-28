@@ -31,7 +31,7 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
-  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30};
+  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
   'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,

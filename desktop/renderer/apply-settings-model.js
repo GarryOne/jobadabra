@@ -8,7 +8,12 @@
 // The PR that ships a mode's runner names it here.
 // Why (2026-10-28, owner: "Yes, go" to the fake-endpoint e2e green on CI before the switch): Full automation has a runner only in a test run that asks for it (the main process
 // under JOB_PILOTTO_E2E + JOB_PILOTTO_E2E_FULL_AUTOMATION=1, the same pair lib/background-apply-controller.js reads); the window has no `process`, so no screen offers it. The switch PR makes this 'background'.
-const FULL_AUTOMATION_RUNNER = typeof process !== 'undefined' && process.env?.JOB_PILOTTO_E2E && process.env.JOB_PILOTTO_E2E_FULL_AUTOMATION === '1' ? 'background' : '';
+/**
+ * True only in a test run that asks for it (JOB_PILOTTO_E2E and JOB_PILOTTO_E2E_FULL_AUTOMATION=1, set by desktop/e2e/lib/background-auto-proof.mjs); the window has no `process`, so it is false there.
+ * The one definition both the runner below and lib/background-apply-controller.js read (Gitar on #2430): they cannot drift apart. The switch PR replaces it with the person's choice.
+ */
+export const e2eFullAutomation = (env = typeof process === 'undefined' ? {} : process.env) => !!(env?.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_FULL_AUTOMATION === '1');
+const FULL_AUTOMATION_RUNNER = e2eFullAutomation() ? 'background' : '';
 export const MODES = Object.freeze([
   {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], runner: 'chrome',
     text: 'Fills in a visible browser; you review and submit.'},

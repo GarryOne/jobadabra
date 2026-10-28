@@ -45,7 +45,7 @@ class FunnelTest(unittest.TestCase):
             'src/daily_helpers.py': ["print(f'Employers: {len(for_kind)} of {len(in_places)} in your places hire for your kind of role"],
             'src/sources/found_boards.py': ['print(f"Job boards found: {board[\'name\']} {len(found)} job(s), {len(relevant)} relevant'],
             'src/sources/board_web.py': ['print(f"Job boards: a web search found ', 'Job boards: the web search for trade and local boards did not answer'],
-            'src/scout.py': ["print(f'Scout: employers with no job site found are looked up with a web search"],
+            'src/scout_run.py': ["print(f'Scout: employers with no job site found are looked up with a web search"],
             'src/run_counts.py': ["PREFIX = 'Run counts: '", 'f"{PREFIX}looked={'],
             'src/sources/feed_scan.py': ["Ticker('Reading employer job sites'"],
         }

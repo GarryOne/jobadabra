@@ -247,7 +247,7 @@ class EveryReaderTest(PaceCase):
         """A source file under src/sources (or the scout) that has 429 as a number in its code, or calls urlopen itself, fails here.
         The exceptions are not sites we read: the user's own Google account, paid search APIs, and the app's local page renderer."""
         not_sites = {'google.py', 'google_auth.py', 'google_jobs.py', 'web_search.py', 'render.py:_through_app'}
-        files = sorted((ROOT / 'src' / 'sources').glob('*.py')) + [ROOT / 'src' / 'scout_core.py', ROOT / 'src' / 'scout.py']
+        files = sorted((ROOT / 'src' / 'sources').glob('*.py')) + [ROOT / 'src' / 'scout_core.py', ROOT / 'src' / 'scout.py', ROOT / 'src' / 'scout_run.py']
         found = []
         for path in files:
             if path.name == 'host_pace.py':

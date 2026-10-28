@@ -81,6 +81,7 @@ export function pipelineEnv(storage, parent = process.env) {
     JOB_PILOTTO_CONFIG_DIR: storage.path('config'),
     JOB_PILOTTO_DATA_DIR: storage.path('data'),
     JOB_PILOTTO_CV_PATH: storage.path('cv.pdf'),
+    JOB_PILOTTO_LETTER_STYLE_FILE: storage.path('cover-letter/style.json'),   // the cover letter style (lib/letter-style.js): a kit's letter follows it
     ...(requestLog.logPath() ? {JOB_PILOTTO_NOTION_LOG: requestLog.logPath()} : {}),  // Python's Notion requests: same file
     // Pages that only exist after their scripts run, rendered in the app's own Chromium (lib/page-render.js, src/sources/render.py).
     ...(pageRender.address() ? {JOB_PILOTTO_RENDER_URL: pageRender.address(), JOB_PILOTTO_RENDER_TOKEN: pageRender.TOKEN} : {}),

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {E2E} from './app.mjs';
 import {startRealExtension} from './real-extension.mjs';
-import {fillState} from './extension.mjs';
+import {fillStateOf} from './extension.mjs';
 import {endingOfStuck} from '../../../extension/ladder/endings.js';
 import {movesFromRequests, repairsFromRequests} from './ladder-moves.mjs';
 import {falseReadings} from './replay-truth.mjs';
@@ -163,7 +163,7 @@ export async function watchWindow(page, all, deadline, {quietMs = 12000, minMs =
   while (Date.now() < deadline) {
     await wait(500);
     if (acts() !== count) { count = acts(); since = Date.now(); }
-    const state = (await fillState(page()).catch(() => null))?.state;
+    const state = (await fillStateOf(page()).catch(() => null))?.state;
     if (state && state !== 'running' && Date.now() - since >= quietMs && Date.now() - began >= minMs) return;
   }
 }
@@ -171,8 +171,8 @@ export async function watchWindow(page, all, deadline, {quietMs = 12000, minMs =
 // A case's checks can pass while its fill still runs; the fill's last reports (the moves it confirmed: lib/ladder-moves.mjs) land after it. Before a case's tab is closed it waits for the
 // page's own fill state to leave "running", at most `ms`, then the reports' flight time. A page with no fill state is not waited for. The checks are not changed.
 export async function fillSettled(page, ms = 4000) {
-  let state = await fillState(page).catch(() => null);
-  for (const end = Date.now() + ms; state?.state === 'running' && Date.now() < end; state = await fillState(page).catch(() => null)) await wait(200);
+  let state = await fillStateOf(page).catch(() => null);
+  for (const end = Date.now() + ms; state?.state === 'running' && Date.now() < end; state = await fillStateOf(page).catch(() => null)) await wait(200);
   if (state) await wait(300);
 }
 

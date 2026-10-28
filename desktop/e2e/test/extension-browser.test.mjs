@@ -38,3 +38,24 @@ test('the form tab is the one that shows the form\'s address, not the harness\'s
   const loading = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': picked}, context: {pages: () => [picked]}};
   assert.equal(formTab(loading, url), picked, 'nothing shows it yet: the first pick, still loading');
 });
+
+// Beta 40748263936 (28 Oct 2026), Windows apply-1of2, the Workday-shaped form: the app log said "filled the form" and the step read "state: null" for 90 s. The same words
+// as beta 40281407461 above, a different cause there (the wrong tab). The extension also writes the fill's card id (a bare uuid, flow.js) into that attribute, and a read
+// that threw was turned into null by every caller's `.catch(() => null)`: three different situations, one word. Each says what it is, so the next red names its cause.
+test('a fill state that cannot be read says so and what it saw, never a bare null', async () => {
+  const {fillState} = await import('../lib/extension.mjs');
+  const pageWith = attribute => ({evaluate: async fn => {
+    globalThis.document = {URL: 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply#jobpilotto-fill=0a089404', documentElement: {dataset: attribute === undefined ? {} : {jobpilottoFill: attribute}}};
+    try { return await fn(); } finally { delete globalThis.document; }
+  }});
+  try {
+    assert.equal(await fillState(pageWith(undefined)), null, 'nothing written yet: null, as before');
+    assert.deepEqual(await fillState(pageWith('{"state":"done","filled":6}')), {state: 'done', filled: 6}, 'a readable mark is returned as before');
+    const card = await fillState(pageWith('3f2a9c1e-7b64-4d0a-9a53-0c1d2e3f4a5b'));
+    assert.equal(card.state, 'unreadable', 'the card id the fill leaves on the page is not a state');
+    assert.equal(card.raw, '3f2a9c1e-7b64-4d0a-9a53-0c1d2e3f4a5b', 'what the page held');
+    assert.equal(card.at, 'https://e2e.wd3.myworkdayjobs.com/en-US/E2E/job/Zurich/x/apply', 'on which address, without the mark');
+    const gone = await fillState({evaluate: async () => { throw new Error('page.evaluate: Target page, context or browser has been closed\n at ...'); }, url: () => 'https://e2e.wd3.myworkdayjobs.com/x#jobpilotto-fill=1', isClosed: () => true});
+    assert.deepEqual(gone, {state: 'unreadable', error: 'page.evaluate: Target page, context or browser has been closed', at: 'https://e2e.wd3.myworkdayjobs.com/x', closed: true}, 'a read that threw');
+  } finally { delete globalThis.document; }
+});

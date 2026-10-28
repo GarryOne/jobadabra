@@ -190,7 +190,7 @@ export async function runApply(ctx, parts) {
       await pause(500);
     }
     await dumpExtension();
-    throw new Error(`the extension never finished filling ${form.title} (state: ${JSON.stringify(await fillState(tab).catch(() => null))})`);
+    throw new Error(`the extension never finished filling ${form.title} (state: ${JSON.stringify(await fillState(tab))}, read on ${tab.url().split('#')[0].slice(0, 100)}, ${ctx.browser.context.pages().length} tab(s))`);   // the address read and the tab count: a null from the wrong tab (26 Oct) and from the right one (28 Oct) look alike
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).
   const panelOf = async tab => {

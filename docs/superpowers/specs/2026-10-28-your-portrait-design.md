@@ -27,6 +27,11 @@ Status: approved by the owner (28 Oct 2026). Sibling spec: [Insights with action
 | How you may come across | Weaker sides, phrased as what an employer might see | interview reviews, outcomes, What we learned | 2 interview reviews or 10 outcomes |
 | What you're looking for | Roles, places, ways of working, money | Strategy, What we learned | 3 learnings |
 | How you work | Habits and preferences that recur | What we learned, interview reviews | 5 learnings or 2 interview reviews |
+| Personality and soft skills | How you communicate, work with others, handle pressure, as observed: never a personality type or test label | interview transcripts and reviews, your written form answers, your base letter | 2 interview reviews, or 5 written answers + a base letter |
+
+Personality and soft skills: added on the owner's request (28 Oct 2026, "a section about personality or soft skills"). Each
+point names behaviour seen in the evidence ("you answer with a concrete example first"), never a diagnosis or a label (no
+MBTI, Big Five or similar).
 
 **States** (one owner: the portrait writer; the person never edits):
 

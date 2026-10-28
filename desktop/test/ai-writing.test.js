@@ -109,6 +109,7 @@ test("a job's letter, Write again: the strip over the kept letter, the pill says
   assert.match(card.querySelector('.letter-shown').textContent, /Fictional job letter/, 'the kept letter stays until the new one lands');
   assert.ok(card.querySelectorAll('.ui-pill').some(node => node.textContent === 'Writing…'));
   assert.ok(!card.querySelectorAll('.ui-pill').some(node => node.textContent === 'Ready'), 'Ready is not true while it is rewritten');
+  assert.equal(card.querySelector('textarea').readOnly, true, 'an open editor cannot take text that the new letter would throw away');
   const again = button('Writing…');
   assert.equal(again.getAttribute('aria-busy'), 'true');
   assert.ok(card.querySelectorAll('button').every(node => node.disabled), 'Copy, Edit and Open PDF wait for the new letter');

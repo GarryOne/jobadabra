@@ -31,12 +31,15 @@ export function jobLetterView(job) {
       again.textContent = 'Writing…';
       message.textContent = '';
       state.replaceWith(writingPill);
+      const wasReadOnly = text.readOnly;
+      text.readOnly = true;   // Why (28 Oct 2026, Gitar on #2388): text typed in the open editor would be thrown away when the new letter is drawn.
       let stop = () => {}, done;
       try {
         stop = aiWriting(text.hidden ? shown : text, {title: 'Writing a new letter for this job', note: 'The letter below stays until the new one is ready.'});
         done = await window.pilot.jobLetterAgain(key);
       } catch (error) { done = {ok: false, error: error.message}; }   // a throw before the call must still unlock the buttons (28 Oct 2026, code review)
       stop();
+      text.readOnly = wasReadOnly;
       writingPill.replaceWith(state);
       again.removeAttribute('aria-busy');
       locked.forEach(button => { button.disabled = false; });

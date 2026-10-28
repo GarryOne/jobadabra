@@ -1,6 +1,6 @@
 # Insights with actions, where they matter
 
-Status: draft for the owner's approval (28 Oct 2026). Sibling spec: [Your portrait](2026-10-28-your-portrait-design.md).
+Status: approved by the owner (28 Oct 2026). Sibling spec: [Your portrait](2026-10-28-your-portrait-design.md).
 Depends on: "What we learned about you" PR D, the one "about you" interface
 ([plan](../plans/2026-10-28-what-we-learned.md), branch `what-we-learned`). PR 1 below does not.
 
@@ -108,8 +108,8 @@ home. "More" on Actions stays as a fallback, never the only door.
 
 ## Progress
 
-- [ ] Spec approved by the owner
-- [ ] Design sketch approved
+- [x] Spec approved by the owner (28 Oct 2026)
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D
 - [ ] PR 1 · slot, states, actions come to you
 - [ ] PR 2 · CV
 - [ ] PR 3 · Strategy + Jobs

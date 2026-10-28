@@ -4,23 +4,22 @@
 // Guards: test/apply-settings.test.js, test/apply-choice-gate.test.js.
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
-import {ANSWERS_TEXT, MODES, MODE_TODAY, applyOf, applyPatch} from '../apply-settings-model.js';
+import {ANSWERS_TEXT, MODES, applyOf, applyPatch, modeBuilt} from '../apply-settings-model.js';
 import {openSetting} from './settings.js';
 
 let current = {};   // the saved settings, as the app last answered them
+let ready = Promise.resolve();
 export const settingsNow = () => current;
 
-// The three modes as stacked choice cards (the dialog draws the same ones).
-export function modeCards(selected, onPick, {dialog = false} = {}) {
-  const modes = dialog ? MODES.map(mode => ({...mode, text: mode.dialogText || mode.text})) : MODES;
+/**
+ * The three modes as stacked choice cards, the same on every Apply surface (Settings → Apply, the first-Apply dialog, Jobs' Apply to jobs).
+ * A mode not built yet is disabled with a "Coming soon" pill in place of its badge; busy: every card off (a save or a start in flight).
+ */
+export function modeCards(selected, onPick, {busy = false} = {}) {
+  const modes = MODES.map(mode => ({...mode, disabled: busy || !modeBuilt(mode.id), badge: modeBuilt(mode.id) ? mode.badge : ['Coming soon', 'neutral']}));
   const group = choiceCards(modes, {selected, onPick, label: 'How applying works'});
   group.classList.add('is-single');
   return group;
-}
-// What the picked mode does in this version, said under the cards (background fills and sending by itself come in later steps).
-export function todayLine(node, mode) {
-  node.textContent = MODE_TODAY[mode] || '';
-  node.hidden = !MODE_TODAY[mode];
 }
 
 // The checks, each the person's to change (CLAUDE.md "The app submits only in Full automation"): numbers as a short field, yes/no as a switch.
@@ -59,7 +58,6 @@ function checkRow(check) {
 export function draw(settings = current) {
   const apply = applyOf(settings);
   $('apply-modes')?.replaceChildren(modeCards(apply.mode, mode => save({mode})));
-  if ($('apply-mode-today')) todayLine($('apply-mode-today'), apply.mode);
   document.querySelectorAll('[data-apply-answers]').forEach(button => button.classList.toggle('is-active', button.dataset.applyAnswers === apply.answers));
   if ($('apply-answers-text')) $('apply-answers-text').textContent = ANSWERS_TEXT[apply.answers];
   document.querySelectorAll('[data-apply-check]').forEach(box => {
@@ -69,11 +67,13 @@ export function draw(settings = current) {
 }
 
 // change: part of settings.apply; chosen: stamps the person's confirmation (the gate in lib/apply-choice-gate.js then lets every Apply through).
+/** Saves a change of settings.apply and redraws; -> the saved settings, or null when the save failed (the last saved ones stay drawn). */
 export async function save(change = {}, {chosen = false} = {}) {
+  await ready;
   const saved = await window.pilot.saveSettings(applyPatch(current, change, {chosen})).catch(() => null);
   if (saved) current = saved;
   draw();
-  return current;
+  return saved ? current : null;
 }
 
 // "Adjust settings…" in the first-Apply dialog: Settings → Apply with a Confirm bar; answer(true) after Confirm, answer(false) after Not now.
@@ -93,7 +93,8 @@ function closeBar(chosen) {
 
 export async function init() {
   if (!$('apply-modes')) return;
-  current = (await window.pilot.state().catch(() => null))?.settings || {};
+  ready = window.pilot.state().catch(() => null).then(state => { current = state?.settings || {}; });
+  await ready;
   const box = $('apply-auto-checks');
   box.replaceChildren(...CHECKS.map(checkRow));
   document.querySelectorAll('[data-apply-answers]').forEach(button => button.addEventListener('click', () => save({answers: button.dataset.applyAnswers})));

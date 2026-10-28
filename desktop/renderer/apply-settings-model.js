@@ -2,23 +2,23 @@
 // (pages/apply-settings.js, pages/apply-choice.js) and the app (lib/apply-choice-gate.js). Pure. The consent switch (acceptConsents) and accounts
 // (accountAutomation) keep their own keys: the extension reads them. Guard: test/apply-settings.test.js.
 
+// Why (27 Oct 2026, owner): approved labels state browser visibility and who submits; persisted mode IDs stay stable.
+// runner: the batch runner the main process starts for the mode (lib/apply-handlers.js); a mode with none is not built. Why (28 Oct 2026, owner, #2317
+// rework): a mode not built is drawn disabled with "Coming soon" and can never be the saved mode, so no screen offers a choice that does nothing.
+// The PR that ships a mode's runner names it here.
 export const MODES = Object.freeze([
-  {id: 'check', icon: 'eye', title: 'I check each form', badge: ['Best quality', 'good'],
-    text: 'Each form opens in a tab, filled. You read it and press Submit.'},
-  {id: 'fill', icon: 'layers', title: 'Fill for me, I press Submit',
-    text: 'Forms fill in the background. You press Submit from a list, on the Mac or your phone.'},
+  {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], runner: 'chrome',
+    text: 'Fills in a visible browser; you review and submit.'},
+  {id: 'fill', icon: 'layers', title: 'Background automation',
+    text: 'Fills in a hidden browser; you review and submit when ready.'},
   {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'],
-    text: 'Jobadabra fills and sends forms by itself, only those that pass your checks below. Nobody reads a form before it goes.',
-    // In the first-Apply dialog there are no checks below: what it means, and the defaults (sketch 8b).
-    dialogText: 'Jobadabra fills and sends forms by itself. Nobody reads a form before it goes, and answers your facts don\'t cover can be AI guesses. Defaults: fit 80+, at most 20 a day, a 10-minute wait with Stop.'},
+    text: 'Fills and submits in a hidden browser when your checks pass.'},
 ]);
 export const MODE_IDS = MODES.map(mode => mode.id);
-// What each mode does in this version (background fills and sending by themselves arrive in later steps): said under the choice, never hidden.
-export const MODE_TODAY = {
-  check: '',
-  fill: 'Background fills arrive in a coming update. Until then each form opens in a tab, filled, for you to check.',
-  auto: 'Sending by itself arrives in a coming update. Until then each form opens in a tab, filled, and you press Submit.',
-};
+/** The batch runner of the mode with this id, or '' when it is not built in this version (or unknown). */
+export const modeRunner = id => MODES.find(mode => mode.id === id)?.runner || '';
+/** True when the mode with this id runs in this version; an unknown id is not built. */
+export const modeBuilt = id => !!modeRunner(id);
 
 export const ANSWERS = Object.freeze([
   {id: 'facts', label: 'Only from my saved facts'},
@@ -37,14 +37,15 @@ const clamp = (key, value) => {
   return Number.isFinite(n) ? Math.min(high, Math.max(low, n)) : AUTO_DEFAULTS[key];
 };
 
-// settings -> {mode, answers, auto, chosenAt}: nothing saved yet is "I check each form" (pre-selected, owner 26 Oct 2026) with facts only.
+// settings -> {mode, answers, auto, chosenAt}: nothing saved yet is Standard automation (pre-selected, owner 26 Oct 2026) with facts only.
+// Invariant: mode is always a built mode; an older save of one not built yet reads as Standard automation, the mode that runs and the cards show.
 export function applyOf(settings) {
   const saved = settings?.apply || {}, auto = {...AUTO_DEFAULTS};
   for (const key of Object.keys(AUTO_DEFAULTS)) {
     if (!(key in (saved.auto || {}))) continue;
     auto[key] = key in LIMITS ? clamp(key, saved.auto[key]) : saved.auto[key] !== false;
   }
-  return {mode: MODE_IDS.includes(saved.mode) ? saved.mode : 'check', answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || ''};
+  return {mode: modeBuilt(saved.mode) ? saved.mode : 'check', answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || ''};
 }
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
 

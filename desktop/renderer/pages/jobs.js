@@ -1,7 +1,6 @@
 // Jobs: loading and reloading the list, adding jobs, init(); the pieces are jobs-state/-render/-fit/-lead/-questions.js. Guarded by: search-changed, live-status-line, live-count, activity-selection-kept tests.
 import {badgeLabel} from '../badge-label.js';
 import {setCount} from '../components.js';
-import {resumeOffered} from '../claude-help.js';
 import {applicationStats, inboundCount, inProcess, jobCounts, statClick, takenDown, talkingStartsOpen, toReview} from '../jobs-view.js';
 import {shared} from './shared.js';
 import {keepRunLine} from '../run-lines.js';
@@ -33,6 +32,7 @@ import {markReady, refreshReady} from './jobs-ready.js';
 import {storeName} from '../store-words.js';
 import {jobWrites} from '../job-writes.js';
 import {jobPlace} from '../targets.js';
+import {wireApplyDialog} from './jobs-apply.js';
 
 // Every write that changes a job's stage or status ends in jobsChanged(row, patch): that row at once, then the list read again from the store
 // (renderer/job-writes.js: a read older than the write is never painted). The other reads of the list go through writes.read for the same reason.
@@ -357,39 +357,6 @@ export async function init() {
   paintFindCardFirst();
 
   $('jobs-unscored-go').addEventListener('click', () => $('refresh').click());
-  $('apply-open').addEventListener('click', () => {
-    message('apply-message', '');
-    // The extension first; Claude is a choice only with Claude help on (claude-help.js), and never the preset one.
-    document.querySelector('input[name="apply-mode"][value="agents"]').closest('label').hidden = !(jobsState.claudeReady && resumeOffered());
-    document.querySelector('input[name="apply-mode"][value="chrome"]').checked = true;
-    $('apply-dialog').showModal();
-  });
-  window.pilot.onApplyProgress(text => message('apply-message', text, 'waiting'));   // "Drafting kit 2 of 3…" while the batch drafts what is missing
-  $('apply-go').addEventListener('click', async event => {
-    event.preventDefault();
-    const mode = document.querySelector('input[name="apply-mode"]:checked').value;
-    const n = Math.max(1, Number($('apply-n').value) || 1);
-    // Feedback at once: picking the jobs reads Notion and checks each posting is still open (a few seconds).
-    $('apply-go').disabled = true;
-    $('apply-go').classList.add('busy');
-    $('apply-go').textContent = 'Starting…';
-    message('apply-message', `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`, 'waiting');
-    try {
-      const result = await window.pilot.apply({n, mode});
-      if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
-      if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
-      if (result.ok && result.inApp) {  // the sessions show in the dock: close the dialog and let them be watched
-        $('apply-dialog').close();
-        toastMessage('Applying with Claude', result.message, {view: 'sessions'}, 'info');
-        await refreshSessions();
-        return;
-      }
-      message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
-    } finally {
-      $('apply-go').disabled = false;
-      $('apply-go').classList.remove('busy');
-      $('apply-go').textContent = 'Start';
-    }
-  });
+  wireApplyDialog({startedApplying});
 }
 

@@ -34,18 +34,22 @@ import {withAccounts, withCompanies, withoutHost} from './site-accounts.js';
 import {isTwin} from './twin.js';
 import {OUTCOME_STAGES as BOARD_STAGES} from '../renderer/jobs-board-rules.js';
 import {demoFormsOpen, demoPath} from './demo.js';
+import {applyOf, modeRunner} from '../renderer/apply-settings-model.js';
 
 export const extensionGate = installedGate;   // what main.js hands to every handler that opens a Chrome form
 export function registerApplyHandlers(ctx) {
-  const {DEMO, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
+  const {DEMO, applyRunner = apply, extensionGate = () => null, allowanceBlock, claudeConsent, cloud, here, ipcMain, log, nativeTheme = {shouldUseDarkColors: false}, needsNotion, prepareKitFor, getRecipeReporter, startClaude, storage, toWindow, track} = ctx;
   const needExtension = () => (DEMO ? null : extensionGate());   // a Chrome form with no extension to fill it: install it first (lib/extension-gate.js)
   ipcMain.handle('apply', async (_, options) => {
-    const agents = options?.mode === 'agents';
+    const fromSettings = options?.mode === 'settings';   // Why (27 Oct 2026, owner): read after the first-choice gate replays the held call, so Start never uses a stale mode
+    const mode = fromSettings ? modeRunner(applyOf(storage.settings()).mode) : options?.mode;   // applyOf returns a built mode only: it always has a runner
+    const agents = mode === 'agents';
     const blocked = needsNotion('apply') || await allowanceBlock() || (agents ? null : needExtension());   // (an earlier one-line form sent these answers through the "Claude is off" branch)
     if (blocked) return blocked;
     if (agents && !SHOW_RESUME_CLAUDE) return {ok: false, error: 'Applying by session is not available in this version. Use Fill in Chrome.'};
     if (agents && !(await claudeConsent())) return {ok: false, error: 'Apply with Claude is off. Use Fill in Chrome, or allow it next time.'};
-    return apply.start(storage, options, undefined, undefined, undefined, undefined, (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text));
+    return applyRunner.start(storage, {...options, mode}, undefined, undefined, undefined, undefined,
+      (code, name) => prepareKitFor(code, name, {quiet: true}), text => toWindow('applyProgress', text));
   });
   ipcMain.handle('applyOne', async (_, url, details) => {
     const gate = needsNotion('apply');

@@ -1314,7 +1314,6 @@
           <div class="setting panel" id="setting-apply-mode">
             <div class="summary-head"><i data-icon="send"></i><h3>How applying works</h3></div>
             <div id="apply-modes"></div>
-            <p class="muted small" id="apply-mode-today" hidden></p>
           </div>
           <div class="setting panel" id="setting-apply-answers">
             <div class="summary-head"><i data-icon="chat"></i><h3>Answers</h3></div>
@@ -2024,8 +2023,6 @@
   <form method="dialog">
     <h2>How should Jobadabra apply for you?</h2>
     <div id="apply-choice-modes"></div>
-    <p class="muted small" id="apply-choice-today" hidden></p>
-    <p class="muted small">You can change this any time in Settings → Apply.</p>
     <div class="actions">
       <button class="link" id="apply-choice-later" type="button">Not now</button>
       <button class="secondary" id="apply-choice-adjust" type="button">Adjust settings…</button>
@@ -2456,18 +2453,11 @@
 <dialog id="apply-dialog">
   <form method="dialog" id="apply-form">
     <h2>Apply to jobs</h2>
-    <p class="muted">Takes your best open matches (saved ones first). Nothing is ever submitted for you.</p>
-    <label for="apply-n">How many jobs</label>
-    <input id="apply-n" type="number" min="1" max="10" value="3">
-    <fieldset>
-      <legend>How to fill them</legend>
-      <label class="radio" hidden><input type="radio" name="apply-mode" value="agents">
-        <span><b>Apply with Claude</b><br><span class="muted">One Claude session per job in its own window, driving Chrome. Follows a job board's Apply to the employer's site, creates an account there if needed (password saved in your Keychain) and fills every page. You solve CAPTCHAs, tick the terms and submit. Minutes per job; needs Claude Code and <span data-about-notion>Notion</span>.</span></span></label>
-      <label class="radio"><input type="radio" name="apply-mode" value="chrome">
-        <span><b>Fill in Chrome with the extension</b> <span class="badge-recommended">Recommended</span><br><span class="muted">Opens each job as a tab and fills forms that are right on the page. Seconds per form; stops at sign-in pages.</span></span></label>
-    </fieldset>
-    <p class="message" id="apply-message"></p>
-    <div class="actions"><button class="secondary" value="cancel">Close</button><button class="primary" id="apply-go" value="default">Start</button></div>
+    <p class="muted">Takes your best open matches (saved ones first).</p>
+    <label class="inline-field" for="apply-n">How many jobs <input id="apply-n" type="number" min="1" max="10" step="1" required value="3"></label>
+    <fieldset><legend>How Jobadabra applies</legend><div id="apply-mode-cards"></div></fieldset>
+    <p class="message" id="apply-message" role="status"></p>
+    <div class="actions"><button class="secondary" value="cancel">Close</button><button class="primary" id="apply-go" value="default">Apply to 3 jobs</button></div>
   </form>
 </dialog>
 <script src="app.js" type="module"></script>

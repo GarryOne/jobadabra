@@ -34,7 +34,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   const profile = again || fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-'));   // `again`: the same profile, a second start (a relaunch keeps the person's data)
   fs.mkdirSync(ARTIFACTS, {recursive: true});
   // The test app is a stranger to the product: no technical reports, no employer-pool sharing, nothing it learns leaves this computer.
-  // It chose "I check each form" already (the first-Apply dialog, lib/apply-choice-gate.js): an Apply step goes on as before; a suite that tests the dialog passes settings.apply.
+  // It chose Standard automation already (the first-Apply dialog, lib/apply-choice-gate.js): an Apply step goes on as before; a suite that tests the dialog passes settings.apply.
   if (!again) fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({telemetry: false, shareEmployers: false, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'}, ...settings}));
   pythonCoverage();   // E2E_COVERAGE=1: the engine's Python records its lines per step too (lib/coverage.mjs)
   // Linux (CI runners, 6 Oct 2026): no keyring there, so Chromium's basic password store keeps the app's keys (test keys only, a throwaway profile).

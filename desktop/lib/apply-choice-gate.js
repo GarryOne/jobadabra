@@ -23,7 +23,7 @@ export function guard(handle, getStorage, log = () => {}) {
 }
 
 // For the class test: what starts a fill inside a handler's body (an apply, a form tab, Claude, a Ready send or run).
-export const STARTS_A_FILL = /\b(apply\.(start|applyOne|openOne|claudeOne|resumeSession)|applyOne|restartAs|startClaude|takeOver|sendPlanned|sendTonight|runTop|site\.(runNow|again))\s*\(/;   // words-ok: our own function names for the class test, not page words
+export const STARTS_A_FILL = /\b(apply\.(start|applyOne|openOne|claudeOne|resumeSession)|applyRunner\.start|applyOne|restartAs|startClaude|takeOver|sendPlanned|sendTonight|runTop|site\.(runNow|again))\s*\(/;   // Why (27 Oct 2026, owner): the batch handler can inject the same runner boundary for mode-dispatch tests; keep it in the gated-fill scan. words-ok: own function names, not page words
 
 // [[name, body]] of each `.handle('name', ...)` in a source file: strings and comments removed first (a word in a comment is not a call), the body
 // read up to the call's closing parenthesis.

@@ -92,17 +92,21 @@ export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded c
 /** Pick reached backbone suites; only PRs apply lanes and the cap. Preserve the old order at five or fewer.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
  * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base by the CLI.
+ * left keeps every reached suite not run; deferred contains only cap overflow, in rank order (empty without a cut).
  */
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite =>
     (cadence[suite] || 'always') !== 'manual' && !(pullRequest && (ON_PR_ELSEWHERE[suite] || ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane))));
   let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+  let deferred = [];
   if (pullRequest && run.length > 5) {
     const reach = suite => direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
     const caught = suite => Number.isFinite(catches[suite]) && catches[suite] >= 0 ? catches[suite] : 0;
-    run = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0)).slice(0, 5);
+    const ranked = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0));
+    run = ranked.slice(0, 5);
+    deferred = ranked.slice(5);
   }
-  return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
+  return {suites: run, left: wanted.filter(suite => !run.includes(suite)), deferred};
 }
 
 /** Explain every deferred suite with the same reach evidence as the selected suites in the CLI summary. */

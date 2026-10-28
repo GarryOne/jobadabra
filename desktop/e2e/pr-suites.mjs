@@ -110,12 +110,12 @@ try {
       stores[suite] = chosen.store; steps[suite] = chosen.steps;
       if (chosen.dropped.length) dropped[suite] = chosen.dropped;
     }
-    const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${plan.left.includes(suite) ? 'run after merge' : !plan.suites.includes(suite) ? 'not in this PR run' : steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
+    const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${plan.deferred.includes(suite) ? 'run after merge' : !plan.suites.includes(suite) ? 'not in this PR run' : steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
     const elsewhere = pullRequest ? [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => ON_PR_ELSEWHERE[suite]) : [];
     const reasons = [...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}),
-      ...deferredLines({left: plan.left.filter(suite => linux[suite] || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs ')), picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
+      ...deferredLines({left: plan.deferred, picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
     console.log(`\n### Why each one runs (suite [store] · step ← the changed line that reached it)\n${reasons.join('\n')}\n`);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);

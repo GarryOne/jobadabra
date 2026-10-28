@@ -14,11 +14,12 @@ test('eight reached suites: own files above imports/quotes above coverage; three
   const plan = pick.planPrSuites(eight);
   assert.deepEqual(plan.suites, ['x-own', 'z-own', 'a-quote', 'b-quote', 'y-import']);
   assert.deepEqual(plan.left, ['c-map', 'b-map', 'a-map']);
+  assert.deepEqual(plan.deferred, ['a-map', 'b-map', 'c-map']);
   assert.deepEqual(pick.stepLists({suites: plan.suites, pullRequest: true}), {});
-  assert.deepEqual(pick.deferredLines({...plan, picked: Object.fromEntries(Object.entries(eight.covering).map(([s, reason]) => [s, {reason}]))}), [
-    'c-map · run after merge ← runs app.js:3',
-    'b-map · run after merge ← runs app.js:2',
+  assert.deepEqual(pick.deferredLines({left: plan.deferred, picked: Object.fromEntries(Object.entries(eight.covering).map(([s, reason]) => [s, {reason}]))}), [
     'a-map · run after merge ← runs app.js:1',
+    'b-map · run after merge ← runs app.js:2',
+    'c-map · run after merge ← runs app.js:3',
   ]);
   assert.equal(pick.planPrSuites({...eight, pullRequest: false}).suites.length, 8);
 });
@@ -36,10 +37,10 @@ test('optional catch counts break a reach tie, never outrank a stronger reach', 
   assert.deepEqual(pick.planPrSuites({...args, pointed, catches: {f: 3}}).suites, ['f', 'a', 'b', 'c', 'd']);
 });
 
-test('zero through five suites preserve the entire old result, including order and Mac deferrals', () => {
+test('zero through five suites preserve order and leave Mac exclusions out of deferred', () => {
   for (let n = 0; n <= 5; n++) {
     const pointed = ['e', 'd', 'c', 'b', 'a'].slice(0, n);
-    assert.deepEqual(pick.planPrSuites({...args, pointed, hits: {mac: ['Old label']}, linux: s => s !== 'mac', catches: {a: 99}}), {suites: pointed, left: ['mac']});
+    assert.deepEqual(pick.planPrSuites({...args, pointed, hits: {mac: ['Old label']}, linux: s => s !== 'mac', catches: {a: 99}}), {suites: pointed, left: ['mac'], deferred: []});
   }
 });
 
@@ -47,9 +48,25 @@ test('tolerant, suspended and retired entries never use a PR place or join the d
   const pointed = ['tolerant', 'suspended', 'retired', 'f', 'e', 'd', 'c', 'b', 'a'];
   const lanes = {suites: Object.fromEntries(['tolerant', 'suspended', 'retired'].map(lane => [lane, {lane}]))};
   const out = pick.planPrSuites({...args, pointed, lanes});
-  assert.deepEqual(out, {suites: ['a', 'b', 'c', 'd', 'e'], left: ['f']});
-  assert.deepEqual(pick.planPrSuites({...args, pointed: ['tolerant', 'b'], lanes}), {suites: ['b'], left: []});
+  assert.deepEqual(out, {suites: ['a', 'b', 'c', 'd', 'e'], left: ['f'], deferred: ['f']});
+  assert.deepEqual(pick.planPrSuites({...args, pointed: ['tolerant', 'b'], lanes}), {suites: ['b'], left: [], deferred: []});
   assert.deepEqual(pick.planPrSuites({...args, pullRequest: false, pointed, lanes}).suites, pointed);
+});
+
+test('planner owns the cap deferrals, excluding a Mac-only loader even after merge', () => {
+  const input = {...args, covering: {
+    mac: 'loads app.js (line 9 ran in no suite)',
+    f: 'runs app.js:6', e: 'runs app.js:5', d: 'runs app.js:4',
+    c: 'runs app.js:3', b: 'runs app.js:2', a: 'runs app.js:1',
+  }, linux: suite => suite !== 'mac'};
+  const plan = pick.planPrSuites(input);
+  assert.deepEqual(plan.suites, ['a', 'b', 'c', 'd', 'e']);
+  assert.deepEqual(plan.left, ['mac', 'f']);
+  assert.deepEqual(plan.deferred, ['f']);
+  const main = pick.planPrSuites({...input, pullRequest: false});
+  assert.deepEqual(main.suites, ['f', 'e', 'd', 'c', 'b', 'a']);
+  assert.deepEqual(main.left, ['mac']);
+  assert.deepEqual(main.deferred, []);
 });
 
 // Reaches: ../pr-suites.mjs
@@ -60,21 +77,20 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, listed = {}} = {}) {
+function cliPlan({catches, pullRequest = true, listed = {}, suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
-    const suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'];
-    const files = suites.map(s => `desktop/e2e/suites/${s}.mjs`);
+    const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
     const diff = files.map(file => {
-      const line = fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8').split('\n').findIndex(text => text.startsWith('import ')) + 1;
+      const line = extraFiles.includes(file) ? 1 : fs.readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8').split('\n').findIndex(text => text.startsWith('import ')) + 1;
       assert.ok(line > 0, `fixture needs an import line: ${file}`);
-      return `+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
+      return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
     fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'show') console.log(${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
-    fs.writeFileSync(map, '{}');
+    fs.writeFileSync(map, JSON.stringify(coverage));
     const argv = [cli.pathname, '--base', 'origin/main', '--plan', '--map', map, ...(pullRequest ? ['--pull-request'] : [])];
     if (catches) { const file = path.join(dir, 'catches.json'); fs.writeFileSync(file, JSON.stringify(catches)); argv.push('--catches', file); }
     const run = spawnSync(process.execPath, argv, {encoding: 'utf8', timeout: 30000, env: {...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: ''}});
@@ -105,4 +121,24 @@ test('CLI reads catch counts only when supplied and applies the base registry be
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 8);
   assert.equal(main.values.left, '');
+});
+
+test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {
+  const {values, text} = cliPlan({
+    suites: ['strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'],
+    extraFiles: ['cap-fixture.js'],
+    coverage: {suites: {
+      strategy: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
+      interactions: {sha: 'fixture', files: {'cap-fixture.js': {loaded: true, lines: []}}, steps: {}},
+    }},
+  });
+  assert.equal(values.suites, 'calendar,focus,interviews,jobs,settings');
+  assert.equal(values.left, 'strategy,interactions');
+  assert.ok(text.includes('| `strategy` | run after merge | loads cap-fixture.js'));
+  assert.ok(text.includes('| `interactions` | not in this PR run | loads cap-fixture.js'));
+  assert.ok(!text.includes('| `interactions` | run after merge |'));
+  const reasons = JSON.parse(values.steps)['(why)'];
+  assert.deepEqual(reasons.filter(line => line.includes(' · run after merge ←')), [
+    'strategy · run after merge ← desktop/e2e/suites/strategy.mjs (the suite watches or imports it, and its recorded run never loaded it)',
+  ]);
 });

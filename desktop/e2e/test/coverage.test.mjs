@@ -87,5 +87,5 @@ test('a macOS suite runs on the PR when the coverage map picks it or the PR chan
   assert.deepEqual(plan.suites, ['apply', 'wander', 'interactions']);
   assert.deepEqual(plan.left, [], 'a Mac suite the PR changes runs its steps on the PR (audit rule 3), no longer left to the gate');
   const loads = planPrSuites({covering: {interactions: 'loads desktop/renderer/app.js (line 3 ran in no suite)', wander: 'loads desktop/renderer/app.js (line 3 ran in no suite)'}, linux});
-  assert.deepEqual(loads, {suites: ['wander'], left: ['interactions']}, 'a line no suite ran: every suite loading the file, but Mac ones only when they ran it');
+  assert.deepEqual(loads, {suites: ['wander'], left: ['interactions'], deferred: []}, 'a line no suite ran: every suite loading the file, but Mac ones only when they ran it');
 });

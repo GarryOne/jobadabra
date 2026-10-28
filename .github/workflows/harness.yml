@@ -40,9 +40,11 @@ on:
       - 'tools/design-system/rules-html.mjs'
       - 'tools/design-system/serve.mjs'
       - 'tools/design-system/zip.mjs'
+      - 'tools/lanes-check.mjs'
       - 'tools/pool-rows.mjs'
       - 'tools/record-env.mjs'
       - 'tools/rung-trailer.mjs'
+      - 'tools/suspend-flip.mjs'
       - 'worker/src/**'   # staged into desktop/shared/worker/, which the app's server imports (review on #2241)
 
 permissions:

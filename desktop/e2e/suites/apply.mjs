@@ -15,6 +15,7 @@ import {appLogLines, appLogText} from '../lib/app-log.mjs';
 import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {proveBackground} from '../lib/background-proof.mjs';
+import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
 import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, pause, tailoredFrom} from '../lib/apply-fixtures.mjs';
@@ -30,7 +31,7 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
-  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30};
+  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
   'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,
@@ -428,6 +429,14 @@ export async function runApply(ctx, parts) {
     await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
        await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});
   }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});   // Why (2026-10-28, Gitar on #2364): a plain return on Windows was counted as passed; a missing need is recorded as skipped (lib/runner.mjs)
+
+  // Full automation (spec step C): the app presses Submit itself once, against the fixture server's fake endpoint; a Stop in the wait presses nothing. Last of the hidden-browser steps: it relaunches the app with the test-only switch.
+  await ctx.run('Full automation presses Submit once on its own, and a Stop in the wait presses nothing', async () => {
+    // Why (2026-10-28, found by this step): a kit answer is never a saved fact (extension/flow.js `source: 'kit'`), so Full automation hands over any form with a kit question; this proof uses the submitter's details-only variant.
+    const form = {...FORMS.submitter, path: FORMS.submitter.autoPath, url: `https://${FORMS.submitter.host}${FORMS.submitter.autoPath}`, kit: []};
+    await proveAutomatic(ctx, {form, until, seed: async job => { await removeJobsByUrl(ctx, urls);
+       await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: [], cover_letter: '', check_before_sending: [], eligible: true}, description: POSTING}); }});
+  }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a
   // role=slider) was in no list and no count, and the panel said "Ready to submit, every required field is filled" over a form that still needed an answer.

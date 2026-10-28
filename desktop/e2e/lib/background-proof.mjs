@@ -35,7 +35,7 @@ export const withFormJudge = (previous, submitText) => body => {
   const content = body?.messages?.[0]?.content, text = typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('');
   if (!system.startsWith(FORM_JUDGE)) return previous ? previous(body) : null;
   const empty = /· required · empty/.test(text);
-  return JSON.stringify({answer: empty ? 'needs_person' : 'ready', blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: empty ? '' : submitText, confidence: 0.95});
+  return JSON.stringify({answer: empty ? 'needs_person' : 'ready', blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: empty ? '' : submitText, bot_check: false, confidence: 0.95});
 };
 
 /** The background state of the application of `url`, from the Sessions list (item.background, lib/background-apply-controller.js cache), or ''. */
@@ -44,8 +44,8 @@ export const backgroundStateOf = (page, url) => page.evaluate(target => window.p
 /** The values of the inputs on the page behind `socketUrl` (one Runtime.evaluate over its debugging port), for a failure message. */
 const valuesOf = socketUrl => new Promise(done => {
   const socket = new WebSocket(socketUrl), end = text => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(text); }, timer = setTimeout(() => end('(no answer)'), 4000);
-  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression: "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s)' : item.value)).join(', ')"}}));
-  socket.onmessage = event => end(String(JSON.parse(event.data).result?.result?.value ?? '(none)').slice(0, 300));
+  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression: "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobpilotto-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobpilottoGrounding || 'none') + (item.hasAttribute('data-jobpilotto-guess') ? ', guess' : '') + ']').join(', ')"}}));
+  socket.onmessage = event => end(String(JSON.parse(event.data).result?.result?.value ?? '(none)').slice(0, 700));
   socket.onerror = () => end('(unreadable)');
 });
 

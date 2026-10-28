@@ -137,21 +137,24 @@ export async function proveBackground(ctx, {form, seed, until}) {
     // The owner's scenario (28 Oct 2026 screenshot, "Filling the application" with a broken picture): the session is opened in the window while the fill runs, when the hidden form may not be open yet;
     // the live view must still end up showing the page (renderer/live-opener.js asks again on every redraw).
     await until('the application never got a session', async () => !!(await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url)), 60000);
-    const shown = await page.evaluate(async company => {
-      let row = null;   // the session's card in the dock tray, where the person clicks it (renderDock hides the tray on the sessions page itself, so no navigation first; try 2 on this symptom: try 1 navigated first and CI found no card)
-      for (let waited = 0; !row && waited < 10000; waited += 100) {
-        row = [...document.querySelectorAll('.sd-card')].find(el => (el.textContent || '').includes(company) && el.getClientRects().length) || null;
-        if (!row) await new Promise(done => setTimeout(done, 100));
-      }
-      row?.click();
+    // The way e2e/suites/apply.mjs opens a session (proven on CI): the dock card, expanding the collapsed dock first; the Sessions page when the dock does not show this one.
+    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).first();
+    if (await card.count()) {
+      if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');
+      await card.click();
+    } else {
+      await page.click('.nav[data-view="sessions"]');
+      await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000});
+    }
+    const shown = await page.evaluate(async () => {
       for (let waited = 0; waited < 40000; waited += 250) {
         const img = document.querySelector('.live-img');
         if (img?.complete && img.naturalWidth > 0) return {ok: true, w: img.naturalWidth};
         await new Promise(done => setTimeout(done, 250));
       }
       const img = document.querySelector('.live-img');
-      return {ok: false, row: !!row, img: !!img, srcChars: String(img?.getAttribute('src') || '').length, address: document.querySelector('.live-url')?.textContent || ''};
-    }, form.company);
+      return {ok: false, img: !!img, srcChars: String(img?.getAttribute('src') || '').length, address: document.querySelector('.live-url')?.textContent || ''};
+    });
     if (!shown.ok) throw new Error(`the live view shows no picture of the hidden page: ${JSON.stringify(shown)}`);
     await until('the hidden form never reached Ready to review', async () => (await backgroundStateOf(page, form.url)) === 'ready_for_review', 120000)
       .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(page, form.url) || 'none'}`); });

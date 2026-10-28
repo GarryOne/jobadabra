@@ -6,7 +6,7 @@ Owner, 28 Oct 2026 (exact words): "Let's use/switch to Codex subscription. for a
 Supersedes: fbadf96 (26 Oct, CI on Free AI), memory `feedback-pr-ai-checks-subscription-haiku` for CI.
 
 ## Progress
-- [x] PR 0 measure: tokens per call (~18k), latency, 4-way concurrency, ≥ ~40 calls per 1% (done 28 Oct); per-consumer calls/day still open (proof: docs/superpowers/specs/2026-10-28-ci-on-codex-subscription-design.md)
+- [x] PR 0 measure: tokens per call (~18k), latency, 4-way concurrency, ≥ ~40 calls per 1% (done 28 Oct); per-consumer calls/day still open (proof: docs/superpowers/specs/data/2026-10-28-codex-measure/README.md)
 - [ ] PR 1 broker + `codex` engine in `desktop/e2e/lib/engine.mjs`; e2e app-under-test and judges off the Free AI relay (stops the neuron bill)
 - [ ] PR 2 screenshot review (`.github/actions/e2e-review`)
 - [ ] PR 3 code review, ui-prejudge, ui-verdict, test judges
@@ -47,8 +47,8 @@ Rejected: auth.json as a GitHub secret (breaks both OpenAI rules, public repo); 
 ## Using the allowance (owner: "burn these tokens")
 Window: weekly only; read it with the app-server's `account/rateLimits/read` (`primary.usedPercent` is a whole number, `resetsAt` the next reset), not from session files (28 Oct: a stale file said 51%, the real figure was 1%).
 Rule (proposal): **CI + scheduled + benchmarks may use up to 60% of one week's allowance; 25% stays for the owner's own sessions; 15% stays for PR checks only.**
-- **The broker counts its own share**, not the whole week (Gitar, #2375: `used_percent` includes the owner's sessions, so a whole-week threshold alone cannot keep his 25%). Per call it records tokens per lane; PR 0 gives tokens per 1% of the week; own share = its tokens ÷ that, reset at `resets_at`. Scheduled and benchmark lanes pause at own share ≥ 60%; the PR-check lane at own share ≥ 75% (60 + its 15). The owner keeps the other 25% whatever he used.
-- The whole-week `used_percent` (read after each call) is the second brake: scheduled lanes also pause at ≥ 85%, PR checks at ≥ 97%; then replay or grey. In a quiet week the own-share limit binds first; in a week the owner used heavily the whole-week brake does.
+- **The broker counts its own share**, not the whole week (Gitar, #2375: `usedPercent` includes the owner's sessions, so a whole-week threshold alone cannot keep his 25%). Per call it records tokens per lane; PR 0 gives tokens per 1% of the week; own share = its tokens ÷ that, reset at `resetsAt`. Scheduled and benchmark lanes pause at own share ≥ 60%; the PR-check lane at own share ≥ 75% (60 + its 15). The owner keeps the other 25% whatever he used.
+- The whole-week `primary.usedPercent` (from `account/rateLimits/read`, read after each call) is the second brake: scheduled lanes also pause at ≥ 85%, PR checks at ≥ 97%; then replay or grey. In a quiet week the own-share limit binds first; in a week the owner used heavily the whole-week brake does.
 - One dial each: own-share limits and whole-week limits, all in the broker's config.
 - **Measured (PR 0, 28 Oct 2026, owner's Mac, 83 calls): one call shaped like a CI judge call (6 KB prompt + one image, schema output, shell off) is ~18k input tokens (no prompt cache) and ~25 output tokens. 80 of them moved the weekly figure from 1% to 2% (the tick came between calls 40 and 60), so ONE PERCENT IS AT LEAST ~40 SUCH CALLS (bound: 40 if the figure started at 1.0, ~400 if at 1.9); the week is at least ~4,000 such calls (~70M input tokens). The whole-number reading cannot say more, so the broker calibrates itself: it records its tokens against each tick of `usedPercent` over the week and uses the running ratio for its own-share meter.
 - Latency and concurrency: ~7 s per call sequential; 4 at a time ~9.8 s average, 16 s max, 60 of 60 answered with a valid verdict. Start the broker at 4 parallel calls.

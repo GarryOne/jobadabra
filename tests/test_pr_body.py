@@ -43,8 +43,8 @@ class PrBodyTest(unittest.TestCase):
         self.assertIn('</details>', text)
         self.assertTrue(text.rstrip().endswith('🤖 Generated with [Claude Code](https://claude.com/claude-code)'))
 
-    def test_the_circle_count_gitar_approves_on_is_written_under_the_summary(self):
-        """27 Oct 2026, .gitar/config/approve.md: Gitar approves only with the AREA-CIRCLES line in the description; #2284 had none and waited on the owner's bypass."""
+    def test_the_circle_count_the_review_reads_is_written_under_the_summary(self):
+        """27 Oct 2026; 28 Oct (#2410): .gitar/review/root-cause.md reads the AREA-CIRCLES line in the description; #2284 had none and waited on the owner's bypass."""
         summary = self.tmp / 'summary.md'
         good = '### ✅ Ocado: menus picked by meaning\n\n- **Why:** the 11 Oct pool run left 3 menus empty\n- **Impact:** 3 more required menus filled on Ocado-like forms\n\n**Unblocks:** the next PR\n\n| Area | Impact | How |\n|---|---|---|\n| Real users | ⚪ Low | x |\n| Form filling | — None | x |\n| Admin data accuracy | — None | x |\n| Offline replays | — None | x |\n| Tests & harness | 🟢 High | x |\n| Development speed | ⚪ Low | x |\n| Cost | — None | x |\n\nNo visual: a one-line fix\n\n| | Before | After |\n|---|---|---|\n| filled | 8 | 11 |\n'
         summary.write_text(good)
@@ -52,7 +52,7 @@ class PrBodyTest(unittest.TestCase):
         self.assertRegex(text[:text.index('<details>')], r'`AREA-CIRCLES 7d=\d+ 30d=\d+ files=[^`]*`')
         summary.write_text(good + '\n`AREA-CIRCLES 7d=9 30d=9 files=x`\n')
         self.assertEqual(self.body(f'--body={summary}').count('AREA-CIRCLES'), 1, 'a summary with its own line keeps it, never two')
-        summary.write_text(good.replace('the next PR', 'the next PR; approve.md asks for its AREA-CIRCLES count'))
+        summary.write_text(good.replace('the next PR', 'the next PR; root-cause.md asks for its AREA-CIRCLES count'))
         self.assertRegex(self.body(f'--body={summary}'), r'`AREA-CIRCLES 7d=\d+', 'a summary that only names the line still gets it (this PR\'s own body did)')
 
     def test_the_facts_are_a_short_table_from_the_trailers(self):

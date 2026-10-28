@@ -18,6 +18,10 @@ const RECHECK = new Set(['dead-control', 'silent-control', 'expand-broken', 'no-
 const UNSAFE_TEXT = /\b(delete|remove|quit|exit|restart|relaunch|look around|set up my own|sign\s?(in|out)|log\s?(in|out)|connect|disconnect|install|update|upgrade|apply|submit|send|record|import|replace|run|reset|clear|discard|stop|cancel|retry|start|generate|draft|scan|export|download|unlink|revoke|buy|pay|copy|open in|open settings|folder|finder|explorer|reveal|show in|check|refresh|rebuild|redo|find|search|review|score|prepare|sync|rescan|test)\b/i;
 const UNSAFE_CLASS = /danger|destructive/i;
 
+/**
+ * Whether the probe may press a control: false for a command, a wand (AI work), unsafe text or class, or a link out; true otherwise.
+ * Takes what the page collector reads off the element (text, class, href, data-command, data-wand); never throws.
+ */
 export function isSafe({text = '', cls = '', href = '', command = '', wand = false}) {
   // data-wand: the app's own mark for a press that starts AI work (renderer/magic.js wand; test/wand-cursor.test.js lists them). Why (#2350, 28 Oct 2026): Focus's
   // one-press "Read Indeed" starts a site read in Chrome; pressed on Focus, Jobs and Strategy it waited 30 s each for an extension and ran the suite over budget.

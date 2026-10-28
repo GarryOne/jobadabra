@@ -344,7 +344,8 @@
   "step": "final",
   "next_control": "",
   "submit_control": "",
-  "confidence": 0.9
+  "bot_check": false,
+  "confidence": 0.85
  },
  "answer_path": "app"
 }

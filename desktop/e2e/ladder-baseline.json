@@ -136,6 +136,10 @@
   {
    "date": "2026-10-28",
    "reason": "form judge names the page's own sending button (submit_control, hidden apply PR B): 20 form-judge fixtures re-recorded on the plan path, 19 exact, ashby-yes-no unsure as before; the fingerprint now also hashes rung 2 FORM_CHECK_RULE and rung 3 FRAME_RULE (text unchanged)"
+  },
+  {
+   "date": "2026-10-28",
+   "reason": "form judge says bot_check in the same call (owner's yes 28 Oct 2026); 2 new form_ready fixtures (robot check, Robotics trap), form answers re-recorded on the plan path: form_ready 6/6, form_step unchanged (ashby-yes-no was already an unsure miss)"
   }
  ],
  "promptFingerprint": {
@@ -143,7 +147,7 @@
   "rung2-frames": "062eb0c3862f408e",
   "rung3": "8004ebdcf1667435",
   "account-judge": "82bb54b889d5f14d",
-  "form-judge": "02e2c56e84fb8dba",
+  "form-judge": "98e1b54afee345d9",
   "fill-verify": "fe0e393f3680f14e",
   "fill-repair": "b9110b61a1151dbe",
   "rung4": "20b3ddfcca2ce90f"
@@ -1468,6 +1472,17 @@
    "outcome": "posting",
    "status": "exact"
   },
+  "ready-de-form-robotics-title-no-check": {
+   "question": "form_ready",
+   "expect": {
+    "outcome": "ready",
+    "accept": [
+     "ready"
+    ]
+   },
+   "outcome": "ready",
+   "status": "exact"
+  },
   "ready-en-chosen-picklists": {
    "question": "form_ready",
    "expect": {
@@ -1488,6 +1503,17 @@
     ]
    },
    "outcome": "blocked",
+   "status": "exact"
+  },
+  "ready-en-form-robot-check-unticked": {
+   "question": "form_ready",
+   "expect": {
+    "outcome": "needs_person",
+    "accept": [
+     "needs_person"
+    ]
+   },
+   "outcome": "needs_person",
    "status": "exact"
   },
   "ready-es-dialog-over-filled-form": {

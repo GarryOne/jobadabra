@@ -19,12 +19,12 @@
 | A zone your nationality opens | concluded at read time (`eligibilityOf`), never saved | your Nationality (a saved row wins) |
 | Sponsorship | derived from the status (`settles`), never a fact | the status |
 | Which zone a form's country is in | the AI's ISO code, checked against the zones' fixed members | nothing else |
-| Older eligibility lines | kept as written until your Save | the AI's one reading (cached per set of lines), then your Save (backup + Undo) |
+| Older eligibility lines | kept as written until your Save | the AI's one reading (cached per set of lines), folded and saved when Your details opens (backup + Undo) |
 
 <details><summary>Verdicts that change state</summary>
 
-- **Open Your details:** the older lines are read once (`lib/eligibility-older.js`); Nationality and empty zones are filled as drafts with "From your earlier answers". Nothing is saved.
-- **Save:** the folded lines leave the card after `saveCopy` (both pages backed up); `settings.eligibilityFold` keeps the section as it was; Undo puts it back.
+- **Open Your details:** the older lines are read once (`lib/eligibility-older.js`); `lib/eligibility-settle.js` then **saves** Nationality, the empty zones and the folded lines at once, a backup first, with Undo (owner, 28 Oct 2026, "Save them automatically": it reverses the draft-on-open rule of #2322 and #2346, so nothing is left as an unsaved change and leaving Profile asks nothing). A zone you answered is never overwritten; an Undo is final for those lines. Only your own edits (a Nationality you change) are drafts.
+- **Undo:** `settings.eligibilityFold` keeps the section as it was; Undo puts it back and `settings.eligibilityOff` (a list of the undone lines) stops those lines being concluded again, even after you edit others; a later conclusion keeps the first snapshot.
 - **Form question:** `question-reuse` gets `asks` + `country` from the AI; `rowFor` + `settles` give Yes/No, or it stays asked (a country in no zone, an unknown code).
 - **Queue:** a zone waits for Nationality; with Nationality held, only the zones it did not open are asked.
 </details>
@@ -33,7 +33,7 @@
 - A Romanian national: "Authorised to work in Germany?" → Yes; "Need sponsorship (Berlin)?" → No; no country named → answered per job.
 - An Irish national: EU and UK concluded, only the US asked.
 - A city is never a Nationality or a row; a CV proposal outside the fixed statuses is dropped.
-- An unreadable or "other" older line stays as written; nothing is removed without your Save, a backup and Undo.
+- An unreadable or "other" older line stays as written; nothing is removed without a backup and an Undo.
 - Nationality and each zone round-trip on SQLite and Notion.
 - The setup prompt and the Profile template carry Nationality + zones, never a home-region, city or Remote line; a saved Remote line is read as per job and folded on Save.
 

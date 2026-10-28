@@ -2,6 +2,8 @@
 // Work eligibility: once Nationality is added or changed, the zones it does not open are preselected "No, needs sponsorship" (owner, 28 Oct 2026: "once we add/change
 // the nationality, initially, can we preselect the visa/work status for each other row?… it should preselect only for the first time… we shouldn't override
 // his choices"). A suggestion is a draft the person changes with one click; a zone already answered is never touched (renderer/pages/details-facts.js).
+// Owner, 28 Oct 2026, "Save them automatically": only a Nationality the person changes in this session preselects the zones; on open the conclusions are already saved
+// (lib/eligibility-settle.js), so opening draws no suggestion and asks no AI.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {install} from './tiny-dom.js';
@@ -14,6 +16,7 @@ document.getElementById = id => real(id) || (loose.has(id) ? loose.get(id) : loo
 window.pilot.state = async () => ({settings: {}});   // renderer/pages/shared.js reads it on import
 const {showFacts, factsNow, KEYS} = await import('../renderer/pages/details-facts.js');
 const {forgetKept} = await import('../renderer/swr.js');
+const {factsDirty} = await import('../renderer/pages/details-drafts.js');
 
 const asked = [], gate = {promise: Promise.resolve(), open: () => {}};
 const zone = (label, value = '') => ({label, value, kind: 'per_country'});
@@ -62,13 +65,15 @@ test('a suggestion the person clicked is theirs: a later nationality change keep
   assert.ok(![...into.querySelectorAll('.country-row.fact-line')].find(line => line.textContent.includes('United States')).dataset.suggested, 'no longer a suggestion');
 });
 
-// Why (28 Oct 2026, owner: "use AI if the nationality is not US or Europe"): a nationality outside the three zones is judged by the AI; before its answer the pickers
+// Why (28 Oct 2026, owner: "use AI if the nationality is not US or Europe"): a nationality outside the three zones is judged by the AI (asked when the person changes Nationality; on open it is already saved); before its answer the pickers
 // are empty (never a guess), after it they are preselected, and an answered zone is still left alone.
-test('a Canadian: the zones are empty until the AI answers, then preselected; Europe and the US never ask it', async () => {
+test('a Canadian the person enters: the zones are empty until the AI answers, then preselected; Europe and the US never ask it; opening asks nothing', async () => {
   asked.length = 0;
   gate.promise = new Promise(done => { gate.open = done; });
   const into = await open([{label: 'Nationality', value: 'Canada'}, zone('EU / EEA + Switzerland'), zone('United Kingdom', 'yes, freely'), zone('United States')]);
   assert.equal(status('United States'), '', 'positive control: nothing is guessed before the answer');
+  assert.deepEqual(asked, [], 'opening never asks the AI: it was asked and saved on open (lib/eligibility-settle.js)');
+  nationalityChanged(into);
   gate.open();
   await new Promise(done => setTimeout(done, 0));
   assert.deepEqual(asked, [['Canada']]);
@@ -81,12 +86,14 @@ test('a Canadian: the zones are empty until the AI answers, then preselected; Eu
   assert.deepEqual(asked, []);
 });
 
-// Why (28 Oct 2026, #2346 review): a suggestion drawn when the page opens is a draft, not what is saved, so the card is dirty and Save is offered; a click on the label
-// is no pick; a saved zone still asked stays asked when nothing is suggested.
-test('suggestions are drafts (not the saved baseline); a label click keeps one; a saved asked zone stays asked', async () => {
+// Why (28 Oct 2026, #2346 review; owner "Save them automatically"): a suggestion for a Nationality the person changed is a draft of their own edit, not what is saved, so Save is
+// offered; opening draws none; a click on the label is no pick; a saved zone still asked stays asked when nothing is suggested.
+test('suggestions follow the person\'s own edit only: drafts (not the saved baseline); a label click keeps one; a saved asked zone stays asked', async () => {
   const into = await open([{label: 'Nationality', value: 'United Kingdom'}, zone('EU / EEA + Switzerland'), zone('United Kingdom'), zone('United States')]);
   const labels = lines => lines.eligibility.map(line => line.label);
-  assert.ok(labels(factsNow()).includes('United States'), 'positive control: the suggestion is drawn');
+  assert.ok(!labels(factsNow()).includes('United States'), 'opening draws no suggestion');
+  nationalityChanged(into);
+  assert.ok(labels(factsNow()).includes('United States'), 'positive control: a Nationality the person changed preselects the zones');
   assert.ok(!labels(factsNow({saved: true})).includes('United States'), 'it is not in the saved baseline');
   const us = [...into.querySelectorAll('.country-row.fact-line')].find(line => line.textContent.includes('United States'));
   us.listeners.click?.forEach(fn => fn({target: {closest: () => null}}));
@@ -112,4 +119,27 @@ test('UK then Canada before the AI answers: the UK suggestions leave; an empty A
   nationalityChanged(into);
   assert.equal(asked.length, 2, 'an empty answer is asked again');
   window.pilot.zoneSuggestions = empty;
+});
+
+// Owner, 28 Oct 2026, "Save them automatically": the dialog "Save your changes?" blocked the next click for lines the person never typed. What lib/eligibility-settle.js saved
+// (Nationality + zones, opened as the store returns them) is the baseline: no suggestion, nothing dirty, so leaving Profile asks nothing. Red on the draft-on-open screen.
+test('a saved Nationality with its zones opens clean: no suggestion drawn, nothing unsaved, nothing asked', async () => {
+  asked.length = 0;
+  const into = await open([{label: 'Nationality', value: 'Romania'}, zone('EU / EEA + Switzerland', 'yes, freely'), zone('United Kingdom', 'no, needs sponsorship'), zone('United States', 'no, needs sponsorship')]);
+  assert.equal(into.querySelectorAll('[data-suggested]').length, 0, 'no zone is a suggestion');
+  assert.equal(factsDirty(), false, 'nothing is an unsaved change');
+  assert.deepEqual(asked, []);
+  nationalityChanged(into);
+  assert.equal(factsDirty(), false, 'positive control: re-reading the same Nationality changes nothing either (answered zones stay)');
+});
+
+test('the Undo notice says Work eligibility was filled in and saved, not "tidied"', async () => {
+  await open([{label: 'Nationality', value: 'Romania'}, zone('EU / EEA + Switzerland', 'yes, freely')]);
+  const sections = {eligibility: [{label: 'Nationality', value: 'Romania'}], availability: [], languages: []};
+  window.pilot.detailsFacts = async () => ({ok: true, sections, formats: {}, tidied: {changed: 4, eligibility: 4, at: '2026-10-28T10:00:00Z'}});
+  forgetKept();
+  await showFacts({redraw: true});
+  const notice = document.getElementById('facts-tidied').textContent;
+  assert.match(notice, /Work eligibility was filled in from your earlier answers and saved/);
+  assert.doesNotMatch(notice, /tidied/, 'all four were Work eligibility');
 });

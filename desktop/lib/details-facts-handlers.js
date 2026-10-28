@@ -9,7 +9,8 @@ import * as kinds from './details-kinds.js';
 import * as notes from './details-notes.js';
 import * as surveys from './survey-move.js';
 import {list} from './set-aside.js';
-import {beforeSave, older, undoFold} from './eligibility-older.js';
+import {beforeSave, undoFold} from './eligibility-older.js';
+import {settle} from './eligibility-settle.js';
 import {suggest as suggestZones} from './zone-suggest.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
@@ -32,7 +33,7 @@ const empty = () => Object.fromEntries(Object.keys(sections.SECTIONS).map(key =>
 export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected, needsNotion, log, ai = () => claudeAi(storage), copy}) {
   const tidied = () => {
     const {detailsTidy: lines, surveyTidy: survey, eligibilityFold: fold} = storage.settings(), live = [lines, survey, fold].filter(done => done && !done.undone);
-    return live.length ? {changed: live.reduce((sum, done) => sum + done.changed, 0), at: live.map(done => done.at).sort().at(-1)} : null;
+    return live.length ? {changed: live.reduce((sum, done) => sum + done.changed, 0), eligibility: fold && !fold.undone ? fold.changed : 0, at: live.map(done => done.at).sort().at(-1)} : null;
   };
   // One open at a time: the moves read, change and read back the same lines, so a second open in the middle (a slow Notion open takes ~45 s) saw the first's
   // lines as "did not save" and rolled them back (owner's app.log, 17 Oct 2026). A second open gets the first's answer.
@@ -60,11 +61,13 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
       // The AI's word on each answer not judged yet, after the tidy and split changed what they change (lib/details-review.js judgeNew): unclear ones are queued.
       const judged = await judgeNew(storage, {ai: ai()}).catch(failed => { log('profile', 'the answers check stopped', {error: failed.message}); return {judged: 0}; });
       if (judged.judged) log('profile', 'answers checked', {judged: judged.judged, unclear: judged.unclear, unsure: judged.queued});   // counts, never a value
+      // Why (owner, 28 Oct 2026, "Save them automatically", reversing #2322's and #2346's drafts): what the AI concludes about Work eligibility is saved now, a backup first and an Undo after.
+      const concluded = await settle(storage, {ai: ai(), ...(copy ? {copy} : {})}).catch(failed => { log('profile', 'the eligibility conclusion stopped', {error: failed.message}); return 0; });
+      if (concluded) log('profile', 'Work eligibility concluded', {concluded});   // a count, never a value
+      changed += concluded;
       const found = await sections.read(storage);
-      // What the older Work eligibility lines say for the zones (#2322): shown beside them, never written without your Save.
-      const olderLines = await older(storage, found.eligibility, {ai: ai()}).catch(() => []);
       if (changed || Date.now() - started > 2000) log('profile', 'Your details settled', {ms: Date.now() - started, changed});   // (only when something moved or it was slow) timing and a count, never a value
-      return {ok: !error, error, changed, sections: found, older: olderLines, formats: await kinds.formatsOf(storage, found, ai()), tidied: tidied(), conflicts: await openConflicts(storage).catch(() => storage.settings().profileConflicts || []), setAside: list(storage).filter(each => each.source === 'profile')};
+      return {ok: !error, error, changed, sections: found, formats: await kinds.formatsOf(storage, found, ai()), tidied: tidied(), conflicts: await openConflicts(storage).catch(() => storage.settings().profileConflicts || []), setAside: list(storage).filter(each => each.source === 'profile')};
     } catch (failed) { return {ok: false, error: failed.message, sections: empty(), conflicts: [], setAside: []}; }
   };
   ipcMain.handle('detailsFacts', () => opening ||= open().finally(() => { opening = null; }));

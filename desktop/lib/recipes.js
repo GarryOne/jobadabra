@@ -194,7 +194,7 @@ export function createReporter(storage, {fetcher = globalThis.fetch, base = SITE
     answer(trace) {
       if (enabled(storage) && addAnswer(answers, trace)) schedule();
     },
-    // What a learned note says about a label's wording (lib/learn.js proposalsOf): [{key, phrase}], the wording and the fixed profile field it stands for.
+    // What a fill or a contact lookup says about a label's wording (lib/contact-keys.js, lib/server-pages.js): [{key, phrase}], the wording and the fixed profile field it stands for.
     // The site only counts it; it becomes a candidate meaning once 3+ installs sent the same pair, and the owner's canary decides the rest.
     proposal(items) {
       if (!enabled(storage)) return;

@@ -4,26 +4,26 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {personalKey, plan, save} from '../lib/learned.js';
 
-test('personal facts go to Your details, only when still empty; everything else to Form knowledge for every site', () => {
+test('personal facts go to Your details, only when still empty; everything else to What we learned', () => {
   const items = [{label: 'Street*', value: 'Rue du Lac 4', kind: 'text'}, {label: 'NPA', value: '1201', kind: 'text'},
     {label: 'Date of birth (dd.mm.yyyy)', value: '01.02.1990', kind: 'text'}, {label: 'Place of origin', value: 'Bern', kind: 'text'},
     {label: 'Marital status', value: 'Bachelor', kind: 'option'}, {label: 'Driving license', value: 'B', kind: 'text'}];
-  const {details, notes} = plan(items, {contact: {postal_code: '1200'}});
+  const {details, answers} = plan(items, {contact: {postal_code: '1200'}});
   assert.deepEqual(details, {street: 'Rue du Lac 4', birth_date: '01.02.1990', place_of_origin: 'Bern'});  // NPA already kept: not overwritten
-  assert.deepEqual(notes.map(n => [n.scope, n.kind, n.field, n.value]), [['any', 'option', 'Marital status', 'Bachelor'], ['any', 'answer', 'Driving license', 'B']]);
+  assert.deepEqual(answers, [{label: 'Marital status', value: 'Bachelor'}, {label: 'Driving license', value: 'B'}]);
 });
 
 test('what the details already fill, what is known, secrets and long texts are left out', () => {
-  const known = [{scope: 'any', field: 'Driving license', value: 'B'}];
-  const {details, notes} = plan([{label: 'First name', value: 'Igor'}, {label: 'Email', value: 'a@b.test'}, {label: 'Driving license', value: 'B'},
-    {label: 'Why us?', value: 'x'.repeat(301)}, {label: 'A', value: 'y'}], {notes: known});
-  assert.deepEqual([details, notes], [{}, []]);
+  const answered = new Set(['driving license: b']);   // the answers page's line, as save() reads it
+  const {details, answers} = plan([{label: 'First name', value: 'Igor'}, {label: 'Email', value: 'a@b.test'}, {label: 'Driving license', value: 'B'},
+    {label: 'Why us?', value: 'x'.repeat(301)}, {label: 'A', value: 'y'}], {answered});
+  assert.deepEqual([details, answers], [{}, []]);
 });
 
-test('labels are cleaned so a note survives the Notion round trip', () => {
+test('labels are cleaned so a line survives the Notion round trip', () => {
   assert.equal(personalKey('Postal code *'), 'postal_code');
   assert.equal(personalKey('Additional address information'), '');  // not the street
-  assert.equal(plan([{label: 'Notice: period "days"', value: '30'}]).notes[0].field, 'Notice period days');
+  assert.equal(plan([{label: 'Notice: period "days"', value: '30'}]).answers[0].label, 'Notice period days');
 });
 
 test('saving writes details and notes once, logs only counts, and says so; a Notion failure is reported, not thrown', async () => {
@@ -40,7 +40,7 @@ test('what you typed is sorted by the shared label meanings too, any language: "
   const aliases = [{key: 'street', phrase: 'rua'}, {key: 'first_name', phrase: 'nome próprio'}];
   const result = plan([{label: 'Rua *', value: 'Rua Augusta 12'}, {label: 'Nome próprio', value: 'Ana'}, {label: 'Disponibilidade', value: 'Imediata'}], {aliases});
   assert.deepEqual(result.details, {street: 'Rua Augusta 12'});
-  assert.deepEqual(result.notes.map(note => note.field), ['Disponibilidade']);   // a contact field is filled from your details: never a note
+  assert.deepEqual(result.answers.map(answer => answer.label), ['Disponibilidade']);   // a contact field is filled from your details: never a learning
   assert.equal(personalKey('Rua'), '', 'without the shared meanings, the old words alone do not know it');
   assert.equal(personalKey('Strasse'), 'street');
 });

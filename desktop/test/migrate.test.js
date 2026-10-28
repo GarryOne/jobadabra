@@ -250,7 +250,7 @@ test('the real strategy step keeps profile.md and answers.md on this Mac\'s stor
 // Every step says why it does not run while the data lives on this Mac (run() runs none there): a new one fails here until it says.
 test('every migrate step says why it waits on this Mac\'s store: this Mac\'s data, or a workspace part the move does itself', () => {
   const data = ['strategy from this Mac', 'reached via', 'employers from this Mac', 'runs from this Mac', 'origin', 'profile copies', 'open questions',
-    'form knowledge', 'contact details'];
+    'contact details'];
   const workspace = ['daily target', 'workspace', 'search settings', 'search settings format'];
   assert.deepEqual(migrate.STEPS.filter(step => step.onMac === 'data').map(step => step.name).sort(), [...data].sort());
   assert.deepEqual(migrate.STEPS.filter(step => step.onMac === 'workspace').map(step => step.name).sort(), [...workspace].sort());

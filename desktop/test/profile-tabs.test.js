@@ -21,7 +21,7 @@ test('the tabs: What we learned opens its outline tab, the old Preferences name 
 });
 
 test('no textarea anywhere on the Profile page\'s texts (owner, 16 Oct 2026)', () => {
-  for (const file of ['outline-tab', 'application-answers', 'website-rules', 'job-preferences', 'experience-profile']) {
+  for (const file of ['outline-tab', 'application-answers', 'form-controls', 'job-preferences', 'experience-profile']) {
     assert.doesNotMatch(read(`../renderer/pages/${file}.js`), /'textarea'/, file);
   }
   assert.doesNotMatch(page.slice(page.indexOf('id="setting-answers"')), /<textarea/);

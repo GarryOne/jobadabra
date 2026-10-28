@@ -342,18 +342,10 @@ export async function fillTab(tab, config, {useAI = true, force = false, kitAnsw
     debug.form = (seen || []).map(({field, label, type, required, filled, legal, options}) =>
       ({field, label, type, required, filled, legal, options: (options || []).slice(0, 30)}));
   }
-  // Learned notes (🧠 Form knowledge) answer fields nothing else did, matched by label and site.
-  const host = new URL(tab.url).hostname, company = (tab.url.match(/\/([\w-]+)\/jobs\//) || [])[1] || '';
-  const answered = new Set(answers.map(a => a.field));
-  const labelKey = text => String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-  for (const field of debug.form || []) {
-    if (answered.has(field.field) || field.filled || field.legal) continue;
-    const note = (me?.knowledge || []).find(n => labelKey(n.field) === labelKey(field.label) &&
-      (n.scope === 'any' || host.includes(n.scope) || n.scope.toLowerCase() === company));
-    if (note) { answers.push({field: field.field, value: note.value, source: 'form knowledge', question: field.label}); answered.add(field.field); }
-  }
   // A menu answer this site showed under another wording is given as the menu's own choice (desktop/lib/menu-choices.js: "+41" -> "Suisse").
   // Every pass's answers: the first ones here, Claude's later ones below.
+  const host = new URL(tab.url).hostname;
+  const labelKey = text => String(text || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const useRemembered = list => {
     for (const answer of list) {
       const field = (debug.form || []).find(f => f.field === answer.field);

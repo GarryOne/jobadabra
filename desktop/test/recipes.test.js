@@ -241,18 +241,15 @@ test('replies by score band, source kinds and filled/corrected labels are sent a
   assert.deepEqual(intel.fixes.map(f => [f.label, f.filled, f.corrected]), [['notice period', 2, 1], ['first name', 1, 0]]);
 });
 
-test('a learned note is sent as a wording and a fixed profile field only, once; nothing when reports are off', async () => {
+test('a proposal is sent as a wording and a fixed profile field only, once; nothing when reports are off', async () => {
   const storage = tempStorage();
   const sent = [];
   const fetcher = async (url, init) => { sent.push(JSON.parse(init.body)); return {ok: true, status: 200, json: async () => ({})}; };
   const reporter = createReporter(storage, {fetcher, base: 'https://site.test', setTimer: () => ({})});
-  const {proposalsOf} = await import('../lib/learn.js');
-  const notes = [{scope: 'any', kind: 'answer', field: 'Preferred First Name', value: 'Igor', note: 'x', key: 'first_name'},
-    {scope: 'any', kind: 'option', field: 'How did you hear', value: 'Careers Website', note: 'x', key: ''},
-    {scope: 'any', kind: 'meaning', field: 'I agree to the terms', value: '', note: 'x', key: 'email'}];
-  reporter.proposal(proposalsOf(notes)); reporter.proposal(proposalsOf(notes));
+  const items = [{key: 'first_name', phrase: 'Preferred First Name'}];   // what lib/contact-keys.js sends: the wording and the field, no value
+  reporter.proposal(items); reporter.proposal(items);
   await reporter.flush();
-  assert.deepEqual(sent[0].proposals, [{key: 'first_name', phrase: 'preferred first name'}]);   // no value, no sentence, no consent wording
+  assert.deepEqual(sent[0].proposals, [{key: 'first_name', phrase: 'preferred first name'}]);   // once, no value
   storage.saveSettings({telemetry: false});
   reporter.proposal([{key: 'email', phrase: 'courriel'}]);
   assert.deepEqual(await reporter.flush(), {sent: 0});

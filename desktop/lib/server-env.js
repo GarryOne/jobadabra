@@ -8,7 +8,6 @@ import * as claudeCode from './claude-code.js';
 import * as cvlib from './cv.js';
 import * as experience from './experience.js';
 import * as pipeline from './pipeline.js';
-import * as learn from './learn.js';
 import * as notion from './notion.js';   // Notion-only: the extension's Notion calls only when Notion is the store (notionTexts); this Mac's go through env.store
 import * as notionGate from './notion-gate.js';
 import {openStore} from './store/index.js';
@@ -17,19 +16,16 @@ import * as questions from './questions.js';
 import * as verdicts from './question-verdicts.js';
 import {claudeAi} from './question-ai.js';
 import * as terminals from './terminals.js';
-import * as strategy from './strategy.js';
-import * as knowledge from './knowledge.js';
 import * as reports from './reports.js';
 import {jobKey} from '../shared/worker/extension.js';
 import {log as appLog} from './log.js';
-import {contactOf} from './server-contact.js';
 import {pageKey} from './server-pages.js';
 import {devVersion} from './dev-extension-version.js';
 import {captureAnswer} from './live-capture.js';
 import {keptAnswerClient} from './ai/index.js';
 import {nightAnswers} from './ready-handoff.js';
-import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, proposalReporter, sharedLogger, tellWindow} from './server-hooks.js';
-import {NAMES, costVisible} from './ai/names.js';
+import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, sharedLogger, tellWindow} from './server-hooks.js';
+import {NAMES} from './ai/names.js';
 import {cvFactsText} from '../shared/worker/cv-facts.js';
 import {configForPrompt} from './config-text.js';
 import {factsOf} from './base-facts.js';
@@ -96,8 +92,8 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
   const notionTexts = notionGate.notionInUse(storage);
   const notionToken = notionTexts ? storage.secret('NOTION_TOKEN') : '';
   const ids = notionTexts ? settings.notionIds || {} : {};
-  // extension.js calls Notion through the app's paced, retrying call(), and reads the Profile, standard answers and
-  // 🧠 Form knowledge from the kept pages (lib/notion.js), or this Mac's files: only when a request needs them (getters), not on every poll.
+  // extension.js calls Notion through the app's paced, retrying call(), and reads the Profile and standard answers
+  // from the kept pages (lib/notion.js), or this Mac's files: only when a request needs them (getters), not on every poll.
   const text = name => openStore(storage).page(name).text();
   const kept = (name, id) => (!notionTexts ? text(name) : id ? notion.pageText(notionToken, id) : Promise.resolve(''));
   return {
@@ -109,7 +105,6 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
     // The imported CV's jobs and schools (cv/cv.json) for the form AI. Never imported by a fill: no cv.json, no block, no AI call (cc, 11 Oct 2026).
     get CV_FACTS_TEXT() { return Promise.resolve(cvFactsOf(storage)); },
     get SEARCH_TEXT() { return Promise.resolve(configForPrompt(storage, 'search.json')); },   // the strategy's search settings: what the user is aiming for (no note: lib/config-text.js)
-    get KNOWLEDGE_TEXT() { return kept('knowledge', ids.NOTION_KNOWLEDGE_PAGE).catch(() => ''); },
     EXTENSION_TOKEN: extensionToken(storage),
     ANTHROPIC_API_KEY: storage.secret('ANTHROPIC_API_KEY'),
     // The user's own Claude Code answers the form when they chose it (Settings → Connections → AI); the API key otherwise.
@@ -119,7 +114,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
     NOTION_AGENT_RUNS_DB: ids.NOTION_AGENT_RUNS_DB || '',
     NOTION_PROFILE_PAGE_ID: ids.NOTION_PROFILE_PAGE_ID || '',
     NOTION_ANSWERS_PAGE_ID: ids.NOTION_ANSWERS_PAGE_ID || '',
-    // extension.js reads the Profile, standard answers and 🧠 Form knowledge pages from Notion.
+    // extension.js reads the Profile and standard answers pages from Notion.
     JOB_PILOTTO_KIT_MODEL: pipeline.MODELS.kit,
     markApplied: async (url, decision = '') => {
       const job = await find(url);
@@ -138,7 +133,6 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url}, 'good');
       return {ok: true, message: `Marked Applied ${where}.`};
     },
-    NOTION_KNOWLEDGE_PAGE: ids.NOTION_KNOWLEDGE_PAGE || '',
     localJob: async url => { const job = await find(url); return job ? summary(job) : null; },
     // The extension's own decisions (worker /extension/log), cleaned at that boundary: written here so a decision made
     // in Chrome is in the app's log with everything else (1 Oct 2026: nothing recorded why a job went Applied).
@@ -164,7 +158,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       storage.saveSettings({formsFilled: (storage.settings().formsFilled || 0) + 1});
       const job = await find(run.url).catch(() => null);
       const added = await questions.collect(storage, run, job?.company || '', undefined, async labels => verdicts.judge(storage, labels, {facts: await factsOf(storage), answered: await verdicts.answeredOf(storage, await questions.standardAnswers(storage)),
-        company: job?.company || '', url: run.url, host: learn.siteOf(run.url), ai: claudeAi(storage)}),
+        company: job?.company || '', url: run.url, host: hostOf(run.url), ai: claudeAi(storage)}),
         labels => verdicts.record(storage, labels, {url: run.url, company: job?.company || ''}),
         labels => notify('Remembered for future forms', `${labels.length} answer${labels.length > 1 ? 's' : ''} you gave before, asked again by ${job?.company || 'a second employer'}: kept as standard answers. Undo in the job's drawer.`, {view: 'jobs'}, 'good')).catch(error => {
         console.error('Open questions:', error.message);
@@ -172,7 +166,6 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       });
       if (added) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
       if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'}, 'warn');
-      learnFromRun(storage, run, job).catch(error => console.error('Form knowledge:', error.message));
       reports.send(storage, run, undefined, sharedLogger, {latest: latestExtension()}).then(report => {  // each field also shows in the app reports (/telemetry)
         // A fill that failed while Chrome ran an older copy than this app ships is explained first, as its own
         // report: otherwise the fields read as "the extension can't fill these", and the cause stays invisible
@@ -187,45 +180,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
 
 // onError: the port can be taken (another copy of the app, a test run); the app keeps working without
 // the extension connection instead of crashing.
-// After a fill that left fields: learn reusable notes from its record (one small Claude call), keep them for
-// the extension and mirror them to the user's 🧠 Form knowledge page in Notion (kits read that page).
-async function learnFromRun(storage, run, job) {
-  if (!notionGate.tracking(storage)) return;  // the notes live in the store (Notion, or this Mac): none while trying
-  const known = await judgeNotes(storage, run, await knowledge.notes(storage));
-  const apiKey = storage.secret('ANTHROPIC_API_KEY'), client = claudeCode.client(storage);  // Claude Code when the user chose it
-  if (!apiKey && !client) return;
-  const version = latestExtension(), settings = storage.settings();
-  const studied = learn.studiedFor(settings, version);
-  const fresh = learn.newFields(run, studied, known);
-  if (!fresh.length) return;  // this site's fields were already studied: no AI call
-  const {profile, answers} = await strategy.profileTexts(storage).catch(() => ({profile: '', answers: ''}));
-  const {notes, usd} = await learn.learn({run, profile, answers, contact: await contactOf(storage), known, studied, apiKey, client});
-  const site = learn.siteOf(run.url);
-  // Remember what was studied, learned or not (a cache on the Mac: a missing personal fact isn't retried; it's in Answer once).
-  storage.saveSettings({formKnowledgeVersion: version, formKnowledgeStudied: {...studied, [site]: [...new Set([...(studied[site] || []), ...fresh.map(f => learn.labelKey(f.label))])]}});
-  if (!notes.length) return;
-  await knowledge.add(storage, notes);
-  proposalReporter(learn.proposalsOf(notes));  // label wording + profile field only, counted by the site (3+ people) before it is even a candidate
-  notify('Learned from this form', `${notes.length} note${notes.length > 1 ? 's' : ''} saved in ${notionGate.notionInUse(storage) ? 'your Notion → Form knowledge' : 'your form knowledge'} (${job?.company || 'this form'}${costVisible(storage) && usd > 0 ? `, $${usd.toFixed(3)}` : ''}). Only you can see them.`, {view: 'settings', section: 'profile'}, 'good');   // about Notion
-}
-
-// A note that has left its field empty three fills in a row is not working: drop it from the Notion page and let the field be studied again.
-// Logged by site and field wording only, never the note's value.
-async function judgeNotes(storage, run, known) {
-  const verdict = learn.judge(run, known, storage.settings().formKnowledgeStats || {});
-  if (verdict.changed) storage.saveSettings({formKnowledgeStats: verdict.stats});
-  if (!verdict.drop.length) return known;
-  const studied = {...(storage.settings().formKnowledgeStudied || {})};
-  const gone = new Set();
-  for (const {note, misses, site} of knowledge.lastFirst(verdict.drop)) {
-    try { await knowledge.remove(storage, note); } catch (error) { appLog('knowledge', `could not drop a note: ${error.message}`, {site, field: note.field}); continue; }
-    gone.add(note);
-    studied[site] = (studied[site] || []).filter(key => key !== learn.labelKey(note.field));
-    appLog('knowledge', `dropped a note: its field stayed empty ${misses} fills in a row`, {site, scope: note.scope, field: note.field, kind: note.kind});
-  }
-  storage.saveSettings({formKnowledgeStudied: studied});
-  return known.filter(note => !gone.has(note));
-}
+const hostOf = url => { try { return new URL(url).hostname; } catch { return ''; } };
 
 // The extension version in the app's folder (the one Chrome loads unpacked): an older one in Chrome reloads itself.
 export function latestExtension(read = fs.readFileSync) {

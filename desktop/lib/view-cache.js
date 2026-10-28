@@ -4,8 +4,8 @@
 // made to Notion (statusChanged). Tied to the Notion workspace, so
 // switching workspaces never shows another workspace's jobs.
 import {readsChanged} from './shared-read.js';
-export const NAMES = ['jobs', 'focus', 'strategy', 'contact', 'knowledge', 'interviews', 'calendar', 'calendarRecordings'];
-// contact, knowledge: what a form fill needs from Notion (your details, learned answers), so a fill never waits on
+export const NAMES = ['jobs', 'focus', 'strategy', 'contact', 'interviews', 'calendar', 'calendarRecordings'];
+// contact: what a form fill needs from Notion (your details), so a fill never waits on
 // Notion nor fails when it's busy (lib/server.js me(): answered from here, refreshed in the background).
 // Not "cache/": on a Mac that's Chromium's own Cache folder (case-insensitive), which Electron may clear.
 const file = name => `view-cache/${name}.json`;

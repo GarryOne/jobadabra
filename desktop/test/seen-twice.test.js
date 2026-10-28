@@ -1,5 +1,5 @@
 // "Seen twice, auto" (owner, 17 Oct 2026): a new reusable question from the 1st employer stays with that job (its drawer), not in Answer once; the
-// 2nd employer asking the same thing (any wording, by its topic) makes it a standard answer, with what was typed on a form for it (🧠 Form knowledge);
+// 2nd employer asking the same thing (any wording, by its topic) makes it a standard answer, with what was typed on a form for it (kept on the answers page, lib/learned.js);
 // the same employer twice is not a second; Undo = only this job: the line goes and it is never kept again.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import * as questions from '../lib/questions.js';
 import * as verdicts from '../lib/question-verdicts.js';
-import * as knowledge from '../lib/knowledge.js';
+import {save} from '../lib/learned.js';
 import {onlyThisJob} from '../lib/question-lists.js';
 
 const fresh = () => { const s = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-twice-')), {encrypt: v => v, decrypt: v => v}); s.saveSettings({store: 'sqlite', telemetry: false}); return s; };
@@ -48,7 +48,7 @@ test('1st employer: kept with its job only; same employer again: still only; 2nd
 test('2nd employer: the answer typed for the earlier wording comes with it ("Remembered for future forms")', async () => {
   const s = fresh();
   await fill(s, A, 'Notice period?');
-  await knowledge.add(s, [{scope: 'any', field: 'Notice period?', kind: 'answer', value: '3 months', note: 'You entered this yourself'}]);
+  await save(s, {items: [{label: 'Notice period?', value: '3 months'}]});   // typed at the 1st employer's Submit (lib/learned.js)
   const got = await fill(s, B, 'Kündigungsfrist');
   assert.match(got.page, /^Kündigungsfrist: 3 months$/m);
   assert.deepEqual(got.remembered, ['Kündigungsfrist']);

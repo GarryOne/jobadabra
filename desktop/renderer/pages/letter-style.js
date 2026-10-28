@@ -9,7 +9,7 @@ import {profileBar} from './profile-save-bar.js';
 import {shown} from '../answers-model.js';
 import {sections} from '../answers-model.js';
 import {lineInput, outlineTab} from './outline-tab.js';
-import {input, labelled} from './website-rules.js';
+import {input, labelled} from './form-controls.js';
 
 const TEXT = 'answers';
 import {STYLE_HEADING, isStyle} from '../writing-preferences-model.js';

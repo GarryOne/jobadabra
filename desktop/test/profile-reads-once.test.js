@@ -14,7 +14,6 @@ import * as locations from '../lib/locations-store.js';
 import {pageTree} from '../lib/notion.js';
 import * as questions from '../lib/questions.js';
 import * as strategySettings from '../lib/strategy-settings.js';
-import * as knowledge from '../lib/knowledge.js';
 
 const rich = text => [{plain_text: text}];
 const para = (id, text) => ({id, type: 'paragraph', paragraph: {rich_text: rich(text)}});
@@ -62,7 +61,6 @@ function readers(made) {
     'Questions drawer': () => questions.list(made),
     'Standard answers': () => questions.standardAnswers(made),
     'Strategy texts': () => strategySettings.profileTexts(made),
-    'Form knowledge': () => knowledge.notes(made),
   };
 }
 const blockReads = calls => calls.filter(call => call.startsWith('GET blocks/'));

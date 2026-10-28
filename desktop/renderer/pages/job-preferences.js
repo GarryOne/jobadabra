@@ -13,7 +13,7 @@ import {FIELDS, MODES, SIDES, chipsOf, chipsText, fieldChange, modesOf, modesTex
 import {NOTE_LABEL, noteText, showWorkload} from '../preferences-review-model.js';
 import {lineInput, outlineTab} from './outline-tab.js';
 import {reviewCard, textsOf} from './preferences-review.js';
-import {input, labelled, select} from './website-rules.js';
+import {input, labelled, select} from './form-controls.js';
 import {inDraft} from '../strategy-sink.js';
 import {CARDS, barFor, cardHeader, isOpen} from './strategy-cards.js';
 

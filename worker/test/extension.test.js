@@ -381,10 +381,10 @@ test('every env getter the answers prompt reads may be a promise (the desktop ap
   };
   const base = { PROFILE_TEXT: Promise.resolve('PROFILE-MARK'), ANSWERS_TEXT: Promise.resolve('ANSWERS-MARK'), SEARCH_TEXT: Promise.resolve('SEARCH-MARK'), KNOWLEDGE_TEXT: Promise.resolve('KNOWLEDGE-MARK') };
   const prompt = await asked(base);
-  for (const mark of ['PROFILE-MARK', 'ANSWERS-MARK', 'SEARCH-MARK', 'KNOWLEDGE-MARK']) assert.ok(prompt.includes(mark), `${mark} is in the prompt`);
+  for (const mark of ['PROFILE-MARK', 'ANSWERS-MARK', 'SEARCH-MARK']) assert.ok(prompt.includes(mark), `${mark} is in the prompt`);
+  assert.ok(!prompt.includes('KNOWLEDGE-MARK'), 'retired Form knowledge never reaches the prompt (PR B1, owner 28 Oct 2026)');
   assert.ok(!prompt.includes('[object Promise]'), 'no promise printed into the prompt');
-  const empty = await asked({ ...base, KNOWLEDGE_TEXT: Promise.resolve('') });
-  assert.ok(!empty.includes('Learned from earlier forms'), 'an empty knowledge page adds no block');
+  assert.ok(!prompt.includes('Learned from earlier forms'), 'no learned-notes block at all');
 });
 
 test('a field the AI leaves out of its answer is asked once more, then marked "unanswered", never silent (Umantis "Anrede", 11 Oct 2026)', async () => {

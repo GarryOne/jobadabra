@@ -11,7 +11,6 @@ import {asksQuestion} from './label-shape.js';
 import {looksLikeFieldId} from '../renderer/question-filter.js';
 import {noteFields} from './question-formats.js';
 import {formatOfField, splitMark, withMark} from '../renderer/question-kind.js';
-import * as knowledge from './knowledge.js';
 import {HOME_NAMES, homeOf, writeHome} from './answer-home.js';
 import * as verdicts from './question-verdicts.js';
 
@@ -132,9 +131,10 @@ async function collectNew(storage, run, company, fetcher, reusable, found) {
   const open = topicsOf(storage, blocks.filter(block => isQuestionLine(block.text)).map(block => parseLine(block).question));
   const kept = (keep ? fresh.filter(question => keep.has(question)) : fresh).filter(question => !open.has(verdicts.cached(storage)[key(question)]?.topic));
   if (!kept.length) return 0;
-  // "Seen twice": what you typed for this question (or its earlier wording) on a form is kept with it (🧠 Form knowledge, lib/learned.js).
-  const typed = keep?.from ? await knowledge.notes(storage, fetcher).catch(() => []) : [];
-  const typedFor = question => typed.find(note => note.value && [question, ...(keep.from.get(question) || [])].some(each => key(each) === key(note.field)))?.value || '';
+  // "Seen twice": what you typed for this question (or its earlier wording) on a form is kept with it (an answered line of this page, lib/learned.js).
+  const typed = keep?.from ? blocks.filter(block => /list_item|paragraph/.test(block.type) && !block.text.includes('❓')).map(block => splitMark(block.text).text)
+    .map(text => ({field: label(text), value: text.slice(label(text).length).replace(/^\s*(:|—)\s*/, '').trim()})) : [];
+  const typedFor = question => typed.find(line => line.value && [question, ...(keep.from.get(question) || [])].some(each => key(each) === key(line.field)))?.value || '';
   found.remembered = kept.filter(question => typedFor(question));
   await addLines(page, kept.map(question => {
     const line = questionLine(question, company, formatOf.get(question)), value = typedFor(question);

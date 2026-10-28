@@ -85,9 +85,9 @@ test('the Profile goes beside the CV: a detail only it states is proposed to che
   assert.equal(sourceKey('cv1', ''), 'cv1');
 });
 
-// 9 Oct 2026, the twin: the town was stated only in the Knowledge page (learned notes), which the form AI reads and this call did not.
-test('what you stated: Profile, Answers and learned notes, each named; empty ones left out', () => {
-  assert.equal(statedText({profile: 'Retail.', answers: '', knowledge: "Candidate's location is Nyon."}), "## Profile\nRetail.\n\n## Learned notes\nCandidate's location is Nyon.");
+// 9 Oct 2026, the twin: the town was stated only in a text the form AI read and this call did not; both read the same texts (Profile, Answers).
+test('what you stated: Profile and Answers, each named; empty ones left out', () => {
+  assert.equal(statedText({profile: 'Retail.', answers: "Candidate's location: Nyon."}), "## Profile\nRetail.\n\n## Standard answers\nCandidate's location: Nyon.");
   assert.equal(statedText({}), '');
 });
 

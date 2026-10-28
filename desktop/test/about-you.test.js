@@ -1,12 +1,13 @@
 // About you, everywhere (spec 2026-10-28-about-you-everywhere-design.md, criteria 1-3, 6): each reader gets exactly its parts through lib/about-you.js, salary
-// never reaches CV tailoring or a letter, sensitive answers reach only form filling and kit answers, a conflict reaches no one, a missing part is named.
-// Fictional facts, one unique word per part; no AI.
+// never reaches CV tailoring or a letter, a sensitive answer and a conflict reach no reader, a missing part is named; kits get the CV with the Experience bank
+// (owner, 28 Oct 2026, D1b option A). Fictional facts, one unique word per part; no AI.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {READERS, aboutYou, bundleOf} from '../lib/about-you.js';
+import {READERS, aboutYou, bundleOf, localBundle} from '../lib/about-you.js';
+import * as experience from '../lib/experience.js';
 import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import {keyOf} from '../renderer/question-filter.js';
@@ -36,22 +37,19 @@ test('each reader gets exactly its parts: every part it takes is there, no other
 });
 
 test('salary never reaches CV tailoring or a letter, from any part; the others keep it', () => {
+  const MONEY = {details: 'CHF 140,000', learned: 'EUR 95,000', strategy: 'CHF 120,000'};
   for (const reader of Object.keys(READERS)) {
-    const text = said(bundleOf(SOURCES, reader)), noSalary = ['cv_tailor', 'letter'].includes(reader);
-    for (const money of ['CHF 140,000', 'EUR 95,000', 'CHF 120,000']) {
-      if (!READERS[reader].parts.includes('strategy') && money === 'CHF 120,000') continue;
-      assert.equal(text.includes(money), !noSalary, `${reader} ${money}`);
-    }
-    assert.equal(text.includes('NOKINDWORD'), !noSalary, `${reader}: a learning whose kind was never judged is no salary-free line`);
+    const text = said(bundleOf(SOURCES, reader)), noSalary = ['cv_tailor', 'letter'].includes(reader), takes = READERS[reader].parts;
+    for (const [part, money] of Object.entries(MONEY)) if (takes.includes(part)) assert.equal(text.includes(money), !noSalary, `${reader} ${money}`);
+    if (takes.includes('learned')) assert.equal(text.includes('NOKINDWORD'), !noSalary, `${reader}: a learning whose kind was never judged is no salary-free line`);
   }
 });
 
-test('a sensitive learning, or one not judged yet, reaches only form filling and kit answers; a conflict reaches no reader', () => {
+// Why (owner, 28 Oct 2026, D1b option A): form filling and kit answers, the two places a sensitive field is filled, read the answers page themselves.
+test('a sensitive learning, one not judged yet, and a conflict reach no reader', () => {
   for (const reader of Object.keys(READERS)) {
-    const text = said(bundleOf(SOURCES, reader)), field = ['form', 'kit'].includes(reader);
-    assert.equal(text.includes('SENSITIVEWORD'), field, `${reader} sensitive`);
-    assert.equal(text.includes('UNJUDGEDWORD'), field, `${reader} not judged`);
-    assert.ok(!text.includes('CONFLICTWORD'), `${reader} conflict`);
+    const text = said(bundleOf(SOURCES, reader));
+    for (const word of ['SENSITIVEWORD', 'UNJUDGEDWORD', 'CONFLICTWORD']) assert.ok(!text.includes(word), `${reader} ${word}`);
   }
 });
 
@@ -86,8 +84,37 @@ test('aboutYou reads each part from its one source on a local store: Your detail
   assert.deepEqual(letter.parts.learned.map(each => each.question), ['Willing to travel']);
   assert.equal(letter.parts.cv.basics.name, 'Alex Morgan');
   assert.deepEqual(letter.lacked, ['voice'], 'voice comes with the letter readers (PR D1c)');
-  const form = await aboutYou(storage, 'form');
-  assert.deepEqual(form.parts.learned.map(each => each.question), ['Willing to travel', 'Gender'], 'a form fills the sensitive field itself; the conflict waits');
+  const portrait = await aboutYou(storage, 'portrait');
+  assert.deepEqual(portrait.parts.learned.map(each => each.question), ['Willing to travel'], 'the sensitive answer and the conflict wait');
+});
+
+// The Profile's deal-breakers and other preferences are Strategy too (D1b: 2 of the demo Profile's lines the bundle dropped); a rule under Compensation is
+// a pay line, kept from CV tailoring and letters like a pay field.
+test('Strategy carries the deal-breakers and other preferences; a Compensation rule stays out of a letter', async () => {
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-about-')), {encrypt: v => v, decrypt: v => v});
+  storage.saveSettings({store: 'sqlite'});
+  await store.openStore(storage).page('profile').write('## Hard constraints\n- **Home base:** Zurich\n## Compensation\n- **Bonus:** PAYWORD at least 10%\n## Preferences (soft, used for ranking)\n- **On-call:** RANKWORD rarely\n## Deal-breakers\n- MUSTWORD roles that require fluent German\n');
+  const score = said(await aboutYou(storage, 'score')), letter = said(await aboutYou(storage, 'letter'));
+  for (const word of ['MUSTWORD', 'RANKWORD', 'PAYWORD', 'Zurich']) assert.match(score, new RegExp(word), `score ${word}`);
+  assert.match(letter, /MUSTWORD/);
+  assert.match(letter, /RANKWORD/);
+  assert.doesNotMatch(letter, /PAYWORD/, 'a rule under Compensation is pay');
+});
+
+// The owner's case (spec criterion 4): a kit answer can rest on an Experience bank bullet, so the kit's CV is the main CV with the bank's bullets.
+test('kits get the main CV with the Experience bank\'s bullets, built without a store read; no CV is named as lacked', () => {
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-about-')), {encrypt: v => v, decrypt: v => v});
+  assert.deepEqual(localBundle(storage, 'kit').lacked, ['cv'], 'a cloud-like Mac with no CV: named, never invented');
+  const main = {name: 'Alex Morgan', jobs: [{company: 'Northwind', roles: [{title: 'SRE', period: '2022 – Present', bullets: ['Ran the on-call rotation.']}]}]};
+  fs.mkdirSync(storage.path('cv/sources'), {recursive: true});
+  fs.writeFileSync(path.join(storage.path('cv'), 'cv.json'), JSON.stringify(main));
+  fs.writeFileSync(path.join(storage.path('cv/sources'), 'other.json'), JSON.stringify({id: 'other', name: 'Data CV', addedAt: '2026-10-01', mainKey: experience.mainKey(main),
+    cv: {jobs: [{company: 'Northwind AG', roles: [{title: 'SRE', bullets: ['BANKWORD: wrote the blameless postmortem guide.']}]}]}, match: [{sourceRole: 0, mainJob: 0, mainRole: 0, newBullets: [0]}]}));
+  const kit = localBundle(storage, 'kit');
+  assert.deepEqual(kit.lacked, []);
+  assert.match(JSON.stringify(kit.parts.cv), /BANKWORD/);
+  assert.match(JSON.stringify(kit.parts.cv), /Ran the on-call rotation/);
+  assert.throws(() => localBundle(storage, 'letter'), /needs a store read/);
 });
 
 // Gitar on #2337: over budget, an object part (the CV) stays an object, trimmed inside (its longest list loses items), never a cut-off JSON string; every part,
@@ -95,7 +122,7 @@ test('aboutYou reads each part from its one source on a local store: Your detail
 test('over budget, the CV stays a CV: its longest lists lose items, its basics stay; voice and this job are cut too', () => {
   const work = Array.from({length: 60}, (_, at) => ({name: `Employer ${at}`, highlights: Array.from({length: 8}, (__, each) => `Shipped thing ${each} at employer ${at}, measured`)}));
   const big = {...SOURCES, cv: {basics: {name: 'Alex Morgan'}, work}, voice: 'V'.repeat(30000), this_job: {sent: 'T'.repeat(30000)}};
-  for (const reader of ['kit', 'letter', 'prep']) {
+  for (const reader of ['insights', 'letter', 'prep']) {
     const {parts} = bundleOf(big, reader);
     assert.ok(JSON.stringify(parts).length <= (READERS[reader].budget || 12000), `${reader} within budget`);
     assert.equal(typeof parts.cv, 'object', `${reader}: the CV is still an object`);

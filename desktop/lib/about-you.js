@@ -9,17 +9,21 @@ import * as contact from './contact.js';
 import * as verdicts from './question-verdicts.js';
 import * as formats from './question-formats.js';
 import {baseCv} from './cv.js';
+import * as experience from './experience.js';
 import {openStore} from './store/index.js';
+import {writePrivate} from './private-file.js';
 
 export const PARTS = ['details', 'cv', 'learned', 'strategy', 'history', 'voice', 'this_job'];
 export const PRIORITY = ['details', 'learned', 'cv', 'strategy', 'history', 'voice', 'this_job'];   // a budget cuts from the end: a long history never pushes out facts
 const BUDGET = 12000;   // characters of the rendered bundle per reader unless it names its own
 
-// Who takes what (spec table; ★ owner decisions): keepSensitive only where a form field is the place for it; noSalary: CV tailoring and letters (★).
+// Who takes what (spec table; ★ owner decisions): noSalary: CV tailoring and letters (★). A sensitive learning reaches no reader here.
 // learned 'summary': CV tailoring may use a learning in the summary only, never in a role (★); the reader's prompt says so.
+// Why (owner, 28 Oct 2026, D1b option A): form filling and kit answers take every part, so they keep reading the full Profile and answers pages
+// (worker/src/extension.js, src/ai/kit.py); kits take only the CV + Experience bank from here, which they lacked. Form filling is no reader here.
 export const READERS = {
-  form: {parts: ['details', 'cv', 'learned', 'strategy'], keepSensitive: true},
-  kit: {parts: ['details', 'cv', 'learned', 'strategy'], keepSensitive: true},
+  // Why (D1b, measured 28 Oct 2026): CV JSON is ~1.9 characters a token; 16000 keeps a two-page CV with its bank bullets whole, ~8k tokens a kit at most.
+  kit: {parts: ['cv'], budget: 16000},
   // Why (Gitar on #2337): the CV is CV tailoring's material, so it fits whole. TODO(AI): set each reader's budget from D1b/D1c's measured cost (28 Oct 2026)
   cv_tailor: {parts: ['details', 'cv', 'learned', 'strategy'], noSalary: true, learnedUse: 'summary', budget: 40000},
   letter: {parts: ['details', 'cv', 'learned', 'strategy', 'voice'], noSalary: true},
@@ -56,8 +60,8 @@ function shorter(value) {
 /**
  * The bundle one reader gets, pure. sources: {details: [{label, value, kind}], learned: [{question, answer, state, sensitive, kind}], strategy: [{label, value, group}],
  * cv, history, voice, this_job} (a part the gatherer could not read is absent). -> {reader, parts, lacked: the reader's parts that were absent, learnedUse}.
- * Invariants: a conflict (two answers) reaches no reader; a sensitive learning, or one not judged yet, reaches only form filling and kit answers; a reader
- * with noSalary gets no line the AI judged a salary, no learning whose kind was never judged, and no Strategy pay field.
+ * Invariants: a conflict (two answers) reaches no reader; a sensitive learning, or one not judged yet, reaches no reader; a reader with noSalary gets no
+ * line the AI judged a salary, no learning whose kind was never judged, and no Strategy pay line (a pay field, or a rule under Compensation).
  */
 export function bundleOf(sources, reader) {
   const rule = READERS[reader];
@@ -65,7 +69,7 @@ export function bundleOf(sources, reader) {
   const salary = item => rule.noSalary && (item.kind === 'salary' || item.group === 'pay');
   const keep = {
     details: list => list.filter(item => !salary(item)),
-    learned: list => list.filter(item => item.state !== 'conflict' && (rule.keepSensitive || item.sensitive === false) && !(rule.noSalary && (!item.kind || item.kind === 'salary'))),
+    learned: list => list.filter(item => item.state !== 'conflict' && item.sensitive === false && !(rule.noSalary && (!item.kind || item.kind === 'salary'))),
     strategy: list => list.filter(item => !salary(item)),
   };
   const parts = {}, lacked = [];
@@ -81,16 +85,33 @@ export function bundleOf(sources, reader) {
   return {reader, parts, lacked, ...(rule.learnedUse ? {learnedUse: rule.learnedUse} : {})};
 }
 
+// The main CV with the Experience bank's extra bullets and skills (lib/experience.js withExtras); a bank that cannot be read leaves the main CV.
+function cvOf(storage) {
+  const base = baseCv(storage);
+  if (!base) return undefined;
+  try { return experience.withExtras(storage, base); } catch { return base; }
+}
+
+// Strategy: the Profile's search fields, then its deal-breakers and other preferences (a rule under Compensation is a pay line).
+function strategyOf(profile) {
+  const {fields, other} = readProfile(profile);
+  const set = item => item && !item.open && String(item.value || '').trim();
+  return [...FIELDS.filter(field => set(fields[field.key])).map(field => ({label: field.label, value: fields[field.key].value, group: field.group})),
+    ...other.filter(set).map(item => ({label: item.label || (item.side === 'must' ? 'Deal-breaker' : 'Preference'), value: item.value,
+      group: item.pay ? 'pay' : item.side === 'must' ? 'deal-breaker' : 'preference'}))];
+}
+
 /**
- * Reads each part from its one source on this Mac: Your details (contact + sections), What we learned (the answers page, with the AI's sensitive verdict and
- * kind per question), Strategy (the Profile's search fields), the main CV. history, voice and this_job come with their readers (PR D1c, D2).
- * -> bundleOf(sources, reader). A part whose source fails to read is absent, so the bundle names it in lacked.
+ * Reads each part the reader takes from its one source on this Mac: Your details (contact + sections), What we learned (the answers page, with the AI's
+ * sensitive verdict and kind per question), Strategy (the Profile's search fields and rules), the main CV with the Experience bank. history, voice and
+ * this_job come with their readers (PR D1c, D2). -> bundleOf(sources, reader). A part whose source fails to read is absent, so the bundle names it in lacked.
  */
 export async function aboutYou(storage, reader, {fetcher} = {}) {
+  const takes = new Set(READERS[reader]?.parts || []);
   const opened = openStore(storage, {fetcher});
-  const read = promise => promise.catch(() => undefined);
-  const [person, facts, answers, profile] = await Promise.all([read(contact.read(storage, fetcher)), read(sections.read(storage, fetcher)),
-    read(opened.page('answers').outline()), read(opened.page('profile').outline())]);
+  const read = (part, load) => (takes.has(part) ? load().catch(() => undefined) : undefined);
+  const [person, facts, answers, profile] = await Promise.all([read('details', () => contact.read(storage, fetcher)), read('details', () => sections.read(storage, fetcher)),
+    read('learned', () => opened.page('answers').outline()), read('strategy', () => opened.page('profile').outline())]);
   const known = verdicts.cached(storage), kinds = formats.kept(storage);
   const sources = {};
   if (person || facts) {
@@ -101,11 +122,27 @@ export async function aboutYou(storage, reader, {fetcher} = {}) {
     sources.learned = learningsOf(answers).filter(each => each.answer).map(({item, question, answer}) => ({question, answer, state: item.state || '',
       sensitive: known[keyOf(question)]?.sensitive, kind: item.mark?.kind || kinds[keyOf(question)]?.kind || ''}));
   }
-  if (profile) {
-    const {fields} = readProfile(profile);
-    sources.strategy = FIELDS.filter(field => fields[field.key] && !fields[field.key].open && fields[field.key].value).map(field => ({label: field.label, value: fields[field.key].value, group: field.group}));
-  }
-  const cv = baseCv(storage);
-  if (cv) sources.cv = cv;
+  if (profile) sources.strategy = strategyOf(profile);
+  if (takes.has('cv')) sources.cv = cvOf(storage);
   return bundleOf(sources, reader);
+}
+
+// Parts read from this Mac's files without a store call: an engine run starts synchronously (lib/pipeline-run.js), so its bundle comes from these.
+const LOCAL = {cv: cvOf};
+
+/**
+ * The bundle of a reader whose parts are all local files (kit answers: the CV), built at once. Throws for a reader that needs a store read (use aboutYou).
+ * A part with nothing on this Mac (no CV imported) is named in lacked.
+ */
+export function localBundle(storage, reader) {
+  const rule = READERS[reader];
+  if (!rule) throw new Error(`about-you: no reader ${reader}`);
+  const far = rule.parts.filter(part => !LOCAL[part]);
+  if (far.length) throw new Error(`about-you: ${reader} needs a store read (${far.join(', ')})`);
+  return bundleOf(Object.fromEntries(rule.parts.map(part => [part, LOCAL[part](storage)])), reader);
+}
+
+/** Writes a local reader's bundle (localBundle) to file, readable by this user only, for an engine step (src/ai/kit.py about_you). -> file, or '' when it could not. */
+export function writeBundle(storage, reader, file) {
+  try { writePrivate(file, JSON.stringify(localBundle(storage, reader))); return file; } catch { return ''; }
 }

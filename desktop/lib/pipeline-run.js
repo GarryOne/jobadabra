@@ -18,6 +18,7 @@ import {awakeNow} from './awake.js';
 import {isDemo, pipelineEnv, python, readable, REPO} from './pipeline-env.js';
 import {quietText} from './pipeline-lines.js';
 import {ticketRunning} from './pipeline-queue.js';
+import {draftsKits} from './pipeline-args.js';
 
 // The pipeline processes running now: stopRunning() ends them cleanly when the app quits (instead of them
 // failing on their next line once the app is gone).
@@ -63,9 +64,9 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
   const ticket = ticketRunning();
   const owner = ticket && (told === ticket.tee || (inTask && ticket.kind === inTask)) ? ticket : null;   // inTask: a command a run of that kind starts with its own line handler (visits.js engineJson): Stop ends it too (25 Oct 2026)
   if (owner?.stopped) { engineLog.end({code: null, seconds: 0, runId}); return Promise.resolve({code: null, stdout: '', result: null, runId, timedOut: false}); }
-  return new Promise((resolve, reject) => {
+  const start = aboutFile => new Promise((resolve, reject) => {
     const child = spawn(python(), ['-m', ...args], {cwd: REPO, detached: process.platform !== 'win32', env: {...pipelineEnv(storage), ...extraEnv,
-      JOB_PILOTTO_RUN_ID: runId, JOB_PILOTTO_RESULT_FILE: resultFile, JOB_PILOTTO_TIME_UP_FILE: path.join(os.tmpdir(), `jp-timeup-${runId}`)}});
+      JOB_PILOTTO_RUN_ID: runId, JOB_PILOTTO_RESULT_FILE: resultFile, JOB_PILOTTO_TIME_UP_FILE: path.join(os.tmpdir(), `jp-timeup-${runId}`), ...(aboutFile ? {JOB_PILOTTO_ABOUT_YOU_FILE: aboutFile} : {})}});
     children.add(child);
     onChild?.(child);   // a caller that must end this one command by itself (Cancel sign-in), by the child's own handle
     owner?.children.add(child);
@@ -80,7 +81,7 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
       hardKill = setTimeout(() => killTree(child, {signal: 'SIGKILL'}), LIMITS.killAfterMs);   // a step that ignores SIGTERM is not left running
     }, stopAfterMs) : null;
     child.on('exit', () => { clearTimeout(stopper); clearTimeout(hardKill); });
-    child.on('close', () => { try { fs.unlinkSync(timeUpFile); } catch {} });
+    child.on('close', () => { try { fs.unlinkSync(timeUpFile); } catch {} try { if (aboutFile) fs.unlinkSync(aboutFile); } catch {} });
     let stdout = '', buffer = '', lastOutputAt = awakeNow(), timedOut = '', killTimer = null, rowUrl = '';
     const startedAwake = awakeNow();   // the watchdog's clock leaves out the time the computer slept (lib/awake.js)
     const watch = (args[0] === 'src' || LIMITS.watchAll) ? setInterval(() => {
@@ -122,5 +123,14 @@ export function run(storage, args, onLine = () => {}, extraEnv = {}, {stopAfterM
       }
       resolve({code, stdout, result, runId, timedOut, endedByTime});
     });
+  });
+  // Why (owner, 28 Oct 2026, D1b): a run that drafts kits gets the CV with the Experience bank from About you, in a file of its own for this run.
+  // Loaded only for such a run: the store imports this file, and About you's CV reading pulls in the CV and form modules (an import cycle at load).
+  if (!draftsKits(args)) return start('');
+  return import('./about-you.js').then(about => about.writeBundle(storage, 'kit', path.join(os.tmpdir(), `jp-about-you-${runId}.json`)), () => '').then(file => {
+    if (!owner?.stopped) return start(file);
+    try { if (file) fs.unlinkSync(file); } catch {}
+    engineLog.end({code: null, seconds: 0, runId});
+    return {code: null, stdout: '', result: null, runId, timedOut: false};
   });
 }

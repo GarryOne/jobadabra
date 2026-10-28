@@ -48,13 +48,13 @@ const SIDE_OF = {constraints: 'must', pay: 'must', preferences: 'rank'};
 const bare = text => String(text || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
 export const fieldFor = label => FIELDS.find(field => field.match.test(String(label).trim())) || null;
 
-// outline → {fields: {key: item | null}, other: [item + side], rest: [{heading} | item], anchor: id after which a missing field is added,
+// outline → {fields: {key: item | null}, other: [item + side + pay], rest: [{heading} | item], anchor: id after which a missing field is added,
 // ends: {must, rank, rules}: the last block of each side's sections and of Deal-breakers (where an added rule goes)}
 // item: {id, kind: 'cell' | 'line' | 'note', label, value, open, hint, was/head/text} (answers-model.js changeFor writes it back).
 export function readProfile(items) {
   const fields = Object.fromEntries(FIELDS.map(field => [field.key, null]));
   const other = [], rest = [], ends = {must: null, rank: null, rules: null};
-  let known = false, anchor = null, note = null, side = '', rules = false;
+  let known = false, anchor = null, note = null, side = '', rules = false, pay = false;   // pay: under a Compensation heading (About you keeps it from salary-free readers)
   const take = (item, label) => {
     // The one "Original wording" note (preferences-review-model.js) is Other preferences' own, in whichever section it was written.
     if (/^original wording$/i.test(String(label).trim())) { note ||= {...item, label: 'Original wording'}; return true; }
@@ -68,6 +68,7 @@ export function readProfile(items) {
         rules = DEAL_BREAKERS.test(bare(block.text));
         known = !!kindOf(block.text) || rules;
         side = rules ? 'must' : SIDE_OF[kindOf(block.text)] || '';
+        pay = kindOf(block.text) === 'pay';
         if (known) anchor = block.id;
         if (side) ends[side] = block.id;
         if (rules) ends.rules = block.id;
@@ -82,14 +83,14 @@ export function readProfile(items) {
           const [label = '', value = ''] = row.cells;
           if (!label.trim()) continue;
           const item = {id: row.id, kind: 'cell', label: label.replace(/\*\*/g, '').trim(), was: value, ...valueOf(value)};
-          if (!take(item, item.label)) (known ? other : rest).push(known ? {...item, side} : item);
+          if (!take(item, item.label)) (known ? other : rest).push(known ? {...item, side, pay} : item);
         }
       } else if (block.text?.trim()) {
         const line = labelledLine(block.text);
         const item = line ? {id: block.id, kind: 'line', head: line.head, label: line.question, text: block.text, ...valueOf(line.raw)}
           : {id: block.id, kind: 'note', label: '', text: block.text, ...valueOf(block.text)};
         // A plain sentence is a rule only under Deal-breakers (the template's own sections open with an explanation).
-        if (!(line && take(item, line.question))) ((known && line) || rules ? other : rest).push(known ? {...item, side} : item);
+        if (!(line && take(item, line.question))) ((known && line) || rules ? other : rest).push(known ? {...item, side, pay} : item);
       }
       if (block.children) walk(block.children, false);
     }

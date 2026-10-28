@@ -250,10 +250,11 @@ def prepare_kit(db, code, stores, client=None, model=kit.DEFAULT_MODEL, opener=N
         print(f'Warning: form questions unavailable: {type(error).__name__}: {error}')
         questions = []
     profile, answers = stores.texts.plain('profile'), kit.standard_answers(stores)   # as the AI reads it (Notion: the page text)
+    cv, _ = kit.about_you()   # the CV with the Experience bank, when the app wrote it for this run
     if client is None:
         from .ai import engine
         client = engine.client(action='kit')
-    drafted, usage = kit.draft(client, model, job, profile, answers, questions)
+    drafted, usage = kit.draft(client, model, job, profile, answers, questions, cv)
     cost.add(stats, model, usage)
     if stats is not None:
         stats.update(pending=1, done=1)

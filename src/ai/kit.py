@@ -76,13 +76,14 @@ SCHEMA = {
     },
 }
 
-SYSTEM = """You prepare job applications for one candidate. Their profile and standard \
-answers follow. You draft; the candidate reviews and submits.
+SYSTEM = """You prepare job applications for one candidate. Their profile, standard \
+answers and (when given) CV follow. You draft; the candidate reviews and submits.
 
 Rules:
 - Use only the applicant details given here; never a name, e-mail address, phone number, country, city, street address or other location from any other context (such as an account you are signed in with): when a detail is not given, leave it empty.
-- Use only facts from the profile, the standard answers and the posting. Never invent \
-experience, numbers, employers, certifications or links.
+- Use only facts from the profile, the standard answers, the CV and the posting. Never invent \
+experience, numbers, employers, certifications or links. The CV is the main CV with the bullets of the candidate's other CV \
+versions added to its roles: an answer about their experience may rest on any bullet that fits the question.
 - Cover letter: follow the style in the standard answers; by default 130-170 words, two short \
 paragraphs of uneven length (not three symmetric ones), in the posting's language (see Language below), \
 plain and slightly terse, first \
@@ -188,14 +189,31 @@ def _question_text(questions):
     return '\n'.join(lines)
 
 
-def draft(client, model, job, profile, answers, questions):
-    """One Claude call; returns (kit dict, usage)."""
+def about_you():
+    """The kit's part of About you (desktop/lib/about-you.js READERS.kit): the main CV with the Experience bank's bullets, as the app wrote it for this
+    run (JOB_PILOTTO_ABOUT_YOU_FILE). -> (CV as JSON text, the parts lacked). A cloud run, or a Mac with no CV imported, has none: the kit is drafted
+    from the Profile and standard answers, and the lacked part is named (spec 2026-10-28-about-you-everywhere-design.md, criterion 6)."""
+    path = os.environ.get('JOB_PILOTTO_ABOUT_YOU_FILE', '')
+    try:
+        with open(path, encoding='utf-8') as file:
+            bundle = json.load(file)
+    except (OSError, ValueError):
+        bundle = {}
+    cv = (bundle.get('parts') or {}).get('cv')
+    lacked = list(bundle.get('lacked') or ([] if cv else ['cv']))
+    if lacked:
+        print(f"About you: kits drafted without {', '.join(lacked)} (none on this run)")
+    return (json.dumps(cv, ensure_ascii=False) if cv else ''), lacked
+
+
+def draft(client, model, job, profile, answers, questions, cv=''):
+    """One Claude call; returns (kit dict, usage). cv: about_you()'s CV text, '' when the run has none."""
     context = {'stage_1_facts': job.get('ai') or {}, 'fit': job.get('fit') or {}}
     params = dict(
         model=model,
         max_tokens=8000,
         # Profile + standard answers are the same for every job: cached across kits.
-        system=[{'type': 'text', 'text': SYSTEM + profile + '\n\nStandard answers:\n' + answers,
+        system=[{'type': 'text', 'text': SYSTEM + profile + '\n\nStandard answers:\n' + answers + (f'\n\nCV:\n{cv}' if cv else ''),
                  'cache_control': {'type': 'ephemeral'}}],
         messages=[{'role': 'user', 'content': (
             f"Title: {job['title']}\nCompany: {job['company']}\nLocation: {job.get('location') or ''}\n"
@@ -213,7 +231,7 @@ def draft(client, model, job, profile, answers, questions):
         if options.get(item['field']) and item['answer'] not in options[item['field']]:
             item['needs_review'] = True
     facts = f"{job['title']} {job['company']} {job.get('location') or ''} {job.get('description') or ''}"
-    kit_floors(kit, f'{profile}\n{answers}\n{facts}')   # no letter for a no-match job; a figure nothing given supports is flagged (writing_floors.py)
+    kit_floors(kit, f'{profile}\n{answers}\n{cv}\n{facts}')   # no letter for a no-match job; a figure nothing given supports is flagged (writing_floors.py)
     return kit, response.usage
 
 
@@ -260,7 +278,7 @@ def kit_markdown(job, kit, questions, model):
     return to_markdown(notion_blocks(job, kit, questions, model)['heading_2']['children'])
 
 
-def prepare_one(client, model, job, stores, profile, answers, opener=None):
+def prepare_one(client, model, job, stores, profile, answers, opener=None, cv=''):
     """Draft and save one kit in the active store; returns (kit dict, questions, page, usage). Marks the row Kit ready.
     page: {'id', 'url'}: the job's record id and its page link (Notion), or '' where the store has none."""
     try:
@@ -268,7 +286,7 @@ def prepare_one(client, model, job, stores, profile, answers, opener=None):
     except Exception as error:  # An unreadable form still gets a kit, with likely questions.
         print(f'Warning: form questions unavailable: {type(error).__name__}: {error}')
         questions = []
-    drafted, usage = draft(client, model, job, profile, answers, questions)
+    drafted, usage = draft(client, model, job, profile, answers, questions, cv)
     record, _ = rules.mark(stores, job, 'Kit ready')
     stores.applications.set_section(record['id'], KIT_SECTION, kit_markdown(job, drafted, questions, model))
     page = {'id': record['id'], 'url': stores.link(record['id']) or ''}
@@ -309,11 +327,12 @@ def auto_run(db, candidates, stores, model, max_jobs, min_score, client=None, op
     if client is None:
         client = engine.client(action='kit')
     profile, answers = stores.texts.plain('profile'), standard_answers(stores)
+    cv, _ = about_you()
     drafted_jobs, failures = [], 0
     for number, job in enumerate(pending, 1):
         print(f"Kits: drafting {number} of {len(pending)}: {job['title']}")
         try:
-            _, _, page, usage = prepare_one(client, model, job, stores, profile, answers, opener)
+            _, _, page, usage = prepare_one(client, model, job, stores, profile, answers, opener, cv)
             cost.add(stats, model, usage)
             mark_auto(db, job['id'])
             drafted_jobs.append((job, page))

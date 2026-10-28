@@ -1,0 +1,231 @@
+{
+ "_": "The kit prompt's fixed case set (src/ai/kit.py SYSTEM; tools/prompt-cases.json 'kit'; replay: tools/kit-cases.py on the Claude plan, $0). Fictional candidate: the demo Profile and answers (desktop/demo) and this CV, whose 'extra' bullets come from another CV version (the Experience bank). Each case: a posting, its form questions, what an answer must say (any of the words, case-insensitive) and must not. Owner's case (spec 2026-10-28-about-you-everywhere-design.md criterion 4): a form answer that uses an Experience bank bullet.",
+ "cv": {
+  "name": "Alex Morgan",
+  "location": "Zurich, Switzerland",
+  "summary": "Site reliability engineer, 9 years in cloud infrastructure and incident response.",
+  "skills": "AWS, Kubernetes, Terraform, Prometheus",
+  "extraSkills": "Spark, Python",
+  "jobs": [
+   {
+    "company": "Northwind Cloud",
+    "roles": [
+     {
+      "title": "Senior SRE",
+      "period": "2022 – Present",
+      "place": "Zurich",
+      "bullets": [
+       "Moved 40 services to Kubernetes on AWS EKS.",
+       "Built the Terraform modules 120 engineers deploy with.",
+       "Introduced SLOs and error budgets for 14 customer-facing services.",
+       "Wrote the blameless postmortem guide used across 6 teams."
+      ],
+      "extra": [
+       2,
+       3
+      ],
+      "extraFrom": {
+       "2": "Platform CV",
+       "3": "Platform CV"
+      }
+     }
+    ]
+   },
+   {
+    "company": "Contoso Data",
+    "roles": [
+     {
+      "title": "SRE",
+      "period": "2018 – 2022",
+      "place": "Remote",
+      "bullets": [
+       "Ran the on-call rotation for the data platform.",
+       "Built Spark pipelines that process 2 TB of logs a day."
+      ],
+      "extra": [
+       1
+      ],
+      "extraFrom": {
+       "1": "Data CV"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "bank-slo",
+   "why": "the answer rests on an Experience bank bullet that nothing else states (owner's case)",
+   "job": {
+    "title": "Site Reliability Engineer",
+    "company": "Fabrikam Payments",
+    "location": "Zurich",
+    "description": "Own reliability for our payments platform: define SLOs and error budgets, run on-call, lead incident reviews. English required."
+   },
+   "questions": [
+    {
+     "field": "q1",
+     "label": "How have you set up SLOs or error budgets for production services?",
+     "type": "textarea",
+     "required": true,
+     "options": [],
+     "kind": ""
+    }
+   ],
+   "expect": {
+    "q1": {
+     "mentions": [
+      "14 ",
+      "fourteen",
+      "error budgets for"
+     ]
+    }
+   }
+  },
+  {
+   "id": "bank-spark",
+   "why": "a bank bullet from an older role answers a data question (the posting names Spark; only the bank says 2 TB)",
+   "job": {
+    "title": "Platform Engineer, Data",
+    "company": "Tailspin Analytics",
+    "location": "Zurich",
+    "description": "Run the infrastructure under our data platform: Spark on Kubernetes, log pipelines, cost control. English."
+   },
+   "questions": [
+    {
+     "field": "q1",
+     "label": "Describe your experience running large data or log pipelines.",
+     "type": "textarea",
+     "required": true,
+     "options": [],
+     "kind": ""
+    }
+   ],
+   "expect": {
+    "q1": {
+     "mentions": [
+      "2 TB",
+      "2TB",
+      "two terabytes"
+     ]
+    }
+   }
+  },
+  {
+   "id": "main-terraform",
+   "why": "a main-CV bullet answers a tool question",
+   "job": {
+    "title": "Infrastructure Engineer",
+    "company": "Litware",
+    "location": "Zurich",
+    "description": "Infrastructure as code with Terraform across 30 AWS accounts. English."
+   },
+   "questions": [
+    {
+     "field": "q1",
+     "label": "How have you used Terraform in a team setting?",
+     "type": "textarea",
+     "required": true,
+     "options": [],
+     "kind": ""
+    }
+   ],
+   "expect": {
+    "q1": {
+     "mentions": [
+      "120 engineers",
+      "modules"
+     ]
+    }
+   }
+  },
+  {
+   "id": "trap-no-claim",
+   "why": "nothing given says a database migration: no claim, flagged for review",
+   "job": {
+    "title": "SRE, Databases",
+    "company": "Adatum",
+    "location": "Zurich",
+    "description": "Keep our PostgreSQL fleet healthy; lead a migration from Oracle to PostgreSQL. English."
+   },
+   "questions": [
+    {
+     "field": "q1",
+     "label": "Describe an Oracle to PostgreSQL migration you led.",
+     "type": "textarea",
+     "required": true,
+     "options": [],
+     "kind": ""
+    }
+   ],
+   "expect": {
+    "q1": {
+     "not": [
+      "I led an Oracle",
+      "I migrated our Oracle",
+      "I led the Oracle",
+      "led a migration from Oracle"
+     ],
+     "needs_review": true
+    }
+   }
+  },
+  {
+   "id": "trap-letter-repeats-cv",
+   "why": "with the CV in context, the letter still does not recap the CV's own numbers (the CV is attached)",
+   "job": {
+    "title": "Senior SRE",
+    "company": "Wingtip Cloud",
+    "location": "Zurich",
+    "description": "Senior SRE for a Kubernetes platform; on-call leadership and incident culture. English."
+   },
+   "questions": [],
+   "expect": {
+    "letter": {
+     "not": [
+      "14 customer",
+      "14 services",
+      "2 TB",
+      "120 engineers"
+     ]
+    }
+   }
+  },
+  {
+   "id": "salary-from-answers",
+   "why": "salary only from the standard answers, never in the letter",
+   "job": {
+    "title": "SRE",
+    "company": "Proseware",
+    "location": "Zurich",
+    "description": "SRE for a Zurich fintech, hybrid. English."
+   },
+   "questions": [
+    {
+     "field": "q1",
+     "label": "What are your salary expectations (CHF per year)?",
+     "type": "text",
+     "required": true,
+     "options": [],
+     "kind": ""
+    }
+   ],
+   "expect": {
+    "q1": {
+     "mentions": [
+      "130",
+      "145"
+     ]
+    },
+    "letter": {
+     "not": [
+      "CHF",
+      "130,000",
+      "145,000"
+     ]
+    }
+   }
+  }
+ ]
+}

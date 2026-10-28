@@ -10,6 +10,12 @@ import {CODES} from './countries.js';
 const EEA_CH = 'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO CH'.split(' ');
 export const ZONES = [{id: 'eu', label: 'EU / EEA + Switzerland', codes: EEA_CH}, {id: 'uk', label: 'United Kingdom', codes: ['GB', 'UK']}, {id: 'us', label: 'United States', codes: ['US']}];
 export const STATUSES = ['yes, freely', 'yes, with a permit', 'no, needs sponsorship'];
+/** The status preselected for a zone the nationality does not open: no permit is known, so sponsorship is needed (the person changes it with one click). */
+export const SUGGESTED = STATUSES[2];
+/** True when the country (English name) is in one of the three zones, so a fixed table answers it; any other is judged by the AI (lib/zone-suggest.js). */
+export const inZones = name => ZONES.some(zone => zone.codes.includes(countryCode(name)));
+/** The freer of two statuses ("yes, freely" first); '' counts as none. */
+export const freer = (a, b) => (!a ? b : !b ? a : STATUSES.indexOf(a) <= STATUSES.indexOf(b) ? a : b);
 export const STATUS_NAMES = {'yes, freely': 'Yes, freely', 'yes, with a permit': 'Yes, with a permit', 'no, needs sponsorship': 'No, needs sponsorship'};
 export const STATUS_HINTS = {'yes, freely': 'Citizen or free movement', 'yes, with a permit': 'A visa or residence permit', 'no, needs sponsorship': 'An employer must sponsor you'};
 export const OLDER = {'needs visa': 'no, needs sponsorship', allowed: ''};   // the older words: "allowed" never said how, so it stays as written
@@ -33,6 +39,10 @@ export const isAnswered = value => Boolean(String(value ?? '').trim()) && !isAsk
 export const zoneOfLabel = label => ZONES.find(zone => zone.label.toLowerCase() === String(label ?? '').trim().toLowerCase()) || null;
 /** A row's own name: one of the zones (a country line saved before #2322 is an older line, read once and folded on Save). */
 export const isRowName = label => Boolean(zoneOfLabel(label));
+/** An older Work eligibility line: neither Nationality nor a zone row. Why (28 Oct 2026, owner: "let's remove these 3 fields"): Nationality and the zones answer it, so it is never asked. */
+export const isOldLine = line => Boolean(line?.label) && line.label !== NATIONALITY && !isRowName(line.label);
+/** An older line still asked ("❓"): no answer to show or to ask; every screen that draws Work eligibility leaves it out (the store keeps it until Save folds it). */
+export const isOldAsked = line => isOldLine(line) && isAsked(line.value);
 
 // What a row's status settles: the right to work, and whether sponsorship is needed (derived, owner 28 Oct 2026: "freely → No; permit → No; No → Yes").
 // row: {status} (lib: splitPermit); asks: 'work_right' | 'sponsorship' -> 'Yes' | 'No' | ''.

@@ -48,7 +48,7 @@ export async function screens(page, {jobs: expectedJobs = COMPANIES.length} = {}
   await showFilter(page, 'everything');   // the default shows new matches only; All matches leaves applied jobs out (76d1cdd), Everything keeps the applications
   const jobs = await named(page, 'article.job-row', {want: expectedJobs, exact: true});
   await go('focus');
-  const focus = await named(page, '#focus-list .focus-item', {timeout: 8000});
+  const focus = await named(page, '#focus-list .focus-item, #focus-suggestions-list .focus-item', {timeout: 8000});   // Up next and Suggestions
   await go('interviews');
   // An interview's row also lists every job (its job picker): read the row's own title, not the names.
   await page.waitForFunction(() => [...document.querySelectorAll('#iv-saved tr[data-id]')].some(row => /first round/i.test(row.textContent)), null, {timeout: 30000}).catch(() => {});

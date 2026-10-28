@@ -85,13 +85,13 @@ const ADAPTERS = {
 };
 
 for (const [name, setup] of Object.entries(ADAPTERS)) {
-  test(`${name}: each drawer is one scored list; the visa question is asked once, as its Your details fact, in Fill your details`, async () => {
+  test(`${name}: each drawer is one scored list; the old visa line is never asked (owner, 28 Oct 2026: "let's remove these 3 fields")`, async () => {
     const {storage, fetcher} = await setup();
     storage.saveSettings({questionVerdicts: VERDICTS, missingFacts: {since: '2020-01-01'}});   // past the fresh install's 14 days: no missing-fact items beside these
     assert.ok((await factsOf(storage, fetcher)).some(fact => fact.label === 'Work permit / visa' && fact.value === ''), 'a fact with no value is listed (for the AI to map questions to)');
     const {details, learned, letter, fromDetails} = await openShown(storage, {fetcher, ai: {}});
     assert.equal(letter?.setup?.kind, 'cover-letter', 'the cover letter is its own card, never a drawer row (owner, 28 Oct 2026)');
-    assert.deepEqual(details.map(row => row.question), ['First name', 'Last name', 'Email', 'Phone', 'Work permit / visa'], 'with no AI the schema\'s first empty fields lead, then the facts');
+    assert.deepEqual(details.map(row => row.question), ['First name', 'Last name', 'Email', 'Phone'], 'with no AI the schema\'s first empty fields lead; the old visa line is not asked, Nationality and the zones answer it');
     assert.deepEqual(learned.map(row => row.question), ['Salary expectation', 'Rare question'], 'form questions are What we learned\'s, the one that blocked a fill first (owner: "relocate and salary aren\'t in" Fill your details)');
     assert.equal(fromDetails, 0, 'nothing is answered from Your details yet');
   });

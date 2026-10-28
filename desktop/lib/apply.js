@@ -253,7 +253,8 @@ export async function resumeSession(storage, id, binary = claudeBinary) {
 }
 
 // `prepare` drafts a missing kit (the app's prepareKit): with it, a batch with fewer than N ready jobs drafts the rest first.
-export async function start(storage, {n, mode}, open = spawn, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab} = {}) {
+// mode 'background' (Background or Full automation, applyMode 'fill'/'auto'): the chosen jobs go to `enqueue` (the hidden browser's queue, lib/background-apply-controller.js).
+export async function start(storage, {n, mode, applyMode}, open = spawn, list = pipeline.jobs, launch = session.launch, next = nextWithKits, prepare = null, report = () => {}, {focus = openFormTab, enqueue = null} = {}) {
   n = Math.max(1, Math.min(10, Number(n) || 1));
   if (mode === 'agents') {
     const ready = claudeReady(storage);
@@ -285,6 +286,8 @@ export async function start(storage, {n, mode}, open = spawn, list = pipeline.jo
     if (drafted) { ({jobs} = await list(storage)); chosen = pick(jobs, n); }
   }
   if (!chosen.length) return {ok: false, error: NO_KITS};
+  // Why (2026-10-28, Background apply B): a hidden-browser mode never falls through to the visible Chrome launcher, even when nothing was handed in.
+  if (mode === 'background') return enqueue ? enqueue(chosen, applyMode) : {ok: false, error: 'Background applying is not available in this version.'};
   // The marker tells the extension to fill each tab by itself as it loads, all tabs in parallel. Each job gets its own form session first, so each tab carries its id.
   const owners = chosen.map(job => terminals.startForm({id: crypto.randomUUID().slice(0, 8), url: job.url.split('#')[0], title: job.title || '', company: job.company || '',
     location: job.location || '', workMode: job.workMode || ''}));

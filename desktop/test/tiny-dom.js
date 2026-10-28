@@ -19,6 +19,7 @@ class Element {
   replaceChildren(...items) { this.children = []; this.append(...items); }
   insertBefore(node, ref) { const at = this.children.indexOf(ref); node.parentNode = this; this.children.splice(at < 0 ? this.children.length : at, 0, node); }
   after(...nodes) { const parent = this.parentNode; let at = parent.children.indexOf(this); for (const node of nodes) { node.parentNode = parent; parent.children.splice(++at, 0, node); } }
+  replaceWith(node) { const parent = this.parentNode; if (!parent) return; node.parentNode = parent; parent.children[parent.children.indexOf(this)] = node; this.parentNode = null; }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); this.removed = true; }
   setAttribute(key, value) { this.attributes[key] = String(value); }
   removeAttribute(key) { delete this.attributes[key]; }

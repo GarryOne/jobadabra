@@ -17,6 +17,7 @@ import {jobsState, MORE, fullKey} from './jobs-state.js';
 import {openJobPanel} from './job-panel.js';
 import {renderJobs, renderStuck, showLoading} from './jobs-render.js';
 import {TALKING_OPEN, paintTalkingFirst, renderTalkingBar} from './jobs-talking.js';
+import {paintJobsSuggestionsFirst} from './focus-suggestions.js';
 export {renderJobs} from './jobs-render.js';
 window.addEventListener('claude-help', () => renderJobs());   // Settings' Claude switch: the job menus follow it (claude-help.js)
 export {pageKey, fullKey} from './jobs-state.js';
@@ -235,6 +236,7 @@ export async function init() {
   try { $('jobs-talking').open = talkingStartsOpen(localStorage.getItem(TALKING_OPEN)); } catch {}
   $('jobs-talking').addEventListener('toggle', event => { try { localStorage.setItem(TALKING_OPEN, event.target.open ? '1' : '0'); } catch {} renderTalkingBar(); });
   paintTalkingFirst();
+  paintJobsSuggestionsFirst();   // the Suggestions bar too, as last drawn (late-blocks.js)
   $('jobs-stuck-show').addEventListener('click', () => {
     jobsState.statFilter = 'stuck';
     setFilters(['all']);

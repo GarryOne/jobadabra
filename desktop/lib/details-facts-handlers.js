@@ -1,8 +1,8 @@
-// Settings → Profile → Your details' fact sections over IPC (lib/profile-sections.js): read them (the first time, the facts move in once:
-// lib/profile-move.js, copy and backup first), save them with Contact, and the owner's pick for "Which is right?". Registered by
+// Settings → Profile → Your details' fact sections over IPC (lib/profile-sections.js): read them (the facts move in on the first open and again
+// when new fact answers wait: lib/profile-move.js moveDue, copy and backup first), save them with Contact, and the owner's pick for "Which is right?". Registered by
 // lib/contact-handlers.js. Guarded by test/details-facts.test.js and test/ipc.test.js.
 import * as sections from './profile-sections.js';
-import {move, openConflicts, resolve} from './profile-move.js';
+import {move, moveDue, openConflicts, resolve} from './profile-move.js';
 import {judgeNew} from './details-review.js';
 import {claudeAi} from './question-ai.js';
 import * as kinds from './details-kinds.js';
@@ -10,6 +10,7 @@ import * as notes from './details-notes.js';
 import * as surveys from './survey-move.js';
 import {list} from './set-aside.js';
 import {beforeSave, older, undoFold} from './eligibility-older.js';
+import {suggest as suggestZones} from './zone-suggest.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
 const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'}, {label: 'EU / EEA + Switzerland', value: 'yes, with a permit', kind: 'per_country'},
@@ -41,9 +42,9 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
     if (!connected()) return {ok: true, sections: empty(), conflicts: [], setAside: []};
     let error = '', changed = 0;
     const started = Date.now();
-    if (!storage.settings().profileMovedAt) {
+    if (moveDue(storage.settings())) {
       try {
-        const {moved, conflicts} = await move(storage, {ai: ai()});
+        const {moved, conflicts} = await move(storage, {ai: ai(), ...(copy ? {copy} : {})});   // Why (B2c): a test's copy reaches the move too, never the real backup folder
         log('profile', 'facts moved into Your details', {moved, conflicts: conflicts.length});   // counts, never a value
       } catch (failed) { error = failed.message; log('profile', 'the facts move stopped', {error: failed.message}); }
     }
@@ -69,6 +70,8 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
   ipcMain.handle('detailsFacts', () => opening ||= open().finally(() => { opening = null; }));
   // The fast read the screen paints first (owner's app.log 18 Oct 2026: one open waited 3 min 10 s on four AI and Notion steps in a row, and the survey card never redrew when they
   // finished): the saved lines as they are now, no AI, no move. `settling` says the moves are still to come: the screen then asks 'detailsFacts' and redraws with its answer.
+  // The status to preselect per zone for a nationality outside Europe and the US (lib/zone-suggest.js); a suggestion is a draft the screen shows, never saved here.
+  ipcMain.handle('zoneSuggestions', async (_event, names) => (DEMO ? {} : suggestZones(storage, names, {ai: ai()}).catch(() => ({}))));
   ipcMain.handle('detailsFactsNow', async () => {
     if (DEMO || !connected()) return {...await open(), settling: false};
     try { return {ok: true, sections: await sections.read(storage), formats: {}, tidied: tidied(), conflicts: [], setAside: [], settling: true}; } catch (failed) { return {ok: false, error: failed.message, sections: empty(), conflicts: [], setAside: []}; }

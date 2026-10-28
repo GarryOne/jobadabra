@@ -1,4 +1,5 @@
-// Tune my strategy (Actions page): the changes your own results support (src/tune.py, no AI), each one ticked or not;
+// Tune my strategy (a Suggestions row on Focus and Strategy when your results support a change, and ⌘K): the changes your own results
+// support (src/tune.py, no AI), each one ticked or not;
 // only the ticked ones are written to ⚙️ Search settings (main.js tuneApply → lib/strategy.js retune).
 import {withSaveProgress} from '../save-progress.js';
 import {el} from '../components.js';
@@ -33,7 +34,8 @@ const countTicked = () => {
   $('tune-apply').disabled = !ticked;
 };
 
-async function open() {
+/** Opens the Tune dialog and reads the changes your results support. */
+export async function openTune() {
   $('tune-list').replaceChildren();
   for (const id of ['tune-apply', 'tune-cancel']) show($(id), false);
   message('tune-message', '');
@@ -64,7 +66,6 @@ async function apply() {
 }
 
 export function init() {
-  $('tune-open').addEventListener('click', open);
   for (const id of ['tune-close', 'tune-cancel']) $(id).addEventListener('click', () => $('tune-dialog').close());
   $('tune-list').addEventListener('change', countTicked);
   $('tune-apply').addEventListener('click', apply);

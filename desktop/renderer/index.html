@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="runs-tab.css">
 <link rel="stylesheet" href="run-banner.css">
 <link rel="stylesheet" href="run-result.css">
+<link rel="stylesheet" href="session-live.css">
 <link rel="stylesheet" href="setup-steps.css">
   <link rel="stylesheet" href="../node_modules/@xterm/xterm/css/xterm.css">
 </head>
@@ -355,6 +356,11 @@
         <button class="stat sky" data-stat="inbound" aria-pressed="false" title="Opportunities that found you (a recruiter, a LinkedIn message, a call), every stage"><span class="stat-icon"><i data-icon="chat"></i></span><div><b id="stat-inbound">–</b><span>Inbound</span></div></button>
         <button class="stat violet" data-stat="companies" aria-pressed="false"><span class="stat-icon"><i data-icon="building"></i></span><div><b id="stat-companies">–</b><span>Unique companies</span></div></button>
       </div>
+      <!-- Suggestions for your search: Focus's search- and applying-related ones, folded to one line (pages/focus-suggestions.js; owner, 28 Oct 2026). -->
+      <details class="card jobs-fold" id="jobs-suggestions" hidden>
+        <summary><h2 id="jobs-suggestions-title">Suggestions for your search</h2><span class="muted small" id="jobs-suggestions-count"></span></summary>
+        <ol class="focus-list" id="jobs-suggestions-list"></ol>
+      </details>
       <!-- Two drawers and the cover letter (pages/jobs-questions.js; owner, 28 Oct 2026): Fill your details (amber), What we learned (blue), each hidden at zero;
            the questions are answered one at a time in the drawer (pages/question-review.js). -->
       <section class="card qr-card" id="questions" hidden aria-labelledby="questions-title">
@@ -386,7 +392,7 @@
         </div>
         <div class="qr-card-actions"><button class="primary" id="letter-setup-go" type="button"></button></div>
       </section>
-      <details class="card jobs-talking" id="jobs-talking" hidden>
+      <details class="card jobs-fold jobs-talking" id="jobs-talking" hidden>
         <summary><h2 id="jobs-talking-title">In conversation</h2><span class="muted small" id="jobs-talking-count"></span></summary>
         <ol class="focus-list" id="jobs-talking-list"></ol>
       </details>
@@ -459,9 +465,11 @@
             <p class="empty" id="focus-empty" hidden>Nothing waits for you right now.</p>
             <ol class="focus-history" id="focus-history" hidden></ol>
           </section>
-          <section class="card" id="focus-insight-card" hidden>
-            <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="bulb"></i>Insight</h2></div>
-            <div class="focus-insight" id="focus-insight"></div>
+          <!-- Suggestions: every call to action that can wait, from every screen (pages/focus-suggestions.js; spec 2026-10-28-insights-with-actions-design.md). -->
+          <section class="card" id="focus-suggestions" hidden>
+            <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="bulb"></i>Suggestions</h2>
+              <span class="focus-head-side"><span class="muted small" id="focus-suggestions-count"></span><button class="secondary small-button" id="focus-suggestions-all" type="button" hidden>Show all</button></span></div>
+            <ol class="focus-list" id="focus-suggestions-list"></ol>
           </section>
           <section class="card" id="focus-funnel" hidden>
             <div class="focus-card-head"><h2 class="with-glyph"><i data-icon="chart"></i>Application funnel <span class="muted small" title="Each application counts at every step it ever reached, even if it was rejected later: the counts only grow. What's open now: the Jobs boxes.">· ever reached</span></h2>
@@ -512,6 +520,7 @@
         <div class="head-actions"><button class="danger-outline" id="ss-stop" title="Stops everything the Jobadabra extension does, on every tab, until you press Reopen form on an application">Stop the extension</button><span id="ss-more"></span></div>
       </header>
       <div class="ss-tips" id="ss-tips" hidden aria-label="Tips while you apply"></div>
+      <div id="ss-browser" data-browser-progress="quiet" hidden></div>   <!-- Jobadabra's browser for Background automation (pages/browser-progress.js) -->
       <!-- Until the app answers, a spinner: the two-pane shell (message box, session log) used to paint first and
            sat there for seconds before the state was known (1 Oct 2026). -->
       <section class="card list-loading" id="ss-loading">
@@ -680,18 +689,6 @@
             <div class="task-body"><span class="task-tile"><i data-icon="globe"></i></span>
               <div class="task-words"><b>Find jobs using your browser</b><span class="muted">Like Find jobs, for the sites and job portals that block it: read in your browser by the extension</span></div>
               <button class="secondary action" id="visits-run" data-palette="visits" data-wand><b hidden>Find jobs using your browser</b>Run</button></div>
-          </div>
-<div class="task-card is-row">
-            <span class="task-category">INSIGHTS</span>
-            <div class="task-body"><span class="task-tile"><i data-icon="sliders"></i></span>
-              <div class="task-words"><b>Tune my strategy</b><span class="muted">Changes your own results support, for you to accept</span><span class="task-hint small" id="tune-hint" hidden>Works best after your first week of results</span></div>
-              <button class="secondary action" id="tune-open" data-palette="tune" data-wand><b hidden>Tune my strategy</b>Run</button></div>
-          </div>
-<div class="task-card is-row">
-            <span class="task-category">INSIGHTS</span>
-            <div class="task-body"><span class="task-tile"><i data-icon="chart"></i></span>
-              <div class="task-words"><b>Analyze my job search</b><span class="muted">Last 7 days: what works, what to change</span></div>
-              <button class="secondary action" data-command="weekly" data-wand><b hidden>Analyze my job search</b>Run</button></div>
           </div>
           </div>
         </div>
@@ -1175,9 +1172,10 @@
             </div>
           </div>
           <div class="setting panel roomy" id="setting-answers" data-profile-panel="answers" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job. Confirm or change any answer.</p></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job; each answer shows the forms it came from, and salary starts from your Strategy minimum. Confirm or change any answer.</p></div></div>
               <div class="panel-actions"><button class="secondary with-icon" id="answers-add"><i data-icon="plus"></i>Add answer</button>
                 <button class="secondary ui-more" id="answers-review" data-notion-only title="More actions" aria-label="More actions" aria-haspopup="menu"><i data-icon="more"></i></button></div></div>
+            <!-- Why (PR B2b, owner 28 Oct 2026): learnings come from form fills (and the salary seed from Strategy), so the lead names where each came from (one lead line: test/roomy-cards.test.js). TODO(AI): link "Your portrait" in the lead once that Profile tab ships (spec 2026-10-28-your-portrait-design.md) (28 Oct 2026) -->
             <div class="outline-body" id="answers-body"></div>
           </div>
           <!-- One sticky dock at the bottom: the fold bar, then the page save bar (pages/profile-save-bar.js puts it here), so neither covers the other. -->
@@ -2469,6 +2467,7 @@
     <label class="inline-field" for="apply-n">How many jobs <input id="apply-n" type="number" min="1" max="10" step="1" required value="3"></label>
     <fieldset><legend>How Jobadabra applies</legend><div id="apply-mode-cards"></div></fieldset>
     <p class="message" id="apply-message" role="status"></p>
+    <div id="apply-browser" data-browser-progress="quiet" hidden></div>
     <div class="actions"><button class="secondary" value="cancel">Close</button><button class="primary" id="apply-go" value="default">Apply to 3 jobs</button></div>
   </form>
 </dialog>

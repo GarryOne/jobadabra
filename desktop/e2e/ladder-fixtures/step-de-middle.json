@@ -50,10 +50,12 @@
  },
  "answer": {
   "answer": "ready",
+  "blocked_kind": "",
   "needs": "",
   "needs_kind": "",
   "step": "middle",
   "next_control": "Weiter",
+  "submit_control": "",
   "confidence": 0.95
  },
  "answer_path": "app"

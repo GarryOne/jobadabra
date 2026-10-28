@@ -51,6 +51,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     return serial(async () => {
       // Why (2026-10-28, owner): nothing submits until step C ships Full automation's gates, its wait with Stop and the receipt recap; `fullAutomation` is that switch.
       if (mode === 'auto' && !fullAutomation) return {ok: false, error: 'Full automation is not available in this version.'};
+      if (!browserOf().ready()) return {ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: "Download Jobadabra's browser first: about 200 MB, only once."};   // before any store write, so nothing waits on a browser that is not there
       const chosen = config();
       if (chosen.mode !== mode || !chosen.chosenAt) return {ok: false, error: 'Confirm the saved Apply mode first.'};
       const held = terminals.list().filter(item => item.background && !item.outcome);
@@ -162,5 +163,26 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, closed: await browserOf().closeSession(id)};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel};
+  // The held tab's CDP address for the live view, only for a hidden-browser session, never another tab.
+  async function page(id) { return itemFor(id) ? browserOf().pageSocket(id) : null; }
+  // The page's own sending button for the app's Submit (the person's press): only while the form judge's ready stands, never after a hand-off.
+  async function submitControl(id) {
+    const item = itemFor(id); if (!item) return '';
+    const state = await store.read(item.url);
+    return state?.session === item.id && state.state === 'ready_for_review' && !state.manualOverride && typeof state.submitControl === 'string' ? state.submitControl : '';
+  }
+  // "Open in my browser": the held tab's hand-off (read(address) -> live.mjs handoffOf) is taken first, then the job is the person's and the hidden tab closes.
+  async function handOver(id, read) {
+    return serial(async () => {
+      if (!owner) ({owner} = await browserOf().start({port, token: token()}));
+      const item = itemFor(id); if (!item) return {ok: false};
+      const address = await browserOf().pageSocket(id).catch(() => null);
+      const handoff = address ? await read(address).catch(() => null) : null;
+      await markManual(item, 'opened_in_browser');
+      await browserOf().closeSession(id).catch(() => false);
+      log('apply', 'background application opened in the person\'s browser', {session: item.id, handoff: !!handoff});
+      return {ok: true, handoff};
+    });
+  }
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver};
 }

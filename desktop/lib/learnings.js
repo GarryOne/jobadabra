@@ -7,7 +7,7 @@
 // or string compare decides a merge. Sources: answers the fill's AI wrote (state new, guess when unsure) and what the person typed at Submit (confirmed).
 // Plan docs/superpowers/plans/2026-10-28-what-we-learned.md (PR B2). Guarded by test/learnings.test.js; prompt cases test/fixtures/learnings-cases.json.
 import {KEYS} from '../shared/alias-schema.js';
-import {FIELDS} from '../renderer/preferences-model.js';
+import {FIELDS, readProfile} from '../renderer/preferences-model.js';
 import {changeFor, sections, withState} from '../renderer/answers-model.js';
 import {looksLikeFieldId} from '../renderer/question-filter.js';
 import {applyEdits} from './text-outline-handlers.js';
@@ -70,6 +70,22 @@ export async function judge(client, {answers, learnings = [], owned = [], job = 
     out.set(label, {verdict, topic: onTopic ? topic : '', question: verdict === 'new' ? clean(question).replace(/[\s:?]+$/, '') : '', answer: clean(answer).slice(0, MAX_ANSWER), key: KEYS.includes(key) ? key : ''});
   }
   return out;
+}
+
+// The seed's label: the search minimum, given to the learning call like a form's answer (it names the country itself, from <job> place).
+export const SEED_LABEL = 'Salary expectation (my search minimum)';
+/**
+ * Why (PR B2b, plan: "salary seeded from Strategy's minimum"): the salary to state starts as Strategy's Minimum acceptable, a New learning per country.
+ * The country is the AI's to read from Strategy's places (free text, any language): the seed goes to the same learning call with them as the job's place,
+ * so a salary learning already kept is matched, never doubled. profile: the Profile's outline; done: the seed last judged (settings.salarySeed).
+ * -> {answers, place, sig} to judge, or null (no minimum or places, or judged already for these).
+ */
+export function salarySeed(profile, done = '') {
+  const {fields} = readProfile(profile || []);
+  const minimum = fields.minimum && !fields.minimum.open ? clean(fields.minimum.value) : '';
+  const place = ['countries', 'cities', 'home'].map(key => (fields[key] && !fields[key].open ? clean(fields[key].value) : '')).filter(Boolean).join('; ');
+  const sig = `${place}|${minimum}`;
+  return minimum && place && sig !== done ? {answers: [{label: SEED_LABEL, value: minimum, state: 'new'}], place, sig} : null;
 }
 
 /**
@@ -137,7 +153,9 @@ export async function learn(storage, {answers, client, owned = [], job = {}, fet
   if (!client || !wanted.length) return null;
   const page = openStore(storage, {fetcher}).page('answers'), outline = await page.outline(), learnings = learningsOf(outline);
   const verdicts = await judge(client, {answers: wanted, learnings, owned: [...new Set([...owned, ...STRATEGY_OWNED])], job});
-  const heading = sections(outline).find(section => section.title === HEADING);
+  // Why (Gitar on #2330): sections() drops a heading with no lines, so an emptied "Learned from forms" is found as a block and reused, never written twice.
+  const heading = sections(outline).find(section => section.title === HEADING)
+    || (block => (block ? {after: block.id} : null))(outline.find(block => /^heading_/.test(block.type) && clean(block.text) === HEADING));
   const {changes, evidence, proposals, counts} = plan(wanted, learnings, verdicts, {after: heading?.after || null});
   const {missing} = changes.length ? await applyEdits(page, outline, changes) : {missing: []};
   if (proposals.length) propose(proposals);

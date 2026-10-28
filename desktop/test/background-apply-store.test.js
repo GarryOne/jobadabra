@@ -133,3 +133,9 @@ test('Stop or a mode change on a queued job hands it to the person before any br
   assert.equal(stopped.manualOverride, true);
   assert.equal((await store.claim(job.url, row.session, 'owned-browser')).ok, false, 'a stopped job is never claimed and filled later');
 });
+
+test('a ready final form keeps the page\'s own sending button, which the person\'s Submit in the live view presses', async () => {
+  const r = rig(), {store, job} = await prepared(r, r.add('fill'), 'fill', {...config, mode: 'fill'});
+  const state = await store.read(job.url);
+  assert.deepEqual([state.state, state.submitControl], ['ready_for_review', 'Send my application']);
+});

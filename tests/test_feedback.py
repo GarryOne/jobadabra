@@ -181,10 +181,10 @@ class LearningTests(unittest.TestCase):
             'id': 'i', 'day': '2026-09-28', 'category': 'Process', 'title': 'Make incident answers more concrete',
             'fields': {'action': 'Practise one incident story', 'evidence': 'Three applications, two employers',
                        'issue_detected': True}}), 'link': 'https://notion.test/i'}
-        result = focus.build([], [], target=0, now=NOW, insights=[insight])['insight']
-        self.assertEqual(result['reason'], 'Issue detected')
+        result, = focus.build([], [], target=0, now=NOW, insights=[insight])['suggestions']
+        self.assertEqual(result['source'], 'Issue detected')
         self.assertEqual(result['detail'], 'Practise one incident story')
-        self.assertEqual(result['notion_url'], insight['link'])
+        self.assertEqual(result['actions'], [{'label': 'Review evidence', 'do': 'open_insight', 'link': insight['link']}])
 
     def test_supported_advice_is_saved_to_notion_with_traceable_evidence(self):
         from src.stores import memory

@@ -338,11 +338,13 @@
  },
  "answer": {
   "answer": "needs_person",
+  "blocked_kind": "",
   "needs": "First Name*",
   "needs_kind": "field",
   "step": "final",
   "next_control": "",
-  "confidence": 0.95
+  "submit_control": "",
+  "confidence": 0.9
  },
  "answer_path": "app"
 }

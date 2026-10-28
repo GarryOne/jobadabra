@@ -16,7 +16,8 @@ from . import notion_rows
 EXTRAS = {'basis': ('Basis', 'select'), 'confidence': ('Confidence', 'select'), 'sample_size': ('Sample size', 'number'),
           'evidence': ('Evidence', 'rich_text'), 'action': ('Action', 'rich_text'), 'feedback': ('Feedback', 'select'),
           'issue_detected': ('Issue detected', 'checkbox'), 'cost': ('Cost (USD)', 'number'), 'model': ('Model', 'rich_text'),
-          'input_hash': ('Input hash', 'rich_text'), 'data': ('Data', 'rich_text')}
+          'input_hash': ('Input hash', 'rich_text'), 'data': ('Data', 'rich_text'), 'state': ('State', 'select'),
+          'hidden_until': ('Hidden until', 'date')}
 assert set(EXTRAS) == set(base.INSIGHT_EXTRAS), 'every insight extra has its column'
 MAIN = (('title', 'Insight', 'title'), ('day', 'Date', 'date'), ('category', 'Category', 'select'))
 EMPTY = ('', None, False)

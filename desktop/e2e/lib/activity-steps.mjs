@@ -42,13 +42,24 @@ export function own(runs) {
   const ids = new Set(runs.filter(run => run.log.length && run.notionUrl).map(run => pageId(run.notionUrl)));
   return {mine: runs.filter(run => run.log.length), twice: runs.filter(run => !run.log.length && ids.has(pageId(run.notionUrl)))};
 }
-// Clicks a task's Run button on the Actions page and waits until its run has ended (nothing running, nothing waiting) -> {fresh: the runs it added, seconds}.
+// A task with no Actions card is started from ⌘K, its one manual door (Analyze my job search left Actions for Focus and ⌘K, 28 Oct 2026).
+export const PALETTE_TASKS = {weekly: 'Analyze my job search'};
+async function fromPalette(page, label) {
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.locator('#palette[open] input').fill(label);
+  const top = (await page.locator('#palette-list [role="option"]').first().innerText().catch(() => '')).split('\n')[0].trim();
+  if (!top.endsWith(label)) throw new Error(`⌘K "${label}" lists "${top || 'nothing'}" first`);
+  await page.keyboard.press('Enter');
+}
+// Clicks a task's Run button on the Actions page (or runs it from ⌘K when it has no card) and waits until its run has ended (nothing running, nothing waiting)
+// -> {fresh: the runs it added, seconds}.
 export async function runTask(ctx, command, {maxMs = 240000, kind} = {}) {
   const {page} = ctx;
   await page.click('.nav[data-view="actions"]');
   const before = new Set((await runsData(page)).runs.map(run => run.id));
   const started = Date.now();
-  await pressTask(page, `[data-command="${command}"]`);
+  if (PALETTE_TASKS[command]) await fromPalette(page, PALETTE_TASKS[command]);
+  else await pressTask(page, `[data-command="${command}"]`);
   let data, seen = false;
   const samples = [];   // what a person could see while it ran (the live log above all): liveLogProblems()
   while (Date.now() - started < maxMs) {

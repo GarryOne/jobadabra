@@ -37,6 +37,19 @@ test('agent sessions need Notion; Chrome opens the chosen jobs', async () => {
   assert.equal(spawned.length, 0);
 });
 
+test('the background runner queues the chosen jobs for the hidden browser and never opens the person\'s Chrome', async () => {
+  const jobs = [{url: 'https://jobs.example.test/background', status: 'saved', fit: 90, title: 'Nurse', company: 'Fictional', kit: true}];
+  const launched = [], queued = [];
+  const result = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, (...args) => { launched.push(args); return {unref() {}}; }, async () => ({jobs}),
+    undefined, undefined, null, undefined, {enqueue: async (selected, applyMode) => { queued.push({selected, applyMode}); return {ok: true}; }});
+  assert.equal(result.ok, true);
+  assert.deepEqual(queued.map(row => [row.selected.map(job => job.url), row.applyMode]), [[[jobs[0].url], 'fill']]);
+  assert.deepEqual(launched, []);
+  const unwired = await apply.start(tempStorage(), {n: 1, mode: 'background', applyMode: 'fill'}, (...args) => { launched.push(args); return {unref() {}}; }, async () => ({jobs}));
+  assert.equal(unwired.ok, false);   // no queue handed in: refuse, never fall through to the visible Chrome launcher
+  assert.deepEqual(launched, []);
+});
+
 test('Chrome mode marks each job link so the extension fills every tab by itself', {skip: process.platform === 'win32' && 'Mac launcher (open -a, Terminal); Windows is covered below'}, async () => {
   const storage = tempStorage();
   const spawned = [];

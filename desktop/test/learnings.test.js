@@ -54,6 +54,14 @@ test('extends writes the AI\'s widened answer as new; new topics go under their 
   assert.deepEqual((await lines(s)).slice(-2), ['Do you agree to a background check: Yes (guess)', 'Notice period: 3 months (new)'], 'a later new topic joins the same heading');
 });
 
+// Gitar on #2330: a "Learned from forms" heading left empty (its lines deleted or moved) is reused, never written a second time.
+test('a new learning goes under an empty Learned from forms heading, never a second one', async () => {
+  const s = fresh();
+  await page(s).write(`## Common questions\n- Notice period: 3 months\n\n## ${learnings.HEADING}\n`);
+  await learn(s, [{label: 'Notice', value: 'B', state: 'new'}], fakeAi({Notice: {verdict: 'new', question: 'Driving license', answer: 'B'}}));
+  assert.deepEqual(await lines(s), ['## Common questions', 'Notice period: 3 months', `## ${learnings.HEADING}`, 'Driving license: B (new)']);
+});
+
 test('owned, private and one-job answers teach nothing; a topic not on the list is not judged; Strategy\'s fields go in as owned', async () => {
   const s = fresh();
   await page(s).write('## Common questions\n- Notice period: 3 months\n');
@@ -114,4 +122,20 @@ test('What we learned\'s drawer checks each learning a fill wrote; Confirm write
   assert.equal((await review.answer(s, items[0].key, 'Yes, up to 20%')).ok, true);
   assert.equal((await review.answer(s, items[1].key, 'Freelance')).ok, true);
   assert.deepEqual(await lines(s), ['## Learned from forms', 'Willing to travel: Yes, up to 20% [yes/no]', 'Contract type: Freelance', 'Notice period: 3 months']);
+});
+
+test('Strategy\'s minimum is judged once as the first salary to state, with Strategy\'s places as where it applies; again only when they change', async () => {
+  const profile = [{id: 'h', type: 'heading_2', text: 'Targets'}, {id: 'p', type: 'bulleted_list_item', text: '**Places:** Zurich first, then anywhere in Switzerland'},
+    {id: 'm', type: 'bulleted_list_item', text: '**Minimum acceptable:** CHF 130,000 a year'}];
+  const seed = learnings.salarySeed(profile);
+  assert.deepEqual(seed.answers, [{label: learnings.SEED_LABEL, value: 'CHF 130,000 a year', state: 'new'}]);
+  assert.match(seed.place, /Switzerland/);
+  assert.equal(learnings.salarySeed(profile, seed.sig), null, 'judged already for this minimum and these places');
+  assert.equal(learnings.salarySeed(profile.slice(0, 2)), null, 'no minimum: no seed');
+  const s = fresh();
+  await page(s).write('## Common questions\n- Notice period: 3 months\n');
+  const ai = fakeAi({[learnings.SEED_LABEL]: {verdict: 'new', question: 'Salary expectation in Switzerland', answer: 'CHF 130,000 a year'}});
+  await learn(s, seed.answers, ai, {job: {place: seed.place}});
+  assert.equal((await lines(s)).at(-1), 'Salary expectation in Switzerland: CHF 130,000 a year (new)');
+  assert.match(ai.sent[0].messages[0].content, /<job>\{"company":"","place":"Zurich first, then anywhere in Switzerland"\}<\/job>/, 'the AI names the country from the places');
 });

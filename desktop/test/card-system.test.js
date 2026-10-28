@@ -24,6 +24,7 @@ const NOT_A_CARD = {
   'pages/plan-promo.js': 'the promo code dialog',
   'pages/settings.js': 'Delete for good / Cancel confirm on Data & backup',
   'job-drawer/tab-description.js': 'the job drawer\'s description editor, not a Profile or Strategy card',
+  'pages/session-live.js': 'the live view\'s choose-one and file prompts: Cancel declines the page\'s own question, not a save step',
 };
 // Cards still on their own Save, each with the session moving it onto the page bar (UI redesign A-D, 18 Oct 2026).
 const KNOWN_LEFT = {

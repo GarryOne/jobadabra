@@ -105,6 +105,7 @@ class FocusTests(unittest.TestCase):
         events = [event('a', 'Reply received', '2026-09-28T08:00:00Z', 'Pick a time that works for you'),
                   event('b', 'Offer', '2026-09-28T09:00:00Z', 'CHF 160k')]
         self.assertEqual([i['kind'] for i in focus.build(rows, events, now=NOW)['items']][:2], ['offer', 'book'])
+        self.assertEqual({i['place'] for i in focus.build(rows, events, now=NOW)['items'][:2]}, {'up_next'}, 'they cannot wait')
 
     def test_the_daily_target_counts_todays_applications(self):
         rows = [row('a', 'A', 'x', applied='2026-09-28'), row('b', 'B', 'y', applied='2026-09-20'), row('c', 'C', 'z', applied='2026-09-20')]
@@ -116,6 +117,8 @@ class FocusTests(unittest.TestCase):
         self.assertFalse(any(i['kind'] == 'apply' for i in focus.build(rows, events, target=2, now=NOW)['items']))
         waiting = next(i for i in result['items'] if i['kind'] == 'waiting')
         self.assertIn('2 applications waiting', waiting['title'])  # b and c: applied 8 days ago, no human reply
+        self.assertIsNone(waiting['place'], 'no button: it leaves Focus (owner, 28 Oct 2026)')
+        self.assertEqual((apply['place'], apply['topic']), ('suggestions', 'applying'), 'a target, not a deadline: a suggestion')
 
     def test_after_an_interview_review_it_and_a_quiet_screening_gets_a_nudge(self):
         rows = [row('a', 'Acme', 'SRE', stage='Interviewing', interview='2026-09-27T14:00:00+02:00'),
@@ -136,7 +139,8 @@ class FocusTests(unittest.TestCase):
         events = [event('a', 'Reply received', '2026-09-28T08:00:00Z')]
         result = focus.build(rows, events, target=0, now=NOW)
         self.assertEqual(result['items'], [])
-        self.assertEqual((result['insight']['reason'], result['insight']['headline']), ('Hard skills', 'Lead with Python'))
+        lesson, = [e for e in result['suggestions'] if e['kind'] == 'rejection']   # Focus's Insight card became Suggestions (insights PR 1a)
+        self.assertEqual((lesson['source'], lesson['title']), ('Hard skills', 'Lead with Python'))
         self.assertEqual(result['summary'], "You're up to date. A good moment to apply to a few more jobs.")
 
     def test_a_long_lesson_sentence_is_not_cut_mid_sentence(self):
@@ -144,7 +148,7 @@ class FocusTests(unittest.TestCase):
         rows = [row('a', 'Canonical', 'SRE', stage='Rejected', Rejection_lesson=lesson + '. Next time: tailor.')]
         events = [event('a', 'Reply received', '2026-09-28T08:00:00Z')]
         result = focus.build(rows, events, target=0, now=NOW)
-        self.assertEqual(result['insight']['headline'], lesson)
+        self.assertEqual([e['title'] for e in result['suggestions'] if e['kind'] == 'rejection'], [lesson])
 
     def test_the_funnel_counts_each_step_from_the_same_rows(self):
         rows = [row('a', 'A', 'x', stage='Rejected'), row('b', 'B', 'y', stage='Screening'), row('c', 'C', 'z', stage='Kit ready', applied=None)]
@@ -472,20 +476,6 @@ class ParallelReadsTests(unittest.TestCase):
             {'type': 'paragraph', 'paragraph': {'rich_text': [{'plain_text': 'Salary: CHF 150k'}]}}]
         self.assertEqual(tracker.page_text('p1'), tracker.page_text('p1'))
         self.assertEqual(calls, ['p1'])
-
-
-class HistoryInterviewTest(unittest.TestCase):
-    def test_reviewed_interviews_show_in_history(self):
-        from datetime import date as _date
-        from src.stores import memory
-        stores = memory.open_store()
-        today = _date.today().isoformat()
-        stores.interviews.put({'title': 'Unframe · Recruiter screen', 'overall': 'neutral', 'created_at': f'{today}T08:00:00+00:00'})
-        stores.interviews.put({'title': 'Old', 'overall': 'positive', 'created_at': '2000-01-01T08:00:00+00:00'})
-        stores.interviews.put({'title': 'Not reviewed', 'created_at': f'{today}T08:00:00+00:00'})
-        items = focus.history(stores)
-        self.assertEqual([i['title'] for i in items], ['Reviewed the interview: Unframe · Recruiter screen'])
-        self.assertEqual(items[0]['note'], 'Outcome: Neutral')
 
 
 class AnsweredQuestionsTest(unittest.TestCase):

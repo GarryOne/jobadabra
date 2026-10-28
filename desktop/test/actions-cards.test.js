@@ -18,22 +18,21 @@ const main = mainSource();
 const grid = html.slice(html.indexOf('<div class="task-grid">'), html.indexOf('<section class="card runs-card">'));
 const cards = grid.split(/<div class="task-card[ "][^>]*>/).slice(1);   // large, medium and row cards, and Find jobs using your browser (its own id)
 
-test('there are six static cards (Read this board is added by actions-board.js): Find jobs is one card (Find new employers was merged into it, 16 Oct 2026)', () => assert.equal(cards.length, 6));
+test('there are four static cards (Read this board is added by actions-board.js): Find jobs is one card (Find new employers was merged into it, 16 Oct 2026); Tune and Analyze left for Focus and ⌘K (28 Oct 2026)', () => assert.equal(cards.length, 4));
 
 test('every card button runs a task the app knows', () => {
   const kinds = activity.match(/export const COMMAND_KIND = \{([^}]*)\}/)[1];
   for (const card of cards) {
     const command = card.match(/data-command="(\w+)"/)?.[1];
-    if (!command) { assert.match(card, /id="(tune-open|tailor-top|visits-run)"/, 'a card without a command is Tune, Tailor CVs or Find jobs using your browser'); continue; }
+    if (!command) { assert.match(card, /id="(tailor-top|visits-run)"/, 'a card without a command is Tailor CVs or Find jobs using your browser'); continue; }
     assert.match(kinds, new RegExp(`\\b${command}:`), `${command} is not a tracked task (COMMAND_KIND)`);
     assert.match(main, new RegExp(`'${command}'`), `${command} is not handled by main.js`);
   }
 });
 
-test('the cards are the agreed six in order of importance, and the dropped ones stay dropped', () => {
+test('the cards are the agreed four in order of importance, and the dropped ones stay dropped', () => {
   const titles = cards.map(card => card.match(/<div class="task-words"><b>([^<]+)<\/b>/)[1].replace('&amp;', '&'));
-  assert.deepEqual(titles, ['Find jobs', 'Tailor CV + cover letter for top matches', 'Check Gmail & Calendar', 'Find jobs using your browser',
-    'Tune my strategy', 'Analyze my job search']);
+  assert.deepEqual(titles, ['Find jobs', 'Tailor CV + cover letter for top matches', 'Check Gmail & Calendar', 'Find jobs using your browser']);
 });
 
 test('Tune words: a title per kind, the header and row counts, and Apply names how many', () => {

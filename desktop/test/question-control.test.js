@@ -121,3 +121,9 @@ test('an amount is a number and a currency, saved together; free text stays visi
   assert.equal(free.value, 'about 90k');
   assert.match(free.textContent, /Saved as: about 90k/);
 });
+
+// Why (28 Oct 2026, owner's screenshot): a value still asked (the template's "❓ …") is no saved answer, so it never shows as "Saved as".
+test('an asked value is not drawn as "Saved as"', () => {
+  const node = answerControl(formatFor({marked: {kind: 'yes_no'}}), '❓ your citizenship and status', () => {});
+  assert.doesNotMatch(node.textContent, /Saved as/);
+});

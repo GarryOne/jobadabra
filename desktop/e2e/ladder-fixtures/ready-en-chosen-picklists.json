@@ -87,10 +87,12 @@
  },
  "answer": {
   "answer": "ready",
-  "needs": "\"\"",
+  "blocked_kind": "",
+  "needs": "",
   "needs_kind": "",
   "step": "final",
   "next_control": "",
+  "submit_control": "Submit application",
   "confidence": 0.9
  },
  "answer_path": "app"

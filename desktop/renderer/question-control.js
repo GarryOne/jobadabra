@@ -4,6 +4,7 @@
 // Guarded by test/question-control.test.js.
 import {el} from './components.js';
 import {COMPOSITE, KINDS, KIND_NAMES, joinPicks, picksOf} from './question-kind.js';
+import {isAsked} from './work-eligibility.js';
 import {compositeControl} from './question-control-composite.js';
 import {amountControl, dateControl, refresh, savedAs, segmented} from './question-control-values.js';
 
@@ -52,9 +53,10 @@ export function answerControl(format, value, onChange, {placeholder = 'Your answ
     node = Object.assign(el('input', ''), {type: 'text', value: current, placeholder, ariaLabel});
     node.addEventListener('input', () => { current = node.value; onChange(current); });
   }
+  // Why (28 Oct 2026, owner's screenshot): a value still asked (the template's marker) is no saved answer, so it is never drawn as "Saved as".
   // A saved answer no option names stays visible as written under the choices ("Saved as: …"), never hidden behind nothing picked; a menu shows it as a choice.
   if (node.classList.contains('segmented')) node.dataset.savedValue = current;   // the shot's check: a saved value its choice does not show (scripts/cut-fields.mjs)
-  if (current && ['yes_no', 'single', 'multi'].includes(control) && node.tagName !== 'SELECT' && !options.some(option => option.toLowerCase() === current.toLowerCase()) && !picksOf(current, options).length) {
+  if (current && !isAsked(current) && ['yes_no', 'single', 'multi'].includes(control) && node.tagName !== 'SELECT' && !options.some(option => option.toLowerCase() === current.toLowerCase()) && !picksOf(current, options).length) {
     const wrap = el('div', 'qa-values');
     wrap.append(node, savedAs(current));
     node = wrap;

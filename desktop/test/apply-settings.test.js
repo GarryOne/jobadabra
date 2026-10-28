@@ -41,8 +41,9 @@ test('three modes; only a built one can be the saved mode, the others are Coming
     'Fills in a hidden browser; you review and submit when ready.',
     'Fills and submits in a hidden browser when your checks pass.',
   ]);
-  assert.deepEqual(MODES.filter(mode => modeBuilt(mode.id)).map(mode => mode.id), ['check']);
-  for (const id of ['fill', 'auto']) {
+  assert.deepEqual(MODES.filter(mode => modeBuilt(mode.id)).map(mode => mode.id), ['check', 'fill']);
+  assert.equal(applyPatch({}, {mode: 'fill'}).apply.mode, 'fill', 'Background automation is built (spec 2026-10-27, step B)');
+  for (const id of ['auto']) {
     assert.equal(applyPatch({}, {mode: id}).apply.mode, 'check', `${id} cannot be saved before it is built`);
     assert.equal(applyOf({apply: {mode: id, chosenAt: '2026-10-27T00:00:00.000Z'}}).mode, 'check', `an older save of ${id} reads as the mode that runs`);
   }

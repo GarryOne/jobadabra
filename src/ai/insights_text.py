@@ -5,6 +5,7 @@ from html import escape
 from .. import tgcard
 from . import learning
 from .writing_rules import RULES as WRITING_RULES
+from ..suggestions import DOOR_LABEL_MAX, DOORS
 
 
 HONEST = """
@@ -37,6 +38,20 @@ WEEKLY_SCHEMA = {
 }
 WEEKLY_SCHEMA['required'].append('issues')
 WEEKLY_SCHEMA['properties']['issues'] = learning.ISSUE_SCHEMA
+# Why (28 Oct 2026, owner; #insights PR 1a): Your week's button does the focus in one press; a button that only opens a screen "is noise".
+WEEKLY_SCHEMA['required'].append('next_action')
+WEEKLY_SCHEMA['properties']['next_action'] = {
+    'type': 'object', 'additionalProperties': False, 'required': ['door', 'label'],
+    'description': 'A button shown beside the focus, never instead of it (the focus still names where to act in the app): the one thing the '
+                   'app can do for you in one press that best serves the focus, or "none"',
+    'properties': {
+        'door': {'type': 'string', 'enum': [*DOORS, 'none'],
+                 'description': 'find_jobs: search for new jobs now. tune: review the changes to your search that your results support. '
+                                'tailor: tailor CVs and cover letters for your top matches (several jobs at once, never one you name). '
+                                'prep: prepare for an interview coming up. '
+                                'none: none of these serves the focus; never pick one that only loosely fits'},
+        'label': {'type': 'string', 'description': f'The button, at most {DOOR_LABEL_MAX} characters, starting with a verb ("Find jobs now"); '
+                                                   'it says what the button does, never one job or employer; empty when door is none'}}}
 
 WEEKLY_SYSTEM = """You write the owner's search analysis inside Jobadabra (on Mondays, or whenever they ask: "Analyze my job search"). Look back at the \
 last 7 days (applications sent, replies, the market, the daily insights and how the owner rated them) \

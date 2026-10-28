@@ -2,7 +2,7 @@
 // sponsorship by a fixed table, and a row is a zone or a country, never a city. Values are fictional.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {countryCode, eligibilityOf, isAnswered, isRowName, nationalityOf, rowFor, settles, zonesOpenedBy} from '../renderer/work-eligibility.js';
+import {isOldAsked, countryCode, eligibilityOf, isAnswered, isRowName, nationalityOf, rowFor, settles, zonesOpenedBy} from '../renderer/work-eligibility.js';
 import {joinPermit, splitPermit} from '../renderer/question-values.js';
 
 test('a country is known by its English name, never a city or a mix; a row is one of the three zones only', () => {
@@ -68,4 +68,12 @@ test('a template "❓" zone is no answer: the nationality still concludes it', (
   assert.deepEqual(['yes, freely', '❓', '❓ yes, freely / no', '', '  '].map(isAnswered), [true, false, false, false, false]);
   const lines = [{label: 'Nationality', value: 'Romania'}, {label: 'EU / EEA + Switzerland', value: '❓', kind: 'per_country'}];
   assert.deepEqual(eligibilityOf(lines).rows, [{label: 'EU / EEA + Switzerland', value: 'yes, freely', from: 'nationality'}]);
+});
+
+// Why (28 Oct 2026, owner: "let's remove these 3 fields"): the owner's three old lines (fictional ❓ values), beside Nationality and a zone.
+test('isOldAsked: the three old ❓ lines, not Nationality, a zone, or an answered line', () => {
+  const asked = label => ({label, value: '❓ your citizenship and status'});
+  for (const label of ['Work permit / visa', 'Authorised to work in Iasi, Romania?', 'Remote from your base for a foreign employer?']) assert.ok(isOldAsked(asked(label)), label);
+  assert.ok(!isOldAsked(asked('Nationality')) && !isOldAsked({...asked('United Kingdom'), kind: 'per_country'}));
+  assert.ok(!isOldAsked({label: 'Work permit / visa', value: 'EU citizen'}));
 });

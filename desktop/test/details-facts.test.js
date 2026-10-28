@@ -9,6 +9,8 @@ import {createStorage} from '../lib/storage.js';
 import {registerDetailsFactsHandlers} from '../lib/details-facts-handlers.js';
 import * as sections from '../lib/profile-sections.js';
 import * as store from '../lib/store/index.js';
+import {openShown} from '../lib/question-lists.js';
+import {keyOf} from '../renderer/question-filter.js';
 
 const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 
@@ -48,10 +50,39 @@ test('handlers: saved lines read back; with no AI nothing moves and the move is 
   assert.deepEqual(await handlers.resolveDetailsConflict('nothing open', 0), {ok: false, error: 'That choice is no longer open'});
 });
 
-test('handlers: once the move ran, opening Your details never moves again', async () => {
-  const {handlers, logged} = harness({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z'});
+test('handlers: once the move ran, opening Your details never moves again for the same lines', async () => {
+  const {handlers, logged} = harness({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z', factsWaiting: 'notice period', factsMovedFor: 'notice period'});
   await handlers.detailsFacts();
   assert.equal(logged.length, 0);
+});
+
+// PR B2c (owner 28 Oct 2026, What we learned: "nothing deleted", fact lines go to their home): an answer saved after the first move and judged a Your
+// details fact (lib/question-lists.js factsWaiting) is moved on the next open, by the same move; then that set is done.
+test('a fact answer saved after the move: What we learned reads it, Your details\' next open moves it word for word, once', async () => {
+  const calls = [];
+  const ai = () => ({client: {messages: {create: async request => {
+    const items = JSON.parse(request.messages[0].content);
+    if (Array.isArray(items)) calls.push(items.length);   // the move's calls (the answers check asks its own)
+    return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id, line}) => ({id, home: /notice/i.test(line) ? 'availability' : 'stay', topic: 'x', clarity: 'clear'}))})}]};
+  }}}});
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
+  // The AI's verdict on the saved answer (lib/question-verdicts.js, its own call): a Your details fact.
+  storage.saveSettings({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z', questionVerdicts: {[keyOf('Notice period')]: {reuse: 'details', fact: 'Notice period', question: 'Notice period', asked: 0}}});
+  const handlers = {}, logged = [];
+  registerDetailsFactsHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = (...args) => fn(null, ...args); }}, storage, DEMO: false,
+    connected: () => true, needsNotion: () => null, log: (...line) => logged.push(line), ai, copy: async () => ({dir: 'copy'})});
+  await store.openStore(storage).page('answers').write('## Common questions\n| Question | Answer |\n|---|---|\n| Notice period | 3 months |\n| How did you hear about us? | LinkedIn |\n');
+  await openShown(storage, {ai: {}});   // What we learned reads the answers: the fact waits for the move (Gitar on #2340: the producer, not a seeded setting)
+  assert.equal(storage.settings().factsWaiting, keyOf('Notice period'));
+  const got = await handlers.detailsFacts();
+  assert.deepEqual(got.sections.availability, [{label: 'Notice period', value: '3 months'}]);
+  const answers = await store.openStore(storage).page('answers').text();
+  assert.doesNotMatch(answers, /Notice period/, 'moved, not copied');
+  assert.match(answers, /LinkedIn/, 'a learning stays');
+  assert.equal(storage.settings().factsMovedFor, 'notice period');
+  const before = calls.length;
+  await handlers.detailsFacts();
+  assert.equal(calls.length, before, 'the same lines are not judged again');
 });
 
 test('two overlapping opens of Your details move once: the second waits for the first and never rolls its lines back (owner log 17 Oct 2026, 22:28 + 22:29)', async () => {
@@ -142,3 +173,17 @@ test('handlers: older eligibility lines are read on open, kept until Save, backe
   assert.deepEqual(await handlers.undoDetailsTidy(), {ok: true});
   assert.deepEqual((await sections.read(storage)).eligibility.map(line => line.label), OLD.map(line => line.label));
 });
+
+// The class (mac-27 on #2340, CLAUDE.md Safety "cut it off and assert it"): a test that reaches the move without its own copy target is refused before any
+// page changes, whoever the caller (lib/backup.js folder refuses the real folder under the test runner); before, it reached this Mac's iCloud backup folder.
+test('a move with no copy target under the test runner is refused: no real backup folder, nothing moved', async () => {
+  const {move} = await import('../lib/profile-move.js');
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
+  storage.saveSettings({store: 'sqlite'});
+  await store.openStore(storage).page('answers').write('## Common questions\n| Question | Answer |\n|---|---|\n| Notice period | 3 months |\n');
+  const ai = {client: {messages: {create: async request => ({content: [{type: 'text', text: JSON.stringify({items: JSON.parse(request.messages[0].content)
+    .map(({id}) => ({id, home: 'availability', topic: 'x', clarity: 'clear'}))})}]})}}};
+  await assert.rejects(move(storage, {ai}), /real backup folder/);
+  assert.match(await store.openStore(storage).page('answers').text(), /Notice period \| 3 months/, 'nothing moved');
+});
+

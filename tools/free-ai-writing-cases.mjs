@@ -74,6 +74,7 @@ function weeklyCases() {
     make('zero', stats({new_jobs_7d: 0, matched_7d: 0, total_open: 0}, {sent: 0, replies: 0}, {count: 0}), 'Zero everything: "not enough data yet", never "the market is empty" or "the search is paused".'),
     make('salary', stats({new_jobs_7d: 25, matched_7d: 6, total_open: 80, salary_stated_share: 0.4}, {sent: 8, replies: 1, rejections: 2, rejected_after_salary_talk: 2}, {count: 1, passed: 0}), 'Two rejections after salary talk, only 8 applications: it may note the pattern but must not claim a cause as fact, and must not invent a salary figure the profile does not give.'),
     make('quiet', stats({new_jobs_7d: 12, matched_7d: 2, total_open: 60}, {sent: 2, replies: 0}, {count: 0}), 'A quiet week with 2 applications: "worked" may be empty and must not be padded with invented wins.'),
+    make('door', stats({new_jobs_7d: 6, matched_7d: 1, total_open: 9}, {sent: 7, replies: 2, interviews_coming: 0}, {count: 0}), 'Few new matches and no interview coming (next_action, #insights PR 1a): the door may be find_jobs with a short label starting with a verb, or none; never prep (no interview) and never a door that only loosely fits the focus.'),
   ];
 }
 

@@ -15,6 +15,25 @@ INTERVIEW_STAGES = {'Screening', 'Interview scheduled', 'Interviewing', 'Offer'}
 RESPONSE_KINDS = INTERVIEW_STAGES | {REPLY, 'Rejected'}
 INTERVIEW_PATTERNS = 'Interview patterns'  # interview_insights.CATEGORY: one row updated in place, not a daily insight
 WEEKLY = 'Weekly report'
+# The daily insight's categories (its schema's enum, src/ai/insights.py). With WEEKLY, the only 💡 Insights rows that are findings.
+CATEGORIES = ['Skills', 'CV', 'Location', 'Salary', 'Seniority', 'Role focus', 'Timing', 'Activity', 'Process']
+
+
+def is_finding(record):
+    """A daily insight or weekly report. Why (28 Oct 2026, #insights PR 1a): other rows share the store (Interview patterns, a
+    person's answer to a suggestion); a reader that excluded only Interview patterns took an answer for today's insight."""
+    return (record or {}).get('category') in (*CATEGORIES, WEEKLY)
+
+
+# A person's answer to a computed suggestion (Not now / Not true on Tune, Analyze now; src/suggestions.py): a row of its own, never shown as an insight.
+ANSWER_CATEGORY = 'Suggestion'
+
+
+def is_answer(record):
+    """A person's Not now / Not true on a computed suggestion, kept as a row of its own."""
+    return (record or {}).get('category') == ANSWER_CATEGORY
+
+
 MIN_GROUP = 10
 
 
@@ -121,14 +140,14 @@ def funnel_stats(stores):
 
 def recent_insights(stores, today, days=45):
     since = (today - timedelta(days=days)).isoformat()
-    items = stores.insights.list(since=since)
+    items = [i for i in stores.insights.list(since=since) if not is_answer(i)]   # the prompt's history as before, without answers
     return [{'date': i['day'], 'category': i['category'], 'headline': i['title'], 'feedback': (i['fields'] or {}).get('feedback')}
             for i in sorted(items, key=lambda i: i['day'] or '')]
 
 
 def sent_today(stores, today):
     """A daily insight or weekly report saved today (the Interview patterns row, updated after every review, is not one)."""
-    return any(i['day'] == today.isoformat() and i['category'] != INTERVIEW_PATTERNS
+    return any(i['day'] == today.isoformat() and is_finding(i)
                for i in stores.insights.list(since=today.isoformat()))
 
 

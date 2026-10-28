@@ -31,6 +31,16 @@ test('every model-facing prompt and schema is exported, and the fingerprint is s
   assert.equal(new Set(Object.values(first)).size, PROMPT_FILES.length, 'two rungs hash the same: a part is missing');
 });
 
+// 28 Oct 2026: the form judge's SUBMIT_RULE, rung 2's FORM_CHECK_RULE and rung 3's FRAME_RULE all reached the model unhashed, so an edit to one alone passed the gate.
+test('every exported prompt constant of a listed file (a *_RULE, *INSTRUCTIONS, *SCHEMA or schema) is in its fingerprint', async () => {
+  const promptName = /^([A-Z_]*_RULE|[A-Z_]*INSTRUCTIONS|[A-Z_]*SCHEMA|schema)$/;
+  for (const file of new Set(PROMPT_FILES.map(item => item.file))) {
+    const hashed = new Set(PROMPT_FILES.filter(item => item.file === file).flatMap(item => item.parts));
+    const unhashed = Object.keys(await import(pathToFileURL(path.join(repo, file)).href)).filter(name => promptName.test(name) && !hashed.has(name));
+    assert.deepEqual(unhashed, [], `${file}: add these to PROMPT_FILES parts (e2e/lib/ladder-fingerprint.mjs)`);
+  }
+});
+
 test('control: an unchanged tree matches the committed baseline', async () => {
   assert.deepEqual(fingerprintProblems(await fingerprints(), readBaseline()), []);
 });

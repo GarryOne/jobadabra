@@ -1640,6 +1640,9 @@
             }
           ]
         },
+        "Hidden until": {
+          "type": "date"
+        },
         "Input hash": {
           "type": "rich_text"
         },
@@ -1655,6 +1658,27 @@
         "Sample size": {
           "type": "number",
           "format": "number"
+        },
+        "State": {
+          "type": "select",
+          "options": [
+            {
+              "name": "Done",
+              "color": "green"
+            },
+            {
+              "name": "Not now",
+              "color": "yellow"
+            },
+            {
+              "name": "Not true",
+              "color": "red"
+            },
+            {
+              "name": "Stale",
+              "color": "gray"
+            }
+          ]
         }
       }
     },

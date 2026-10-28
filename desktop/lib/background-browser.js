@@ -1,4 +1,4 @@
-// A Jobadabra-owned Chromium process without a startup window; the actual extension owns fill tabs and same-session manual reveal.
+// A Jobadabra-owned headless Chromium with no window; the actual extension owns fill tabs, and the app's live view shows a held page to the person.
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -6,10 +6,13 @@ import {spawn as spawnProcess} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {ROOT} from './root.js';
 import {writePrivate} from './private-file.js';
+import {findBackgroundBrowser} from './background-browser-download.js';
+import {tabOfSession} from './session-tab.js';
 
 /** Return launch flags for an owned profile and extension, never a system profile or a visible startup page. */
 export function browserArguments(profile, extension) {
-  return [`--user-data-dir=${profile}`, '--remote-debugging-port=0', '--enable-automation', '--no-startup-window', '--no-first-run', '--no-default-browser-check',
+  // Why (2026-10-28, owner + measured B1): the person sees a held page in the app's live view; headless Chromium loads the extension with no window, Dock entry or focus change.
+  return [`--user-data-dir=${profile}`, '--headless=new', '--remote-debugging-port=0', '--enable-automation', '--no-startup-window', '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-default-apps', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`];
 }
 /** Accept a debugging port only after CDP reports our exact profile argument; stale/recycled ports never authorize access. */
@@ -37,7 +40,7 @@ export function browserCommand(socketUrl, method, params = {}, {WebSocketClass =
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** Own one persistent browser per app profile; reuse only verified processes and keep review/challenge sessions alive when the app exits. */
-export function createBackgroundBrowser(storage, {find = () => null,   // Why (2026-10-28, owner): the first-use download that finds the runtime is step B; until then no browser can start
+export function createBackgroundBrowser(storage, {find = findBackgroundBrowser,   // only the runtime the person downloaded into the app folder; never a system browser
    spawn = spawnProcess, fetchImpl = globalThis.fetch, root = ROOT, command = browserCommand} = {}) {
   const folder = storage.path('background-browser'), profile = path.join(folder, 'profile'), extension = path.join(folder, 'extension');
   const portFile = path.join(profile, 'DevToolsActivePort'), ownerFile = path.join(folder, 'owner.json');
@@ -105,6 +108,12 @@ export function createBackgroundBrowser(storage, {find = () => null,   // Why (2
     const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
     return result.result?.value === true;
   }
+  // The held tab of one application session, by the ONE rule that says which tab is a session's (lib/session-tab.js): its loopback CDP address, or null.
+  async function pageSocket(session) {
+    const live = await connect();
+    const pages = (await get(live.port, '/json/list')).filter(target => target.type === 'page');
+    return tabOfSession(String(session || ''), pages)?.webSocketDebuggerUrl || null;
+  }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  return {start, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
+  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
 }

@@ -4,10 +4,11 @@ import unittest
 from unittest import mock
 from pathlib import Path
 import sys
+import types
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.sources import ats
 from src import store as job_store
-from src import pool_served, scout, scout_candidates, scout_core, scout_probe
+from src import budget_tape, pool_served, scout, scout_candidates, scout_core, scout_probe
 from src.stores import memory, notion
 
 SEEDS = {'excluded': ['Acme'], 'tier1_known': [{'name': 'Bigco', 'ats': 'lever', 'slug': 'bigco'}],
@@ -195,14 +196,18 @@ class ScoutTests(unittest.TestCase):
 
     def test_a_time_budget_ends_the_run_and_keeps_the_rest_for_later(self):
         """7 Oct 2026: 91 checks took over half an hour. With a budget, no check starts after it; the rest stay untried for the next run."""
-        import time as clock
+        # Why (28 Oct 2026, beta 40624181069, Build · Mac: "some checked, not all: 0"): the 1 s budget was real time, shared with whatever a loaded runner did before the first check, so it could be
+        # gone before one started. The scout's clock is a fake that each probe advances by the 0.05 s the old test slept: the budget ends after some checks, whatever the machine does (owner's rule B: no wall-clock assertion).
+        now = [0.0]
+        fake = types.SimpleNamespace(monotonic=lambda: now[0])
+        def slow(system, slug):
+            now[0] += 0.05
+            return []
         with tempfile.TemporaryDirectory() as tmp, job_store.connect(Path(tmp) / 'jobs.sqlite') as db, mock.patch.object(scout_core, 'CENTRAL', True):
             names = [f'Co{i}' for i in range(10)]
             scout.harvest(db, SEEDS, sources=[lambda: [dict(name=n, origin='AI idea', priority=99 - i) for i, n in enumerate(names)]])
-            slow = lambda system, slug: clock.sleep(0.05) or []   # noqa: E731
-            started = clock.monotonic()
-            summary, results = scout.run(db, batch=10, harvest_sources=[], probe=slow, workers=1, budget=1)
-            self.assertLess(clock.monotonic() - started, 5)
+            with mock.patch.object(scout, 'time', fake), mock.patch.object(budget_tape, 'time', fake):
+                summary, results = scout.run(db, batch=10, harvest_sources=[], probe=slow, workers=1, budget=1)
             self.assertTrue(0 < len(results) < 10, f'some checked, not all: {len(results)}')
             self.assertEqual(summary['checked'], len(results))
             untried = {r[0] for r in db.execute("SELECT name FROM scout_candidates WHERE status = 'pending' AND name LIKE 'Co%'")}

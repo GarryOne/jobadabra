@@ -168,3 +168,17 @@ test('handlers: older eligibility lines are read on open, kept until Save, backe
   assert.deepEqual(await handlers.undoDetailsTidy(), {ok: true});
   assert.deepEqual((await sections.read(storage)).eligibility.map(line => line.label), OLD.map(line => line.label));
 });
+
+// The class (mac-27 on #2340, CLAUDE.md Safety "cut it off and assert it"): a test that reaches the move without its own copy target is refused before any
+// page changes, whoever the caller (lib/backup.js folder refuses the real folder under the test runner); before, it reached this Mac's iCloud backup folder.
+test('a move with no copy target under the test runner is refused: no real backup folder, nothing moved', async () => {
+  const {move} = await import('../lib/profile-move.js');
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
+  storage.saveSettings({store: 'sqlite'});
+  await store.openStore(storage).page('answers').write('## Common questions\n| Question | Answer |\n|---|---|\n| Notice period | 3 months |\n');
+  const ai = {client: {messages: {create: async request => ({content: [{type: 'text', text: JSON.stringify({items: JSON.parse(request.messages[0].content)
+    .map(({id}) => ({id, home: 'availability', topic: 'x', clarity: 'clear'}))})}]})}}};
+  await assert.rejects(move(storage, {ai}), /real backup folder/);
+  assert.match(await store.openStore(storage).page('answers').text(), /Notice period \| 3 months/, 'nothing moved');
+});
+

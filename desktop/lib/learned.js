@@ -11,6 +11,10 @@ import {aliasKey} from '../shared/alias-schema.js';
 import * as sharedMeanings from './aliases.js';
 import * as contactDetails from './contact.js';
 import * as questions from './questions.js';
+import * as learnings from './learnings.js';
+import * as verdicts from './question-verdicts.js';
+import {factsOf} from './base-facts.js';
+import {client as engineClient} from './ai/index.js';
 import {splitMark} from '../renderer/question-kind.js';
 import {openStore} from './store/index.js';
 import * as notionGate from './notion-gate.js';
@@ -49,7 +53,8 @@ export function plan(items, {contact = {}, answered = new Set(), aliases = []} =
   return {details, answers: fresh};
 }
 
-export async function save(storage, payload, {notify = () => {}, contactSaved = () => {}, fetcher} = {}) {
+// client: the AI engine (default the user's, lib/ai/index.js); propose: the meanings pack's proposal channel (lib/server-hooks.js proposalReporter).
+export async function save(storage, payload, {notify = () => {}, contactSaved = () => {}, fetcher, client = engineClient(storage), propose = () => {}} = {}) {
   try {
     const contact = await contactDetails.read(storage, fetcher).catch(() => ({}));
     const page = await openStore(storage, {fetcher}).page('answers').text();
@@ -57,7 +62,12 @@ export async function save(storage, payload, {notify = () => {}, contactSaved = 
     const aliases = await sharedMeanings.lookup(storage).catch(() => []);   // the shared label meanings (cached; none with technical reports off)
     const {details, answers} = plan(payload?.items, {contact, answered, aliases});
     if (Object.keys(details).length) { const merged = await contactDetails.save(storage, {...contact, ...details}, fetcher); contactSaved(merged); }
-    for (const {label, value} of answers) await questions.remember(storage, label, value, fetcher);
+    // Why (PR B2, owner 28 Oct 2026): what you typed is judged against What we learned like the fill's answers (lib/learnings.js), confirmed: it is yours. An
+    // answer the AI did not judge (no AI, a busy one) is kept as before, a line under the form's own words.
+    const learnt = answers.length ? await learnings.learn(storage, {answers: answers.map(each => ({...each, state: ''})), client, fetcher, propose,
+      owned: (await factsOf(storage, fetcher).catch(() => [])).map(fact => fact.label), job: {}}).catch(() => null) : null;
+    if (learnt) verdicts.noteLearned(storage, learnt.evidence, {url: String(payload?.job || '')});   // payload.job: the job's link (extension/tab-identity.js jobOf)
+    for (const {label, value} of answers.filter(each => !learnt?.judged.includes(each.label))) await questions.remember(storage, label, value, fetcher);
     const count = Object.keys(details).length + answers.length;
     // Decisions, not content: how many, and which kind, never the values (lib/log.js).
     log('learned', `kept ${count} answer(s) you entered yourself: ${Object.keys(details).length} to your details, ${answers.length} to What we learned`,

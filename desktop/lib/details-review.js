@@ -9,7 +9,8 @@ import * as sections from './profile-sections.js';
 import {itemsOf, openConflicts, resolve, unsureKey} from './profile-move.js';
 import * as formats from './question-formats.js';
 import {HOME_NAMES, homeOf, writeHome} from './answer-home.js';
-import {formatFor} from '../renderer/question-kind.js';
+import {formatFor, splitMark, withMark} from '../renderer/question-kind.js';
+import {valueOf as stateOf} from '../renderer/answers-model.js';
 import {KEEP_AS_IS, keyOf} from '../renderer/question-filter.js';
 import {needsCheck} from '../renderer/question-values.js';
 import * as missingFacts from './missing-facts.js';
@@ -26,10 +27,10 @@ import {log} from './log.js';
 import {organize} from './profile-routing.js';
 
 export const PREFIX = 'details:';
-export const KINDS = ['which', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck'];
+export const KINDS = ['which', 'check', 'open', 'unclear', 'missing', 'contact', 'cvcheck', 'taught', 'conflict'];
 export const KEEP = 'Keep where it is';
 export {KEEP_AS_IS};   // an unclear answer the person keeps: never asked again for that value
-const SOURCES = {which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
+const SOURCES = {taught: 'Learned from a form', conflict: 'Two answers', which: 'Two copies disagree', where: 'Not sure where it belongs', check: 'Saved as you wrote it', open: 'Not answered yet', unclear: 'Unclear', missing: 'Not filled in yet', contact: 'Needed by every form', cvcheck: 'Read from your CV'};
 const PAGES = {profile: 'Profile', answers: 'What we learned'};   // the answers page's tab name since 28 Oct 2026 (owner)
 const plain = text => String(text || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 const same = text => plain(text).toLowerCase();
@@ -88,6 +89,17 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
     out.push(item('which', {topic: conflict.topic}, {question: `${conflict.topic.replace(/^./, letter => letter.toUpperCase())}: which is right?`, format: choice(values),
       hint: conflict.choices.map(each => `${each.value} on your ${PAGES[each.page] || each.page}`).join(' · '), details: {where: HOME_NAMES[conflict.home], fact: conflict.choices.find(each => each.label)?.label || conflict.topic}}));
   }
+  // Why (PR B2, owner 28 Oct 2026: New / Confirmed / Two answers): a learning a form fill wrote (lib/learnings.js) is checked in What we learned: as it is
+  // (Confirm) or changed (Save change); two answers: pick the right one. Either save writes it without its state: confirmed. -> whether it was one.
+  const taught = (line, formats) => {
+    const said = stateOf(splitMark(line.value).text);
+    if (said.state !== 'new' && said.state !== 'conflict') return false;   // a guess is shown in place, "Unconfirmed" (18 Oct 2026), not asked
+    const ref = {page: 'answers', label: line.label, value: line.value}, base = {question: line.label, value: said.value, details: {where: PAGES.answers, fact: line.label}};
+    if (said.state === 'conflict') out.push(item('conflict', ref, {...base, format: choice([said.value, said.other]), details: {...base.details, line: `Two answers: ${said.value} · ${said.other}`}}));
+    else out.push(item('taught', ref, {...base, proposal: said.value, format: formatFor({marked: splitMark(line.value).marked ? splitMark(line.value) : null, kept: formats[keyOf(line.label)]}),
+      details: {...base.details, line: `Learned: ${said.value}`}}));
+    return true;
+  };
   const unclear = (line, ref, where, format) => {   // the AI's word on a saved answer (lib/answer-clarity.js): asked when it is not clear
     const said = clarity.UNCLEAR[clarity.verdictOf(storage, line)];
     if (said) out.push(item('unclear', ref, {question: line.label || line.value, format, value: line.value, details: {where, source: said, fact: line.label || line.value, line: `Saved: ${line.value}`}}));
@@ -105,6 +117,7 @@ export async function pending(storage, {fetcher, now = new Date(), ai = {}} = {}
   const askedAlready = new Set([...conflicts.flatMap(each => each.choices), ...storage.settings().profileUnsure || []].map(clarity.sigOf));
   for (const page of ['profile', 'answers']) {
     for (const line of answered(await outline(page), page, owned)) {
+      if (page === 'answers' && taught(line, kept)) continue;
       if (askedAlready.has(clarity.sigOf(line))) continue;   // already asked as Which is right? / Where does this go?
       unclear(line, {page, label: line.label, value: line.value}, PAGES[page], formatFor({kept: kept[keyOf(line.label)]}));
     }
@@ -180,6 +193,7 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
     return {ok: true, homeName: HOME_NAMES[home]};
   }
   if (kind === 'unclear') return answerUnclear(storage, ref, text, {fetcher, save});
+  if (kind === 'taught' || kind === 'conflict') return answerTaught(storage, ref, text, {fetcher});
   if (kind === 'check') return text && !needsCheck(ref.kind || '', text) ? setLine(storage, ref.home, ref.label, text, {fetcher, save}) : {ok: false, error: 'Pick the parts first'};
   if (kind === 'open' && ref.home) return setLine(storage, ref.home, ref.label, text, {fetcher, save});
   if (kind === 'open') {
@@ -205,6 +219,16 @@ export async function answer(storage, key, value, {fetcher, ai = {}, save = sect
 }
 
 // An unclear answer: "Keep as is" closes it for that value; a new value replaces it on its line (a section's, or the Profile / answers page's own).
+// A learning confirmed or changed (PR B2): its line written with the answer and no state, its kind mark kept. -> {ok, homeName} | {ok: false, error}.
+async function answerTaught(storage, ref, text, {fetcher}) {
+  if (!text) return {ok: false, error: 'Type the answer first'};
+  const line = await lineOn(storage, ref.page, each => same(each.label) === same(ref.label) && same(each.value) === same(ref.value), {fetcher});
+  if (!line) return {ok: false, error: 'That line changed; nothing was saved'};
+  if (line.table) await line.page.setCell(line.block, 1, text.slice(0, 1900));
+  else { const split = splitMark(line.block.text); await line.page.setText(line.block, withMark(`${ref.label}: ${text}`, split.marked ? split : null)); }
+  return {ok: true, homeName: `your ${PAGES[ref.page] || ref.page}`};
+}
+
 async function answerUnclear(storage, ref, text, {fetcher, save}) {
   if (!text) return {ok: false, error: 'Type the answer, or keep it as is'};
   if (text === KEEP_AS_IS) { clarity.keepAsIs(storage, ref); return {ok: true, homeName: ref.home ? HOME_NAMES[ref.home] : `your ${PAGES[ref.page] || ref.page}`}; }

@@ -101,7 +101,7 @@ test('every kind of Your details item names its fact (the class: what the score 
   const storage = fresh({store: 'sqlite', profileConflicts: [{home: 'availability', topic: 'notice period', choices: [{label: 'Notice', value: '1 month', page: 'profile'}, {label: 'Notice period', value: '3 months', page: 'answers'}]}]});
   const opened = store.openStore(storage);
   await opened.page('profile').write(markdown([...PROFILE, 'Target: 10k or so [salary]', '## Preferences', 'Notice: 1 month', 'Relocation: maybe', 'Industries: ❓']));
-  await opened.page('answers').write(markdown(['## Pay', 'Notice period: 3 months']));
+  await opened.page('answers').write(markdown(['## Pay', 'Notice period: 3 months', '## Learned from forms', 'Willing to travel: Yes (new)', 'Contract type: Permanent (two answers: Freelance)']));
   storage.saveSettings({profileUnsure: [{page: 'profile', label: 'Relocation', value: 'maybe'}], answerClarity: {'notice period\n2 months': 'guess'}});
   fs.writeFileSync(storage.path('cv.pdf'), 'fake cv');
   storage.writeText('cv/fact-proposals.json', JSON.stringify({cv: hashOf(storage), proposals: [{id: 'languages', value: 'English', how: 'stated', reason: 'A language line'}]}));

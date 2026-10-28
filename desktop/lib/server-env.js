@@ -22,9 +22,10 @@ import {log as appLog} from './log.js';
 import {pageKey} from './server-pages.js';
 import {devVersion} from './dev-extension-version.js';
 import {captureAnswer} from './live-capture.js';
-import {keptAnswerClient} from './ai/index.js';
+import {client as engineClient, keptAnswerClient} from './ai/index.js';
+import * as learnings from './learnings.js';
 import {nightAnswers} from './ready-handoff.js';
-import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, sharedLogger, tellWindow} from './server-hooks.js';
+import {answerReporter, appliedHook, errorWatcher, formIssue, jobName, notify, proposalReporter, sharedLogger, tellWindow} from './server-hooks.js';
 import {NAMES} from './ai/names.js';
 import {cvFactsText} from '../shared/worker/cv-facts.js';
 import {configForPrompt} from './config-text.js';
@@ -164,7 +165,13 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
         console.error('Open questions:', error.message);
         return 0;
       });
-      if (added) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
+      // Why (PR B2, owner 28 Oct 2026): what the fill's AI answered becomes one learning per topic, judged by the AI against the ones kept (lib/learnings.js).
+      const learnt = await learnings.learn(storage, {answers: learnings.fromFill(run), client: engineClient(storage), owned: (await factsOf(storage).catch(() => [])).map(fact => fact.label),
+        job: {company: job?.company || '', place: job?.location || ''}, propose: items => proposalReporter(items)}).catch(error => { console.error('Learnings:', error.message); return null; });
+      if (learnt) verdicts.noteLearned(storage, learnt.evidence, {url: run.url, company: job?.company || ''});
+      const taught = learnt ? learnt.counts.added + learnt.counts.extended + learnt.counts.conflicts : 0;
+      if (added || taught) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
+      if (taught) notify('Learned from this form', `${taught} answer${taught > 1 ? 's' : ''} from ${job?.company || 'a form'} kept for the next forms. Check them in Profile → What we learned.`, {view: 'settings', section: 'profile'}, 'good');
       if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'}, 'warn');
       reports.send(storage, run, undefined, sharedLogger, {latest: latestExtension()}).then(report => {  // each field also shows in the app reports (/telemetry)
         // A fill that failed while Chrome ran an older copy than this app ships is explained first, as its own

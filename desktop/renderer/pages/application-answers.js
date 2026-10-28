@@ -155,7 +155,8 @@ function draw(view, into) {
   // Confirmed: the answered lines (an empty optional or unanswered line is neither: forms ask it again, and it is New once a form asks it). Why (28 Oct 2026,
   // spec AC2): a line the AI judged a Your details fact, one job's or consent (questionsNow().notLearned, lib/question-lists.js) is no learning: not listed.
   const notLearned = new Set((questionsNow().notLearned || []).map(keyOf));
-  const confirmed = list.map(section => ({section, items: section.items.filter(item => item.kind !== 'note' && valueOf(item) && !missing(item) && !notLearned.has(keyOf(item.question))
+  // Why (PR B2): a line a form fill wrote that no one checked yet (new, two answers: renderer/answers-model.js) is a New row (lib/details-review.js taught); a guess stays here, Guessed.
+  const confirmed = list.map(section => ({section, items: section.items.filter(item => item.kind !== 'note' && !['new', 'conflict'].includes(item.state) && valueOf(item) && !missing(item) && !notLearned.has(keyOf(item.question))
     && matches({...item, value: valueOf(item), open: false}, {query: filters.query}))}));
   const confirmedCount = confirmed.reduce((sum, each) => sum + each.items.length, 0);
   toolbar(view, into, {all: learned.length + confirmedCount, new: learned.length, confirmed: confirmedCount});
@@ -176,7 +177,7 @@ function draw(view, into) {
     for (const each of fresh) {
       const sure = statusOf(each);
       box.append(...row(view, {key: `new:${each.key}`, title: titleOf(each.question), under: [each.company, each.details?.line, cutNote(each.question)].filter(Boolean).join(' · '),
-        value: '', needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), chip: pill('New', 'info'), action: sure.action, run: () => openDrawer(each.key)}));
+        value: '', needs: true, status: statusPill(sure.label, sure.tone, sure.glyph), chip: each.details?.kind === 'conflict' ? pill('Two answers', 'warn') : pill('New', 'info'), action: sure.action, run: () => openDrawer(each.key)}));
     }
   }
   if (filters.view !== 'new') {

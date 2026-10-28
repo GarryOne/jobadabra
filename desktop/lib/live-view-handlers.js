@@ -6,6 +6,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {ROOT} from './root.js';
 import {openCdpSession} from './cdp-session.js';
+import {openFrameTargets} from './frame-targets.js';
 import {CV_FILES} from '../renderer/cv-files.js';
 
 const liveModule = () => import(pathToFileURL(path.join(ROOT, 'hosted', 'ready-fill', 'live.mjs')).href);
@@ -52,19 +53,20 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
     if (!address) return {ok: false, error: 'This application\'s hidden form is not open.'};
     const cdp = await openCdp(address);
     if (stale(id, mine)) { await cdp.detach().catch(() => {}); return dropped; }
+    const frames = openFrameTargets(address, openCdp);   // iframes in their own process, read for the page's facts
     let input = () => {}, ended = () => {};
     const channel = {send: message => toWindow('liveEvent', {session: id, message}), onMessage: fn => { input = fn; }, onClose: fn => { ended = fn; }};
-    views.set(id, {input: message => input(message), close: () => ended()});
+    views.set(id, {input: message => input(message), close: () => { ended(); frames.close(); }});
     try {
-      await (attach || (await liveModule()).attachLive)(channel, cdp, {resolveFile});
+      await (attach || (await liveModule()).attachLive)(channel, cdp, {resolveFile, frameTargets: frames.list});
     } catch (error) {
       if (!stale(id, mine)) views.delete(id);
-      ended();
+      ended(); frames.close();
       await cdp.detach().catch(() => {});
       log('apply', 'the live page could not be opened', {session: id});
       return {ok: false, error: 'The live page could not be opened. Try again, or use Open in my browser.'};
     }
-    if (stale(id, mine)) { ended(); await cdp.detach().catch(() => {}); return dropped; }
+    if (stale(id, mine)) { ended(); frames.close(); await cdp.detach().catch(() => {}); return dropped; }
     return {ok: true};
   });
   ipcMain.handle('liveInput', (_, session, message) => { views.get(String(session || ''))?.input(message); return true; });
@@ -79,15 +81,15 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
     const address = await page(id).catch(() => null);
     if (!address) return {ok: false, error: 'This application\'s hidden form is not open.'};
     const {pageFacts, pressText} = core || await liveModule();
-    const cdp = await openCdp(address);
+    const cdp = await openCdp(address), frames = openFrameTargets(address, openCdp);
     try {
       // Why (28 Oct 2026, owner's live view design): the window's count can be a frame old; the page is read again at the press.
-      const facts = await pageFacts(cdp);
+      const facts = await pageFacts(cdp, {targets: frames.list});
       if (!facts) return {ok: false, error: 'The page could not be read. Press Submit again in a moment.'};
       if (facts.left.length) return {ok: false, left: facts.left.length, error: `${plural(facts.left.length, 'required field')} left. Fill ${facts.left.length === 1 ? 'it' : 'them'} in the live page first.`};
       const pressed = await pressText(cdp, control);
       log('apply', pressed.ok ? 'the person pressed Submit in the live view: pressed' : 'the person pressed Submit in the live view: not pressed', {session: id, why: pressed.why || ''});
       return pressed.ok ? {ok: true} : {ok: false, error: PRESS_FAILED[pressed.why] || PRESS_FAILED.not_found};
-    } finally { await cdp.detach().catch(() => {}); }
+    } finally { await frames.close(); await cdp.detach().catch(() => {}); }
   });
 }

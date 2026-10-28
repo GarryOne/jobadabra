@@ -40,30 +40,47 @@ const PAGE_FACTS = `(() => {
   const unitLabel = u => (u.length > 1 && u[0].closest('fieldset')?.querySelector('legend')?.textContent.replace(/\s+/g, ' ').trim().slice(0, 80)) || labelOf(u[0]);   // a radio group: its question
   return {address: (location.host + location.pathname).slice(0, 200), fields: units.length, filled: units.filter(filled).length, left: units.filter(u => required(u) && !filled(u)).map(u => ({label: unitLabel(u), ...box(u)})), active: a && all.includes(a) ? labelOf(a) : ''};
 })()`;
-/** The page's facts for the viewer ({address, fields, filled, left: [{label, x, y, w, h}], active}; the address never has its query), or null when the page cannot be read. */
-export async function pageFacts(cdp) {
+/**
+ * The page's facts for the viewer ({address, fields, filled, left: [{label, x, y, w, h}], active}; the address never has its query), or null when the page cannot be read.
+ * frames (optional): {worlds: Map kept across reads, targets: async () => [{id, cdp}]} for iframes that run in their own process (see withFrames).
+ */
+export async function pageFacts(cdp, frames = {}) {
   const {result} = await cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true}).catch(() => ({}));
   const main = result?.value && typeof result.value === 'object' ? result.value : null;
-  return main ? withFrames(cdp, main) : null;
+  return main ? withFrames(cdp, main, frames) : null;
+}
+
+// One isolated world per frame, kept in `worlds` (a read every 500 ms must not add a world each time); a stale id (the frame navigated) is dropped and made once more.
+async function readInWorld(cdp, worlds, frameId) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let contextId = worlds.get(frameId);
+    if (!contextId) { ({executionContextId: contextId} = await cdp.send('Page.createIsolatedWorld', {frameId, worldName: 'jobadabra-facts'})); worlds.set(frameId, contextId); }
+    try { return (await cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true, contextId})).result?.value; } catch (error) { worlds.delete(frameId); if (attempt) throw error; }
+  }
+  return null;
 }
 
 // Facts of the direct child frames folded into the main page's: counts summed, empty required boxes mapped from the frame's own viewport onto the main one.
-// Why (28 Oct 2026, B follow-up 3): an application form in an iframe showed 0 fields, so the person could not see what was left. A frame that cannot be read is skipped.
-async function withFrames(cdp, main) {
+// Why (28 Oct 2026, B follow-up 3, Gitar on #2354): an application form in an iframe showed 0 fields. A frame on another site runs in its own process: the page's frame tree does not
+// list it and its world cannot be made from here (measured 28 Oct 2026, site isolation on), so it is read over its own target's session (frames.targets) and placed by the parent's box for it.
+// A frame that cannot be read is skipped.
+async function withFrames(cdp, main, {worlds = new Map(), targets = async () => []} = {}) {
   const tree = await cdp.send('Page.getFrameTree').catch(() => null);
   const children = tree?.frameTree?.childFrames || [];
-  if (!children.length) return main;
+  const separate = await targets().catch(() => []);
+  for (const id of worlds.keys()) if (!children.some(({frame}) => frame.id === id)) worlds.delete(id);
+  const sources = [...children.map(({frame}) => ({id: frame.id, read: () => readInWorld(cdp, worlds, frame.id)})),
+    ...separate.map(target => ({id: target.id, read: async () => (await target.cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true})).result?.value}))];
+  if (!sources.length) return main;
   const size = await cdp.send('Runtime.evaluate', {expression: '[innerWidth || 1, innerHeight || 1]', returnByValue: true}).catch(() => null);
   const [W, H] = Array.isArray(size?.result?.value) ? size.result.value : [1, 1];
   const r4 = n => Math.round(n * 1e4) / 1e4, merged = {...main, left: [...main.left]};
-  for (const {frame} of children) {
+  for (const source of sources) {
     try {
-      const {backendNodeId} = await cdp.send('DOM.getFrameOwner', {frameId: frame.id});
+      const {backendNodeId} = await cdp.send('DOM.getFrameOwner', {frameId: source.id});
       const {model} = await cdp.send('DOM.getBoxModel', {backendNodeId});
       const [x0, y0, , , x1, y1] = model.content;
-      const {executionContextId} = await cdp.send('Page.createIsolatedWorld', {frameId: frame.id, worldName: 'jobadabra-facts'});
-      const {result: inFrame} = await cdp.send('Runtime.evaluate', {expression: PAGE_FACTS, returnByValue: true, contextId: executionContextId});
-      const facts = inFrame?.value;
+      const facts = await source.read();
       if (!facts || typeof facts !== 'object') continue;
       const [fw, fh] = [x1 - x0, y1 - y0];
       merged.fields += facts.fields;
@@ -127,10 +144,12 @@ export function wsChannel(ws) {
  * The live view of one held tab over any channel ({send, onMessage, onClose}: the Mac app's screen now, a phone later) and any CDP session
  * ({send, on, detach}: Playwright's, or the app's own to its hidden browser). Out: {kind: 'first'|'frame', data, w, h} pictures (w/h: the viewport in CSS pixels), {kind: 'needs'} the page's
  * facts (pageFacts), {kind: 'select'} a native dropdown's list to draw, {kind: 'file'} a file chooser to answer. In: mouse and key ({t: 'mouse'|'key'}), {t: 'choose', id, value}, {t: 'file', id, choice}.
+ * frameTargets() -> [{id, cdp}] the page's iframes that run in their own process, with their own sessions (lib/frame-targets.js), read for the facts.
  * resolveFile(choice) -> a path the APP allows (the person's CVs, a file they picked in the app's own dialog) or null; a path from the channel is never used.
  * Invariant: every page change here follows one message from the person; nothing presses, picks or uploads on its own.
  */
-export async function attachLive(channel, cdp, {resolveFile = () => null} = {}) {
+export async function attachLive(channel, cdp, {resolveFile = () => null, frameTargets = async () => []} = {}) {
+  const frames = {worlds: new Map(), targets: frameTargets};   // the iframes' worlds, kept for the whole view
   let seq = 0, nextId = 0, swallowRelease = false, lastFacts = '', factsTimer = null, closed = false;
   const selects = new Map(), choosers = new Map();
   const send = (kind, extra) => channel.send({kind, seq: ++seq, at: Date.now(), ...extra});
@@ -138,7 +157,7 @@ export async function attachLive(channel, cdp, {resolveFile = () => null} = {}) 
   // The page's facts follow its pictures: read at most every FACTS_MS after a frame (the last change is always read), sent only when they differ.
   const readFacts = async () => {
     factsTimer = null;
-    const facts = closed ? null : await pageFacts(cdp);
+    const facts = closed ? null : await pageFacts(cdp, frames);
     if (facts && JSON.stringify(facts) !== lastFacts) { lastFacts = JSON.stringify(facts); send('needs', facts); }
   };
   const factsSoon = () => { if (!factsTimer && !closed) factsTimer = setTimeout(() => readFacts().catch(() => {}), FACTS_MS); };

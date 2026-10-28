@@ -192,3 +192,33 @@ test('a frame that cannot be read is skipped, and a page without frames makes no
   assert.equal((await pageFacts(none.cdp)).fields, 1);
   assert.equal(none.sent.some(method => /^(DOM|Page\.createIsolatedWorld)/.test(method)), false);
 });
+
+// Gitar on #2354 (28 Oct 2026): a world per frame per read piled up in the hidden browser, and an iframe on another site (its own process) was never listed under the page.
+test('a frame\'s world is made once and kept across reads; a stale one is made again', async () => {
+  const {cdp, sent} = framed({frames: ['f1']});
+  const frames = {worlds: new Map()};
+  await pageFacts(cdp, frames);
+  await pageFacts(cdp, frames);
+  assert.equal(sent.filter(method => method === 'Page.createIsolatedWorld').length, 1, 'two reads, one world');
+  const stale = framed({frames: ['f1']});
+  const real = stale.cdp.send;
+  let first = true;
+  stale.cdp.send = async (method, params) => { if (method === 'Runtime.evaluate' && params.contextId && first) { first = false; throw new Error('Cannot find context'); } return real(method, params); };
+  const worlds = new Map([['f1', 'old-context']]);
+  assert.equal((await pageFacts(stale.cdp, {worlds})).fields, 4, 'the stale world is replaced and the read succeeds');
+  assert.equal(worlds.get('f1'), 'f1', 'the new world is the one kept');
+  const gone = new Map([['f1', 'x'], ['f9', 'y']]);
+  await pageFacts(framed({frames: ['f1']}).cdp, {worlds: gone});
+  assert.deepEqual([...gone.keys()], ['f1'], 'a frame that left the page loses its world');
+});
+
+test('an iframe in its own process is read over its own session and placed by the parent\'s box for it', async () => {
+  const {cdp, sent} = framed({frames: []});
+  const own = {send: async (method, params) => { assert.equal(method, 'Runtime.evaluate'); assert.equal(params.contextId, undefined, 'its own main world, no isolated world'); return {result: {value: {fields: 2, filled: 0, left: [{label: 'Phone', x: 0, y: 0, w: 1, h: 0.25}], active: ''}}}; }};
+  const facts = await pageFacts(cdp, {targets: async () => [{id: 'oopif', cdp: own}]});
+  assert.equal(facts.fields, 3);
+  assert.deepEqual(facts.left, [{label: 'Phone', x: 0.1, y: 0.25, w: 0.4, h: 0.125}]);
+  assert.equal(sent.includes('Page.createIsolatedWorld'), false);
+  const broken = await pageFacts(cdp, {targets: async () => [{id: 'oopif', cdp: {send: async () => { throw new Error('gone'); }}}]});
+  assert.equal(broken.fields, 1, 'an unreadable iframe is skipped');
+});

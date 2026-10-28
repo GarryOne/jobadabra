@@ -32,6 +32,15 @@ export async function applyDialogStart({count, cancelled = false, start}) {
   }
 }
 
+/**
+ * What the dialog does with a finished start: a queued batch is a toast to Sessions and the dialog closes (owner, 28 Oct 2026); anything else stays in the dialog as its error.
+ * -> {close: true, toast: {title, body, target, tone}} | {close: false, error}
+ */
+export function applyDialogOutcome(result) {
+  if (result?.ok) return {close: true, toast: {title: 'Applying started', body: result.message, target: {view: 'sessions'}, tone: 'good'}};
+  return {close: false, error: result?.error || 'Could not start applying. Try again in a moment.'};
+}
+
 /** One start at a time: a second press while the first batch starts is ignored; a later deliberate start is not. */
 export function createApplyStartGate() {
   let starting = false;

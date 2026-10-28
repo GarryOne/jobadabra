@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
-import {applyButtonLabel, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../renderer/apply-dialog-model.js';
+import {applyButtonLabel, applyDialogOutcome, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../renderer/apply-dialog-model.js';
 import {MODES, applyOf, modeBuilt, modeRunner} from '../renderer/apply-settings-model.js';
 import {registerApplyHandlers} from '../lib/apply-handlers.js';
 import {guard} from '../lib/apply-choice-gate.js';
@@ -163,4 +163,16 @@ test('a start that fails as a call (not a refusal) shows the reason without Elec
   assert.equal(result.ok, false);
   assert.equal(result.error, 'Could not start applying: An object could not be cloned. Try again in a moment.');
   assert.doesNotMatch(result.error, /remote method|^Error/);
+});
+
+test('a queued batch is a toast to Sessions and the dialog closes; a refusal stays in the dialog as its error (owner screenshots, 28 Oct 2026)', () => {
+  assert.deepEqual(applyDialogOutcome({ok: true, message: '2 applications queued.'}), {close: true, toast: {title: 'Applying started', body: '2 applications queued.', target: {view: 'sessions'}, tone: 'good'}});
+  assert.deepEqual(applyDialogOutcome({ok: false, error: 'Download the browser first.'}), {close: false, error: 'Download the browser first.'});
+  assert.equal(applyDialogOutcome(undefined).close, false);
+  assert.match(applyDialogOutcome({}).error, /Try again/);
+});
+
+test('while a batch starts the dialog shows its strip and no spinner row: the strip is in the markup, hidden until then, and the page never asks for a waiting message', () => {
+  assert.match(read('renderer/index.html'), /id="apply-progress"[^>]*hidden/);
+  assert.doesNotMatch(read('renderer/pages/jobs-apply.js'), /'waiting'/);
 });

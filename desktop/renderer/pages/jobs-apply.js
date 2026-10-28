@@ -4,8 +4,9 @@
 import {offerBrowser} from './browser-progress.js';
 import {$, message} from './core.js';
 import {applyOf} from '../apply-settings-model.js';
-import {applyButtonLabel, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
+import {applyButtonLabel, applyDialogOutcome, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
 import {modeCards, save as saveApplySettings} from './apply-settings.js';
+import {toastMessage} from './startup.js';
 
 const gate = createApplyStartGate();
 let settings = {};   // the saved settings the cards were last drawn from
@@ -41,7 +42,8 @@ export function wireApplyDialog({startedApplying}) {
     $('apply-dialog').showModal();
   });
   $('apply-n').addEventListener('input', draw);
-  window.pilot.onApplyProgress(text => message('apply-message', text, 'waiting'));   // "Drafting kit 2 of 3…" while the batch drafts what is missing
+  // "Drafting kit 2 of 3…" while the batch drafts what is missing: on the button, beside the strip (no row of its own).
+  window.pilot.onApplyProgress(text => { if (gate.isStarting()) $('apply-go').textContent = text; });
   $('apply-go').addEventListener('click', async event => {
     event.preventDefault();
     if (!$('apply-n').reportValidity()) return;   // 1–10 whole jobs (the field's own min/max/step), said by the field itself
@@ -51,19 +53,23 @@ export function wireApplyDialog({startedApplying}) {
       // first-Apply dialog opens over this one (lib/apply-choice-gate.js), and the batch goes on after it.
       Object.assign(go, {disabled: true, textContent: 'Starting…'});
       go.classList.add('busy');
+      $('apply-progress').hidden = false;   // the wait shows as a strip along the dialog's top edge, not as a row
       draw();
-      message('apply-message', `Finding your best ${n} job${n === 1 ? '' : 's'}, drafting any missing kit first (about 20 s each), and checking the postings are still open…`, 'waiting');
       try {
         const result = await applyDialogStart({count: n, start: options => window.pilot.apply(options)});
         if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
-        message('apply-message', result.ok ? result.message : result.error, result.ok ? 'ok' : 'error');
+        // Why (2026-10-28, owner screenshot): the green "queued" line kept the dialog open with nothing left to do; a toast says it and the dialog closes (a click on it opens Sessions).
+        const outcome = applyDialogOutcome(result);
+        if (outcome.close) { const {title, body, target, tone} = outcome.toast; toastMessage(title, body, target, tone); $('apply-dialog').close(); return; }
+        message('apply-message', outcome.error, 'error');
         offerBrowser($('apply-browser'), result.code === 'BACKGROUND_BROWSER_MISSING');   // the download, right where it was asked for
       } catch (error) {   // the call itself failed (e.g. the app updated while open): say so, the button comes back below
         message('apply-message', `Could not start applying: ${error.message}`, 'error');
       } finally {
         go.disabled = false;
         go.classList.remove('busy');
+        $('apply-progress').hidden = true;
       }
     });
     settings = (await window.pilot.state().catch(() => null))?.settings || settings;   // a first-Apply choice made meanwhile

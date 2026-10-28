@@ -198,6 +198,13 @@ button.ui-tag.is-action:hover { border-color: var(--signal-edge); }
 /* Settings → Apply (pages/apply-settings.js) and the first-Apply dialog (pages/apply-choice.js): the checks one per row, the dialog's cards spaced from its note. */
 .apply-checks { display: grid; gap: var(--sp-2); justify-items: start; }
 .apply-choice-dialog #apply-choice-modes { margin-bottom: var(--sp-3); }
+/* An unknown-length wait without a row of its own: a thin strip pinned to the visible top edge of its scrolling container, taking no row (sticky, pulled up by its own height), a segment sliding across (the Apply to jobs dialog while a batch starts). */
+.ui-indeterminate { position: sticky; top: 0; margin: 0 0 -3px; z-index: 1; height: 3px; overflow: hidden; background: var(--line); }
+.ui-indeterminate[hidden] { display: none; }
+.ui-indeterminate > span { display: block; width: 35%; height: 100%; background: var(--signal); animation: ui-slide 1.1s ease-in-out infinite; }
+@keyframes ui-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+@media (prefers-reduced-motion: reduce) { .ui-indeterminate > span { animation: none; width: 100%; opacity: .6; } }
+#apply-dialog { overflow-x: clip; overflow-y: auto; }   /* the strip follows the rounded corners; a tall dialog (three cards, an error, the download panel) still scrolls */
 #apply-dialog legend { padding: 0; color: var(--label); }   /* Jobs' Apply to jobs (pages/jobs-apply.js): the cards' heading reads like the count's label above it */
 
 /* Service status cards: logo tile, name, ✓ Connected / ! Not connected. Clickable. */

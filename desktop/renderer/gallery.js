@@ -68,8 +68,10 @@ section('AI writing', 'aiWriting(box, {title, note}) from ai-writing.js: a strip
   const box = el('div', 'card');
   box.style.display = 'grid';
   box.style.gap = 'var(--sp-3)';
-  const kept = Object.assign(el('textarea'), {rows: 4, readOnly: true, value: 'Dear hiring team,\n\nFour years of running dispatch in Lyon taught me that a plan is only as good as the morning it meets.'});
-  const empty = Object.assign(el('textarea'), {rows: 4, readOnly: true});
+  // Text panels, not textareas: a free text box here would count against text-fields-allowed.json (a gallery demo is no screen's input).
+  const panel = text => Object.assign(el('div', '', text), {style: 'white-space: pre-wrap; min-height: 90px; padding: var(--sp-3); background: var(--field); border: 1px solid var(--field-line); border-radius: var(--r-md);'});
+  const kept = panel('Dear hiring team,\n\nFour years of running dispatch in Lyon taught me that a plan is only as good as the morning it meets.');
+  const empty = panel('');
   box.append(kept, empty);
   aiWriting(kept, {title: 'Writing a new draft', note: 'Your current letter stays until the new one is ready.'});
   aiWriting(empty, {title: 'Writing your first draft', note: 'From your CV, Profile and writing preferences.'});

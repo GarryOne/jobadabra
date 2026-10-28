@@ -2,7 +2,8 @@
 import {badgeLabel} from '../badge-label.js';
 import {el, pill} from '../components.js';
 import {avatar} from '../jobs-view.js';
-import {applyingBadge, dockCounts, dockOrder, firstLine, isLive, isSubmitted, pageLine, sessionDuration, tickSessionClocks, sessionReview, sessionState, sessionsFoot} from '../session-state.js';
+import {backgroundStatus} from '../background-status.js';
+import {applyingBadge, dockCounts, dockOrder, firstLine, isLive, isSubmitted, pageLine, sessionDuration, tickSessionClocks, sessionReview, sessionState, sessionUrgency, sessionsFoot} from '../session-state.js';
 import {shared} from './shared.js';
 import {resumeOffered} from '../claude-help.js';
 import {hasSessionCache, rememberSessions, rememberedSessions} from '../sessions-cache.js';
@@ -17,7 +18,7 @@ export {cancelSession, removeSession, restartSession, resumeSession, skipSession
 // Other pages import these from here.
 // The state other pages show uses the form page's state too: ready to submit once the form says so.
 const closedForm = item => formGone(item);  // its Chrome tab was closed (a form or a Claude session's)
-const sessionStatus = item => (checkingTab(item) ? ['Checking…', 'neutral'] : redirecting(item) ? [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'] : waitingChrome(item) ? ['Waiting for Chrome…', 'neutral'] : silentChrome(item) ? ['Chrome not reporting', 'warn'] : tabLost(item) ? ['Tab not found', 'warn'] : closedForm(item) ? ['Form closed', 'neutral'] : sessionState(item, formReady(item)));
+const sessionStatus = item => (backgroundStatus(item) ? backgroundStatus(item) : checkingTab(item) ? ['Checking…', 'neutral'] : redirecting(item) ? [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'] : waitingChrome(item) ? ['Waiting for Chrome…', 'neutral'] : silentChrome(item) ? ['Chrome not reporting', 'warn'] : tabLost(item) ? ['Tab not found', 'warn'] : closedForm(item) ? ['Form closed', 'neutral'] : sessionState(item, formReady(item)));
 export {firstLine, isLive, sessionDuration, sessionReview, sessionStatus as sessionState};
 export const SESSION_PILL = {running: {label: 'Applying', tone: 'info'}, input: {label: 'Needs input', tone: 'warn'}, done: {label: 'Form filled', tone: 'good'}};
 export let sessionList = [], logChoice = {};
@@ -68,8 +69,7 @@ export function sessionLogo(item) {
 }
 // The sessions most worth opening first: waiting for your answer, a review whose form isn't complete yet, working,
 // ready to submit, then the rest (latest first).
-const urgency = item => (item.status === 'input' && !sessionReview(item, formReady(item)) ? 0 : sessionReview(item, formReady(item)) && !formReady(item) ? 1
-  : isLive(item) && item.status === 'running' ? 2 : sessionReview(item, formReady(item)) ? 3 : 4);
+const urgency = item => sessionUrgency(item, formReady(item));
 export function bestSession() {
   return [...sessionList].sort((a, b) => urgency(a) - urgency(b) || Date.parse(b.startedAt || 0) - Date.parse(a.startedAt || 0))[0] || null;
 }

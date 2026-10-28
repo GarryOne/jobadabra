@@ -134,12 +134,12 @@ function drawCard(item) {
   v.root.dataset.frame = card.frame;
   v.root.classList.toggle('is-filling', card.kind === 'filling');
   v.address.textContent = v.facts?.address || v.error;
-  v.opener.ensure();
+  if (card.live) v.opener.ensure();   // a queued job has no page yet: nothing to ask main for
   v.filling.hidden = !card.filling;
   v.filling.replaceChildren(el('span', 'spinner'), el('span', '', `Filling "${card.filling}"…`));
   v.marks.replaceChildren(...(card.marks ? (v.facts?.left || []) : []).map(box => Object.assign(el('span', 'live-mark'), {title: box.label,
     style: `left:${box.x * 100}%;top:${box.y * 100}%;width:${box.w * 100}%;height:${box.h * 100}%`})));
-  $('ss-question').replaceChildren(v.root, el('p', 'rich-p muted small', card.note));
+  $('ss-question').replaceChildren(...(card.live ? [v.root] : []), el('p', 'rich-p muted small', card.note));
   return card;
 }
 /**
@@ -150,6 +150,11 @@ export function renderLive(item, on) {
   if (!listening) { listening = true; window.pilot.onLiveEvent(liveEvent); }
   const card = drawCard(item), actions = [];
   view.on = on;
+  if (card.kind === 'waiting') {
+    actions.push(button('Stop', 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
+    $('ss-actions').replaceChildren(...actions);
+    return;
+  }
   if (card.kind === 'filling') {
     actions.push(button('Stop', 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
   } else {

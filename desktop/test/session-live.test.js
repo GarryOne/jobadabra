@@ -10,7 +10,7 @@ const facts = (left, extra = {}) => ({address: 'jobs.example.test/apply', fields
 test('Filling: watch only, the count from the page, the field being filled, Stop and no Submit', () => {
   const card = liveCard({state: 'filling'}, facts(3, {active: 'Bachelor\'s degree result'}), {at});
   assert.deepEqual([card.kind, card.title, card.pill[0], card.pill[1], card.input, card.filling, card.submit], ['filling', 'Filling the application', 'Filling · 9 of 12 fields', 'info', false, 'Bachelor\'s degree result', null]);
-  assert.equal(liveCard({state: 'queued'}, null, {at}).pill[0], 'Filling', 'no count before the page is read');
+  assert.equal(liveCard({state: 'preflight'}, null, {at}).pill[0], 'Filling', 'no count before the page is read');
 });
 
 test('A bot check: framed, never solved by us, Submit off with what to do', () => {

@@ -124,3 +124,12 @@ test('a final clean step cannot erase unknown facts observed on an earlier step'
   assert.equal(result.submit, false);
   assert.equal(result.reason, 'facts_unknown');
 });
+
+test('Stop or a mode change on a queued job hands it to the person before any browser claims it', async () => {
+  const r = rig(), job = r.add(), store = r.make();
+  const row = await store.queue(job.url, 'session-queued', 'fill', {...config, mode: 'fill'});   // bot review on #2324: queued has no owner yet
+  const stopped = await store.handoff(job.url, row.session, 'owned-browser', 'stopped');
+  assert.equal(stopped.state, 'needs_user_handoff');
+  assert.equal(stopped.manualOverride, true);
+  assert.equal((await store.claim(job.url, row.session, 'owned-browser')).ok, false, 'a stopped job is never claimed and filled later');
+});

@@ -21,7 +21,8 @@ export function backgroundApplyFor(storage) {
 }
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
-  config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = notifyDefault, log = appLog,
+  config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
+ log = appLog,
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage), fullAutomation = false} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
@@ -78,6 +79,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
       const current = config();
       if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
+      if (state.ok === false) continue;   // a handoff that did not save leaves the job as it was; never go on with an error as its state
       if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
       if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? 10) * 60000) checks.push({session: item.id});

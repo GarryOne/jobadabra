@@ -19,3 +19,15 @@ test('Full automation cannot be queued before its gates ship: no store write, no
 test('registering the apply handlers creates the controller without touching storage paths', () => {
   assert.doesNotThrow(() => createBackgroundApplyController({}, {store: {}}));   // CI #2324: a storage with no path() crashed handler registration
 });
+
+test('the controller reads the notifier when it notifies, not when it is created', async () => {
+  const hooks = await import('../lib/server-hooks.js');
+  const record = {id: 's1', url: 'https://jobs.example.test/n', background: {}}, sent = [];
+  const controller = createBackgroundApplyController({}, {   // the controller exists before main.js wires the notifier (bot review on #2324)
+    store: {handoff: async () => ({mode: 'fill', state: 'needs_user_handoff', reason: 'stopped', session: 's1'})},
+    browser: {start: async () => ({owner: 'o1'})}, terminals: {record: () => record, report: () => {}}, config: () => ({}), log: () => {}, token: () => 'fictional', port: 1});
+  hooks.setNotifier((...args) => sent.push(args));
+  try { await controller.handle({owner: 'o1', session: 's1', action: 'manual', reason: 'stopped'}); }
+  finally { hooks.setNotifier(() => {}); }
+  assert.equal(sent.length, 1);
+});

@@ -47,7 +47,8 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
   async function handoff(url, session, owner, reason = 'needs_user') {
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
-      if (!own(state, session, owner) || state.state === 'receipt_confirmed') return {ok: false};
+      // Why (2026-10-28, bot review #2324): a queued job has no owner yet; Stop or a mode change must still hand it over, or a later poll fills what the person stopped.
+      if (!state || state.session !== session || (state.owner && state.owner !== owner) || state.state === 'receipt_confirmed') return {ok: false};
       return state.manualOverride ? state : manual(app, state, String(reason).slice(0, 80));
     });
   }

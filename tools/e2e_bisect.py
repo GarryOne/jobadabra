@@ -5,7 +5,7 @@
   after-run <run id>        e2e.yml's alert job, after a scheduled main run: closes the `red-main` issue of each suite this run passed, and starts
                             e2e-bisect.yml for ONE red suite with no open issue whose cause is not the test environment (the next check starts the next)
   after-merge <run id>      e2e.yml's alert job, after the steps run after a merge (main-steps.yml): leaves evidence to backbone_red.py
-                            in e2e-bisect.yml's completed-run job; no fix-forward comment and no issue closed
+                            in .github/workflows/e2e-revert.yml's completed-run job; no fix-forward comment and no issue closed
   bisect <suite> <bad sha>  e2e-bisect.yml: finds the last main check where <suite> was green, runs <suite> on the commits in between (e2e.yml with
                             target_ref + bisect: titled "Bisect <suite> <sha>", never counted as a main check or filed by the Finder), then names the
                             first red commit's PR in a `red-main` issue ("Breaking PR: #n (branch `b`)") and on the PR itself. The session that
@@ -137,9 +137,9 @@ def after_run(run_id):
 
 
 def after_merge(run_id):
-    """After-merge reds belong to the completed-run revert job, never a fix-forward request."""
+    """After-merge reds belong to .github/workflows/e2e-revert.yml's completed-run job, never a fix-forward request."""
     # Why (28 Oct 2026, owner): two backbone reds revert the merge; never ask its session for a fix-forward.
-    print(f'after-merge run={run_id}: completed-run evidence goes to backbone_red.py; no fix-forward request')
+    print(f'after-merge run={run_id}: completed-run evidence goes to backbone_red.py in .github/workflows/e2e-revert.yml; no fix-forward request')
 
 
 def last_green(suite, bad, is_ancestor):

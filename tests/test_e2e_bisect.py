@@ -135,18 +135,19 @@ class Workflows(unittest.TestCase):
     def test_one_bisect_at_a_time(self):
         # 26 Oct 2026: `group: e2e-bisect-${{ inputs.suite }}` let 10 bisects run at once; one group: one runs, the newest waits.
         flow = (ROOT / '.github/workflows/e2e-bisect.yml').read_text()
-        bisect = re.search(r'(?ms)^  bisect:\n(.*?)(?=^  \w|\Z)', flow).group(1)
-        self.assertRegex(bisect, r'(?m)^    concurrency:[^\n]*\n      group: e2e-bisect\s*\n      cancel-in-progress: false')
+        self.assertRegex(flow, r'(?m)^concurrency:[^\n]*\n  group: e2e-bisect\s*\n  cancel-in-progress: false')
 
     def test_skipped_workflow_runs_cannot_replace_a_pending_bisect(self):
-        # A workflow-level group is acquired even when every job is skipped.
+        # Separate workflows keep skipped completed-run events out of the manual bisect queue.
         flow = (ROOT / '.github/workflows/e2e-bisect.yml').read_text()
-        self.assertNotRegex(flow, r'(?m)^concurrency:', 'only the manual bisect job may acquire the shared group')
-        revert = re.search(r'(?ms)^  revert:\n(.*?)(?=^  \w|\Z)', flow).group(1)
-        self.assertNotRegex(revert, r'(?m)^    concurrency:', 'revert jobs do not share the bisect queue')
+        self.assertNotIn('workflow_run:', flow)
+        self.assertNotIn('  revert:', flow)
+        revert = (ROOT / '.github/workflows/e2e-revert.yml').read_text()
+        self.assertIn("&& 'e2e-revert' || 'e2e-revert-skipped'", revert)
+        self.assertNotIn('group: e2e-bisect', revert)
 
     def test_completed_after_merge_runs_reach_the_revert_proof_not_the_bisect(self):
-        flow = (ROOT / '.github/workflows/e2e-bisect.yml').read_text()
+        flow = (ROOT / '.github/workflows/e2e-revert.yml').read_text()
         trigger = flow.split('\njobs:')[0]
         self.assertIn("workflows: ['CI · End-to-end on Mac + Linux']", trigger)
         self.assertIn('types: [completed]', trigger)
@@ -155,7 +156,8 @@ class Workflows(unittest.TestCase):
         self.assertIn('github.event.workflow_run.head_repository.full_name == github.repository', revert)
         self.assertIn('python3 tools/backbone_red.py --repo "$GITHUB_REPOSITORY" --run "$RUN_ID" --open', revert)
         self.assertIn('permission-actions: read', revert)
-        self.assertIn("if: github.event_name == 'workflow_dispatch'", flow.split('\n  revert:')[0])
+        self.assertIn('actions: write', revert)
+        self.assertIn('RERUN_TOKEN: ${{ github.token }}', revert)
 
 
 if __name__ == '__main__':

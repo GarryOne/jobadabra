@@ -18,6 +18,7 @@ done
 # Why (28 Oct 2026, owner): saved JSON is a preview, never authority to change main or open a PR.
 [ -z "$evidence" ] || [ "$dry" = 1 ] || { echo 'revert-red: evidence files require --dry-run' >&2; exit 2; }
 here="$(cd "$(dirname "$0")/.." && pwd)"
+source "$here/tools/pr-rest-lib.sh"
 full="$(git -C "$here" rev-parse --verify --end-of-options "$sha^{commit}")" || exit 2
 repo="${GITHUB_REPOSITORY:-$(git -C "$here" remote get-url origin | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##')}"
 args=(--repo "$repo" --sha "$full")
@@ -65,8 +66,8 @@ parents="$(git rev-list --parents -n 1 "$full" | awk '{print NF-1}')"
 revert_args=(-n)
 [ "$parents" -lt 2 ] || revert_args+=(-m 1)
 git revert "${revert_args[@]}" "$full" || { echo "revert-red: conflict; kept $tree; nothing pushed" >&2; exit 1; }
-msg="$(mktemp)"; body_file="$(mktemp)"
-trap 'rm -f "$msg" "$body_file"' EXIT
+msg="$(mktemp)"
+trap 'rm -f "$msg"' EXIT
 { echo "$title"; echo; echo "This reverts commit $full."; echo
   echo "Evidence: $proof"; echo
   echo 'Rung: none: revert of a proven backbone red'
@@ -78,9 +79,8 @@ trap 'rm -f "$msg" "$body_file"' EXIT
   echo 'Why-changed: breaking merge decisions — restore its parent after two backbone reds'
 } > "$msg"
 git commit -q -F "$msg"
-printf '%s\n' "$body" > "$body_file"
 # A final read catches main advancing or a red/green flip during the local revert.
 python3 -B "$here/tools/backbone_red.py" --repo "$repo" --sha "$full" >/dev/null
 printf 'revert-red: opening PR requested by twice-red evidence sha=%s pr=%s\n' "$full" "$merged"
 git push origin "HEAD:refs/heads/$topic"
-gh pr create --repo "$repo" --base main --head "$topic" --title "$title" --body-file "$body_file"
+pr_open "$repo" "$topic" "$title" "$body"

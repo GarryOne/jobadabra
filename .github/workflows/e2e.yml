@@ -33,7 +33,7 @@ on:
         type: string
         default: ''
       after_merge:
-        description: 'With pr_suites on main: the merged commit whose steps these are (main-steps.yml). Titled "E2E after merge · <sha> · <suites>"; a newer merge replaces a queued one; its red is filed on that PR'
+        description: 'With pr_suites on main: the merged commit whose steps these are (main-steps.yml). Titled "E2E after merge · <sha> · <suites>"; a newer merge replaces a queued one; e2e-revert.yml retries one backbone red and offers a revert after two'
         type: string
         default: ''
       fixed:
@@ -714,7 +714,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           AFTER_MERGE: ${{ inputs.after_merge }}
-        run: if [ -n "$AFTER_MERGE" ]; then python3 tools/e2e_bisect.py after-merge "$GITHUB_RUN_ID"; else python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"; fi   # after a merge: filed on its PR, no bisect
+        run: if [ -n "$AFTER_MERGE" ]; then python3 tools/e2e_bisect.py after-merge "$GITHUB_RUN_ID"; else python3 tools/e2e_bisect.py after-run "$GITHUB_RUN_ID"; fi   # after a merge: silent here; e2e-revert.yml owns the retry and revert
 
   # The release step of a gate by hand (gh workflow run e2e.yml -f gate_tag=<tag>): beta-approve.yml, the same job the release run (desktop.yml) shows as its own
   # "Release · Mac beta" step after "E2E · Mac + Linux" (release_run: not here, so it is not done twice).

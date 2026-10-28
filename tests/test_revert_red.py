@@ -108,6 +108,9 @@ d = json.loads(p.read_text())
 a = sys.argv[1:]
 with open(p.with_suffix('.calls'), 'a') as f: f.write(json.dumps(a) + '\\n')
 if a[:1] == ['api']:
+    if a[1:4] == ['-X', 'POST', 'repos/GarryOne/jobadabra/pulls']:
+        p.with_suffix('.body').write_text(next(x[5:] for x in a if x.startswith('body=')))
+        print('https://github.com/GarryOne/jobadabra/pull/99'); sys.exit(0)
     path = a[1]
     if path.endswith('/commits/main'): out = d['main']
     elif '/commits/' in path and '/pulls?' in path: out = d['pulls']
@@ -122,15 +125,12 @@ if a[:1] == ['api']:
         print(next(r['logs'][jid] for r in d['records'] if jid in r['logs'])); sys.exit(0)
     else: raise SystemExit('unexpected read: ' + path)
     print(json.dumps(out))
-elif a[:2] == ['pr', 'create']:
-    p.with_suffix('.body').write_text(Path(a[a.index('--body-file') + 1]).read_text())
-    print('https://github.com/GarryOne/jobadabra/pull/99')
 else: raise SystemExit('unexpected command: ' + str(a))
 ''')
         # The real script must not fall through to ship (including direct/auto-merge modes).
         (self.main / 'tools/ship.sh').write_text('#!/bin/sh\nexit 79\n')
 
-    def test_red_red_opens_only_a_branch_pr_leaving_main_untouched(self):
+    def test_one_backbone_suite_red_twice_after_merge_opens_rest_pr_leaving_main_untouched(self):
         self.live_fake()
         result = self.revert(self.bad)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -138,7 +138,12 @@ else: raise SystemExit('unexpected command: ' + str(a))
         self.assertEqual(git(self.origin, 'rev-parse', 'main'), self.bad)
         self.assertNotIn('bad.txt', git(self.origin, 'ls-tree', '-r', '--name-only', branch).splitlines())
         calls = [json.loads(line) for line in self.evidence.with_suffix('.calls').read_text().splitlines()]
-        self.assertEqual([c[:2] for c in calls if c[0] != 'api'], [['pr', 'create']])
+        posts = [c for c in calls if c[:3] == ['api', '-X', 'POST']]
+        self.assertEqual(len(posts), 1)
+        self.assertEqual(posts[0][3], 'repos/GarryOne/jobadabra/pulls')
+        self.assertIn('base=main', posts[0])
+        self.assertIn(f'head={branch}', posts[0])
+        self.assertEqual([c for c in calls if c[0] != 'api'], [], 'never gh pr create')
         self.assertIn('owner merges', self.evidence.with_suffix('.body').read_text())
 
     def test_an_existing_offer_is_not_pushed_or_opened_again(self):

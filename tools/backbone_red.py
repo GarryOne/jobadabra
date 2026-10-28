@@ -8,6 +8,7 @@ Reuses the existing main-run identities and environment classifier; missing evid
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -45,6 +46,35 @@ def job_state(job, log):
     return 'red' if detail and cause in ('check-failed', 'one-cause', 'timeout') else 'grey'
 
 
+def suite_states(record, lanes):
+    """One attempt -> active backbone suite states; incomplete shards and health evidence stay grey."""
+    run = record['run']
+    result = {}
+    selected = set(run['display_title'].split(' · ', 2)[2].split(','))
+    grouped = {}
+    for job in record['jobs']:
+        suite = suite_of(job['name'])
+        # Why (28 Oct 2026, owner): tolerant, suspended and retired suites never authorize a revert.
+        if suite not in selected or lanes.get(suite, {}).get('lane', 'backbone') != 'backbone':
+            continue
+        grouped.setdefault(suite, []).append(job_state(job, record.get('logs', {}).get(str(job.get('id')), '')))
+    for suite in selected:
+        if lanes.get(suite, {}).get('lane', 'backbone') != 'backbone':
+            continue
+        states = grouped.get(suite, ['grey'])
+        names = {j['name'] for j in record['jobs'] if suite_of(j['name']) == suite}
+        shards = [re.fullmatch(re.escape(suite) + r'-(\d+)of(\d+)', name) for name in names]
+        if any(shards):
+            count = int(next(m[2] for m in shards if m))
+            if names != {f'{suite}-{n}of{count}' for n in range(1, count + 1)}:
+                states = ['grey']
+        # Why (28 Oct 2026, owner): absent or running evidence is health grey, never an old red's authorization.
+        if run.get('status') != 'completed' or run.get('conclusion') not in ('success', 'failure'):
+            states = ['grey']
+        result[suite] = 'grey' if 'grey' in states else 'red' if 'red' in states else 'green'
+    return result
+
+
 def candidate(records, sha, lanes):
     """Recorded {run,jobs,logs} responses + tested SHA + registry suites -> revert proof or None.
 
@@ -64,28 +94,7 @@ def candidate(records, sha, lanes):
         if identity in seen:
             continue
         seen.add(identity)
-        selected = set(run['display_title'].split(' · ', 2)[2].split(','))
-        grouped = {}
-        for job in record['jobs']:
-            suite = suite_of(job['name'])
-            # Why (28 Oct 2026, owner): tolerant, suspended and retired suites never authorize a revert.
-            if suite not in selected or lanes.get(suite, {}).get('lane', 'backbone') != 'backbone':
-                continue
-            grouped.setdefault(suite, []).append(job_state(job, record.get('logs', {}).get(str(job.get('id')), '')))
-        for suite in selected:
-            if lanes.get(suite, {}).get('lane', 'backbone') != 'backbone':
-                continue
-            states = grouped.get(suite, ['grey'])
-            names = {j['name'] for j in record['jobs'] if suite_of(j['name']) == suite}
-            shards = [re.fullmatch(re.escape(suite) + r'-(\d+)of(\d+)', name) for name in names]
-            if any(shards):
-                count = int(next(m[2] for m in shards if m))
-                if names != {f'{suite}-{n}of{count}' for n in range(1, count + 1)}:
-                    states = ['grey']
-            # Why (28 Oct 2026, owner): absent or running evidence is health grey, never an old red's authorization.
-            if run.get('status') != 'completed' or run.get('conclusion') not in ('success', 'failure'):
-                states = ['grey']
-            state = 'grey' if 'grey' in states else 'red' if 'red' in states else 'green'
+        for suite, state in suite_states(record, lanes).items():
             url = run.get('html_url', '') + f'/attempts/{run.get("run_attempt", 1)}'
             observations.setdefault(suite, []).append((state, identity, url))
     for suite, values in sorted(observations.items()):
@@ -95,6 +104,26 @@ def candidate(records, sha, lanes):
         flipped = any(a == 'red' and b == 'green' for a, b in zip(known, known[1:]))
         if not flipped and len(pair) == 2 and all(value[0] == 'red' for value in pair):
             return {'sha': sha, 'suite': suite, 'attempts': [value[1] for value in pair], 'urls': [value[2] for value in pair]}
+    return None
+
+
+def second_attempt_run(records, sha, lanes):
+    """Return an after-merge run id with one completed red attempt, never a run already attempted twice.
+
+    The caller validates that sha is main's current PR merge. Uses the same suite/health rules as candidate().
+    """
+    if not re.fullmatch(r'[0-9a-f]{40}', sha):
+        return None
+    attempts = {}
+    for record in records:
+        run = record['run']
+        if after_merge(run, sha):
+            attempts.setdefault(run['id'], set()).add(int(run.get('run_attempt', 1)))
+    for record in records:
+        run = record['run']
+        # Why (29 Oct 2026, a8 on Gitar #2424): a lone backbone red requests its own second attempt, never a third.
+        if after_merge(run, sha) and attempts[run['id']] == {1} and 'red' in suite_states(record, lanes).values():
+            return run['id']
     return None
 
 
@@ -182,6 +211,13 @@ def main(argv=None):
             raise ValueError('unreadable lane registry')
         proof = candidate(data, sha, registry['suites'])
         if not proof:
+            retry = second_attempt_run(data, sha, registry['suites']) if args.open and snapshot is None else None
+            if retry is not None:
+                # Why (29 Oct 2026, a8 on Gitar #2424): the workflow token has actions:write; the App token is for the PR/branch writes.
+                env = {**os.environ, 'GH_TOKEN': os.environ['RERUN_TOKEN']} if os.environ.get('RERUN_TOKEN') else None
+                subprocess.run(['gh', 'run', 'rerun', str(retry), '--failed', '--repo', args.repo], check=True, env=env)
+                print(f'backbone-red: one red on attempt 1; second attempt requested (run {retry})')
+                return 0
             print('backbone-red: no same-suite red/red pair on this commit (flip, health, non-backbone or incomplete evidence)')
             return 2 if args.sha else 0
         proof['pr'] = merged[0]['number']

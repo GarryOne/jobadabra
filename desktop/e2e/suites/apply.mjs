@@ -14,6 +14,7 @@ import {ensureSetUp} from '../lib/seed.mjs';
 import {appLogLines, appLogText} from '../lib/app-log.mjs';
 import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
+import {proveBackground} from '../lib/background-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
 import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, pause, tailoredFrom} from '../lib/apply-fixtures.mjs';
@@ -49,7 +50,7 @@ function fixtureAnswers(fields) {
 
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
-  'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
+  'Background automation': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
@@ -418,6 +419,14 @@ export async function runApply(ctx, parts) {
     const strange = [...ctx.browser.requested].filter(host => !HOSTS.includes(host) && host !== '127.0.0.1' && host !== 'localhost' && host !== '');
     if (strange.length) throw new Error(`the browser asked for hosts outside the fixtures: ${strange.join(', ')}`);
     await removeJobsByUrl(ctx, urls);
+  }, {needs: ctx.needs});
+
+  // Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills the form, the person's Submit in the live view posts it once.
+  // After "through all of it" because it is the one place a Submit is allowed after the person's own (submitProblems above), and it seeds its own job.
+  await ctx.run('Background automation: the hidden browser fills a form, the person\'s Submit in the live view posts it once and the job becomes Applied', async () => {
+    const form = FORMS.submitter;
+    await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
+       await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});
   }, {needs: ctx.needs});
 
   // Found by this suite (2 Oct 2026): extension/review.js built the panel's list from native fields only, so a REQUIRED custom widget it cannot read (here a

@@ -14,6 +14,17 @@ test('background browser launch uses only its owned profile and starts without a
   assert.equal(args.some(arg => /^https?:/.test(arg)), false);
 });
 
+test('the e2e harness may point the hidden browser at the test forms, nobody else: only under the e2e flag, only a host map and the test certificate', () => {
+  const extra = JSON.stringify(['--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5', '--ignore-certificate-errors', '--proxy-server=http://evil.example', '--remote-debugging-address=0.0.0.0']);
+  const asked = {JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: extra};
+  assert.deepEqual(browserArguments('/p', '/e', asked), browserArguments('/p', '/e', {}), 'a person\'s environment never changes the launch, even with the variable set');
+  const args = browserArguments('/p', '/e', {...asked, JOB_PILOTTO_E2E: '1'});
+  assert.ok(args.includes('--host-resolver-rules=MAP boards.greenhouse.io 127.0.0.1:5'));
+  assert.ok(args.includes('--ignore-certificate-errors'));
+  assert.equal(args.some(arg => /proxy-server|remote-debugging-address/.test(arg)), false, 'nothing else is let through');
+  assert.deepEqual(browserArguments('/p', '/e', {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: 'not json'}), browserArguments('/p', '/e', {}));
+});
+
 test('a cached CDP port is accepted only after the browser proves the exact owned profile', () => {
   assert.equal(verifiedDebugPort('12345\n/devtools/browser/a', ['--user-data-dir=/owned/profile'], '/owned/profile'), 12345);
   assert.equal(verifiedDebugPort('12345\n/devtools/browser/a', ['--user-data-dir=/someone/else'], '/owned/profile'), null);

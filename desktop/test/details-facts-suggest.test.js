@@ -95,3 +95,21 @@ test('suggestions are drafts (not the saved baseline); a label click keeps one; 
   assert.match(asking.textContent, /EU \/ EEA/);
   assert.ok(factsNow().eligibility.every(line => !line.value.startsWith('yes') || line.label !== 'EU / EEA + Switzerland'), 'no nationality: nothing suggested over the asked row');
 });
+
+// Why (28 Oct 2026, #2346 review): the previous nationality's suggestion is never kept as an answer when the new nationality suggests nothing yet, and an AI ask that
+// brought nothing back is asked again at the next change.
+test('UK then Canada before the AI answers: the UK suggestions leave; an empty AI answer is asked again', async () => {
+  const into = await open([{label: 'Nationality', value: 'United Kingdom'}, zone('EU / EEA + Switzerland'), zone('United Kingdom'), zone('United States')]);
+  nationalityChanged(into);
+  assert.equal(status('United States'), 'no, needs sponsorship', 'positive control: the UK suggestion is there');
+  asked.length = 0;
+  const empty = window.pilot.zoneSuggestions;
+  window.pilot.zoneSuggestions = async names => { asked.push(names); return {}; };
+  Object.defineProperty(into.querySelector('.qa-nationality'), 'value', {get: () => 'Chile', configurable: true});
+  nationalityChanged(into);
+  assert.equal(status('United States'), '', 'the UK suggestion is not kept as an answer');
+  await new Promise(done => setTimeout(done, 0));
+  nationalityChanged(into);
+  assert.equal(asked.length, 2, 'an empty answer is asked again');
+  window.pilot.zoneSuggestions = empty;
+});

@@ -75,7 +75,8 @@ function askZones(into) {
   const other = nationalityNow(into).filter(name => !inZones(name)), key = keyOf(other);
   if (!other.length || aiAsked.has(key) || !window.pilot?.zoneSuggestions) return;
   aiAsked.add(key);
-  window.pilot.zoneSuggestions(other).then(found => { aiZones.set(key, found || {}); redrawConcluded(into); }).catch(() => {});
+  // Why (28 Oct 2026, #2346 review): an empty answer (no AI, a failed call) is asked again at the next change, as lib/zone-suggest.js says.
+  window.pilot.zoneSuggestions(other).then(found => { if (!Object.keys(found || {}).length) { aiAsked.delete(key); return; } aiZones.set(key, found); redrawConcluded(into); }).catch(() => aiAsked.delete(key));
 }
 const nationalityNow = into => nationalityOf(into.querySelector('.qa-nationality')?.value || '') || [];
 // The nationality changed: every zone with no answer of the person's is preselected again from it. Why (28 Oct 2026, owner: "once we add/change the nationality,
@@ -87,7 +88,7 @@ function redrawConcluded(into) {
     const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => zoneOfLabel(factOf(each).label) === zone);
     if (!line || (isAnswered(factOf(line).value) && !line.dataset.suggested)) continue;
     const value = suggestedFor(zone, nationality);
-    line.replaceWith(suggestionRow(zone, value, factOf(line)));
+    line.replaceWith(suggestionRow(zone, value, line.dataset.suggested ? null : factOf(line)));   // an old suggestion is never carried over as a saved row
     suggested ||= Boolean(value);
   }
   if (suggested) detailsChanged();

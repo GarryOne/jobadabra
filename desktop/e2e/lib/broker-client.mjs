@@ -2,6 +2,7 @@
 // Why (28 Oct 2026, owner): CI's AI runs on his Codex plan; a job proves itself with GitHub's per-run OIDC token (the login never leaves the broker), and each workflow keeps its Claude tier:
 // Haiku -> small (gpt-6-luna), Sonnet -> mid (gpt-6.1-sol), Opus -> large (gpt-6-astra) (jobadabra-web lib/tiers.mjs is the server's side of the same map).
 export const AUDIENCE = 'jobadabra-codex-broker';
+/** The broker's address: takes env, returns CODEX_BROKER_URL when set, else the deployed workers.dev address (jobadabra-web workers/codex-broker). A wrong address fails as 'unreachable' in askBroker. */
 export const BROKER_URL = env => env.CODEX_BROKER_URL || 'https://jobadabra-codex-broker.jobpilotto.workers.dev';
 
 /** A Claude model id -> the broker's tier name ('small' | 'mid' | 'large'); an unknown id runs on 'mid'. */

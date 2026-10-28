@@ -82,7 +82,7 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
         if (asked.status === 'capped') noteBrokerCapped(asked.detail, env);
         return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: asked.status === 'capped' ? capMessage(null, env, asked.detail) : asked.detail}}), {status: 503, headers: {'content-type': 'application/json'}});
       }
-      const answer = JSON.stringify({type: 'message', role: 'assistant', model: asked.model, ...asked.message});   // TODO(AI): count the broker's calls in the judges' ai-meter and /admin/ai-cost (spec PR 7, 28 Oct 2026)
+      const answer = JSON.stringify({type: 'message', role: 'assistant', model: asked.model, ...asked.message});   // TODO(AI): count broker calls in the judges ai-meter and admin ai-cost (28 Oct 2026)
       keep(key, {status: 200, contentType: 'application/json', body: Buffer.from(answer)}, env);
       return new Response(answer, {status: 200, headers: {'content-type': 'application/json'}});
     }

@@ -12,14 +12,14 @@ functions over McCabe 10. Rule: new code only, old code is never blocked. A rule
 | 1/4 | Gitar rule `.gitar/review/clean-code.md` | rule file only; Gitar reviews this PR with it |
 | 2/4 | eslint-plugin-sonarjs on changed code: `tools/pre-push-check.sh` (changed files, under 60 s, agreed with fl) and the PR job; old code via a baseline | sampled precision per rule in the PR; a new over-limit function fails, an old one does not |
 | 3/4 | Ruff small rule set on changed Python lines, same two places | sampled precision per rule; same pass/fail pair |
-| 4/4 | SonarQube Cloud on the public repo, quality gate on new code (duplication, complexity, reliability) | owner signs in once; gate shows on a PR; private repo stays out until the owner says paying is fine |
+| 4/4 | ~~SonarQube Cloud~~ skipped (owner, 28 Oct 2026): this closes the plan | see "4/4: SonarQube Cloud, skipped" below |
 
 ## Progress
 - [x] Baseline numbers and sketch (proof: docs/superpowers/plans/2026-10-28-clean-code-checks.md)
 - [x] 1/4 Gitar rule (proof: .gitar/review/clean-code.md)
 - [x] 2/4 sonarjs on new code (proof: tools/clean-code-js.mjs)
 - [x] 3/4 Ruff on new code (proof: tools/clean-code-py.py)
-- [ ] 4/4 SonarQube Cloud
+- [x] 4/4 SonarQube Cloud skipped by the owner, plan closed (proof: docs/superpowers/plans/2026-10-28-clean-code-checks.md)
 
 ## Baseline: rerun on `bacbe2a`
 Tools (installed outside the repo): jscpd, eslint 9.39.5 + eslint-plugin-sonarjs 4.2.2, Ruff 0.17.3. Run on a `git archive bacbe2a` copy.
@@ -63,3 +63,8 @@ Ruff 0.17.3, `--isolated`, over `src tools tests worker` of the baseline tree; p
 | `SIM115`, `RET503`, `PERF401`, `SIM105`, `RUF005`, `B905` | 17, 7, 31, 24, 43, 29 | dropped: style, scripts |
 
 Mode: `tools/clean-code-py.py` runs in `tools/pre-push-check.sh` (the push gate; CI's pr-gate job runs the same script) on changed `src/` and `tools/` files and keeps findings on added lines. Ruff is pinned and installed on first use into `~/.cache/jobadabra` (about 10 s once; 0.6 s after).
+
+## 4/4: SonarQube Cloud, skipped
+Owner, 28 Oct 2026: "Skip SonarQube for now". Why: its free tier is for public repos with an OSI-approved licence; this repo is FSL-1.1-ALv2 (source-available, not OSI), and the free tier for other projects is private-only up to 50k lines (the repo is about 327k). A paid plan needs the owner's yes and a looked-up price first. Nothing was signed up for or bought.
+What stays unmeasured by a tool: duplication across files (baseline 1.0% by jscpd; rerun the command in the baseline section to see the drift).
+Revisit when: the licence changes to an OSI one, or the owner wants the dashboard and a paid plan.

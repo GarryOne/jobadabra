@@ -1,4 +1,4 @@
-// Which build runs, over IPC (owner, 16 Oct 2026): the commit the window runs and, when the checkout has gained desktop/extension commits since the app started, "Restart to get N fixes".
+// Which build runs, over IPC (owner, 16 Oct 2026): the commit the window runs and, when PRs that change desktop/extension were merged into the checkout since the app started, "Restart to get N fixes".
 // A package says its commit from build-info.json (scripts/stage.mjs); a source run from the checkout's HEAD at start. A package gets its fixes through the sidebar's Update button (lib/updater.js), so it is never "ahead" here.
 // Packaged builds show "v<version> · What's new" (whatsNew = the changelog URL), source runs "<commit> · <time>".
 // Guards: test/build-state.test.js (the numbers), test/build-handlers.test.js (the two handlers).

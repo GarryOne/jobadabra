@@ -1,5 +1,5 @@
 // The window says which build runs (owner, 16 Oct 2026: the app ran a build older than the merged fixes and he tested old code without knowing): the commit and its time under the menu (a package: its version and a "What's new" link to the changelog),
-// and, when the checkout has gained desktop/extension commits since the app started, "Restart to get N fixes" (a source run; a package gets its fixes through the Update button, pages/update.js).
+// and, when PRs that change desktop/extension were merged into the checkout since the app started, "Restart to get N fixes" (a source run; a package gets its fixes through the Update button, pages/update.js).
 // The state comes from main (lib/build-handlers.js); it is asked again every minute and when the window gets focus. Its command is in ⌘K (pages/nav.js).
 import {$, show} from './core.js';
 import {toastMessage} from './startup.js';

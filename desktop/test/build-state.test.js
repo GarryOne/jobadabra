@@ -2,6 +2,10 @@
 process.env.TZ = 'UTC';   // the label is local time: the same words on every machine and CI runner
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {execFileSync} from 'node:child_process';
+import {mkdtempSync, mkdirSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {appBuild, extensionBuild, fixesLabel, labelOf, reloadLabel, restartLabel} from '../lib/build-state.js';
 
 const T = '2026-10-16T14:02:00Z';
@@ -19,8 +23,8 @@ test('a build is told as short sha and time; no sha says nothing', () => {
   assert.equal(labelOf({commit: '', time: T}), '');
 });
 
-test('the app run from source: its start commit, and how many desktop/extension commits the checkout has gained since', () => {
-  const run = fakeGit({'rev-parse --short=7 HEAD': 'abc1234\n', 'log -1 --format=%cI HEAD': `${T}\n`, 'rev-list --count abc1234..HEAD -- desktop extension': '3\n'});
+test('the app run from source: its start commit, and how many merged desktop/extension PRs the checkout has gained since', () => {
+  const run = fakeGit({'rev-parse --short=7 HEAD': 'abc1234\n', 'log -1 --format=%cI HEAD': `${T}\n`, 'rev-list --count --merges --first-parent abc1234..HEAD -- desktop extension': '3\n'});
   const state = appBuild({repo: '/r', running: {commit: 'abc1234', time: T}, run, now: 1e6});
   assert.deepEqual({ahead: state.ahead, label: state.label}, {ahead: 3, label: 'abc1234 · 16 Oct 14:02'});
   assert.equal(appBuild({repo: '/r', running: {commit: 'abc1234', time: T}, run: fakeGit({'rev-list --count': '0\n'}), now: 2e6}).ahead, 0);
@@ -48,4 +52,18 @@ test('the buttons say how many fixes they bring', () => {
   assert.equal(reloadLabel(4), 'Reload the extension to get 4 fixes');
   assert.equal(reloadLabel(null), 'Reload the extension to get the latest fixes');
   assert.equal(fixesLabel(2), '2 fixes');
+});
+
+test('Restart counts the PRs merged into main that change the app, not their commits (owner, 29 Oct 2026: "show merged PRs in master, not other things")', () => {
+  const repo = mkdtempSync(join(tmpdir(), 'build-state-'));
+  const git = (...args) => execFileSync('git', ['-C', repo, ...args], {encoding: 'utf8', env: {...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t'}}).trim();
+  const commit = (file, msg) => { mkdirSync(join(repo, file, '..'), {recursive: true}); writeFileSync(join(repo, file), msg); git('add', '-A'); git('commit', '-qm', msg); };
+  git('init', '-q', '-b', 'main');
+  commit('README.md', 'start');
+  const start = git('rev-parse', '--short=7', 'HEAD');
+  const pr = (name, files) => { git('checkout', '-qb', name); files.forEach((f, i) => commit(f, `${name} ${i}`)); git('checkout', '-q', 'main'); git('merge', '-q', '--no-ff', '-m', `Merge ${name}`, name); };
+  pr('app-fix', ['desktop/a.js', 'desktop/b.js', 'desktop/c.js']);   // one PR, three commits
+  pr('extension-fix', ['extension/x.js', 'extension/y.js']);
+  pr('docs-only', ['docs/d.md']);   // changes nothing the app runs
+  assert.equal(appBuild({repo, running: {commit: start, time: T}, now: 9e6}).ahead, 2, 'two merged PRs change the app; five commits, one docs PR');
 });

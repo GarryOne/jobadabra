@@ -39,7 +39,7 @@ export const READERS = {
 // voice and this job come with D1c/D2): a cell is claimed only for a live reader's part that is gathered. PAGES: parts a step still reads straight from a page or file.
 // Add a reader to LIVE in the PR that wires it, and a part to GATHERED in the PR that reads it; test/about-you-readers.test.js fails when the exported JSON
 // (docs/about-you-readers.json) is out of date, or when GATHERED disagrees with a real aboutYou() call.
-export const LIVE = ['kit', 'portrait'];
+export const LIVE = ['kit', 'portrait', 'cv_tailor'];   // cv_tailor: lib/cv.js tailor takes its bundle (D1c-1, 28 Oct 2026)
 export const GATHERED = ['details', 'cv', 'learned', 'strategy'];
 export const PAGES = {form: ['details', 'cv', 'learned', 'strategy'], kit: ['details', 'learned', 'strategy']};
 export const NAMES = {

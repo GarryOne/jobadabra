@@ -110,7 +110,9 @@ Bullets flagged "extra" come from other versions of the same person's CV: they a
 only where it answers the posting better than a main bullet, instead of that bullet (the role must not get longer), and leave the
 others out; they never count as dropped. "extra_skills" are real skills from those versions: the summary may name one the posting
 asks for, a role's skills line never gains one.
-Hard rules: use only facts from the CV and the facts the Profile states as confirmed; never use anything marked ❓, never
+<about_you> holds what the candidate told us: details (confirmed facts), strategy (what they look for) and learned (answers they gave on forms). A learned answer may
+shape the summary only where it answers the posting (e.g. a stated way of working the posting asks for); never put one in a role's bullets or skills, and never invent anything from it.
+Hard rules: use only facts from the CV and the facts in <about_you>; never use anything unknown or still a question, never
 add a tool, technology, certification, number, employer or responsibility that isn't there, never change numbers (keep
 **bold** figures), never inflate scope ("led" only where the CV says led). Same language as the CV. The result must fit
 the same pages: don't make the CV longer.
@@ -136,15 +138,27 @@ const numbered = (cv, room = null) => ({summary: cv.summary || '', ...(room?.sum
     skills: r.skills || ''}))})),
   ...(cv.skills ? {skills: cv.skills} : {}), ...(cv.extraSkills ? {extra_skills: cv.extraSkills} : {})});
 
+// What the candidate told us, as this prompt takes it: the About you bundle of CV tailoring (lib/about-you.js: details and strategy without salary, learnings
+// without sensitive ones, conflicts or pay) minus the CV, which the prompt already carries numbered. about: a bundle (tests); else read here, lazily
+// (about-you.js imports this file). A part that could not be read is named, never filled from anywhere else.
+async function aboutText(storage, about) {
+  const bundle = about || await import('./about-you.js').then(mod => mod.aboutYou(storage, 'cv_tailor')).catch(() => null);
+  if (!bundle) return '(not available this time)';
+  const parts = {...bundle.parts};
+  delete parts.cv;
+  return JSON.stringify(parts).slice(0, 40000) + (bundle.lacked.filter(name => name !== 'cv').length ? `\n(not available this time: ${bundle.lacked.filter(name => name !== 'cv').join(', ')})` : '');
+}
+
 // base: the main CV with the experience bank's extra bullets (lib/experience.js withExtras); the main CV itself when none.
 // room: set when the PDF will be edited in place (no drops, a length limit per text).
-export async function tailor(storage, posting, apiKey, {client = null, feedback = '', profile = '', base = null, room = null} = {}) {
+// about: the About you bundle of CV tailoring (tests pass one); else read from this Mac.
+export async function tailor(storage, posting, apiKey, {client = null, feedback = '', base = null, room = null, about = null} = {}) {
   const cv = base || baseCv(storage);
   if (!cv) throw new Error('No base CV yet');
   const anthropic = client || anthropicApi(apiKey);
   const response = await anthropic.messages.create({
     model: MODEL, max_tokens: 12000, system: TAILOR_INSTRUCTIONS + (room ? IN_PLACE_RULES : ''),
-    messages: [{role: 'user', content: `<cv>\n${JSON.stringify(numbered(cv, room), null, 1)}\n</cv>\n\n<profile>\n${(profile || '').slice(0, 40000)}\n</profile>\n\n` +
+    messages: [{role: 'user', content: `<cv>\n${JSON.stringify(numbered(cv, room), null, 1)}\n</cv>\n\n<about_you>\n${await aboutText(storage, about)}\n</about_you>\n\n` +
       `<posting>\n${posting.title} at ${posting.company}${posting.location ? ` (${posting.location})` : ''}\n\n${(posting.description || '(no description stored: tailor to the title)').slice(0, 30000)}\n</posting>` +
       (feedback ? `\n\n<feedback>${feedback}</feedback>` : '')}],
     output_config: {format: {type: 'json_schema', schema: TAILOR_SCHEMA}},

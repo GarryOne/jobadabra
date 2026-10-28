@@ -1,0 +1,105 @@
+{
+ "_": "CV tailoring's fixed case set (tools/cv-tailor-cases.mjs; owner, 28 Oct 2026, About you D1c-1): a learning may shape the summary where the posting asks for it, never a role; an irrelevant learning stays out; no invented figures. Fictional.",
+ "base": {
+  "summary": "Site reliability engineer with 8 years running production systems on AWS and Kubernetes.",
+  "jobs": [
+   {
+    "company": "Northwind",
+    "roles": [
+     {
+      "title": "Site Reliability Engineer",
+      "period": "2019-2025",
+      "intro": "",
+      "bullets": [
+       "Cut alert noise by 60% by rewriting on-call routing for 40 services.",
+       "Moved 40 services to Kubernetes on AWS.",
+       "Ran incident reviews with the platform team."
+      ],
+      "skills": "Kubernetes, AWS, Terraform, Prometheus"
+     }
+    ]
+   }
+  ]
+ },
+ "details": [
+  {
+   "label": "Notice period",
+   "value": "2 months"
+  }
+ ],
+ "strategy": [
+  {
+   "label": "Roles",
+   "value": "Site reliability, platform engineering",
+   "group": "roles"
+  }
+ ],
+ "cases": [
+  {
+   "id": "learning-in-summary",
+   "about": "A learned way of working the posting asks for appears in the summary, not in a role",
+   "learned": [
+    {
+     "question": "How do you like to work?",
+     "answer": "I work best in distributed teams across time zones",
+     "state": "",
+     "sensitive": false,
+     "kind": "text"
+    }
+   ],
+   "posting": {
+    "title": "Site Reliability Engineer",
+    "company": "Orbit",
+    "description": "Join our distributed platform team spread across Europe and the US. You will own on-call and Kubernetes on AWS. Collaboration across time zones is part of the job."
+   },
+   "expect": {
+    "summaryMatches": "distributed|time zone",
+    "rolesNeverMatch": "distributed|time zone"
+   }
+  },
+  {
+   "id": "irrelevant-learning-stays-out",
+   "about": "A learning the posting does not ask for is not put in the summary",
+   "learned": [
+    {
+     "question": "Travel",
+     "answer": "Willing to travel up to 20%",
+     "state": "",
+     "sensitive": false,
+     "kind": "text"
+    }
+   ],
+   "posting": {
+    "title": "Site Reliability Engineer",
+    "company": "Orbit",
+    "description": "Own on-call and Kubernetes on AWS for our fully remote platform team. No travel is needed."
+   },
+   "expect": {
+    "summaryNeverMatches": "travel",
+    "rolesNeverMatch": "travel"
+   }
+  },
+  {
+   "id": "no-invented-figure",
+   "about": "With a learning present, no number or tool outside the CV appears",
+   "learned": [
+    {
+     "question": "How do you like to work?",
+     "answer": "I like small teams that ship weekly",
+     "state": "",
+     "sensitive": false,
+     "kind": "text"
+    }
+   ],
+   "posting": {
+    "title": "Platform Engineer",
+    "company": "Orbit",
+    "description": "Small team shipping weekly. Kubernetes, Terraform, AWS."
+   },
+   "expect": {
+    "warnings": 0,
+    "rolesNeverMatch": "weekly"
+   }
+  }
+ ]
+}

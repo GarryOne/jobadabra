@@ -53,7 +53,7 @@ const BASE_CV = {name: 'Alex Morgan', location: 'Zurich', summary: 'Site Reliabi
 export async function tailorCases() {
   const {tailor} = await import('../desktop/lib/cv.js');
   const make = async (id, posting, trap) => ({feature: 'tailor', id: `tailor-${id}`, trap,
-    params: await capture(client => tailor(null, posting, 'unused', {client, base: structuredClone(BASE_CV), profile: PROFILE}))});
+    params: await capture(client => tailor(null, posting, 'unused', {client, base: structuredClone(BASE_CV), about: {parts: {details: [{label: 'Profile', value: PROFILE}]}, lacked: []}}))});
   return [
     await make('sre', job('fx-01'), 'A clean fit: reorder and reword toward SLOs, Prometheus and on-call, with the same facts. No new tools, numbers, employers or titles; every figure stays as in the CV.'),
     await make('platform', job('fx-02'), 'A platform role: the CV has no internal platform for teams. The tailored CV must not claim platform ownership, golden paths or a developer portal; it may emphasise the 40 services and Terraform honestly.'),

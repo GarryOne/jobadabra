@@ -16,6 +16,7 @@ import * as verdicts from './question-verdicts.js';
 import {factsOf} from './base-facts.js';
 import {client as engineClient} from './ai/index.js';
 import {splitMark} from '../renderer/question-kind.js';
+import {keyOf} from '../renderer/question-filter.js';
 import {openStore} from './store/index.js';
 import * as notionGate from './notion-gate.js';
 import {log} from './log.js';
@@ -38,19 +39,20 @@ const known = (label, aliases = []) => (!asksQuestion(label) && KNOWN.test(label
 /**
  * Sorts what you typed: a personal fact for an empty detail, or an answer for What we learned.
  * items [{label, value, kind}]; answered: the answers page's lines, lower case ("driving license: b"). -> {details: {street: ...}, answers: [{label, value}]};
- * what is already known is left out.
+ * what is already known is left out. An item with remember false (the panel's Remember switched off) is kept nowhere (not in What we learned, not in Your details even for a personal detail): jobOnly [{label, value}].
  */
 export function plan(items, {contact = {}, answered = new Set(), aliases = []} = {}) {
-  const details = {}, fresh = [];
+  const details = {}, fresh = [], jobOnly = [];
   for (const item of Array.isArray(items) ? items : []) {
     const label = clean(item?.label), value = clean(item?.value);
     if (label.length < 2 || !value || value.length > 300 || known(label, aliases)) continue;
+    if (item.remember === false) { jobOnly.push({label, value}); continue; }   // Why (PR C, owner 28 Oct 2026; Gitar on #2351): Remember off = this job only, a personal detail included
     const key = personalKey(label, aliases);
     if (key) { if (!contact[key]) details[key] = value; continue; }
     if (answered.has(`${label}: ${value}`.toLowerCase())) continue;
     fresh.push({label, value});
   }
-  return {details, answers: fresh};
+  return {details, answers: fresh, jobOnly};
 }
 
 // client: the AI engine (default the user's, lib/ai/index.js); propose: the meanings pack's proposal channel (lib/server-hooks.js proposalReporter).
@@ -60,7 +62,8 @@ export async function save(storage, payload, {notify = () => {}, contactSaved = 
     const page = await openStore(storage, {fetcher}).page('answers').text();
     const answered = new Set(page.split('\n').map(line => splitMark(line.replace(/^[-*]\s+/, '')).text.trim().toLowerCase()));   // a line's kind mark is the form's words (Gitar, #2326)
     const aliases = await sharedMeanings.lookup(storage).catch(() => []);   // the shared label meanings (cached; none with technical reports off)
-    const {details, answers} = plan(payload?.items, {contact, answered, aliases});
+    const {details, answers, jobOnly} = plan(payload?.items, {contact, answered, aliases});
+    if (jobOnly.length) verdicts.noteJobOnly(storage, jobOnly.map(each => each.label), {url: String(payload?.job || '')});
     if (Object.keys(details).length) { const merged = await contactDetails.save(storage, {...contact, ...details}, fetcher); contactSaved(merged); }
     // Why (PR B2, owner 28 Oct 2026): what you typed is judged against What we learned like the fill's answers (lib/learnings.js), confirmed: it is yours. An
     // answer the AI did not judge (no AI, a busy one) is kept as before, a line under the form's own words.
@@ -78,4 +81,14 @@ export async function save(storage, payload, {notify = () => {}, contactSaved = 
     log('learned', `could not keep the answers: ${error.message}`);
     return {ok: false, error: error.message};
   }
+}
+
+/**
+ * The panel's Remember switch before the person decides (PR C, owner 28 Oct 2026: on by default, off when the question names the company). The AI's verdict
+ * says it (lib/question-reuse.js: one_job, consent), no company-name match here; a question not judged stays on. -> {label: boolean}.
+ */
+export async function rememberDefaults(storage, labels, {client = engineClient(storage), company = '', host = ''} = {}) {
+  const asked = (Array.isArray(labels) ? labels : []).map(clean).filter(Boolean).slice(0, 40);
+  const {verdicts: known} = await verdicts.ensure(storage, asked, {company, host, ai: {client}}).catch(() => ({verdicts: {}}));
+  return Object.fromEntries(asked.map(label => [label, !['one_job', 'consent'].includes(known[keyOf(label)]?.reuse)]));
 }

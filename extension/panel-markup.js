@@ -114,6 +114,13 @@
     .stopped b, .verify b { display: block; font-size: 14.5px; } .stopped .s-text, .verify .v-text { color: var(--muted); font-size: 12.5px; }
     .recheck { justify-self: start; align-self: flex-start; }
     .left h4 { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+    /* Remember (PR C, owner 28 Oct 2026): what you typed, with a switch per answer; on = kept for the next forms (What we learned), off = this job only. */
+    .mine h4 { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+    .mine .item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+    .mine .what { flex: 1; min-width: 0; } .mine .what b { display: block; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mine .what span { display: block; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mine label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); flex: none; cursor: pointer; } .mine label input { accent-color: var(--good); margin: 0; }
+    .jp.working .mine { display: none; }
     .left .item { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
     .verify:not([hidden]) ~ .left, .verify:not([hidden]) ~ .recheck { display: none; }
     .verify { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; padding: 12px; border-radius: 12px; background: var(--warn-soft); border: 1px solid var(--line); }
@@ -151,6 +158,7 @@
         <div class="note trace-note" hidden><span>Chrome shows a debugging bar while Jobadabra keeps a trace of this fill, so you can report a problem.</span><button class="got-it" type="button">Got it</button></div>
         <div class="note" hidden><span></span><button class="anyway" hidden>Fill anyway</button></div>
         <div class="left" hidden><h4>Left for you</h4><p class="knock" hidden></p><div class="list"></div></div>
+        <div class="mine" hidden><h4>You answered</h4><div class="mine-list"></div></div>
         <button class="secondary recheck" type="button" hidden>Check form again</button>
         <div class="actions">
           <div class="claude-offer" hidden></div>

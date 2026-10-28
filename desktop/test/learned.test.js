@@ -44,3 +44,21 @@ test('what you typed is sorted by the shared label meanings too, any language: "
   assert.equal(personalKey('Rua'), '', 'without the shared meanings, the old words alone do not know it');
   assert.equal(personalKey('Strasse'), 'street');
 });
+
+test('an answer with Remember off is kept out of What we learned and counted as this job only (PR C)', () => {
+  const {answers, jobOnly} = plan([{label: 'Driving license', value: 'B'}, {label: 'Why Acme?', value: 'The mission', remember: false}, {label: 'Notice period', value: '1 month', remember: true}]);
+  assert.deepEqual(answers.map(each => each.label), ['Driving license', 'Notice period']);
+  assert.deepEqual(jobOnly, [{label: 'Why Acme?', value: 'The mission'}]);
+});
+
+test('Remember starts on, and off for a question the AI says belongs to this one employer (PR C)', async () => {
+  const {rememberDefaults} = await import('../lib/learned.js');
+  let settings = {};
+  const storage = {secret: () => '', settings: () => settings, saveSettings: next => { settings = {...settings, ...next}; }};
+  const client = {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({verdicts: [
+    {label: 'Notice period', verdict: 'reusable', covered_by: '', value: '', topic: 'notice period', fact: '', asks: '', country: '', sensitive: false},
+    {label: 'Why do you want to join Acme?', verdict: 'one_job', covered_by: '', value: '', topic: 'why us', fact: '', asks: '', country: '', sensitive: false}]})}], usage: {}})}};
+  const result = await rememberDefaults(storage, ['Notice period', 'Why do you want to join Acme?', 'Unjudged'], {client, company: 'Acme'});
+  assert.deepEqual(result, {'Notice period': true, 'Why do you want to join Acme?': false, Unjudged: true});
+  assert.deepEqual(await rememberDefaults(storage, ['Notice period'], {client: null}), {'Notice period': true}, 'no AI: on, as the default says');
+});

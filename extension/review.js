@@ -335,7 +335,7 @@
     if (message.state === 'working') { applyWorking = true; if (!stepShowing() && host.isConnected) { const was = stepped; showStep(workerStep || 'Starting…'); stepped = was; if (!open) setOpen(true); } }
   });
 
-  const learn = window.__jobPilottoPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobPilottoPanelForm});
+  const learn = window.__jobPilottoPanelLearn.start({send, alive: () => host.isConnected, form: window.__jobPilottoPanelForm, mine: {box: $('.mine'), list: $('.mine-list')}});
 
   // ---- in step with the app ----
   let watch = [], timer = null, busy = false, jobAsked = '';
@@ -345,6 +345,7 @@
     const state = render();
     if (!state || busy) return;
     learn.reportMisses(state.list);
+    learn.showMine();
     busy = true;
     try {
       const payload = window.__jobPilottoReviewPayload(state, watch, {agree: AGREE, find});

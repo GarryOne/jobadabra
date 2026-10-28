@@ -83,3 +83,8 @@ export let errorWatcher = () => {};  // the extension's decision lines, read for
 export function setErrorWatcher(fn) { errorWatcher = fn; }
 export let openHandler = () => false;
 export function setOpenHandler(fn) { openHandler = fn; }
+
+// The panel's Remember switch defaults for the answers you typed: {labels, host} -> {label: boolean} (lib/learned.js rememberDefaults; unjudged stays true).
+export let rememberHandler = async () => ({});
+/** Sets the handler behind POST /extension/remember: takes {labels, host}, returns {label: boolean}; the default answers {} (every switch stays on). */
+export function setRememberHandler(fn) { rememberHandler = fn; }

@@ -2,7 +2,7 @@
 // only), what you answered yourself and what the fill missed (labels and kinds, never a value), and the Submit press. Injected before review.js (panel-files.js);
 // review.js calls window.__jobPilottoPanelLearn.start(...) once the panel mounts. Guarded by worker/test/submit-press, panel-widgets, extension-files.
 (() => {
-  window.__jobPilottoPanelLearn = {start({send, alive, form}) {
+  window.__jobPilottoPanelLearn = {start({send, alive, form, mine}) {
   const {fields, question, visible, clean} = form;
   // ---- controls the form model did not read (learning input; see page/skeleton.js) ----
   // A widget that is not a native input and is part of no field the panel counted: its fingerprint, structure (no text) and
@@ -66,7 +66,34 @@
       if (!label || !value || value.length > 300 || SECRET.test(label)) continue;
       out.set(label.toLowerCase(), {label, value, kind});
     }
-    return [...out.values()].slice(0, 40);
+    return [...out.values()].slice(0, 40).map(item => ({...item, remember: remembered(item.label)}));
+  };
+  // Remember (PR C, owner 28 Oct 2026): per typed answer, on by default; the app says off for a question that belongs to one employer (its AI verdict, never a word
+  // match here: lib/learned.js rememberDefaults). The person's own switch wins; a default not answered yet stays on.
+  const chosen = new Map(), defaults = new Map(), asked = new Set();
+  const remembered = label => (chosen.has(label.toLowerCase()) ? chosen.get(label.toLowerCase()) : defaults.get(label.toLowerCase()) !== false);
+  const showMine = () => {
+    const box = mine?.box, list = mine?.list;
+    if (!box || !list) return;
+    const items = learned().filter(item => item.kind === 'text' || item.kind === 'option');
+    const fresh = items.map(item => item.label).filter(label => !asked.has(label.toLowerCase()));
+    if (fresh.length) {
+      fresh.forEach(label => asked.add(label.toLowerCase()));
+      send({type: 'rememberDefaults', url: location.href, labels: fresh}).then(reply => {
+        for (const [label, on] of Object.entries(reply?.remember || {})) defaults.set(label.toLowerCase(), on !== false);
+        showMine();
+      }).catch(() => {});
+    }
+    box.hidden = !items.length;
+    list.replaceChildren(...items.map(item => {
+      const row = Object.assign(document.createElement('div'), {className: 'item'}), what = document.createElement('div'), name = document.createElement('b'), value = document.createElement('span');
+      what.className = 'what'; name.textContent = item.label; value.textContent = item.value; what.append(name, value);
+      const label = document.createElement('label'), input = Object.assign(document.createElement('input'), {type: 'checkbox', checked: item.remember});
+      input.addEventListener('change', () => { chosen.set(item.label.toLowerCase(), input.checked); });
+      label.append(input, 'Remember');
+      row.append(what, label);
+      return row;
+    }));
   };
   // A sign-in or sign-up page (a password box): said with every message, so the worker never takes it for the application.
   const accountNow = () => !!document.querySelector('input[type=password]');
@@ -123,6 +150,6 @@
     const words = `${button.textContent || ''} ${button.getAttribute?.('aria-label') || ''} ${button.name || ''} ${button.value || ''}`;
     if (window.__jobPilottoSubmitPress?.counts(button, words)) noteSubmit();   // page/submit-press.js: written type=submit, or the Submit floor; never the typeless default
   }, true);
-  return {reportMisses};
+  return {reportMisses, showMine};
   }};
 })();

@@ -117,7 +117,10 @@ list in the PR that adds it. Re-running a repro of a door incident locally waits
 
 **H · Cheapest place.** A pure check that runs in seconds (no browser, no app, no e2e) runs on push when its files changed (`tools/pre-push-check.sh`); a CI red
 that push could have caught is a harness bug (#2322: no-question-mark, solid-buttons). E2E suites never run on the Mac except one: fixing a real backbone red,
-that one suite or step (the owner's memory is tight).
+that one suite or step (the owner's memory is tight). A check earns its place on push only if it runs in seconds. Measured 28 Oct 2026 on #2367's change (420 desktop
+unit-test files, 2459 tests): the affected unit tests take 108 s here (`node --test` 88 s, stage and lint about 15 s, the Mac loaded) against 2.3 min for CI's
+`desktop (ubuntu)` job, so running them on a PR push saves about one CI round per red and costs 1–1.8 min on each of the day's 43 PRs. None of that day's 4 unit-test
+reds was a direct importer (3 named the changed file in their text, 1 scanned the tree). Not done: the owner's 12 Oct rule (PR suites on CI) stands.
 
 **I · One classifier, one scorecard.** The site's `admin/e2e-causes.js` (rules v3) is the only cause classifier; the weekly issue, Telegram and the page read
 its data. The scorecard per check: catches (red, then the fix changed product code), false reds (red on the backbone for any other cause), minutes. Gaps:
@@ -153,16 +156,62 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - Every workflow and e2e lib module has a `Job:` line; the module count is measured before and after each shrink step.
 
 ## Progress
+One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).
+
+### 0. Measured, agreed, and fixed on the way
 - [x] Measured 14 days of reds by cause, harness churn, suites per PR. (proof: none: numbers in this spec, from D1 and git on 28 Oct 2026)
 - [x] Design discussed and approved by the owner in session `fl`. (proof: none: the owner's answers in the session, 28 Oct 2026)
-- [ ] 1 · Measure in one place: one classifier, scorecard, "Where e2e work goes" card, weekly Telegram + issue, Bug Tracker "escaped e2e".
-- [ ] 2 · Lane registry; PR verdict red only from backbone; grey for health; ≤ 5 suites picked by the scorecard. Landed: main's own red is grey (#2349); a PR runs each picked suite whole (G2).
-- [ ] 3 · Expectation rule + plumbing brake (mechanical + `.gitar/review/e2e-reliability.md`), `Job:` lines on every workflow and harness module.
-- [ ] 4 · quality cut at the seam: stored answers by question in the backbone; AI rate tolerant; the PR's AI number in the check summary.
-- [ ] 5 · applyflows: state waits + hang caps, Notion stubbed, its races as owner issues.
-- [ ] 6 · settings and apply the same way; then the rest by scorecard.
-- [ ] 7 · Beta gate on tolerant rates; speed medians in the weekly summary; outside-world suite nightly.
-- [ ] 8 · Revert-don't-fix-forward wired to a backbone red after merge.
-- [ ] 9 · Pure checks on push by changed files (#2322 class).
-- [ ] 10 · Harness shrink: delete what the design replaced, one step at a time.
-- [ ] 11 · 14 days after step 6: acceptance numbers read from the J card and the scorecard, reported to the owner.
+- [x] Wander's probe presses only the control it vetted, not a stale id. (proof: desktop/e2e/test/interact.test.mjs @a0226a3)
+- [x] A PR's changed files for page cases come from git, not the rate-limited API. (proof: tests/test_page_cases_workflow.py @ff10cbf)
+
+### 1. Measure in one place
+- [x] Scorecard and the "Where e2e work goes" card on /admin/operations/e2e. (proof: none: jobadabra-web test/admin/e2e-intel.test.js @e4ecceb, web#210, private repo)
+- [x] Weekly Telegram message and GitHub issue from the site's one classifier. (proof: none: jobadabra-web test/admin/e2e-intel.test.js @bed82a7, web#211, private repo)
+- [ ] Retire the public `tools/e2e_weekly.py` and `e2e-weekly.yml` after the first Monday post (bisect keeps only its fact check).
+- [ ] Bug Tracker "escaped e2e" field.
+- [ ] One week of the weekly summary read by the owner.
+
+### 2. Lanes and the PR verdict
+- [x] Main's own red shows grey on a PR. (proof: tests/test_pr_verdict_main_red.py @ecc6310)
+- [x] A PR runs each picked suite whole (G2). (proof: desktop/e2e/test/pr-suites-whole.test.mjs @4ed6376)
+- [ ] Lane registry first cut (`quality`, `notion-real`): the verdict greys a tolerant or suspended suite, the registry read from the base branch (#2376, open).
+- [ ] Rule E on edits to `lanes.json`: a named input and why, or the push is blocked.
+- [ ] Health greys: AI credit, runner, install.
+- [ ] At most 5 suites picked by the scorecard.
+- [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue.
+
+### 3. Expectation rule and plumbing brake
+- [ ] Rule E: a PR that changes what a backbone test expects carries its citation (mechanical check plus `.gitar/review/e2e-reliability.md`).
+- [ ] Rule F: a `Job:` line on every workflow and e2e lib module; `Harness-job:` or `Fixes-backbone-red:` on a harness PR.
+
+### 4. quality cut at the seam
+- [ ] Stored answers keyed by question in the backbone, not by request hash; no live AI call in a backbone run (asserted by a harness test).
+- [ ] The AI rate is tolerant, with the PR's AI number in the check summary.
+
+### 5. applyflows
+- [ ] State waits and hang caps, Notion stubbed, its races as owner issues.
+
+### 6. settings and apply
+- [ ] settings the same way.
+- [ ] apply the same way.
+- [ ] The rest by scorecard.
+
+### 7. The outside world
+- [x] A test run reaches nothing of the owner's computer: one list of doors, checked at launch (G3). (proof: desktop/test/e2e-host.test.js @94d1931)
+- [x] The shell stand-ins live in that one list only. (proof: desktop/test/e2e-hidden.test.js @2658e2c)
+- [ ] Beta gate on tolerant rates: an AI rate below main's band blocks the beta.
+- [ ] Speed medians in the weekly summary.
+- [ ] Outside-world suite nightly.
+
+### 8. Revert, don't fix forward
+- [ ] `tools/revert-red.sh` wired to a backbone red after merge.
+
+### 9. Pure checks on push (rule H)
+- [x] Measured the affected desktop unit tests on a PR push: 108 s here against 2.3 min in CI; not done, the owner's 12 Oct rule stands. (proof: none: measured 28 Oct 2026 with tools/check.sh on #2367, numbers in rule H)
+- [ ] The renderer class tests (no-question-mark, solid-buttons) run on push when a renderer file changes (#2322 class; seconds).
+
+### 10. Harness shrink
+- [ ] Delete what the design replaced, one step at a time, the module count measured before and after.
+
+### 11. Acceptance
+- [ ] 14 days after step 6: the acceptance numbers read from the J card and the scorecard, reported to the owner.

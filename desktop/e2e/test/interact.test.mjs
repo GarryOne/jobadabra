@@ -126,3 +126,48 @@ test('every control that restarts the app is never pressed by a probe', async ()
     }
   }
 });
+
+test('a press lands on the control the probe vetted, not on whatever carries its old tag after the page drew itself again (wander red on main, 28 Oct 2026)', async () => {
+  // "Redraw" draws the section again with an unsafe control where "Third" sat: the tags handed out before the redraw now point at other controls, and a press by
+  // tag alone clicked "Look around first (demo data)" in the real wander run, which restarts the app.
+  let browser;
+  try {
+    browser = await chromium.launch({channel: 'chrome'});
+    const page = await browser.newPage();
+    await page.setContent(`<body><section class="view" data-view="shift"><div id="box"></div><div id="out"></div></section><script>
+      window.fakeIpc = []; window.clicked = false; window.pressed = [];
+      const draw = names => { box.innerHTML = names.map(name => '<button>' + name + '</button>').join(''); };
+      box.onclick = event => {
+        const name = event.target.textContent; window.pressed.push(name); out.textContent = name;
+        if (name === 'Redraw') draw(['Redraw', 'Second', 'Third', 'Delete everything']);
+        if (name === 'Delete everything') window.clicked = true;
+      };
+      draw(['Redraw', 'Delete everything', 'Second', 'Third']);
+    </script></body>`);
+    await probePage({page, view: 'shift', ipc: ipcOf(page), settleMs: 400, idleMs: 0, scope: '.view[data-view="shift"]'});
+    assert.equal(await page.evaluate(() => window.clicked), false, 'the probe pressed "Delete everything"');
+    assert.deepEqual(await page.evaluate(() => window.pressed), ['Redraw', 'Second', 'Third'], 'each vetted control is pressed, in the page as it is now');
+  } finally { await browser?.close(); }
+});
+
+test('a moved tag that lands on a control with the same words but a command is not pressed (Gitar on #2360)', async () => {
+  // After "Redraw" the old tag of "Third" sits on a button with the same text and label that opens a command: only the safety facts tell them apart.
+  let browser;
+  try {
+    browser = await chromium.launch({channel: 'chrome'});
+    const page = await browser.newPage();
+    await page.setContent(`<body><section class="view" data-view="same"><div id="box"></div><div id="out"></div></section><script>
+      window.fakeIpc = []; window.commandPressed = false; window.pressed = [];
+      const draw = html => { box.innerHTML = html; };
+      box.onclick = event => {
+        const name = event.target.textContent; window.pressed.push(name); out.textContent = name + window.pressed.length;
+        if (event.target.dataset.command) window.commandPressed = true;
+        if (name === 'Redraw') draw('<button>Redraw</button><button>Second</button><button>Third</button><button data-command="open-x">Third</button>');
+      };
+      draw('<button>Redraw</button><button>Delete everything</button><button>Second</button><button>Third</button>');
+    </script></body>`);
+    await probePage({page, view: 'same', ipc: ipcOf(page), settleMs: 400, idleMs: 0, scope: '.view[data-view="same"]'});
+    assert.equal(await page.evaluate(() => window.commandPressed), false, 'the probe pressed the button with a command');
+    assert.deepEqual(await page.evaluate(() => window.pressed), ['Redraw', 'Second', 'Third']);
+  } finally { await browser?.close(); }
+});

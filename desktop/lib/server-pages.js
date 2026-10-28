@@ -60,8 +60,8 @@ export async function judgeConfirmation(storage, body, {judge = judgePage, clien
   appLog('extension', verdict.confirmation ? 'page after submit read as a confirmation' : `page after submit is not a confirmation${verdict.error ? `: ${verdict.error}` : ''}`,
     {host: verdict.host, path: verdict.path, inputs: verdict.inputs, ...(verdict.usd != null ? {usd: verdict.usd} : {})});
   if (body?.background && verdict.botCheck) {
-    await (background || backgroundApplyFor(storage)).handle({...body.background, action: 'manual', reason: 'captcha_runtime'});
-    return {ok: true, confirmation: false, manual: true, reason: 'captcha_runtime'};
+    await (background || backgroundApplyFor(storage)).handle({...body.background, action: 'manual', reason: 'captcha_runtime'});   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+    return {ok: true, confirmation: false, manual: true, reason: 'captcha_runtime'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   }
   if (!verdict.confirmation) return {ok: true, confirmation: false, error: verdict.error || ''};
   if (body?.background && !(await (background || backgroundApplyFor(storage)).outcome(body.background, true)).ok) return {ok: false, confirmation: false, error: 'No matching submission attempt.'};

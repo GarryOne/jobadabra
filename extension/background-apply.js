@@ -39,14 +39,14 @@ export async function backgroundPage(tabId, role, botCheck) {
   return reason ? backgroundChallenge(tabId, reason) : false;
 }
 /** Persist a job's manual override before yielding; runtime challenges reveal its existing live form, while preflight goes to manual review. */
-export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {
+export async function backgroundChallenge(tabId, reason = 'captcha_runtime') {   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   const context = await backgroundContext(tabId);
   if (!context) return false;
   await owned().requireManual(context.session, reason);
   await chrome.scripting.executeScript({target: {tabId, allFrames: true}, world: 'MAIN', func: () => { window.__jobPilottoStopped = true; }}).catch(() => {});
   await request(context, {action: 'manual', reason}).catch(() => null);
   const row = await owned().inspect(context.session);
-  if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);
+  if (reason !== 'captcha_preflight' && !row.revealedAt) await owned().reveal(context.session);   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   return true;
 }
 /** Poll only from the app-owned browser; the server claims one job at a time and all repeated polls reuse the same marked tab. */

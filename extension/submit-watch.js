@@ -61,7 +61,7 @@ export function createSubmitWatch(ctx) {
       const verdict = await apiFor(tabId, config, '/extension/confirmation', {method: 'POST', body: JSON.stringify({
         job, page: pageKey(tab.url), title: reading?.title || '', headings: reading?.headings || [], text: reading?.text || '', inputs: reading?.inputs || 0, background: background ? {...background, attempt: submit?.automation ? submit.attempt : '', humanAt: submit?.automation ? 0 : pressAt} : null,
       })});
-      if (verdict.manual) { await backgroundChallenge(tabId, verdict.reason || 'captcha_runtime'); return {done: true}; }
+      if (verdict.manual) { await backgroundChallenge(tabId, verdict.reason || 'captcha_runtime'); return {done: true}; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (!verdict.confirmation) {
         decide('submitted?', verdict.error ? `page not read (${verdict.error}): not marked` : 'page is not a confirmation: not marked', {host: gate.host, path: gate.path});
         return {done: false};

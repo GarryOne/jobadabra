@@ -15,3 +15,7 @@ test('Full automation cannot be queued before its gates ship: no store write, no
   assert.match(result.error, /Full automation is not available/);
   assert.deepEqual(touched, []);
 });
+
+test('registering the apply handlers creates the controller without touching storage paths', () => {
+  assert.doesNotThrow(() => createBackgroundApplyController({}, {store: {}}));   // CI #2324: a storage with no path() crashed handler registration
+});

@@ -19,7 +19,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
   const load = async app => readState(await ask('applications', 'section', {app_id: app.id, name: BACKGROUND_SECTION}));
   const save = async (app, state) => { await ask('applications', 'set_section', {app_id: app.id, name: BACKGROUND_SECTION, markdown: JSON.stringify(state)}); return state; };
   const own = (state, session, owner) => !!state && state.session === session && state.owner === owner;
-  const manual = (app, state, reason) => save(app, {...state, state: reason.startsWith('captcha_') ? 'manual_submit_required' : 'needs_user_handoff', manualOverride: true, reason, handoffAt: now()});
+  const manual = (app, state, reason) => save(app, {...state, state: reason.startsWith('captcha_') ? 'manual_submit_required' : 'needs_user_handoff', manualOverride: true, reason, handoffAt: now()});   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
   const proofOk = proof => proof?.answer === 'ready' && proof.step === 'final' && proof.requiredComplete === true && proof.safe === true &&
     typeof proof.submitControl === 'string' && proof.submitControl.trim() && typeof proof.signature === 'string' && !!proof.signature;
 
@@ -56,7 +56,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       const app = await appOf(url), state = await load(app);
       if (!own(state, session, owner)) return {ok: false};
       if (TERMINAL.has(state.state)) return state;
-      if (!proofOk(proof)) return manual(app, state, proof?.botCheck ? 'captcha_runtime' : 'incomplete_or_uncertain');
+      if (!proofOk(proof)) return manual(app, state, proof?.botCheck ? 'captcha_runtime' : 'incomplete_or_uncertain');   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       const changed = state.signature !== proof.signature;
       return save(app, {...state, state: state.mode === 'fill' ? 'ready_for_review' : 'waiting_to_submit', signature: proof.signature,
         readyAt: changed || !state.readyAt ? now() : state.readyAt, factsOnly: proof.factsOnly === true && state.factsUnknown !== true});

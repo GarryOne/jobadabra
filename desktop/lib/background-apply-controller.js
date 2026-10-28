@@ -11,7 +11,7 @@ import {log as appLog} from './log.js';
 
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
-const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.'};
+const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 /** Return this app profile's single serialized controller; settings and store are rechecked for each proposed submit. */
@@ -20,10 +20,12 @@ export function backgroundApplyFor(storage) {
   return instances.get(storage);
 }
 /** Create the controller with injectable store/browser boundaries for deterministic fictional browser proofs; no alternative filler exists here. */
-export function createBackgroundApplyController(storage, {store = null, browser = createBackgroundBrowser(storage), terminals = terminalsDefault,
+export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = notifyDefault, log = appLog,
   port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage), fullAutomation = false} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop});
+  // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
+  const browserOf = () => (browser ||= createBackgroundBrowser(storage));
   const judgments = new Map();
   let owner = '', pending = Promise.resolve();
   const serial = work => { const value = pending.then(work); pending = value.catch(() => {}); return value; };
@@ -60,13 +62,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
         cache(item, state); enrolled.push(item.id);
       }
-      ({owner} = await browser.start({port, token: token()}));
+      ({owner} = await browserOf().start({port, token: token()}));
       log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length});
       return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.`};
     });
   }
   async function poll(givenOwner) {
-    if (!owner) ({owner} = await browser.start({port, token: token()}));
+    if (!owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!givenOwner || givenOwner !== owner) return {ok: false, jobs: [], checks: []};
     const jobs = [], checks = [], handoffs = [];
     let filling = false;
@@ -76,7 +78,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (!state.manualOverride && (stop() || item.stuck === 'stopped')) state = await markManual(item, 'stopped');
       const current = config();
       if (!state.manualOverride && (current.mode !== state.mode || current.chosenAt !== state.chosenAt)) state = await markManual(item, 'mode_changed');
-      if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }
+      if (HANDOFF.has(state.state)) { handoffs.push({session: item.id, reason: state.reason, reveal: state.reason !== 'captcha_preflight'}); cache(item, state); continue; }   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (state.state === 'submitting') continue; // a reserved attempt is never reissued, even after a lost reply/restart
       if (state.state === 'waiting_to_submit' && now() >= state.readyAt + (current.auto?.waitMin ?? 10) * 60000) checks.push({session: item.id});
       if (['queued', 'preflight'].includes(state.state) && !filling) {
@@ -89,7 +91,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   async function judgment(body, answer) {
     const context = body?.background, item = itemFor(context?.session);
-    if (item && context?.owner && !owner) ({owner} = await browser.start({port, token: token()}));
+    if (item && context?.owner && !owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!item || !owner || context.owner !== owner) return null;
     const state = await store.read(item.url);
     if (!state || state.owner !== owner || state.session !== item.id || state.manualOverride) return null;
@@ -101,13 +103,13 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   async function handle(payload = {}) {
     return serial(async () => {
       if (payload.action === 'poll') return poll(payload.owner);
-      if (!owner && payload.owner) ({owner} = await browser.start({port, token: token()}));
+      if (!owner && payload.owner) ({owner} = await browserOf().start({port, token: token()}));
       if (!owner || payload.owner !== owner) return {ok: false};
       const item = itemFor(payload.session);
       if (!item) return {ok: false};
       if (payload.action === 'manual') {
         const state = await markManual(item, String(payload.reason || 'needs_user').slice(0, 80));
-        return {ok: state.ok !== false, manual: true, reason: state.reason, reveal: state.reason !== 'captcha_preflight'};
+        return {ok: state.ok !== false, manual: true, reason: state.reason, reveal: state.reason !== 'captcha_preflight'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       }
       if (payload.action !== 'ready') return {ok: false};
       const judgment = judgments.get(payload.proof);
@@ -116,7 +118,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       if (stop() || item.stuck === 'stopped') return {ok: true, manual: true, state: await markManual(item, 'stopped')};
       const proof = {...judgment.answer, signature: judgment.signature, requiredComplete: payload.requiredComplete === true,
         factsOnly: payload.factsOnly === true, safe: payload.safe === true && judgment.answer.confidence >= 0.9};
-      if (proof.botCheck) return {ok: true, manual: true, reason: 'captcha_runtime', state: await markManual(item, 'captcha_runtime')};
+      if (proof.botCheck) return {ok: true, manual: true, reason: 'captcha_runtime', state: await markManual(item, 'captcha_runtime')};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       if (proof.step === 'middle') {
         const state = await store.checkpoint(item.url, item.id, owner, proof); cache(item, state);
         return {ok: state.ok !== false, continue: state.state === 'filling', manual: HANDOFF.has(state.state), reason: state.reason};
@@ -135,15 +137,15 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   async function reveal(id) {
     return serial(async () => {
-      if (!owner) ({owner} = await browser.start({port, token: token()}));
+      if (!owner) ({owner} = await browserOf().start({port, token: token()}));
       const item = itemFor(id); if (!item) return {ok: false};
       await markManual(item, 'review_requested');
-      return {ok: await browser.reveal(id), taken: true, went: 'tab', found: null};
+      return {ok: await browserOf().reveal(id), taken: true, went: 'tab', found: null};
     });
   }
   async function outcome(context, confirmed) {
     const item = itemFor(context?.session);
-    if (item && context?.owner && !owner) ({owner} = await browser.start({port, token: token()}));
+    if (item && context?.owner && !owner) ({owner} = await browserOf().start({port, token: token()}));
     if (!item || context.owner !== owner) return {ok: false};
     const state = !context.attempt && confirmed === true ? await store.humanReceipt(item.url, item.id, owner, context.humanAt) : await store.receipt(item.url, item.id, context.attempt, confirmed);
     if (state.ok === false) return state;
@@ -152,10 +154,10 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   async function cancel(id) {
     return serial(async () => {
-      if (!owner) ({owner} = await browser.start({port, token: token()}));
+      if (!owner) ({owner} = await browserOf().start({port, token: token()}));
       const item = itemFor(id); if (!item) return {ok: false};
       await markManual(item, 'cancelled');
-      return {ok: true, closed: await browser.closeSession(id)};
+      return {ok: true, closed: await browserOf().closeSession(id)};
     });
   }
   return {enqueue, handle, judgment, reveal, outcome, cancel};

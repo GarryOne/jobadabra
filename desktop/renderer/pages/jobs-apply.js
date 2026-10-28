@@ -4,7 +4,7 @@
 import {offerBrowser} from './browser-progress.js';
 import {$, message} from './core.js';
 import {applyOf} from '../apply-settings-model.js';
-import {applyButtonLabel, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
+import {applyButtonLabel, applyDialogOutcome, applyDialogSelectMode, applyDialogStart, createApplyStartGate} from '../apply-dialog-model.js';
 import {modeCards, save as saveApplySettings} from './apply-settings.js';
 import {toastMessage} from './startup.js';
 
@@ -60,8 +60,9 @@ export function wireApplyDialog({startedApplying}) {
         if (result.ok) startedApplying();   // the batch marked the jobs it started: read the list again
         if (result.needsExtension || result.cancelled) { $('apply-dialog').close(); return; }   // the install dialog opens (extension-needed.js), or Not now in the first-Apply dialog
         // Why (2026-10-28, owner screenshot): the green "queued" line kept the dialog open with nothing left to do; a toast says it and the dialog closes (a click on it opens Sessions).
-        if (result.ok) { toastMessage('Applying started', result.message, {view: 'sessions'}, 'good'); $('apply-dialog').close(); return; }
-        message('apply-message', result.error, 'error');
+        const outcome = applyDialogOutcome(result);
+        if (outcome.close) { const {title, body, target, tone} = outcome.toast; toastMessage(title, body, target, tone); $('apply-dialog').close(); return; }
+        message('apply-message', outcome.error, 'error');
         offerBrowser($('apply-browser'), result.code === 'BACKGROUND_BROWSER_MISSING');   // the download, right where it was asked for
       } catch (error) {   // the call itself failed (e.g. the app updated while open): say so, the button comes back below
         message('apply-message', `Could not start applying: ${error.message}`, 'error');

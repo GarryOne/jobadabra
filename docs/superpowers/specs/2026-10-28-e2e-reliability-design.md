@@ -155,6 +155,43 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 - The scorecard lists catches, false reds and minutes per suite; prune candidates and gap ranking appear in the weekly summary.
 - Every workflow and e2e lib module has a `Job:` line; the module count is measured before and after each shrink step.
 
+## PR plan
+Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/29 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
+**29 PRs: 13 merged, 16 to go** (this one included). Why the total is 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+Who builds what: the verdict session takes rows 16-17 and the push-checks session rows 15 and 18 (owner's yes, 28 Oct 2026); `fl` keeps the backbone itself and the rest.
+
+| n | PR | Step | State |
+|---|---|---|---|
+| 1 | Spec and plan | 0 | ✅ #2336 |
+| 2 | Grey a PR suite that fails exactly as main does | 2 | ✅ #2349 |
+| 3 | A PR runs each suite whole | 2 | ✅ #2359 |
+| 4 | Press only the control the probe vetted | 0 | ✅ #2360 |
+| 5 | A local run records Electron calls | 7 | ✅ #2363 |
+| 6 | Shell stand-ins in one place | 7 | ✅ #2367 |
+| 7 | Changed files from git, not the API | 0 | ✅ #2369 |
+| 8 | Scorecard and the "Where e2e work goes" card (private repo) | 1 | ✅ web#210 |
+| 9 | Weekly Telegram message and GitHub issue (private repo) | 1 | ✅ web#211 |
+| 10 | Lane registry first cut | 2 | ✅ #2376 |
+| 11 | Plan checklist where the progress tool reads it | 0 | ✅ #2379 |
+| 12 | A test app ends with its runner | 7 | ✅ #2384 |
+| 13 | Rule E on lane entries | 2 | ✅ #2398 |
+| 14 | Renderer class tests on push | 9 | 🔨 this PR |
+| 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | push-checks session |
+| 16 | Health greys: AI credit, runner, install | 2 | verdict session |
+| 17 | At most 5 suites picked by the scorecard, and suspension on a red-then-green flip | 2 | verdict session |
+| 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
+| 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
+| 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | fl |
+| 21 | applyflows: state waits, hang caps, Notion stubbed, races as issues | 5 | fl |
+| 22 | settings the same way | 6 | fl |
+| 23 | apply the same way | 6 | fl |
+| 24 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 | fl |
+| 25 | Beta gate on tolerant rates, and speed medians in the weekly summary | 7 | fl |
+| 26 | Outside-world suite nightly | 7 | fl |
+| 27 | Bug Tracker "escaped e2e" field, and retire `e2e_weekly.py` after the first Monday post | 1 | fl |
+| 28 | Harness shrink, first half (module count before and after) | 10 | fl |
+| 29 | Harness shrink, second half | 10 | fl |
+
 ## Progress
 One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).
 
@@ -209,7 +246,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 
 ### 9. Pure checks on push (rule H)
 - [x] Measured the affected desktop unit tests on a PR push: 108 s here against 2.3 min in CI; not done, the owner's 12 Oct rule stands. (proof: none: measured 28 Oct 2026 with tools/check.sh on #2367, numbers in rule H)
-- [ ] The renderer class tests (no-question-mark, solid-buttons) run on push when a renderer file changes (#2322 class; seconds).
+- [x] The renderer class tests (no-question-mark, solid-buttons) run on push when a renderer file changes (#2322 class; seconds): seven files, 0.4 s, chosen from 34 measured reds. (proof: desktop/test/renderer-class-push.test.js)
 
 ### 10. Harness shrink
 - [ ] Delete what the design replaced, one step at a time, the module count measured before and after.

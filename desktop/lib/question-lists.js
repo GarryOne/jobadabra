@@ -47,16 +47,21 @@ export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows 
   const facts = items.filter(row => !pageOf(row));
   const formRows = [...(rows || await questions.list(storage, fetcher)), ...asks], answered = await answeredNow(storage, groups, fetcher), baseFacts = await factsOf(storage, fetcher);
   // The saved answers get the same verdict in the same one call (AC2: the tab lists no Your details fact, no one job's, no consent); then the one filter.
-  const {verdicts: judged, usage} = await verdicts.ensure(storage, [...formRows.map(row => row.question), ...answered.map(each => each.question)], {answered, facts: baseFacts, ai});
+  const {verdicts: judged, usage} = await verdicts.ensure(storage, [...formRows, ...saved, ...answered].map(row => row.question), {answered, facts: baseFacts, ai});
   const {shown, hidden, fromDetails} = visibleQuestions(formRows, judged, {open: baseFacts.filter(fact => !fact.value).map(fact => fact.label)});
-  const kept = await keptFormats(storage, [...shown, ...hidden].filter(row => !row.details), ai);
+  const kept = await keptFormats(storage, shown.filter(row => !row.details), ai);   // the kinds of what is shown only: a hidden row costs no call
   const known = verdicts.cached(storage), formatted = rows => rows.map(row => (row.details ? row : withFormat([row], kept)[0]));
   // A Profile line merged into a form question's topic is that topic's copy: never answered as another wording (lib/questions.js answers the answers page only).
   const learned = shown.map(row => (row.also?.some(each => each.details) ? {...row, also: row.also.filter(each => !each.details)} : row));
   // Why (28 Oct 2026, spec AC2): a saved answer the AI judged a Your details fact, one job's or consent is not a learning; PR A only leaves it out of the
   // tab; moving it to its Your details home is PR B. Nothing is deleted.
   const notLearned = answered.map(each => each.question).filter(question => NOT_LEARNED.has(known[keyOf(question)]?.reuse));
-  return {details: ranked(facts, known), learned: ranked([...formatted(learned), ...saved], known), letter: letterQuestion(storage), hidden: formatted(hidden),
+  // An unclear saved line by the same verdict (PR A review): a Your details fact is checked in Fill your details, one job's or consent is set aside.
+  const verdictOf = row => known[keyOf(row.question)]?.reuse;
+  const savedFacts = saved.filter(row => verdictOf(row) === 'details'), savedAside = saved.filter(row => NOT_LEARNED.has(verdictOf(row)) && verdictOf(row) !== 'details');
+  const savedLearned = saved.filter(row => !NOT_LEARNED.has(verdictOf(row)));
+  return {details: ranked([...facts, ...savedFacts], known), learned: ranked([...formatted(learned), ...savedLearned], known), letter: letterQuestion(storage),
+    hidden: [...formatted(hidden), ...savedAside],
     fromDetails: fromDetails.length, usage, consent: hidden.filter(row => known[keyOf(row.question)]?.reuse === 'consent').length, notLearned};
 }
 

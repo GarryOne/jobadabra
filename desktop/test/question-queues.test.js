@@ -86,6 +86,18 @@ test('saved answers judged a Your details fact or one job\'s are no learning; a 
   assert.equal(calls, 1, 'the saved answers are judged in the open questions\' call, not a second one');
 });
 
+// PR A review (28 Oct 2026): an unclear saved line went to What we learned unjudged, so a guessed notice period showed there as a learning.
+test('an unclear saved line the AI judges a Your details fact is filled in drawer 1; one job\'s is set aside; never in What we learned', async () => {
+  const notice = item('unclear', {page: 'answers', label: 'Notice period / earliest start', value: '3 months (guess)'}, 'Notice period / earliest start', 'What we learned');
+  const hear = item('unclear', {page: 'answers', label: 'How did you hear about us?', value: 'not sure'}, 'How did you hear about us?', 'What we learned');
+  const said = [...VERDICTS, {label: 'Notice period / earliest start', verdict: 'reusable', topic: 'notice period', covered_by: '', value: '', fact: 'Notice period'}];
+  const judge = {client: {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({verdicts: said, formats: []})}]})}}};
+  const {details, learned, hidden} = await lists.openShown(storage(), {rows: FORM, groups, details: [...DETAILS, notice, hear], ai: judge});
+  assert.ok(details.some(row => row.key === notice.key), 'a fact to check is Fill your details\'');
+  assert.ok(hidden.some(row => row.key === hear.key), 'one job\'s is set aside, never deleted');
+  assert.ok(!learned.some(row => row.key === notice.key || row.key === hear.key));
+});
+
 test('a saved answer the AI found unclear on the answers page is a learning to check, not a Your details item', async () => {
   const unclear = item('unclear', {page: 'answers', label: 'Travel', value: 'sometimes'}, 'Travel', 'What we learned');
   const {details, learned} = await read([...DETAILS, unclear]);

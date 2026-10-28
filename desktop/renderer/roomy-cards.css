@@ -112,13 +112,7 @@ summary.survey-saved::-webkit-details-marker { display: none; }
 .survey-all[open] > .survey-saved > .survey-chevron { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .survey-saved > .survey-chevron { transition: none; } }
 
-/* Application answers (mockups 02, 04, 10): the facts as one boxed, lined table (label | value, fully inline), the review banner as a tinted box. */
-.panel.roomy #answers-facts-body .summary-rows { grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr); gap: 0; margin: 0; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
-.panel.roomy #answers-facts-body .summary-rows > :is(dt, dd) { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--line); }
-.panel.roomy #answers-facts-body .summary-rows > :is(dt, dd):nth-child(-n+2) { border-top: 0; }
-.panel.roomy #answers-facts-body .summary-rows > dt { color: var(--ink); font-weight: 600; }
-.panel.roomy #answers-facts-body .summary-rows > dd { border-left: 1px solid var(--line); }
-.panel.roomy #answers-facts-body .reference-row { margin-top: var(--sp-3); }
+/* What we learned (mockups 02, 04, 10; was Application answers): the review banner as a tinted box. */
 .panel.roomy .qa-banner { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--warn-line); border-radius: var(--r-md); background: var(--warn-soft); }
 .qa-banner-words { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); flex: 1; min-width: 0; font-size: var(--fs-base); }
 .qa-banner-words > .icon { width: 22px; height: 22px; flex: none; color: var(--warn); }

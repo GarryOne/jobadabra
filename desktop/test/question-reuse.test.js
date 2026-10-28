@@ -75,3 +75,22 @@ test('classify: a topic per question, kept as a few lowercase words', async () =
   assert.equal(got.get('Kündigungsfrist?').topic, 'notice period');
   assert.equal(got.get('Why us?').topic, '');
 });
+
+// Code review of PR A (28 Oct 2026): one call for every label hit max_tokens past ~44 labels, and the cut JSON threw, so both drawers failed on every read.
+// Labels go in chunks that fit the reply; a reply cut at max_tokens leaves only its own labels unjudged (asked again next read), never the whole read.
+test('many labels are judged in chunks; a reply cut at max_tokens leaves its labels unjudged, the rest kept', async () => {
+  const labels = Array.from({length: 70}, (_, i) => `Question number ${i + 1}?`);
+  const sizes = [];
+  let call = 0;
+  const client = {messages: {create: async request => {
+    const asked = JSON.parse(request.messages[0].content.split('<questions>\n')[1].split('\n</questions>')[0]);
+    sizes.push(asked.length);
+    call += 1;
+    if (call === 2) return {stop_reason: 'max_tokens', content: [{type: 'text', text: '{"verdicts":[{"label":"Question'}]};
+    return {stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({verdicts: asked.map(label => ({label, verdict: 'reusable', covered_by: '', value: '', topic: label, fact: ''}))})}]};
+  }}};
+  const found = await classify({labels, client});
+  assert.ok(sizes.length > 1 && sizes.every(size => size <= 25), `chunks: ${sizes}`);
+  assert.equal(sizes.reduce((a, b) => a + b, 0), 70, 'every label asked once');
+  assert.equal(found.size, 70 - sizes[1], 'only the cut chunk is left unjudged');
+});

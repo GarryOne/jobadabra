@@ -5,7 +5,7 @@
 // options). Why (28 Oct 2026, owner: "Saved answers… doesn't make sense at all. It's getting dropped. Same for [Website-specific questions] since we have
 // Form fills"): no Saved answers box and no site rules here; site rules stay in Form knowledge, used by fills. The page's own intro (lines before its first
 // heading) is shown small, never as answers. Never the not-answered mark on screen (renderer/answers-model.js). Same on every store: block edits through
-// pages/outline-tab.js. Guarded by test/what-we-learned-tab.test.js, test/profile-tabs-render.test.js and test/answers-layout.test.js.
+// pages/outline-tab.js. Guarded by test/answers-layout.test.js and test/profile-tabs-render.test.js.
 import {remembered} from '../view-memory.js';
 import {el, pill, toggleOnBar} from '../components.js';
 import {icon} from '../icons.js';

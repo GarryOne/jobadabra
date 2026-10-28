@@ -260,15 +260,22 @@ def suite_of(job_name):
     return re.sub(r'-\d+of\d+$', '', job_name)
 
 
-def lane_greys(repo, runs, jobs, ref='', read_lanes=None):
-    """{job id: 'tolerant' | 'suspended'} for the PR e2e run's finished red suite jobs whose suite desktop/e2e/lanes.json (at `ref`) lists in that lane: shown grey, never red.
-    A suite not listed is backbone and stays red. Any read that fails, or a file that is not a registry, keeps every red red."""
+def base_branch(env=None):
+    """The branch a PR merges into: GITHUB_BASE_REF on a pull_request run, else main (the workflow_run backstop)."""
+    return (env if env is not None else os.environ).get('GITHUB_BASE_REF') or 'main'
+
+
+def lane_greys(repo, runs, jobs, read_lanes=None):
+    """{job id: 'tolerant' | 'suspended'} for the PR e2e run's finished red suite jobs whose suite desktop/e2e/lanes.json lists in that lane: shown grey, never red.
+    A suite not listed is backbone and stays red. Any read that fails, or a file that is not a registry, keeps every red red.
+    Why (28 Oct 2026, Gitar on #2376): the registry is read from the PR's BASE branch and takes no ref from the caller. Read at the PR's own commit, a PR that breaks
+    `settings` could list it as tolerant in the same diff and go green. A PR that edits lanes.json is judged by main's file; its entry counts after it merges."""
     reds = [job for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)
             for job in jobs.get(r.get('databaseId')) or [] if job.get('status') == 'completed' and job.get('conclusion') == 'failure']
     if not reds:
         return {}
     try:
-        read_lanes = read_lanes or (lambda: json.loads(gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/desktop/e2e/lanes.json?ref={ref}')))
+        read_lanes = read_lanes or (lambda: json.loads(gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/desktop/e2e/lanes.json?ref={base_branch()}')))
         listed = read_lanes()['suites']
         return {job['id']: listed[suite_of(job['name'])]['lane'] for job in reds if (listed.get(suite_of(job['name'])) or {}).get('lane') in ('tolerant', 'suspended')}
     except Exception as error:   # Why (28 Oct 2026, same rule as main_red_greys): the verdict is always written; a registry not read keeps every red red
@@ -302,7 +309,7 @@ def main():
         state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or ())
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
             ref = os.environ.get('GITHUB_SHA') or a.sha
-            greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs, ref=ref)}   # a lane names a suite whatever main did
+            greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs)}   # a lane names a suite whatever main did; its registry is the base branch's, never this PR's
             if greys:
                 state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):

@@ -3,7 +3,9 @@
 suites: of the week's 21 e2e reds no gate caught (28 Oct 2026, tools/e2e_weekly.py --dry-run) about half depended on an AI answer, Notion or the clock; `quality`
 (golden postings, 4 of its 7 rows) and `notion-real` (real Notion) are the two plainly outside the backbone. Any read that fails keeps every red red."""
 import importlib.util
+import inspect
 import json
+import os
 import re
 import unittest
 from pathlib import Path
@@ -72,6 +74,24 @@ class LaneGreys(unittest.TestCase):
         running = {7: [job(71, 'quality', '', 'in_progress')]}
         self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], running, read_lanes=lambda: REGISTRY), {}, 'a job still running is not red')
         self.assertEqual(pv.lane_greys('o/r', [PR, run(7, title='Bisect quality abc')], jobs, read_lanes=lambda: REGISTRY), {}, "only the PR's own e2e run")
+
+    def test_a_pr_cannot_grey_its_own_red_the_registry_is_read_from_the_base_branch(self):
+        # Gitar on #2376: read at the PR's own commit, a PR that breaks `settings` could list it as tolerant in the same diff and go green
+        asked = []
+        real_gh = pv.gh
+        pv.gh = lambda *args: asked.append(args) or json.dumps({'v': 1, 'suites': {}})
+        try:
+            jobs = {7: [job(71, 'settings', 'failure')]}
+            os.environ.pop('GITHUB_BASE_REF', None)
+            self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs), {})
+            os.environ['GITHUB_BASE_REF'] = 'release'
+            pv.lane_greys('o/r', [PR, run(7)], jobs)
+        finally:
+            pv.gh = real_gh
+            os.environ.pop('GITHUB_BASE_REF', None)
+        self.assertTrue(asked[0][-1].endswith('contents/desktop/e2e/lanes.json?ref=main'), 'no base given: main, the default branch')
+        self.assertTrue(asked[1][-1].endswith('lanes.json?ref=release'), "a pull_request run names its base in GITHUB_BASE_REF")
+        self.assertNotIn('ref', inspect.signature(pv.lane_greys).parameters, "the caller has no way to hand it the PR's own commit")
 
     def test_this_file_and_main_e2e_state_cut_a_sharded_name_the_same_way(self):
         for name in ('quality', 'quality-1of2', 'applyflows-2of2', 'recorded-5of5', 'wander'):

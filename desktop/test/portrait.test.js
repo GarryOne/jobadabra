@@ -25,7 +25,8 @@ function client(extra = () => []) {
     seen.push(request);
     const allowed = JSON.parse(request.messages[0].content.match(/<allowed_sections>(.*)<\/allowed_sections>/s)[1]);
     const sections = allowed.map(({key}) => ({key, statements: [{text: `You do ${key}.`, evidence: ['cv', 'learned:0']}]}));
-    return {stop_reason: 'end_turn', usage: {input_tokens: 2000, output_tokens: 600}, content: [{type: 'text', text: JSON.stringify({sections: [...sections, ...extra(allowed)]})}]};
+    return {stop_reason: 'end_turn', usage: {input_tokens: 2000, output_tokens: 600}, content: [{type: 'text', text: JSON.stringify({sections: [...sections, ...extra(allowed)],
+      letter: 'You build platforms [cv].\n\nYou answer with a concrete example first.\n\n\n  You prefer small teams.'})}]};
   }}};
 }
 
@@ -103,4 +104,20 @@ test('the prompt states the case rules: contradictions stay unstated, no advice,
   assert.match(ai.seen[0].system, /contradict each other .* state neither as fact/);
   assert.match(ai.seen[0].system, /Give no advice and no actions/);
   assert.match(ai.seen[0].system, /describe behaviour seen in the evidence/);
+});
+
+test('the plain letter is stored beside the statements, as clean paragraphs with no evidence ids, and reads back', async () => {
+  const made = storage();
+  await portrait.refresh(made, {client: client(), bundle: bundle(), now: new Date()});
+  const shown = await portrait.status(made, {bundle: bundle()});
+  assert.deepEqual(shown.letter, ['You build platforms .', 'You answer with a concrete example first.', 'You prefer small teams.']);
+  assert.ok(!shown.letter.join(' ').includes('['));
+  assert.deepEqual(shown.sections.map(s => s.key), ['short', 'strengths', 'looking', 'work']);   // the letter never becomes a section
+});
+
+test('the prompt asks for a coherent letter that adds no fact', async () => {
+  const ai = client();
+  await portrait.refresh(storage(), {client: ai, bundle: bundle(), now: new Date()});
+  assert.match(ai.seen[0].system, /reference certificate/);
+  assert.match(ai.seen[0].system, /adds no fact that is not in your statements/);
 });

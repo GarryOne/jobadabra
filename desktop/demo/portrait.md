@@ -21,6 +21,13 @@ Evidence: demo
 - You answer with a concrete example first and the principle after it. [learned:2, voice]
 - You stay specific about trade-offs under pressure instead of reassuring in general terms. [learned:5]
 
+## Plain text
+You are a senior site reliability engineer with eight years of experience on Kubernetes and AWS, and over that time you have moved from running systems to improving how a whole team watches them. The monitoring migration you led cut alert noise by about two thirds, and your form answers show the same preference again and again: you want to own a service from start to finish.
+
+In conversation you are direct and brief, and you tend to answer with a concrete example before the principle. An employer may at first read this as reserved; it is better understood as a habit of staying specific, including about trade-offs under pressure.
+
+You are looking for senior platform or reliability roles in Zurich or elsewhere in Switzerland, with remote work inside Europe as a second choice, in small teams with a clear scope. You ask about the on-call load before you ask about perks, which tells an employer what kind of colleague to expect.
+
 ## Evidence
 - cv | Your CV | cv
 - details:0 | Current role | details

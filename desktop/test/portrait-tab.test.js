@@ -25,3 +25,12 @@ test('the tab draws no editable control; a chip is a button that opens its state
   assert.match(source, /tag\(evidence\[id\]\.label, .*onClick: \(\) => open\(evidence\[id\]\.tab\)/);
   assert.match(source, /statement\.evidence\.filter\(id => evidence\[id\]\)/);   // only evidence the stored list knows becomes a chip
 });
+
+test('two views of one text: Structured and Plain text; the plain letter draws no chip, label or control', () => {
+  const source = read('pages/portrait.js');
+  assert.match(source, /\['structured', 'Structured'\], \['letter', 'Plain text'\]/);
+  const letter = source.match(/const letterSheet = [\s\S]*?\n};/)[0];
+  assert.doesNotMatch(letter, /tag\(|button|portrait-label|portrait-sources/);
+  assert.match(source, /Settings → Connections → AI/);   // a first portrait with no AI says what to do (Gitar on #2334)
+  assert.match(source, /if \(!status\.sections\.length\)/);
+});

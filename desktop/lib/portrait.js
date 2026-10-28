@@ -72,15 +72,16 @@ It is read-only for them and shows what an objective reader would see: strengths
 - Never mention gender, age, ethnicity, nationality, religion, health, disability, criminal record, family status or other demographic or protected facts, even when the evidence holds them. Salary and money appear only in "What you're looking for".
 - When two sources contradict each other (CV against form answers), state neither as fact.
 - Give no advice and no actions; this only describes. No flattery, no clichés. Same language as the CV.
-- A statement never ends with a square bracket.`;
+- A statement never ends with a square bracket.
+- Also write "letter": the same portrait as one coherent text in the manner of a formal reference certificate: 3 to 5 connected paragraphs separated by blank lines, formal, second person, complete sentences, the strengths and the weaker sides together, honestly and kindly. It adds no fact that is not in your statements, and carries no evidence ids, brackets or headings.`;
 
-const SCHEMA = {type: 'object', additionalProperties: false, required: ['sections'], properties: {sections: {type: 'array', items: {type: 'object', additionalProperties: false,
+const SCHEMA = {type: 'object', additionalProperties: false, required: ['sections', 'letter'], properties: {letter: {type: 'string'}, sections: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['key', 'statements'], properties: {key: {type: 'string'}, statements: {type: 'array', items: {type: 'object', additionalProperties: false, required: ['text', 'evidence'],
     properties: {text: {type: 'string'}, evidence: {type: 'array', items: {type: 'string'}}}}}}}}}};
 
 /**
  * Asks the AI for the allowed sections and keeps only what the invariants allow: a section outside `allowed`, a statement without a known evidence id and an empty
- * section are dropped. -> {sections: [{key, title, statements: [{text, evidence: [id]}]}], evidence: Map, usd}.
+ * section are dropped. -> {sections: [{key, title, statements: [{text, evidence: [id]}]}], letter: [paragraph], evidence: Map, usd}; letter is [] when the AI gave none.
  */
 export async function write(parts, allowed, {client, apiKey} = {}) {
   const anthropic = client || anthropicApi(apiKey), known = evidenceOf(parts);
@@ -99,30 +100,34 @@ export async function write(parts, allowed, {client, apiKey} = {}) {
   }
   const used = new Map();
   for (const id of sections.flatMap(section => section.statements.flatMap(each => each.evidence))) used.set(id, known.get(id));
-  return {sections, evidence: used, usd: usdOf(response.usage)};
+  const letter = String(answer.letter || '').replace(/\[[^\]]*\]/g, '').split(/\n\s*\n/).map(each => each.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 8);
+  return {sections, letter, evidence: used, usd: usdOf(response.usage)};
 }
 
 /** The stored text for a written portrait. */
-export function render({sections, evidence}, {date, hash}) {
+export function render({sections, letter = [], evidence}, {date, hash}) {
   const lines = [`Updated: ${date}`, `Evidence: ${hash}`, ''];
   for (const section of sections) lines.push(`## ${section.title}`, ...section.statements.map(each => `- ${each.text} [${each.evidence.join(', ')}]`), '');
+  if (letter.length) lines.push('## Plain text', ...letter.flatMap(paragraph => [paragraph, '']));
   lines.push('## Evidence', ...[...evidence].map(([id, info]) => `- ${id} | ${info.label} | ${info.tab}`));
   return lines.join('\n') + '\n';
 }
 
 /** The stored portrait from its page blocks (the same on every adapter), or null: {date, hash, sections: [{key, title, statements}], evidence: {id: {label, tab}}}. */
 export function parse(blocks) {
-  const record = {date: '', hash: '', sections: [], evidence: {}};
+  const record = {date: '', hash: '', sections: [], letter: [], evidence: {}};
   let section = null, found = false;
   for (const block of blocks) {
     const text = String(block.text || '').trim();
     if (/^heading_/.test(block.type)) {
       found = true;
-      section = text === 'Evidence' ? 'evidence' : {key: SECTIONS.find(each => each.title === text)?.key || text, title: text, statements: []};
-      if (section !== 'evidence') record.sections.push(section);
+      section = text === 'Evidence' ? 'evidence' : text === 'Plain text' ? 'plain' : {key: SECTIONS.find(each => each.title === text)?.key || text, title: text, statements: []};
+      if (typeof section === 'object') record.sections.push(section);
     } else if (!section) {
       record.date = text.match(/^Updated:\s*(.+)$/)?.[1] || record.date;
       record.hash = text.match(/^Evidence:\s*(\S+)$/)?.[1] || record.hash;
+    } else if (section === 'plain') {
+      if (text) record.letter.push(text);
     } else if (section === 'evidence') {
       const [id, label, tab] = text.split(' | ');
       if (id && label) record.evidence[id] = {label, tab: tab || ''};
@@ -135,14 +140,14 @@ export function parse(blocks) {
 }
 
 /**
- * What the Your portrait tab draws: {state: 'not_yet' | 'current' | 'outdated', sections, evidence, updated, progress}. not_yet: no section qualifies and nothing was
+ * What the Your portrait tab draws: {state: 'not_yet' | 'current' | 'outdated', sections, letter, evidence, updated, progress}. not_yet: no section qualifies and nothing was
  * written; outdated: the evidence changed since the last run (the text stays, "Updating soon").
  */
 export async function status(storage, {fetcher, bundle} = {}) {
   const opened = openStore(storage, {fetcher});
   const [{parts}, stored] = await Promise.all([bundle ? Promise.resolve(bundle) : aboutYou(storage, 'portrait', {fetcher}), opened.page(PAGE).blocks().catch(() => [])]);
   const record = parse(stored), counts = countsOf(parts), ready = qualifying(counts).length > 0;
-  const base = {progress: progressOf(counts), sections: record?.sections || [], evidence: record?.evidence || {}, updated: record?.date || ''};
+  const base = {progress: progressOf(counts), sections: record?.sections || [], letter: record?.letter || [], evidence: record?.evidence || {}, updated: record?.date || ''};
   if (!record && !ready) return {...base, state: 'not_yet'};
   if (!record) return {...base, state: 'outdated'};
   return {...base, state: record.hash === fingerprint(parts) ? 'current' : 'outdated'};

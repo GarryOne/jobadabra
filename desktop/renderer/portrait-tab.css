@@ -1,33 +1,31 @@
-/* Profile → Your portrait: a plain sheet of paper with a lifted, curled shadow on the page's desk (owner 28 Oct 2026, chose it over a ruled notebook sheet).
-   Not cards, not an essay: short cited statements with small-caps labels and chips. Read-only: nothing on it is a field.
+/* Profile → Your portrait: a plain sheet of paper with a curled shadow on the page's desk (owner 28 Oct 2026; chosen over a ruled notebook sheet). Two views of one text:
+   "Structured" (short cited statements, small-caps labels, source chips) and "Plain text" (a recommendation letter, raw coherent text, no UI; owner: "without a UI").
    Scoped under #setting-portrait (lib/portrait.js, pages/portrait.js). */
-#setting-portrait { --rule: 32px; --paper: #ffffff; --paper-line: #e3e6ea; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #setting-portrait { --paper: #1d2026; --paper-line: #2c333d; } }
-:root[data-theme="dark"] #setting-portrait { --paper: #1d2026; --paper-line: #2c333d; }
 #setting-portrait .portrait-subtitle { margin: 0 0 var(--sp-3); }
-#setting-portrait .portrait-view { display: grid; gap: var(--sp-3); justify-items: center; padding: var(--sp-4) 0 var(--sp-6, 32px); }
-#setting-portrait .portrait-masthead { width: min(100%, 780px); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+#setting-portrait .portrait-view { display: grid; gap: var(--sp-3); justify-items: center; padding: var(--sp-4) 0 var(--sp-6); }
+#setting-portrait .portrait-masthead { width: min(100%, 780px); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
 #setting-portrait .portrait-title { display: grid; gap: 2px; }
-#setting-portrait .portrait-title h2 { margin: 0; font: 600 var(--fs-xl, 1.4rem) Charter, 'Iowan Old Style', Georgia, serif; }
-#setting-portrait .portrait-sheet { position: relative; width: min(100%, 780px); box-sizing: border-box; color: var(--text); background-color: var(--paper);
-  padding: calc(var(--rule) * 1.5) 56px var(--rule); border-radius: 2px; box-shadow: 0 1px 2px rgb(0 0 0 / .10), 6px 6px 14px -6px rgb(0 0 0 / .35), 0 12px 18px -10px rgb(0 0 0 / .35); }   /* a plain white sheet, its shadow curling off the right edge and the foot (owner's reference, 28 Oct 2026) */
-#setting-portrait .portrait-sheet::after { content: ''; position: absolute; left: 0; right: 0; bottom: -10px; height: 12px; z-index: -1; background: radial-gradient(ellipse at 50% 0, rgb(0 0 0 / .28), transparent 70%); }
-#setting-portrait .portrait-sec { margin: 0; padding: 0 0 var(--rule); }
-#setting-portrait .portrait-label { margin: 0; font: 600 var(--fs-sm) var(--font-sans, inherit); line-height: var(--rule); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-#setting-portrait .portrait-text { margin: 0; font: 400 1.15rem/var(--rule) Charter, 'Iowan Old Style', Georgia, serif; }
-#setting-portrait .portrait-statement { margin: 0 0 var(--rule); border-left: 3px solid var(--paper-line); padding-left: var(--sp-3); }
+#setting-portrait .portrait-title h2 { margin: 0; font-family: var(--font-serif); font-size: var(--fs-xl); font-weight: 600; }
+#setting-portrait .portrait-sheet { width: min(100%, 780px); box-sizing: border-box; color: var(--ink); background: var(--surface); border-radius: var(--r-sm);
+  padding: var(--sp-6) calc(var(--sp-6) * 2) var(--sp-5); box-shadow: var(--shadow-sheet); }
+#setting-portrait .portrait-sec { margin: 0; padding: 0 0 var(--sp-6); }
+#setting-portrait .portrait-label { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+#setting-portrait .portrait-text { margin: 0 0 var(--sp-2); font-family: var(--font-serif); font-size: var(--fs-card-title); line-height: 1.6; }
+#setting-portrait .portrait-statement { margin: 0 0 var(--sp-5); border-left: 3px solid var(--line); padding-left: var(--sp-3); }
 #setting-portrait .portrait-statement:last-child { margin-bottom: 0; }
 #setting-portrait [data-tone="good"] .portrait-statement { border-left-color: var(--teal); }
 #setting-portrait [data-tone="warn"] .portrait-statement { border-left-color: var(--signal-solid); }
 #setting-portrait [data-tone="good"] .portrait-label { color: var(--teal); }
 #setting-portrait [data-tone="warn"] .portrait-label { color: var(--signal); }
-#setting-portrait .portrait-sec-short .portrait-text { font-size: 1.4rem; }
+#setting-portrait .portrait-sec-short .portrait-text { font-size: var(--fs-xl); }
 #setting-portrait .portrait-sec-short .portrait-statement { border-left-color: var(--signal-solid); }
-#setting-portrait .portrait-sources { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
-#setting-portrait .portrait-sources .ui-tag, #setting-portrait .portrait-built .ui-tag { height: 26px; box-sizing: border-box; display: inline-flex; align-items: center; background: transparent; color: var(--text);
-  border: 1px solid var(--line-strong); border-radius: 999px; font-weight: 400; }
-#setting-portrait .portrait-built { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-#setting-portrait .portrait-built .portrait-label { margin-right: var(--sp-2); }
+#setting-portrait .portrait-sources, #setting-portrait .portrait-built { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+#setting-portrait .portrait-sources .ui-tag, #setting-portrait .portrait-built .ui-tag { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-weight: 400; }
+#setting-portrait .portrait-built { border-top: 1px solid var(--line); padding-top: var(--sp-4); }
+#setting-portrait .portrait-built .portrait-label { margin: 0 var(--sp-2) 0 0; }
+#setting-portrait .portrait-letter { padding-top: calc(var(--sp-6) * 2); padding-bottom: calc(var(--sp-6) * 2); }
+#setting-portrait .portrait-letter-text { margin: 0 0 var(--sp-5); font-family: var(--font-serif); font-size: var(--fs-card-title); line-height: 1.75; }
+#setting-portrait .portrait-letter-end { margin: var(--sp-6) 0 0; font-family: var(--font-serif); font-size: var(--fs-base); color: var(--muted); }
 #setting-portrait .portrait-needs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); width: min(100%, 780px); }
 #setting-portrait .portrait-need { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
-@media (max-width: 700px) { #setting-portrait .portrait-sheet { padding-left: 44px; padding-right: 16px; } 
+@media (max-width: 700px) { #setting-portrait .portrait-sheet { padding-left: var(--sp-5); padding-right: var(--sp-5); } }

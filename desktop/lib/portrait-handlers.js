@@ -12,8 +12,8 @@ export function registerPortraitHandlers({DEMO, ipcMain, storage}) {
     try {
       if (!DEMO) return await portrait.status(storage);
       const record = portrait.parse(md.blocks(storage.readText('portrait.md')));   // the demo folder's own file, shown as written
-      return record ? {state: 'current', sections: record.sections, evidence: record.evidence, updated: record.date, progress: []}
-        : {state: 'not_yet', sections: [], evidence: {}, updated: '', progress: portrait.progressOf(portrait.countsOf({}))};
+      return record ? {state: 'current', sections: record.sections, letter: record.letter, evidence: record.evidence, updated: record.date, progress: []}
+        : {state: 'not_yet', sections: [], letter: [], evidence: {}, updated: '', progress: portrait.progressOf(portrait.countsOf({}))};
     } catch (error) { return fail(error); }
   });
   ipcMain.handle('portraitRefresh', async () => {

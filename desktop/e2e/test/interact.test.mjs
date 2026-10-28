@@ -149,3 +149,25 @@ test('a press lands on the control the probe vetted, not on whatever carries its
     assert.deepEqual(await page.evaluate(() => window.pressed), ['Redraw', 'Second', 'Third'], 'each vetted control is pressed, in the page as it is now');
   } finally { await browser?.close(); }
 });
+
+test('a moved tag that lands on a control with the same words but a command is not pressed (Gitar on #2360)', async () => {
+  // After "Redraw" the old tag of "Third" sits on a button with the same text and label that opens a command: only the safety facts tell them apart.
+  let browser;
+  try {
+    browser = await chromium.launch({channel: 'chrome'});
+    const page = await browser.newPage();
+    await page.setContent(`<body><section class="view" data-view="same"><div id="box"></div><div id="out"></div></section><script>
+      window.fakeIpc = []; window.commandPressed = false; window.pressed = [];
+      const draw = html => { box.innerHTML = html; };
+      box.onclick = event => {
+        const name = event.target.textContent; window.pressed.push(name); out.textContent = name + window.pressed.length;
+        if (event.target.dataset.command) window.commandPressed = true;
+        if (name === 'Redraw') draw('<button>Redraw</button><button>Second</button><button>Third</button><button data-command="open-x">Third</button>');
+      };
+      draw('<button>Redraw</button><button>Delete everything</button><button>Second</button><button>Third</button>');
+    </script></body>`);
+    await probePage({page, view: 'same', ipc: ipcOf(page), settleMs: 400, idleMs: 0, scope: '.view[data-view="same"]'});
+    assert.equal(await page.evaluate(() => window.commandPressed), false, 'the probe pressed the button with a command');
+    assert.deepEqual(await page.evaluate(() => window.pressed), ['Redraw', 'Second', 'Third']);
+  } finally { await browser?.close(); }
+});

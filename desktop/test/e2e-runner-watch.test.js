@@ -28,9 +28,9 @@ test('a test app ends when its runner is killed, and one without the watch does 
   try {
     pids = await new Promise((resolve, reject) => {
       let text = '';
-      runner.stdout.on('data', chunk => { text += chunk; if (text.includes('\n')) resolve(JSON.parse(text.split('\n')[0])); });
-      runner.on('exit', () => reject(new Error('the runner ended before it started its children')));
-      setTimeout(() => reject(new Error('the runner did not start its children in 15 s')), 15000);
+      const late = setTimeout(() => reject(new Error('the runner did not start its children in 15 s')), 15000);   // cleared below: a live timer holds the test file open for its full 15 s
+      runner.stdout.on('data', chunk => { text += chunk; if (text.includes('\n')) { clearTimeout(late); resolve(JSON.parse(text.split('\n')[0])); } });
+      runner.on('exit', () => { clearTimeout(late); reject(new Error('the runner ended before it started its children')); });
     });
     await wait(600);   // twelve polls of the watch: it must not fire while the runner lives
     for (const [name, pid] of Object.entries(pids)) assert.ok(alive(pid), `${name} (${pid}) ended while its runner was alive`);

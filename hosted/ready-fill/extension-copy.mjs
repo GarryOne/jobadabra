@@ -31,7 +31,8 @@ export function copyForNight(port, from, into = '', {owned = false} = {}) {
     fs.writeFileSync(path.join(dir, 'background-owned.js'), "// Reuse the actual extension worker after the owned-browser flag is installed.\nimport './owned-bootstrap.js';\nimport './background.js';\n");
     edit('manifest.json', text => { const manifest = JSON.parse(text); manifest.background.service_worker = 'background-owned.js'; return JSON.stringify(manifest, null, 2); });
   }
-  const left = fs.readdirSync(dir).filter(file => file.endsWith('.js') && fs.readFileSync(path.join(dir, file), 'utf8').includes('127.0.0.1:47111'));
+  // Why (2026-10-28, owner screenshot): an app on the default port 47111 has nothing to rewrite, so the address is meant to stay; the check only guards a copy pointed elsewhere.
+  const left = Number(port) === 47111 ? [] : fs.readdirSync(dir).filter(file => file.endsWith('.js') && fs.readFileSync(path.join(dir, file), 'utf8').includes('127.0.0.1:47111'));
   if (left.length) throw new Error(`the night's extension still mentions 127.0.0.1:47111 in ${left.join(', ')}`);
   return dir;
 }

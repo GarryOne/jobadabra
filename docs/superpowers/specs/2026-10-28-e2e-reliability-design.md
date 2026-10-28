@@ -177,8 +177,8 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 13 | Rule E on lane entries | 2 | ✅ #2398 |
 | 14 | Renderer class tests on push | 9 | 🔨 this PR |
 | 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | push-checks session |
-| 16 | Health greys: AI credit, runner, install | 2 | 🔨 this PR |
-| 17 | At most 5 suites picked by the scorecard, and suspension on a red-then-green flip | 2 | verdict session |
+| 16 | Health greys: AI credit, runner, install | 2 | ✅ #2415 |
+| 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | 🔨 #2421 |
 | 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
 | 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
 | 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | fl |
@@ -214,8 +214,9 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] Lane registry first cut (`quality`, `notion-real`): the verdict greys a tolerant or suspended suite, the registry read from the base branch (#2376). (proof: tests/test_pr_verdict_lanes.py @7eba931)
 - [x] Rule E on edits to `lanes.json`: a named input and why, or the push is blocked (`tools/lanes-check.mjs`, run by the push script and the PR gate). (proof: desktop/test/lanes-check.test.js)
 - [x] Health greys: AI credit, runner, install; the verdict names the reason (the install case is a reconstructed fixture: no recorded install red exists yet). (proof: tests/test_pr_verdict_health.py)
-- [ ] At most 5 suites picked by the scorecard.
-- [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue.
+- [x] At most 5 suites on a PR, picked by how strongly the diff reaches them; the other reached suites run after the merge (rule G). (proof: desktop/e2e/test/pr-suites-cap.test.mjs)
+- [ ] Catch-weighted picking: a PUBLIC snapshot of the scorecard feeds `pr-suites.mjs --catches` (the scorecard is private, so today's ties go to reach, then name; the site session owns the snapshot).
+- [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue. The tool is built and dry-run by default (`tools/suspend-flip.mjs`, test `desktop/e2e/test/suspend-flip.test.mjs`); this box is ticked when a workflow calls it after a re-run.
 
 ### 3. Expectation rule and plumbing brake
 - [ ] Rule E: a PR that changes what a backbone test expects carries its citation (mechanical check plus `.gitar/review/e2e-reliability.md`).

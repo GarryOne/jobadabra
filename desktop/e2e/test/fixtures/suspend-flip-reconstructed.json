@@ -1,0 +1,7 @@
+{
+  "provenance": "Reconstructed GitHub attempts/jobs API responses; no live pair fetched because this task prohibits network calls. IDs, SHA and links are fictional.",
+  "attempts": [
+    {"total_count": 1, "jobs": [{"id": 101, "run_id": 9001, "run_attempt": 1, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "name": "settings", "status": "completed", "conclusion": "failure", "html_url": "https://github.com/example/fixture/actions/runs/9001/job/101"}]},
+    {"total_count": 1, "jobs": [{"id": 102, "run_id": 9001, "run_attempt": 2, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "name": "settings", "status": "completed", "conclusion": "success", "html_url": "https://github.com/example/fixture/actions/runs/9001/job/102"}]}
+  ]
+}

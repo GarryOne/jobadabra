@@ -35,9 +35,9 @@ test('the report warns about an untouched suite and says so plainly when nothing
 
 import {planPrSuites} from '../lib/pr-suites.mjs';
 
-test('the PR plan joins pointed and quoting suites, keeps every Linux one (no cap since G1a), drops manual ones', () => {
+test('the after-merge plan joins pointed and quoting suites without a cap, and drops manual ones', () => {
   const plan = planPrSuites({pointed: ['settings', 'apply'], hits: {jobs: ['x'], quality: ['y'], personas: ['z'], strategy: ['w'], focus: ['v'], wizard: ['u']}, linux: suite => !['apply', 'wizard'].includes(suite), cadence: {personas: 'manual'}});
-  assert.deepEqual(plan.suites, ['settings', 'apply', 'jobs', 'quality', 'strategy', 'focus'], 'a fifth suite still runs: a capped suite was one a PR could break unseen');
+  assert.deepEqual(plan.suites, ['settings', 'apply', 'jobs', 'quality', 'strategy', 'focus'], 'the after-merge plan keeps every reached Linux suite');
   assert.deepEqual(plan.left, ['wizard'], 'a Mac suite the PR changes runs (apply); one that only quotes removed text is left to the gate; a manual suite is not named at all');
 });
 

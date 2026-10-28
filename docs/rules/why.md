@@ -211,5 +211,5 @@ what stop a rule from being relaxed back into the old bug. Add an entry when a n
 
 ## CLAUDE.md diet (27 Oct 2026)
 - Owner, 27 Oct 2026, asked by the coordinator: cut the always-loaded rules to under 200 lines, "keep commands, gotchas, safety; move incidents and quotes to why.md". Anthropic: "Keep CLAUDE.md short… under 200"; a rule that keeps failing belongs in a hook. The pre-diet text (every long bullet with its dates and quotes) is `git show c7bed98:CLAUDE.md`.
-- **CI freeze** (owner, 27 Oct 2026): harness PRs were 49% of PRs; target under 15%. Until 3 Nov 2026 only session 32 changes workflows, harness lib and ship tooling.
+- **CI freeze** (owner, 27 Oct 2026): harness PRs were 49% of PRs; target under 15%. Until 3 Nov 2026 only session 32 changes workflows, harness lib and ship tooling. 28 Oct 2026: a product PR (Background automation step A) was blocked by the push gate's tool-generated `paths:` line while session 32 wasn't running; the owner allowed exactly that generated line to every session.
 - **Fresh reviewer** (owner, 27 Oct 2026): bug PRs passed with tests that did not play the owner's scenario (flicker survived 3 fixes); one `/code-review` in a fresh subagent asks that question. The only subagent use besides the owner asking.

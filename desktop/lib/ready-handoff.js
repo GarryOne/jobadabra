@@ -2,6 +2,7 @@
 // the hand-off the night's server gave for one job (page address, its browser storage, a snapshot of the filled fields) waits here until the
 // extension, in the tab the app opened for that job, asks for it once. Only that page's own site's cookies leave this module: the night's browser
 // also holds other sites' cookies. Pure apart from the pending map. Guard: test/ready-handoff.test.js.
+import {formUrl} from './form-address.js';
 
 const WAIT_MS = 10 * 60 * 1000;   // a hand-off nobody asked for in 10 minutes is dropped (the tab never opened)
 const pending = new Map();        // key -> {handoff, keys, at}
@@ -66,6 +67,10 @@ export function keep(handoff, addresses, now = Date.now()) {
   for (const key of keys) { pending.set(key, entry); nights.set(key, {...night, at: now}); }
   return true;
 }
+
+/** Keep a hand-off for one job: under its link and its form address, whichever the reopened tab shows first. Returns false when the hand-off has no page.
+ * Why (2026-10-28, #2339): this module owns which addresses a tab may first show; a session reopens from the posting and never names the form address itself. */
+export const keepForJob = (handoff, jobUrl, now = Date.now()) => keep(handoff, [jobUrl, formUrl(jobUrl)], now);
 
 // The extension's ask for the tab at `url`: the hand-off once (then it is gone under every key), or null.
 export function take(url, now = Date.now()) {

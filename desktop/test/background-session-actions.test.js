@@ -45,7 +45,7 @@ test('Open in my browser on a hidden session keeps its hand-off for the job\'s a
   const handlers = new Map(), kept = [], started = [];
   registerSessionHandlers({ipcMain: {handle: (name, fn) => handlers.set(name, fn)}, appLog() {}, storage: {}, extensionGate: () => null, review: {},
     apply: {applyOne: async (_storage, url) => { started.push(url); return {ok: true, session: terminals.startForm({id: 'chrome-1', url})}; }},
-    keepHandoff: (handoff, addresses) => { kept.push([handoff.url, addresses]); return true; },
+    keepHandoff: (handoff, jobUrl) => { kept.push([handoff.url, jobUrl]); return true; },
     background: () => ({handOver: async (id, read) => { assert.equal(typeof read, 'function'); return {ok: true, handoff: {url: 'https://jobs.example.test/app/step-2'}}; }})});
   for (const [name, ...rest] of [['sessionRestart'], ['sessionReopen', false]]) {
     kept.length = 0; started.length = 0;
@@ -54,7 +54,7 @@ test('Open in my browser on a hidden session keeps its hand-off for the job\'s a
     assert.equal(result.ok, true, name);
     assert.equal(kept.length, 1, `${name}: one hand-off kept`);
     assert.equal(kept[0][0], 'https://jobs.example.test/app/step-2');
-    assert.ok(kept[0][1].includes('https://jobs.example.test/app'), `${name}: kept under the job's own address`);
+    assert.equal(kept[0][1], 'https://jobs.example.test/app', `${name}: kept for the job's own address (ready-handoff keepForJob adds its form address)`);
     assert.deepEqual(started, ['https://jobs.example.test/app'], `${name}: the same job opens in Chrome`);
     assert.equal(terminals.get(row.id), null, `${name}: the hidden session is gone`);
     assert.equal(terminals.get('chrome-1')?.background, null, `${name}: the new session is a Chrome one`);

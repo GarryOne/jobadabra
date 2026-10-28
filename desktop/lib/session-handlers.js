@@ -9,8 +9,7 @@ import * as quitDialog from './quit-dialog.js';
 import {sessionIpc} from './session-contracts.js';
 import {closeFormTab, openFormTab} from './form-tab.js';
 import {sessionsNamedIn} from './session-tab.js';
-import {keep as keepReadyHandoff} from './ready-handoff.js';
-import {formUrl} from './form-address.js';
+import {keepForJob} from './ready-handoff.js';
 import {readHandoff} from './live-view-handlers.js';
 
 // Close a session's form tab and say whether it is closed. A tab the app already knows is gone needs no wait: asking its page
@@ -28,7 +27,7 @@ import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 const REOPEN_MS = 15 * 1000;
 export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, dialog, nativeImage, here,
   DEMO, extensionGate = () => null, apply, pipeline, review, server, claudeConsent, getRecipeReporter = () => null, version = '',
-  closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage), keepHandoff = keepReadyHandoff}) {
+  closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage), keepHandoff = keepForJob}) {
   const reopenedAt = new Map();   // session id -> when Reopen last opened its form: a second press inside REOPEN_MS opens nothing
   const checkedSessions = sessionIpc(ipcMain, appLog);
   checkedSessions.handle('sessionCancel', async (_, id) => {
@@ -91,7 +90,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   const openInChrome = async old => {
     const handed = await background().handOver(old.id, readHandoff);
     if (!handed?.ok) return {ok: false, error: 'This application\'s hidden form could not be handed over. Try again.'};
-    if (handed.handoff) keepHandoff(handed.handoff, [old.url, formUrl(old.url)]);
+    if (handed.handoff) keepHandoff(handed.handoff, old.url);
     return restartAs(old, 'chrome');
   };
   checkedSessions.handle('sessionRestart', async (_, id) => {

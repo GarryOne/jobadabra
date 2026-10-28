@@ -2,7 +2,7 @@
 // and only the page's own site's cookies go with it (the night's browser also held other sites' cookies).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {clear, cookiesFor, forExtension, keep, pageKey, take} from '../lib/ready-handoff.js';
+import {clear, cookiesFor, forExtension, keep, keepForJob, pageKey, take} from '../lib/ready-handoff.js';
 
 const PAGE = 'https://job-boards.greenhouse.io/doctolib/jobs/7819133003?gh_src=x#jobpilotto-fill=s1';
 const HANDOFF = {url: 'https://job-boards.greenhouse.io/doctolib/jobs/7819133003',
@@ -43,6 +43,15 @@ test('kept under the job link, its form address and the night\'s page; taken onc
     assert.ok(keep(HANDOFF, ['https://boards.example.com/acme/123', 'https://boards.example.com/acme/123/apply']));
     assert.equal(take(asked)?.url, HANDOFF.url, asked);
     for (const again of ['https://boards.example.com/acme/123', PAGE]) assert.equal(take(again), null, `${asked} then ${again}: gone`);
+  }
+});
+
+test('keepForJob keeps it under the job link and its form address, so a session reopened from the posting never names the form address', () => {
+  const job = 'https://jobs.lever.co/acme/5e2e5e2e-0000-4000-8000-00000000a001';   // formUrl maps a Lever posting by its UUID
+  for (const asked of [job, `${job}/apply`]) {
+    clear();
+    assert.ok(keepForJob(HANDOFF, job));
+    assert.equal(take(asked)?.url, HANDOFF.url, asked);
   }
 });
 

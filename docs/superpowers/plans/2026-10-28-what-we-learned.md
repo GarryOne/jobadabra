@@ -13,6 +13,7 @@ comment that cites it is updated in the PR that splits the queue, quoting the 28
 | A · Two drawers | Drawer 1 = missing Your details facts only (ranked); drawer 2 = the rest; cover letter its own card; per-company and duplicate items gone; tab renamed | 1 (UI + list logic) | — |
 | B · Learnings | After each fill, the app concludes one Q&A per topic (state new / guessed / conflict), used at once; tab shows evidence + state chips; Confirm / Save change / Write the rule | 2 (store writes, AI call) | A |
 | C · Remember by Apply mode | "Remember" (on by default) where you answer; Full automation recap | 2 (extension, flow core) | B |
+| D · About you everywhere | Every writer (form filling, CV, cover letter, kit answers) gets all we know about you through one function | 2 (AI inputs) | B |
 
 Salary seeding from Strategy and the background-check split land in B (they are learnings). Notice period and eligibility per
 country are Your details facts already (#2322 owns eligibility).
@@ -72,6 +73,36 @@ Owner's yes before the UI commit.
 
 - Extension: the answer you type shows "Remember" (on; off when the question names the company). Full automation: recap after
   the run (answered / learned / this job only, with Change). Flow core: read the file's Invariants block first.
+
+- Writing preferences (Cover letter tab) are stored today as the "Cover letter style" section of the answers page
+  (`renderer/writing-preferences-model.js:2`). Owner, 28 Oct 2026: "everything about the cover letter should be only in Cover
+  Letter tab". PR B moves them to the Cover letter's own store; the learnings writer never reads, writes or lists them.
+
+## PR D · About you everywhere (owner, 28 Oct 2026: "If we make use of all the knowledge we built about the user, wouldn't we
+better answer open questions in forms… tailor CV, tailor Cover letter, or kit answers?")
+
+One shared function returns everything we know about the person; each writer takes it with one fixed exclusion list:
+
+| About you | Form filling | CV | Cover letter | Kit answers |
+|---|---|---|---|---|
+| Your details | ✅ | ✅ | ✅ | ✅ |
+| Experience bank | ✅ new | ✅ | ✅ | ✅ new |
+| What we learned | ✅ | ✅ summary only (owner) | ✅ never salary (owner) | ✅ |
+| Form fills | via learnings | via learnings | via learnings | via learnings |
+| Base cover letter | fallback file | — | ✅ voice example (new) | — |
+| Writing preferences | — | — | ✅ | — |
+
+- Salary, demographics (EEO), criminal record and disability go only into their own form fields, never into a CV, letter or
+  open answer. One test loops over every writer (class rule) and checks inclusions and exclusions.
+- Today CV tailoring reads only `profile` (`kit-handlers.js:66`), not the answers page; letters read the answers page but
+  never the base letter.
+- Prompt change → cases added to each writer's case set and replayed; the extra input cost per call measured on the PR.
+- Owner, 28 Oct 2026: "a modular/reusable interface of the user/profile knowledge… whenever we'd want to give an insight, to
+  give a review, to fill a form, to tailor a CV". Readers beyond the four writers: daily/random insight and "Analyze my search"
+  (`src/ai/insights.py`), interview insights and prep (`src/ai/interview_insights.py`, `src/ai/prep.py`), answer review.
+  Each reader names the parts it takes; exclusions are per reader (salary is out of CV/letter but in "Analyze my search").
+  Raw Form fills reach readers only through learnings, except interview prep for one job, which also reads what was sent to
+  that employer (stay consistent with your own form answers). Artifact sketch before PR D starts.
 
 ## Verification per PR
 

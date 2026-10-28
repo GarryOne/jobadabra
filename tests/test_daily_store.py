@@ -74,6 +74,20 @@ class ScheduledRunOnTheStoreTests(unittest.TestCase):
             code = daily.main()
         return code, out.getvalue()
 
+    def test_the_health_check_follows_the_hour_the_run_started_in(self):
+        # Why (28 Oct 2026): CI went red at a top-of-hour: the run began at 21:59:59, the check read the clock again at 22:00:00 and skipped the alert.
+        class Clock(datetime):
+            reads = 0
+
+            @classmethod
+            def now(cls, tz=None):
+                cls.reads += 1
+                return datetime(2026, 10, 28, 21, 59, 59, tzinfo=tz) if cls.reads == 1 else datetime(2026, 10, 28, 22, 0, 0, tzinfo=tz)
+        with mock.patch.object(daily_search, 'datetime', Clock), mock.patch.object(daily_search.doctor, 'HEALTH_HOUR_UTC', 21):
+            code, out = self.run_daily('--send')
+        self.assertEqual(code, 0, out)
+        self.assertIn('doctor', [name for name, _, _ in self.calls], out)   # one clock read at the start decides the hour
+
     def test_a_scheduled_run_on_this_macs_store_logs_its_row_and_uses_the_store_everywhere(self):
         code, out = self.run_daily('--send')   # the sending run: the insight and the health alert come after the digest
         self.assertEqual(code, 0, out)

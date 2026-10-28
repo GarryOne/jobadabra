@@ -65,6 +65,22 @@ export async function judge(storage, labels, options = {}) {
   return keep;
 }
 
+// Why (PR B2, owner 28 Oct 2026: evidence "by meaning"): the learning each form label fed (lib/learnings.js), kept with the label's verdict and the job that
+// asked it, so What we learned finds a learning's Form fills by their labels when it draws (the Form fills log keeps labels only, never answers).
+// pairs [{label, topic}]: topic = the learning's question on the answers page. `fills`, not `jobs`: jobs are the forms a question blocked ("seen twice").
+export function noteLearned(storage, pairs, {url = '', company = ''} = {}) {
+  if (!pairs?.length) return;
+  const next = {...cached(storage)};
+  for (const {label, topic} of pairs) {
+    const key = keyOf(label), entry = next[key] || {question: label, asked: 0};
+    const fills = (entry.fills || []).filter(fill => fill.url !== url);
+    next[key] = {...entry, learned: topic, fills: url ? [...fills, {url, company, at: new Date().toISOString().slice(0, 10)}].slice(-10) : fills};
+  }
+  const keys = Object.keys(next);
+  for (const key of keys.slice(0, Math.max(0, keys.length - MAX))) delete next[key];
+  storage.saveSettings({questionVerdicts: next});
+}
+
 // "Only this job" (the Undo of a remembered question): never kept as a standard answer again.
 export function onlyThisJob(storage, question) {
   const known = cached(storage), entry = known[keyOf(question)];

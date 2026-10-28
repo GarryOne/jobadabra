@@ -20,7 +20,8 @@ const PROFILE = ['## Preferences', 'Relocation: open to moving within the EU', '
   '## 💶 Availability & compensation', 'Target: 10k CHF or so [salary]', '## 🛂 Work eligibility', 'Work permit / visa: ❓ your citizenship and status',
   '## ❓ Possible CV gaps', 'Prometheus: ❓ Have you used it?'];
 const ANSWERS = ['## Availability and pay', {table: [['Question', 'Answer'], ['Notice period / earliest start', '3 months'], ['Years of experience with Kubernetes', 'maybe 3?']]},
-  '## ❓ Questions to answer', 'Do you have a driving licence?: ❓ (asked by Acme)'];
+  '## ❓ Questions to answer', 'Do you have a driving licence?: ❓ (asked by Acme)',
+  '## Learned from forms', 'Willing to travel: Yes, up to 20% (new)', 'Contract type: Permanent (two answers: Freelance)'];   // lib/learnings.js wrote them (PR B2)
 const markdown = lines => lines.map(line => (typeof line === 'object' ? line.table.map((cells, i) => `| ${cells.join(' | ')} |${i === 0 ? '\n|---|---|' : ''}`).join('\n')
   : line.startsWith('## ') ? line : `- ${line}`)).join('\n') + '\n';
 
@@ -89,6 +90,17 @@ const FIXTURES = {
   }},
   cvcheck: {match: /^Languages$/, answer: () => 'Romanian (native), English (fluent)', after: async env => {
     assert.ok((await sections.read(env.storage, env.fetcher)).languages.some(line => line.label === 'Languages' && /fluent/.test(line.value)), 'the confirmed fact goes to its section');
+  }},
+  // PR B2: a learning a form fill wrote is confirmed as it is, or picked from its two answers; either way it is written without its state.
+  taught: {match: /^Willing to travel/, answer: () => 'Yes, up to 20%', after: async env => {
+    const answers = await store.openStore(env.storage, {fetcher: env.fetcher}).page('answers').text();
+    assert.match(answers, /Willing to travel: Yes, up to 20%/);
+    assert.doesNotMatch(answers, /\(new\)/, 'confirmed: no state left');
+  }},
+  conflict: {match: /^Contract type/, answer: () => 'Freelance', after: async env => {
+    const answers = await store.openStore(env.storage, {fetcher: env.fetcher}).page('answers').text();
+    assert.match(answers, /Contract type: Freelance/);
+    assert.doesNotMatch(answers, /two answers/, 'the one picked is kept, confirmed');
   }},
   missing: {match: /^Earliest start date/, answer: () => '1 December 2026', after: async env => {
     assert.ok((await sections.read(env.storage, env.fetcher)).availability.some(line => line.label === 'Earliest start date' && line.value === '1 December 2026'), 'a fact nobody had given goes to its section');

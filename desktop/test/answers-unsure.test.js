@@ -19,8 +19,8 @@ const fresh = () => {
 };
 
 test('"(guess)" is unconfirmed: the value without the mark, flagged, not open', () => {
-  assert.deepEqual(valueOf('"Cannot recall" (guess).'), {open: false, optional: false, guess: true, value: '"Cannot recall"', hint: '', asked: ''});
-  assert.deepEqual(valueOf('Bachelor\'s in Computer Science; no exact grade. (guess)'), {open: false, optional: false, guess: true, value: 'Bachelor\'s in Computer Science; no exact grade.', hint: '', asked: ''});
+  assert.deepEqual(valueOf('"Cannot recall" (guess).'), {open: false, optional: false, guess: true, state: 'guess', value: '"Cannot recall"', hint: '', asked: ''});
+  assert.deepEqual(valueOf('Bachelor\'s in Computer Science; no exact grade. (guess)'), {open: false, optional: false, guess: true, state: 'guess', value: 'Bachelor\'s in Computer Science; no exact grade.', hint: '', asked: ''});
   assert.equal(valueOf('Cannot recall').guess, undefined, 'a plain answer is confirmed');
   const line = answerSections([{type: 'bulleted_list_item', id: 'm', text: '- How did you perform in mathematics at high school?: "Cannot recall" (guess).'}])[0].items[0];
   assert.equal(line.guess, true);

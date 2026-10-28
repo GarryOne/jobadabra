@@ -16,10 +16,22 @@ const plain = text => String(text).replace(/\*\*/g, '').replace(/[\s:*]+$/, '').
 // An empty answer is not set either (owner, 18 Oct 2026: his "How to pronounce your name" was left empty); "… (guess)" is an answer not yet confirmed: the
 // value without the mark, .guess (an older kit wrote it; the row says "Unconfirmed" until it is saved again).
 const GUESS = /\s*\(guess\)\.?\s*$/i;
+// A learning's state (PR B2, owner 28 Oct 2026: New / Confirmed / Two answers; lib/learnings.js writes it): "… (new)" a form fill taught it, "… (two answers:
+// other)" a later form was given another answer; confirmed has no mark. Any save of the row writes it without one (changeFor): saving is confirming.
+const NEW = /\s*\(new\)\.?\s*$/i, TWO = /\s*\(two answers:\s*([^()]*)\)\s*$/i;
+export const STATES = ['new', 'guess', 'conflict'];
+/** "Yes" + 'new' → "Yes (new)"; + 'conflict', other → "Yes (two answers: No)" (the other answer's brackets dropped: the mark has none inside); '' → "Yes". */
+export function withState(value, state = '', other = '') {
+  const text = String(value ?? '').trim();
+  if (state === 'conflict') return `${text} (two answers: ${String(other ?? '').replace(/[()]/g, '').replace(/\s+/g, ' ').trim()})`;
+  return state === 'new' || state === 'guess' ? `${text} (${state})` : text;
+}
 export function valueOf(raw) {
   const text = String(raw ?? '').trim();
   if (!text) return {open: true, optional: false, value: '', hint: '', asked: ''};
-  if (GUESS.test(text)) return {open: false, optional: false, guess: true, value: text.replace(GUESS, '').trim(), hint: '', asked: ''};
+  if (TWO.test(text)) return {open: false, optional: false, state: 'conflict', other: text.match(TWO)[1].trim(), value: text.replace(TWO, '').trim(), hint: '', asked: ''};
+  if (NEW.test(text)) return {open: false, optional: false, state: 'new', value: text.replace(NEW, '').trim(), hint: '', asked: ''};
+  if (GUESS.test(text)) return {open: false, optional: false, guess: true, state: 'guess', value: text.replace(GUESS, '').trim(), hint: '', asked: ''};
   if (!UNSET.test(text)) return {open: false, optional: false, value: text, hint: '', asked: ''};
   const asked = text.match(ASKED)?.[1] || '';
   const hint = text.replace(UNSET, '').replace(ASKED, '').replace(/^\(|\)$/g, '').replace(/^(to confirm|optional)\s*[—:-]?\s*/i, '').trim();

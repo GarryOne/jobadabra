@@ -47,6 +47,12 @@
       "cases": ["desktop/test/fixtures/question-reuse-cases.json"],
       "prompts": {"desktop/lib/question-reuse.js": ["INSTRUCTIONS"]}
     },
+    "learnings": {
+      "live": false,
+      "about": "what one form fill teaches (desktop/lib/learnings.js): each answer against the kept learnings, given as a closed topic list: same, extends (the AI widens it), conflicts (Two answers), new, or not ours (owned by Your details or Strategy, private, one job's). Travel in 3 wordings, a contract conflict, salary per country, a per-company question, an employment type Strategy owns (owner, 28 Oct 2026, PR B2). Replayed on Haiku through claude -p",
+      "cases": ["desktop/test/fixtures/learnings-cases.json"],
+      "prompts": {"desktop/lib/learnings.js": ["INSTRUCTIONS"]}
+    },
     "place": {
       "live": false,
       "about": "where a job is, for one person's places (src/ai/place_triage.py): a city list without theirs and remote limited elsewhere are out; remote from anywhere inside an anywhere place is in (Zagreb, Helsinki, quality golden 3003/3010; 27 Oct 2026)",

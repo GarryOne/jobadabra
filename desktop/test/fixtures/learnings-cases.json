@@ -1,0 +1,27 @@
+{
+  "about": "The fixed case set of lib/learnings.js INSTRUCTIONS (tools/prompt-cases.json set learnings; plan docs/superpowers/plans/2026-10-28-what-we-learned.md PR B2): one filled form judged against kept learnings. Each answer has the verdict it must get (accept: the verdicts also right), the topic it must pick when it names one, and words its new question must hold. Owner, 28 Oct 2026: the AI decides same / extends / conflicts / new; Strategy owns employment type; never right to work, criminal record or demographics; a per-company question is never learned; salary per country. Fictional employer and values.",
+  "job": {"company": "Northwind Bank", "place": "Berlin, Germany"},
+  "owned": ["First name", "Postal code", "Notice period", "Nationality", "Employment type", "Work modes", "Workload", "Relocation"],
+  "learnings": [
+    {"question": "Willing to travel", "answer": "Yes, up to 20%"},
+    {"question": "Contract type preference", "answer": "Permanent only"},
+    {"question": "Salary expectation in Switzerland", "answer": "CHF 120,000 a year"},
+    {"question": "Do you agree to a background check", "answer": ""}
+  ],
+  "cases": [
+    {"label": "Are you willing to travel for work?", "answer": "Yes, up to 20% of the time", "verdict": "same", "topic": "Willing to travel"},
+    {"label": "Reisebereitschaft", "answer": "Ja, bis zu 20 %", "verdict": "same", "topic": "Willing to travel"},
+    {"label": "Can you travel abroad for client visits?", "answer": "Yes, up to 20%, including trips outside Europe", "verdict": "extends", "accept": ["same"], "topic": "Willing to travel"},
+    {"label": "Are you open to freelance or fixed-term contracts?", "answer": "Yes, freelance contracts are fine", "verdict": "conflicts", "topic": "Contract type preference"},
+    {"label": "What are your salary expectations (gross per year)?", "answer": "EUR 85,000", "verdict": "new", "question_has": ["germany"]},
+    {"label": "Do you consent to a pre-employment background screening?", "answer": "Yes", "verdict": "same", "topic": "Do you agree to a background check"},
+    {"label": "Why do you want to work at Northwind Bank?", "answer": "I like how Northwind runs its platform teams.", "verdict": "one_job"},
+    {"label": "How did you hear about this position?", "answer": "LinkedIn", "verdict": "one_job"},
+    {"label": "Employment type", "answer": "Full-time", "verdict": "owned"},
+    {"label": "Do you require visa sponsorship to work in Germany?", "answer": "No", "verdict": "private"},
+    {"label": "Gender", "answer": "Prefer not to say", "verdict": "private"},
+    {"label": "Have you ever been convicted of a criminal offence?", "answer": "No", "verdict": "private"},
+    {"label": "Do you hold a driving licence?", "answer": "Yes, category B", "verdict": "new", "question_has": ["driv"]},
+    {"label": "Código postal", "answer": "10115", "verdict": "owned", "key": "postal_code"}
+  ]
+}

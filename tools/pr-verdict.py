@@ -10,7 +10,10 @@ pr-verdict.yml (workflow_run) runs it again when a workflow ends, as a backstop.
 slow and inefficient method of checking PRs?"; on #1992 two polling jobs took 43 of 206 runner-minutes of one push). A merged or closed PR gets nothing (#2041).
 Counted: the runs of the commit started by the pull request, and the e2e run pr-suites.yml started for it (title "E2E for PR · ..."): a red suite blocks the merge
 (gate G1a; the owner rejected report only, 26 Oct 2026). The newest run of each workflow
-decides (a description edit re-runs the gate; a re-run replaces a red). Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
+decides (a description edit re-runs the gate; a re-run replaces a red). Grey, not red (owner, 28 Oct 2026, e2e reliability design: "a PR is red only when its
+diff broke it"): a PR suite job whose every "✗ step: reason" line is one main's own newest red of that suite printed (tools/main_e2e_state.py). Strict on purpose: a
+new step or a new reason stays red; a step after main's red step, which ran nowhere (main stopped there too), is judged once main is green. A job cannot read its own
+log while it runs: the job that ends last after it, or the backstop when the run ends, writes grey. Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
 Budget (owner's yes, 26 Oct 2026): a PR that changes how CI runs PRs (ci_change) and whose checks RAN over BUDGET_MIN goes red, unless a commit of it says
 "CI-budget: <why>". Each slowdown so far (781637a, bc585e3, a7a6a9f, 7083bb7) landed without saying a PR's time.
 Running time, not queue (owner, 27 Oct 2026: "Count running time only": "Red only when the PR's own jobs run over 10 min; queue wait is still shown on the PR"):
@@ -19,11 +22,13 @@ all). #2215 took 12.4 min, of which its jobs ran 7.x and waited the rest; summed
   tools/pr-verdict.py --repo <owner/repo> --sha <head sha> [--job-status <success|failure|cancelled>] [--dry-run]       Guard: tests/test_pr_verdict.py
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 
@@ -82,6 +87,18 @@ def clock(at):
         return at.astimezone(timezone.utc).strftime('%H:%M UTC')
 
 
+def marks(log):
+    """A suite job's log -> the set of its failure lines ("✗ step: reason", the e2e runner's mark), without gh's job/step columns, the timestamp or the indent."""
+    lines = (re.sub(r'^.*?\d{4}-\d\d-\d\dT[\d:.]+Z ', '', line).strip() for line in (log or '').splitlines())
+    return {line for line in lines if line.startswith(('✗ ', '✖ '))}
+
+
+def mains_own(pr_log, main_logs):
+    """True when the PR's red suite job printed only failure lines that main's own red of the suite printed too: main's red, not this diff."""
+    mine = marks(pr_log)
+    return bool(mine) and mine <= set().union(*(marks(log) for log in main_logs))
+
+
 def label(r, running_jobs=()):
     """How the status names a run it waits for: the PR's e2e run by its suites (the run is not in the PR's checks list), others by workflow."""
     title = str(r.get('displayTitle', ''))
@@ -105,31 +122,35 @@ def running_minutes(spans, now=None):
     return (total + (hi - lo).total_seconds()) / 60
 
 
-def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None):
+def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=()):
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
-    spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time."""
+    spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
+    greys: ids of red jobs that failed as main's own red (main_red_greys): shown, never red."""
     live = counted(runs)
     if not live:
         return None, '', live, [], None
     now = now or datetime.now(timezone.utc)   # a run still ending (its jobs done or finishing) ends about now
     short = lambda names: ', '.join(names)[:110]
-    red, running, finishing, settling = [], [], [], []
+    red, running, finishing, settling, grey, red_jobs = [], [], [], [], [], {}
     for r in live:
         listed = (jobs or {}).get(r.get('databaseId'))
         if listed is None:
             if r.get('status') != 'completed': running.append((r, []))
             elif r.get('conclusion') in RED: red.append(r)
             continue
-        states = [(job, job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS]
+        states = [(job, 'grey' if job.get('id') in greys else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS]
+        grey += [job['name'] for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
-        if any(state in RED for _, state in states): red.append(r)
+        if any(state in RED for _, state in states):
+            red.append(r); red_jobs[r.get('databaseId')] = [job['name'] for job, state in states if state in RED]
         elif (not states and r.get('status') != 'completed') or any(state == 'running' for _, state in states):
             running.append((r, [job['name'] for job, state in states if state == 'running']))
         elif r.get('status') != 'completed' and not ending: settling.append(r)   # all its jobs ended, yet the run is not: about to end, or to create the jobs that need them
         else: finishing += [job['id'] for job, state in states if state == 'finishing']
     if red:
-        return 'failure', f'red: {short(label(r) for r in red)}'[:140], live, [], red[0].get('databaseId')
+        # the failing jobs, not the run's title: #2342's status read "red: e2e focus,settings" with focus green (owner, 28 Oct 2026)
+        return 'failure', f'red: {short(label(r, red_jobs.get(r.get("databaseId"), ())) for r in red)}'[:140], live, [], red[0].get('databaseId')
     if settling and not running:
         return 'settling', f'{short(label(r) for r in settling)} ending', live, [], None
     if running:
@@ -143,7 +164,8 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     took = f'{minutes:.1f} min' if ran is None else f'{ran:.1f} min running + {max(0.0, minutes - ran):.1f} min waiting for runners'
     if (minutes if ran is None else ran) > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
         return 'failure', f'checks ran {took}, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")'[:140], live, finishing, None
-    return 'success', f'{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
+    told = f'grey: {short(grey)} (red on main too, not this PR); ' if grey else ''
+    return 'success', f'{told}{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
 
 
 def job_spans(repo, runs):
@@ -185,6 +207,51 @@ def read(repo, sha, my_run):
     return runs, jobs
 
 
+def job_log(repo, job_id):
+    """A finished job's whole log, also while its run still goes (`gh run view --log-failed` refuses until the run ends: code review, 28 Oct 2026).
+    gh 2.101 refuses a raw log (terminal escape sequences) without --allow-escape-sequences; a gh older than the flag never refused, so it is asked again without it.
+    A log not read raises: the caller keeps the job red and says why."""
+    for extra in (['--allow-escape-sequences'], []):
+        done = subprocess.run(['gh', 'api', *extra, f'repos/{repo}/actions/jobs/{job_id}/logs'], capture_output=True, encoding='utf-8', errors='replace')
+        if done.returncode == 0:
+            return done.stdout
+        if 'unknown flag' not in (done.stderr or ''):
+            break
+    raise OSError(f'the log of job {job_id} was not read: {(done.stderr or "").strip()[:120]}')
+
+
+def main_state_module(repo, ref):
+    """tools/main_e2e_state.py, the one owner of main's per-suite state. Every PR job and the backstop fetch this file alone (code review, 28 Oct 2026): its sibling is
+    then fetched at the same commit, only when a PR is red."""
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main_e2e_state.py')
+    if not os.path.exists(here):
+        text = gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/tools/main_e2e_state.py?ref={ref}')
+        here = os.path.join(tempfile.mkdtemp(), 'main_e2e_state.py')
+        with open(here, 'w', encoding='utf-8') as file:
+            file.write(text)
+    spec = importlib.util.spec_from_file_location('main_e2e_state', here)
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    return module
+
+
+def main_red_greys(repo, runs, jobs, ref='', read_main=None, log_of=None):
+    """Ids of the PR e2e run's finished red suite jobs that failed as main's own newest red of that suite (mains_own): grey. Any read that fails keeps them red."""
+    log_of = log_of or (lambda job_id: job_log(repo, job_id))
+    reds = [job for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)
+            for job in jobs.get(r.get('databaseId')) or [] if job.get('status') == 'completed' and job.get('conclusion') == 'failure']
+    if not reds:
+        return set()
+    try:
+        main_e2e_state = main_state_module(repo, ref)
+        main = (read_main or main_e2e_state.live)(repo)
+        return {job['id'] for job in reds
+                if (main.get(main_e2e_state.suite_of(job['name'])) or {}).get('conclusion') == 'failure'
+                and mains_own(log_of(job['id']), [log_of(i) for i in main[main_e2e_state.suite_of(job['name'])].get('jobs') or []])}
+    except Exception as error:   # Why (code review, 28 Oct 2026): the verdict is always written; whatever fails here (a read, a None from the API) keeps every red red
+        print(f'main\'s own reds not read ({type(error).__name__}: {error}): every red stays red')
+        return set()
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -201,14 +268,18 @@ def main():
     if number:
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
         messages = json.loads(gh('api', f'repos/{a.repo}/pulls/{number}/commits?per_page=100', '--jq', '[.[].commit.message]') or '[]')
-    me = None
+    me, greys = None, None
     for attempt in range(20):   # at most ~60 s, only while jobs with a lower id end with us
         runs, jobs = read(a.repo, a.sha, my_run)
         if a.job_status and me is None:
             mine = [j for j in jobs.get(int(my_run or 0), []) if j.get('status') != 'completed' and j.get('runner_name') == os.environ.get('RUNNER_NAME')]
             me = mine[0]['id'] if mine else None
         spans = job_spans(a.repo, runs) if ci_change(files) and not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run) else None
-        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans)
+        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or ())
+        if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
+            greys = main_red_greys(a.repo, runs, jobs, ref=os.environ.get('GITHUB_SHA') or a.sha)
+            if greys:
+                state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):
             break
         if state != 'settling' and leave_it(finishing, me):

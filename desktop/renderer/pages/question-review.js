@@ -176,7 +176,7 @@ export function draw() {
   if (state.loading) { const body = el('div', 'jd-body qr-body'); body.append(...skeleton()); panel.replaceChildren(header(), body); return; }
   if (state.failed) {
     panel.replaceChildren(header(), el('div', 'jd-body qr-body', stateCard({icon: 'alert', tone: 'bad', title: 'Could not read your questions', text: state.failed,
-      actions: [button('Retry', () => openQuestionReview({force: true}))]})));
+      actions: [button('Retry', () => openQuestionReview({force: true, queue: state.kind}))]})));   // the drawer that was open (Gitar on #2325)
     return;
   }
   const q = current();
@@ -259,7 +259,7 @@ export async function manageAnswers(query = '', view = 'confirmed') {
   profileTab('answers');
 }
 
-registerOverlay('review', {close: closeQuestionReview, open: () => openQuestionReview()});
+registerOverlay('review', {close: closeQuestionReview, open: () => openQuestionReview({queue: state.kind})});   // back to the drawer it was
 $('review-drawer-backdrop')?.addEventListener('click', closeQuestionReview);
 $('questions-review')?.addEventListener('click', () => openQuestionReview({queue: 'details'}));
 $('learned-review')?.addEventListener('click', () => openQuestionReview({queue: 'learned'}));

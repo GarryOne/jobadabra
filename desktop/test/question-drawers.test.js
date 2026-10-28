@@ -83,6 +83,21 @@ test('What we learned writes a free-text answer in a textarea, asking for the ca
   review.closeQuestionReview();
 });
 
+// Gitar on #2325: Retry (and the overlay slot's reopen) called the opener with no queue, so What we learned came back as Fill your details.
+test('Retry after a failed read reopens the drawer that was open', async () => {
+  const good = reply;
+  reply = {error: 'The store did not answer', details: [], learned: [], hidden: []};
+  await review.openQuestionReview({queue: 'learned', force: true});
+  const retry = $('review-panel').querySelectorAll('button').find(button => button.textContent === 'Retry');
+  assert.ok(retry, 'the failed read offers Retry');
+  reply = good;
+  retry.click();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.match($('review-panel').textContent, /What we learned/);
+  assert.doesNotMatch($('review-panel').textContent, /Fill your details/);
+  review.closeQuestionReview();
+});
+
 test('a start key opens the drawer that holds it', async () => {
   await review.openQuestionReview({start: 'pronouns'});
   assert.match($('review-panel').textContent, /What we learned/);

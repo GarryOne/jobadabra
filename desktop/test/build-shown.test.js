@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {readPanel} from '../../worker/test/helpers/panel.js';
 
 const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 
@@ -18,7 +19,7 @@ test('the server tells the extension its build; the worker keeps it; the panel s
   const report = read('extension/tab-report.js');
   assert.match(report, /appBuild: answer\?\.build/);
   assert.match(report, /panelBuild/); assert.match(report, /panelReload/);
-  const review = read('extension/review.js');
+  const review = readPanel();
   assert.match(review, /build\.behind !== 0/);
   assert.match(review, /type: 'panelReload'/);
 });

@@ -76,19 +76,43 @@
   const traceOn = async () => { const {traceBarSeen} = await chrome.storage.local.get('traceBarSeen').catch(() => ({})); if (!traceBarSeen) $('.trace-note').hidden = false; };
   $('.trace-note .got-it').onclick = () => { $('.trace-note').hidden = true; chrome.storage.local.set({traceBarSeen: true}).catch(() => {}); };
 
+  const view = window.__jobPilottoPanelView({$, jp, night, MARK_WORDS, KNOCKOUT, AGREE, flash, written, stoppedCard, send});
+
   // ---- drawing ----
+  // Draw the current page state in the pill and, when open, the review card.
   function render(list = fields()) {
     const needsNow = document.documentElement.getAttribute('data-jobpilotto-needs');
     const account = !!document.querySelector('input[type=password]');
+    requestPassword(account);
+    // A sign-in page is too small for a panel, unless the AI says it needs the person, or the extension works on it: then the panel shows what it does (and Stop), centred over the dim.
+    if (list.length < MIN_FIELDS && !needsNow && !stepShowing() && !markWorking()) { look(false); host.remove(); return null; }
+    if (!host.isConnected) document.documentElement.append(host);
+    const handed = handoff(needsNow);
+    renderMark(handed);
+    const progress = renderSummary(list, account);
+    if (!open) return progress.state;
+    const heading = view.renderHeader({...progress, job, session, moved, movedTab, filling});
+    view.renderProgress({...progress, moved, markStepWords}, heading);
+    const canTailor = view.renderFill({...progress, session, connection, cv, moved, filling});
+    const knockouts = view.renderRemaining({...progress, moved, shown});
+    renderTip(knockouts, canTailor);
+    view.renderActions({session, connection, claudeAsk, needsYou: progress.needsYou, handed, stopped, needs: () => shown[0] && flash(shown[0].el)});
+    view.renderFooter({connection, session, build});
+    return progress.state;
+  }
+
+  // Request a visible account password at the original throttle before checking the panel's field minimum.
+  function requestPassword(account) {
     // An empty password box is filled from the Keychain (asked again now and then; the value never comes to this panel). Asked BEFORE the
     // field count below: a sign-in page has two boxes (Coop's SuccessFactors, live run 8 Oct 2026), too few for a panel.
     if (account && Date.now() - askedPassword > 2000 && [...document.querySelectorAll('input[type=password]')].some(box => (!box.value || (box.hasAttribute('data-jobpilotto-filled') && !document.documentElement.hasAttribute('data-jobpilotto-account-pressed'))) && box.getClientRects().length)) {
       askedPassword = Date.now();
       send({type: 'sitePassword'}).catch(() => {});
     }
-    // A sign-in page is too small for a panel, unless the AI says it needs the person, or the extension works on it: then the panel shows what it does (and Stop), centred over the dim.
-    if (list.length < MIN_FIELDS && !needsNow && !stepShowing() && !markWorking()) { look(false); host.remove(); return null; }
-    if (!host.isConnected) document.documentElement.append(host);
+  }
+
+  // Track the app's current stuck answer and hand a working step back to the person when needed.
+  function handoff(needsNow) {
     // The person is needed (a captcha, a question the page asks) or the page is stuck: the step ends (no dim, the corner, no busy step row) so they can act. The app's "stuck" is
     // an older word than a step the extension showed after it (it handed the page over, then fields appeared and it went on: owner, 27 Oct 2026), and never ends this panel's own fill.
     const stuckNow = !!session?.stuck && !(session.live && ['running', 'input'].includes(session.status));
@@ -97,6 +121,11 @@
     const handed = (!!needsNow && !filling) || stopped || (stuckNow && !filling && stepAt <= stuckSince);   // this panel's own fill (Check again, Fill again) reads the page anew: the AI's older "needs you" waits for its end
     // Why (2026-10-27, red CI on #2281): only the worker says stopped; this page's own stopped flag is stale while a restart is on its way, and a verdict sent from it ended the restarted run.
     if (handed && !stopped && stepShowing() && applyWorking) send({type: 'applyVerdict', verdict: 'your-turn'}).catch(() => {});   // the person must act: a verdict, which the worker answers by lifting every page
+    return handed;
+  }
+
+  // Draw the worker's routing words without changing who owns the working look.
+  function renderMark(handed) {
     // The extension reading or routing a page (page-mark.js: reading, posting, opening, signing-in/up) is working like a fill: the same layer and one step row, ending when the mark moves on.
     const markNow = document.documentElement.getAttribute('data-jobpilotto-page') || '';
     const markWorks = applyWorking && WORKING_MARKS.includes(markNow) && !handed && !moved;
@@ -104,10 +133,10 @@
     // Why (#2221, owner 27 Oct 2026; now by the one state owner): the mark moved on: only its words end, never the look: a fill step still running under it (the worker's, or this panel's fill) gets its row back, and the dim and
     // the centring stay until the worker's verdict (owner: "flashes (very short moments) when the extension panel moves from center to bottom right"; "we keep it like that until we have a very clear verdict").
     else if (markStepWords) { markStepWords = ''; if (workerStep || filling) showStep(workerStep || 'Reading the form…'); }   // the mark moved on: the step's words only; the look stays until the verdict
-    // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
-    written.update(list);
-    const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
-    shown = needed.filter(f => !f.filled);
+  }
+
+  // Draw the cover-letter notice and return the original missing-letter value.
+  function renderLetter(list, account) {
     const letterAsked = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1') || Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual]')).some(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
     const letterGiven = list.some(f => f.el?.getAttribute('data-jobpilotto-letter') === '1' && f.filled);
     const failedManual = Array.from(document.querySelectorAll('[data-jobpilotto-letter-manual][data-jobpilotto-letter-error]')).find(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
@@ -120,86 +149,32 @@
     $('.letter-reason').textContent = letterMissing ? letterCopy.reason : '';
     $('.letter-action').textContent = letterCopy.action;
     $('.letter-action').onclick = event => letterRejected ? flash(letterRejected.el) : ask(event.currentTarget, 'Opening…', {type: 'panelOpenApp', session: 'setup:cover-letter'}, APP_DOWN);
+    return letterMissing;
+  }
+
+  // Count the needed fields, draw the collapsed summary and return the facts for the open card.
+  function renderSummary(list, account) {
+    // An answer Claude wrote that is now empty (marked amber) still needs you, required or not.
+    written.update(list);
+    const needed = list.filter(f => f.required || f.ai || f.changed || f.draft);
+    shown = needed.filter(f => !f.filled);
+    const letterMissing = renderLetter(list, account);
     const total = needed.length, left = shown.length, pageMark = (m => (['form', 'account', 'sign-up'].includes(m) ? '' : m || 'reading'))(document.documentElement.getAttribute('data-jobpilotto-page') || ''), ready = !moved && !pageMark && total > 0 && left === 0 && !letterMissing, needsYou = document.documentElement.getAttribute('data-jobpilotto-needs');
     counts = {total, left};   // the stopped note says what the page holds
     const done = total ? Math.round(100 * (total - left) / total) : 0;
-    jp.classList.toggle('ready', ready && !needsYou);
-    $('.ring').style.setProperty('--done', done);
-    $('.ring span').textContent = moved ? '↗' : pageMark ? '…' : ready && !needsYou ? '✓' : total ? String(left) : '–';
-    const readyWords = needsYou ? `Needs you: ${needsYou.replace(/^1$/, 'see what the page asks')}` : account ? (document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_up' ? 'Ready to create the account' : document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_in' ? 'Ready to sign in' : 'Ready to continue') : 'Ready to submit';   // the AI's veto (account-step.js, form-ready.js): a consent link or a widget the count cannot see
-    // A tab the application has moved on from (the app bound another tab of it) never says Ready or counts: only the tab with the form does.
-    $('.pill b').textContent = moved ? 'Continues in another tab' : pageMark ? (MARK_WORDS[pageMark] || 'Apply button detected. Redirecting…') : ready || needsYou ? readyWords : letterMissing ? 'Cover letter needs setup' : total ? `${left} left` : 'Jobadabra';
-    $('.pill small').textContent = night() && !pageMark && !moved ? `Last night\u2019s fill is back${(job?.company || session?.company) ? ` · ${job?.company || session?.company}` : ''}` : (job?.company || session?.company) ? (job?.company || session?.company) : ready ? (account ? (document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_up' ? 'Review, then create it' : document.documentElement.getAttribute('data-jobpilotto-account-step') === 'sign_in' ? 'Review, then sign in' : 'Review, then continue') : 'Review, then submit') : 'required fields';
+    const readyWords = view.drawPill({moved, pageMark, ready, needsYou, total, left, done, account, job, session, letterMissing});
     // A fill running (this panel's, Claude's, the popup's) or over: a field filled after it is yours.
     const busy = filling || (session?.live && session.status === 'running') || $('.fill').classList.contains('is-busy');
     jp.classList.toggle('busy', busy);   // the Stop beside the minimised pill shows while a fill runs
     const over = filledOnce || ['done', 'input'].includes(session?.status);
-    if (!open) return {list, left, total, busy, over, account};
-    // job + Claude
-    const title = job?.title || session?.title, company = job?.company || session?.company;
-    $('.job').hidden = !title;
-    $('.job-title').textContent = title || '';
-    $('.job-meta').replaceChildren(...[company && Object.assign(document.createElement('span'), {textContent: company}),
-      Object.assign(document.createElement('span'), {className: `tag ${/applied/i.test(job?.stage || '') ? 'good' : ''}`, textContent: job?.stage || 'Not submitted'})].filter(Boolean));
-    $('.go-there').hidden = !(moved && Number.isInteger(movedTab));
-    const verify = $('.verify');
-    verify.hidden = !needsYou || moved || filling;
-    if (!verify.hidden) { stoppedCard(false); $('.verify .v-title').textContent = needsYou === '1' ? 'Your action is needed' : needsYou; }   // the AI's own words for what the page waits on
-    const claude = pageMark ? '' : moved ? 'This application continues in another tab.'   // an older tab of the session: it no longer reports
-      : session?.kind === 'form' ? ''   // the Apply button's session: the extension fills it, there is no Claude to name
-      : session?.live && session.status === 'running' ? `AI is filling this form · ${session.note || 'working'}`
-      : session?.live && session.status === 'input' ? 'AI is waiting for you in Jobadabra.'
-      : session?.status === 'done' ? 'AI filled this form. Review it, then submit it yourself.' : '';
-    $('.claude').hidden = !claude;
-    $('.claude span').textContent = claude;
-    // progress
-    $('.progress-line b').textContent = moved ? 'Continues in another tab' : markStepWords ? (title || company || 'Jobadabra') : pageMark ? (MARK_WORDS[pageMark] || 'Apply button detected. Redirecting…') : ready ? readyWords : total ? `${total - left} of ${total}` : 'No required fields';
-    $('.progress-line span').textContent = moved || pageMark ? '' : ready ? 'every required field is filled' : total ? 'required fields filled' : '';
-    $('.bar i').style.width = `${moved || pageMark ? 0 : ready ? 100 : done}%`;
-    // fill (not while Claude is filling this form: it would fight it)
-    const claudeFilling = session?.live && session.status === 'running';
-    // A sign-in or sign-up page (a password box) is not the application: no CV goes there, so no CV line (owner, 8 Oct 2026).
-    const canTailor = !!session && !!connection?.connected && !!connection.app && !!cv && !account && !pageMark;
-    $('.fill-box').hidden = moved || claudeFilling || (ready && !filling);  // nothing left to fill
-    $('.fill').disabled = filling;
-    // What's left for you, once the filling is over: before and during it, nearly every field is still to be filled
-    // by the extension or Claude, not by you (the ring and the bar show the progress meanwhile).
-    $('.left h4').textContent = left === 1 ? 'Remaining field' : 'Remaining fields';
-    $('.left').hidden = moved || !!pageMark || !left || busy || !over;
-    const knockout = field => KNOCKOUT.test(field.label) || field.category === 'knockout', ranked = [...shown].sort((a, b) => knockout(b) - knockout(a));   // or the AI, any language
-    const knockouts = ranked.filter(knockout).length;
-    $('.knock').hidden = !knockouts;
-    $('.knock').textContent = 'Some of these can trigger automatic rejection if the employer has set a knockout rule (work permit, sponsorship, location, office days); others are only flagged for review. Answer them truthfully: they can decide more than the CV.';
-    $('.list').replaceChildren(...ranked.slice(0, 30).map(field => {
-      const row = Object.assign(document.createElement('button'), {className: 'item'});
-      row.append(Object.assign(document.createElement('i'), {textContent: knockout(field) ? '⛔' : AGREE.test(field.label) || field.category === 'legal' ? '⚖️' : field.draft ? '✍️' : '○'}),
-        Object.assign(document.createElement('span'), {textContent: field.label.slice(0, 120) || 'A required field'}),
-        ...(field.draft ? [Object.assign(document.createElement('span'), {className: 'tag warn', textContent: field.draft === 'outline' ? 'Outline: complete it' : 'Drafted for you: review'}),   // typed by us, never counted as done until read (owner, 16 Oct 2026)
-          Object.assign(document.createElement('span'), {className: 'tag', textContent: 'Review my answer', onclick: event => { event.stopPropagation(); flash(field.el); written.review(field); }})] : []),
-        Object.assign(document.createElement('span'), {className: 'go', textContent: '›'}));
-      row.onclick = () => flash(field.el);
-      return row;
-    }));
+    return {state: {list, left, total, busy, over, account}, pageMark, ready, needsYou, done, readyWords};
+  }
+
+  // Keep the original preferred tip and request it only when tips are enabled.
+  function renderTip(knockouts, canTailor) {
     // One tip at the bottom, about what the form is at: knockout questions left, no tailored CV yet, else the CV. Click for the next one.
     const prefer = knockouts ? 'knockout' : canTailor && !cv.tailored ? 'tailor' : 'cv';
     if (SHOW_TIPS && tipFor !== prefer && connection?.connected) { tipFor = prefer; askTip(); }
-    // actions + connection
-    $('.open-app').hidden = !session;
-    window.__jobPilottoClaude?.render({on: !!connection?.connected && !!connection.app && !!claudeAsk.help, stuck: !needsYou && handed && !stopped, always: !!claudeAsk.always, auto: !!claudeAsk.auto, consent: !!claudeAsk.consent, takeover: claudeAsk.takeover !== false, report: !!window.__jobPilottoReportOn, needs: () => shown[0] && flash(shown[0].el)});   // offered, never automatic unless "always" (panel-claude.js)
-    // The footer, one component for every state (owner, 16 Oct 2026): the connection on the left (a dot and its word; the build stays in the line, it is in every screenshot), Report on the right.
-    const foot = $('.foot'), stateLine = $('.foot .state');
-    foot.classList.toggle('on', !!connection?.connected);
-    foot.classList.toggle('off', !!connection && !connection.connected);
-    const word = connection?.connected ? 'Connected' : connection ? 'Not connected' : 'Checking the connection…';   // the reason is in the tooltip
-    const version = chrome.runtime.getManifest().version;
-    stateLine.textContent = `${word} · v${version}${build?.label ? ` · ${build.label}` : ''}`;
-    foot.title = `${connection?.connected ? (connection.app ? (session ? 'In sync with Jobadabra' : 'Connected to Jobadabra') : 'Connected to your Worker') : (connection?.why || 'Not connected: the form still fills from your settings')} · Jobadabra extension v${version}${build?.label ? ` (${build.label})` : ''}`;
-    if (build && build.behind !== 0 && build.behind !== undefined) {
-      const reload = Object.assign(document.createElement('button'), {className: 'reload', textContent: build.reloadLabel || 'Reload the extension to get the latest fixes'});
-      reload.addEventListener('click', () => { reload.disabled = true; reload.textContent = 'Reloading…'; send({type: 'panelReload'}).catch(() => {}); });
-      stateLine.append(reload);
-    }
-    return {list, left, total, busy, over, account};
   }
 
   // ---- actions ----

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import {readPanel} from '../../worker/test/helpers/panel.js';
 import * as review from '../lib/review.js';
 
 const read = name => fs.readFileSync(new URL(`../../extension/${name}`, import.meta.url), 'utf8');
@@ -20,7 +21,7 @@ test('a posting tab with the mark, plus the bound form tab: the posting is told 
 });
 
 test('the panel: moved is never ready, shows Go there, and the worker brings the named tab forward', () => {
-  const panel = read('review.js');
+  const panel = readPanel();
   assert.match(panel, /ready = !moved && (?:!pageMark && )?total > 0 && left === 0/);
   assert.match(panel, /moved \? 'Continues in another tab'/g);
   assert.match(panel, /\$\('\.go-there'\)\.onclick = .*type: 'panelGoTab', tab: movedTab/);

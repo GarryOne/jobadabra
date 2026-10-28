@@ -10,9 +10,12 @@ A PR that changes an expected value, threshold, tolerance or wait, or skips, del
 Raise a blocking finding when it is missing, unsupported, or merely makes the test match wrong product behaviour. A real product fix keeps the assertion.
 Read the cited behaviour change and verify the revised test still protects the user's journey. Main's lane registry decides whether a suite is backbone.
 
-The mechanical gate catches numeric assert/expect/wait changes, timeout literals, removed assertions or suite files, test.skip/it.skip, shared baseline/expectation JSON
-and truth.json, and registry moves out of backbone. Review the cases it cannot prove: changed strings/booleans, variables, computed thresholds, aliased or custom
-assertions and waits, conditional early returns, individual steps moved between files or lanes, other fixture formats, and semantic rewrites that preserve numeric signatures.
+The mechanical gate catches changed or removed throw-guard conditions (including their numbers and counts), removed `*Problems(...)` helper calls,
+numeric assert/expect/wait changes, timeout literals, removed assertions or protected files, test.skip/it.skip, shared baseline/expectation JSON and truth.json,
+and registry moves out of backbone. Suites and shared lib check modules both carry guard/helper signatures; lib files whose names contain check, problems,
+quality, judge, baseline or truth also protect numbers in comparisons and named ALLOW/MAX/MIN/LIMIT/THRESHOLD/TOLERANCE/BAND/RATE limits and defaults.
+Review the cases it cannot prove: changed strings/booleans, variables outside guard conditions, computed thresholds, aliased helpers, custom assertions and waits,
+conditional early returns, individual steps moved between files or lanes, other fixture formats, and semantic rewrites that preserve the signatures.
 
 ## Rule F: plumbing has one design job
 

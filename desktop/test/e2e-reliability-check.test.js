@@ -12,6 +12,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const suite = 'desktop/e2e/suites/apply.mjs';
 const lib = 'desktop/e2e/lib/runner.mjs';
 const why = 'Test-was-wrong: the saved fixture contains three rows';
+const fixture = name => fs.readFileSync(path.join(root, 'desktop/test/fixtures/e2e-reliability', name), 'utf8');
+
+function replay(commit) {
+  const {files} = JSON.parse(fixture(`${commit}.json`));
+  // Historic check modules predate rule F; label both sides so only rule E is measured.
+  const side = which => Object.fromEntries(Object.entries(files).map(([file, snippets]) => [file,
+    (file.startsWith('desktop/e2e/lib/') ? '// Job: run tolerant suites as rates\n' : '') + snippets[which]]));
+  return {before: side('before'), after: side('after')};
+}
 
 function push(before, after, message = 'Change', lanes = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reliability-check-'));
@@ -67,6 +76,74 @@ test('adding a test, changing a log or comment, and mechanical reformatting stay
   assert.deepEqual(expectationChanges('assert.equal(n, 2);', 'assert.equal( n, 2 );\nassert.equal(m, 3);'), []);
   assert.deepEqual(expectationChanges('console.log(2); // assert.equal(n, 2)', 'console.log(3); // assert.equal(n, 3)'), []);
   assert.deepEqual(expectationChanges('assert.ok(n, "two: 2")', 'assert.ok(n, "three: 3")'), []);
+});
+
+test('5395279 real noise-allowance change blocks without a citation and passes with its explanation', () => {
+  const {before, after} = replay('5395279');
+  const message = 'Replay model-noise allowance\n\nHarness-job: run tolerant suites as rates';
+  assert.match(push(before, after, message), /Rule E.*suites\/quality\.mjs/s);
+  assert.equal(push(before, after, `${message}\nTest-was-wrong: allow one model slip in nine judged texts`), '');
+});
+
+test('2625cef real personas expectation needs and accepts its product-change citation', () => {
+  const {before, after} = replay('2625cef');
+  assert.match(push(before, after), /Rule E.*personas\.mjs/s);
+  assert.equal(push(before, after, 'Accept no job board for a non-IT persona\n\nExpect-changed-by: e2d7df8'), '');
+});
+
+test('real apply Submit-count throw guard protects its number and ignores unrelated code', () => {
+  const before = fixture('apply-throw.snippet.txt');
+  assert.match(push({[suite]: before}, {[suite]: before.replace('!== 1', '!== 2')}), /Rule E/);
+  assert.equal(push({[suite]: before}, {[suite]: `${before}\nconsole.log(23); const opened = 4;`}), '');
+  assert.deepEqual(expectationChanges(before, before.replace('throw new Error', '{\n throw new Error') + '\n}'), []);
+});
+
+test('throw guards protect conditions and multiplicity; added guards and formatting stay free', () => {
+  const guard = 'if (count > 2) { throw new Error("bad"); }';
+  for (const after of ['', guard.replace('2', '3'), guard.replace('>', '>='), 'if (count > 2) console.log(count);']) {
+    assert.ok(expectationChanges(guard, after).length, after);
+  }
+  assert.ok(expectationChanges(`${guard}\n${guard}`, guard).length);
+  assert.deepEqual(expectationChanges(guard, 'if ( count >\n 2 ) throw Error("new message 42");'), []);
+  assert.deepEqual(expectationChanges(guard, `${guard}\nif (other > 3) throw Error("bad");`), []);
+});
+
+test('removing a real apply Problems helper needs a citation; adding and reformatting stay free', () => {
+  const before = 'fail([...fillProblems({expected, left: form.legal, actual}), ...cvProblems(actual, cv)]);';
+  assert.match(push({[suite]: before}, {[suite]: 'fail([...fillProblems({expected, left: form.legal, actual})]);'}), /Rule E/);
+  assert.ok(expectationChanges('cvProblems(a); cvProblems(b);', 'cvProblems(a);').length);
+  assert.deepEqual(expectationChanges(before, `${before}\nsubmitProblems(forms.fired, form.path);`), []);
+  assert.deepEqual(expectationChanges(before, before.replace('cvProblems(', 'cvProblems (\n')), []);
+});
+
+test('lib check modules protect numeric comparisons and named limits even without a backbone caller', () => {
+  for (const name of ['checks', 'fill-problems', 'quality', 'factjudge', 'baseline', 'truth']) {
+    const file = `desktop/e2e/lib/${name}.mjs`;
+    const before = '// Job: run the backbone\nexport const ok = value => value >= 8;';
+    const after = before.replace('>= 8', '>= 6');
+    assert.match(push({[file]: before}, {[file]: after}, 'Change\n\nHarness-job: run the backbone', {apply: {lane: 'tolerant'}}), /Rule E/);
+    assert.equal(push({[file]: before}, {[file]: after}, `Change\n\nHarness-job: run the backbone\n${why}`), '');
+  }
+  for (const operator of ['<', '>', '<=', '>=', '===', '!==']) {
+    for (const expression of [`value ${operator} 8`, `8 ${operator} value`]) {
+      const before = `const ok = value => ${expression};`;
+      assert.ok(expectationChanges(before, before.replace('8', '9'), 'desktop/e2e/lib/quality.mjs').length, expression);
+    }
+  }
+  for (const name of ['ALLOW', 'MAX', 'MIN', 'LIMIT', 'THRESHOLD', 'TOLERANCE', 'BAND', 'RATE']) {
+    const before = `const ${name}_SCORE = 0.12;`;
+    assert.ok(expectationChanges(before, before.replace('0.12', '0.2'), 'desktop/e2e/lib/quality.mjs').length, name);
+  }
+  for (const before of [
+    'const ok = score => Math.abs(score) >= (8 + offset);',
+    'const MIN = 1, MAX = 8;',
+    'function unstable(first, second, tolerance = 8) { return first > tolerance; }',
+  ]) assert.ok(expectationChanges(before, before.replace('8', '9'), 'desktop/e2e/lib/quality.mjs').length, before);
+  assert.ok(expectationChanges('const ok = n => n > -1;', 'const ok = n => n > 1;', 'desktop/e2e/lib/quality.mjs').length);
+  const before = 'const TOLERANCE = 8; const ok = score => score > 4; console.log(2);';
+  assert.deepEqual(expectationChanges(before, before.replace('log(2)', 'log(3)'), 'desktop/e2e/lib/quality.mjs'), []);
+  assert.deepEqual(expectationChanges(before, before.replace(' = 8', '=\n 8').replace(' > 4', '>\n4'), 'desktop/e2e/lib/quality.mjs'), []);
+  assert.deepEqual(expectationChanges('const x = n => n > 8;', 'const x = n => n > 9;', lib), []);
 });
 
 test('a changed harness file needs one valid Job line and a harness trailer independently', () => {

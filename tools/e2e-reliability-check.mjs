@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 export const JOBS = ['run the backbone', 'serve stored answers', 'wait on state', 'pick the suites', 'run tolerant suites as rates', 'keep the scorecard', 'report health'];
 const REGISTRY = 'desktop/e2e/lanes.json';
 const SUITE = /^desktop\/e2e\/suites\/([^/]+)\.mjs$/;
+const CHECK_LIB = /^desktop\/e2e\/lib\/[^/]*(?:check|problems|quality|judge|baseline|truth)[^/]*\.mjs$/;
 const EXPECTATIONS = /^desktop\/e2e\/(?:.*(?:baseline|expectations?)\.json|fixtures\/.*\/truth\.json)$/;
 // Why (28 Oct 2026, a8): rule F's "every workflow" is the workflows that run or judge e2e; label, mail and site workflows have no e2e design job to name. Add a workflow here when it starts to.
 const E2E_WORKFLOWS = '(?:e2e|e2e-windows|e2e-bisect|main-steps|pr-suites|pr-verdict|page-cases|stable-canary)';
@@ -29,7 +30,23 @@ function callEnd(text, start) {
   return text.length;
 }
 
-function signatures(raw) {
+const numbersIn = text => text.match(/[-+]?\b(?:0[xX][\da-fA-F]+|\d[\d_]*(?:\.\d+)?(?:e[+-]?\d+)?)\b/g) || [];
+
+// Read one comparison operand, including nested calls/indexes, stopping at a surrounding expression boundary.
+function operand(text, start, direction) {
+  let depth = 0, end = start;
+  for (; end >= 0 && end < text.length; end += direction) {
+    const char = text[end];
+    if ((direction === 1 ? '([' : ')]').includes(char)) depth++;
+    else if ((direction === 1 ? ')]' : '([').includes(char)) {
+      if (!depth) break;
+      depth--;
+    } else if (!depth && /[;{},?:=<>!&|]/.test(char)) break;
+  }
+  return direction === 1 ? text.slice(start, end) : text.slice(end + 1, start + 1);
+}
+
+function signatures(raw, file) {
   const text = mask(raw), out = [];
   for (const match of text.matchAll(/\b(assert(?:\.\w+)*|expect|(?:\w+\.)?(?:waitFor\w*|setTimeout))\s*\(/g)) {
     let end = callEnd(text, match.index + match[0].lastIndexOf('('));
@@ -38,18 +55,37 @@ function signatures(raw) {
       if (chain) end = callEnd(text, end + chain[0].lastIndexOf('('));
     }
     const body = text.slice(match.index, end);
-    const numbers = body.match(/\b(?:0[xX][\da-fA-F]+|\d[\d_]*(?:\.\d+)?(?:e[+-]?\d+)?)\b/g) || [];
+    const numbers = numbersIn(body);
     // Why (28 Oct 2026, owner): even removing a nonnumeric assertion weakens protection; added checks stay free.
     if (match[1].startsWith('assert') || match[1] === 'expect' || numbers.length) out.push(`${match[1]}:${numbers.join(',')}`);
   }
   for (const match of text.matchAll(/\btimeout\s*:\s*([\d_]+)/g)) out.push(`timeout:${match[1]}`);
+  for (const match of text.matchAll(/\bif\s*\(/g)) {
+    const start = match.index + match[0].lastIndexOf('('), end = callEnd(text, start);
+    if (/^\s*(?:\{\s*)?throw\b/.test(text.slice(end))) {
+      // Preserve condition identity and multiplicity: swapping a strict guard for a verdict can keep its count and have no numbers (5395279).
+      out.push(`throw guard:${text.slice(start + 1, end - 1).replace(/\s+/g, '')}`);
+    }
+  }
+  for (const match of text.matchAll(/\b(\w*Problems)\s*\(/g)) out.push(`helper:${match[1]}`);
+  if (CHECK_LIB.test(file)) {
+    for (const match of text.matchAll(/===|!==|<=|>=|(?<![=<>])<(?![=<])|(?<![=<>])>(?![=>])/g)) {
+      const numbers = numbersIn(operand(text, match.index - 1, -1) + ' ' + operand(text, match.index + match[0].length, 1));
+      if (numbers.length) out.push(`comparison:${match[0]}:${numbers.join(',')}`);
+    }
+    // Include comma-separated declarations and default parameters (quality.mjs's tolerance = 8), not only the first const binding.
+    for (const match of text.matchAll(/\b(\w*(?:ALLOW|MAX|MIN|LIMIT|THRESHOLD|TOLERANCE|BAND|RATE)\w*)\s*=(?!=|>)\s*/gi)) {
+      const numbers = numbersIn(operand(text, match.index + match[0].length, 1));
+      if (numbers.length) out.push(`limit:${match[1]}:${numbers.join(',')}`);
+    }
+  }
   return out;
 }
 
 // Old/new JS source -> mechanical expectation changes; extra assertions alone are free. Semantic rewrites need review.
-export function expectationChanges(before, after) {
-  const available = signatures(after), changes = [];
-  for (const signature of signatures(before)) {
+export function expectationChanges(before, after, file = '') {
+  const available = signatures(after, file), changes = [];
+  for (const signature of signatures(before, file)) {
     const at = available.indexOf(signature);
     if (at < 0) changes.push(`removed or changed ${signature}`);
     else available.splice(at, 1);
@@ -90,7 +126,7 @@ export function checkPush({root, base = 'origin/main'}) {
   const needsCitation = [];
   for (const {file, before, after} of changes) {
     const suite = SUITE.exec(file)?.[1];
-    if (suite && !lanes[suite] && before !== null && (after === null || expectationChanges(before, after).length)) needsCitation.push(file);
+    if (((suite && !lanes[suite]) || CHECK_LIB.test(file)) && before !== null && (after === null || expectationChanges(before, after, file).length)) needsCitation.push(file);
     if (EXPECTATIONS.test(file) && before !== null) needsCitation.push(file);
     if (file === REGISTRY && after !== null) {
       const next = JSON.parse(after).suites || {};

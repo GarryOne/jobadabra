@@ -65,6 +65,25 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
   since the last analysis (e.g. 10+ new applications or outcomes, or replies stopped after a run of applications; thresholds
   stated in code and tested). Otherwise shown nowhere.
 
+**Decisions of 28 Oct 2026 for PR 1** (owner, on sketch https://claude.ai/artifact/MopQ4et4oe9mwxMAZheZ5e):
+- **Up next holds only what can't wait** ("very important, that cannot wait … critical or high importance for job search and
+  job getting success"); every other call to action joins Suggestions, "the pool of all call to actions from all our app
+  screens". Up next keeps: Answer the offer, Book the call, Reply to a recruiter, Prepare for an interview, Follow up, Ready to
+  send. Suggestions takes: Did the interview happen?, Review the interview, Which job is this email about?, Add details,
+  Ask / add / learn from feedback, Move it forward, Apply to N more today. "Waiting for a next step" has no button and leaves
+  Focus. Moved items keep their own buttons and saved state.
+- **Suggestions replaces Focus's Insight card**; today's insight is its first entry. Its entries come from many producers, not
+  only the AI or Monday (today's insight, Your week, Tune, Analyze now; later PRs add more).
+- **Your week's button: the AI picks a door.** The weekly report's one AI call also returns a short label and one door from a
+  fixed list of actions the app carries out in one press (Find jobs, Tune my strategy, Tailor CVs, Build the next interview's
+  prep kit). The code checks it; none fits → the card's button is "Read the week". A button that only opens a screen for the
+  person to finish by hand is never offered (owner: "It's noise").
+- **Answers are kept in the active store** (this Mac or Notion), in 💡 Insights: two columns, State and Hidden until. A finding
+  row (today's insight, the weekly report) carries its own answer; a computed suggestion (Tune, Analyze now) gets a row only
+  when the person answers it. A dismissed suggestion (Not now while hidden, Not true) leaves Reports too.
+- **Split:** PR 1 ships as 1a (the frame, Tune and Analyze come to you, the Up next sort), 1b (Strategy's rows move onto the
+  producers), 1c (the Jobs drawers and the cover letter card move into the Jobs bar).
+
 ## The insights (owner approved the list and the grouping, 28 Oct 2026)
 
 **Insight + action**
@@ -133,7 +152,9 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 
 | PR | What you get | Needs PR D |
 |---|---|---|
-| 1 | Insight card + states; home slots, Focus "Suggestions" section, Jobs collapsed bar; Tune and Analyze come to you | no |
+| 1a | Focus "Suggestions" (Up next sorted), Jobs collapsed bar, answers in the store; Tune and Analyze come to you | no |
+| 1b | Strategy → Suggestions rows also on Focus and the Jobs bar; their Hide becomes Not now | no |
+| 1c | Jobs drawers + cover letter card move into the Jobs bar and onto Focus | no |
 | 2 | Profile → CV: #4, #5, #6 | yes |
 | 3 | Strategy and Jobs: #2, #15; #1, #10 silently | yes |
 | 4 | Interviews: #14; #3, #13 silently | yes |
@@ -144,7 +165,10 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 
 - [x] Spec approved by the owner (28 Oct 2026)
 - [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D; Focus Suggestions + Jobs collapsed bar approved (v4)
-- [ ] PR 1 · slot, states, actions come to you
+- [x] PR 1 decisions: Up next sort, Your week's door, answers in the store, split 1a/1b/1c (28 Oct 2026, sketch https://claude.ai/artifact/MopQ4et4oe9mwxMAZheZ5e)
+- [ ] PR 1a · Suggestions, Jobs bar, answers, Tune and Analyze come to you
+- [ ] PR 1b · Strategy rows on the producers
+- [ ] PR 1c · Jobs drawers into the bar
 - [ ] PR 2 · CV
 - [ ] PR 3 · Strategy + Jobs
 - [ ] PR 4 · Interviews

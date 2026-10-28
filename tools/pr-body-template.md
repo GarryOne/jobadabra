@@ -21,6 +21,16 @@
 |---|---|---|
 | <the measured or seen difference> | <before> | <after> |
 
+**Plan progress**
+<a PR from a plan, else delete this block: the plan names every PR from the start; the title reads "[xx] n/N <what>" (ship.sh --title="n/N <what>"); CI refuses n/N without this block>
+Plan: `docs/superpowers/plans/<topic>.md` (or the spec holding the PR list)
+
+| Plan | PRs |
+|---|---|
+| ✅ Done | 1–10 of N: <a few names> |
+| ▶️ This PR | 11: <its name> |
+| ⏳ Left | 12–N: <the next 2-3 names>, … |
+
 **Design checks**
 <desktop window changes: tick each on the after-shot (docs/rules/desktop-ui.md); a failing one is fixed, never left unticked>
 - [ ] Each value uses its kind's control (Value → control)

@@ -214,6 +214,26 @@ class PrDescriptionLaidOutTest(unittest.TestCase):
         self.assertIn('tools/ship.sh', bad.stderr)
         self.assertIn('[xx]', bad.stderr)
 
+    def test_a_plan_step_title_needs_the_plan_progress_block(self):
+        # Owner, 28 Oct 2026: "show in the PR title 2/5 or 3/5... a short section in the PR body describing the overall progress on the plan. What's done, what's left."
+        template = (ROOT / 'tools' / 'pr-body-template.md').read_text()
+        lay = lambda text: subprocess.run(['python3', str(ROOT / 'tools' / 'pr-body-format.py'), 'owner/repo'], input=text, capture_output=True, text=True).stdout
+        run = lambda body, title: subprocess.run(['python3', str(ROOT / 'tools' / 'pr-body-check.py')], input=body, capture_output=True, text=True, env={**os.environ, 'PR_TITLE': title})
+        with_plan = lay(template)
+        self.assertIn('### 🗺️ Plan progress', with_plan, 'the block gets its own heading')
+        self.assertEqual(run(with_plan, '[a8] 11/34 Move the quality suite').returncode, 0, run(with_plan, '[a8] 11/34 Move the quality suite').stderr)
+        start, end = template.index('**Plan progress**'), template.index('**Design checks**')
+        without = lay(template[:start] + template[end:])
+        self.assertEqual(run(without, '[a8] Fix the thing').returncode, 0, 'a PR outside a plan needs no block')
+        bad = run(without, '[a8] 11/34 Move the quality suite')
+        self.assertEqual(bad.returncode, 1)
+        self.assertIn('Plan progress', bad.stderr)
+        no_left = lay(template.replace('| ⏳ Left |', '| ⏳ Later |'))
+        self.assertIn('Left', run(no_left, '[a8] 11/34 x').stderr, 'each of Done / This PR / Left is named when missing')
+        no_path = lay(template.replace('docs/superpowers/plans/<topic>.md', 'the plan'))
+        self.assertIn('path', run(no_path, '[a8] 11/34 x').stderr)
+        self.assertEqual(run(with_plan, '[a8] 35/34 x').returncode, 1, 'n beyond N is refused')
+
     def test_the_required_job_checks_the_description_on_an_edit(self):
         # A step of the one required job, never its own workflow (owner, 17 Oct 2026: two extra check lines per PR).
         self.assertFalse((ROOT / '.github' / 'workflows' / 'pr-description.yml').exists())

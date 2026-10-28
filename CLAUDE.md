@@ -44,7 +44,7 @@ The full pre-diet text: `git show c7bed98:CLAUDE.md`.
 3. Tests first for new behaviour and any bug the owner saw (watch it fail); a behaviour change updates its e2e step in the same commit.
 4. Land: `tools/ship.sh --background --body=<file>` (also the private repos). The owner merges every PR by hand; never merge it yourself. Monitor `^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|CONFLICT|COMMENT)`; a red PR is fixed at once (hook `tools/pr-red-check.sh`; blocked: `tools/pr-red-ack.sh <n> "<why>"`). Commit subject ≤ 72 chars, imperative; 2+ commits → `--title="<what it does for the user>"`. **PR descriptions** are read in 2–5 s. Body (`tools/pr-body-template.md`, check `tools/pr-body.sh origin/main --body=<file>`): verdict line, **Why:**, **Unblocks:**, impact table, 2–4 bullets, Before/After (images when a screen changed, or "No screenshots: <why>"). Never a CI e2e by hand except one fixed Linux suite on your PR ([docs/rules/change-loop.md](docs/rules/change-loop.md)).
 5. After landing, only what applies: Decision Log row for an owner decision that changes what agents may do; Bug Tracker row for a UI bug the Finder missed; Intelligence page when a user-visible AI step changes; the to-do list after a finished task.
-6. Big changes: spec with `## Progress`, safety net first, ONE full run at landing, 1–3 commits.
+6. Big changes: spec with `## Progress`, safety net first, ONE full run at landing, 1–3 commits. A multi-PR plan names every PR up front (n/N, a few words each); each PR is titled `[xx] n/N <what>` and carries the template's "Plan progress" block (done / this PR / left), checked by `tools/pr-body-check.py` (owner, 28 Oct 2026).
 
 ## Where the detail is
 | Topic | File |

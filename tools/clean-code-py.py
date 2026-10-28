@@ -64,10 +64,12 @@ def check(files, ruff):
 
 
 def git(*args):
+    """stdout of `git <args>` run in the repo root; raises CalledProcessError on a non-zero exit."""
     return subprocess.run(['git', *args], capture_output=True, text=True, cwd=ROOT, check=True).stdout
 
 
 def main():
+    """Entry point: 0 when nothing is found (or nothing to check), 1 with the findings on stderr."""
     base = sys.argv[sys.argv.index('--base') + 1] if '--base' in sys.argv else 'origin/main'
     try:
         base = git('merge-base', base, 'HEAD').strip()

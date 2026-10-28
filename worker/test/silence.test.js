@@ -75,7 +75,7 @@ test('wired where the spec says: every progress note restarts it, a new page nam
   assert.match(read('ladder/dead-end.js'), /export function deadEnd\([\s\S]*?endSilence\(stop\.tabId\);[\s\S]*?const sent = report\(/, 'the door ends it, for every stop');
   assert.match(read('form-ready.js'), /if \(handedToPerson\(answer\)\) endSilence\(tab\.id\);/);
   assert.match(read('fill-flow.js'), /notePage\(tab\.id, key, \{job: jobUrl \|\| tab\.url, page: tab\.url\}\)/);
-  assert.doesNotMatch(read('fill-flow.js'), /restartSilence|endSilence/, 'the flow never touches the clock but through a note or the door');
+  assert.doesNotMatch(['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n'), /restartSilence|endSilence/, 'the flow never touches the clock but through a note or the door');
 });
 
 test('an ask to the app in flight is a wait, not a stall: the clock stands still, and the notice comes T of quiet later', () => {
@@ -125,7 +125,7 @@ test('class: every call to the app is bracketed as an ask of its tab (flow.js ap
   assert.match(flow, /export const apiFor = \(tabId, config, path, init = \{\}\) => api\(config, path, init, true, tabId\);/);
   assert.match(flow, /return apiCall\(Object\.assign\(config, fresh\), path, init, false\)/, 'the retry after a 401 is inside the same bracket');
   // The fill path: files that work on a tab. A plain api( in them is a new ask that would not pause its own tab's clock.
-  for (const file of ['flow.js', 'fill-flow.js', 'account-step.js', 'form-ready.js', 'format-retry.js', 'consent.js', 'submit-watch.js', 'ladder/fill-climb.js', 'ladder/rung4-picture.js']) {
+  for (const file of ['flow.js', 'fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'account-step.js', 'form-ready.js', 'format-retry.js', 'consent.js', 'submit-watch.js', 'ladder/fill-climb.js', 'ladder/rung4-picture.js']) {
     const plain = read(file).split('\n').filter(line => /(?<![\w.])api\(/.test(line) && !/^export (async function api\(|const apiFor = )/.test(line));
     assert.deepEqual(plain, [], `${file}: use apiFor(tabId, ...)`);
   }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {MAX_LOOKS, STILL_MS, readWhileDrawing} from '../../extension/ladder/still-drawing.js';
 
-const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
 const rig = answers => { const logs = [], state = {waits: 0, asks: 0}; return {logs, state, deps: {again: async () => answers[state.asks++], still: async () => { state.waits++; }, log: (...row) => logs.push(row), host: 'h'}}; };
 
 test('a placeholder page is read again after it is still, until the AI calls it drawn', async () => {

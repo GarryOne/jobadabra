@@ -64,13 +64,13 @@ test('cookiesOnly: a cookie dialog over a form is declined, a privacy agreement 
 });
 
 test('the application flow closes a cookie banner before it reads the page, only cookies', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(flow, /closeConsentEverywhere\(tab\.id, \{cookiesOnly: true\}\)/);
   assert.ok(flow.indexOf('closeConsentEverywhere(tab.id') < flow.indexOf('await expandSections(live)'));
 });
 
 test('the fill ends in a stuck report when nothing was filled and required fields are left; the CV reason says what happened', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(flow, /!\(result\?\.filled > 0\) && result\?\.unfilledRequired > 0 && open\.length/);
   assert.match(flow, /deadEndHere\(tab, jobUrl, host, 'incomplete',/, 'the incomplete dead end (ladder/dead-end.js)');
   const fill = fs.readFileSync(new URL('../../extension/page/fill.js', import.meta.url), 'utf8');
@@ -84,8 +84,8 @@ test('a refresh looks at the page again, and the popup has a permanent Apply for
   // The Apply press is tried again after a refresh (forgetApplyTries on reload), never after every press: a posting whose Apply opened the form in another tab
   // must not press it a second time (beta e2e applycv on Windows, 10 Oct 2026: the second tab was not linked to the job, no kit).
   assert.match(read('tab-report.js'), /transitionType !== 'reload'\) return;\s*tabReloaded\(details\.tabId\)/);
-  assert.match(read('fill-flow.js'), /export const tabReloaded = tabId => \{\s*retireFill\(tabId\);\s*forgetApplyTries\(tabId\);/);
-  assert.doesNotMatch(read('fill-flow.js'), /noteRole\(tab\.id, tab\.url, role\); triedApply\.delete/);
+  assert.match(['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n'), /export const tabReloaded = tabId => \{\s*retireFill\(tabId\);\s*forgetApplyTries\(tabId\);/);
+  assert.doesNotMatch(['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n'), /noteRole\(tab\.id, tab\.url, role\); triedApply\.delete/);
   assert.match(read('popup.html'), /id="apply-here" hidden/);
   assert.match(read('popup.js'), /show\(popupControls\(mode\)\);[\s\S]*type: 'applyHere'/);   // shown through the one gate (popup-controls.js: 'apply-here' on a tab opened to apply)
   const messages = read('messages-panel.js');
@@ -101,7 +101,7 @@ test('the popup\'s Apply on this page forgets the tried Apply press, only for th
   const fromFillFlow = [...messages.matchAll(/import \{([^}]*)\} from '\.\/fill-flow\.js'/g)].flatMap(m => m[1].split(',').map(name => name.trim()));
   for (const name of ['consider', 'tabReloaded']) assert.ok(fromFillFlow.includes(name), `messages-panel.js imports ${name} from ./fill-flow.js`);
   assert.match(messages, /message\?\.type === 'applyHere'[\s\S]*tabReloaded\(tab\.id\);[\s\S]*consider\(tab, await jobOf\(tab\)\)/);
-  assert.equal([...read('fill-flow.js').matchAll(/forgetApplyTries\(/g)].length, 1, 'fill-flow.js calls it only inside tabReloaded: never by itself after an Apply press');
+  assert.equal([...['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n').matchAll(/forgetApplyTries\(/g)].length, 1, 'fill-flow.js calls it only inside tabReloaded: never by itself after an Apply press');
 });
 
 // jobs.ch, 10 Oct 2026: the banner's "Cookie notice" link was picked as the dismiss button; it opened a new tab, whose banner did the same: a loop of tabs.

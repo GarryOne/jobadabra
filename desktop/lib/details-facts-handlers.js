@@ -12,8 +12,8 @@ import {list} from './set-aside.js';
 import {beforeSave, older, undoFold} from './eligibility-older.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
-const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'}, {label: 'EU / EEA + Switzerland', value: 'yes, with a permit, valid until 2027-06-30, only in Switzerland', kind: 'per_country'},
-    {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}, {label: 'Remote from Switzerland for a foreign employer?', value: 'Yes'}],
+const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'}, {label: 'EU / EEA + Switzerland', value: 'yes, with a permit', kind: 'per_country'},
+    {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}],
   availability: [{label: 'Target', value: '10000 CHF/month net', kind: 'salary', note: 'Treat as a target, not a posted field.'},
     {label: 'Salary expectation, UK', value: '120000 GBP/year', kind: 'salary', note: 'Minimum · Confirmed 26 Sep 2026.'},
     {label: 'Notice period', value: '1 month, ends at month-end', kind: 'duration', note: 'For a start-date field, give a concrete date.'},
@@ -23,7 +23,7 @@ const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'
   languages: [{label: 'English', value: 'B2', kind: 'language'}, {label: 'Romanian', value: 'native', kind: 'language'}, {label: 'Russian', value: 'B1', kind: 'language'},
     {label: 'Languages I can work in (note)', value: 'No French, German or Italian.'}]};
 // What the AI read in the older lines (lib/eligibility-older.js): fictional, for the screenshots.
-const DEMO_OLDER = [{label: 'Remote from Switzerland for a foreign employer?', value: 'Yes', about: 'other', nationality: [], rows: []}];
+const DEMO_OLDER = [];
 const DEMO_WHICH = [{home: 'availability', topic: 'notice period', choices: [{label: 'Notice period', value: '2 months', page: 'profile'}, {label: 'Notice period / earliest start', value: '3 months', page: 'answers'}]}];
 const empty = () => Object.fromEntries(Object.keys(sections.SECTIONS).map(key => [key, []]));
 

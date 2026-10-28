@@ -23,7 +23,7 @@ const INSTRUCTIONS = `You read a CV and say what it states or plainly implies ab
 Return one entry per fact the CV gives or implies, with value written as a form would take it, how = stated (the CV says it) or inferred (the CV implies it: e.g. the nationality
 from the country of birth, schooling and every job; languages from the CV's language lines and the language it is written in), and reason = one short sentence of the evidence.
 nationality: the ISO 3166 alpha-2 codes of the countries of citizenship, joined with ", " ("RO, MD"), never a city or a region. A zone (per_country: EU / EEA + Switzerland, United Kingdom,
-United States): only when the CV states a permit or visa for it: "yes, with a permit" (", valid until YYYY-MM-DD" when stated); never from the nationality, which the app reads itself.
+United States): only when the CV states a permit or visa for it: "yes, with a permit"; never from the nationality, which the app reads itself.
 Use only this CV; never guess from a name alone. Leave out a fact the CV neither gives nor implies. Copy values as written; a yes/no fact is "Yes" or "No".`;
 
 // Why (28 Oct 2026, #2322): a nationality is country names and a zone one fixed status, checked here; anything else (a city, "EU citizen") keeps nothing.

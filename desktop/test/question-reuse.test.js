@@ -96,40 +96,39 @@ test('many labels are judged in chunks; a reply cut at max_tokens leaves its lab
 });
 
 // Why (28 Oct 2026, owner, #2322: "conclude as much as possible, by ourselves"): a right-to-work or sponsorship question is answered from Nationality and the
-// zones. The AI says what it asks and which country; the code reads the row. A Romanian national (fictional) with a UK permit only until 2020 and a US "No".
+// zones. The AI says what it asks and which country; the code reads the row. A Romanian national (fictional) with a UK permit and a US "No".
 test('classify: right to work and sponsorship come from Nationality and the zones, by the country the AI names', async () => {
-  const facts = [{label: 'Nationality', value: 'Romania'}, {label: 'United Kingdom', value: 'yes, with a permit, valid until 2020-01-31', kind: 'per_country'},
+  const facts = [{label: 'Nationality', value: 'Romania'}, {label: 'United Kingdom', value: 'yes, with a permit', kind: 'per_country'},
     {label: 'United States', value: 'no, needs sponsorship', kind: 'per_country'}];
   // The fact the AI names for each, as a real model does (Gitar, #2322): the generic path must never answer an unsettled row from it.
-  const ask = (label, asks, country) => ({label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: country === 'GB' ? 'United Kingdom' : '', asks, country});
+  const ask = (label, asks, country) => ({label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: country === 'JP' ? 'United Kingdom' : '', asks, country});
   const labels = ['Authorised to work in Germany?', 'Brauchen Sie ein Visum für Berlin?', 'Eligible in the US?', 'Sponsorship for the US?', 'Right to work in the UK?',
-    'Eligible in the location you apply for?', 'Authorised in Mars?'];
+    'Eligible in the location you apply for?', 'Authorised in Mars?', 'Authorised to work in Japan?'];
   const got = await classify({labels, facts, client: fake([ask(labels[0], 'work_right', 'DE'), ask(labels[1], 'sponsorship', 'de'), ask(labels[2], 'work_right', 'US'),
-    ask(labels[3], 'sponsorship', 'US'), ask(labels[4], 'work_right', 'GB'), ask(labels[5], 'work_right', ''), ask(labels[6], 'work_right', 'Mars')])});
+    ask(labels[3], 'sponsorship', 'US'), ask(labels[4], 'work_right', 'GB'), ask(labels[5], 'work_right', ''), ask(labels[6], 'work_right', 'Mars'),
+    ask(labels[7], 'work_right', 'JP')])});
   const of = label => [got.get(label).reuse, got.get(label).fact, got.get(label).proposal];
   assert.deepEqual(of(labels[0]), ['details', 'EU / EEA + Switzerland', 'Yes'], 'Germany is in the zone a Romanian citizenship opens');
   assert.deepEqual(of(labels[1]), ['details', 'EU / EEA + Switzerland', 'No'], 'sponsorship is derived, in any language');
   assert.deepEqual(of(labels[2]), ['details', 'United States', 'No']);
   assert.deepEqual(of(labels[3]), ['details', 'United States', 'Yes']);
-  assert.deepEqual([got.get(labels[4]).reuse, got.get(labels[4]).fact, got.get(labels[4]).proposal], ['reusable', '', ''], 'a permit past its date settles nothing: still asked, never filled from the row');
-  assert.deepEqual([got.get(labels[4]).row, got.get(labels[4]).from], ['United Kingdom', 'yes, with a permit, valid until 2020-01-31'], 'kept with its row: a renewed permit judges it again');
+  assert.deepEqual(of(labels[4]), ['details', 'United Kingdom', 'Yes'], 'a permit settles the right to work');
+  assert.deepEqual([got.get(labels[7]).reuse, got.get(labels[7]).fact, got.get(labels[7]).proposal, got.get(labels[7]).row], ['reusable', '', '', ''],
+    'a country in no zone settles nothing: still asked, never filled from the fact the AI named');
   assert.deepEqual(of(labels[5]), ['details', 'Nationality', ''], 'no country named: answered per job from the same rows');
   assert.equal(got.get(labels[6]).reuse, 'reusable', 'a code that is not ISO is never read');
 });
 
-// Why (28 Oct 2026, #2322 review): a cached answer read from a zone is judged again when that row changes or its permit runs out, never kept stale.
-test('ensure: an answer from a zone is judged again when the row changes or the permit expires', async () => {
+// Why (28 Oct 2026, #2322 review): a cached answer read from a zone is judged again when that row changes, never kept stale.
+test('ensure: an answer from a zone is judged again when the row changes', async () => {
   const {ensure} = await import('../lib/question-verdicts.js');
   const s = storage(), calls = [];
   const client = {messages: {create: async () => { calls.push(1); return {content: [{type: 'text', text: JSON.stringify({verdicts: [{label: 'Authorised in Germany?', verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks: 'work_right', country: 'DE'}]})}]}; }}};
   const facts = value => [{label: 'Nationality', value: 'Canada'}, {label: 'EU / EEA + Switzerland', value, kind: 'per_country'}];
-  const first = await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit, valid until 2099-01-31'), ai: {client}});
+  const first = await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit'), ai: {client}});
   assert.equal(Object.values(first.verdicts)[0].proposal, 'Yes');
-  await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit, valid until 2099-01-31'), ai: {client}});
+  await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit'), ai: {client}});
   assert.equal(calls.length, 1, 'the same row: kept');
   await ensure(s, ['Authorised in Germany?'], {facts: facts('no, needs sponsorship'), ai: {client}});
   assert.equal(calls.length, 2, 'the row changed: judged again');
-  s.saveSettings({questionVerdicts: Object.fromEntries(Object.entries(s.settings().questionVerdicts).map(([key, entry]) => [key, {...entry, from: 'yes, with a permit, valid until 2020-01-31'}]))});
-  await ensure(s, ['Authorised in Germany?'], {facts: facts('yes, with a permit, valid until 2020-01-31'), ai: {client}});
-  assert.equal(calls.length, 3, 'a permit past its date: judged again');
 });

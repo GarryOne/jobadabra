@@ -85,7 +85,7 @@ test('Work eligibility in the template and the setup prompt: Nationality and the
   const {INSTRUCTIONS} = await import('../lib/strategy.js');
   const eligibility = PROFILE.split('## 🛂 Work eligibility')[1].split('\n## ')[0];
   const lines = eligibility.split('\n').filter(line => line.startsWith('- ')).map(line => line.slice(2).split(':')[0]);
-  assert.deepEqual(lines, ['Nationality', 'EU / EEA + Switzerland', 'United Kingdom', 'United States', 'Remote from your country for a foreign employer?']);
+  assert.deepEqual(lines, ['Nationality', 'EU / EEA + Switzerland', 'United Kingdom', 'United States'], 'no Remote line: the zones answer it (owner, 28 Oct 2026)');
   for (const zone of lines.slice(1, 4)) assert.match(eligibility, new RegExp(`- ${zone.replace(/[+/]/g, '\\$&')}: .*\\[per country\\]`), zone);
   assert.doesNotMatch(eligibility, /\[your home|Work permit \/ visa|city/i);
   assert.match(INSTRUCTIONS, /Nationality is the countries of citizenship/);

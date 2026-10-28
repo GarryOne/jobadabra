@@ -40,17 +40,16 @@ function draw(sections, formats = {}) {
 }
 
 // Work eligibility (owner, 28 Oct 2026, #2322: "ask as less as possible the user and … conclude as much as possible, by ourselves"): Nationality, the three
-// zones (one your nationality opens reads "Yes, freely · from your nationality", never asked), any country you add, and the other lines as they are.
+// zones (one your nationality opens reads "Yes, freely · from your nationality", never asked), and the other lines as they are (owner, 28 Oct 2026: no
+// "Add a country": "they'll use it either for EEA or for US").
 let eligibilityRow = null;
 function drawEligibility(into, lines, row) {
   eligibilityRow = row;
-  const own = lines.find(line => line.label === NATIONALITY), rows = lines.filter(line => line.kind === 'per_country' && line.label !== NATIONALITY);
+  const own = lines.find(line => line.label === NATIONALITY), rows = lines.filter(line => line.kind === 'per_country' && zoneOfLabel(line.label));
   const rest = lines.filter(line => line !== own && !rows.includes(line));
-  const add = Object.assign(el('button', 'secondary small-btn span-all fact-add', '+ Add a country'), {type: 'button'});   // solid (owner, 27 Oct 2026)
-  add.addEventListener('click', () => { into.insertBefore(row({kind: 'per_country'}), add); detailsChanged(); });
   // Why (28 Oct 2026, #2322 review): one Nationality row. Words that are not country names ("British") stay as written with a Check, never a second row.
   const nationality = row(own && !isAsked(own.value) ? own : {label: NATIONALITY, value: ''});
-  into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rows.filter(line => !zoneOfLabel(line.label)).map(row), add, ...rest.map(row));
+  into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rest.map(row));
   if (into.dataset.concluding) return;
   into.dataset.concluding = '1';   // once per box: a nationality picked or removed redraws the zones it opens
   into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
@@ -99,10 +98,10 @@ export function foldOlder(readings = []) {
   redrawConcluded(into);
   for (const proposal of used.flatMap(each => each.rows || [])) {
     const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => factOf(each).label.toLowerCase() === proposal.label.toLowerCase());
-    if (line && factOf(line).value) continue;
+    if (!line || factOf(line).value) continue;   // a zone your nationality opens, or one you answered, keeps its answer
     const next = eligibilityRow({...proposal, kind: 'per_country'});
-    if (line) line.replaceWith(next); else if (!into.querySelector(`.fact-derived[data-zone="${zoneOfLabel(proposal.label)?.id}"]`)) into.insertBefore(next, into.querySelector('.fact-add'));
-    if (next.isConnected) mark(next);
+    line.replaceWith(next);
+    mark(next);
   }
   detailsChanged();
 }

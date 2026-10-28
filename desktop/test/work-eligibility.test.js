@@ -5,13 +5,12 @@ import {test} from 'node:test';
 import {countryCode, eligibilityOf, isRowName, nationalityOf, rowFor, settles, zonesOpenedBy} from '../renderer/work-eligibility.js';
 import {joinPermit, splitPermit} from '../renderer/question-values.js';
 
-const NOW = new Date('2026-10-28T10:00:00Z');
-
-test('a row is a zone or a country by its English name, never a city or a mix', () => {
+test('a country is known by its English name, never a city or a mix; a row is one of the three zones only', () => {
   assert.equal(countryCode('Romania'), 'RO');
   assert.equal(countryCode(' switzerland '), 'CH');
   for (const name of ['Iasi', 'Zurich', 'Germany / EU', '', 'Bavaria']) assert.equal(countryCode(name), '', name);
-  assert.ok(isRowName('EU / EEA + Switzerland') && isRowName('United Kingdom') && isRowName('Canada'));
+  assert.ok(isRowName('EU / EEA + Switzerland') && isRowName('United Kingdom'));
+  assert.ok(!isRowName('Canada'), 'no added country (owner, 28 Oct 2026: "there is no point for Add a country")');
   assert.ok(!isRowName('Authorised to work in Iasi, Romania?'));
 });
 
@@ -40,30 +39,26 @@ test('eligibilityOf: saved rows first, a zone the nationality opens is concluded
   assert.deepEqual(own.filter(row => row.label === 'EU / EEA + Switzerland').map(row => row.from), ['saved'], 'never two answers for one zone');
 });
 
-test('settles: the fixed table; sponsorship is derived; an old or other-country permit settles nothing', () => {
-  const freely = {status: 'yes, freely'}, needs = {status: 'no, needs sponsorship'};
-  assert.deepEqual([settles(freely, 'work_right'), settles(freely, 'sponsorship')], ['Yes', 'No']);
-  assert.deepEqual([settles(needs, 'work_right'), settles(needs, 'sponsorship')], ['No', 'Yes']);
-  assert.equal(settles({status: 'yes, with a permit', until: '2027-06-30'}, 'work_right', 'DE', NOW), 'Yes');
-  assert.equal(settles({status: 'yes, with a permit', until: '2026-01-31'}, 'work_right', 'DE', NOW), '', 'past its date');
-  assert.equal(settles({status: 'yes, with a permit', only: 'Switzerland'}, 'sponsorship', 'CH', NOW), 'No');
-  assert.equal(settles({status: 'yes, with a permit', only: 'Switzerland'}, 'work_right', 'DE', NOW), '', 'limited to another country');
-  assert.equal(settles({status: ''}, 'work_right'), '');
+test('settles: the fixed table; sponsorship is derived', () => {
+  const at = status => [settles({status}, 'work_right'), settles({status}, 'sponsorship')];
+  assert.deepEqual(at('yes, freely'), ['Yes', 'No']);
+  assert.deepEqual(at('yes, with a permit'), ['Yes', 'No']);
+  assert.deepEqual(at('no, needs sponsorship'), ['No', 'Yes']);
+  assert.deepEqual(at(''), ['', '']);
 });
 
-test('rowFor: an added country beats its zone; a citizenship outside any zone still answers', () => {
-  const lines = [{label: 'Nationality', value: 'Canada'}, {label: 'EU / EEA + Switzerland', value: 'no, needs sponsorship', kind: 'per_country'},
-    {label: 'Switzerland', value: 'yes, with a permit', kind: 'per_country'}];
-  assert.equal(rowFor('CH', lines).label, 'Switzerland');
+test('rowFor: the zone that covers a country, else a citizenship of it; none for a country outside both', () => {
+  const lines = [{label: 'Nationality', value: 'Canada'}, {label: 'EU / EEA + Switzerland', value: 'no, needs sponsorship', kind: 'per_country'}];
   assert.equal(rowFor('de', lines).label, 'EU / EEA + Switzerland');
   assert.deepEqual(rowFor('CA', lines), {label: 'Nationality', value: 'yes, freely', from: 'nationality'});
   assert.equal(rowFor('JP', lines), null);
   assert.equal(rowFor('', lines), null);
 });
 
-test('a permit value round-trips through its one saved form; unreadable text gives empty parts', () => {
-  const value = joinPermit({status: 'yes, with a permit', until: '2027-06-30', only: 'Switzerland'});
-  assert.equal(value, 'yes, with a permit, valid until 2027-06-30, only in Switzerland');
-  assert.deepEqual(splitPermit(value), {status: 'yes, with a permit', until: '2027-06-30', only: 'Switzerland'});
+test('a permit value is its status only; words after it are kept by the control and read as that status', () => {
+  assert.equal(joinPermit({status: 'yes, with a permit'}), 'yes, with a permit');
+  assert.equal(joinPermit({status: 'maybe'}), '');
+  assert.deepEqual(splitPermit('yes, with a permit, valid until 2027-06-30'), {status: 'yes, with a permit'});
+  assert.deepEqual(splitPermit('needs visa'), {status: 'no, needs sponsorship'}, 'the older word');
   assert.equal(splitPermit('maybe a B permit').status, '');
 });

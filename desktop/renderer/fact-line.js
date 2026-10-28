@@ -6,7 +6,7 @@ import {answerControl} from './question-control.js';
 import {COMPOSITE, formatFor} from './question-kind.js';
 import {keyOf} from './question-filter.js';
 import {needsCheck} from './question-values.js';
-import {COUNTRY_NAMES, NATIONALITY, isAsked, isCountry, isRowName, nationalityOf, zoneOfLabel} from './work-eligibility.js';
+import {COUNTRY_NAMES, NATIONALITY, isAsked, isRowName, nationalityOf} from './work-eligibility.js';
 
 const LONG = 60;   // characters: past this a text value wraps in a growing box
 
@@ -15,13 +15,13 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
   if (!label && !kind && key === 'languages') kind = 'language';   // a new line in Languages is a language: its name, then level chips
   const format = formatFor({marked: kind ? {kind} : null, kept: formats[keyOf(label)]});
   const composite = COMPOSITE.includes(format.kind);
-  // Why (28 Oct 2026, owner, #2322): a Work eligibility row is one of the fixed zones, or a country picked from the list (never typed), so no row is about a city.
-  const perCountry = key === 'eligibility' && format.kind === 'per_country', zone = perCountry && zoneOfLabel(label);
+  // Why (28 Oct 2026, owner, #2322): a Work eligibility row is one of the three fixed zones; a country line saved before stays as written with a Check.
+  const perCountry = key === 'eligibility' && format.kind === 'per_country';
   const row = el(perCountry ? 'div' : 'label', perCountry ? 'fact-line country-row' : 'fact-line');
-  const name = perCountry && !zone ? countryPick(label, onChange) : Object.assign(document.createElement('input'), {type: 'text', value: label, placeholder: 'What (e.g. Notice period)'});
+  const name = Object.assign(document.createElement('input'), {type: 'text', value: label, placeholder: 'What (e.g. Notice period)'});
   name.dataset.factLabel = key;
   // A line read from the Profile keeps its words as its label; a new one is named by you.
-  if (label && !(perCountry && !zone)) { name.hidden = true; row.append(el('span', '', label)); }
+  if (label) { name.hidden = true; row.append(el('span', '', label)); }
   name.addEventListener('input', onChange);
   // A long value in words is a box that grows, never cut by a one-line field.
   const long = format.control === 'text' && (String(value).length > LONG || String(value).includes('\n'));
@@ -31,13 +31,8 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
   control.dataset.factValue = key;
   row.dataset.kind = composite ? format.kind : '';
   row.append(name, control);
-  if (perCountry && !zone) {
-    const remove = Object.assign(el('button', 'secondary small-btn', 'Remove'), {type: 'button', ariaLabel: `Remove ${label || 'this country'}`});
-    remove.addEventListener('click', () => { row.remove(); onChange(); });
-    row.append(remove);
-  }
   if (key === 'eligibility' && label === NATIONALITY && !citizenship) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the countries instead'}));
-  else if (perCountry && label && !isRowName(label)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the country it is about'}));
+  else if (perCountry && label && !isRowName(label)) row.append(pill('Check', 'warn', {title: 'Saved before the zones; folded into its zone when you Save'}));
   else if (needsCheck(format.kind, value)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the parts to make it exact'}));
   // The words the value does not hold (a rule, a date it was confirmed) sit under it, never in it: folded as "Note for the AI" in a box that grows
   // (owner, 18 Oct 2026: "Folded Note for the AI"; the same fold as Profile → Application answers).
@@ -51,22 +46,13 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
   return row;
 }
 
-// The country menu of a per-country row; a saved name that is not a country ("Germany / EU") stays as a choice until another is picked.
-function countryPick(label, onChange) {
-  const pick = Object.assign(el('select', 'country-pick'), {ariaLabel: 'Country'});
-  pick.append(new Option('Country…', ''), ...(label && !isCountry(label) ? [new Option(label, label)] : []), ...COUNTRY_NAMES.filter(name => !zoneOfLabel(name)).map(name => new Option(name, name)));   // the UK and the US are zones of their own
-  pick.value = COUNTRY_NAMES.find(name => name.toLowerCase() === label.toLowerCase()) || label;
-  pick.addEventListener('change', onChange);
-  return pick;
-}
-
-// Nationality (#2322): one or more countries as chips, "Add a country…" to add one; .value is "Romania, Moldova".
+// Nationality (#2322): one or more countries as chips, "Add a nationality…" to add one; .value is "Romania, Moldova".
 function nationalityPick(value, onChange) {
   let names = nationalityOf(value) || [];
   const node = el('div', 'qa-values qa-nationality');
   const pick = Object.assign(el('select', ''), {ariaLabel: 'Add a nationality'});
   const draw = () => {
-    pick.replaceChildren(new Option(names.length ? 'Add another…' : 'Add a country…', ''), ...COUNTRY_NAMES.filter(name => !names.includes(name)).map(name => new Option(name, name)));
+    pick.replaceChildren(new Option(names.length ? 'Add another…' : 'Add a nationality…', ''), ...COUNTRY_NAMES.filter(name => !names.includes(name)).map(name => new Option(name, name)));
     node.replaceChildren(...names.map(name => chip(name, {onRemove: () => { names = names.filter(each => each !== name); draw(); onChange(); }})), pick);
   };
   pick.addEventListener('change', () => { if (pick.value) { names = [...names, pick.value]; draw(); onChange(); } });

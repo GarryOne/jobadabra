@@ -3,7 +3,7 @@
 // writes it back the same way; text the code cannot read gives empty parts, so the control shows it as it was written and nothing is lost.
 // Pure (no DOM): guarded by test/question-kinds-composite.test.js.
 import {COMPOSITE} from './question-kind.js';
-import {COUNTRY_NAMES, OLDER, STATUSES, isCountry} from './work-eligibility.js';
+import {OLDER, STATUSES} from './work-eligibility.js';
 
 export {STATUSES};
 
@@ -39,20 +39,14 @@ export function joinDuration({number = '', unit = '', monthEnd = false} = {}) {
 // Why (28 Oct 2026, owner, #2322): one status per zone or country, the fixed set of renderer/work-eligibility.js; "needs visa" (the older word) reads as
 // "no, needs sponsorship", "allowed" (which never said how) stays as written with a Check.
 const PERMIT = new RegExp(String.raw`^(${[...STATUSES, ...Object.keys(OLDER)].join('|')})((?:\s*,.*)?)$`, 'i');
-const PARTS = /^(?:\s*,\s*valid until\s+(\d{4}-\d{2}-\d{2}))?(?:\s*,\s*only in\s+([^,]+?))?\s*$/i;
-// "yes, with a permit, valid until 2027-06-30, only in Switzerland" -> {status, until, only}; text the code cannot read (a part this status cannot hold, a
-// country it does not know) -> empty parts, so the line is kept as written, never cut.
+// "yes, with a permit" -> {status}; the words after a permit's status ("yes, with a permit, B permit") are the person's own and read as that status. Text the
+// code cannot read -> {status: ''}, so the line is kept as written, never cut.
 export function splitPermit(value) {
-  const none = {status: '', until: '', only: ''}, match = String(value ?? '').trim().match(PERMIT);
-  if (!match) return none;
-  const word = match[1].toLowerCase(), status = word in OLDER ? OLDER[word] : word, parts = match[2].match(PARTS);
-  if (!status || !parts || ((parts[1] || parts[2]) && status !== 'yes, with a permit') || (parts[2] && !isCountry(parts[2]))) return none;
-  return {status, until: parts[1] || '', only: parts[2] ? COUNTRY_NAMES.find(name => name.toLowerCase() === parts[2].trim().toLowerCase()) : ''};
+  const match = String(value ?? '').trim().match(PERMIT), word = match?.[1].toLowerCase() || '';
+  return {status: (word in OLDER ? OLDER[word] : word) || ''};
 }
-/** {status, until, only} -> the one saved value ("yes, with a permit, valid until 2027-06-30, only in Switzerland"); '' for a status outside STATUSES. A date
- * that is not YYYY-MM-DD or an "only in" that is no country is left out. */
-export const joinPermit = ({status = '', until = '', only = ''} = {}) => (STATUSES.includes(status)
-  ? [status, status === 'yes, with a permit' && /^\d{4}-\d{2}-\d{2}$/.test(until) && `valid until ${until}`, status === 'yes, with a permit' && isCountry(only) && `only in ${only}`].filter(Boolean).join(', ') : '');
+/** {status} -> the one saved value ("yes, with a permit"); '' for a status outside STATUSES. */
+export const joinPermit = ({status = ''} = {}) => (STATUSES.includes(status) ? status : '');
 
 const RANGE = /^(\d{1,3})\s*[-–]\s*(\d{1,3})\s*%?$/;
 export function splitRange(value) {

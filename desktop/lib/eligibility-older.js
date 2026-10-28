@@ -9,32 +9,28 @@ import {anthropicApi} from './ai/anthropic-api.js';
 import * as sections from './profile-sections.js';
 import {saveCopy} from './profile-move.js';
 import {MODEL} from './question-reuse.js';
-import {joinPermit, splitPermit} from '../renderer/question-values.js';
+import {joinPermit} from '../renderer/question-values.js';
 import {NATIONALITY, STATUSES, ZONES, isAsked, isRowName, nameOfCode, nationalityOf} from '../renderer/work-eligibility.js';
 
 export const ABOUT = ['eligibility', 'per_job', 'other'];
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['lines'], properties: {lines: {type: 'array', items: {type: 'object', additionalProperties: false,
   required: ['id', 'about', 'nationality', 'rows'], properties: {id: {type: 'string'}, about: {type: 'string', enum: ABOUT}, nationality: {type: 'array', items: {type: 'string'}}, rows: {type: 'array', items: {type: 'object', additionalProperties: false,
-    required: ['row', 'status', 'until', 'only'], properties: {row: {type: 'string'}, status: {type: 'string', enum: STATUSES}, until: {type: 'string'}, only: {type: 'string'}}}}}}}}};
-export const INSTRUCTIONS = `Each line is a job seeker's saved answer about their right to work, in any language. Their right to work is kept per zone: ${ZONES.map(zone => `"${zone.id}" = ${zone.label}`).join(', ')}, or one other country by its ISO 3166 alpha-2 code.
+    required: ['row', 'status'], properties: {row: {type: 'string', enum: ZONES.map(zone => zone.id)}, status: {type: 'string', enum: STATUSES}}}}}}}}};
+export const INSTRUCTIONS = `Each line is a job seeker's saved answer about their right to work, in any language. Their right to work is kept per zone: ${ZONES.map(zone => `"${zone.id}" = ${zone.label}`).join(', ')}. A country, or a city or region in it, counts for the zone it is in; a country in no zone is left out.
 For each line answer about:
 - "eligibility": it states their right to work or their need for sponsorship somewhere.
-- "per_job": it asks about "the location you apply for" or the job's own place: it is answered per job, from the zones.
-- "other": anything else (working remotely from home for a foreign employer, relocating, a preference).
+- "per_job": it asks about "the location you apply for", the job's own place, or working remotely from their country for a foreign employer: it is answered per job, from the zones.
+- "other": anything else (relocating, a preference).
 And nationality: for "eligibility" only, the ISO codes of the countries the line says they are a citizen of (a passport, a nationality, "EU citizen (Romania)" -> RO); otherwise [].
-And rows: for "eligibility" only, the zones or countries the line states a status for, each with status "yes, freely" (a citizen, or free movement: an EU, EEA or Swiss citizen is "yes, freely" in "eu"), "yes, with a permit" (a visa or residence permit; until = its end date as YYYY-MM-DD when stated, else ""; only = the ISO code of the one country it is limited to when it does not cover the whole zone, else "") or "no, needs sponsorship". A place named by a city counts for its country. Only what the line states or plainly means; nothing for a zone it does not cover. Otherwise rows [].
+And rows: for "eligibility" only, the zones the line states a status for, each with status "yes, freely" (a citizen, or free movement: an EU, EEA or Swiss citizen is "yes, freely" in "eu"), "yes, with a permit" (a visa or residence permit, in any country of the zone) or "no, needs sponsorship". Only what the line states or plainly means; nothing for a zone it does not cover. Otherwise rows [].
 Answer every id exactly as given.`;
 
 const nameOf = nameOfCode;
 const sigOf = lines => lines.map(line => `${line.label}=${line.value}`).sort().join('~');
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
-// One AI row -> {label, value} of a zone or country row, or null when any part is outside the fixed sets.
-function rowOf({row, status, until, only}) {
-  const zone = ZONES.find(each => each.id === row), code = String(row || '').toUpperCase();
-  const label = zone?.label || nameOf(code), onlyName = only ? nameOf(only) : '';
-  if (!label || !STATUSES.includes(status) || (until && !DATE.test(until)) || (only && !onlyName)) return null;
-  const value = joinPermit({status, until, only: onlyName});
-  return splitPermit(value).status ? {label, value} : null;
+// One AI row -> {label, value} of a zone row, or null when the zone or status is outside the fixed sets.
+function rowOf({row, status}) {
+  const zone = ZONES.find(each => each.id === row);
+  return zone && STATUSES.includes(status) ? {label: zone.label, value: joinPermit({status})} : null;
 }
 
 /**

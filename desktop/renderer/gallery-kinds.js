@@ -35,7 +35,7 @@ export const KIND_ROWS = [
   ['duration', 'Duration', 'notice period', () => text('1 month, ends at month-end'), () => control('duration', joinDuration({number: '1', unit: 'month', monthEnd: true})), 'number + unit'],
   ['link', 'Link', 'LinkedIn, GitHub', () => Object.assign(el('a', '', 'linkedin.com/in/alex-rivera'), {href: '#'}), () => control('link', 'https://linkedin.com/in/alex-rivera'), 'a web address field'],
   ['per_country', 'Per country', 'right to work', () => list(chip('EU / EEA + Switzerland', {detail: 'Yes, freely · from your nationality'}), chip('United States', {detail: 'No, needs sponsorship'})),
-    () => control('per_country', 'yes, with a permit, valid until 2027-06-30'), 'Yes, freely / Yes, with a permit (until, only in) / No, needs sponsorship'],
+    () => control('per_country', 'yes, with a permit'), 'Yes, freely / Yes, with a permit / No, needs sponsorship'],
   ['language', 'Language + level', 'English C1', () => list(chip('English', {detail: 'C1'}), chip('Spanish', {detail: 'Native'})), () => control('language', 'C1'), 'level buttons A1…native'],
   ['range', 'Range', 'workload 80–100 %', () => text('80–100 %'), () => control('range', '80–100 %'), 'from + to'],
   ['note', 'Note for the AI', 'use the closest option', () => aiNote('Use the closest option when the form words it differently.'),

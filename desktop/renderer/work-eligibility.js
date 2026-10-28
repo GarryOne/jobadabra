@@ -1,7 +1,7 @@
 // Work eligibility by zone (owner, 28 Oct 2026, #2322: "one answer in EU, another one in UK, another one in US… EU + Switzerland or EEA… And that's it"):
-// three fixed rows (EU / EEA + Switzerland, United Kingdom, United States) and any country added by hand, each with one status from a fixed set, saved as a
-// "[per country]" line ("EU / EEA + Switzerland: yes, freely", "United Kingdom: yes, with a permit, valid until 2027-06-30"). A row is a zone or a country
-// from renderer/countries.js, never a city. Needing sponsorship is derived from the status, never a fact of its own. Which zone a form's country is in is
+// three fixed rows (EU / EEA + Switzerland, United Kingdom, United States), each with one status from a fixed set, saved as a "[per country]" line
+// ("EU / EEA + Switzerland: yes, freely"). Why (28 Oct 2026, owner): no permit date or "only in" ("a bit too much, too in depth") and no added country
+// ("they'll use it either for EEA or for US… there is no point for 'Add a country'"). Needing sponsorship is derived from the status, never a fact of its own. Which zone a form's country is in is
 // the AI's judgment, checked here against the zones' fixed members (lib/question-reuse.js). Pure: the lib and the renderer share it.
 // Guarded by test/work-eligibility.test.js.
 import {CODES} from './countries.js';
@@ -29,17 +29,13 @@ export const nameOfCode = code => COUNTRY_NAMES.find(name => countryCode(name) =
 export const isAsked = value => /^❓/.test(String(value ?? '').trim());
 /** "united kingdom" -> the UK zone {id, label, codes}; null when the label names no zone. */
 export const zoneOfLabel = label => ZONES.find(zone => zone.label.toLowerCase() === String(label ?? '').trim().toLowerCase()) || null;
-/** A row's own name: one of the zones, or a country added by hand. */
-export const isRowName = label => Boolean(zoneOfLabel(label)) || isCountry(label);
-/** The countries a row covers, as ISO codes. */
-export const codesOf = label => zoneOfLabel(label)?.codes || [countryCode(label)].filter(Boolean);
+/** A row's own name: one of the zones (a country line saved before #2322 is an older line, read once and folded on Save). */
+export const isRowName = label => Boolean(zoneOfLabel(label));
 
-// What a row settles about one country (ISO code) on a day: the right to work there, and whether sponsorship is needed (derived, owner 28 Oct 2026:
-// "freely → No; permit → No until the date; No → Yes"). A permit past its date, or limited to another country, settles nothing.
-// row: {status, until, only} (lib: splitPermit); asks: 'work_right' | 'sponsorship' -> 'Yes' | 'No' | ''.
-export function settles({status = '', until = '', only = ''} = {}, asks, code = '', now = new Date()) {
+// What a row's status settles: the right to work, and whether sponsorship is needed (derived, owner 28 Oct 2026: "freely → No; permit → No; No → Yes").
+// row: {status} (lib: splitPermit); asks: 'work_right' | 'sponsorship' -> 'Yes' | 'No' | ''.
+export function settles({status = ''} = {}, asks) {
   if (status === 'no, needs sponsorship') return asks === 'work_right' ? 'No' : asks === 'sponsorship' ? 'Yes' : '';
-  if (status === 'yes, with a permit' && ((until && until < now.toISOString().slice(0, 10)) || (only && code && countryCode(only) !== code))) return '';
   if (status === 'yes, freely' || status === 'yes, with a permit') return asks === 'work_right' ? 'Yes' : asks === 'sponsorship' ? 'No' : '';
   return '';
 }
@@ -67,10 +63,10 @@ export function eligibilityOf(lines) {
   const opened = zonesOpenedBy(nationality).map(id => ZONES.find(zone => zone.id === id)).filter(zone => !saved.some(row => zoneOfLabel(row.label) === zone));
   return {nationality, rows: [...saved, ...opened.map(zone => ({label: zone.label, value: 'yes, freely', from: 'nationality'}))]};
 }
-/** The row that covers a country (ISO code): an added country's own row first, then its zone, then a citizenship of it ("yes, freely"). */
+/** The row that covers a country (ISO code): its zone, else a citizenship of it ("yes, freely"); null when neither covers it (the question stays asked). */
 export function rowFor(code, lines) {
   const {nationality, rows} = eligibilityOf(lines), upper = String(code || '').toUpperCase();
   if (!upper) return null;
-  return rows.find(row => !zoneOfLabel(row.label) && countryCode(row.label) === upper) || rows.find(row => zoneOfLabel(row.label)?.codes.includes(upper))
+  return rows.find(row => zoneOfLabel(row.label)?.codes.includes(upper))
     || ((nationality || []).some(name => countryCode(name) === upper) ? {label: NATIONALITY, value: 'yes, freely', from: 'nationality'} : null);
 }

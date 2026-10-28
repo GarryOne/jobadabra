@@ -61,16 +61,14 @@ test('duration: number, unit, and "ends at month-end"', () => {
 });
 
 // Why (28 Oct 2026, owner, #2322): one fixed status per zone or country; "needs visa" reads as needs sponsorship, "allowed" never said how and stays as written.
-test('per country: yes freely, yes with a permit (until, only in), or needs sponsorship', () => {
+// Why (28 Oct 2026, owner): a status only, no permit date or "only in" ("a bit too much, too in depth").
+test('per country: yes freely, yes with a permit, or needs sponsorship; nothing more', () => {
   const {splitPermit, joinPermit} = values;
-  assert.deepEqual(splitPermit('Yes, with a permit, valid until 2027-06-30, only in switzerland'), {status: 'yes, with a permit', until: '2027-06-30', only: 'Switzerland'});
-  assert.deepEqual(splitPermit('Needs visa'), {status: 'no, needs sponsorship', until: '', only: ''});
-  for (const unread of ['allowed, B permit', 'Swiss B Permit Authorized To Work', 'yes, freely, valid until 2027-01-01', 'yes, with a permit, only in Iasi', 'no, needs sponsorship, maybe']) {
-    assert.deepEqual(splitPermit(unread), {status: '', until: '', only: ''}, unread);
-  }
-  assert.equal(joinPermit({status: 'yes, with a permit', until: '2027-06-30', only: 'Switzerland'}), 'yes, with a permit, valid until 2027-06-30, only in Switzerland');
-  assert.equal(joinPermit({status: 'yes, freely', until: '2027-06-30'}), 'yes, freely', 'a date is a permit\'s only');
-  assert.equal(joinPermit({status: '', until: '2027-06-30'}), '');
+  assert.deepEqual(splitPermit('Yes, with a permit'), {status: 'yes, with a permit'});
+  assert.deepEqual(splitPermit('Needs visa'), {status: 'no, needs sponsorship'});
+  for (const unread of ['allowed, B permit', 'Swiss B Permit Authorized To Work', 'maybe']) assert.deepEqual(splitPermit(unread), {status: ''}, unread);
+  assert.equal(joinPermit({status: 'yes, freely'}), 'yes, freely');
+  assert.equal(joinPermit({status: ''}), '');
 });
 
 test('range and link', () => {

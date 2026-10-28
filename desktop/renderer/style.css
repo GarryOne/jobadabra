@@ -2577,7 +2577,7 @@ details.qa-section { margin-top: var(--sp-3); }
 .find-card.is-failed { border-color: var(--warn); }
 
 /* Your details → fact sections (pages/details-facts.js): "+ Add a line" sits at the start of its row, not centred in the grid. */
-[data-facts] > .link, [data-facts] > .fact-add { justify-self: start; }
+[data-facts] > .link { justify-self: start; }
 
 /* Profile → Experience and Your details: the Profile's own sections, a 3-line preview each with Edit (pages/experience-profile.js). */
 .exp-profile { display: grid; gap: var(--sp-4); }

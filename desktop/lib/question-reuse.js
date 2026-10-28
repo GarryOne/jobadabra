@@ -63,8 +63,8 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
   for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = '', asks = '', country = ''} of verdicts) {
     if (!labels.includes(label) || !VERDICTS.includes(verdict)) continue;
     const eligible = ASKS.includes(asks) && verdict !== 'consent' ? fromEligibility(asks, country, facts) : null;
-    // Why (28 Oct 2026, Gitar on #2322): rows that settle nothing (a permit past its date, or only for another country) keep the question asked; the generic
-    // fact path below would hide it and fill it from that row. The row and its value are kept, so a renewed permit judges it again (lib/question-verdicts.js).
+    // Why (28 Oct 2026, Gitar on #2322): a country no saved zone or nationality covers keeps the question asked; the generic fact path below would hide it
+    // and fill it from a row that does not answer it. The row and its value are kept, so an answer added later judges it again (lib/question-verdicts.js).
     if (eligible?.asked) { out.set(label, {reuse: verdict, covered_by: '', proposal: '', from: eligible.from, topic: topicOf(topic), fact: '', asks, row: eligible.row}); continue; }
     if (eligible) { out.set(label, {reuse: DETAILS, covered_by: '', proposal: eligible.value, from: eligible.from, topic: topicOf(topic), fact: eligible.fact, asks}); continue; }
     const answer = byQuestion.get(covered) || '', own = known.has(fact) && verdict !== 'consent' ? fact : '';   // a fact the AI invented keeps nothing
@@ -82,8 +82,8 @@ function fromEligibility(asks, country, facts) {
   if (!nationality && !rows.length) return null;
   if (!code) return {fact: nationality ? NATIONALITY : rows[0].label, value: '', from: ''};
   if (!/^[A-Z]{2}$/.test(code)) return {asked: true, row: '', from: ''};
-  // A row with no status (an older "allowed, B permit") answers nothing, so its zone or nationality may (#2322 review).
-  const row = rowFor(code, facts.filter(fact => fact.kind !== 'per_country' || splitPermit(fact.value).status)), value = row ? settles(splitPermit(row.value), asks, code) : '';
+  // A row with no status (an older "allowed, B permit") answers nothing, so the nationality may (#2322 review).
+  const row = rowFor(code, facts.filter(fact => fact.kind !== 'per_country' || splitPermit(fact.value).status)), value = row ? settles(splitPermit(row.value), asks) : '';
   const from = row ? String(facts.find(fact => fact.label === row.label)?.value ?? row.value) : '';   // the saved line, to see it change
   return value ? {fact: row.label, value, from} : {asked: true, row: row?.label || '', from};
 }

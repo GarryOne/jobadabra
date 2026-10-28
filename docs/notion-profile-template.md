@@ -79,7 +79,6 @@ invents experience.
 - EU / EEA + Switzerland: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]
 - United Kingdom: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]
 - United States: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]
-- Remote from your country for a foreign employer?: ❓
 
 ## 💶 Availability & compensation
 

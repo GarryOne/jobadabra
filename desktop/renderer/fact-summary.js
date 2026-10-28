@@ -70,17 +70,12 @@ export function languagesView(lines, chipLine) {
   return chipLine(lines.filter(line => line.label && String(line.value ?? '').trim()).map(line => ({text: line.label, detail: String(line.value).trim()})));
 }
 
-const dayOf = iso => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'});
-// Work eligibility's read view (#2322): Nationality, then the three zones and any country added, each a chip with its status ("United Kingdom · Yes, freely";
-// a permit with its date and the one country it is limited to; a zone your nationality opens "· from your nationality"; one not set says so); then any other
-// line (working remotely) as a summary. -> {node, check} (check: the lines to look at, for the card's one count).
+// Work eligibility's read view (#2322): Nationality, then the three zones, each a chip with its status ("United Kingdom · Yes, freely"; a zone your nationality
+// opens "· from your nationality"; one not set says so); then any other line (one saved before the zones) as a summary. -> {node, check} (check: the lines to look at, for the card's one count).
 export function eligibilityView(lines, chipLine) {
-  const detail = value => {
-    const {status, until, only} = splitPermit(value);
-    return status ? [STATUS_NAMES[status], until && `until ${dayOf(until)}`, only && `only in ${only}`].filter(Boolean).join(' · ') : shortValue(value);
-  };
-  const {nationality, rows} = eligibilityOf(lines), added = lines.filter(line => line.kind === 'per_country' && line.label && !zoneOfLabel(line.label));
-  const rest = lines.filter(line => line.label !== NATIONALITY && line.kind !== 'per_country' && String(line.value ?? '').trim());
+  const detail = value => STATUS_NAMES[splitPermit(value).status] || shortValue(value);
+  const {nationality, rows} = eligibilityOf(lines);
+  const rest = lines.filter(line => line.label !== NATIONALITY && !(line.kind === 'per_country' && zoneOfLabel(line.label)) && String(line.value ?? '').trim());
   const zoneChip = zone => {
     const row = rows.find(each => zoneOfLabel(each.label) === zone);
     if (!row) return {text: zone.label, detail: 'Not set', tone: 'warn'};
@@ -89,7 +84,7 @@ export function eligibilityView(lines, chipLine) {
   const box = el('div', 'fact-eligibility');
   const head = (words, node) => { const part = el('div', 'fact-eligibility-part'); part.append(el('span', 'fact-sum-label', words), node); return part; };
   box.append(head('Nationality', nationality?.length ? chipLine(nationality) : pill('Not set', 'warn')),
-    head('Where you may work', chipLine([...ZONES.map(zoneChip), ...added.map(line => ({text: line.label, detail: detail(line.value)}))])));
+    head('Where you may work', chipLine(ZONES.map(zoneChip))));
   if (rest.length) box.append(summaryView(rest));
   const earlier = lines.some(line => line.earlier);
   if (earlier) box.append(el('p', 'muted small', 'Filled from your earlier answers: check them, then Save. The older lines are folded in, with Undo.'));

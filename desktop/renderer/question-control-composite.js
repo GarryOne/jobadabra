@@ -5,7 +5,7 @@
 import {el} from './components.js';
 import {composite, refresh, savedAs, segmented} from './question-control-values.js';
 import {BASES, CURRENCIES_ALL, LEVELS, PERIODS, UNITS, joinDuration, joinPermit, joinRange, joinSalary, splitDuration, splitPermit, splitRange, splitSalary} from './question-values.js';
-import {COUNTRY_NAMES, STATUSES, STATUS_HINTS, STATUS_NAMES} from './work-eligibility.js';
+import {STATUSES, STATUS_HINTS, STATUS_NAMES} from './work-eligibility.js';
 
 const input = (type, value, ariaLabel, placeholder = '') => Object.assign(el('input', ''), {type, value, ariaLabel, placeholder});
 function menu(options, value, ariaLabel, blank = '') {
@@ -50,27 +50,19 @@ function duration(raw, onChange, label) {
   return node;
 }
 
-// A zone's or a country's status (renderer/work-eligibility.js): three chips; with a permit, its "valid until" and the one country it may be limited to
-// (a Swiss B permit held by a non-EU national: "Only in Switzerland").
+// A zone's status (renderer/work-eligibility.js): three chips, nothing more. Why (28 Oct 2026, owner): a permit's date or country is "a bit too much".
 function permit(raw, onChange, label) {
   const start = splitPermit(raw), state = {...start};
-  const answer = () => (state.status ? joinPermit(state) : readable(raw, start.status) ? raw : '');
+  // A saved value with words after its status ("yes, with a permit, B permit") is kept as written until another status is picked: never cut in silence.
+  const answer = () => (state.status ? (state.status === start.status ? String(raw).trim() : joinPermit(state)) : readable(raw, start.status) ? raw : '');
   const node = composite(answer, () => Boolean(answer()));
   node.classList.add('qa-permit');
   const isOn = option => STATUS_NAMES[state.status] === option;
-  const until = Object.assign(input('date', state.until, `${label}: valid until`), {title: 'Valid until'});
-  const only = menu(COUNTRY_NAMES, state.only, `${label}: only in`, 'Anywhere here');
-  const parts = el('div', 'qa-permit-parts');
-  for (const [words, field] of [['Valid until', until], ['Only in', only]]) { const part = el('div', 'qa-permit-part'); part.append(el('span', 'muted small', words), field); parts.append(part); }
-  const shown = () => { parts.hidden = state.status !== 'yes, with a permit'; };
   const group = segmented(STATUSES.map(each => STATUS_NAMES[each]), isOn, (option, each) => {
-    state.status = isOn(option) ? '' : STATUSES.find(key => STATUS_NAMES[key] === option); refresh(each, isOn); shown(); onChange(answer());
+    state.status = isOn(option) ? '' : STATUSES.find(key => STATUS_NAMES[key] === option); refresh(each, isOn); onChange(answer());
   }, label);
   group.querySelectorAll('button').forEach(button => { button.title = STATUS_HINTS[STATUSES.find(key => STATUS_NAMES[key] === button.textContent)] || ''; });
-  until.addEventListener('input', () => { state.until = until.value; onChange(answer()); });
-  only.addEventListener('change', () => { state.only = only.value; onChange(answer()); });
-  shown();
-  node.append(group, parts);
+  node.append(group);
   if (readable(raw, start.status)) node.append(savedAs(raw));
   return node;
 }

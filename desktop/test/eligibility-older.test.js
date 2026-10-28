@@ -1,5 +1,5 @@
 // The Work eligibility lines saved before Nationality and the zones (#2322, lib/eligibility-older.js): the AI reads each once (cached per set of lines), the
-// code keeps only zones, statuses, dates and countries from the fixed sets, and a line leaves the card only on your Save, after a backup, with Undo.
+// code keeps only zones and statuses from the fixed sets, and a line leaves the card only on your Save, after a backup, with Undo.
 // Owner (28 Oct 2026): "we can deduce any of them, once we know the answer for the 3 above". Values are fictional.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,10 +19,10 @@ const LINES = [{label: 'Work permit / visa', value: 'EU citizen (Romania); needs
   {label: 'Eligible to work in the location you apply for?', value: 'Yes'}, {label: 'Remote from your base for a foreign employer?', value: 'Yes'},
   {label: 'Nationality', value: 'Romania'}, {label: 'United Kingdom', value: 'yes, with a permit', kind: 'per_country'}];
 const READ = {lines: [
-  {id: '0', about: 'eligibility', nationality: ['RO', 'XX'], rows: [{row: 'eu', status: 'yes, freely', until: '', only: ''}, {row: 'us', status: 'no, needs sponsorship', until: '', only: ''},
-    {row: 'mars', status: 'yes, freely', until: '', only: ''}, {row: 'us', status: 'yes, freely', until: '', only: ''}]},
-  {id: '1', about: 'eligibility', nationality: [], rows: [{row: 'eu', status: 'yes, freely', until: 'soon', only: ''}, {row: 'CH', status: 'yes, with a permit', until: '2027-06-30', only: 'CH'}]},
-  {id: '2', about: 'per_job', nationality: ['RO'], rows: [{row: 'eu', status: 'yes, freely', until: '', only: ''}]},
+  {id: '0', about: 'eligibility', nationality: ['RO', 'XX'], rows: [{row: 'eu', status: 'yes, freely'}, {row: 'us', status: 'no, needs sponsorship'},
+    {row: 'mars', status: 'yes, freely'}, {row: 'us', status: 'yes, freely'}]},
+  {id: '1', about: 'eligibility', nationality: [], rows: [{row: 'eu', status: 'maybe'}, {row: 'uk', status: 'yes, with a permit'}]},
+  {id: '2', about: 'per_job', nationality: ['RO'], rows: [{row: 'eu', status: 'yes, freely'}]},
   {id: '3', about: 'other', nationality: [], rows: []}]};
 const client = (calls = [], answer = READ) => ({messages: {create: async request => { calls.push(request); return {content: [{type: 'text', text: JSON.stringify(answer)}]}; }}});
 
@@ -34,7 +34,7 @@ test('older: only the lines that are not Nationality or a row go to the AI; its 
   assert.deepEqual(got.map(line => line.about), ['eligibility', 'eligibility', 'per_job', 'other']);
   assert.deepEqual(got[0].nationality, ['Romania'], 'a code that is no country is dropped');
   assert.deepEqual(got[0].rows, [{label: 'EU / EEA + Switzerland', value: 'yes, freely'}, {label: 'United States', value: 'no, needs sponsorship'}], 'an unknown row is dropped; one answer per row');
-  assert.deepEqual(got[1].rows, [{label: 'Switzerland', value: 'yes, with a permit, valid until 2027-06-30, only in Switzerland'}], 'a date that is not YYYY-MM-DD drops its row');
+  assert.deepEqual(got[1].rows, [{label: 'United Kingdom', value: 'yes, with a permit'}], 'a status outside the fixed set drops its row');
   assert.deepEqual([got[2].nationality, got[2].rows], [[], []], 'a per-job question states nothing of its own');
 });
 

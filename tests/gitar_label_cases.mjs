@@ -1,7 +1,7 @@
 // Cases for tools/gitar-label.mjs, run by tests/test_gitar_label.py: Gitar's real verdict lines map to one label, and a verdict older than the head commit gets none.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
+import {converge, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
 const wrap = kbd => `<details>\n<summary><b>Code Review</b> ${kbd}</summary>\n\nBody\n</details>`;
 const APPROVED = wrap('<kbd>✅ Approved</kbd>');   // #2377, #2380
 const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 3 findings</kbd>');   // #2381
@@ -30,4 +30,24 @@ test('no current verdict shows "reviewing"; working ends with a push or an appro
   assert.deepEqual(w(null, BEFORE), [WAITING.name]);   // set before the head was pushed: the push ended it, even if no push event ran
   assert.deepEqual(w(LABELS.approved.name, AFTER), [LABELS.approved.name]);
   assert.deepEqual(w(LABELS.suggestions.name, AFTER), [LABELS.suggestions.name, WORKING.name]);
+});
+
+test('overlapping runs: the run that read a stale verdict and wrote last re-reads and ends on the current label (#2404, Gitar)', () => {
+  // Run A read "no verdict for the new head" before Gitar approved; run B read "approved" while the PR still held approved, so it changed nothing.
+  // A then wrote "reviewing" last. The real setLabels writes through a fake gh that keeps the PR's labels; converge re-reads until nothing changes.
+  const pr = {verdict: LABELS.approved.name, labels: new Set([WAITING.name])};   // the live state after A's stale write
+  const fakeGh = (...args) => {
+    const at = args.indexOf('--add-label'), off = args.indexOf('--remove-label');
+    if (at >= 0) pr.labels.add(args[at + 1]);
+    if (off >= 0) pr.labels.delete(args[off + 1]);
+    return '';
+  };
+  const syncOnce = () => setLabels('o/r', 1, wantedLabels({verdict: pr.verdict, workingSince: null, headTime: '2026-10-28T21:00:00Z'}), [...pr.labels], fakeGh) > 0;
+  assert.equal(converge(syncOnce), 2, 'one round that writes, then a fresh read that wants no change');
+  assert.deepEqual([...pr.labels], [LABELS.approved.name]);
+  assert.equal(setLabels('o/r', 1, [LABELS.approved.name], [WAITING.name], () => ''), 2, 'a stale label is removed and the wanted one added: 2 changes');
+  assert.equal(setLabels('o/r', 1, [LABELS.approved.name], [LABELS.approved.name], () => ''), 0, 'nothing to change: 0');
+  let rounds = 0;
+  assert.equal(converge(() => { rounds++; return true; }), 3, 'a state that keeps moving stops after 3 rounds');
+  assert.equal(rounds, 3);
 });

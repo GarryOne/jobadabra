@@ -26,9 +26,18 @@ feature smarter silently or is dropped (memory `feedback-insight-needs-an-action
 | `not_true` | "Not true" | gone for good for this evidence; a new kind of evidence opens a new insight |
 | `stale` | producer: evidence no longer holds | gone |
 
-**Where it shows:** each home screen has one insight slot (the existing Insight card shape on Focus,
-`desktop/renderer/insight-card.js`), showing its strongest open insight and "+N more". Focus shows the strongest across all
-screens (#16). Every insight shows its evidence (what it saw, with links) and its action buttons. No new page.
+**Where it shows** (owner, 28 Oct 2026: "apart from their home places … shown in the Focus … That should be the place where
+we give the user visibility. Focus and Jobs, but Jobs should be a bit more limited … maybe an expandable section"). One insight,
+three places, one state: acting in any place updates all of them.
+- **Home screen:** one slot (the existing Insight card shape, `desktop/renderer/insight-card.js`), its strongest open insight
+  and "+N more".
+- **Focus:** a "Suggestions" section of its own, below Up next (Up next stays time-bound tasks: interviews, follow-ups,
+  forms to send). It lists open insights from every screen, strongest first: 3 shown, "Show all N". The daily Insight card
+  becomes its first entry (#16).
+- **Jobs:** one collapsed bar above the list, "N suggestions for your search · Show", expanding in place to only the
+  search- and applying-related ones (Strategy #2 and #15, Tune my strategy, Analyze now). Collapsed by default; the list stays
+  in view. Hidden at zero.
+Every insight shows its evidence (what it saw, with links) and its action buttons. No new page.
 
 **Actions come to you** (Tune my strategy, Analyze my job search): both **leave the Actions page** (owner, 28 Oct 2026: "we can
 remove from the Actions … show it in Focus or Jobs only if the circumstances are met and make sense"). Each shows only when its
@@ -110,7 +119,7 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 
 | PR | What you get | Needs PR D |
 |---|---|---|
-| 1 | Insight slot + states on every home screen; Tune and Analyze come to you (Strategy row, Monday Focus card) | no |
+| 1 | Insight card + states; home slots, Focus "Suggestions" section, Jobs collapsed bar; Tune and Analyze come to you | no |
 | 2 | Profile → CV: #4, #5, #6 | yes |
 | 3 | Strategy and Jobs: #2, #15; #1, #10 silently | yes |
 | 4 | Interviews: #14; #3, #13 silently | yes |

@@ -29,7 +29,7 @@ export function liveCard(background = {}, facts = null, {note = '', at = clock, 
   if (background.state === 'waiting_to_submit') {
     const left = countdownLabel(background.dueAt, now());
     return {kind: 'countdown', live: true, title: left ? `Submitting in ${left}` : 'Submitting now…', meta: '· every check passed', pill: backgroundStatus({background}), tone: 'info', frame: '', stop: true,
-      note: 'Nothing is sent until the timer ends. Stop keeps the filled form here for you to review and submit yourself.', input: false, filling: '', submit: null, marks: false, due: background.dueAt || 0};
+      note: 'Nothing is sent until the timer ends. Stop keeps the filled form here for you to review and submit yourself.', input: false, filling: '', submit: null, marks: false};
   }
   if (FILLING.has(background.state)) {
     return {kind: 'filling', live: true, title: 'Filling the application', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}, {fields: facts?.fields ? {done: facts.filled, of: facts.fields} : null}),

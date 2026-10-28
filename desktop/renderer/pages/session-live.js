@@ -159,7 +159,7 @@ export function renderLive(item, on) {
     $('ss-actions').replaceChildren(...actions);
     return;
   }
-  if (card.kind === 'filling' || card.kind === 'countdown') {
+  if (card.kind === 'filling' || card.stop) {
     actions.push(button('Stop', 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
   } else {
     const submit = button('Submit application', card.submit.on ? 'primary' : 'secondary', async event => {
@@ -174,6 +174,6 @@ export function renderLive(item, on) {
     if (card.submit.hint) actions.push(el('span', 'muted small live-hint', card.submit.hint));
   }
   actions.push(button('Open in my browser', 'secondary', on.open, 'external'));
-  if (card.kind !== 'filling' && card.kind !== 'countdown') actions.push(button('Skip this role', 'secondary', on.skip));
+  if (card.kind !== 'filling' && !card.stop) actions.push(button('Skip this role', 'secondary', on.skip));
   $('ss-actions').replaceChildren(...actions);
 }

@@ -7,6 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {ROOT} from './root.js';
 import {writePrivate} from './private-file.js';
 import {findBackgroundBrowser} from './background-browser-download.js';
+import {tabOfSession} from './session-tab.js';
 
 /** Return launch flags for an owned profile and extension, never a system profile or a visible startup page. */
 export function browserArguments(profile, extension) {
@@ -107,6 +108,12 @@ export function createBackgroundBrowser(storage, {find = findBackgroundBrowser, 
     const result = await command(worker.webSocketDebuggerUrl, 'Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
     return result.result?.value === true;
   }
+  // The held tab of one application session, by the ONE rule that says which tab is a session's (lib/session-tab.js): its loopback CDP address, or null.
+  async function pageSocket(session) {
+    const live = await connect();
+    const pages = (await get(live.port, '/json/list')).filter(target => target.type === 'page');
+    return tabOfSession(String(session || ''), pages)?.webSocketDebuggerUrl || null;
+  }
   async function close() { const live = await connect(); await command(live.socket, 'Browser.close').catch(() => {}); }
-  return {ready: () => !!find(storage.path('background-browser-runtime')), start, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
+  return {ready: () => !!find(storage.path('background-browser-runtime')), start, pageSocket, reveal: session => sessionAction(session, 'reveal'), closeSession: session => sessionAction(session, 'closeSession'), close};
 }

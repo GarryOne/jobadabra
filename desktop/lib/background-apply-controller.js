@@ -163,5 +163,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, closed: await browserOf().closeSession(id)};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel};
+  // The held tab's CDP address for the live view, only for a hidden-browser session, never another tab.
+  async function page(id) { return itemFor(id) ? browserOf().pageSocket(id) : null; }
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page};
 }

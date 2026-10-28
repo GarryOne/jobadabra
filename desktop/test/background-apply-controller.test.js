@@ -29,6 +29,16 @@ test('registering the apply handlers creates the controller without touching sto
   assert.doesNotThrow(() => createBackgroundApplyController({}, {store: {}}));   // CI #2324: a storage with no path() crashed handler registration
 });
 
+test('the live view reaches only a hidden-browser session\'s held tab, never a visible session or an unknown id', async () => {
+  const records = {bg: {id: 'bg', background: {}}, visible: {id: 'visible'}}, asked = [];
+  const controller = createBackgroundApplyController({}, {store: {}, terminals: {record: id => records[id] || null},
+    browser: {pageSocket: async id => { asked.push(id); return `ws://127.0.0.1:9/devtools/page/${id}`; }}});
+  assert.equal(await controller.page('bg'), 'ws://127.0.0.1:9/devtools/page/bg');
+  assert.equal(await controller.page('visible'), null);
+  assert.equal(await controller.page('nobody'), null);
+  assert.deepEqual(asked, ['bg'], 'the browser is asked only for the hidden session');
+});
+
 test('the controller reads the notifier when it notifies, not when it is created', async () => {
   const hooks = await import('../lib/server-hooks.js');
   const record = {id: 's1', url: 'https://jobs.example.test/n', background: {}}, sent = [];

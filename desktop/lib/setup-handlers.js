@@ -22,6 +22,8 @@ import {officeAddon} from './office-addon.js';   // LibreOffice for a Word CV, d
 import {registerOfficeHandlers} from './office-handlers.js';
 import {backgroundBrowserAddon} from './background-browser-download.js';
 import {registerBackgroundBrowserHandlers} from './background-browser-handlers.js';   // Jobadabra's browser, downloaded on use
+import {registerLiveViewHandlers} from './live-view-handlers.js';
+import {backgroundApplyFor} from './background-apply-controller.js';
 import {isDocx, setDocxCv} from './cv-docx.js';
 
 export function registerSetupHandlers(ctx) {
@@ -30,6 +32,7 @@ export function registerSetupHandlers(ctx) {
   const office = officeAddon(storage, {toWindow, toast: body => toWindow('toast', body)});
   registerOfficeHandlers({ipcMain, addon: office, DEMO});
   registerBackgroundBrowserHandlers({ipcMain, addon: backgroundBrowserAddon(storage, {toWindow, toast: body => toWindow('toast', body)}), DEMO});
+  registerLiveViewHandlers({DEMO, storage, ipcMain, toWindow, dialog, getWindow, page: id => backgroundApplyFor(storage).page(id)});   // a hidden-browser session's held tab, in the app
   handleImportant('notionConnect', 'Connecting Notion', async (_, pasted) => {   // about Notion
     const {value: token, error} = cleanSecret(pasted);
     if (error) return {ok: false, error};

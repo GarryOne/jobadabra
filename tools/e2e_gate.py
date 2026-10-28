@@ -9,6 +9,7 @@
 A cancelled or skipped run says nothing about the product, so it is no verdict. A green run older than two days no longer vouches for anything.
 """
 import json
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -48,15 +49,25 @@ def ci_verdict(runs):
     return 'green' if all(run.get('conclusion') == 'success' for run in runs) else 'superseded'   # cancelled only: a newer push to main replaced it (15 Oct 2026)
 
 
-def newer_green(repo, sha):
-    """The sha of a NEWER commit of main whose build.yml run succeeded, or '' (a push to main cancels the older commit's run: the newest commit's run decides)."""
-    import subprocess
+def _newer_main_build(repo, sha, query, jq):
+    """Return the first matching main build SHA ahead of sha, or '' when gh yields no match."""
     def gh(*args):
         return subprocess.run(['gh', 'api', *args], capture_output=True, text=True).stdout.strip()
-    for head in gh(f'repos/{repo}/actions/workflows/build.yml/runs?branch=main&status=success&per_page=30', '--jq', '.workflow_runs[].head_sha').split():
+    for head in gh(f'repos/{repo}/actions/workflows/build.yml/runs?branch=main&{query}', '--jq', jq).split():
         if head != sha and gh(f'repos/{repo}/compare/{sha}...{head}', '--jq', '.status') == 'ahead':
             return head
     return ''
+
+
+def newer_green(repo, sha):
+    """The sha of a NEWER commit of main whose build.yml run succeeded, or '' (a push to main cancels the older commit's run: the newest commit's run decides)."""
+    return _newer_main_build(repo, sha, 'status=success&per_page=30', '.workflow_runs[].head_sha')
+
+
+def newer_running(repo, sha):
+    """Return the newest pending main build's SHA only when its commit is ahead of sha, or ''."""
+    # Why (28 Oct 2026, owner): queued or running newer builds still decide a cancelled beta's verdict.
+    return _newer_main_build(repo, sha, 'per_page=30', '.workflow_runs[] | select(.status != "completed") | .head_sha')
 
 
 if __name__ == '__main__':
@@ -66,5 +77,7 @@ if __name__ == '__main__':
         print(ci_verdict(json.load(sys.stdin)))
     elif sys.argv[1] == 'newer-green':   # python3 tools/e2e_gate.py newer-green <repo> <sha>: prints a newer green commit of main, or nothing
         print(newer_green(sys.argv[2], sys.argv[3]))
+    elif sys.argv[1] == 'newer-running':   # prints the newest pending build commit ahead of the beta on main, or nothing
+        print(newer_running(sys.argv[2], sys.argv[3]))
     else:
         print(verdict(json.load(sys.stdin), sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else 'commit'))

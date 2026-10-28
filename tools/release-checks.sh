@@ -19,10 +19,18 @@ while :; do
 done
 verdict=$(gh run list -R "$repo" --workflow build.yml --commit "$ref" --status completed --json conclusion | python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" ci)
 # A push to main cancels the older commit's build.yml run (15 Oct 2026): the newest commit's run decides, so a cancelled run is green when a NEWER commit of main passed.
-if [ "$verdict" = superseded ]; then
+# Why (28 Oct 2026, owner): a cancelled beta must wait for the newer main build that decides for it.
+while [ "$verdict" = superseded ]; do
   newer=$(python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" newer-green "$repo" "$ref" || true)
-  if [ -n "$newer" ]; then verdict=green; echo "build.yml on ${ref:0:7} was replaced by a newer push; ${newer:0:7} (newer, on main) is green"; else verdict=red; fi
-fi
+  if [ -n "$newer" ]; then verdict=green; echo "build.yml on ${ref:0:7} was replaced by a newer push; ${newer:0:7} (newer, on main) is green"; break; fi
+  newer=$(python3 "$(dirname "${BASH_SOURCE[0]}")/e2e_gate.py" newer-running "$repo" "$ref" || true)
+  # Why (28 Oct 2026, owner): only absence of both newer green and pending builds is a final red verdict.
+  if [ -z "$newer" ]; then verdict=red; break; fi
+  # Why (28 Oct 2026, owner): own and replacement builds share one bounded wait, even across repeated pushes.
+  if [ "$waited" -ge "$wait_max" ]; then echo "build.yml on newer commit ${newer:0:7} is still running after ${waited} s: not waiting any longer."; verdict=red; break; fi
+  if [ $((waited - said)) -ge 60 ]; then echo "waiting for the newer commit ${newer:0:7}'s build.yml (${waited} s of ${wait_max} s)"; said=$waited; fi
+  sleep "$poll"; waited=$((waited + poll))
+done
 echo "build.yml on ${ref:0:7}: $verdict"
 if [ "$verdict" != green ]; then echo "$tag stays a pre-release: build.yml is not green on its commit."; exit 1; fi
 

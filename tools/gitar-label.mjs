@@ -52,14 +52,14 @@ export function wantedLabels({verdict, workingSince, headTime}) {
 }
 
 const ALL = [...Object.values(LABELS), WAITING, WORKING];
-const ensure = (repo, l) => gh('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
+const ensure = (repo, l, run = gh) => run('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
 
-/** Adds and removes labels until the PR holds exactly `wanted`; -> how many it changed. */
-function setLabels(repo, pr, wanted, have) {
+/** Adds and removes labels until the PR holds exactly `wanted`; -> how many it changed. `run` is the gh call (a test passes a fake). */
+export function setLabels(repo, pr, wanted, have, run = gh) {
   let changed = 0;
   for (const l of ALL) {
-    if (wanted.includes(l.name) && !have.includes(l.name)) { ensure(repo, l); gh('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo); changed++; }
-    else if (!wanted.includes(l.name) && have.includes(l.name)) { gh('pr', 'edit', String(pr), '--remove-label', l.name, '-R', repo); changed++; }
+    if (wanted.includes(l.name) && !have.includes(l.name)) { ensure(repo, l, run); run('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo); changed++; }
+    else if (!wanted.includes(l.name) && have.includes(l.name)) { run('pr', 'edit', String(pr), '--remove-label', l.name, '-R', repo); changed++; }
   }
   return changed;
 }

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-const {check, baseCommit, COMPLEXITY_LIMIT} = await import('../../tools/clean-code-js.mjs');
+const {check, baseCommit, changedFiles, COMPLEXITY_LIMIT} = await import('../../tools/clean-code-js.mjs');
 
 // A function with `n` nested ifs, each holding a statement (so they cannot be merged): cognitive complexity grows with each nesting level.
 const nested = (name, n) => `export function ${name}(x) {\n${Array.from({length: n}, (_, i) => `${'  '.repeat(i + 1)}if (x > ${i}) {\n${'  '.repeat(i + 2)}x += 1;`).join('\n')}\n${'  '.repeat(n + 1)}return x;\n${Array.from({length: n}, (_, i) => `${'  '.repeat(n - i)}}`).join('\n')}\n  return 0;\n}\n`;
@@ -82,4 +82,24 @@ test('a depth-1 checkout of a PR merge ref is measured from its first parent, ev
   run(clone, 'init', '-q'); run(clone, 'remote', 'add', 'origin', pathToFileURL(src).href);
   run(clone, 'fetch', '-q', '--depth=1', 'origin', 'refs/pull/1/merge'); run(clone, 'checkout', '-q', 'FETCH_HEAD');
   assert.equal(baseCommit(clone), mainWhenBuilt);
+});
+
+test('what is checked is the committed HEAD against the base: a dirty tree changes nothing, and a moved-and-edited file counts as new', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-changed-'));
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']});
+  fs.mkdirSync(path.join(dir, 'desktop'));
+  fs.writeFileSync(path.join(dir, 'desktop', 'old.js'), 'export const a = 1;\nexport const b = 2;\nexport const c = 3;\n');
+  git('init', '-q', '-b', 'main'); git('add', '.'); git('commit', '-q', '-m', 'base');
+  const base = git('rev-parse', 'HEAD').trim();
+  git('mv', 'desktop/old.js', 'desktop/moved.js');
+  fs.appendFileSync(path.join(dir, 'desktop', 'moved.js'), 'export const d = 4;\n');
+  fs.writeFileSync(path.join(dir, 'desktop', 'new.js'), 'export const e = 5;\n');
+  git('add', '.'); git('commit', '-q', '-m', 'moves, edits and adds');
+  fs.writeFileSync(path.join(dir, 'desktop', 'new.js'), 'export const local = 0;\n');   // an uncommitted edit
+  fs.writeFileSync(path.join(dir, 'desktop', 'wip.js'), 'export const wip = 1;\n');      // untracked work
+  const files = changedFiles(base, dir);
+  assert.deepEqual(files.map(f => f.path).sort(), ['desktop/moved.js', 'desktop/new.js']);
+  const moved = files.find(f => f.path === 'desktop/moved.js');
+  assert.ok(moved.added.has(4));
+  assert.equal(files.find(f => f.path === 'desktop/new.js').source, 'export const e = 5;\n');
 });

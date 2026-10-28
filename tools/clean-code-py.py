@@ -57,15 +57,24 @@ def check(files, ruff):
     for file in files:
         run = subprocess.run([*ruff, 'check', '--isolated', '--select', RULES, '--config', f'lint.mccabe.max-complexity = {MAX_COMPLEXITY}', '--output-format', 'json',
                               '--stdin-filename', file['path'], '-'], input=file['source'], capture_output=True, text=True, cwd=ROOT)
+        if run.returncode not in (0, 1):   # 1 = findings; anything else is Ruff itself failing, which must not read as a clean file
+            raise SystemExit(f"clean-code-py: Ruff failed on {file['path']} (exit {run.returncode}): {run.stderr.strip()}")
         for item in json.loads(run.stdout or '[]'):
             if item['location']['row'] in file['added']:
                 found.append({'path': file['path'], 'line': item['location']['row'], 'rule': item['code'], 'message': item['message']})
     return found
 
 
-def git(*args):
-    """stdout of `git <args>` run in the repo root; raises CalledProcessError on a non-zero exit."""
-    return subprocess.run(['git', *args], capture_output=True, text=True, cwd=ROOT, check=True).stdout
+def git(*args, root=ROOT):
+    """stdout of `git <args>` run in `root`; raises CalledProcessError on a non-zero exit."""
+    return subprocess.run(['git', *args], capture_output=True, text=True, cwd=root, check=True).stdout
+
+
+def changed_files(base, root=ROOT):
+    """The in-scope Python files the committed HEAD adds or edits since `base`, as [{path, source, added}]: the pushed commits only (never the working
+    tree) and renames counted as new files, so a moved-and-edited file is checked too."""
+    names = [n for n in git('diff', '--name-only', '--no-renames', '--diff-filter=AM', base, 'HEAD', root=root).split('\n') if SCOPE.match(n)]
+    return [{'path': n, 'source': git('show', f'HEAD:{n}', root=root), 'added': added_lines(git('diff', '-U0', '--no-renames', base, 'HEAD', '--', n, root=root))} for n in names]
 
 
 def main():
@@ -75,14 +84,13 @@ def main():
         base = git('merge-base', base, 'HEAD').strip()
     except subprocess.CalledProcessError:
         pass   # no shared history (a shallow checkout): the ref itself is the base
-    names = [n for n in git('diff', '--name-only', '--diff-filter=AM', base).split('\n') if SCOPE.match(n)]
-    if not names:
+    files = changed_files(base)
+    if not files:
         return 0
     ruff = ruff_command()
     if ruff is None:
         print('clean-code-py: Ruff is not installed and could not be fetched (offline?): nothing checked', file=sys.stderr)
         return 0
-    files = [{'path': n, 'source': (ROOT / n).read_text(encoding='utf-8'), 'added': added_lines(git('diff', '-U0', base, '--', n))} for n in names]
     found = check(files, ruff)
     for f in found:
         print(f"{f['path']}:{f['line']}  {f['rule']}  {f['message']} ({FIXES.get(f['rule'], '')})", file=sys.stderr)

@@ -1,6 +1,8 @@
 """tools/clean-code-py.py: new Python code that is too tangled, imports what it never uses or hides a loop variable is refused on the lines a change adds,
 never on old code (the Python half of the clean-code checks, docs/superpowers/plans/2026-10-28-clean-code-checks.md)."""
 import importlib.util
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -63,6 +65,46 @@ class CheckTest(unittest.TestCase):
     def test_a_noqa_with_a_reason_keeps_a_deliberate_re_export(self):
         source = 'from os import path  # noqa: F401 (re-exported for tests)\n'
         self.assertEqual(self.found(source, all_lines(source)), [])
+
+
+class ChangedFilesTest(unittest.TestCase):
+    """What is checked is what is committed: the pushed HEAD against the merge base, renames counted as new files."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.git('init', '-q', '-b', 'main')
+        (self.dir / 'src').mkdir()
+        (self.dir / 'src' / 'old.py').write_text('def keep():\n    return 1\n' * 3)
+        self.git('add', '.'); self.git('commit', '-q', '-m', 'base')
+        self.base = self.git('rev-parse', 'HEAD').strip()
+
+    def git(self, *args):
+        return subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *args], cwd=self.dir, capture_output=True, text=True, check=True).stdout
+
+    def test_an_uncommitted_edit_neither_adds_a_finding_nor_hides_one(self):
+        (self.dir / 'src' / 'new.py').write_text('import os\n')
+        self.git('add', '.'); self.git('commit', '-q', '-m', 'adds an unused import')
+        (self.dir / 'src' / 'new.py').write_text('print(1)\n')   # a local fix that is not in the commit
+        (self.dir / 'src' / 'wip.py').write_text('import sys\n')   # untracked work in progress
+        files = tool.changed_files(self.base, self.dir)
+        self.assertEqual([f['path'] for f in files], ['src/new.py'])
+        self.assertEqual(files[0]['source'], 'import os\n')
+
+    def test_a_renamed_and_edited_file_is_checked_with_its_added_lines(self):
+        self.git('mv', 'src/old.py', 'src/moved.py')
+        (self.dir / 'src' / 'moved.py').write_text((self.dir / 'src' / 'moved.py').read_text() + 'import os\n')
+        self.git('add', '.'); self.git('commit', '-q', '-m', 'moves and edits')
+        files = tool.changed_files(self.base, self.dir)
+        self.assertEqual([f['path'] for f in files], ['src/moved.py'])
+        self.assertIn(7, files[0]['added'])
+
+
+class RuffFailureTest(unittest.TestCase):
+    def test_a_ruff_error_fails_the_gate_instead_of_passing_it(self):
+        broken = ['python3', '-c', 'import sys; sys.stderr.write("bad config"); sys.exit(2)']
+        with self.assertRaises(SystemExit) as raised:
+            tool.check([{'path': 'src/x.py', 'source': 'x = 1\n', 'added': {1}}], broken)
+        self.assertIn('bad config', str(raised.exception))
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ import {sessionGet} from './tab-memory.js';
 import {settings} from './flow.js';
 import {stopFromApp} from './stop.js';
 import {pollBackgroundApply} from './background-apply.js';
+import {mayReloadSelf} from './self-reload.js';
 
 // This browser (one Chrome profile), the same across its restarts, unlike `boot`: the app keeps each browser's tabs apart, so a second
 // profile or a test Chrome with this extension never makes this one's forms look closed (8 Oct 2026). A random id, nothing about you.
@@ -80,14 +81,13 @@ export function createTabReport(ctx) {
       // that can't update (a store install) doesn't reload over and over.
       // Never while a form is being filled (fillsNow) or a site is being read: a reload ends every reading at once (7 Oct 2026: an update landed mid-run and a site died); the next
       // report after the last one ends does it.
-      if (answer?.latest && newer(answer.latest, running) && !readingNow() && !fillsNow.size) {
-        const {reloadedFor} = await chrome.storage.local.get('reloadedFor');
-        if (reloadedFor !== answer.latest) {
-          await chrome.storage.local.set({reloadedFor: answer.latest});
-          await keepMemory().catch(() => {});   // the newest copy of the tabs' memory: the tabs outlive the reload (extension/tab-memory.js)
-          await decide('worker', `reloading for version ${answer.latest}`);
-          chrome.runtime.reload();
-        }
+      // Why (2026-10-28, e2e proof of Background automation): the hidden browser's copy never reloads (extension/self-reload.js): Chrome disables a reloaded unpacked extension there.
+      const {reloadedFor} = await chrome.storage.local.get('reloadedFor');
+      if (mayReloadSelf({latest: answer?.latest, running, reloadedFor, busy: readingNow() || fillsNow.size > 0, owned: globalThis.__jobPilottoBackgroundOwned === true, newer})) {
+        await chrome.storage.local.set({reloadedFor: answer.latest});
+        await keepMemory().catch(() => {});   // the newest copy of the tabs' memory: the tabs outlive the reload (extension/tab-memory.js)
+        await decide('worker', `reloading for version ${answer.latest}`);
+        chrome.runtime.reload();
       }
     } catch (error) {
       connected(false, error.status ? NOT_CONNECTED : NO_APP);
@@ -97,7 +97,9 @@ export function createTabReport(ctx) {
   // The panel asks which build this copy is (extension/review.js foot) and can ask it to load the newer copy the app already has.
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (message?.type === 'panelBuild' && sender.tab) { chrome.storage.local.get('appBuild').then(({appBuild}) => reply(appBuild || null), () => reply(null)); return true; }
-    if (message?.type === 'panelReload' && sender.tab) { keepMemory().catch(() => {}).then(() => { reply({ok: true}); chrome.runtime.reload(); }); return true; }
+    if (message?.type === 'panelReload' && sender.tab) {
+      if (!mayReloadSelf({panel: true, owned: globalThis.__jobPilottoBackgroundOwned === true})) { reply({ok: false}); return false; }   // the hidden browser's copy never reloads (extension/self-reload.js)
+      keepMemory().catch(() => {}).then(() => { reply({ok: true}); chrome.runtime.reload(); }); return true; }
     return undefined;
   });
 

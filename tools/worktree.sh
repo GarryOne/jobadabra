@@ -4,6 +4,8 @@
 # node_modules is git-ignored, link or folder: never committed, never removed by hand.
 #   tools/worktree.sh <topic> [<base>] .claude/worktrees/<topic> on a new branch <topic> from <base> (default origin/main;
 #                                      e.g. origin/release/notion-optional: a release lane gets the same links)
+#   tools/worktree.sh own-modules <dir>  in a worktree: replace the linked <dir>/node_modules by nothing (the link only, never the shared folder it points at), so
+#                                      `npm ci` there installs into the worktree's own folder (28 Oct 2026: npm ci through the link emptied every worktree's modules)
 #   tools/worktree.sh --done <topic>   remove that worktree and its branch
 #   tools/worktree.sh prune [--yes]    landed worktrees: list (dry run) or remove (--yes) the folders under .claude/worktrees whose branch is fully on
 #                                      origin/main and that nobody touched for 7 days (JP_PRUNE_DAYS); keeps the branch, keeps any worktree with uncommitted
@@ -11,6 +13,11 @@
 #                                      Landed also means: HEAD is a merged PR's head commit (squash merges); never an open PR's head (25 Oct 2026)
 set -eu
 main=$(cd "$(git rev-parse --path-format=absolute --git-common-dir)/.." && pwd)
+if [ "${1:-}" = "own-modules" ]; then
+  tree=$(git rev-parse --show-toplevel); dir=${2:?usage: tools/worktree.sh own-modules <dir>, e.g. desktop}
+  if [ -L "$tree/$dir/node_modules" ]; then rm "$tree/$dir/node_modules"; echo "unlinked $dir/node_modules; run npm ci in $dir now"; else echo "$dir/node_modules is not a link: nothing to do"; fi
+  exit 0
+fi
 if [ "${1:-}" = "--done" ]; then
   git -C "$main" worktree remove --force "$main/.claude/worktrees/$2"
   git -C "$main" branch -D "$2" >/dev/null

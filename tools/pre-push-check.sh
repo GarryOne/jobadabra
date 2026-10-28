@@ -19,6 +19,11 @@ trap 'type slot_release >/dev/null 2>&1 && slot_release; [ -s "$GATE_CACHE_NOTES
 input="$(cat)"
 command="$(jq -r '.tool_input.command // ""' <<<"$input")"
 case "$command" in *PUSH_FULL=1*) PUSH_FULL_RUN=1 ;; esac   # a full run has no watchdog (tools/gate-watchdog.sh)
+# An npm install through a node_modules that is a link into another checkout empties that shared folder for every worktree (28 Oct 2026): refused before npm runs
+# (tools/linked-modules-guard.py; the way out is `tools/worktree.sh own-modules <dir>`; tests/test_linked_modules_guard.py).
+case "$command" in *npm*)
+  linked="$(python3 "$(dirname "$0")/linked-modules-guard.py" <<<"$input" 2>&1)" || { echo "$linked" >&2; exit 2; } ;;
+esac
 # A `git commit` whose subject is over 72 characters is stopped here, before it exists: fixing it after the commit needs an amend, which
 # Claude Code's auto mode may deny, and then the push below stays blocked (5 Oct 2026). `COMMIT_LONG_OK=1` skips it.
 case "$command" in *"git commit"*)

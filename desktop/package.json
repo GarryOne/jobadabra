@@ -27,7 +27,7 @@
     "drawer-shots": "node scripts/drawer-shots.mjs",
     "find-card-shots": "node scripts/find-card-shots.mjs",
     "ladder-score": "node e2e/ladder-score.mjs",
-    "lint": "cd .. && eslint --config eslint.config.mjs --max-warnings 0 desktop extension",
+    "lint": "cd .. && eslint --config eslint.config.mjs --max-warnings 0 desktop extension && node tools/clean-code-js.mjs",
     "mail-states": "node scripts/stage.mjs && node e2e/mail-states.mjs"
   },
   "devDependencies": {
@@ -36,6 +36,7 @@
     "electron-builder-squirrel-windows": "^26.15.3",
     "esbuild": "^0.25.12",
     "eslint": "^10.0.0",
+    "eslint-plugin-sonarjs": "^4.2.2",
     "globals": "^17.0.0"
   },
   "dependencies": {

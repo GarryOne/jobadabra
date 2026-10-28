@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
+# Bisect scheduled main reds; after-merge failures belong to the backbone revert job.
 """A red e2e suite on main gets an owner (gate G2b, 26 Oct 2026): bisect it to the PR that broke it, tell that PR, and keep one `red-main` issue per suite.
 
   after-run <run id>        e2e.yml's alert job, after a scheduled main run: closes the `red-main` issue of each suite this run passed, and starts
                             e2e-bisect.yml for ONE red suite with no open issue whose cause is not the test environment (the next check starts the next)
-  after-merge <run id>      e2e.yml's alert job, after the steps run after a merge (main-steps.yml): files each new red suite on the merged commit's
-                            PR at once (no bisect: it is the one commit in range); closes nothing (a few green steps are not the suite)
+  after-merge <run id>      e2e.yml's alert job, after the steps run after a merge (main-steps.yml): leaves evidence to backbone_red.py
+                            in e2e-bisect.yml's completed-run job; no fix-forward comment and no issue closed
   bisect <suite> <bad sha>  e2e-bisect.yml: finds the last main check where <suite> was green, runs <suite> on the commits in between (e2e.yml with
                             target_ref + bisect: titled "Bisect <suite> <sha>", never counted as a main check or filed by the Finder), then names the
                             first red commit's PR in a `red-main` issue ("Breaking PR: #n (branch `b`)") and on the PR itself. The session that
                             shipped branch b reads it at its next prompt (tools/pr-red-check.sh).
 Why: 25 Oct 2026, main went red at 21:47 on cardstates, interactions and settings; the Finder filed an issue and no session was woken.
 Tests: tests/test_e2e_bisect.py
+Job: run the backbone
 """
 import json
 import os
@@ -135,20 +137,9 @@ def after_run(run_id):
 
 
 def after_merge(run_id):
-    """The steps a merge touched went red: that merge broke them (or they were red already and have an issue). Every new product red is filed on its PR."""
-    run = gh_json('api', f'repos/{REPO}/actions/runs/{run_id}')
-    jobs = jobs_of(run_id)
-    issues = {i['title'] for i in open_issues()}
-    for suite, result in sorted(suite_results(jobs).items()):
-        if result != 'failure' or issue_title(suite) in issues:
-            continue
-        cause = red_cause(jobs, suite)
-        if cause in ENVIRONMENT_CAUSES:
-            print(f'{suite}: red on the test environment ({cause}): not filed, no PR broke it')
-            continue
-        bad = run['head_sha']
-        pr = pr_of(bad)
-        report(suite, issue_body(suite, bad, run['html_url'], found=bad, pr=pr) + '\n\nFound by the steps run after this merge (main-steps.yml): no bisect needed.', pr)
+    """After-merge reds belong to the completed-run revert job, never a fix-forward request."""
+    # Why (28 Oct 2026, owner): two backbone reds revert the merge; never ask its session for a fix-forward.
+    print(f'after-merge run={run_id}: completed-run evidence goes to backbone_red.py; no fix-forward request')
 
 
 def last_green(suite, bad, is_ancestor):

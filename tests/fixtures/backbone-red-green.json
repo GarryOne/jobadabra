@@ -1,0 +1,78 @@
+{
+  "records": [
+    {
+      "run": {
+        "id": 501,
+        "run_attempt": 1,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "head_branch": "main",
+        "path": ".github/workflows/e2e.yml",
+        "status": "completed",
+        "conclusion": "failure",
+        "display_title": "E2E after merge · aaaaaaa · apply",
+        "html_url": "https://github.com/GarryOne/jobadabra/actions/runs/501",
+        "run_started_at": "2026-10-28T10:00:00Z",
+        "event": "workflow_dispatch"
+      },
+      "jobs": [
+        {
+          "id": 601,
+          "name": "apply",
+          "conclusion": "failure",
+          "steps": [
+            {
+              "name": "Run the apply suite (first try)",
+              "conclusion": "failure"
+            }
+          ]
+        }
+      ],
+      "logs": {
+        "601": "✗ Filled row: expected 3 fields, got 2\n"
+      }
+    },
+    {
+      "run": {
+        "id": 501,
+        "run_attempt": 2,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "head_branch": "main",
+        "path": ".github/workflows/e2e.yml",
+        "status": "completed",
+        "conclusion": "success",
+        "display_title": "E2E after merge · aaaaaaa · apply",
+        "html_url": "https://github.com/GarryOne/jobadabra/actions/runs/501",
+        "run_started_at": "2026-10-28T10:05:00Z",
+        "event": "workflow_dispatch"
+      },
+      "jobs": [
+        {
+          "id": 602,
+          "name": "apply",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Run the apply suite (first try)",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ],
+      "logs": {}
+    }
+  ],
+  "provenance": "HAND-MADE scenario, not recorded REST: supplied ids, timestamps, SHA, steps and logs are synthetic. event/main/pulls added for offline validation.",
+  "main": {
+    "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "pulls": [
+    {
+      "number": 42,
+      "merged_at": "2026-10-28T09:00:00Z",
+      "base": {
+        "ref": "main"
+      },
+      "merge_commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ]
+}

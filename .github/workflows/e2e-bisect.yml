@@ -1,9 +1,16 @@
-name: E2E · Bisect a red main suite
 # A red e2e suite on main gets an owner (gate G2b, owner's yes 26 Oct 2026). Started by e2e.yml's alert job (tools/e2e_bisect.py after-run) for the first red suite with no
 # open `red-main` issue whose cause is not the test environment (key, AI service, network), one per main check: finds the last main check where the suite was green, runs it on the commits in between (e2e.yml, titled "Bisect <suite> <sha>"), then names
 # the breaking PR in a `red-main` issue and on the PR; the session that shipped it reads it at its next prompt (tools/pr-red-check.sh).
 # Why: 25 Oct 2026, main went red at 21:47 on three suites and no session was told; beta 2 started on them 1.5 h later.
+# Bisect scheduled main reds and offer owner-reviewed reverts for twice-red backbone merges.
+# Job: run the backbone
+# Why (28 Oct 2026, owner): after-merge backbone reds leave main by revert, not fix-forward.
+# Scheduled/full-run bisects retain their existing manual entry point.
+name: E2E · Bisect a red main suite
 on:
+  workflow_run:
+    workflows: ['CI · End-to-end on Mac + Linux']
+    types: [completed]
   workflow_dispatch:
     inputs:
       suite:
@@ -23,12 +30,13 @@ permissions:
   issues: write         # the red-main issue
   pull-requests: write  # tell the breaking PR
 
-concurrency:   # ONE bisect at a time for all suites: one runs, the newest waits (26 Oct 2026: a group per suite ran 10 at once and filled the job queue; tests/test_e2e_bisect.py)
-  group: e2e-bisect
-  cancel-in-progress: false
-
 jobs:
   bisect:
+    if: github.event_name == 'workflow_dispatch'
+    # Why (28 Oct 2026, supervisor): skipped workflow_run runs must not replace a pending manual bisect.
+    concurrency:   # ONE bisect at a time for all suites: one runs, the newest waits (26 Oct 2026: a group per suite ran 10 at once and filled the job queue; tests/test_e2e_bisect.py)
+      group: e2e-bisect
+      cancel-in-progress: false
     name: Bisect ${{ inputs.suite }}
     runs-on: ubuntu-24.04
     timeout-minutes: 360   # up to 8 steps of one suite each (a step waits for its suite's lock)
@@ -43,3 +51,37 @@ jobs:
           BAD: ${{ inputs.bad }}
           RUN_URL: ${{ inputs.run_url }}
         run: python3 tools/e2e_bisect.py bisect "$SUITE" "$BAD" "$RUN_URL"
+
+  revert:
+    name: Offer a revert for a twice-red backbone merge
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main' && startsWith(github.event.workflow_run.display_title, 'E2E after merge · ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      # Why (28 Oct 2026, owner): a workflow-token PR cannot start its own checks; require the existing CI App token before writing.
+      - name: The App token, so the revert PR gets checks
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-actions: read
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+      - name: Prove the red twice and open its revert PR
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          git config user.name 'jobadabra-ci'
+          git config user.email 'noreply@users.noreply.github.com'
+          python3 tools/backbone_red.py --repo "$GITHUB_REPOSITORY" --run "$RUN_ID" --open

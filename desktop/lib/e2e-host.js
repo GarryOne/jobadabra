@@ -21,7 +21,7 @@ export const DOORS = [
  * @param {{shell?: object, clipboard?: object, app?: object}} host  @param {NodeJS.ProcessEnv} env  @returns {string[]} the doors closed, as "shell.openExternal"
  */
 export function standInHost(host, env = process.env) {
-  if (!env.JOB_PILOTTO_E2E && !env.JOB_PILOTTO_SMOKE) return [];   // Why (#2363, Gitar): the three shell stand-ins lived in lib/e2e-hidden.js, hidden runs only (Mac default, not CI or E2E_HIDDEN=0); one place now, for every test run
+  if (!env.JOB_PILOTTO_E2E && !env.JOB_PILOTTO_SMOKE) return [];   // Why (#2367, Gitar on #2363): the three shell stand-ins lived in lib/e2e-hidden.js and covered hidden runs only; one list now, for every test run
   const log = globalThis.__jpHost = globalThis.__jpHost || [];
   const spool = env.JOB_PILOTTO_E2E_OPEN_DIR;
   const closed = [];

@@ -13,6 +13,7 @@ import {loadExperienceProfile} from './experience-profile.js';
 import {startOfficeProgress} from './office-progress.js';
 import {loadLetterStyle} from './letter-style.js';
 import {initLetter, loadLetter} from './base-letter.js';
+import {loadPortrait} from './portrait.js';
 import {moreButton, openMenu} from '../components.js';
 import {cvCheckAction, lastCheck, showCvCheck} from '../cv-check-view.js';
 import {documentFacts} from '../cv-check-model.js';
@@ -60,6 +61,7 @@ export function profileTab(name, {byDefault = false} = {}) {
   if (name === 'answers') loadApplicationAnswers();
   else if (name === 'experience') loadExperience();
   else if (name === 'letter') { loadLetterStyle(); loadLetter(); }
+  else if (name === 'portrait') loadPortrait();
   else if (name === 'cv') { loadCvSetting(); showCvChanged(); }
 }
 // What we learned's ⋯ (one "View source" link per page, in a menu: owner, 18 Oct 2026, fix 10); the button shows only where the store has pages.

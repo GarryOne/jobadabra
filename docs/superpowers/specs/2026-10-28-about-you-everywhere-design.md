@@ -1,6 +1,6 @@
 # About you, everywhere (What we learned PR D)
 
-Status: draft for the owner's approval (28 Oct 2026). Part of [What we learned about you](2026-10-28-what-we-learned-design.md)
+Status: approved by the owner (28 Oct 2026). Part of [What we learned about you](2026-10-28-what-we-learned-design.md)
 ([plan](../plans/2026-10-28-what-we-learned.md), PR D). Unblocks [Insights with actions](2026-10-28-insights-with-actions-design.md)
 PRs 2-6 (branch `insights-actions`) and [Your portrait](2026-10-28-your-portrait-design.md) (branch `your-portrait`).
 
@@ -96,11 +96,11 @@ test.
 | D1 | The interface + the writers: form filling, kit answers, CV tailoring, letters (base letter as voice) |
 | D2 | The analysis readers: fit score, insights, Analyze my search, interview prep and insights, rejection review |
 
-Builder: chosen after PR B (owner, 28 Oct 2026).
+Builder: session 64 after PR B (owner, 28 Oct 2026).
 
 ## Progress
 
-- [ ] Spec approved by the owner
-- [ ] Design sketch approved
+- [x] Spec approved by the owner (28 Oct 2026)
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/QkXa9AcY1FMtwg6wdBzNCm): two PRs, one builder on the Mac, cost shown first
 - [ ] PR D1 · interface + writers
 - [ ] PR D2 · analysis readers

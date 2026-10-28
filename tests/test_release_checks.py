@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = Path(os.environ.get('RELEASE_CHECKS_SCRIPT', ROOT / 'tools' / 'release-checks.sh'))
+SCRIPT = ROOT / 'tools' / 'release-checks.sh'
 NEWER = '19220ef' + '1' * 33
 NEWEST = '29220ef' + '2' * 33
 

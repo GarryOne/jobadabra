@@ -7,6 +7,7 @@ import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import Mock, call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import e2e_gate
@@ -46,6 +47,39 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(e2e_gate.verdict([], SHA, 'commit', NOW), 'none')
         self.assertEqual(e2e_gate.verdict([], SHA, 'latest', NOW), 'none')
 
+
+
+class NewerBuildTests(unittest.TestCase):
+    LOOKUPS = (
+        (e2e_gate.newer_green, 'status=success&per_page=30', '.workflow_runs[].head_sha'),
+        (e2e_gate.newer_running, 'per_page=30', '.workflow_runs[] | select(.status != "completed") | .head_sha'),
+    )
+
+    def test_each_lookup_keeps_its_query_and_returns_the_first_ahead_commit(self):
+        for lookup, query, jq in self.LOOKUPS:
+            with self.subTest(lookup=lookup.__name__), patch.object(e2e_gate.subprocess, 'run') as gh:
+                gh.side_effect = [Mock(stdout=f' {SHA}\nolder\ndiverged\nnewer\nunused\n'),
+                                  Mock(stdout='behind\n'), Mock(stdout='diverged\n'), Mock(stdout='ahead\n')]
+                self.assertEqual(lookup('o/r', SHA), 'newer')
+                self.assertEqual(gh.call_args_list, [
+                    call(['gh', 'api', f'repos/o/r/actions/workflows/build.yml/runs?branch=main&{query}', '--jq', jq], capture_output=True, text=True),
+                    *[call(['gh', 'api', f'repos/o/r/compare/{SHA}...{head}', '--jq', '.status'], capture_output=True, text=True)
+                      for head in ('older', 'diverged', 'newer')],
+                ])
+
+    def test_no_ahead_commit_returns_empty(self):
+        for lookup, _, _ in self.LOOKUPS:
+            with self.subTest(lookup=lookup.__name__), patch.object(e2e_gate.subprocess, 'run') as gh:
+                gh.side_effect = [Mock(stdout=f'{SHA}\nolder\n'), Mock(stdout='behind')]
+                self.assertEqual(lookup('o/r', SHA), '')
+                self.assertEqual(gh.call_count, 2)
+
+    def test_empty_output_from_failed_gh_returns_empty_without_comparing(self):
+        for lookup, _, _ in self.LOOKUPS:
+            with self.subTest(lookup=lookup.__name__), patch.object(e2e_gate.subprocess, 'run') as gh:
+                gh.return_value = Mock(stdout='', returncode=1)
+                self.assertEqual(lookup('o/r', SHA), '')
+                gh.assert_called_once()
 
 
 class CiVerdictTests(unittest.TestCase):

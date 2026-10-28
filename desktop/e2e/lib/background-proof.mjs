@@ -139,7 +139,11 @@ export async function proveBackground(ctx, {form, seed, until}) {
     await until('the application never got a session', async () => !!(await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url)), 60000);
     await page.evaluate(() => document.querySelector('.nav[data-view=sessions]')?.click());
     const shown = await page.evaluate(async company => {
-      const row = [...document.querySelectorAll('button, li, div, a')].find(el => el.children.length < 6 && (el.textContent || '').includes(company) && el.getClientRects().length);
+      let row = null;   // the session card itself (renderer/pages/sessions.js sd-card carries the open listener), once the list has drawn
+      for (let waited = 0; !row && waited < 10000; waited += 100) {
+        row = [...document.querySelectorAll('.sd-card')].find(el => (el.textContent || '').includes(company) && el.getClientRects().length) || null;
+        if (!row) await new Promise(done => setTimeout(done, 100));
+      }
       row?.click();
       for (let waited = 0; waited < 40000; waited += 250) {
         const img = document.querySelector('.live-img');

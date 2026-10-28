@@ -83,6 +83,8 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] Live view channel: `attachLive(channel, cdp)` in `live.mjs` (Ready to send's `attach` now wraps it): frames out, the person's mouse and keys in, over a plain message channel any client can carry; measured on Chrome for Testing 156 headless through the app's own CDP session (lib/cdp-session.js), fictional form: 7 frames, no error. (proof: desktop/test/live-view.test.js)
 - [x] Native dropdown bridge: a press on a `<select>` sends its label and options to the viewer, the pick is set with input + change; measured on Chrome for Testing 156 headless through the app's own CDP session (lib/cdp-session.js), fictional form: 6 options, label "Country", Gamma set, 1 change. (proof: desktop/test/live-view.test.js)
 - [x] File picker bridge: the chooser asks the viewer; only a path the app resolves is set, never one the viewer sends; measured on Chrome for Testing 156 headless through the app's own CDP session (lib/cdp-session.js), fictional form: `/etc/hosts` refused, the fictional CV set, 1 change. (proof: desktop/test/live-view.test.js)
+- [x] `submit_control` in form-judge: the one listed button that sends the application, kept only on a ready final step; the app's Submit presses it as the person's press. Validation tested with a fake AI client; the 20 form-judge ladder fixtures re-recorded on the plan path ($0 API): 19 exact, `step-recorded-ashby-yes-no` unsure as before; the prompt fingerprint now hashes every exported prompt rule (it missed this one, rung 2 FORM_CHECK_RULE and rung 3 FRAME_RULE). (proof: desktop/test/form-judge.test.js, desktop/test/ladder-fingerprint.test.js)
+- [ ] The app's live view connection: open/close a session's held tab, input in, frames out over IPC, a file answered only from the person's CVs or the app's own file dialog.
 - [ ] Live view screen on the Applying card; owner's yes on the light/dark, wide/narrow side-by-side.
 - [ ] End-to-end proof on a fictional local form: fill hidden, review in the live view, the person's Submit lands.
 - [ ] `fill` gets `runner: 'background'`; PR B green and Gitar approved.
@@ -91,7 +93,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 
 - [ ] Settings → Apply checks wired to the one-shot reservation (no required empty, saved facts, fit 80+, 20 a day, 1 per employer).
 - [ ] 10-minute wait with Stop, shown on the Applying card.
-- [ ] `bot_check`/`submit_control` in form-judge with a ladder fixture (owner's yes on its measured cost): the last check before an automatic press. Moved from B (28 Oct 2026): in B a bot check is already handed to the person where the page is read (`fill-flow.js` 300: the account judge, 436: rung 2's page kind, incl. a robot check among the form's own fields), and a challenge raised by Submit shows in the person's own live view.
+- [ ] `bot_check` in form-judge with a ladder fixture (owner's yes on its measured cost): the last check before an automatic press. Moved from B (28 Oct 2026): in B a bot check is already handed to the person where the page is read (`fill-flow.js` 300: the account judge, 436: rung 2's page kind, incl. a robot check among the form's own fields), and a challenge raised by Submit shows in the person's own live view.
 - [ ] The automatic Submit press in the hidden browser, one attempt, never retried.
 - [ ] Applied only from a receipt the confirmation judge reads; anything else goes to the person.
 - [ ] End-to-end proof against a fake local submit endpoint (never a real site).

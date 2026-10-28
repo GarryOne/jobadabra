@@ -47,11 +47,13 @@
  },
  "answer": {
   "answer": "needs_person",
+  "blocked_kind": "",
   "needs": "Legal Name",
   "needs_kind": "field",
   "step": "unsure",
   "next_control": "",
-  "confidence": 0.85
+  "submit_control": "",
+  "confidence": 0.7
  },
  "answer_path": "app"
 }

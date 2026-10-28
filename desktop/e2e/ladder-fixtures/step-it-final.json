@@ -38,11 +38,13 @@
  },
  "answer": {
   "answer": "ready",
+  "blocked_kind": "",
   "needs": "",
   "needs_kind": "",
   "step": "final",
   "next_control": "",
-  "confidence": 0.9
+  "submit_control": "Invia candidatura",
+  "confidence": 0.95
  },
  "answer_path": "app"
 }

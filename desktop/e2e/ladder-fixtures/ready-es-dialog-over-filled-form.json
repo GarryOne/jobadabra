@@ -81,7 +81,8 @@
   "needs_kind": "",
   "step": "unsure",
   "next_control": "",
-  "confidence": 0.85
+  "submit_control": "",
+  "confidence": 0.9
  },
  "answer_path": "app"
 }

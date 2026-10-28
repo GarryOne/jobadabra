@@ -56,8 +56,9 @@
   "blocked_kind": "error",
   "needs": "",
   "needs_kind": "",
-  "step": "final",
+  "step": "unsure",
   "next_control": "",
+  "submit_control": "",
   "confidence": 0.9
  },
  "answer_path": "app"

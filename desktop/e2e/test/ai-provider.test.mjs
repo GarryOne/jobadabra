@@ -17,6 +17,16 @@ test('the switch: input beats a job override beats the repo variable beats the d
   assert.equal(providerLine({...ci, CI_AI_PROVIDER: 'codex'}), 'AI provider: codex (from CI_AI_PROVIDER)');
 });
 
+test('the switch reaches the judges: claude puts them on Claude even with the relay up; images are numbered across turns', async () => {
+  const {judgeFamily} = await import('../lib/engine.mjs');
+  const relay = {CI: 'true', E2E_FREE_AI_URL: 'http://x', E2E_FREE_AI_KEY: 'k'};
+  assert.equal(judgeFamily(relay), 'free');
+  assert.equal(judgeFamily({...relay, CI_AI_PROVIDER: 'claude'}), 'claude');
+  const part = data => ({type: 'image', source: {media_type: 'image/png', data}});
+  const call = toBrokerCall({model: 'claude-haiku-5-5', messages: [{role: 'user', content: [part('A')]}, {role: 'assistant', content: 'ok'}, {role: 'user', content: [part('B')]}]});
+  assert.deepEqual(call.images.map(i => i.name), ['image0.png', 'image1.png']);
+});
+
 test('parity: each Claude tier keeps its Codex counterpart', () => {
   assert.deepEqual(['claude-haiku-5-5', 'claude-haiku-4-5-20251001', 'claude-sonnet-5-5', 'claude-opus-5-5', undefined].map(tierOf), ['small', 'small', 'mid', 'large', 'mid']);
 });

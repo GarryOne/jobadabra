@@ -14,7 +14,7 @@ const text = content => (typeof content === 'string' ? content : (content || [])
 export function toBrokerCall(body) {
   const system = Array.isArray(body.system) ? body.system.map(block => block.text).join('\n\n') : body.system || '';
   const turns = body.messages.map(message => `${message.role === 'assistant' ? 'You' : 'User'}:\n${text(message.content)}`).join('\n\n');
-  const images = body.messages.flatMap(message => (Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image').map((part, i) => ({name: `image${i}.${String(part.source?.media_type || 'image/png').split('/')[1]}`, base64: part.source?.data})));
+  const images = body.messages.flatMap(message => (Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image')).map((part, i) => ({name: `image${i}.${String(part.source?.media_type || 'image/png').split('/')[1]}`, base64: part.source?.data}));   // numbered across all turns, so two pictures never share a name
   const schema = body.output_config?.format?.schema;
   return {tier: tierOf(body.model), prompt: [system, turns].filter(Boolean).join('\n\n'), ...(schema ? {schema} : {}), ...(images.length ? {images} : {})};
 }

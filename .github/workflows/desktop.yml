@@ -28,6 +28,10 @@ on:
     - cron: '17 5 * * *'
   workflow_dispatch:
     inputs:
+      ai_provider:
+        description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
+        type: string
+        default: ''
       nightly:
         description: 'The nightly build, started on time by the Worker (worker/src/scheduler.js): builds only when the app changed since the last release, and the e2e gate follows. Empty = a build by hand, which always builds'
         type: boolean
@@ -514,6 +518,7 @@ jobs:
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
+      E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
       E2E_SEED: '0'   # the fixed path (lib/variation.mjs), on both platforms
       E2E_FULL: ${{ (github.event_name == 'schedule' || inputs.nightly) && needs.changes.outputs.over != 'true' && '1' || '' }}   # the paid AI judge steps: the nightly beta only, under today's budget (7 Oct 2026)
     permissions:
@@ -753,6 +758,7 @@ jobs:
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
       CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}
       CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}   # the global AI switch for the judges: codex | claude | free, empty = free (lib/ai-provider.mjs; owner, 28 Oct 2026); E2E_AI_PROVIDER overrides it for one run
+      E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)

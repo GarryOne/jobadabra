@@ -69,7 +69,7 @@ export function judgeTarget(url, init, env = process.env) {
 export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
   if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
     // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
-    const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${judgeFamily(env)} ${new URL(url).pathname}`, body);
+    const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's
     const kept = recall(key, env);
     if (kept) {
       try { countReplay('judges', usageOf(kept.body.toString('utf8'), kept.contentType || '')); } catch { /* counting never breaks the call */ }

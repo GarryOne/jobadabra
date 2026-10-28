@@ -139,3 +139,11 @@ test('a ready final form keeps the page\'s own sending button, which the person\
   const state = await store.read(job.url);
   assert.deepEqual([state.state, state.submitControl], ['ready_for_review', 'Send my application']);
 });
+
+test('queue refuses a Recruiter lead with a typed not-eligible error, and accepts a job with no stage yet (the picker\'s rule)', async () => {
+  const r = rig(), store = r.make();
+  const lead = r.add('lead'); lead.stage = 'Recruiter lead';
+  await assert.rejects(() => store.queue(lead.url, 's-lead', 'fill', {...config, mode: 'fill'}), error => error.code === 'NOT_ELIGIBLE' && /not eligible to start another application/.test(error.message));
+  const unstaged = r.add('none'); unstaged.stage = '';
+  assert.equal((await store.queue(unstaged.url, 's-none', 'fill', {...config, mode: 'fill'})).state, 'queued');
+});

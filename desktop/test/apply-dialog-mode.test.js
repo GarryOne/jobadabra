@@ -161,6 +161,6 @@ test('a start that rejects shows the reason without Electron\'s IPC wrapper', as
   const wrapped = new Error("Error invoking remote method 'apply': Error: This job is not eligible to start another application.");
   const result = await applyDialogStart({count: 1, start: async () => { throw wrapped; }});
   assert.equal(result.ok, false);
-  assert.equal(result.error, 'Could not start applying: This job is not eligible to start another application. Pick another job in Jobs and try again.');
+  assert.equal(result.error, 'Could not start applying: This job is not eligible to start another application. Try again in a moment.');
   assert.doesNotMatch(result.error, /remote method|^Error/);
 });

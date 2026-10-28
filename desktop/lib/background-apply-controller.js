@@ -57,18 +57,25 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       const held = terminals.list().filter(item => item.background && !item.outcome);
       if (held.length + jobs.filter(job => !terminals.byUrl(job.url)).length > MAX_BACKGROUND_SESSIONS) return {ok: false, error: `At most ${MAX_BACKGROUND_SESSIONS} background forms can stay open. Finish or cancel one first.`};
       const enrolled = [];
+      let skipped = 0;
       for (const job of jobs) {
         const old = terminals.byUrl(job.url);
         if (old && !old.background) return {ok: false, error: 'This job already has an application session. Continue that session first.'};
-        // Why (2026-10-28, owner screenshot): a job the store refuses (its stage moved on since the list was read) is an answer for the person, not a thrown error that reaches the window as an IPC string.
-        const state = await store.queue(job.url, old?.id || uuid().slice(0, 8), mode, chosen).catch(error => ({refused: error.message}));
-        if (state.refused) { if (enrolled.length) break; return {ok: false, error: state.refused}; }   // the ones already queued still start
+        // Why (2026-10-28, owner screenshot): a job the store refuses as not eligible (its stage moved on since the list was read) is skipped and said, not a thrown error that reaches the window
+        // as an IPC string; the other jobs still start. Any other failure (a write, a wrong mode) stops the batch with its own words.
+        let state;
+        try { state = await store.queue(job.url, old?.id || uuid().slice(0, 8), mode, chosen); } catch (error) {
+          if (error?.code !== 'NOT_ELIGIBLE') return {ok: false, error: String(error?.message || error)};
+          skipped++; continue;
+        }
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
         cache(item, state); enrolled.push(item.id);
       }
+      if (!enrolled.length) return {ok: false, error: `${skipped === 1 ? 'This job is' : 'These jobs are'} not eligible to start another application. Pick another job in Jobs and try again.`};   // nothing queued: no browser starts
       ({owner} = await browserOf().start({port, token: token()}));
-      log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length});
-      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.`};
+      log('apply', 'queued owned background browser sessions', {mode, sessions: enrolled.length, skipped});
+      const skippedNote = skipped ? ` ${skipped} job${skipped === 1 ? ' was' : 's were'} skipped: not eligible to start another application.` : '';
+      return {ok: true, mode, sessions: enrolled, message: `${enrolled.length} application${enrolled.length === 1 ? '' : 's'} queued in the background. Review filled forms in Sessions.${skippedNote}`};
     });
   }
   async function poll(givenOwner) {

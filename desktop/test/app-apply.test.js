@@ -235,25 +235,25 @@ test('Application sessions start collapsed: the pills say what needs you, and th
   assert.match(shared, /dockOpen:\s*false/);  // and the state renderDock reads, so a reload doesn't open it again
 });
 
-// Owner's scenario (28 Oct 2026, screenshot: "Apply to 1 job" with Background automation → "This job is not eligible to start another application"; 1 job In process).
-// The picker took the best open match by job status alone, so a job already in process (stage Screening) with a kit and the top fit was picked, and Background refused it.
-test('apply picks the best job that may start: an in-process job with the top fit is skipped, never picked and refused', () => {
+// Owner's scenario (28 Oct 2026, screenshot: "Apply to 1 job" with Background automation -> "This job is not eligible to start another application"; a Recruiter lead row behind the dialog).
+// Rows are the ones src/desktop_jobs.py can produce: stage_status() makes Recruiter lead "saved" (a pitch not answered yet), so it sorts first, and only Saved / Kit ready / Applying may start.
+// The picker went by job status alone, so the lead with the top fit and a kit was picked and Background refused it. (Cause is the best-evidenced one; the owner's own row was not read.)
+test('apply picks the best job that may start: a Recruiter lead with the top fit is skipped, never picked and refused', () => {
   const jobs = [
-    {url: 'process', status: 'unreviewed', stage: 'Screening', fit: 99, kit: true},
-    {url: 'confirmed', status: 'unreviewed', stage: 'Confirmation received', fit: 98, kit: true},
+    {url: 'lead', status: 'saved', stage: 'Recruiter lead', fit: 99, kit: true},
     {url: 'ready', status: 'unreviewed', stage: 'Kit ready', fit: 70, kit: true},
     {url: 'saved', status: 'saved', stage: 'Saved', fit: 50, kit: true},
-    {url: 'unstaged', status: 'unreviewed', fit: 40, kit: true},
+    {url: 'unstaged', status: 'unreviewed', stage: '', fit: 40, kit: true},
   ];
   assert.deepEqual(apply.pick(jobs, 1).map(j => j.url), ['saved'], 'saved first, then the best fit among jobs that may start');
-  assert.deepEqual(apply.pick(jobs, 5).map(j => j.url), ['saved', 'ready', 'unstaged']);
-  assert.deepEqual(apply.pick(jobs.slice(0, 2), 1), [], 'nothing eligible: nothing is picked');
+  assert.deepEqual(apply.pick(jobs, 4).map(j => j.url), ['saved', 'ready', 'unstaged']);
+  assert.deepEqual(apply.pick(jobs.slice(0, 1), 1), [], 'nothing eligible: nothing is picked');
 });
 
 test('the picker and Background automation share one eligibility rule', async () => {
   const {canStart, STARTABLE_STAGES} = await import('../lib/apply-eligibility.js');
-  for (const stage of ['', 'Saved', 'Kit ready', 'Applying', 'Screening', 'Applied', 'Closed', 'Dismissed']) {
-    assert.equal(apply.pick([{url: 'x', status: 'unreviewed', stage, kit: true}], 1).length === 1, canStart(stage), `stage "${stage}"`);
+  for (const stage of ['', 'Saved', 'Kit ready', 'Applying', 'Recruiter lead', 'Screening', 'Applied', 'Closed', 'Dismissed']) {
+    assert.equal(apply.pick([{url: 'x', status: 'saved', stage, kit: true}], 1).length === 1, canStart(stage), `stage "${stage}"`);
   }
   assert.deepEqual(STARTABLE_STAGES, ['Saved', 'Kit ready', 'Applying']);
 });

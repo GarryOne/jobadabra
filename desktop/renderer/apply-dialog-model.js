@@ -28,7 +28,7 @@ export async function applyDialogStart({count, cancelled = false, start}) {
   try { return await start({n, mode: 'settings'}); } catch (error) {
     // Why (2026-10-28, owner screenshot): a rejected call arrives as "Error invoking remote method 'apply': Error: <reason>"; the person gets the reason and what to do, not Electron's wrapper.
     const reason = String(error?.message || '').replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '').trim();
-    return {ok: false, error: `Could not start applying: ${reason || 'something went wrong.'}${reason.endsWith('.') || !reason ? '' : '.'} Pick another job in Jobs and try again.`};
+    return {ok: false, error: `Could not start applying: ${reason || 'something went wrong.'}${reason.endsWith('.') || !reason ? '' : '.'} Try again in a moment.`};
   }
 }
 

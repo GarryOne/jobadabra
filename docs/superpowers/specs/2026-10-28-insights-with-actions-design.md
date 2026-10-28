@@ -122,7 +122,7 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
 | 7 | Profile → Cover letter | Letter check against your Writing preferences: length, generic lines | Fix it (redraft to your preferences) | Base letter, Writing preferences | AI |
 | 9 | Profile → What we learned | A stance that may cost you jobs: "'needs sponsorship' on 9 UK forms, 8 no replies" | Review this answer | What we learned, outcomes | counts + AI |
 | 14 | Interviews | Watch-outs by round type tied to outcomes: "3 of 4 rejections after a system-design round" | Add to my prep | Interviews, outcomes | counts + AI |
-| 15 | Search strategy | Salary floor hiding matches: "14 jobs scored 80+ just under your floor" | Show these 14 jobs · Lower the floor to X | Strategy, scores | counts |
+| 15 | Search strategy | Pay holding back matches: "14 jobs match you but their pay is under your minimum" (role and place 80+, under High fit 70, Compensation their lowest part). The minimum is Profile text the scorer reads, not a number a filter uses, so no "Lower to X" (owner, 28 Oct 2026) | Show these 14 jobs · Edit minimum salary | Strategy, scores | counts |
 | A2 | Applying (Apply dialog) | "4 of the 10 jobs you picked ask for a cover letter; none tailored yet" | Tailor 4 letters | postings, letters | counts |
 | A5 | Applying (before a job) | "You applied to this employer 3 weeks ago (another role)" | Apply anyway · Skip | applications | counts |
 
@@ -197,7 +197,8 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 - [x] PR 1c decisions: both screens, blocking rows above the insight, bar stays folded, Not now only, Focus reuses Jobs' count (28 Oct 2026, sketch https://claude.ai/artifact/CHZiJQaYMK2zGBKgXPMfK8) (proof: none: owner answers in the session, recorded here)
 - [x] PR 1c · Jobs drawers into the bar (proof: desktop/test/question-entries.test.js)
 - [ ] PR 2 · CV
-- [ ] PR 3 · Strategy + Jobs
+- [x] PR 3a · #15 pay row, #10 CV match counts the bank (proof: tests/test_suggestions_pay.py)
+- [ ] PR 3b · #1 job fit reads your stances, #2 stance row: held, needs the owner's yes on re-score cost and a scoring-prompt case replay
 - [ ] PR 4 · Interviews
 - [ ] PR 5 · Applying, Letter, What we learned
 - [ ] PR 6 · Focus picks the strongest

@@ -12,6 +12,7 @@ import * as files from './files.js';
 import {availableLetter} from './letter-availability.js';
 import * as letters from './cover-letter.js';
 import * as matchCheck from './match-check.js';
+import {knownText} from './experience.js';
 import * as pipeline from './pipeline.js';
 import * as server from './server.js';
 import * as strategy from './strategy.js';
@@ -38,7 +39,7 @@ export function registerCvAndLettersHandlers(ctx) {
       const job = await pipeline.posting(storage, String(code));
       if (!job.ok) return {ok: false, error: job.error};
       const cv = cvlib.baseCv(storage), {profile} = await strategy.profileTexts(storage).catch(() => ({profile: ''}));
-      const result = await matchCheck.check(storage, key, {job, cv, profile, client: ai});
+      const result = await matchCheck.check(storage, key, {job, cv, profile, client: ai, bank: knownText(storage, cv)});
       appLog('cv', 'match check', {grade: result.grade, musts: result.musts.length, knockouts: result.knockouts.length, usd: result.usd});
       return {ok: true, ...matchCheck.save(storage, String(code), cv, job, {...result, usd: Math.round((result.usd + cost) * 100) / 100})};
     } catch (error) { return {ok: false, error: error.message}; }

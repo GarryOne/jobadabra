@@ -180,6 +180,9 @@ class EveryEntryTests(unittest.TestCase):
             from src import suggestions_search
             from tests.test_suggestions_search import IDEAS, VERDICT
             entries += suggestions_search.entries(VERDICT, IDEAS, 'ideas:k')   # Strategy's search rows (PR 1b)
+            from src import suggestions_pay
+            from tests.test_suggestions_pay import job
+            entries.append(suggestions_pay.entry(suggestions_pay.held_back([job(n) for n in range(3)])))   # the pay row (PR 3)
         self.assertEqual({entry['kind'] for entry in entries}, set(suggestions.PRODUCERS), 'every producer is in this test')
         for entry in entries:
             self.assertTrue(entry['actions'] and all(a['label'] and a['do'] for a in entry['actions']), entry['kind'])

@@ -481,6 +481,44 @@
       ]
     },
     {
+      "kind": "pay",
+      "home": "strategy",
+      "topic": "search",
+      "strength": 52,
+      "source": "Search strategy",
+      "title": "5 jobs match you but their pay is under your minimum",
+      "detail": "They fit your role and place (80+), and pay is what keeps them under High fit (70).",
+      "evidence": [
+        "Senior Platform Engineer at Helvetia Cloud",
+        "SRE Lead at Alpine Labs",
+        "DevOps Engineer at Matterhorn Bank",
+        "and 2 more"
+      ],
+      "actions": [
+        {
+          "label": "Show these 5 jobs",
+          "do": "show_jobs",
+          "urls": [
+            "https://jobs.example.ch/0",
+            "https://jobs.example.ch/1",
+            "https://jobs.example.ch/2",
+            "https://jobs.example.ch/3",
+            "https://jobs.example.ch/4"
+          ]
+        },
+        {
+          "label": "Edit minimum salary",
+          "do": "edit_minimum"
+        }
+      ],
+      "key": "pay:minimum",
+      "row_id": "",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
+    },
+    {
       "kind": "visits",
       "home": "strategy",
       "topic": "search",

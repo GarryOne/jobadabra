@@ -3,7 +3,7 @@ import {el, pill} from '../components.js';
 import {costText, dollars} from '../ai-cost.js';
 import {$, message, runWhen, show} from './core.js';
 
-const FOUND = {found: ['Stated', 'good'], implied: ['Only implied', 'warn'], missing: ['Not mentioned', 'bad']};
+const FOUND = {found: ['Stated', 'good'], implied: ['Only implied', 'warn'], bank: ['In your bank', 'good'], missing: ['Not mentioned', 'bad']};
 const KNOCK = {ok: ['Supported', 'good'], check: ['Confirm it', 'warn'], conflict: ['May conflict', 'bad']};
 let current = null;
 

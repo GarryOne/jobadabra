@@ -18,11 +18,11 @@ from .ai.insights_data import ANSWER_CATEGORY, WEEKLY, is_finding
 from .focus_items import _field, _role, _short, _when
 from .notion.ledger import EVENT_KINDS, REPLY
 
-PRODUCERS = ('insight', 'rejection', 'week', 'analyze', 'tune', 'places', 'ideas', 'coverage', 'filters', 'visits')   # the last five: suggestions_search.py
+PRODUCERS = ('insight', 'rejection', 'week', 'analyze', 'tune', 'places', 'ideas', 'coverage', 'filters', 'visits', 'pay')   # the last six: suggestions_search.py, suggestions_pay.py
 HOMES = ('focus', 'jobs', 'strategy', 'profile', 'interviews')
 TOPICS = ('search', 'applying', 'profile', 'interviews')
 STRENGTH = {'insight': 100, 'rejection': 95, 'week': 90, 'analyze': 80, 'tune': 70,   # PR 6 ranks by evidence; until then by kind
-            'places': 60, 'ideas': 58, 'coverage': 56, 'filters': 54, 'visits': 50}   # Strategy's order: Tune, then these
+            'places': 60, 'ideas': 58, 'coverage': 56, 'filters': 54, 'pay': 52, 'visits': 50}   # Strategy's order: Tune, then these
 NOT_NOW_DAYS = 14   # owner, 28 Oct 2026 (sketch Jpf5gETGzQsee5WoaTKZXy)
 FRESH_DAYS = 7      # today's insight and Your week stay this long, as Focus's Insight card did
 # Up next holds only what can't wait (owner, 28 Oct 2026: "very important, that cannot wait"); "waiting" has no button and leaves Focus.

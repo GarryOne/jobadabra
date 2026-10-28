@@ -10,7 +10,7 @@ import * as sections from './profile-sections.js';
 import {saveCopy} from './profile-move.js';
 import {MODEL} from './question-reuse.js';
 import {joinPermit, splitPermit} from '../renderer/question-values.js';
-import {COUNTRY_NAMES, NATIONALITY, STATUSES, ZONES, countryCode, isRowName, nationalityOf} from '../renderer/work-eligibility.js';
+import {NATIONALITY, STATUSES, ZONES, isAsked, isRowName, nameOfCode, nationalityOf} from '../renderer/work-eligibility.js';
 
 export const ABOUT = ['eligibility', 'per_job', 'other'];
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['lines'], properties: {lines: {type: 'array', items: {type: 'object', additionalProperties: false,
@@ -25,7 +25,7 @@ And nationality: for "eligibility" only, the ISO codes of the countries the line
 And rows: for "eligibility" only, the zones or countries the line states a status for, each with status "yes, freely" (a citizen, or free movement: an EU, EEA or Swiss citizen is "yes, freely" in "eu"), "yes, with a permit" (a visa or residence permit; until = its end date as YYYY-MM-DD when stated, else ""; only = the ISO code of the one country it is limited to when it does not cover the whole zone, else "") or "no, needs sponsorship". A place named by a city counts for its country. Only what the line states or plainly means; nothing for a zone it does not cover. Otherwise rows [].
 Answer every id exactly as given.`;
 
-const nameOf = code => COUNTRY_NAMES.find(name => countryCode(name) === String(code || '').toUpperCase()) || '';
+const nameOf = nameOfCode;
 const sigOf = lines => lines.map(line => `${line.label}=${line.value}`).sort().join('~');
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // One AI row -> {label, value} of a zone or country row, or null when any part is outside the fixed sets.
@@ -44,7 +44,7 @@ function rowOf({row, status, until, only}) {
  * No AI, or a failed call: about '' and no rows (the line is shown as it is, as needing review).
  */
 export async function older(storage, lines, {ai = {}} = {}) {
-  const old = (lines || []).filter(line => line.label && String(line.value ?? '').trim() && !(line.kind === 'per_country' && isRowName(line.label))
+  const old = (lines || []).filter(line => line.label && String(line.value ?? '').trim() && !isAsked(line.value) && !(line.kind === 'per_country' && isRowName(line.label))
     && !(line.label === NATIONALITY && nationalityOf(line.value)));
   if (!old.length) return [];
   const sig = sigOf(old), kept = storage.settings().eligibilityOlder;

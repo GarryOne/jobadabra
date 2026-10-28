@@ -77,7 +77,9 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
     if (DEMO) return {ok: true};
     const gate = needsNotion('profile');
     if (gate) return gate;
-    const [lines, survey, fold] = await Promise.all([kinds.undo(storage), surveys.undo(storage), undoFold(storage)].map(done => done.catch(failed => ({ok: false, error: failed.message}))));
+    // Why (28 Oct 2026, #2322 review): one after the other, the fold first; the fold and the kinds both write Work eligibility, and in parallel the last one won.
+    const tried = undo => undo().catch(failed => ({ok: false, error: failed.message}));
+    const fold = await tried(() => undoFold(storage)), lines = await tried(() => kinds.undo(storage)), survey = await tried(() => surveys.undo(storage));
     return lines.ok || survey.ok || fold.ok ? {ok: true} : lines;
   });
   ipcMain.handle('saveDetailsFacts', async (_, facts) => {

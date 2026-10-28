@@ -11,7 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
-import {NATIONALITY, ZONES, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
+import {NATIONALITY, ZONES, isAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -48,9 +48,9 @@ function drawEligibility(into, lines, row) {
   const rest = lines.filter(line => line !== own && !rows.includes(line));
   const add = Object.assign(el('button', 'link span-all', '+ Add a country'), {type: 'button'});
   add.addEventListener('click', () => { into.insertBefore(row({kind: 'per_country'}), add); detailsChanged(); });
-  const nationality = row(own && nationalityOf(own.value) ? own : {label: NATIONALITY, value: ''});
-  into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rows.filter(line => !zoneOfLabel(line.label)).map(row), add,
-    ...(own && !nationalityOf(own.value) ? [own] : []).map(row), ...rest.map(row));
+  // Why (28 Oct 2026, #2322 review): one Nationality row. Words that are not country names ("British") stay as written with a Check, never a second row.
+  const nationality = row(own && !isAsked(own.value) ? own : {label: NATIONALITY, value: ''});
+  into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rows.filter(line => !zoneOfLabel(line.label)).map(row), add, ...rest.map(row));
   if (into.dataset.concluding) return;
   into.dataset.concluding = '1';   // once per box: a nationality picked or removed redraws the zones it opens
   into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
@@ -90,11 +90,11 @@ export function foldOlder(readings = []) {
   const mark = node => node.append(pill('From your earlier answers', 'info', {title: 'Read from the lines you saved before; Save to keep it'}));
   const lines = [...into.querySelectorAll('.fact-line')];
   for (const line of lines) if (used.some(each => each.label === factOf(line).label && each.value === factOf(line).value)) line.remove();
-  const names = [...new Set(used.flatMap(each => each.nationality || []))], citizenship = into.querySelector('.qa-nationality')?.closest('.fact-line');
-  if (names.length && citizenship && !nationalityNow(into).length) {
+  const names = [...new Set(used.flatMap(each => each.nationality || []))], citizenship = [...into.querySelectorAll('.fact-line')].find(each => factOf(each).label === NATIONALITY);
+  if (!citizenship || (names.length && !nationalityNow(into).length)) {   // a folded unreadable Nationality leaves its place to the chips
     const next = eligibilityRow({label: NATIONALITY, value: names.join(', ')});
-    citizenship.replaceWith(next);
-    mark(next);
+    if (citizenship) citizenship.replaceWith(next); else into.prepend(next);
+    if (names.length) mark(next);
   }
   redrawConcluded(into);
   for (const proposal of used.flatMap(each => each.rows || [])) {
@@ -143,13 +143,15 @@ function drawWhich(aside = [], tidied = null) {
 // moves the facts in: copy and backup first, lib/profile-move.js) and the screen draws again with what they did. 'details-sorting' tells the cards (the Voluntary surveys card
 // shows "Sorting your answers…", then reads its lines again); the first paint never waits on an AI call. Guarded by test/details-facts.test.js.
 let settledFor = 0, redrawing = false;
-const paintFacts = (result, kept) => {
+const paintFacts = (result, kept, settled = false) => {
   skeletons(false);
   if (!kept && !redrawing && factsDirty()) return;   // a refresh never redraws under unsaved edits (Discard all redraws on purpose)
   $('facts-message').textContent = '';
   draw(result.sections || {}, result.formats || {});
   factsRead();   // the drafts count from what is drawn now (details-drafts.js)
-  if (!redrawing) foldOlder(result.older || []);   // after the count: what it folds is a draft you save (Discard all redraws without it)
+  // After the count: what it folds is a draft you save (Discard all redraws without it). Why (28 Oct 2026, #2322 review): only on the settled paint; a
+  // fold on the quick paint made the card dirty, and the dirty guard above then kept the settled lines from drawing.
+  if (!redrawing && settled) foldOlder(result.older || []);
   drawWhich(result.setAside || [], result.tidied || null);
 };
 export async function showFacts({redraw = false} = {}) {
@@ -163,7 +165,7 @@ export async function showFacts({redraw = false} = {}) {
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: true}}));
   const settled = await window.pilot.detailsFacts().catch(error => ({ok: false, error: error.message}));
   if (turn === settledFor && settled?.ok !== undefined) {
-    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false); } else if (settled.error) $('facts-message').textContent = settled.error;
+    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false, true); } else if (settled.error) $('facts-message').textContent = settled.error;
   }
   redrawing = false;
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: false, changed: settled?.changed || 0}}));

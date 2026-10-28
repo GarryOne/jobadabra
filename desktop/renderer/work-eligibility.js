@@ -22,6 +22,10 @@ export const COUNTRY_NAMES = [...new Set(CODES.map(code => english?.of(code)).fi
 /** "Romania" -> "RO"; '' for anything that is not a country's English name (a city, a region, "Germany / EU"). */
 export const countryCode = name => BY_NAME.get(String(name ?? '').trim().toLowerCase()) || '';
 export const isCountry = name => Boolean(countryCode(name));
+/** "RO" -> "Romania"; '' for a code that is no country. */
+export const nameOfCode = code => COUNTRY_NAMES.find(name => countryCode(name) === String(code ?? '').trim().toUpperCase()) || '';
+/** A value still asked (the template's "❓ …"), never an answer. */
+export const isAsked = value => /^❓/.test(String(value ?? '').trim());
 export const zoneOfLabel = label => ZONES.find(zone => zone.label.toLowerCase() === String(label ?? '').trim().toLowerCase()) || null;
 /** A row's own name: one of the zones, or a country added by hand. */
 export const isRowName = label => Boolean(zoneOfLabel(label)) || isCountry(label);
@@ -57,7 +61,7 @@ export const zonesOpenedBy = names => ZONES.filter(zone => (names || []).some(na
  */
 export function eligibilityOf(lines) {
   const own = (lines || []).find(line => line.label === NATIONALITY), nationality = own ? nationalityOf(own.value) : null;
-  const saved = (lines || []).filter(line => line.kind === 'per_country' && isRowName(line.label) && String(line.value ?? '').trim()).map(line => ({label: line.label, value: line.value, from: 'saved'}));
+  const saved = (lines || []).filter(line => line.kind === 'per_country' && isRowName(line.label) && String(line.value ?? '').trim() && !isAsked(line.value)).map(line => ({label: line.label, value: line.value, from: 'saved'}));
   const opened = zonesOpenedBy(nationality).map(id => ZONES.find(zone => zone.id === id)).filter(zone => !saved.some(row => zoneOfLabel(row.label) === zone));
   return {nationality, rows: [...saved, ...opened.map(zone => ({label: zone.label, value: 'yes, freely', from: 'nationality'}))]};
 }

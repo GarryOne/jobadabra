@@ -63,7 +63,7 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
   for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = '', asks = '', country = ''} of verdicts) {
     if (!labels.includes(label) || !VERDICTS.includes(verdict)) continue;
     const eligible = ASKS.includes(asks) && verdict !== 'consent' ? fromEligibility(asks, country, facts) : null;
-    if (eligible) { out.set(label, {reuse: DETAILS, covered_by: '', proposal: eligible.value, from: '', topic: topicOf(topic), fact: eligible.fact}); continue; }
+    if (eligible) { out.set(label, {reuse: DETAILS, covered_by: '', proposal: eligible.value, from: eligible.from, topic: topicOf(topic), fact: eligible.fact, asks}); continue; }
     const answer = byQuestion.get(covered) || '', own = known.has(fact) && verdict !== 'consent' ? fact : '';   // a fact the AI invented keeps nothing
     out.set(label, {reuse: own ? DETAILS : verdict, covered_by: answer ? covered : '', proposal: answer ? String(value).trim() || answer : '', from: answer, topic: topicOf(topic), fact: own});
   }
@@ -76,10 +76,11 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
 function fromEligibility(asks, country, facts) {
   const {nationality, rows} = eligibilityOf(facts), code = String(country || '').trim().toUpperCase();
   if (!nationality && !rows.length) return null;
-  if (!code) return {fact: nationality ? NATIONALITY : rows[0].label, value: ''};
+  if (!code) return {fact: nationality ? NATIONALITY : rows[0].label, value: '', from: ''};
   if (!/^[A-Z]{2}$/.test(code)) return null;
-  const row = rowFor(code, facts), value = row ? settles(splitPermit(row.value), asks, code) : '';
-  return value ? {fact: row.label, value} : null;
+  // A row with no status (an older "allowed, B permit") answers nothing, so its zone or nationality may (#2322 review).
+  const row = rowFor(code, facts.filter(fact => fact.kind !== 'per_country' || splitPermit(fact.value).status)), value = row ? settles(splitPermit(row.value), asks, code) : '';
+  return value ? {fact: row.label, value, from: String(facts.find(fact => fact.label === row.label)?.value ?? row.value)} : null;   // from: the saved line, to see it change
 }
 
 // The older shape the fill-time collect uses: the Set of labels worth saving (reusable and not already covered).

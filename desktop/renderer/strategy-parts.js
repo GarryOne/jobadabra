@@ -120,8 +120,9 @@ function eligibility(lines) {
   const add = (to, place) => { if (place && !works.includes(place) && !needs.includes(place)) to.push(place); };
   const clean = (lines || []).map(line => ({...line, value: bare(line.value), kind: line.kind || (/\[per country\]\s*$/.test(String(line.value)) ? 'per_country' : '')}));
   // Nationality and the zones (#2322), concluded ones included; then the older lines, by their own yes / no.
-  for (const row of eligibilityOf(clean).rows) add(splitPermit(row.value).status === 'no, needs sponsorship' ? needs : works, row.label);
-  for (const line of clean.filter(each => each.label !== NATIONALITY && !(each.kind === 'per_country' && isRowName(each.label)))) {
+  // Why (28 Oct 2026, #2322 review): only a status says works or needs; a row without one ("allowed, B permit") is read by its own words below, never "Works in".
+  for (const row of eligibilityOf(clean).rows) { const status = splitPermit(row.value).status; if (status) add(status === 'no, needs sponsorship' ? needs : works, row.label); }
+  for (const line of clean.filter(each => each.label !== NATIONALITY && !(each.kind === 'per_country' && isRowName(each.label) && splitPermit(each.value).status))) {
     const answer = (line.value.match(/^(yes|no|allowed|needs visa)\b/i)?.[1] || '').toLowerCase();
     if (['yes', 'allowed', 'no', 'needs visa'].includes(answer)) add(['yes', 'allowed'].includes(answer) ? works : needs, placeOf(line.label));
   }

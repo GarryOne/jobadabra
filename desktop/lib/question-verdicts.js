@@ -3,10 +3,12 @@
 // and the session's "what Claude needs". Guarded by test/question-lists.test.js and test/question-queues.test.js.
 import {classify} from './question-reuse.js';
 import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';
+import {splitPermit} from '../renderer/question-values.js';
 
 const MAX = 600;
-const VERSION = 5;   // 2: covered_by also by deduction (a saved permit settles "need sponsorship?"), with the saved answer it came from; 3: a topic (seen twice); 4: a fact of Your details
+const VERSION = 6;   // 2: covered_by also by deduction (a saved permit settles "need sponsorship?"), with the saved answer it came from; 3: a topic (seen twice); 4: a fact of Your details
 // 5: Why (28 Oct 2026, owner: "Yes, re-judge once"): how they heard and worked here before are one job's (lib/question-reuse.js), judged again once per install
+// 6: right to work and sponsorship from Nationality and the zones (#2322)
 export const cached = storage => storage.settings().questionVerdicts || {};
 
 // Classifies the labels with no verdict yet (one small call), keeps the verdicts, returns the whole map. ai: {client, apiKey} (none: nothing new).
@@ -14,10 +16,13 @@ export const cached = storage => storage.settings().questionVerdicts || {};
 const sigOf = facts => facts.map(fact => fact.label).sort().join('|');
 export async function ensure(storage, labels, {answered = [], facts = [], company = '', host = '', ai = {}} = {}) {
   const known = cached(storage), now = new Map(answered.map(a => [a.question, a.answer])), sig = sigOf(facts), have = new Set(facts.map(fact => fact.label));
+  const values = new Map(facts.map(fact => [fact.label, String(fact.value ?? '')])), today = new Date().toISOString().slice(0, 10);
+  // Why (28 Oct 2026, #2322 review): an eligibility answer is read from its row's status, so a changed row or a permit past its date judges it again.
+  const moved = entry => Boolean(entry.asks) && (values.get(entry.fact) !== (entry.from || values.get(entry.fact)) || (splitPermit(entry.from || '').until || '9999') < today);
   // judged again: never judged, judged before answers could be deduced (no v: once), the saved answer its proposal came from changed (or is gone),
   // its Your details fact was emptied, or a fact was added since it was judged (a question kept as asked may now be answered from there)
   const stale = entry => entry && (entry.v !== VERSION || (entry.covered_by && now.get(entry.covered_by) !== entry.from)
-    || (entry.reuse === 'details' ? !have.has(entry.fact) : (entry.sig || '') !== sig));
+    || (entry.reuse === 'details' ? !have.has(entry.fact) || moved(entry) : (entry.sig || '') !== sig));
   const fresh = [...new Set(labels.filter(label => label && !looksLikeFieldId(label) && (!known[keyOf(label)] || stale(known[keyOf(label)]))))];
   if (!fresh.length || !(ai.client || ai.apiKey)) return {verdicts: known, usage: null};
   const found = await classify({labels: fresh, answered, facts, company, host, apiKey: ai.apiKey, client: ai.client});

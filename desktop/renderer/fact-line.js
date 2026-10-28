@@ -6,7 +6,7 @@ import {answerControl} from './question-control.js';
 import {COMPOSITE, formatFor} from './question-kind.js';
 import {keyOf} from './question-filter.js';
 import {needsCheck} from './question-values.js';
-import {COUNTRY_NAMES, NATIONALITY, isCountry, isRowName, nationalityOf, zoneOfLabel} from './work-eligibility.js';
+import {COUNTRY_NAMES, NATIONALITY, isAsked, isCountry, isRowName, nationalityOf, zoneOfLabel} from './work-eligibility.js';
 
 const LONG = 60;   // characters: past this a text value wraps in a growing box
 
@@ -25,7 +25,7 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
   name.addEventListener('input', onChange);
   // A long value in words is a box that grows, never cut by a one-line field.
   const long = format.control === 'text' && (String(value).length > LONG || String(value).includes('\n'));
-  const citizenship = key === 'eligibility' && label === NATIONALITY && (!String(value).trim() || nationalityOf(value));
+  const citizenship = key === 'eligibility' && label === NATIONALITY && (!String(value).trim() || isAsked(value) || nationalityOf(value));
   const control = citizenship ? nationalityPick(value, onChange) : answerControl(long ? {...format, control: 'textarea'} : format, value, onChange, {ariaLabel: label || 'Answer'});
   if (long) { control.rows = 1; row.classList.add('span-all'); }   // the whole row of the grid
   control.dataset.factValue = key;
@@ -36,7 +36,8 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
     remove.addEventListener('click', () => { row.remove(); onChange(); });
     row.append(remove);
   }
-  if (perCountry && label && !isRowName(label)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the country it is about'}));
+  if (key === 'eligibility' && label === NATIONALITY && !citizenship) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the countries instead'}));
+  else if (perCountry && label && !isRowName(label)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the country it is about'}));
   else if (needsCheck(format.kind, value)) row.append(pill('Check', 'warn', {title: 'Saved as you wrote it; pick the parts to make it exact'}));
   // The words the value does not hold (a rule, a date it was confirmed) sit under it, never in it: folded as "Note for the AI" in a box that grows
   // (owner, 18 Oct 2026: "Folded Note for the AI"; the same fold as Profile → Application answers).
@@ -53,7 +54,7 @@ export function factRow(key, {label = '', value = '', kind = '', note = ''} = {}
 // The country menu of a per-country row; a saved name that is not a country ("Germany / EU") stays as a choice until another is picked.
 function countryPick(label, onChange) {
   const pick = Object.assign(el('select', 'country-pick'), {ariaLabel: 'Country'});
-  pick.append(new Option('Country…', ''), ...(label && !isCountry(label) ? [new Option(label, label)] : []), ...COUNTRY_NAMES.map(name => new Option(name, name)));
+  pick.append(new Option('Country…', ''), ...(label && !isCountry(label) ? [new Option(label, label)] : []), ...COUNTRY_NAMES.filter(name => !zoneOfLabel(name)).map(name => new Option(name, name)));   // the UK and the US are zones of their own
   pick.value = COUNTRY_NAMES.find(name => name.toLowerCase() === label.toLowerCase()) || label;
   pick.addEventListener('change', onChange);
   return pick;

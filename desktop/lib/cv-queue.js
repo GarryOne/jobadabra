@@ -12,7 +12,7 @@ import {HOME_NAMES, writeHome} from './answer-home.js';
 import {hashOf} from './cv-check.js';
 import {formatFor} from '../renderer/question-kind.js';
 import {splitPermit} from '../renderer/question-values.js';
-import {nationalityOf} from '../renderer/work-eligibility.js';
+import {nameOfCode, nationalityOf} from '../renderer/work-eligibility.js';
 import {detailsFromCvAtSetup} from './details-at-setup.js';
 
 export const FILE = 'cv/fact-proposals.json';
@@ -22,16 +22,18 @@ const SCHEMA = {type: 'object', additionalProperties: false, required: ['facts']
 const INSTRUCTIONS = `You read a CV and say what it states or plainly implies about the applicant's job-application facts listed in <facts> (id: the fact's name; answer: the kind of answer).
 Return one entry per fact the CV gives or implies, with value written as a form would take it, how = stated (the CV says it) or inferred (the CV implies it: e.g. the nationality
 from the country of birth, schooling and every job; languages from the CV's language lines and the language it is written in), and reason = one short sentence of the evidence.
-nationality: the countries of citizenship by their English names, joined with ", " ("Romania, Moldova"), never a city or a region. A zone (per_country: EU / EEA + Switzerland, United Kingdom,
+nationality: the ISO 3166 alpha-2 codes of the countries of citizenship, joined with ", " ("RO, MD"), never a city or a region. A zone (per_country: EU / EEA + Switzerland, United Kingdom,
 United States): only when the CV states a permit or visa for it: "yes, with a permit" (", valid until YYYY-MM-DD" when stated); never from the nationality, which the app reads itself.
 Use only this CV; never guess from a name alone. Leave out a fact the CV neither gives nor implies. Copy values as written; a yes/no fact is "Yes" or "No".`;
 
 // Why (28 Oct 2026, #2322): a nationality is country names and a zone one fixed status, checked here; anything else (a city, "EU citizen") keeps nothing.
 const fits = (id, value) => (id === 'nationality' ? Boolean(nationalityOf(value)) : byId(id)?.kind === 'per_country' ? Boolean(splitPermit(value).status) : true);
+// Why (28 Oct 2026, #2322 review): the AI names a nationality by ISO code, so "Czech Republic" or "Turkey" is never lost to a spelling; the code writes the name.
+const named = (id, value) => (id === 'nationality' ? value.split(/\s*,\s*/).map(part => nameOfCode(part) || part).join(', ') : value);
 const clean = (raw, wanted) => {
   const seen = new Set();
   return (Array.isArray(raw) ? raw : []).flatMap(item => {
-    const id = String(item?.id || ''), value = String(item?.value || '').trim().slice(0, 300);
+    const id = String(item?.id || ''), value = named(id, String(item?.value || '').trim().slice(0, 300));
     if (!wanted.includes(id) || !value || seen.has(id) || !fits(id, value)) return [];
     seen.add(id);
     return [{id, value, how: item?.how === 'stated' ? 'stated' : 'inferred', reason: String(item?.reason || '').trim().slice(0, 200)}];

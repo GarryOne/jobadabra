@@ -172,3 +172,16 @@ test('a where item whose line is gone from its page drops out (nothing stale is 
   env.storage.saveSettings({profileUnsure: [{page: 'profile', label: 'Gone', value: 'not on the page'}]});
   assert.ok(!(await review.pending(env.storage)).some(each => each.details.kind === 'where'));
 });
+
+// Why (28 Oct 2026, owner, #2322 review: "ask as less as possible"): the template writes ❓ on every zone; a ❓ zone is no answer, so it waits for Nationality
+// and leaves once Nationality opens it. A fictional Romanian: EU concluded, the UK and the US asked.
+test('the template\'s ❓ zones: none asked before Nationality; with Nationality Romania, only the UK and the US', async () => {
+  const storage = fresh({store: 'sqlite', telemetry: false, profileMovedAt: '2026-10-18T00:00:00.000Z'});
+  const zones = ['EU / EEA + Switzerland', 'United Kingdom', 'United States'].map(zone => `${zone}: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]`);
+  const page = nationality => markdown(['## 🛂 Work eligibility', `Nationality: ${nationality}`, ...zones]);
+  await store.openStore(storage).page('profile').write(page('❓ your citizenships'));
+  const zonesAsked = async () => (await review.pending(storage)).map(each => each.question).filter(question => /EU \/ EEA|United Kingdom|United States/.test(question));
+  assert.deepEqual(await zonesAsked(), []);
+  await store.openStore(storage).page('profile').write(page('Romania'));
+  assert.deepEqual((await zonesAsked()).sort(), ['United Kingdom', 'United States']);
+});

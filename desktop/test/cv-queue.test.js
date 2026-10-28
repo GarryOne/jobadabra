@@ -87,6 +87,13 @@ test('a city is never a nationality, and a zone needs one of its fixed statuses'
   assert.deepEqual(got.map(each => [each.id, each.value]), [['zone_uk', 'yes, with a permit, valid until 2027-06-30']]);
 });
 
+test('a nationality comes as ISO codes and is saved by the country names, whatever the spelling would have been', async () => {
+  const client = {messages: {create: async () => ({stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify({facts: [{id: 'nationality', value: 'CZ, TR', how: 'stated', reason: 'Passports'}]})}]})}};
+  const got = await cvQueue.factProposals(fresh(), {client, wanted: cvQueue.wantedFacts([])});
+  const english = new Intl.DisplayNames(['en'], {type: 'region'});
+  assert.deepEqual(got.map(each => each.value), [`${english.of('CZ')}, ${english.of('TR')}`]);
+});
+
 test('a name nobody gave stays the first question; "check it" items rank after it', async () => {
   const storage = fresh();
   const nameless = {messages: {create: async request => ({stop_reason: 'end_turn', content: [{type: 'text', text: JSON.stringify(request.system.includes('job-application facts') ? {facts: [{id: 'nationality', value: 'Romania', how: 'inferred', reason: 'Jobs in Romania'}]} : {proposals: [{field: 'location', value: 'Chisinau', sure: false, source: 'cv', how: 'inferred'}]})}]})}};

@@ -22,6 +22,7 @@ function replay(commit) {
   return {before: side('before'), after: side('after')};
 }
 
+// Default to an empty registry: every suite is backbone unless the test supplies lanes.
 function push(before, after, message = 'Change', lanes = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'reliability-check-'));
   const git = (...args) => execFileSync('git', ['-C', dir, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
@@ -67,9 +68,25 @@ test('skipping, deleting assertions or a suite, and moving a suite out of backbo
 });
 
 test('base lanes determine the protected suite; shared expectation files stay protected', () => {
-  assert.equal(push({[suite]: 'assert.equal(n, 2)'}, {[suite]: 'assert.equal(n, 3)'}, 'Change', {apply: {lane: 'tolerant'}}), '');
+  assert.match(push({[suite]: 'assert.equal(n, 2)'}, {[suite]: 'assert.equal(n, 3)'}, 'Change', {apply: {lane: 'tolerant'}}), /Rule E/);
   const file = 'desktop/e2e/fixtures/golden/truth.json';
   assert.match(push({[file]: '{"score":82}'}, {[file]: '{"score":80}'}), /Rule E/);
+});
+
+test('a tolerant suite changed throw guard needs a citation', () => {
+  const before = {[suite]: 'if (count > 2) throw new Error("bad");'};
+  const after = {[suite]: 'if (count > 3) throw new Error("bad");'};
+  const lanes = {apply: {lane: 'tolerant'}};
+  assert.match(push(before, after, 'Change', lanes), /Rule E.*apply\.mjs/s);
+  assert.equal(push(before, after, `Change\n\n${why}`, lanes), '');
+});
+
+test('suspended, retired and other registered lanes keep changed throw guards free', () => {
+  const before = {[suite]: 'if (count > 2) throw new Error("bad");'};
+  const after = {[suite]: 'if (count > 3) throw new Error("bad");'};
+  for (const entry of [{lane: 'suspended'}, {lane: 'retired'}, {lane: 'other'}, {}]) {
+    assert.equal(push(before, after, 'Change', {apply: entry}), '', JSON.stringify(entry));
+  }
 });
 
 test('adding a test, changing a log or comment, and mechanical reformatting stay free', () => {
@@ -81,8 +98,10 @@ test('adding a test, changing a log or comment, and mechanical reformatting stay
 test('5395279 real noise-allowance change blocks without a citation and passes with its explanation', () => {
   const {before, after} = replay('5395279');
   const message = 'Replay model-noise allowance\n\nHarness-job: run tolerant suites as rates';
-  assert.match(push(before, after, message), /Rule E.*suites\/quality\.mjs/s);
-  assert.equal(push(before, after, `${message}\nTest-was-wrong: allow one model slip in nine judged texts`), '');
+  for (const lanes of [{}, {quality: {lane: 'tolerant'}, 'notion-real': {lane: 'tolerant'}}]) {
+    assert.match(push(before, after, message, lanes), /Rule E.*suites\/quality\.mjs/s);
+    assert.equal(push(before, after, `${message}\nTest-was-wrong: allow one model slip in nine judged texts`, lanes), '');
+  }
 });
 
 test('2625cef real personas expectation needs and accepts its product-change citation', () => {

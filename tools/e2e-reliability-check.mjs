@@ -126,7 +126,8 @@ export function checkPush({root, base = 'origin/main'}) {
   const needsCitation = [];
   for (const {file, before, after} of changes) {
     const suite = SUITE.exec(file)?.[1];
-    if (((suite && !lanes[suite]) || CHECK_LIB.test(file)) && before !== null && (after === null || expectationChanges(before, after, file).length)) needsCitation.push(file);
+    // Why (29 Oct 2026, a8 on Gitar #2419): tolerant results may be noisy, but their own bars still need a citation; suspended and retired suites stay free.
+    if (((suite && (!lanes[suite] || lanes[suite]?.lane === 'tolerant')) || CHECK_LIB.test(file)) && before !== null && (after === null || expectationChanges(before, after, file).length)) needsCitation.push(file);
     if (EXPECTATIONS.test(file) && before !== null) needsCitation.push(file);
     if (file === REGISTRY && after !== null) {
       const next = JSON.parse(after).suites || {};

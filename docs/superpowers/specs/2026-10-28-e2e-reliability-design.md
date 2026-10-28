@@ -87,7 +87,7 @@ outside-world suite, nightly and before beta.
 | Before a beta | tolerant rates decide with the baseline band |
 | Weekly | Telegram + one GitHub issue, same numbers as the page, one decision for the owner if any |
 
-**E · The expectation rule.** A PR that changes what a backbone test expects (an expected value, a threshold, a tolerance, a wait), or skips, deletes or moves a
+**E · The expectation rule.** A PR that changes what a backbone or tolerant test expects (an expected value, a threshold, a tolerance, a wait), or skips, deletes or moves a
 backbone test to a tolerant lane, carries one of:
 - `Expect-changed-by: <sha or the owner's request>`: the deliberate behaviour change (`2625cef` → `e2d7df8` passes);
 - `Test-was-wrong: <why>`: shown to the owner in the PR summary.

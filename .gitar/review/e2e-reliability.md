@@ -8,7 +8,7 @@ Source: docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules E, F 
 A PR that changes an expected value, threshold, tolerance or wait, or skips, deletes or moves a backbone test out of backbone, must carry a commit trailer:
 `Expect-changed-by: <sha or the owner's request>` or `Test-was-wrong: <why>`.
 Raise a blocking finding when it is missing, unsupported, or merely makes the test match wrong product behaviour. A real product fix keeps the assertion.
-Read the cited behaviour change and verify the revised test still protects the user's journey. Main's lane registry decides whether a suite is backbone.
+Read the cited behaviour change and verify the revised test still protects the user's journey. The gate uses main's lane registry to cover backbone and tolerant suites; suspended and retired suites are free.
 
 The mechanical gate catches changed or removed throw-guard conditions (including their numbers and counts), removed `*Problems(...)` helper calls,
 numeric assert/expect/wait changes, timeout literals, removed assertions or protected files, test.skip/it.skip, shared baseline/expectation JSON and truth.json,

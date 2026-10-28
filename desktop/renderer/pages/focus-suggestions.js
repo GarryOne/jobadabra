@@ -18,11 +18,13 @@ import {openActivity} from './activity.js';
 import {openTune} from './tune.js';
 import {toastMessage} from './startup.js';
 import {wand} from '../magic.js';
+import {setAside} from '../ideas-aside.js';
 
 let pool = [];              // the engine's entries as last read (Focus's `suggestions`)
 const ALL = 'jp.focus.suggestions.all';   // Show all stays as you left it (this Mac), like Actions' More
 let showAll = (() => { try { return localStorage.getItem(ALL) === '1'; } catch { return false; } })();
 const held = new Set();     // keys answered here: gone at once, before Focus is read again
+let hiddenKeys = new Set(); // Strategy's rows answered anywhere (Focus's `suggestions_hidden`)
 
 // A task that did not start says why where you pressed (a refusal, no AI credit), as Find jobs does.
 const started = (what, result) => { if (result?.started) openActivity(true); else if (result?.text) toastMessage(`${what} did not start`, result.text.replace(/^⚠️\s*/, ''), NO_PLACE.itself, 'warn'); };
@@ -44,11 +46,19 @@ export const RUN = {
     const kit = next && prepAction(next.company);
     if (kit) kit.run(event); else openView('interviews');
   },
+  // Strategy's search rows (src/suggestions_search.py): their top option in one press, as Strategy's own button does it; See all opens the row
+  // there with every option. Loaded when pressed: Strategy's page imports this one.
+  change_search: (action, event) => {
+    const button = event.currentTarget;
+    return import('./strategy-suggestions.js').then(page => page.changeSearch(action, button, 'focus'));
+  },
+  see_all: action => import('./strategy-suggestions.js').then(page => page.reviewSuggestion(action.row)),
 };
 
 /** Keeps a person's Not now / Not true for one entry; it leaves every place at once, and comes back if the store refuses it. */
 export async function answerEntry(entry, state) {
   held.add(entry.key);
+  if (state === 'Not true' && entry.aside?.length) setAside(entry.aside);   // role ideas: the AI is told not to propose them again
   redraw();
   const done = await window.pilot.suggestionAnswer({key: entry.key, title: entry.title}, state).catch(error => ({ok: false, error: error.message}));
   if (!done?.ok) {
@@ -99,10 +109,13 @@ const shownPool = () => pool.filter(entry => !held.has(entry.key));
 let lastArgs = null;
 /** The engine's entries for a home screen (Strategy's Tune row), answered ones left out. */
 export const homeSuggestions = home => homeEntries(shownPool(), home);
+/** Whether a Strategy row's key was answered (Not now, Not true), here or as Focus last read it. */
+export const answered = key => held.has(key) || hiddenKeys.has(key);
 
 /** Focus's Suggestions section: entries, then the moved items drawn by Focus's own `card`; 3 shown, "Show all N" opens the rest in place. */
-export function renderFocusSuggestions({entries, items, card}) {
+export function renderFocusSuggestions({entries, items, card, hidden}) {
   pool = entries || [];
+  hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
   const rows = focusRows(shownPool(), items);
   show($('focus-suggestions'), rows.length > 0);
@@ -113,9 +126,9 @@ export function renderFocusSuggestions({entries, items, card}) {
   all.textContent = showAll ? 'Show fewer' : `Show all ${rows.length}`;
   show(all, rows.length > SHOWN);
   renderJobsSuggestions();
-  window.dispatchEvent(new Event('suggestions-updated'));   // Strategy's Tune row
+  window.dispatchEvent(new Event('suggestions-updated'));   // Strategy's Tune row, and its rows answered here
 }
-function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, ...lastArgs}); }
+function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, hidden: [...hiddenKeys], ...lastArgs}); }
 
 /** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries; hidden at zero. */
 export function renderJobsSuggestions() {

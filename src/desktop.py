@@ -35,9 +35,8 @@ STATUSES = ('unreviewed', 'saved', 'applied', 'dismissed')
 
 def _role_ideas_on():
     """An AI is on for the role ideas: they carry the role suggestions, the fixed words none (src/coverage.py verdict by_ai)."""
-    from . import features
-    from .ai import engine
-    return not features.disabled('role_ideas') and engine.ready()
+    from .suggestions_search import ideas_on
+    return ideas_on()
 
 
 def main(argv=None):
@@ -110,17 +109,10 @@ def main(argv=None):
             print(json.dumps(few_jobs.explain(said, search), ensure_ascii=False))
             return 0
         if args.command == 'coverage':
-            from . import coverage
+            from . import coverage, suggestions_search
             from .paths import load_search_config
-            search = load_search_config()
-            places = search.get('locations') or {}
-            said = coverage.verdict(coverage.load(), search.get('role_keywords') or [],
-                                    [fragment for group in places.values() for fragment in group], search.get('title_exclude_keywords') or [],
-                                    by_ai=_role_ideas_on())
-            if said is not None:
-                said['languages'] = coverage.language_drops()
-                said['visits'] = _visits(search)
-            print(json.dumps(said, ensure_ascii=False))
+            # One read for Strategy's rows and Focus's (src/suggestions_search.py): the same verdict, each row's key for its Not now / Not true
+            print(json.dumps(suggestions_search.checked(load_search_config(), coverage.load(), extras=True), ensure_ascii=False))
             return 0
         if args.command == 'role-ideas':
             from . import coverage, features
@@ -140,7 +132,8 @@ def main(argv=None):
             except Exception as error:  # noqa: BLE001 — no ideas this time, said; never the fixed words' guess instead (audit PR 6)
                 print(json.dumps({'ok': False, 'ideas': [], 'error': f'No role ideas this time ({type(error).__name__})'}))
                 return 0
-            print(json.dumps({'ok': True, 'ideas': found}, ensure_ascii=False))
+            from .suggestions_search import ideas_key
+            print(json.dumps({'ok': True, 'ideas': found, 'key': ideas_key(load_search_config())}, ensure_ascii=False))
             return 0
         if args.command == 'visit-outcome':
             from .sources import visits

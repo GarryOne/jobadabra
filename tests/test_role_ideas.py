@@ -52,6 +52,19 @@ class RoleIdeasTest(unittest.TestCase):
         self.assertEqual(client.calls[1]['set_aside'], ['retouche'], 'the set-aside roles are told to Claude the next day')
         self.assertNotIn('cv', ' '.join(client.calls[0]).lower().replace('profile', ''), 'only the named fields are sent')
 
+    def test_kept_ideas_are_read_without_asking_claude(self):
+        """Focus's Suggestions read the day's answer as it was kept (insights PR 1b): no AI call, counted as Strategy counts them, a role
+        already searched left out; nothing before the first answer."""
+        titles = ['caissier 50%', 'caissière auxiliaire', 'retouche photo e-commerce', 'vendeur fnac']
+        self.assertEqual(role_ideas.kept(SEARCH, titles), [])
+        role_ideas.ideas('Photographer and shop seller', SEARCH, titles, client=Client(), today='2026-10-07')
+        with mock.patch.object(role_ideas, 'ai_counts', side_effect=AssertionError('no AI call')):
+            got = role_ideas.kept(SEARCH, titles)
+            grown = role_ideas.kept({**SEARCH, 'role_keywords': SEARCH['role_keywords'] + ['caissier']}, titles)
+        self.assertEqual([(i['word'], i['count']) for i in got], [('caissier', 2), ('retouche', 1)])
+        self.assertEqual([i['word'] for i in grown], ['retouche'], 'an idea added as a role is not offered again; the others stay')
+        self.assertNotEqual(role_ideas.search_key(SEARCH), role_ideas.search_key({**SEARCH, 'role_keywords': ['x']}))
+
     def test_adding_a_suggested_role_keeps_todays_ideas_without_asking_again(self):
         client = Client()
         titles = ['caissier 50%', 'retouche photo']

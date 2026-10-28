@@ -167,12 +167,13 @@ def technical_search(search):
     return bool(kinds) and 'software' in kinds
 
 
-def verdict(summary, keywords=(), locations=(), excludes=None, by_ai=False):
+def verdict(summary, keywords=(), locations=(), excludes=None, by_ai=False, extras=True):
     """What to tell the user: {'narrow': bool, 'share': matched / in_places, 'suggestions': those not already keywords}.
     Narrow = the keywords catch under NARROW_BELOW of the in-place postings AND some listed term would add at least 5 more.
     A search with no technical keyword (a nurse, an accountant) gets no engineering suggestions and no "too narrow" warning.
     by_ai (an AI is on for the role ideas): the fixed words suggest nothing; the AI's role ideas from the Profile carry the suggestions and say
-    the share, from `tight` (owner, 26 Oct 2026, audit PR 6: "One AI row"; the words stay the floor with no AI at all)."""
+    the share, from `tight` (owner, 26 Oct 2026, audit PR 6: "One AI row"; the words stay the floor with no AI at all).
+    extras: the unused sources, employers for you and the employer meter, which only Strategy draws (Focus's Suggestions leave them out)."""
     if not summary or not (summary.get('in_places') or summary.get('places')):
         return None
     have = {str(word).lower() for word in keywords}
@@ -191,7 +192,8 @@ def verdict(summary, keywords=(), locations=(), excludes=None, by_ai=False):
     local = any(item['local'] and item['count'] >= LOCAL_MIN for item in suggestions)
     return {'narrow': (share < NARROW_BELOW and any(s['count'] >= 5 for s in suggestions)) or local, 'local': local, 'tight': share < NARROW_BELOW, 'share': share, 'matched': summary['matched'],
             'in_places': summary['in_places'], 'fetched': summary['fetched'], 'feeds': summary['feeds'], 'at': summary.get('at'),
-            'suggestions': suggestions[:8], 'places': places_verdict(summary, locations), 'sources': unused_sources(), 'for_you': employers_for_you(), 'employers': employers_state(summary),
+            'suggestions': suggestions[:8], 'places': places_verdict(summary, locations),
+            **({'sources': unused_sources(), 'for_you': employers_for_you(), 'employers': employers_state(summary)} if extras else {}),
             'excluded': [item for item in summary.get('excluded') or [] if item['fragment'] in set(excludes or ()) and item['count'] >= 2]}
 
 

@@ -177,6 +177,9 @@ class EveryEntryTests(unittest.TestCase):
             entries = [suggestions.insight_entry([daily], NOW), suggestions.rejection_entry([rejected], NOW),
                        suggestions.week_entry([weekly], NOW, doors={'find_jobs'}), suggestions.tune_entry(TUNE),
                        suggestions.analyze_entry(events('Applied', 12, days_ago=3), [row('w9', 'Weekly report', 'x', days_ago=9)], NOW)]
+            from src import suggestions_search
+            from tests.test_suggestions_search import IDEAS, VERDICT
+            entries += suggestions_search.entries(VERDICT, IDEAS, 'ideas:k')   # Strategy's search rows (PR 1b)
         self.assertEqual({entry['kind'] for entry in entries}, set(suggestions.PRODUCERS), 'every producer is in this test')
         for entry in entries:
             self.assertTrue(entry['actions'] and all(a['label'] and a['do'] for a in entry['actions']), entry['kind'])

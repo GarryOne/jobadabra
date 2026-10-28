@@ -133,6 +133,24 @@ def ideas(profile, search, titles, set_aside=(), client=None, today=None):
             print(f'Roles: {providers.who()} could not count them ({reason(error)}); counting the title word', flush=True)
             detail('role counts', error)
             counted = {}
-    counts = counted.get('counts') or {}
+    return _counted(shown, counted.get('counts') or {}, titles)
+
+
+def _counted(shown, counts, titles):
     out = [{**i, 'count': counts[i['word']] if i['word'] in counts else count(i['word'], titles)} for i in shown]
     return sorted(out, key=lambda i: -i['count'])
+
+
+def search_key(search):
+    """Which search an answer belongs to (its role words): Focus keeps a Not now or Not true on role ideas against it (src/suggestions_search.py)."""
+    return _key(search)
+
+
+def kept(search, titles):
+    """The ideas kept for this search, as ideas() last counted them, without asking Claude: Focus's Suggestions never wait for an AI (insights
+    PR 1b). The answer of a search whose roles only grew since (an idea added) still holds. -> [{role, word, why, count}], most openings first."""
+    data = _load()
+    have = {str(w).lower() for w in search.get('role_keywords') or []}
+    found = data.get(_key(search)) or next((entry for entry in data.values() if entry.get('roles') is not None and set(entry['roles']) <= have), {})
+    shown = [i for i in found.get('ideas') or [] if i.get('word') and i['word'].lower() not in have]
+    return _counted(shown, (found.get('counted') or {}).get('counts') or {}, titles)

@@ -34,10 +34,11 @@ export function registerSearchTuningHandlers(ctx) {
   // Roles suggested from the Profile (src/ai/role_ideas.py: Sonnet at most once a day), counted in the titles of the user's places; the ones the
   // person set aside ("Not now") are sent back so they are never proposed again.
   ipcMain.handle('roleIdeas', async (_, setAside = []) => {
-    if (DEMO) return {ok: true, ideas: [{role: 'Cashier', word: 'caissier', why: 'Retail sales experience in a camera shop', count: 6},
-      {role: 'Visual merchandiser', word: 'merchandiser', why: 'Eye for images plus retail experience', count: 3},
-      {role: 'Image retoucher', word: 'retouche', why: 'Strong Photoshop and Lightroom retouching', count: 2},
-      {role: 'Photo lab assistant', word: 'laboratoire photo', why: 'Camera shop background', count: 0}].filter(idea => !(setAside || []).includes(idea.word))};
+    if (DEMO) {   // the ideas the demo Focus offers (tests/test_suggestions_search.py); a persona folder without them has none, not another person's
+      let demo = {ideas: [], key: ''};
+      try { demo = JSON.parse(fs.readFileSync(demoPath(here, 'role-ideas.json'), 'utf8')); } catch { /* no ideas for this persona */ }
+      return {ok: true, key: demo.key, ideas: demo.ideas.filter(idea => !(setAside || []).includes(idea.word))};
+    }
     const file = path.join(os.tmpdir(), `jp-role-ideas-${process.pid}-${Date.now()}.json`);
     fs.writeFileSync(file, JSON.stringify({set_aside: (Array.isArray(setAside) ? setAside : []).map(String).slice(0, 60)}));
     try {

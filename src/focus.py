@@ -43,7 +43,7 @@ from .notion import client as notion
 from .notion import funnel as funnel_steps
 from .notion.ledger import OUTCOME_STAGES, REPLY
 from .stores import base
-from . import suggestions
+from . import suggestions, suggestions_search
 # The helpers live in focus_items.py and focus_state.py; every name stays importable from here.
 from .focus_items import (  # noqa: F401
     TZ, DEFAULT_TARGET, REPLIED, ENDED, NEEDS_ANSWER, WAITING_DAYS, QUIET_DAYS, SOON_HOURS, STALE_DAYS,
@@ -54,11 +54,14 @@ from .focus_state import (  # noqa: F401
     _applied_today, _applied_by_day, PLACEHOLDER_URL, thin, questions, details_token, _same_interview,
     _skipped_details, follow_up, funnel, origin_of, _key)
 
+STRATEGY_ROWS = (*suggestions_search.ROWS, 'ideas')   # the rows Strategy hides by an answer kept in the store
 
-def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True, tune=None):
+
+def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True, tune=None, search=()):
     """{'items': [...], 'suggestions': [...], 'today': {...}}: the focus list, most important first, each item with its place
     (Up next or Suggestions, src/suggestions.py), and the engine's suggestions. Pure: no I/O. rows, events, interviews,
-    insights: store records (an application's or insight's 'link' is its page, when the store has one); tune: src/tune.py's answer."""
+    insights: store records (an application's or insight's 'link' is its page, when the store has one); tune: src/tune.py's answer;
+    search: Strategy's search entries (src/suggestions_search.py)."""
     now = now or datetime.now(timezone.utc)
     today = now.astimezone(TZ).date()
     by_app, interviewed, items = _events_by_app(events), _interviewed(interviews), []
@@ -229,7 +232,9 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
     doors = {'find_jobs', 'tailor'} | ({'tune'} if suggestions.tune_entry(tune) else set()) | ({'prep'} if any(i['kind'] == 'prepare' for i in items) else set())
     return {'items': items, 'today': {'applied': done_today, 'target': target, 'kits_ready': len(kits),
                                       'history': _applied_by_day(rows, by_app, today)},
-            'suggestions': suggestions.pool(insights=insights, tune=tune, events=events, now=now, doors=doors, rows=rows),
+            'suggestions': suggestions.pool(insights=insights, tune=tune, events=events, now=now, doors=doors, rows=rows, search=search),
+            # Strategy draws its rows from its own fresh check: these are the ones answered (Not now, Not true) wherever they were shown.
+            'suggestions_hidden': sorted(key for key in suggestions.hidden(insights, now) if key.split(':')[0] in STRATEGY_ROWS),
             'summary': summary(items), 'funnel': funnel(rows, events),
             'answered_questions': answered_questions(rows, events),
             'generated_at': now.isoformat(timespec='seconds')}
@@ -285,7 +290,7 @@ def load(stores, *, target=None, now=None, gmail=None):
         stores.applications.list, stores.events.list, stores.interviews.list,
         lambda: target or settings_target(), stores.insights.list)
     return build(_linked(stores, rows), events, _linked(stores, interviews), target=target, now=now,
-                 insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail, tune=_tune(rows))
+                 insights=_linked(stores, insights), gmail=gmail_connected() if gmail is None else gmail, tune=_tune(rows), search=suggestions_search.now())
 
 
 def reminder(focus, now=None):

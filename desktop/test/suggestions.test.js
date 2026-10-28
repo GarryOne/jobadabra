@@ -8,10 +8,12 @@ import {test} from 'node:test';
 import {DOES, LOOK, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries, movedItems, upNext} from '../renderer/suggestions.js';
 
 const read = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
-const engine = read('../../src/suggestions.py');
+const engine = read('../../src/suggestions.py'), searchRows = read('../../src/suggestions_search.py');
 const tuple = name => [...engine.match(new RegExp(`^${name} = \\(([^)]*)\\)`, 'm'))[1].matchAll(/'(\w+)'/g)].map(match => match[1]);
-const PRODUCERS = tuple('PRODUCERS'), HOMES = {insight: 'focus', rejection: 'jobs', week: 'focus', analyze: 'focus', tune: 'strategy'};
-const TOPICS = {insight: 'profile', rejection: 'applying', week: 'search', analyze: 'search', tune: 'search'};
+const SEARCH_ROWS = ['places', 'ideas', 'coverage', 'filters', 'visits'];   // src/suggestions_search.py KINDS: Strategy's rows, PR 1b
+const PRODUCERS = tuple('PRODUCERS'), HOMES = {insight: 'focus', rejection: 'jobs', week: 'focus', analyze: 'focus', tune: 'strategy',
+  ...Object.fromEntries(SEARCH_ROWS.map(kind => [kind, 'strategy']))};
+const TOPICS = {insight: 'profile', rejection: 'applying', week: 'search', analyze: 'search', tune: 'search', ...Object.fromEntries(SEARCH_ROWS.map(kind => [kind, 'search']))};
 const entry = kind => ({kind, home: HOMES[kind], topic: TOPICS[kind], title: `${kind} title`, source: 'From', detail: 'What it says', evidence: ['seen'],
   actions: [{label: 'Go', do: DOES[0]}], key: `${kind}:k`, answers: ['Not now', 'Not true']});
 
@@ -29,8 +31,8 @@ test('every engine producer is drawn: on Focus, in its home, and on Jobs when it
 });
 
 test('every button the engine writes has its handler in one press', () => {
-  const written = new Set([...engine.matchAll(/'do': '(\w+)'/g)].map(match => match[1]).concat(tuple('DOORS')));
-  assert.deepEqual([...written].sort(), DOES.slice().sort(), 'renderer/suggestions.js DOES lists what src/suggestions.py writes');
+  const written = new Set([...(engine + searchRows).matchAll(/'do': '(\w+)'/g)].map(match => match[1]).concat(tuple('DOORS')));
+  assert.deepEqual([...written].sort(), DOES.slice().sort(), 'renderer/suggestions.js DOES lists what the engine writes');
   const page = read('../renderer/pages/focus-suggestions.js');
   const run = page.slice(page.indexOf('export const RUN = {'), page.indexOf('\n};', page.indexOf('export const RUN = {')));
   for (const name of DOES) assert.match(run, new RegExp(`\\n  ${name}: `), `${name} has a handler`);

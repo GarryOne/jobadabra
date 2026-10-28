@@ -4,11 +4,14 @@
 
 export const SHOWN = 3;                              // Focus shows the 3 first, then "Show all N" (spec)
 export const JOBS_TOPICS = ['search', 'applying'];   // the Jobs bar's (spec: "only the search- and applying-related ones")
-// Every actions[].do the engine writes (src/suggestions.py), each run by pages/focus-suggestions.js RUN.
-export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep'];
+// Every actions[].do the engine writes (src/suggestions.py, src/suggestions_search.py), each run by pages/focus-suggestions.js RUN.
+export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep', 'change_search', 'see_all'];
 // Each producer's row: its icon, its edge colour and its badge.
 export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, rejection: {icon: 'alert', tone: 'warn', badge: 'Rejection'},
-  week: {icon: 'chart', tone: 'good', badge: 'Your week'}, analyze: {icon: 'chart', tone: 'info', badge: 'Analyze'}, tune: {icon: 'sliders', tone: 'info', badge: 'Tune'}};
+  week: {icon: 'chart', tone: 'good', badge: 'Your week'}, analyze: {icon: 'chart', tone: 'info', badge: 'Analyze'}, tune: {icon: 'sliders', tone: 'info', badge: 'Tune'},
+  // Strategy's search rows (PR 1b): the icons of their Strategy rows
+  places: {icon: 'pin', tone: 'info', badge: 'Places'}, ideas: {icon: 'briefcase', tone: 'info', badge: 'Roles'}, coverage: {icon: 'search', tone: 'info', badge: 'Role words'},
+  filters: {icon: 'sliders', tone: 'info', badge: 'Filters'}, visits: {icon: 'external', tone: 'warn', badge: 'Sites'}};
 
 /** Up next: the Focus items that can't wait (src/suggestions.place; null = left out). An item read before places existed (a saved Focus) stays there. */
 export const upNext = items => (items || []).filter(item => ('place' in item ? item.place : 'up_next') === 'up_next');

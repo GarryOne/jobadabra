@@ -1,0 +1,29 @@
+{
+ "key": "ideas:demo",
+ "ideas": [
+  {
+   "role": "Cashier",
+   "word": "caissier",
+   "why": "Retail sales experience in a camera shop",
+   "count": 6
+  },
+  {
+   "role": "Visual merchandiser",
+   "word": "merchandiser",
+   "why": "Eye for images plus retail experience",
+   "count": 3
+  },
+  {
+   "role": "Image retoucher",
+   "word": "retouche",
+   "why": "Strong Photoshop and Lightroom retouching",
+   "count": 2
+  },
+  {
+   "role": "Photo lab assistant",
+   "word": "laboratoire photo",
+   "why": "Camera shop background",
+   "count": 0
+  }
+ ]
+}

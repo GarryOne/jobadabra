@@ -31,7 +31,7 @@ export function skillEntries({jobs, extraSkills, mainSkills, added} = {}) {
   if (!found.length) return [];
   const total = targetJobs(jobs).length;
   const names = found.map(item => item.skill);
-  return [{kind: 'skills', key: `skills:${names.map(name => name.toLowerCase()).sort().join('+')}`, home: 'jobs', topic: 'cv', source: 'Your CV',
+  return [{kind: 'skills', key: `skills:${names.map(name => name.toLowerCase()).sort().join('+')}`, home: 'jobs', topic: 'applying', source: 'Your CV',
     title: `${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} only in your Experience bank`,
     short: `${names.length} CV skill${names.length === 1 ? '' : 's'} to use`,
     detail: found.map(item => `${item.skill}: ${item.jobs} of ${total} target jobs`).join(' · '),

@@ -15,7 +15,7 @@ const DEMO_VIEW = {main: {name: 'Ada Example', roles: 2, skills: 'AWS, Terraform
   roles: [{company: 'Acme', title: 'Site Reliability Engineer', period: '2024 – Present', place: 'Zurich', bullets: [
     {text: 'Cut monitoring costs by **50%** with Datadog.', from: 'Main CV'}, {text: 'Built Spark pipelines for 2 TB of logs a day.', from: 'Data and ML CV'}]},
     {company: 'Beta', title: 'Developer', period: '2020 – 2023', place: 'Remote', bullets: [{text: 'Built APIs in Node.js.', from: 'Main CV'}]}],
-  extraSkills: 'Python, Spark'};
+  extraSkills: 'CI/CD, Spark', added: [{id: 'demo1', kind: 'skill', text: 'Kafka'}, {id: 'demo2', kind: 'correction', text: 'Python: 3 years'}]};
 
 export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, shell, storage}) {
   const ai = () => ({apiKey: storage.secret('ANTHROPIC_API_KEY'), client: claudeCode.client(storage)});

@@ -3,7 +3,7 @@
 Spec: [2026-10-28-your-portrait-design.md](../specs/2026-10-28-your-portrait-design.md) (approved 28 Oct 2026; sketch
 https://claude.ai/artifact/NbLpTtcz3XNSuR3gEBDjNw). Builder: not chosen yet. Starts after About you, everywhere PR D1 (the
 interface it reads; PR D of the What we learned plan, split into D1/D2 in
-[2026-10-28-about-you-everywhere.md](2026-10-28-about-you-everywhere.md), draft PR #2333). This draft PR carries the spec and plan and becomes the build PR (owner, 28 Oct 2026: "open individual
+[2026-10-28-about-you-everywhere.md](2026-10-28-about-you-everywhere.md), draft PR #2337). This draft PR carries the spec and plan and becomes the build PR (owner, 28 Oct 2026: "open individual
 PRs with their specs and plans. To not forget about them").
 
 ## Tasks (one PR)

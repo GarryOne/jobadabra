@@ -11,7 +11,8 @@ const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url),
 
 // card id → its main action's id. Left out on purpose: the Actions task cards (Run starts a paid or long task: a stray click must not start it)
 // and cards with two equal actions.
-const CARDS = {questions: 'questions-review', learned: 'learned-review', 'letter-setup': 'letter-setup-go'};   // the drawers' and the cover letter's (28 Oct 2026)
+// Why (insights PR 1c, 28 Oct 2026): the drawers' and the cover letter's cards (the last three) became rows of the Jobs bar and Focus (renderer/question-entries.js); a new compact card is listed here.
+const CARDS = {};
 
 // Scanned but left out, with the reason: a live status banner with Stop, View activity and a log link (several equal actions).
 const LEFT_OUT = {'run-banner': 'a progress banner: Stop, View activity and View log are equal actions'};
@@ -27,9 +28,9 @@ const build = (cardId, mainId) => {
   return {card, text, main, other, link, ran: () => ran};
 };
 
-for (const [cardId, mainId] of Object.entries(CARDS)) {
+for (const [cardId, mainId] of Object.entries({...CARDS, 'a-card': 'a-card-main'})) {   // the listed cards, and one generic card so cardOpens itself stays tested
   test(`${cardId}: the empty area runs ${mainId}, an inner control does not`, () => {
-    assert.match(html, new RegExp(`id="${cardId}"`), 'the card exists in index.html');
+    if (cardId in CARDS) assert.match(html, new RegExp(`id="${cardId}"`), 'the card exists in index.html');
     const t = build(cardId, mainId);
     t.card.dispatch('click', {target: t.text});   // the tiny DOM does not bubble: the event reaches the card with its target
     assert.equal(t.ran(), 1, 'a click on the empty area ran the main action');
@@ -59,7 +60,7 @@ test('every compact card with one primary button in index.html is listed (or mar
     assert.ok(id in CARDS, `#${id} is a compact card with one primary action: add it to cardOpens (pages/…) and to CARDS here`);
     assert.doesNotMatch(inner, /class="link|<a /, `#${id}: no link under the one button; a second action moves into what the button opens`);
   }
-  assert.ok(compact.some(([, , id]) => id === 'questions'), 'the scan finds the Fill your details card');
+  for (const id of ['questions', 'learned', 'letter-setup']) assert.doesNotMatch(html, new RegExp(`id="${id}"`), `#${id} is a row of the Jobs bar and Focus now (question-entries.js), not a card`);
 });
 
 test('the drawer header opens the What we learned tab, never a Saved answers box (owner, 28 Oct 2026)', () => {

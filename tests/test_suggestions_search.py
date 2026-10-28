@@ -143,6 +143,15 @@ class FocusTests(unittest.TestCase):
         self.assertNotIn('places', [entry['kind'] for entry in out['suggestions']])
         self.assertEqual(out['suggestions_hidden'], ['places:zurich'], "only Strategy's rows: the rest never grows Focus's answer")
 
+    def test_focus_tells_the_window_which_drawer_rows_were_answered_not_now(self):
+        """PR 1c: Cover letter, Fill your details and What we learned are rows the window makes (renderer/question-entries.js), so the engine only
+        reports which of their keys a Not now still hides; without it the row came back on the next Focus read."""
+        from src import focus
+        until = (NOW + timedelta(days=14)).date().isoformat()
+        answers = [answer('Not now', 'details:open', until), answer('Not now', 'letter:setup', until), answer('Not now', 'tune:x', until)]
+        out = focus.build([], [], now=NOW, insights=answers, gmail=False, search=[])
+        self.assertEqual(out['suggestions_hidden'], ['details:open', 'letter:setup'], 'the drawer rows, not the engine-owned Tune row')
+
 
     def test_a_role_set_aside_on_focus_stays_aside_after_a_new_role_word_on_every_mac(self):
         """Gitar on #2350: Not true on role ideas, then a role word added (a new key): the kept answer offered the role again. The answer row

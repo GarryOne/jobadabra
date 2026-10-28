@@ -72,8 +72,10 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
   send. Suggestions takes: Did the interview happen?, Review the interview, Which job is this email about?, Add details,
   Ask / add / learn from feedback, Move it forward, Apply to N more today. "Waiting for a next step" has no button and leaves
   Focus. Moved items keep their own buttons and saved state.
-- **Suggestions replaces Focus's Insight card**; today's insight is its first entry. Its entries come from many producers, not
-  only the AI or Monday (today's insight, Your week, Tune, Analyze now; later PRs add more).
+- **Suggestions replaces Focus's Insight card**; today's insight is its first entry, after any blocking call to action (owner,
+  28 Oct 2026, PR 1c: "high priority (blocking) call to actions should have higher priority than raw insights"; e.g. a missing
+  cover letter). Its entries come from many producers, not only the AI or Monday (today's insight, Your week, Tune, Analyze
+  now; later PRs add more).
 - **Your week's button: the AI picks a door.** The weekly report's one AI call also returns a short label and one door from a
   fixed list of actions the app carries out in one press (Find jobs, Tune my strategy, Tailor CVs, Build the next interview's
   prep kit). The code checks it; none fits → the card's button is "Read the week". A button that only opens a screen for the
@@ -93,6 +95,19 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
   4. Numbers: from the last coverage check the engine keeps after each search (src/coverage.py summary, read against today's
      settings) and the kept role ideas; Focus reads them at once, never waits and never asks the AI (src/suggestions_search.py).
   Found while building (in the PR): a site with a caution note (an account a read may put at risk) is never the one-press option.
+
+**Decisions of 28 Oct 2026 for PR 1c** (owner, on sketch https://claude.ai/artifact/CHZiJQaYMK2zGBKgXPMfK8):
+- **Both screens:** Fill your details · N missing, What we learned · N to check and Cover letter stop being cards on Jobs and
+  become rows of the one Jobs bar and of Focus → Suggestions, each with its count, its one button and the drawer it opens.
+  Every state of today's cards stays (the "answered from your details" line, couldn't load + Retry, hidden at zero or with no
+  store yet).
+- **Order:** a blocking row (the cover letter while forms go without one) comes first, above today's insight; then Fill your
+  details, What we learned, then the rest.
+- **The folded Jobs bar stays folded**; its line names them, the blocking one first: "Cover letter missing · 4 details missing
+  · 6 to check · 3 search suggestions".
+- **Answers:** ⋯ Not now only (14 days, in the store); no Not true, these are counts, not guesses.
+- **Counts:** Focus reuses the count Jobs already reads (kept on this Mac, read again after 10 minutes, at once after an
+  answer); no extra store reads on a Focus open.
 
 ## The insights (owner approved the list and the grouping, 28 Oct 2026)
 
@@ -179,7 +194,8 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 - [x] PR 1a · Suggestions, Jobs bar, answers, Tune and Analyze come to you (proof: desktop/test/suggestions.test.js)
 - [x] PR 1b decisions: which rows, Not now / Not true by key, top option + See all, numbers from the kept check (28 Oct 2026, sketch https://claude.ai/artifact/W6JoQf5fCfop8oxKwnRzrK) (proof: none: owner answers in the session, recorded here)
 - [x] PR 1b · Strategy rows on the producers (proof: tests/test_suggestions_search.py)
-- [ ] PR 1c · Jobs drawers into the bar
+- [x] PR 1c decisions: both screens, blocking rows above the insight, bar stays folded, Not now only, Focus reuses Jobs' count (28 Oct 2026, sketch https://claude.ai/artifact/CHZiJQaYMK2zGBKgXPMfK8) (proof: none: owner answers in the session, recorded here)
+- [x] PR 1c · Jobs drawers into the bar (proof: desktop/test/question-entries.test.js)
 - [ ] PR 2 · CV
 - [ ] PR 3 · Strategy + Jobs
 - [ ] PR 4 · Interviews

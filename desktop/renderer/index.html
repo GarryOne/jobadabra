@@ -362,37 +362,7 @@
         <summary><h2 id="jobs-suggestions-title">Suggestions for your search</h2><span class="muted small" id="jobs-suggestions-count"></span></summary>
         <ol class="focus-list" id="jobs-suggestions-list"></ol>
       </details>
-      <!-- Two drawers and the cover letter (pages/jobs-questions.js; owner, 28 Oct 2026): Fill your details (amber), What we learned (blue), each hidden at zero;
-           the questions are answered one at a time in the drawer (pages/question-review.js). -->
-      <section class="card qr-card" id="questions" hidden aria-labelledby="questions-title">
-        <span class="qr-card-icon"><i data-icon="user"></i></span>
-        <div class="qr-card-text">
-          <p class="qr-card-title"><b id="questions-title">Fill your details</b><span class="ui-pill tone-warn" id="questions-count"></span></p>
-          <p class="muted">Forms ask these every time. About a minute.</p>
-          <p class="muted small" id="questions-details" hidden></p>
-          <p class="message error" id="questions-error" hidden></p>
-        </div>
-        <div class="qr-card-actions">
-          <button class="primary" id="questions-review" type="button">Fill now <i data-icon="chevron"></i></button>
-          <button class="secondary" id="questions-retry" type="button" hidden>Retry</button>
-        </div>
-      </section>
-      <section class="card qr-card is-info" id="learned" hidden aria-labelledby="learned-title">
-        <span class="qr-card-icon"><i data-icon="sparkle"></i></span>
-        <div class="qr-card-text">
-          <p class="qr-card-title"><b id="learned-title">What we learned</b><span class="ui-pill tone-info" id="learned-count"></span></p>
-          <p class="muted">Answers forms reuse. Check or add them.</p>
-        </div>
-        <div class="qr-card-actions"><button class="secondary" id="learned-review" type="button">Check <i data-icon="chevron"></i></button></div>
-      </section>
-      <section class="card qr-card is-bad" id="letter-setup" hidden aria-labelledby="letter-setup-title">
-        <span class="qr-card-icon"><i data-icon="file"></i></span>
-        <div class="qr-card-text">
-          <p class="qr-card-title"><b id="letter-setup-title">Cover letter</b><span class="ui-pill tone-bad">HIGH PRIORITY</span></p>
-          <p class="muted" id="letter-setup-hint"></p>
-        </div>
-        <div class="qr-card-actions"><button class="primary" id="letter-setup-go" type="button"></button></div>
-      </section>
+      <!-- The two drawers and the cover letter are rows of the bar above and of Focus → Suggestions (renderer/question-entries.js; owner, 28 Oct 2026, insights PR 1c). -->
       <details class="card jobs-fold jobs-talking" id="jobs-talking" hidden>
         <summary><h2 id="jobs-talking-title">In conversation</h2><span class="muted small" id="jobs-talking-count"></span></summary>
         <ol class="focus-list" id="jobs-talking-list"></ol>

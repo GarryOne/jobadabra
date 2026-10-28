@@ -55,6 +55,8 @@ from .focus_state import (  # noqa: F401
     _skipped_details, follow_up, funnel, origin_of, _key)
 
 STRATEGY_ROWS = (*suggestions_search.ROWS, 'ideas')   # the rows Strategy hides by an answer kept in the store
+# Why (insights PR 1c, owner 28 Oct 2026): the Jobs drawers' rows are made in the window (renderer/question-entries.js), so Focus only says which of their keys a Not now still hides.
+QUESTION_ROWS = ('letter', 'details', 'learned')
 
 
 def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insights=(), gmail=True, tune=None, search=()):
@@ -234,7 +236,7 @@ def build(rows, events, interviews=(), *, target=DEFAULT_TARGET, now=None, insig
                                       'history': _applied_by_day(rows, by_app, today)},
             'suggestions': suggestions.pool(insights=insights, tune=tune, events=events, now=now, doors=doors, rows=rows, search=search),
             # Strategy draws its rows from its own fresh check: these are the ones answered (Not now, Not true) wherever they were shown.
-            'suggestions_hidden': sorted(key for key in suggestions.hidden(insights, now) if key.split(':')[0] in STRATEGY_ROWS),
+            'suggestions_hidden': sorted(key for key in suggestions.hidden(insights, now) if key.split(':')[0] in STRATEGY_ROWS + QUESTION_ROWS),
             'summary': summary(items), 'funnel': funnel(rows, events),
             'answered_questions': answered_questions(rows, events),
             'generated_at': now.isoformat(timespec='seconds')}

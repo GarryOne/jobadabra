@@ -5,13 +5,16 @@
 export const SHOWN = 3;                              // Focus shows the 3 first, then "Show all N" (spec)
 export const JOBS_TOPICS = ['search', 'applying'];   // the Jobs bar's (spec: "only the search- and applying-related ones")
 // Every actions[].do the engine writes (src/suggestions.py, src/suggestions_search.py), each run by pages/focus-suggestions.js RUN.
-export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep', 'change_search', 'read_site', 'see_all'];
+export const DOES = ['open_insight', 'open_rejection', 'read_week', 'analyze', 'tune', 'find_jobs', 'tailor', 'prep', 'change_search', 'read_site', 'see_all'];   // the Jobs drawers' rows write theirs in the window: question-entries.js QUESTION_DOES
 // Each producer's row: its icon, its edge colour and its badge.
 export const LOOK = {insight: {icon: 'bulb', tone: 'warn', badge: 'Insight'}, rejection: {icon: 'alert', tone: 'warn', badge: 'Rejection'},
   week: {icon: 'chart', tone: 'good', badge: 'Your week'}, analyze: {icon: 'chart', tone: 'info', badge: 'Analyze'}, tune: {icon: 'sliders', tone: 'info', badge: 'Tune'},
   // Strategy's search rows (PR 1b): the icons of their Strategy rows
   places: {icon: 'pin', tone: 'info', badge: 'Places'}, ideas: {icon: 'briefcase', tone: 'info', badge: 'Roles'}, coverage: {icon: 'search', tone: 'info', badge: 'Role words'},
-  filters: {icon: 'sliders', tone: 'info', badge: 'Filters'}, visits: {icon: 'external', tone: 'warn', badge: 'Sites'}};
+  filters: {icon: 'sliders', tone: 'info', badge: 'Filters'}, visits: {icon: 'external', tone: 'warn', badge: 'Sites'},
+  // The Jobs drawers' rows (PR 1c): the colours of the cards they replace (cover letter and Fill your details amber, What we learned blue)
+  letter: {icon: 'file', tone: 'bad', badge: 'High priority'}, details: {icon: 'user', tone: 'warn', badge: 'Details'}, learned: {icon: 'bulb', tone: 'info', badge: 'Learned'},
+  'questions-error': {icon: 'alert', tone: 'bad', badge: 'Not loaded'}};
 
 /** Up next: the Focus items that can't wait (src/suggestions.place; null = left out). An item read before places existed (a saved Focus) stays there. */
 export const upNext = items => (items || []).filter(item => ('place' in item ? item.place : 'up_next') === 'up_next');
@@ -31,8 +34,8 @@ export const homeEntries = (entries, home) => (entries || []).filter(entry => en
 /** The Focus head's count: "3 of 5" while folded, else the total. */
 export const countWords = (shown, total) => (shown < total ? `${shown} of ${total}` : String(total));
 
-/** The Jobs bar's line, folded ("2 suggestions for your search") and open. */
-export const jobsBarWords = (count, open) => ({title: open ? 'Suggestions for your search' : `${count} suggestion${count === 1 ? '' : 's'} for your search`,
+/** The Jobs bar's line, folded ("2 suggestions for your search", or `line` when the drawers' rows are in it: foldedLine) and open. */
+export const jobsBarWords = (count, open, line = '') => ({title: open ? 'Suggestions for your search' : line || `${count} suggestion${count === 1 ? '' : 's'} for your search`,
   detail: open ? '' : 'Show'});
 
 /** A row's parts: its look, its meta line (where it comes from unless the badge says it, what it says), and the evidence behind it for the hover. */

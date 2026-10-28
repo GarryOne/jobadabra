@@ -295,6 +295,7 @@ export function toggleOnBar(bar, toggle) {
 }
 // A compact card with ONE main action (owner, 19 Oct 2026: "anywhere I click on this card should open the drawer"): a click on the card's empty area presses `main`.
 // A click on another button, link or field, or the end of a text selection, does not; `main` stays the one tab stop. Marked `.is-card-opens` (cursor + hover, components.css).
+// TODO(AI): delete cardOpens or use it for the next compact card; no card in index.html uses it since the drawers' cards became rows (28 Oct 2026)
 export function cardOpens(card, main) {
   card.classList.add('is-card-opens');
   card.addEventListener('click', event => {

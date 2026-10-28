@@ -1,5 +1,5 @@
-// The two drawers on screen (owner, 28 Oct 2026; spec docs/superpowers/specs/2026-10-28-what-we-learned-design.md): one count per drawer everywhere (its Jobs
-// card, its Profile tab, the drawer's header), each card hidden at zero, the cover letter its own card and never a question, and each drawer's own buttons
+// The two drawers on screen (owner, 28 Oct 2026; spec docs/superpowers/specs/2026-10-28-what-we-learned-design.md): one count per drawer everywhere (its row of
+// the Jobs bar and Focus, its Profile tab, the drawer's header), each row hidden at zero, the cover letter its own row and never a question, and each drawer's own buttons
 // (Fill your details: Skip · Save; What we learned: Later · Confirm / Save change).
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
@@ -19,23 +19,24 @@ const LEARNED = [
 const LETTER = {key: 'setup:cover-letter', question: 'Set up your cover letter', priority: 'HIGH PRIORITY', hint: 'Your cover letter is a draft and needs your review and approval.',
   setup: {kind: 'cover-letter', state: 'draft', action: 'Review cover letter'}};
 let reply = {details: DETAILS, learned: LEARNED, letter: LETTER, hidden: [], consent: 0};
-const ids = ['questions', 'questions-count', 'questions-details', 'questions-error', 'questions-retry', 'questions-review', 'learned', 'learned-count', 'learned-review',
-  'letter-setup', 'letter-setup-hint', 'letter-setup-go', 'tab-count-details', 'tab-count-answers', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
+const ids = ['tab-count-details', 'tab-count-answers', 'review-drawer-layer', 'review-drawer-backdrop', 'review-panel'];
 for (const id of ids) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }
 globalThis.localStorage = {getItem: () => null, setItem: () => {}};
 globalThis.window.pilot = new Proxy({
   openQuestions: async () => structuredClone(reply),
   answerQuestion: async () => ({ok: true, homeName: 'What we learned'}),
 }, {get: (all, key) => all[key] || (() => null)});
-const {loadQuestions} = await import('../renderer/pages/jobs-questions.js');
+const {loadQuestions, questionsNow} = await import('../renderer/pages/jobs-questions.js');
+const {questionEntries} = await import('../renderer/question-entries.js');
+const rows = () => Object.fromEntries(questionEntries(questionsNow()).map(row => [row.kind, row]));
 const review = await import('../renderer/pages/question-review.js');
 const $ = id => globalThis.document.getElementById(id);
 const count = id => Number(($(id).textContent.match(/\d+/) || ['0'])[0]);
 
-test('one count per drawer: its Jobs card, its Profile tab and the drawer header say the same number', async () => {
+test('one count per drawer: its row, its Profile tab and the drawer header say the same number', async () => {
   await loadQuestions({force: true});
-  assert.equal($('questions-count').textContent, '2 missing');
-  assert.equal($('learned-count').textContent, '3 to check');
+  assert.match(rows().details.detail, /2 missing/);
+  assert.match(rows().learned.detail, /3 to check/);
   assert.equal(count('tab-count-details'), 2);
   assert.equal(count('tab-count-answers'), 3);
   await review.openQuestionReview({queue: 'details'});
@@ -47,11 +48,11 @@ test('one count per drawer: its Jobs card, its Profile tab and the drawer header
   review.closeQuestionReview();
 });
 
-test('the cover letter is its own card, never a row of either drawer', async () => {
+test('the cover letter is its own row, never a question of either drawer', async () => {
   await loadQuestions({force: true});
-  assert.equal($('letter-setup').hidden, false);
-  assert.equal($('letter-setup-go').textContent, 'Review cover letter');
-  assert.match($('letter-setup-hint').textContent, /draft/);
+  assert.equal(rows().letter.blocking, true);
+  assert.equal(rows().letter.actions[0].label, 'Review cover letter');
+  assert.match(rows().letter.detail, /draft/);
   for (const queue of ['details', 'learned']) {
     await review.openQuestionReview({queue});
     assert.doesNotMatch($('review-panel').textContent, /cover letter/i, queue);
@@ -105,15 +106,13 @@ test('a start key opens the drawer that holds it', async () => {
   review.closeQuestionReview();
 });
 
-test('each card hides at zero, and its tab count with it', async () => {
+test('each row hides at zero, and its tab count with it', async () => {
   reply = {details: [], learned: LEARNED.slice(0, 1), letter: null, hidden: [], consent: 0};
   await loadQuestions({force: true});
-  assert.equal($('questions').hidden, true);
+  assert.deepEqual(Object.keys(rows()), ['learned']);
   assert.equal($('tab-count-details').hidden, true);
-  assert.equal($('learned').hidden, false);
-  assert.equal($('letter-setup').hidden, true);
   reply = {details: [], learned: [], letter: null, hidden: [], consent: 0};
   await loadQuestions({force: true});
-  assert.equal($('learned').hidden, true);
+  assert.deepEqual(Object.keys(rows()), []);
   assert.equal($('tab-count-answers').hidden, true);
 });

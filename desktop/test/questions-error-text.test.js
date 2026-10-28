@@ -15,8 +15,8 @@ test('another failure: one plain sentence, retry stays', () => {
   assert.equal(p.text, "Couldn't read your questions from Notion just now. Try again in a moment.");
 });
 
-test('the page uses the helper', () => {
-  const page = fs.readFileSync(new URL('../renderer/pages/jobs-questions.js', import.meta.url), 'utf8');
+test('the rows use the helper', () => {   // the Jobs bar's and Focus's error row (insights PR 1c), no longer jobs-questions.js's card
+  const page = fs.readFileSync(new URL('../renderer/question-entries.js', import.meta.url), 'utf8');
   assert.match(page, /questionsProblem\(error\)/);
   assert.doesNotMatch(page, /from Notion: \$\{error\}/);
 });

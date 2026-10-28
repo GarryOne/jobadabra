@@ -67,7 +67,7 @@ const jobs = DIRS.flatMap(dir => { const names = fs.readdirSync(dir); return [
     const request = CHECKLIST ? checklistRequest({view: job.view, pngBase64: png.toString('base64'), facts, lessons: lessonsText(lessonsFor(lessons, job.view)), model: REVIEW_MODEL, effort: REVIEW_EFFORT}) : ask(REVIEW_MODEL);
     let strips = null;
     try { strips = lookStrips(png); } catch { /* a picture we cannot read is asked every time */ }
-    return {...job, id: `r${index}`, request, body: JSON.stringify(request), ask, key: questionKey(job.view, request), strips};
+    return {...job, id: `r${index}`, request, body: JSON.stringify(request), ask, key: questionKey(CODEX ? `${job.view} (codex)` : job.view, request), strips};   // Why (#2431, Gitar): a Codex look never reuses a Claude one (the request names the Claude model either way)
   });
 
 // One failed call (HTTP, or a batch item's error): a request we got wrong fails the step; the key's own limit or a busy service is a warning.
@@ -98,7 +98,7 @@ function answered(job, message, {batch = false, usd: freeUsd} = {}) {
     unreviewed.push({dir: job.dir, view: job.view, why: `answer cut off (${message.stop_reason})`});
     return null;
   }
-  if (job.strips) remember(CACHE, job.key, {view: job.view, model: REVIEW_MODEL, strips: job.strips, text});
+  if (job.strips) remember(CACHE, job.key, {view: job.view, model: CODEX ? MODEL_LABEL : REVIEW_MODEL, strips: job.strips, text});
   return text;
 }
 

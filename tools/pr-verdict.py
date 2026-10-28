@@ -239,11 +239,17 @@ def main_state_module(repo, ref):
     return module
 
 
+def _red_e2e_jobs(runs, jobs, conclusions=('failure',)):
+    """The finished jobs of the PR's counted e2e runs (E2E_PR_TITLE) that ended in one of `conclusions`: the one scan the three grey readers below start from
+    (Gitar on #2415: a third copy of it was blocking)."""
+    return [job for run in counted(runs) if str(run.get('displayTitle', '')).startswith(E2E_PR_TITLE)
+            for job in jobs.get(run.get('databaseId')) or [] if job.get('status') == 'completed' and job.get('conclusion') in conclusions]
+
+
 def main_red_greys(repo, runs, jobs, ref='', read_main=None, log_of=None):
     """Ids of the PR e2e run's finished red suite jobs that failed as main's own newest red of that suite (mains_own): grey. Any read that fails keeps them red."""
     log_of = log_of or (lambda job_id: job_log(repo, job_id))
-    reds = [job for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)
-            for job in jobs.get(r.get('databaseId')) or [] if job.get('status') == 'completed' and job.get('conclusion') == 'failure']
+    reds = _red_e2e_jobs(runs, jobs)
     if not reds:
         return set()
     try:
@@ -272,8 +278,7 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
     A suite not listed is backbone and stays red. Any read that fails, or a file that is not a registry, keeps every red red.
     Why (28 Oct 2026, Gitar on #2376): the registry is read from the PR's BASE branch and takes no ref from the caller. Read at the PR's own commit, a PR that breaks
     `settings` could list it as tolerant in the same diff and go green. A PR that edits lanes.json is judged by main's file; its entry counts after it merges."""
-    reds = [job for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)
-            for job in jobs.get(r.get('databaseId')) or [] if job.get('status') == 'completed' and job.get('conclusion') == 'failure']
+    reds = _red_e2e_jobs(runs, jobs)
     if not reds:
         return {}
     try:
@@ -283,6 +288,57 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
     except Exception as error:   # Why (28 Oct 2026, same rule as main_red_greys): the verdict is always written; a registry not read keeps every red red
         print(f'lane registry not read ({type(error).__name__}: {error}): every red stays red')
         return {}
+
+
+# Health causes (PR 16/29). Why (28 Oct 2026, Gitar on #2415): compiled once; "spend limit or credit" is the phrase desktop/e2e/lib/ai-refused.mjs adds only when the engine log
+# carried the limit or credit message (a bare "the AI refused (400)" can be a request of ours that is wrong, so it stays red).
+_CREDIT = re.compile(r'ai-capped:|credit balance is too low|insufficient_quota|the AI refused \(\d+\) \d+ times?[^;]*spend limit or credit', re.I)
+_INSTALL = re.compile(r'install|npm ci|playwright.*browser', re.I)
+# An npm lockfile/script error is this diff's failure. Only a transport error during installation is health.
+_TRANSPORT = re.compile(r'(?:npm (?:error|ERR!).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b|'
+                        r'(?:download|fetch).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b)', re.I)
+
+
+def _runner_never_acquired(job, annotations):
+    """A capacity cancellation: no steps, no runner, and GitHub's own annotation says so."""
+    return (not job.get('steps') and not job.get('runner_name')
+            and any('not acquired by Runner' in a.get('message', '') for a in annotations))
+
+
+def _credit_only(job, annotations, failures):
+    """Every failure mark is a cap or credit line (a deliberate "no credit" stub stays red), every named annotation too, and only suite steps failed."""
+    named_errors = [a.get('message', '') for a in annotations if a.get('annotation_level') == 'failure' and ' · ' in a.get('title', '')]
+    return bool(failures) and all(_CREDIT.search(line) and 'stub no-credit on purpose' not in line for line in failures) \
+        and all(_CREDIT.search(text) for text in named_errors) \
+        and all('suite' in step.get('name', '').lower() for step in _failed_steps(job))
+
+
+def _failed_steps(job):
+    return [step for step in job.get('steps') or [] if step.get('conclusion') in RED]
+
+
+def _install_download_failed(step, log):
+    """Only this failed step's own lines count: a recovered download in an earlier step explains no later failure."""
+    if not _INSTALL.search(step.get('name', '')) or not step.get('started_at') or not step.get('completed_at'):
+        return False
+    start, end = _at(step['started_at']).timestamp(), _at(step['completed_at']).timestamp() + 1
+    stamps = ((re.match(r'^(\d{4}-\d\d-\d\dT[\d:.]+Z) ', line), line) for line in log.splitlines())
+    return bool(_TRANSPORT.search('\n'.join(line for stamp, line in stamps if stamp and start <= _at(stamp[1]).timestamp() < end)))
+
+
+def _health_cause(job, annotations_of, log_of):
+    """'runner' | 'ai-credit' | 'install' | '' for one finished red job. Missing evidence and mixed failures give ''."""
+    annotations = annotations_of(job['id'])
+    if _runner_never_acquired(job, annotations):
+        return 'runner'
+    log = log_of(job['id'])
+    failures = marks(log)
+    if _credit_only(job, annotations, failures):
+        return 'ai-credit'
+    failed = _failed_steps(job)
+    if not failures and failed and all(_install_download_failed(step, log) for step in failed):
+        return 'install'
+    return ''
 
 
 def health_greys(repo, runs, jobs, annotations_of=None, log_of=None):
@@ -295,50 +351,17 @@ def health_greys(repo, runs, jobs, annotations_of=None, log_of=None):
     annotations_of = annotations_of or (lambda jid: [a for page in json.loads(gh('api', '--paginate', '--slurp',
         f'repos/{repo}/check-runs/{jid}/annotations?per_page=100')) for a in page])
     log_of = log_of or (lambda jid: job_log(repo, jid))
-    credit = re.compile(r'ai-capped:|credit balance is too low|insufficient_quota', re.I)
     greys = {}
-    for run in counted(runs):
-        if not str(run.get('displayTitle', '')).startswith(E2E_PR_TITLE):
+    for job in _red_e2e_jobs(runs, jobs, RED):
+        if job.get('name') in REPORT_JOBS:
             continue
-        for job in jobs.get(run.get('databaseId')) or []:
-            if job.get('status') != 'completed' or job.get('conclusion') not in RED or job.get('name') in REPORT_JOBS:
-                continue
-            try:
-                annotations = annotations_of(job['id'])
-                if (not job.get('steps') and not job.get('runner_name') and
-                        any('not acquired by Runner' in a.get('message', '') for a in annotations)):
-                    greys[job['id']] = 'runner'
-                    continue
-                log = log_of(job['id'])
-                failures = marks(log)
-                failed_steps = [s for s in job.get('steps') or [] if s.get('conclusion') in RED]
-                named_errors = [a.get('message', '') for a in annotations if a.get('annotation_level') == 'failure' and ' · ' in a.get('title', '')]
-                if (failures and all(credit.search(line) and 'stub no-credit on purpose' not in line for line in failures)
-                        and all(credit.search(text) for text in named_errors)
-                        and all('suite' in s.get('name', '').lower() for s in failed_steps)):
-                    greys[job['id']] = 'ai-credit'
-                    continue
-                if failures or not failed_steps:
-                    continue
-                # An npm lockfile/script error is this diff's failure. Only a transport error during installation is health.
-                install = re.compile(r'install|npm ci|playwright.*browser', re.I)
-                transport = re.compile(r'(?:npm (?:error|ERR!).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b|'
-                                       r'(?:download|fetch).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b)', re.I)
-                def failed_install_download(step):
-                    # Only this failed step's lines count: a recovered download in an earlier step explains no later failure.
-                    if not install.search(step.get('name', '')) or not step.get('started_at') or not step.get('completed_at'):
-                        return False
-                    start, end = _at(step['started_at']).timestamp(), _at(step['completed_at']).timestamp() + 1
-                    lines = []
-                    for line in log.splitlines():
-                        stamp = re.match(r'^(\d{4}-\d\d-\d\dT[\d:.]+Z) ', line)
-                        if stamp and start <= _at(stamp[1]).timestamp() < end:
-                            lines.append(line)
-                    return bool(transport.search('\n'.join(lines)))
-                if all(failed_install_download(s) for s in failed_steps):
-                    greys[job['id']] = 'install'
-            except Exception as error:
-                print(f"health of job {job['id']} not read ({type(error).__name__}: {error}): stays red")
+        try:
+            cause = _health_cause(job, annotations_of, log_of)
+        except Exception as error:
+            print(f"health of job {job['id']} not read ({type(error).__name__}: {error}): stays red")
+            continue
+        if cause:
+            greys[job['id']] = cause
     return greys
 
 

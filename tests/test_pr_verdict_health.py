@@ -52,6 +52,16 @@ class HealthGreys(unittest.TestCase):
         job = {**record['job'], 'steps': [{'name': 'Test', 'conclusion': 'failure'}]}
         self.assertEqual(self.grey(job, record['annotations']), {})
 
+    def test_the_runners_own_credit_refusal_note_is_health_but_a_bare_400_and_a_stub_are_not(self):
+        # The note text is pinned by desktop/e2e/test/ai-refused.test.mjs (lib/ai-refused.mjs refusalNote); a change there fails that test first.
+        job = RECORDED['ai_mixed']['job']
+        credit = '✗ the first check: the AI refused (400) 4 times, first at 2026-10-17T10:29:15.000Z, spend limit or credit; the step then failed: listed: nothing'
+        bare = '✗ the first check: the AI refused (400) 3 times, first at 2026-10-17T10:29:15.000Z; the step then failed: listed: nothing'
+        stub = '✗ the first check: the AI refused (400) 2 times (the suite armed the stub no-credit on purpose: these refusals are by design, not the account\'s money or limit); the step then failed: x'
+        self.assertEqual(self.grey(job, [], credit), {job['id']: 'ai-credit'})
+        self.assertEqual(self.grey(job, [], bare), {})
+        self.assertEqual(self.grey(job, [], stub), {})
+
     def test_credit_errors_are_not_a_blanket_for_ai_assertions_or_deliberate_stubs(self):
         job = RECORDED['ai_mixed']['job']
         for text in ('score was 20, expected 80', 'the AI refused (400): the suite armed the stub no-credit on purpose'):

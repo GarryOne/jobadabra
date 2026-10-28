@@ -72,8 +72,11 @@ test('in CI the call goes to the API untouched', async () => {
 // the Claude key; E2E_JUDGE_FAMILY=claude sends them back (lib/engine.mjs judgeFamily).
 test('on Free AI the judges ask the relay with its own key; pinned to Claude they ask Anthropic as before', async () => {
   const original = globalThis.fetch, seen = [];
-  globalThis.fetch = async (url, init) => { seen.push({url, key: init.headers['x-api-key']}); return new Response(JSON.stringify({content: [], usage: {}}), {status: 200}); };
-  const relay = {CI: 'true', E2E_FREE_AI_URL: 'http://127.0.0.1:8787/api/ai', E2E_FREE_AI_KEY: 'JPF1.ci-e2e-x.t'};
+  globalThis.fetch = async (url, init) => {
+    if (/graphql/.test(String(url))) return new Response(JSON.stringify({data: {viewer: {accounts: [{aiInferenceAdaptiveGroups: [{sum: {totalNeurons: 5}}]}]}}}));   // the day's cap (lib/ai-cap.mjs): open
+    seen.push({url, key: init.headers['x-api-key']}); return new Response(JSON.stringify({content: [], usage: {}}), {status: 200});
+  };
+  const relay = {CI: 'true', CI_CF_ANALYTICS_TOKEN: 'an', CI_FREE_AI_CF_ACCOUNT_ID: 'acct', E2E_FREE_AI_URL: 'http://127.0.0.1:8787/api/ai', E2E_FREE_AI_KEY: 'JPF1.ci-e2e-x.t'};
   const ask = env => modelFetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'x-api-key': 'sk-ant-claude', 'content-type': 'application/json'}, body: '{}'}, {engine: () => 'api', env});
   try { await ask(relay); await ask({...relay, E2E_JUDGE_FAMILY: 'claude'}); } finally { globalThis.fetch = original; }
   assert.deepEqual(seen, [{url: 'http://127.0.0.1:8787/api/ai/v1/messages', key: 'JPF1.ci-e2e-x.t'}, {url: 'https://api.anthropic.com/v1/messages', key: 'sk-ant-claude'}]);

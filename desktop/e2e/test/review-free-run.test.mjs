@@ -19,6 +19,7 @@ async function fakes() {
   const server = http.createServer(async (req, res) => {
     let body = ''; for await (const chunk of req) body += chunk;
     res.writeHead(200, {'content-type': 'application/json'});
+    if (req.url === '/graphql') return res.end(JSON.stringify({data: {viewer: {accounts: [{aiInferenceAdaptiveGroups: [{sum: {totalNeurons: 5}}]}]}}}));   // the day's cap (lib/ai-cap.mjs): open
     if (req.url.includes('/ai/run/')) {
       const page = JSON.parse(body).messages[1].content.find(block => block.type === 'text').text.match(/Page: (\S+)/)[1];
       seen.free.push(page);
@@ -36,7 +37,7 @@ const shot = (colour = [40, 60, 200]) => png(320, 200, (x, y) => (x > 20 && x < 
 async function review(api, dir, {pictures = {}, env = {}} = {}) {
   const art = path.join(dir, `art-${Math.random().toString(36).slice(2)}`); fs.mkdirSync(art);
   for (const view of ['jobs', 'settings']) fs.writeFileSync(path.join(art, `ui-${view}.png`), pictures[view] || shot());
-  const {stdout} = await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_REVIEW_ENGINE: 'free', E2E_JUDGE_FAMILY: 'claude', CI_FREE_AI_CF_TOKEN: 'cf', CI_FREE_AI_CF_ACCOUNT_ID: 'acct',
+  const {stdout} = await run(process.execPath, [SCRIPT], {env: {...process.env, E2E_REVIEW_ENGINE: 'free', E2E_JUDGE_FAMILY: 'claude', CI_FREE_AI_CF_TOKEN: 'cf', CI_FREE_AI_CF_ACCOUNT_ID: 'acct', CI_CF_ANALYTICS_TOKEN: 'an', E2E_CAP_API_URL: `${api.url}/graphql`,
     E2E_REVIEW_FREE_URL: api.url, E2E_ANTHROPIC_KEY: 'k', E2E_ANTHROPIC_URL: api.url, E2E_ARTIFACTS: art, E2E_REVIEW_CACHE: path.join(dir, 'cache'), E2E_REVIEW_LESSONS: '0', ...env}});
   return {stdout, findings: JSON.parse(fs.readFileSync(path.join(art, 'ai-findings.json'), 'utf8')), usage: JSON.parse(fs.readFileSync(path.join(art, 'ai-review-usage.json'), 'utf8'))};
 }

@@ -8,7 +8,7 @@ import path from 'node:path';
 // 10,000 neurons a day are free, then $0.011 per 1,000: $1 over the free part is about 100,900 neurons, so the cap is 100,000 on the account's day.
 export const CAP_NEURONS = 100000;
 export const TTL_MS = 60000;
-const API = 'https://api.cloudflare.com/client/v4/graphql';
+const api = env => env.E2E_CAP_API_URL || 'https://api.cloudflare.com/client/v4/graphql';   // a test points this at a fake
 const QUERY = (account, day) => `query { viewer { accounts(filter: {accountTag: "${account}"}) { aiInferenceAdaptiveGroups(limit: 1, filter: {datetimeHour_geq: "${day}T00:00:00Z"}) { sum { totalNeurons } } } } }`;
 
 let seen = {at: 0, day: '', neurons: null};
@@ -31,7 +31,7 @@ export async function capReached({env = process.env, fetchImpl = fetch, now = Da
   let neurons = null;
   if (token && account) {
     try {
-      const answer = await fetchImpl(API, {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify({query: QUERY(account, day)}), signal: AbortSignal.timeout(15000)});
+      const answer = await fetchImpl(api(env), {method: 'POST', headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify({query: QUERY(account, day)}), signal: AbortSignal.timeout(15000)});
       const n = Number((await answer.json())?.data?.viewer?.accounts?.[0]?.aiInferenceAdaptiveGroups?.[0]?.sum?.totalNeurons);
       if (Number.isFinite(n)) neurons = n;
     } catch { /* unreadable below */ }

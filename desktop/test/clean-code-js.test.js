@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 const {check, baseCommit, COMPLEXITY_LIMIT} = await import('../../tools/clean-code-js.mjs');
 
 // A function with `n` nested ifs, each holding a statement (so they cannot be merged): cognitive complexity grows with each nesting level.
@@ -64,4 +65,21 @@ test('a checkout whose origin/main shares no history with HEAD measures from mai
   git('update-ref', 'refs/remotes/origin/main', 'HEAD');
   git('checkout', '-q', '--orphan', 'pr'); git('commit', '-q', '--allow-empty', '-m', 'unrelated');
   assert.equal(baseCommit(dir), 'origin/main');
+});
+
+test('a depth-1 checkout of a PR merge ref is measured from its first parent, even after main moved on', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-base-'));
+  const run = (cwd, ...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}).trim();
+  const src = path.join(tmp, 'src'), clone = path.join(tmp, 'clone');
+  fs.mkdirSync(src); fs.mkdirSync(clone);
+  run(src, 'init', '-q', '-b', 'main'); run(src, 'config', 'uploadpack.allowAnySHA1InWant', 'true');
+  run(src, 'commit', '-q', '--allow-empty', '-m', 'main one');
+  const mainWhenBuilt = run(src, 'rev-parse', 'HEAD');
+  run(src, 'checkout', '-q', '-b', 'pr'); fs.writeFileSync(path.join(src, 'a.js'), 'x\n'); run(src, 'add', 'a.js'); run(src, 'commit', '-q', '-m', 'pr work');
+  run(src, 'checkout', '-q', 'main'); run(src, 'merge', '-q', '--no-ff', '--no-edit', 'pr');
+  run(src, 'update-ref', 'refs/pull/1/merge', 'HEAD'); run(src, 'reset', '-q', '--hard', mainWhenBuilt);
+  run(src, 'commit', '-q', '--allow-empty', '-m', 'main two, after the merge ref was built');
+  run(clone, 'init', '-q'); run(clone, 'remote', 'add', 'origin', pathToFileURL(src).href);
+  run(clone, 'fetch', '-q', '--depth=1', 'origin', 'refs/pull/1/merge'); run(clone, 'checkout', '-q', 'FETCH_HEAD');
+  assert.equal(baseCommit(clone), mainWhenBuilt);
 });

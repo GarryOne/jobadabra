@@ -66,16 +66,21 @@ export function addedLines(diff) {
 }
 
 /**
- * The commit a change is measured from: the merge base with origin/main, else origin/main's tip (a shallow CI checkout of the PR's merge
- * commit has no common history, and there the tip is what the PR adds while main has not moved). Fetches main once when the ref is missing; null when it cannot.
- * Limit: if main moved after the merge ref was built (a re-run job), lines main changed since can count as added; update the branch and re-run.
+ * The commit a change is measured from: the merge base with origin/main. A shallow CI checkout of the PR's merge commit has no common history;
+ * there the base is the merge commit's first parent, which is main as it was when the merge ref was built (fetched if missing), so a job
+ * re-run after main moved still sees exactly what the PR adds. Fetches main once when the ref is missing; null when there is no base.
  */
 export function baseCommit(cwd = root) {
   // Why (28 Oct 2026, #2414): the desktop CI job checks out the PR with no origin/main ref, and `git merge-base` threw there.
-  const has = () => { try { gitIn(cwd, 'rev-parse', '--verify', '-q', 'origin/main'); return true; } catch { return false; } };
-  if (!has()) { try { gitIn(cwd, 'fetch', '-q', 'origin', 'main'); } catch { /* offline */ } }
-  if (!has()) return null;
-  try { return gitIn(cwd, 'merge-base', 'origin/main', 'HEAD').trim(); } catch { return 'origin/main'; }
+  const git = (...args) => gitIn(cwd, ...args).trim();
+  const ok = (...args) => { try { git(...args); return true; } catch { return false; } };
+  if (!ok('rev-parse', '--verify', '-q', 'origin/main')) ok('fetch', '-q', 'origin', 'main');   // offline: no base below
+  if (!ok('rev-parse', '--verify', '-q', 'origin/main')) return null;
+  try { return git('merge-base', 'origin/main', 'HEAD'); } catch { /* shallow: no shared history */ }
+  // A depth-1 clone hides the parents from rev-parse; the commit object still names them.
+  const parents = [...git('cat-file', '-p', 'HEAD').matchAll(/^parent (\w+)$/gm)].map(m => m[1]);
+  if (parents.length === 2 && (ok('cat-file', '-e', parents[0]) || ok('fetch', '-q', '--depth=1', 'origin', parents[0]))) return parents[0];
+  return 'origin/main';
 }
 
 async function main() {

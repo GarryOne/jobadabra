@@ -39,6 +39,18 @@ three places, one state: acting in any place updates all of them.
   in view. Hidden at zero.
 Every insight shows its evidence (what it saw, with links) and its action buttons. No new page.
 
+**Every call to action, not only the new insights, gathers in Focus and Jobs** (owner, 28 Oct 2026: "Focus and Jobs … should be
+the 2 screens where the user spends most of the time. So we should gather all the call-to-actions in these 2 screens"). One
+list of calls to action (one producer interface: id, home, topic `search | applying | profile | interviews`, strength,
+evidence, actions, state); Focus Suggestions renders all of them, the Jobs bar the `search` and `applying` ones, each home its
+own. Existing calls to action move onto it instead of being drawn by hand in one place:
+- Strategy → Suggestions rows (`pages/strategy-suggestions.js`): Explore related roles, Broaden / Expand locations, Loosen your
+  filters, Connect more sources, Employers hiring people like you, Browse sites manually, Re-score jobs.
+- The two drawers and the cover letter card (`pages/jobs-questions.js`, PR A): Fill your details · N missing, What we learned
+  · N to check, Cover letter.
+- Ready to send (`pages/focus-ready.js`): "N forms ready for you to submit" (time-bound: stays in Up next).
+A test loops over every producer and checks it appears on Focus and in its home (and on Jobs for `search` / `applying`).
+
 **Actions come to you** (Tune my strategy, Analyze my job search): both **leave the Actions page** (owner, 28 Oct 2026: "we can
 remove from the Actions … show it in Focus or Jobs only if the circumstances are met and make sense"). Each shows only when its
 trigger holds, in its home; the ⌘K palette keeps both as the one manual door (repo rule: every action is in ⌘K).

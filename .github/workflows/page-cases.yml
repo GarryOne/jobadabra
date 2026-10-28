@@ -136,6 +136,7 @@ jobs:
         shard: [1, 2]
     steps:
       - uses: actions/checkout@v5
+        with: {fetch-depth: 2}   # HEAD^1 (the base, on a pull_request run) for the changed-files step below
       - name: The PR paths list everything this workflow loads
         run: node tools/replay-files.mjs --check page-cases.yml
       - uses: actions/setup-node@v5
@@ -154,14 +155,12 @@ jobs:
       - name: The files this pull request changes (a slow case runs on it only if it touches that case's folder)
         id: changed
         if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
+        # Why (28 Oct 2026, #2367/#2364 went red on "API rate limit exceeded for installation"): the checkout is the merge commit, so its first parent is the base and
+        # the PR's files are one git diff away; a call to the API let the shared token budget decide a PR's red. The list is read BEFORE the block is opened: a failure
+        # stops the step with git's own message, not "Matching delimiter not found" (tests/test_page_cases_workflow.py plays both).
         run: |
-          {
-            echo 'files<<CHANGED_END'
-            gh api "repos/$GITHUB_REPOSITORY/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename'
-            echo 'CHANGED_END'
-          } >> "$GITHUB_OUTPUT"
+          files="$(git diff --name-only HEAD^1 HEAD)"
+          { echo 'files<<CHANGED_END'; echo "$files"; echo 'CHANGED_END'; } >> "$GITHUB_OUTPUT"
       - name: Replay this shard's recorded cases
         working-directory: desktop/e2e
         env:

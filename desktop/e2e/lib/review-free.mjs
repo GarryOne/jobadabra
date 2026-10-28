@@ -2,6 +2,8 @@
 // Claude): the same request lib/vision.mjs builds for Claude, asked of a Workers AI vision model over Cloudflare's REST API with CI's own token
 // (CI_FREE_AI_CF_TOKEN + CI_FREE_AI_CF_ACCOUNT_ID, never production's; docs/rules/why.md), answered in Claude's message shape so review-ui.mjs reads both alike.
 // Its cost comes from the answer's own token counts at Cloudflare's list price. Guarded by test/review-free.test.mjs.
+import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
+
 export const FREE_MODEL = process.env.E2E_REVIEW_FREE_MODEL || '@cf/meta/llama-4-scout-17b-16e-instruct';
 // USD per million tokens (Cloudflare Workers AI pricing, Oct 2026: neurons per million tokens x $0.011 per 1000 neurons).
 export const FREE_PRICES = {'@cf/meta/llama-4-scout-17b-16e-instruct': {input: 0.27, output: 0.85}, '@cf/mistralai/mistral-small-3.1-24b-instruct': {input: 0.351, output: 0.555}};
@@ -25,6 +27,8 @@ export function freeCost(model, usage = {}) {
 // -> {ok: true, message: {content: [{type: 'text', text}], stop_reason, usage: {input_tokens, output_tokens}, usd}} or {ok: false, status, detail}.
 export async function askFree(request, {token = process.env.CI_FREE_AI_CF_TOKEN, account = process.env.CI_FREE_AI_CF_ACCOUNT_ID, model = FREE_MODEL, fetchImpl = fetch} = {}) {
   if (!token || !account) return {ok: false, status: 'no-token', detail: 'CI_FREE_AI_CF_TOKEN or CI_FREE_AI_CF_ACCOUNT_ID is not set'};
+  const cap = await capReached({env: {...process.env, CI_FREE_AI_CF_TOKEN: token, CI_FREE_AI_CF_ACCOUNT_ID: account}, fetchImpl});   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
+  if (cap.capped) { noteCapped(cap.neurons); return {ok: false, status: 'capped', detail: capMessage(cap.neurons)}; }
   const response = await fetchImpl(`${API}/accounts/${account}/ai/run/${model}`, {method: 'POST',
     headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(toWorkersAi(request)), signal: AbortSignal.timeout(120000)}).catch(error => error);
   if (response instanceof Error) return {ok: false, status: 0, detail: `no answer: ${response.message}`};

@@ -4,6 +4,7 @@ import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 import {judgeFamily, pickEngine} from './engine.mjs';
 import {count, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
@@ -73,6 +74,10 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
       return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});
     }
     keepMiss(key, `judge ${new URL(url).pathname}`, body, env);
+    if (judgeFamily(env) === 'free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
+      const cap = await capReached({env});
+      if (cap.capped) { noteCapped(cap.neurons, env); return new Response(JSON.stringify({type: 'error', error: {type: 'api_error', message: capMessage(cap.neurons, env)}}), {status: 503, headers: {'content-type': 'application/json'}}); }
+    }
     const target = judgeTarget(url, init, env);
     const response = await fetch(target.url, target.init);
     try {

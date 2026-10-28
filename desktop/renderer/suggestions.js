@@ -28,6 +28,16 @@ export const focusRows = (entries, items) => [...(entries || []).map(entry => ({
 /** The Jobs bar's entries: the search- and applying-related ones. */
 export const jobsEntries = entries => (entries || []).filter(entry => JOBS_TOPICS.includes(entry.topic));
 
+/**
+ * What the Jobs bar shows, from its four states (the one owner of that decision): kept paint = the line last drawn, until Focus is read; Focus unavailable = hidden
+ * (gated or failed, nothing to fill it); Focus read = its entries, hidden at zero. `rows` says whether the list below may be redrawn (only once Focus is read).
+ * Why (#2382, owner 28 Oct 2026: "I clicked on it. It vanished"): the toggle used to redraw from entries that were empty until Focus was read, so the kept bar was hidden.
+ */
+export function barView({focusRead, unavailable = false, kept = null, entries = [], open = false, line = ''}) {
+  if (!focusRead) return {shown: Boolean(kept?.shown) && !unavailable, rows: false, ...jobsBarWords(Number(kept?.count) || 0, open, kept?.line || '')};
+  return {shown: entries.length > 0, rows: true, ...jobsBarWords(entries.length, open, line)};
+}
+
 /** A home screen's own entries (Strategy's Tune row). */
 export const homeEntries = (entries, home) => (entries || []).filter(entry => entry.home === home);
 

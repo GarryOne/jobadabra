@@ -4,7 +4,7 @@
 // Spec: docs/superpowers/specs/2026-10-28-insights-with-actions-design.md (PR 1a). Guarded by test/suggestions.test.js.
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
-import {SHOWN, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries} from '../suggestions.js';
+import {SHOWN, barView, countWords, entryParts, focusRows, homeEntries, jobsEntries} from '../suggestions.js';
 import {drawerRows, foldedLine, questionEntries, withQuestions} from '../question-entries.js';
 import {NO_PLACE} from '../targets.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
@@ -114,7 +114,7 @@ export function entryRow(entry) {
 
 const shownPool = () => pool.filter(entry => !held.has(entry.key));
 // Focus and the Jobs bar: the drawers' rows first (the blocking one at the top), then the engine's. A Not now leaves them at once (held) and stays gone (Focus's `suggestions_hidden`).
-const rowsNow = () => drawerRows(questionEntries(questionsNow()), {held, hidden: hiddenKeys, known: Boolean(lastArgs)});
+const rowsNow = () => drawerRows(questionEntries(questionsNow()), {held, hidden: hiddenKeys});
 const withRows = () => withQuestions(shownPool(), rowsNow());
 let lastArgs = null;
 let questionsAsked = false;
@@ -145,28 +145,26 @@ function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, hidden:
 // The folded line: the drawers' rows by name, the blocking one first, then how many search suggestions (question-entries.js foldedLine).
 const barLine = entries => foldedLine(entries.filter(entry => 'blocking' in entry), entries.filter(entry => !('blocking' in entry)).length);
 
-/** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries; hidden at zero. */
+/** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries; the rule is suggestions.js barView. */
+let focusAsked = false, focusUnavailable = false;
 export function renderJobsSuggestions() {
   const bar = $('jobs-suggestions');
   if (!bar) return;
   const entries = jobsEntries(withRows());
-  show(bar, entries.length > 0);
-  const words = jobsBarWords(entries.length, bar.open, barLine(entries));
-  $('jobs-suggestions-title').textContent = words.title;
-  $('jobs-suggestions-count').textContent = words.detail;
-  $('jobs-suggestions-list').replaceChildren(...entries.map(entryRow));
-  keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length, line: barLine(entries)});
+  const view = barView({focusRead: Boolean(lastArgs), unavailable: focusUnavailable, kept: keptBlock('jobs-suggestions'), entries, open: bar.open, line: barLine(entries)});
+  show(bar, view.shown);
+  $('jobs-suggestions-title').textContent = view.title;
+  $('jobs-suggestions-count').textContent = view.detail;
+  if (view.rows) {
+    $('jobs-suggestions-list').replaceChildren(...entries.map(entryRow));
+    keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length, line: barLine(entries)});
+  }
+  // Why (#2382): Focus is read only when its view opens (nav.js), so the bar asks once; if it cannot be read (gated store, failure) the kept bar goes.
+  if (!lastArgs && !focusAsked) { focusAsked = true; loadFocus().finally(() => { if (!lastArgs) { focusUnavailable = true; renderJobsSuggestions(); } }); }
 }
 
 /** The Jobs bar's first paint (pages/jobs.js init): folded, as last drawn, so the list below does not move when Focus is read (renderer/late-blocks.js). */
-export function paintJobsSuggestionsFirst() {
-  const kept = keptBlock('jobs-suggestions');
-  if (!kept?.shown) return;
-  const words = jobsBarWords(Number(kept.count) || 0, false, kept.line || '');
-  $('jobs-suggestions-title').textContent = words.title;
-  $('jobs-suggestions-count').textContent = words.detail;
-  show($('jobs-suggestions'), true);
-}
+export function paintJobsSuggestionsFirst() { renderJobsSuggestions(); }   // kept paint is barView's first state, so one path draws it
 
 /** Binds Show all and the Jobs bar's fold (once, at start-up). */
 export function initSuggestions() {

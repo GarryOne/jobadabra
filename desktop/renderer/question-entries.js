@@ -39,10 +39,11 @@ export function questionEntries({details = [], learned = [], letter = null, erro
 }
 
 /**
- * The rows a screen may draw: none until Focus has said which keys a Not now still hides (`known`), then without those and the ones answered here (`held`).
+ * The rows a screen may draw: without the keys a Not now still hides (`hidden`, Focus's) and the ones answered here (`held`). Only a screen that has read Focus calls it:
+ * the Jobs bar's barView (suggestions.js) is the one owner of "Focus read" (#2382; it replaces #2366's `known` flag).
  * Why (#2366, Gitar): the Jobs bar drew a row answered Not now on another Mac, or before a restart, until Focus was read.
  */
-export const drawerRows = (rows, {held, hidden, known}) => (known ? rows.filter(row => !held.has(row.key) && !hidden.has(row.key)) : []);
+export const drawerRows = (rows, {held, hidden}) => rows.filter(row => !held.has(row.key) && !hidden.has(row.key));
 
 /** The pool with the question rows on top (the blocking one first), without the keys answered Not now here: [rows..., entries...]. */
 export const withQuestions = (entries, rows, held = new Set()) => [...rows.filter(item => !held.has(item.key)), ...(entries || [])];

@@ -1,0 +1,435 @@
+{
+  "about": "Recorded public CI API fields; the AI job has mixed failures. The positive cap case replays only its cap annotation.",
+  "runner": {
+    "run": 40356330460,
+    "job": {
+      "id": 121690142946,
+      "name": "apply-2of2",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "runner_name": "",
+      "steps": []
+    },
+    "annotations": [
+      {
+        "title": "",
+        "message": "The job was not acquired by Runner of type hosted even after multiple attempts",
+        "annotation_level": "failure"
+      },
+      {
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "annotation_level": "notice"
+      },
+      {
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "annotation_level": "notice"
+      },
+      {
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "annotation_level": "notice"
+      }
+    ]
+  },
+  "ai_mixed": {
+    "run": 40768182743,
+    "job": {
+      "id": 123098177530,
+      "name": "employers",
+      "status": "completed",
+      "conclusion": "failure",
+      "runner_name": "GitHub Actions 1000077540",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-28T21:00:32Z",
+          "completed_at": "2026-10-28T21:00:34Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-28T21:00:34Z",
+          "completed_at": "2026-10-28T21:00:37Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-28T21:00:37Z",
+          "completed_at": "2026-10-28T21:00:39Z"
+        },
+        {
+          "name": "Run actions/setup-node@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-28T21:00:39Z",
+          "completed_at": "2026-10-28T21:00:39Z"
+        },
+        {
+          "name": "Run actions/setup-python@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-28T21:00:39Z",
+          "completed_at": "2026-10-28T21:00:39Z"
+        },
+        {
+          "name": "The Free AI relay from this workflow's own commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-28T21:00:39Z",
+          "completed_at": "2026-10-28T21:00:42Z"
+        },
+        {
+          "name": "Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-28T21:00:42Z",
+          "completed_at": "2026-10-28T21:00:52Z"
+        },
+        {
+          "name": "Record which commit this run tested (ui-findings.yml names it in every issue)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-28T21:00:52Z",
+          "completed_at": "2026-10-28T21:00:52Z"
+        },
+        {
+          "name": "Install the app",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-28T21:00:52Z",
+          "completed_at": "2026-10-28T21:00:59Z"
+        },
+        {
+          "name": "Install the tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-28T21:00:59Z",
+          "completed_at": "2026-10-28T21:00:59Z"
+        },
+        {
+          "name": "Chromium for the suites that use a browser (the real extension, the extension's page code)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-28T21:00:59Z",
+          "completed_at": "2026-10-28T21:00:59Z"
+        },
+        {
+          "name": "Python packages the engine needs",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-28T21:00:59Z",
+          "completed_at": "2026-10-28T21:01:10Z"
+        },
+        {
+          "name": "A virtual display and Electron's libraries (Linux only)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-28T21:01:10Z",
+          "completed_at": "2026-10-28T21:01:15Z"
+        },
+        {
+          "name": "Write the mutant into the app (mutation test only)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 14,
+          "started_at": "2026-10-28T21:01:15Z",
+          "completed_at": "2026-10-28T21:01:15Z"
+        },
+        {
+          "name": "Earlier AI answers (replayed instead of paid again; lib/ai-meter.mjs)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-28T21:01:15Z",
+          "completed_at": "2026-10-28T21:01:16Z"
+        },
+        {
+          "name": "The merged PR's own AI answers (after a merge)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 16,
+          "started_at": "2026-10-28T21:01:16Z",
+          "completed_at": "2026-10-28T21:01:16Z"
+        },
+        {
+          "name": "The score-steadiness history of the night's live quality runs (lib/quality-rate.mjs)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 17,
+          "started_at": "2026-10-28T21:01:16Z",
+          "completed_at": "2026-10-28T21:01:16Z"
+        },
+        {
+          "name": "The App token for the lock (a re-run attempt's workflow token cannot create refs)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-28T21:01:16Z",
+          "completed_at": "2026-10-28T21:01:17Z"
+        },
+        {
+          "name": "Take the suite's lock (only a suite on the real Notion workspace; waits, never dropped)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-10-28T21:01:17Z",
+          "completed_at": "2026-10-28T21:01:17Z"
+        },
+        {
+          "name": "Fresh AI answers for quality once a day (the night's first main check)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 20,
+          "started_at": "2026-10-28T21:01:17Z",
+          "completed_at": "2026-10-28T21:01:17Z"
+        },
+        {
+          "name": "Run the employers suite (first try)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-28T21:01:17Z",
+          "completed_at": "2026-10-28T21:03:01Z"
+        },
+        {
+          "name": "First try failed: the employers suite once more, to tell flaky from real",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 22,
+          "started_at": "2026-10-28T21:03:01Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "What the suite spent on Free AI (the relay's own meter)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "Report what the suite paid for AI to /ai-cost (the app under test and the judges)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "Keep the AI answers for the next run",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "Run actions/cache/save@v5",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 26,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "Keep the score-steadiness history, red or green (the night's live quality run on main)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 27,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "Hand this PR's green AI answers to main's run after the merge (desktop/e2e/pr-answers.mjs)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 28,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:31Z"
+        },
+        {
+          "name": "The suite's part of the HTML report",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 29,
+          "started_at": "2026-10-28T21:04:31Z",
+          "completed_at": "2026-10-28T21:04:34Z"
+        },
+        {
+          "name": "Steps and trace for /admin/e2e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 30,
+          "started_at": "2026-10-28T21:04:34Z",
+          "completed_at": "2026-10-28T21:04:37Z"
+        },
+        {
+          "name": "Which app lines the suite ran (the code \u2192 suite map)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-10-28T21:04:37Z",
+          "completed_at": "2026-10-28T21:04:38Z"
+        },
+        {
+          "name": "Screenshots and timings",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 32,
+          "started_at": "2026-10-28T21:04:38Z",
+          "completed_at": "2026-10-28T21:04:41Z"
+        },
+        {
+          "name": "The second try's screenshots and logs",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 33,
+          "started_at": "2026-10-28T21:04:41Z",
+          "completed_at": "2026-10-28T21:04:44Z"
+        },
+        {
+          "name": "The App token to give the lock back (the first one may have expired)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 34,
+          "started_at": "2026-10-28T21:04:44Z",
+          "completed_at": "2026-10-28T21:04:45Z"
+        },
+        {
+          "name": "Give the suite's lock back",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 35,
+          "started_at": "2026-10-28T21:04:45Z",
+          "completed_at": "2026-10-28T21:04:45Z"
+        },
+        {
+          "name": "Write the PR's verdict",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 36,
+          "started_at": "2026-10-28T21:04:45Z",
+          "completed_at": "2026-10-28T21:04:49Z"
+        },
+        {
+          "name": "Post The App token to give the lock back (the first one may have expired)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 65,
+          "started_at": "2026-10-28T21:04:49Z",
+          "completed_at": "2026-10-28T21:04:49Z"
+        },
+        {
+          "name": "Post The App token for the lock (a re-run attempt's workflow token cannot create refs)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 66,
+          "started_at": "2026-10-28T21:04:49Z",
+          "completed_at": "2026-10-28T21:04:50Z"
+        },
+        {
+          "name": "Post Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 67,
+          "started_at": "2026-10-28T21:04:50Z",
+          "completed_at": "2026-10-28T21:04:50Z"
+        },
+        {
+          "name": "Post The Free AI relay from this workflow's own commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 68,
+          "started_at": "2026-10-28T21:04:50Z",
+          "completed_at": "2026-10-28T21:04:51Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@v6",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 69,
+          "started_at": "2026-10-28T21:04:51Z",
+          "completed_at": "2026-10-28T21:04:51Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v5",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 70,
+          "started_at": "2026-10-28T21:04:51Z",
+          "completed_at": "2026-10-28T21:04:51Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 71,
+          "started_at": "2026-10-28T21:04:51Z",
+          "completed_at": "2026-10-28T21:04:51Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 72,
+          "started_at": "2026-10-28T21:04:51Z",
+          "completed_at": "2026-10-28T21:04:51Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 73,
+          "started_at": "2026-10-28T21:04:51Z",
+          "completed_at": "2026-10-28T21:04:51Z"
+        }
+      ]
+    },
+    "annotations": [
+      {
+        "title": "",
+        "message": "Process completed with exit code 1.",
+        "annotation_level": "failure"
+      },
+      {
+        "title": "employers \u00b7 each candidate ends in the right status, and only genuinely useful boards become sources",
+        "message": "E2E Nimbus: status low, expected found; E2E Orbit: status low, expected found; registered sources are [], expected [E2E Nimbus,E2E Orbit]",
+        "annotation_level": "failure"
+      },
+      {
+        "title": "",
+        "message": "Process completed with exit code 1.",
+        "annotation_level": "failure"
+      },
+      {
+        "title": "First try failed",
+        "message": "The employers suite failed its first try; the next step runs it once more and decides",
+        "annotation_level": "failure"
+      },
+      {
+        "title": "employers \u00b7 a Sonnet judge finds each added employer sensible for the candidate",
+        "message": "the judge request was rejected (503): ai-capped: the account's neuron count is unreadable here (CI_CF_ANALYTICS_TOKEN missing or not Account Analytics: Read), so the $1/day cap fails closed; set that secret",
+        "annotation_level": "failure"
+      }
+    ]
+  }
+}

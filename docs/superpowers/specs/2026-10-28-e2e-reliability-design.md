@@ -177,7 +177,7 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 13 | Rule E on lane entries | 2 | ✅ #2398 |
 | 14 | Renderer class tests on push | 9 | 🔨 this PR |
 | 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | push-checks session |
-| 16 | Health greys: AI credit, runner, install | 2 | verdict session |
+| 16 | Health greys: AI credit, runner, install | 2 | 🔨 this PR |
 | 17 | At most 5 suites picked by the scorecard, and suspension on a red-then-green flip | 2 | verdict session |
 | 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
 | 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
@@ -213,7 +213,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] A PR runs each picked suite whole (G2). (proof: desktop/e2e/test/pr-suites-whole.test.mjs @4ed6376)
 - [x] Lane registry first cut (`quality`, `notion-real`): the verdict greys a tolerant or suspended suite, the registry read from the base branch (#2376). (proof: tests/test_pr_verdict_lanes.py @7eba931)
 - [x] Rule E on edits to `lanes.json`: a named input and why, or the push is blocked (`tools/lanes-check.mjs`, run by the push script and the PR gate). (proof: desktop/test/lanes-check.test.js)
-- [ ] Health greys: AI credit, runner, install.
+- [x] Health greys: AI credit, runner, install; the verdict names the reason (the install case is a reconstructed fixture: no recorded install red exists yet). (proof: tests/test_pr_verdict_health.py)
 - [ ] At most 5 suites picked by the scorecard.
 - [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue.
 

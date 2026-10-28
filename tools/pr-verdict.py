@@ -43,6 +43,8 @@ RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'
 # Why a red job shows grey, in the order the description tells them: reason -> (word, what it says). 'main': its failure lines are main's own (main_red_greys);
 # 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
 GREY_WORDS = {'main': ('grey', 'red on main too, not this PR'), 'tolerant': ('tolerant', 'AI, clock or outside: not a PR red'), 'suspended': ('suspended', 'flaky on main: not a PR red')}
+GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey', 'runner not acquired'),
+                   'install': ('grey', 'install download unavailable')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
 # The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
@@ -129,7 +131,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
-    greys: red jobs shown, never red: a set of ids (each failed as main's own red, main_red_greys) or {id: 'main' | 'tolerant' | 'suspended'} (lane_greys adds the last two)."""
+    greys: red jobs shown, never red: a set of ids (main's own red) or {id: reason in GREY_WORDS} (main, lane or health evidence)."""
     live = counted(runs)
     if not live:
         return None, '', live, [], None
@@ -283,6 +285,63 @@ def lane_greys(repo, runs, jobs, read_lanes=None):
         return {}
 
 
+def health_greys(repo, runs, jobs, annotations_of=None, log_of=None):
+    """Finished PR e2e jobs -> the existing grey map, with proven health causes only.
+    Invariants: a capacity cancellation needs zero steps; AI credit must explain EVERY failure mark;
+    install health needs a download transport error in a failed install step, before any suite assertion.
+    Missing evidence and mixed failures stay red. A failed read affects only that job.
+    Job: report health (e2e reliability design, PR 16/29).
+    """
+    annotations_of = annotations_of or (lambda jid: [a for page in json.loads(gh('api', '--paginate', '--slurp',
+        f'repos/{repo}/check-runs/{jid}/annotations?per_page=100')) for a in page])
+    log_of = log_of or (lambda jid: job_log(repo, jid))
+    credit = re.compile(r'ai-capped:|credit balance is too low|insufficient_quota', re.I)
+    greys = {}
+    for run in counted(runs):
+        if not str(run.get('displayTitle', '')).startswith(E2E_PR_TITLE):
+            continue
+        for job in jobs.get(run.get('databaseId')) or []:
+            if job.get('status') != 'completed' or job.get('conclusion') not in RED or job.get('name') in REPORT_JOBS:
+                continue
+            try:
+                annotations = annotations_of(job['id'])
+                if (not job.get('steps') and not job.get('runner_name') and
+                        any('not acquired by Runner' in a.get('message', '') for a in annotations)):
+                    greys[job['id']] = 'runner'
+                    continue
+                log = log_of(job['id'])
+                failures = marks(log)
+                failed_steps = [s for s in job.get('steps') or [] if s.get('conclusion') in RED]
+                named_errors = [a.get('message', '') for a in annotations if a.get('annotation_level') == 'failure' and ' · ' in a.get('title', '')]
+                if (failures and all(credit.search(line) and 'stub no-credit on purpose' not in line for line in failures)
+                        and all(credit.search(text) for text in named_errors)
+                        and all('suite' in s.get('name', '').lower() for s in failed_steps)):
+                    greys[job['id']] = 'ai-credit'
+                    continue
+                if failures or not failed_steps:
+                    continue
+                # An npm lockfile/script error is this diff's failure. Only a transport error during installation is health.
+                install = re.compile(r'install|npm ci|playwright.*browser', re.I)
+                transport = re.compile(r'(?:npm (?:error|ERR!).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b|'
+                                       r'(?:download|fetch).*\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND)\b)', re.I)
+                def failed_install_download(step):
+                    # Only this failed step's lines count: a recovered download in an earlier step explains no later failure.
+                    if not install.search(step.get('name', '')) or not step.get('started_at') or not step.get('completed_at'):
+                        return False
+                    start, end = _at(step['started_at']).timestamp(), _at(step['completed_at']).timestamp() + 1
+                    lines = []
+                    for line in log.splitlines():
+                        stamp = re.match(r'^(\d{4}-\d\d-\d\dT[\d:.]+Z) ', line)
+                        if stamp and start <= _at(stamp[1]).timestamp() < end:
+                            lines.append(line)
+                    return bool(transport.search('\n'.join(lines)))
+                if all(failed_install_download(s) for s in failed_steps):
+                    greys[job['id']] = 'install'
+            except Exception as error:
+                print(f"health of job {job['id']} not read ({type(error).__name__}: {error}): stays red")
+    return greys
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -309,7 +368,8 @@ def main():
         state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or ())
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
             ref = os.environ.get('GITHUB_SHA') or a.sha
-            greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs)}   # a lane names a suite whatever main did; its registry is the base branch's, never this PR's
+            greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
+                     **health_greys(a.repo, runs, jobs)}   # a health cause names this run; lanes still come from the base branch
             if greys:
                 state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):

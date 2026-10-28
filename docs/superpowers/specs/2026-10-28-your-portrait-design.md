@@ -1,6 +1,6 @@
 # Your portrait
 
-Status: draft for the owner's approval (28 Oct 2026). Sibling spec: [Insights with actions](2026-10-28-insights-with-actions-design.md)
+Status: approved by the owner (28 Oct 2026). Sibling spec: [Insights with actions](2026-10-28-insights-with-actions-design.md)
 (branch `insights-actions`). Depends on "What we learned about you" PR D, the one "about you" interface
 ([plan](../plans/2026-10-28-what-we-learned.md), branch `what-we-learned`).
 
@@ -78,6 +78,6 @@ One PR after What we learned PR D: writer + store + tab. UI preview and the owne
 
 ## Progress
 
-- [ ] Spec approved by the owner
-- [ ] Design sketch approved
+- [x] Spec approved by the owner (28 Oct 2026)
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/NbLpTtcz3XNSuR3gEBDjNw): "you", last tab, sensitive facts kept out, one update a day at most
 - [ ] PR · writer, store, tab

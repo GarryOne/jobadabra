@@ -29,6 +29,7 @@ on:
       - 'tests/fixtures/audience_cases.json'   # audience.test.js
       - 'tests/fixtures/swiss_cases.json'
       - 'tools/ship.sh'   # merge-baseline.test.js
+      - 'tools/clean-code-js.mjs'   # desktop/test/clean-code-js.test.js, and `npm run lint` runs it on the lines a PR adds
       - 'docs/flows/ladder.md'   # ladder-architecture.test.js checks the rung map against the code
       - 'config/notion_schema.json'
       - 'config/notion_template.json'

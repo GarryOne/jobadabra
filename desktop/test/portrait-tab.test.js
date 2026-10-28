@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
+import {install} from './tiny-dom.js';
+
+install();
+const {document} = globalThis;
+const {wireTabLinks} = await import('../renderer/pages/profile-save-bar.js');
 
 const renderer = path.join(import.meta.dirname, '../renderer');
 const read = file => fs.readFileSync(path.join(renderer, file), 'utf8');
@@ -33,4 +38,23 @@ test('two views of one text: Structured and Plain text; the plain letter draws n
   assert.doesNotMatch(letter, /tag\(|button|portrait-label|portrait-sources/);
   assert.match(source, /Settings → Connections → AI/);   // a first portrait with no AI says what to do (Gitar on #2334)
   assert.match(source, /if \(!status\.sections\.length\)/);
+});
+
+test('What we learned names the portrait in its lead and the link opens that Profile tab (PR B2b note, owner 28 Oct 2026)', () => {
+  const html = read('index.html');
+  const lead = html.match(/<h3>What we learned about you<\/h3><p class="muted small">([^<]*(?:<button[^>]*>[^<]*<\/button>[^<]*)*)<\/p>/)[1];
+  assert.match(lead, /<button type="button" class="link" data-open-profile-tab="portrait">Your portrait<\/button>/);
+  assert.ok(html.includes('data-profile-tab="portrait"'), 'the tab the link opens exists');
+});
+
+test('clicking the lead\'s "Your portrait" link opens the portrait tab', () => {
+  const link = document.createElement('button');
+  link.dataset.openProfileTab = 'portrait';   // the tiny DOM reads data-* from dataset
+  const root = document.createElement('div');
+  root.append(link);
+  const opened = [];
+  wireTabLinks(root, tab => opened.push(tab));
+  link.click();
+  assert.deepEqual(opened, ['portrait']);
+  assert.match(read('pages/profile.js'), /wireTabLinks\(document, profileTab\)/);   // the Profile page wires them to its own tab switch
 });

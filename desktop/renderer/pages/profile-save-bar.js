@@ -5,6 +5,8 @@ import {pageSaveBar} from '../save-bar.js';
 
 export const PROFILE_TABS = {cv: 'CV', details: 'Your details', experience: 'Experience', answers: 'What we learned', letter: 'Cover letter', portrait: 'Your portrait'};
 const tabButton = key => document.querySelector(`[data-profile-tab="${key}"]`);
+/** Makes every `[data-open-profile-tab=<tab>]` link under root open that Profile tab through open(tab) (a card's lead naming another tab). */
+export const wireTabLinks = (root, open) => root.querySelectorAll('[data-open-profile-tab]').forEach(link => link.addEventListener('click', () => open(link.dataset.openProfileTab)));
 let bar = null;
 export function profileBar() {
   bar ||= pageSaveBar({host: document.getElementById('profile-dock') || document.querySelector('[data-settings-page="profile"]'), tabs: PROFILE_TABS, tabButton, openTab: key => tabButton(key)?.click(),

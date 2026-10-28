@@ -1178,10 +1178,10 @@
             <div id="portrait-body"></div>
           </div>
           <div class="setting panel roomy" id="setting-answers" data-profile-panel="answers" hidden>
-            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job; each answer shows the forms it came from, and salary starts from your Strategy minimum. Confirm or change any answer.</p></div></div>
+            <div class="panel-top"><div class="summary-head card-head"><span class="ui-tile tone-teal"><i data-icon="file"></i></span><div class="card-words"><h3>What we learned about you</h3><p class="muted small">What your form fills taught us about you: your situation, preferences and views. Forms reuse them on any job; each answer shows the forms it came from, and salary starts from your Strategy minimum. Confirm or change any answer. Everything we know about you is in <button type="button" class="link" data-open-profile-tab="portrait">Your portrait</button>.</p></div></div>
               <div class="panel-actions"><button class="secondary with-icon" id="answers-add"><i data-icon="plus"></i>Add answer</button>
                 <button class="secondary ui-more" id="answers-review" data-notion-only title="More actions" aria-label="More actions" aria-haspopup="menu"><i data-icon="more"></i></button></div></div>
-            <!-- Why (PR B2b, owner 28 Oct 2026): learnings come from form fills (and the salary seed from Strategy), so the lead names where each came from (one lead line: test/roomy-cards.test.js). TODO(AI): link "Your portrait" in the lead once that Profile tab ships (spec 2026-10-28-your-portrait-design.md) (28 Oct 2026) -->
+            <!-- Why (PR B2b, owner 28 Oct 2026): learnings come from form fills (and the salary seed from Strategy), so the lead names where each came from (one lead line: test/roomy-cards.test.js). the lead's "Your portrait" opens that Profile tab (PR #2334 built it; spec 2026-10-28-your-portrait-design.md; handler in pages/profile.js) -->
             <div class="outline-body" id="answers-body"></div>
           </div>
           <!-- One sticky dock at the bottom: the fold bar, then the page save bar (pages/profile-save-bar.js puts it here), so neither covers the other. -->

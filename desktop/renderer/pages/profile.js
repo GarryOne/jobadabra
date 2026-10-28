@@ -14,6 +14,7 @@ import {startOfficeProgress} from './office-progress.js';
 import {loadLetterStyle} from './letter-style.js';
 import {initLetter, loadLetter} from './base-letter.js';
 import {loadPortrait} from './portrait.js';
+import {wireTabLinks} from './profile-save-bar.js';
 import {moreButton, openMenu} from '../components.js';
 import {cvCheckAction, lastCheck, showCvCheck} from '../cv-check-view.js';
 import {documentFacts} from '../cv-check-model.js';
@@ -190,6 +191,7 @@ export function showContact() {
 export async function init() {
   initLetter({openAiSettings: () => openSetting('ai')});
   document.querySelectorAll('[data-profile-tab]').forEach(tab => tab.addEventListener('click', () => profileTab(tab.dataset.profileTab)));
+  wireTabLinks(document, profileTab);
   initExperience();
   startOfficeProgress();   // the LibreOffice download for a Word CV, under the CV card (office-progress.js)
   mountProfileMenu($('profile-more'), profileTab);   // Fill from my CV and View source in Notion, quiet in the header (profile-menu.js)

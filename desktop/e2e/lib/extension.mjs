@@ -152,12 +152,15 @@ export const readForm = page => page.evaluate(() => Object.fromEntries([...docum
 // Written by the app's hand-off fill only (background.js handOff): a fill pressed on the panel leaves the last hand-off's state, so wait on readPanel's `filling` for that one.
 // -> null (nothing written yet), the state object, or {state: 'unreadable', raw|error, at, closed?}: a mark that is not JSON (the fill's card id, flow.js) or a read that threw.
 // Why (beta 40748263936, 28 Oct 2026, owner's blocked Windows release): "state: null" stood for a wrong tab (26 Oct), a card id left over and a read that threw, and every
-// caller's `.catch(() => null)` hid the third; an unreadable state matches no wait (`state?.state === 'done'`), so the waits behave as before and only the note names it.
+// caller's `.catch(() => null)` hid the third. A wait that compares to a name (`state?.state === 'done'`) is unchanged by it; a wait that only asks "is there a state" reads fillStateOf.
 export const fillState = page => page.evaluate(() => {
   const raw = document.documentElement?.dataset.jobpilottoFill, at = document.URL.split('#')[0].slice(0, 100);
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return {state: 'unreadable', raw: raw.slice(0, 80), at}; }
 }).catch(error => ({state: 'unreadable', error: String(error?.message || error).split('\n')[0].slice(0, 160), at: String(page.url?.() || '').split('#')[0].slice(0, 100), closed: !!page.isClosed?.()}));
+// fillState for a wait that asks only "has the page written a state yet": a mark that is not a state, or a read that failed, is nothing written, as it was before `unreadable` existed.
+// Why (Gitar on #2378, 28 Oct 2026): `unreadable` is truthy, and the page cases' quiet window (page-replay.mjs watchWindow) ended on the extension's card id.
+export const fillStateOf = page => fillState(page).then(state => (state?.state === 'unreadable' ? null : state));
 // A fill state for a step's failure note: a fill still running when the step's wait ran out says so in timing words ("did not finish within"), which gate G5 reads as
 // timing (lib/flaky-proof.mjs); any other state is shown as it is. 26 Oct 2026, beta 40275152602: the one-page fill was done 2 s after its 90 s wait and was called a wrong value.
 export const fillNote = (state, seconds) => (state?.state === 'running' ? `the fill did not finish within ${seconds} s (still running)` : `state: ${JSON.stringify(state)}`);

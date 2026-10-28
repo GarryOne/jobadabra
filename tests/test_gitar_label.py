@@ -18,7 +18,7 @@ class GitarLabelTest(unittest.TestCase):
         # 28 Oct 2026, owner's PR list: #2400 showed a red ✗ from a label run that a Gitar comment's run cancelled on the same head (cancel-in-progress).
         # Every run reads the live state, so overlapping runs agree; a cancelled one is drawn as a failed check.
         flow = (ROOT / '.github/workflows/gitar-label.yml').read_text()
-        self.assertNotIn('cancel-in-progress: true', flow)
+        self.assertNotIn('concurrency:', flow, 'no group on the workflow or the label job: a group cancels a run, and the script converges instead')
 
 if __name__ == '__main__':
     unittest.main()

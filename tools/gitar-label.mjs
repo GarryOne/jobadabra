@@ -54,17 +54,34 @@ export function wantedLabels({verdict, workingSince, headTime}) {
 const ALL = [...Object.values(LABELS), WAITING, WORKING];
 const ensure = (repo, l) => gh('label', 'create', l.name, '--color', l.color, '--description', l.description, '--force', '-R', repo);
 
+/** Adds and removes labels until the PR holds exactly `wanted`; -> how many it changed. */
 function setLabels(repo, pr, wanted, have) {
+  let changed = 0;
   for (const l of ALL) {
-    if (wanted.includes(l.name) && !have.includes(l.name)) { ensure(repo, l); gh('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo); }
-    else if (!wanted.includes(l.name) && have.includes(l.name)) gh('pr', 'edit', String(pr), '--remove-label', l.name, '-R', repo);
+    if (wanted.includes(l.name) && !have.includes(l.name)) { ensure(repo, l); gh('pr', 'edit', String(pr), '--add-label', l.name, '-R', repo); changed++; }
+    else if (!wanted.includes(l.name) && have.includes(l.name)) { gh('pr', 'edit', String(pr), '--remove-label', l.name, '-R', repo); changed++; }
   }
+  return changed;
+}
+
+/** Runs `once` until a fresh read wants no change (at most `max` rounds); -> the rounds run.
+ * Why (#2404, Gitar): label runs overlap since no run is cancelled; a run that read a stale verdict and wrote last would leave a stale label. Re-reading
+ * after each write makes the last run to finish write the current state. */
+export function converge(once, max = 3) {
+  let rounds = 0;
+  while (rounds < max) { rounds++; if (!once()) break; }
+  return rounds;
 }
 
 function main(pr) {
+  converge(() => syncOnce(pr));
+}
+
+/** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
+function syncOnce(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   const info = JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`));
-  if (info.state !== 'open') return console.log(`gitar-label: #${pr} is ${info.state}, left as it is`);
+  if (info.state !== 'open') { console.log(`gitar-label: #${pr} is ${info.state}, left as it is`); return false; }
   const reviews = pages(`repos/${repo}/issues/${pr}/comments`).filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
   const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
   const head = headTime(repo, info.head.sha);
@@ -72,8 +89,9 @@ function main(pr) {
   const have = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
   const workingSince = have.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
   const wanted = wantedLabels({verdict, workingSince, headTime: head});
-  setLabels(repo, pr, wanted, have);
+  const changed = setLabels(repo, pr, wanted, have);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
+  return changed > 0;
 }
 
 function markWorking(pr) {

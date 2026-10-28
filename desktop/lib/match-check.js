@@ -67,6 +67,8 @@ export function guard(result, text, bank = '') {
   return {...result, musts, corrected};
 }
 
+/** Compares the CV with a posting through the AI, then checks its claims against the CV's words (guard). Takes the job, the CV, the Profile text and bank
+ *  (the Experience bank's words, lib/experience.js knownText); returns the answer plus its price in usd. Throws when the AI declines or answers badly. */
 export async function check(storage, apiKey, {job, cv, profile = '', client = null, bank = ''}) {
   const anthropic = client || anthropicApi(apiKey);
   const response = await anthropic.messages.create({

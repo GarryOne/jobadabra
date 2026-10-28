@@ -40,6 +40,9 @@ STEP = "Write the PR's verdict"   # the last step of every PR job (tests/test_pr
 # e2e's "HTML report" queued for a runner (owner, 26 Oct 2026: "again, why I cannot merge this PR?").
 REPORT_JOBS = {'HTML report', 'Windows HTML report', 'AI review of the screenshots'}   # never decide a PR (page-cases' report does: its fill time vs main; it gets the verdict step). The review: after the suites, on main and release runs only (.github/actions/e2e-review)
 RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required', 'stale'}
+# Why a red job shows grey, in the order the description tells them: reason -> (word, what it says). 'main': its failure lines are main's own (main_red_greys);
+# 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
+GREY_WORDS = {'main': ('grey', 'red on main too, not this PR'), 'tolerant': ('tolerant', 'AI, clock or outside: not a PR red'), 'suspended': ('suspended', 'flaky on main: not a PR red')}
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
 # The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
@@ -126,7 +129,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
-    greys: ids of red jobs that failed as main's own red (main_red_greys): shown, never red."""
+    greys: red jobs shown, never red: a set of ids (each failed as main's own red, main_red_greys) or {id: 'main' | 'tolerant' | 'suspended'} (lane_greys adds the last two)."""
     live = counted(runs)
     if not live:
         return None, '', live, [], None
@@ -140,7 +143,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
             elif r.get('conclusion') in RED: red.append(r)
             continue
         states = [(job, 'grey' if job.get('id') in greys else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS]
-        grey += [job['name'] for job, state in states if state == 'grey']
+        grey += [(job['name'], greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
             red.append(r); red_jobs[r.get('databaseId')] = [job['name'] for job, state in states if state in RED]
@@ -164,7 +167,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     took = f'{minutes:.1f} min' if ran is None else f'{ran:.1f} min running + {max(0.0, minutes - ran):.1f} min waiting for runners'
     if (minutes if ran is None else ran) > BUDGET_MIN and ci_change(files) and not any(re.search(r'(?m)^CI-budget: \S', m or '') for m in messages):
         return 'failure', f'checks ran {took}, over the {BUDGET_MIN}-min budget for a CI change (or "CI-budget: <why>")'[:140], live, finishing, None
-    told = f'grey: {short(grey)} (red on main too, not this PR); ' if grey else ''
+    told = ''.join(f'{word}: {short(name for name, why in grey if why == reason)} ({said}); ' for reason, (word, said) in GREY_WORDS.items() if any(why == reason for _, why in grey))
     return 'success', f'{told}{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
 
 
@@ -252,6 +255,27 @@ def main_red_greys(repo, runs, jobs, ref='', read_main=None, log_of=None):
         return set()
 
 
+def suite_of(job_name):
+    """`quality-1of2` -> `quality`: a sharded suite is one suite. The same rule as tools/main_e2e_state.suite_of, copied because this file runs alone in CI (a test keeps them equal)."""
+    return re.sub(r'-\d+of\d+$', '', job_name)
+
+
+def lane_greys(repo, runs, jobs, ref='', read_lanes=None):
+    """{job id: 'tolerant' | 'suspended'} for the PR e2e run's finished red suite jobs whose suite desktop/e2e/lanes.json (at `ref`) lists in that lane: shown grey, never red.
+    A suite not listed is backbone and stays red. Any read that fails, or a file that is not a registry, keeps every red red."""
+    reds = [job for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)
+            for job in jobs.get(r.get('databaseId')) or [] if job.get('status') == 'completed' and job.get('conclusion') == 'failure']
+    if not reds:
+        return {}
+    try:
+        read_lanes = read_lanes or (lambda: json.loads(gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/desktop/e2e/lanes.json?ref={ref}')))
+        listed = read_lanes()['suites']
+        return {job['id']: listed[suite_of(job['name'])]['lane'] for job in reds if (listed.get(suite_of(job['name'])) or {}).get('lane') in ('tolerant', 'suspended')}
+    except Exception as error:   # Why (28 Oct 2026, same rule as main_red_greys): the verdict is always written; a registry not read keeps every red red
+        print(f'lane registry not read ({type(error).__name__}: {error}): every red stays red')
+        return {}
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -277,7 +301,8 @@ def main():
         spans = job_spans(a.repo, runs) if ci_change(files) and not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run) else None
         state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or ())
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
-            greys = main_red_greys(a.repo, runs, jobs, ref=os.environ.get('GITHUB_SHA') or a.sha)
+            ref = os.environ.get('GITHUB_SHA') or a.sha
+            greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs, ref=ref)}   # a lane names a suite whatever main did
             if greys:
                 state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):

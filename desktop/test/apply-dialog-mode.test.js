@@ -164,3 +164,13 @@ test('a start that fails as a call (not a refusal) shows the reason without Elec
   assert.equal(result.error, 'Could not start applying: An object could not be cloned. Try again in a moment.');
   assert.doesNotMatch(result.error, /remote method|^Error/);
 });
+
+test('starting shows a strip along the dialog\'s top edge, never a message row with a spinner; success is a toast to Sessions and the dialog closes (owner screenshots, 28 Oct 2026)', () => {
+  const page = read('renderer/pages/jobs-apply.js');
+  assert.doesNotMatch(page, /'waiting'/, 'no spinner row while a batch starts');
+  assert.match(page, /\$\('apply-progress'\)\.hidden = false/);
+  assert.match(page, /\$\('apply-progress'\)\.hidden = true/);
+  assert.match(read('renderer/index.html'), /id="apply-progress"[^>]*hidden/, 'the strip is in the dialog, hidden until a batch starts');
+  assert.match(page, /if \(result\.ok\) \{ toastMessage\('Applying started', result\.message, \{view: 'sessions'\}, 'good'\); \$\('apply-dialog'\)\.close\(\); return; \}/);
+  assert.doesNotMatch(page, /result\.ok \? result\.message/, 'no green message row any more');
+});

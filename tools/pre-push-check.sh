@@ -187,16 +187,16 @@ fi
 if command -v node >/dev/null && [ -f "$repo/tools/lanes-check.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   lanes="$(cd "$repo" && timed "lane registry" node tools/lanes-check.mjs --base origin/main 2>&1)" || { echo "Push blocked: $lanes" >&2; exit 2; }
 fi
+# A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
+if command -v node >/dev/null && [ -f "$repo/tools/prompt-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || { echo "Push blocked: $promptcases" >&2; exit 2; }
+fi
 # The renderer class tests (they read every renderer and lib file) run when a push touches those files: a CI red caught in 0.4 s here.
 # Why (28 Oct 2026): 10 of the last 34 red desktop-test PR runs that named a file failed in one of these seven (desktop/test/renderer-class-push.test.js); the whole desktop suite on push is 108 s (rule H).
 class_tests="test/card-system.test.js test/no-question-mark.test.js test/text-fields.test.js test/solid-buttons.test.js test/roomy-cards.test.js test/mac-words.test.js test/design.test.js"
 if command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^desktop/(renderer|lib)/|^desktop/test/text-(buttons|fields)-allowed\.json$'; then
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || { echo "Push blocked: a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)" >&2; exit 2; }
-fi
-# A changed AI prompt brings the case it fixed into its fixed case set (tools/prompt-cases.json), or a commit says "Prompt-case: none <why>" (tools/prompt-cases.mjs; owner, 27 Oct 2026).
-if command -v node >/dev/null && [ -f "$repo/tools/prompt-cases.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
-  promptcases="$(cd "$repo" && timed "prompt cases" node tools/prompt-cases.mjs --base origin/main 2>&1)" || { echo "Push blocked: $promptcases" >&2; exit 2; }
 fi
 # A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then

@@ -11,8 +11,8 @@ import {log as appLog} from './log.js';
 
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
-const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',
-  submission_outcome_unknown: 'Jobadabra closed while this application was being sent. Check whether it went through, and do not send it again until you know.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  submission_outcome_unknown: 'Jobadabra closed while this application was being sent. Check whether it went through, and do not send it again until you know.'};
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 export {e2eFullAutomation};

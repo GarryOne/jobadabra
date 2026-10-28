@@ -930,6 +930,7 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
+      id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
       issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
@@ -967,6 +968,7 @@ jobs:
         with:
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed
@@ -1013,6 +1015,7 @@ jobs:
     permissions:
       contents: write   # the approval line (release-stable.sh when the soak is off)
       actions: write    # this run's artifacts, build.yml's verdict on the commit; release-stable.sh starts the Chrome Web Store publish
+      id-token: write   # GitHub's per-run token the Codex broker checks (the screenshot review, lib/broker-client.mjs)
       issues: write     # block-check.mjs reads the UI-loop issues; the release scripts rewrite the pinned Release channels issue
     concurrency:
       group: release-promote   # one writer of a release's notes at a time: both lanes edit the same body
@@ -1050,6 +1053,7 @@ jobs:
         with:
           lane: windows
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed

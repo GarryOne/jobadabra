@@ -14,5 +14,11 @@ class GitarLabelTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
 
+    def test_no_label_run_is_ever_cancelled(self):
+        # 28 Oct 2026, owner's PR list: #2400 showed a red ✗ from a label run that a Gitar comment's run cancelled on the same head (cancel-in-progress).
+        # Every run reads the live state, so overlapping runs agree; a cancelled one is drawn as a failed check.
+        flow = (ROOT / '.github/workflows/gitar-label.yml').read_text()
+        self.assertNotIn('cancel-in-progress: true', flow)
+
 if __name__ == '__main__':
     unittest.main()

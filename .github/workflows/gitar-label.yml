@@ -20,10 +20,8 @@ permissions:
 jobs:
   label:
     if: github.event_name != 'issue_comment' || (github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]')
-    # Job level, so a run that the `if` skips never cancels a real one (Gitar on web#216)
-    concurrency:
-      group: gitar-label-${{ github.event.pull_request.number || github.event.issue.number }}
-      cancel-in-progress: true
+    # Why (28 Oct 2026, owner's PR list: #2400 showed a red ✗ from a cancelled label run): no concurrency group. A cancelled run is drawn as a failed check in
+    # the PR list, and every run reads the live verdict, head and gray labels (tools/gitar-label.mjs), so two overlapping runs set the same label: nothing to cancel.
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

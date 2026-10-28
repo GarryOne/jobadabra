@@ -8,6 +8,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import * as reset from '../lib/reset.js';
 import * as startupMove from '../lib/startup-move.js';
+import {tar} from '../lib/tar.js';   // the system tar on Windows: a Git GNU tar there reads "D:\\..." as a host (#2347 first CI)
 
 test('an export started while the start-up move runs packs the folder as the move leaves it', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-startup-move-')), file = path.join(os.tmpdir(), `jp-startup-move-${process.pid}.tar.gz`);
@@ -17,7 +18,7 @@ test('an export started while the start-up move runs packs the folder as the mov
   startupMove.track(new Promise(resolve => setTimeout(() => { fs.rmSync(path.join(dir, 'profile.md')); over = true; resolve(); }, 400)));   // the move drops the local copy, then ends
   await reset.exportTo(dir, file, {version: 'test'});
   assert.equal(over, true, 'the export waited for the move');
-  const held = spawnSync('tar', ['-tzf', file], {encoding: 'utf8'}).stdout.split(/\r?\n/).map(name => name.replace(/^\.\//, ''));
+  const held = spawnSync(tar(), ['-tzf', file], {encoding: 'utf8'}).stdout.split(/\r?\n/).map(name => name.replace(/^\.\//, ''));
   assert.ok(held.includes('keep.txt'), 'the folder went in');
   assert.equal(held.includes('profile.md'), false, 'the archive matches the folder after the move: no file that was dropped under the pack');
   fs.rmSync(dir, {recursive: true, force: true}); fs.rmSync(file, {force: true});

@@ -77,6 +77,13 @@ export function makeOpenShim() {
   return {bin, spool, script};
 }
 
+/** Whether an app started with `env` opens pages into the stand-in's spool: the shim's `open` is first on PATH (and the Windows opener is set on Windows). */
+export function opensIntoSpool(env, platform = process.platform) {
+  const first = String(env.PATH || '').split(path.delimiter)[0];
+  if (!env.JOB_PILOTTO_E2E_OPEN_DIR || !fs.existsSync(path.join(first, 'open'))) return false;
+  return platform !== 'win32' || Boolean(env.JOB_PILOTTO_E2E_OPENER);
+}
+
 // E2E_BROWSER=msedge: the same suite in Microsoft Edge (preinstalled on the Windows runners) instead of Playwright's Chromium. Edge 153 loads the
 // unpacked extension with --load-extension (checked 5 Oct 2026, edge-check.yml).
 export const browserChannel = (env = process.env) => (env.E2E_BROWSER === 'msedge' ? {channel: 'msedge'} : {});

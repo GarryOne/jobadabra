@@ -199,7 +199,7 @@ class TheShapes(unittest.TestCase):
                          {'page-cases.yml'})
 
     def test_docs_and_tools_start_python_only(self):
-        self.assertEqual(self.started(['docs/HOW-IT-RUNS.md', 'CLAUDE.md']), {'tests-python.yml'})
+        self.assertEqual(self.started(['docs/ARCHITECTURE.md', 'CLAUDE.md']), {'tests-python.yml'})
         # a shell script starts the PR planner too, which runs the Windows check only for a script CI runs (lib/pr-suites.mjs windowsSmoke): not tools/ship.sh
         self.assertEqual(self.started(['tools/ship.sh']), {'tests-python.yml', 'pr-suites.yml', 'tests-desktop.yml'})   # desktop/test/merge-baseline.test.js reads it
 

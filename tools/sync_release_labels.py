@@ -65,7 +65,7 @@ def channels_body(releases, approved, repo=REPO, builds=3):
     newest = newer[:builds]
     nothing = f"none since {base_name(stable[0].get('name') or stable[0]['tagName'])}" if stable else 'none'
     out.append(f"| 🔨 **Newest builds** | {', '.join(link(r) for r in newest) if newest else nothing} | nobody: every push and nightly makes one; it becomes Beta only after the release gate approves it |")
-    out += ['', 'A build becomes **Beta** after the unit suites and every end-to-end suite pass on it with no real high-severity finding. It becomes **Stable** after three more green end-to-end runs over a day, no blocking finding, and (once there are testers) healthy beta use. See `docs/HOW-IT-RUNS.md`.',
+    out += ['', 'A build becomes **Beta** after the unit suites and every end-to-end suite pass on it with no real high-severity finding. It becomes **Stable** after three more green end-to-end runs over a day, no blocking finding, and (once there are testers) healthy beta use. See `docs/ARCHITECTURE.md`.',
             '', '<sub>Updated by `tools/sync_release_labels.py`. Do not edit by hand.</sub>']
     return '\n'.join(out)
 

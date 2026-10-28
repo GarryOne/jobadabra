@@ -1,6 +1,6 @@
 # Jobadabra — architecture
 
-Read this once at the start of a session. Then find the file the task names with `node desktop/scripts/codemap.mjs <words>`. Workflow detail, only if the task touches one: `docs/HOW-IT-RUNS.md`.
+Read this once at the start of a session. Then find the file the task names with `node desktop/scripts/codemap.mjs <words>`. Workflow detail, only if the task touches one: the header comment of its file in `.github/workflows/`.
 
 Jobadabra is a personal job-search system: it finds jobs, scores them, tracks them in Notion, and can fill application forms. It never clicks Submit.
 
@@ -85,7 +85,26 @@ The employer index is product data on the website, not user data. Nothing about 
 
 ## Product loops around the engine
 
-User runs and product runs are separate. The product side, described in `docs/HOW-IT-RUNS.md`, is a closed loop: apps send scrubbed telemetry and form-structure reports, those become GitHub issues, a daily job asks Claude for a tested fix on a branch, and the owner merges. A canary that stays healthy for 48 hours can become the stable desktop release.
+User runs and product runs are separate. The product side (below) is a closed loop: apps send scrubbed telemetry and form-structure reports, those become GitHub issues, a daily job asks Claude for a tested fix on a branch, and the owner merges. A canary that stays healthy for 48 hours can become the stable desktop release.
+
+## Loops and gates
+
+What runs on its own is in each workflow's header comment (`.github/workflows/`); there is no list to keep (owner, 28 Oct 2026: one session in 295 read it, the rest only added rows to satisfy a gate). How the loops connect:
+
+```mermaid
+flowchart LR
+  apps[Users' apps] -- scrubbed reports --> tel[/telemetry + /api/signals/]
+  apps -- failing controls --> prop[recipe proposer: private repo] -- recipes --> apps
+  apps -- failing fields --> triage[triage: private repo] --> issues[(private issues)]
+  issues -- owner fixes by hand or PR --> main[(main)]
+  main --> ci[build: tests] & desktop[desktop: pre-release] & site[site: deploy]
+  desktop --> canary[soak: e2e top-ups + 48 h beta use] --> stable[stable release] --> apps
+  tel & issues & main --> brain[product-brain: ONE action a day] -- owner taps --> plan[plan in Notion]
+```
+
+- Strategy is private (Notion: Product Compass, IP & Monetization). Prompts of the product brain and self-review live in `GarryOne/jobadabra-lab`.
+- The owner approves: every PR merge, a beta becoming stable, the product brain's one action a day, new AI spend. Nothing submits an application without Full automation turned on.
+- Website, /admin and their jobs run from the private `jobadabra-web` (`docs/rules/private-site.md`).
 
 ## Constraints that shape the design
 

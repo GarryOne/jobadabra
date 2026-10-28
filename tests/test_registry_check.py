@@ -42,9 +42,8 @@ class RegistryCheckTest(unittest.TestCase):
         (self.copy / '.github' / 'workflows' / 'brand-new.yml').write_text('name: CI · Brand new\non: workflow_dispatch\njobs: {}\n', encoding='utf-8')
         code, out = self.check()
         self.assertEqual(code, 1)
-        self.assertIn('brand-new.yml', out)
+        self.assertIn('Brand new', out)
         self.assertIn('CLASSIFIED', out)
-        self.assertIn('HOW-IT-RUNS.md', out)
 
     def test_the_pull_request_push_runs_it_before_it_stops(self):
         run = HOOK.index('tools/registry-check.py')

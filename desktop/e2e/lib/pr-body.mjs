@@ -66,7 +66,7 @@ export function prBody({number, labels = [], text = '', shot = '', files = [], a
     '',
     `Fixes #${number}`,
     '',
-    '<sub>Opened by the UI fixer for a finding seen in two runs or confirmed by a person. [How the loop works](../blob/main/docs/HOW-IT-RUNS.md)</sub>',
+    '<sub>Opened by the UI fixer for a finding seen in two runs or confirmed by a person. [How the loop works](../blob/main/docs/ARCHITECTURE.md)</sub>',
   ];
   return lines.join('\n');
 }

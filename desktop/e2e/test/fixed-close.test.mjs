@@ -28,7 +28,7 @@ test('a fix that changed only tests or docs is left for a verdict, never counted
   const cases = [
     ['#350: the quality judge step and its test', ['desktop/e2e/suites/quality.mjs', 'desktop/e2e/test/quality-judge-input.test.mjs'], ['needs-human']],
     ['#400: the calendar step only (the product fix was another commit)', ['desktop/e2e/suites/calendar.mjs'], ['needs-human']],
-    ['a test plus a doc', ['tests/test_x.py', 'docs/HOW-IT-RUNS.md', 'desktop/test/a.test.js'], ['needs-human']],
+    ['a test plus a doc', ['tests/test_x.py', 'docs/ARCHITECTURE.md', 'desktop/test/a.test.js'], ['needs-human']],
     ['#409: product code and its test', ['desktop/renderer/pages/core.js', 'desktop/test/message-plain-error.test.js'], ['confirmed', 'resolution:fixed']],
     ['the engine', ['src/stores/notion.py', 'tests/test_y.py'], ['confirmed', 'resolution:fixed']],
     ['files unknown: the old answer', undefined, ['confirmed', 'resolution:fixed']],

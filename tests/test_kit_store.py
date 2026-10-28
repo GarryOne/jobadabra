@@ -157,6 +157,14 @@ class KitOnNotionTests(unittest.TestCase):
         self.assertEqual(listed_kit_state([{'url': URL, 'stage': 'Kit ready', 'kit_inputs': before}], kit_inputs=today),
                          'earlier:profile', 'off Notion only the store\'s own reading counts')
 
+class TestSiteRulesRetired(unittest.TestCase):
+    def test_a_kit_drafts_from_the_standard_answers_only_never_the_old_form_knowledge(self):
+        """PR B1 (owner, 28 Oct 2026: "Retire now, no replay"): an old 🧠 Form knowledge page stays in the store, unread by kits."""
+        texts = {'answers': 'Driving license: B', 'knowledge': '[any · answer] Marital status: You entered this yourself → "Single"'}
+        stores = mock.Mock(texts=mock.Mock(get=texts.__getitem__))
+        self.assertEqual(kit.standard_answers(stores), 'Driving license: B')
+
+
 def listed_kit_state(listed, **kw):
     """The kit state desktop_jobs.jobs() gives the first of `listed` (Notion's rows), with no cached search results."""
     with mock.patch.object(desktop_jobs.digest, 'eligible_jobs', lambda db: ([], [])):

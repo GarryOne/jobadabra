@@ -111,7 +111,7 @@ export async function run(ctx) {
 
   await ctx.run('a saved view chip narrows the list: Saved shows the saved application only', async () => {
     await page.click('[data-mode="list"]');
-    await showFilter(page, 'saved');   // the step keeps its old name: the chip is now the Saved option of the Show menu
+    await showFilter(page, 'saved');   // the step keeps its old name: the chip is now the Show menu's Saved item
     const urls = await page.evaluate(() => [...document.querySelectorAll('#jobs-body .job-row')].map(row => row.dataset.url));
     if (urls.length !== 1 || urls[0] !== BOARD.saved) throw new Error(`the Saved view lists ${JSON.stringify(urls)}`);
     await showFilter(page, 'everything');   // off again: the next steps see the whole list

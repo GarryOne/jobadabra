@@ -3,7 +3,6 @@
 import * as cv from './cv.js';
 import {availableLetter} from './letter-availability.js';
 import fs from 'node:fs';
-import * as knowledge from './knowledge.js';
 import * as viewCache from './view-cache.js';
 import * as contactDetails from './contact.js';
 import {cvFallbackFor} from './contact-from-cv.js';
@@ -81,13 +80,6 @@ export async function me(storage, url = '') {
     general: {path: storage.path('cv.pdf'), name: settings.cvName || 'CV.pdf'}, url});
   const letter = availableLetter(storage, url);
   const coverLetterFile = letter.file, coverLetterText = letter.text, coverLetterStatus = letter.status;
-  // Learned notes that answer a field directly (kind answer/option), for the extension to use at fill time.
-  const notes = await kept(storage, 'knowledge', async () => {
-    const list = (await knowledge.notes(storage)).map(({block, ...note}) => note);
-    viewCache.remember(storage, 'knowledge', {notes: list});
-    return {notes: list};
-  }).catch(() => ({notes: []}));
-  const direct = (notes.notes || []).filter(n => n.value && ['answer', 'option'].includes(n.kind));
   const details = withCvFallback(storage, await contactOf(storage));
   // Logged only when Notion was actually read or failed: an answer from the kept copy is the normal case (no noise).
   if (!details.contactSource?.startsWith('kept')) log('extension', `details for ${(() => { try { return new URL(url).hostname; } catch { return 'a form'; } })()}: ${Object.keys(details.contact).length} contact fields from ${details.contactSource}`,
@@ -96,7 +88,7 @@ export async function me(storage, url = '') {
   // employers outside the owner's list, where a slot that uploads on choice would send the CV to their server). Never checked by a real install.
   if (withholdFiles(storage)) {
     log('extension', 'files withheld for this form: a twin test run (twin-no-files)', {cv: !!resume, coverLetter: !!coverLetterFile});
-    return {...details, resume: null, coverLetterFile: null, coverLetterText: '', coverLetterStatus: {...coverLetterStatus, ready: false, state: 'withheld', reason: 'Letters are withheld in this test run.'}, knowledge: direct, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};
+    return {...details, resume: null, coverLetterFile: null, coverLetterText: '', coverLetterStatus: {...coverLetterStatus, ready: false, state: 'withheld', reason: 'Letters are withheld in this test run.'}, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};
   }
-  return {...details, resume, coverLetterFile, coverLetterText, coverLetterStatus, knowledge: direct, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};   // lib/menu-choices.js: all of them; the extension keeps the form tab's site (the url here is the posting's)
+  return {...details, resume, coverLetterFile, coverLetterText, coverLetterStatus, menuChoices: choicesFor(storage), acceptConsents: storage.settings().acceptConsents !== false};   // lib/menu-choices.js: all of them; the extension keeps the form tab's site (the url here is the posting's)
 }

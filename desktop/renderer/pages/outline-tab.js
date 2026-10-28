@@ -9,7 +9,7 @@ import {keep, swr} from '../swr.js';
 import {pageSaveBar} from '../save-bar.js';
 import {inDraft, sink} from '../strategy-sink.js';
 import {changeFor, shown} from '../answers-model.js';
-import {input, labelled} from './website-rules.js';
+import {input, labelled} from './form-controls.js';
 
 const keyOf = change => (change.op === 'append' || change.op === 'insert' ? `${change.op}:${change.key}` : `${change.op}:${change.id}:${change.index ?? ''}`);
 

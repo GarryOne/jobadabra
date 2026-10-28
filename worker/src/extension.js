@@ -215,12 +215,7 @@ export async function answerContext(env, url) {
   const [profile, standard] = await Promise.all([
     env.PROFILE_TEXT ?? pageText(env, env.NOTION_PROFILE_PAGE_ID),
     env.ANSWERS_TEXT ?? (env.NOTION_ANSWERS_PAGE_ID ? pageText(env, env.NOTION_ANSWERS_PAGE_ID) : ''),
-  ]).then(async ([p, a]) => {
-    // What earlier fills learned about forms (🧠 Form knowledge), as extra standard answers.
-    // The desktop env's getters are promises: awaited here (an unawaited one printed "[object Promise]" into every prompt, 8-11 Oct 2026).
-    const known = (await env.KNOWLEDGE_TEXT) ?? (env.NOTION_KNOWLEDGE_PAGE ? await pageText(env, env.NOTION_KNOWLEDGE_PAGE).catch(() => '') : '');
-    return [p, known ? `${a}\n\n# Learned from earlier forms\n${known}` : a];
-  });
+  ]);   // Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): 🧠 Form knowledge is no longer appended; what you typed is in the standard answers
   // The strategy's search settings (roles, places, what the user aims for): a proposal should serve that, not just the CV.
   const search = String((await Promise.resolve(env.SEARCH_TEXT).catch(() => '')) || '').slice(0, 4000);
   const cvFacts = cvFactsBlock(await Promise.resolve(env.CV_FACTS_TEXT).catch(() => ''));   // from the imported CV, never imported by a fill

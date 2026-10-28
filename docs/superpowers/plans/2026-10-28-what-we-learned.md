@@ -13,6 +13,7 @@ comment that cites it is updated in the PR that splits the queue, quoting the 28
 | A · Two drawers | Drawer 1 = missing Your details facts only (ranked); drawer 2 = the rest; cover letter its own card; per-company and duplicate items gone; tab renamed | 1 (UI + list logic) | — |
 | B · Learnings | After each fill, the app concludes one Q&A per topic (state new / guessed / conflict), used at once; tab shows evidence + state chips; Confirm / Save change / Write the rule | 2 (store writes, AI call) | A |
 | C · Remember by Apply mode | "Remember" (on by default) where you answer; Full automation recap | 2 (extension, flow core) | B |
+| D · About you everywhere | Every writer (form filling, CV, cover letter, kit answers) gets all we know about you through one function | 2 (AI inputs) | B |
 
 Salary seeding from Strategy and the background-check split land in B (they are learnings). Notice period and eligibility per
 country are Your details facts already (#2322 owns eligibility).
@@ -58,7 +59,9 @@ Owner's yes before the UI commit.
   fills log at render time (no second copy).
 - Writer: extend `lib/learn.js` (after each fill): `reusable` verdicts (`lib/question-reuse.js`) grouped by topic → one Q&A per
   topic, merged into the page: same topic + same meaning → evidence only; same topic + different answer → `conflict`.
-  `widget` / `meaning` notes stay in Form knowledge (internal).
+  Local site rules are **retired** (owner, 28 Oct 2026: "Retire now, no replay"; they duplicate the shared meanings pack and
+  recipe library): stop writing site notes in `lib/learn.js`, stop reading them at fill time, remove the Form knowledge page
+  writer/reader; the "about you" part becomes learnings. Existing notes are left in the store, unread (no data deleted).
 - Prompt change → add cases to the prompt's case set and replay the whole set (fixed cases: travel ×3 wordings, contract
   conflict, salary per country, a per-company question that must not be learned).
 - Salary: first version seeded from Strategy's minimum per country. Background checks: willingness = learning; criminal-record
@@ -66,10 +69,66 @@ Owner's yes before the UI commit.
 - Migration: today's answered lines become confirmed learnings; lines that are Your details facts move there
   (`lib/answer-home.js`); nothing deleted.
 
+**PR B split (owner, 28 Oct 2026, sketch https://claude.ai/artifact/9Ha4eBaZbAiGePw1evZ6uV):**
+- **B1 · One place per thing:** retire the local site rules (writer, reader, served notes, Form knowledge page, Website rules
+  table, `job-answers.js save`) and move the cover letter style to `cover-letter/style.json` beside `letter.json` (owner: "Beside
+  the letter"); every letter writer reads it there; the old notes and the old style section stay in the store, unread.
+- **B1 ships as two PRs** (28 Oct 2026, found in code): B1 = the site-rule retirement; B1b = the style move, which also touches the
+  Strategy draft's answers section and the line organizer's "writing" destination (`lib/profile-destinations.js:26`); both are
+  redirected in code to `style.json`, the prompts stay as they are (no replay). Letter writers get the style as the same "Cover letter
+  style" section of the answers text they read today.
+- **B2 · Learnings with evidence:** the writer, evidence and state chips, salary seed, migration.
+- **The AI owns the whole learning step** (owner, 28 Oct 2026: "All of this flow/logic/learning should be heavily
+  controlled/manipulated by the AI. He should interpret meanings. He should understand if a learning already exists partially and
+  we should just confirm or extend that learning, or it's a completely new and separate topic"). Per new answer the AI returns one
+  verdict against the existing learnings: `same` (evidence only) · `extends` (the AI writes the widened answer) · `conflicts`
+  (Two answers) · `new` (a new topic). Code validates the verdict's shape and the picked topic against the list; no string
+  compare, no word list decides a merge. A test asserts the merge follows the AI's verdict even when the wordings match.
+- **Evidence chips by meaning:** the writer records label → topic in the verdict cache; the tab matches each Form fill's labels to
+  topics when it draws (Form fills keep labels only, never answers: `src/ai/apply_record.py:5`).
+- **Strategy owns its fields too** (owner, 28 Oct 2026: "the employment type should be part of the search strategy"): employment
+  type, work modes, workload and the search minimum salary live in Strategy (`renderer/preferences-model.js` FIELDS, e.g.
+  "Employment type" at :37). The learning call gets them, with Your details, as topics owned elsewhere: a form question on one of
+  them is answered from there and never becomes a learning (test: an employment-type answer from a fill adds no learning).
+- **Sources:** what the person typed or confirmed in a form, and answers the AI wrote from their material (`new`, guessed). Never
+  right to work, criminal record or demographics.
+- **Note at the top of What we learned** (owner, 28 Oct 2026): these learnings come only from form fills; what we know about you
+  from everywhere is in "Your portrait" (the owner said "Your avatar"; the Profile tab of spec `2026-10-28-your-portrait-design.md`, branch `your-portrait`, built on PR D): the note links there once it ships.
+
 ## PR C · Remember by Apply mode (hand-off brief after B)
 
 - Extension: the answer you type shows "Remember" (on; off when the question names the company). Full automation: recap after
   the run (answered / learned / this job only, with Change). Flow core: read the file's Invariants block first.
+
+- Writing preferences (Cover letter tab) are stored today as the "Cover letter style" section of the answers page
+  (`renderer/writing-preferences-model.js:2`). Owner, 28 Oct 2026: "everything about the cover letter should be only in Cover
+  Letter tab". PR B moves them to the Cover letter's own store; the learnings writer never reads, writes or lists them.
+
+## PR D · About you everywhere (owner, 28 Oct 2026: "If we make use of all the knowledge we built about the user, wouldn't we
+better answer open questions in forms… tailor CV, tailor Cover letter, or kit answers?")
+
+One shared function returns everything we know about the person; each writer takes it with one fixed exclusion list:
+
+| About you | Form filling | CV | Cover letter | Kit answers |
+|---|---|---|---|---|
+| Your details | ✅ | ✅ | ✅ | ✅ |
+| Experience bank | ✅ new | ✅ | ✅ | ✅ new |
+| What we learned | ✅ | ✅ summary only (owner) | ✅ never salary (owner) | ✅ |
+| Form fills | via learnings | via learnings | via learnings | via learnings |
+| Base cover letter | fallback file | — | ✅ voice example (new) | — |
+| Writing preferences | — | — | ✅ | — |
+
+- Salary, demographics (EEO), criminal record and disability go only into their own form fields, never into a CV, letter or
+  open answer. One test loops over every writer (class rule) and checks inclusions and exclusions.
+- Today CV tailoring reads only `profile` (`kit-handlers.js:66`), not the answers page; letters read the answers page but
+  never the base letter.
+- Prompt change → cases added to each writer's case set and replayed; the extra input cost per call measured on the PR.
+- Owner, 28 Oct 2026: "a modular/reusable interface of the user/profile knowledge… whenever we'd want to give an insight, to
+  give a review, to fill a form, to tailor a CV". Readers beyond the four writers: daily/random insight and "Analyze my search"
+  (`src/ai/insights.py`), interview insights and prep (`src/ai/interview_insights.py`, `src/ai/prep.py`), answer review.
+  Each reader names the parts it takes; exclusions are per reader (salary is out of CV/letter but in "Analyze my search").
+  Raw Form fills reach readers only through learnings, except interview prep for one job, which also reads what was sent to
+  that employer (stay consistent with your own form answers). Artifact sketch before PR D starts.
 
 ## Verification per PR
 

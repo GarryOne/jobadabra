@@ -14,7 +14,6 @@ import {registerDetailsFactsHandlers} from './details-facts-handlers.js';
 import {registerGapsHandlers} from './gaps-handlers.js';
 import {hashOf} from './cv-check.js';
 import {profileTexts} from './strategy-settings.js';
-import {openStore} from './store/index.js';
 import {byStore} from './store/words.js';
 
 // Demo mode: fictional proposals, no AI (the screenshots of the Your details panel).
@@ -54,7 +53,6 @@ export function registerContactHandlers({ipcMain, storage, DEMO, connected, need
     if (!contact) return {proposals: [], error: byStore(storage, 'Couldn\'t read your details from Notion', 'Couldn\'t read your details from your Profile')};
     // What you stated beside the CV (Profile, Answers, Knowledge: contact-from-cv.js statedText): the town etc. the CV doesn't give.
     const {profile, answers} = await profileTexts(storage).catch(() => ({profile: '', answers: ''}));
-    const knowledge = await openStore(storage).page('knowledge').text().catch(() => '');   // the active store's (lib/store)
-    return fromCv.forCv(storage, {contact, client: aiClient(storage), cvHash: hashOf(storage), profile: fromCv.statedText({profile, answers, knowledge}), again, log});
+    return fromCv.forCv(storage, {contact, client: aiClient(storage), cvHash: hashOf(storage), profile: fromCv.statedText({profile, answers}), again, log});
   });
 }

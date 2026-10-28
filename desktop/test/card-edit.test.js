@@ -13,7 +13,6 @@ const source = file => fs.readFileSync(new URL(file, root), 'utf8');
 
 // Row actions that are not a card's Edit, each with why.
 const ROW_ACTIONS = {
-  'pages/website-rules.js': 'Edit on one rule row of a list (and Close), not on a card',
   'job-drawer/job-letter.js': 'Edit sits among Copy / Write again / Open PDF and turns into Save',
   'gallery-kinds.js': 'a table header word, not a button',
   'components.js': 'the shared card Edit itself',

@@ -218,15 +218,9 @@ def draft(client, model, job, profile, answers, questions):
 
 
 def standard_answers(stores):
-    """The standard answers, plus what earlier form fills learned (🧠 Form knowledge), from the active store."""
-    answers = stores.texts.get('answers')
-    try:
-        learned = stores.texts.get('knowledge')
-        if learned.strip():
-            answers += '\n\n# Learned from earlier forms\n' + learned
-    except Exception as error:  # the kit still drafts without it
-        print(f'Warning: form knowledge unavailable: {type(error).__name__}: {error}')
-    return answers
+    """The standard answers from the active store. Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): 🧠 Form knowledge is no
+    longer appended; what you typed on a form is a line of the standard answers (desktop/lib/learned.js)."""
+    return stores.texts.get('answers')
 
 
 def kit_markdown(job, kit, questions, model):

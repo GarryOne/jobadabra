@@ -19,7 +19,7 @@ import {fromDetailsLine} from '../answered-from-details.js';
 import {ASKS} from '../question-nav.js';
 import {formatFor, markFor, markOf} from '../question-kind.js';
 import {answerControl, kindPicker} from '../question-control.js';
-import {input, labelled, select} from './website-rules.js';
+import {input, labelled, select} from './form-controls.js';
 
 const TEXT = 'answers';
 const VIEWS = ['all', 'new', 'confirmed'];

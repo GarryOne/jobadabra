@@ -44,7 +44,7 @@ test('session stats and conversations go to this Mac\'s store, never to the Noti
   assert.match(main, /sessionRuns\.saveConversation\(storage, session, talk\)/);
 });
 
-test('the extension reads the Profile, answers and form knowledge from this Mac, and gets no Notion token', async () => {
+test('the extension reads the Profile and answers from this Mac, never the retired form knowledge, and gets no Notion token', async () => {
   const {localEnv} = await import('../lib/server-env.js');
   const storage = onThisMacWithNotionLeft();
   storage.writeText('profile.md', '## Summary\n- SRE, 8 years\n');
@@ -55,5 +55,5 @@ test('the extension reads the Profile, answers and form knowledge from this Mac,
   assert.equal(env.NOTION_PROFILE_PAGE_ID, '');
   assert.match(await env.PROFILE_TEXT, /SRE, 8 years/);
   assert.match(await env.ANSWERS_TEXT, /Notice period: 3 months/);
-  assert.match(await env.KNOWLEDGE_TEXT, /Pronouns/);
+  assert.equal(env.KNOWLEDGE_TEXT, undefined, 'retired in PR B1: the old notes stay in knowledge.md, unread');
 });

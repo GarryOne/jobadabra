@@ -40,5 +40,5 @@ test('a sentence that names a contact detail is a question to answer, and a thin
   assert.match(JSON.stringify(added), /automated mobile/);
   assert.doesNotMatch(JSON.stringify(added), /Mobile number/);
   const result = plan([{label: sentence, value: 'Yes'}, {label: 'Mobile number', value: '+41 79 555 01 23'}]);
-  assert.deepEqual(result.notes.map(note => note.field), [sentence]);
+  assert.deepEqual(result.answers.map(answer => answer.label), [sentence]);
 });

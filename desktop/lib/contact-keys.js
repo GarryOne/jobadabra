@@ -4,7 +4,7 @@
 // (owner, 8 Oct 2026: meaning comes from AI, never from keyword lists). Claude sees form labels only, never your details or CV.
 // Learning is shared (owner, 8 Oct 2026: "reuse learning from one installation to another"): the order is this Mac's cache, then the
 // shared label meanings (the alias pack, lib/aliases.js), then Claude; each answer Claude gives goes back as a proposal (the wording and
-// the field name only, never a value: lib/learn.js proposalsOf's channel), so the next install needs no call.
+// the field name only, never a value: the proposal channel, lib/recipes.js proposal), so the next install needs no call.
 // Guarded by test/contact-keys.test.js.
 import {LABELS} from './contact.js';
 import {aliasKey, cleanLabel} from '../shared/alias-schema.js';

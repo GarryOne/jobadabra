@@ -1,7 +1,6 @@
 // The Notion store, desktop side: the user's text pages (Profile, standard answers, 🧠 Form knowledge) as pages of blocks, through
 // today's lib/notion-* calls unchanged. lib/store/index.js opens it; screens and modules never import it. Spec:
 // docs/superpowers/specs/2026-10-09-store-adapters.md. Guarded by desktop/test/store-contract.test.js (against test/fake-notion.js).
-import * as learn from '../learn.js';
 import * as notion from '../notion.js';
 import {CLOUD, FILES, LINKS} from './caps.js';
 import * as notionRuns from './notion-runs.js';
@@ -10,7 +9,7 @@ export const NAME = 'notion';
 export const CAPS = new Set([LINKS, CLOUD, FILES]);
 export const LABEL = 'Notion';   // what the window calls this store
 
-// Each text and its page id in settings.notionIds. Form knowledge is made beside the Profile on its first write (lib/knowledge.js did).
+// Each text and its page id in settings.notionIds. Form knowledge is made beside the Profile on its first write (nothing writes it since PR B1; the store keeps the text).
 const PAGE_IDS = {profile: 'NOTION_PROFILE_PAGE_ID', answers: 'NOTION_ANSWERS_PAGE_ID', knowledge: 'NOTION_KNOWLEDGE_PAGE'};
 const MISSING = {
   profile: 'Connect Notion first: your contact details live in your Profile page.',
@@ -31,12 +30,14 @@ function item(block) {
   return each;
 }
 
+const KNOWLEDGE_TITLE = '🧠 Form knowledge';   // the page's name in Notion (the store keeps the text; PR B1 retired its writer and readers)
+
 // The Knowledge page, made beside the Profile and remembered when missing; its id. Also before a move to Notion
 // (lib/store-move.js), whose copy writes the page whole.
 export async function ensureKnowledgePage(storage, {fetcher} = {}) {
   const ids = storage.settings().notionIds || {};
   if (ids.NOTION_KNOWLEDGE_PAGE) return ids.NOTION_KNOWLEDGE_PAGE;
-  const page = await notion.ensurePage(storage.secret('NOTION_TOKEN'), ids.NOTION_PROFILE_PAGE_ID, learn.PAGE_TITLE, KNOWLEDGE_INTRO, fetcher);
+  const page = await notion.ensurePage(storage.secret('NOTION_TOKEN'), ids.NOTION_PROFILE_PAGE_ID, KNOWLEDGE_TITLE, KNOWLEDGE_INTRO, fetcher);
   storage.saveSettings({notionIds: {...(storage.settings().notionIds || {}), NOTION_KNOWLEDGE_PAGE: page}});
   return page;
 }

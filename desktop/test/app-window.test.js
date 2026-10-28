@@ -1,4 +1,4 @@
-// The window and its helpers: scripts and wizard markup, open questions, form knowledge and fill reports, the Jobs filter, Windows wording, Gmail failures.
+// The window and its helpers: scripts and wizard markup, open questions and fill reports, the Jobs filter, Windows wording, Gmail failures.
 // Split from app.test.js (8 Oct 2026) without changing any test.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -82,33 +82,6 @@ test('without Notion, open questions say so instead of keeping a copy on the Mac
   await assert.rejects(questions.collect(storage, run, 'Acme'), /Connect Notion first/);
   await assert.rejects(questions.list(storage), /Connect Notion first/);
   assert.equal(storage.settings().openQuestions, undefined);
-});
-
-test('form knowledge: learned notes merge per site and field, and read as prompt text', async () => {
-  const learn = await import('../lib/learn.js');
-  let notes = learn.merge([], [{scope: 'job-boards.greenhouse.io', field: 'Preferred First Name', kind: 'answer', value: 'Igor', note: 'Same as first name'}]);
-  notes = learn.merge(notes, [{scope: 'job-boards.greenhouse.io', field: 'preferred first name', kind: 'answer', value: 'Igor', note: 'Use first name'}]);
-  assert.equal(notes.length, 1);
-  assert.match(learn.asText(notes), /Preferred First Name|preferred first name/);
-  const client = {messages: {create: async request => {
-    assert.match(request.system, /Never invent personal facts/);
-    return {usage: {input_tokens: 1000, output_tokens: 100}, content: [{type: 'text', text: JSON.stringify({notes: [
-      {scope: 'any', field: 'Pronouns', kind: 'answer', value: 'Prefer not to say', note: 'From the standard answers'}]})}]};
-  }}};
-  const result = await learn.learn({run: {url: 'https://x.io/a', trace: [{label: 'Pronouns', outcome: 'left', reason: 'no answer'}]}, client, apiKey: 'x'});
-  assert.equal(result.notes.length, 1);
-  const nothing = await learn.learn({run: {url: 'https://x.io/a', trace: [{label: 'Email', outcome: 'filled'}]}, client, apiKey: 'x'});
-  assert.equal(nothing.notes.length, 0);  // nothing left: no AI call
-});
-
-test('form knowledge is per site: fields already studied there are not sent to the AI again', async () => {
-  const learn = await import('../lib/learn.js');
-  const run = {url: 'https://job-boards.greenhouse.io/twilio/jobs/1', trace: [
-    {label: 'Pronouns', outcome: 'left', reason: 'no answer'}, {label: 'Consent', outcome: 'left', reason: 'legal/consent: always your choice'}]};
-  assert.equal(learn.newFields(run).length, 1);
-  assert.equal(learn.newFields(run, {'job-boards.greenhouse.io': ['pronouns']}).length, 0);  // studied on this site
-  assert.equal(learn.newFields({...run, url: 'https://jobs.lever.co/x/1'}, {'job-boards.greenhouse.io': ['pronouns']}).length, 1);
-  assert.equal(learn.newFields(run, {}, [{scope: 'any', field: 'Pronouns'}]).length, 0);  // a note already covers it
 });
 
 test('fill reports: mechanical failures only, form structure only, each site + field once, off with technical reports', async () => {

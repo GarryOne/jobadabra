@@ -4,7 +4,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as contact from './contact.js';
-import * as knowledge from './knowledge.js';
 import {log} from './log.js';
 import * as notion from './notion.js';   // Notion-only: moves this Mac's data into a connected Notion that is the store
 import * as notionGate from './notion-gate.js';
@@ -143,16 +142,6 @@ export const STEPS = [
     const missing = (open || []).filter(q => !there.has(q.key));
     if (missing.length) await notion.appendBullets(token, ids.NOTION_ANSWERS_PAGE_ID, missing.map(q => questions.questionLine(q.question, q.company)), fetcher);
     storage.saveSettings({openQuestions: undefined, answeredQuestions: undefined});
-    return true;
-  }},
-  // Form knowledge -> the 🧠 Form knowledge page (a note already there, same site + field, is kept).
-  {name: 'form knowledge', onMac: 'data', run: async (storage, fetcher) => {
-    const local = storage.settings().formKnowledge;
-    if (!local?.length) return false;
-    const there = new Set((await knowledge.notes(storage, fetcher)).map(n => `${n.scope}|${n.field}`.toLowerCase()));
-    const missing = local.filter(n => !there.has(`${n.scope}|${n.field}`.toLowerCase()));
-    if (missing.length) await knowledge.add(storage, missing, fetcher);
-    storage.saveSettings({formKnowledge: undefined});
     return true;
   }},
   // Contact details -> the 📇 Contact details section of the Profile page (what's already in Notion wins).

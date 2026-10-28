@@ -30,7 +30,7 @@ TEMPLATE = ROOT / 'config' / 'notion_template.json'
 # Pages the app creates itself next to the Profile (their code writes the content).
 APP_PAGES = {
     'NOTION_SEARCH_SETTINGS_PAGE': ('⚙️', 'Search settings', 'src/notion/search_settings.py'),
-    'NOTION_KNOWLEDGE_PAGE': ('🧠', 'Form knowledge', 'desktop/lib/knowledge.js'),
+    'NOTION_KNOWLEDGE_PAGE': ('🧠', 'Form knowledge', 'desktop/lib/store/notion.js'),
 }
 
 

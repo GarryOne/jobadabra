@@ -38,5 +38,19 @@ class FocusHistoryTest(unittest.TestCase):
         self.assertEqual(bad, [])
 
 
+class HistoryInterviewTest(unittest.TestCase):
+    def test_reviewed_interviews_show_in_history(self):
+        from datetime import date as _date
+        from src.stores import memory
+        stores = memory.open_store()
+        today = _date.today().isoformat()
+        stores.interviews.put({'title': 'Unframe · Recruiter screen', 'overall': 'neutral', 'created_at': f'{today}T08:00:00+00:00'})
+        stores.interviews.put({'title': 'Old', 'overall': 'positive', 'created_at': '2000-01-01T08:00:00+00:00'})
+        stores.interviews.put({'title': 'Not reviewed', 'created_at': f'{today}T08:00:00+00:00'})
+        items = focus.history(stores)
+        self.assertEqual([i['title'] for i in items], ['Reviewed the interview: Unframe · Recruiter screen'])
+        self.assertEqual(items[0]['note'], 'Outcome: Neutral')
+
+
 if __name__ == '__main__':
     unittest.main()

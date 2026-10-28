@@ -61,7 +61,10 @@ INTERVIEW_FIELDS = ('id', 'app_id', 'title', 'at', 'input', 'round', 'overall', 
 INSIGHT_FIELDS = ('id', 'day', 'category', 'title', 'body', 'fields', 'created_at')
 # The keys an insight's `fields` may hold (each a column in Notion); any other key is refused, as an unknown field is.
 INSIGHT_EXTRAS = ('basis', 'confidence', 'sample_size', 'evidence', 'action', 'feedback', 'issue_detected', 'cost', 'model',
-                  'input_hash', 'data')
+                  'input_hash', 'data', 'state', 'hidden_until')
+# The person's answer to a suggestion (src/suggestions.py; spec 2026-10-28-insights-with-actions): none = open while its producer still makes it.
+# Why (28 Oct 2026, owner): Not now / Not true must survive a restart and read the same on Focus, Jobs and the suggestion's home.
+INSIGHT_STATES = ('Done', 'Not now', 'Not true', 'Stale')
 EMPLOYER_FIELDS = ('id', 'name', 'website', 'careers_url', 'feed', 'active', 'created_at',
                    # What Find employers learns about one (🏢 Employers & Sources columns): its kind and tier, the job feed it found
                    # (ats + slug), how good it is, where it hires, research links and when it was checked.
@@ -164,10 +167,14 @@ def url_key(url):
 
 
 def insight_values(values):
-    """An insight's values with its `fields` checked against INSIGHT_EXTRAS (KeyError on another key)."""
-    unknown = set((values or {}).get('fields') or {}) - set(INSIGHT_EXTRAS)
+    """An insight's values with its `fields` checked against INSIGHT_EXTRAS (KeyError on another key) and its state against
+    INSIGHT_STATES (ValueError on another)."""
+    fields = (values or {}).get('fields') or {}
+    unknown = set(fields) - set(INSIGHT_EXTRAS)
     if unknown:
         raise KeyError(f'not an insight field: {", ".join(sorted(unknown))}')
+    if fields.get('state') not in (None, '', *INSIGHT_STATES):
+        raise ValueError(f'not an insight state: {fields["state"]}')
     return values
 
 

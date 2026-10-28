@@ -8,6 +8,7 @@ import sys
 
 from . import digest, levels, target_roles
 from .ai import locations, score
+from .ai.insights_data import is_finding
 from .desktop_jobs import stage_status
 
 
@@ -152,9 +153,9 @@ def strategy(db, tracker=None, stores=None):
     stages, stage_map = {}, {}   # stage -> how many; job url -> stage (read once, also for the refresh of older places)
     insight, compensation, goals, profile, details = None, '', {}, None, _details('')
     def latest_insight():
-        """The newest insight in the active store, not the Interviews page's own row (Interview patterns)."""
+        """The newest daily insight or weekly report in the active store."""
         found = stores
-        rows = [r for r in found.insights.list(limit=5) if r['category'] != 'Interview patterns'][:1]
+        rows = [r for r in found.insights.list(limit=5) if is_finding(r)][:1]   # not Interview patterns, not an answer to a suggestion
         return [{**rows[0], 'url': found.link(rows[0]['id']) or ''}] if rows else []
     if tracker:
         from .notion.client import together

@@ -51,7 +51,7 @@ MIN_GROUP = 10
 # is drawn from max_tokens like the answer itself. 3000 cut both insight answers off (stop_reason 'max_tokens') and
 # failed the run; as in prep.py, 8000 fits. The cap costs nothing when unused.
 MAX_TOKENS = 8000
-CATEGORIES = ['Skills', 'CV', 'Location', 'Salary', 'Seniority', 'Role focus', 'Timing', 'Activity', 'Process']
+CATEGORIES = data_of.CATEGORIES   # moved to insights_data (is_finding reads it); kept importable from here
 WEEKLY = 'Weekly report'
 WEEKLY_DAY = 0  # Monday
 INTERVIEW_PATTERNS = 'Interview patterns'  # interview_insights.CATEGORY: one upserted row, not a daily insight

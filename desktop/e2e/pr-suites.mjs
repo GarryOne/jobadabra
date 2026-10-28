@@ -1,12 +1,13 @@
 // Which e2e suites a PR runs (lib/pr-suites.mjs): the table of suites that quote UI text it removes, and with --plan the suites pr-suites.yml starts and waits for (they block the merge since 26 Oct 2026, gate G1a). Always exits 0: the e2e run decides.
+// Job: pick the suites
 //   node pr-suites.mjs --base origin/main          the table
 //   node pr-suites.mjs --base origin/main --plan   also: `suites=a,b` and `steps={suite: [step names]}` for the run (workflow pr-suites.yml with --pull-request: no step names, every suite whole;
-//                                                  main-steps.yml after a merge: the picked steps). Needs the staged app files and installs, like e2e.yml's plan
+//                                                  main-steps.yml after a merge: the picked steps). Optional --catches <file>: public {suite: count} snapshot. Needs the staged app files and installs, like e2e.yml's plan
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
@@ -39,6 +40,8 @@ function covered(changedFiles, watched = {}) {
   return {map, picked: stepsCovering(map, bySha, {watched})};
 }
 try {
+  // --catches is opt-in local JSON {suite: count}; no private scorecard reads or invented counts.
+  const catches = process.argv.includes('--catches') ? JSON.parse(fs.readFileSync(process.argv[process.argv.indexOf('--catches') + 1], 'utf8')) : {};
   const changedFiles = git(['diff', '--name-only', `${base}...HEAD`]).split('\n').filter(Boolean);
   const strings = removedStrings(git(['diff', '-U0', `${base}...HEAD`, '--', '../']));
   const sources = {};
@@ -61,10 +64,14 @@ try {
     // (owner, 26 Oct 2026: "a change to a suite runs that suite's affected steps (apply/applyflows included)"); a file several suites share goes by each suite's
     // `ownsStep` (applyflows runs apply.mjs's 'flows' steps). A change outside a named step, or any other file (a plain helper, the extension, a watched file the map
     // has not seen), runs its suites whole.
-    const added = newSideRanges(git(['diff', '-U0', `${base}...HEAD`, '--', 'suites/', 'lib/'])), users = suitesUsing(here), own = {}, byStep = new Set();
+    const added = newSideRanges(git(['diff', '-U0', `${base}...HEAD`, '--', 'suites/', 'lib/'])), users = suitesUsing(here), own = {}, direct = new Set(), byStep = new Set();
     for (const file of changedFiles.filter(name => /^desktop\/e2e\/(suites|lib)\/[^/]+\.mjs$/.test(name))) {
       const rel = file.slice('desktop/e2e/'.length), text = sources[rel] || '';
+      const suiteFile = /^suites\/([^/]+)\.mjs$/.exec(rel)?.[1];
+      if (suiteFile) direct.add(suiteFile);
       if (!stepCalls(text).length) continue;   // no steps here: a plain helper (suitesFor below)
+      // A changed file holding steps is stronger reach than a plain imported helper.
+      for (const user of users[rel] || []) direct.add(user);
       const touched = stepsTouched(text, added[file] || []);
       if (touched.whole) continue;
       byStep.add(file);
@@ -82,7 +89,15 @@ try {
     const {hits, quoting} = rehomeQuotes(suitesExpecting(strings, sources), stepsQuoting(suitesExpecting(strings, sources), sources), map);
     const pointed = [...new Set([...pointedElse, ...Object.keys(own)])];
     const pullRequest = process.argv.includes('--pull-request');   // pr-suites.yml; main-steps.yml (after a merge) leaves it out
-    const plan = planPrSuites({pointed, hits, covering, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
+    // Why (2026-10-28, owner; same as verdict #2376): a PR cannot exempt itself by changing its own registry.
+    let lanes = {};
+    if (pullRequest) {
+      try {
+        lanes = JSON.parse(git(['show', `${base}:desktop/e2e/lanes.json`]));
+        if (!lanes?.suites || typeof lanes.suites !== 'object' || Array.isArray(lanes.suites)) throw new Error('not a registry');
+      } catch { lanes = {}; console.log('pr-suites: base lane registry not read; every reached suite remains backbone'); }
+    }
+    const plan = planPrSuites({pointed, hits, covering, direct: [...direct], catches, lanes, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
     // Steps per suite after a merge; a pull request runs each suite whole (lib/pr-suites.mjs stepLists).
     const steps = stepLists({suites: plan.suites, pullRequest, pointedElse, quoting, picked, byLines: stepNamesFor(picked), own});
     // The store each suite's picked steps run on: the one they were recorded on (lib/coverage-pick.mjs storeFor; #2156's settings and strategy picked steps that exist
@@ -95,11 +110,12 @@ try {
       stores[suite] = chosen.store; steps[suite] = chosen.steps;
       if (chosen.dropped.length) dropped[suite] = chosen.dropped;
     }
-    const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
+    const why = Object.entries(picked).map(([suite, p]) => `| \`${suite}\` | ${plan.deferred.includes(suite) ? 'run after merge' : !plan.suites.includes(suite) ? 'not in this PR run' : steps[suite] ? steps[suite].map(name => `"${name}"`).join(', ') : 'whole suite'} | ${p.reason} |`).join('\n');
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
     const elsewhere = pullRequest ? [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => ON_PR_ELSEWHERE[suite]) : [];
-    const reasons = [...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
+    const reasons = [...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}),
+      ...deferredLines({left: plan.deferred, picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
     console.log(`\n### Why each one runs (suite [store] · step ← the changed line that reached it)\n${reasons.join('\n')}\n`);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);

@@ -1,6 +1,9 @@
 // Which e2e suites expect text an app change just removed: the UI strings a PR deletes or rewrites, found in the suites (and the lib files they import). A test that copied the
 // app's words fails in the next beta, not on this PR (beta runs 5-11, 21-24 Oct 2026: 8 of ~10 e2e fixes were tests lagging the app). Pure; the CLI is desktop/e2e/pr-suites.mjs.
 
+// Job: pick the suites
+import {whyLines} from './pick-why.mjs';
+
 const APP_FILE = /^desktop\/(renderer\/|lib\/|main\.js$|main\/|actions[^/]*\.js$|activity[^/]*\.js$)/;
 export const isAppFile = file => APP_FILE.test(file) && !/\.(test|spec)\.|\/test\//.test(file);
 
@@ -78,15 +81,37 @@ export function report({strings, hits, changedFiles, sources}) {
 // suite when it RAN the changed lines (owner, 26 Oct 2026: "Yes, mapped Mac suites too"; #1911 broke the Mac-only interactions with a CSS change) or when the PR changes the
 // suite itself (its file, a helper it imports, the extension for apply/applyflows: owner's yes to the e2e audit, 26 Oct 2026; #2074, #2075 and #2091 changed apply and
 // it never ran: it had left PRs on 13 Oct, c6a6366, when it ran whole on every flow PR). A line no suite ran (reason "loads …": a file's top level, an unused rule) picks
-// every suite that loads the file, on Linux only: the Free plan runs 5 macOS jobs at once. No count cap since G1a: suites run in parallel.
+// every suite that loads the file, on Linux only: the Free plan runs 5 macOS jobs at once.
+// Why (2026-10-28, owner): rule G caps a PR at five suites; deferred suites run after merge. G2 still runs each chosen journey whole.
+// Catch-weighted ranking needs a PUBLIC scorecard snapshot (the site session owns that follow-up); today ties use reach, then name.
+// Optional catches are supplied explicitly, never fetched from the private site. Direct suite/step files outrank imports/quotes, then coverage.
 // Suites a pull request's e2e run never starts, and the workflow that runs the same on the PR: `recorded` replays the recorded cases page-cases.yml already replays
 // (owner, 27 Oct 2026: "Drop it"; slow cases stay on main, lib/replay-slow.mjs; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
 // After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
 export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
-export function planPrSuites({pointed = [], hits = {}, covering = {}, linux, cadence = {}, pullRequest = false}) {
-  const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => (cadence[suite] || 'always') !== 'manual' && !(pullRequest && ON_PR_ELSEWHERE[suite]));
-  const run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
-  return {suites: run, left: wanted.filter(suite => !run.includes(suite))};
+/** Pick reached backbone suites; only PRs apply lanes and the cap. Preserve the old order at five or fewer.
+ * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
+ * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base by the CLI.
+ * left keeps every reached suite not run; deferred contains only cap overflow, in rank order (empty without a cut).
+ */
+export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
+  const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite =>
+    (cadence[suite] || 'always') !== 'manual' && !(pullRequest && (ON_PR_ELSEWHERE[suite] || ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane))));
+  let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+  let deferred = [];
+  if (pullRequest && run.length > 5) {
+    const reach = suite => direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
+    const caught = suite => Number.isFinite(catches[suite]) && catches[suite] >= 0 ? catches[suite] : 0;
+    const ranked = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0));
+    run = ranked.slice(0, 5);
+    deferred = ranked.slice(5);
+  }
+  return {suites: run, left: wanted.filter(suite => !run.includes(suite)), deferred};
+}
+
+/** Explain every deferred suite with the same reach evidence as the selected suites in the CLI summary. */
+export function deferredLines({left = [], ...evidence}) {
+  return whyLines({...evidence, suites: left, steps: {}}).map(line => line.replace(' · whole suite ←', ' · run after merge ←'));
 }
 
 /**

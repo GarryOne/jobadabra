@@ -89,7 +89,7 @@ Owner's yes before the UI commit.
 - **Sources:** what the person typed or confirmed in a form, and answers the AI wrote from their material (`new`, guessed). Never
   right to work, criminal record or demographics.
 - **Note at the top of What we learned** (owner, 28 Oct 2026): these learnings come only from form fills; what we know about you
-  from everywhere is in "Your avatar" (PR D, owner 28 Oct 2026; the note links there once D ships).
+  from everywhere is in "Your portrait" (the owner said "Your avatar"; the Profile tab of spec `2026-10-28-your-portrait-design.md`, branch `your-portrait`, built on PR D): the note links there once it ships.
 
 ## PR C · Remember by Apply mode (hand-off brief after B)
 
@@ -100,7 +100,7 @@ Owner's yes before the UI commit.
   (`renderer/writing-preferences-model.js:2`). Owner, 28 Oct 2026: "everything about the cover letter should be only in Cover
   Letter tab". PR B moves them to the Cover letter's own store; the learnings writer never reads, writes or lists them.
 
-## PR D · Your avatar: about you everywhere (owner, 28 Oct 2026: "If we make use of all the knowledge we built about the user, wouldn't we
+## PR D · About you everywhere (owner, 28 Oct 2026: "If we make use of all the knowledge we built about the user, wouldn't we
 better answer open questions in forms… tailor CV, tailor Cover letter, or kit answers?")
 
 One shared function returns everything we know about the person; each writer takes it with one fixed exclusion list:

@@ -70,6 +70,7 @@ on:
       - 'desktop/e2e/replays-report.mjs'
       - 'desktop/e2e/test/recorded-pages.test.mjs'
       - 'desktop/lib/**'
+      - 'desktop/renderer/apply-settings-model.js'
       - 'desktop/renderer/countries.js'
       - 'desktop/renderer/fragment-words.js'
       - 'desktop/renderer/question-filter.js'

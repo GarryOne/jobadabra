@@ -62,8 +62,13 @@
     {
       "key": "cv_tailor",
       "label": "CV tailoring",
-      "live": false,
-      "through": [],
+      "live": true,
+      "through": [
+        "details",
+        "cv",
+        "learned",
+        "strategy"
+      ],
       "pages": [],
       "never": [
         "salary",

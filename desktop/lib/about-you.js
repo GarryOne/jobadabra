@@ -39,7 +39,7 @@ export const READERS = {
 // voice and this job come with D1c/D2): a cell is claimed only for a live reader's part that is gathered. PAGES: parts a step still reads straight from a page or file.
 // Add a reader to LIVE in the PR that wires it, and a part to GATHERED in the PR that reads it; test/about-you-readers.test.js fails when the exported JSON
 // (docs/about-you-readers.json) is out of date, or when GATHERED disagrees with a real aboutYou() call.
-export const LIVE = ['kit', 'portrait'];
+export const LIVE = ['kit', 'portrait', 'cv_tailor'];   // cv_tailor: lib/cv.js tailor takes its bundle (D1c-1, 28 Oct 2026)
 export const GATHERED = ['details', 'cv', 'learned', 'strategy'];
 export const PAGES = {form: ['details', 'cv', 'learned', 'strategy'], kit: ['details', 'learned', 'strategy']};
 export const NAMES = {
@@ -90,7 +90,7 @@ function shorter(value) {
  * Invariants: a conflict (two answers) reaches no reader; a sensitive learning, or one not judged yet, reaches no reader; a reader with noSalary gets no
  * line the AI judged a salary, no learning whose kind was never judged, and no Strategy pay line (a pay field, or a rule under Compensation).
  */
-export function bundleOf(sources, reader) {
+export function bundleOf(sources, reader, {skip = []} = {}) {
   const rule = READERS[reader];
   if (!rule) throw new Error(`about-you: no reader ${reader}`);
   const salary = item => rule.noSalary && (item.kind === 'salary' || item.group === 'pay');
@@ -100,7 +100,7 @@ export function bundleOf(sources, reader) {
     strategy: list => list.filter(item => !salary(item)),
   };
   const parts = {}, lacked = [];
-  for (const name of rule.parts) {
+  for (const name of rule.parts.filter(each => !skip.includes(each))) {   // skip: a part the caller carries itself, so it is neither read, counted in the budget nor named lacked (Gitar on #2373)
     if (sources[name] === undefined || sources[name] === null) { lacked.push(name); continue; }
     parts[name] = keep[name] ? keep[name](sources[name]) : sources[name];
   }
@@ -133,8 +133,8 @@ function strategyOf(profile) {
  * sensitive verdict and kind per question), Strategy (the Profile's search fields and rules), the main CV with the Experience bank. history, voice and
  * this_job come with their readers (PR D1c, D2). -> bundleOf(sources, reader). A part whose source fails to read is absent, so the bundle names it in lacked.
  */
-export async function aboutYou(storage, reader, {fetcher} = {}) {
-  const takes = new Set(READERS[reader]?.parts || []);
+export async function aboutYou(storage, reader, {fetcher, skip = []} = {}) {
+  const takes = new Set((READERS[reader]?.parts || []).filter(part => !skip.includes(part)));
   const opened = openStore(storage, {fetcher});
   const read = (part, load) => (takes.has(part) ? load().catch(() => undefined) : undefined);
   const [person, facts, answers, profile] = await Promise.all([read('details', () => contact.read(storage, fetcher)), read('details', () => sections.read(storage, fetcher)),
@@ -151,7 +151,7 @@ export async function aboutYou(storage, reader, {fetcher} = {}) {
   }
   if (profile) sources.strategy = strategyOf(profile);
   if (takes.has('cv')) sources.cv = cvOf(storage);
-  return bundleOf(sources, reader);
+  return bundleOf(sources, reader, {skip});
 }
 
 // Parts read from this Mac's files without a store call: an engine run starts synchronously (lib/pipeline-run.js), so its bundle comes from these.

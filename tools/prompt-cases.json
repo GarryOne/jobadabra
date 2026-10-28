@@ -53,6 +53,12 @@
       "cases": ["tests/fixtures/kit-cases.json", "tools/kit-cases.py"],
       "prompts": {"src/ai/kit.py": ["SYSTEM"]}
     },
+    "cv-tailor": {
+      "live": false,
+      "about": "CV tailoring (desktop/lib/cv.js tailor): a learning shapes the summary where the posting asks for it, never a role; an irrelevant learning stays out; no invented figure (owner's cases, About you D1c-1, 28 Oct 2026)",
+      "cases": ["desktop/test/fixtures/cv-tailor-cases.json", "tools/cv-tailor-cases.mjs"],
+      "prompts": {"desktop/lib/cv.js": ["TAILOR_INSTRUCTIONS", "IN_PLACE_RULES"]}
+    },
     "learnings": {
       "live": false,
       "about": "what one form fill teaches (desktop/lib/learnings.js): each answer against the kept learnings, given as a closed topic list: same, extends (the AI widens it), conflicts (Two answers), new, or not ours (owned by Your details or Strategy, private, one job's). Travel in 3 wordings, a contract conflict, salary per country, a per-company question, an employment type Strategy owns (owner, 28 Oct 2026, PR B2). Replayed on Haiku through claude -p",

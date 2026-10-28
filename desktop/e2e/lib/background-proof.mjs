@@ -6,11 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
-import {hostRules} from './forms.mjs';
 import {stageOf} from './seed-data.mjs';
-
-/** The app's environment for the hidden browser under e2e: the fixture host map and the test certificate, nothing else (lib/background-browser.js e2eArguments). */
-export const hiddenBrowserEnv = port => ({JOB_PILOTTO_E2E_BACKGROUND_BROWSER_ARGS: JSON.stringify([`--host-resolver-rules=${hostRules(port)}`, '--ignore-certificate-errors'])});
 
 const FOLDER = {darwin: 'chrome-mac-', linux: 'chrome-linux64', win32: 'chrome-win64'};
 /**

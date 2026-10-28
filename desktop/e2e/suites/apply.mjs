@@ -30,7 +30,7 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 // cannot operate + Ready to submit). A new forms or CV step is weighed here (test/step-slices.test.mjs).
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
-  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11};
+  'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
   'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,
@@ -50,7 +50,7 @@ function fixtureAnswers(fields) {
 
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
-  'Background automation': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
+  'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
 export const keepGoing = true;
@@ -423,7 +423,7 @@ export async function runApply(ctx, parts) {
 
   // Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills the form, the person's Submit in the live view posts it once.
   // After "through all of it" because it is the one place a Submit is allowed after the person's own (submitProblems above), and it seeds its own job.
-  await ctx.run('Background automation: the hidden browser fills a form, the person\'s Submit in the live view posts it once and the job becomes Applied', async () => {
+  await ctx.run('The hidden browser fills a form, the person\'s Submit in the live view posts it once and the job becomes Applied', async () => {
     const form = FORMS.submitter;
     await proveBackground(ctx, {form, until, seed: async () => { await removeJobsByUrl(ctx, urls);   // only the submitter is left, so the one job Start picks is the one this step watches
        await addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}); }});

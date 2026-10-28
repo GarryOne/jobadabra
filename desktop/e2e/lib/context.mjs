@@ -15,7 +15,7 @@ import {appKey, appModelEnv, DUMMY_KEY, familySecret, isCi, pickEngine, pickFami
 import {checkRelay} from './free-ai-check.mjs';
 import {copyExtension, freePort, makeOpenShim, opensIntoSpool} from './extension.mjs';
 import {startForms} from './forms.mjs';
-import {hiddenBrowserEnv} from './background-proof.mjs';
+import {hiddenBrowserEnv} from './hidden-browser-env.mjs';
 import {createVariation, placeOf} from './variation.mjs';
 import {ARTIFACTS, E2E, launch, pickFile, step} from './app.mjs';
 import {clearRoot, testRoot, workspaceReady} from './notion.mjs';

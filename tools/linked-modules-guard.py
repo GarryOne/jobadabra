@@ -12,6 +12,7 @@ PACKAGE_DIRS = ('.', 'desktop', 'desktop/e2e', 'worker', 'site')   # the folders
 
 
 def repo_root(start):
+    """The checkout holding `start`: the nearest parent with a .git; the filesystem root when there is none (then nothing is linked)."""
     root = os.path.abspath(start)
     while root != os.path.dirname(root) and not os.path.exists(os.path.join(root, '.git')):
         root = os.path.dirname(root)
@@ -19,11 +20,12 @@ def repo_root(start):
 
 
 def linked(root):
-    """Package dirs of this checkout whose node_modules is a link into another checkout."""
+    """Package dirs of the checkout at `root` (from PACKAGE_DIRS) whose node_modules is a link into another checkout; empty when none."""
     return [d for d in PACKAGE_DIRS if os.path.islink(os.path.join(root, d, 'node_modules'))]
 
 
 def main():
+    """Reads the hook JSON on stdin; exits 2 with the way out on stderr when an npm install would run through a linked node_modules, else returns."""
     data = json.load(sys.stdin)
     command, cwd = data.get('tool_input', {}).get('command', ''), data.get('cwd') or os.getcwd()
     # Why (28 Oct 2026, #2414): a parser of cd/--prefix/subshell forms was bypassed twice; the state is judged instead: any npm install verb anywhere,

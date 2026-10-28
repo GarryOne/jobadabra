@@ -18,7 +18,7 @@ functions over McCabe 10. Rule: new code only, old code is never blocked. A rule
 - [x] Baseline numbers and sketch (proof: docs/superpowers/plans/2026-10-28-clean-code-checks.md)
 - [x] 1/4 Gitar rule (proof: .gitar/review/clean-code.md)
 - [x] 2/4 sonarjs on new code (proof: tools/clean-code-js.mjs)
-- [ ] 3/4 Ruff on new code
+- [x] 3/4 Ruff on new code (proof: tools/clean-code-py.py)
 - [ ] 4/4 SonarQube Cloud
 
 ## Baseline: rerun on `bacbe2a`
@@ -46,3 +46,20 @@ Findings in production code of the baseline tree; a sample of up to 20 per rule 
 | `no-empty-collection`, `no-unused-collection`, `no-dead-store` | 4, 3, 1 | dropped: misfires on test resets and destructuring |
 
 Mode: `tools/clean-code-js.mjs` runs inside `npm run lint` (push gate and the desktop CI job) and reports a finding only on a line the change adds (diff against the merge base with `origin/main`), in `desktop/` and `extension/`. A function's finding sits on its head line, so editing the body of an old tangled function is not blocked; a new or rewritten head is.
+
+## Python rules: sampled precision (3/4)
+Ruff 0.17.3, `--isolated`, over `src tools tests worker` of the baseline tree; production = not under `tests/`. Samples of up to 20 per rule read as for the JS rules.
+
+| Rule | Findings (prod) | Verdict from the sample |
+|---|---|---|
+| `C901` McCabe | 87 at 10, 33 at 15 | real; the limit is 15 (JS 20 is cognitive, which counts nesting) |
+| `F401` unused import | 137 | 14 of 20 truly unused, 3 re-exports that tests patch (`# noqa: F401 (<why>)` keeps them), 3 duplicate imports: kept, ~85% real |
+| `F841` unused local | 3 | all real |
+| `B023` lambda over a loop variable | 2 | real bug shape |
+| `B904` raise in except without `from` | 6 | real: the cause chain is lost |
+| `F405` star import | 366 | dropped: one pattern, a rewrite not a fix |
+| `PLR0913` / `PLR0912` / `PLR0915` / `PLR0911` | 136 / 44 / 41 / 25 | dropped: counts overlap `C901` |
+| `F811` redefinition | 38 | dropped: re-export blocks in `src/scout.py` |
+| `SIM115`, `RET503`, `PERF401`, `SIM105`, `RUF005`, `B905` | 17, 7, 31, 24, 43, 29 | dropped: style, scripts |
+
+Mode: `tools/clean-code-py.py` runs in `tools/pre-push-check.sh` (the push gate; CI's pr-gate job runs the same script) on changed `src/` and `tools/` files and keeps findings on added lines. Ruff is pinned and installed on first use into `~/.cache/jobadabra` (about 10 s once; 0.6 s after).

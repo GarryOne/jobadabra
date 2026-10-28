@@ -18,4 +18,5 @@ test('renderJobsSuggestions asks barState before it touches the bar', () => {
   const page = fs.readFileSync(new URL('../renderer/pages/focus-suggestions.js', import.meta.url), 'utf8');
   const body = page.slice(page.indexOf('export function renderJobsSuggestions'));
   assert.ok(body.indexOf('barState(') > 0 && body.indexOf('barState(') < body.indexOf('show(bar'), 'barState first, then show');
+  assert.match(body.slice(0, body.indexOf('show(bar')), /if \(!state\) \{ loadFocus\(\); return; \}/, 'an unknown Focus is read by the bar itself, not waited for (it is read only when its view opens)');
 });

@@ -150,7 +150,7 @@ export function renderJobsSuggestions() {
   const bar = $('jobs-suggestions');
   if (!bar) return;
   const state = barState(Boolean(lastArgs), jobsEntries(withRows()));
-  if (!state) return;   // Focus not read yet: the kept paint stays (paintJobsSuggestionsFirst)
+  if (!state) { loadFocus(); return; }   // Why (owner, 28 Oct 2026): Focus is read only when its view opens (nav.js), so the bar reads it itself; the kept paint stays meanwhile (paintJobsSuggestionsFirst)
   const {entries} = state;
   show(bar, state.shown);
   const words = jobsBarWords(entries.length, bar.open, barLine(entries));

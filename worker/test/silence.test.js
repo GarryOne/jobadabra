@@ -75,7 +75,7 @@ test('wired where the spec says: every progress note restarts it, a new page nam
   assert.match(read('ladder/dead-end.js'), /export function deadEnd\([\s\S]*?endSilence\(stop\.tabId\);[\s\S]*?const sent = report\(/, 'the door ends it, for every stop');
   assert.match(read('form-ready.js'), /if \(handedToPerson\(answer\)\) endSilence\(tab\.id\);/);
   assert.match(read('fill-flow.js'), /notePage\(tab\.id, key, \{job: jobUrl \|\| tab\.url, page: tab\.url\}\)/);
-  assert.doesNotMatch(read('fill-flow.js'), /restartSilence|endSilence/, 'the flow never touches the clock but through a note or the door');
+  assert.doesNotMatch(['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n'), /restartSilence|endSilence/, 'the flow never touches the clock but through a note or the door');
 });
 
 test('an ask to the app in flight is a wait, not a stall: the clock stands still, and the notice comes T of quiet later', () => {

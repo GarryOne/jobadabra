@@ -38,3 +38,25 @@ export function standInHost(host, env = process.env) {
   }
   return closed;
 }
+
+/**
+ * A test app ends when the runner that started it is gone, however the runner went (a timeout, a kill, a crash): no handler runs there, and the OS gives a child no signal when its parent dies.
+ * Only in a run that names its runner (`JOB_PILOTTO_E2E_RUNNER_PID`, set by e2e/lib/app.mjs): an app a person runs has none and is never watched. Calls `exit` once the runner's process is gone,
+ * and kills this process outright if it is still alive after a grace (an app that ignores being asked to quit).
+ * Why (28 Oct 2026, owner: "what loads my computer", load 52): four test apps from runs that had died ran 5 to 7 hours at about 15% CPU each, parent launchd, and ignored SIGTERM.
+ * Guard: test/e2e-runner-watch.test.js (kills a real runner, with a child that has no watch as the positive control).
+ * @param {() => void} exit  @param {NodeJS.ProcessEnv} env  @returns {NodeJS.Timeout|null} the timer, or null when there is no runner to watch
+ */
+export function watchRunner(exit, env = process.env) {
+  const runner = Number(env.JOB_PILOTTO_E2E_RUNNER_PID);
+  if (!Number.isInteger(runner) || runner <= 0) return null;
+  const alive = () => { try { process.kill(runner, 0); return true; } catch (error) { return error.code === 'EPERM'; } };
+  const timer = setInterval(() => {
+    if (alive()) return;
+    clearInterval(timer);
+    try { exit(); } catch { /* the force below ends it */ }
+    setTimeout(() => process.kill(process.pid, 'SIGKILL'), Number(env.JOB_PILOTTO_E2E_RUNNER_GRACE_MS) || 3000);   // not unref'd: an exit that returns and ends nothing is still ended
+  }, Number(env.JOB_PILOTTO_E2E_RUNNER_POLL_MS) || 2000);
+  timer.unref?.();   // the watch alone never keeps an app alive
+  return timer;
+}

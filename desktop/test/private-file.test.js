@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {writePrivate} from '../lib/private-file.js';
+import {flushPending, onChange, retryPrivate, timing, writePrivate} from '../lib/private-file.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sources = dir => fs.readdirSync(dir, {withFileTypes: true}).flatMap(entry => (entry.isDirectory() ? (entry.name === 'node_modules' || entry.name === 'test' ? [] : sources(path.join(dir, entry.name))) : /\.m?js$/.test(entry.name) ? [path.join(dir, entry.name)] : []));
@@ -89,4 +89,90 @@ test('a leftover that cannot be removed does not stop the save', async () => {
   try { writePrivate(file, '{"saved":true}'); } finally { fs.rmSync = rmSync; }
   assert.equal(fs.readFileSync(file, 'utf8'), '{"saved":true}');
   assert.ok(fs.existsSync(leftover), 'the removal really failed (the mock took effect)');
+});
+
+// Design (28 Oct 2026, owner "Save shortly after"; #2351 Windows desktop: file held 1500 ms -> EPERM after 1509 ms). A file Windows holds longer than the brief retry is
+// saved shortly after: saved / waiting / could not save, one owner (lib/private-file.js). These play "held" with a rename that fails until released, so they do not depend on
+// the runner's speed or platform; the last test is the plain 1.5 s hold that bites on Windows CI.
+const dirOf = () => fs.mkdtempSync(path.join(os.tmpdir(), 'jp-private-'));
+const sleep = ms => new Promise(done => setTimeout(done, ms));
+async function held(run) {
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform'), renameSync = fs.renameSync, saved = {...timing};
+  const hold = {on: false};
+  Object.defineProperty(process, 'platform', {value: 'win32'});
+  fs.renameSync = (from, to) => { if (hold.on) throw Object.assign(new Error('held'), {code: 'EPERM'}); return renameSync(from, to); };
+  Object.assign(timing, {briefTries: 3, briefPauseMs: 1, retryMs: 20, giveUpMs: 400});
+  try { await run(hold); } finally { Object.defineProperty(process, 'platform', platform); fs.renameSync = renameSync; Object.assign(timing, saved); }
+}
+
+test('a file held past the brief retry is saved shortly after, old file whole meanwhile, no temp left', () => held(async hold => {
+  const file = path.join(dirOf(), 'settings.json');
+  hold.on = false; writePrivate(file, '{"v":0}'); hold.on = true;
+  const states = [], off = onChange(event => states.push(event.state));
+  assert.equal(writePrivate(file, '{"v":1}'), 'waiting');
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":0}', 'the old file stays whole while waiting');
+  assert.deepEqual(fs.readdirSync(path.dirname(file)), ['settings.json'], 'no temp file while waiting');
+  hold.on = false;
+  await sleep(150);
+  off();
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}');
+  assert.deepEqual(states, ['waiting', 'saved']);
+  assert.deepEqual(fs.readdirSync(path.dirname(file)), ['settings.json']);
+}));
+
+test('while waiting the newest value wins, an older one is never written after it', () => held(async hold => {
+  const file = path.join(dirOf(), 'settings.json');
+  hold.on = false; writePrivate(file, '{"v":0}'); hold.on = true;
+  writePrivate(file, '{"v":1}'); writePrivate(file, '{"v":2}'); writePrivate(file, '{"v":3}');
+  hold.on = false;
+  await sleep(150);
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":3}');
+}));
+
+test('held too long: the person is told (could not save), Retry saves the newest value once the file is free', () => held(async hold => {
+  const file = path.join(dirOf(), 'settings.json');
+  hold.on = false; writePrivate(file, '{"v":0}'); hold.on = true;
+  const states = [], off = onChange(event => states.push(event.state));
+  writePrivate(file, '{"v":1}');
+  await sleep(600);
+  assert.deepEqual(states, ['waiting', 'failed']);
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":0}');
+  hold.on = false;
+  assert.equal(retryPrivate(file), true);
+  await sleep(100);
+  off();
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}');
+  assert.deepEqual(states, ['waiting', 'failed', 'waiting', 'saved']);
+  assert.equal(retryPrivate(file), false, 'nothing waits any more');
+}));
+
+test('a save still waiting when the app quits is completed, or returned to be reported', () => held(async hold => {
+  const [one, two] = [path.join(dirOf(), 'a.json'), path.join(dirOf(), 'b.json')];
+  hold.on = false; writePrivate(one, '{"v":0}'); writePrivate(two, '{"v":0}'); hold.on = true;
+  writePrivate(one, '{"v":1}'); writePrivate(two, '{"v":1}');
+  hold.on = false;
+  assert.deepEqual(flushPending(), [], 'the file is free at quit: both are saved');
+  assert.equal(fs.readFileSync(one, 'utf8'), '{"v":1}'); assert.equal(fs.readFileSync(two, 'utf8'), '{"v":1}');
+  hold.on = true; writePrivate(one, '{"v":3}');
+  assert.deepEqual(flushPending(), [one], 'still held at quit: reported, not dropped');
+  hold.on = false;
+}));
+
+// The plain case from #2351: a reader holds settings.json for 1.5 s (longer than the old 10 x 20 ms). On Windows the rename is refused for that long (EPERM after 1509 ms);
+// the save must be reported saved or waiting, never thrown, and the newest value lands once the reader lets go.
+test('a reader holding the file for 1.5 s does not make the save throw; the newest value lands after', async () => {
+  const file = path.join(dirOf(), 'settings.json');
+  writePrivate(file, '{"v":0}');
+  const reader = spawn(process.execPath, ['-e', `const fs = require('fs'); const fd = fs.openSync(${JSON.stringify(file)}, 'r'); process.stdout.write('open');
+    setTimeout(() => { fs.closeSync(fd); }, 1500);`]);
+  await new Promise(done => reader.stdout.once('data', done));
+  const saved = {...timing};
+  timing.giveUpMs = 8000;
+  try {
+    assert.ok(['saved', 'waiting'].includes(writePrivate(file, '{"v":1}')));
+    await new Promise(done => reader.on('exit', done));
+    for (let i = 0; i < 40 && fs.readFileSync(file, 'utf8') !== '{"v":1}'; i++) await sleep(100);
+  } finally { Object.assign(timing, saved); }
+  assert.equal(fs.readFileSync(file, 'utf8'), '{"v":1}');
+  assert.deepEqual(fs.readdirSync(path.dirname(file)), ['settings.json']);
 });

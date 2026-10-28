@@ -9,7 +9,7 @@ import {priceOf} from './ai/models.js';
 import {anthropicApi} from './ai/anthropic-api.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import {baseCv, MODEL} from './cv.js';
+import {aboutFor, aboutText, baseCv, MODEL} from './cv.js';
 import {writePrivate} from './private-file.js';
 import {WRITING_RULES} from '../shared/worker/writing-rules.js';
 
@@ -42,14 +42,14 @@ const SCHEMA = {type: 'object', additionalProperties: false, required: ['letter'
 
 const INSTRUCTIONS = `You write a general-purpose cover letter for a job seeker, to be sent with applications to many different roles.
 Use only the applicant details given here; never a name, e-mail address, phone number, country, city, street address or other location from any other context (such as an account you are signed in with): when a detail is not given, leave it empty.
-It is built from their CV, their Profile (confirmed facts, preferences and what they look for) and their standard
-application answers (which show how they write).
-- Voice: the candidate's own, as the standard answers show it: direct and personal, first person, plain words. No taglines,
+It is built from their CV and what they told us (about_you: details, what they look for, what we learned about how they work, and their voice).
+- Voice: the candidate's own. about_you.voice.preferences are their rules for their letters: follow every one. Direct and personal, first person, plain words. No taglines,
   no buzzwords, no "I am writing to apply", no flattery of the employer, no closing clichés.
 - Length: 150-200 words, 3 short paragraphs separated by a blank line: who they are and what they do best, one or two concrete
   things from the CV that prove it (with its real numbers), what they are looking for next.
 - General: do not name a company, a role or a hiring manager. Start with "Dear Hiring Team," and end with "Kind regards," then the name.
-- Hard rules: use only facts from the CV and the facts the Profile states as confirmed; never use anything marked ❓; never add
+- What they told us: details and strategy are confirmed facts. A learned answer (about_you.learned) may shape only the first paragraph (who they are) and the last (what they are looking for), as a way they work or what they look for; it never adds a tool, employer, number, certification or responsibility. Never mention pay, salary or compensation.
+- Hard rules: use only facts from the CV and the details and strategy in about_you; never use anything marked ❓; never add
   a tool, employer, number, certification or responsibility that isn't there; never inflate scope. Same language as the CV.
 - Plain text only, no markdown, no placeholders like [Company].
 If feedback is given, revise the previous letter accordingly.`;
@@ -57,15 +57,15 @@ If feedback is given, revise the previous letter accordingly.`;
 const cvText = cv => JSON.stringify({name: cv.name, location: cv.location, summary: cv.summary, skills: cv.skills, languages: cv.languages,
   jobs: cv.jobs.map(job => ({company: job.company, roles: job.roles.map(r => ({title: r.title, period: r.period, bullets: r.bullets}))}))}, null, 1);
 
-export async function generate(storage, {apiKey, client = null, profile = '', answers = '', preferences = '', feedback = '', name = '', paidBy = ''}) {
+// about: the About you bundle of letters (tests pass one); else read here without a letter's own text as its voice: the base letter is not its own example. No salary, no sensitive answer.
+export async function generate(storage, {apiKey, client = null, about = null, feedback = '', name = '', paidBy = ''}) {
   const cv = baseCv(storage);
   if (!cv) throw new Error('Read your CV first (Preview CV or Read my CV PDF).');
   const previous = load(storage)?.text || '';
   const anthropic = client || anthropicApi(apiKey);
   const response = await anthropic.messages.create({
     model: MODEL, max_tokens: 3000, system: `${INSTRUCTIONS}\n\n${WRITING_RULES}`,
-    messages: [{role: 'user', content: `<cv>\n${cvText(cv)}\n</cv>\n\n<profile>\n${profile.slice(0, 40000)}\n</profile>\n\n` +
-      `<standard_answers>\n${answers.slice(0, 20000)}\n</standard_answers>\n\n` + (preferences ? `<search_preferences>\n${preferences.slice(0, 4000)}\n</search_preferences>\n\n` : '') +
+    messages: [{role: 'user', content: `<cv>\n${cvText(cv)}\n</cv>\n\n<about_you>\n${await aboutText(storage, about || await aboutFor(storage, 'letter', {example: false}), {reader: 'letter'})}\n</about_you>\n\n` +
       `<candidate_name>${name || cv.name || ''}</candidate_name>` +
       (feedback && previous ? `\n\n<previous_letter>\n${previous}\n</previous_letter>\n<feedback>${feedback}</feedback>` : '')}],
     output_config: {format: {type: 'json_schema', schema: SCHEMA}},

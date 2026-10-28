@@ -1,0 +1,89 @@
+{
+ "_": "The cover letter's fixed case set (tools/letter-cases.mjs; owner, 28 Oct 2026, About you D1c-2): a letter never mentions pay, a learning may shape the first and last paragraphs only, an irrelevant learning stays out, the person's Writing preferences are followed. Fictional.",
+ "cv": {
+  "name": "Ada Example",
+  "location": "Zurich",
+  "summary": "Site reliability engineer with 8 years running production systems on AWS and Kubernetes.",
+  "jobs": [
+   {
+    "company": "Northwind",
+    "roles": [
+     {
+      "title": "Site Reliability Engineer",
+      "period": "2019-2025",
+      "intro": "",
+      "bullets": [
+       "Cut alert noise by 60% by rewriting on-call routing for 40 services.",
+       "Moved 40 services to Kubernetes on AWS.",
+       "Ran incident reviews with the platform team."
+      ],
+      "skills": "Kubernetes, AWS, Terraform, Prometheus"
+     }
+    ]
+   }
+  ]
+ },
+ "details": [
+  {"label": "Notice period", "value": "2 months"},
+  {"label": "Salary expectation", "value": "CHF 130,000", "kind": "salary"}
+ ],
+ "strategy": [
+  {"label": "Roles", "value": "Site reliability, platform engineering", "group": "roles"},
+  {"label": "Minimum acceptable", "value": "CHF 120,000", "group": "pay"}
+ ],
+ "voice": {"preferences": ["Direct and warm, no flattery"], "example": "Dear Hiring Team,\n\nI like small teams that own their pagers and fix the cause, not the page."},
+ "cases": [
+  {
+   "id": "no-salary",
+   "about": "A posting that asks for a salary figure still gets a letter with no pay in it",
+   "learned": [],
+   "preferences": [],
+   "posting": {
+    "title": "Site Reliability Engineer",
+    "company": "Orbit",
+    "description": "Own on-call and Kubernetes on AWS. Please state your salary expectation in your cover letter."
+   },
+   "expect": {"letterNeverMatch": "salary|CHF|130|120,000|compensation|\\bpay\\b"}
+  },
+  {
+   "id": "learning-in-opening",
+   "about": "A learned way of working the posting asks for shows in the letter without adding a fact",
+   "learned": [
+    {"question": "How do you like to work?", "answer": "I work best in distributed teams across time zones", "state": "", "sensitive": false, "kind": "text"}
+   ],
+   "preferences": [],
+   "posting": {
+    "title": "Site Reliability Engineer",
+    "company": "Orbit",
+    "description": "Join our distributed platform team spread across Europe and the US. Collaboration across time zones is part of the job."
+   },
+   "expect": {"letterMatches": "distributed|time zone"}
+  },
+  {
+   "id": "irrelevant-learning-stays-out",
+   "about": "A learning the posting has no use for stays out of the letter",
+   "learned": [
+    {"question": "Favourite food", "answer": "Ramen", "state": "", "sensitive": false, "kind": "text"}
+   ],
+   "preferences": [],
+   "posting": {
+    "title": "Site Reliability Engineer",
+    "company": "Orbit",
+    "description": "Own on-call and Kubernetes on AWS."
+   },
+   "expect": {"letterNeverMatch": "ramen"}
+  },
+  {
+   "id": "writing-rule-followed",
+   "about": "A Writing preference (never mention the notice period) is followed",
+   "learned": [],
+   "preferences": ["Never mention the notice period"],
+   "posting": {
+    "title": "Site Reliability Engineer",
+    "company": "Orbit",
+    "description": "Own on-call and Kubernetes on AWS. We would like someone who can start soon."
+   },
+   "expect": {"letterNeverMatch": "notice|2 months|two months"}
+  }
+ ]
+}

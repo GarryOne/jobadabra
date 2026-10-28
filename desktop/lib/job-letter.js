@@ -9,7 +9,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {nameOfClient} from './ai/names.js';
 import {anthropicApi} from './ai/anthropic-api.js';
-import {baseCv, dir as cvDir, MODEL, style, usd} from './cv.js';
+import {aboutFor, aboutText, baseCv, dir as cvDir, MODEL, style, usd} from './cv.js';
 import {writePrivate} from './private-file.js';
 import {DEFAULT_CSS, FONTS} from '../cv/template.js';
 import {WRITING_RULES} from '../shared/worker/writing-rules.js';
@@ -42,24 +42,26 @@ export function finalName(storage, record) {
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['letter'], properties: {letter: {type: 'string'}}};
 const INSTRUCTIONS = `You write a cover letter for one job, for a job seeker whose CV was just tailored to that posting.
 Use only the applicant details given here; never a name, e-mail address, phone number, country, city, street address or other location from any other context (such as an account you are signed in with): when a detail is not given, leave it empty.
-- Voice and style: the candidate's own, as the standard answers show it (follow their "Cover letter style" when there is one): direct and personal, first person, plain words. No taglines, no buzzwords, no "I am writing to apply", no flattery of the employer, no closing clichés.
+- Voice and style: the candidate's own. about_you.voice.preferences are their rules for their letters: follow every one. about_you.voice.example, when there is one, is a letter they approved: take its phrasing and rhythm, never its sentences or the facts it holds for another employer. Direct and personal, first person, plain words. No taglines, no buzzwords, no "I am writing to apply", no flattery of the employer, no closing clichés.
 - Length: 150-200 words, 3 short paragraphs separated by a blank line: why this role fits what they do best, one or two concrete things from the tailored CV that prove it (with its real numbers), what they bring next.
 - Name the company and the role once, naturally. Start with "Dear Hiring Team," and end with "Kind regards," then the name.
-- Hard rules: use only facts from the tailored CV and the facts the Profile states as confirmed; never use anything marked ❓; never add a tool, employer, number, certification or responsibility that isn't there; never inflate scope. Write in the language of the posting.
+- What they told us (about_you): details and strategy are confirmed facts. A learned answer (about_you.learned) may shape only the first paragraph (why this role fits) and the last (what they bring next), as a way they work or what they look for; it never adds a tool, employer, number, certification or responsibility, and never replaces what the CV proves. Never mention pay, salary or compensation, even if asked for in the posting.
+- Hard rules: use only facts from the tailored CV and the details and strategy in about_you; never use anything marked ❓; never add a tool, employer, number, certification or responsibility that isn't there; never inflate scope. Write in the language of the posting.
 - Plain text only, no markdown, no placeholders like [Company].
 If feedback is given, revise the previous letter accordingly.`;
 
 const numbers = text => String(text || '').match(/\d+(?:[.,]\d+)*/g) || [];
 
-// The text for a job: `kitLetter` (the job's kit has one) is used as it is, free; else one AI call from the tailored CV + the posting.
-export async function draft(storage, {job, cv, kitLetter = '', profile = '', answers = '', preferences = '', feedback = '', previous = '', name = '', apiKey, client = null}) {
+// The text for a job: `kitLetter` (the job's kit has one) is used as it is, free; else one AI call from the tailored CV, the About you bundle of letters and the posting.
+// about: the bundle (tests pass one); else read here. Invariant: no salary and no sensitive answer reaches the prompt (the `letter` reader, lib/about-you.js).
+export async function draft(storage, {job, cv, kitLetter = '', about = null, feedback = '', previous = '', name = '', apiKey, client = null}) {
   let text = String(kitLetter || '').trim(), cost = 0, tokens = {input: 0, output: 0}, source = 'kit';
+  const aboutJson = await aboutText(storage, about || await aboutFor(storage, 'letter'), {reader: 'letter'});   // also for a kit letter: its figures are checked against it
   if (!text || feedback) {
     const anthropic = client || anthropicApi(apiKey);
     const response = await anthropic.messages.create({
       model: MODEL, max_tokens: 3000, system: `${INSTRUCTIONS}\n\n${WRITING_RULES}`,
-      messages: [{role: 'user', content: `<tailored_cv>\n${JSON.stringify(cv, null, 1)}\n</tailored_cv>\n\n<profile>\n${profile.slice(0, 40000)}\n</profile>\n\n` +
-        `<standard_answers>\n${answers.slice(0, 20000)}\n</standard_answers>\n\n` + (preferences ? `<search_preferences>\n${preferences.slice(0, 4000)}\n</search_preferences>\n\n` : '') +
+      messages: [{role: 'user', content: `<tailored_cv>\n${JSON.stringify(cv, null, 1)}\n</tailored_cv>\n\n<about_you>\n${aboutJson}\n</about_you>\n\n` +
         `<posting>\n${job.title} at ${job.company}${job.location ? ` (${job.location})` : ''}\n\n${(job.description || '(no description stored: write to the title)').slice(0, 30000)}\n</posting>\n\n` +
         `<candidate_name>${name || cv.name || ''}</candidate_name>` +
         (feedback && previous ? `\n\n<previous_letter>\n${previous}\n</previous_letter>\n<feedback>${feedback}</feedback>` : '')}],
@@ -73,9 +75,9 @@ export async function draft(storage, {job, cv, kitLetter = '', profile = '', ans
     source = 'ai';
   }
   if (!text) throw new Error('The letter came back empty; try again');
-  // A figure the CV and the Profile never gave is flagged, as the tailored CV's are.
-  const known = new Set(numbers(`${JSON.stringify(cv)} ${profile} ${job.title} ${job.company}`));
-  const warnings = [...new Set(numbers(text).filter(n => !known.has(n)))].map(n => `The letter says ${n}, which your CV and Profile don't: check it.`);
+  // A figure the CV and what they told us never gave is flagged, as the tailored CV's are.
+  const known = new Set(numbers(`${JSON.stringify(cv)} ${aboutJson} ${job.title} ${job.company}`));
+  const warnings = [...new Set(numbers(text).filter(n => !known.has(n)))].map(n => `The letter says ${n}, which your CV and details don't: check it.`);
   return {text, usd: cost, tokens, source, warnings, model: MODEL};
 }
 

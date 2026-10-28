@@ -139,22 +139,23 @@ const numbered = (cv, room = null) => ({summary: cv.summary || '', ...(room?.sum
     skills: r.skills || ''}))})),
   ...(cv.skills ? {skills: cv.skills} : {}), ...(cv.extraSkills ? {extra_skills: cv.extraSkills} : {})});
 
-// What the candidate told us, as this prompt takes it: the About you bundle of CV tailoring (lib/about-you.js: details and strategy without salary, learnings
-// without sensitive ones, conflicts or pay) minus the CV, which the prompt already carries numbered (so it is skipped, not read and trimmed to be dropped). about: a bundle (tests, or the
-// caller's one read for both attempts); else read here, lazily (about-you.js imports this file). A part that could not be read is named, never filled from anywhere else.
-export async function aboutFor(storage) {
-  const {aboutYou, READERS} = await import('./about-you.js');
+// What the candidate told us, as a prompt takes it: the reader's About you bundle (lib/about-you.js: details and strategy without salary where the reader is noSalary, learnings
+// without sensitive ones or conflicts) minus the CV, which the prompt already carries (so it is skipped, not read and trimmed to be dropped). Shared by CV tailoring and both
+// letter writers (D1c). A part that could not be read is named, never filled from anywhere else. options: {example: false} drops a letter's own text from its voice (the base letter).
+export async function aboutFor(storage, reader = 'cv_tailor', options = {}) {
+  const {aboutYou, READERS} = await import('./about-you.js');   // lazily: about-you.js imports this file
   // A failed read is logged once and comes back as an empty bundle naming what is missing, so it never counts as "none given" (Gitar on #2373: it was read again per attempt).
-  return aboutYou(storage, 'cv_tailor', {skip: ['cv']}).catch(error => {
-    appLog('cv', 'About you could not be read for tailoring', {error: error.message});
-    return {parts: {}, lacked: READERS.cv_tailor.parts.filter(part => part !== 'cv')};
+  return aboutYou(storage, reader, {skip: ['cv'], ...options}).catch(error => {
+    appLog('cv', `About you could not be read for ${reader}`, {error: error.message});
+    return {parts: {}, lacked: READERS[reader].parts.filter(part => part !== 'cv')};
   });
 }
-async function aboutText(storage, about) {
-  const bundle = about || await aboutFor(storage);
+/** The bundle as prompt text: its parts (never the CV) as compact JSON capped at `cap` characters, and what could not be read. about: a bundle, else read here. */
+export async function aboutText(storage, about, {reader = 'cv_tailor', cap = 40000} = {}) {
+  const bundle = about || await aboutFor(storage, reader);
   const parts = {...bundle.parts};
   delete parts.cv;   // a bundle from a test may carry one
-  return JSON.stringify(parts).slice(0, 40000) + (bundle.lacked.length ? `\n(not available this time: ${bundle.lacked.join(', ')})` : '');
+  return JSON.stringify(parts).slice(0, cap) + (bundle.lacked.length ? `\n(not available this time: ${bundle.lacked.join(', ')})` : '');
 }
 
 // base: the main CV with the experience bank's extra bullets (lib/experience.js withExtras); the main CV itself when none.

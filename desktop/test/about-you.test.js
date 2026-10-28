@@ -83,7 +83,8 @@ test('aboutYou reads each part from its one source on a local store: Your detail
   const letter = await aboutYou(storage, 'letter');
   assert.deepEqual(letter.parts.learned.map(each => each.question), ['Willing to travel']);
   assert.equal(letter.parts.cv.basics.name, 'Alex Morgan');
-  assert.deepEqual(letter.lacked, ['voice'], 'voice comes with the letter readers (PR D1c)');
+  assert.deepEqual(letter.lacked, [], 'voice is gathered since D1c-2: with no rule and no approved letter it is empty, not lacked');
+  assert.deepEqual(letter.parts.voice, {preferences: []});
   const portrait = await aboutYou(storage, 'portrait');
   assert.deepEqual(portrait.parts.learned.map(each => each.question), ['Willing to travel'], 'the sensitive answer and the conflict wait');
 });

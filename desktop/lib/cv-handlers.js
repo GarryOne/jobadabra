@@ -18,7 +18,6 @@ import * as strategy from './strategy.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {log as appLog} from './log.js';
-import {configForPrompt} from './config-text.js';
 import {restartFormsOf} from './tailored-restart.js';
 import {writePrivate} from './private-file.js';
 import * as letterStyle from './letter-style.js';
@@ -127,11 +126,9 @@ export function registerCvAndLettersHandlers(ctx) {
         if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) first.'};
         await atUpload.ensure(storage, {client: ai, key, look: keepLook});
       }
-      const style = await letterStyle.read(storage);   // first: it moves an old style section off the answers page
-      const {profile, answers} = await strategy.profileTexts(storage);
       const contact = await contactDetails.read(storage).catch(() => ({}));
-      const result = await letters.generate(storage, {apiKey: key, client: ai, profile, answers: letterStyle.withStyle(answers, style), feedback: String(feedback).slice(0, 1000),
-        preferences: configForPrompt(storage, 'search.json'), name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' '), paidBy: letters.paidByOf({key, client: ai})});
+      const result = await letters.generate(storage, {apiKey: key, client: ai, feedback: String(feedback).slice(0, 1000),
+        name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' '), paidBy: letters.paidByOf({key, client: ai})});
       appLog('cover-letter', `drafted${feedback ? ' with feedback' : ''}`, {words: result.text.split(/\s+/).length, usd: result.usd});
       return {ok: true, ...letters.status(storage)};
     } catch (error) { return {ok: false, error: error.message}; }

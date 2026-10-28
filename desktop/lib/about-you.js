@@ -9,6 +9,8 @@ import * as contact from './contact.js';
 import * as verdicts from './question-verdicts.js';
 import * as formats from './question-formats.js';
 import {baseCv} from './cv.js';
+import * as letterStyle from './letter-style.js';
+import * as letters from './cover-letter.js';
 import * as experience from './experience.js';
 import {openStore} from './store/index.js';
 import {writePrivate} from './private-file.js';
@@ -35,12 +37,12 @@ export const READERS = {
 };
 
 // What the readers page on the website shows (owner via the coordinator, 28 Oct 2026: "publish on the website … this table", live only, nothing claimed before it works).
-// LIVE: the readers whose bundle a step really receives today (a reader in READERS but not here is built, not wired). GATHERED: the parts aboutYou() reads today (history,
-// voice and this job come with D1c/D2): a cell is claimed only for a live reader's part that is gathered. PAGES: parts a step still reads straight from a page or file.
+// LIVE: the readers whose bundle a step really receives today (a reader in READERS but not here is built, not wired). GATHERED: the parts aboutYou() reads today (history
+// and this job come with D2): a cell is claimed only for a live reader's part that is gathered. PAGES: parts a step still reads straight from a page or file.
 // Add a reader to LIVE in the PR that wires it, and a part to GATHERED in the PR that reads it; test/about-you-readers.test.js fails when the exported JSON
 // (docs/about-you-readers.json) is out of date, or when GATHERED disagrees with a real aboutYou() call.
-export const LIVE = ['kit', 'portrait', 'cv_tailor'];   // cv_tailor: lib/cv.js tailor takes its bundle (D1c-1, 28 Oct 2026)
-export const GATHERED = ['details', 'cv', 'learned', 'strategy'];
+export const LIVE = ['kit', 'portrait', 'cv_tailor', 'letter'];   // cv_tailor: lib/cv.js tailor takes its bundle (D1c-1); letter: job-letter.js and cover-letter.js (D1c-2, 28 Oct 2026)
+export const GATHERED = ['details', 'cv', 'learned', 'strategy', 'voice'];
 export const PAGES = {form: ['details', 'cv', 'learned', 'strategy'], kit: ['details', 'learned', 'strategy']};
 export const NAMES = {
   parts: {details: 'Your details', cv: 'CV + Experience bank', learned: 'What we learned', strategy: 'Strategy', history: 'History', voice: 'Voice', this_job: 'This job'},
@@ -119,6 +121,13 @@ function cvOf(storage) {
   try { return experience.withExtras(storage, base); } catch { return base; }
 }
 
+// Voice: the person's Writing preferences (Profile → Cover letter) and, when `example`, the text of their approved base letter, as a sample of their own phrasing.
+// A draft or a letter with a gap is no sample (the person has not accepted it). Why (owner, 28 Oct 2026, D1c-2): the base letter is the voice example, approved only.
+async function voiceOf(storage, {example}) {
+  const record = example ? letters.load(storage) : null;
+  return {preferences: await letterStyle.read(storage), ...(record?.status === 'approved' && record.text ? {example: record.text} : {})};
+}
+
 // Strategy: the Profile's search fields, then its deal-breakers and other preferences (a rule under Compensation is a pay line).
 function strategyOf(profile) {
   const {fields, other} = readProfile(profile);
@@ -130,13 +139,15 @@ function strategyOf(profile) {
 
 /**
  * Reads each part the reader takes from its one source on this Mac: Your details (contact + sections), What we learned (the answers page, with the AI's
- * sensitive verdict and kind per question), Strategy (the Profile's search fields and rules), the main CV with the Experience bank. history, voice and
- * this_job come with their readers (PR D1c, D2). -> bundleOf(sources, reader). A part whose source fails to read is absent, so the bundle names it in lacked.
+ * sensitive verdict and kind per question), Strategy (the Profile's search fields and rules), the main CV with the Experience bank, Voice (Writing preferences + the approved base letter). history and
+ * this_job come with their readers (PR D2). -> bundleOf(sources, reader). A part whose source fails to read is absent, so the bundle names it in lacked.
  */
-export async function aboutYou(storage, reader, {fetcher, skip = []} = {}) {
+export async function aboutYou(storage, reader, {fetcher, skip = [], example = true} = {}) {
   const takes = new Set((READERS[reader]?.parts || []).filter(part => !skip.includes(part)));
   const opened = openStore(storage, {fetcher});
   const read = (part, load) => (takes.has(part) ? load().catch(() => undefined) : undefined);
+  // Voice first: reading the Writing preferences moves an old "Cover letter style" section off the answers page, which What we learned reads next (lib/letter-style.js).
+  const voice = await read('voice', () => voiceOf(storage, {example}));
   const [person, facts, answers, profile] = await Promise.all([read('details', () => contact.read(storage, fetcher)), read('details', () => sections.read(storage, fetcher)),
     read('learned', () => opened.page('answers').outline()), read('strategy', () => opened.page('profile').outline())]);
   const known = verdicts.cached(storage), kinds = formats.kept(storage);
@@ -150,6 +161,7 @@ export async function aboutYou(storage, reader, {fetcher, skip = []} = {}) {
       sensitive: known[keyOf(question)]?.sensitive, kind: item.mark?.kind || kinds[keyOf(question)]?.kind || ''}));
   }
   if (profile) sources.strategy = strategyOf(profile);
+  if (voice) sources.voice = voice;
   if (takes.has('cv')) sources.cv = cvOf(storage);
   return bundleOf(sources, reader, {skip});
 }

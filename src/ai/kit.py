@@ -217,10 +217,37 @@ def draft(client, model, job, profile, answers, questions):
     return kit, response.usage
 
 
+def _is_style(title):
+    """The app's own "Cover letter style" heading (desktop/renderer/writing-preferences-model.js isStyle), never an applicant's line."""
+    return re.sub(r'^[^\w]+', '', title).strip().lower() == 'cover letter style'
+
+
+def with_style(answers, path=None):
+    """The answers text with the cover letter style as its one "Cover letter style" section, read from the file beside the letter
+    (desktop/lib/letter-style.js withStyle does the same). Why (PR B1b, owner 28 Oct 2026: "everything about the cover letter should be
+    only in Cover Letter tab"): the rules left the answers page; an old copy still in the text is replaced, never doubled."""
+    path = path or os.getenv('JOB_PILOTTO_LETTER_STYLE_FILE', '')
+    try:
+        with open(path, encoding='utf-8') as handle:
+            lines = [str(line).strip() for line in json.load(handle).get('lines') or [] if str(line).strip()]
+    except (OSError, ValueError, AttributeError):
+        return answers
+    kept, inside = [], False
+    for line in (answers or '').split('\n'):
+        heading = re.match(r'^#{1,6}\s+(.*)$', line)
+        if heading:
+            inside = _is_style(heading.group(1))
+        if not inside:
+            kept.append(line)
+    text = '\n'.join(kept).rstrip()
+    return f'{text}\n\n## Cover letter style\n' + '\n'.join(f'- {line}' for line in lines) if lines else text
+
+
 def standard_answers(stores):
-    """The standard answers from the active store. Why (PR B1, owner 28 Oct 2026 "Retire now, no replay"): 🧠 Form knowledge is no
-    longer appended; what you typed on a form is a line of the standard answers (desktop/lib/learned.js)."""
-    return stores.texts.get('answers')
+    """The standard answers from the active store, with the cover letter style beside the letter (with_style). Why (PR B1, owner
+    28 Oct 2026 "Retire now, no replay"): 🧠 Form knowledge is no longer appended; what you typed on a form is a line of the standard
+    answers (desktop/lib/learned.js)."""
+    return with_style(stores.texts.get('answers'))
 
 
 def kit_markdown(job, kit, questions, model):

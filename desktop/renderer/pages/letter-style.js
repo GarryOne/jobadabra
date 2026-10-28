@@ -1,57 +1,61 @@
-// Settings → Profile → Cover letter: "Writing preferences", the "Cover letter style" section of the standard answers (owner, 17 Oct 2026: the Cover letter
-// tab is the one home for letters; 18 Oct 2026, mockup 07: preferences first, read as a summary, a quiet Edit opens the inputs). The rules stay lines of
-// the answers page, so every letter prompt keeps reading them (lib/job-letter.js, src/ai/kit.py); this tab edits them, Application answers no longer lists
-// them. Read: one column per rule with its own label (no icon guessed from words); Edit: one input per rule and "Add a style rule", through
-// Profile's one save bar (pages/profile-save-bar.js), on every store. Guarded by test/letter-style.test.js.
+// Settings → Profile → Cover letter: "Writing preferences" (owner, 17 Oct 2026: the Cover letter tab is the one home for letters; 18 Oct 2026, mockup 07:
+// preferences first, read as a summary, a quiet Edit opens the inputs). Why (PR B1b, owner 28 Oct 2026: "Beside the letter"): the rules live in
+// cover-letter/style.json (lib/letter-style.js, read and saved through letterStyle / letterStyleSave), no longer in the answers page. Read: one column per
+// rule with its own label (no icon guessed from words); Edit: one input per rule and "Add a style rule", a draft on Profile's one save bar
+// (pages/profile-save-bar.js). Guarded by test/letter-style.test.js.
 import {el} from '../components.js';
 import {doneButton, factColumns, setEditing} from '../card-shell.js';
 import {profileBar} from './profile-save-bar.js';
-import {shown} from '../answers-model.js';
-import {sections} from '../answers-model.js';
-import {lineInput, outlineTab} from './outline-tab.js';
 import {input, labelled} from './form-controls.js';
+export {STYLE_HEADING, isStyle} from '../writing-preferences-model.js';
 
-const TEXT = 'answers';
-import {STYLE_HEADING, isStyle} from '../writing-preferences-model.js';
-export {STYLE_HEADING, isStyle};
-const typed = new Map();
-let tab = null;
-
-const card = () => document.getElementById('setting-letter-style');
-let done = null;   // the editor's Done (card-shell.js doneButton), synced on each change
 const DEFAULT = 'No preferences yet: letters use a short, direct default (130–170 words).';
+const card = () => document.getElementById('setting-letter-style');
+let saved = [];              // the rules as last read
+const typed = new Map();     // rule index (or 'add') → the text as edited
+let source = null, done = null, node = null;
 
-function draw(view, into) {
-  const style = sections(view.items[TEXT] || []).find(section => isStyle(section.title));
-  // Read: each rule as a column, label over value (card-shell.js factColumns, like Your details; mockup 07); a line with no "label: value" shape shows whole.
-  const read = el('div', 'card-read');
-  const rules = (style?.items || []).filter(item => item.question || item.value || item.text);
-  read.append(rules.length ? factColumns(rules.map(item => (item.question ? {label: shown(item.question), value: shown(item.value)} : {label: 'Rule', value: shown(item.value || item.text)})))
-    : el('p', 'muted', DEFAULT));
-  const editor = el('div', 'card-editor');
-  const grid = el('div', 'form-grid cols-2 pref-body');
-  for (const item of style?.items || []) grid.append(lineInput(view, TEXT, {...item, label: item.question}, typed));
-  if (!style) grid.append(el('p', 'muted span-all', DEFAULT));
-  // A new rule: after the section's last line, or the section itself at the end of the page.
-  const change = text => (style ? {op: 'insert', after: style.after, key: 'add-style', lines: [text]} : {op: 'section', heading: STYLE_HEADING, lines: [text]});
-  const add = input(typed.get('add-style') || '', text => {
-    if (!text.trim()) { typed.delete('add-style'); view.undo(TEXT, change('')); } else { typed.set('add-style', text); view.change(TEXT, change(text.trim())); }
-  }, {placeholder: 'e.g. Never mention: salary', ariaLabel: 'Add a style rule'});
-  grid.append(labelled('Add a style rule', add, true));
-  // Done closes an unchanged editor; with changes Profile's save bar does (Save all changes / Discard all).
-  done = doneButton(card(), () => view.dirty());
-  editor.append(grid, done);
-  into.append(read, editor);
-}
+// "Never mention: salary" → {label: 'Never mention', value: 'salary'}; a line with no "label: value" shape is a rule as a whole.
+const split = line => { const at = line.indexOf(': '); return at > 0 ? {label: line.slice(0, at), value: line.slice(at + 2)} : {label: '', value: line}; };
+const lineOf = (rule, value) => (rule.label ? `${rule.label}: ${value.trim()}` : value.trim());
+// The rules as they would be saved: each edited one (an empty one dropped), then the added one.
+const drafted = () => [...saved.map((line, i) => (typed.has(i) ? lineOf(split(line), typed.get(i)) : line)), typed.get('add') || ''].map(line => line.trim()).filter(Boolean);
+const changes = () => [...typed.entries()].filter(([key, text]) => (key === 'add' ? text.trim() : text !== split(saved[key]).value)).length;
 
-export async function loadLetterStyle() {
-  const node = document.getElementById('letter-style-body');
+function draw() {
   if (!node) return;
-  if (!tab || tab.node !== node) {
-    // Saved, discarded or read again: the card reads again (its drafts are gone with the bar's).
-    tab = {...outlineTab('letterstyle', [TEXT], node, draw, {onReset: () => { typed.clear(); setEditing(card(), false); }, onChange: () => done?.sync(),
-      bar: profileBar(), tab: 'letter', label: 'Writing preferences'}), node};
+  const read = el('div', 'card-read');
+  read.append(saved.length ? factColumns(saved.map(line => { const rule = split(line); return {label: rule.label || 'Rule', value: rule.value}; })) : el('p', 'muted', DEFAULT));
+  const editor = el('div', 'card-editor'), grid = el('div', 'form-grid cols-2 pref-body');
+  saved.forEach((line, i) => {
+    const rule = split(line);
+    grid.append(labelled(rule.label || 'Rule', input(typed.has(i) ? typed.get(i) : rule.value, text => { typed.set(i, text); changed(); }, {ariaLabel: rule.label || 'Rule'})));
+  });
+  if (!saved.length) grid.append(el('p', 'muted span-all', DEFAULT));
+  grid.append(labelled('Add a style rule', input(typed.get('add') || '', text => { typed.set('add', text); changed(); },
+    {placeholder: 'e.g. Never mention: salary', ariaLabel: 'Add a style rule'}), true));
+  done = doneButton(card(), changes);
+  editor.append(grid, done);
+  node.replaceChildren(read, editor);
+}
+function changed() { done?.sync(); source?.changed(); }
+
+/** Reads the rules (lib/letter-style.js moves an old section off the answers page first) and draws the card; registers its drafts once. */
+export async function loadLetterStyle() {
+  node = document.getElementById('letter-style-body');
+  if (!node) return;
+  if (!source) {
+    source = profileBar().register({id: 'letter-style', tab: 'letter', label: 'Writing preferences', count: changes,
+      save: async () => {
+        const result = await window.pilot.letterStyleSave(drafted()).catch(error => ({ok: false, error: error.message}));
+        if (!result?.ok) return {ok: false, error: result?.error || 'The writing preferences were not saved.'};
+        saved = result.lines; typed.clear(); setEditing(card(), false); draw();
+        return {ok: true};
+      },
+      discard: () => { typed.clear(); setEditing(card(), false); draw(); }});
     document.getElementById('letter-style-edit')?.addEventListener('click', () => setEditing(card(), true));
   }
-  await tab.load();
+  const result = await window.pilot.letterStyle().catch(() => null);
+  if (result?.ok && !changes()) saved = result.lines || [];
+  draw();
 }

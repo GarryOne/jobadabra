@@ -14,6 +14,7 @@ import path from 'node:path';
 import {configForPrompt} from './config-text.js';
 import {log as appLog} from './log.js';
 import {writePrivate} from './private-file.js';
+import * as letterStyle from './letter-style.js';
 
 export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, storage}) {
   const codeOf = which => (/^https?:/.test(String(which)) ? cvlib.forUrl(storage, String(which))?.job?.code : which);
@@ -36,7 +37,7 @@ export function registerJobLetterHandlers({DEMO, ipcMain, printPdf, shell, stora
       let kitLetter = '';
       if (!feedback) kitLetter = (await jobPages.jobPage(storage, job.url).catch(() => null))?.kit?.cover_letter || '';
       const contact = await contactDetails.read(storage).catch(() => ({}));
-      const made = await jobLetter.draft(storage, {job, cv: tailoredCv, kitLetter, profile, answers, feedback, previous,
+      const made = await jobLetter.draft(storage, {job, cv: tailoredCv, kitLetter, profile, answers: letterStyle.withStyle(answers, await letterStyle.read(storage)), feedback, previous,
         preferences: configForPrompt(storage, 'search.json'), name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' '),
         apiKey: storage.secret('ANTHROPIC_API_KEY'), client: claudeCode.client(storage)});
       await keep(job, {job: {code: job.code, title: job.title, company: job.company, url: job.url}, text: made.text, source: made.source, createdAt: new Date().toISOString(),

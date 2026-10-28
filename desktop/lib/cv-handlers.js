@@ -21,6 +21,7 @@ import {log as appLog} from './log.js';
 import {configForPrompt} from './config-text.js';
 import {restartFormsOf} from './tailored-restart.js';
 import {writePrivate} from './private-file.js';
+import * as letterStyle from './letter-style.js';
 
 export function registerCvAndLettersHandlers(ctx) {
   const {BrowserWindow, DEMO, cvOf, handleImportant, ipcMain, keepLook, openTailoredCv, printPdf, shell, storage, tailorCv, tailoring} = ctx;
@@ -108,6 +109,12 @@ export function registerCvAndLettersHandlers(ctx) {
   // The general cover letter (Settings → Profile → Cover letter): drafted from the CV + Profile + standard answers,
   // reviewed by the user, approved -> PDF. See lib/cover-letter.js.
   ipcMain.handle('coverLetter', () => letters.status(storage));
+  // Writing preferences (Profile → Cover letter): the rules beside the letter (lib/letter-style.js).
+  ipcMain.handle('letterStyle', async () => ({ok: true, lines: await letterStyle.read(storage, {demo: DEMO})}));
+  ipcMain.handle('letterStyleSave', (_, lines) => {
+    if (DEMO) return {ok: false, error: demo.TEXT};   // the demo folder is the app's own files
+    try { return {ok: true, lines: letterStyle.save(storage, Array.isArray(lines) ? lines.map(String).slice(0, 50) : [])}; } catch (error) { return {ok: false, error: error.message}; }
+  });
   ipcMain.handle('coverLetterDraft', async (_, feedback = '') => {
     if (DEMO) return {ok: false, error: demo.TEXT}; // demo setup must never reach an account or paid model
 
@@ -118,9 +125,10 @@ export function registerCvAndLettersHandlers(ctx) {
         if (!fs.existsSync(storage.path('cv.pdf'))) return {ok: false, error: 'Add your CV (PDF or Word) first.'};
         await atUpload.ensure(storage, {client: ai, key, look: keepLook});
       }
+      const style = await letterStyle.read(storage);   // first: it moves an old style section off the answers page
       const {profile, answers} = await strategy.profileTexts(storage);
       const contact = await contactDetails.read(storage).catch(() => ({}));
-      const result = await letters.generate(storage, {apiKey: key, client: ai, profile, answers, feedback: String(feedback).slice(0, 1000),
+      const result = await letters.generate(storage, {apiKey: key, client: ai, profile, answers: letterStyle.withStyle(answers, style), feedback: String(feedback).slice(0, 1000),
         preferences: configForPrompt(storage, 'search.json'), name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(' '), paidBy: letters.paidByOf({key, client: ai})});
       appLog('cover-letter', `drafted${feedback ? ' with feedback' : ''}`, {words: result.text.split(/\s+/).length, usd: result.usd});
       return {ok: true, ...letters.status(storage)};

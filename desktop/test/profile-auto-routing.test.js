@@ -98,11 +98,14 @@ for (const adapter of ['sqlite', 'notion']) {
     await review.judgeNew(env.storage, {...env, ai: fakeAi()});
     const body = install(), node = globalThis.document.createElement('div');
     node.id = 'letter-style-body'; body.append(node);
-    globalThis.window.pilot = new Proxy({textOutline: async page => ({ok: true, items: await openStore(env.storage, {fetcher: env.fetcher}).page(page).outline()})}, {get: (all, key) => all[key] || (() => null)});
+    // The Cover letter tab reads through lib/letter-style.js (PR B1b): the routed section moves beside the letter and leaves the answers page.
+    const letterStyle = await import('../lib/letter-style.js');
+    globalThis.window.pilot = new Proxy({letterStyle: async () => ({ok: true, lines: await letterStyle.read(env.storage, {fetcher: env.fetcher})})}, {get: (all, key) => all[key] || (() => null)});
     await (await import('../renderer/pages/letter-style.js')).loadLetterStyle();
     assert.match(node.querySelector('.card-read').textContent, /avoid slogans/);
     assert.match(node.querySelector('.card-read').textContent, /rester sobre/);
     assert.ok(!node.textContent.includes('Where does this line go?'));
+    assert.doesNotMatch((await texts(env))[1], /avoid slogans/, 'moved off the answers page');
   });
 
   test(`${adapter}: same content in distinct source contexts receives distinct homes, with concurrent reads joined`, async () => {

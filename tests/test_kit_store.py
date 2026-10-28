@@ -3,6 +3,7 @@ store adapters: the same blocks under the same toggle heading. Checked twice: th
 the Notion stand-in (desktop/e2e/lib/notion-fake.mjs, node; skipped without it). The memory/sqlite side: tests/test_kit.py.
 """
 import io
+import os
 import json
 import shutil
 import sqlite3
@@ -163,6 +164,23 @@ class TestSiteRulesRetired(unittest.TestCase):
         texts = {'answers': 'Driving license: B', 'knowledge': '[any · answer] Marital status: You entered this yourself → "Single"'}
         stores = mock.Mock(texts=mock.Mock(get=texts.__getitem__))
         self.assertEqual(kit.standard_answers(stores), 'Driving license: B')
+
+
+class TestLetterStyleBesideTheLetter(unittest.TestCase):
+    def test_a_kit_letter_follows_the_style_kept_beside_the_letter_once(self):
+        """PR B1b (owner, 28 Oct 2026: "Beside the letter"): the rules come from cover-letter/style.json (the app passes its path); an old copy
+        of the section in the answers is replaced, never doubled; no file leaves the answers as they are."""
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, folder, True)
+        style = folder / 'style.json'
+        style.write_text(json.dumps({'lines': ['Tone: direct', 'Never mention: salary']}), encoding='utf-8')
+        answers = '- Notice period: 3 months\n\n## ✍️ Cover letter style\n- Tone: old\n\n## Other\n- Pets: none'
+        self.assertEqual(kit.with_style(answers, str(style)),
+                         '- Notice period: 3 months\n\n## Other\n- Pets: none\n\n## Cover letter style\n- Tone: direct\n- Never mention: salary')
+        self.assertEqual(kit.with_style('- Notice period: 3 months', str(folder / 'none.json')), '- Notice period: 3 months')
+        stores = mock.Mock(texts=mock.Mock(get={'answers': 'Driving license: B'}.__getitem__))
+        with mock.patch.dict(os.environ, {'JOB_PILOTTO_LETTER_STYLE_FILE': str(style)}):
+            self.assertTrue(kit.standard_answers(stores).endswith('## Cover letter style\n- Tone: direct\n- Never mention: salary'))
 
 
 def listed_kit_state(listed, **kw):

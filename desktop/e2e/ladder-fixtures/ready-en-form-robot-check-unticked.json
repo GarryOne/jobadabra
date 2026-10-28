@@ -4,7 +4,7 @@
  "question": "form_ready",
  "source": "invented",
  "lang": "en",
- "why": "a filled application form that still asks 'I'm not a robot' (a checkbox and a frame of another host): the person does the check, never ready; bot_check is true",
+ "why": "a filled application form that still asks 'I'm not a robot' (a checkbox among the form's own controls; a check that sits only in a frame has no case yet): the person does the check, never ready; bot_check is true",
  "url": "https://jobs.example.com/apply/5021",
  "expect": {
   "outcome": "needs_person"

@@ -2,7 +2,7 @@
 // asked "Save your changes?" for lines the person never typed). Two conclusions, both written with a backup first and an Undo after (settings.eligibilityFold, shown with the
 // tidy's Undo): the older lines the AI read as eligibility fold into Nationality and the zones (#2322, lib/eligibility-older.js), and a saved Nationality opens its zones (#2346:
 // Europe and the US by the fixed table, any other country by the AI, lib/zone-suggest.js). Only the person's own edits are drafts. Guarded by test/details-eligibility-autosave.test.js.
-import {older, folded, linesSig} from './eligibility-older.js';
+import {older, folded, foldRecord, lineKey, linesSig} from './eligibility-older.js';
 import * as sections from './profile-sections.js';
 import {saveCopy} from './profile-move.js';
 import {suggest as suggestZones} from './zone-suggest.js';
@@ -19,8 +19,9 @@ const zoneLine = (zone, value) => ({label: zone.label, value, kind: 'per_country
  */
 export async function settle(storage, {ai = {}, fetcher, copy = saveCopy, now = new Date()} = {}) {
   const lines = (await sections.read(storage, fetcher)).eligibility || [];
-  if (!lines.length || storage.settings().eligibilityOff === linesSig(lines)) return 0;
-  const readings = (await older(storage, lines, {ai})).filter(each => each.about === 'eligibility' || each.about === 'per_job');
+  if (!lines.length) return 0;
+  const off = new Set(storage.settings().eligibilityOff || []);   // lines an Undo gave back: never concluded again
+  const readings = (await older(storage, lines, {ai})).filter(each => (each.about === 'eligibility' || each.about === 'per_job') && !off.has(lineKey(each)));
   const own = lines.find(line => line.label === NATIONALITY), saved = own && !isAsked(own.value) ? nationalityOf(own.value) : null;
   const read = [...new Set(readings.flatMap(each => each.nationality || []))];
   const nationality = saved?.length ? saved : read;
@@ -42,18 +43,19 @@ export async function settle(storage, {ai = {}, fetcher, copy = saveCopy, now = 
     return zoneLine(zone, value);
   });
   const isZone = line => line.kind === 'per_country' && zoneOfLabel(line.label);
-  const gone = lines.filter(line => line !== own && !isZone(line) && folded(storage, line));   // Why (28 Oct 2026): Nationality and the zone rows are the conclusion itself, never folded again (a second fold overwrote the Undo)
+  const gone = lines.filter(line => line !== own && !isZone(line) && !off.has(lineKey(line)) && folded(storage, line));   // Why (28 Oct 2026): Nationality and the zone rows are the conclusion itself, never folded again (a second fold overwrote the Undo)
   const rest = lines.filter(line => !gone.includes(line) && line !== own && !isZone(line));
   const concluded = gone.length + (natLine ? 1 : 0) + filled;
   if (!concluded) return 0;
   const next = [...(natLine ? [natLine] : own ? [own] : []), ...zones.filter(Boolean), ...rest];
   await copy(storage, {fetcher, now});   // the backup, before any line changes
-  storage.saveSettings({eligibilityFold: {at: now.toISOString(), changed: concluded, before: lines}});
+  const prior = storage.settings().eligibilityFold;
+  storage.saveSettings({eligibilityFold: foldRecord(storage, {changed: concluded, before: lines, now})});
   await sections.save(storage, 'eligibility', next, fetcher);
   const back = (await sections.read(storage, fetcher)).eligibility || [];
   if (linesSig(back) !== linesSig(next.filter(line => String(line.value ?? '').trim()))) {   // read back, else all goes back (lib/profile-move.js)
     await sections.save(storage, 'eligibility', lines, fetcher);
-    storage.saveSettings({eligibilityFold: undefined});
+    storage.saveSettings({eligibilityFold: prior});   // the earlier Undo stays
     throw new Error('Work eligibility did not save as concluded; your lines are as they were');
   }
   return concluded;

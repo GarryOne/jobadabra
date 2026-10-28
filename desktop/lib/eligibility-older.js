@@ -29,6 +29,16 @@ const nameOf = nameOfCode;
 const sigOf = lines => lines.map(line => `${line.label}=${line.value}`).sort().join('~');
 /** A set of lines as one string (label=value, sorted): the cache key of a reading, and what Undo remembers so the same lines are not concluded again (lib/eligibility-settle.js). */
 export const linesSig = sigOf;
+/** One older line's key in settings.eligibilityOff (the lines an Undo gave back). */
+export const lineKey = line => `${line.label}=${line.value}`;
+/**
+ * The fold record to keep after a conclusion. Invariant: an Undo restores the section as it was before the FIRST conclusion not yet undone, so a later conclusion
+ * (zones filled once the AI answers, a Save that folds more) adds to its count and never replaces its snapshot (Gitar on #2365).
+ */
+export function foldRecord(storage, {changed, before, now}) {
+  const prior = storage.settings().eligibilityFold, keep = prior?.before && !prior.undone;
+  return {at: now.toISOString(), changed: changed + (keep ? prior.changed : 0), before: keep ? prior.before : before};
+}
 // One AI row -> {label, value} of a zone row, or null when the zone or status is outside the fixed sets.
 function rowOf({row, status}) {
   const zone = ZONES.find(each => each.id === row);
@@ -81,7 +91,7 @@ export async function beforeSave(storage, next, {fetcher, copy = saveCopy, now =
   const gone = current.filter(line => folded(storage, line) && !(next || []).some(each => each.label === line.label && String(each.value) === String(line.value)));
   if (!gone.length) return 0;
   await copy(storage, {fetcher, now});
-  storage.saveSettings({eligibilityFold: {at: now.toISOString(), changed: gone.length, before: current}});
+  storage.saveSettings({eligibilityFold: foldRecord(storage, {changed: gone.length, before: current, now})});
   return gone.length;
 }
 /** Undo: the section as it was before the fold. */
@@ -89,6 +99,6 @@ export async function undoFold(storage, {fetcher, save = sections.save} = {}) {
   const done = storage.settings().eligibilityFold;
   if (!done?.before || done.undone) return {ok: false, error: 'There is nothing to undo'};
   await save(storage, 'eligibility', done.before, fetcher);
-  storage.saveSettings({eligibilityFold: {...done, before: undefined, undone: true}, eligibilityOff: sigOf(done.before)});   // Why (owner, 28 Oct 2026): an Undo is final for these lines; the next open must not conclude them again
+  storage.saveSettings({eligibilityFold: {...done, before: undefined, undone: true}, eligibilityOff: [...new Set([...(storage.settings().eligibilityOff || []), ...done.before.map(lineKey)])]});   // Why (owner, 28 Oct 2026; Gitar on #2365): an Undo is final for each of these lines, even after the person edits others; the next open must not conclude them again
   return {ok: true};
 }

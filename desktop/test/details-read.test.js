@@ -103,6 +103,6 @@ test('a proposal from the CV opens its card\'s editor (it is checked there, neve
 test('the facts\' skeleton also stands in the read views while they are read, so "Nothing yet" never shows for unread lines', () => {
   const facts = read('pages/details-facts.js');
   assert.match(facts, /loading: \(\) => skeletons\(true\)/);
-  assert.match(facts, /const paintFacts = \(result, kept, settled = false\) => \{\n {2}skeletons\(false\);/);
+  assert.match(facts, /const paintFacts = \(result, kept\) => \{\n {2}skeletons\(false\);/);
   assert.match(read('pages/details-read.js'), /into\.dataset\.loading\) return;/);
 });

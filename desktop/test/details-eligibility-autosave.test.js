@@ -87,3 +87,32 @@ test('Undo puts the old lines back and they are not concluded again for the same
   assert.equal(lines.some(line => /Authorised/.test(line.label)), true, 'the same lines are not folded again');
   assert.equal(lines.some(line => line.label === 'Nationality'), false);
 });
+
+// Gitar on #2365: an Undo is final per line, even after the person edits another line; and a later conclusion never replaces the snapshot Undo restores.
+test('Undo stays final for its lines after the person edits another eligibility line', async () => {
+  const {storage, handlers} = await harness({profile: WORK});
+  await handlers.detailsFacts();
+  await handlers.undoDetailsTidy();
+  const back = (await sections.read(storage)).eligibility;
+  await sections.save(storage, 'eligibility', [...back, {label: 'United Kingdom', value: 'yes, freely', kind: 'per_country'}]);   // the person answers a zone and saves
+  await handlers.detailsFacts();
+  const lines = (await sections.read(storage)).eligibility;
+  assert.equal(lines.some(line => /Authorised/.test(line.label)), true, 'the undone lines are not folded again');
+  assert.equal(lines.some(line => line.label === 'Nationality'), false);
+});
+
+test('a later conclusion keeps the first snapshot: Undo still brings back the original lines', async () => {
+  const profile = '## 🛂 Work eligibility\n- Work permit / visa: Canadian citizen\n';
+  const reading = {lines: [{id: '0', about: 'eligibility', nationality: ['CA'], rows: []}]};
+  const zones = {zones: [{zone: 'uk', status: 'yes, with a permit'}, {zone: 'us', status: 'yes, with a permit'}, {zone: 'eu', status: 'no, needs sponsorship'}]};
+  let answering = {zones: []};
+  const ai = {messages: {create: async request => request.system === OLDER ? answer(reading) : request.system === ZONES ? answer(answering) : (() => { throw new Error('not this test'); })()}};
+  const {storage, handlers} = await harness({profile, ai});
+  await handlers.detailsFacts();   // the older line folds into Nationality; the zone AI has no answer yet
+  assert.deepEqual(rows((await sections.read(storage)).eligibility), {});
+  answering = zones;
+  await handlers.detailsFacts();   // the zones are filled now
+  assert.equal(Object.keys(rows((await sections.read(storage)).eligibility)).length, 3);
+  assert.deepEqual(await handlers.undoDetailsTidy(), {ok: true});
+  assert.deepEqual((await sections.read(storage)).eligibility.map(line => line.label), ['Work permit / visa'], 'the original line is back');
+});

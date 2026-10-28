@@ -24,7 +24,7 @@
 <details><summary>Verdicts that change state</summary>
 
 - **Open Your details:** the older lines are read once (`lib/eligibility-older.js`); `lib/eligibility-settle.js` then **saves** Nationality, the empty zones and the folded lines at once, a backup first, with Undo (owner, 28 Oct 2026, "Save them automatically": it reverses the draft-on-open rule of #2322 and #2346, so nothing is left as an unsaved change and leaving Profile asks nothing). A zone you answered is never overwritten; an Undo is final for those lines. Only your own edits (a Nationality you change) are drafts.
-- **Undo:** `settings.eligibilityFold` keeps the section as it was; Undo puts it back and `settings.eligibilityOff` stops the same lines being concluded again.
+- **Undo:** `settings.eligibilityFold` keeps the section as it was; Undo puts it back and `settings.eligibilityOff` (a list of the undone lines) stops those lines being concluded again, even after you edit others; a later conclusion keeps the first snapshot.
 - **Form question:** `question-reuse` gets `asks` + `country` from the AI; `rowFor` + `settles` give Yes/No, or it stays asked (a country in no zone, an unknown code).
 - **Queue:** a zone waits for Nationality; with Nationality held, only the zones it did not open are asked.
 </details>

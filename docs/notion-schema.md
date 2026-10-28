@@ -234,7 +234,7 @@ interviews show together, rewritten after each review; the app's Interviews page
 |---|---|---|
 | Insight | Title | The headline |
 | Date | Date | One insight per day; the scheduled run checks this before making another |
-| Category | Select | `Skills`, `CV`, `Location`, `Salary`, `Seniority`, `Role focus`, `Timing`, `Activity`, `Process`, `Weekly report`, `Interview patterns` |
+| Category | Select | `Skills`, `CV`, `Location`, `Salary`, `Seniority`, `Role focus`, `Timing`, `Activity`, `Process`, `Weekly report`, `Interview patterns`, `Suggestion` (a person's answer to a suggestion that has no row of its own) |
 | Basis | Select | `Market`, `Applications`, `Both`, `Interviews` |
 | Confidence | Select | `high`, `medium`, `low` |
 | Sample size | Number | Jobs or applications behind the finding |
@@ -245,7 +245,9 @@ interviews show together, rewritten after each review; the app's Interviews page
 | Model | Text | |
 | Issue detected | Checkbox |  |
 | Input hash | Text | Interview patterns only: fingerprint of the reviewed interviews it was made from; unchanged = no new AI call |
-| Data | Text | Interview patterns only: the patterns, cited interviews and to-dos as JSON, for the app |
+| Data | Text | Interview patterns: the patterns, cited interviews and to-dos as JSON, for the app. Weekly report: the one button the AI picked (door, label) as JSON |
+| Hidden until | Date | A suggestion answered Not now: hidden from Focus, Jobs and its home until this day (14 days) |
+| State | Select | Options: `Done`, `Not now`, `Not true`, `Stale`. A person's answer to a suggestion (Focus → Suggestions ⋯); empty = open |
 
 ## ⏰ Cronjob Runs (database)
 

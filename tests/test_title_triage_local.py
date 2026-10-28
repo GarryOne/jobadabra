@@ -72,6 +72,7 @@ class LocalFirstTest(unittest.TestCase):
     def test_in_scorings_share_local_titles_wait_once_the_search_has_a_job_to_score(self):
         # 26 Oct 2026, a proof on a copy of the owner's data: floor title calls held the board read to 136 s; the search scored 3 jobs
         from src import run_counts
+        run_counts.reset()   # Why (#2331, as #2218 in test_score_first_from_start): an earlier test in the process that scored https://x.test/1 left it scored, so nothing "waited"
         self.addCleanup(run_counts.reset)
         run_counts.matched([{'url': 'https://x.test/1'}])
         time_budget.start(180, now=time.monotonic() - 125)

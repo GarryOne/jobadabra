@@ -264,11 +264,12 @@ def _tune(rows):
     """Tune my strategy's answer (src/tune.py, counts only, no AI) from the applications already read; None when there is no jobs cache
     yet or it can't be read: Focus never fails on Tune. Why (insights PR 1a, 28 Oct 2026): Tune comes to you after every search."""
     from . import store, tune
-    from .paths import JOBS_DB, load_search_config
-    if not os.path.exists(JOBS_DB):
+    from .paths import jobs_db, load_search_config
+    path = jobs_db()
+    if not os.path.exists(path):
         return None
     try:
-        with store.connect(JOBS_DB) as db:
+        with store.connect(path) as db:
             return tune.run(db, None, load_search_config(), stages={r['url'].strip(): r.get('stage') or None for r in rows if r.get('url')})
     except Exception:  # noqa: BLE001 - a missing table or settings file: no Tune entry
         return None

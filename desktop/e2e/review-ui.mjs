@@ -13,6 +13,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {ARTIFACTS, DESKTOP} from './lib/app.mjs';
 import {judgeFamily} from './lib/engine.mjs';
+import {aiProvider} from './lib/ai-provider.mjs';
+import {askBroker} from './lib/broker-client.mjs';
 import {lookStrips} from './lib/png-grid.mjs';
 import {prune, questionKey, recall, remember} from './lib/review-cache.mjs';
 import {FREE_MODEL, askFree} from './lib/review-free.mjs';
@@ -21,11 +23,15 @@ import {MODEL, REVIEW_EFFORT, buildRequest, fingerprint, parseFindings, parseFin
 import {checklistAsFindingsText, checklistRequest} from './lib/review-checklist.mjs';
 
 // E2E_REVIEW_ENGINE picks the reviewer: claude (CI's review job: Sonnet by Batch, owner 26 Oct 2026) or free; unset, Free AI when CI runs on it.
-const FREE = process.env.E2E_REVIEW_ENGINE ? process.env.E2E_REVIEW_ENGINE === 'free' : judgeFamily() === 'free';
+// CODEX (owner, 28 Oct 2026: every CI AI call on his Codex plan; "Move it anyway"): the provider switch (lib/ai-provider.mjs) says codex for the review, so each page goes to the broker
+// (lib/broker-client.mjs) at the tier of its Claude model; no key, no batch. A broker "no" leaves that page unreviewed with its reason, never on another provider.
+const CODEX = Boolean(process.env.CI) && aiProvider(process.env, 'review').provider === 'codex';
+const FREE = !CODEX && (process.env.E2E_REVIEW_ENGINE ? process.env.E2E_REVIEW_ENGINE === 'free' : judgeFamily() === 'free');
 const key = process.env.E2E_ANTHROPIC_KEY;
 const CONFIRM = FREE && process.env.E2E_REVIEW_CONFIRM === 'claude' && Boolean(key);   // the Claude second pass: the one switch, off until the owner funds Claude
-if (FREE ? !process.env.CI_FREE_AI_CF_TOKEN : !key) { console.error(FREE ? 'CI_FREE_AI_CF_TOKEN is needed (the review runs on Free AI).' : 'E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
+if (CODEX ? false : FREE ? !process.env.CI_FREE_AI_CF_TOKEN : !key) { console.error(FREE ? 'CI_FREE_AI_CF_TOKEN is needed (the review runs on Free AI).' : 'E2E_ANTHROPIC_KEY is needed.'); process.exit(2); }
 const REVIEW_MODEL = FREE ? FREE_MODEL : MODEL;
+const MODEL_LABEL = CODEX ? `${MODEL} on Codex` : REVIEW_MODEL;   // the findings file names who looked
 // E2E_REVIEW_PROMPT=checklist (CI, owner 26 Oct 2026): Claude answers the 10-point checklist (lib/review-checklist.mjs: Haiku 5.5 saw 70% of the judged bugs with it, 49% without).
 const CHECKLIST = !FREE && process.env.E2E_REVIEW_PROMPT === 'checklist';
 const API = process.env.E2E_ANTHROPIC_URL || 'https://api.anthropic.com';   // a test points this at a fake
@@ -49,7 +55,7 @@ const lessons = process.env.E2E_REVIEW_LESSONS === '0' ? [] : await fetchLessons
 let rejected = 0;
 // Which pages the AI really looked at, and which it could not (no credit, rate limit, an outage, a cut-off answer): ui-findings reads this. A page nobody reviewed is not a page that came back clean.
 const reviewed = [], unreviewed = [];
-const usage = {model: CONFIRM ? `${REVIEW_MODEL}, then ${MODEL} on what it flags` : `${REVIEW_MODEL}${CHECKLIST ? ' (checklist)' : ''}`, calls: 0, batched: 0, cached: 0, confirmed: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0, lessons: lessons.length};
+const usage = {model: CONFIRM ? `${MODEL_LABEL}, then ${MODEL} on what it flags` : `${MODEL_LABEL}${CHECKLIST ? ' (checklist)' : ''}`, calls: 0, batched: 0, cached: 0, confirmed: 0, failed: 0, cutOff: 0, input: 0, cacheWrite: 0, cacheRead: 0, output: 0, usd: 0, lessons: lessons.length};
 // The pages the journey photographed, and the window at the moment a step failed (at most two): a failure screenshot shows the whole app, the sidebar and the bottom bar too.
 const jobs = DIRS.flatMap(dir => { const names = fs.readdirSync(dir); return [
   ...names.filter(name => /^ui-.+\.png$/.test(name)).sort().map(name => ({dir, view: name.slice(3, -4), png: name, factsFile: path.join(dir, `ui-${name.slice(3, -4)}.json`)})),
@@ -101,6 +107,13 @@ async function free(job) {
   const result = await askFree(job.request);
   if (!result.ok) return failed(job, result.status, result.detail);
   return answered(job, result.message, {usd: result.usd});
+}
+
+// The owner's Codex plan through the broker: the same accounting as a Claude call, at no price per page (the plan pays).
+async function codex(job) {
+  const result = await askBroker(job.request);
+  if (!result.ok) return failed(job, result.status, result.detail);
+  return answered(job, result.message, {usd: 0});
 }
 
 async function direct(job) {
@@ -162,6 +175,12 @@ for (const job of jobs) {
 }
 const pending = jobs.filter(job => !answers.has(job.id));
 const PARALLEL = 4;
+if (CODEX) {
+  for (let at = 0; at < pending.length; at += PARALLEL) {
+    const slice = pending.slice(at, at + PARALLEL);
+    (await Promise.all(slice.map(job => codex(job)))).forEach((answer, i) => answers.set(slice[i].id, answer));
+  }
+}
 if (FREE) {
   for (let at = 0; at < pending.length; at += PARALLEL) {
     const slice = pending.slice(at, at + PARALLEL);
@@ -176,9 +195,9 @@ if (FREE) {
 }
 // A batch only for many pages (6 Oct 2026: 4 pages waited 3-6 min in a batch to save about a cent; the owner wants every suite job short). Fewer go direct, 4 at a time.
 const BATCH_MIN = Number(process.env.E2E_REVIEW_BATCH_MIN || 20);
-const fromBatch = !FREE && pending.length >= BATCH_MIN && process.env.E2E_REVIEW_BATCH !== '0' ? await batch(pending) : new Map();
+const fromBatch = !FREE && !CODEX && pending.length >= BATCH_MIN && process.env.E2E_REVIEW_BATCH !== '0' ? await batch(pending) : new Map();
 for (const [id, text] of fromBatch) answers.set(id, text);
-const left = FREE ? [] : pending.filter(job => !fromBatch.has(job.id));
+const left = FREE || CODEX ? [] : pending.filter(job => !fromBatch.has(job.id));
 for (let at = 0; at < left.length; at += PARALLEL) {
   const slice = left.slice(at, at + PARALLEL);
   (await Promise.all(slice.map(job => direct(job)))).forEach((answer, i) => answers.set(slice[i].id, answer));

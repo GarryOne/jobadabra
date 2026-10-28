@@ -559,6 +559,7 @@ jobs:
       contents: read
       issues: read    # the by-design lessons come from the closed issues (lib/review-lessons.mjs)
       actions: read   # this run's suite artifacts
+      id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs)
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -568,6 +569,7 @@ jobs:
         with:
           lane: mac
           anthropic-key: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          provider: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER }}
           publish-key: ${{ secrets.AI_COST_PUBLISH_KEY }}
           github-token: ${{ github.token }}
 

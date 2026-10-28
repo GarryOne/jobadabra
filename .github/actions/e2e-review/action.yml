@@ -15,6 +15,10 @@ inputs:
     description: "CI's Anthropic key (secrets.E2E_ANTHROPIC_KEY); empty: nothing is reviewed and the step says so"
     required: false
     default: ''
+  provider:
+    description: 'The AI provider switch for this run (inputs.ai_provider or vars.CI_AI_PROVIDER): codex reviews on the Codex plan through the broker, with no Anthropic key (lib/ai-provider.mjs)'
+    required: false
+    default: ''
   publish-key:
     description: 'secrets.AI_COST_PUBLISH_KEY: the cost goes to /ai-cost'
     required: false
@@ -40,19 +44,20 @@ runs:
         echo "$(find "$in" -name 'ui-*.png' | wc -l | tr -d ' ') page(s) from $(find "$in" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ') suite(s) to review"
         [ -d desktop/e2e/node_modules ] || (cd desktop/e2e && (npm ci --ignore-scripts || npm install --ignore-scripts))
     - name: Earlier AI reviews (an unchanged screenshot is not asked again)
-      if: inputs.anthropic-key != ''
+      if: inputs.anthropic-key != '' || inputs.provider == 'codex'
       uses: actions/cache/restore@v5
       with:
         path: desktop/e2e/.review-cache
         key: ai-review-batch-${{ inputs.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: ai-review-batch-${{ inputs.lane }}-
     - name: AI review of the screenshots (Claude Haiku 5.5 with the checklist, every page in one batch)
-      if: inputs.anthropic-key != ''
+      if: inputs.anthropic-key != '' || inputs.provider == 'codex'
       shell: bash
       working-directory: desktop/e2e
       env:
         E2E_ANTHROPIC_KEY: ${{ inputs.anthropic-key }}
         E2E_REVIEW_ENGINE: claude
+        CI_AI_PROVIDER: ${{ inputs.provider }}   # codex: review-ui.mjs sends each page to the broker (owner, 28 Oct 2026); empty or another value: Claude as before
         E2E_REVIEW_MODEL: claude-haiku-5-5   # owner, 26 Oct 2026: about $2 a month with the checklist (1/20 of Sonnet's price); review-eval.yml scores it on the judged issues
         E2E_REVIEW_PROMPT: checklist   # the 10-point checklist: Haiku 5.5 saw 70% of the judged bugs with it, 49% without (review-eval.yml run 40278427028)
         E2E_REVIEW_BATCH_MIN: '1'   # the batch waits on a Linux runner after the suites, never inside a suite's Mac job
@@ -61,7 +66,7 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: timeout 900 node review-ui.mjs   # a request we got wrong fails here, as it failed the suite job before
     - name: Report the AI review's cost to /ai-cost
-      if: always() && inputs.anthropic-key != '' && hashFiles('.e2e-review/usage/ai-review-usage.json') != ''
+      if: always() && (inputs.anthropic-key != '' || inputs.provider == 'codex') && hashFiles('.e2e-review/usage/ai-review-usage.json') != ''
       shell: bash
       env:
         AI_COST_PUBLISH_KEY: ${{ inputs.publish-key }}
@@ -82,7 +87,7 @@ runs:
         path: .e2e-review/out
         overwrite: true
     - name: Keep the AI reviews for the next run
-      if: always() && inputs.anthropic-key != '' && hashFiles('desktop/e2e/.review-cache/*.json') != ''
+      if: always() && (inputs.anthropic-key != '' || inputs.provider == 'codex') && hashFiles('desktop/e2e/.review-cache/*.json') != ''
       uses: actions/cache/save@v5
       with:
         path: desktop/e2e/.review-cache

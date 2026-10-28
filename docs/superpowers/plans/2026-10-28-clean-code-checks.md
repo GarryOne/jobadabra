@@ -16,8 +16,8 @@ functions over McCabe 10. Rule: new code only, old code is never blocked. A rule
 
 ## Progress
 - [x] Baseline numbers and sketch (proof: docs/superpowers/plans/2026-10-28-clean-code-checks.md)
-- [ ] 1/4 Gitar rule
-- [ ] 2/4 sonarjs on new code
+- [x] 1/4 Gitar rule (proof: .gitar/review/clean-code.md @9adae2d)
+- [x] 2/4 sonarjs on new code (proof: tools/clean-code-js.mjs)
 - [ ] 3/4 Ruff on new code
 - [ ] 4/4 SonarQube Cloud
 
@@ -29,3 +29,20 @@ Tools (installed outside the repo): jscpd, eslint 9.39.5 + eslint-plugin-sonarjs
 | Duplication | `jscpd --min-lines 5 --min-tokens 50 --format javascript,python --ignore "**/vendor/**,**/shared/**,**/.design-system/**,**/node_modules/**" .` | 363 clones, 3,405 of 327,226 lines (1.04%) |
 | JS cognitive complexity | eslint `-c` a config enabling only `sonarjs/cognitive-complexity: ['warn', 15]` over `desktop extension worker tools`, ignoring vendor/shared/.design-system/dist/build; count non-test files (path has no `/test/`, `/e2e/`, `.test.`) | 288 |
 | Python complexity | `ruff check --isolated --select C901 src tools tests worker` (default max 10) | 92 |
+
+## JS rules: sampled precision (2/4)
+Findings in production code of the baseline tree; a sample of up to 20 per rule was read (file:line and code line). Run: eslint with only the rule on, as above.
+
+| Rule | Findings | Verdict from the sample |
+|---|---|---|
+| `sonarjs/cognitive-complexity` | 288 at 15, 185 at 20 | real; the 16-20 band is marginal (e.g. `needRow`, `startRecording`), so the limit is 20 |
+| `sonarjs/no-identical-functions` | 1 | real (`extension/visit-page.js:92`) |
+| `sonarjs/no-duplicated-branches` | 2 | real, trivial (`extension/ladder/dead-end.js:24`) |
+| `sonarjs/no-collapsible-if` | 1 | real (`desktop/main.js:262`) |
+| `sonarjs/no-duplicate-string` | 101 | dropped: DOM ids and CSS class strings; a constant would be worse |
+| `sonarjs/no-nested-conditional`, `expression-complexity` | 894, 421 | dropped: readable ternary chains and plain guards |
+| `sonarjs/no-gratuitous-expressions` | 5 | dropped: all 5 are one `DEMO` constant |
+| `sonarjs/no-inverted-boolean-check` | 22 | dropped: `!(x > 0)` differs from `x <= 0` when x is NaN |
+| `no-empty-collection`, `no-unused-collection`, `no-dead-store` | 4, 3, 1 | dropped: misfires on test resets and destructuring |
+
+Mode: `tools/clean-code-js.mjs` runs inside `npm run lint` (push gate and the desktop CI job) and reports a finding only on a line the change adds (diff against the merge base with `origin/main`), in `desktop/` and `extension/`. A function's finding sits on its head line, so editing the body of an old tangled function is not blocked; a new or rewritten head is.

@@ -7,4 +7,3 @@ Why (owner, 28 Oct 2026): "I just want that our code is very clean so that AI ha
 - **More than one source of truth:** the same value, list, threshold or state written in two places (a second constant, a re-typed string, a state kept in two variables); name the owner and make the other read it.
 - **A new pattern beside an existing one:** a second way to fetch, store, log, validate, render a card or open a dialog where the repo already has one; use the existing pattern, or say in the PR why it cannot serve.
 - **A function that does too much:** a new or edited function that mixes fetching, deciding and rendering, nests 4+ levels, or branches on its own flags; split it by concern into named functions.
-- **A repeated literal:** the same string or number 3+ times in new code; one named constant.

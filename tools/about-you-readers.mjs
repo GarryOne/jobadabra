@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {readersTable} from '../desktop/lib/about-you.js';
 
 export const FILE = fileURLToPath(new URL('../docs/about-you-readers.json', import.meta.url));
+/** The file's exact text: the readers table from desktop/lib/about-you.js (readersTable), pretty-printed with a final newline. Throws if that module cannot load. */
 export const text = () => `${JSON.stringify(readersTable(), null, 2)}\n`;
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) { fs.writeFileSync(FILE, text()); console.log(`wrote ${FILE}`); }

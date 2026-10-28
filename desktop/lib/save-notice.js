@@ -15,12 +15,12 @@ export function quitMessage(files) {
   return `These could not be saved because Windows is still using them:\n${files.map(file => path.basename(file)).join('\n')}\n\nYour latest changes are lost if you quit now.`;
 }
 
-/**
- * Starts the notice: a 'could not save' pop-up to the window (toWindow('toast', ...)), and at 'will-quit' a last try whose leftovers go into a native message box. Takes the Electron parts from main.js; returns nothing; a listener error never stops a save.
- */
 /** The 'retrySave' IPC (registered in main.js): true when a waiting save was retried, false when none waits for `file`. */
 export const retrySave = (_, file) => retryPrivate(String(file));
 
+/**
+ * Starts the notice: a 'could not save' pop-up to the window (toWindow('toast', ...)), and at 'will-quit' a last try whose leftovers go into a native message box. Takes the Electron parts from main.js; returns nothing; a listener error never stops a save.
+ */
 export function watchSaves({app, dialog, toWindow}) {
   onChange(({file, state}) => { if (state !== 'failed') return; const toast = failedToast(file); toWindow('toast', toast); });
   app.on('will-quit', () => {

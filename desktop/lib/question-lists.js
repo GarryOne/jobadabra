@@ -54,8 +54,11 @@ export async function openShown(storage, {fetcher, ai = claudeAi(storage), rows 
   // A Profile line merged into a form question's topic is that topic's copy: never answered as another wording (lib/questions.js answers the answers page only).
   const learned = shown.map(row => (row.also?.some(each => each.details) ? {...row, also: row.also.filter(each => !each.details)} : row));
   // Why (28 Oct 2026, spec AC2): a saved answer the AI judged a Your details fact, one job's or consent is not a learning; PR A only leaves it out of the
-  // tab; moving it to its Your details home is PR B. Nothing is deleted.
+  // tab; PR B2c moves a Your details fact to its home (factsWaiting below). Nothing is deleted.
   const notLearned = answered.map(each => each.question).filter(question => NOT_LEARNED.has(known[keyOf(question)]?.reuse));
+  // Why (PR B2c): the Your details facts among them wait for the move (lib/profile-move.js moveDue), which runs on the next open of Your details.
+  const waiting = answered.filter(each => known[keyOf(each.question)]?.reuse === 'details').map(each => keyOf(each.question)).sort().join('\n');
+  if (!rows && waiting !== (storage.settings().factsWaiting || '')) storage.saveSettings({factsWaiting: waiting});
   // An unclear saved line by the same verdict (PR A review): a Your details fact is checked in Fill your details, one job's or consent is set aside.
   const verdictOf = row => known[keyOf(row.question)]?.reuse;
   const savedFacts = saved.filter(row => verdictOf(row) === 'details'), savedAside = saved.filter(row => NOT_LEARNED.has(verdictOf(row)) && verdictOf(row) !== 'details');

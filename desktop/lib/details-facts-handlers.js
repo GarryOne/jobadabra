@@ -2,7 +2,7 @@
 // lib/profile-move.js, copy and backup first), save them with Contact, and the owner's pick for "Which is right?". Registered by
 // lib/contact-handlers.js. Guarded by test/details-facts.test.js and test/ipc.test.js.
 import * as sections from './profile-sections.js';
-import {move, openConflicts, resolve} from './profile-move.js';
+import {move, moveDue, openConflicts, resolve} from './profile-move.js';
 import {judgeNew} from './details-review.js';
 import {claudeAi} from './question-ai.js';
 import * as kinds from './details-kinds.js';
@@ -41,9 +41,9 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
     if (!connected()) return {ok: true, sections: empty(), conflicts: [], setAside: []};
     let error = '', changed = 0;
     const started = Date.now();
-    if (!storage.settings().profileMovedAt) {
+    if (moveDue(storage.settings())) {
       try {
-        const {moved, conflicts} = await move(storage, {ai: ai()});
+        const {moved, conflicts} = await move(storage, {ai: ai(), ...(copy ? {copy} : {})});   // Why (B2c): a test's copy reaches the move too, never the real backup folder
         log('profile', 'facts moved into Your details', {moved, conflicts: conflicts.length});   // counts, never a value
       } catch (failed) { error = failed.message; log('profile', 'the facts move stopped', {error: failed.message}); }
     }

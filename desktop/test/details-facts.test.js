@@ -48,10 +48,36 @@ test('handlers: saved lines read back; with no AI nothing moves and the move is 
   assert.deepEqual(await handlers.resolveDetailsConflict('nothing open', 0), {ok: false, error: 'That choice is no longer open'});
 });
 
-test('handlers: once the move ran, opening Your details never moves again', async () => {
-  const {handlers, logged} = harness({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z'});
+test('handlers: once the move ran, opening Your details never moves again for the same lines', async () => {
+  const {handlers, logged} = harness({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z', factsWaiting: 'notice period', factsMovedFor: 'notice period'});
   await handlers.detailsFacts();
   assert.equal(logged.length, 0);
+});
+
+// PR B2c (owner 28 Oct 2026, What we learned: "nothing deleted", fact lines go to their home): an answer saved after the first move and judged a Your
+// details fact (lib/question-lists.js factsWaiting) is moved on the next open, by the same move; then that set is done.
+test('handlers: a fact answer saved after the move goes to Your details on the next open, word for word, once', async () => {
+  const calls = [];
+  const ai = () => ({client: {messages: {create: async request => {
+    const items = JSON.parse(request.messages[0].content);
+    if (Array.isArray(items)) calls.push(items.length);   // the move's calls (the answers check asks its own)
+    return {content: [{type: 'text', text: JSON.stringify({items: items.map(({id, line}) => ({id, home: /notice/i.test(line) ? 'availability' : 'stay', topic: 'x', clarity: 'clear'}))})}]};
+  }}}});
+  const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-facts-')), {encrypt: v => v, decrypt: v => v});
+  storage.saveSettings({store: 'sqlite', profileMovedAt: '2026-10-17T10:00:00Z', factsWaiting: 'notice period'});
+  const handlers = {}, logged = [];
+  registerDetailsFactsHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = (...args) => fn(null, ...args); }}, storage, DEMO: false,
+    connected: () => true, needsNotion: () => null, log: (...line) => logged.push(line), ai, copy: async () => ({dir: 'copy'})});
+  await store.openStore(storage).page('answers').write('## Common questions\n| Question | Answer |\n|---|---|\n| Notice period | 3 months |\n| How did you hear about us? | LinkedIn |\n');
+  const got = await handlers.detailsFacts();
+  assert.deepEqual(got.sections.availability, [{label: 'Notice period', value: '3 months'}]);
+  const answers = await store.openStore(storage).page('answers').text();
+  assert.doesNotMatch(answers, /Notice period/, 'moved, not copied');
+  assert.match(answers, /LinkedIn/, 'a learning stays');
+  assert.equal(storage.settings().factsMovedFor, 'notice period');
+  const before = calls.length;
+  await handlers.detailsFacts();
+  assert.equal(calls.length, before, 'the same lines are not judged again');
 });
 
 test('two overlapping opens of Your details move once: the second waits for the first and never rolls its lines back (owner log 17 Oct 2026, 22:28 + 22:29)', async () => {

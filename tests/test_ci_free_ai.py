@@ -57,6 +57,26 @@ class CiFreeAiTests(unittest.TestCase):
         gate = jobs((WORKFLOWS / 'desktop.yml').read_text())['ai-ready']
         self.assertIn('CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}', gate)
 
+    def test_every_job_that_runs_a_suite_carries_the_caps_account_and_token(self):
+        # Why (28 Oct 2026, beta 3: failureschannels, focusdismiss and every AI step red): lib/ai-cap.mjs runs inside the suite's own process, and the two names it reads
+        # were set only on the AI preflight step, so each suite read an "unreadable" count and a gate fails a capped step. Job-level env, so the retry and Edge steps get them too.
+        names = ('CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}', 'CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}')
+
+        def lacking(text):
+            return [name.split(':')[0] for name in names if name not in text.split('\n    steps:', 1)[0]]
+        checked, missing = 0, []
+        for path in sorted(WORKFLOWS.glob('*.yml')):
+            for name, text in jobs(path.read_text()).items():
+                if 'node suite.mjs' not in text:
+                    continue
+                checked += 1
+                missing += [f'{path.name} {name}: {lack}' for lack in lacking(text)]
+        self.assertGreaterEqual(checked, 3, 'the jobs that run a suite were not found: this check would pass for nothing')
+        self.assertEqual(missing, [], 'put these in the job-level env (not one step) of every job that runs a suite')
+        suite = jobs((WORKFLOWS / 'e2e.yml').read_text())['suite']
+        stripped = suite.replace(names[1], '')
+        self.assertEqual(lacking(stripped), ['CI_CF_ANALYTICS_TOKEN'], 'positive control: a job without the token is flagged')
+
     def test_every_relay_matrix_checks_the_ai_once_first(self):
         # Owner, 27 Oct 2026 ("let's close the gaps", part 4): the relay starts without checking CI's token, so a refused token was a red suite each.
         # Every matrix job that starts the relay needs a job that runs key-preflight.mjs with the Free AI token.

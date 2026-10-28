@@ -108,6 +108,13 @@ runs a step alone: #2342's "Edit target" had no target, #2350's "Up next" no ear
 run. A red names the first failing step; later ones did not run. Every PR suite job is under 8 minutes on a green run (medians 3.9–7.5 min, 28 Oct); a suite that
 passes 8 is cut in two by journey, never picked. `recorded` is not run on PRs (page-cases.yml replays those cases there). Code: `lib/pr-suites.mjs stepLists`.
 
+**G3 · A local run reaches nothing of the owner's.** (owner's safety rule; 28 Oct 2026: an interactions run put ch.indeed.com in their Chrome three times.) Every way the
+app reaches the owner's computer is closed for every suite where the app starts, and asserted before step 1; a run that finds one open stops. The doors today: `open` on
+PATH (`makeOpenShim`, `opensIntoSpool`, #2362), Electron's `shell.openExternal`, `openPath`, `showItemInFolder`, the clipboard and login items (`desktop/lib/e2e-host.js`,
+checked by `lib/app.mjs`), the browser profile and backup folder (`openContext`), the Keychain (a step compares it before and after). CI cannot show an open door (a runner
+has no owner's browser), so the check is at run start and a class test lists every host call in the app (`test/e2e-host.test.js`): a new call is a door or on its reviewed
+list in the PR that adds it. Re-running a repro of a door incident locally waits until its door is closed, and the spool says what the app tried to open.
+
 **H · Cheapest place.** A pure check that runs in seconds (no browser, no app, no e2e) runs on push when its files changed (`tools/pre-push-check.sh`); a CI red
 that push could have caught is a harness bug (#2322: no-question-mark, solid-buttons). E2E suites never run on the Mac except one: fixing a real backbone red,
 that one suite or step (the owner's memory is tight).

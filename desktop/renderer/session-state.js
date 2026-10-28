@@ -67,6 +67,15 @@ export const dockCounts = (items, gone = () => false) => ({
 // Applying in the menu: the number is every card the Applying list shows, whatever its state (owner, 8 Oct 2026: it said 2
 // with 4 cards, counting only the ones that needed you). The colour is the most urgent: amber needs you, blue working,
 // green all ready to submit, else grey. `urgency`: 0-1 needs you, 2 working, 3 ready to submit.
+/** Which sessions matter first: 0-1 needs you, 2 working, 3 ready to submit, 4 the rest. `ready` is the Chrome form's judged-ready flag. */
+export function sessionUrgency(item, ready = false) {
+  // Why (2026-10-28, #2392 review): a queued hidden job only waits its turn, so the nav badge does not count it as working; the state decides, never its label.
+  if (item.background?.state === 'queued') return 4;
+  if (item.status === 'input' && !sessionReview(item, ready)) return 0;
+  if (sessionReview(item, ready) && !ready) return 1;
+  if (isLive(item) && item.status === 'running') return 2;
+  return sessionReview(item, ready) ? 3 : 4;
+}
 export function applyingBadge(items, urgency) {
   const levels = items.map(urgency);
   const tone = levels.some(level => level <= 1) ? 'warn' : levels.includes(2) ? 'info'

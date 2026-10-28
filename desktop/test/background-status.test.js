@@ -48,3 +48,13 @@ test('one table: the card\'s pill is the list\'s words, only more exact when the
   assert.deepEqual(backgroundStatus({background: {state: 'ready_for_review'}}, {ready: true}), ['Ready to submit', 'good']);
   assert.deepEqual(liveCard({state: 'filling'}, {left: [], fields: 4, filled: 2}).pill, ['Filling · 2 of 4 fields', 'info']);
 });
+
+test('a queued hidden job gets the lowest urgency, so the nav badge stays neutral instead of counting it as working (Gitar, #2392)', async () => {
+  const {sessionUrgency, applyingBadge} = await import('../renderer/session-state.js');
+  const queued = {id: 'a', kind: 'form', status: 'running', background: {state: 'queued'}};
+  const filling = {id: 'g', kind: 'form', status: 'running', background: {state: 'filling'}};
+  assert.equal(sessionUrgency(queued), 4);
+  assert.equal(applyingBadge([queued], item => sessionUrgency(item)).tone, 'neutral');
+  assert.equal(sessionUrgency({...queued, background: {state: 'preflight'}}), sessionUrgency({...queued, background: {state: 'filling'}}), 'only queued is demoted');
+  assert.equal(applyingBadge([queued, filling], item => sessionUrgency(item)).count, 2);
+});

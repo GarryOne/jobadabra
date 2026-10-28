@@ -49,6 +49,8 @@ export function splitPermit(value) {
   if (!status || !parts || ((parts[1] || parts[2]) && status !== 'yes, with a permit') || (parts[2] && !isCountry(parts[2]))) return none;
   return {status, until: parts[1] || '', only: parts[2] ? COUNTRY_NAMES.find(name => name.toLowerCase() === parts[2].trim().toLowerCase()) : ''};
 }
+/** {status, until, only} -> the one saved value ("yes, with a permit, valid until 2027-06-30, only in Switzerland"); '' for a status outside STATUSES. A date
+ * that is not YYYY-MM-DD or an "only in" that is no country is left out. */
 export const joinPermit = ({status = '', until = '', only = ''} = {}) => (STATUSES.includes(status)
   ? [status, status === 'yes, with a permit' && /^\d{4}-\d{2}-\d{2}$/.test(until) && `valid until ${until}`, status === 'yes, with a permit' && isCountry(only) && `only in ${only}`].filter(Boolean).join(', ') : '');
 

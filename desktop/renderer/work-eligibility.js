@@ -21,11 +21,13 @@ const BY_NAME = new Map(CODES.map(code => [String(english?.of(code) || '').toLow
 export const COUNTRY_NAMES = [...new Set(CODES.map(code => english?.of(code)).filter(name => name && name.length > 2))].sort((a, b) => a.localeCompare(b, 'en'));
 /** "Romania" -> "RO"; '' for anything that is not a country's English name (a city, a region, "Germany / EU"). */
 export const countryCode = name => BY_NAME.get(String(name ?? '').trim().toLowerCase()) || '';
+/** True when the name is a country's English name (renderer/countries.js); false for a city, a region or a mix. */
 export const isCountry = name => Boolean(countryCode(name));
 /** "RO" -> "Romania"; '' for a code that is no country. */
 export const nameOfCode = code => COUNTRY_NAMES.find(name => countryCode(name) === String(code ?? '').trim().toUpperCase()) || '';
 /** A value still asked (the template's "❓ …"), never an answer. */
 export const isAsked = value => /^❓/.test(String(value ?? '').trim());
+/** "united kingdom" -> the UK zone {id, label, codes}; null when the label names no zone. */
 export const zoneOfLabel = label => ZONES.find(zone => zone.label.toLowerCase() === String(label ?? '').trim().toLowerCase()) || null;
 /** A row's own name: one of the zones, or a country added by hand. */
 export const isRowName = label => Boolean(zoneOfLabel(label)) || isCountry(label);

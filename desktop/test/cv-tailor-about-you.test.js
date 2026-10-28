@@ -72,10 +72,13 @@ test('with no bundle given, tailor reads the candidate\'s details, strategy and 
   assert.doesNotMatch(user, /not available this time: [^\n]*cv/, 'the CV is skipped, not named lacked');
 });
 
-test('a store that cannot be read leaves the prompt saying so and tailoring still runs', async () => {
-  const client = {messages: {create: async request => ({stop_reason: 'end_turn', usage: {}, content: [{type: 'text', text: request.messages[0].content.includes('(not available this time)') ? JSON.stringify(ANSWER) : '{}'}]})}};
-  const answer = await cvlib.tailor(null, {title: 'Engineer', company: 'Beta', description: 'x'}, '', {client, base: BASE});
-  assert.equal(answer.result.summary, 'Engineer.');
+test('a store that cannot be read leaves the prompt naming what is missing, tailoring still runs, and the read is not repeated', async () => {
+  const asked = [];
+  const client = {messages: {create: async request => { asked.push(request.messages[0].content); return {stop_reason: 'end_turn', usage: {}, content: [{type: 'text', text: JSON.stringify(ANSWER)}]}; }}};
+  const about = await cvlib.aboutFor(null);   // a null store cannot be read
+  assert.deepEqual(about.lacked, ['details', 'learned', 'strategy']);
+  await cvlib.tailor(null, {title: 'Engineer', company: 'Beta', description: 'x'}, '', {client, base: BASE, about});
+  assert.match(asked[0], /not available this time: details, learned, strategy/);
 });
 
 // Why (Gitar on #2373): the CV is carried by the prompt itself, so a reader may skip it: it is neither read, counted in the budget nor named lacked, and Strategy is not cut for it.

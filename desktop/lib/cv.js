@@ -143,13 +143,15 @@ const numbered = (cv, room = null) => ({summary: cv.summary || '', ...(room?.sum
 // without sensitive ones, conflicts or pay) minus the CV, which the prompt already carries numbered (so it is skipped, not read and trimmed to be dropped). about: a bundle (tests, or the
 // caller's one read for both attempts); else read here, lazily (about-you.js imports this file). A part that could not be read is named, never filled from anywhere else.
 export async function aboutFor(storage) {
-  const {aboutYou} = await import('./about-you.js');
-  return aboutYou(storage, 'cv_tailor', {skip: ['cv']});
+  const {aboutYou, READERS} = await import('./about-you.js');
+  // A failed read is logged once and comes back as an empty bundle naming what is missing, so it never counts as "none given" (Gitar on #2373: it was read again per attempt).
+  return aboutYou(storage, 'cv_tailor', {skip: ['cv']}).catch(error => {
+    appLog('cv', 'About you could not be read for tailoring', {error: error.message});
+    return {parts: {}, lacked: READERS.cv_tailor.parts.filter(part => part !== 'cv')};
+  });
 }
 async function aboutText(storage, about) {
-  let bundle = about;
-  if (!bundle) bundle = await aboutFor(storage).catch(error => { appLog('cv', 'About you could not be read for tailoring', {error: error.message}); return null; });
-  if (!bundle) return '(not available this time)';
+  const bundle = about || await aboutFor(storage);
   const parts = {...bundle.parts};
   delete parts.cv;   // a bundle from a test may carry one
   return JSON.stringify(parts).slice(0, 40000) + (bundle.lacked.length ? `\n(not available this time: ${bundle.lacked.join(', ')})` : '');

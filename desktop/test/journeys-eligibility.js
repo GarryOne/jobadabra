@@ -11,7 +11,8 @@ import {createStorage} from '../lib/storage.js';
 test('scenario: a Romanian national is never asked "authorised to work in Germany?" or "sponsorship for Berlin?"; the US one stays asked', async () => {
   const {openStore} = await import('../lib/store/index.js');
   const {factsOf} = await import('../lib/base-facts.js');
-  const {split} = await import('../lib/question-verdicts.js');
+  const {ensure} = await import('../lib/question-verdicts.js');
+  const {visibleQuestions} = await import('../renderer/question-filter.js');
   const storage = createStorage(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-eligibility-journey-')), {encrypt: v => v, decrypt: v => v});
   storage.saveSettings({store: 'sqlite', telemetry: false});
   await openStore(storage).page('profile').write('## 🛂 Work eligibility\n- Nationality: Romania\n- United States: ❓ yes, freely / yes, with a permit / no, needs sponsorship [per country]\n');
@@ -20,7 +21,9 @@ test('scenario: a Romanian national is never asked "authorised to work in German
   const client = {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({verdicts: Object.entries(asked).map(([label, [asks, country]]) => (
     {label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks, country}))})}]})}};
   const rows = Object.keys(asked).map(question => ({question}));
-  const {shown} = await split(storage, rows, {facts: await factsOf(storage), ai: {client}});
+  const facts = await factsOf(storage);   // the form path: lib/question-lists.js judges, then the shared filter shows
+  const {verdicts} = await ensure(storage, rows.map(row => row.question), {facts, ai: {client}});
+  const {shown} = visibleQuestions(rows, verdicts, {open: facts.filter(fact => !fact.value).map(fact => fact.label)});
   assert.deepEqual(shown.map(row => row.question), ['Are you authorised to work in the United States?'], 'the EU questions are answered from the zone your nationality opens');
   const kept = Object.values(storage.settings().questionVerdicts);
   assert.deepEqual(kept.filter(entry => entry.reuse === 'details').map(entry => [entry.fact, entry.proposal]).sort(), [['EU / EEA + Switzerland', 'No'], ['EU / EEA + Switzerland', 'Yes']]);

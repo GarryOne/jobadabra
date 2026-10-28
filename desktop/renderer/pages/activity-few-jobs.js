@@ -61,7 +61,7 @@ export function withFewJobsHelp(runId) {
       if (action.row?.review) { reviewSuggestion(action.row.review); return; }
       await busyWhile(action.label, () => runAction(action, {pilot: window.pilot, openSetting})).catch(error => ({ok: false, error: error.message}));
     });
-    return action.kind === 'visit' ? wand(button) : button;   // a site read starts AI work (test/wand-cursor.test.js)
+    return button;
   };
   const answer = el('div', 'muted small few-answer');
   const showAnswer = result => answer.replaceChildren(el('p', '', result.why), ...(result.first_steps || []).map((step, i) => el('p', '', `${i + 1}. ${step}`)));
@@ -123,7 +123,8 @@ export function withFewJobsHelp(runId) {
       const names = groups.siteNames;
       const shown = names.slice(0, 2).join(' · ') + (names.length > 2 ? ` and ${names.length - 2} more` : '');
       adviceEvent('shown', 'visit', 'few-jobs');
-      const read = Object.assign(el('button', 'secondary', 'Read them in Chrome'), {type: 'button', title: 'Opens them in your Chrome, two at a time; the Jobadabra extension filters and reads each, then your next check scores the jobs'});
+      // Why (#2350, Gitar): a site read starts AI work in Chrome, so its button carries the wand (test/wand-cursor.test.js).
+      const read = wand(Object.assign(el('button', 'secondary', 'Read them in Chrome'), {type: 'button', title: 'Opens them in your Chrome, two at a time; the Jobadabra extension filters and reads each, then your next check scores the jobs'}));
       keepButton('read-sites', read);
       read.addEventListener('click', async () => {
         const result = await busyWhile('read-sites', () => window.pilot.visitsRun({urls: groups.visits.map(site => site.url), atOnce: 2, filter: true})).catch(error => ({text: error.message}));

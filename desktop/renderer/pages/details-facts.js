@@ -56,7 +56,7 @@ function drawEligibility(into, lines, row) {
   into.addEventListener('click', event => { if (event.composedPath?.().some(node => node.classList?.contains('qa-nationality'))) redrawConcluded(into); });   // the chip is gone by now: its path
 }
 // A zone: its answered row, else "from your nationality" when the nationality opens it (a quiet Change turns it into the chips), else its row or the empty
-// chips (a template "❓" row is still the one asked).
+// chips (a template row still asked stays the one asked).
 function zoneRow(into, zone, rows) {
   const saved = rows.find(line => zoneOfLabel(line.label) === zone);
   if (isAnswered(saved?.value) || !zonesOpenedBy(nationalityNow(into)).includes(zone.id)) return eligibilityRow(saved || {label: zone.label, value: '', kind: 'per_country'});

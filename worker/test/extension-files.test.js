@@ -122,7 +122,9 @@ test('an out-of-date extension in Chrome loads the new copy by itself, and only 
   assert.equal(newer('0.7.1', '0.6.8'), true);
   assert.equal(newer('0.7.1', '0.7.1'), false);
   assert.equal(newer('0.10.0', '0.9.9'), true);
-  assert.match(background, /reloadedFor !== answer\.latest/);  // once per version: no reload loop
+  // Once per version: no reload loop. The rule moved to extension/self-reload.js (the hidden browser's copy never reloads); the report still passes what it last reloaded for.
+  assert.match(read('extension/self-reload.js'), /reloadedFor !== latest/);
+  assert.match(read('extension/tab-report.js'), /mayReloadSelf\(\{latest: answer\?\.latest, running, reloadedFor,/);
   assert.match(background, /executeScript\(\{target: \{tabId, allFrames: true\}, files: \['page\/skeleton\.js', 'page\/required-mark\.js', 'page\/typed-check\.js', 'page\/read-back\.js', 'page\/label-before\.js', 'page\/coverage\.js', 'page\/option-groups\.js', 'page\/review-payload\.js', 'hook\.js', 'panel-claude\.js', 'page\/submit-press\.js', \.\.\.PANEL_FILES\], injectImmediately: true\}\)/);
   assert.match(background, /jobpilotto-review-host/);
   assert.match(readPanel(), /send\(\{type: 'panelAllowed'\}\)/);

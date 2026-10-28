@@ -164,7 +164,7 @@ export function renderJobsSuggestions() {
 }
 
 /** The Jobs bar's first paint (pages/jobs.js init): folded, as last drawn, so the list below does not move when Focus is read (renderer/late-blocks.js). */
-export const paintJobsSuggestionsFirst = renderJobsSuggestions;
+export function paintJobsSuggestionsFirst() { renderJobsSuggestions(); }   // kept paint is barView's first state, so one path draws it
 
 /** Binds Show all and the Jobs bar's fold (once, at start-up). */
 export function initSuggestions() {

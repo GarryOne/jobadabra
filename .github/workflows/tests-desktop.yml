@@ -34,6 +34,8 @@ on:
       - 'config/notion_template.json'
       - 'docs/notion-profile-template.md'
       - 'docs/site-routes.json'
+      - 'tools/about-you-readers.mjs'   # desktop/test/about-you-readers.test.js
+      - 'docs/about-you-readers.json'   # the same test checks the file is not stale
       - 'tools/store-zip.mjs'   # desktop/test/store-zip.test.js builds the Web Store package with it
       - 'tools/webstore-publish.mjs'   # desktop/test/webstore-publish.test.js
       - 'tools/pr-assets.mjs'   # desktop/test/pr-assets-args.test.js

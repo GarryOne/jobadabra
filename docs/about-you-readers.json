@@ -1,0 +1,140 @@
+{
+  "parts": [
+    {
+      "key": "details",
+      "label": "Your details"
+    },
+    {
+      "key": "cv",
+      "label": "CV + Experience bank"
+    },
+    {
+      "key": "learned",
+      "label": "What we learned"
+    },
+    {
+      "key": "strategy",
+      "label": "Strategy"
+    },
+    {
+      "key": "history",
+      "label": "History"
+    },
+    {
+      "key": "voice",
+      "label": "Voice"
+    },
+    {
+      "key": "this_job",
+      "label": "This job"
+    }
+  ],
+  "readers": [
+    {
+      "key": "form",
+      "label": "Form filling",
+      "live": false,
+      "through": [],
+      "pages": [
+        "details",
+        "cv",
+        "learned",
+        "strategy"
+      ],
+      "never": []
+    },
+    {
+      "key": "kit",
+      "label": "Kit answers",
+      "live": true,
+      "through": [
+        "cv"
+      ],
+      "pages": [
+        "details",
+        "learned",
+        "strategy"
+      ],
+      "never": [
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "cv_tailor",
+      "label": "CV tailoring",
+      "live": false,
+      "through": [],
+      "pages": [],
+      "never": [
+        "salary",
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "letter",
+      "label": "Letters",
+      "live": false,
+      "through": [],
+      "pages": [],
+      "never": [
+        "salary",
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "score",
+      "label": "Job fit score",
+      "live": false,
+      "through": [],
+      "pages": [],
+      "never": [
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "insights",
+      "label": "Insights and Analyze my search",
+      "live": false,
+      "through": [],
+      "pages": [],
+      "never": [
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "prep",
+      "label": "Interview prep",
+      "live": false,
+      "through": [],
+      "pages": [],
+      "never": [
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "review",
+      "label": "Interview insights and rejection review",
+      "live": false,
+      "through": [],
+      "pages": [],
+      "never": [
+        "sensitive answers"
+      ]
+    },
+    {
+      "key": "portrait",
+      "label": "Your portrait",
+      "live": true,
+      "through": [
+        "details",
+        "cv",
+        "learned",
+        "strategy"
+      ],
+      "pages": [],
+      "never": [
+        "sensitive answers"
+      ]
+    }
+  ]
+}

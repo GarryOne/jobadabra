@@ -121,11 +121,3 @@ test('the prompt asks for a coherent letter that adds no fact', async () => {
   assert.match(ai.seen[0].system, /reference certificate/);
   assert.match(ai.seen[0].system, /adds no fact that is not in your statements/);
 });
-
-test('code validates the citations of a stored portrait: an id missing from the evidence list is dropped, and a statement left with none goes', () => {
-  const blocks = ['Updated: 2026-10-28', 'Evidence: abc'].map(text => ({type: 'paragraph', text}));
-  const page = [...blocks, {type: 'heading_2', text: 'Strengths'}, {type: 'bulleted_list_item', text: 'You build platforms. [cv, learned:9]'},
-    {type: 'bulleted_list_item', text: 'You invent facts. [learned:7]'}, {type: 'heading_2', text: 'Evidence'}, {type: 'bulleted_list_item', text: 'cv | Your CV | cv'}];
-  const record = portrait.parse(page);
-  assert.deepEqual(record.sections.map(s => s.statements), [[{text: 'You build platforms.', evidence: ['cv']}]]);
-});

@@ -48,7 +48,7 @@ fi
 repo="$(git remote get-url origin 2>/dev/null | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##' | grep -E '^[^/ ]+/[^/ ]+$' || true)"
 if [ -n "$summary" ] && [ -s "$summary" ]; then python3 "$(dirname "$0")/pr-body-format.py" "$repo" < "$summary"; else printf '### %s\n' "$(bash "$(dirname "$0")/pr-title.sh" "$base")"; fi
 printf '\n'
-# Why (27 Oct 2026, .gitar/config/approve.md): Gitar approves only when the circle count is in the description, and #2284 waited on the owner's bypass without it.
+# Why (27 Oct 2026; 28 Oct: .gitar/review/root-cause.md): Gitar's review reads the circle count in the description (a bug fix without it is a finding), and #2284 waited on the owner's bypass without it.
 #   Written here from tools/area-circles.mjs, so no description misses it; a summary that already has the line keeps its own.
 if [ -n "$summary" ] && ! grep -q 'AREA-CIRCLES 7d=' "$summary" && [ -f "$(dirname "$0")/area-circles.mjs" ]; then
   circles="$(node "$(dirname "$0")/area-circles.mjs" "$base" 2>&1 | grep -E '^AREA-CIRCLES ' | tail -n 1 || true)"   # a count (0 and 0 included) or "skipped (why)", as the counter says it

@@ -120,3 +120,20 @@ test('Stop during the 10-minute wait hands the job to the person, and the elapse
   const untouched = await controller('').handle({action: 'poll', owner: 'o1'});
   assert.deepEqual(untouched.checks, [{session: 's1'}], 'positive control: with no Stop the elapsed wait does ask for the press');
 });
+
+test('at start every background job left mid-press is handed to the person with its words, and nothing launches or presses', async () => {
+  const records = {s1: {id: 's1'}, s2: {id: 's2'}, s3: {id: 's3'}}, reports = [], notices = [], launched = [];
+  const interrupted = {s1: {state: 'needs_user_handoff', reason: 'submission_outcome_unknown', mode: 'auto', manualOverride: true}};
+  const controller = createBackgroundApplyController({}, {
+    store: {interrupted: async (url, session) => interrupted[session] || null, ready: spy('store.ready'), reserve: spy('store.reserve')},
+    browser: {start: (...args) => launched.push(args)},
+    terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/1', background: {}, outcome: ''}, {id: 's2', url: 'https://jobs.example.test/2', background: {}, outcome: ''},
+      {id: 's3', url: 'https://jobs.example.test/3', background: {}, outcome: 'Applied'}, {id: 'v', url: 'https://jobs.example.test/4', outcome: ''}], record: id => records[id] || null, report: (id, event) => reports.push([id, event])},
+    notify: (...args) => notices.push(args)});
+  touched.length = 0;
+  assert.deepEqual(await controller.sweepInterrupted(), ['s1'], 'only the job whose press was cut off; a finished job and a visible session are not asked');
+  assert.match(notices[0][1], /Check whether it went through/);
+  assert.match(reports[0][1].message, /Check whether it went through/);
+  assert.deepEqual(launched, [], 'no browser starts');
+  assert.deepEqual(touched, [], 'nothing is reserved or readied');
+});

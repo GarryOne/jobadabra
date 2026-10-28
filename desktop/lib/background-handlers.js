@@ -13,6 +13,7 @@ import * as runHistory from './run-history.js';
 import * as startupMove from './startup-move.js';
 import * as telegramCloud from './telegram-cloud.js';
 import * as viewCache from './view-cache.js';
+import {backgroundApplyFor} from './background-apply-controller.js';
 import {e2eMs} from './e2e-timing.js';
 import {log as appLog} from './log.js';
 import {resumeDelay, scheduleResume} from './resume-queue.js';
@@ -29,9 +30,11 @@ export function registerBackgroundHandlers(ctx) {
     // User data left on this Mac -> Notion (source of truth), once. It runs while the window loads, so the
     // window reads again what moved (e.g. open questions read before they reached Notion looked like none).
     // Why (2026-10-28, red main after #2339): the move runs for seconds behind the first reads and drops this Mac's profile.md and answers.md once Notion has them, so anything
-    // that writes or packs those files must know when it is over: the line below is that signal (desktop/e2e/suites/settings.mjs waits for it; guard test/startup-moves-signal.test.js).
-    startupMove.track(critical.during('Moving your data to Notion', () => migrate.run(storage, log)), outcome => appLog('migrate', 'startup moves finished', outcome))
-      .then(moved => { if (moved.length) toWindow('moved', moved); }, () => {});   // a failed move is already in the log line above
+    // that writes or packs those files must know when it is over: the line below is that signal (desktop/e2e/suites/settings.mjs waits for it; guard test/startup-moves-signal.test.js); the crash sweep below waits for the same moves to settle.
+    const moves = startupMove.track(critical.during('Moving your data to Notion', () => migrate.run(storage, log)), outcome => appLog('migrate', 'startup moves finished', outcome));
+    moves.then(moved => { if (moved.length) toWindow('moved', moved); }, () => {});   // a failed move is already in the log line above
+    // Crash rule (2026-10-29, owner): a press the last run's quit cut off is handed to the person once the store is settled; never retried (guard test/crash-rule-wired.test.js).
+    moves.catch(() => {}).then(() => backgroundApplyFor(storage).sweepInterrupted()).catch(error => appLog('apply', `interrupted presses not checked: ${error.message}`));
     syncCv();
     // Recent activity from Notion ⏱️ Search runs (every run's row, wherever it ran), every 15 s.
     let notionTimer;

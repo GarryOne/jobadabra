@@ -15,7 +15,7 @@ functions over McCabe 10. Rule: new code only, old code is never blocked. A rule
 | 4/4 | SonarQube Cloud on the public repo, quality gate on new code (duplication, complexity, reliability) | owner signs in once; gate shows on a PR; private repo stays out until the owner says paying is fine |
 
 ## Progress
-- [x] Baseline numbers and sketch (proof: none: read-only run outside the repo, sketch linked at the top)
+- [x] Baseline numbers and sketch (proof: docs/superpowers/plans/2026-10-28-clean-code-checks.md)
 - [ ] 1/4 Gitar rule
 - [ ] 2/4 sonarjs on new code
 - [ ] 3/4 Ruff on new code

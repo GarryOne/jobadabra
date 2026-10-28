@@ -10,6 +10,7 @@ import * as notes from './details-notes.js';
 import * as surveys from './survey-move.js';
 import {list} from './set-aside.js';
 import {beforeSave, older, undoFold} from './eligibility-older.js';
+import {suggest as suggestZones} from './zone-suggest.js';
 
 // Demo mode: fictional lines (the screenshots), one "Which is right?".
 const DEMO_FACTS = {eligibility: [{label: 'Nationality', value: 'United Kingdom'}, {label: 'EU / EEA + Switzerland', value: 'yes, with a permit', kind: 'per_country'},
@@ -69,6 +70,8 @@ export function registerDetailsFactsHandlers({ipcMain, storage, DEMO, connected,
   ipcMain.handle('detailsFacts', () => opening ||= open().finally(() => { opening = null; }));
   // The fast read the screen paints first (owner's app.log 18 Oct 2026: one open waited 3 min 10 s on four AI and Notion steps in a row, and the survey card never redrew when they
   // finished): the saved lines as they are now, no AI, no move. `settling` says the moves are still to come: the screen then asks 'detailsFacts' and redraws with its answer.
+  // The status to preselect per zone for a nationality outside Europe and the US (lib/zone-suggest.js); a suggestion is a draft the screen shows, never saved here.
+  ipcMain.handle('zoneSuggestions', async (_event, names) => (DEMO ? {} : suggestZones(storage, names, {ai: ai()}).catch(() => ({}))));
   ipcMain.handle('detailsFactsNow', async () => {
     if (DEMO || !connected()) return {...await open(), settling: false};
     try { return {ok: true, sections: await sections.read(storage), formats: {}, tidied: tidied(), conflicts: [], setAside: [], settling: true}; } catch (failed) { return {ok: false, error: failed.message, sections: empty(), conflicts: [], setAside: []}; }

@@ -11,7 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
-import {NATIONALITY, STATUSES, SUGGESTED, ZONES, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
+import {NATIONALITY, STATUSES, SUGGESTED, ZONES, freer, inZones, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -50,6 +50,7 @@ function drawEligibility(into, lines, row) {
   // Why (28 Oct 2026, #2322 review): one Nationality row. Words that are not country names ("British") stay as written with a Check, never a second row.
   const nationality = row(own && !isAsked(own.value) ? own : {label: NATIONALITY, value: ''});
   into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rest.map(row));
+  askZones(into);
   if (into.dataset.concluding) return;
   into.dataset.concluding = '1';   // once per box: a nationality picked or removed redraws the zones it opens
   into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
@@ -59,9 +60,23 @@ function drawEligibility(into, lines, row) {
 // with a note below"; a zone the nationality opens reads "yes, freely", the others "no, needs sponsorship"): a suggestion, never an answer until Save.
 function zoneRow(into, zone, rows) {
   const saved = rows.find(line => zoneOfLabel(line.label) === zone);
-  return isAnswered(saved?.value) ? eligibilityRow(saved) : suggestionRow(zone, suggestedFor(zone, nationalityNow(into)));
+  return isAnswered(saved?.value) ? eligibilityRow(saved) : suggestionRow(zone, suggestedFor(zone, nationalityNow(into)), saved);
 }
-const suggestedFor = (zone, nationality) => zonesOpenedBy(nationality).includes(zone.id) ? STATUSES[0] : nationality.length ? SUGGESTED : '';
+// Europe and the US: the fixed zone table (yes, freely in your own zone, else sponsorship); any other country: the AI's answer once it came (never a guess before it).
+const aiZones = new Map(), aiAsked = new Set();
+const keyOf = names => [...names].sort().join('|');
+function suggestedFor(zone, nationality) {
+  const own = nationality.filter(inZones), other = nationality.filter(name => !inZones(name));
+  const table = own.length ? (zonesOpenedBy(own).includes(zone.id) ? STATUSES[0] : SUGGESTED) : '';
+  return freer(table, other.length ? aiZones.get(keyOf(other))?.[zone.id] || '' : '');
+}
+// A nationality outside Europe and the US is asked once per session (lib/zone-suggest.js caches it per country); the zones redraw when the answer comes.
+function askZones(into) {
+  const other = nationalityNow(into).filter(name => !inZones(name)), key = keyOf(other);
+  if (!other.length || aiAsked.has(key) || !window.pilot?.zoneSuggestions) return;
+  aiAsked.add(key);
+  window.pilot.zoneSuggestions(other).then(found => { aiZones.set(key, found || {}); redrawConcluded(into); }).catch(() => {});
+}
 const nationalityNow = into => nationalityOf(into.querySelector('.qa-nationality')?.value || '') || [];
 // The nationality changed: every zone with no answer of the person's is preselected again from it. Why (28 Oct 2026, owner: "once we add/change the nationality,
 // initially, can we preselect…"; "we shouldn't override his choices"): a suggestion not yet clicked follows the nationality; an answer given or saved never moves.
@@ -72,19 +87,21 @@ function redrawConcluded(into) {
     const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => zoneOfLabel(factOf(each).label) === zone);
     if (!line || (isAnswered(factOf(line).value) && !line.dataset.suggested)) continue;
     const value = suggestedFor(zone, nationality);
-    line.replaceWith(suggestionRow(zone, value));
+    line.replaceWith(suggestionRow(zone, value, factOf(line)));
     suggested ||= Boolean(value);
   }
   if (suggested) detailsChanged();
+  askZones(into);
 }
 // A zone's row carrying the suggestion: a click on it is the person's own answer, so it stops being a suggestion.
-function suggestionRow(zone, value) {
-  const line = eligibilityRow({label: zone.label, value, kind: 'per_country'});
+function suggestionRow(zone, value, saved) {
+  const line = eligibilityRow(value ? {label: zone.label, value, kind: 'per_country'} : saved || {label: zone.label, value: '', kind: 'per_country'});   // no suggestion: a saved, still asked row stays as it was
   if (!value) return line;
   line.dataset.suggested = '1';
   const note = el('span', 'muted small', 'Suggested from your nationality');
   line.append(note);
-  line.addEventListener('click', () => { delete line.dataset.suggested; note.remove(); });
+  // Only a pick on a status is the person's answer, not a click on the label or the note.
+  for (const type of ['click', 'change']) line.addEventListener(type, event => { if (!event?.target?.closest?.('.segmented button, select')) return; delete line.dataset.suggested; note.remove(); });
   return line;
 }
 
@@ -107,7 +124,7 @@ export function foldOlder(readings = []) {
   redrawConcluded(into);
   for (const proposal of used.flatMap(each => each.rows || [])) {
     const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => factOf(each).label.toLowerCase() === proposal.label.toLowerCase());
-    if (!line || (factOf(line).value && !line.dataset.suggested)) continue;   // a zone your nationality opens, or one you answered, keeps its answer
+    if (!line || (factOf(line).value && !line.dataset.suggested)) continue;   // an answer given or saved stays; a suggestion gives way to an earlier answer
     const next = eligibilityRow({...proposal, kind: 'per_country'});
     line.replaceWith(next);
     mark(next);
@@ -181,6 +198,7 @@ export async function showFacts({redraw = false} = {}) {
 }
 
 // What the boxes hold now: {eligibility: [{label, value, kind}], ...} (a line with no value is dropped on save).
-export function factsNow() {
-  return Object.fromEntries(KEYS.map(key => [key, [...(box(key)?.querySelectorAll('.fact-line') || [])].map(factOf).filter(line => line.label && line.value)]));
+// saved: what is in the store (a zone only suggested is a draft, not saved). Why (28 Oct 2026, #2346 review): the draft baseline excludes suggestions, so they make the card dirty and Save offered.
+export function factsNow({saved = false} = {}) {
+  return Object.fromEntries(KEYS.map(key => [key, [...(box(key)?.querySelectorAll('.fact-line') || [])].filter(line => !(saved && line.dataset.suggested)).map(factOf).filter(line => line.label && line.value)]));
 }

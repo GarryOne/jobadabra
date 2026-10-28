@@ -13,7 +13,9 @@ const real = document.getElementById, loose = new Map();
 document.getElementById = id => real(id) || (loose.has(id) ? loose.get(id) : loose.set(id, document.createElement('div')).get(id));
 window.pilot.state = async () => ({settings: {}});   // renderer/pages/shared.js reads it on import
 const {showFacts, factsNow, KEYS} = await import('../renderer/pages/details-facts.js');
+const {forgetKept} = await import('../renderer/swr.js');
 
+const asked = [], gate = {promise: Promise.resolve(), open: () => {}};
 const zone = (label, value = '') => ({label, value, kind: 'per_country'});
 async function open(eligibility) {
   body.replaceChildren?.();
@@ -24,7 +26,7 @@ async function open(eligibility) {
   }
   for (const id of ['facts-message', 'which-list', 'facts-set-aside', 'setting-which', 'facts-tidied']) body.append(el('div', {id}));
   const sections = {eligibility, availability: [], languages: []};
-  window.pilot = {state: async () => ({settings: {}}), detailsFactsNow: async () => ({ok: true, sections, formats: {}}), detailsFacts: async () => ({ok: true, sections, formats: {}, older: []}), questionsRead: async () => ({})};
+  window.pilot = {state: async () => ({settings: {}}), detailsFactsNow: async () => ({ok: true, sections, formats: {}}), detailsFacts: async () => ({ok: true, sections, formats: {}, older: []}), questionsRead: async () => ({}), zoneSuggestions: async names => { asked.push(names); await gate.promise; return {eu: 'no, needs sponsorship', uk: 'yes, with a permit', us: 'yes, freely'}; }};
   await showFacts();
   return document.querySelector('[data-facts="eligibility"]');
 }
@@ -53,8 +55,42 @@ test('a suggestion the person clicked is theirs: a later nationality change keep
   const into = await open([{label: 'Nationality', value: 'United Kingdom'}, zone('EU / EEA + Switzerland'), zone('United Kingdom'), zone('United States')]);
   nationalityChanged(into);
   const us = [...into.querySelectorAll('.country-row.fact-line')].find(line => line.textContent.includes('United States'));
-  us.listeners.click?.forEach(fn => fn({}));
+  us.listeners.click?.forEach(fn => fn({target: {closest: () => true}}));
   nationalityChanged(into);
   assert.equal(status('United States'), 'no, needs sponsorship');
   assert.ok(![...into.querySelectorAll('.country-row.fact-line')].find(line => line.textContent.includes('United States')).dataset.suggested, 'no longer a suggestion');
+});
+
+// Why (28 Oct 2026, owner: "use AI if the nationality is not US or Europe"): a nationality outside the three zones is judged by the AI; before its answer the pickers
+// are empty (never a guess), after it they are preselected, and an answered zone is still left alone.
+test('a Canadian: the zones are empty until the AI answers, then preselected; Europe and the US never ask it', async () => {
+  asked.length = 0;
+  gate.promise = new Promise(done => { gate.open = done; });
+  const into = await open([{label: 'Nationality', value: 'Canada'}, zone('EU / EEA + Switzerland'), zone('United Kingdom', 'yes, freely'), zone('United States')]);
+  assert.equal(status('United States'), '', 'positive control: nothing is guessed before the answer');
+  gate.open();
+  await new Promise(done => setTimeout(done, 0));
+  assert.deepEqual(asked, [['Canada']]);
+  assert.equal(status('United States'), 'yes, freely');
+  assert.equal(status('EU / EEA + Switzerland'), 'no, needs sponsorship');
+  assert.equal(status('United Kingdom'), 'yes, freely', 'an answered zone is never overridden');
+  assert.match(into.textContent, /Suggested from your nationality/);
+  asked.length = 0;
+  await open([{label: 'Nationality', value: 'Romania'}, zone('EU / EEA + Switzerland'), zone('United Kingdom'), zone('United States')]);
+  assert.deepEqual(asked, []);
+});
+
+// Why (28 Oct 2026, #2346 review): a suggestion drawn when the page opens is a draft, not what is saved, so the card is dirty and Save is offered; a click on the label
+// is no pick; a saved zone still asked stays asked when nothing is suggested.
+test('suggestions are drafts (not the saved baseline); a label click keeps one; a saved asked zone stays asked', async () => {
+  const into = await open([{label: 'Nationality', value: 'United Kingdom'}, zone('EU / EEA + Switzerland'), zone('United Kingdom'), zone('United States')]);
+  const labels = lines => lines.eligibility.map(line => line.label);
+  assert.ok(labels(factsNow()).includes('United States'), 'positive control: the suggestion is drawn');
+  assert.ok(!labels(factsNow({saved: true})).includes('United States'), 'it is not in the saved baseline');
+  const us = [...into.querySelectorAll('.country-row.fact-line')].find(line => line.textContent.includes('United States'));
+  us.listeners.click?.forEach(fn => fn({target: {closest: () => null}}));
+  assert.ok(us.dataset.suggested, 'a click off the status keeps it a suggestion');
+  const asking = await open([zone('EU / EEA + Switzerland', '❓ yes, freely / yes, with a permit / no, needs sponsorship'), zone('United Kingdom'), zone('United States')]);
+  assert.match(asking.textContent, /EU \/ EEA/);
+  assert.ok(factsNow().eligibility.every(line => !line.value.startsWith('yes') || line.label !== 'EU / EEA + Switzerland'), 'no nationality: nothing suggested over the asked row');
 });

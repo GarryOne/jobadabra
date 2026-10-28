@@ -14,7 +14,7 @@ let contact = null, facts = null;
 const tell = name => globalThis.document?.dispatchEvent?.(new Event(name));
 // What is on screen right after a read or a save: the drafts count from here.
 export function contactRead() { savedContact = contactNow(); contact?.changed(); tell('details-changed'); }
-export function factsRead() { savedFacts = factsNow(); facts?.changed(); tell('details-changed'); }
+export function factsRead() { savedFacts = factsNow({saved: true}); facts?.changed(); tell('details-changed'); }
 export const contactDirty = () => countContact(savedContact, contactNow()) > 0;
 export const factsDirty = () => countFacts(savedFacts, factsNow()) > 0;
 // One card's own changes (its Done shows only at 0): Contact's or Links' fields, one fact section.

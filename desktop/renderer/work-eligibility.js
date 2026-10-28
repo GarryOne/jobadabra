@@ -12,6 +12,10 @@ export const ZONES = [{id: 'eu', label: 'EU / EEA + Switzerland', codes: EEA_CH}
 export const STATUSES = ['yes, freely', 'yes, with a permit', 'no, needs sponsorship'];
 /** The status preselected for a zone the nationality does not open: no permit is known, so sponsorship is needed (the person changes it with one click). */
 export const SUGGESTED = STATUSES[2];
+/** True when the country (English name) is in one of the three zones, so a fixed table answers it; any other is judged by the AI (lib/zone-suggest.js). */
+export const inZones = name => ZONES.some(zone => zone.codes.includes(countryCode(name)));
+/** The freer of two statuses ("yes, freely" first); '' counts as none. */
+export const freer = (a, b) => (!a ? b : !b ? a : STATUSES.indexOf(a) <= STATUSES.indexOf(b) ? a : b);
 export const STATUS_NAMES = {'yes, freely': 'Yes, freely', 'yes, with a permit': 'Yes, with a permit', 'no, needs sponsorship': 'No, needs sponsorship'};
 export const STATUS_HINTS = {'yes, freely': 'Citizen or free movement', 'yes, with a permit': 'A visa or residence permit', 'no, needs sponsorship': 'An employer must sponsor you'};
 export const OLDER = {'needs visa': 'no, needs sponsorship', allowed: ''};   // the older words: "allowed" never said how, so it stays as written

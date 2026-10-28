@@ -100,7 +100,7 @@ Builder: session 64 after PR B (owner, 28 Oct 2026).
 
 ## Progress
 
-- [x] Spec approved by the owner (28 Oct 2026)
-- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/QkXa9AcY1FMtwg6wdBzNCm): two PRs, one builder on the Mac, cost shown first
+- [x] Spec approved by the owner (28 Oct 2026) (proof: none: the owner's yes in the coordinator session, relayed 28 Oct 2026)
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/QkXa9AcY1FMtwg6wdBzNCm): two PRs, one builder on the Mac, cost shown first (proof: none: the owner's yes on the sketch)
 - [ ] PR D1 · interface + writers
 - [ ] PR D2 · analysis readers

@@ -3,7 +3,7 @@
 // unclear details (a fact said two ways, a line with no clear home, a value to make exact, an unanswered mark) that opens the Fill your details drawer (owner,
 // 28 Oct 2026, superseding 18 Oct "One queue for all"; lib/details-review.js). Saved through the Profile page's one save bar (pages/details-drafts.js). Guarded by
 // test/details-facts.test.js and test/details-review.test.js.
-import {el, loadingCard, pill} from '../components.js';
+import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
 import {$} from './core.js';
 import {showOnTab} from './tab-part.js';
@@ -49,18 +49,20 @@ function drawEligibility(into, lines, row) {
   const rest = lines.filter(line => line !== own && !rows.includes(line) && !isOldAsked(line));   // Why (28 Oct 2026, owner: "let's remove these 3 fields"): an old line still asked is no answer; the zones ask instead
   // Why (28 Oct 2026, #2322 review): one Nationality row. Words that are not country names ("British") stay as written with a Check, never a second row.
   const nationality = row(own && !isAsked(own.value) ? own : {label: NATIONALITY, value: ''});
+  delete into.dataset.edited;   // a redraw is a fresh open: suggestions follow only a Nationality the person changes next
   into.replaceChildren(nationality, ...ZONES.map(zone => zoneRow(into, zone, rows)), ...rest.map(row));
-  askZones(into);
   if (into.dataset.concluding) return;
   into.dataset.concluding = '1';   // once per box: a nationality picked or removed redraws the zones it opens
-  into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
-  into.addEventListener('click', event => { if (event.composedPath?.().some(node => node.classList?.contains('qa-nationality'))) redrawConcluded(into); });   // the chip is gone by now: its path
+  into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) { into.dataset.edited = '1'; redrawConcluded(into); } });
+  into.addEventListener('click', event => { if (event.composedPath?.().some(node => node.classList?.contains('qa-nationality'))) { into.dataset.edited = '1'; redrawConcluded(into); } });   // the chip is gone by now: its path
 }
 // A zone: its answered row, else its picker preselected from the nationality (owner, 28 Oct 2026: "we should still show the card pickers, but just preselected and
 // with a note below"; a zone the nationality opens reads "yes, freely", the others "no, needs sponsorship"): a suggestion, never an answer until Save.
 function zoneRow(into, zone, rows) {
   const saved = rows.find(line => zoneOfLabel(line.label) === zone);
-  return isAnswered(saved?.value) ? eligibilityRow(saved) : suggestionRow(zone, suggestedFor(zone, nationalityNow(into)), saved);
+  // Why (owner, 28 Oct 2026, "Save them automatically", reversing #2346): on open the conclusions are already saved (lib/eligibility-settle.js), so a zone still empty stays empty;
+  // only a Nationality the person changes in this session preselects the zones, as a draft of their own edit.
+  return isAnswered(saved?.value) ? eligibilityRow(saved) : suggestionRow(zone, into.dataset.edited ? suggestedFor(zone, nationalityNow(into)) : '', saved);
 }
 // Europe and the US: the fixed zone table (yes, freely in your own zone, else sponsorship); any other country: the AI's answer once it came (never a guess before it).
 const aiZones = new Map(), aiAsked = new Set();
@@ -106,33 +108,6 @@ function suggestionRow(zone, value, saved) {
   return line;
 }
 
-/**
- * After a paint from the store: the older lines the AI read as eligibility (lib/eligibility-older.js) fill Nationality and the empty zones, marked "From your
- * earlier answers", and leave the card; all as unsaved drafts, so Save folds them in (a backup first, Undo after) and Discard keeps them as they were.
- */
-export function foldOlder(readings = []) {
-  const into = box('eligibility'), used = readings.filter(each => each.about === 'eligibility' || each.about === 'per_job');
-  if (!into || !used.length) return;
-  const mark = node => node.append(pill('From your earlier answers', 'info', {title: 'Read from the lines you saved before; Save to keep it'}));
-  const lines = [...into.querySelectorAll('.fact-line')];
-  for (const line of lines) if (used.some(each => each.label === factOf(line).label && each.value === factOf(line).value)) line.remove();
-  const names = [...new Set(used.flatMap(each => each.nationality || []))], citizenship = [...into.querySelectorAll('.fact-line')].find(each => factOf(each).label === NATIONALITY);
-  if (!citizenship || (names.length && !nationalityNow(into).length)) {   // a folded unreadable Nationality leaves its place to the chips
-    const next = eligibilityRow({label: NATIONALITY, value: names.join(', ')});
-    if (citizenship) citizenship.replaceWith(next); else into.prepend(next);
-    if (names.length) mark(next);
-  }
-  redrawConcluded(into);
-  for (const proposal of used.flatMap(each => each.rows || [])) {
-    const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => factOf(each).label.toLowerCase() === proposal.label.toLowerCase());
-    if (!line || (factOf(line).value && !line.dataset.suggested)) continue;   // an answer given or saved stays; a suggestion gives way to an earlier answer
-    const next = eligibilityRow({...proposal, kind: 'per_country'});
-    line.replaceWith(next);
-    mark(next);
-  }
-  detailsChanged();
-}
-
 // "Tidied": the lines that got their kind, or their note for the AI, on first open, with Undo (lib/details-kinds.js, lib/details-notes.js).
 function drawTidied(tidied) {
   const box_ = $('facts-tidied');
@@ -144,7 +119,10 @@ function drawTidied(tidied) {
     const result = await window.pilot.undoDetailsTidy();
     if (result.ok) showFacts(); else { $('facts-message').textContent = result.error; undo.disabled = false; }
   });
-  box_.replaceChildren(el('p', 'muted small', `${tidied.changed} of your details were tidied: a typed control, or the rules folded as a note for the AI. The words you saved are kept, and the copy from before is backed up.`), undo);
+  // Why (owner, 28 Oct 2026, "Save them automatically"): Work eligibility is concluded and saved on open, so its part of this notice says so (lib/eligibility-settle.js).
+  const eligibility = tidied.eligibility || 0, rest = tidied.changed - eligibility;
+  const said = [rest ? `${rest} of your details were tidied: a typed control, or the rules folded as a note for the AI.` : '', eligibility ? 'Work eligibility was filled in from your earlier answers and saved.' : ''].filter(Boolean).join(' ');
+  box_.replaceChildren(el('p', 'muted small', `${said} The words you saved are kept, and the copy from before is backed up.`), undo);
 }
 
 // "N missing": Fill your details' items, counted from the drawer's own list (read once when Jobs has not read it yet), Review opens it at the first.
@@ -169,15 +147,12 @@ function drawWhich(aside = [], tidied = null) {
 // moves the facts in: copy and backup first, lib/profile-move.js) and the screen draws again with what they did. 'details-sorting' tells the cards (the Voluntary surveys card
 // shows "Sorting your answers…", then reads its lines again); the first paint never waits on an AI call. Guarded by test/details-facts.test.js.
 let settledFor = 0, redrawing = false;
-const paintFacts = (result, kept, settled = false) => {
+const paintFacts = (result, kept) => {
   skeletons(false);
   if (!kept && !redrawing && factsDirty()) return;   // a refresh never redraws under unsaved edits (Discard all redraws on purpose)
   $('facts-message').textContent = '';
   draw(result.sections || {}, result.formats || {});
   factsRead();   // the drafts count from what is drawn now (details-drafts.js)
-  // After the count: what it folds is a draft you save (Discard all redraws without it). Why (28 Oct 2026, #2322 review): only on the settled paint; a
-  // fold on the quick paint made the card dirty, and the dirty guard above then kept the settled lines from drawing.
-  if (!redrawing && settled) foldOlder(result.older || []);
   drawWhich(result.setAside || [], result.tidied || null);
 };
 export async function showFacts({redraw = false} = {}) {
@@ -191,7 +166,7 @@ export async function showFacts({redraw = false} = {}) {
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: true}}));
   const settled = await window.pilot.detailsFacts().catch(error => ({ok: false, error: error.message}));
   if (turn === settledFor && settled?.ok !== undefined) {
-    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false, true); } else if (settled.error) $('facts-message').textContent = settled.error;
+    if (settled.ok) { keep('details-facts', settled); paintFacts(settled, false); } else if (settled.error) $('facts-message').textContent = settled.error;
   }
   redrawing = false;
   document.dispatchEvent(new CustomEvent('details-sorting', {detail: {on: false, changed: settled?.changed || 0}}));

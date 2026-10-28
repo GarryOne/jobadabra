@@ -1,8 +1,8 @@
 // The Work eligibility lines saved before Nationality and the zones (#2322), read once by the AI: the nationality and the zone statuses each states
 // ("Work permit / visa: EU citizen (Romania)" -> Nationality Romania; "Authorised to work in Iasi, Romania?: Yes" -> EU / EEA + Switzerland: yes, freely).
 // The owner (28 Oct 2026): these lines are "pointless… we can deduce any of them, once we know the answer for the 3 above". So Your details shows Nationality
-// and the zones filled from them, and the lines are folded into them when you Save (a backup first, Undo after: lib/details-facts-handlers.js); nothing is
-// changed here.
+// and the zones filled from them. Owner, 28 Oct 2026, "Save them automatically" (reversing #2322's "a fold is a draft you save"): lib/eligibility-settle.js saves that
+// conclusion when Your details opens (a backup first, Undo after); a Save that drops folded lines still folds them (beforeSave). Nothing is changed here.
 // The AI judges (any language); the code keeps only zones, statuses, dates and countries from the fixed sets (renderer/work-eligibility.js). Kept per set
 // of lines (settings.eligibilityOlder), so a Profile is read once. Guarded by test/eligibility-older.test.js.
 import {anthropicApi} from './ai/anthropic-api.js';
@@ -27,6 +27,8 @@ Answer every id exactly as given.`;
 
 const nameOf = nameOfCode;
 const sigOf = lines => lines.map(line => `${line.label}=${line.value}`).sort().join('~');
+/** A set of lines as one string (label=value, sorted): the cache key of a reading, and what Undo remembers so the same lines are not concluded again (lib/eligibility-settle.js). */
+export const linesSig = sigOf;
 // One AI row -> {label, value} of a zone row, or null when the zone or status is outside the fixed sets.
 function rowOf({row, status}) {
   const zone = ZONES.find(each => each.id === row);
@@ -87,6 +89,6 @@ export async function undoFold(storage, {fetcher, save = sections.save} = {}) {
   const done = storage.settings().eligibilityFold;
   if (!done?.before || done.undone) return {ok: false, error: 'There is nothing to undo'};
   await save(storage, 'eligibility', done.before, fetcher);
-  storage.saveSettings({eligibilityFold: {...done, before: undefined, undone: true}});
+  storage.saveSettings({eligibilityFold: {...done, before: undefined, undone: true}, eligibilityOff: sigOf(done.before)});   // Why (owner, 28 Oct 2026): an Undo is final for these lines; the next open must not conclude them again
   return {ok: true};
 }

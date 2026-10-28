@@ -134,6 +134,22 @@ export async function proveBackground(ctx, {form, seed, until}) {
     const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
     if (process.env.E2E_KEEP_HIDDEN === '1') for (const seconds of [6, 20]) setTimeout(() => describeHidden(ctx.profile).then(text => console.log(`  [${seconds}s after Start] ${text}`)), seconds * 1000);   // local debugging only: the hidden browser's state early, not only at the failure
     if (started?.ok === false) throw new Error(`the app refused to start Background automation: ${started.error}`);
+    // The owner's scenario (28 Oct 2026 screenshot, "Filling the application" with a broken picture): the session is opened in the window while the fill runs, when the hidden form may not be open yet;
+    // the live view must still end up showing the page (renderer/live-opener.js asks again on every redraw).
+    await until('the application never got a session', async () => !!(await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url)), 60000);
+    await page.evaluate(() => document.querySelector('.nav[data-view=sessions]')?.click());
+    const shown = await page.evaluate(async company => {
+      const row = [...document.querySelectorAll('button, li, div, a')].find(el => el.children.length < 6 && (el.textContent || '').includes(company) && el.getClientRects().length);
+      row?.click();
+      for (let waited = 0; waited < 40000; waited += 250) {
+        const img = document.querySelector('.live-img');
+        if (img?.complete && img.naturalWidth > 0) return {ok: true, w: img.naturalWidth};
+        await new Promise(done => setTimeout(done, 250));
+      }
+      const img = document.querySelector('.live-img');
+      return {ok: false, row: !!row, img: !!img, srcChars: String(img?.getAttribute('src') || '').length, address: document.querySelector('.live-url')?.textContent || ''};
+    }, form.company);
+    if (!shown.ok) throw new Error(`the live view shows no picture of the hidden page: ${JSON.stringify(shown)}`);
     await until('the hidden form never reached Ready to review', async () => (await backgroundStateOf(page, form.url)) === 'ready_for_review', 120000)
       .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${await backgroundStateOf(page, form.url) || 'none'}`); });
     if (forms.posts.length !== posted) throw new Error('the form was posted before the person pressed Submit');

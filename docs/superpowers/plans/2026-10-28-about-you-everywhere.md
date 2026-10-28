@@ -11,6 +11,20 @@ and becomes the build PR (owner, 28 Oct 2026: "open individual PRs with their sp
    and what each can reach (`cv/` files, store). Write the choice and why here, amending this plan.
 2. List today's prompt case sets for every reader touched (`tools/prompt-cases.mjs`).
 
+## Decided before coding (28 Oct 2026)
+
+- **Builder:** one on this Mac, `desktop/lib/about-you.js` (the sketch's option a, approved). `src daily` runs the kit both on the Mac (the app
+  starts it: `desktop/lib/pipeline-args.js --auto-kit-max`) and in the cloud (`.github/workflows/daily.yml`); the app hands the bundle to the
+  engine steps it starts, a cloud run without one names the parts it lacked (criterion 6).
+- **Case sets today:** `question-reuse` (the sensitive flag), `form` (live: worker answerForm), `writing` (prep, insights, rejection);
+  kit, CV tailoring and letters have none yet: D1b/D1c add theirs.
+- **Sensitive** (owner, 28 Oct 2026: "Reuse judge"): a `sensitive` flag in the question-reuse call, cached per question (verdicts v7: judged
+  again once); anything but a plain false stays out of every reader but form filling and kit answers.
+- **Salary** for CV tailoring and letters: the AI's kind (a line's `[salary]` mark, else the kept question format) and Strategy's pay fields;
+  a learning whose kind was never judged stays out of them too. No word list.
+- **Three PRs** (owner, 28 Oct 2026): D1a = this PR (interface, sensitive flag, interface tests); D1b = form filling + kit answers + the class
+  test; D1c = CV tailoring + letters with their new case sets.
+
 ## PR D1 · interface + writers
 
 | Task | Files | Test (written first) |

@@ -56,13 +56,13 @@ test('classify: a deduced answer comes from a saved answer; the answer itself wh
   const answered = [{question: 'Work permit', answer: 'Swiss C permit'}, {question: 'Notice period / earliest start', answer: '3 months'}];
   const sent = [];
   const client = {messages: {create: async request => { sent.push(request.messages[0].content); return {content: [{type: 'text', text: JSON.stringify({verdicts: [
-    {label: 'Do you require visa sponsorship?', verdict: 'reusable', covered_by: 'Work permit', value: 'No'},
+    {label: 'Do you require visa sponsorship?', verdict: 'reusable', covered_by: 'Work permit', value: 'No', sensitive: false},
     {label: 'Earliest start?', verdict: 'reusable', covered_by: 'Notice period / earliest start', value: ''},
-    {label: 'Are you a robot?', verdict: 'reusable', covered_by: '', value: 'No'}]})}]}; }}};
+    {label: 'Are you a robot?', verdict: 'reusable', covered_by: '', value: 'No', sensitive: false}]})}]}; }}};
   const got = await classify({labels, answered, client});
-  assert.deepEqual(got.get('Do you require visa sponsorship?'), {reuse: 'reusable', covered_by: 'Work permit', proposal: 'No', from: 'Swiss C permit', topic: '', fact: ''});
+  assert.deepEqual(got.get('Do you require visa sponsorship?'), {reuse: 'reusable', covered_by: 'Work permit', proposal: 'No', from: 'Swiss C permit', topic: '', fact: '', sensitive: false});
   assert.equal(got.get('Earliest start?').proposal, '3 months', 'the same meaning: the saved answer');
-  assert.deepEqual(got.get('Are you a robot?'), {reuse: 'reusable', covered_by: '', proposal: '', from: '', topic: '', fact: ''}, 'a value with no saved answer behind it is dropped');
+  assert.deepEqual(got.get('Are you a robot?'), {reuse: 'reusable', covered_by: '', proposal: '', from: '', topic: '', fact: '', sensitive: false}, 'a value with no saved answer behind it is dropped');
   assert.match(sent[0], /Swiss C permit/, 'the AI reads the saved values to deduce from');
 });
 
@@ -161,4 +161,13 @@ test('ensure: a question about a country in no zone is judged again when Nationa
   assert.equal(calls.length, 1, 'the same Nationality: kept');
   const next = await ensure(s, ['Authorised in Japan?'], {facts: facts('Canada, Japan'), ai: {client}});
   assert.deepEqual([calls.length, Object.values(next.verdicts)[0].proposal], [2, 'Yes'], 'a Japanese citizenship added: judged again, answered');
+});
+
+// PR D1a (owner, 28 Oct 2026): a sensitive question (EEO, disability, criminal record) is marked so lib/about-you.js keeps its answer from every AI reader;
+// a reply that leaves the flag out, or says anything but false, keeps it out too (not judged = not read on a guess).
+test('sensitive: the AI\'s true and false pass through; a missing flag counts as sensitive', async () => {
+  const row = (label, sensitive) => ({label, verdict: 'reusable', covered_by: '', value: '', topic: '', fact: '', asks: '', country: '', ...(sensitive === undefined ? {} : {sensitive})});
+  const client = {messages: {create: async () => ({content: [{type: 'text', text: JSON.stringify({verdicts: [row('Gender', true), row('Notice period', false), row('Veteran status')]})}]})}};
+  const got = await classify({labels: ['Gender', 'Notice period', 'Veteran status'], client});
+  assert.deepEqual(['Gender', 'Notice period', 'Veteran status'].map(label => got.get(label).sensitive), [true, false, true]);
 });

@@ -48,6 +48,8 @@ own. Existing calls to action move onto it instead of being drawn by hand in one
   filters, Connect more sources, Employers hiring people like you, Browse sites manually, Re-score jobs.
 - The two drawers and the cover letter card (`pages/jobs-questions.js`, PR A): Fill your details · N missing, What we learned
   · N to check, Cover letter.
+  On Jobs these cards move into the one collapsed bar (owner, 28 Oct 2026, chose "Into the one Jobs bar"); the bar's
+  summary line keeps their counts ("2 details missing · 3 to check · 3 search suggestions").
 - Ready to send (`pages/focus-ready.js`): "N forms ready for you to submit" (time-bound: stays in Up next).
 A test loops over every producer and checks it appears on Focus and in its home (and on Jobs for `search` / `applying`).
 

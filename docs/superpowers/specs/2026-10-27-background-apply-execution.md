@@ -64,17 +64,41 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 
 ## Progress
 
-### 1. Background Apply execution
+### 1. Safe state and controller (PR A)
 
 - [x] Audit current mode, Apply, extension session/outcome, Ready handoff, twin, browser launch and hybrid fill research. (proof: none: audit read-out, findings are in this spec's Hidden-launch finding)
 - [x] Add failing focused state and browser-contract regressions. (proof: desktop/test/background-apply-store.test.js)
 - [x] Owner decisions on hand-off view and browser choice (28 Oct 2026, above). (proof: none: owner decision, quoted above)
 - [x] A: commit the 27 Oct work as reviewable state, store, controller and safety; modes stay Coming soon. (proof: desktop/test/background-apply-controller.test.js)
   - A moved to B: mode dispatch (onto #2317's `MODES[].runner`), the download module and its IPC (the module needs a `tests-desktop-windows.yml` paths line), `form-judge.js` `bot_check`/`submit_control` (needs a ladder fixture), and the headless smoke that replaces the native minimized-window smoke.
+
+### 2. Hidden browser and live view (PR B; Background automation turns on)
+
 - [x] B0: measure native dropdown pop-up and file picker through the live stream; result written above. (proof: none: measured with a scratch CDP probe on a fictional form, table above)
-- [ ] B: headless Jobadabra browser, first-use download, in-app live view (reuse live.mjs); `fill` runner.
-- [ ] C: Full automation gates, wait + Stop, receipts, README/privacy; `auto` runner after What-we-learned's recap (PR C).
-- [ ] D: My Chrome (normal visible window) as the second browser choice.
-- [ ] Implement durable per-job state, hidden session dispatch, manual reveal, mode-3 guard and receipt settlement.
-- [ ] Review every transition and acceptance item against focused evidence.
-- [ ] Run changed-JS lint, focused tests and required fast gate; ship one reviewable PR.
+- [x] B1: the owned extension runs in headless Chromium with no window, Dock entry or focus change; result written above. (proof: none: measured with a scratch CDP probe, table above)
+- [ ] The hidden browser starts for real: headless flag, waits for the extension's API, test on a fictional form.
+- [ ] First-use Chromium download with consent, progress and Cancel (never in the installer).
+- [ ] Mode dispatch through `MODES[].runner` (one dispatch).
+- [ ] Live view channel: stream + input over a plain message channel, any client.
+- [ ] Native dropdown bridge.
+- [ ] File picker bridge (choose another CV).
+- [ ] Live view screen on the Applying card; owner's yes on the light/dark, wide/narrow side-by-side.
+- [ ] `bot_check`/`submit_control` in form-judge with a ladder fixture (owner's yes on its measured cost).
+- [ ] End-to-end proof on a fictional local form: fill hidden, review in the live view, the person's Submit lands.
+- [ ] `fill` gets `runner: 'background'`; PR B green and Gitar approved.
+
+### 3. Full automation submits (PR C)
+
+- [ ] Settings → Apply checks wired to the one-shot reservation (no required empty, saved facts, fit 80+, 20 a day, 1 per employer).
+- [ ] 10-minute wait with Stop, shown on the Applying card.
+- [ ] The automatic Submit press in the hidden browser, one attempt, never retried.
+- [ ] Applied only from a receipt the confirmation judge reads; anything else goes to the person.
+- [ ] End-to-end proof against a fake local submit endpoint (never a real site).
+- [ ] README and privacy wording change from "never submits".
+- [ ] Each submitted job's answers and receipt reach the store for the What-we-learned recap.
+- [ ] `auto` gets its runner, after the recap screen exists; PR C green and Gitar approved.
+
+### 4. My Chrome choice (PR D)
+
+- [ ] Settings → Apply browser choice: Jobadabra's browser (default) or My Chrome (normal visible window).
+- [ ] My Chrome runs the same flow; PR D green and Gitar approved.

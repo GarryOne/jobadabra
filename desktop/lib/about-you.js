@@ -32,17 +32,18 @@ export const READERS = {
 
 const sizeOf = parts => JSON.stringify(parts).length;   // the bundle as a prompt carries it
 
-// A copy of value one step smaller, keeping its shape: its longest list (a CV's work, a role's highlights) loses its last item; with no list left, its longest
-// text loses a tenth. null when nothing is left to shrink.
+// A copy of value one step smaller, keeping its shape: a text longer than LONG_TEXT loses a tenth first (Gitar on #2337: one long summary is cut before any
+// role goes), then its longest list (a CV's work, a role's highlights) loses its last item, then its longest text. null when nothing is left to shrink.
+const LONG_TEXT = 1000;
 function shorter(value) {
   let list = null, words = null;
   const walk = (node, trail) => {
-    if (Array.isArray(node)) { if (node.length && (!list || node.length > list.node.length)) list = {node, trail}; node.forEach((each, at) => walk(each, [...trail, at])); }
-    else if (typeof node === 'string') { if (node.length && (!words || node.length > words.node.length)) words = {node, trail}; }
+    if (Array.isArray(node)) { if (node.length && (!list || node.length > list.size)) list = {node, trail, size: node.length}; node.forEach((each, at) => walk(each, [...trail, at])); }
+    else if (typeof node === 'string') { if (node.length && (!words || node.length > words.size)) words = {node, trail, size: node.length}; }
     else if (node && typeof node === 'object') for (const [key, each] of Object.entries(node)) walk(each, [...trail, key]);
   };
   walk(value, []);
-  const pick = list || words;
+  const pick = (words?.size || 0) > LONG_TEXT ? words : list || words;
   if (!pick) return null;
   const cut = node => (Array.isArray(node) ? node.slice(0, -1) : node.slice(0, Math.floor(node.length * 0.9)));
   if (!pick.trail.length) return cut(value);

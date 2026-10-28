@@ -103,3 +103,18 @@ test('over budget, the CV stays a CV: its longest lists lose items, its basics s
     assert.match(JSON.stringify(parts), /DETAILSWORD/, `${reader}: facts stay`);
   }
 });
+
+// Gitar on #2337: one long text (a CV summary) is cut before the CV's roles are emptied: each step shrinks the heavier of the heaviest list and the longest text.
+test('over budget, one long summary is cut before the CV loses its roles', () => {
+  const cv = {basics: {name: 'Alex Morgan', summary: 'S'.repeat(20000)}, work: Array.from({length: 5}, (_, at) => ({name: `Employer ${at}`, highlights: ['Shipped a thing']}))};
+  const {parts} = bundleOf({...SOURCES, cv}, 'letter');
+  assert.ok(JSON.stringify(parts).length <= 12000);
+  assert.equal(parts.cv.work.length, 5, 'every role stays');
+  assert.ok(parts.cv.basics.summary.length < 20000, 'the summary was cut');
+});
+
+test('a role with one long description keeps the role: its text is cut first', () => {
+  const cv = {basics: {name: 'Alex Morgan'}, work: [{name: 'Employer 0', description: 'D'.repeat(20000)}, {name: 'Employer 1', description: 'Short'}]};
+  const {parts} = bundleOf({...SOURCES, cv}, 'letter');
+  assert.deepEqual(parts.cv.work.map(role => role.name), ['Employer 0', 'Employer 1']);
+});

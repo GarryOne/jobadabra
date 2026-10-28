@@ -174,8 +174,8 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 ### 2. Lanes and the PR verdict
 - [x] Main's own red shows grey on a PR. (proof: tests/test_pr_verdict_main_red.py @ecc6310)
 - [x] A PR runs each picked suite whole (G2). (proof: desktop/e2e/test/pr-suites-whole.test.mjs @4ed6376)
-- [ ] Lane registry first cut (`quality`, `notion-real`): the verdict greys a tolerant or suspended suite, the registry read from the base branch (#2376, open).
-- [ ] Rule E on edits to `lanes.json`: a named input and why, or the push is blocked.
+- [x] Lane registry first cut (`quality`, `notion-real`): the verdict greys a tolerant or suspended suite, the registry read from the base branch (#2376). (proof: tests/test_pr_verdict_lanes.py @7eba931)
+- [x] Rule E on edits to `lanes.json`: a named input and why, or the push is blocked (`tools/lanes-check.mjs`, run by the push script and the PR gate). (proof: desktop/test/lanes-check.test.js)
 - [ ] Health greys: AI credit, runner, install.
 - [ ] At most 5 suites picked by the scorecard.
 - [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue.

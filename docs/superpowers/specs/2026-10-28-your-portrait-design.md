@@ -83,6 +83,6 @@ One PR after What we learned PR D: writer + store + tab. UI preview and the owne
 
 ## Progress
 
-- [x] Spec approved by the owner (28 Oct 2026)
-- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/NbLpTtcz3XNSuR3gEBDjNw): "you", last tab, sensitive facts kept out, one update a day at most
+- [x] Spec approved by the owner (28 Oct 2026) (proof: none: the owner's yes in the coordinator session, 28 Oct 2026)
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/NbLpTtcz3XNSuR3gEBDjNw): "you", last tab, sensitive facts kept out, one update a day at most (proof: none: the owner's yes on the sketch)
 - [ ] PR · writer, store, tab

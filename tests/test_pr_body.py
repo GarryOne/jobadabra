@@ -43,8 +43,8 @@ class PrBodyTest(unittest.TestCase):
         self.assertIn('</details>', text)
         self.assertTrue(text.rstrip().endswith('🤖 Generated with [Claude Code](https://claude.com/claude-code)'))
 
-    def test_the_circle_count_gitar_approves_on_is_written_under_the_summary(self):
-        """27 Oct 2026, .gitar/review/root-cause.md: Gitar's review reads the AREA-CIRCLES line in the description; #2284 had none and waited on the owner's bypass."""
+    def test_the_circle_count_the_review_reads_is_written_under_the_summary(self):
+        """27 Oct 2026; 28 Oct (#2410): .gitar/review/root-cause.md reads the AREA-CIRCLES line in the description; #2284 had none and waited on the owner's bypass."""
         summary = self.tmp / 'summary.md'
         good = '### ✅ Ocado: menus picked by meaning\n\n- **Why:** the 11 Oct pool run left 3 menus empty\n- **Impact:** 3 more required menus filled on Ocado-like forms\n\n**Unblocks:** the next PR\n\n| Area | Impact | How |\n|---|---|---|\n| Real users | ⚪ Low | x |\n| Form filling | — None | x |\n| Admin data accuracy | — None | x |\n| Offline replays | — None | x |\n| Tests & harness | 🟢 High | x |\n| Development speed | ⚪ Low | x |\n| Cost | — None | x |\n\nNo visual: a one-line fix\n\n| | Before | After |\n|---|---|---|\n| filled | 8 | 11 |\n'
         summary.write_text(good)

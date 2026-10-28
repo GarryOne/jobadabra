@@ -49,9 +49,9 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
 | # | Home | Insight | Action(s) | Built from | Kind |
 |---|---|---|---|---|---|
 | 2 | Search strategy | Strategy vs your stances: "You'd relocate to Zurich; Zurich isn't in your places" | Add Zurich to places · I wouldn't (the learning changes) | What we learned, Strategy | AI |
-| 4 | Profile → CV | CV vs what you said elsewhere: "CV: 5 years of Python; a form: 3" | Pick which is right (the other side is corrected) | CV, Your details, Form fills | AI |
-| 5 | Profile → CV | Strengths your CV undersells | Add to my CV (suggested bullet, accept or edit) | What we learned, Interviews, Experience bank | AI |
-| 6 | Profile → CV | Skills your target jobs ask for that are only in the Experience bank | Add to my CV | Experience bank, postings | counts |
+| 4 | Profile → CV | CV vs what you said elsewhere: "CV: 5 years of Python; a form: 3" | CV is right (the learning changes) · Forms are right (a correction in the Experience bank) | CV, Your details, Form fills | AI |
+| 5 | Profile → CV | Strengths your CV undersells | Use in my CVs (suggested bullet, accept or edit first) | What we learned, Interviews, Experience bank | AI |
+| 6 | Profile → CV | Skills your target jobs ask for that are only in the Experience bank | Use in my CVs | Experience bank, postings | counts |
 | 7 | Profile → Cover letter | Letter check against your Writing preferences: length, generic lines | Fix it (redraft to your preferences) | Base letter, Writing preferences | AI |
 | 9 | Profile → What we learned | A stance that may cost you jobs: "'needs sponsorship' on 9 UK forms, 8 no replies" | Review this answer | What we learned, outcomes | counts + AI |
 | 11 | Applying | The question that stops your fills most: "12 of your last 30 fills waited on 'expected start date'" | Answer it once now (goes to Your details or a learning) | Form fills | counts |
@@ -59,6 +59,12 @@ trigger holds, in its home; the ⌘K palette keeps both as the one manual door (
 | 15 | Search strategy | Salary floor hiding matches: "14 jobs scored 80+ just under your floor" | Show these 14 jobs · Lower the floor to X | Strategy, scores | counts |
 | A2 | Applying (Apply dialog) | "4 of the 10 jobs you picked ask for a cover letter; none tailored yet" | Tailor 4 letters | postings, letters | counts |
 | A5 | Applying (before a job) | "You applied to this employer 3 weeks ago (another role)" | Apply anyway · Skip | applications | counts |
+
+**The main CV is never changed** (owner, 28 Oct 2026, asked "Will the app modify the user main CV?", chose "Never touch it").
+CV actions (#4 Forms are right, #5, #6) write to the Experience bank as a new entry kind "Added by you" (a bullet attached to a
+main-CV role, or a correction such as "Python: 3 years"), visible and removable in Profile → Experience; tailoring reads it
+through `withExtras` / `knownText` (`desktop/lib/experience.js`). When the person's own file still differs, the card says so
+("Your own CV file still says 5"). PR 2 builds the new entry kind.
 
 **Smarter on its own (no message)**
 

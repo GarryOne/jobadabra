@@ -7,7 +7,7 @@ import {SHOW_RESUME_CLAUDE} from './renderer/claude-help.js';
 import {setPdfReader} from './lib/ai/codex-cli.js';
 import {electronPdfReader} from './lib/ai/pdf-pages.js';
 import {recordIpc} from './lib/e2e-ipc.js';
-import {standInHost} from './lib/e2e-host.js';
+import {standInHost, watchRunner} from './lib/e2e-host.js';
 import {isTwin, twinRefusal} from './lib/twin.js';
 import {forWindow} from './lib/site-accounts.js';
 import {channelsOf} from './lib/notify-channel.js';
@@ -179,7 +179,7 @@ function handlers() {
   // End-to-end run: log every call the window makes (the interaction probe reads it, see lib/e2e-ipc.js).
   ipcMain.handle = applyChoiceGuard(ipcMain.handle.bind(ipcMain), () => storage, appLog);   // first Apply: choose how to apply first (lib/apply-choice-gate.js)
   if (process.env.JOB_PILOTTO_E2E) { globalThis.__jpIpc = []; ipcMain.handle = recordIpc(ipcMain.handle.bind(ipcMain), globalThis.__jpIpc); }
-  standInHost({shell, clipboard, app});   // a test run's calls to the owner's browser, Finder, clipboard and login items are recorded, never made (lib/e2e-host.js)
+  standInHost({shell, clipboard, app}); watchRunner(() => app.exit(0));   // a test run's calls to the owner's browser, Finder, clipboard and login items are recorded, never made; the app ends when its runner does (lib/e2e-host.js)
   // Notion later: without Notion the app only tries; a tracking action returns notionGate.needs(reason) and the window
   // opens the connect dialog (pages/core.js gated()). null = go on.
   const needsNotion = reason => {

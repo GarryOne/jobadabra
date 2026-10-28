@@ -199,6 +199,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 ### 7. The outside world
 - [x] A test run reaches nothing of the owner's computer: one list of doors, checked at launch (G3). (proof: desktop/test/e2e-host.test.js @94d1931)
 - [x] The shell stand-ins live in that one list only. (proof: desktop/test/e2e-hidden.test.js @2658e2c)
+- [x] A test run leaves nothing running on the owner's computer: its app ends when the runner that started it is gone, even a killed one (owner, 28 Oct 2026, load 52: four orphaned test apps, 5 to 7 h at ~15% CPU each; added after the fact, the box should have come first). (proof: desktop/test/e2e-runner-watch.test.js)
 - [ ] Beta gate on tolerant rates: an AI rate below main's band blocks the beta.
 - [ ] Speed medians in the weekly summary.
 - [ ] Outside-world suite nightly.

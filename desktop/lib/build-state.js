@@ -1,5 +1,5 @@
 // Which build runs, told the same way in the app window and the extension panel (owner, 16 Oct 2026: the app ran a build older than the merged fixes and he tested old code without knowing).
-// The app: the commit it started on (a package's build-info.json, or the checkout's HEAD at start) and how many desktop/extension commits the checkout has gained since ("Restart to get N fixes").
+// The app: the commit it started on (a package's build-info.json, or the checkout's HEAD at start) and how many PRs merged into the checkout since change desktop/extension ("Restart to get N fixes").
 // The extension: the commit its version names (a checkout stamps base.<commits that changed extension/>, scripts/extension-stamp.mjs) and how many fixes it lacks ("Reload the extension to get N fixes").
 // Git failing, a shallow clone or an unnamed version says nothing rather than a wrong number. Guard: desktop/test/build-state.test.js.
 import {execFileSync} from 'node:child_process';
@@ -34,12 +34,14 @@ export function headBuild(repo, run = execFileSync) {
   try { const git = gitIn(repo, run); return {commit: git('rev-parse', '--short=7', 'HEAD'), time: git('log', '-1', '--format=%cI', 'HEAD')}; } catch { return {commit: '', time: ''}; }
 }
 
-// running: {commit, time} the app started on. -> {label, commit, ahead}: ahead = commits touching desktop/ or extension/ in the checkout since (0 when unknown).
+// running: {commit, time} the app started on. -> {label, commit, ahead}: ahead = PRs merged into the checkout since that change desktop/ or extension/ (0 when unknown).
+// Why (owner, 29 Oct 2026: "let's fix this counter to show merged PRs in master, not other things"): it counted commits, 41 for 13 merged PRs. Main
+// takes PRs as merge commits, so each PR is one merge on the first-parent line.
 export function appBuild({repo, running, run = execFileSync, now = Date.now()}) {
   const label = labelOf(running);
   if (!running?.commit) return {label, commit: '', ahead: 0};
   let ahead = 0;
-  try { ahead = Number(cached(`ahead:${repo}:${running.commit}`, now, () => gitIn(repo, run)('rev-list', '--count', `${running.commit}..HEAD`, '--', 'desktop', 'extension'))) || 0; } catch { /* nothing is claimed */ }
+  try { ahead = Number(cached(`ahead:${repo}:${running.commit}`, now, () => gitIn(repo, run)('rev-list', '--count', '--merges', '--first-parent', `${running.commit}..HEAD`, '--', 'desktop', 'extension'))) || 0; } catch { /* nothing is claimed */ }
   return {label, commit: running.commit, ahead};
 }
 

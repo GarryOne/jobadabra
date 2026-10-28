@@ -28,6 +28,8 @@ import {openSetting, settingsPage, showServicesNow} from './settings.js';
 import {exportState} from './jobs-export.js';
 import {ENGINE_CHOICES} from '../ai-engine-view.js';
 import {openWaitlist} from './plan-waitlist.js';
+import {openTune} from './tune.js';
+import {runCommand} from './actions.js';
 import {openPromoDialog} from './plan-promo.js';
 import {reloadPlan} from './plan.js';
 import {showsProWaitlist} from '../plan-line.js';
@@ -140,6 +142,11 @@ export function paletteCommands() {
   document.querySelectorAll('.action[data-palette]').forEach(node => addNode(node, 'Actions', labelOf(node.querySelector('b')).replace(/^\W+/, ''),
     labelOf(node.closest('.task-body')?.querySelector('.task-words .muted')), PALETTE_KEYWORDS[node.dataset.palette], () => openView('actions'), {kind: 'place'}));
   add('Profile', 'Build a CV with the AI', 'Answer a few questions and the AI writes your CV: edit it, then it becomes your CV', 'cv resume build create write new no cv from scratch', () => openBuild());
+  // Tune and Analyze left the Actions page (owner, 28 Oct 2026: shown in Focus or Jobs only when they make sense); ⌘K is their one manual door (spec PR 1a).
+  add('Strategy', 'Tune my strategy', 'Changes your own results support, for you to accept', PALETTE_KEYWORDS.tune, () => openTune());
+  add('Reports', 'Analyze my job search', 'Last 7 days: what works, what to change', PALETTE_KEYWORDS.weekly, () => runCommand('weekly'));
+  add('Focus', 'Suggestions', 'Every call to action that can wait, from every screen', 'suggestions insights tips advice to do calls to action',
+    () => { openView('focus'); setTimeout(() => $('focus-suggestions')?.scrollIntoView({block: 'start'}), 300); });
   // The finished Find jobs run's "Find jobs using your browser" (browser-offer.js): brings you to the button on its card.
   const offer = browserOfferEntry({runs: lastActivity?.runs, settings: shared.state?.settings});
   if (offer) add('Actions', offer.label, offer.hint, PALETTE_KEYWORDS.visits, () => { shared.selectedRun = offer.runId; openActivity(true); setTimeout(() => { const go = $('browser-offer-go'); if (go) reveal(go); }, 300); });

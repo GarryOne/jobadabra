@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.ur
 
 test('every Run button on an Actions card is in the command palette', () => {
   const cards = [...html.matchAll(/<div class="task-card[ "][^>]*>([\s\S]*?)<\/div>\s*<\/div>/g)].map(match => match[1]);
-  assert.ok(cards.length >= 5, 'the Actions cards were not found');
+  assert.ok(cards.length >= 4, 'the Actions cards were not found');
   const missing = cards.filter(card => /class="[^"]*\baction\b/.test(card) && !/data-command="\w+"|data-palette="\w+"/.test(card)).map(card => card.match(/<b>([^<]+)<\/b>/)?.[1]);
   assert.deepEqual(missing, []);
 });
@@ -40,16 +40,15 @@ test('a button that starts a task an Actions card offers is not listed twice in 
 
 // The class (owner, 6 Oct 2026: Run was turned off for Tailor CVs only, then for the other cards when asked again): every Run on an Actions card that starts a
 // tracked task is turned off while that task runs or waits, through the one switch (runs-page.js syncRunButtons: data-command via COMMAND_KIND, the rest via
-// TASK_BUTTONS). A new card that starts a task without being reachable there fails here. Tune only opens a dialog (no task), so it is the one left out.
-const NOT_A_TASK = new Set(['tune-open']);
+// TASK_BUTTONS). A new card that starts a task without being reachable there fails here.
 test('every Actions Run that starts a task is turned off while it runs, through syncRunButtons', () => {
   const activity = activitySource();
   const commandKind = Object.fromEntries([...activity.match(/export const COMMAND_KIND = \{([^}]*)\}/)[1].matchAll(/(\w+): '(\w+)'/g)].map(match => [match[1], match[2]]));
   const taskIds = new Set(JSON.parse(activity.match(/export const TASK_BUTTONS = (\[.*\]);/)[1].replace(/'/g, '"')).flatMap(([, ...selectors]) => selectors.map(s => s.slice(1))));
   const runs = [...html.matchAll(/<button [^>]*\baction\b[^>]*>(?:(?!<\/button>)[\s\S])*Run<\/button>/g)].map(match => match[0]);
-  assert.ok(runs.length >= 6, `the Actions Run buttons were not found (${runs.length})`);
+  assert.ok(runs.length >= 4, `the Actions Run buttons were not found (${runs.length})`);
   const unreached = runs.map(button => ({id: /id="([\w-]+)"/.exec(button)?.[1], command: /data-command="(\w+)"/.exec(button)?.[1]}))
-    .filter(({id, command}) => !NOT_A_TASK.has(id) && !(command && commandKind[command]) && !taskIds.has(id)).map(({id, command}) => id || command);
+    .filter(({id, command}) => !(command && commandKind[command]) && !taskIds.has(id)).map(({id, command}) => id || command);
   assert.deepEqual(unreached, [], 'these Run buttons stay pressable while their task runs: add them to TASK_BUTTONS or COMMAND_KIND');
   const runsPage = fs.readFileSync(new URL('../renderer/pages/runs-page.js', import.meta.url), 'utf8');
   assert.match(runsPage, /for \(const node of document\.querySelectorAll\('\.action\[data-command\]'\)\) if \(COMMAND_KIND\[node\.dataset\.command\]\) set\(node, COMMAND_KIND\[node\.dataset\.command\]\);/);

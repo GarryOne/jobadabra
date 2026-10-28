@@ -1,7 +1,6 @@
 // The Actions page by importance: Find jobs large, Tailor CVs and Check Gmail medium, the smaller tasks under a collapsed "More · N" (the sidebar's component), and each scheduled task's real schedule under its name. The Run buttons are untouched: pages/runs-page.js keeps every one of them off while a task runs.
 import {$} from './core.js';
 import {shared} from './shared.js';
-import {isRevealed} from './menu.js';
 import {moreGroup} from '../more-group.js';
 import {DEFAULT_SCHEDULE, scheduleLine} from '../schedule-line.js';
 
@@ -16,8 +15,6 @@ function showSchedules() {
     const kind = node.dataset.taskSchedule;
     node.textContent = scheduleLine(schedule[kind], next[kind]);
   });
-  const hint = $('tune-hint');
-  if (hint) hint.hidden = isRevealed('reports');   // Tune needs a week of results: a hint, never a block
 }
 
 export function drawActionsMore() { more?.draw(smallRows()); }   // Read this board joins the list later (actions-board.js)

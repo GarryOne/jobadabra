@@ -22,7 +22,9 @@
       "notion_url": "",
       "company": "Northwind Robotics",
       "job": "SRE",
-      "job_url": ""
+      "job_url": "",
+      "place": "up_next",
+      "topic": "applying"
     },
     {
       "priority": 1,
@@ -46,7 +48,9 @@
       "notion_url": "",
       "company": "",
       "job": "Senior DevOps Engineer",
-      "job_url": ""
+      "job_url": "",
+      "place": "up_next",
+      "topic": "applying"
     },
     {
       "priority": 1,
@@ -70,7 +74,9 @@
       "job": "Principal SRE",
       "job_url": "",
       "stage": "Interview scheduled",
-      "at": "2026-09-29T06:30:00+00:00"
+      "at": "2026-09-29T06:30:00+00:00",
+      "place": "suggestions",
+      "topic": "interviews"
     },
     {
       "priority": 1,
@@ -99,7 +105,9 @@
       "prep_stale": true,
       "prep_reason": "Kit from 29 Sep · your call on 30 Sep was reviewed since",
       "prep_since": "2026-09-30",
-      "prep_why": "reviewed"
+      "prep_why": "reviewed",
+      "place": "up_next",
+      "topic": "applying"
     },
     {
       "priority": 2,
@@ -120,7 +128,9 @@
       "draft": "Thank you for your time and consideration.\n\nCould you share what mainly influenced the decision? Compensation expectations, technical fit, communication, or something else?\n\nEven a few words would be really helpful.",
       "link": "https://mail.google.com/",
       "notion_url": "",
-      "job_url": ""
+      "job_url": "",
+      "place": "suggestions",
+      "topic": "interviews"
     },
     {
       "priority": 2,
@@ -147,7 +157,9 @@
       "stage": "Screening",
       "reached": "LinkedIn",
       "at": "2026-09-26T10:05:00+02:00",
-      "quiet": 4
+      "quiet": 4,
+      "place": "up_next",
+      "topic": "applying"
     },
     {
       "priority": 3,
@@ -168,7 +180,9 @@
       "notion_url": "",
       "company": "",
       "job": "",
-      "job_url": ""
+      "job_url": "",
+      "place": "suggestions",
+      "topic": "applying"
     },
     {
       "priority": 4,
@@ -193,7 +207,9 @@
       "job_url": "",
       "stage": "Interviewing",
       "after_interview": true,
-      "next_step": "Call with the CTO next week"
+      "next_step": "Call with the CTO next week",
+      "place": null,
+      "topic": "applying"
     },
     {
       "priority": 1,
@@ -217,7 +233,9 @@
       "event_id": "demo-ev-q1",
       "event_kind": "Reply",
       "note": "Confirming our call for 9 Oct. Looking forward!",
-      "suggested_url": "https://example.com/jobs/2"
+      "suggested_url": "https://example.com/jobs/2",
+      "place": "suggestions",
+      "topic": "applying"
     }
   ],
   "today": {
@@ -283,15 +301,88 @@
       }
     ]
   },
-  "insight": {
-    "issue": true,
-    "report": true,
-    "reason": "Issue detected",
-    "headline": "Make your database failover answers more concrete",
-    "detail": "Practise one incident story: failure, trade-offs, recovery and verification.",
-    "lesson": "Demo evidence: three applications, two employers, interview reviews and employer feedback. Fictional data.",
-    "notion_url": "https://www.notion.so/example"
-  },
+  "suggestions": [
+    {
+      "kind": "insight",
+      "home": "focus",
+      "topic": "applying",
+      "strength": 100,
+      "source": "Issue detected",
+      "title": "Make your database failover answers more concrete",
+      "detail": "Practise one incident story: failure, trade-offs, recovery and verification.",
+      "evidence": [
+        "Demo evidence: three applications, two employers, interview reviews and employer feedback.",
+        "Fictional data."
+      ],
+      "actions": [
+        {
+          "label": "Review evidence",
+          "do": "open_insight",
+          "link": "https://www.notion.so/example"
+        }
+      ],
+      "key": "row:demo-insight",
+      "row_id": "demo-insight",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
+    },
+    {
+      "kind": "week",
+      "home": "focus",
+      "topic": "search",
+      "strength": 90,
+      "source": "Your week",
+      "title": "4 of your 5 replies came from jobs you applied to within 3 days of posting",
+      "detail": "Apply within 3 days of posting",
+      "evidence": [
+        "You sent 14 applications and got 5 replies this week (fictional)."
+      ],
+      "actions": [
+        {
+          "label": "Find jobs now",
+          "do": "find_jobs"
+        },
+        {
+          "label": "Read the week",
+          "do": "read_week",
+          "link": ""
+        }
+      ],
+      "key": "row:demo-week",
+      "row_id": "demo-week",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
+    },
+    {
+      "kind": "tune",
+      "home": "strategy",
+      "topic": "search",
+      "strength": 70,
+      "source": "Search strategy · Tune",
+      "title": "2 changes your results support",
+      "detail": "Leave out \"Junior\" titles, drop Paris",
+      "evidence": [
+        "\"Junior\" is in 9 job titles you dismissed and in none you kept",
+        "12 Paris jobs dismissed, none kept or applied to"
+      ],
+      "actions": [
+        {
+          "label": "Review",
+          "do": "tune"
+        }
+      ],
+      "key": "tune:drop_place:abroad:Paris|exclude_title:title_exclude_keywords:\\bjunior\\b",
+      "row_id": "",
+      "answers": [
+        "Not now",
+        "Not true"
+      ]
+    }
+  ],
   "summary": "Reply to recruiters first, then review ready applications.",
   "funnel": {
     "steps": [

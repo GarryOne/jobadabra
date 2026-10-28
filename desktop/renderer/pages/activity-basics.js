@@ -23,6 +23,7 @@ import {renderMailCard} from './activity-mail.js';
 import {renderInsightCard, renderInterviewCard, renderKitsCard, renderWeeklyCard} from './activity-cards.js';
 import {storeName} from '../store-words.js';
 import {WORDS} from '../run-result-card.js';
+import {runCommand} from './actions.js';
 
 // ---------- runs ----------
 export const clockTime = iso => new Date(iso).toLocaleString([], {weekday: 'short', hour: '2-digit', minute: '2-digit'});
@@ -233,11 +234,14 @@ export async function refreshGmailConnection() {
   gmailNow = await window.pilot.googleStatus().then(google => !!google?.connected).catch(() => null);
   if (gmailNow !== was && lastActivity) renderActivity(lastActivity);
 }
-// A kind's Run button on the Actions page (its data-command), or nothing for a kind without one.
+// A task whose Actions card left for Focus and ⌘K (Analyze my job search, 28 Oct 2026) still runs again from Recent activity: its command, pressed in code.
+const CARDLESS = new Set(['weekly']);
+// A kind's Run button on the Actions page (its data-command), a stand-in that runs a card-less task's command, or nothing for a kind without one.
 export const runButton = kind => {
   if (kind === 'tailor') return document.getElementById('tailor-top');   // no Telegram command: its own button
   if (kind === 'visits') return document.getElementById('visits-run');
   const command = Object.keys(COMMAND_KIND).find(key => COMMAND_KIND[key] === kind);
+  if (command && CARDLESS.has(command)) return {click: () => runCommand(command)};
   return command ? document.querySelector(`button.action[data-command="${command}"]`) : null;
 };
 export const COMMAND_KIND = {insight: 'insight', weekly: 'weekly', today: 'today', kits: 'kits', mail: 'mail', run: 'search'};

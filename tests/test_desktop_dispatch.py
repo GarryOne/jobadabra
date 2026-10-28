@@ -51,7 +51,7 @@ class DispatchTests(unittest.TestCase):
         self.search.update(role_keywords=['sre'], locations={'top_tier': ['zurich'], 'country_wide': [], 'abroad': ['bern']},
                            title_exclude_keywords=['sales'])
         self.config = self.patch('src.paths.load_search_config', return_value=self.search)
-        self.patch('src.desktop.providers.who', return_value='AI')
+        self.patch('src.ai.providers.who', return_value='AI')
         self.page = self.folder / 'page.json'
         self.page.write_text(json.dumps({'url': URL, 'html': '<p>é</p>', 'title': 'Jobs'}))
         self.commands_seen = set()

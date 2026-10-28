@@ -12,7 +12,6 @@ here reads and writes the user's own folder. Output is one JSON document on stdo
 import argparse
 import json
 import os
-from .ai import providers
 from datetime import datetime, timezone
 from pathlib import Path
 import sys

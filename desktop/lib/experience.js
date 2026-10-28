@@ -13,6 +13,7 @@ import {nameOfClient} from './ai/names.js';
 import {baseCv, dir, MODEL, transcribePdf, usd} from './cv.js';
 import {readExport} from './linkedin-export.js';
 import {writePrivate} from './private-file.js';
+import {applyAdded, readAdded} from './experience-added.js';
 
 export const MAX_SOURCES = 8;       // a person has a handful of CV versions; more is a mistake, not a bank
 export const MAX_EXTRA_PER_ROLE = 6;   // extra bullets offered to the tailor per role: the CV must stay as long as before
@@ -179,11 +180,11 @@ export function withExtras(storage, base, sources = list(storage)) {
   }
   for (const job of out.jobs) for (const role of job.roles) if (role.extra && !role.extra.length) { delete role.extra; delete role.extraFrom; }
   if (extraSkills.size) out.extraSkills = [...extraSkills].join(', ');
-  return out;
+  return applyAdded(out, readAdded(storage), key);   // Why (Insights PR 2): what the person added after an insight joins the copy tailoring reads, never cv.json
 }
 
 // Everything the extra sources say, as plain words: the tailor's vocabulary check treats these as known.
-export const knownText = (storage, base, sources = list(storage)) => sources.filter(s => !base || s.mainKey === mainKey(base)).map(s => JSON.stringify(s.cv)).join(' ');
+export const knownText = (storage, base, sources = list(storage)) => [...sources.filter(s => !base || s.mainKey === mainKey(base)).map(s => JSON.stringify(s.cv)), JSON.stringify(readAdded(storage).map(item => item.text))].join(' ');
 
 // ---------- what the window shows ----------
 export function view(storage) {
@@ -201,7 +202,7 @@ export function view(storage) {
         added: s.match.reduce((n, m) => n + m.newBullets.length, 0),
         onlyHere: s.match.filter(m => m.mainJob < 0).map(m => ({company: flat[m.sourceRole]?.company, title: flat[m.sourceRole]?.title, period: flat[m.sourceRole]?.period}))};
     }),
-    roles, extraSkills: merged?.extraSkills || '',
+    roles, extraSkills: merged?.extraSkills || '', added: readAdded(storage).map(({id, kind, text, mainJob, mainRole}) => ({id, kind, text, ...(kind === 'bullet' ? {mainJob, mainRole} : {})})),
   };
 }
 

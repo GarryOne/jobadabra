@@ -128,12 +128,14 @@ export async function runFocus(ctx, parts) {
       });
     };
     check('Up next', await upNext(), EXPECTED_UP_NEXT);
+    // The drawers' rows draw when the open questions are read (pages/jobs-questions.js), a little after Focus: wait for any, then read the head, so the head and the rows are one render
+    // (Gitar on #2370). An account with none open waits out the 10 s once.
+    await page.waitForSelector(DRAWER_KINDS.map(kind => `#focus-suggestions-list .focus-item[data-suggestion="${kind}"]`).join(', '), {timeout: 10000}).catch(() => {});
     const folded = (await page.textContent('#focus-suggestions-count')).trim();
     await showAll();
     check('Suggestions', await suggested(), EXPECTED_SUGGESTIONS);   // first: on a wrong count it names every row
     // The drawers' rows, when the account has any (what is open to fill depends on the store: desktop/test/question-entries.test.js holds each state), lead Suggestions in the
     // owner's order, the blocking cover letter first (28 Oct 2026), each with its own button.
-    await page.waitForSelector('#focus-suggestions-list .focus-item[data-suggestion="letter"], #focus-suggestions-list .focus-item[data-suggestion="details"]', {timeout: 20000}).catch(() => {});   // they draw when the open questions are read, a little after Focus
     const lead = await drawers(), kinds = (await rowsIn('#focus-suggestions-list')).map(row => row.kind);
     const RANK = ['letter', 'details', 'learned'], BUTTON = {details: 'Fill your details', learned: 'Check what we learned'};
     if (kinds.slice(0, lead.length).join() !== lead.map(row => row.kind).join() || lead.some((row, i) => i && RANK.indexOf(row.kind) < RANK.indexOf(lead[i - 1].kind))) {

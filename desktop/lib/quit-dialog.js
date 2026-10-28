@@ -39,9 +39,9 @@ const afterOf = sessions => sessions.some(session => session.background) ? 'The 
 
 // Only Claude sessions are working (the queue is empty): keep them, or stop them and quit.
 export function sessionsOnly(sessions, label) {
-  const one = sessions.length === 1;
+  const one = sessions.length === 1, who = sessions.every(session => session.background) ? 'The hidden browser' : 'Claude';
   return {
-    message: one ? 'Claude is still filling an application' : `Claude is still filling ${sessions.length} applications`,
+    message: one ? `${who} is still filling an application` : `${who} is still filling ${sessions.length} applications`,
     detail: `${sessionLines(sessions, label).join('\n')}\n\nQuitting stops ${one ? 'it' : 'them'} where ${one ? 'it is' : 'they are'}. ${afterOf(sessions)}`,
     buttons: ['Keep working', 'Stop and quit'],
   };

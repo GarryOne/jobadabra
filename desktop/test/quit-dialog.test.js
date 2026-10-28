@@ -58,4 +58,5 @@ test('quitting with a hidden-browser application says the browser closes with th
   assert.match(sessionsOnly(hidden, label).detail, /hidden browser closes with the app/);
   assert.doesNotMatch(sessionsOnly(hidden, label).detail, /stay in Chrome/);
   assert.match(working({busy: null, sessions: hidden, taskName: () => '', label}).detail, /hidden browser closes with the app/);
+  assert.equal(sessionsOnly(hidden, label).message, 'The hidden browser is still filling an application', 'the actor is named truthfully');
 });

@@ -10,7 +10,7 @@ const alive = pid => { try { process.kill(pid, 0); return true; } catch { return
 const until = async (check, ms) => { const end = Date.now() + ms; while (Date.now() < end && !check()) await new Promise(r => setTimeout(r, 50)); return check(); };
 const sleeper = () => spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {detached: process.platform !== 'win32', stdio: 'ignore'});
 
-test('killing the app kills the browser it was watching', {skip: process.platform === 'win32'}, async () => {
+test('killing the app kills the browser it was watching', async () => {
   const app = sleeper(), browser = sleeper();
   const {command, args, env} = reaperCommand(app.pid, browser.pid);
   const reaper = spawn(command, args, {env: {...process.env, ...env}, stdio: 'ignore'});

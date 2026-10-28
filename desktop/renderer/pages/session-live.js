@@ -7,6 +7,7 @@ import {el, liveDot, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
+import {onLeaveView} from './view-leave.js';
 
 const ZOOMS = [50, 75, 100, 125, 150];
 
@@ -97,6 +98,7 @@ export function closeLive() {
   window.pilot.liveClose(view.id);
   view = null;
 }
+onLeaveView('sessions', closeLive);   // Why (2026-10-28, B follow-up 1): going to another page closes the stream too, not only drawing another session
 const button = (text, kind, run, glyph) => {
   const node = el('button', `${kind}${glyph ? ' with-icon' : ''}`);
   if (glyph) node.append(icon(glyph));

@@ -157,3 +157,68 @@ test('Open in my browser from a hidden tab: the shape ready-handoff keeps, with 
   assert.deepEqual(f.calls.find(([method]) => method === 'Network.getCookies')[1], {urls: [page.url]});
   assert.equal(await handoffOf(fakes().cdp), null, 'a page that cannot be read hands nothing off');
 });
+
+// B follow-up 3 (28 Oct 2026): fields inside a frame were not counted, so an iframe form read "0 fields" and Submit's floor saw nothing.
+function framed({frames, failing = []}) {
+  const main = {address: 'x.test/apply', fields: 1, filled: 1, left: [], active: ''};
+  const sent = [];
+  const cdp = {send: async (method, params = {}) => {
+    sent.push(method);
+    if (method === 'Page.getFrameTree') return {frameTree: {frame: {id: 'top'}, childFrames: frames.map(id => ({frame: {id}}))}};
+    if (method === 'Runtime.evaluate' && params.contextId) return {result: {value: failing.includes(params.contextId) ? undefined : {fields: 3, filled: 1, left: [{label: 'Email', x: 0.1, y: 0.5, w: 0.5, h: 0.1}], active: 'Email'}}};
+    if (method === 'Runtime.evaluate') return {result: {value: /innerWidth \|\| 1, innerHeight/.test(params.expression) ? [1000, 800] : main}};
+    if (method === 'DOM.getFrameOwner') return {backendNodeId: 5};
+    if (method === 'DOM.getBoxModel') return {model: {content: [100, 200, 500, 200, 500, 600, 100, 600]}};
+    if (method === 'Page.createIsolatedWorld') return {executionContextId: params.frameId};
+    return {};
+  }};
+  return {cdp, sent};
+}
+
+test('a frame\'s fields are added and its empty required boxes are mapped onto the main picture', async () => {
+  const {cdp} = framed({frames: ['f1']});
+  const facts = await pageFacts(cdp);
+  assert.equal(facts.fields, 4);
+  assert.equal(facts.filled, 2);
+  assert.equal(facts.active, 'Email', 'the frame\'s field being typed in shows when the page has none');
+  // frame at (100,200) 400x400 inside a 1000x800 page: x = (100 + .1*400)/1000, y = (200 + .5*400)/800, w = .5*400/1000, h = .1*400/800
+  assert.deepEqual(facts.left, [{label: 'Email', x: 0.14, y: 0.5, w: 0.2, h: 0.05}]);
+});
+
+test('a frame that cannot be read is skipped, and a page without frames makes no frame call', async () => {
+  const skipped = await pageFacts(framed({frames: ['f1', 'f2'], failing: ['f1']}).cdp);
+  assert.equal(skipped.fields, 4, 'only the readable frame is added');
+  const none = framed({frames: []});
+  assert.equal((await pageFacts(none.cdp)).fields, 1);
+  assert.equal(none.sent.some(method => /^(DOM|Page\.createIsolatedWorld)/.test(method)), false);
+});
+
+// Gitar on #2354 (28 Oct 2026): a world per frame per read piled up in the hidden browser, and an iframe on another site (its own process) was never listed under the page.
+test('a frame\'s world is made once and kept across reads; a stale one is made again', async () => {
+  const {cdp, sent} = framed({frames: ['f1']});
+  const frames = {worlds: new Map()};
+  await pageFacts(cdp, frames);
+  await pageFacts(cdp, frames);
+  assert.equal(sent.filter(method => method === 'Page.createIsolatedWorld').length, 1, 'two reads, one world');
+  const stale = framed({frames: ['f1']});
+  const real = stale.cdp.send;
+  let first = true;
+  stale.cdp.send = async (method, params) => { if (method === 'Runtime.evaluate' && params.contextId && first) { first = false; throw new Error('Cannot find context'); } return real(method, params); };
+  const worlds = new Map([['f1', 'old-context']]);
+  assert.equal((await pageFacts(stale.cdp, {worlds})).fields, 4, 'the stale world is replaced and the read succeeds');
+  assert.equal(worlds.get('f1'), 'f1', 'the new world is the one kept');
+  const gone = new Map([['f1', 'x'], ['f9', 'y']]);
+  await pageFacts(framed({frames: ['f1']}).cdp, {worlds: gone});
+  assert.deepEqual([...gone.keys()], ['f1'], 'a frame that left the page loses its world');
+});
+
+test('an iframe in its own process is read over its own session and placed by the parent\'s box for it', async () => {
+  const {cdp, sent} = framed({frames: []});
+  const own = {send: async (method, params) => { assert.equal(method, 'Runtime.evaluate'); assert.equal(params.contextId, undefined, 'its own main world, no isolated world'); return {result: {value: {fields: 2, filled: 0, left: [{label: 'Phone', x: 0, y: 0, w: 1, h: 0.25}], active: ''}}}; }};
+  const facts = await pageFacts(cdp, {targets: async () => [{id: 'oopif', cdp: own}]});
+  assert.equal(facts.fields, 3);
+  assert.deepEqual(facts.left, [{label: 'Phone', x: 0.1, y: 0.25, w: 0.4, h: 0.125}]);
+  assert.equal(sent.includes('Page.createIsolatedWorld'), false);
+  const broken = await pageFacts(cdp, {targets: async () => [{id: 'oopif', cdp: {send: async () => { throw new Error('gone'); }}}]});
+  assert.equal(broken.fields, 1, 'an unreadable iframe is skipped');
+});

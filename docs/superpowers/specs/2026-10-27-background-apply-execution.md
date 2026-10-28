@@ -89,6 +89,9 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] Live view screen on the Applying card: Filling (Stop), A bot check needs you, Review (required left framed, Submit off), Ready to submit; Live strip with zoom and Expand; dropdown and file asks; Open in my browser. Owner's yes on the light/dark, wide/narrow side-by-side, 28 Oct 2026 ("Ship it"). (proof: desktop/test/session-live.test.js, desktop/test/live-view-handlers.test.js)
 - [ ] End-to-end proof on a fictional local form: fill hidden, review in the live view, the person's Submit lands.
 - [ ] `fill` gets `runner: 'background'`; PR B green and Gitar approved.
+- [x] B follow-up 1: leaving the Applying view closes the live view (the screencast must not keep running behind another page); a test plays leave-then-check. (proof: desktop/test/view-leave.test.js)
+- [x] B follow-up 2: a mode change in Settings re-offers the browser download at once, without a restart; a test plays the change. (proof: desktop/test/browser-offer-follows-mode.test.js)
+- [x] B follow-up 3: fields inside a frame count in the page's facts (`PAGE_FACTS`, `hosted/ready-fill/live.mjs`), so Review and Submit see them; a test with a framed field. (proof: desktop/test/live-view.test.js)
 
 ### 3. Full automation submits (PR C)
 

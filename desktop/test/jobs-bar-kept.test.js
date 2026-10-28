@@ -1,22 +1,26 @@
-// The Jobs bar painted from the kept state survives a render before Focus is read (owner, 28 Oct 2026: "I clicked on it. It vanished"): renderer/suggestions.js barState.
+// The Jobs bar's four states (renderer/suggestions.js barView; #2382, owner 28 Oct 2026: "I clicked on it. It vanished"): kept paint, Focus unavailable, Focus read, zero.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import fs from 'node:fs';
-import {barState} from '../renderer/suggestions.js';
+import {barView} from '../renderer/suggestions.js';
 
-test('before Focus is read, a render leaves the kept bar alone (null), never hides it', () => {
-  assert.equal(barState(false, []), null, 'the click or the questions count arriving first');
-  assert.equal(barState(false, [{kind: 'insight'}]), null);
+const KEPT = {shown: true, count: 3, line: 'Cover letter missing · 2 search suggestions'};
+
+test('the owner\'s scenario: a start on Jobs with a kept bar, then the click (open) and the count arriving, before Focus is read: the bar stays', () => {
+  const folded = barView({focusRead: false, kept: KEPT});
+  assert.deepEqual([folded.shown, folded.rows, folded.title], [true, false, KEPT.line], 'the kept line, list left alone');
+  const clicked = barView({focusRead: false, kept: KEPT, open: true, entries: []});
+  assert.equal(clicked.shown, true, 'the click does not hide it (red before: entries were empty until Focus was read)');
+  assert.equal(clicked.rows, false);
 });
 
-test('once Focus is read, the bar shows with its entries and hides at zero', () => {
-  assert.deepEqual(barState(true, [{kind: 'insight'}]), {shown: true, entries: [{kind: 'insight'}]});
-  assert.deepEqual(barState(true, []), {shown: false, entries: []});
+test('Focus read: the bar shows its entries and the list may be redrawn; zero entries hide it', () => {
+  const entries = [{kind: 'insight'}, {kind: 'tune'}];
+  assert.deepEqual([barView({focusRead: true, entries, line: 'x'}).shown, barView({focusRead: true, entries}).rows], [true, true]);
+  assert.equal(barView({focusRead: true, entries: [], kept: KEPT}).shown, false);
 });
 
-test('renderJobsSuggestions asks barState before it touches the bar', () => {
-  const page = fs.readFileSync(new URL('../renderer/pages/focus-suggestions.js', import.meta.url), 'utf8');
-  const body = page.slice(page.indexOf('export function renderJobsSuggestions'));
-  assert.ok(body.indexOf('barState(') > 0 && body.indexOf('barState(') < body.indexOf('show(bar'), 'barState first, then show');
-  assert.match(body.slice(0, body.indexOf('show(bar')), /if \(!state\) \{ loadFocus\(\); return; \}/, 'an unknown Focus is read by the bar itself, not waited for (it is read only when its view opens)');
+test('Focus unavailable (gated store, failed read): the kept bar goes, it has nothing to fill it; no kept bar stays hidden', () => {
+  assert.equal(barView({focusRead: false, unavailable: true, kept: KEPT}).shown, false);
+  assert.equal(barView({focusRead: false, kept: null}).shown, false);
+  assert.equal(barView({focusRead: false, kept: {shown: false}}).shown, false);
 });

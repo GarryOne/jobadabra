@@ -26,7 +26,7 @@ ALLOWED = {
     # The one client a run makes (src/store_access.py open_run, used by daily and the scout), handed to run_stores: kept only while
     # the active store is Notion (JOB_PILOTTO_STORE from the app; NOTION_TOKEN alone for Always on and the terminal, D7).
     ('src/store_access.py', 'client'): 'open_run: the engine client, kept by run_stores only while the store is Notion',
-    ('src/desktop.py', 'client'): 'run_stores / open_stores(tracker=): the app passes JOB_PILOTTO_STORE',
+    ('src/desktop_tracker.py', 'client'): 'run_stores / open_stores(tracker=): the app passes JOB_PILOTTO_STORE',
 }
 
 
@@ -83,7 +83,7 @@ class OnlyOnTheNotionStoreTest(unittest.TestCase):
         self.tracker = mock.Mock(name='a Notion client')   # any request on it would be recorded
 
     def test_daily_and_desktop_runs_drop_the_client(self):
-        # src/desktop.py and src/store_access.py open_run: run_stores.
+        # src/desktop_tracker.py and src/store_access.py open_run: run_stores.
         from src.store_access import run_stores
         stores, tracker = run_stores(self.tracker)
         self.assertEqual((stores.name, tracker), ('sqlite', None))

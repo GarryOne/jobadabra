@@ -1,4 +1,4 @@
-// Background Apply browser ownership: create a minimized extension window and reveal the same persisted session for manual handoff.
+// Background Apply browser ownership: create an unfocused normal window in the hidden browser and reveal the same persisted session for manual handoff.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundSession} from '../../extension/background-session.mjs';
@@ -13,8 +13,9 @@ function browser() {
     tabs: {query: async () => [...tabs.values()], get: async id => tabs.get(id) || null},
     windows: {
       create: async options => {
-        assert.equal(options.state, 'minimized');
-        assert.equal('focused' in options, false, 'minimized creation must not override the native window state with focus');
+        // Why (2026-10-28, measured): a minimized headless tab repainted 2 of 5 page changes, a normal unfocused one all 5; the live view needs every frame.
+        assert.notEqual(options.state, 'minimized');
+        assert.equal(options.focused, false);
         const id = next++, tab = {id: next++, windowId: id, url: options.url};
         tabs.set(tab.id, tab);
         const win = {id, state: options.state, tabs: [tab]}; windows.set(id, win); return win;
@@ -26,7 +27,7 @@ function browser() {
   return {chrome, shown, windows, tabs};
 }
 
-test('Background and Full automation create one minimized session and reveal that same session on request', async () => {
+test('Background and Full automation create one unfocused session and reveal that same session on request', async () => {
   for (const mode of ['fill', 'auto']) {
     const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
     const created = await run.start({session: `s-${mode}`, url: `https://jobs.example.test/app#jobpilotto-fill=s-${mode}`, mode});

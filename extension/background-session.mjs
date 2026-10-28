@@ -1,4 +1,4 @@
-// Own hidden Apply windows in the installed extension so CAPTCHA handoff can reveal the very same live tab.
+// Own the hidden browser's Apply tabs in the installed extension so a hand-off keeps the very same live tab.
 const KEY = 'backgroundApplySessions';
 const MODES = new Set(['fill', 'auto']);
 
@@ -26,7 +26,8 @@ export function createBackgroundSession({chrome = globalThis.chrome, parseMark} 
     if (!tab) {
       rows[id] = {session: id, mode, url: target, manualRequired: false, state: 'starting', startedAt: Date.now()};
       await save(rows);
-      win = await chrome.windows.create({url: target, state: 'minimized'}).catch(() => null);
+      // Why (2026-10-28, measured): a minimized headless tab repainted 2 of 5 page changes, a normal unfocused one all 5; the live view needs every frame.
+      win = await chrome.windows.create({url: target, focused: false}).catch(() => null);
       tab = win?.tabs?.[0] || null;
     }
     if (!win || !tab) return {ok: false, error: 'hidden browser window could not be opened'};

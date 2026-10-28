@@ -9,7 +9,9 @@ test('background browser launch uses only its owned profile and starts without a
   assert.ok(args.includes('--user-data-dir=/owned/profile'));
   assert.ok(args.includes('--load-extension=/owned/extension'));
   assert.ok(args.includes('--remote-debugging-port=0'));
-  assert.equal(args.some(arg => arg === '--headless=new' || /^https?:/.test(arg)), false, 'same session can later become visible without relaunch');
+  // Why (2026-10-28, owner): the person sees a held page in the app's live view, never a revealed window; headless keeps it off the screen, the Dock and focus.
+  assert.ok(args.includes('--headless=new'));
+  assert.equal(args.some(arg => /^https?:/.test(arg)), false);
 });
 
 test('a cached CDP port is accepted only after the browser proves the exact owned profile', () => {

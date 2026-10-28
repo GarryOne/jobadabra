@@ -1,4 +1,4 @@
-// A Jobadabra-owned Chromium process without a startup window; the actual extension owns fill tabs and same-session manual reveal.
+// A Jobadabra-owned headless Chromium with no window; the actual extension owns fill tabs, and the app's live view shows a held page to the person.
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -9,7 +9,8 @@ import {writePrivate} from './private-file.js';
 
 /** Return launch flags for an owned profile and extension, never a system profile or a visible startup page. */
 export function browserArguments(profile, extension) {
-  return [`--user-data-dir=${profile}`, '--remote-debugging-port=0', '--enable-automation', '--no-startup-window', '--no-first-run', '--no-default-browser-check',
+  // Why (2026-10-28, owner + measured B1): the person sees a held page in the app's live view; headless Chromium loads the extension with no window, Dock entry or focus change.
+  return [`--user-data-dir=${profile}`, '--headless=new', '--remote-debugging-port=0', '--enable-automation', '--no-startup-window', '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-component-update', '--disable-sync', '--disable-default-apps', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`];
 }
 /** Accept a debugging port only after CDP reports our exact profile argument; stale/recycled ports never authorize access. */

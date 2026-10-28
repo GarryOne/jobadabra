@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as archive from './archive.js';
+import * as startupMove from './startup-move.js';
 import * as tracker from './tracker-snapshot.js';
 import {writePrivate} from './private-file.js';
 import {LEGACY_NAME} from './app-identity.js';
@@ -47,6 +48,8 @@ export function exportName({name = '', role = '', at = new Date()} = {}) {
 // One .tar.gz file (tar is on macOS and Windows 10+): a manifest, the items, and keys.json if asked for.
 // Async since 21 Oct 2026 (lib/archive.js): tar runs beside the app, which keeps answering; onProgress({done, total}), signal cancels.
 export async function exportTo(dir, file, {keys = null, accounts = null, version = '', onProgress, signal} = {}, now = new Date()) {
+  // Why (2026-10-28, red main after #2339): the start-up move drops profile.md and answers.md once the store has them; a pack running under it met "tar failed (2)" or an archive without them (lib/startup-move.js).
+  await startupMove.settled();
   const extra = [];
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({app: 'Jobadabra', version, exportedAt: now.toISOString(),
     keys: !!keys, accounts: !!accounts}, null, 1));

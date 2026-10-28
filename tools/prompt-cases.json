@@ -41,6 +41,12 @@
         "src/ai/mail_config.py": ["SYSTEM"]
       }
     },
+    "question-reuse": {
+      "live": false,
+      "about": "whether a form question is reusable, one job's or consent (desktop/lib/question-reuse.js): a question about this one employer is one job's even when unnamed (how did you hear, worked here before, which office); stances and facts stay reusable (owner, 28 Oct 2026: the 21-item queue). Replayed before/after on Haiku through claude -p",
+      "cases": ["desktop/test/fixtures/question-reuse-cases.json"],
+      "prompts": {"desktop/lib/question-reuse.js": ["INSTRUCTIONS"]}
+    },
     "place": {
       "live": false,
       "about": "where a job is, for one person's places (src/ai/place_triage.py): a city list without theirs and remote limited elsewhere are out; remote from anywhere inside an anywhere place is in (Zagreb, Helsinki, quality golden 3003/3010; 27 Oct 2026)",

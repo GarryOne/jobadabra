@@ -16,8 +16,8 @@ const SCHEMA = {type: 'object', additionalProperties: false, required: ['verdict
   required: ['label', 'verdict', 'covered_by', 'value', 'topic', 'fact'], properties: {label: {type: 'string'}, verdict: {type: 'string', enum: VERDICTS}, covered_by: {type: 'string'}, value: {type: 'string'},
   topic: {type: 'string'}, fact: {type: 'string'}}}}}};
 const INSTRUCTIONS = `A job-application form asked these questions. For each decide its verdict:
-- "reusable": a fact about the applicant or a stable stance they will want to give again on OTHER employers' forms (notice period, visa, salary, how they heard of jobs, a degree).
-- "one_job": it belongs to this one job or employer (it names the company or its product, asks why this company, a motivation or essay written for this role, a trivia or skill test).
+- "reusable": a fact about the applicant or a stable stance they will want to give again on OTHER employers' forms (notice period, visa, salary, willingness to relocate, a degree).
+- "one_job": it belongs to this one job or employer, even when it does not name it (it names the company or its product, asks why this company, how they heard about this job or employer, whether they worked for or applied to this employer before, which of its offices or teams, a motivation or essay written for this role, a trivia or skill test).
 - "consent": a legal or privacy consent / agreement checkbox or statement.
 Then covered_by: when one of the applicant's saved answers already settles it, the EXACT saved question (a differently worded notice-period question is covered by the notice period answer; "Do you need visa sponsorship?" by a saved work permit); otherwise "".
 And value: the answer to THIS question that saved answer gives: "" when the saved answer answers it as it is; otherwise the short answer it implies (a permanent permit -> "No" to needing sponsorship). Only when it follows for sure: otherwise covered_by "" and value "".

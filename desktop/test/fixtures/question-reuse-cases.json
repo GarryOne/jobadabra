@@ -1,0 +1,22 @@
+{
+  "about": "The fixed case set of lib/question-reuse.js INSTRUCTIONS (tools/prompt-cases.json set question-reuse): each form label and the verdict it must get. A question about this one employer is one job's even when it does not name it (owner, 28 Oct 2026: the 21-item queue held How did you hear and Previously worked here); a stance or fact the applicant gives every employer stays reusable. Fictional employers.",
+  "cases": [
+    {"label": "How did you hear about us?", "verdict": "one_job"},
+    {"label": "How did you hear about this position?", "verdict": "one_job"},
+    {"label": "Wie haben Sie von uns erfahren?", "verdict": "one_job"},
+    {"label": "Previously worked for / applied to this company?", "verdict": "one_job"},
+    {"label": "Have you ever been employed by Northwind Bank?", "verdict": "one_job"},
+    {"label": "Which of our offices would you like to work from?", "verdict": "one_job"},
+    {"label": "Why do you want to join Acme Robotics?", "verdict": "one_job"},
+    {"label": "What is your current notice period?", "verdict": "reusable"},
+    {"label": "Will you now or in the future require visa sponsorship?", "verdict": "reusable"},
+    {"label": "What is your salary expectation?", "verdict": "reusable"},
+    {"label": "Willing to relocate", "verdict": "reusable"},
+    {"label": "Pronouns", "verdict": "reusable"},
+    {"label": "Demographic / EEO questions", "verdict": "reusable"},
+    {"label": "Are you willing to travel for work?", "verdict": "reusable"},
+    {"label": "Highest degree obtained", "verdict": "reusable"},
+    {"label": "I agree to the processing of my data under the privacy policy", "verdict": "consent"},
+    {"label": "Consent to keep data for future roles", "verdict": "consent"}
+  ]
+}

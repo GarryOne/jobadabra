@@ -59,6 +59,18 @@ def newer_green(repo, sha):
     return ''
 
 
+def newer_running(repo, sha):
+    """Return the newest pending main build's SHA only when its commit is ahead of sha, or ''."""
+    import subprocess
+    def gh(*args):
+        return subprocess.run(['gh', 'api', *args], capture_output=True, text=True).stdout.strip()
+    # Why (28 Oct 2026, owner): queued or running newer builds still decide a cancelled beta's verdict.
+    for head in gh(f'repos/{repo}/actions/workflows/build.yml/runs?branch=main&per_page=30', '--jq', '.workflow_runs[] | select(.status != "completed") | .head_sha').split():
+        if head != sha and gh(f'repos/{repo}/compare/{sha}...{head}', '--jq', '.status') == 'ahead':
+            return head
+    return ''
+
+
 if __name__ == '__main__':
     if sys.argv[1] == 'beta':   # gh release view <tag> --json body -q .body | python3 tools/e2e_gate.py beta <commit-sha>
         print(beta_verdict(sys.stdin.read(), sys.argv[2] if len(sys.argv) > 2 else ''))
@@ -66,5 +78,7 @@ if __name__ == '__main__':
         print(ci_verdict(json.load(sys.stdin)))
     elif sys.argv[1] == 'newer-green':   # python3 tools/e2e_gate.py newer-green <repo> <sha>: prints a newer green commit of main, or nothing
         print(newer_green(sys.argv[2], sys.argv[3]))
+    elif sys.argv[1] == 'newer-running':   # prints the newest pending build commit ahead of the beta on main, or nothing
+        print(newer_running(sys.argv[2], sys.argv[3]))
     else:
         print(verdict(json.load(sys.stdin), sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else 'commit'))

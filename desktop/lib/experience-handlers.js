@@ -1,6 +1,7 @@
 // The experience bank's IPC (Settings → Profile → Experience): what the window shows, adding another CV version, removing one, matching
 // again after the main CV changed. The data and the AI match are lib/experience.js; guarded by test/experience.test.js.
 import * as claudeCode from './claude-code.js';
+import * as added from './experience-added.js';
 import * as experience from './experience.js';
 import * as linkedinOAuth from './linkedin-oauth.js';
 import fs from 'node:fs';
@@ -62,6 +63,16 @@ export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, sh
     if (ok) appLog('experience', 'source removed', {id: String(id)});
     return withChanges(before, ok, {removed: before.sources.find(s => s.id === String(id))?.name || ''});
   });
+  // "Use in my CVs" (Insights PR 2, renderer/skill-entries.js): the skills become "Added by you" entries; the main CV file is never edited.
+  ipcMain.handle('experienceAddSkills', (_, skills) => {
+    const before = experience.view(storage), list = (Array.isArray(skills) ? skills : []).map(skill => String(skill || '').trim()).filter(Boolean).slice(0, 10);
+    if (!list.length) return {ok: false, error: 'No skills to add.'};
+    if (DEMO) return {ok: true, ...before};
+    try { for (const skill of list) added.addSkill(storage, skill); } catch (error) { return {ok: false, error: error.message}; }
+    appLog('experience', 'skills added by you', {count: list.length});
+    return withChanges(before);
+  });
+  ipcMain.handle('experienceRemoveAdded', (_, id) => withChanges(experience.view(storage), added.removeAdded(storage, id)));
   ipcMain.handle('experienceRematch', async () => {
     if (noAi()) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
     try {

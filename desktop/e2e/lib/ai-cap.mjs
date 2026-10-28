@@ -12,9 +12,12 @@ const API = 'https://api.cloudflare.com/client/v4/graphql';
 const QUERY = (account, day) => `query { viewer { accounts(filter: {accountTag: "${account}"}) { aiInferenceAdaptiveGroups(limit: 1, filter: {datetimeHour_geq: "${day}T00:00:00Z"}) { sum { totalNeurons } } } } }`;
 
 let seen = {at: 0, day: '', neurons: null};
+// Forgets the cached count (tests only): takes nothing, returns nothing.
 export const resetCap = () => { seen = {at: 0, day: '', neurons: null}; };
 
+// The day's cap in neurons: E2E_AI_CAP_NEURONS from env when it is a number, else CAP_NEURONS. Takes env, returns a number.
 export const capOf = (env = process.env) => Number(env.E2E_AI_CAP_NEURONS) || CAP_NEURONS;
+// The refusal text a capped ask gets: takes the neuron count (null = unreadable) and env, returns the string; it names the fix when the count is unreadable.
 export const capMessage = (neurons, env = process.env) => (neurons == null
   ? 'ai-capped: the account\'s neuron count is unreadable here (CI_CF_ANALYTICS_TOKEN missing or not Account Analytics: Read), so the $1/day cap fails closed; set that secret'
   : `ai-capped: CI's Workers AI is at ${neurons} of ${capOf(env)} neurons today (about $1 a day, owner 28 Oct 2026); it answers from saved replies or the step goes grey`);

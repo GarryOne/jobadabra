@@ -21,8 +21,9 @@ jobs:
   label:
     if: github.event_name != 'issue_comment' || (github.event.issue.pull_request && github.event.comment.user.login == 'gitar-bot[bot]')
     # Job level, so a run that the `if` skips never cancels a real one (Gitar on web#216)
+    # Why (28 Oct 2026, #2393, #2400): the group holds the event too. Gitar's comment run used to cancel the push's run, which is the head commit's own "label" check: a red ✗ on a green PR.
     concurrency:
-      group: gitar-label-${{ github.event.pull_request.number || github.event.issue.number }}
+      group: gitar-label-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 5

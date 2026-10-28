@@ -16,7 +16,7 @@ functions over McCabe 10. Rule: new code only, old code is never blocked. A rule
 
 ## Progress
 - [x] Baseline numbers and sketch (proof: docs/superpowers/plans/2026-10-28-clean-code-checks.md)
-- [x] 1/4 Gitar rule (proof: .gitar/review/clean-code.md @9adae2d)
+- [x] 1/4 Gitar rule (proof: .gitar/review/clean-code.md)
 - [x] 2/4 sonarjs on new code (proof: tools/clean-code-js.mjs)
 - [ ] 3/4 Ruff on new code
 - [ ] 4/4 SonarQube Cloud

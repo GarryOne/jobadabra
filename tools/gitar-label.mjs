@@ -80,7 +80,7 @@ function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   ensure(repo, WORKING);
   gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
-  console.log(`gitar-label: #${pr} → ${WORKING.name}`);
+  main(pr);   // Why (#2386, Gitar): an approved PR must not keep "working"; the sync drops it again
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2]);

@@ -69,6 +69,24 @@ Owner's yes before the UI commit.
 - Migration: today's answered lines become confirmed learnings; lines that are Your details facts move there
   (`lib/answer-home.js`); nothing deleted.
 
+**PR B split (owner, 28 Oct 2026, sketch https://claude.ai/artifact/9Ha4eBaZbAiGePw1evZ6uV):**
+- **B1 · One place per thing:** retire the local site rules (writer, reader, served notes, Form knowledge page, Website rules
+  table, `job-answers.js save`) and move the cover letter style to `cover-letter/style.json` beside `letter.json` (owner: "Beside
+  the letter"); every letter writer reads it there; the old notes and the old style section stay in the store, unread.
+- **B2 · Learnings with evidence:** the writer, evidence and state chips, salary seed, migration.
+- **The AI owns the whole learning step** (owner, 28 Oct 2026: "All of this flow/logic/learning should be heavily
+  controlled/manipulated by the AI. He should interpret meanings. He should understand if a learning already exists partially and
+  we should just confirm or extend that learning, or it's a completely new and separate topic"). Per new answer the AI returns one
+  verdict against the existing learnings: `same` (evidence only) · `extends` (the AI writes the widened answer) · `conflicts`
+  (Two answers) · `new` (a new topic). Code validates the verdict's shape and the picked topic against the list; no string
+  compare, no word list decides a merge. A test asserts the merge follows the AI's verdict even when the wordings match.
+- **Evidence chips by meaning:** the writer records label → topic in the verdict cache; the tab matches each Form fill's labels to
+  topics when it draws (Form fills keep labels only, never answers: `src/ai/apply_record.py:5`).
+- **Sources:** what the person typed or confirmed in a form, and answers the AI wrote from their material (`new`, guessed). Never
+  right to work, criminal record or demographics.
+- **Note at the top of What we learned** (owner, 28 Oct 2026): these learnings come only from form fills; what we know about you
+  from everywhere is in "Your avatar" (PR D, owner 28 Oct 2026; the note links there once D ships).
+
 ## PR C · Remember by Apply mode (hand-off brief after B)
 
 - Extension: the answer you type shows "Remember" (on; off when the question names the company). Full automation: recap after
@@ -78,7 +96,7 @@ Owner's yes before the UI commit.
   (`renderer/writing-preferences-model.js:2`). Owner, 28 Oct 2026: "everything about the cover letter should be only in Cover
   Letter tab". PR B moves them to the Cover letter's own store; the learnings writer never reads, writes or lists them.
 
-## PR D · About you everywhere (owner, 28 Oct 2026: "If we make use of all the knowledge we built about the user, wouldn't we
+## PR D · Your avatar: about you everywhere (owner, 28 Oct 2026: "If we make use of all the knowledge we built about the user, wouldn't we
 better answer open questions in forms… tailor CV, tailor Cover letter, or kit answers?")
 
 One shared function returns everything we know about the person; each writer takes it with one fixed exclusion list:

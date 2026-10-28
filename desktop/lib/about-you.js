@@ -35,9 +35,12 @@ export const READERS = {
 };
 
 // What the readers page on the website shows (owner via the coordinator, 28 Oct 2026: "publish on the website … this table", live only, nothing claimed before it works).
-// LIVE: the readers whose bundle a step really receives today (a reader in READERS but not here is built, not wired). PAGES: parts a step still reads straight from a page or file.
-// Add a reader to LIVE in the PR that wires it; test/about-you-readers.test.js fails when the exported JSON (docs/about-you-readers.json) is out of date.
-export const LIVE = ['kit'];
+// LIVE: the readers whose bundle a step really receives today (a reader in READERS but not here is built, not wired). GATHERED: the parts aboutYou() reads today (history,
+// voice and this job come with D1c/D2): a cell is claimed only for a live reader's part that is gathered. PAGES: parts a step still reads straight from a page or file.
+// Add a reader to LIVE in the PR that wires it, and a part to GATHERED in the PR that reads it; test/about-you-readers.test.js fails when the exported JSON
+// (docs/about-you-readers.json) is out of date, or when GATHERED disagrees with a real aboutYou() call.
+export const LIVE = ['kit', 'portrait'];
+export const GATHERED = ['details', 'cv', 'learned', 'strategy'];
 export const PAGES = {form: ['details', 'cv', 'learned', 'strategy'], kit: ['details', 'learned', 'strategy']};
 export const NAMES = {
   parts: {details: 'Your details', cv: 'CV + Experience bank', learned: 'What we learned', strategy: 'Strategy', history: 'History', voice: 'Voice', this_job: 'This job'},
@@ -52,7 +55,7 @@ export function readersTable() {
     parts: PARTS.map(key => ({key, label: NAMES.parts[key]})),
     readers: names.map(key => {
       const rule = READERS[key], live = LIVE.includes(key);
-      return {key, label: NAMES.readers[key], live, through: live ? rule.parts : [], pages: PAGES[key] || [],
+      return {key, label: NAMES.readers[key], live, through: live ? rule.parts.filter(part => GATHERED.includes(part)) : [], pages: PAGES[key] || [],
         never: rule ? [...(rule.noSalary ? ['salary'] : []), 'sensitive answers'] : []};   // form filling reads its pages itself, sensitive fields included
     }),
   };

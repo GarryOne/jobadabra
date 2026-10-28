@@ -124,8 +124,13 @@
     {
       "key": "portrait",
       "label": "Your portrait",
-      "live": false,
-      "through": [],
+      "live": true,
+      "through": [
+        "details",
+        "cv",
+        "learned",
+        "strategy"
+      ],
       "pages": [],
       "never": [
         "sensitive answers"

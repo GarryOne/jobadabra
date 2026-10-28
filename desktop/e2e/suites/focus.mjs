@@ -120,9 +120,9 @@ export async function runFocus(ctx, parts) {
     };
     check('Up next', await upNext(), EXPECTED_UP_NEXT);
     const folded = (await page.textContent('#focus-suggestions-count')).trim();
-    if (folded !== `3 of ${EXPECTED_SUGGESTIONS.length}`) throw new Error(`Suggestions should show 3 of ${EXPECTED_SUGGESTIONS.length} at first, its head says "${folded}"`);
     await showAll();
-    check('Suggestions', await suggested(), EXPECTED_SUGGESTIONS);
+    check('Suggestions', await suggested(), EXPECTED_SUGGESTIONS);   // first: on a wrong count it names every row
+    if (folded !== `3 of ${EXPECTED_SUGGESTIONS.length}`) throw new Error(`Suggestions should show 3 of ${EXPECTED_SUGGESTIONS.length} at first, its head says "${folded}"`);
     if ((await upNext()).concat(await suggested()).some(item => /waiting/.test(item.headline))) throw new Error('"1 application waiting" has no button: it should have left Focus');
     const note = (await page.textContent('#focus-count-note')).trim();
     if (note !== '2 actions') throw new Error(`the Up next header should count "2 actions", it says "${note}"`);
@@ -244,7 +244,7 @@ export async function runFocus(ctx, parts) {
     await refresh();
     const left = [...await upNext(), ...await suggested()];
     if (left.some(item => item.headline.includes('Kestrel'))) throw new Error('the skipped employer question came back after a refresh');
-    if (left.length !== 4) throw new Error(`4 rows should remain (prepare; the rejection lesson, apply, add feedback), Focus lists ${left.length}: ${left.map(item => item.headline).join(' | ')}`);
+    if (left.length !== 5) throw new Error(`5 rows should remain (prepare; the rejection lesson, analyze, apply, add feedback), Focus lists ${left.length}: ${left.map(item => item.headline).join(' | ')}`);
     if ((await eventsOf('Details skipped', 'Kestrel Agency')).length !== 1) throw new Error('Skip should write one "Details skipped" event to the store');
     await numbersMatchSource('after Skip');
   }, {needs: ctx.needs});

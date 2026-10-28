@@ -107,13 +107,15 @@ export async function addFocusData(ctx, data) {
 
 // What Focus must list for that scenario, in order: [kind label on the badge, the primary button]. Written from the product spec
 // (who needs an answer first, then what is soonest), not read back from the app. Up next holds only what can't wait; the rest is in Suggestions,
-// after the engine's entries (today: Gale's rejection lesson); "1 application waiting" has no button and leaves Focus (owner, 28 Oct 2026).
+// after the engine's entries (Gale's rejection lesson; Analyze now, since the scenario's applications and outcomes outnumber src/suggestions.py
+// ANALYZE_AFTER with no analysis yet); "1 application waiting" has no button and leaves Focus (owner, 28 Oct 2026).
 export const EXPECTED_UP_NEXT = [
   {who: 'Huxley Partners', badge: 'Reply today', buttons: ['Open email', 'Done']},
   {who: 'Ember Data', badge: /^Interview /, buttons: ['Build prep kit']},
 ];
 export const EXPECTED_SUGGESTIONS = [
   {who: 'Seniority mismatch', badge: 'Rejection', buttons: ['Review rejection']},
+  {who: 'A lot happened since your last analysis', badge: 'Analyze', buttons: ['Analyze now']},
   {who: 'Kestrel Agency', badge: 'Add details', buttons: ['Add details', 'Skip']},
   {who: 'Apply to', badge: 'Next step', buttons: ['Browse jobs']},
   {who: 'Fjord Networks', badge: 'Asked for feedback', buttons: ['Add feedback']},

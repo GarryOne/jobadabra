@@ -69,7 +69,7 @@ test('Zurich days and offsets follow daylight saving', () => {
 });
 test('every Up next and Suggestions row names a button list; Up next holds only what can\'t wait', () => {
   assert.equal(EXPECTED_UP_NEXT.length, 2);
-  assert.equal(EXPECTED_SUGGESTIONS.length, 4);
+  assert.equal(EXPECTED_SUGGESTIONS.length, 5);
   for (const row of [...EXPECTED_UP_NEXT, ...EXPECTED_SUGGESTIONS]) assert.ok(row.buttons.length, row.who);
 });
 

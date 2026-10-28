@@ -178,9 +178,10 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
         job: {company: job?.company || '', place: job?.location || ''}, propose: items => proposalReporter(items)}).catch(error => { console.error('Learnings:', error.message); return null; });
       if (learnt) verdicts.noteLearned(storage, learnt.evidence, {url: run.url, company: job?.company || ''});
       const seeded = await seedSalary().catch(error => { console.error('Salary seed:', error.message); return 0; });
-      const taught = (learnt ? learnt.counts.added + learnt.counts.extended + learnt.counts.conflicts : 0) + seeded;
-      if (added || taught) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
+      const taught = learnt ? learnt.counts.added + learnt.counts.extended + learnt.counts.conflicts : 0;   // the seed is Strategy's, never this employer's (Gitar on #2335)
+      if (added || taught || seeded) tellWindow('moved', ['open questions']);   // the Jobs page reads the answers page again (it is not re-read on every reload, 6 Oct 2026)
       if (taught) notify('Learned from this form', `${taught} answer${taught > 1 ? 's' : ''} from ${job?.company || 'a form'} kept for the next forms. Check them in Profile → What we learned.`, {view: 'settings', section: 'profile'}, 'good');
+      if (seeded) notify('Salary expectation added', 'From your Strategy minimum, for your places. Check it in Profile → What we learned.', {view: 'settings', section: 'profile'}, 'good');
       if (added) notify('New question to answer once', `${added} question${added > 1 ? 's' : ''} from ${job?.company || 'a form'} had no standard answer. Answer in Jobadabra → Jobs.`, {view: 'jobs'}, 'warn');
       reports.send(storage, run, undefined, sharedLogger, {latest: latestExtension()}).then(report => {  // each field also shows in the app reports (/telemetry)
         // A fill that failed while Chrome ran an older copy than this app ships is explained first, as its own

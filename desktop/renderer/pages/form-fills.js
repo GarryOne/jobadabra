@@ -112,10 +112,10 @@ function draw() {
   host.replaceChildren(run ? detailView(run) : listView());
 }
 
-// Mount point for the Reports page: draws into `container` (a plain div in its card) and refreshes; safe to call again.
 /** Opens one fill's detail on the next draw of the tab (What we learned's evidence chips: pages/form-fill-link.js). */
 export function openFill(id) { state.open = id || null; }
 
+// Mount point for the Reports page: draws into `container` (a plain div in its card) and refreshes; safe to call again.
 export async function renderFormFills(container) {
   host = container;
   draw();

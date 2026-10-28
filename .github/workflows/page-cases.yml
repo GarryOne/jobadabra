@@ -159,6 +159,7 @@ jobs:
         # the PR's files are one git diff away; a call to the API let the shared token budget decide a PR's red. The list is read BEFORE the block is opened: a failure
         # stops the step with git's own message, not "Matching delimiter not found" (tests/test_page_cases_workflow.py plays both).
         run: |
+          [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3 ] || { echo "HEAD is not the pull request's merge commit (one commit and its two parents): its changed files cannot be read from git" >&2; exit 1; }
           files="$(git diff --name-only HEAD^1 HEAD)"
           { echo 'files<<CHANGED_END'; echo "$files"; echo 'CHANGED_END'; } >> "$GITHUB_OUTPUT"
       - name: Replay this shard's recorded cases

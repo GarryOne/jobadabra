@@ -96,7 +96,15 @@ class RecordedPagesWorkflow(unittest.TestCase):
             bad = run(shallow)
             self.assertNotEqual(bad.returncode, 0)
             self.assertEqual(out.read_text(), '', 'nothing half-written: GitHub would report "Matching delimiter not found" instead of the cause')
-            self.assertIn('HEAD^1', bad.stderr, 'the step fails with git saying what it could not find')
+            self.assertIn('merge commit', bad.stderr, 'the step says what it could not do')
+
+            # HEAD is the PR's own last commit, not the merge (a checkout of the head ref): HEAD^1 would be a wrong, quiet answer (Gitar on #2369: it could skip page cases)
+            git('checkout', '-q', 'pr')
+            out.write_text('')
+            plain = run(repo)
+            self.assertNotEqual(plain.returncode, 0, 'a plain commit is not read as a merge')
+            self.assertEqual(out.read_text(), '')
+            self.assertIn('merge commit', plain.stderr)
 
 
 if __name__ == '__main__':

@@ -39,7 +39,7 @@ const known = (label, aliases = []) => (!asksQuestion(label) && KNOWN.test(label
 /**
  * Sorts what you typed: a personal fact for an empty detail, or an answer for What we learned.
  * items [{label, value, kind}]; answered: the answers page's lines, lower case ("driving license: b"). -> {details: {street: ...}, answers: [{label, value}]};
- * what is already known is left out. An item with remember false (the panel's Remember switched off) is not kept: jobOnly [{label, value}], for the run's recap.
+ * what is already known is left out. An item with remember false (the panel's Remember switched off) is kept nowhere (not in What we learned, not in Your details even for a personal detail): jobOnly [{label, value}].
  */
 export function plan(items, {contact = {}, answered = new Set(), aliases = []} = {}) {
   const details = {}, fresh = [], jobOnly = [];
@@ -49,7 +49,6 @@ export function plan(items, {contact = {}, answered = new Set(), aliases = []} =
     if (item.remember === false) { jobOnly.push({label, value}); continue; }   // Why (PR C, owner 28 Oct 2026; Gitar on #2351): Remember off = this job only, a personal detail included
     const key = personalKey(label, aliases);
     if (key) { if (!contact[key]) details[key] = value; continue; }
-    if (item.remember === false) { jobOnly.push({label, value}); continue; }   // Why (PR C, owner 28 Oct 2026): "Remember" off = this job only, never read by What we learned
     if (answered.has(`${label}: ${value}`.toLowerCase())) continue;
     fresh.push({label, value});
   }

@@ -15,6 +15,7 @@ const ZOOMS = [50, 75, 100, 125, 150];
 
 let view = null;   // the one open live view: {id, root, img, marks, ask, w, h, facts, zoom, card, item, on}
 let listening = false;
+let clock = 0;   // the once-a-second redraw of the title while a card counts down; one at most
 
 // The session's live view, built once per session and kept across redraws (its picture never reloads while the card redraws).
 function viewFor(item) {
@@ -122,6 +123,7 @@ export function liveEvent({session, message} = {}) {
 }
 /** Close the open live view (another session shown, or none): the stream stops in main. */
 export function closeLive() {
+  clearInterval(clock);
   if (!view) return;
   window.pilot.liveClose(view.id);
   view.pictures.clear();
@@ -153,6 +155,8 @@ function drawCard(item) {
   v.marks.replaceChildren(...(card.marks ? (v.facts?.left || []) : []).map(box => Object.assign(el('span', 'live-mark'), {title: box.label,
     style: `left:${box.x * 100}%;top:${box.y * 100}%;width:${box.w * 100}%;height:${box.h * 100}%`})));
   $('ss-question').replaceChildren(...(card.live ? [v.root] : []), el('p', 'rich-p muted small', card.note));
+  clearInterval(clock);
+  if (card.kind === 'countdown') clock = setInterval(() => { if (view?.id === item.id && view.card?.kind === 'countdown') $('ss-next-title').textContent = liveCard(item.background, v.facts).title; }, 1000);
   return card;
 }
 /**
@@ -168,7 +172,7 @@ export function renderLive(item, on) {
     $('ss-actions').replaceChildren(...actions);
     return;
   }
-  if (card.kind === 'filling') {
+  if (card.kind === 'filling' || card.stop) {
     actions.push(button('Stop', 'secondary', async event => { event.currentTarget.disabled = true; await window.pilot.liveStop(item.id); }));
   } else {
     const submit = button('Submit application', card.submit.on ? 'primary' : 'secondary', async event => {
@@ -183,6 +187,6 @@ export function renderLive(item, on) {
     if (card.submit.hint) actions.push(el('span', 'muted small live-hint', card.submit.hint));
   }
   actions.push(button('Open in my browser', 'secondary', on.open, 'external'));
-  if (card.kind !== 'filling') actions.push(button('Skip this role', 'secondary', on.skip));
+  if (card.kind !== 'filling' && !card.stop) actions.push(button('Skip this role', 'secondary', on.skip));
   $('ss-actions').replaceChildren(...actions);
 }

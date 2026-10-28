@@ -105,3 +105,18 @@ test('in a batch, an ineligible job is skipped and said while the others still s
     .enqueue([{url: 'https://jobs.example.test/a'}, {url: 'https://jobs.example.test/b'}], 'fill');
   assert.deepEqual(broken, {ok: false, error: 'Could not write the application record.'}, 'a real failure is not called "not eligible" and is not hidden');
 });
+
+// Why (2026-10-28, owner: "Finish the 'Full automation' flow"; project safety rule "10-minute wait with Stop"): the one test of the wait: once the person has pressed Stop, an elapsed timer must never issue the press.
+test('Stop during the 10-minute wait hands the job to the person, and the elapsed timer issues no press; without Stop the same state does issue it', async () => {
+  const now = Date.parse('2026-10-28T21:30:00Z'), handoffs = [];
+  const waiting = {session: 's1', mode: 'auto', chosenAt: 'c1', state: 'waiting_to_submit', readyAt: now - 11 * 60000, manualOverride: false};
+  const controller = stuck => createBackgroundApplyController({}, {
+    store: {read: async () => waiting, handoff: async (_url, _id, _owner, reason) => { handoffs.push(reason); return {...waiting, state: 'needs_user_handoff', manualOverride: true, reason}; }},
+    browser: {start: async () => ({owner: 'o1'})}, terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/w', background: {}, ...(stuck ? {stuck} : {})}], record: () => null, report: () => {}},
+    config: () => ({mode: 'auto', chosenAt: 'c1', auto: {waitMin: 10}}), now: () => now, token: () => 't', notify: () => {}, stop: () => false, log: () => {}});
+  const stopped = await controller('stopped').handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(stopped.checks, [], 'no press after Stop');
+  assert.deepEqual(handoffs, ['stopped'], 'the job went to the person');
+  const untouched = await controller('').handle({action: 'poll', owner: 'o1'});
+  assert.deepEqual(untouched.checks, [{session: 's1'}], 'positive control: with no Stop the elapsed wait does ask for the press');
+});

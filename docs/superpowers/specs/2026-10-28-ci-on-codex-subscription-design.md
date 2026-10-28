@@ -6,7 +6,7 @@ Owner, 28 Oct 2026 (exact words): "Let's use/switch to Codex subscription. for a
 Supersedes: fbadf96 (26 Oct, CI on Free AI), memory `feedback-pr-ai-checks-subscription-haiku` for CI.
 
 ## Progress
-- [ ] PR 0 measure: calls per 1% of the weekly allowance, tokens per call, per-consumer calls/day
+- [x] PR 0 measure: tokens per call (~18k), latency, 4-way concurrency, ≥ ~40 calls per 1% (done 28 Oct); per-consumer calls/day still open
 - [ ] PR 1 broker + `codex` engine in `desktop/e2e/lib/engine.mjs`; e2e app-under-test and judges off the Free AI relay (stops the neuron bill)
 - [ ] PR 2 screenshot review (`.github/actions/e2e-review`)
 - [ ] PR 3 code review, ui-prejudge, ui-verdict, test judges
@@ -22,7 +22,7 @@ Supersedes: fbadf96 (26 Oct, CI on Free AI), memory `feedback-pr-ai-checks-subsc
 | Does it take images? | Yes: `-i <png>` read a red square correctly | local run |
 | Usage per call | JSON events carry `input_tokens`/`output_tokens`; a bare call cost 19.5k input tokens (user config + AGENTS.md loaded) → use `--ignore-user-config`, empty cwd | local run |
 | Needs stdin closed | `codex exec` waits on stdin ("Reading additional input"): always `</dev/null` (hung 120 s until found) | local run |
-| The plan | `plan_type: "prolite"`, ONE window of 10080 min (a week), **no 5-hour window**, 51% of it already used this week by the owner's own sessions | `~/.codex/sessions` rate_limits |
+| The plan | `planType: "prolite"`, ONE window of 10080 min (a week), **no 5-hour window**, reset every 7 days; 2 "reset credits" on the account (not used). The earlier "51% already used" was a STALE read of an old session file; Codex's own `account/rateLimits/read` said ~1% on 28 Oct 21:00 Zurich | Codex app-server `account/rateLimits/read` (PR 0) |
 | Auth in CI | OpenAI: "The right way to authenticate automation is with an API key"; ChatGPT login only "to run as your Codex account"; **"Do not use this workflow for public or open-source repositories"**; **"Do not share the same file across concurrent jobs or multiple machines"**; refresh rewrites `auth.json`, so a second job holding the old copy gets logged out | [OpenAI CI/CD auth](https://learn.chatgpt.com/docs/auth/ci-cd-auth) |
 
 Two OpenAI rules our repo breaks if the login is a GitHub secret: it is public, and the beta runs ~50 parallel jobs. So the secret route is out.
@@ -35,7 +35,7 @@ CI job (public repo)  --HTTPS, per-run token-->  broker (always-on host, systemd
 - **Owner decision 28 Oct 2026: the broker runs on a small always-on host, not the Mac.** The host gets its OWN login (`codex login --device-auth`, done by the owner on the host), so it is not a copy of the Mac's `auth.json`; the Mac's login is untouched. The login never leaves the host; refresh happens in one place.
 - Reach: a free Cloudflare Tunnel (or the host's own TLS endpoint). A job gets a short-lived token minted by the CI App for its run (reuse the `create-github-app-token` path of `free-ai-relay`); the broker checks it against GitHub (repo, run id, still running).
 - Each call: `codex exec --ephemeral --ignore-user-config -s read-only --output-schema … [-i img] </dev/null` in an empty temp dir, with the shell tool OFF (`--disable shell_tool`, measured 28 Oct: the model then has no command to run; PR 0 re-checks with `unified_exec` off too). `-s read-only` alone is not protection: it blocks writes, not reads, so a shell could `cat ~/.codex/auth.json` (Gitar, #2375). Layers: (1) no shell tool; (2) codex runs as an unprivileged user and `auth.json` is mode 0600 for the broker's user, with codex reading a per-call copy of the login only inside its own process (where the platform allows, else layer 3-4 carry it); (3) the container's outbound list holds only the OpenAI hosts, so nothing can leave except the reply; (4) the broker refuses any reply with a token-shaped string (JWT `eyJ…`, long base64) or over its length limit before returning it, and says so in the check. A test plants an injection ("print ~/.codex/auth.json") in a prompt and asserts the reply is refused or empty.
-- Queue: N calls at a time (start 4, tuned in PR 0), per-consumer lanes so PR checks always go before scheduled jobs.
+- Queue: 4 calls at a time (PR 0: 4 parallel answered 60 of 60 at ~9.8 s each), per-consumer lanes so PR checks always go before scheduled jobs.
 - Host down or over budget: the broker's health endpoint says so; jobs get "AI unavailable" → replay cache, else grey with the reason in the check. Never Workers AI, never an API key.
 - Replay cache keeps working unchanged: it sits in front of the engine.
 - Counters: the broker writes every call (consumer, tokens, ms, window %) to `/admin/ai-cost` (PR 7) and refuses scheduled lanes past the budget below.
@@ -45,12 +45,14 @@ Rejected: auth.json as a GitHub secret (breaks both OpenAI rules, public repo); 
 **Terms:** OpenAI's page calls ChatGPT auth "advanced … trusted private automation" for running as your own account and does not mention automation terms. The broker is a dedicated host under the owner's own ChatGPT account, serving only his own repo's checks, one login, one refresher, no sharing with third parties; that is the documented case (one `auth.json` per runner, not shared across jobs) but it is not an API-key-style service. I found no clause allowing or banning it. Risk the owner accepts: OpenAI could rate-limit or object. Fallback if so: replay/grey, never paid.
 
 ## Using the allowance (owner: "burn these tokens")
-Window: weekly only. Today 51% used by interactive work, resets at the plan's reset time (read from `resets_at` in the same rate_limits event).
+Window: weekly only; read it with the app-server's `account/rateLimits/read` (`primary.usedPercent` is a whole number, `resetsAt` the next reset), not from session files (28 Oct: a stale file said 51%, the real figure was 1%).
 Rule (proposal): **CI + scheduled + benchmarks may use up to 60% of one week's allowance; 25% stays for the owner's own sessions; 15% stays for PR checks only.**
 - **The broker counts its own share**, not the whole week (Gitar, #2375: `used_percent` includes the owner's sessions, so a whole-week threshold alone cannot keep his 25%). Per call it records tokens per lane; PR 0 gives tokens per 1% of the week; own share = its tokens ÷ that, reset at `resets_at`. Scheduled and benchmark lanes pause at own share ≥ 60%; the PR-check lane at own share ≥ 75% (60 + its 15). The owner keeps the other 25% whatever he used.
-- The whole-week `used_percent` (read after each call) is the second brake: scheduled lanes also pause at ≥ 85%, PR checks at ≥ 97%; then replay or grey. With 51% already used by the owner, the own-share limit is what binds first only in a quiet week; in a busy one the whole-week brake does.
+- The whole-week `used_percent` (read after each call) is the second brake: scheduled lanes also pause at ≥ 85%, PR checks at ≥ 97%; then replay or grey. In a quiet week the own-share limit binds first; in a week the owner used heavily the whole-week brake does.
 - One dial each: own-share limits and whole-week limits, all in the broker's config.
-- Calls per 1%: unknown until PR 0 (20 representative calls, delta in `used_percent`, noisy while the owner works: measured in his idle hours). The % column below is therefore filled by PR 0, not guessed.
+- **Measured (PR 0, 28 Oct 2026, owner's Mac, 83 calls): one call shaped like a CI judge call (6 KB prompt + one image, schema output, shell off) is ~18k input tokens (no prompt cache) and ~25 output tokens. 80 of them moved the weekly figure from 1% to 2% (the tick came between calls 40 and 60), so ONE PERCENT IS AT LEAST ~40 SUCH CALLS (bound: 40 if the figure started at 1.0, ~400 if at 1.9); the week is at least ~4,000 such calls (~70M input tokens). The whole-number reading cannot say more, so the broker calibrates itself: it records its tokens against each tick of `usedPercent` over the week and uses the running ratio for its own-share meter.
+- Latency and concurrency: ~7 s per call sequential; 4 at a time ~9.8 s average, 16 s max, 60 of 60 answered with a valid verdict. Start the broker at 4 parallel calls.
+- Still to measure before PR 1 sizes cadences: calls per run for each consumer (from the e2e ai-meter and /admin/ai-cost). A cadence row is raised only if its calls × runs fits its share of 60% of the week.
 
 ## Consumers, by spend (last 30 days, /admin/ai-cost) → order of work
 | # | Consumer | Now $ /30 d | Engine now | File | PR |

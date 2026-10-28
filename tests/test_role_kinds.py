@@ -123,7 +123,7 @@ class NotWarningsTests(unittest.TestCase):
         self.assertIn('skipped|failed', js, 'the app still reads these words as warnings; update this test if that changed')
         prefixes = ('Job boards:', 'Scout: reading', 'Employers:', 'Employers resting:')
         for path in ('src/sources/boards.py', 'src/scout.py', 'src/scout_core.py', 'src/scout_candidates.py', 'src/scout_probe.py', 'src/scout_notion.py',
-                     'src/scout_index.py', 'src/daily.py', 'src/daily_modes.py', 'src/daily_search.py', 'src/daily_helpers.py', 'src/sources/feeds.py'):
+                     'src/scout_index.py', 'src/daily.py', 'src/daily_modes.py', 'src/daily_search.py', 'src/daily_search_scoring.py', 'src/daily_search_reporting.py', 'src/daily_helpers.py', 'src/sources/feeds.py'):
             for line in (ROOT / path).read_text().splitlines():
                 if 'print(' in line and any(prefix in line for prefix in prefixes):
                     self.assertIsNone(warning.search(line), f'{path}: {line.strip()[:120]}')

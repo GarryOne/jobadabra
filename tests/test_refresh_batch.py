@@ -36,9 +36,9 @@ class BatchTests(unittest.TestCase):
         import inspect
         from src.ai import score
         self.assertIn('only_ids', inspect.signature(score.run).parameters)
-        source = open('src/daily_search.py').read()
+        source = open('src/daily_search_scoring.py').read()
         self.assertIn("if args.enrich_max and batch is None:", source, 'with a batch, no reading before scoring')
-        self.assertLess(source.index('on_scored=to_notion, only_ids=batch)'), source.index('if args.enrich_max and batch is not None:'),
+        self.assertLess(source.index('score_candidates(args, stores, db, run, read_profile, hidden, dismissed, batch, batch_started, time_budget)'), source.index('if args.enrich_max and batch is not None:'),
                         'reading comes after scoring')
         self.assertIn("time_budget.batch('score', len(waiting))", source, 'the batch is sized at the scoring pace')
 

@@ -75,7 +75,7 @@ class ClassTests(unittest.TestCase):
         source = Path('src/ai/score.py').read_text()
         self.assertIn("budget.may_score()", source)
         self.assertNotRegex(source, r"over\('score'\)", 'a score starts through may_score, which keeps the floor')
-        self.assertTrue(re.search(r"batch\('score'", Path('src/daily_search.py').read_text()))
+        self.assertTrue(re.search(r"batch\('score'", Path('src/daily_search_scoring.py').read_text()))
 
 
 if __name__ == '__main__':

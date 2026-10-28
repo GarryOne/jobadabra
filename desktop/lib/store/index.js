@@ -13,7 +13,7 @@ import * as notionStore from './notion.js';
 import * as sqliteStore from './sqlite.js';
 
 export {CLOUD, FILES, LINKS} from './caps.js';
-export const TEXTS = ['profile', 'answers', 'knowledge'];
+export const TEXTS = ['profile', 'answers', 'knowledge', 'portrait'];
 const ADAPTERS = {[notionStore.NAME]: notionStore, [sqliteStore.NAME]: sqliteStore};
 export const NAMES = Object.keys(ADAPTERS);
 

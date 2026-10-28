@@ -27,8 +27,15 @@ const SKIP = /(^|\/)(node_modules|vendor|shared|\.design-system|dist|build)\//;
 let linter;
 async function eslint() {
   if (linter) return linter;
-  const {ESLint} = requireDesktop('eslint');
-  const sonarjs = requireDesktop('eslint-plugin-sonarjs');
+  let ESLint, sonarjs;
+  try {
+    ({ESLint} = requireDesktop('eslint'));
+    sonarjs = requireDesktop('eslint-plugin-sonarjs');
+  } catch (error) {
+    if (error.code !== 'MODULE_NOT_FOUND') throw error;
+    // Why (28 Oct 2026, #2414): the shared desktop/node_modules in a worktree can predate the lock that added the plugin.
+    throw new Error(`clean-code: ${error.message.split('\n')[0]}. The shared node_modules is older than the lock: cd ~/jobadabra/desktop && npm ci (primary checkout only, never through a worktree link).`);
+  }
   linter = new ESLint({
     overrideConfigFile: true,
     overrideConfig: [{files: ['**/*.js', '**/*.mjs', '**/*.cjs'], languageOptions: {sourceType: 'module', ecmaVersion: 'latest'}, plugins: {sonarjs: sonarjs.default ?? sonarjs}, rules: RULES}],
@@ -83,12 +90,20 @@ export function baseCommit(cwd = root) {
   return 'origin/main';
 }
 
+/**
+ * The in-scope JS files the committed HEAD adds or edits since `base`, as [{path, source, added}]: the pushed commits only (never the working
+ * tree) and renames counted as new files, so a moved-and-edited file is checked too.
+ */
+export function changedFiles(base, cwd = root) {
+  const names = gitIn(cwd, 'diff', '--name-only', '--no-renames', '--diff-filter=AM', base, 'HEAD').split('\n').filter(n => SCOPE.test(n) && !SKIP.test(n));
+  return names.map(name => ({path: name, source: gitIn(cwd, 'show', `HEAD:${name}`), added: addedLines(gitIn(cwd, 'diff', '-U0', '--no-renames', base, 'HEAD', '--', name))}));
+}
+
 async function main() {
   const base = process.argv[2] || baseCommit();
   if (!base) { console.error('clean-code: no origin/main to compare with, nothing checked'); return; }
-  const names = git('diff', '--name-only', '--diff-filter=AM', base).split('\n').filter(n => SCOPE.test(n) && !SKIP.test(n));
-  const files = names.map(name => ({path: name, source: fs.readFileSync(path.join(root, name), 'utf8'), added: addedLines(git('diff', '-U0', base, '--', name))}));
-  const found = await check(files);
+  let found;
+  try { found = await check(changedFiles(base)); } catch (error) { console.error(error.message); process.exit(1); }
   for (const f of found) console.error(`${f.path}:${f.line}  ${f.rule}  ${f.message}`);
   if (found.length) {
     console.error(`clean-code: ${found.length} finding(s) on lines this change adds. Split the function or reuse the existing one; a justified exception: // eslint-disable-next-line <rule> -- Why (<PR or date>): <reason>`);

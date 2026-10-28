@@ -203,6 +203,11 @@ if command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" d
   classes="$(cd "$repo/desktop" && timed "renderer class tests" node --test $class_tests 2>&1)" || { echo "Push blocked: a renderer class test fails (CI would be red):
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)" >&2; exit 2; }
 fi
+# New Python code (src/, tools/) over McCabe complexity 15, with an unused import or local, a lambda over a loop variable or a raise in except without `from`
+# is refused on the lines a push adds, never old code (tools/clean-code-py.py, Ruff pinned; owner, 28 Oct 2026; CI's pr-gate runs this script too).
+if command -v python3 >/dev/null && [ -f "$repo/tools/clean-code-py.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
+  cleanpy="$(cd "$repo" && timed "clean code (python)" python3 tools/clean-code-py.py --base origin/main 2>&1)" || { echo "Push blocked: $cleanpy" >&2; exit 2; }
+fi
 # A Progress box a pull request ticks names its proof file, and the pull request contains it (or names the commit on main that changed it): tools/spec-proof.mjs.
 if command -v node >/dev/null && [ -f "$repo/tools/spec-proof.mjs" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   proof="$(cd "$repo" && timed "spec proof" node tools/spec-proof.mjs --base origin/main 2>&1)" || { echo "Push blocked: $proof" >&2; exit 2; }

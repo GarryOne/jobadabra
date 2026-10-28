@@ -5,52 +5,37 @@ Why (28 Oct 2026, mac-27): `npm ci` in a worktree wiped the shared desktop/node_
 import json
 import os
 import re
-import shlex
 import sys
 
-INSTALLS = {'ci', 'install', 'i', 'add', 'update', 'up', 'uninstall', 'rebuild', 'dedupe', 'prune'}
+INSTALL = re.compile(r'\bnpm\b[^;&|\n)]*?\s(ci|install|i|add|update|up|uninstall|rebuild|dedupe|prune)(\s|$|;|\))')
+PACKAGE_DIRS = ('.', 'desktop', 'desktop/e2e', 'worker', 'site')   # the folders tools/worktree.sh links
 
 
-def targets(command, cwd):
-    """Each directory an npm install in `command` would write its node_modules into."""
-    here = cwd
-    for segment in re.split(r'&&|\|\||;|\n|\|', command):
-        try:
-            words = shlex.split(segment)
-        except ValueError:
-            words = segment.split()
-        if words[:1] == ['cd'] and len(words) > 1:
-            here = os.path.normpath(os.path.join(here, os.path.expanduser(words[1])))
-            continue
-        if 'npm' not in words:
-            continue
-        rest = words[words.index('npm') + 1:]
-        prefix = None
-        for flag in ('--prefix', '-C', '--workspace-root'):
-            if flag in rest and rest.index(flag) + 1 < len(rest):
-                prefix = rest[rest.index(flag) + 1]
-        verb = next((w for w in rest if not w.startswith('-') and w != prefix), None)
-        if verb in INSTALLS:
-            yield os.path.normpath(os.path.join(here, prefix)) if prefix else here
-
-
-def repo_dir(target):
-    """The package dir relative to the checkout that holds it (the argument `tools/worktree.sh own-modules` takes)."""
-    root = target
+def repo_root(start):
+    root = os.path.abspath(start)
     while root != os.path.dirname(root) and not os.path.exists(os.path.join(root, '.git')):
         root = os.path.dirname(root)
-    return os.path.relpath(target, root)
+    return root
+
+
+def linked(root):
+    """Package dirs of this checkout whose node_modules is a link into another checkout."""
+    return [d for d in PACKAGE_DIRS if os.path.islink(os.path.join(root, d, 'node_modules'))]
 
 
 def main():
     data = json.load(sys.stdin)
     command, cwd = data.get('tool_input', {}).get('command', ''), data.get('cwd') or os.getcwd()
-    for target in targets(command, cwd):
-        modules = os.path.join(target, 'node_modules')
-        if os.path.islink(modules):
-            print(f'Blocked: {modules} is a link to {os.path.realpath(modules)}, and npm would empty that shared folder for every worktree.\n'
-                  f'Give this worktree its own first: tools/worktree.sh own-modules {repo_dir(target)} (removes only the link), then run npm there.', file=sys.stderr)
-            sys.exit(2)
+    # Why (28 Oct 2026, #2414): a parser of cd/--prefix/subshell forms was bypassed twice; the state is judged instead: any npm install verb anywhere,
+    # while any package dir of this checkout is linked, is refused (an over-block costs one `own-modules` call, a miss empties every worktree).
+    if not INSTALL.search(command):
+        return
+    root = repo_root(cwd)
+    links = linked(root)
+    if links:
+        print('Blocked: npm install/ci/update while ' + ', '.join(f'{d}/node_modules' for d in links) + ' link into another checkout: npm would empty that shared folder for every worktree.\n'
+              + 'Give this worktree its own first (removes only the link): ' + ' && '.join(f'tools/worktree.sh own-modules {d}' for d in links) + ', then run npm.', file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == '__main__':

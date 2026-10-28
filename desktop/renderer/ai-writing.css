@@ -1,0 +1,51 @@
+/* The AI writing a text box (ai-writing.js; owner, 28 Oct 2026: option A, then "Make it more like a glowing/magic"), from the app's magic look (magic.css,
+   components.css .is-lit): a lit strip above the box (a twinkling sparkle, the title shimmering, a live m:ss, one muted line); around the box a frame whose
+   amber light circles its edge and breathes; star sparkles over the old text, which is faded under a slow amber sweep; letter-shaped skeleton lines when
+   there is no text yet. Everything stops with reduced motion. Guarded by test/ai-writing.test.js. */
+.ai-writing-strip { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2);
+  border: 1px solid var(--lit-line); border-radius: var(--r-md); font-size: var(--fs-base); font-weight: 400;
+  background: radial-gradient(60% 160% at 0% 50%, var(--lit-glow), transparent 70%), var(--surface); animation: ai-writing-in .28s var(--ease); }
+.ai-writing-strip > .icon { width: 18px; height: 18px; flex: none; color: var(--signal); filter: drop-shadow(0 0 6px rgb(var(--signal-rgb) / .7));
+  animation: ai-writing-twinkle 1.8s ease-in-out infinite; }
+.ai-writing-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); min-width: 0; }
+.ai-writing-words b { font-weight: 600; }
+.ai-writing-title { background: linear-gradient(100deg, var(--ink) 38%, var(--signal) 50%, var(--ink) 62%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: ai-writing-sweep 2.4s linear infinite; }
+.ai-writing-time { font-variant-numeric: tabular-nums; }
+.ai-writing-words small { font-size: var(--fs-sm); }
+
+@property --ai-writing-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.ai-writing-frame { position: relative; isolation: isolate; border-radius: var(--r-md); animation: ai-writing-breathe 2.8s ease-in-out infinite; }
+.ai-writing-frame::after { content: ""; position: absolute; inset: -1px; z-index: 2; padding: 2px; border-radius: inherit; pointer-events: none;
+  background: conic-gradient(from var(--ai-writing-angle), transparent 0 8%, rgb(var(--signal-rgb)) 22%, var(--teal) 32%, transparent 42% 58%,
+    rgb(var(--signal-rgb)) 72%, var(--teal) 82%, transparent 92%);
+  -webkit-mask: linear-gradient(var(--ink) 0 0) content-box, linear-gradient(var(--ink) 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(var(--ink) 0 0) content-box exclude, linear-gradient(var(--ink) 0 0); animation: ai-writing-orbit 3s linear infinite; }
+.is-ai-writing { position: relative; color: color-mix(in srgb, var(--ink) 38%, transparent);
+  background-image: linear-gradient(105deg, transparent 36%, rgb(var(--signal-rgb) / .24) 50%, transparent 64%);
+  background-size: 250% 100%; background-repeat: no-repeat; animation: ai-writing-sweep 2.4s var(--ease) infinite; }
+.ai-writing-bones { display: grid; gap: 10px; align-content: start; min-height: 180px; padding: 14px 12px; background: var(--field);
+  border: 1px solid var(--field-line); border-radius: var(--r-md); }
+.ai-writing-gap { height: 4px; }
+/* The shared star with a halo: the span is the soft light, its ::before the star (a clip-path would cut the halo off). */
+.magic-spark.ai-writing-spark { clip-path: none; background: radial-gradient(circle, rgb(var(--signal-rgb) / .45), transparent 65%);
+  animation: ai-writing-spark 1.6s ease-in-out forwards; }
+.magic-spark.ai-writing-spark::before { content: ""; position: absolute; inset: 22%; background: var(--signal);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+.magic-spark.ai-writing-spark.is-teal { background: radial-gradient(circle, color-mix(in srgb, var(--teal) 45%, transparent), transparent 65%); }
+.magic-spark.ai-writing-spark.is-teal::before { background: var(--teal); }
+
+@keyframes ai-writing-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes ai-writing-sweep { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+@keyframes ai-writing-orbit { to { --ai-writing-angle: 360deg; } }
+@keyframes ai-writing-breathe { 0%, 100% { box-shadow: 0 0 0 1px rgb(var(--signal-rgb) / .22), 0 0 16px rgb(var(--signal-rgb) / .14); }
+  50% { box-shadow: 0 0 0 1px rgb(var(--signal-rgb) / .45), 0 0 40px rgb(var(--signal-rgb) / .34); } }
+@keyframes ai-writing-twinkle { 0%, 100% { opacity: .6; transform: scale(.85) rotate(-10deg); } 50% { opacity: 1; transform: scale(1.1) rotate(12deg); } }
+@keyframes ai-writing-spark { 0% { opacity: 0; transform: translate(0, 0) scale(.2) rotate(0); }
+  35% { opacity: 1; transform: translate(calc(var(--dx) * .4), calc(var(--dy) * .4)) scale(1) rotate(45deg); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3) rotate(120deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-writing-strip, .ai-writing-strip > .icon, .ai-writing-title, .ai-writing-frame, .ai-writing-frame::after, .is-ai-writing { animation: none; }
+  .is-ai-writing { background-image: none; }
+  .ai-writing-frame { box-shadow: 0 0 0 1px rgb(var(--signal-rgb) / .34); }
+}

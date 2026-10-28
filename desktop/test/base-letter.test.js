@@ -63,19 +63,16 @@ test('the empty state is the shared one (page-parts.js emptyState) with two choi
   assert.match(source, /profileBar\(\)\.register\(\{id: 'base-letter', tab: 'letter'/);
   for (const text of [panel, source]) assert.doesNotMatch(text, /\$\d|\d+\s?s\b|seconds|\$5 credit/, 'no price or duration from the mockup');
   assert.doesNotMatch(panel, /letter-fallback|Use this approved base letter/);
-  assert.match(panel, /id="letter-busy" hidden role="status" aria-live="polite"/);
-  assert.match(panel, /aria-atomic="true" aria-label="Cover letter draft status"/);
-  const styles = fs.readFileSync(new URL('../renderer/style.css', import.meta.url), 'utf8');
-  assert.match(styles, /\.letter-card-busy \{[^}]*position: absolute;[^}]*pointer-events: auto/);
-  assert.match(styles, /prefers-reduced-motion: reduce\) \{\s*\.letter-card-busy::before, \.letter-busy-sparkles \.icon \{ animation: none;/);
+  // Owner, 28 Oct 2026: the overlay's sparkles and pill sat on the letter's text; the shared AI-writing strip sits above the letter instead.
+  assert.doesNotMatch(panel, /letter-busy|letter-card-busy/, 'no overlay over the letter');
+  assert.match(source, /stop = aiWriting\(editor, \{title:/, 'a draft shows the shared AI-writing state (ai-writing.js)');
 });
 
 test('an explicit redraft marks the whole card busy once and restores the approved PDF after failure', async () => {
   globalThis.document.body.replaceChildren();
-  const ids = ['setting-letter', 'letter-editor', 'letter-text', 'letter-feedback', 'letter-draft', 'letter-approve', 'letter-pdf', 'letter-state', 'letter-message', 'letter-empty', 'letter-busy', 'profile-dock'];
+  const ids = ['setting-letter', 'letter-editor', 'letter-text', 'letter-feedback', 'letter-draft', 'letter-approve', 'letter-pdf', 'letter-state', 'letter-message', 'letter-empty', 'profile-dock'];
   for (const id of ids) globalThis.document.body.append(Object.assign(globalThis.document.createElement(id === 'letter-text' ? 'textarea' : 'div'), {id}));
   const card = globalThis.document.getElementById('setting-letter'), draft = globalThis.document.getElementById('letter-draft');
-  globalThis.document.getElementById('letter-busy').append(Object.assign(globalThis.document.createElement('span'), {className: 'letter-busy-copy'}));
   card.className = 'setting panel roomy';
   globalThis.document.getElementById('letter-text').setAttribute('data-reads-letter', 'Reading your letter…');
   globalThis.document.getElementById('letter-text').focus = () => { globalThis.document.activeElement = globalThis.document.getElementById('letter-text'); };
@@ -98,23 +95,24 @@ test('an explicit redraft marks the whole card busy once and restores the approv
   draft.click();
   draft.click();
   await new Promise(resolve => setImmediate(resolve));
-  const during = {calls, confirms, busy: card.getAttribute('aria-busy'), overlayHidden: globalThis.document.getElementById('letter-busy').hidden,
+  const during = {calls, confirms, busy: text.getAttribute('aria-busy'), strip: globalThis.document.querySelector('.ai-writing-strip')?.textContent || '',
     focus: globalThis.document.activeElement, text: text.value, readOnly: text.readOnly, pdfHidden: globalThis.document.getElementById('letter-pdf').hidden,
     draftDisabled: draft.disabled, pdfDisabled: globalThis.document.getElementById('letter-pdf').disabled};
   finish({ok: false, error: 'Fictional generation failure'});
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(during.confirms, 1, 'the existing replacement confirmation remains in front of drafting');
   assert.equal(during.calls, 1, 'double activation shares the in-flight request');
-  assert.equal(during.busy, 'true');
-  assert.equal(during.overlayHidden, false);
+  assert.equal(during.busy, 'true', 'the letter box is marked busy, not the whole card');
+  assert.match(during.strip, /^Writing a new draft · 0:00/, 'the strip says what runs, with its timer');
   assert.equal(during.focus, draft, 'busy treatment does not steal focus from the action');
   assert.equal(during.text, 'Typed working copy that should survive a failed redraft', "the user's text stays visible while generation runs");
   assert.equal(during.readOnly, true, 'typing cannot race the paid request');
   assert.equal(during.pdfHidden, false, 'the approved PDF remains visible during redraft');
   assert.equal(during.draftDisabled, true);
   assert.equal(during.pdfDisabled, true, 'the old PDF cannot be opened as the new draft');
-  assert.equal(card.getAttribute('aria-busy'), null);
-  assert.equal(globalThis.document.getElementById('letter-busy').hidden, true);
+  assert.equal(text.getAttribute('aria-busy'), null);
+  assert.equal(globalThis.document.querySelector('.ai-writing-strip'), null, 'the strip goes with the failure');
+  assert.match(globalThis.document.getElementById('letter-state').textContent, /^Approved /, 'the card is back to the approved letter it kept');
   assert.equal(Boolean(text.readOnly), false, 'editing is restored after failure');
   assert.equal(globalThis.document.getElementById('letter-pdf').hidden, false, 'a failed redraft keeps the prior approved PDF');
   assert.equal(draft.disabled, false, 'the draft action is restored after failure');
@@ -123,10 +121,9 @@ test('an explicit redraft marks the whole card busy once and restores the approv
 
 test('only the explicit draft action generates and returns an unapproved draft without a PDF', async () => {
   globalThis.document.body.replaceChildren();
-  const ids = ['setting-letter', 'letter-editor', 'letter-text', 'letter-feedback', 'letter-draft', 'letter-approve', 'letter-pdf', 'letter-state', 'letter-message', 'letter-empty', 'letter-busy', 'profile-dock'];
+  const ids = ['setting-letter', 'letter-editor', 'letter-text', 'letter-feedback', 'letter-draft', 'letter-approve', 'letter-pdf', 'letter-state', 'letter-message', 'letter-empty', 'profile-dock'];
   for (const id of ids) globalThis.document.body.append(Object.assign(globalThis.document.createElement(id === 'letter-text' ? 'textarea' : 'div'), {id}));
   globalThis.document.getElementById('setting-letter').className = 'setting panel roomy';
-  globalThis.document.getElementById('letter-busy').append(Object.assign(globalThis.document.createElement('span'), {className: 'letter-busy-copy'}));
   globalThis.document.getElementById('letter-text').setAttribute('data-reads-letter', 'Reading your letter…');
   globalThis.document.getElementById('letter-draft').append(globalThis.document.createElement('span'));
   let calls = 0;
@@ -147,4 +144,79 @@ test('only the explicit draft action generates and returns an unapproved draft w
   assert.equal(globalThis.document.getElementById('letter-pdf').hidden, true);
   assert.equal(globalThis.document.getElementById('letter-approve').disabled, false, 'approval remains an explicit next step');
   assert.equal(globalThis.document.getElementById('setting-letter').getAttribute('aria-busy'), null);
+});
+
+// The card's elements, fresh for a test (the ids pages/base-letter.js reads).
+function freshCard() {
+  const doc = globalThis.document;
+  doc.body.replaceChildren();
+  for (const id of ['setting-letter', 'letter-editor', 'letter-text', 'letter-feedback', 'letter-draft', 'letter-approve', 'letter-pdf', 'letter-state', 'letter-message', 'letter-empty', 'profile-dock']) {
+    doc.body.append(Object.assign(doc.createElement(id === 'letter-text' ? 'textarea' : 'div'), {id}));
+  }
+  doc.getElementById('letter-text').setAttribute('data-reads-letter', 'Reading your letter…');
+  doc.getElementById('letter-draft').append(doc.createElement('span'));
+  globalThis.confirm = () => true;
+  return id => doc.getElementById(id);
+}
+const settle = () => new Promise(resolve => setImmediate(resolve));
+
+// The owner's shot (28 Oct 2026): an approved letter, "Approved ✓ …" under the buttons from the approve, then Redraft with AI. The card kept saying
+// Approved while a new draft was written, and the old letter read as the result.
+test("the owner's redraft: nothing on the card says Approved while the AI writes; the old letter stays until the new one lands", async () => {
+  const $ = freshCard();
+  let finish;
+  globalThis.window.pilot = {state: async () => ({settings: {}}), coverLetter: async () => ({state: 'draft', text: 'Fictional letter', pdf: false}),
+    coverLetterApprove: async () => ({ok: true, state: 'approved', text: 'Fictional letter', pdf: true, approvedAt: '2026-10-28T17:40:00Z'}),
+    coverLetterDraft: () => new Promise(resolve => { finish = resolve; })};
+  const {initLetter, loadLetter} = await import('../renderer/pages/base-letter.js');
+  initLetter();
+  await loadLetter();
+  $('letter-approve').click();
+  await settle();
+  assert.match($('letter-message').textContent, /^Approved ✓/, 'the owner approved first: the line under the buttons says so');
+  $('letter-draft').click();
+  await settle();
+  assert.doesNotMatch(globalThis.document.body.textContent, /Approved/, 'neither the pill nor the line under the buttons says Approved while it writes');
+  assert.equal($('letter-state').textContent, 'Writing…');
+  assert.match(globalThis.document.querySelector('.ai-writing-strip').textContent, /^Writing a new draft · 0:00Your current letter stays until the new one is ready\.$/);
+  assert.equal($('letter-text').value, 'Fictional letter', 'the old letter is kept while the new one is written');
+  assert.match($('letter-text').className, /\bis-ai-writing\b/, 'and shown faded (ai-writing.css)');
+  assert.equal($('letter-draft').getAttribute('aria-busy'), 'true');
+  assert.equal($('letter-draft').querySelector('span').textContent, 'Writing…');
+  assert.equal($('letter-feedback').disabled, true, 'a change asked now would not reach this draft');
+  finish({ok: true, state: 'draft', text: 'Fictional new draft', pdf: false});
+  await settle();
+  assert.equal(globalThis.document.querySelector('.ai-writing-strip'), null);
+  assert.equal($('letter-text').value, 'Fictional new draft');
+  assert.doesNotMatch($('letter-text').className, /is-ai-writing/);
+  assert.match($('letter-state').textContent, /^Draft/);
+  assert.match($('letter-message').textContent, /^Here is a draft/);
+  assert.equal($('letter-draft').getAttribute('aria-busy'), null);
+  assert.equal($('letter-feedback').disabled, false);
+});
+
+test('a first draft from the empty state: the editor opens on letter-shaped skeleton lines under the strip; a failure brings the empty state back', async () => {
+  const $ = freshCard();
+  let finish;
+  globalThis.window.pilot = {state: async () => ({settings: {}}), coverLetter: async () => ({state: 'none', text: '', pdf: false}),
+    coverLetterDraft: () => new Promise(resolve => { finish = resolve; })};
+  const {initLetter, loadLetter} = await import('../renderer/pages/base-letter.js');
+  initLetter();
+  await loadLetter();
+  assert.equal($('letter-editor').hidden, true, 'no letter yet: the empty state with its two choices');
+  $('letter-start-ai').click();
+  await settle();
+  assert.equal($('letter-editor').hidden, false, 'the editor shows while the first draft is written');
+  assert.equal($('letter-empty').hidden, true);
+  assert.match(globalThis.document.querySelector('.ai-writing-strip').textContent, /^Writing your first draft · 0:00/);
+  assert.ok(globalThis.document.querySelector('.ai-writing-bones'), 'the letter\'s shape in skeleton lines, not an empty box');
+  assert.equal($('letter-text').hidden, true);
+  assert.equal($('letter-state').textContent, 'Writing…');
+  finish({ok: false, error: 'Fictional generation failure'});
+  await settle();
+  assert.equal(globalThis.document.querySelector('.ai-writing-bones'), null);
+  assert.equal($('letter-text').hidden, false);
+  assert.equal($('letter-editor').hidden, true, 'nothing was written: the empty state again');
+  assert.equal($('letter-state').textContent, 'Not created');
+  assert.match($('letter-message').textContent, /Fictional generation failure/);
 });

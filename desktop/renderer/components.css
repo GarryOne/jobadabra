@@ -628,6 +628,7 @@ button.secondary.is-signal { color: var(--signal-ink); border-color: var(--signa
 button[aria-busy="true"]::before { content: ""; display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px;
   border: 2px solid var(--line); border-top-color: var(--signal-edge); border-radius: 50%; animation: spin .8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation: none; } }
+button[aria-busy="true"] > .icon { display: none; }   /* the spinner stands in for the button's own icon (a Redraft showed both, 28 Oct 2026) */
 
 /* setCount (components.js): a counter that changes flashes once, its card glows with it. */
 @keyframes count-pop-up { 0% { transform: scale(1); } 30% { transform: scale(1.18); color: var(--good); } 100% { transform: scale(1); } }

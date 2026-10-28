@@ -3,8 +3,8 @@
 /**
  * push(frame) keeps the newest picture and asks for one paint; at the next refresh paint(frame) runs once with that newest picture; clear() drops one not painted yet.
  * schedule(fn): the display refresh (requestAnimationFrame in the window; a manual clock in tests).
- * Why (2026-10-28, owner: "the live view it's very laggish"): main sends a picture per screencast frame (measured 47 a second, 13-23 KB each) and the window decodes each one;
- * idle it keeps up at about 45 a second, a busy window does not, and the queued pictures made the view run behind. A stale picture is worth nothing: drop it before it is decoded.
+ * Why (2026-10-28, owner: "the live view it's very laggish"): main sends a picture per screencast frame (measured 47 a second, 13-23 KB each) and the window sets each on the image.
+ * Hypothesis, not yet measured on the owner's Mac: a busy window falls behind setting each one. A stale picture is worth nothing, so only the newest is painted; createLagMeter's log line confirms or refutes this.
  * Invariants: at most one paint is scheduled at a time; a paint always shows the last picture pushed before it; no picture, no paint.
  */
 export function createFramePacer(paint, schedule = requestAnimationFrame) {
@@ -18,6 +18,16 @@ export function createFramePacer(paint, schedule = requestAnimationFrame) {
     push(frame) { newest = frame; if (!scheduled) { scheduled = true; schedule(run); } },
     clear() { newest = null; },
   };
+}
+
+/**
+ * The window's picture: first(message) paints at once, frame(message) paints the newest once per refresh; both set `img.src` and call onShown(message) (size and lag bookkeeping).
+ * The one place a stream picture reaches the image. Guard: test/live-frames.test.js.
+ */
+export function createPictureSink(img, schedule = requestAnimationFrame, onShown = () => {}) {
+  const show = message => { img.src = `data:image/jpeg;base64,${message.data}`; onShown(message); };
+  const pacer = createFramePacer(show, schedule);
+  return {first: show, frame: pacer.push, clear: pacer.clear};
 }
 
 /**

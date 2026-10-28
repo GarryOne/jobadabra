@@ -1,8 +1,8 @@
 // The live view shows the NEWEST picture, never a backlog (owner, 28 Oct 2026: "the live view it's very laggish"): measured, the stream is fast (47 frames a second, 13-23 KB each)
-// and the window shows about 45 a second when idle, so on a busy window the old pictures queue up and the view runs seconds behind. renderer/live-frames.js drops what is stale.
+// and the window shows about 45 a second when idle, a busy window may fall behind setting each one (a hypothesis until the lag log shows it). renderer/live-frames.js drops what is stale.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createFramePacer, createLagMeter} from '../renderer/live-frames.js';
+import {createFramePacer, createLagMeter, createPictureSink} from '../renderer/live-frames.js';
 
 // A manual clock: schedule() queues the paint, tick() is one display refresh.
 const clock = () => { const queue = []; return {schedule: fn => { queue.push(fn); return queue.length; }, tick: () => queue.splice(0).forEach(fn => fn()), pending: () => queue.length}; };
@@ -43,11 +43,18 @@ test('clear drops a picture that has not painted yet (the view moved to another 
   assert.deepEqual(painted, []);
 });
 
-test('the window paints stream pictures only through the pacer: no picture is set on the image anywhere else but showPicture', async () => {
-  const {readFileSync} = await import('node:fs');
-  const page = readFileSync(new URL('../renderer/pages/session-live.js', import.meta.url), 'utf8');
-  assert.equal((page.match(/\.img\.src\s*=|v\.img\.src\s*=/g) || []).length, 1, 'one place sets the picture: showPicture');
-  assert.match(page, /kind === 'frame'\) view\.frames\.push\(message\)/, 'a frame goes to the pacer, not to the image');
+test('the window\'s picture sink: the first picture shows at once; a burst of frames sets the image once, to the newest, at the next refresh', () => {
+  const {schedule, tick} = clock(), img = {src: ''}, shown = [];
+  const sink = createPictureSink(img, schedule, message => shown.push(message.data));
+  sink.first({data: 'first'});
+  assert.equal(img.src, 'data:image/jpeg;base64,first');
+  for (let i = 1; i <= 50; i++) sink.frame({data: `f${i}`});
+  assert.equal(img.src, 'data:image/jpeg;base64,first', 'nothing is set between refreshes');
+  tick();
+  assert.equal(img.src, 'data:image/jpeg;base64,f50');
+  assert.deepEqual(shown, ['first', 'f50'], 'the 49 stale pictures were never set on the image');
+  sink.frame({data: 'late'}); sink.clear(); tick();
+  assert.equal(img.src, 'data:image/jpeg;base64,f50', 'a cleared picture never paints');
 });
 
 test('the lag meter reports how old the painted pictures were and how many a second, then starts over', () => {

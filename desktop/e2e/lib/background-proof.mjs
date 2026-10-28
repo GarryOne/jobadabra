@@ -1,4 +1,4 @@
-/* global window */
+/* global document, window */
 // Job: wait on state. The end-to-end proof of Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills a fictional
 // form, the person's Submit (liveSubmit, after the app re-reads the page) lands, the job becomes Applied. Only the fixture server and the proxy's stand-ins answer; every
 // wait is on a state the app shows (the session's background state, the stage), the cap only catches a hang.

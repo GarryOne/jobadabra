@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {startAiProxy} from './ai-proxy.mjs';
+import {aiProvider} from './ai-provider.mjs';
+import {answerViaBroker} from './broker-relay.mjs';
 import {startNotionProxy} from './notion-proxy.mjs';
 import {startTelegramFake} from './telegram-fake.mjs';
 import {startGoogleFake} from './google-fake.mjs';
@@ -89,7 +91,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   ctx.built = onNotion && !fresh && await workspaceReady(token);
   ctx.feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-feeds-'));
   fs.cpSync(path.join(E2E, 'fixtures', 'feeds'), ctx.feeds, {recursive: true});
-  ctx.proxy = await startAiProxy({delayMs: 0, ...(family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});   // CI on Free AI: the app's calls go on to the relay
+  ctx.proxy = await startAiProxy({delayMs: 0, ...(aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});   // CI on Free AI: the app's calls go on to the relay
   // The OpenAI engine's calls (the app's and the engine's SDK follow OPENAI_BASE_URL in a test run): metered as app-openai, replayed like Claude's, and they obey
   // ctx.proxy's controls: a suite's stand-ins (setCanned), faults (setMode) and delay apply on an OpenAI turn too, in OpenAI's own shapes (lib/ai-proxy.mjs).
   ctx.openaiProxy = ctx.family === 'openai' ? await startAiProxy({target: 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: ctx.proxy}) : null;

@@ -10,9 +10,9 @@ import path from 'node:path';
 import {usageCost} from './vision.mjs';
 
 const blank = () => ({calls: 0, usd: 0, unpriced: 0, replayed: 0, saved: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0});
-let tally = {app: blank(), 'app-openai': blank(), 'app-free': blank(), judges: blank()}, errors = {};   // app-openai: the app under test on an OpenAI engine (reported with provider openai); app-free: on Free AI (Workers AI models: counted, never priced as Claude)
+let tally = {app: blank(), 'app-openai': blank(), 'app-free': blank(), 'app-codex': blank(), judges: blank()}, errors = {};   // app-openai: the app under test on an OpenAI engine (reported with provider openai); app-free: on Free AI (Workers AI models: counted, never priced as Claude)
 export const usage = () => tally;
-export const resetUsage = () => { tally = {app: blank(), 'app-openai': blank(), 'app-free': blank(), judges: blank()}; errors = {}; };
+export const resetUsage = () => { tally = {app: blank(), 'app-openai': blank(), 'app-free': blank(), 'app-codex': blank(), judges: blank()}; errors = {}; };
 
 // A call Anthropic refused: its status and the API's own error type and message (never the request), counted per distinct answer. 7 Oct 2026: the app
 // said only "AI limit reached" for both a spend limit and an empty credit balance, and nothing showed which one the e2e key had hit.

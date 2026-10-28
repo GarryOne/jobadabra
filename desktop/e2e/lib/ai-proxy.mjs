@@ -27,7 +27,7 @@ export function failureFor(mode) {
 // kind / metered: the tally a paid call goes to and which API path is a model call (Anthropic: /messages; OpenAI: /responses, kind 'app-openai').
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
-export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
+export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
   const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic
   const server = http.createServer(async (req, res) => {
@@ -72,6 +72,12 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       res.writeHead(kept.status, {'content-type': kept.contentType, 'content-length': kept.body.length});
       res.end(kept.body);
       return;
+    }
+    if (relay && metered.test(req.url)) {   // the owner's Codex plan through the broker (lib/broker-relay.mjs); a refusal is an error answer, never another provider
+      stats.paid = (stats.paid || 0) + 1;
+      const answered = await relay(JSON.parse(body.toString('utf8') || '{}'));
+      if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } keep(key, {status: 200, contentType: answered.contentType, body: answered.body}); }
+      res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
     }
     if (kind === 'app-free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs): a miss past it is refused, never paid
       const cap = await capReached();

@@ -3,9 +3,9 @@
 // viewer, and a file the app resolves. Nothing here presses anything on its own. Fakes only: no browser, no page, no file outside the test's folder.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {attachLive} from '../../hosted/ready-fill/live.mjs';
+import {attachLive, handoffOf, pageFacts, pressText} from '../../hosted/ready-fill/live.mjs';
 
-function fakes({nodeAt = () => null} = {}) {
+function fakes({nodeAt = () => null, evaluate = () => ({}), cookies = []} = {}) {
   const sent = [], calls = [], handlers = new Map();
   let onMessage = null, onClose = null;
   const channel = {send: message => sent.push(message), onMessage: fn => { onMessage = fn; }, onClose: fn => { onClose = fn; }};
@@ -16,6 +16,8 @@ function fakes({nodeAt = () => null} = {}) {
     send: async (method, params = {}) => {
       calls.push([method, params]);
       if (method === 'Page.captureScreenshot') return {data: 'first-jpeg'};
+      if (method === 'Runtime.evaluate') return evaluate(params.expression);
+      if (method === 'Network.getCookies') return {cookies};
       if (method === 'DOM.getNodeForLocation') { const node = nodeAt(params.x, params.y); return node ? {backendNodeId: node.id} : {}; }
       if (method === 'DOM.resolveNode') { objects.set(`obj-${params.backendNodeId}`, params.backendNodeId); return {object: {objectId: `obj-${params.backendNodeId}`}}; }
       if (method === 'Runtime.callFunctionOn') {
@@ -47,12 +49,14 @@ test('frames go out as plain messages, each acknowledged; the first is a screens
 test('the person\'s mouse and keys reach the page; anything else never does', async () => {
   const f = fakes();
   await attachLive(f.channel, f.cdp);
+  const before = f.calls.length;
   await f.message({t: 'mouse', type: 'mousePressed', x: 10, y: 20, button: 'left', clickCount: 1, buttons: 1});
   await f.message({t: 'key', key: 'a', text: 'a'});
   await f.message({t: 'eval', code: 'location="https://x.test"'});
-  const input = f.calls.filter(([method]) => method.startsWith('Input.')).map(([method]) => method);
-  assert.deepEqual(input, ['Input.dispatchMouseEvent', 'Input.dispatchKeyEvent']);
-  assert.equal(f.calls.some(([method]) => method === 'Runtime.evaluate'), false);
+  await f.message({t: 'press', text: 'Submit'});
+  const after = f.calls.slice(before);
+  assert.deepEqual(after.filter(([method]) => method.startsWith('Input.')).map(([method]) => method), ['Input.dispatchMouseEvent', 'Input.dispatchKeyEvent']);
+  assert.equal(after.some(([method]) => method === 'Runtime.evaluate'), false, 'no message runs code in the page, and none presses a button by its words');
 });
 
 test('a press on a native dropdown sends its options to the viewer instead of opening a list the hidden browser never draws', async () => {
@@ -103,4 +107,53 @@ test('closing the channel stops the stream and lets the page go', async () => {
   await new Promise(resolve => setImmediate(resolve));
   assert.ok(f.calls.some(([method]) => method === 'Page.stopScreencast'));
   assert.ok(f.calls.some(([method]) => method === 'detach'));
+});
+
+// The page's facts (owner's live view design, 28 Oct 2026): the viewer frames the required fields still empty and counts the fields; the app's Submit stays off while one is left.
+const facts = (left = 1) => ({fields: 12, filled: 12 - left, left: Array.from({length: left}, (_, i) => ({label: `Field ${i}`, x: 0.1, y: 0.2 * i, w: 0.8, h: 0.05})), active: ''});
+test('the page\'s facts go out on attach, then after frames only when they change, read at most every half second', async () => {
+  let now = facts(2), reads = 0;
+  const f = fakes({evaluate: () => { reads += 1; return {result: {value: now}}; }});
+  await attachLive(f.channel, f.cdp);
+  assert.deepEqual(f.sent.filter(message => message.kind === 'needs').map(message => message.left.length), [2]);
+  for (let i = 0; i < 5; i += 1) await f.emit('Page.screencastFrame', {data: `jpeg-${i}`, sessionId: i});
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.equal(reads, 2, 'five frames, one read');
+  assert.equal(f.sent.filter(message => message.kind === 'needs').length, 1, 'the same facts are not sent again');
+  now = facts(0);
+  await f.emit('Page.screencastFrame', {data: 'jpeg-9', sessionId: 9});
+  await new Promise(resolve => setTimeout(resolve, 650));
+  assert.deepEqual(f.sent.filter(message => message.kind === 'needs').map(message => message.left.length), [2, 0]);
+  f.close();
+});
+
+test('a page that cannot be read sends no facts, and the facts reader answers null for it', async () => {
+  const f = fakes();
+  await attachLive(f.channel, f.cdp);
+  assert.equal(f.sent.some(message => message.kind === 'needs'), false);
+  assert.equal(await pageFacts(f.cdp), null);
+});
+
+test('the app\'s Submit is one real press at the centre of the page\'s own button; a missing or covered button is never pressed', async () => {
+  const pressed = fakes({evaluate: () => ({result: {value: {ok: true, x: 120, y: 340}}})});
+  assert.deepEqual(await pressText(pressed.cdp, 'Envoyer'), {ok: true});
+  const mouse = pressed.calls.filter(([method]) => method === 'Input.dispatchMouseEvent').map(([, params]) => [params.type, params.x, params.y]);
+  assert.deepEqual(mouse, [['mouseMoved', 120, 340], ['mousePressed', 120, 340], ['mouseReleased', 120, 340]]);
+  assert.match(pressed.calls.find(([method]) => method === 'Runtime.evaluate')[1].expression, /"Envoyer"/);
+  for (const why of ['not_found', 'covered']) {
+    const f = fakes({evaluate: () => ({result: {value: {ok: false, why}}})});
+    assert.deepEqual(await pressText(f.cdp, 'Envoyer'), {ok: false, why});
+    assert.equal(f.calls.some(([method]) => method === 'Input.dispatchMouseEvent'), false);
+  }
+});
+
+test('Open in my browser from a hidden tab: the shape ready-handoff keeps, with only the cookies of the page\'s own address', async () => {
+  const page = {url: 'https://jobs.example.test/apply/1', origin: 'https://jobs.example.test', local: [{name: 'draft', value: '1'}], session: {step: '2'},
+    fields: [{id: 'first', name: 'first', type: 'text', value: 'Ada'}], files: [{slot: 'cv', name: 'Fictional-CV.pdf', size: 10}]};
+  const cookie = {name: 'sid', value: 'fictional', domain: 'jobs.example.test', path: '/', secure: true, httpOnly: true, sameSite: 'Lax', expires: -1};
+  const f = fakes({evaluate: () => ({result: {value: page}}), cookies: [cookie]});
+  const made = await handoffOf(f.cdp);
+  assert.deepEqual(made, {url: page.url, storage: {cookies: [cookie], origins: [{origin: page.origin, localStorage: page.local}]}, sessionStorage: {step: '2'}, snapshot: {fields: page.fields, files: page.files}});
+  assert.deepEqual(f.calls.find(([method]) => method === 'Network.getCookies')[1], {urls: [page.url]});
+  assert.equal(await handoffOf(fakes().cdp), null, 'a page that cannot be read hands nothing off');
 });

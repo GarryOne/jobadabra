@@ -59,7 +59,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       if (TERMINAL.has(state.state)) return state;
       if (!proofOk(proof)) return manual(app, state, proof?.botCheck ? 'captcha_runtime' : 'incomplete_or_uncertain');   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
       const changed = state.signature !== proof.signature;
-      return save(app, {...state, state: state.mode === 'fill' ? 'ready_for_review' : 'waiting_to_submit', signature: proof.signature,
+      return save(app, {...state, state: state.mode === 'fill' ? 'ready_for_review' : 'waiting_to_submit', signature: proof.signature, submitControl: proof.submitControl,
         readyAt: changed || !state.readyAt ? now() : state.readyAt, factsOnly: proof.factsOnly === true && state.factsUnknown !== true});
     });
   }

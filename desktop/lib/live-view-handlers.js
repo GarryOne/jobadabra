@@ -8,13 +8,26 @@ import {ROOT} from './root.js';
 import {openCdpSession} from './cdp-session.js';
 import {CV_FILES} from '../renderer/cv-files.js';
 
-const liveCore = async () => (await import(pathToFileURL(path.join(ROOT, 'hosted', 'ready-fill', 'live.mjs')).href)).attachLive;
+const liveModule = () => import(pathToFileURL(path.join(ROOT, 'hosted', 'ready-fill', 'live.mjs')).href);
+
+/** "Open in my browser": the hand-off of the hidden tab at `address` (live.mjs handoffOf), read over its own short CDP session. */
+export async function readHandoff(address, openCdp = openCdpSession) {
+  const cdp = await openCdp(address);
+  try { return await (await liveModule()).handoffOf(cdp); } finally { await cdp.detach().catch(() => {}); }
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const PRESS_FAILED = {covered: 'Something on the page covers its Submit button. Close it in the live page, then press Submit again.',
+  not_found: 'The page\'s Submit button is not where it was. Use the page\'s own button in the live view.'};
 
 /**
- * Register liveOpen(session), liveInput(session, message), liveClose(session). page(session) -> the held tab's loopback CDP address or null.
- * Invariants: one view per session; input reaches only the session it names; a file is answered only from the person's CV or the app's own Open dialog.
+ * Register liveOpen(session), liveInput(session, message), liveClose(session) and liveSubmit(session). page(session) -> the held tab's loopback CDP address
+ * or null; submitControl(session) -> the page's own sending button the form judge named while its ready stands, else ''.
+ * Invariants: one view per session; input reaches only the session it names; a file is answered only from the person's CV or the app's own Open dialog;
+ * Submit presses only the judge's button, only after a fresh read of the page finds no required field empty (the person's press: never retried).
  */
-export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWindow, page, getWindow = () => null, dialog, openCdp = openCdpSession, attach = null}) {
+export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWindow, page, submitControl = async () => '', getWindow = () => null, dialog, log = () => {},
+  openCdp = openCdpSession, attach = null, core = null}) {
   const views = new Map();   // session -> {input, close}
   const close = id => { const view = views.get(id); views.delete(id); view?.close(); };
   const resolveFile = async choice => {
@@ -33,9 +46,28 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
     let input = () => {}, ended = () => {};
     const channel = {send: message => toWindow('liveEvent', {session: id, message}), onMessage: fn => { input = fn; }, onClose: fn => { ended = fn; }};
     views.set(id, {input: message => input(message), close: () => ended()});
-    await (attach || await liveCore())(channel, cdp, {resolveFile});
+    await (attach || (await liveModule()).attachLive)(channel, cdp, {resolveFile});
     return {ok: true};
   });
   ipcMain.handle('liveInput', (_, session, message) => { views.get(String(session || ''))?.input(message); return true; });
   ipcMain.handle('liveClose', (_, session) => { close(String(session || '')); return true; });
+  ipcMain.handle('liveSubmit', async (_, session) => {
+    const id = String(session || '');
+    if (DEMO) return {ok: false, error: 'The demo app has no hidden browser.'};
+    const control = await submitControl(id).catch(() => '');
+    if (!control) return {ok: false, error: 'Jobadabra has not found this form ready to send. Use the page\'s own Submit in the live view.'};
+    const address = await page(id).catch(() => null);
+    if (!address) return {ok: false, error: 'This application\'s hidden form is not open.'};
+    const {pageFacts, pressText} = core || await liveModule();
+    const cdp = await openCdp(address);
+    try {
+      // Why (28 Oct 2026, owner's live view design): the window's count can be a frame old; the page is read again at the press.
+      const facts = await pageFacts(cdp);
+      if (!facts) return {ok: false, error: 'The page could not be read. Press Submit again in a moment.'};
+      if (facts.left.length) return {ok: false, left: facts.left.length, error: `${plural(facts.left.length, 'required field')} left. Fill ${facts.left.length === 1 ? 'it' : 'them'} in the live page first.`};
+      const pressed = await pressText(cdp, control);
+      log('apply', pressed.ok ? 'the person pressed Submit in the live view: pressed' : 'the person pressed Submit in the live view: not pressed', {session: id, why: pressed.why || ''});
+      return pressed.ok ? {ok: true} : {ok: false, error: PRESS_FAILED[pressed.why] || PRESS_FAILED.not_found};
+    } finally { await cdp.detach().catch(() => {}); }
+  });
 }

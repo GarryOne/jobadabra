@@ -62,3 +62,40 @@ test('a file comes only from the person\'s CV or the app\'s own Open dialog, nev
   await cancelled.call('liveOpen', 's1');
   assert.equal(await cancelled.attached[0].options.resolveFile('pick'), null);
 });
+
+// The app's Submit (owner's live view design, 28 Oct 2026): the person's press on the page's own sending button, off while a required field is empty.
+function submitRig({control = 'Envoyer', facts = {fields: 3, filled: 3, left: [], active: ''}, pressed = {ok: true}} = {}) {
+  const handles = new Map(), presses = [], detached = [], logs = [];
+  registerLiveViewHandlers({storage: {path: name => name}, ipcMain: {handle: (name, fn) => handles.set(name, fn)}, toWindow: () => {}, dialog: {}, log: (...args) => logs.push(args),
+    page: async id => (id === 's1' ? 'ws://127.0.0.1:9/devtools/page/A' : null), submitControl: async id => (id === 's1' ? control : ''),
+    openCdp: async url => ({url, detach: async () => detached.push(url)}),
+    core: {pageFacts: async () => facts, pressText: async (_cdp, text) => { presses.push(text); return pressed; }}});
+  return {presses, detached, logs, submit: id => handles.get('liveSubmit')(null, id)};
+}
+test('Submit presses the button the form judge named, only when the page has no required field left, and lets the page go', async () => {
+  const s = submitRig();
+  assert.deepEqual(await s.submit('s1'), {ok: true});
+  assert.deepEqual(s.presses, ['Envoyer']);
+  assert.equal(s.detached.length, 1);
+  assert.ok(JSON.stringify(s.logs).includes('pressed'), 'the press is logged (never a value)');
+  const left = submitRig({facts: {fields: 3, filled: 1, left: [{label: 'Last name'}, {label: 'CV'}], active: ''}});
+  const refused = await left.submit('s1');
+  assert.deepEqual([refused.ok, refused.left], [false, 2]);
+  assert.match(refused.error, /2 required fields/);
+  assert.deepEqual(left.presses, []);
+});
+test('Submit presses nothing without the judge\'s ready, without a held tab, on a page it cannot read, or for the demo app', async () => {
+  const noJudge = submitRig({control: ''});
+  assert.equal((await noJudge.submit('s1')).ok, false);
+  assert.equal((await submitRig().submit('s2')).ok, false);
+  const unread = submitRig({facts: null});
+  assert.equal((await unread.submit('s1')).ok, false);
+  for (const rig of [noJudge, unread]) assert.deepEqual(rig.presses, []);
+  const handles = new Map();
+  registerLiveViewHandlers({DEMO: true, storage: {path: n => n}, ipcMain: {handle: (n, fn) => handles.set(n, fn)}, toWindow: () => {}, dialog: {}, page: async () => 'ws://x', submitControl: async () => 'Envoyer'});
+  assert.equal((await handles.get('liveSubmit')(null, 's1')).ok, false);
+});
+test('a covered or vanished button is said in words the person can act on', async () => {
+  assert.match((await submitRig({pressed: {ok: false, why: 'covered'}}).submit('s1')).error, /covers/);
+  assert.match((await submitRig({pressed: {ok: false, why: 'not_found'}}).submit('s1')).error, /page's own/);
+});

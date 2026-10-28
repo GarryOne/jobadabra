@@ -9,6 +9,9 @@ import * as quitDialog from './quit-dialog.js';
 import {sessionIpc} from './session-contracts.js';
 import {closeFormTab, openFormTab} from './form-tab.js';
 import {sessionsNamedIn} from './session-tab.js';
+import {keep as keepReadyHandoff} from './ready-handoff.js';
+import {formUrl} from './form-address.js';
+import {readHandoff} from './live-view-handlers.js';
 
 // Close a session's form tab and say whether it is closed. A tab the app already knows is gone needs no wait: asking its page
 // to close costs the whole 6 s timeout when nobody answers (a cancel took 5-10 s with no sign of life, 3 Oct 2026).
@@ -25,7 +28,7 @@ import {SHOW_RESUME_CLAUDE} from '../renderer/claude-help.js';
 const REOPEN_MS = 15 * 1000;
 export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, dialog, nativeImage, here,
   DEMO, extensionGate = () => null, apply, pipeline, review, server, claudeConsent, getRecipeReporter = () => null, version = '',
-  closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage)}) {
+  closeTab = closeFormTab, focusTab = openFormTab, background = () => backgroundApplyFor(storage), keepHandoff = keepReadyHandoff}) {
   const reopenedAt = new Map();   // session id -> when Reopen last opened its form: a second press inside REOPEN_MS opens nothing
   const checkedSessions = sessionIpc(ipcMain, appLog);
   checkedSessions.handle('sessionCancel', async (_, id) => {
@@ -82,12 +85,21 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
     if (started?.ok) terminals.remove(old.id); else terminals.setOutcome(old.id, '');
     return started;
   };
+  // "Open in my browser" on a hidden-browser session (owner's live view design, 28 Oct 2026): a hidden browser has no window to show, so the held page's
+  // hand-off (its address, cookies, storage and filled fields: Ready to send's ready-handoff.js) is kept for the job's addresses, the hidden tab closes, and
+  // the same job opens in the person's Chrome, where the extension puts the page back and its normal fill takes over. Nothing is submitted.
+  const openInChrome = async old => {
+    const handed = await background().handOver(old.id, readHandoff);
+    if (!handed?.ok) return {ok: false, error: 'This application\'s hidden form could not be handed over. Try again.'};
+    if (handed.handoff) keepHandoff(handed.handoff, [old.url, formUrl(old.url)]);
+    return restartAs(old, 'chrome');
+  };
   checkedSessions.handle('sessionRestart', async (_, id) => {
     const old = terminals.get(String(id));
     if (!old) return {ok: false, error: 'This session is no longer in the list.'};
     // Always in Chrome, no question (owner, 9 Oct 2026: "start with Chrome always; Claude should be only a safety net"): the extension fills the
     // form; where it can't finish, the card and the panel offer Claude as they already do.
-    return old.background ? background().reveal(old.id) : restartAs(old, 'chrome');
+    return old.background ? openInChrome(old) : restartAs(old, 'chrome');
   });
   // The session's form tab was closed (a button looked for it and Chrome has none): the form opens again in a new tab with
   // the fill mark, so the extension's panel follows it. What the page held from the closed tab (`stale`: answers, form
@@ -124,7 +136,7 @@ export function registerSessionHandlers({ipcMain, appLog, storage, getWindow, di
   checkedSessions.handle('sessionReopen', async (_, id, stale) => {
     const old = terminals.get(String(id));
     if (!old) return {ok: false, error: 'This session is no longer in the list.'};
-    if (old.background) return background().reveal(old.id);
+    if (old.background) return openInChrome(old);
     // No question (owner, 8 Oct 2026): the card already says Reopen fills the form again from your kit, so what the page held
     // from the closed tab is cleared and the form opens in a new tab. Claude is never started here; Start again is for that.
     // The tab may still be open under another address (redirected to the employer's own site, 15 Oct 2026: two presses opened two new tabs): its fill mark

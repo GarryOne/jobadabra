@@ -50,3 +50,31 @@ test('the controller reads the notifier when it notifies, not when it is created
   finally { hooks.setNotifier(() => {}); }
   assert.equal(sent.length, 1);
 });
+
+const held = (state, extra = {}) => {
+  const records = {bg: {id: 'bg', url: 'https://jobs.example.test/h', background: {}}, visible: {id: 'visible', url: 'https://jobs.example.test/v'}}, seen = [];
+  const controller = createBackgroundApplyController({}, {terminals: {record: id => records[id] || null, report: () => {}}, config: () => ({}), log: () => {}, token: () => 'fictional', port: 1,
+    notify: () => {}, store: {read: async () => state, handoff: async (...args) => { seen.push(['handoff', args[3]]); return {...state, state: 'needs_user_handoff', manualOverride: true}; }},
+    browser: {start: async () => ({owner: 'o1'}), pageSocket: async id => `ws://127.0.0.1:9/devtools/page/${id}`, closeSession: async id => { seen.push(['close', id]); return true; }}, ...extra});
+  return {controller, seen};
+};
+test('the app\'s Submit gets the page\'s sending button only for a hidden session the form judge found ready, never after a hand-off', async () => {
+  const ready = {session: 'bg', owner: 'o1', state: 'ready_for_review', submitControl: 'Envoyer'};
+  assert.equal(await held(ready).controller.submitControl('bg'), 'Envoyer');
+  assert.equal(await held(ready).controller.submitControl('visible'), '');
+  assert.equal(await held({...ready, state: 'needs_user_handoff', manualOverride: true}).controller.submitControl('bg'), '');
+  assert.equal(await held({...ready, session: 'other'}).controller.submitControl('bg'), '');
+  assert.equal(await held({...ready, submitControl: undefined}).controller.submitControl('bg'), '');
+});
+
+test('Open in my browser reads the hand-off from the held tab before it closes, and hands the job to the person', async () => {
+  const {controller, seen} = held({session: 'bg', owner: 'o1', state: 'ready_for_review'});
+  const result = await controller.handOver('bg', async address => { seen.push(['read', address]); return {url: 'https://jobs.example.test/h/apply'}; });
+  assert.deepEqual(result, {ok: true, handoff: {url: 'https://jobs.example.test/h/apply'}});
+  assert.deepEqual(seen.map(([what]) => what), ['read', 'handoff', 'close'], 'read first, then the hand-over is saved, then the hidden tab closes');
+  assert.equal(seen[1][1], 'opened_in_browser');
+  const none = held({});
+  assert.equal((await none.controller.handOver('visible', async () => { throw new Error('never read'); })).ok, false);
+  const unreadable = held({session: 'bg', owner: 'o1', state: 'filling'});
+  assert.deepEqual(await unreadable.controller.handOver('bg', async () => { throw new Error('page gone'); }), {ok: true, handoff: null}, 'a page that cannot be read still hands the job over; the fill starts again in Chrome');
+});

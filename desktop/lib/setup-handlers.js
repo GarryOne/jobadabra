@@ -32,7 +32,8 @@ export function registerSetupHandlers(ctx) {
   const office = officeAddon(storage, {toWindow, toast: body => toWindow('toast', body)});
   registerOfficeHandlers({ipcMain, addon: office, DEMO});
   registerBackgroundBrowserHandlers({ipcMain, addon: backgroundBrowserAddon(storage, {toWindow, toast: body => toWindow('toast', body)}), DEMO});
-  registerLiveViewHandlers({DEMO, storage, ipcMain, toWindow, dialog, getWindow, page: id => backgroundApplyFor(storage).page(id)});   // a hidden-browser session's held tab, in the app
+  registerLiveViewHandlers({DEMO, storage, ipcMain, toWindow, dialog, getWindow, log: appLog, page: id => backgroundApplyFor(storage).page(id),   // a hidden-browser session's held tab, in the app
+    submitControl: id => backgroundApplyFor(storage).submitControl(id)});
   handleImportant('notionConnect', 'Connecting Notion', async (_, pasted) => {   // about Notion
     const {value: token, error} = cleanSecret(pasted);
     if (error) return {ok: false, error};

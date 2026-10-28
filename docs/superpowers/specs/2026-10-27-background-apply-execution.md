@@ -67,7 +67,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 ### 1. Safe state and controller (PR A)
 
 - [x] Audit current mode, Apply, extension session/outcome, Ready handoff, twin, browser launch and hybrid fill research. (proof: none: audit read-out, findings are in this spec's Hidden-launch finding)
-- [x] Add failing focused state and browser-contract regressions. (proof: desktop/test/background-apply-store.test.js)
+- [x] Add failing focused state and browser-contract regressions. (proof: desktop/test/background-apply-store.test.js @a231206)
 - [x] Owner decisions on hand-off view and browser choice (28 Oct 2026, above). (proof: none: owner decision, quoted above)
 - [x] A: commit the 27 Oct work as reviewable state, store, controller and safety; modes stay Coming soon. (proof: desktop/test/background-apply-controller.test.js)
   - A moved to B: mode dispatch (onto #2317's `MODES[].runner`), the download module and its IPC (the module needs a `tests-desktop-windows.yml` paths line), `form-judge.js` `bot_check`/`submit_control` (needs a ladder fixture), and the headless smoke that replaces the native minimized-window smoke.
@@ -95,7 +95,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 
 ### 3. Full automation submits (PR C)
 
-- [x] Settings → Apply checks wired to the one-shot reservation (no required empty, saved facts, fit 80+, 20 a day, 1 per employer). (proof: desktop/test/background-apply-store.test.js)
+- [x] Settings → Apply checks wired to the one-shot reservation (no required empty, saved facts, fit 80+, 20 a day, 1 per employer). (proof: desktop/test/background-apply-store.test.js @a231206)
 - [x] 10-minute wait with Stop, shown on the Applying card. (proof: desktop/test/live-countdown.test.js)
 - [x] `bot_check` in form-judge with a ladder fixture (owner's yes on its measured cost, 28 Oct 2026: same call, +329 characters, no extra call; form_ready 6/6 on the plan path; the automatic press reserves only on an explicit "no bot check"): the last check before an automatic press. Moved from B (28 Oct 2026): in B a bot check is already handed to the person where the page is read (`fill-flow.js` 300: the account judge, 436: rung 2's page kind, incl. a robot check among the form's own fields), and a challenge raised by Submit shows in the person's own live view. (proof: desktop/test/form-judge.test.js)
 - [ ] The automatic Submit press in the hidden browser, one attempt, never retried.

@@ -182,5 +182,6 @@ export function initSuggestions() {
     redraw();
   });
   $('jobs-suggestions').addEventListener('toggle', renderJobsSuggestions);
+  window.addEventListener('experience-changed', () => { loadBank(); });
   document.addEventListener('questions-read', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // the count arrived, or changed
 }

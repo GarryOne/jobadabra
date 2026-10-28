@@ -114,6 +114,7 @@ export function showChanges(answer) {
 }
 
 export function showExperience(view) {
+  window.dispatchEvent(new Event('experience-changed'));   // Why (#2397, Gitar): Focus and the Jobs bar read the bank once; they read it again when this page shows a new one
   const rows = view.sources.map(sourceRow);
   for (const [i, source] of view.sources.entries()) {
     const row = rows[i];

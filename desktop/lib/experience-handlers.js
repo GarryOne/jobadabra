@@ -72,7 +72,7 @@ export function registerExperienceHandlers({DEMO, dialog, getWindow, ipcMain, sh
     appLog('experience', 'skills added by you', {count: list.length});
     return withChanges(before);
   });
-  ipcMain.handle('experienceRemoveAdded', (_, id) => withChanges(experience.view(storage), added.removeAdded(storage, id)));
+  ipcMain.handle('experienceRemoveAdded', (_, id) => (DEMO ? {ok: true, ...experience.view(storage), added: DEMO_VIEW.added.filter(item => item.id !== String(id))} : withChanges(experience.view(storage), added.removeAdded(storage, id))));
   ipcMain.handle('experienceRematch', async () => {
     if (noAi()) return {ok: false, error: 'Choose your AI in Settings → Connections → AI first.'};
     try {

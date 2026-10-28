@@ -31,7 +31,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       const app = await appOf(url), old = await load(app);
       // Why (2026-10-27, owner): reapplying or changing modes must never reset a job's CAPTCHA or unknown-submit handoff.
       if (old) return old;
-      if (!canStart(app.stage)) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js)
+      if (!(mode === 'auto' ? STARTABLE_STAGES.includes(app.stage) : canStart(app.stage))) throw Object.assign(new Error('This job is not eligible to start another application.'), {code: 'NOT_ELIGIBLE'});   // the picker's rule too (lib/apply-eligibility.js); Full automation is as strict as its submit gate: a job with no stage never queues
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
       return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, state: 'queued', owner: '', manualOverride: false, queuedAt: now()});
     });

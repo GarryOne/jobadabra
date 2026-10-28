@@ -157,10 +157,10 @@ test('the window cannot start the hidden browser by naming its runner: only the 
 });
 
 // Owner's screenshot (28 Oct 2026): "Could not start applying: Error invoking remote method 'apply': Error: This job is not eligible…" showed Electron's own wrapper.
-test('a start that rejects shows the reason without Electron\'s IPC wrapper', async () => {
-  const wrapped = new Error("Error invoking remote method 'apply': Error: This job is not eligible to start another application.");
+test('a start that fails as a call (not a refusal) shows the reason without Electron\'s IPC wrapper', async () => {
+  const wrapped = new Error("Error invoking remote method 'apply': Error: An object could not be cloned.");
   const result = await applyDialogStart({count: 1, start: async () => { throw wrapped; }});
   assert.equal(result.ok, false);
-  assert.equal(result.error, 'Could not start applying: This job is not eligible to start another application. Try again in a moment.');
+  assert.equal(result.error, 'Could not start applying: An object could not be cloned. Try again in a moment.');
   assert.doesNotMatch(result.error, /remote method|^Error/);
 });

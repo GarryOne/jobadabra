@@ -146,4 +146,6 @@ test('queue refuses a Recruiter lead with a typed not-eligible error, and accept
   await assert.rejects(() => store.queue(lead.url, 's-lead', 'fill', {...config, mode: 'fill'}), error => error.code === 'NOT_ELIGIBLE' && /not eligible to start another application/.test(error.message));
   const unstaged = r.add('none'); unstaged.stage = '';
   assert.equal((await store.queue(unstaged.url, 's-none', 'fill', {...config, mode: 'fill'})).state, 'queued');
+  const strict = r.add('strict'); strict.stage = '';
+  await assert.rejects(() => store.queue(strict.url, 's-strict', 'auto', {...config, mode: 'auto'}), error => error.code === 'NOT_ELIGIBLE', 'Full automation never queues a job with no stage: its submit gate would refuse it');
 });

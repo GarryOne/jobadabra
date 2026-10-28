@@ -74,6 +74,14 @@ export async function pollBackgroundApply(config) {
     }
   } finally { polling = false; }
 }
+/** Why the press must not go now, as the hand-off reason id, or '' when it may: the tab is gone, a stop was asked, the tab moved to another address, or a manual override was set. */
+async function pressRefusal(tab, session, generation) {
+  const live = await chrome.tabs.get(tab.id).catch(() => null);
+  if (!live) return 'page_unavailable';
+  if (isStopped() || stopGeneration() !== generation) return 'stopped';
+  if (pageKey(live.url) !== pageKey(tab.url)) return 'page_moved';
+  return (await owned().inspect(session))?.manualRequired === true ? 'needs_user' : '';
+}
 /** Accept the current server judgment, inspect the real form, then consume at most one persisted Full automation permit. */
 export async function backgroundFormReady(tab, frameId, answer) {
   const context = await backgroundContext(tab.id);
@@ -90,13 +98,16 @@ export async function backgroundFormReady(tab, frameId, answer) {
   if (permit.manual) { await backgroundChallenge(tab.id, permit.reason || 'needs_user'); return true; }
   if (permit.continue) return false; // the existing vetted Next flow runs only after persisting this step's evidence
   if (!permit.submit) { if (permit.review) await owned().patch(context.session, {reviewReady: true}); return true; }
+  return pressOnce(tab, frameId, context, inspected, permit, generation);
+}
+
+/** The one automatic press for a granted permit: saved before the click, refused when the tab moved or a stop was asked, pressed once, then watched for the receipt. Always true: the page is ours either way. */
+async function pressOnce(tab, frameId, context, inspected, permit, generation) {
   // Persist locally before the click too: a worker restart/lost reply can never consume this permit a second time.
   await owned().patch(context.session, {attempt: permit.attempt});
   // Why (2026-10-28, owner chose "compare what the click depends on" after the Full automation e2e: the AI sketch's field labels and required marks drift after a fill, and refused every press): the page must still
   // be the tab's own address and nobody asked to stop; the press itself (background-submit.js) then re-checks the value seal, the visible enabled Submit on top, the required fields and Stop. The sketch is no longer compared.
-  const live = await chrome.tabs.get(tab.id).catch(() => null);
-  const refusal = !live ? 'page_unavailable' : isStopped() || stopGeneration() !== generation ? 'stopped' : pageKey(live.url) !== pageKey(tab.url) ? 'page_moved'
-    : (await owned().inspect(context.session))?.manualRequired === true ? 'needs_user' : '';
+  const refusal = await pressRefusal(tab, context.session, generation);
   if (refusal) { await backgroundChallenge(tab.id, refusal); return true; }
   const at = Date.now();
   await chrome.storage.session.set({[`submit:${tab.id}`]: {at, url: pageKey(tab.url), fingerprint: pageFingerprint(inspected.snapshot), calls: 0, automation: true, attempt: permit.attempt}});

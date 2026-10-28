@@ -64,7 +64,8 @@ def red(st):
 
 
 def gh_json(args):
-    return json.loads(subprocess.run(['gh', *args], check=True, capture_output=True, text=True).stdout or 'null')
+    # UTF-8, not the locale: pr-verdict.py also runs this on Windows runners, where text=True decodes as cp1252 (#2062)
+    return json.loads(subprocess.run(['gh', *args], check=True, capture_output=True, encoding='utf-8').stdout or 'null')
 
 
 def live(repo):

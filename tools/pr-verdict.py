@@ -12,7 +12,8 @@ Counted: the runs of the commit started by the pull request, and the e2e run pr-
 (gate G1a; the owner rejected report only, 26 Oct 2026). The newest run of each workflow
 decides (a description edit re-runs the gate; a re-run replaces a red). Grey, not red (owner, 28 Oct 2026, e2e reliability design: "a PR is red only when its
 diff broke it"): a PR suite job whose every "✗ step: reason" line is one main's own newest red of that suite printed (tools/main_e2e_state.py). Strict on purpose: a
-new step or a new reason stays red. A job cannot read its own log while it runs, so its own verdict step stays red and the backstop (its run ending) writes grey. Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
+new step or a new reason stays red; a step after main's red step, which ran nowhere (main stopped there too), is judged once main is green. A job cannot read its own
+log while it runs: the job that ends last after it, or the backstop when the run ends, writes grey. Any red: failure at once. Any running: pending. All green or skipped: success, with the wall time.
 Budget (owner's yes, 26 Oct 2026): a PR that changes how CI runs PRs (ci_change) and whose checks RAN over BUDGET_MIN goes red, unless a commit of it says
 "CI-budget: <why>". Each slowdown so far (781637a, bc585e3, a7a6a9f, 7083bb7) landed without saying a PR's time.
 Running time, not queue (owner, 27 Oct 2026: "Count running time only": "Red only when the PR's own jobs run over 10 min; queue wait is still shown on the PR"):
@@ -27,6 +28,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 
@@ -206,11 +208,33 @@ def read(repo, sha, my_run):
 
 
 def job_log(repo, job_id):
-    """A finished job's failed steps' log (gh run view: gh api's raw log is refused for its terminal escape sequences)."""
-    return subprocess.run(['gh', 'run', 'view', '-R', repo, '--job', str(job_id), '--log-failed'], capture_output=True, encoding='utf-8', errors='replace').stdout
+    """A finished job's whole log, also while its run still goes (`gh run view --log-failed` refuses until the run ends: code review, 28 Oct 2026).
+    gh 2.101 refuses a raw log (terminal escape sequences) without --allow-escape-sequences; a gh older than the flag never refused, so it is asked again without it.
+    A log not read raises: the caller keeps the job red and says why."""
+    for extra in (['--allow-escape-sequences'], []):
+        done = subprocess.run(['gh', 'api', *extra, f'repos/{repo}/actions/jobs/{job_id}/logs'], capture_output=True, encoding='utf-8', errors='replace')
+        if done.returncode == 0:
+            return done.stdout
+        if 'unknown flag' not in (done.stderr or ''):
+            break
+    raise OSError(f'the log of job {job_id} was not read: {(done.stderr or "").strip()[:120]}')
 
 
-def main_red_greys(repo, runs, jobs, read_main=None, log_of=None):
+def main_state_module(repo, ref):
+    """tools/main_e2e_state.py, the one owner of main's per-suite state. Every PR job and the backstop fetch this file alone (code review, 28 Oct 2026): its sibling is
+    then fetched at the same commit, only when a PR is red."""
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main_e2e_state.py')
+    if not os.path.exists(here):
+        text = gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/tools/main_e2e_state.py?ref={ref}')
+        here = os.path.join(tempfile.mkdtemp(), 'main_e2e_state.py')
+        with open(here, 'w', encoding='utf-8') as file:
+            file.write(text)
+    spec = importlib.util.spec_from_file_location('main_e2e_state', here)
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    return module
+
+
+def main_red_greys(repo, runs, jobs, ref='', read_main=None, log_of=None):
     """Ids of the PR e2e run's finished red suite jobs that failed as main's own newest red of that suite (mains_own): grey. Any read that fails keeps them red."""
     log_of = log_of or (lambda job_id: job_log(repo, job_id))
     reds = [job for r in counted(runs) if str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE)
@@ -218,14 +242,13 @@ def main_red_greys(repo, runs, jobs, read_main=None, log_of=None):
     if not reds:
         return set()
     try:
-        sibling = importlib.util.spec_from_file_location('main_e2e_state', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main_e2e_state.py'))
-        main_e2e_state = importlib.util.module_from_spec(sibling); sibling.loader.exec_module(main_e2e_state)
+        main_e2e_state = main_state_module(repo, ref)
         main = (read_main or main_e2e_state.live)(repo)
         return {job['id'] for job in reds
                 if (main.get(main_e2e_state.suite_of(job['name'])) or {}).get('conclusion') == 'failure'
                 and mains_own(log_of(job['id']), [log_of(i) for i in main[main_e2e_state.suite_of(job['name'])].get('jobs') or []])}
-    except (subprocess.CalledProcessError, OSError, ValueError, KeyError) as error:   # OSError: run alone, without its sibling (a test copies it to a temp folder)
-        print(f'main\'s own reds not read ({error}): every red stays red')
+    except Exception as error:   # Why (code review, 28 Oct 2026): the verdict is always written; whatever fails here (a read, a None from the API) keeps every red red
+        print(f'main\'s own reds not read ({type(error).__name__}: {error}): every red stays red')
         return set()
 
 
@@ -254,7 +277,7 @@ def main():
         spans = job_spans(a.repo, runs) if ci_change(files) and not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run) else None
         state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or ())
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
-            greys = main_red_greys(a.repo, runs, jobs)
+            greys = main_red_greys(a.repo, runs, jobs, ref=os.environ.get('GITHUB_SHA') or a.sha)
             if greys:
                 state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):

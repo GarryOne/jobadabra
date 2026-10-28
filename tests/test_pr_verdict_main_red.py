@@ -3,7 +3,11 @@
 "red: e2e focus,settings". tools/pr-verdict.py now greys a job whose every "✗ step: reason" line main's newest red of that suite printed, and a red names the
 failing jobs. Strict: a new step or a new reason stays red."""
 import importlib.util
+import json
+import os
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -74,6 +78,68 @@ class MainsOwnRed(unittest.TestCase):
         st = main_e2e_state.state(runs, lambda rid: jobs.get(rid, []))
         self.assertEqual((st['applyflows']['conclusion'], st['applyflows']['jobs']), ('failure', [51]))
         self.assertEqual(st['settings']['jobs'], [])
+
+
+FAKE_GH = r"""#!/usr/bin/env python3
+import json, os, sys
+d = os.environ['FAKE_DIR']; a = sys.argv[1:]; path = next((x for x in a if x.startswith('repos/')), '')
+def out(name): sys.stdout.write(open(os.path.join(d, name), encoding='utf-8').read())
+if a[:2] == ['run', 'list']: out('runs.json')
+elif path.endswith('/pulls') and '/commits/' in path: print(json.dumps([{'number': 2342, 'state': 'open', 'merged_at': None}]))
+elif '/files' in path: print('desktop/renderer/pages/focus.js')
+elif '/commits?' in path: print('["Keep the typed daily target"]')
+elif '/contents/tools/main_e2e_state.py' in path: out('main_e2e_state.py')
+elif '/actions/workflows/e2e.yml/runs' in path: out('main-runs.json')
+elif '/logs' in path:
+    if os.environ.get('FAKE_OLD_GH') and '--allow-escape-sequences' in a: sys.exit('unknown flag: --allow-escape-sequences')
+    if '--allow-escape-sequences' not in a and not os.environ.get('FAKE_OLD_GH'): sys.exit('the response contains terminal escape sequences; pass --allow-escape-sequences')
+    out('log-' + path.split('/jobs/')[1].split('/')[0] + '.txt')
+elif '/jobs' in path: out('jobs-' + path.split('/runs/')[1].split('/')[0] + '.json')
+elif '/statuses/' in path: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
+else: sys.exit('fake gh: no answer for ' + repr(a))
+"""
+
+
+class TheStepAsCIRunsIt(unittest.TestCase):
+    """The whole script as a PR job's last step runs it: a copy with no repo around it (every PR workflow fetches pr-verdict.py alone), the real `gh` replaced.
+    The code review of this change found the first version never greyed in CI: its sibling main_e2e_state.py was missing, and `gh run view --log-failed`
+    refuses logs until the run ends."""
+
+    def run_step(self, job_status='', me_runs=False, old_gh=False):
+        d = tempfile.mkdtemp(); bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
+        gh = Path(bin_dir, 'gh'); gh.write_text(FAKE_GH.replace('/usr/bin/env python3', sys.executable), encoding='utf-8'); gh.chmod(0o755)
+        e2e = dict(run(7), status='in_progress' if me_runs else 'completed', conclusion='' if me_runs else 'failure')
+        files = {'runs.json': [PR, e2e], 'main-runs.json': [{'id': 500, 'head_branch': 'main', 'head_sha': 'b' * 40, 'conclusion': 'failure', 'display_title': 'E2E check · nightly',
+                                                           'created_at': '2026-10-28T07:27:50Z', 'html_url': 'u'}],
+                 'jobs-500.json': [{'id': 900, 'name': 'settings', 'conclusion': 'failure'}, {'id': 901, 'name': 'focus', 'conclusion': 'success'}],
+                 'jobs-7.json': [job(70, 'plan'), job(71, 'settings', 'failure'),
+                                 dict(job(72, 'focus', '', 'in_progress'), runner_name='r1', steps=[{'name': 'Run', 'status': 'completed', 'conclusion': 'success'}, {'name': pv.STEP, 'status': 'in_progress'}])
+                                 if me_runs else job(72, 'focus')]}
+        for name, data in files.items():
+            Path(d, name).write_text(json.dumps(data), encoding='utf-8')
+        for name, text in {'log-71.txt': PR_LOG.replace('settings\tFirst try failed: the settings suite once more, to tell flaky from real\t', ''),
+                           'log-900.txt': MAIN_LOG.replace('settings\tUNKNOWN STEP\t', ''), 'main_e2e_state.py': (ROOT / 'tools' / 'main_e2e_state.py').read_text(encoding='utf-8')}.items():
+            Path(d, name).write_text(text, encoding='utf-8')
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ['PATH'], FAKE_DIR=d, GITHUB_RUN_ID='7', RUNNER_NAME='r1', GITHUB_SHA='abc1234', FAKE_OLD_GH='1' if old_gh else '')
+        script = Path(d, 'pr-verdict.py'); script.write_text((ROOT / 'tools' / 'pr-verdict.py').read_text(encoding='utf-8'), encoding='utf-8')
+        args = [sys.executable, str(script), '--repo', 'o/r', '--sha', 'abc1234'] + (['--job-status', job_status] if job_status else [])
+        done = subprocess.run(args, env=env, capture_output=True, encoding='utf-8', timeout=60)
+        written = Path(d, 'written').read_text(encoding='utf-8') if Path(d, 'written').exists() else ''
+        return done, written
+
+    def test_the_backstop_greys_2342s_settings_with_the_file_alone(self):
+        done, written = self.run_step()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn('"state=success"', written, done.stdout + done.stderr)
+        self.assertIn('grey: settings (red on main too, not this PR)', written)
+
+    def test_focus_ending_after_settings_writes_grey_from_its_own_step(self):
+        done, written = self.run_step(job_status='success', me_runs=True)
+        self.assertIn('"state=success"', written, done.stdout + done.stderr)
+
+    def test_a_gh_older_than_the_escape_flag_is_asked_again_without_it(self):
+        done, written = self.run_step(old_gh=True)
+        self.assertIn('"state=success"', written, done.stdout + done.stderr)
 
 
 if __name__ == '__main__':

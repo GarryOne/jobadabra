@@ -2,6 +2,7 @@
 import {call as engineCall} from './store/engine.js';
 import {KIT_SECTION, kitOf} from './store/kit-section.js';
 import {randomUUID} from 'node:crypto';
+import {STARTABLE_STAGES} from './apply-eligibility.js';
 
 export const BACKGROUND_SECTION = 'Background Apply';
 const RESERVED = 'Background submit reserved';
@@ -30,7 +31,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       const app = await appOf(url), old = await load(app);
       // Why (2026-10-27, owner): reapplying or changing modes must never reset a job's CAPTCHA or unknown-submit handoff.
       if (old) return old;
-      if (!['Saved', 'Kit ready', 'Applying'].includes(app.stage)) throw new Error('This job is not eligible to start another application.');
+      if (!STARTABLE_STAGES.includes(app.stage)) throw new Error('This job is not eligible to start another application.');   // the picker's rule too (lib/apply-eligibility.js)
       if (!config?.chosenAt || config.mode !== mode) throw new Error('Confirm this Apply mode in Settings first.');
       return save(app, {version: 1, session, mode, chosenAt: config.chosenAt, state: 'queued', owner: '', manualOverride: false, queuedAt: now()});
     });
@@ -84,7 +85,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       if ((checks.factsOnly !== false || config.answers !== 'ai') && (proof.factsOnly !== true || state.factsOnly !== true)) return stop('facts_unknown');
       const kit = kitOf(await ask('applications', 'section', {app_id: app.id, name: KIT_SECTION}));
       const match = typeof app.fit === 'number' ? app : await ask('matches', 'get', {url});
-      if (!['Saved', 'Kit ready', 'Applying'].includes(app.stage) || kit?.eligible !== true || !Number.isFinite(match?.fit) || match.fit < (checks.minFit ?? 80)) return stop('not_eligible');
+      if (!STARTABLE_STAGES.includes(app.stage) || kit?.eligible !== true || !Number.isFinite(match?.fit) || match.fit < (checks.minFit ?? 80)) return stop('not_eligible');
       const waitMs = Math.max(0, Number(checks.waitMin ?? 10)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
       const rows = await ask('applications', 'list'), reservations = await ask('events', 'list', {kind: RESERVED});

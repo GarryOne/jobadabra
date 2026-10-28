@@ -155,3 +155,12 @@ test('the window cannot start the hidden browser by naming its runner: only the 
   assert.equal(result.ok, false);
   assert.deepEqual(starts, []);
 });
+
+// Owner's screenshot (28 Oct 2026): "Could not start applying: Error invoking remote method 'apply': Error: This job is not eligible…" showed Electron's own wrapper.
+test('a start that rejects shows the reason without Electron\'s IPC wrapper', async () => {
+  const wrapped = new Error("Error invoking remote method 'apply': Error: This job is not eligible to start another application.");
+  const result = await applyDialogStart({count: 1, start: async () => { throw wrapped; }});
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'Could not start applying: This job is not eligible to start another application. Pick another job in Jobs and try again.');
+  assert.doesNotMatch(result.error, /remote method|^Error/);
+});

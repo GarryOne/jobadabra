@@ -25,7 +25,11 @@ export async function applyDialogStart({count, cancelled = false, start}) {
   if (cancelled) return {cancelled: true};
   const n = validCount(count);
   if (!n) return {ok: false, error: 'Choose between 1 and 10 jobs.'};
-  return start({n, mode: 'settings'});
+  try { return await start({n, mode: 'settings'}); } catch (error) {
+    // Why (2026-10-28, owner screenshot): a rejected call arrives as "Error invoking remote method 'apply': Error: <reason>"; the person gets the reason and what to do, not Electron's wrapper.
+    const reason = String(error?.message || '').replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, '').trim();
+    return {ok: false, error: `Could not start applying: ${reason || 'something went wrong.'}${reason.endsWith('.') || !reason ? '' : '.'} Pick another job in Jobs and try again.`};
+  }
 }
 
 /** One start at a time: a second press while the first batch starts is ignored; a later deliberate start is not. */

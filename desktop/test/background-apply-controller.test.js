@@ -78,3 +78,13 @@ test('Open in my browser reads the hand-off from the held tab before it closes, 
   const unreadable = held({session: 'bg', owner: 'o1', state: 'filling'});
   assert.deepEqual(await unreadable.controller.handOver('bg', async () => { throw new Error('page gone'); }), {ok: true, handoff: null}, 'a page that cannot be read still hands the job over; the fill starts again in Chrome');
 });
+
+test('a job the store refuses comes back as a plain answer, never a thrown error, and starts no browser', async () => {
+  touched.length = 0;
+  const refuse = async () => { throw new Error('This job is not eligible to start another application.'); };
+  const result = await make({config: () => ({mode: 'fill', chosenAt: '2026-10-28T10:00:00Z'}), store: {queue: refuse}, browser: {ready: () => true, start: spy('browser.start')}})
+    .enqueue([{url: 'https://jobs.example.test/in-process'}], 'fill');
+  assert.equal(result.ok, false);
+  assert.match(result.error, /not eligible to start another application/);
+  assert.deepEqual(touched, [], 'no session started, no browser launched');
+});

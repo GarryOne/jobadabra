@@ -60,7 +60,9 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       for (const job of jobs) {
         const old = terminals.byUrl(job.url);
         if (old && !old.background) return {ok: false, error: 'This job already has an application session. Continue that session first.'};
-        const state = await store.queue(job.url, old?.id || uuid().slice(0, 8), mode, chosen);
+        // Why (2026-10-28, owner screenshot): a job the store refuses (its stage moved on since the list was read) is an answer for the person, not a thrown error that reaches the window as an IPC string.
+        const state = await store.queue(job.url, old?.id || uuid().slice(0, 8), mode, chosen).catch(error => ({refused: error.message}));
+        if (state.refused) { if (enrolled.length) break; return {ok: false, error: state.refused}; }   // the ones already queued still start
         const item = terminals.startForm({id: state.session, url: job.url, title: job.title || '', company: job.company || '', location: job.location || '', workMode: job.workMode || ''});
         cache(item, state); enrolled.push(item.id);
       }

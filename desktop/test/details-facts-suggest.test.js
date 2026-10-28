@@ -27,7 +27,8 @@ async function open(eligibility) {
   for (const id of ['facts-message', 'which-list', 'facts-set-aside', 'setting-which', 'facts-tidied']) body.append(el('div', {id}));
   const sections = {eligibility, availability: [], languages: []};
   window.pilot = {state: async () => ({settings: {}}), detailsFactsNow: async () => ({ok: true, sections, formats: {}}), detailsFacts: async () => ({ok: true, sections, formats: {}, older: []}), questionsRead: async () => ({}), zoneSuggestions: async names => { asked.push(names); await gate.promise; return {eu: 'no, needs sponsorship', uk: 'yes, with a permit', us: 'yes, freely'}; }};
-  await showFacts();
+  forgetKept();   // the screen paints its last read first; a test must not see the one before
+  await showFacts({redraw: true});   // a refresh never redraws under unsaved edits; an earlier test left some
   return document.querySelector('[data-facts="eligibility"]');
 }
 const status = label => factsNow().eligibility.find(line => line.label === label)?.value || '';

@@ -11,7 +11,7 @@ export const PROMPT_FILES = [
   {key: 'rung2-frames', label: 'rung 2 (the frame rule, only asked with frame candidates)', file: 'desktop/lib/ladder/rung2-sketch.js', parts: ['FRAME_RULE']},
   {key: 'rung3', label: 'rung 3', file: 'desktop/lib/ladder/rung3-digest.js', parts: ['DIGEST_INSTRUCTIONS', 'DIGEST_SCHEMA', 'FRAME_RULE']},
   {key: 'account-judge', label: 'the account judge', file: 'desktop/lib/account-judge.js', parts: ['INSTRUCTIONS', 'schema']},
-  {key: 'form-judge', label: 'the form judge', file: 'desktop/lib/form-judge.js', parts: ['INSTRUCTIONS', 'STEP_RULE', 'SUBMIT_RULE', 'BLOCKED_RULE', 'schema']},
+  {key: 'form-judge', label: 'the form judge', file: 'desktop/lib/form-judge.js', parts: ['INSTRUCTIONS', 'STEP_RULE', 'SUBMIT_RULE', 'BLOCKED_RULE', 'BOT_RULE', 'schema']},
   {key: 'fill-verify', label: 'the fill check (fill_verify)', file: 'desktop/lib/ladder/fill-verify.js', parts: ['INSTRUCTIONS', 'schema']},
   {key: 'fill-repair', label: 'the fill repair (fill_repair)', file: 'desktop/lib/ladder/fill-repair.js', parts: ['INSTRUCTIONS', 'schema']},
   {key: 'rung4', label: 'rung 4', file: 'desktop/lib/ladder/rung4-picture.js', parts: ['INSTRUCTIONS', 'PAGE_INSTRUCTIONS', 'FORM_INSTRUCTIONS', 'SCHEMA']},

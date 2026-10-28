@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import {createBackgroundApplyStore} from '../lib/background-apply-store.js';
 
 const config = {mode: 'auto', chosenAt: '2026-10-27T10:00:00Z', answers: 'facts', auto: {minFit: 80, factsOnly: true, noEmpty: true, perDay: 20, perEmployer: 1, waitMin: 10}};
-const ready = {answer: 'ready', step: 'final', submitControl: 'Send my application', requiredComplete: true, factsOnly: true, safe: true, signature: 'page-1'};
+const ready = {answer: 'ready', step: 'final', submitControl: 'Send my application', requiredComplete: true, factsOnly: true, safe: true, botCheck: false, signature: 'page-1'};
 function rig() {
   let time = Date.parse('2026-10-27T12:00:00Z'), id = 0, failed = false;
   const apps = new Map(), sections = new Map(), events = [];
@@ -45,6 +45,17 @@ test('two launch claims and simultaneous reservations create exactly one owned s
   assert.equal(results.filter(x => x.submit).length, 1);
   assert.equal(r.events.length, 1);
   assert.equal((await r.make().reserve(...args)).submit, false, 'restart never repeats an uncertain attempt');
+});
+
+test('the automatic press needs the judge to have said no bot check: a bot check, or no answer about it, never reserves', async () => {
+  for (const botCheck of [true, undefined]) {
+    const r = rig(), {store, job, session} = await prepared(r, r.add());
+    r.advance(600000);
+    const proof = {...ready, botCheck}, got = await store.reserve(job.url, session, 'owned-browser', proof, config);
+    assert.equal(got.submit, false, `botCheck ${botCheck}`);
+    assert.equal(got.reason, 'bot_check_unknown');
+    assert.equal((await store.read(job.url)).state, 'needs_user_handoff', 'the person finishes it');
+  }
 });
 
 test('mode 2 ends ready for review, while mode 3 waits and rechecks every guard before reserving', async () => {

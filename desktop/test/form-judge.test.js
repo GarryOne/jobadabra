@@ -91,6 +91,18 @@ test('under the e2e capture the form judge\'s ask is kept for the replay to comp
 // After the fill (11 Oct 2026, a site dialog "your filled fields may be replaced, continue?" sat over the form and the judge said needs_person about a field behind it):
 // a fourth fixed answer, blocked, with a kind the code validates; the page's own layers and covered controls are structure the AI is shown.
 const covered = {...page, onTop: {shape: 'dialog', role: 'dialog', text: 'Vos champs peuvent être remplacés. Continuer ?', buttons: ['Annuler', 'Continuer']}};
+test('bot_check: the judge says whether the page asks for a robot check; one that is not passed is never "ready"; no word about it stays unknown', async () => {
+  const seen = [];
+  const asked = answer => judgeForm(fake({answer: 'ready', needs: '', needs_kind: '', step: 'final', confidence: 0.9, ...answer}, seen), page);
+  assert.equal((await asked({bot_check: false})).botCheck, false);
+  const robot = await asked({bot_check: true});
+  assert.equal(robot.botCheck, true);
+  assert.equal(robot.answer, 'needs_person', 'a ready that carries a robot check is the person\'s to finish');
+  assert.equal('botCheck' in await asked({}), false, 'an answer without the field is not read as "no check"');
+  assert.match(seen[0].system, /bot_check/, 'the question is in the instructions');
+  assert.ok(seen[0].output_config.format.schema.required.includes('bot_check'));
+});
+
 test('blocked: a dialog over the form is its own answer, with a kind from the fixed list (anything else is "overlay"), never a needed control', async () => {
   const seen = [];
   const got = await judgeForm(fake({answer: 'blocked', blocked_kind: 'dialog', needs: 'Prénom', needs_kind: 'field', confidence: 0.9}, seen), covered);

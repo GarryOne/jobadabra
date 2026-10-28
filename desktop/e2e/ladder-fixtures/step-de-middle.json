@@ -56,7 +56,8 @@
   "step": "middle",
   "next_control": "Weiter",
   "submit_control": "",
-  "confidence": 0.95
+  "bot_check": false,
+  "confidence": 0.9
  },
  "answer_path": "app"
 }

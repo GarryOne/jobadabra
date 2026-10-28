@@ -97,7 +97,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 
 - [ ] Settings → Apply checks wired to the one-shot reservation (no required empty, saved facts, fit 80+, 20 a day, 1 per employer).
 - [ ] 10-minute wait with Stop, shown on the Applying card.
-- [ ] `bot_check` in form-judge with a ladder fixture (owner's yes on its measured cost): the last check before an automatic press. Moved from B (28 Oct 2026): in B a bot check is already handed to the person where the page is read (`fill-flow.js` 300: the account judge, 436: rung 2's page kind, incl. a robot check among the form's own fields), and a challenge raised by Submit shows in the person's own live view.
+- [x] `bot_check` in form-judge with a ladder fixture (owner's yes on its measured cost, 28 Oct 2026: same call, +329 characters, no extra call; form_ready 6/6 on the plan path; the automatic press reserves only on an explicit "no bot check"; proof: desktop/test/form-judge.test.js): the last check before an automatic press. Moved from B (28 Oct 2026): in B a bot check is already handed to the person where the page is read (`fill-flow.js` 300: the account judge, 436: rung 2's page kind, incl. a robot check among the form's own fields), and a challenge raised by Submit shows in the person's own live view.
 - [ ] The automatic Submit press in the hidden browser, one attempt, never retried.
 - [ ] Applied only from a receipt the confirmation judge reads; anything else goes to the person.
 - [ ] End-to-end proof against a fake local submit endpoint (never a real site).

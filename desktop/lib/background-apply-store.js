@@ -81,6 +81,7 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       const stop = async reason => { const next = await manual(app, state, reason); return {submit: false, reason, state: next.state}; };
       if (config?.mode !== 'auto' || !config.chosenAt || config.chosenAt !== state.chosenAt) return stop('mode_changed_or_not_opted_in');
       if (!proofOk(proof) || proof.signature !== state.signature) return stop('page_changed_or_incomplete');
+      if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
       const checks = config.auto || {};
       if ((checks.factsOnly !== false || config.answers !== 'ai') && (proof.factsOnly !== true || state.factsOnly !== true)) return stop('facts_unknown');
       const kit = kitOf(await ask('applications', 'section', {app_id: app.id, name: KIT_SECTION}));

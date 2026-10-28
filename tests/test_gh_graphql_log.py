@@ -52,6 +52,17 @@ class GhGraphqlLogTest(unittest.TestCase):
         done = subprocess.run(['gh', 'api', 'repos/o/r'], capture_output=True, text=True, env=self.env, timeout=2)
         self.assertEqual(done.stdout.strip(), 'real gh: api repos/o/r')
 
+    def test_resolving_the_real_gh_reads_only_the_head_of_each_candidate(self):
+        # The real gh is a 40 MB program; a marker past the head must not be searched for. Old code scanned the whole file and skipped this gh.
+        big = self.tmp / 'big'
+        big.mkdir()
+        (big / 'gh').write_text('#!/bin/sh\necho "big gh: $*"\n' + '#' * 8192 + '\nJOBADABRA_GH_SHIM=1\n')
+        (big / 'gh').chmod(0o755)
+        self.env['PATH'] = f'{SHIM.parent}{os.pathsep}{big}{os.pathsep}' + self.env['PATH'].split(os.pathsep, 1)[1]
+        self.env['GH_GRAPHQL_LOG'] = 'off'
+        done = self.gh('api', 'repos/o/r')
+        self.assertEqual(done.stdout.strip(), 'big gh: api repos/o/r')
+
     def test_rest_calls_are_not_logged_and_api_graphql_is(self):
         for args in (('api', 'repos/o/r/pulls/1'), ('run', 'list'), ('api', '-X', 'POST', 'repos/o/r/pulls')):
             self.assertEqual(self.gh(*args).returncode, 0)

@@ -4,12 +4,13 @@
 #   so anything left is named by measurement"). Our tools read and write PRs over REST (tools/pr-rest-lib.sh); what is logged here is what is left.
 # Log: GH_GRAPHQL_LOG (default ~/.cache/jobadabra/gh-graphql.log; "off": none), one line each: UTC time, session, caller, folder, command identity (no argument values). Count: tools/gh-graphql-report.sh.
 # Guard: tests/test_gh_graphql_log.py.
+# Why (28 Oct 2026, load 158): the marker sits in the first lines; grepping the whole file read the real gh (a 40 MB program, ~2.5 s under load) on every call. Only the head is read.
 JOBADABRA_GH_SHIM=1   # Stable marker: skip every worktree copy when resolving the real executable.
 here="$(cd "$(dirname "$0")" && pwd -P)"
 real=""
 IFS=: read -ra dirs <<<"$PATH"
 for d in "${dirs[@]}"; do
-  [ -n "$d" ] && [ -x "$d/gh" ] && [ "$(cd "$d" 2>/dev/null && pwd -P)" != "$here" ] && ! grep -q '^JOBADABRA_GH_SHIM=1' "$d/gh" 2>/dev/null && { real="$d/gh"; break; }
+  [ -n "$d" ] && [ -x "$d/gh" ] && [ "$(cd "$d" 2>/dev/null && pwd -P)" != "$here" ] && ! head -c 4096 "$d/gh" 2>/dev/null | grep -q '^JOBADABRA_GH_SHIM=1' && { real="$d/gh"; break; }
 done
 [ -n "$real" ] || { echo "gh: no gh on PATH past $here" >&2; exit 127; }
 log="${GH_GRAPHQL_LOG:-$HOME/.cache/jobadabra/gh-graphql.log}"

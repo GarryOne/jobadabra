@@ -2,13 +2,13 @@
 // cover-letter/style.json {lines, updatedAt}. Why (PR B1b, owner 28 Oct 2026: "everything about the cover letter should be only in Cover Letter tab";
 // "Beside the letter"): they were the "Cover letter style" section of the answers page. That section is still written there by the Strategy draft and the
 // line organizer (lib/strategy.js, lib/profile-destinations.js): each read moves it into the file and off the page, so the file is the one home and no
-// prompt changed. Letter writers get the rules back as that same section of the answers text (withStyle); the engine's kit reads the file by path
+// prompt changed. Letter writers read the rules as the About you bundle's voice part (lib/about-you.js voiceOf, D1c-2); the engine's kit reads the file by path
 // (JOB_PILOTTO_LETTER_STYLE_FILE, src/ai/kit.py). Guarded by test/letter-style-file.test.js.
 import fs from 'node:fs';
 import path from 'node:path';
 import {openStore} from './store/index.js';
 import * as sqliteStore from './store/sqlite.js';
-import {STYLE_HEADING, isStyle} from '../renderer/writing-preferences-model.js';
+import {isStyle} from '../renderer/writing-preferences-model.js';
 import {log} from './log.js';
 
 export const FILE = 'cover-letter/style.json';
@@ -68,16 +68,3 @@ export async function read(storage, {fetcher, demo = false} = {}) {
   } catch (error) { log('letter-style', `the style section stays on the answers page: ${error.message}`); }
   return moved;
 }
-
-// The answers text without a "Cover letter style" section (one read before the move, or a store that could not be edited).
-function withoutStyle(text) {
-  let inStyle = false;
-  return String(text || '').split('\n').filter(line => {
-    const heading = line.match(/^#{1,6}\s+(.*)$/);
-    if (heading) inStyle = isStyle(heading[1]);
-    return !inStyle;
-  }).join('\n').trimEnd();
-}
-
-/** The answers text a letter writer reads, with the rules as its one "Cover letter style" section (the prompts follow that section). */
-export const withStyle = (answers, lines) => (clean(lines).length ? `${withoutStyle(answers)}\n\n## ${STYLE_HEADING}\n${clean(lines).map(line => `- ${line}`).join('\n')}` : withoutStyle(answers));

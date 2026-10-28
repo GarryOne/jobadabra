@@ -53,13 +53,6 @@ test('saving an edit keeps a rule moved into the file while the editor was open;
   assert.deepEqual(await letterStyle.saveEdit(s, ['Length: 130–170 words'], ['Length: 130–170 words', 'Never mention: salary']), ['Length: 130–170 words'], 'a rule the editor showed and removed leaves');
 });
 
-test('letter writers get the rules as the Cover letter style section of the answers text they already read', () => {
-  assert.equal(letterStyle.withStyle('- Notice period: 3 months', ['Tone: direct']), '- Notice period: 3 months\n\n## Cover letter style\n- Tone: direct');
-  assert.equal(letterStyle.withStyle('- Notice period: 3 months', []), '- Notice period: 3 months');
-  assert.equal(letterStyle.withStyle('- Notice period: 3 months\n\n## ✍️ Cover letter style\n- Tone: old\n\n## Other\n- Pets: none', ['Tone: direct']),
-    '- Notice period: 3 months\n\n## Other\n- Pets: none\n\n## Cover letter style\n- Tone: direct', 'an old copy in the text is replaced, never doubled');
-});
-
 test('in demo mode the rules are read from the demo folder and nothing in it is moved or written', async () => {
   const s = fresh();
   s.writeText('answers.md', '## Cover letter style\n- Tone: direct\n');

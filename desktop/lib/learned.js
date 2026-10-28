@@ -11,6 +11,7 @@ import {aliasKey} from '../shared/alias-schema.js';
 import * as sharedMeanings from './aliases.js';
 import * as contactDetails from './contact.js';
 import * as questions from './questions.js';
+import {splitMark} from '../renderer/question-kind.js';
 import {openStore} from './store/index.js';
 import * as notionGate from './notion-gate.js';
 import {log} from './log.js';
@@ -52,7 +53,7 @@ export async function save(storage, payload, {notify = () => {}, contactSaved = 
   try {
     const contact = await contactDetails.read(storage, fetcher).catch(() => ({}));
     const page = await openStore(storage, {fetcher}).page('answers').text();
-    const answered = new Set(page.split('\n').map(line => line.replace(/^[-*]\s+/, '').trim().toLowerCase()));
+    const answered = new Set(page.split('\n').map(line => splitMark(line.replace(/^[-*]\s+/, '')).text.trim().toLowerCase()));   // a line's kind mark is the form's words (Gitar, #2326)
     const aliases = await sharedMeanings.lookup(storage).catch(() => []);   // the shared label meanings (cached; none with technical reports off)
     const {details, answers} = plan(payload?.items, {contact, answered, aliases});
     if (Object.keys(details).length) { const merged = await contactDetails.save(storage, {...contact, ...details}, fetcher); contactSaved(merged); }

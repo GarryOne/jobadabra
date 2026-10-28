@@ -129,7 +129,7 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 ## Progress
 
 - [x] Spec approved by the owner (28 Oct 2026)
-- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D
+- [x] Design sketch approved (28 Oct 2026, https://claude.ai/artifact/Jpf5gETGzQsee5WoaTKZXy): one slot per screen, Not now = 14 days, PR 1 starts before PR D; Focus Suggestions + Jobs collapsed bar approved (v4)
 - [ ] PR 1 · slot, states, actions come to you
 - [ ] PR 2 · CV
 - [ ] PR 3 · Strategy + Jobs

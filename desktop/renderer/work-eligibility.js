@@ -10,6 +10,8 @@ import {CODES} from './countries.js';
 const EEA_CH = 'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO CH'.split(' ');
 export const ZONES = [{id: 'eu', label: 'EU / EEA + Switzerland', codes: EEA_CH}, {id: 'uk', label: 'United Kingdom', codes: ['GB', 'UK']}, {id: 'us', label: 'United States', codes: ['US']}];
 export const STATUSES = ['yes, freely', 'yes, with a permit', 'no, needs sponsorship'];
+/** The status preselected for a zone the nationality does not open: no permit is known, so sponsorship is needed (the person changes it with one click). */
+export const SUGGESTED = STATUSES[2];
 export const STATUS_NAMES = {'yes, freely': 'Yes, freely', 'yes, with a permit': 'Yes, with a permit', 'no, needs sponsorship': 'No, needs sponsorship'};
 export const STATUS_HINTS = {'yes, freely': 'Citizen or free movement', 'yes, with a permit': 'A visa or residence permit', 'no, needs sponsorship': 'An employer must sponsor you'};
 export const OLDER = {'needs visa': 'no, needs sponsorship', allowed: ''};   // the older words: "allowed" never said how, so it stays as written

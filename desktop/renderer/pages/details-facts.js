@@ -11,7 +11,7 @@ import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
 import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
-import {NATIONALITY, ZONES, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
+import {NATIONALITY, STATUSES, SUGGESTED, ZONES, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
 
 export const KEYS = ['eligibility', 'availability', 'languages'];
 const box = key => document.querySelector(`[data-facts="${key}"]`);
@@ -40,7 +40,7 @@ function draw(sections, formats = {}) {
 }
 
 // Work eligibility (owner, 28 Oct 2026, #2322: "ask as less as possible the user and … conclude as much as possible, by ourselves"): Nationality, the three
-// zones (one your nationality opens reads "Yes, freely · from your nationality", never asked), and the other lines as they are (owner, 28 Oct 2026: no
+// zones (each preselected from your nationality, "Suggested from your nationality"), and the other lines as they are (owner, 28 Oct 2026: no
 // "Add a country": "they'll use it either for EEA or for US").
 let eligibilityRow = null;
 function drawEligibility(into, lines, row) {
@@ -55,29 +55,37 @@ function drawEligibility(into, lines, row) {
   into.addEventListener('change', event => { if (event.target.closest?.('.qa-nationality')) redrawConcluded(into); });
   into.addEventListener('click', event => { if (event.composedPath?.().some(node => node.classList?.contains('qa-nationality'))) redrawConcluded(into); });   // the chip is gone by now: its path
 }
-// A zone: its answered row, else "from your nationality" when the nationality opens it (a quiet Change turns it into the chips), else its row or the empty
-// chips (a template row still asked stays the one asked).
+// A zone: its answered row, else its picker preselected from the nationality (owner, 28 Oct 2026: "we should still show the card pickers, but just preselected and
+// with a note below"; a zone the nationality opens reads "yes, freely", the others "no, needs sponsorship"): a suggestion, never an answer until Save.
 function zoneRow(into, zone, rows) {
   const saved = rows.find(line => zoneOfLabel(line.label) === zone);
-  if (isAnswered(saved?.value) || !zonesOpenedBy(nationalityNow(into)).includes(zone.id)) return eligibilityRow(saved || {label: zone.label, value: '', kind: 'per_country'});
-  const node = el('div', 'fact-derived country-row');
-  node.dataset.zone = zone.id;
-  const change = Object.assign(el('button', 'secondary small-btn', 'Change'), {type: 'button'});
-  change.addEventListener('click', () => { node.replaceWith(eligibilityRow({label: zone.label, value: '', kind: 'per_country'})); detailsChanged(); });
-  const words = el('span', 'fact-derived-value');
-  words.append(el('strong', '', 'Yes, freely'), el('span', 'muted', ' · from your nationality '), change);
-  node.append(el('span', '', zone.label), words);
-  return node;
+  return isAnswered(saved?.value) ? eligibilityRow(saved) : suggestionRow(zone, suggestedFor(zone, nationalityNow(into)));
 }
+const suggestedFor = (zone, nationality) => zonesOpenedBy(nationality).includes(zone.id) ? STATUSES[0] : nationality.length ? SUGGESTED : '';
 const nationalityNow = into => nationalityOf(into.querySelector('.qa-nationality')?.value || '') || [];
-// The nationality changed: a zone it now opens, still unanswered, reads as concluded; one it no longer opens gets its chips back.
+// The nationality changed: every zone with no answer of the person's is preselected again from it. Why (28 Oct 2026, owner: "once we add/change the nationality,
+// initially, can we preselect…"; "we shouldn't override his choices"): a suggestion not yet clicked follows the nationality; an answer given or saved never moves.
 function redrawConcluded(into) {
+  const nationality = nationalityNow(into);
+  let suggested = false;
   for (const zone of ZONES) {
-    const derived = into.querySelector(`.fact-derived[data-zone="${zone.id}"]`), line = [...into.querySelectorAll('.country-row.fact-line')].find(each => zoneOfLabel(factOf(each).label) === zone);
-    const opens = zonesOpenedBy(nationalityNow(into)).includes(zone.id);
-    if (derived && !opens) derived.replaceWith(eligibilityRow({label: zone.label, value: '', kind: 'per_country'}));
-    if (!derived && opens && line && !isAnswered(factOf(line).value)) line.replaceWith(zoneRow(into, zone, []));
+    const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => zoneOfLabel(factOf(each).label) === zone);
+    if (!line || (isAnswered(factOf(line).value) && !line.dataset.suggested)) continue;
+    const value = suggestedFor(zone, nationality);
+    line.replaceWith(suggestionRow(zone, value));
+    suggested ||= Boolean(value);
   }
+  if (suggested) detailsChanged();
+}
+// A zone's row carrying the suggestion: a click on it is the person's own answer, so it stops being a suggestion.
+function suggestionRow(zone, value) {
+  const line = eligibilityRow({label: zone.label, value, kind: 'per_country'});
+  if (!value) return line;
+  line.dataset.suggested = '1';
+  const note = el('span', 'muted small', 'Suggested from your nationality');
+  line.append(note);
+  line.addEventListener('click', () => { delete line.dataset.suggested; note.remove(); });
+  return line;
 }
 
 /**
@@ -99,7 +107,7 @@ export function foldOlder(readings = []) {
   redrawConcluded(into);
   for (const proposal of used.flatMap(each => each.rows || [])) {
     const line = [...into.querySelectorAll('.country-row.fact-line')].find(each => factOf(each).label.toLowerCase() === proposal.label.toLowerCase());
-    if (!line || factOf(line).value) continue;   // a zone your nationality opens, or one you answered, keeps its answer
+    if (!line || (factOf(line).value && !line.dataset.suggested)) continue;   // a zone your nationality opens, or one you answered, keeps its answer
     const next = eligibilityRow({...proposal, kind: 'per_country'});
     line.replaceWith(next);
     mark(next);

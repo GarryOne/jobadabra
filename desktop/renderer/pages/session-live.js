@@ -93,6 +93,9 @@ export function liveEvent({session, message} = {}) {
   } else if (message.kind === 'needs') {
     view.facts = message;
     renderLive(view.item, view.on);   // Submit turns on, a count changes: the actions follow the page
+  } else if (message.kind === 'closed') {
+    view.opener.reset();
+    renderLive(view.item, view.on);   // asks again
   } else if (message.kind === 'select' || message.kind === 'file') showAsk(view, message);
 }
 /** Close the open live view (another session shown, or none): the stream stops in main. */

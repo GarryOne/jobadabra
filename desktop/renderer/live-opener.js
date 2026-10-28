@@ -10,6 +10,8 @@ export function createLiveOpener(open, onResult = () => {}) {
   let state = 'none';
   return {
     get state() { return state; },
+    /** Main dropped the view on its own (the page went away): not open any more, the next redraw asks again. */
+    reset() { if (state === 'open') state = 'none'; },
     ensure() {
       if (state !== 'none') return;
       state = 'opening';

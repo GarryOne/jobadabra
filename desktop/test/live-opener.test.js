@@ -35,3 +35,12 @@ test('a refusal or a thrown call leaves it not open, with the reason, and is ask
   assert.deepEqual(seen, ['The hidden form is not open.', 'The live page was closed before it opened.']);
   assert.equal(calls, 2);
 });
+
+test('main dropped the view on its own: reset makes the next redraw ask again', async () => {
+  let asked = 0;
+  const opener = createLiveOpener(async () => { asked++; return {ok: true}; });
+  opener.ensure(); await flush();
+  opener.reset(); opener.ensure(); await flush();
+  assert.equal(asked, 2);
+  assert.equal(opener.state, 'open');
+});

@@ -56,7 +56,10 @@ export function registerLiveViewHandlers({DEMO = false, storage, ipcMain, toWind
     const frames = openFrameTargets(address, openCdp);   // iframes in their own process, read for the page's facts
     let input = () => {}, ended = () => {};
     const channel = {send: message => toWindow('liveEvent', {session: id, message}), onMessage: fn => { input = fn; }, onClose: fn => { ended = fn; }};
-    views.set(id, {input: message => input(message), close: () => { ended(); frames.close(); }});
+    const view = {input: message => input(message), close: () => { ended(); frames.close(); }};
+    views.set(id, view);
+    // Why (2026-10-28, review of the live-view fix): the window marks the view open once main says ok; when the page goes away on its own (a restart of the hidden form) it must hear it and ask again.
+    cdp.on?.('Session.closed', () => { if (views.get(id) !== view) return; views.delete(id); view.close(); toWindow('liveEvent', {session: id, message: {kind: 'closed'}}); });
     try {
       await (attach || (await liveModule()).attachLive)(channel, cdp, {resolveFile, frameTargets: frames.list});
     } catch (error) {

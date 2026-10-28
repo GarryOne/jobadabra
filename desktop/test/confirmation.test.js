@@ -111,7 +111,7 @@ test('actual challenge evidence overrides a contradictory receipt answer and han
   assert.deepEqual(marked, []);
 });
 
-// Applied for a background job comes only from a page the judge reads as the site's confirmation (spec 2026-10-27 "Applied only from a receipt").
+// Applied for a background job comes only from a page the judge reads as the site's confirmation (spec 2026-10-27 "Applied only from a receipt"); the hand-off after the watcher's last read is the extension's, not this route's.
 test('a background job is marked Applied only after the judge reads the page as a confirmation', async () => {
   const run = async verdict => {
     const receipts = [], marked = [];

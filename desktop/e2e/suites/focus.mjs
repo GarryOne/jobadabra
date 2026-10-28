@@ -196,11 +196,12 @@ export async function runFocus(ctx, parts) {
     await page.fill('#focus-target', '3');
     // Focus drawn again while the box is being typed in (a Gmail check ending, the page's own late load) keeps what was typed: on main after #2331
     // a load that landed mid-edit put 5 back and Tab saved nothing (issue #2338). Refresh is pressed from the page, so the box keeps the keyboard.
-    await page.evaluate(() => new Promise(resolve => {
-      window.addEventListener('focus-updated', resolve, {once: true});
+    const redrawn = await page.evaluate(() => new Promise(resolve => {   // a load already running draws too (Refresh is off meanwhile)
+      window.addEventListener('focus-updated', () => resolve(true), {once: true});
       document.querySelector('#focus-refresh').click();
-      setTimeout(resolve, 20000);
+      setTimeout(() => resolve(false), 20000);
     }));
+    if (!redrawn) throw new Error('Focus was not drawn again within 20 s while the target was being typed: the step proved nothing');
     const typed = await page.inputValue('#focus-target');
     if (typed !== '3') throw new Error(`Focus drawn again while the target was being typed put "${typed}" back in the box, not the "3" typed`);
     await page.press('#focus-target', 'Tab');

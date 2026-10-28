@@ -55,8 +55,19 @@ export function createLearningMessages(ctx) {
         let host = '';
         try { host = new URL(sender.tab.url).hostname; } catch { /* not a url */ }
         const items = message.items.slice(0, 40).map(item => ({label: String(item?.label || '').slice(0, 120), value: String(item?.value || '').slice(0, 300),
-          kind: item?.kind === 'option' ? 'option' : 'text'})).filter(item => item.label && item.value);
+          kind: item?.kind === 'option' ? 'option' : 'text', remember: item?.remember !== false})).filter(item => item.label && item.value);
         return api(config, '/extension/learned', {method: 'POST', body: JSON.stringify({host, job: await jobOf(sender.tab), items})});
+      })().then(reply, () => reply({ok: false}));
+      return true;
+    }
+    // The panel's Remember switches start from the app's verdict per question (one employer's questions start off; lib/learned.js rememberDefaults).
+    if (message?.type === 'rememberDefaults' && sender.tab && Array.isArray(message.labels)) {
+      (async () => {
+        const config = await settings();
+        if (config.workerUrl && !config.workerUrl.startsWith('http://127.0.0.1')) return {ok: false};
+        let host = '';
+        try { host = new URL(sender.tab.url).hostname; } catch { /* not a url */ }
+        return api(config, '/extension/remember', {method: 'POST', body: JSON.stringify({labels: message.labels.slice(0, 40).map(label => String(label || '').slice(0, 120)), host})});   // the label itself names an employer when it does; the AI reads the host too
       })().then(reply, () => reply({ok: false}));
       return true;
     }

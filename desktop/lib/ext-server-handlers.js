@@ -204,6 +204,7 @@ export function registerExtServerHandlers(ctx) {
   });
   server.setLearnedHandler(payload => learnedAnswers.save(storage, payload, {notify: (title, body, target, tone) => toWindow('toast', {title, body, target, tone}), contactSaved: contact => server.contactSaved(storage, contact),
     propose: items => recipeReporter.proposal(items)}));   // a label the AI read as a fixed detail: proposed to the shared meanings (PR B2)
+  server.setRememberHandler(payload => learnedAnswers.rememberDefaults(storage, payload?.labels, {host: String(payload?.host || '').slice(0, 80)}));
   server.setTabsHandler(report => {
     const sessions = terminals.list();
     review.noteTabs(report, new Set(sessions.map(session => session.id)));

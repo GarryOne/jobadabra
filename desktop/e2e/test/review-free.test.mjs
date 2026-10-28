@@ -4,6 +4,7 @@ import {test} from 'node:test';
 import {buildRequest} from '../lib/vision.mjs';
 import {FREE_MODEL, askFree, freeCost, toWorkersAi} from '../lib/review-free.mjs';
 
+const open = async () => ({capped: false, neurons: 0});   // the day's cap is tested in ai-cap.test.mjs
 const request = buildRequest({view: 'focus', pngBase64: 'iVBORw0KGgo=', rules: 'Rule one.', facts: {page: 'focus'}});
 
 test('the request keeps the instructions, the picture and the words', () => {
@@ -17,7 +18,7 @@ test('the request keeps the instructions, the picture and the words', () => {
 test('asks Cloudflare with CI\'s token and answers in Claude\'s shape, with its cost', async () => {
   let seen;
   const fetchImpl = async (url, init) => { seen = {url, init}; return {ok: true, status: 200, json: async () => ({success: true, result: {response: '{"findings":[]}', usage: {prompt_tokens: 2000, completion_tokens: 20}}})}; };
-  const answer = await askFree(request, {token: 'cf', account: 'acct', fetchImpl});
+  const answer = await askFree(request, {token: 'cf', account: 'acct', fetchImpl, cap: open});
   assert.equal(seen.url, `https://api.cloudflare.com/client/v4/accounts/acct/ai/run/${FREE_MODEL}`);
   assert.equal(seen.init.headers.authorization, 'Bearer cf');
   assert.deepEqual(answer.message.content, [{type: 'text', text: '{"findings":[]}'}]);
@@ -28,9 +29,9 @@ test('asks Cloudflare with CI\'s token and answers in Claude\'s shape, with its 
 
 test('an already-parsed answer, a cut-off answer, a refusal and no token', async () => {
   const reply = result => async () => ({ok: true, status: 200, json: async () => ({success: true, result})});
-  assert.equal((await askFree(request, {token: 'cf', account: 'a', fetchImpl: reply({response: {findings: []}})})).message.content[0].text, '{"findings":[]}');
-  assert.equal((await askFree(request, {token: 'cf', account: 'a', fetchImpl: reply({response: '{"fi', usage: {completion_tokens: 1500}})})).message.stop_reason, 'max_tokens');
-  const refused = await askFree(request, {token: 'cf', account: 'a', fetchImpl: async () => ({ok: false, status: 403, json: async () => ({success: false, errors: [{message: 'not allowed'}]})})});
+  assert.equal((await askFree(request, {token: 'cf', account: 'a', cap: open, fetchImpl: reply({response: {findings: []}})})).message.content[0].text, '{"findings":[]}');
+  assert.equal((await askFree(request, {token: 'cf', account: 'a', cap: open, fetchImpl: reply({response: '{"fi', usage: {completion_tokens: 1500}})})).message.stop_reason, 'max_tokens');
+  const refused = await askFree(request, {token: 'cf', account: 'a', cap: open, fetchImpl: async () => ({ok: false, status: 403, json: async () => ({success: false, errors: [{message: 'not allowed'}]})})});
   assert.deepEqual([refused.ok, refused.status], [false, 403]);
   assert.match(refused.detail, /not allowed/);
   assert.equal((await askFree(request, {token: '', account: 'a'})).status, 'no-token');

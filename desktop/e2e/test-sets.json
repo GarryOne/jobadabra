@@ -33,6 +33,7 @@
   "test-sets.test.mjs"
  ],
  "daily": [
+  "ai-cap.test.mjs",
   "context-imports-no-app-code.test.mjs",
   "export-snapshot.test.mjs",
   "replay-deadline.test.mjs",

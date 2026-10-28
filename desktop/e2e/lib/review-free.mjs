@@ -25,10 +25,10 @@ export function freeCost(model, usage = {}) {
 }
 
 // -> {ok: true, message: {content: [{type: 'text', text}], stop_reason, usage: {input_tokens, output_tokens}, usd}} or {ok: false, status, detail}.
-export async function askFree(request, {token = process.env.CI_FREE_AI_CF_TOKEN, account = process.env.CI_FREE_AI_CF_ACCOUNT_ID, model = FREE_MODEL, fetchImpl = fetch} = {}) {
+export async function askFree(request, {token = process.env.CI_FREE_AI_CF_TOKEN, account = process.env.CI_FREE_AI_CF_ACCOUNT_ID, model = FREE_MODEL, fetchImpl = fetch, cap = () => capReached({fetchImpl})} = {}) {
   if (!token || !account) return {ok: false, status: 'no-token', detail: 'CI_FREE_AI_CF_TOKEN or CI_FREE_AI_CF_ACCOUNT_ID is not set'};
-  const cap = await capReached({env: {...process.env, CI_FREE_AI_CF_TOKEN: token, CI_FREE_AI_CF_ACCOUNT_ID: account}, fetchImpl});   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
-  if (cap.capped) { noteCapped(cap.neurons); return {ok: false, status: 'capped', detail: capMessage(cap.neurons)}; }
+  const day = await cap();   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
+  if (day.capped) { noteCapped(day.neurons); return {ok: false, status: 'capped', detail: capMessage(day.neurons)}; }
   const response = await fetchImpl(`${API}/accounts/${account}/ai/run/${model}`, {method: 'POST',
     headers: {authorization: `Bearer ${token}`, 'content-type': 'application/json'}, body: JSON.stringify(toWorkersAi(request)), signal: AbortSignal.timeout(120000)}).catch(error => error);
   if (response instanceof Error) return {ok: false, status: 0, detail: `no answer: ${response.message}`};

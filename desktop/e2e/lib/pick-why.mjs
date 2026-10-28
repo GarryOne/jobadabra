@@ -25,7 +25,9 @@ export function whyLines({suites = [], steps = {}, stores = {}, dropped = {}, pi
     }
     const why = pointedBy[suite] ? `${pointedBy[suite]} (the suite watches or imports it, and its recorded run never loaded it)`
       : quoting[suite]?.whole ? `quotes text this PR removes outside a named step (${[...(hits[suite] || [])].map(text => `"${text}"`).join(', ')})`
-        : picked[suite]?.reason || 'a file of the suite or its harness changed';
+        // Why (#2359, Gitar): a PR runs a picked suite whole (lib/pr-suites.mjs stepLists), so the quote and own-step reasons that named steps now land here
+        : quoting[suite]?.steps?.length ? `quotes text this PR removes (${[...(hits[suite] || [])].map(text => `"${text}"`).join(', ')})`
+          : picked[suite]?.reason || (own[suite]?.length ? 'its own steps changed in this PR' : 'a file of the suite or its harness changed');
     lines.push(`${suite} · whole suite ← ${why}`);
   }
   return (lines.length > MAX_LINES ? [...lines.slice(0, MAX_LINES), `… ${lines.length - MAX_LINES} more in the PR's "E2E suites for a PR" log`] : lines).map(cut);

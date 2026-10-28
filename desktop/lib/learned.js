@@ -46,6 +46,7 @@ export function plan(items, {contact = {}, answered = new Set(), aliases = []} =
   for (const item of Array.isArray(items) ? items : []) {
     const label = clean(item?.label), value = clean(item?.value);
     if (label.length < 2 || !value || value.length > 300 || known(label, aliases)) continue;
+    if (item.remember === false) { jobOnly.push({label, value}); continue; }   // Why (PR C, owner 28 Oct 2026; Gitar on #2351): Remember off = this job only, a personal detail included
     const key = personalKey(label, aliases);
     if (key) { if (!contact[key]) details[key] = value; continue; }
     if (item.remember === false) { jobOnly.push({label, value}); continue; }   // Why (PR C, owner 28 Oct 2026): "Remember" off = this job only, never read by What we learned

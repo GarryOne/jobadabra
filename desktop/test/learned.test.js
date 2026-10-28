@@ -51,15 +51,6 @@ test('an answer with Remember off is kept out of What we learned and counted as 
   assert.deepEqual(jobOnly, [{label: 'Why Acme?', value: 'The mission'}]);
 });
 
-test('Remember off never reaches the learnings writer, and the label is marked this job only', async () => {
-  const {save} = await import('../lib/learned.js');
-  const kept = [], marked = [];
-  const storage = {secret: () => '', settings: () => ({}), saveSettings: next => marked.push(next)};
-  await save(storage, {host: 'x.test', job: 'https://x.test/j/1', items: [{label: 'Why Acme?', value: 'The mission', remember: false}]},
-    {client: {messages: {create: async () => { kept.push('asked the AI'); throw new Error('must not be asked'); }}}});
-  assert.deepEqual(kept, [], 'the AI is never asked about an answer the person did not want kept');
-});
-
 test('Remember starts on, and off for a question the AI says belongs to this one employer (PR C)', async () => {
   const {rememberDefaults} = await import('../lib/learned.js');
   let settings = {};

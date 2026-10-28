@@ -105,7 +105,7 @@ export async function describeHidden(profile) {
   }
 }
 
-/** Closes the app's hidden browser of `profile` (it outlives the app on purpose, lib/background-browser.js): Browser.close over its own debugging port. Never throws. */
+/** Closes the app's hidden browser of `profile` (it dies with the app, lib/browser-reaper.js; a run closes it itself so it does not wait for that): Browser.close over its own debugging port. Never throws. */
 export async function closeHiddenBrowser(profile) {
   try {
     const port = Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);

@@ -52,3 +52,11 @@ test('Start again asks nothing: it restarts in Chrome, Claude stays the safety n
   assert.doesNotMatch(handler, /showMessageBox/);
   assert.match(handler, /restartAs\(old, 'chrome'\)/);
 });
+
+test('quitting with a hidden-browser application says the browser closes with the app, not that the form stays in Chrome', () => {
+  const hidden = [{company: 'Air France', background: {state: 'filling'}}], label = session => session.company;
+  assert.match(sessionsOnly(hidden, label).detail, /hidden browser closes with the app/);
+  assert.doesNotMatch(sessionsOnly(hidden, label).detail, /stay in Chrome/);
+  assert.match(working({busy: null, sessions: hidden, taskName: () => '', label}).detail, /hidden browser closes with the app/);
+  assert.equal(sessionsOnly(hidden, label).message, 'The hidden browser is still filling an application', 'the actor is named truthfully');
+});

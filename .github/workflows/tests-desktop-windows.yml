@@ -17,6 +17,7 @@ on:
       - 'desktop/lib/apply-handlers.js'
       - 'desktop/lib/apply.js'
       - 'desktop/lib/background-browser-download.js'
+      - 'desktop/lib/browser-reaper.js'
       - 'desktop/lib/background-chrome.js'
       - 'desktop/lib/backup.js'
       - 'desktop/lib/browser-launch.js'

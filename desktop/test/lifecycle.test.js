@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {claimInstance, startWhenReady, installQuitHandling} from '../lib/lifecycle.js';
 
-function fixture({choice = 0, busy = {kind: 'search'}, queue = [], sessions = [], important = [], importantDone = Promise.resolve(), platform = 'darwin', ask = false, demo = false, smoke = false, dataJob = false} = {}) {
+function fixture({choice = 0, busy = {kind: 'search'}, queue = [], sessions = [], listed = [], important = [], importantDone = Promise.resolve(), platform = 'darwin', ask = false, demo = false, smoke = false, dataJob = false} = {}) {
   const calls = [], handlers = {};
   let drain, timeout;
   const idle = new Promise(resolve => { drain = resolve; });
@@ -13,7 +13,7 @@ function fixture({choice = 0, busy = {kind: 'search'}, queue = [], sessions = []
   const beforeQuit = installQuitHandling({app, platform, state: () => ({storage, window, demo, smoke}),
     pipeline: {running: () => busy, queued: () => queue, taskName: () => 'Search', freezeQueue: value => { assert.equal(value, storage); calls.push('freeze'); },
       stopRunning: () => calls.push('stop'), whenIdle: () => idle},
-    terminals: {running: () => sessions, label: () => 'Company', shutdown: () => calls.push('shutdown')},
+    terminals: {running: () => sessions, list: () => listed, label: () => 'Company', shutdown: () => calls.push('shutdown')},
     critical: {labels: () => important, whenDone: () => importantDone},
     dataRunning: () => dataJob, stopDataJob: () => { calls.push('stop-data'); dataJob = false; return Promise.resolve(); },
     shouldAskOnQuit: () => ask, askWhyLeaving: () => calls.push('ask'),
@@ -107,4 +107,18 @@ test('both ways of staying (Cancel, keep sessions) tell the restart to stand dow
   const cancel = fixture({choice: 2}); cancel.quit(); assert.ok(cancel.calls.includes('cancelled'));
   const keep = fixture({busy: null, sessions: [{id: 's1', status: 'running'}]}); keep.quit(); assert.ok(keep.calls.includes('cancelled'));
   const now = fixture({choice: 1}); now.quit(); assert.ok(!now.calls.includes('cancelled'));
+});
+
+// Why (2026-10-28, owner: "Always close it but show that popup about the user confirming the quit considering there are active processes running"): a hidden-browser job has no terminal, so only its background state says it works.
+test('quit with only an application filling in the hidden browser asks first; a finished or waiting-for-review one does not', () => {
+  const job = state => ({id: 'a', kind: 'form', status: 'done', company: 'Air France', background: {state}});
+  for (const state of ['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']) {
+    const f = fixture({busy: null, listed: [job(state)]}); f.quit();
+    assert.deepEqual(f.calls.filter(Array.isArray).at(0), ['Keep working', 'Stop and quit'], `${state} asks`);
+    assert.ok(!f.calls.includes('quit'), `${state} waits for the answer`);
+  }
+  for (const state of ['ready_for_review', 'needs_user_handoff', 'receipt_confirmed']) {
+    const f = fixture({busy: null, listed: [job(state)]}); f.quit();
+    assert.ok(!f.calls.includes('prevent'), `${state} quits without asking`);
+  }
 });

@@ -25,6 +25,10 @@ export function startWhenReady({app, firstCopy, start, getWindows, createWindow}
   });
 }
 
+// Why (2026-10-28, owner): the hidden browser closes with the app, so an application it is still filling or about to submit counts as work a quit would cut off; one waiting for the person does not.
+const WORKING = new Set(['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']);
+const fillingHidden = session => WORKING.has(session.background?.state);
+
 export function installQuitHandling({app, platform, state, pipeline, terminals, critical = {labels: () => [], whenDone: () => Promise.resolve()}, stopDataJob = () => Promise.resolve(), dataRunning = () => false, shouldAskOnQuit,
   askWhyLeaving, showDialog, icon, getWindows, toWindow, notify, later = setTimeout, log = () => {}, onCancel = () => {}}) {
   let quitting = false;
@@ -52,7 +56,7 @@ export function installQuitHandling({app, platform, state, pipeline, terminals, 
       return;
     }
     const busy = pipeline.running(), queue = pipeline.queued();
-    const sessions = terminals.running().filter(session => session.status === 'running');
+    const sessions = [...terminals.running().filter(session => session.status === 'running'), ...(terminals.list?.() || []).filter(fillingHidden)];
     const important = critical.labels();   // an export, a Notion workspace being built…: never cut off without asking
     if (!busy && !queue.length && !sessions.length && !important.length) return;
     event.preventDefault();

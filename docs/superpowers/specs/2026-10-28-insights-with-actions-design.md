@@ -195,7 +195,7 @@ which already ranks missing facts by how often forms ask. **Later:** #8 letters 
 - [x] PR 1b decisions: which rows, Not now / Not true by key, top option + See all, numbers from the kept check (28 Oct 2026, sketch https://claude.ai/artifact/W6JoQf5fCfop8oxKwnRzrK) (proof: none: owner answers in the session, recorded here)
 - [x] PR 1b · Strategy rows on the producers (proof: tests/test_suggestions_search.py)
 - [x] PR 1c decisions: both screens, blocking rows above the insight, bar stays folded, Not now only, Focus reuses Jobs' count (28 Oct 2026, sketch https://claude.ai/artifact/CHZiJQaYMK2zGBKgXPMfK8) (proof: none: owner answers in the session, recorded here)
-- [ ] PR 1c · Jobs drawers into the bar
+- [x] PR 1c · Jobs drawers into the bar (proof: desktop/test/question-entries.test.js)
 - [ ] PR 2 · CV
 - [ ] PR 3 · Strategy + Jobs
 - [ ] PR 4 · Interviews

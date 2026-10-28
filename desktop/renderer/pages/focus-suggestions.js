@@ -5,12 +5,14 @@
 import {el, moreButton, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {SHOWN, countWords, entryParts, focusRows, homeEntries, jobsBarWords, jobsEntries} from '../suggestions.js';
+import {foldedLine, questionEntries, withQuestions} from '../question-entries.js';
 import {NO_PLACE} from '../targets.js';
 import {keepBlock, keptBlock} from '../late-blocks.js';
 import {$, show} from './core.js';
 import {focusItems, loadFocus, openLink, prepAction} from './focus.js';
 import {openJobPanel} from './job-panel.js';
 import {startSearch} from './jobs.js';
+import {loadQuestions, questionsNow} from './jobs-questions.js';
 import {openView} from './nav.js';
 import {loadReports} from './reports.js';
 import {runCommand, startTailor} from './actions.js';
@@ -54,6 +56,11 @@ export const RUN = {
   // A site only you can open: read in your Chrome, the same press as Strategy's Open (changeSearch's visit).
   read_site: (action, event) => RUN.change_search(action, event),
   see_all: action => import('./strategy-suggestions.js').then(page => page.reviewSuggestion(action.row)),
+  // The Jobs drawers' rows (renderer/question-entries.js, PR 1c): each opens what its card opened.
+  open_letter: () => import('./settings.js').then(({openSetting}) => openSetting('letter')),   // the cover letter is a setting, as the card's button did
+  open_details: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details'})),
+  open_learned: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'learned'})),
+  retry_questions: () => loadQuestions({force: true}).catch(() => {}),
 };
 
 /** Keeps a person's Not now / Not true for one entry; it leaves every place at once, and comes back if the store refuses it. */
@@ -106,7 +113,11 @@ export function entryRow(entry) {
 }
 
 const shownPool = () => pool.filter(entry => !held.has(entry.key));
+// Focus and the Jobs bar: the drawers' rows first (the blocking one at the top), then the engine's. A Not now leaves them at once (held) and stays gone (Focus's `suggestions_hidden`).
+const rowsNow = () => questionEntries(questionsNow()).filter(row => !held.has(row.key) && !hiddenKeys.has(row.key));
+const withRows = () => withQuestions(shownPool(), rowsNow());
 let lastArgs = null;
+let questionsAsked = false;
 /** The engine's entries for a home screen (Strategy's Tune row), answered ones left out. */
 export const homeSuggestions = home => homeEntries(shownPool(), home);
 /** Whether a Strategy row's key was answered (Not now, Not true), here or as Focus last read it. */
@@ -117,7 +128,8 @@ export function renderFocusSuggestions({entries, items, card, hidden}) {
   pool = entries || [];
   hiddenKeys = new Set(hidden || []);
   lastArgs = {items, card};
-  const rows = focusRows(shownPool(), items);
+  if (!questionsAsked) { questionsAsked = true; loadQuestions().catch(() => {}); }   // Jobs' count: cached on this Mac, read again after 10 minutes (jobs-questions.js)
+  const rows = focusRows(withRows(), items);
   show($('focus-suggestions'), rows.length > 0);
   const shown = showAll ? rows : rows.slice(0, SHOWN);
   $('focus-suggestions-list').replaceChildren(...shown.map(row => (row.entry ? entryRow(row.entry) : card(row.item))));
@@ -130,24 +142,27 @@ export function renderFocusSuggestions({entries, items, card, hidden}) {
 }
 function redraw() { if (lastArgs) renderFocusSuggestions({entries: pool, hidden: [...hiddenKeys], ...lastArgs}); }
 
+// The folded line: the drawers' rows by name, the blocking one first, then how many search suggestions (question-entries.js foldedLine).
+const barLine = entries => foldedLine(entries.filter(entry => 'blocking' in entry), entries.filter(entry => !('blocking' in entry)).length);
+
 /** The Jobs bar above the list: folded to one line, open in place to the search- and applying-related entries; hidden at zero. */
 export function renderJobsSuggestions() {
   const bar = $('jobs-suggestions');
   if (!bar) return;
-  const entries = jobsEntries(shownPool());
+  const entries = jobsEntries(withRows());
   show(bar, entries.length > 0);
-  const words = jobsBarWords(entries.length, bar.open);
+  const words = jobsBarWords(entries.length, bar.open, barLine(entries));
   $('jobs-suggestions-title').textContent = words.title;
   $('jobs-suggestions-count').textContent = words.detail;
   $('jobs-suggestions-list').replaceChildren(...entries.map(entryRow));
-  keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length});
+  keepBlock('jobs-suggestions', {shown: entries.length > 0, count: entries.length, line: barLine(entries)});
 }
 
 /** The Jobs bar's first paint (pages/jobs.js init): folded, as last drawn, so the list below does not move when Focus is read (renderer/late-blocks.js). */
 export function paintJobsSuggestionsFirst() {
   const kept = keptBlock('jobs-suggestions');
   if (!kept?.shown) return;
-  const words = jobsBarWords(Number(kept.count) || 0, false);
+  const words = jobsBarWords(Number(kept.count) || 0, false, kept.line || '');
   $('jobs-suggestions-title').textContent = words.title;
   $('jobs-suggestions-count').textContent = words.detail;
   show($('jobs-suggestions'), true);
@@ -161,4 +176,5 @@ export function initSuggestions() {
     redraw();
   });
   $('jobs-suggestions').addEventListener('toggle', renderJobsSuggestions);
+  document.addEventListener('questions-read', () => { if (lastArgs) redraw(); else renderJobsSuggestions(); });   // the count arrived, or changed
 }

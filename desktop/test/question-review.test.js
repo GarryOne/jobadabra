@@ -21,7 +21,8 @@ globalThis.window.pilot = new Proxy({
   openQuestions: async () => ({details: [], learned: LIST.map(q => ({...q})), hidden: HIDDEN, consent: 2}),
   answerQuestion: async (key, value) => { calls.push([key, value]); return {ok: true, homeName: key === 'start' ? 'Your details → 💶 Availability & compensation' : ''}; },
 }, {get: (all, key) => all[key] || (() => null)});
-const {loadQuestions} = await import('../renderer/pages/jobs-questions.js');
+const {loadQuestions, questionsNow} = await import('../renderer/pages/jobs-questions.js');
+const {questionEntries} = await import('../renderer/question-entries.js');
 const review = await import('../renderer/pages/question-review.js');
 const slot = await import('../renderer/overlay-slot.js');
 const $ = id => globalThis.document.getElementById(id);
@@ -29,19 +30,15 @@ const panel = () => $('review-panel');
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const open = (options = {}) => review.openQuestionReview({queue: 'learned', ...options});
 
-test('Jobs: a compact card, its count is the drawer (3), not the drawer plus the set-aside one; no inputs, no Notion, no "every application"', async () => {
+test('Jobs: a row, its count is the drawer (3), not the drawer plus the set-aside one; no inputs, no Notion, no "every application"', async () => {
   await loadQuestions({force: true});
-  assert.equal($('learned').hidden, false);
-  assert.equal($('questions').hidden, true, 'Fill your details has nothing: hidden at zero');
-  assert.equal($('learned-count').textContent, '3 to check');
-  assert.equal($('learned').querySelectorAll('input').length + $('learned').querySelectorAll('select').length, 0);
-  const html = fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8');
-  const card = html.slice(html.indexOf('id="learned"'), html.indexOf('</section>', html.indexOf('id="learned"')));
-  assert.match(card, /What we learned/);
-  assert.match(card, /Answers forms reuse\. Check or add them\./);
-  assert.match(card, />Check </);
-  assert.doesNotMatch(card, /Manage saved answers/, 'one action on the card; Saved answers lives in the drawer header');
-  assert.doesNotMatch(card, /Notion|every application|Answer once/);
+  const found = questionEntries(questionsNow());
+  assert.deepEqual(found.map(row => row.kind), ['learned'], 'Fill your details has nothing: no row at zero');
+  const [row] = found;
+  assert.equal(row.title, 'What we learned');
+  assert.match(row.detail, /^3 to check$/);
+  assert.deepEqual(row.actions.map(action => action.label), ['Check what we learned'], 'one action; Saved answers lives in the drawer header');
+  assert.doesNotMatch(JSON.stringify(row), /Manage saved answers|Notion|every application|Answer once/);
 });
 
 test('the drawer: Question 1 of 3, a suggested answer told apart from a missing one', async () => {

@@ -17,8 +17,8 @@ export const DETAILS = 'details';
 const CHUNK = 25;   // labels per call: 25 verdicts (~45 tokens each) fit max_tokens 2000 with room
 
 const SCHEMA = {type: 'object', additionalProperties: false, required: ['verdicts'], properties: {verdicts: {type: 'array', items: {type: 'object', additionalProperties: false,
-  required: ['label', 'verdict', 'covered_by', 'value', 'topic', 'fact', 'asks', 'country'], properties: {label: {type: 'string'}, verdict: {type: 'string', enum: VERDICTS}, covered_by: {type: 'string'}, value: {type: 'string'},
-  topic: {type: 'string'}, fact: {type: 'string'}, asks: {type: 'string', enum: ['', ...ASKS]}, country: {type: 'string'}}}}}};
+  required: ['label', 'verdict', 'covered_by', 'value', 'topic', 'fact', 'asks', 'country', 'sensitive'], properties: {label: {type: 'string'}, verdict: {type: 'string', enum: VERDICTS}, covered_by: {type: 'string'}, value: {type: 'string'},
+  topic: {type: 'string'}, fact: {type: 'string'}, asks: {type: 'string', enum: ['', ...ASKS]}, country: {type: 'string'}, sensitive: {type: 'boolean'}}}}}};
 const INSTRUCTIONS = `A job-application form asked these questions. For each decide its verdict:
 - "reusable": a fact about the applicant or a stable stance they will want to give again on OTHER employers' forms (notice period, visa, salary, willingness to relocate, a degree).
 - "one_job": it belongs to this one job or employer, even when it does not name it (it names the company or its product, asks why this company, how they heard about this job or employer, whether they worked for or applied to this employer before, which of its offices or teams, a motivation or essay written for this role, a trivia or skill test).
@@ -28,7 +28,8 @@ And value: the answer to THIS question that saved answer gives: "" when the save
 And topic: 2-4 lowercase English words naming what it asks, the SAME words for the same question however it is worded or in whatever language ("notice period", "visa sponsorship", "salary expectation").
 And fact: when the question asks for one of the applicant's facts listed in <facts> (street, postal code, name, salutation, notice period, a work permit... in any language and however it is worded), the EXACT fact label from <facts>; otherwise "". A question about something else, or about a fact that is not listed, is "".
 And asks: "work_right" when it asks whether the applicant may work somewhere (authorised, eligible, has the right to work), "sponsorship" when it asks whether they need visa sponsorship (now or in the future), else "". And country: for those, the ISO 3166 alpha-2 code of the country it names (a city or region counts for its country), "" when it names none (the job's own location).
-Answer every label exactly as given; when unsure answer "one_job", "" and "".`;
+And sensitive: true when it asks for a protected or private trait the applicant shares only in that form's own field: equal-opportunity or demographic data (gender, ethnicity, race, sexual orientation, age, veteran status), a disability or health condition, a criminal record; else false. A consent to a background check, a driving licence or a work permit is not sensitive. Sensitive never changes the verdict: a sensitive question the applicant answers the same way on every form stays "reusable".
+Answer every label exactly as given; when unsure answer "one_job", "" and "", and sensitive true.`;
 
 // labels, answered: [{question, answer}] -> Map(label -> {reuse, covered_by (an exact answered question or ''), proposal (the deduced answer, else the saved one),
 // from (the saved answer it was deduced from: a changed one is judged again)}); a label the AI left out or mangled is absent.
@@ -60,7 +61,10 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
   let verdicts = [];
   try { verdicts = response.stop_reason === 'max_tokens' ? [] : JSON.parse(text).verdicts || []; } catch { verdicts = []; }
   const byQuestion = new Map(answered.map(a => [a.question, a.answer])), known = new Set(facts.map(fact => fact.label));
-  for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = '', asks = '', country = ''} of verdicts) {
+  const hidden = new Map();   // label -> sensitive (below): joined to each verdict after the loop
+  for (const {label, verdict, covered_by: covered, value = '', topic = '', fact = '', asks = '', country = '', sensitive} of verdicts) {
+    // Why (PR D1a, owner 28 Oct 2026: sensitive answers reach no AI reader, only their own form field; lib/about-you.js): anything but a plain false is kept out.
+    hidden.set(label, sensitive !== false);
     if (!labels.includes(label) || !VERDICTS.includes(verdict)) continue;
     const eligible = ASKS.includes(asks) && verdict !== 'consent' ? fromEligibility(asks, country, facts) : null;
     // Why (28 Oct 2026, Gitar on #2322): a country no saved zone or nationality covers keeps the question asked; the generic fact path below would hide it
@@ -70,6 +74,7 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
     const answer = byQuestion.get(covered) || '', own = known.has(fact) && verdict !== 'consent' ? fact : '';   // a fact the AI invented keeps nothing
     out.set(label, {reuse: own ? DETAILS : verdict, covered_by: answer ? covered : '', proposal: answer ? String(value).trim() || answer : '', from: answer, topic: topicOf(topic), fact: own});
   }
+  for (const [label, verdict] of out) verdict.sensitive = hidden.get(label);
   return out;
 }
 

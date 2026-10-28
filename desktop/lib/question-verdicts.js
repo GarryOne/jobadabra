@@ -5,9 +5,10 @@ import {classify} from './question-reuse.js';
 import {keyOf, looksLikeFieldId} from '../renderer/question-filter.js';
 
 const MAX = 600;
-const VERSION = 6;   // 2: covered_by also by deduction (a saved permit settles "need sponsorship?"), with the saved answer it came from; 3: a topic (seen twice); 4: a fact of Your details
+const VERSION = 7;   // 2: covered_by also by deduction (a saved permit settles "need sponsorship?"), with the saved answer it came from; 3: a topic (seen twice); 4: a fact of Your details
 // 5: Why (28 Oct 2026, owner: "Yes, re-judge once"): how they heard and worked here before are one job's (lib/question-reuse.js), judged again once per install
 // 6: right to work and sponsorship from Nationality and the zones (#2322)
+// 7: Why (PR D1a, owner 28 Oct 2026): sensitive (EEO, disability, criminal record) per question, so lib/about-you.js keeps it from every reader; judged again once
 export const cached = storage => storage.settings().questionVerdicts || {};
 
 // Classifies the labels with no verdict yet (one small call), keeps the verdicts, returns the whole map. ai: {client, apiKey} (none: nothing new).

@@ -88,13 +88,13 @@ class WeekTests(unittest.TestCase):
 
     def test_the_door_the_ai_picked_is_the_first_button_when_the_app_can_do_it(self):
         entry = suggestions.week_entry([self.week('find_jobs')], NOW, doors={'find_jobs'})
-        self.assertEqual(entry['actions'], [{'label': 'Find jobs now', 'do': 'find_jobs'}, {'label': 'Read the week', 'do': 'read_week'}])
+        self.assertEqual(entry['actions'], [{'label': 'Find jobs now', 'do': 'find_jobs'}, {'label': 'Read the week', 'do': 'read_week', 'link': ''}])
         self.assertEqual((entry['row_id'], entry['source']), ('w', 'Your week'))
 
     def test_a_door_the_app_cannot_do_now_or_an_unknown_one_leaves_read_the_week(self):
         for door, doors in (('prep', {'find_jobs'}), ('leave_agencies_out', {'find_jobs', 'leave_agencies_out'})):
             entry = suggestions.week_entry([self.week(door)], NOW, doors=doors)
-            self.assertEqual(entry['actions'], [{'label': 'Read the week', 'do': 'read_week'}], door)
+            self.assertEqual(entry['actions'], [{'label': 'Read the week', 'do': 'read_week', 'link': ''}], door)
 
     def test_only_this_weeks_report(self):
         self.assertIsNone(suggestions.week_entry([self.week('find_jobs', days_ago=8)], NOW, doors={'find_jobs'}))

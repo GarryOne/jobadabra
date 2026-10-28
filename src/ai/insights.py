@@ -38,6 +38,7 @@ from .insights_text import (  # noqa: F401 — moved; kept importable from here
 from .models import MAIN_MODEL
 from ..stores import open_stores
 from ..stores.notion_blocks import to_markdown
+from ..suggestions import door_field
 
 
 DEFAULT_MODEL = os.getenv('JOB_PILOTTO_INSIGHT_MODEL', MAIN_MODEL)
@@ -239,7 +240,8 @@ def weekly(db, stores=None, model=DEFAULT_MODEL, *, send=None, now=None, client=
     row = stores.insights.add({'day': now.date().isoformat(), 'category': WEEKLY, 'title': report['headline'][:200],
                                'body': to_markdown(weekly_blocks(report, data)), 'fields': {
         'basis': 'Both', 'confidence': report['confidence'], 'sample_size': data['applications']['applications'],
-        'evidence': report['summary'], 'action': report['focus'], 'cost': round(usd, 4), 'model': model}})
+        'evidence': report['summary'], 'action': report['focus'], 'cost': round(usd, 4), 'model': model,
+        **door_field(report.get('next_action'))}})
     learning.publish(stores, report['issues'], now, model)
     if send:
         send(weekly_message(report, stores.link(row['id']) or ''), keyboard(row['id']))

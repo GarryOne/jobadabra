@@ -101,16 +101,25 @@ def rejection_entry(rows, now):
                             'title': _field(row, 'title'), 'company': _field(row, 'company')}])
 
 
+def _valid_door(picked):
+    picked = picked if isinstance(picked, dict) else {}
+    name, label = picked.get('door'), str(picked.get('label') or '').strip()
+    return {'door': name, 'label': label} if name in DOORS and label and len(label) <= DOOR_LABEL_MAX else None
+
+
+def door_field(picked):
+    """The weekly report's next_action as its row's fields: {'data': JSON} when the AI picked a door it may, else {} (Read the week)."""
+    found = _valid_door(picked)
+    return {'data': json.dumps(found, ensure_ascii=False)} if found else {}
+
+
 def door(record, doors):
     """The weekly report's one-press action, if the AI picked one this app can carry out now: {label, do} or None."""
     try:
-        picked = json.loads(_extra(record, 'data') or '{}')
+        found = _valid_door(json.loads(_extra(record, 'data') or '{}'))
     except ValueError:
         return None
-    name, label = picked.get('door'), str(picked.get('label') or '').strip()
-    if name not in DOORS or name not in doors or not label or len(label) > DOOR_LABEL_MAX:
-        return None
-    return {'label': label, 'do': name}
+    return {'label': found['label'], 'do': found['door']} if found and found['door'] in doors else None
 
 
 def week_entry(insights, now, doors):
@@ -119,7 +128,7 @@ def week_entry(insights, now, doors):
     if not weeks:
         return None
     row = max(weeks, key=lambda r: (r['day'], r.get('created_at') or ''))
-    actions = [found for found in (door(row, doors),) if found] + [{'label': 'Read the week', 'do': 'read_week'}]
+    actions = [found for found in (door(row, doors),) if found] + [{'label': 'Read the week', 'do': 'read_week', 'link': row.get('link') or ''}]
     return _entry('week', home='focus', topic='search', source='Your week', title=row['title'], detail=_extra(row, 'action'),
                   evidence=[_extra(row, 'evidence')], row_id=row['id'], key=f"row:{row['id']}", actions=actions)
 
@@ -176,6 +185,7 @@ def tune_entry(answer):
     count = len(found)
     words = [TUNE_WORDS.get(p['kind'], '{label}').format(label=p['label']) for p in found[:2]]
     detail = ', '.join(words) + (f' and {count - 2} more' if count > 2 else '')
+    detail = detail[:1].upper() + detail[1:]
     return _entry('tune', home='strategy', topic='search', source='Search strategy · Tune',
                   title=f'{count} change{"s" if count != 1 else ""} your results support', detail=detail,
                   evidence=[p.get('why') or '' for p in found], key='tune:' + '|'.join(sorted(p['id'] for p in found)),

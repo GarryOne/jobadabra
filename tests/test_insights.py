@@ -275,6 +275,20 @@ class WeeklyTests(unittest.TestCase):
         self.assertEqual(sent[0][1]['inline_keyboard'][0][0]['callback_data'], f"ins:u:{row['id']}")
         self.assertEqual(stats['done'], 1)
 
+    def test_the_door_the_ai_picked_is_kept_on_the_row_and_any_other_is_dropped(self):
+        """Your week's first button (src/suggestions.door): only a known door with a short label is kept; else Read the week alone."""
+        monday = datetime(2026, 9, 28, 5, 0, tzinfo=timezone.utc)
+        picks = [({'door': 'find_jobs', 'label': 'Find jobs now'}, {'door': 'find_jobs', 'label': 'Find jobs now'}),
+                 ({'door': 'none', 'label': ''}, None), ({'door': 'leave_agencies_out', 'label': 'Leave agencies out'}, None),
+                 ({'door': 'tune', 'label': 'x' * 41}, None)]
+        for picked, kept in picks:
+            stores = memory_store()
+            with patched():
+                insights.run(None, stores, 'claude-sonnet-5-5', now=monday, client=FakeClient(dict(WEEKLY, next_action=picked)))
+            [row] = stores.insights.list()
+            self.assertEqual(json.loads(row['fields']['data']) if 'data' in row['fields'] else None, kept, picked)
+        self.assertIn('next_action', insights.WEEKLY_SCHEMA['required'])
+
 
 class MessageTests(unittest.TestCase):
     """The Telegram text of one insight (insights.message)."""

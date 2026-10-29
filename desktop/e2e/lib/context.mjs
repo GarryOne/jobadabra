@@ -30,7 +30,7 @@ import {tally} from './faults.mjs';
 
 // A suite is a file in suites/ (adding one needs no other list). It may export `minutes` (its time limit in CI, default 15).
 import {readdirSync} from 'node:fs';
-import {checkKeyAccepted, checkOtherKeys, keyFingerprint} from './key-check.mjs';
+import {checkAppKey, checkOtherKeys, keyFingerprint} from './key-check.mjs';
 import {waitForFolderFree} from './folder-free.mjs';
 export const SUITES = readdirSync(path.join(E2E, 'suites')).filter(file => file.endsWith('.mjs')).map(file => file.slice(0, -4)).sort();
 const KEY = () => testKey();   // empty on a Mac, whatever the environment holds: the key is for CI (lib/engine.mjs)
@@ -63,8 +63,9 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   const key = light ? KEY() : testKey(process.env, engine, family), token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
   if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
   if (!light && isCi()) {
-    if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key}); else await checkKeyAccepted({engine, key});
-    await checkOtherKeys({engine: family === 'free' ? 'free' : engine}); console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
+    let checked = true;
+    if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key}); else checked = await checkAppKey({provider: aiProvider(process.env, 'app').provider, engine, key});
+    await checkOtherKeys({engine: family === 'free' ? 'free' : engine}); if (checked) console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
   }   // a refused key stops the suite here, named, not as a puzzling AI step later
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
   const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), ...(budgetMinutes ? {budgetMs: budgetMinutes * 60000} : {})});

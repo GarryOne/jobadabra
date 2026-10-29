@@ -1,6 +1,7 @@
 // Fails a CI suite at once, with the key's name, when the AI test key is refused (401/403) or a model a suite asks for is refused: free calls (the model list, then
 // count_tokens per model: no tokens are produced, nothing is billed). Before it, a refusal showed only as a bare "400" or "AI limit reached" in the engine log and a step that
 // expected an AI answer (17 Oct 2026, strategy). Guarded by test/key-check.test.mjs.
+// Job: run the backbone
 import crypto from 'node:crypto';
 const CHECKS = {
   openai: {secret: 'E2E_OPENAI_KEY', url: 'https://api.openai.com/v1/models', headers: key => ({authorization: `Bearer ${key}`})},
@@ -47,4 +48,15 @@ export async function checkOtherKeys({engine, env = process.env, log = console.l
     try { await checkKeyAccepted({engine: other, key: env[KEY_OF[other]], fetchImpl}); log(env[KEY_OF[other]] ? `  preflight: ${secret} is accepted${other === 'api' ? ` for ${CLAUDE_MODELS.join(', ')}` : ''}` : `  preflight: no ${secret} here`); }
     catch (error) { log(`  ⚠ preflight: ${error.message}`); }
   }
+}
+
+/**
+ * Takes {provider, engine, key}; checks the app's key like checkKeyAccepted, unless the app's AI provider is codex: then the key is the placeholder (lib/engine.mjs testKey)
+ * and the broker relay answers, so there is nothing to ask the provider's API about. Returns false when it checked nothing, else true. Throws as checkKeyAccepted does.
+ * Why (#2427 follow-up, 29 Oct 2026): setting CI_AI_PROVIDER=codex made every suite stop at "E2E_ANTHROPIC_KEY refused (401)": the placeholder was sent to api.anthropic.com.
+ */
+export async function checkAppKey({provider, engine, key, fetchImpl = fetch, log = console.log}) {
+  if (provider === 'codex') { log('  preflight: the app is on Codex (the broker relay); no API key is checked for it'); return false; }
+  await checkKeyAccepted({engine, key, fetchImpl});
+  return true;
 }

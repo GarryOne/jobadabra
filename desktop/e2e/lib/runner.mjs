@@ -57,8 +57,8 @@ export const PICK_SETUP = '(setup)';
 export const SUITE_BUDGET_MS = Number(process.env.E2E_SUITE_BUDGET_MS) || 7 * 60000;
 /** A suite can leave the aggregate budget; otherwise its own budget or the existing default applies. */
 export const budgetMsOf = suite => (suite?.aggregateBudget === false ? Infinity : suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
-/** Force-stop outside-step hangs independently of step caps; budgeted suites keep budget plus three minutes. */
-export const stopMsOf = suite => (suite?.aggregateBudget === false ? (Number.isFinite(suite.stopMinutes) && suite.stopMinutes > 0 ? suite.stopMinutes : 10) * 60000 : budgetMsOf(suite) + 3 * 60000);
+/** Budgeted suites keep budget plus three minutes; suites without an aggregate have no start-time stop. */
+export const stopMsOf = suite => (suite?.aggregateBudget === false ? null : budgetMsOf(suite) + 3 * 60000);
 export const slowest = (results, count = 5) => results.filter(result => result.seconds).sort((a, b) => b.seconds - a.seconds).slice(0, count).map(result => `${result.name.slice(0, 70)} (${Math.round(result.seconds)} s)`);
 
 // The screenshot a failed step leaves (without .png); the HTML report attaches it.

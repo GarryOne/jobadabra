@@ -8,6 +8,18 @@ import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
 
+// Why (29 Oct 2026, Gitar on #2479): the steps judge themselves by their own caps; this only catches a hang AFTER the steps: closing the app, a test server, writing artifacts.
+const TEARDOWN_STOP_MS = 3 * 60000;
+
+/** After the steps end, cap teardown hangs only for suites without an aggregate budget. */
+export function armTeardownStop(suite, name, {set = setTimeout, exit = process.exit, log = console.log} = {}) {
+  if (suite.aggregateBudget !== false) return;
+  set(() => {
+    log(`the ${name} suite's steps ended but it was still running 3 min later: stopped by force (closing the app, a test server, or writing artifacts)`);
+    exit(1);
+  }, TEARDOWN_STOP_MS).unref();
+}
+
 export async function runSuite(name, report = null) {
   const {assertNothingQueued, traceFiles} = await import('./app.mjs');
   const {SUITES, openContext} = await import('./context.mjs');
@@ -30,6 +42,7 @@ export async function runSuite(name, report = null) {
     }
     const runAlways = ctx.run;   // a suite may wrap ctx.run with its own filter (suites/apply.mjs parts): the Keychain check runs whatever the suite picked
     await suite.run(ctx);
+    armTeardownStop(suite, name);
     if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
       const changes = keychainChanges(keychainBefore, snapshot() || new Map());
       if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);

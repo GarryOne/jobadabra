@@ -35,10 +35,7 @@ export const keepGoing = true;
 // A seeded run visits every page from another time zone and language (lib/variation.mjs placeOf): the truth and layout checks see dates and numbers as a person there would.
 export const variesPlace = true;
 export const aggregateBudget = false;
-// Why (29 Oct 2026, owner): this plumbing limit catches only a hang outside the steps, such as closing the app or a test server.
-export const stopMinutes = 12;
-// minutes: two force-stops (2 x stopMinutes) + 4 min for CI setup and evidence (suite-budget.test.mjs)
-export const minutes = 28;
+export const minutes = 25;   // was 10: the suite grew (sweeps of sizes, themes, time zones, the late-shift watch) and was cancelled at 10 min in two gate runs in a row (5 Oct 2026), its partial findings filed as issues
 // The engine's coverage answer takes seconds on a real machine (the owner's: about 5): a card that arrives that late must not move the page (lib/shift.mjs, #strategy-coverage-checking).
 export const env = {JOB_PILOTTO_E2E_COVERAGE_MS: '4500'};
 // A suite that walks a different seeded path on each scheduled run (lib/variation.mjs). Exploring runs on an unchanged commit run only these: the other suites would repeat themselves.

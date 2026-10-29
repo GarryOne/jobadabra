@@ -4,9 +4,32 @@ import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import {budgetMsOf, createRunner} from '../lib/runner.mjs';
 import * as interactions from '../suites/interactions.mjs';
+import * as suiteMain from '../lib/suite-main.mjs';
 
 const pause = ms => new Promise(done => setTimeout(done, ms));
 const fixture = {aggregateBudget: false, budgetMinutes: 120 / 60000};
+
+test('the teardown watchdog arms an unref\'d three-minute timer only without an aggregate, then logs and exits 1', () => {
+  const timers = [], messages = [], exits = [];
+  let unrefs = 0;
+  const options = {
+    set: (callback, ms) => { timers.push({callback, ms}); return {unref: () => { unrefs++; }}; },
+    exit: code => exits.push(code),
+    log: message => messages.push(message),
+  };
+  suiteMain.armTeardownStop({}, 'budgeted', options);
+  suiteMain.armTeardownStop({aggregateBudget: true, budgetMinutes: 7}, 'budgeted', options);
+  assert.equal(timers.length, 0);
+  suiteMain.armTeardownStop(fixture, 'interactions', options);
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].ms, 180000);
+  assert.equal(unrefs, 1);
+  assert.deepEqual(messages, []);
+  assert.deepEqual(exits, []);
+  timers[0].callback();
+  assert.deepEqual(messages, ["the interactions suite's steps ended but it was still running 3 min later: stopped by force (closing the app, a test server, or writing artifacts)"]);
+  assert.deepEqual(exits, [1]);
+});
 
 test('five 60 ms steps all pass even though their total exceeds the old 120 ms budget', async () => {
   const runner = createRunner(() => null, {keepGoing: true, budgetMs: budgetMsOf(fixture)});

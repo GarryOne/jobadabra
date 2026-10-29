@@ -133,6 +133,90 @@ class Formatting(unittest.TestCase):
             self.assertIsNone(ai.valid_rates(invalid))
 
 
+class UsualRange(unittest.TestCase):
+    def fixture(self, exact=40, nights=3):
+        """Use independent 100-item observations with main at 90%, served only by the GitHub fake."""
+        baseline = {**copy.deepcopy(RATES), 'facts': {'exact': 90, 'total': 100},
+                    'flags': {'judged': 100, 'flagged': 10}, 'cv': {'found': 90, 'expected': 100, 'corrected': 0},
+                    'steady': {'pairs': 100, 'within8': 90}}
+        current = {**copy.deepcopy(baseline), 'facts': {'exact': exact, 'total': 100}}
+        history = [run(rid, 'E2E check · nightly backup', event='schedule') for rid in range(20, 20 - nights, -1)]
+        ids = [99, 30, *[night['id'] for night in history]]
+        gh = Github([run(30, 'E2E after merge · sha · qualityai')],
+                    {rid: [{'id': rid, 'name': ai.ARTIFACT}] for rid in ids},
+                    {rid: archive(current if rid == 99 else baseline) for rid in ids}, nights=history)
+        return gh, current, baseline
+
+    def pr_line(self, github, why='success: checks green'):
+        """Exercise preparation without allowing the description to mutate the verdict inputs."""
+        runs = [{'databaseId': 99, 'displayTitle': 'E2E for PR · qualityai · topic'}]
+        jobs = {99: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}]}
+        before = copy.deepcopy((runs, jobs))
+        reports, line = ai.prepare('o/r', runs, jobs, github,
+                                   lambda name='main_e2e_state': __import__('tools.' + name, fromlist=[name]))
+        self.assertEqual(reports, {'qualityai'})
+        result = line(why)
+        self.assertEqual((runs, jobs), before)
+        self.assertLessEqual(len(result), 140)
+        return result
+
+    def test_clearly_below_pr_names_the_range_and_preserves_success_context(self):
+        for part, observation in [('facts', {'exact': 40, 'total': 100}),
+                                  ('flags', {'flagged': 60, 'judged': 100}),
+                                  ('cv', {'found': 40, 'expected': 100, 'corrected': 0}),
+                                  ('steady', {'within8': 40, 'pairs': 100})]:
+            with self.subTest(metric=part):
+                gh, current, _ = self.fixture(exact=90)
+                current[part] = observation
+                gh.blobs[99] = archive(current)
+                line = self.pr_line(gh)
+                self.assertIn("BELOW main's range", line)
+                self.assertTrue(line.startswith('success:'), line)
+
+    def test_inside_band_and_fewer_than_three_nights_keep_existing_wording(self):
+        for exact, nights, ending in [(89, 3, 'same as main'), (40, 0, 'lower than main'),
+                                      (40, 1, 'lower than main'), (40, 2, 'lower than main')]:
+            with self.subTest(exact=exact, nights=nights):
+                gh, _, _ = self.fixture(exact, nights)
+                line = self.pr_line(gh)
+                self.assertNotIn('BELOW', line)
+                self.assertTrue(line.endswith(ending), line)
+
+    def test_missing_observations_do_not_become_a_below_result(self):
+        for missing in ('current', 'history'):
+            with self.subTest(missing=missing):
+                gh, current, baseline = self.fixture()
+                if missing == 'current':
+                    current['facts'] = None
+                    gh.blobs[99] = archive(current)
+                else:
+                    baseline['facts'] = None
+                    for rid in (20, 19, 18):
+                        gh.blobs[rid] = archive(baseline)
+                self.assertNotIn('BELOW', self.pr_line(gh))
+
+    def test_below_survives_description_truncation(self):
+        _, current, baseline = self.fixture()
+        huge = copy.deepcopy(current)
+        huge['facts'] = {'exact': 10**100, 'total': 10**100}
+        for counts in (current, huge):
+            for why in ('', 'success: checks green', 'success: ' + 'checks ' * 100):
+                with self.subTest(why=why, counts=counts):
+                    line = ai.description(why, counts, baseline, True)
+                    self.assertIn('BELOW', line)
+                    self.assertLessEqual(len(line), 140)
+
+    def test_beta_gate_and_pr_text_agree_on_the_same_observations(self):
+        from tools import beta_rate_gate
+        for exact, blocked in ((40, True), (89, False)):
+            with self.subTest(exact=exact):
+                gh, _, _ = self.fixture(exact)
+                status, lines = beta_rate_gate.check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)
+                self.assertEqual(status, int(blocked))
+                self.assertEqual(any('BLOCKED' in line for line in lines), blocked)
+                self.assertEqual('BELOW' in self.pr_line(gh), blocked)
+
+
 class Artifacts(unittest.TestCase):
     def pr_line(self, github):
         """Run the PR preparation and formatter with only GitHub responses replaced."""
@@ -229,10 +313,10 @@ class Artifacts(unittest.TestCase):
                  'displayTitle': 'E2E for PR · qualityai,settings · topic'} for rid in (1, 2)]
         jobs = {rid: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}] for rid in (1, 2)}
         gh = Github([], {2: [{'id': 22, 'name': ai.ARTIFACT}]}, {22: archive()})
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check), (RATES, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check), (RATES, None, False))
         for conclusion in ('failure', 'cancelled', 'timed_out', None):
             jobs[2][0].update(status='in_progress' if conclusion is None else 'completed', conclusion=conclusion)
-            self.assertEqual(ai.numbers('o/r', runs, jobs, Github(), main_e2e_state.is_main_check), (None, None))
+            self.assertEqual(ai.numbers('o/r', runs, jobs, Github(), main_e2e_state.is_main_check), (None, None, False))
 
     def test_lane_lookup_is_base_scoped_and_only_tolerant_number_entries_count(self):
         calls = []
@@ -256,19 +340,19 @@ class Artifacts(unittest.TestCase):
         runs = [{'databaseId': 2, 'displayTitle': 'E2E for PR · qualityai · topic'}]
         jobs = {2: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}]}
         gh = Github([run(1)], {2: [{'id': 22, 'name': ai.ARTIFACT}]}, {22: archive()})
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, broken), (RATES, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, broken), (RATES, None, False))
 
     def test_the_suites_own_ending_writer_can_read_its_uploaded_success(self):
         runs = [{'databaseId': 2, 'displayTitle': 'E2E for PR · qualityai · topic'}]
         jobs = {2: [{'name': 'qualityai', 'status': 'in_progress', 'runner_name': 'ours'}]}
         gh = Github([], {2: [{'id': 22, 'name': ai.ARTIFACT}]}, {22: archive()})
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (RATES, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (RATES, None, False))
 
     def test_a_finished_failure_cannot_be_reinterpreted_by_a_stale_own_status(self):
         runs = [{'databaseId': 2, 'displayTitle': 'E2E for PR · qualityai · topic'}]
         jobs = {2: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'failure', 'runner_name': 'ours'}]}
         gh = Github()
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (None, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (None, None, False))
         self.assertFalse(any('/artifacts?' in ' '.join(args) for args, _ in gh.calls))
 
 

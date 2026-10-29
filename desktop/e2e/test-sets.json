@@ -37,7 +37,6 @@
   "ai-provider.test.mjs",
   "brain-codex.test.mjs",
   "broker-relay.test.mjs",
-  "code-review-codex.test.mjs",
   "sentry-codex-fix.test.mjs",
   "credit-alert.test.mjs",
   "extension-sentry.test.mjs",

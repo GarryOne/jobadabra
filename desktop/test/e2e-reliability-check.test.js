@@ -208,3 +208,39 @@ test('both push and PR checks run the gate; review rules block E, F and excessiv
   const review = fs.readFileSync(path.join(root, '.gitar/review/e2e-reliability.md'), 'utf8');
   for (const text of ['Rule E', 'Rule F', '2 rounds', 'blocking', 'tolerant']) assert.ok(review.includes(text), text);
 });
+
+test('budget-only suite repairs cannot bypass the expectation rule or plumbing brake', () => {
+  for (const [before, after] of [
+    ['export const run = () => {};', 'export const budgetMinutes = 20; export const run = () => {};'],
+    ['export const run = () => {};', 'export const shards = 3; export const run = () => {};'],
+    ['export const shards = 2;', 'export const shards = 3;'],
+    ['export const budgetMinutes = 7;', 'export const budgetMinutes = 10;'],
+    ['export const minutes = 17;', 'export const minutes = 24;'],
+  ]) {
+    assert.ok(expectationChanges(before, after, suite).length, after);
+    assert.match(push({[suite]: before}, {[suite]: after}), /Rule E/);
+    assert.match(push({[suite]: before}, {[suite]: after}, `Repair\n\n${why}`), /Rule F/);
+    const labelled = `// Job: run the backbone\n${after}`;
+    assert.equal(push({[suite]: before}, {[suite]: labelled}, `Repair\n\n${why}\nHarness-job: run the backbone`), '');
+  }
+});
+
+test('suite execution configuration ignores comments and whitespace', () => {
+  assert.deepEqual(expectationChanges('export const shards = 2;', 'export const shards = 2; // 3 later', suite), []);
+  assert.deepEqual(expectationChanges('export const shards = 2;', 'export const shards =\n 2;', suite), []);
+  assert.deepEqual(expectationChanges("export const flowSeconds = {'slow form': 20};", "export const flowSeconds = { 'slow form': /* measured */ 20 };", suite), []);
+});
+
+
+test('a weight-only edit to the real apply suite requires rule F but changes no expectation', () => {
+  const original = fs.readFileSync(path.join(root, suite), 'utf8');
+  const changed = original.replace(/('real forms the extension once failed on':\s*)76/, (_, prefix) => `${prefix}80`);
+  assert.notEqual(changed, original, 'the real weight edit took effect');
+  const unlabelled = changed.replace(/^\/\/ Job:[^\n]*\n/gm, '');
+  const result = push({[suite]: original}, {[suite]: unlabelled});
+  assert.doesNotMatch(result, /Rule E/);
+  assert.match(result, /Rule F/);
+  assert.equal(push({[suite]: original}, {[suite]: `// Job: run the backbone\n${unlabelled}`}, 'Reweight the journeys\n\nHarness-job: run the backbone'), '');
+  assert.deepEqual(expectationChanges('export const stepSeconds = {"slow":90,"fast":5};', 'export const stepSeconds = {"fast":90,"slow":5};', suite), []);
+  assert.ok(harnessProblems([{file: suite, before: 'export const stepSeconds = {"slow":90,"fast":5};', after: 'export const stepSeconds = {"fast":90,"slow":5};'}], []).length);
+});

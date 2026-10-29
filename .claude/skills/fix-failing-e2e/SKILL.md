@@ -8,15 +8,16 @@ description: How to fix a red e2e suite (a beta gate, a nightly, a PR's suite ru
 Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were tests lagging the app; each was proved by a whole beta (30-50 min), and a suite stops at its first red step, so each beta showed one more layer.
 
 ## The loop
+0. **Design first:** follow the [canonical repair rule](../../../docs/superpowers/specs/2026-10-28-e2e-reliability-design.md#the-rules), its current implementation status, and `desktop/e2e/lanes.json` before diagnosis or edits.
 1. **Read before you run.** `suite-failures.json`, the suite's step table (`steps.json`), the run log, the screenshot (`gh run download <run> -n e2e-artifacts-<suite>`). A failure that says only `""` or "not found" is missing evidence: add the log line first. **A "⚠ one cause, N steps" line comes first** (the log's end and the run's Summary page, gate G3, 26 Oct 2026): those reds are one fix (e.g. a click on one locator that was not visible), and their own checks never ran, so expect a next layer after it: fix the cause, then read the run on your PR before calling the suite fixed.
 2. **Name the cause in one line, from this list** (the /admin/operations/e2e page uses the same words; the id in brackets is what step 7's trailer says):
    - **Test drift** (`drift`): the app's words, roles or timing changed. Fix the test to read the app's own name (a shared constant), never a new copy.
    - **Product bug** (`product`): the app is wrong. Fix the app, add the test first.
    - **Our CI and AI** (`ai`: the key's credit, the AI refused or answered differently; `ci`: a CI step before the suite, a workflow or tool; `picker`: the PR step picker named a missing step; `runner`: a lost or cancelled runner, the network). Do not touch tests.
      A job "cancelled" with 0 steps, no log and no runner name never started: read its annotations (`gh api repos/<r>/check-runs/<job>/annotations`); "not acquired by Runner" = GitHub's capacity, not a timeout (beta 3, 26 Oct 2026). `rerun-not-acquired.yml` re-runs it once when nothing else is red.
-   - **Flake** (`flake`; `timing` when a wait or the suite's budget ran out): red on timing or the test's environment (a wait that ran out, a dropped connection), then green on the same code. Name the timing assumption and make it a ratio or a wait on a state, not a longer sleep.
+   - **Flake** (`flake`; `timing` when a wait or the suite's budget ran out): red on timing or the test's environment, then green on the same code. Follow rule B: state waits with hang caps in backbone, speed measurements in tolerant clock. A larger timeout or more shards is not evidence of a deterministic repair.
    - **Test bug** (`test`): the test was wrong on its own (a race, a bad stub, a wrong assumption) and the app had not moved.
-   - **Intermittent** (gate G5, 26 Oct 2026; `test` or `product`, by where the race was): red on a wrong value, then green on the same code. Not a flake: a race in the product or the test, a bug that shows sometimes (#1897: row "Completed" vs panel "Completed with warnings"). CI keeps the job red and triage labels it `intermittent` (`lib/flaky-proof.mjs`); find the race, never "re-run until green".
+   - **Intermittent** (`test` or `product`): live G5 (`flaky-proof.mjs`) keeps the job red and triage labels it intermittent. The design’s suspension path is NOT wired yet (plan PR 21); until then the job stays red and the owner decides. See the canonical repair rule’s implementation status; never rerun until green or loosen an expectation.
 3. **List the siblings.** `node desktop/e2e/pr-suites.mjs --base origin/main` names every suite that quotes the text you changed; fix them in the same change (a suite stops at its first red step, so the next layer is likely there).
 4. **A line with a `Why (...)` comment is a decision:** read the Why and its PR before changing it (the red may be the test's drift, not that line);
    change it only on purpose, update or remove the Why with it, and say `Why-changed: <which Why> — <reason>` in the commit (`tools/why-changed.mjs`).
@@ -31,7 +32,7 @@ Why this exists (24 Oct 2026): in beta runs 5-11 about 8 of ~10 e2e fixes were t
 ## Never
 - Re-run the full `run-all` or a beta to look at a failure, or start `e2e.yml` by hand beyond rule 7's one fixed suite on your branch (step 5).
 - Change a test's expectation to match a wrong product.
-- Raise a time budget without a measured reason (applyflows: split it, do not stretch it).
+- Treat a clock/AI/outside result as a deterministic product failure, or change budgets/shards before applying the approved lane design. A necessary journey split still needs rules E and F and measured evidence.
 - Touch the beta workflow while another session owns it; ask them.
 
 ## Where things live

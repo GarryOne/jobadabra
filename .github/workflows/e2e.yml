@@ -407,6 +407,8 @@ jobs:
         working-directory: desktop/e2e
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11: lib/runner.mjs) with its evidence, by force 3 min later (suite.mjs); this catches only a suite that cannot
         run: |
+          report_only=$(SUITE='${{ matrix.suite }}' node -e 'try { const entry = JSON.parse(require("node:fs").readFileSync("lanes.json", "utf8")).suites?.[process.env.SUITE]; process.stdout.write(entry?.lane === "tolerant" && entry.pr === "number" ? "1" : "0"); } catch { process.stdout.write("0"); }' 2>/dev/null) || report_only=0
+          echo "report_only=${report_only:-0}" >> "$GITHUB_OUTPUT"
           # A run on an older commit (target_ref: the stable canary, a release candidate) plans with main's suite list; a suite added since does not exist in that build.
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           # A red first try shows as an error (GitHub draws a continue-on-error step green; owner, 26 Oct 2026); the next step decides (tests/test_first_try_visible.py).
@@ -419,7 +421,7 @@ jobs:
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only != '1'
         env:
           E2E_AI_ANSWERS: 'off'
         working-directory: desktop/e2e

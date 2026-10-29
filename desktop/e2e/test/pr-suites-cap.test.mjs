@@ -100,6 +100,17 @@ test('tolerant, suspended and retired entries never use a PR place or join the d
   assert.deepEqual(pick.planPrSuites({...args, pullRequest: false, pointed, lanes}).suites, pointed);
 });
 
+test('a reached tolerant number runs outside the five backbone places and never joins deferrals', () => {
+  const pointed = ['qualityai', 'notion-real', 'f', 'e', 'd', 'c', 'b', 'a'];
+  const lanes = {suites: {qualityai: {lane: 'tolerant', pr: 'number'}, 'notion-real': {lane: 'tolerant'}}};
+  assert.deepEqual(pick.planPrSuites({...args, pointed, lanes}), {
+    suites: ['a', 'b', 'c', 'd', 'e', 'qualityai'], left: ['f'], deferred: ['f'],
+  });
+  assert.deepEqual(pick.planPrSuites({...args, pointed: ['qualityai'], lanes}), {suites: ['qualityai'], left: [], deferred: []});
+  assert.deepEqual(pick.planPrSuites({...args, pointed: ['a'], lanes}), {suites: ['a'], left: [], deferred: []});
+  assert.deepEqual(pick.planPrSuites({...args, covering: {qualityai: 'runs score.py:1'}, lanes}), {suites: ['qualityai'], left: [], deferred: []});
+});
+
 test('planner owns the cap deferrals, excluding a Mac-only loader even after merge', () => {
   const input = {...args, covering: {
     mac: 'loads app.js (line 9 ran in no suite)',
@@ -168,6 +179,13 @@ test('CLI reads catch counts only when supplied and applies the base registry be
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
   assert.equal(main.values.suites.split(',').length, 8);
   assert.equal(main.values.left, '');
+});
+
+test('CLI picks a real watched AI suite only when BASE enables its informational number', () => {
+  // qualityai is not on this branch yet; quality exercises the same watches and base-registry path.
+  const change = {suites: [], extraFiles: ['src/ai/score.py']};
+  assert.ok(!cliPlan({...change, listed: {quality: {lane: 'tolerant'}}}).values.suites.split(',').includes('quality'));
+  assert.ok(cliPlan({...change, listed: {quality: {lane: 'tolerant', pr: 'number'}}}).values.suites.split(',').includes('quality'));
 });
 
 test('CLI labels only the capped Linux suite for merge, not the Mac-only loader', () => {

@@ -22,6 +22,7 @@ all). #2215 took 12.4 min, of which its jobs ran 7.x and waited the rest; summed
   tools/pr-verdict.py --repo <owner/repo> --sha <head sha> [--job-status <success|failure|cancelled>] [--dry-run]       Guard: tests/test_pr_verdict.py
 """
 import argparse
+# Job: report health
 import importlib.util
 import json
 import os
@@ -127,11 +128,12 @@ def running_minutes(spans, now=None):
     return (total + (hi - lo).total_seconds()) / 60
 
 
-def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=()):
+def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=(), reports=()):
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
-    greys: red jobs shown, never red: a set of ids (main's own red) or {id: reason in GREY_WORDS} (main, lane or health evidence)."""
+    greys: red jobs shown, never red: a set of ids (main's own red) or {id: reason in GREY_WORDS} (main, lane or health evidence).
+    reports: BASE's tolerant pr:number suites; their outcomes and waits never decide the required state."""
     live = counted(runs)
     if not live:
         return None, '', live, [], None
@@ -144,14 +146,15 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
             if r.get('status') != 'completed': running.append((r, []))
             elif r.get('conclusion') in RED: red.append(r)
             continue
-        states = [(job, 'grey' if job.get('id') in greys else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS]
+        numbered = any(suite_of(job.get('name', '')) in reports for job in listed)
+        states = [(job, 'grey' if job.get('id') in greys else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS and suite_of(job.get('name', '')) not in reports]
         grey += [(job['name'], greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
             red.append(r); red_jobs[r.get('databaseId')] = [job['name'] for job, state in states if state in RED]
-        elif (not states and r.get('status') != 'completed') or any(state == 'running' for _, state in states):
+        elif (not states and not numbered and r.get('status') != 'completed') or any(state == 'running' for _, state in states):
             running.append((r, [job['name'] for job, state in states if state == 'running']))
-        elif r.get('status') != 'completed' and not ending: settling.append(r)   # all its jobs ended, yet the run is not: about to end, or to create the jobs that need them
+        elif r.get('status') != 'completed' and not ending and not numbered: settling.append(r)   # all its jobs ended, yet the run is not: about to end, or to create the jobs that need them
         else: finishing += [job['id'] for job, state in states if state == 'finishing']
     if red:
         # the failing jobs, not the run's title: #2342's status read "red: e2e focus,settings" with focus green (owner, 28 Oct 2026)
@@ -173,21 +176,22 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     return 'success', f'{told}{len(live)} workflow(s) green in {took}'[:140], live, finishing, None
 
 
-def job_spans(repo, runs):
+def job_spans(repo, runs, reports=()):
     """[(started_at, completed_at)] of every job of the counted runs (one call per run; only for a CI change, the one kind of PR with a budget)."""
     spans = []
     for r in counted(runs):
         for j in json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '[.jobs[] | {started_at, completed_at, name}]') or '[]'):
-            if j.get('name') not in REPORT_JOBS:
+            if j.get('name') not in REPORT_JOBS and suite_of(j.get('name', '')) not in reports:
                 spans.append((j.get('started_at'), j.get('completed_at')))
     return spans
 
 
-def gh(*args):
+def gh(*args, binary=False):
+    """Run `gh <args>` and return its stdout as UTF-8 text (bytes with binary=True, for an artifact ZIP); a failing call prints gh's error to stderr and re-raises CalledProcessError."""
     # UTF-8 always: on a Windows runner text=True alone decodes as cp1252, "E2E for PR · " no longer matched, and #2062's Windows job wrote a false green
     # while the Linux e2e run still ran.
     try:
-        return subprocess.run(['gh', *args], check=True, capture_output=True, encoding='utf-8').stdout
+        return subprocess.run(['gh', *args], check=True, capture_output=True, encoding=None if binary else 'utf-8').stdout
     except subprocess.CalledProcessError as error:
         print(f'gh {" ".join(args)[:120]}: {(error.stderr or "").strip()[:400]}', file=sys.stderr)   # Why (29 Oct 2026, api-quota): the 403 of 23:29Z showed only "exit status 1"
         raise
@@ -258,16 +262,15 @@ def job_log(repo, job_id):
     raise OSError(f'the log of job {job_id} was not read: {(done.stderr or "").strip()[:120]}')
 
 
-def main_state_module(repo, ref):
-    """tools/main_e2e_state.py, the one owner of main's per-suite state. Every PR job and the backstop fetch this file alone (code review, 28 Oct 2026): its sibling is
-    then fetched at the same commit, only when a PR is red."""
-    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main_e2e_state.py')
+def main_state_module(repo, ref, name='main_e2e_state'):
+    """Load main's state or the AI report companion at this script's commit, even from a standalone CI copy."""
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), name + '.py')
     if not os.path.exists(here):
-        text = gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/tools/main_e2e_state.py?ref={ref}')
-        here = os.path.join(tempfile.mkdtemp(), 'main_e2e_state.py')
+        text = gh('api', '-H', 'Accept: application/vnd.github.raw', f'repos/{repo}/contents/tools/{name}.py?ref={ref}')
+        here = os.path.join(tempfile.mkdtemp(), name + '.py')
         with open(here, 'w', encoding='utf-8') as file:
             file.write(text)
-    spec = importlib.util.spec_from_file_location('main_e2e_state', here)
+    spec = importlib.util.spec_from_file_location(name, here)
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     return module
 
@@ -413,20 +416,27 @@ def main():
         print(f'the pull request of {a.sha[:7]} is merged or closed: nothing to write'); return 0
     if number and files is None:   # over 100 files: the paged REST read
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
-    me, greys = None, None
+    me, greys, reports, ai_line = None, None, set(), str
+    runs, jobs = read(a.repo, a.sha, my_run)
+    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
+        try:
+            ref = os.environ.get('GITHUB_SHA') or a.sha
+            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda: main_state_module(a.repo, ref), base_branch(), my_run, a.job_status, os.environ.get('RUNNER_NAME', ''))
+        except Exception as error:
+            print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
     for attempt in range(20):   # at most ~60 s, only while jobs with a lower id end with us
-        runs, jobs = read(a.repo, a.sha, my_run)
+        if attempt: runs, jobs = read(a.repo, a.sha, my_run)
         if a.job_status and me is None:
             mine = [j for j in jobs.get(int(my_run or 0), []) if j.get('status') != 'completed' and j.get('runner_name') == os.environ.get('RUNNER_NAME')]
             me = mine[0]['id'] if mine else None
-        spans = job_spans(a.repo, runs) if ci_change(files) and not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run) else None
-        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or ())
+        spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run)) else None
+        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or (), reports=reports)
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
             ref = os.environ.get('GITHUB_SHA') or a.sha
             greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
                      **health_greys(a.repo, runs, jobs)}   # a health cause names this run; lanes still come from the base branch
             if greys:
-                state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys)
+                state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys, reports=reports)
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):
             break
         if state != 'settling' and leave_it(finishing, me):
@@ -439,6 +449,7 @@ def main():
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
+    why = ai_line(why)
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

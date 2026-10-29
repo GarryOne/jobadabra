@@ -57,7 +57,8 @@ export function reach(root, file, cache = new Map()) {
 // Test data other jobs replay (harness.yml's paths leave them out): a change there runs only the tests that read it, not the pr set.
 const DATA = /^desktop\/e2e\/(?:recorded|recorded-pending|fixtures|ladder-fixtures|widget-zoo)\//;
 const HARNESS_INPUTS = new Set(['.github/workflows/harness.yml', 'desktop/package.json', 'desktop/package-lock.json', 'desktop/scripts/stage.mjs']);
-const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item));
+// Why (#2458, 29 Oct 2026): replay data only reaches reads inside DATA trees; ancestor directories would select tests for paths the workflow excludes.
+const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item) && (!DATA.test(changed) || DATA.test(item)));
 
 /**
  * The harness test files a change reaches. Assumes `changed` is repo-relative with '/' separators.

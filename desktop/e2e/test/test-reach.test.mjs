@@ -43,9 +43,21 @@ test('the pr set runs when the harness changed, not for a recorded case alone', 
   const harness = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/lib/test-reach.mjs'], always});
   for (const file of always) assert.ok(harness.files.includes(file), file);
   assert.ok(harness.files.includes(inRepo('test-reach.test.mjs')), 'a change to the reach code runs this test, though it is in the daily set');
-  // Why (#2435/#2450, 29 Oct 2026): the corrected desktop/ read reaches recorded data too, without selecting the whole pr set.
-  assert.deepEqual(reachedTests({root: ROOT, tests, changed: ['desktop/e2e/recorded/x/case.json'], always}).files,
-    [inRepo('pr-suites-cap.test.mjs'), inRepo('test-reach.test.mjs')]);
+  assert.deepEqual(reachedTests({root: ROOT, tests, changed: ['desktop/e2e/recorded/x/case.json'], always}).files, []);
+});
+
+// Why (#2458, 29 Oct 2026): excluded replay data needs a read inside its DATA tree; a desktop/ ancestor read must still cover harness code.
+test('a parent directory read selects lib changes but replay data needs its own file or directory read', t => {
+  const parent = inRepo('parent.test.mjs'), folder = inRepo('folder.test.mjs'), file = inRepo('file.test.mjs');
+  const reading = relative => `const input = new URL('${relative}', import.meta.url);`;
+  const root = tree({[parent]: reading('../..'), [folder]: reading('../recorded/x/'), [file]: reading('../recorded/x/case.json')});
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const changed = ['desktop/e2e/recorded/x/case.json'];
+  assert.deepEqual(reachedTests({root, tests: [parent], changed}).files, []);
+  assert.deepEqual(reachedTests({root, tests: [parent], changed: ['desktop/e2e/lib/helper.mjs']}).files,
+    [parent, inRepo('test-reach.test.mjs')]);
+  assert.deepEqual(reachedTests({root, tests: [parent, folder, file], changed}).files,
+    [file, folder, inRepo('test-reach.test.mjs')]);
 });
 
 // Why (#2435/#2450, 29 Oct 2026): a parent-only URL is a directory even without a trailing slash; desktop/** must cover it.

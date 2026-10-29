@@ -2,7 +2,7 @@
 // Settings: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
-import {appLogText} from '../lib/app-log.mjs';
+import {appLogText, currentLaunchLog} from '../lib/app-log.mjs';
 import {pollUntil, waitForLogLine} from '../lib/wait-on-state.mjs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import {backupNowStep, backupTimerStep, makeBackupFile} from '../lib/backup-steps.mjs';
 import {exportedFileDigests} from '../lib/export-snapshot.mjs';
+import {roundTripFileDifferences} from '../lib/roundtrip-files.mjs';
 
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
 export const stepNeeds = {'AI engine panel': ['every Settings section renders']};
@@ -255,8 +256,9 @@ async function roundTrip(ctx, makeBackup = null) {   // makeBackup: makes the au
   // Keys: none lost. One the app makes at start when missing (the extension's token) may appear. A backup never holds keys (lib/backup.js),
   // so after a reset they come back only where the platform kept them (the Mac's Keychain; not Windows, 17 Oct 2026): not checked for a backup.
   if (!backupFile) for (const name of Object.keys(before.secrets)) if (before.secrets[name] && !after.secrets?.[name]) differ.push(`key ${name} lost`);
-  for (const key of ['files', 'notionIds']) for (const name of new Set([...Object.keys(before[key] || {}), ...Object.keys(after[key] || {})]))
-    if (JSON.stringify(before[key]?.[name]) !== JSON.stringify(after[key]?.[name])) differ.push(`${key}.${name} ${JSON.stringify(before[key]?.[name])} -> ${JSON.stringify(after[key]?.[name])}`);
+  differ.push(...roundTripFileDifferences(before.files, after.files, currentLaunchLog(ctx.profile)));
+  for (const name of new Set([...Object.keys(before.notionIds || {}), ...Object.keys(after.notionIds || {})]))
+    if (JSON.stringify(before.notionIds?.[name]) !== JSON.stringify(after.notionIds?.[name])) differ.push(`notionIds.${name} ${JSON.stringify(before.notionIds?.[name])} -> ${JSON.stringify(after.notionIds?.[name])}`);
   if (before.jobs !== after.jobs) differ.push(`jobs ${before.jobs} -> ${after.jobs}`);
   // A file that did not come back says where it went: what the export held and what the folder holds now (beta 20, 24 Oct 2026: Linux lost profile.md and answers.md, and the
   // report said only "-> null").

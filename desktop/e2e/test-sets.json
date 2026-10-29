@@ -275,6 +275,7 @@
   "review-free.test.mjs",
   "review-lessons.test.mjs",
   "root-causes.test.mjs",
+  "roundtrip-files.test.mjs",
   "row-case-run.test.mjs",
   "row-case-shrink.test.mjs",
   "row-case.test.mjs",

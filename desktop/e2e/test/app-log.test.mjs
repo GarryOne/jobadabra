@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {appLogLines, rearmedSessions, sessionPoll} from '../lib/app-log.mjs';
+import {appLogLines, rearmedSessions, sessionPoll, pollSessions} from '../lib/app-log.mjs';
 
 test('a line rolled into yesterday\'s day file is still read, in order', () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'applog-'));
@@ -54,4 +54,21 @@ test('session polling records every matching state with its time without changin
   assert.doesNotMatch(lines[0], /private|email|accountNeeds|https:/);
   assert.equal(sessionPoll([], 'https://jobs.example.test/1', {now, log}), null);
   assert.deepEqual(JSON.parse(lines[1].slice('account-state poll '.length)).matches, []);
+});
+
+
+test('a real polling read writes one structured diagnostic artifact and returns its original session', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'session-polls-'));
+  const session = {id: 'session-1', url: 'https://jobs.example.test/1', stage: 'account', stuck: 'incomplete'};
+  let reads = 0;
+  const page = {evaluate: async () => { reads++; return [session]; }};
+  try {
+    assert.equal(await pollSessions(page, session.url, dir), session);
+    assert.equal(reads, 1);
+    const rows = fs.readFileSync(path.join(dir, 'account-state-polls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].selected, session.id);
+    assert.deepEqual(rows[0].matches, [{id: session.id, stage: 'account', stuck: 'incomplete'}]);
+    assert.ok(Date.parse(rows[0].requestedAt) <= Date.parse(rows[0].at));
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

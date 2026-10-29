@@ -2,6 +2,7 @@
 // 7 Oct 2026: a step counted engine starts in app.log alone; the app's midnight (22:00 UTC, Zurich) moved the first run's line to app-2026-10-07.log
 // mid-step, so "one click started 0 runs" failed the Windows employers suite. Read every app.log line through this, never app.log by itself.
 // Job: report health
+/* global window */
 import fs from 'node:fs';
 import path from 'node:path';
 import {dayFiles} from '../../lib/log-days.js';
@@ -22,6 +23,12 @@ export function sessionPoll(sessions, url, {startedAt, now = Date.now, log = con
   record(snapshot);
   log(`account-state poll ${JSON.stringify(snapshot)}`);
   return selected;
+}
+
+/** Read the same sessions API and persist its privacy-filtered observation in this run's artifact directory. */
+export async function pollSessions(page, url, artifacts) {
+  const startedAt = Date.now(), sessions = await page.evaluate(() => window.pilot.sessions());
+  return sessionPoll(sessions, url, {startedAt, record: snapshot => fs.appendFileSync(path.join(artifacts, 'account-state-polls.jsonl'), `${JSON.stringify(snapshot)}\n`)});
 }
 /**
  * The sessions whose menu the app armed again ("[fill] menu armed again ... {"id":"<session>"}", lib/menu-rearm.js), in a slice of the app log.

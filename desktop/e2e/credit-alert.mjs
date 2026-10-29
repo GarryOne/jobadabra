@@ -10,6 +10,7 @@ import {send} from './ci-alert.mjs';
 
 /** The providers' own wordings of an empty balance: Anthropic "Credit balance is too low", OpenAI "insufficient_quota" / "exceeded your current quota". */
 const CREDIT_OUT = /credit balance is too low|insufficient[_ ]quota|exceeded your current quota|plans and billing/i;
+// -> true when the text is one of those wordings; false for anything else, including an empty text.
 export const isCreditOut = text => CREDIT_OUT.test(String(text || ''));
 
 const ADVICE = {

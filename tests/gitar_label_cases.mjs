@@ -1,11 +1,153 @@
 // Cases for tools/gitar-label.mjs, run by tests/test_gitar_label.py: Gitar's real verdict lines map to one label, and a verdict older than the head commit gets none.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {converge, fromGraphql, readPr, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {canSkipFromPayload, converge, fromGraphql, readPr, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
 const wrap = kbd => `<details>\n<summary><b>Code Review</b> ${kbd}</summary>\n\nBody\n</details>`;
 const APPROVED = wrap('<kbd>✅ Approved</kbd>');   // #2377, #2380
 const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 3 findings</kbd>');   // #2381
 const CHANGES = wrap('<kbd>⚠️ Changes requested</kbd> <kbd>0 closed / 3 findings</kbd>');   // #2382
+
+const payloadCases = [
+  {name: 'approved already held', body: APPROVED, labels: [LABELS.approved.name], skip: true, before: 1},
+  {name: 'suggestions already held', body: SUGGEST, labels: [LABELS.suggestions.name], skip: true, before: 1},
+  {name: 'changes already held', body: CHANGES, labels: [LABELS.changes.name], skip: true, before: 1},
+  {name: 'still reviewing', body: 'Gitar is reviewing…', labels: [WAITING.name], skip: true, before: 1},
+  {name: 'different verdict', body: APPROVED, labels: [LABELS.changes.name], skip: false, before: 5},
+  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 3},
+  {name: 'push clears stale approval', event: 'pull_request_target', body: APPROVED, labels: [LABELS.approved.name], skip: false, before: 5},
+];
+
+test('payload skips only matching comment verdicts or reviewing without any verdict label', () => {
+  const canSkip = (body, labels, event = 'issue_comment', login = 'gitar-bot[bot]') => canSkipFromPayload({event, comment: {body, user: {login}}, labels});
+  for (const c of payloadCases) assert.equal(canSkip(c.body, c.labels, c.event), c.skip, c.name);
+  for (const label of Object.values(LABELS)) {
+    assert.equal(canSkip('still analysing', [WAITING.name, label.name]), false, 'a verdict label still needs clearing');
+    assert.equal(canSkip(APPROVED, [label.name], 'pull_request_target'), false, 'pushes always read live state');
+  }
+  assert.equal(canSkip('still analysing', []), false, 'missing reviewing label needs adding');
+  assert.equal(canSkip('still analysing', [WAITING.name, WORKING.name]), true);
+  assert.equal(canSkip(CHANGES, [LABELS.changes.name, WORKING.name]), true);
+  assert.equal(canSkip(SUGGEST, [LABELS.suggestions.name, WORKING.name]), true, 'suggestions keep working under the existing policy');
+  assert.equal(canSkip(APPROVED, [LABELS.approved.name], 'issue_comment', 'someone-else'), false);
+  assert.equal(canSkipFromPayload({event: 'pull_request_target'}), false);
+});
+
+/** Runs the real CLI with only gh replaced; the fake records calls and persists label writes for convergence reads. */
+function runCliCase(t, {event = 'issue_comment', body = APPROVED, labels = [], failure = '', legacy = false, eventFile = 'present', issueBody = ''} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'gitar-label-'));
+  t.after(() => rmSync(dir, {recursive: true, force: true}));
+  const stateFile = join(dir, 'state.json'), preload = join(dir, 'fake-gh.mjs'), payloadFile = join(dir, 'event.json');
+  writeFileSync(stateFile, JSON.stringify({calls: 0, labels, body}));
+  writeFileSync(preload, `// Replaces only gh so this CLI test cannot access GitHub or credentials.
+import childProcess from 'node:child_process';
+import {syncBuiltinESMExports} from 'node:module';
+import {readFileSync, writeFileSync} from 'node:fs';
+childProcess.execFileSync = (file, args) => {
+  if (file !== 'gh') throw new Error('unexpected executable: ' + file);
+  const state = JSON.parse(readFileSync(process.env.FAKE_GH_STATE, 'utf8'));
+  state.calls++;
+  writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+  if (process.env.FAKE_GH_FAILURE) throw new Error(process.env.FAKE_GH_FAILURE);
+  const names = state.labels.map(name => ({name}));
+  let result;
+  if (args[0] === 'api') {
+    const path = args[1];
+    if (path === 'graphql') result = {data: {repository: {pullRequest: {
+      state: 'OPEN', headRefOid: 'head',
+      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:05:00Z'}]},
+      labels: {nodes: names},
+      timelineItems: {nodes: [{label: {name: 'Working on PR comments'}, createdAt: '2026-10-28T20:05:00Z'}]},
+      commits: {nodes: [{commit: {committedDate: process.env.FAKE_HEAD_TIME, checkSuites: {nodes: []}}}]},
+    }}}};
+    else if (path === 'repos/o/r/pulls/1') result = {state: 'open', head: {sha: 'head'}};
+    else if (path === 'repos/o/r/commits/head') result = {commit: {committer: {date: process.env.FAKE_HEAD_TIME}}};
+    else if (path.endsWith('/check-suites')) result = {check_suites: []};
+    else if (path.endsWith('/comments')) result = [[{user: {login: 'gitar-bot[bot]'}, body: state.body, updated_at: '2026-10-28T20:05:00Z'}]];
+    else if (path.endsWith('/labels')) result = [names];
+    else if (path.endsWith('/events')) result = [[{event: 'labeled', label: {name: 'Working on PR comments'}, created_at: '2026-10-28T20:05:00Z'}]];
+    else throw new Error('unexpected API path: ' + path);
+    return JSON.stringify(result);
+  }
+  if (args[0] === 'label' && args[1] === 'create') return '';
+  if (args[0] !== 'pr' || args[1] !== 'edit') throw new Error('unexpected gh args: ' + args);
+  const add = args.indexOf('--add-label'), remove = args.indexOf('--remove-label');
+  if (add >= 0) state.labels.push(args[add + 1]);
+  else if (remove >= 0) state.labels = state.labels.filter(name => name !== args[remove + 1]);
+  else throw new Error('unexpected label edit: ' + args);
+  writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
+  return '';
+};
+syncBuiltinESMExports();
+`);
+  const labelObjects = labels.map(name => ({name}));
+  const payload = event === 'issue_comment'
+    ? {comment: {body, user: {login: 'gitar-bot[bot]'}}, issue: {body: issueBody, labels: labelObjects}}
+    : {pull_request: {labels: labelObjects}};
+  writeFileSync(payloadFile, JSON.stringify(payload));
+  const eventPath = legacy || eventFile === 'unset' ? '' : eventFile === 'missing' ? join(dir, 'missing.json') : eventFile === 'unreadable' ? dir : payloadFile;
+  const done = spawnSync(process.execPath, ['--import', preload, fileURLToPath(new URL('../tools/gitar-label.mjs', import.meta.url)), '1'], {
+    encoding: 'utf8',
+    env: {PATH: process.env.PATH, GITHUB_REPOSITORY: 'o/r', GITHUB_EVENT_NAME: event,
+      GITHUB_EVENT_PATH: eventPath, FAKE_GH_STATE: stateFile,
+      FAKE_HEAD_TIME: event === 'pull_request_target' ? '2026-10-28T20:10:00Z' : '2026-10-28T20:00:00Z', FAKE_GH_FAILURE: failure},
+  });
+  assert.ifError(done.error);
+  return {...done, ...JSON.parse(readFileSync(stateFile, 'utf8'))};
+}
+
+test('CLI gh calls before (unchanged live path) and after payload guard', t => {
+  t.diagnostic('Case | Before gh calls | After gh calls');
+  for (const c of payloadCases) {
+    const before = runCliCase(t, {...c, legacy: true}), after = runCliCase(t, c);
+    assert.equal(before.status, 0, before.stderr);
+    assert.equal(after.status, 0, after.stderr);
+    assert.equal(before.calls, c.before, c.name);
+    assert.equal(after.calls, c.skip ? 0 : c.before, c.name);
+    assert.deepEqual(after.labels, before.labels, c.name);
+    t.diagnostic(`${c.name} | ${before.calls} | ${after.calls}`);
+  }
+});
+
+test('CLI reads event files over 128 KB and falls back to live reads for unavailable files', t => {
+  const large = runCliCase(t, {labels: [LABELS.approved.name], issueBody: 'x'.repeat(160 * 1024)});
+  assert.equal(large.status, 0, large.stderr);
+  assert.equal(large.calls, 0, 'a large event file still skips without an oversized environment string');
+  for (const eventFile of ['unset', 'missing', 'unreadable']) {
+    const done = runCliCase(t, {labels: [LABELS.approved.name], eventFile});
+    assert.equal(done.status, 0, done.stderr);
+    assert.equal(done.calls, 1, `${eventFile}: no payload means the existing live path`);
+    assert.deepEqual(done.labels, [LABELS.approved.name]);
+  }
+});
+
+test('CLI notices comment rate limits; push, permission-denied 403 and server errors fail', t => {
+  for (const [failure, status] of [
+    ['HTTP 403 API rate limit exceeded for installation', 0],
+    ['HTTP 403 secondary rate limit exceeded', 0],
+    ['HTTP 429 Too Many Requests', 0],
+    ['rate limit exceeded', 0],
+    ['HTTP 403 Resource not accessible by integration', 1],
+    ['HTTP 500 Internal Server Error', 1],
+  ]) {
+    for (const event of ['issue_comment', 'pull_request_target']) {
+      const labels = [event === 'issue_comment' ? WAITING.name : LABELS.approved.name];
+      const done = runCliCase(t, {event, failure, labels});
+      const expected = event === 'issue_comment' ? status : 1;
+      assert.equal(done.status, expected, `${event}: ${failure}; stderr: ${done.stderr}`);
+      assert.equal(done.calls, 1, 'never retry a failed gh call');
+      assert.deepEqual(done.labels, labels, 'a failed read leaves every label as it was');
+      const notices = done.stdout.split('\n').filter(line => line.startsWith('::notice::'));
+      assert.equal(notices.length, expected === 0 ? 1 : 0);
+      if (notices.length) assert.match(notices[0], /label.*left as it is/i);
+      else assert.ok(done.stderr.includes(failure), done.stderr);
+    }
+  }
+});
 
 test('real verdict lines map to their kind', () => {
   assert.equal(verdictKind(APPROVED), 'approved');

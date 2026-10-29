@@ -5,6 +5,7 @@
 // Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>
 //   node tools/gitar-label.mjs working <pr-number>   a session says it is handling the comments (tools/ship-watch.sh). Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
 import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 export const LABELS = {
@@ -25,6 +26,15 @@ export function verdictKind(body) {
   if (/approved with suggestions/i.test(text)) return 'suggestions';
   if (/approved/i.test(text)) return 'approved';
   return 'changes';   // Why (28 Oct 2026): an unknown Code Review state is not an approval; red is the safe side
+}
+
+/** Skips only Gitar comment events whose payload already holds the expected label; pushes always sync live state. */
+export function canSkipFromPayload({event, comment, labels = []}) {
+  // Why (29 Oct 2026, a8): 200+ runs in 65 minutes at 8–12 REST calls each exhausted the installation budget; unchanged comment edits must cost zero calls.
+  if (event !== 'issue_comment' || comment?.user?.login !== 'gitar-bot[bot]') return false;
+  const kind = verdictKind(comment.body);
+  if (kind) return labels.includes(LABELS[kind].name) && !(kind === 'approved' && labels.includes(WORKING.name));
+  return labels.includes(WAITING.name) && !Object.values(LABELS).some(label => labels.includes(label.name));
 }
 
 /** The label name to hold: Gitar's verdict if its comment was written at or after the head commit, else null (a stale approval never stays green). */
@@ -140,4 +150,25 @@ function markWorking(pr) {
   main(pr);   // Why (#2386, Gitar): an approved PR must not keep "working"; the sync drops it again
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2]);
+/** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */
+function cli() {
+  try {
+    let payload = {};
+    try {
+      if (process.env.GITHUB_EVENT_PATH) payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+    } catch { /* An unreadable event file only disables the zero-call shortcut. */ }
+    if (canSkipFromPayload({event: process.env.GITHUB_EVENT_NAME, comment: payload.comment,
+      labels: (payload.issue?.labels || payload.pull_request?.labels || []).map(label => label.name)}) && process.argv[2] !== 'working') return;
+    process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2]);
+  } catch (error) {
+    // Why (29 Oct 2026, a8): 27 label runs turned PRs red on rate-limited HTTP 403 after 200+ runs in 65 minutes exhausted the installation budget; quota failures leave cosmetic labels alone, but permission failures stay visible; Gitar's finding (29 Oct 2026, #2448): push failures must stay red when a stale approval cannot be cleared.
+    if (process.env.GITHUB_EVENT_NAME === 'issue_comment' && /rate limit|HTTP 429/i.test(error.message)) {
+      console.log('::notice::Gitar label left as it is because GitHub API access is rate limited.');
+      return;
+    }
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) cli();

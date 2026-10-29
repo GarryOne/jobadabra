@@ -193,3 +193,17 @@ test('a job that was not mid-press, or already has its receipt, is left alone by
   assert.equal(await store.interrupted(job.url, session), null, 'waiting to submit is not an interrupted press');
   assert.equal(await store.interrupted(job.url, 'someone-else'), null, 'another session\'s record is not touched');
 });
+
+// A press whose reply never arrives (the extension closed, the app still open): the app hands it over itself once the wait is up.
+test('a press with no receipt after the wait is handed to the person; a younger one is left alone', async () => {
+  const waitNow = {...config, auto: {...config.auto, waitMin: 0}}, r = rig(), {store, job, session} = await prepared(r, r.add(), 'auto', waitNow);
+  assert.equal((await store.reserve(job.url, session, 'owned-browser', ready, waitNow)).submit, true, 'the press was reserved');
+  r.advance(2 * 60000);
+  assert.equal(await store.interrupted(job.url, session, {afterMs: 3 * 60000}), null, '2 minutes after the press is still within the wait for a reply');
+  assert.equal((await store.read(job.url)).state, 'submitting');
+  r.advance(60000);
+  const state = await store.interrupted(job.url, session, {afterMs: 3 * 60000});
+  assert.equal(state.state, 'needs_user_handoff');
+  assert.equal(state.reason, 'submission_outcome_unknown');
+  assert.equal((await store.reserve(job.url, session, 'owned-browser', ready, waitNow)).submit, false, 'never pressed again');
+});

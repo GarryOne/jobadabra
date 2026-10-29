@@ -16,8 +16,9 @@ const HARNESS = new RegExp(`^(?:\\.github\\/workflows\\/${E2E_WORKFLOWS}\\.ya?ml
 const citation = messages => messages.some(message => /^(?:Expect-changed-by|Test-was-wrong):[ \t]*\S[^\n]*$/m.test(message));
 
 // Keep source positions while hiding comments and strings; diagnostic messages are not expectations.
+const TOKENS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/;
 function mask(text) {
-  return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g,
+  return text.replace(new RegExp(TOKENS.source, 'g'),
     value => value.replace(/[^\n]/g, ' '));
 }
 
@@ -38,7 +39,7 @@ const executionSettings = (raw = '') => {
   return [...text.matchAll(/\bexport\s+const\s+(shards|budgetMinutes|minutes|stepSeconds|flowSeconds)\s*=\s*/g)].map(match => {
     const start = match.index + match[0].length, end = text.indexOf(';', start);
     // Keep step names and literal whitespace: reassigning the same seconds to different journeys changes the split too.
-    const value = (raw || '').slice(start, end < 0 ? undefined : end).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\s+/g,
+    const value = (raw || '').slice(start, end < 0 ? undefined : end).replace(new RegExp(`${TOKENS.source}|\\s+`, 'g'),
       token => /^(?:\/|\s)/.test(token) ? '' : token);
     return `execution setting:${match[1]}:${value}`;
   });

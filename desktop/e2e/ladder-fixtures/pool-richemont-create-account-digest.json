@@ -164,5 +164,5 @@
   }
  ],
  "answer_path": "app",
- "note": "Offline this scores a miss on purpose: the stored answer is rung 2's real one (unsure at 0.5, before the page drew); the numbered digest (rung 3) decides this page and is scored live by ladder-digest-score, not here."
+ "note": "Offline this scores a miss on purpose: the stored answer is rung 2's real one (unsure at 0.5, before the page drew); the numbered digest (rung 3) decides this page, while this fixture replays only rung 2's stored answer."
 }

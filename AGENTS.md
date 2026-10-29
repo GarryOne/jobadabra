@@ -19,6 +19,8 @@ duplicate what's here — read these instead, and update them if something's mis
 
 ## If you're Codex, or another agent with your own global instructions/skills/memory
 
+Before diagnosing or editing a red e2e, read the [reliability design](docs/superpowers/specs/2026-10-28-e2e-reliability-design.md), the lane registry and `.claude/skills/fix-failing-e2e/SKILL.md`. Classify the failed input before choosing a fix: deterministic behavior, AI, clock, outside world, health, or an unchanged-commit flip. A log that says "split the suite" does not override the design. A modified pass proves no fix when the original also passes; report that the failure was not reproduced locally. Budget/shard edits are checked as expectation and plumbing changes by `tools/e2e-reliability-check.mjs`.
+
 Point your own global config at these files rather than keeping a second copy:
 - Don't maintain a separate Notion-structure skill — use the notion-map skill.
 - Don't maintain separate job-application-filling instructions — use

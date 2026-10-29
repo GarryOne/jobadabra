@@ -202,3 +202,28 @@ test('both push and PR checks run the gate; review rules block E, F and excessiv
   const review = fs.readFileSync(path.join(root, '.gitar/review/e2e-reliability.md'), 'utf8');
   for (const text of ['Rule E', 'Rule F', '2 rounds', 'blocking', 'tolerant']) assert.ok(review.includes(text), text);
 });
+
+test('budget-only suite repairs cannot bypass the expectation rule or plumbing brake', () => {
+  for (const [before, after] of [
+    ['export const run = () => {};', 'export const budgetMinutes = 20; export const run = () => {};'],
+    ['export const run = () => {};', 'export const shards = 3; export const run = () => {};'],
+    ['export const shards = 2;', 'export const shards = 3;'],
+    ['export const budgetMinutes = 7;', 'export const budgetMinutes = 10;'],
+    ['export const minutes = 17;', 'export const minutes = 24;'],
+    ["export const flowSeconds = {'sign-in': 30};", "export const flowSeconds = {'sign-in': 90};"],
+    ["export const stepSeconds = {'form': 20};", "export const stepSeconds = {'form': 40};"],
+    ['export const stepSeconds = {"slow":90,"fast":5};', 'export const stepSeconds = {"fast":90,"slow":5};'],
+  ]) {
+    assert.ok(expectationChanges(before, after, suite).length, after);
+    assert.match(push({[suite]: before}, {[suite]: after}), /Rule E/);
+    assert.match(push({[suite]: before}, {[suite]: after}, `Repair\n\n${why}`), /Rule F/);
+    const labelled = `// Job: run the backbone\n${after}`;
+    assert.equal(push({[suite]: before}, {[suite]: labelled}, `Repair\n\n${why}\nHarness-job: run the backbone`), '');
+  }
+});
+
+test('suite execution configuration ignores comments and whitespace', () => {
+  assert.deepEqual(expectationChanges('export const shards = 2;', 'export const shards = 2; // 3 later', suite), []);
+  assert.deepEqual(expectationChanges('export const shards = 2;', 'export const shards =\n 2;', suite), []);
+  assert.deepEqual(expectationChanges("export const flowSeconds = {'slow form': 20};", "export const flowSeconds = { 'slow form': /* measured */ 20 };", suite), []);
+});

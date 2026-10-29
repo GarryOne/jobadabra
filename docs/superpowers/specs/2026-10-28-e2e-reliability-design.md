@@ -99,6 +99,8 @@ stored answers, wait on state, pick the suites, run tolerant suites as rates, ke
 or `Fixes-backbone-red: <run>` (a backbone red seen twice on the same commit). A PR that answers a tolerant result, a red already gone, or names no job cannot
 go green. Legitimate plumbing (a runner image, a new suite) names its job.
 
+**Design-first repair (owner, 29 Oct 2026):** before diagnosing or editing a red e2e, read this design, the lane registry and the repair skill; name the failed input and the evidence before selecting an implementation. A failure's "split the suite" advice never overrides the lane boundary. A modified pass with an original pass is not a demonstrated causal fix. Changed suite execution settings (`shards`, `budgetMinutes`, `minutes`, `stepSeconds`, `flowSeconds`) are both rule E changes and rule F plumbing, even when the file is under `suites/`; the existing push/PR check enforces their citation, design job and `Job:` label.
+
 **G · Budget and picking.** A PR runs at most 5 suites, in parallel, within about 10 minutes. When a diff reaches more, the scorecard picks the 5 that caught the
 most bugs for the files it touches; the rest run on main after merge. 10–20 suites run only on main, scheduled, or before a beta. Suites compete for the
 budget: a new suite earns its place by covering a gap better than one already there.

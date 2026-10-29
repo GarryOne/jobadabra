@@ -43,7 +43,7 @@ export async function run(ctx) {
 
 async function runJourney(ctx) {
   const {page} = ctx;
-  const journey = qualityJourney(ctx);
+  const journey = qualityJourney(ctx, {strict: true});
   const {truth, privacyLogs} = journey;
   const summary = {facts: {exact: 0, total: 0}, ranking: 'not checked'};
   ctx.findings = [];

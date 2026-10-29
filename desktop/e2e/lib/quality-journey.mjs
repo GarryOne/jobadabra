@@ -70,8 +70,8 @@ export function rankingCheck(journey, {onRanking, onCap}) {
   onCap(over, said);
 }
 
-/** Build one isolated journey; rows and appJobs always reflect its latest read2(). */
-export function qualityJourney(ctx, {wait = {}} = {}) {
+/** Build one isolated journey; strict reads require complete store and Jobs-page rows, live reads keep partial results. */
+export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
   const {page} = ctx;
   const backbone = ctx.suite === 'quality';
   // Why (29 Oct 2026, qu 3/4): only the stored-answer journey uses calm-run hang caps; live AI keeps its larger allowances.
@@ -115,35 +115,44 @@ export function qualityJourney(ctx, {wait = {}} = {}) {
     if (newest.ok === false) throw new Error(`the ${label} ended as failed: ${newest.result || '(no result text)'}\n${qualityEvidence(ctx)}`);
     // read2 observes the committed rows; task completion needs no fixed delay.
   };
+  const storeDiagnostics = () => {
+    const config = path.join(ctx.profile, 'config');
+    const text = file => fs.existsSync(path.join(config, file)) ? fs.readFileSync(path.join(config, file), 'utf8').replace(/\s+/g, ' ') : 'missing';
+    return `profile config: ${fs.existsSync(config) ? fs.readdirSync(config).join(', ') : 'none'}; sources.json: ${text('sources.json')}; feed folder: ${ctx.feeds && fs.existsSync(ctx.feeds) ? fs.readdirSync(ctx.feeds).join(', ') : 'none'}; search.json: ${text('search.json').slice(0, 700)}`;
+  };
   const read2 = async () => {
     const required = postings.filter(item => !item.filterMayDrop);
     const missing = (candidateRows = []) => {
       const {byId} = matchRows(truth, candidateRows);
       return required.filter(item => !byId[item.id]);
     };
-    // Why (29 Oct 2026, qu 3/4): a count including optional postings hid missing required jobs; publish only the complete required set.
-    const complete = await state(() => matchRowsOf(ctx), candidateRows => missing(candidateRows).length === 0,
-      'the required postings reaching the store', jobsStateMs, candidateRows => {
+    // Why (29 Oct 2026, qu 3/4, #2501 review): only exact quality requires every required posting; live qualityai keeps partial rows at its allowance.
+    let partial = [];
+    const complete = await state(async () => (partial = await matchRowsOf(ctx)), candidateRows => strict
+      ? missing(candidateRows).length === 0 : Object.keys(matchRows(truth, candidateRows).byId).length >= required.length,
+      'the required postings reaching the store', strict ? jobsStateMs : 90000, candidateRows => {
         const absent = missing(candidateRows);
-        return `${required.length - absent.length} of ${required.length} required postings reached the store; missing: ${absent.map(item => `${item.id} "${item.title}" (${item.url})`).join(', ')}\n${qualityEvidence(ctx)}`;
+        return `${required.length - absent.length} of ${required.length} required postings reached the store; missing: ${absent.map(item => `${item.id} "${item.title}" (${item.url})`).join(', ')}\n${strict ? storeDiagnostics() + '\n' : ''}${qualityEvidence(ctx)}`;
+      }).catch(error => {
+        if (strict || error.name !== 'QualityHangError') throw error;
+        return partial;
       });
     rows = complete;
-    // Why (29 Oct 2026, qu 3/4): startSearch reloads the Jobs page asynchronously after the task ends; observe its rows instead of sleeping 2 s.
-    appJobs = await state(() => page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => ({title: job.title, url: job.url, fit: job.fit, reason: job.reason}))),
+    const readAppJobs = () => page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => ({title: job.title, url: job.url, fit: job.fit, reason: job.reason})));
+    // Why (29 Oct 2026, qu 3/4, #2501 review): only exact quality waits for startSearch's asynchronous Jobs-page reload; live qualityai reads the available list once.
+    appJobs = strict ? await state(readAppJobs,
       jobs => complete.every(row => jobs.some(job => normalizeUrl(job.url) === normalizeUrl(row.props['Job URL']))),
-      'the Jobs page showing the stored postings', jobsStateMs, jobs => `store rows=${complete.length}, Jobs page rows=${jobs?.length ?? 0}\n${qualityEvidence(ctx)}`);
+      'the Jobs page showing the stored postings', jobsStateMs, jobs => `store rows=${complete.length}, Jobs page rows=${jobs?.length ?? 0}\n${qualityEvidence(ctx)}`) : await readAppJobs();
   };
-  // SQLite gets a fresh profile per attempt (app.mjs launch); reset asserts it empty below. Thus list[0] cannot select an earlier attempt's match.
+  // SQLite gets a fresh profile per attempt (app.mjs launch); reset asserts its matches empty below. Thus list[0] cannot select an earlier attempt's match.
   const scoresOf = () => Object.fromEntries(Object.entries(matchRows(truth, rows).byId).map(([id, list]) => [id, list[0].props.Score]));
 
   const reset = async () => {
     await ctx.run('this suite starts with no jobs and no runs in its Notion page', async () => {
       if (backbone) {
-        // Why (29 Oct 2026, qu 3/4): clearData only logs SQLite rows; this journey promises an empty start and must never delete history to achieve it.
-        for (const entity of ['matches', 'cron_runs']) {
-          const held = await ctx.data(entity, 'list', {});
-          if (held.length) throw Object.assign(new Error(`quality reset: store holds ${held.length} ${entity} row(s); expected no matches and no runs`), {name: 'QualityStartStateError'});
-        }
+        // Why (29 Oct 2026, qu 3/4, #2501 review): startup may leave run history; assert only empty matches, preserve history and let check() exclude pre-refresh run IDs.
+        const held = await ctx.data('matches', 'list', {});
+        if (held.length) throw Object.assign(new Error(`quality reset: store holds ${held.length} matches row(s); expected no matches`), {name: 'QualityStartStateError'});
       } else { await clearData(ctx, MATCHES); await clearData(ctx, 'Cronjob Runs'); }
       // The candidate's compensation is known, not whatever the wizard's AI drafted from the CV ("CHF 180,000 (estimate)"): target 170k, minimum 140k.
     if (!persona) {   // a persona states its own compensation in its Profile file
@@ -183,8 +192,7 @@ export function qualityJourney(ctx, {wait = {}} = {}) {
         console.log(`  refresh ${round} ran out of time with jobs left (engine ${ctx.engine}): refreshing again`);
       }
       await read2(); if (!rows.length) {
-        const config = path.join(ctx.profile, 'config');
-        throw new Error(`no Job Matches row was in ${ctx.store === 'sqlite' ? 'this Mac\'s store (matches.list)' : 'Notion'} after the completed state wait (app's Notion: ${JSON.stringify(await page.evaluate(() => { const n = window.__jp?.shared?.state?.notion; return n && typeof n === 'object' ? Object.fromEntries(Object.entries(n).filter(([, v]) => typeof v === 'string' && /[0-9a-f]{8}-/.test(v)).map(([k, v]) => [k, v.slice(0, 13)])) : String(n); }))}; profile config: ${fs.existsSync(config) ? fs.readdirSync(config).join(', ') : 'none'}; sources.json: ${fs.existsSync(path.join(config, 'sources.json')) ? fs.readFileSync(path.join(config, 'sources.json'), 'utf8').replace(/\s+/g, ' ') : 'missing'}; feed folder: ${fs.readdirSync(ctx.feeds).join(', ')}; search.json: ${fs.readFileSync(path.join(config, 'search.json'), 'utf8').replace(/\s+/g, ' ').slice(0, 700)})`);
+        throw new Error(`no Job Matches row was in ${ctx.store === 'sqlite' ? 'this Mac\'s store (matches.list)' : 'Notion'} after the 90 s read allowance (app's Notion: ${JSON.stringify(await page.evaluate(() => { const n = window.__jp?.shared?.state?.notion; return n && typeof n === 'object' ? Object.fromEntries(Object.entries(n).filter(([, v]) => typeof v === 'string' && /[0-9a-f]{8}-/.test(v)).map(([k, v]) => [k, v.slice(0, 13)])) : String(n); }))}; ${storeDiagnostics()})`);
       } }, {needs: ctx.needs, limitMs: clocks.jobsMs});
   };
   const privacyLogs = () => ctx.run('no job text, CV text or secret reached the logs', async () => {

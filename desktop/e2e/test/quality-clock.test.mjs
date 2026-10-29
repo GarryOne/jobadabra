@@ -58,7 +58,8 @@ test('an unresolved operation also throws the named hang and clears its timer', 
 
 test('read2 never accepts optional rows in place of missing required postings', async t => {
   const {ctx, time} = fixture(t);
-  const journey = qualityJourney(ctx, {wait: time});
+  const journey = qualityJourney(ctx, {strict: true, wait: time});
+  seedDiagnostics(ctx);
   const required = journey.postings.filter(item => !item.filterMayDrop);
   const missing = required.at(-1);
   ctx.data = async () => journey.postings.filter(item => item.id !== missing.id).map(item => ({url: item.url, title: item.title}));
@@ -67,6 +68,7 @@ test('read2 never accepts optional rows in place of missing required postings', 
     assert.ok(error.message.includes(`${required.length - 1} of ${required.length} required postings reached the store`));
     assert.ok(error.message.includes(missing.title));
     assert.match(error.message, /engine evidence/);
+    assertDiagnostics(error.message);
     return true;
   });
   assert.deepEqual(journey.rows, [], 'partial rows must never be published');
@@ -74,7 +76,7 @@ test('read2 never accepts optional rows in place of missing required postings', 
 
 test('read2 accepts all required postings after the store commits, not before', async t => {
   const {ctx, time} = fixture(t);
-  const journey = qualityJourney(ctx, {wait: time});
+  const journey = qualityJourney(ctx, {strict: true, wait: time});
   ctx.data = async () => time.now() < 500 ? [] : journey.postings.filter(item => !item.filterMayDrop).map(item => ({url: item.url, title: item.title}));
   ctx.page.evaluate = async () => journey.postings.filter(item => !item.filterMayDrop).map(item => ({url: item.url}));
   await journey.read2();
@@ -82,22 +84,22 @@ test('read2 accepts all required postings after the store commits, not before', 
   assert.equal(journey.rows.length, journey.postings.filter(item => !item.filterMayDrop).length);
 });
 
-for (const entity of ['matches', 'cron_runs']) test(`reset rejects existing ${entity} through the store before any mutation`, async t => {
+test('reset rejects existing matches by name through the store before any mutation', async t => {
   const {ctx} = fixture(t);
   const calls = [];
-  ctx.data = async (name, action) => { calls.push([name, action]); return name === entity ? [{id: 'old'}] : []; };
-  await assert.rejects(qualityJourney(ctx).reset(), {name: 'QualityStartStateError', message: new RegExp(`store holds 1 ${entity}`)});
+  ctx.data = async (name, action) => { calls.push([name, action]); return name === 'matches' ? [{id: 'old'}] : []; };
+  await assert.rejects(qualityJourney(ctx).reset(), {name: 'QualityStartStateError', message: /store holds 1 matches/});
   assert.ok(calls.every(([, action]) => action === 'list'));
 });
 
-test('an empty reset passes the emptiness assertion and does not delete history', async t => {
+for (const runs of [[], [{id: 'startup', kind: 'search', ok: true}]]) test(`reset accepts ${runs.length} startup cron_runs rows without deleting history`, async t => {
   const {ctx} = fixture(t);
   const marker = new Error('reached profile setup');
   const calls = [];
-  ctx.data = async (name, action) => { calls.push([name, action]); if (name === 'texts') throw marker; return []; };
+  ctx.data = async (name, action) => { calls.push([name, action]); if (name === 'texts') throw marker; return name === 'cron_runs' ? runs : []; };
   ctx.page.evaluate = async () => { throw marker; };
   await assert.rejects(qualityJourney(ctx).reset(), error => error === marker);
-  assert.deepEqual(calls, [['matches', 'list'], ['cron_runs', 'list'], ['texts', 'get']]);
+  assert.deepEqual(calls, [['matches', 'list'], ['texts', 'get']]);
 });
 
 test('quality leaves the speed budget and qualityai retains its larger live clocks', () => {
@@ -136,7 +138,7 @@ test('only this refresh can satisfy completion, even when its summary repeats an
   const current = {id: 'this-refresh', kind: 'search', ok: true, result: 'same summary'};
   ctx.page.click = async () => {};
   ctx.page.evaluate = async () => ({running: null, queued: [], runs: time.now() < 500 ? [prior] : [unrelated, current, prior]});
-  await qualityJourney(ctx, {wait: time}).check('first Jobs check');
+  await qualityJourney(ctx, {strict: true, wait: time}).check('first Jobs check');
   assert.equal(time.now(), 500, 'the earlier run must not satisfy the new refresh');
 });
 
@@ -146,7 +148,7 @@ test('a completed failed current run stays a failure even with an older green ru
   let clicked = false;
   ctx.page.click = async selector => { if (selector === '#refresh') clicked = true; };
   ctx.page.evaluate = async () => ({running: null, queued: [], runs: clicked ? [{id: 'current', kind: 'search', ok: false, result: 'new failure'}, old] : [old]});
-  await assert.rejects(qualityJourney(ctx, {wait: time}).check('first Jobs check'), /ended as failed: new failure.*engine evidence/s);
+  await assert.rejects(qualityJourney(ctx, {strict: true, wait: time}).check('first Jobs check'), /ended as failed: new failure.*engine evidence/s);
 });
 
 test('the whole quality journey has a measured hang cap instead of the aggregate speed budget', async t => {
@@ -180,7 +182,7 @@ test('the runner preserves a named quality step hang with engine evidence', asyn
 
 test('read2 waits for the Jobs page to reflect committed rows instead of relying on a settling sleep', async t => {
   const {ctx, time} = fixture(t);
-  const journey = qualityJourney(ctx, {wait: time});
+  const journey = qualityJourney(ctx, {strict: true, wait: time});
   const required = journey.postings.filter(item => !item.filterMayDrop);
   ctx.data = async () => required.map(item => ({url: item.url, title: item.title}));
   ctx.page.evaluate = async () => time.now() < 500 ? [] : required.map(item => ({url: item.url}));
@@ -194,6 +196,7 @@ test('the outer Jobs cap keeps partial-store diagnostics when it fires before th
   const {ctx} = fixture(t);
   t.mock.method(console, 'log', () => {});
   t.mock.timers.enable({apis: ['setTimeout']});
+  seedDiagnostics(ctx);
   ctx.built = true;
   const runner = createRunner(() => null, {budgetMs: Infinity, hangCaps: quality.hangCaps});
   // Setup/reset have separate coverage; hold this scenario in the Jobs step's store wait.
@@ -207,6 +210,7 @@ test('the outer Jobs cap keeps partial-store diagnostics when it fires before th
   const rejected = assert.rejects(pending, error => {
     assert.equal(error.name, 'QualityHangError');
     assert.match(error.message, /0 of \d+ required postings reached the store; missing:.*engine evidence/s);
+    assertDiagnostics(error.message);
     return true;
   });
   await reading;
@@ -214,4 +218,62 @@ test('the outer Jobs cap keeps partial-store diagnostics when it fires before th
   t.mock.timers.tick(127800);
   await rejected;
   assert.match(runner.results[0].note, /required postings reached the store; missing:/);
+});
+
+
+// These files stand in for a search whose feed/config details must survive a strict hang.
+const seedDiagnostics = ctx => {
+  ctx.feeds = path.join(ctx.profile, 'feeds');
+  fs.mkdirSync(ctx.feeds);
+  fs.writeFileSync(path.join(ctx.feeds, 'board.json'), '{}');
+  const config = path.join(ctx.profile, 'config');
+  fs.mkdirSync(config);
+  fs.writeFileSync(path.join(config, 'sources.json'), '[{"company":"Diagnostic fixture"}]');
+  fs.writeFileSync(path.join(config, 'search.json'), '{"locations":{"top_tier":["zurich"]}}');
+};
+const assertDiagnostics = message => {
+  assert.match(message, /profile config: .*sources.json/);
+  assert.match(message, /sources.json: .*Diagnostic fixture/);
+  assert.match(message, /feed folder: board.json/);
+  assert.match(message, /search.json: .*zurich/);
+};
+
+test('non-strict read2 keeps partial qualityai rows after 90 s without waiting for the Jobs page', async t => {
+  const {ctx, time} = fixture(t);
+  ctx.suite = 'qualityai';
+  const journey = qualityJourney(ctx, {wait: time});
+  const required = journey.postings.filter(item => !item.filterMayDrop);
+  ctx.data = async () => [{url: required[0].url, title: required[0].title}];
+  ctx.page.evaluate = async () => [];
+  await journey.read2();
+  assert.equal(time.now(), 90000);
+  assert.deepEqual(journey.rows.map(row => row.props['Job URL']), [required[0].url]);
+  assert.deepEqual(journey.appJobs, []);
+});
+
+test('non-strict read2 accepts a full store without waiting for an empty Jobs page', async t => {
+  const {ctx, time} = fixture(t);
+  ctx.suite = 'qualityai';
+  const journey = qualityJourney(ctx, {wait: time});
+  const required = journey.postings.filter(item => !item.filterMayDrop);
+  ctx.data = async () => required.map(item => ({url: item.url, title: item.title}));
+  await journey.read2();
+  assert.equal(time.now(), 0);
+  assert.equal(journey.rows.length, required.length);
+  assert.deepEqual(journey.appJobs, []);
+});
+
+test('non-strict Jobs still diagnoses an empty store after the read allowance', async t => {
+  const {ctx, time} = fixture(t);
+  ctx.suite = 'qualityai';
+  seedDiagnostics(ctx);
+  let clicked = false;
+  ctx.page.click = async selector => { if (selector === '#refresh') clicked = true; };
+  ctx.page.evaluate = async () => ({running: null, queued: [], runs: clicked ? [{id: 'current', kind: 'search', ok: true}] : []});
+  await assert.rejects(qualityJourney(ctx, {wait: time}).jobs(), error => {
+    assert.equal(error.name, 'Error');
+    assert.match(error.message, /no Job Matches row.*90 s/);
+    assertDiagnostics(error.message);
+    return true;
+  });
 });

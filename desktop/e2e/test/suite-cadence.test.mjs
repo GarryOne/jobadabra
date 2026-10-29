@@ -3,10 +3,12 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {planRun, suiteFacts} from '../plan-run.mjs';
-import {SLIM, autoSuites} from '../lib/plan.mjs';
+import {planPrSuites} from '../lib/pr-suites.mjs';
+import {SLIM, autoSuites, suitesFor} from '../lib/plan.mjs';
 
 const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'cardstates', 'employers', 'failureschannels', 'interactions', 'mailreading', 'quality', 'qualityai', 'settings'];
-const DROPPED = ['foryou', 'notion-real', 'personas', 'pool'];
+const DROPPED = ['foryou', 'personas', 'pool'];
+const OUTSIDE = ['notion-real'];
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit
 
 const SHA = 'a'.repeat(40);
@@ -15,7 +17,7 @@ const plan = async env => new Set((await planRun({env: {REPO: 'o/r', SHA, ...env
 
 test('every suite is kept, slimmed, dropped or by hand, exactly once', async () => {
   const {all} = await suiteFacts();
-  const lists = [...KEEP, ...SLIM, ...DROPPED, ...BY_HAND];
+  const lists = [...KEEP, ...SLIM, ...DROPPED, ...BY_HAND, ...OUTSIDE];
   assert.deepEqual(all.filter(suite => !lists.includes(suite)), [], 'a new suite: put it in KEEP here, or in SLIM (lib/plan.mjs)');
   assert.deepEqual(lists.filter(suite => !all.includes(suite)), [], 'a listed suite no longer exists');
   assert.equal(new Set(lists).size, lists.length, 'a suite is in two lists');
@@ -56,4 +58,21 @@ test('autoSuites: slim is an always suite except in a repeat', () => {
   assert.deepEqual(autoSuites(all, cadence), ['a', 'b', 'c']);
   assert.deepEqual(autoSuites(all, cadence, true), ['a', 'b']);
   assert.deepEqual(autoSuites(all, cadence, false, true), ['a', 'c']);
+});
+
+// Outside-world availability changes without a source diff: never let reach pick it.
+test('real Notion runs in nightly and beta gates and its own daily run, never a look or PR/push reach', async () => {
+  const facts = await suiteFacts();
+  assert.equal(facts.cadence['notion-real'], 'outside');
+  assert.ok(!(await plan({EVENT: 'schedule'})).has('notion-real'), 'a look never checks real Notion');
+  assert.ok((await plan({EVENT: 'schedule', OUTSIDE: '1'})).has('notion-real'), 'the daily outside run (e2e.yml OUTSIDE) checks real Notion');
+  for (const kind of ['nightly', 'beta']) {
+    const env = {EVENT: 'gate', GATE_TAG: 'desktop-v9.9', TARGET_REF: 'desktop-v9.9', GATE_KIND: kind};
+    assert.ok((await plan(env)).has('notion-real'), JSON.stringify(env));
+  }
+  const reach = {pointed: OUTSIDE, direct: OUTSIDE, hits: {'notion-real': ['text']}, covering: {'notion-real': 'runs touched lines'}, cadence: facts.cadence, linux: () => true};
+  for (const pullRequest of [true, false]) assert.deepEqual(planPrSuites({...reach, pullRequest}).suites, [], 'PR and after-merge reach stay offline');
+  assert.deepEqual(suitesFor(['desktop/e2e/suites/notion-real.mjs'], facts.all, facts), []);
+  assert.ok(!(await plan({EVENT: 'workflow_dispatch', PR_SUITES: 'notion-real', ONLY: 'notion-real'})).has('notion-real'), 'a stale explicit PR pick cannot run outside');
+  assert.ok(!(await plan({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9'})).has('notion-real'), 'no soak/canary repeats');
 });

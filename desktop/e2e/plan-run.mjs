@@ -50,7 +50,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const tested = run => ['success', 'failure'].includes(run.conclusion);
   // Runs that test something else (a release, a mutation, one bisect step at an older commit: gate G2b), a PR's branch (the run list is every branch's), or a few
   // steps after a merge (main-steps.yml: not a look; the nightly full run stays) are never main's last tested commit nor its looks.
-  const otherCode = run => /^(Stable canary|RC soak|Gate|Beta E2E tests|Mutant|Bisect|E2E for PR ·|E2E after merge ·) /.test(run.displayTitle || '');
+  const otherCode = run => /^(Stable canary|RC soak|Gate|Beta E2E tests|Mutant|Bisect|E2E for PR ·|E2E after merge ·|E2E check · outside world) /.test(run.displayTitle || '');
   const lastSha = runs.find(run => run.event !== 'push' && tested(run) && !otherCode(run))?.headSha || '';
   const issues = json(['issue', 'list', '-R', repo, '--label', 'auto-ui', '--state', 'open', '--limit', '300', '--json', 'number,state,labels,body,comments,createdAt']);
   const waiting = waitingFindings(issues);
@@ -78,6 +78,8 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
       if (skip.length) { suites = suites.filter(suite => !skip.includes(suite)); why = `${skip.join(', ')} not run: nothing it watches changed since the last Mac-approved release (the nightly runs it)`; }
     }
   }
+  // Why (30 Oct 2026, a8, #2502): the outside world has its own daily cron (e2e.yml OUTSIDE), never inferred from run history: the Worker starts looks as dispatches.
+  else if (env.OUTSIDE) suites = all.filter(suite => cadence[suite] === 'outside');
   else if (event === 'schedule') {   // the three-a-day schedule: the always suites, on a new commit, for a finding that waits, or while exploring still finds something
     const decision = exploreDecision({head: ref, lastSha, runsOnHead: runs.filter(own)});
     exploring = decision.exploring; why = decision.why;
@@ -90,6 +92,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   }
   // names: exactly those, even a manual one; none: everything not manual. A release's repeat (TARGET_REF without a gate: a soak top-up, the stable canary) leaves the slim ones out.
   else suites = String(env.ONLY || '').trim() ? suitesNamed(env.ONLY, all) : autoSuites(all, cadence, false, !!env.TARGET_REF);
+
+  // Stale PR/after-merge dispatch inputs must never reintroduce the outside world.
+  if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => cadence[suite] !== 'outside');
 
   const files = lastSha ? changed(lastSha, ref) : null;
   let review = exploring || reviewNeeded({files: files || [], waiting, known: files !== null});   // an exploring run exists for what the AI review sees
@@ -117,7 +122,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));

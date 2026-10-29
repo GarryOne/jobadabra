@@ -108,7 +108,7 @@ export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded c
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number').map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite =>
-    (cadence[suite] || 'always') !== 'manual' && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane)))));
+    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane)))));
   let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));

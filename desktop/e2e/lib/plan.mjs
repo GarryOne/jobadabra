@@ -1,3 +1,4 @@
+// Job: pick the suites
 import {STATS_SINCE} from './stats-epoch.mjs';
 import {classify, detectorOf} from './selfheal-stats.mjs';
 // Which suites a run starts. A push to main runs only the suites whose files changed (every test-file push used to run all of them, and the shared test key's
@@ -9,11 +10,13 @@ const SMOKE = 'settings';   // AI-free, about 30 s: proof that the shared test c
 // A suite's cadence (its `cadence` export): 'always' (default) runs on every automatic run, 'nightly' only in the nightly release gate and on a push that touches
 // its own files or `watches`, 'watched' never in a schedule or the nightly gate but ONLY on a push that touches its own files or `watches` (a suite that
 // costs real AI money and judges one piece of code: the mail reading eval), 'manual' never by itself (a person names it). cadence: {suite: 'nightly'}; watches: {suite: ['src/ai/score.py', 'dir/']}.
+// 'outside' runs in the nightly and beta release gates and its own daily run (e2e.yml OUTSIDE cron), never on the three looks, by push/PR reach or in soak/canary repeats.
 // 'slim' runs like 'always' (the night's schedule, every release gate, a push that touches it) but never in a release's repeats: the soak top-ups and the stable canary
 // (`repeat`). The e2e audit's keep 11 / slim 15 / drop 4 (owner's yes, 26 Oct 2026): no product bug caught in 30 days, so a night and a beta are enough.
 export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false) {
   return all.filter(suite => {
     const when = cadence[suite] || 'always';
+    if (when === 'outside') return !alwaysOnly && !repeat;
     if (when === 'slim') return !repeat;
     return alwaysOnly ? when === 'always' : (when !== 'manual' && when !== 'watched');
   });
@@ -45,7 +48,7 @@ export function suitesFor(files, all, {watches = {}, cadence = {}, uses = {}} = 
   for (const file of files.map(name => String(name).trim()).filter(Boolean)) {   // files a suite watches (the scoring prompt, a model id): that suite runs too
     for (const [suite, paths] of Object.entries(watches)) if (all.includes(suite) && paths.some(path => file === path || (path.endsWith('/') && file.startsWith(path)))) chosen.add(suite);
   }
-  return all.filter(suite => chosen.has(suite) && (cadence[suite] || 'always') !== 'manual');   // a manual suite is never chosen by a push
+  return all.filter(suite => chosen.has(suite) && !['manual', 'outside'].includes(cadence[suite]));   // manual and outside suites are never chosen by a push
 }
 
 // A manual run's `suite` input: "" = all, else a comma-separated list.

@@ -474,6 +474,8 @@ jobs:
     if: needs.build.result == 'success' && needs.changes.outputs.gate == 'true' && needs.changes.outputs.count != '0'
     runs-on: ${{ matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
+    # Outside failures stay red in their job and report, but do not decide the beta gate.
+    continue-on-error: ${{ matrix.outside == true }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.changes.outputs.mac_matrix) }}
@@ -540,6 +542,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
+        if: matrix.offlineAi != true
         uses: ./.github/actions/free-ai-relay
         with:
           cf-token: ${{ secrets.CI_FREE_AI_CF_TOKEN }}
@@ -612,7 +615,7 @@ jobs:
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: "First try failed: the ${{ matrix.suite }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure'
+        if: steps.suite_run.outcome == 'failure' && matrix.outside != true
         working-directory: desktop/e2e
         timeout-minutes: 15
         run: |
@@ -636,6 +639,13 @@ jobs:
             echo "Failed again on the same commit: a real failure."
             exit 1   # red twice: the job (and the gate) fail
           fi
+      - name: Outside-world health
+        if: always() && matrix.outside == true
+        env:
+          OUTCOME: ${{ steps.suite_run.outcome }}
+        run: |
+          echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
+          test "$OUTCOME" = success
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run
@@ -1007,15 +1017,16 @@ jobs:
         run: tools/release-checks.sh "$TAG" "$REF"
       - name: Release it to Mac beta testers
         env:
-          E2E_ALREADY_GREEN: '1'   # every Mac suite passed on this commit, in this run
+          E2E_ALREADY_GREEN: '1'   # required Mac suites passed; outside health is reported separately
           SOAK: ${{ vars.JOB_PILOTTO_SOAK }}
         run: |
+          echo "Outside-world health: see the notion-real job notice and Mac HTML report (tolerant; does not block beta)."
           if [ "$SOAK" = on ]; then
             tools/beta-approve.sh "$TAG"
-            echo "Beta-approved: $TAG (unit suites and every end-to-end suite passed on its commit). It becomes stable through canary-promote.yml: more end-to-end runs, no blocking finding, then healthy beta use."
+            echo "Beta-approved: $TAG (unit suites and required end-to-end suites passed on its commit). It becomes stable through canary-promote.yml: more end-to-end runs, no blocking finding, then healthy beta use."
           else
             tools/release-stable.sh "$TAG"
-            echo "Stable: $TAG (every suite passed on its commit)"
+            echo "Stable: $TAG (all required suites passed on its commit)"
           fi
 
   # RELEASE: the lane's HTML report (always), then, only when every E2E suite of the lane passed: no real high-severity finding, the shared release checks, and the

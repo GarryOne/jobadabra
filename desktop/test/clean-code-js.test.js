@@ -103,3 +103,15 @@ test('what is checked is the committed HEAD against the base: a dirty tree chang
   assert.ok(moved.added.has(4));
   assert.equal(files.find(f => f.path === 'desktop/new.js').source, 'export const e = 5;\n');
 });
+
+// Why (29 Oct 2026, fl on PR #2441): the advertised `// eslint-disable-next-line sonarjs/...` failed the main lint pass, which does not register sonarjs.
+test('the exception marker clears a finding on its line or the line above, and needs a reason; the main lint pass accepts the comment', async () => {
+  const marked = `// clean-code-ok: Why (29 Oct 2026, #2441): old function, only its signature line was edited\n${nested('tangled', 8)}`;
+  assert.deepEqual(await check([{path: 'desktop/lib/x.js', source: marked, added: allLines(marked)}]), []);
+  const bare = marked.replace(/ Why .*/, '');
+  assert.equal((await check([{path: 'desktop/lib/x.js', source: bare, added: allLines(bare)}])).length, 1, 'a marker without a reason does not count');
+  const {ESLint} = createRequire(import.meta.url)('eslint');
+  const main = new ESLint({overrideConfigFile: path.resolve(import.meta.dirname, '../../eslint.config.mjs')});
+  const [result] = await main.lintText(marked, {filePath: path.resolve(import.meta.dirname, '../../desktop/lib/x.js')});
+  assert.deepEqual(result.messages.map(m => m.message), []);
+});

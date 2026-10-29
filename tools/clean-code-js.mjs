@@ -43,8 +43,11 @@ async function eslint() {
   return linter;
 }
 
+/** The exception comment: `// clean-code-ok: Why (<PR or date>): <reason>`, on the finding's line or the line above. A bare marker with no reason does not count. */
+const EXCEPTION = /clean-code-ok:\s*Why\b.*\S/;
+
 /**
- * Lints each file's source and keeps the findings that sit on a line the change added.
+ * Lints each file's source and keeps the findings that sit on a line the change added and carry no exception comment.
  * @param {{path: string, source: string, added: Set<number>}[]} files
  * @returns {Promise<{path: string, line: number, rule: string, message: string}[]>}
  */
@@ -52,9 +55,11 @@ export async function check(files) {
   const runner = await eslint();
   const found = [];
   for (const file of files) {
+    const lines = file.source.split('\n');
+    const excused = line => EXCEPTION.test(lines[line - 1] ?? '') || EXCEPTION.test(lines[line - 2] ?? '');
     const [result] = await runner.lintText(file.source, {filePath: path.join(root, file.path)});
     for (const m of result.messages) {
-      if (m.ruleId?.startsWith('sonarjs/') && file.added.has(m.line)) found.push({path: file.path, line: m.line, rule: m.ruleId, message: m.message});
+      if (m.ruleId?.startsWith('sonarjs/') && file.added.has(m.line) && !excused(m.line)) found.push({path: file.path, line: m.line, rule: m.ruleId, message: m.message});
     }
   }
   return found;
@@ -106,7 +111,7 @@ async function main() {
   try { found = await check(changedFiles(base)); } catch (error) { console.error(error.message); process.exit(1); }
   for (const f of found) console.error(`${f.path}:${f.line}  ${f.rule}  ${f.message}`);
   if (found.length) {
-    console.error(`clean-code: ${found.length} finding(s) on lines this change adds. Split the function or reuse the existing one; a justified exception: // eslint-disable-next-line <rule> -- Why (<PR or date>): <reason>`);
+    console.error(`clean-code: ${found.length} finding(s) on lines this change adds. Split the function or reuse the existing one; a justified exception, on the flagged line or the line above: // clean-code-ok: Why (<PR or date>): <reason>   (not eslint-disable: the main lint pass does not know sonarjs rules)`);
     process.exit(1);
   }
 }

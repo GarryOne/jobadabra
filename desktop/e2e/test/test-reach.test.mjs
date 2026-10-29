@@ -32,15 +32,20 @@ function suitesReaders(root) {
     return [...source.matchAll(/(?:from\s*|import\(\s*|import\s*)['"](\.[^'"]+)['"]/g)].some(([, spec]) => {
       const helper = path.posix.normalize(path.posix.join(path.posix.dirname(file), spec));
       if (!helper.includes('/lib/') || !fs.existsSync(path.join(root, helper))) return false;
+      // Context's registry is consumed by the named SUITES import, not by every user of its unrelated APIs.
+      if (helper === 'desktop/e2e/lib/context.mjs' && !/\bSUITES\b/.test(source)) return false;
       const code = read(helper).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
-      return mentionsSuites(code) && /\breaddir(?:Sync)?\b/.test(code);
+      // The lowercase directory word distinguishes a suite scan from a helper that uses the SUITES registry but enumerates blobs/artifacts.
+      return /\bsuites\b/.test(code) && /\breaddir(?:Sync)?\b/.test(code);
     });
   }).sort();
 }
 
 const SUITE_READER_EXCEPTIONS = {
   'desktop/e2e/test/ai-meter.test.mjs': 'Enumerates temporary answer-cache directories; suites occur only in prose.',
+  'desktop/e2e/test/ensure-staged.test.mjs': 'Enumerates e2e entrypoints and lib modules that import suites, not the suites directory.',
   'desktop/e2e/test/owns-step.test.mjs': 'Enumerates apply-* lib helpers and reads the two named apply suites, not every suite.',
+  'desktop/e2e/test/pr-store.test.mjs': 'walk is a synthetic coverage-step key; reads named watched suites without enumerating suites.',
   'desktop/e2e/test/store-call.test.mjs': 'Enumerates SQLite files in its temporary profile data directory.',
   'desktop/test/flows-matrix.test.js': 'Enumerates apply-* lib helpers and reads the one named apply suite, not every suite.',
 };
@@ -79,6 +84,36 @@ test('a suite edit reaches the AI declaration guard without selecting an unrelat
   const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/stores.mjs']}).files;
   assert.ok(picked.includes(inRepo('suite-ai-mode.test.mjs')), 'the guard that would have stopped #2476 must run on the PR');
   assert.ok(!picked.includes(inRepo('ai-meter.test.mjs')), 'an ordinary test with only temp-directory reads stays out');
+});
+
+test('a suite edit excludes context users that do not consume SUITES, while registry consumers still run', t => {
+  const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo);
+  const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/stores.mjs']}).files;
+  t.diagnostic(`stores.mjs directly reaches ${picked.length} tests`);
+  for (const name of ['key-check', 'clock-out', 'issue-links', 'plan-run', 'run-all']) {
+    assert.ok(tests.includes(inRepo(`${name}.test.mjs`)), `the real negative control exists: ${name}`);
+    assert.ok(!picked.includes(inRepo(`${name}.test.mjs`)), `${name} does not scan suites or consume SUITES`);
+  }
+  for (const name of ['store', 'suite-budget', 'suite-shards']) assert.ok(picked.includes(inRepo(`${name}.test.mjs`)), `${name} consumes SUITES`);
+  assert.ok(picked.length <= 27, `the original 25 plus the import-graph and site-ledger tree scans, not 44: ${picked.length}`);
+});
+
+test('context only supplies a directory edge to SUITES consumers, including under broad discovery', t => {
+  const plain = inRepo('plain.test.mjs'), registry = inRepo('registry.test.mjs'), indirect = inRepo('indirect.test.mjs'), transitive = inRepo('transitive.test.mjs');
+  const root = tree({
+    [plain]: "import {openContext} from '../lib/context.mjs';",
+    [registry]: "import {SUITES as names} from '../lib/context.mjs';",
+    [indirect]: "import {open} from '../lib/open.mjs';",
+    [transitive]: "import {other} from '../lib/middle.mjs';",
+    'desktop/e2e/lib/open.mjs': "import {openContext} from './context.mjs';",
+    'desktop/e2e/lib/context.mjs': "export const SUITES = fs.readdirSync(path.join(root, 'suites')); export const openContext = () => {};",
+    'desktop/e2e/lib/middle.mjs': "import {scan} from './scanner.mjs'; export const other = () => 1;",
+    'desktop/e2e/lib/scanner.mjs': 'export const scan = () => fs.readdirSync(`${root}/suites`);',
+  });
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const picked = reachedTests({root, tests: [plain, registry, indirect, transitive], changed: ['desktop/e2e/suites/stores.mjs']}).files;
+  assert.deepEqual(picked, [registry, inRepo('test-reach.test.mjs')]);
+  assert.deepEqual(suitesReaders(root), [registry], 'importing another context API does not consume its directory listing');
 });
 
 // Inspect both test directories on disk, including unregistered tests, using a broader oracle than scannedDirectories.

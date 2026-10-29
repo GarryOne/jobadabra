@@ -48,9 +48,15 @@ function scannedDirectories(text, enumerates = false) {
 }
 
 // Both test directories and imported lib helpers can enumerate suites. Directory edges cover additions/deletions without importing every suite's runtime dependencies.
-// state.enumerates: the starting test itself lists files, so the lib helpers it imports are read as lister too (set once, when the loop is at the start file).
+// state.enumerates: the starting test lists files; only its direct helpers may supply the directory constant or scan, not unrelated transitive lib imports.
 function directoryEdges(current, text, state) {
-  if (current === state.file) state.enumerates = ENUMERATES.test(text);
+  if (current === state.file) {
+    state.enumerates = ENUMERATES.test(text);
+    state.direct = new Set(specifiers(text).map(spec => path.posix.normalize(path.posix.join(path.posix.dirname(current), spec))));
+  }
+  // Why (29 Oct 2026, a8, #2495): context lists suites for every importer; only SUITES consumers need the edge, supplied by the registry-import rule.
+  if (current === 'desktop/e2e/lib/context.mjs') return [];
+  if (current !== state.file && !state.direct.has(current)) return [];
   return /^desktop\/(?:e2e\/)?(?:test|lib)\//.test(current) ? scannedDirectories(text, state.enumerates) : [];
 }
 

@@ -335,6 +335,7 @@
   "verify-plan.test.mjs",
   "verify-report.test.mjs",
   "vision.test.mjs",
+  "wait-for-form-value.test.mjs",
   "wander.test.mjs",
   "wanted-hosts.test.mjs",
   "watch-cli.test.mjs",

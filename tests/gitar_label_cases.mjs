@@ -1,7 +1,7 @@
 // Cases for tools/gitar-label.mjs, run by tests/test_gitar_label.py: Gitar's real verdict lines map to one label, and a verdict older than the head commit gets none.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {converge, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
+import {converge, fromGraphql, readPr, setLabels, verdictKind, wantedLabel, wantedLabels, LABELS, WAITING, WORKING} from '../tools/gitar-label.mjs';
 const wrap = kbd => `<details>\n<summary><b>Code Review</b> ${kbd}</summary>\n\nBody\n</details>`;
 const APPROVED = wrap('<kbd>✅ Approved</kbd>');   // #2377, #2380
 const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 3 findings</kbd>');   // #2381
@@ -50,4 +50,43 @@ test('overlapping runs: the run that read a stale verdict and wrote last re-read
   let rounds = 0;
   assert.equal(converge(() => { rounds++; return true; }), 3, 'a state that keeps moving stops after 3 rounds');
   assert.equal(rounds, 3);
+});
+
+// Cost (29 Oct 2026): a label run read the PR with six REST calls and ran ~125 times an hour at peak, over half of Actions' 1,000-an-hour GITHUB_TOKEN quota: 403s on unrelated PRs.
+const GQL = {repository: {pullRequest: {
+  state: 'OPEN', headRefOid: 'abc1234',
+  comments: {pageInfo: {hasPreviousPage: false}, nodes: [
+    {author: {login: 'someone'}, body: 'hi', updatedAt: '2026-10-29T01:00:00Z'},
+    {author: {login: 'gitar-bot'}, body: '<summary><b>Code Review</b> <kbd>✅ Approved</kbd>', updatedAt: '2026-10-29T01:10:00Z'}]},
+  labels: {nodes: [{name: 'Gitar: reviewing'}, {name: 'Working on PR comments'}]},
+  timelineItems: {nodes: [{createdAt: '2026-10-29T01:05:00Z', label: {name: 'Working on PR comments'}}, {createdAt: '2026-10-29T00:50:00Z', label: {name: 'Gitar: reviewing'}}]},
+  commits: {nodes: [{commit: {committedDate: '2026-10-29T00:30:00Z', checkSuites: {nodes: [{createdAt: '2026-10-29T00:45:00Z'}, {createdAt: '2026-10-29T00:40:00Z'}]}}}]},
+}}};
+
+test('one GraphQL answer carries everything a label run needs (#api-quota)', () => {
+  const read = fromGraphql(GQL);
+  assert.equal(read.state, 'open');
+  assert.equal(read.headTime, '2026-10-29T00:40:00Z', 'the later of the commit date and the first check suite created for the head');
+  assert.equal(read.review.updated_at, '2026-10-29T01:10:00Z');
+  assert.deepEqual(read.labels, ['Gitar: reviewing', 'Working on PR comments']);
+  assert.equal(read.workingSince, '2026-10-29T01:05:00Z', 'the newest "working" label event, not another label');
+});
+
+test('Gitar\'s comment cut off by a long thread is not "no verdict": the caller must fall back', () => {
+  const cut = structuredClone(GQL);
+  cut.repository.pullRequest.comments = {pageInfo: {hasPreviousPage: true}, nodes: [{author: {login: 'someone'}, body: 'x', updatedAt: '2026-10-29T01:00:00Z'}]};
+  assert.equal(fromGraphql(cut), null);
+});
+
+test('a label run asks GitHub once, not once per fact', () => {
+  const asked = [];
+  const read = readPr('o/r', 7, (...args) => { asked.push(args); return JSON.stringify({data: GQL}); });
+  assert.equal(asked.length, 1);
+  assert.equal(read.labels.length, 2);
+});
+
+test('a "working" label event with the label gone is not "working" (Gitar, #2445): a removed label must not come back', () => {
+  const gone = structuredClone(GQL);
+  gone.repository.pullRequest.labels.nodes = [{name: 'Gitar: reviewing'}];   // the label event is still in the timeline
+  assert.equal(fromGraphql(gone).workingSince, null, 'the REST path only looks the time up while the label is on the PR');
 });

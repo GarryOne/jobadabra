@@ -77,19 +77,57 @@ function main(pr) {
   converge(() => syncOnce(pr));
 }
 
+const PR_QUERY = `query($owner: String!, $name: String!, $pr: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
+  state headRefOid
+  comments(last: 100) { pageInfo { hasPreviousPage } nodes { author { login } body updatedAt } }
+  labels(first: 30) { nodes { name } }
+  timelineItems(last: 30, itemTypes: [LABELED_EVENT]) { nodes { ... on LabeledEvent { createdAt label { name } } } }
+  commits(last: 1) { nodes { commit { committedDate checkSuites(first: 20) { nodes { createdAt } } } } }
+} } }`;
+
+/** The PR's state, Gitar's newest Code Review comment, head time, labels and when "working" was set, from one GraphQL answer; null when Gitar's comment may sit
+ * before the 100 newest comments (the caller then reads page by page). Why (29 Oct 2026, api-quota): six REST calls per label run, ~125 runs an hour, were over half
+ * of Actions' 1,000-an-hour GITHUB_TOKEN quota; GraphQL is its own bucket and one call. Same head-time rule as headTime(): the later of commit date and first check suite. */
+export function fromGraphql(data) {
+  const pr = data.repository.pullRequest;
+  const reviews = pr.comments.nodes.filter(c => c.author?.login === 'gitar-bot' && /Code Review/.test(c.body));
+  if (!reviews.length && pr.comments.pageInfo.hasPreviousPage) return null;
+  const commit = pr.commits.nodes[0].commit;
+  const latest = reviews.sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt)).at(-1);
+  const labels = pr.labels.nodes.map(l => l.name);
+  const workedAt = labels.includes(WORKING.name) ? pr.timelineItems.nodes.filter(e => e.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null : null;   // only while the label is on the PR, as the REST read does (Gitar, #2445): a removed label must not come back
+  return {
+    state: pr.state.toLowerCase(),
+    headTime: [commit.committedDate, commit.checkSuites.nodes.map(c => c.createdAt).sort()[0]].filter(Boolean).sort().at(-1),
+    review: latest ? {body: latest.body, updated_at: latest.updatedAt} : null,
+    labels,
+    workingSince: workedAt,
+  };
+}
+
+/** One GraphQL call for everything a label run reads; null when the thread is too long for it. `run` is the gh call (a test passes a fake). */
+export function readPr(repo, pr, run = gh) {
+  const [owner, name] = repo.split('/');
+  return fromGraphql(JSON.parse(run('api', 'graphql', '-f', `query=${PR_QUERY}`, '-f', `owner=${owner}`, '-f', `name=${name}`, '-F', `pr=${pr}`)).data);
+}
+
+/** The same read page by page over REST: for a thread whose Gitar comment is older than the 100 newest. */
+function readPrByRest(repo, pr, info) {
+  const reviews = pages(`repos/${repo}/issues/${pr}/comments`).filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
+  const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
+  const labels = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
+  const workingSince = labels.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
+  return {state: info.state, headTime: headTime(repo, info.head.sha), review: latest ? {body: latest.body, updated_at: latest.updated_at} : null, labels, workingSince};
+}
+
 /** One read of the verdict, head and labels, then the writes it needs; -> true when it changed a label. */
 function syncOnce(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
-  const info = JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`));
-  if (info.state !== 'open') { console.log(`gitar-label: #${pr} is ${info.state}, left as it is`); return false; }
-  const reviews = pages(`repos/${repo}/issues/${pr}/comments`).filter(c => c.user.login === 'gitar-bot[bot]' && /Code Review/.test(c.body));
-  const latest = reviews.sort((a, b) => Date.parse(a.updated_at) - Date.parse(b.updated_at)).at(-1);
-  const head = headTime(repo, info.head.sha);
-  const verdict = latest ? wantedLabel(latest.body, latest.updated_at, head) : null;
-  const have = pages(`repos/${repo}/issues/${pr}/labels`).map(l => l.name);
-  const workingSince = have.includes(WORKING.name) ? pages(`repos/${repo}/issues/${pr}/events`).filter(e => e.event === 'labeled' && e.label.name === WORKING.name).map(e => e.created_at).sort().at(-1) : null;
-  const wanted = wantedLabels({verdict, workingSince, headTime: head});
-  const changed = setLabels(repo, pr, wanted, have);
+  const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+  if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
+  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
+  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime});
+  const changed = setLabels(repo, pr, wanted, read.labels);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
 }

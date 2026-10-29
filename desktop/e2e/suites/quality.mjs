@@ -63,7 +63,7 @@ export async function run(ctx) {
   let rows = [], appJobs = [], firstTexts = {};   // firstTexts: the first scoring's texts, judged too (both scorings: 18 texts)
   ctx.findings = [];
   await ensureSetUp(ctx);
-  // Wait for any search started during setup before checking the golden postings.
+  // Why (29 Oct 2026, a8): a search the setup started must end before the Jobs checks read the postings; quiet() returns after 3 s when none runs.
   if (!ctx.built) await ctx.run('the first search after the setup has ended', () => quiet(ctx, {forMs: 3000, maxMs: 300000}), {needs: ctx.needs, critical: true});
 
   const check = async label => {   // one Jobs check; ends when the task is no longer running

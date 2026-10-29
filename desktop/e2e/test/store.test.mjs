@@ -35,14 +35,8 @@ test('CI alternates the store on bit 1, so all four family x store pairs come ro
 
 test('quality pins SQLite for every CI store alternation so recorded answers use one path', () => {
   assert.equal(quality.store, 'sqlite');
-  for (let run = 0; run < 16; run++) {
-    assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run)}, suiteStore: quality.store}), 'sqlite', `run ${run}`);
-  }
-});
-
-test('beta 3 and beta 4 quality runs use the same recorded SQLite path', () => {
-  for (const run of [985, 987]) {
-    assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run)}, suiteStore: quality.store}), 'sqlite', `beta run ${run}`);
+  for (const run of [...Array(16).keys(), 985, 987]) { // 985 and 987 are beta 3 and beta 4's run numbers
+    assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run)}, suiteStore: quality.store}), 'sqlite', 'run ' + run);
   }
 });
 

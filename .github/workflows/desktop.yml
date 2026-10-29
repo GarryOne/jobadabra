@@ -1,4 +1,5 @@
 name: Release · Build, test, beta
+# Job: run the backbone
 # ONE RUN PER RELEASE, ONE LANE PER PLATFORM (owner, 7 Oct 2026: three runs chained by triggers were hard to follow; then "2 parallel pipelines"):
 #   Anything new? -+- Build · Mac     -> E2E · Mac + Linux -> Release · Mac beta     -+- Clean up old builds
 #                  +- Build · Windows -> E2E · Windows     -> Release · Windows beta -+
@@ -985,9 +986,10 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Mac, an E2E suite failed
         if: needs.test-mac.result != 'success'
-        run: |
-          echo "### ❌ $TAG is not offered to Mac beta testers: an E2E suite failed (see the report above)."
-          exit 1
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only mac
+      - name: Tolerant AI rates against main's nightly band
+        if: needs.changes.outputs.gate == 'true'
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform mac
       - name: No real high-severity finding in the Mac suites
         working-directory: desktop/e2e
         run: |
@@ -1070,9 +1072,10 @@ jobs:
           github-token: ${{ github.token }}
       - name: Not released on Windows, an E2E suite failed
         if: needs.test-windows.result != 'success'
-        run: |
-          echo "### ❌ $TAG is not offered to Windows beta testers: an E2E suite failed (see the report above)."
-          exit 1
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --e2e-only windows
+      - name: Tolerant AI rates against main's nightly band
+        if: needs.changes.outputs.gate == 'true'
+        run: python3 tools/beta_rate_gate.py --repo "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --platform windows
       - name: No real high-severity finding in the Windows suites
         working-directory: desktop/e2e
         run: |

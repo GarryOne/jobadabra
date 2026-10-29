@@ -161,7 +161,7 @@ deleted when that lands) or neither (deleted). Likely early deletions: the AI ca
 
 ## PR plan
 Named from the start (owner, 28 Oct 2026: "when we follow a plan, we should know from the beginning the name of the PRs"): each PR's title reads `[a8] n/29 <what it does>`, and its body carries a "Plan progress" block (done, this PR, left). The total moves only with a reason written in the PR that moves it.
-**29 PRs: 13 merged, 16 to go** (this one included). Why the total is 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
+**29 rows: 20 done, 9 to go** (29 Oct 2026, 23:45; a row with several PRs counts once, when its last one lands and its proof is in). Why the total is 29 and not 34: the owner chose to bundle by plan step (28 Oct 2026, answering "bundle by step?"), so 21 one-per-box PRs became 16. Two calendar items are no PR: the owner reads one week of the weekly summary; acceptance 14 days after step 6. Not counted: four PRs for the green beta, outside the plan (#2378, #2380, #2391, #2393).
 Who builds what: the verdict session takes rows 16-17 and the push-checks session rows 15 and 18 (owner's yes, 28 Oct 2026); `fl` keeps the backbone itself and the rest.
 
 | n | PR | Step | State |
@@ -184,17 +184,17 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 16 | Health greys: AI credit, runner, install | 2 | ✅ #2415 |
 | 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | ✅ #2421 |
 | 18 | `tools/revert-red.sh` wired to a backbone red | 8 | ✅ #2424 |
-| 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
-| 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | fl |
-| 21 | applyflows: state waits, hang caps, Notion stubbed, races as issues | 5 | fl |
-| 22 | settings the same way | 6 | fl |
-| 23 | apply the same way | 6 | fl |
-| 24 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 | fl |
-| 25 | Beta gate on tolerant rates, and speed medians in the weekly summary | 7 | fl |
-| 26 | Outside-world suite nightly | 7 | fl |
-| 27 | Bug Tracker "escaped e2e" field, and retire `e2e_weekly.py` after the first Monday post | 1 | fl |
-| 28 | Harness shrink, first half (module count before and after) | 10 | fl |
-| 29 | Harness shrink, second half | 10 | fl |
+| 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | 🟡 `ap`: mechanism on main (quality, #2498); the 5 live-AI suites in [ap] 1/5..5/5 |
+| 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | 🟡 `qu`: #2496, #2497, #2498 merged; 3/4 clock out open |
+| 21 | applyflows: state waits, hang caps, Notion stubbed, races as issues | 5 | ✅ #2475, #2490 |
+| 22 | settings the same way | 6 | ✅ #2482, #2488, #2491 |
+| 23 | apply the same way | 6 | 🟡 #2487, #2492 merged; 1 of 3 green main runs |
+| 24 | The rest by scorecard (one PR here; counted when the scorecard lists them) | 6 | 🟡 `a8`: interactions #2479, #2480, stores #2489 merged |
+| 25 | Beta gate on tolerant rates, and speed medians in the weekly summary | 7 | 🟡 `a8`: the gate in this PR; speed medians (private repo) left |
+| 26 | Outside-world suite nightly | 7 | 🟡 `a8`: open |
+| 27 | Bug Tracker "escaped e2e" field, and retire `e2e_weekly.py` after the first Monday post | 1 | `a8`, after 2 Nov 2026 |
+| 28 | Harness shrink, first half (module count before and after) | 10 | 🟡 `qu`: inventory |
+| 29 | Harness shrink, second half | 10 | after row 28 |
 
 ## Progress
 One `###` per plan step, one box per thing that lands; a box is ticked only with the hash it landed in (`tools/ladder-progress.mjs --spec <this file>` draws the bars).
@@ -235,7 +235,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] State waits and hang caps, Notion stubbed, its races as owner issues. (proof: desktop/e2e/test/applyflows-caps.test.mjs)
 
 ### 6. settings and apply
-- [ ] settings the same way.
+- [x] settings the same way. (proof: none: 4 green main e2e runs after #2491 (40947961020, 40960750830, 40963817258, 40967136171), no first-try settings red in the last 10 main runs, tools/red-main-gate.sh clear, 29 Oct 2026)
 - [ ] apply the same way.
 - [ ] The rest by scorecard.
 
@@ -243,7 +243,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] A test run reaches nothing of the owner's computer: one list of doors, checked at launch (G3). (proof: desktop/test/e2e-host.test.js @94d1931)
 - [x] The shell stand-ins live in that one list only. (proof: desktop/test/e2e-hidden.test.js @2658e2c)
 - [x] A test run leaves nothing running on the owner's computer: its app ends when the runner that started it is gone, even a killed one (owner, 28 Oct 2026, load 52: four orphaned test apps, 5 to 7 h at ~15% CPU each; added after the fact, the box should have come first). (proof: desktop/test/e2e-runner-watch.test.js)
-- [ ] Beta gate on tolerant rates: an AI rate below main's band blocks the beta.
+- [x] Beta gate on tolerant rates: an AI rate below main's band blocks the beta. (proof: tests/test_beta_rate_gate.py)
 - [ ] Speed medians in the weekly summary.
 - [ ] Outside-world suite nightly.
 

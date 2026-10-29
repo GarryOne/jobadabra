@@ -2,7 +2,7 @@
 import {randomUUID, createHash} from 'node:crypto';
 import {createBackgroundApplyStore} from './background-apply-store.js';
 import {createBackgroundBrowser} from './background-browser.js';
-import {applyOf, AUTO_DEFAULTS, e2eFullAutomation} from '../renderer/apply-settings-model.js';
+import {applyOf, AUTO_DEFAULTS} from '../renderer/apply-settings-model.js';
 import * as terminalsDefault from './terminals.js';
 import {sessionTabUrl} from './session-tab.js';
 import {extensionToken} from './server-env.js';
@@ -15,7 +15,6 @@ const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Ope
   submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.'};
 export const MAX_BACKGROUND_SESSIONS = 10;
 
-export {e2eFullAutomation};
 /**
  * Runs `sweep` every `every` ms (default 30 s) and logs a failure instead of throwing; returns the function that stops it. `set` and `clear` are injectable so a test never waits for a clock.
  * Why (2026-10-29, owner): the stall sweep is the app's own timer; with the extension closed nothing else asks.
@@ -35,7 +34,7 @@ export function backgroundApplyFor(storage) {
 export function createBackgroundApplyController(storage, {store = null, browser = null, terminals = terminalsDefault,
   config = () => applyOf(storage.settings()), now = Date.now, uuid = randomUUID, stop = stopAsked, notify = (...args) => notifyDefault(...args),   // Why (2026-10-28, bot review #2324): main.js sets the notifier after the handlers register; read the live binding at each call
  log = appLog,
-  port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage), fullAutomation = e2eFullAutomation()} = {}) {
+  port = Number(process.env.JOB_PILOTTO_PORT || 47111), token = () => extensionToken(storage)} = {}) {
   store ||= createBackgroundApplyStore(storage, {stopped: stop});
   // Why (2026-10-28, CI #2324): the controller is created when the apply handlers register, before any background job exists; the browser reads storage.path, so it is built on first use.
   const browserOf = () => (browser ||= createBackgroundBrowser(storage));
@@ -61,8 +60,8 @@ export function createBackgroundApplyController(storage, {store = null, browser 
   }
   async function enqueue(jobs, mode) {
     return serial(async () => {
-      // Why (2026-10-28, owner): nothing submits until step C ships Full automation's gates, its wait with Stop and the receipt recap; `fullAutomation` is that switch.
-      if (mode === 'auto' && !fullAutomation) return {ok: false, error: 'Full automation is not available in this version.'};
+      // Why (2026-10-29, owner: "go ahead" with the switch): Full automation runs only after the person confirmed it in Settings → Apply; the window's pick is not enough.
+      if (mode === 'auto' && !config().autoConfirmedAt) return {ok: false, error: 'Full automation is off until you confirm it in Settings → Apply.'};
       if (!browserOf().ready()) return {ok: false, code: 'BACKGROUND_BROWSER_MISSING', error: "Download Jobadabra's browser first: about 200 MB, only once."};   // before any store write, so nothing waits on a browser that is not there
       const chosen = config();
       if (chosen.mode !== mode || !chosen.chosenAt) return {ok: false, error: 'Confirm the saved Apply mode first.'};

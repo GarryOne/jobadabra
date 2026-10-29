@@ -23,6 +23,6 @@ export function init() {
   });
   dialog.addEventListener('cancel', () => answer(false));   // Esc
   $('apply-choice-later').addEventListener('click', () => { dialog.close(); answer(false); });
-  $('apply-choice-go').addEventListener('click', async () => { await save({mode: pick}, {chosen: true}); dialog.close(); answer(true); });
-  $('apply-choice-adjust').addEventListener('click', async () => { dialog.close(); await save({mode: pick}); askConfirm(answer); });
+  $('apply-choice-go').addEventListener('click', async () => { if (!await save({mode: pick}, {chosen: true})) return; dialog.close(); answer(true); });   // a declined Full automation confirm keeps the dialog open
+  $('apply-choice-adjust').addEventListener('click', async () => { dialog.close(); if (await save({mode: pick})) askConfirm(answer); else answer(false); });
 }

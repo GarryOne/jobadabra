@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
 const page = name => { const at = html.indexOf(`data-settings-page="${name}"`); return html.slice(at, html.indexOf('data-settings-page="', at + 10)); };
 
 test('nothing saved: Standard automation, facts only, the owner\'s defaults, not chosen', () => {
-  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 2}, chosenAt: ''});
+  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 0}, chosenAt: '', autoConfirmedAt: ''});
   assert.deepEqual(AUTO_DEFAULTS, applyOf(undefined).auto);
   assert.equal(applyChosen({}), false);
   assert.equal(applyChosen({apply: {mode: 'check'}}), false, 'a mode saved from Settings without Confirm is not the choice');
@@ -41,12 +41,9 @@ test('three modes; only a built one can be the saved mode, the others are Coming
     'Fills in a hidden browser; you review and submit when ready.',
     'Fills and submits in a hidden browser when your checks pass.',
   ]);
-  assert.deepEqual(MODES.filter(mode => modeBuilt(mode.id)).map(mode => mode.id), ['check', 'fill']);
+  assert.deepEqual(MODES.filter(mode => modeBuilt(mode.id)).map(mode => mode.id), ['check', 'fill', 'auto'], 'Full automation is built (switch, 29 Oct 2026); it runs only once confirmed');
   assert.equal(applyPatch({}, {mode: 'fill'}).apply.mode, 'fill', 'Background automation is built (spec 2026-10-27, step B)');
-  for (const id of ['auto']) {
-    assert.equal(applyPatch({}, {mode: id}).apply.mode, 'check', `${id} cannot be saved before it is built`);
-    assert.equal(applyOf({apply: {mode: id, chosenAt: '2026-10-27T00:00:00.000Z'}}).mode, 'check', `an older save of ${id} reads as the mode that runs`);
-  }
+  assert.equal(applyPatch({}, {mode: 'auto'}).apply.mode, 'auto', 'the window saves the pick; save() asks the confirmation first');
   const settings = fs.readFileSync(path.join(here, 'renderer/pages/apply-settings.js'), 'utf8');
   assert.match(settings, /disabled: [^,]*!modeBuilt\(mode\.id\)/, 'every surface draws an unbuilt mode disabled (modeCards)');
   assert.match(settings, /\['Coming soon', 'neutral'\]/);

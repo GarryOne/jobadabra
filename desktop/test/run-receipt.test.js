@@ -37,3 +37,10 @@ test('a job with no fill row gets no row made up for it', async () => {
   assert.deepEqual(await store.receiptRun(JOB, '2026-10-29T01:00:00.000Z'), {ok: false, skipped: true});
   assert.deepEqual(updated, []);
 });
+
+test('a row logged under the extension\'s own URL is found by the job key when the list\'s URL differs', async () => {
+  const row = {id: 'q', url: 'https://job-boards.greenhouse.io/acme/jobs/5114768008?gh_src=abc', outcome: 'Ready', fields: {job: 'SRE'}};
+  const {store, updated} = storeOf([OTHER, row]);
+  assert.deepEqual(await store.receiptRun('https://job-boards.greenhouse.io/acme/jobs/5114768008', '2026-10-29T01:00:00.000Z'), {ok: true, id: 'q'});
+  assert.equal(updated[0].run_id, 'q');
+});

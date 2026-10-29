@@ -42,7 +42,8 @@ export function extensionStore(storage, {call = engine.call} = {}) {
      * Why (2026-10-29, owner: "use the same mechanism wherever it's background or live mode"): every mode's fill is logged by logRun, and every confirmed submit passes markApplied (lib/server-env.js), so the recap reads one row per job in any mode.
      */
     async receiptRun(url, at) {
-      const row = ((await store('agent_runs', 'list', {})) || []).find(each => each.url === url);
+      const rows = (await store('agent_runs', 'list', {transcript: false})) || [], key = jobKey(url);   // the transcript is not needed: only `outcome` and `fields` are written
+      const row = rows.find(each => each.url === url) || (key && rows.find(each => String(each.url || '').includes(key)));   // the row holds the extension's own URL, `url` the list's canonical one: matched as findJob does
       if (!row) return {ok: false, skipped: true};
       const was = row.fields || {};
       await store('agent_runs', 'update', {run_id: row.id, fields: {outcome: 'Submitted', fields: {...was, status: 'Submitted', job_stage: 'Applied', data: {...(was.data || {}), submitted_at: at}}}});

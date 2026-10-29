@@ -81,7 +81,7 @@ export function cvFactsOf(storage) {
   return text;
 }
 
-export function localEnv(storage, submitted = sessionSubmitted, {find: injected} = {}) {
+export function localEnv(storage, submitted = sessionSubmitted, {find: injected, setStatus = pipeline.setStatus, runs: injectedRuns} = {}) {
   const settings = storage.settings();
   const summary = job => ({title: job.title, company: job.company, stage: job.status, url: job.url, notion_url: ''});
   const find = injected || (async url => {
@@ -92,6 +92,7 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
   // Notion only when it is the store (lib/store): with the data on this Mac nothing reaches a Notion still connected.
   const notionTexts = notionGate.notionInUse(storage);
   const notionToken = notionTexts ? storage.secret('NOTION_TOKEN') : '';
+  const runs = injectedRuns || (!notionTexts && notionGate.tracking(storage) ? extensionStore(storage) : null);   // the store that holds the fill rows: only with the data on this Mac
   const ids = notionTexts ? settings.notionIds || {} : {};
   // extension.js calls Notion through the app's paced, retrying call(), and reads the Profile and standard answers
   // from the kept pages (lib/notion.js), or this Mac's files: only when a request needs them (getters), not on every poll.
@@ -131,14 +132,14 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       // for a month the app could not answer "why is this Applied?" after the fact (1 Oct 2026).
       appLog('extension', `mark Applied: ${job ? job.url : url} — ${decision || 'no reason given (older extension)'}`);
       if (!job) return {ok: false, error: 'This job isn\'t in your list'};
-      const result = await pipeline.setStatus(storage, job.url, 'applied');
+      const result = await setStatus(storage, job.url, 'applied');
       if (!result.ok) return {ok: false, error: result.error || 'Could not mark it Applied'};
       // The confirmation page is the submission (the extension only reports one): the session that filled that
       // form is over too, not left in Application sessions as if Claude were still on it. The "I submitted it"
       // button's own end, without pressing anything.
       submitted(job.url);
       // The fill's row says it was submitted (what the recap reads): the same row in every Apply mode. A row that cannot be stamped never undoes Applied.
-      if (!notionTexts && notionGate.tracking(storage)) await extensionStore(storage).receiptRun(job.url, new Date().toISOString()).catch(error => appLog('extension', `run row not stamped as submitted: ${error.message}`));
+      if (runs) await runs.receiptRun(job.url, new Date().toISOString()).then(stamped => { if (!stamped.ok) appLog('extension', `no fill row to stamp as submitted: ${job.url}`); }, error => appLog('extension', `run row not stamped as submitted: ${error.message}`));
       appliedHook({how: 'extension'});
       const where = notionGate.notionInUse(storage) ? 'in your Notion' : 'in Jobadabra';   // about Notion
       notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url}, 'good');

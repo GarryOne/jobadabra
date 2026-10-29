@@ -186,12 +186,45 @@ def job_spans(repo, runs):
 def gh(*args):
     # UTF-8 always: on a Windows runner text=True alone decodes as cp1252, "E2E for PR · " no longer matched, and #2062's Windows job wrote a false green
     # while the Linux e2e run still ran.
-    return subprocess.run(['gh', *args], check=True, capture_output=True, encoding='utf-8').stdout
+    try:
+        return subprocess.run(['gh', *args], check=True, capture_output=True, encoding='utf-8').stdout
+    except subprocess.CalledProcessError as error:
+        print(f'gh {" ".join(args)[:120]}: {(error.stderr or "").strip()[:400]}', file=sys.stderr)   # Why (29 Oct 2026, api-quota): the 403 of 23:29Z showed only "exit status 1"
+        raise
+
+
+def quota_line(run=None):
+    """'quota left: REST n/limit, GraphQL n/limit' of the token this runs with, for the log; '' when it cannot be read (never fails a run; the call is free)."""
+    try:
+        res = json.loads((run or gh)('api', 'rate_limit'))['resources']
+        return f"quota left: REST {res['core']['remaining']}/{res['core']['limit']}, GraphQL {res['graphql']['remaining']}/{res['graphql']['limit']}"
+    except Exception:
+        return ''
 
 
 def leave_it(finishing, me):
     """Jobs ending together: the one with the highest id writes (it waits for the others' ends); the backstop (me None) leaves it to them."""
     return bool(finishing) and (me is None or max(finishing) > me)
+
+
+PR_META = """query($owner: String!, $name: String!, $oid: GitObjectID!) { repository(owner: $owner, name: $name) { object(oid: $oid) { ... on Commit {
+  associatedPullRequests(first: 5) { nodes { number state mergedAt files(first: 100) { pageInfo { hasNextPage } nodes { path } } commits(last: 100) { nodes { commit { message } } } } } } } } }"""
+
+
+def pr_meta(repo, sha, run=None):
+    """-> (pulls for open_pr, the open PR's file names, its commit messages) in ONE GraphQL call. files is None when the open PR has over 100 files (the caller reads
+    them over REST: a cut list would hide a CI change). Why (29 Oct 2026, api-quota): these were 3 REST calls per verdict run, ~218 runs an hour at peak, on Actions'
+    1,000-an-hour GITHUB_TOKEN quota shared by every workflow; GraphQL is its own bucket."""
+    owner, name = repo.split('/')
+    answer = json.loads((run or gh)('api', 'graphql', '-f', f'query={PR_META}', '-f', f'owner={owner}', '-f', f'name={name}', '-f', f'oid={sha}'))
+    nodes = (((answer.get('data') or {}).get('repository') or {}).get('object') or {}).get('associatedPullRequests', {}).get('nodes', [])
+    pulls = [{'number': n['number'], 'state': n['state'].lower(), 'merged_at': n['mergedAt']} for n in nodes]
+    number, _ = open_pr(pulls)
+    mine = next((n for n in nodes if str(n['number']) == number), None)
+    if not mine:
+        return pulls, [], []
+    files = None if mine['files']['pageInfo']['hasNextPage'] else [f['path'] for f in mine['files']['nodes']]
+    return pulls, files, [c['commit']['message'] for c in mine['commits']['nodes']]
 
 
 def open_pr(pulls):
@@ -374,13 +407,12 @@ def main():
     a = ap.parse_args()
     my_run = os.environ.get('GITHUB_RUN_ID', '')
     server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
-    number, write = open_pr(json.loads(gh('api', f'repos/{a.repo}/commits/{a.sha}/pulls', '--jq', '[.[] | {number, state, merged_at}]') or '[]'))
+    pulls, files, messages = pr_meta(a.repo, a.sha)
+    number, write = open_pr(pulls)
     if not write:
         print(f'the pull request of {a.sha[:7]} is merged or closed: nothing to write'); return 0
-    files, messages = [], []
-    if number:
+    if number and files is None:   # over 100 files: the paged REST read
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
-        messages = json.loads(gh('api', f'repos/{a.repo}/pulls/{number}/commits?per_page=100', '--jq', '[.[].commit.message]') or '[]')
     me, greys = None, None
     for attempt in range(20):   # at most ~60 s, only while jobs with a lower id end with us
         runs, jobs = read(a.repo, a.sha, my_run)
@@ -402,6 +434,7 @@ def main():
         time.sleep(3)
     else:
         state, why, target = 'pending', f'still ending: {why}'[:140], None
+    print(quota_line() or 'quota: not readable')
     for r in live:
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
     if state is None:

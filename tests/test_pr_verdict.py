@@ -290,14 +290,71 @@ class JobByJob(unittest.TestCase):
         self.assertEqual(pv.open_pr([{'number': 2044, 'state': 'open', 'merged_at': None}]), ('2044', True))
         self.assertEqual(pv.open_pr([]), ('', True))
 
+def meta_answer(*prs):
+    return json.dumps({'data': {'repository': {'object': {'associatedPullRequests': {'nodes': list(prs)}}}}})
+
+
+def gql_pr(number=7, state='OPEN', merged=None, files=('desktop/a.js',), more=False, messages=('Fix a thing',)):
+    return {'number': number, 'state': state, 'mergedAt': merged, 'files': {'pageInfo': {'hasNextPage': more}, 'nodes': [{'path': f} for f in files]},
+            'commits': {'nodes': [{'commit': {'message': m}} for m in messages]}}
+
+
+class TheVerdictReadsThePrInOneCall(unittest.TestCase):
+    """29 Oct 2026, api-quota: the verdict made 3 REST calls (the commit's PRs, its files, its commit messages) before reading any run, in ~218 runs an hour at peak, on
+    Actions' 1,000-an-hour GITHUB_TOKEN quota shared with every workflow; the 403s turned unrelated PRs red. One GraphQL call (its own bucket) carries all three."""
+
+    def read(self, *prs):
+        asked = []
+        def fake(*args):
+            asked.append(args); return meta_answer(*prs)
+        return pv.pr_meta('o/r', 'abc1234', fake), asked
+
+    def test_one_call_gives_the_open_pr_its_files_and_messages(self):
+        (pulls, files, messages), asked = self.read(gql_pr(7, files=('a.js', 'b.py'), messages=('one', 'two')))
+        self.assertEqual(len(asked), 1)
+        self.assertEqual(pv.open_pr(pulls), ('7', True))
+        self.assertEqual((files, messages), (['a.js', 'b.py'], ['one', 'two']))
+
+    def test_a_merged_pr_still_gets_nothing(self):
+        (pulls, _, _), _ = self.read(gql_pr(8, state='MERGED', merged='2026-10-29T00:06:00Z'))
+        self.assertEqual(pv.open_pr(pulls), ('', False))
+        (pulls, _, _), _ = self.read(gql_pr(9, state='CLOSED'))
+        self.assertEqual(pv.open_pr(pulls), ('', False))
+
+    def test_with_the_open_pr_among_closed_ones_its_own_files_are_used(self):
+        (pulls, files, _), _ = self.read(gql_pr(5, state='CLOSED', files=('old.js',)), gql_pr(6, files=('new.js',)))
+        self.assertEqual((pv.open_pr(pulls), files), (('6', True), ['new.js']))
+
+    def test_a_pr_of_over_100_files_is_read_over_rest_not_cut_short(self):
+        (pulls, files, messages), _ = self.read(gql_pr(7, more=True))
+        self.assertIsNone(files, 'a cut file list would hide a CI change from the budget check')
+
+    def test_the_log_says_how_much_of_each_quota_is_left(self):
+        # Nothing logged the GITHUB_TOKEN quota: "most of it" was arithmetic from run counts. rate_limit costs no call.
+        line = pv.quota_line(lambda *a: json.dumps({'resources': {'core': {'remaining': 412, 'limit': 1000}, 'graphql': {'remaining': 4950, 'limit': 5000}}}))
+        self.assertEqual(line, 'quota left: REST 412/1000, GraphQL 4950/5000')
+
+    def test_a_quota_read_that_fails_never_fails_the_run(self):
+        def refuse(*a): raise subprocess.CalledProcessError(1, ['gh'])
+        self.assertEqual(pv.quota_line(refuse), '')
+
+    def test_a_failed_call_prints_gh_s_own_message_and_still_raises(self):
+        # stderr was captured and dropped: the 403 of 23:29Z showed only "returned non-zero exit status 1". Still a CalledProcessError: health_greys catches Exception per job.
+        import contextlib, io
+        from unittest import mock
+        boom = subprocess.CalledProcessError(1, ['gh'], stderr='API rate limit exceeded for installation')
+        seen = io.StringIO()
+        with mock.patch.object(pv.subprocess, 'run', side_effect=boom), contextlib.redirect_stderr(seen), self.assertRaises(subprocess.CalledProcessError):
+            pv.gh('api', 'x')
+        self.assertIn('API rate limit exceeded', seen.getvalue())
+
+
 FAKE_GH = r"""#!/usr/bin/env python3
 import json, os, sys
 a = sys.argv[1:]; d = os.environ['FAKE_DIR']
 def out(name): sys.stdout.write(open(os.path.join(d, name)).read())
 if a[:2] == ['run', 'list']: out('runs.json')
-elif a[0] == 'api' and a[1].endswith('/pulls') and '/commits/' in a[1]: out('pulls.json')
-elif a[0] == 'api' and '/pulls/' in ' '.join(a) and '/files' in ' '.join(a): print('desktop/renderer/app.js')
-elif a[0] == 'api' and '/commits?' in a[1]: print('["Fix a thing"]')
+elif a[0] == 'api' and a[1] == 'graphql': out('meta.json')   # the PR's state, files and messages in one call; no REST answer for them: a call back to REST must fail the test
 elif a[0] == 'api' and '/jobs' in a[1]: out('jobs-' + a[1].split('/runs/')[1].split('/')[0] + '.json')
 elif a[0] == 'api' and '/statuses/' in a[1]: open(os.path.join(d, 'written'), 'a').write(json.dumps(a[2:]) + chr(10))
 else: sys.exit('fake gh: no answer for ' + repr(a))
@@ -313,7 +370,7 @@ class TheScriptAsAJobRunsIt(unittest.TestCase):
         bin_dir = os.path.join(d, 'bin'); os.mkdir(bin_dir)
         gh = os.path.join(bin_dir, 'gh'); open(gh, 'w').write(FAKE_GH.replace('/usr/bin/env python3', sys.executable)); os.chmod(gh, 0o755)
         runs = [run('CI · Pull request', id=1), run('CI · Tests · python', status='in_progress', id=2)]
-        json.dump(runs, open(os.path.join(d, 'runs.json'), 'w')); json.dump(pulls, open(os.path.join(d, 'pulls.json'), 'w'))
+        json.dump(runs, open(os.path.join(d, 'runs.json'), 'w')); open(os.path.join(d, 'meta.json'), 'w').write(meta_answer(*[gql_pr(p['number'], p['state'].upper(), p['merged_at'], files=('desktop/renderer/app.js',)) for p in pulls]))
         json.dump([{'id': 20, 'name': 'python', 'status': 'in_progress', 'conclusion': None, 'runner_name': 'r1',
                     'steps': [{'name': 'Run tests', 'status': 'completed', 'conclusion': 'success'}, {'name': pv.STEP, 'status': 'in_progress'}]}],
                   open(os.path.join(d, 'jobs-2.json'), 'w'))

@@ -9,6 +9,9 @@ on:
     paths:
       - 'src/**'
       - 'tests/**'
+      - 'desktop/e2e/lanes.json'
+      - 'desktop/e2e/suites/quality.mjs'
+      - 'desktop/e2e/suites/qualityai.mjs'
       - 'tools/**'
       - 'config/**'
       - 'templates/**'

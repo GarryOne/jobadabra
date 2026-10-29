@@ -217,8 +217,8 @@ test('a scheduled run skips while a release run is testing; a build only does no
 
 // 7 Oct 2026 (owner: "$30 a week"): quality (Sonnet) ran in every beta by hand and on Windows too. Now: the Mac lane only, and in a beta by hand only when
 // what it watches changed since the last release approved for Mac. The nightly always runs it.
-test('quality: the nightly runs it; a beta by hand only after a change it watches; never on Windows', async () => {
-  const cadence = {quality: 'nightly'}, watches = {quality: ['src/ai/score.py']};
+test('both quality journeys: the nightly runs it; a beta by hand only after a change it watches; never on Windows', async () => {
+  const cadence = {quality: 'nightly', qualityai: 'nightly'}, watches = {qualityai: ['src/ai/score.py'], quality: ['src/ai/score.py']};
   const stub = files => args => {
     const text = args.join(' ');
     // like the real gh: `release list` has no body field (7 Oct: the summary showed "Unknown JSON field"), `release view` has
@@ -230,13 +230,17 @@ test('quality: the nightly runs it; a beta by hand only after a change it watche
     return '[]';
   };
   const run = (kind, files) => planRun({env: {REPO: 'o/r', EVENT: 'gate', SHA: HEAD, TARGET_REF: 'desktop-v1.3', GATE_TAG: 'desktop-v1.3', GATE_KIND: kind},
-    gh: stub(files), all: [...ALL, 'quality'], cadence, watches, sameOnEveryOs: ['quality'], minutes: () => 15});
+    gh: stub(files), all: [...ALL, 'quality', 'qualityai'], cadence, watches, sameOnEveryOs: ['quality', 'qualityai'], minutes: () => 15});
   const names = out => out.suites.split(',');
   const quiet = await run('beta', ['desktop/renderer/pages/jobs.js']);
+  assert.ok(!names(quiet).includes('qualityai'));
   assert.ok(!names(quiet).includes('quality'), 'positive control below: same plan, a scoring change runs it');
-  assert.match(quiet.why, /quality not run: nothing it watches changed/);
+  assert.match(quiet.why, /quality, qualityai not run: nothing it watches changed/);
   assert.ok(names(await run('beta', ['src/ai/score.py'])).includes('quality'));
+  assert.ok(names(await run('beta', ['src/ai/score.py'])).includes('qualityai'));
   const nightly = await run('nightly', ['desktop/renderer/pages/jobs.js']);
+  assert.ok(names(nightly).includes('qualityai'));
+  assert.ok(!nightly.windows_suites.split(',').includes('qualityai'));
   assert.ok(names(nightly).includes('quality'), 'the nightly always runs it');
   assert.ok(!nightly.windows_suites.split(',').includes('quality'), 'never on Windows');
   assert.ok(nightly.windows_suites.split(',').includes('apply'));

@@ -15,6 +15,7 @@ const CHAINED = {
   mailreading: 'the second and third steps score the reading the first one did',
   personas: 'a persona is one chain: nothing saved, no check, no digest',
   quality: 'steps share the golden check; its optional ones already go on (soft)',
+  qualityai: 'steps share the golden check; its optional ones already go on (soft)',
   strategy: 'each step reads the settings the step before saved and the check after them',
   wizard: 'one step',
 };

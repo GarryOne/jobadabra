@@ -8,6 +8,12 @@
       "since": "2026-10-28",
       "why": "Twelve golden postings go through the real Jobs check and the model's facts and scores are compared with a ground truth; a Haiku judge reads the free text. 4 of its 7 red rows in the week of 2026-W44 were an AI answer, a key or the 7-minute budget."
     },
+    "qualityai": {
+      "lane": "tolerant",
+      "input": "ai",
+      "since": "2026-10-29",
+      "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates."
+    },
     "notion-real": {
       "lane": "tolerant",
       "input": "outside",

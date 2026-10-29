@@ -1,5 +1,5 @@
 """Quality's gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): its recorded answers never expire, on main a question with no recorded answer is
-named red (lib/ai-meter.mjs strict), its retry replays like its first try, and only the night's fresh run asks live. Main 27 Oct 2026: a gate asked 8-12
+named red (lib/ai-meter.mjs strict), its retry replays like its first try, and the separate qualityai journey always asks live. Main 27 Oct 2026: a gate asked 8-12
 questions live, got other answers than its PR, and went red with no code change (runs 40434477266, 40440720029)."""
 import re
 import unittest
@@ -29,11 +29,11 @@ class QualityReplayGateTests(unittest.TestCase):
         # A PR's own run (pr_suites set, no after_merge) asks a new question once and records it; every main run is strict.
         self.assertIn("inputs.pr_suites == '' || inputs.after_merge != ''", strict)
 
-    def test_the_nights_fresh_run_is_live_and_not_strict(self):
+    def test_live_quality_needs_no_separate_fresh_night_step(self):
         text = (WORKFLOWS / 'e2e.yml').read_text()
-        fresh = text[text.index('- name: Fresh AI answers for quality once a day'):]
-        fresh = fresh[:fresh.index('\n      - name:')]
-        self.assertIn('echo "E2E_AI_REPLAY=0"; echo "E2E_AI_STRICT=0"; } >> "$GITHUB_ENV"', fresh)
+        self.assertNotIn('Fresh AI answers for qualityai once a day', text)
+        self.assertNotIn('echo "E2E_AI_REPLAY=0"', text)
+        self.assertIn("matrix.suite == 'qualityai' && '0' || '1'", env_line(text, 'E2E_AI_REPLAY') or '')
 
     def test_qualitys_retry_replays_and_other_suites_retry_fresh(self):
         for name in SUITE_WORKFLOWS:
@@ -43,27 +43,46 @@ class QualityReplayGateTests(unittest.TestCase):
                 self.assertIn('E2E_RERUN=1 E2E_AI_REPLAY="$replay"', text)
                 self.assertNotRegex(text, r'E2E_RERUN=1 E2E_AI_REPLAY=0\b')
 
-    # "Same scores twice" is a rate over the last 90 pairs of the night's live runs (desktop/e2e/lib/quality-rate.mjs): its history is restored for quality
-    # and saved after the live run on main even when it is red (a red night must count), never from a PR or a replayed run.
-    def test_the_score_steadiness_history_is_kept_between_live_nights(self):
-        text = (WORKFLOWS / 'e2e.yml').read_text()
-        self.assertIn("E2E_QUALITY_HISTORY: ${{ matrix.suite == 'quality' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}", text)
-        steps = re.split(r'(?m)^      - ', text)
-        restore = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/restore' in step]
-        save = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/save' in step]
-        self.assertEqual((len(restore), len(save)), (1, 1))
-        self.assertIn('restore-keys: quality-rate-', restore[0])
-        for condition in ('always()', "matrix.suite == 'quality'", "env.E2E_AI_REPLAY != '1'", "github.ref == 'refs/heads/main'"):
-            self.assertIn(condition, save[0])
-        self.assertLess(text.index(restore[0]), text.index('- name: Run the ${{ matrix.key }} suite (first try)'))
+    def test_qualityai_always_runs_live_without_strict_replay(self):
+        for name in SUITE_WORKFLOWS:
+            text = (WORKFLOWS / name).read_text()
+            with self.subTest(file=name):
+                replays = re.findall(r'(?m)^      E2E_AI_REPLAY: (.+)$', text)
+                self.assertTrue(replays)
+                for replay in replays:
+                    self.assertIn("matrix.suite == 'qualityai' && '0' || '1'", replay)
+                strict = env_line(text, 'E2E_AI_STRICT') or ''
+                self.assertNotIn('qualityai', strict)
+                self.assertIn("matrix.suite == 'quality'", strict)
 
-    def test_the_nights_live_run_judges_facts_and_judge_flags_by_rate(self):
-        # Owner, 27 Oct 2026: facts and judge flags as rates too ("Yes, same shape"); the gate's replayed answers are still checked exactly.
-        suite = (WORKFLOWS.parent.parent / 'desktop/e2e/suites/quality.mjs').read_text()
-        self.assertIn('factsVerdict(record(', suite)
-        self.assertIn('flagsVerdict(record(', suite)
-        self.assertIn('if (replaying()) { if (problems.length) throw', suite, 'the gate still fails on any wrong fact')
-        self.assertIn('const allowance = judgeVerdict(problems, verdicts.length);', suite, 'the gate keeps the judge allowance')
+    # A retry adds each part of its night once; red live nights count, PRs never save the history.
+    def test_the_score_steadiness_history_is_kept_for_qualityai_only(self):
+        for name in SUITE_WORKFLOWS:
+            text = (WORKFLOWS / name).read_text()
+            with self.subTest(file=name):
+                self.assertIn("E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}", text)
+                steps = re.split(r'(?m)^      - ', text)
+                restore = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/restore' in step]
+                save = [step for step in steps if 'path: desktop/e2e/.quality-rate' in step and 'cache/save' in step]
+                self.assertEqual((len(restore), len(save)), (1, 1))
+                self.assertIn("if: matrix.suite == 'qualityai'", restore[0])
+                self.assertIn('restore-keys: quality-rate-', restore[0])
+                for condition in ('always()', "matrix.suite == 'qualityai'", "env.E2E_AI_REPLAY != '1'", "github.ref == 'refs/heads/main'"):
+                    self.assertIn(condition, save[0])
+                self.assertLess(text.index(restore[0]), text.index('id: suite_run'))
+
+    def test_the_live_suite_judges_facts_and_judge_flags_by_rate_and_backbone_is_exact(self):
+        root = WORKFLOWS.parent.parent
+        live = (root / 'desktop/e2e/suites/qualityai.mjs').read_text()
+        backbone = (root / 'desktop/e2e/suites/quality.mjs').read_text()
+        self.assertIn('factsVerdict(record(', live)
+        self.assertIn('flagsVerdict(record(', live)
+        self.assertNotIn('replaying()', live)
+        self.assertNotIn('judgeVerdict', live)
+        self.assertIn('if (problems.length) throw new Error(`${problems.length} wrong or missing fact(s)', backbone)
+        self.assertIn('if (over.length) throw new Error(`a job with an unmet stated requirement is scored too high:', backbone)
+        self.assertNotIn('factsVerdict', backbone)
+        self.assertNotIn('flagsVerdict', backbone)
 
 
 if __name__ == '__main__':

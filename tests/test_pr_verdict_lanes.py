@@ -112,9 +112,9 @@ class RegistryFile(unittest.TestCase):
             self.assertGreater(len(re.sub(r'\W', '', entry.get('why', ''))), 24, f'{name}: why it is not backbone, in words')
             self.assertRegex(entry.get('since', ''), r'^2026-\d\d-\d\d$', f'{name}: the date it left the backbone')
 
-    def test_the_first_cut_lists_the_two_suites_the_weeks_data_names(self):
+    def test_the_registry_keeps_the_first_cut_and_adds_the_live_quality_journey(self):
         listed = {name: entry['lane'] for name, entry in self.registry['suites'].items()}
-        self.assertEqual(listed, {'quality': 'tolerant', 'notion-real': 'tolerant'})
+        self.assertEqual(listed, {'quality': 'tolerant', 'qualityai': 'tolerant', 'notion-real': 'tolerant'})
 
 
 if __name__ == '__main__':

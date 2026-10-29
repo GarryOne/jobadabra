@@ -143,7 +143,7 @@ def main_rates(repo, gh, comparable, night_module=None):
                 main_nights = night_module().main_nights
             else:
                 from beta_rate_gate import main_nights
-        nights = main_nights(repo, 'qualityai', gh)
+        nights = main_nights(repo, 'qualityai', gh, first_only=True)
         return nights[0][1] if nights else None
     except Exception as error:
         print(f'main AI counts unavailable ({type(error).__name__})', file=sys.stderr)

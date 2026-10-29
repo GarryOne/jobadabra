@@ -181,6 +181,15 @@ class Artifacts(unittest.TestCase):
         self.assertIn('main unavailable', self.pr_line(gh))
         self.assertFalse(any('/workflows/desktop.yml/' in ' '.join(args) for args, _ in gh.calls))
 
+    def test_broken_newest_night_is_unavailable_and_downloads_no_older_night(self):
+        gh = Github([], {rid: [{'id': rid, 'name': ai.ARTIFACT}] for rid in (99, 20, 19)},
+                    {99: archive(), 20: b'broken ZIP', 19: archive()},
+                    nights=[run(20, 'E2E check · nightly backup', event='schedule'),
+                            run(19, 'E2E check · nightly backup', event='schedule')])
+        self.assertIn('main unavailable', self.pr_line(gh))
+        nightly_downloads = [args[-1] for args, binary in gh.calls if binary and '/artifacts/99/' not in args[-1]]
+        self.assertEqual(nightly_downloads, ['repos/o/r/actions/artifacts/20/zip'])
+
     def test_pr_mutant_bisect_branch_and_unfinished_runs_cannot_supply_main_number(self):
         for rejected in (run(30, 'E2E for PR · qualityai · main'), run(30, 'Mutant qualityai'),
                          run(30, 'Bisect qualityai sha'), run(30, head_branch='topic'), run(30, status='in_progress')):

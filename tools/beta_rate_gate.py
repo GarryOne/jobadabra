@@ -44,8 +44,8 @@ def blocking_jobs(jobs, registry, platform):
     return blocked
 
 
-def main_nights(repo, suite, github, platform='mac', current_run=''):
-    """Read seven completed desktop nights with valid rates, regardless of their job conclusion."""
+def main_nights(repo, suite, github, platform='mac', current_run='', *, first_only=False):
+    """Read seven valid desktop nights, or the first eligible night's possibly unavailable rates."""
     selected, page, inspected = [], 1, 0
     prefix = 'E2E · Windows · ' if platform == 'windows' else 'E2E · Mac + Linux · '
     artifact = f"e2e-artifacts-{'windows-' if platform == 'windows' else ''}{suite}"
@@ -63,6 +63,9 @@ def main_nights(repo, suite, github, platform='mac', current_run=''):
             jobs = [j for j in jobs_of(repo, run['id'], github) if re.sub(r'-\d+of\d+$', '', j.get('name', '')) == prefix + suite]
             if jobs and all(j.get('status') == 'completed' for j in jobs):
                 _, rates = ai.artifact_rates(repo, run['id'], github, artifact)
+                # Why (29 Oct 2026, qu): the PR number must expose an unreadable newest night instead of silently using an older one.
+                if first_only:
+                    return [(run['id'], rates)]
                 if rates is not None:
                     selected.append((run['id'], rates))
                     if len(selected) == 7:

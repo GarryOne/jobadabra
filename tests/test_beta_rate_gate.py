@@ -109,6 +109,27 @@ class Gate(unittest.TestCase):
                 self.assertNotIn('main runs 99', '\n'.join(lines))
                 self.assertNotIn('/runs/99/jobs?', str(store.calls))
 
+    def test_first_only_stops_at_first_eligible_night_even_when_artifact_is_broken(self):
+        for broken in (False, True):
+            with self.subTest(broken=broken):
+                store, gh = self.fixture(nights=2)
+                store.runs[:0] = [dict(store.runs[0], id=24, head_branch='topic'),
+                                  dict(store.runs[0], id=23, status='in_progress'),
+                                  dict(store.runs[0], id=22, event='workflow_dispatch'),
+                                  dict(store.runs[0], id=21)]
+                if broken:
+                    store.blobs[20] = b'broken ZIP'
+                def transport(*args, **kwargs):
+                    if any('/runs/21/jobs?' in arg for arg in args):
+                        store.calls.append((args, False))
+                        return json.dumps([{'jobs': [{'name': 'E2E · Mac + Linux · qualityai', 'status': 'in_progress'}]}])
+                    return gh(*args, **kwargs)
+                self.assertEqual(self.gate().main_nights('o/r', 'qualityai', transport, first_only=True),
+                                 [(20, None if broken else counts())])
+                downloads = [args[-1] for args, binary in store.calls if binary]
+                self.assertEqual(downloads, ['repos/o/r/actions/artifacts/20/zip'])
+                self.assertNotIn('/runs/19/', str(store.calls))
+
     def test_below_band_fails_and_names_metric_numbers_band_and_used_runs(self):
         _, gh = self.fixture(counts(40))
         status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, gh)

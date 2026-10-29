@@ -1,3 +1,4 @@
+import {silentChromeButtons} from './silent-chrome.js';
 // The next-step card of an application session (the decision card: its state, Claude's question, the form's needs, what happened, the actions), moved out of sessions.js
 // as a pure move (13 Oct 2026) so both files stay one concern under 500 lines. The session list and its shared state stay in sessions.js and are imported from it (a cycle, as
 // session-log.js already has: nothing here runs at load). Guards read this file's source: desktop/test/claude-offer, claude-help, claude-safety-net, session-state,
@@ -101,7 +102,7 @@ function renderSilent(item) {
   const retried = shared.chromeStartedAt && !starting;   // pressed before, and Chrome still has not reported
   $('ss-question').replaceChildren(el('p', 'rich-p', retried ? 'Chrome didn\'t report within 30 seconds. Check that Chrome is open with the Jobadabra extension on, or try Open Chrome again.'
     : 'Jobadabra can\'t see this application\'s tab: Chrome is closed, or its Jobadabra extension isn\'t running. Open Chrome and this card updates by itself.'));
-  const button = sessionButton(starting ? 'Starting Chrome\u2026' : 'Open Chrome', 'primary', async event => {
+  const connect = sessionButton(starting ? 'Starting Chrome\u2026' : 'Open Chrome', 'secondary', async event => {
     const result = await opening(event.currentTarget, () => window.pilot.extensionOptions());
     window.pilot.uiLog('sessions: Chrome not reporting, Open Chrome pressed', {opened: !!result?.opened, starting: !!result?.starting});
     if (!result?.opened) { toastMessage('Chrome didn\'t open', 'Open Google Chrome yourself; the card updates once its Jobadabra extension reports.', NO_PLACE.outside, 'bad'); return; }
@@ -109,16 +110,22 @@ function renderSilent(item) {
     renderNextStep(item);
     setTimeout(() => { if (silentChrome(item)) renderNextStep(item); }, START_MS + 100);   // offered again, with the reason
   }, 'link');
-  if (starting) button.disabled = true;
-  $('ss-actions').replaceChildren(button);
+  if (starting) connect.disabled = true;
+  // Why (29 Oct 2026, owner: the Open Chrome press sent a connected extension to its settings page and never opened the job): with a job URL the card reopens that job's form; Open Chrome stays as the link that connects the extension.
+  const reopen = reopenButton(item);
+  $('ss-actions').replaceChildren(...silentChromeButtons(item).map(kind => kind === 'reopen' ? reopen : connect));
 }
 // The first look is over and no tab is known for the session: it says so and offers the one way forward, the same reopen every closed-tab button uses.
+// The reopen of a session's form: the one button both the lost-tab card and the silent card (Chrome not reporting) draw.
+function reopenButton(item) {
+  return sessionButton('Open it again', 'primary', event => reopenClosedTab(item, event.currentTarget), 'link');
+}
 function renderLost(item) {
   renderChecking();
   $('ss-decision').className = 'ss-next tone-warn';
   $('ss-next-title').textContent = 'Tab not found';
   $('ss-question').replaceChildren(el('p', 'rich-p', 'Jobadabra can\'t find this application\'s tab in Chrome. It may still be open under another address. Open it again and the extension fills it from your kit; if the tab shows up by itself, this card updates.'));
-  $('ss-actions').replaceChildren(sessionButton('Open it again', 'primary', event => reopenClosedTab(item, event.currentTarget), 'link'));
+  $('ss-actions').replaceChildren(reopenButton(item));
 }
 export function renderNextStep(item) {
   // A hidden-browser session (spec 2026-10-27-background-apply-execution, step B) has no Chrome tab of the person's: its card is the live page.

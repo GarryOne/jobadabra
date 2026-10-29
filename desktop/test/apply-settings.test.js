@@ -11,7 +11,7 @@ const html = fs.readFileSync(path.join(here, 'renderer/index.html'), 'utf8');
 const page = name => { const at = html.indexOf(`data-settings-page="${name}"`); return html.slice(at, html.indexOf('data-settings-page="', at + 10)); };
 
 test('nothing saved: Standard automation, facts only, the owner\'s defaults, not chosen', () => {
-  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 0}, chosenAt: '', autoConfirmedAt: ''});
+  assert.deepEqual(applyOf({}), {mode: 'check', answers: 'facts', auto: {waitMin: 0}, chosenAt: '', autoConfirmedAt: ''});
   assert.deepEqual(AUTO_DEFAULTS, applyOf(undefined).auto);
   assert.equal(applyChosen({}), false);
   assert.equal(applyChosen({apply: {mode: 'check'}}), false, 'a mode saved from Settings without Confirm is not the choice');
@@ -19,15 +19,13 @@ test('nothing saved: Standard automation, facts only, the owner\'s defaults, not
 
 test('a change keeps the rest; numbers stay in range; Confirm stamps the choice', () => {
   const now = new Date('2026-10-26T10:00:00Z');
-  const one = applyPatch({}, {mode: 'check', auto: {perDay: '500'}});
+  const one = applyPatch({}, {mode: 'check', auto: {waitMin: '500'}});
   assert.equal(one.apply.mode, 'check');
-  assert.equal(one.apply.auto.perDay, 200, 'clamped');
-  assert.equal(one.apply.auto.minFit, 80, 'the other checks kept');
+  assert.equal(one.apply.auto.waitMin, 120, 'clamped');
   assert.equal(one.apply.chosenAt, '');
-  const two = applyPatch({apply: one.apply}, {auto: {noEmpty: false, minFit: 'x'}}, {chosen: true, now});
+  const two = applyPatch({apply: one.apply}, {auto: {waitMin: 'x'}}, {chosen: true, now});
   assert.equal(two.apply.mode, 'check');
-  assert.equal(two.apply.auto.noEmpty, false);
-  assert.equal(two.apply.auto.minFit, 80, 'not a number: the default');
+  assert.equal(two.apply.auto.waitMin, 0, 'not a number: the default (no wait)');
   assert.equal(two.apply.chosenAt, now.toISOString());
   assert.equal(applyChosen(two), true);
   assert.equal(applyOf({apply: {mode: 'nonsense', answers: 'nonsense'}}).mode, 'check');

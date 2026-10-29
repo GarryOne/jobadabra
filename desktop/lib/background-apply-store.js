@@ -83,24 +83,14 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       if (config?.mode !== 'auto' || !config.chosenAt || config.chosenAt !== state.chosenAt) return stop('mode_changed_or_not_opted_in');
       if (!proofOk(proof) || proof.signature !== state.signature) return stop('page_changed_or_incomplete');
       if (proof.botCheck !== false) return stop('bot_check_unknown');   // Why (2026-10-28, owner: add bot_check to the form judge): only an explicit "no robot check" from the judge lets the automatic press go; a check, or no word about it, is the person's
-      const checks = config.auto || {};
-      if ((checks.factsOnly !== false || config.answers !== 'ai') && (proof.factsOnly !== true || state.factsOnly !== true)) return stop('facts_unknown');
+      const checks = config.auto || {};   // Why (2026-10-29, owner: "remove all checks"): no facts, fit or limit gate here; the wait, the page's proof and the kit's eligibility stay
       const kit = kitOf(await ask('applications', 'section', {app_id: app.id, name: KIT_SECTION}));
-      const match = typeof app.fit === 'number' ? app : await ask('matches', 'get', {url});
-      if (!STARTABLE_STAGES.includes(app.stage) || kit?.eligible !== true || !Number.isFinite(match?.fit) || match.fit < (checks.minFit ?? 80)) return stop('not_eligible');
+      if (!STARTABLE_STAGES.includes(app.stage) || kit?.eligible !== true) return stop('not_eligible');
       const waitMs = Math.max(0, Number(checks.waitMin ?? AUTO_DEFAULTS.waitMin)) * 60000;
       if (!state.readyAt || now() < state.readyAt + waitMs) return {...deny('waiting'), dueAt: state.readyAt + waitMs};
-      const rows = await ask('applications', 'list'), reservations = await ask('events', 'list', {kind: RESERVED});
+      const reservations = await ask('events', 'list', {kind: RESERVED});
       const today = dayOf(now()), company = employer(app.company);
-      if (!company) return stop('employer_unknown');
-      const todayIds = new Set(rows.filter(row => row.applied_on === today).map(row => row.id));
-      const employerIds = new Set(rows.filter(row => row.applied_on === today && employer(row.company) === company).map(row => row.id));
-      for (const event of reservations) {
-        if (event.changes?.day === today) todayIds.add(event.app_id);
-        if (event.changes?.day === today && event.changes?.employer === company) employerIds.add(event.app_id);
-      }
       if (reservations.some(event => event.app_id === app.id)) return stop('attempt_already_reserved');
-      if (todayIds.size >= (checks.perDay ?? 20) || employerIds.size >= (checks.perEmployer ?? 1)) return stop('limit_reached');
       if (stopped()) return stop('stopped');
       const attempt = uuid();
       // Why (2026-10-27, owner): reserve limits before the click; a crash or lost reply consumes the attempt and never creates a retry.

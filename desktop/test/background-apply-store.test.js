@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {createBackgroundApplyStore} from '../lib/background-apply-store.js';
 
-const config = {mode: 'auto', chosenAt: '2026-10-27T10:00:00Z', answers: 'facts', auto: {minFit: 80, factsOnly: true, noEmpty: true, perDay: 20, perEmployer: 1, waitMin: 10}};
+const config = {mode: 'auto', chosenAt: '2026-10-27T10:00:00Z', answers: 'facts', auto: {waitMin: 10}};
 const ready = {answer: 'ready', step: 'final', submitControl: 'Send my application', requiredComplete: true, factsOnly: true, safe: true, botCheck: false, signature: 'page-1'};
 function rig() {
   let time = Date.parse('2026-10-27T12:00:00Z'), id = 0, failed = false;
@@ -82,30 +82,26 @@ test('CAPTCHA preflight and runtime handoffs survive store recreation, solved ch
   }
 });
 
-test('unknown facts, required fields, opt-in, eligibility, fit, Stop, and limits cannot be bypassed', async () => {
-  for (const kind of ['facts', 'required', 'unsafe', 'optin', 'eligible', 'fit', 'stop', 'daily', 'employer']) {
+test('the page proof, opt-in, eligibility and Stop cannot be bypassed', async () => {
+  for (const kind of ['required', 'unsafe', 'optin', 'eligible', 'stop']) {
     const r = rig(), {store, job, session} = await prepared(r);
     r.advance(600000);
     let proof = {...ready}, current = structuredClone(config);
-    if (kind === 'facts') proof.factsOnly = false;
-    if (kind === 'required') { proof.requiredComplete = false; current.auto.noEmpty = false; }
+    if (kind === 'required') proof.requiredComplete = false;
     if (kind === 'unsafe') proof.safe = false;
     if (kind === 'optin') current.chosenAt = '';
     if (kind === 'eligible') r.apps.get(job.url).stage = 'Applied';
-    if (kind === 'fit') r.apps.get(job.url).fit = 79;
     if (kind === 'stop') await store.handoff(job.url, session, 'owned-browser', 'stopped');
-    if (kind === 'daily') { current.auto.perDay = 1; r.apps.set('other', {id: 'done', company: 'Other', stage: 'Applied', applied_on: '2026-10-27'}); }
-    if (kind === 'employer') r.apps.set('other', {id: 'done', company: job.company, stage: 'Applied', applied_on: '2026-10-27'});
     assert.equal((await store.reserve(job.url, session, 'owned-browser', proof, current)).submit, false, kind);
   }
 });
 
-test('the saved employer cap is per day, including reservations, rather than a permanent employer blacklist', async () => {
+test('no user check holds a submit: unknown facts, a fit of 10, a full day and the same employer still reserve (the checks are gone)', async () => {
   const r = rig(), {store, job, session} = await prepared(r);
-  r.apps.set('yesterday', {id: 'old', company: job.company, stage: 'Applied', applied_on: '2026-10-26'});
-  r.events.push({app_id: 'old', kind: 'Background submit reserved', changes: {employer: job.company.toLowerCase(), day: '2026-10-26'}});
+  r.apps.set('other', {id: 'done', company: job.company, stage: 'Applied', applied_on: '2026-10-27'});
+  r.apps.get(job.url).fit = 10;
   r.advance(600000);
-  assert.equal((await store.reserve(job.url, session, 'owned-browser', ready, config)).submit, true);
+  assert.equal((await store.reserve(job.url, session, 'owned-browser', {...ready, factsOnly: false}, config)).submit, true);
 });
 
 test('receipt requires a matching recorded attempt; filled or unknown response never becomes Applied', async () => {
@@ -123,7 +119,7 @@ test('a store outage authorizes neither browser launch nor submission', async ()
   await assert.rejects(r.make().queue(job.url, 's', 'auto', config), /store unavailable/);
 });
 
-test('a final clean step cannot erase unknown facts observed on an earlier step', async () => {
+test('a final clean step keeps the record of unknown facts seen on an earlier step (the record stays; no submit gate reads it)', async () => {
   const r = rig(), job = r.add(), store = r.make();
   const state = await store.queue(job.url, 'steps', 'auto', config);
   await store.claim(job.url, state.session, 'owned-browser');
@@ -132,8 +128,8 @@ test('a final clean step cannot erase unknown facts observed on an earlier step'
   assert.equal(final.factsOnly, false);
   r.advance(600000);
   const result = await store.reserve(job.url, state.session, 'owned-browser', ready, config);
-  assert.equal(result.submit, false);
-  assert.equal(result.reason, 'facts_unknown');
+  assert.equal(result.submit, true, 'the facts record does not hold the submit any more');
+  assert.equal((await store.read(job.url)).factsOnly, false, 'the record itself is kept');
 });
 
 test('Stop or a mode change on a queued job hands it to the person before any browser claims it', async () => {

@@ -18,7 +18,7 @@ const payloadCases = [
   {name: 'changes already held', body: CHANGES, labels: [LABELS.changes.name], skip: true, before: 1},
   {name: 'still reviewing', body: 'Gitar is reviewing…', labels: [WAITING.name], skip: true, before: 1},
   {name: 'different verdict', body: APPROVED, labels: [LABELS.changes.name], skip: false, before: 5},
-  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 3},
+  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 1},
   {name: 'push clears stale approval', event: 'pull_request_target', body: APPROVED, labels: [LABELS.approved.name], skip: false, before: 5},
 ];
 
@@ -59,9 +59,9 @@ childProcess.execFileSync = (file, args) => {
     const path = args[1];
     if (path === 'graphql') result = {data: {repository: {pullRequest: {
       state: 'OPEN', headRefOid: 'head',
-      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:05:00Z'}]},
+      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:04:00Z'}]},
       labels: {nodes: names},
-      timelineItems: {nodes: [{label: {name: 'Working on PR comments'}, createdAt: '2026-10-28T20:05:00Z'}]},
+      timelineItems: {nodes: [{label: {name: 'Working on PR comments'}, createdAt: state.workedAt || '2026-10-28T20:05:00Z'}]},
       commits: {nodes: [{commit: {committedDate: process.env.FAKE_HEAD_TIME, checkSuites: {nodes: []}}}]},
     }}}};
     else if (path === 'repos/o/r/pulls/1') result = {state: 'open', head: {sha: 'head'}};
@@ -76,7 +76,7 @@ childProcess.execFileSync = (file, args) => {
   if (args[0] === 'label' && args[1] === 'create') return '';
   if (args[0] !== 'pr' || args[1] !== 'edit') throw new Error('unexpected gh args: ' + args);
   const add = args.indexOf('--add-label'), remove = args.indexOf('--remove-label');
-  if (add >= 0) state.labels.push(args[add + 1]);
+  if (add >= 0) { state.labels.push(args[add + 1]); state.workedAt = '2026-10-28T20:15:00Z'; }
   else if (remove >= 0) state.labels = state.labels.filter(name => name !== args[remove + 1]);
   else throw new Error('unexpected label edit: ' + args);
   writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state));
@@ -246,4 +246,16 @@ test('starting work on an approved PR marks actual activity', t => {
   const result = runCliCase(t, {working: true, body: APPROVED, labels: [LABELS.approved.name], legacy: true});
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(result.labels, [LABELS.approved.name, WORKING.name]);
+});
+
+test('work started after approval remains until a later approval or push', () => {
+  assert.deepEqual(wantedLabels({verdict: LABELS.approved.name, workingSince: AFTER, headTime: HEAD, verdictTime: HEAD}), [LABELS.approved.name, WORKING.name]);
+  assert.deepEqual(wantedLabels({verdict: LABELS.approved.name, workingSince: HEAD, headTime: HEAD, verdictTime: AFTER}), [LABELS.approved.name]);
+});
+
+test('starting work refreshes a label from before the latest push', t => {
+  const result = runCliCase(t, {working: true, event: 'pull_request_target', body: SUGGEST, labels: [WORKING.name], legacy: true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.labels.includes(WORKING.name));
+  assert.ok(result.calls > 3, 'refreshes stale mark and reconciles');
 });

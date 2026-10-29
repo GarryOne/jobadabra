@@ -54,10 +54,10 @@ function headTime(repo, sha) {
   return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
 }
 
-/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or an approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
-export function wantedLabels({verdict, workingSince, headTime}) {
+/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
+export function wantedLabels({verdict, workingSince, headTime, verdictTime}) {
   const names = [verdict || WAITING.name];
-  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && verdict !== LABELS.approved.name) names.push(WORKING.name);
+  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && (verdict !== LABELS.approved.name || Date.parse(workingSince) > Date.parse(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
@@ -136,7 +136,7 @@ function syncOnce(pr) {
   const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
-  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime});
+  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at});
   const changed = setLabels(repo, pr, wanted, read.labels);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
@@ -146,9 +146,14 @@ function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
   // Why (#2386, 29 Oct 2026): preserve the existing event time; repeated starts must not remove and re-add the same label.
-  if (read.state !== 'open' || read.labels.includes(WORKING.name)) return;
+  if (read.state !== 'open') return;
+  const present = read.labels.includes(WORKING.name);
+  if (present && read.workingSince && Date.parse(read.workingSince) >= Date.parse(read.headTime)) return;
   ensure(repo, WORKING);
+  // Why (#2386, Gitar): a stale mark needs a new event time after the latest push.
+  if (present) gh('pr', 'edit', String(pr), '--remove-label', WORKING.name, '-R', repo);
   gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
+  main(pr); // Reconcile a push or verdict that arrived while marking work.
 }
 
 /** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */

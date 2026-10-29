@@ -1,5 +1,6 @@
 /* global document, window */
 // The apply suite's tailored-CV steps (moved out of suites/apply.mjs, 8 Oct 2026): Tailor CV on a job, the panel's way to it in the app, Tailor CVs for top matches, Apply without a kit. Guards the CV flow in docs/flows/applying.md.
+// Job: wait on state
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';

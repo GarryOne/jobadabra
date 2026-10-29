@@ -81,6 +81,11 @@ export function cvFactsOf(storage) {
   return text;
 }
 
+/**
+ * The extension's environment on this Mac (worker/src/extension.js `env`): the job's kit, the Profile and answers texts, the AI client, and the one irreversible step `markApplied`.
+ * `submitted` ends the session behind a confirmed submit. Tests inject `find` (the job list's lookup), `setStatus` (saves the stage) and `runs` (the store holding the fill rows); the defaults are the real ones.
+ * Failures: `markApplied` returns {ok: false, error} when the job is unknown or its stage cannot be saved; a fill row that cannot be stamped Submitted is logged and never undoes Applied.
+ */
 export function localEnv(storage, submitted = sessionSubmitted, {find: injected, setStatus = pipeline.setStatus, runs: injectedRuns} = {}) {
   const settings = storage.settings();
   const summary = job => ({title: job.title, company: job.company, stage: job.status, url: job.url, notion_url: ''});

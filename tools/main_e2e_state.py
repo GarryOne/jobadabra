@@ -14,8 +14,10 @@ import json
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 REPO = 'GarryOne/jobadabra'
+LANES = Path(__file__).resolve().parent.parent / 'desktop/e2e/lanes.json'
 # Runs that do not check main's own code as it is.
 NOT_MAIN_CHECK = re.compile(r'^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect) ')
 # Jobs of e2e.yml that are not a suite.
@@ -59,8 +61,24 @@ def state(runs, jobs_of):
     return out
 
 
-def red(st):
-    return sorted(((suite, s) for suite, s in st.items() if s['conclusion'] == 'failure'), key=lambda item: item[0])
+def suspended_suites():
+    """Read checkout suspensions; a missing, unreadable or malformed registry excludes nothing."""
+    try:
+        registry = json.loads(LANES.read_text(encoding='utf-8'))
+        if not isinstance(registry, dict) or not isinstance(registry.get('suites'), dict):
+            return set()
+        entries = registry['suites']
+        if any(not isinstance(entry, dict) for entry in entries.values()):
+            return set()
+        return {suite for suite, entry in entries.items() if entry.get('lane') == 'suspended'}
+    except (OSError, ValueError):
+        return set()
+
+
+def red(st, suspended=()):
+    """Blocking red suites only; tolerant and unlisted suites retain their red verdict."""
+    # Why (29 Oct 2026, owner): spec "backbone -> suspended" keeps a flipped suite visible with its owner issue, never blocking a beta.
+    return sorted(((suite, s) for suite, s in st.items() if s['conclusion'] == 'failure' and suite not in suspended), key=lambda item: item[0])
 
 
 def gh_json(args):
@@ -81,9 +99,11 @@ def main(argv):
         print(f'main_e2e_state: could not read main\'s e2e runs ({error}); unknown', file=sys.stderr)
         print(json.dumps({'unknown': True}) if '--json' in argv else '')
         return 3   # unknown is never green: the gate refuses a beta on it
-    reds = red(st)
+    suspended = suspended_suites()
+    reds = red(st, suspended)
     if '--json' in argv:
-        print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds]}))
+        print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds],
+                          'suspended': [{'suite': suite, **st[suite]} for suite in sorted(suspended) if suite in st]}))
     else:
         for suite, s in reds:
             print(f"{suite}\t{s['sha'][:7]}\t{s['at']}\t{s['url']}")

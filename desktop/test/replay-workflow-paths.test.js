@@ -23,3 +23,9 @@ test('each replay workflow checks its own paths first, so a new import cannot sl
     assert.match(out, /list everything it loads/, workflow);
   }
 });
+
+test('a health workflow without a pull_request trigger has no PR paths to generate', () => {
+  const out = execFileSync(process.execPath, [fileURLToPath(new URL('../../tools/replay-files.mjs', import.meta.url)), '--paths', 'e2e-flip.yml'], {encoding: 'utf8'});
+  assert.match(out, /no pull_request paths/);
+  assert.doesNotMatch(out, /^\s*- /m, 'workflow_run cannot filter by changed paths or install files');
+});

@@ -216,7 +216,8 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [x] Health greys: AI credit, runner, install; the verdict names the reason (the install case is a reconstructed fixture: no recorded install red exists yet). (proof: tests/test_pr_verdict_health.py)
 - [x] At most 5 suites on a PR, picked by how strongly the diff reaches them; the other reached suites run after the merge (rule G). (proof: desktop/e2e/test/pr-suites-cap.test.mjs)
 - [ ] Catch-weighted picking: a PUBLIC snapshot of the scorecard feeds `pr-suites.mjs --catches` (the scorecard is private, so today's ties go to reach, then name; the site session owns the snapshot).
-- [ ] Suspension: a red-then-green flip on one commit suspends the check, with an owner issue. The tool is built and dry-run by default (`tools/suspend-flip.mjs`, test `desktop/e2e/test/suspend-flip.test.mjs`); this box is ticked when a workflow calls it after a re-run.
+- [x] Suspension after a GitHub re-run: a red-then-green flip on one commit opens an owner issue with the proposed `lanes.json` entry (`.github/workflows/e2e-flip.yml` calls `tools/suspend-flip.mjs`), and the beta gate shows a `suspended` suite as not blocking. (proof: tests/test_workflow_e2e_flip.py)
+- [ ] Suspension also sees the in-job retry flip: a suite whose first try fails and whose "once more" try passes (the `intermittent` marker, `lib/flaky-proof.mjs`) is today kept red by gate G5 and never reaches the suspension tool, because it is one run attempt; applyflows flipped this way on 29 Oct.
 
 ### 3. Expectation rule and plumbing brake
 - [x] Rule E: a PR that changes what a backbone test expects carries its citation (mechanical check plus `.gitar/review/e2e-reliability.md`). (proof: desktop/test/e2e-reliability-check.test.js)

@@ -20,12 +20,20 @@ esac
 here="$(cd "$(dirname "$0")" && pwd)"
 poll="${RED_MAIN_POLL:-30}" find_max="${RED_MAIN_FIND_S:-300}" wait_max="${RED_MAIN_WAIT_S:-3600}"
 
-reds="$(python3 "$here/main_e2e_state.py" --repo "$repo")"; read_rc=$?
+state_json="$(python3 "$here/main_e2e_state.py" --repo "$repo" --json)"; read_rc=$?
 if [ "$read_rc" -ne 0 ]; then   # unknown is not green (26 Oct 2026: a failed read said "no suite red")
   echo "Could not read main's e2e state: unknown, not green."
   if [ -n "$force" ]; then echo "Starting the beta anyway (--force): $force"; exit 0; fi
   echo "No beta. Re-run, or --force \"<why>\"."; exit 1
 fi
+python3 -c 'import json, sys
+for suite in json.load(sys.stdin)["suspended"]:
+    print("suspended (owner issue, not blocking): " + suite["suite"])
+' <<<"$state_json"
+reds="$(python3 -c 'import json, sys
+for s in json.load(sys.stdin)["red"]:
+    print("\t".join([s["suite"], s["sha"][:7], s["at"], s["url"]]))
+' <<<"$state_json")"
 if [ -z "$reds" ]; then echo "Main's e2e: no suite red."; exit 0; fi
 echo "Main's e2e is red:"; awk -F'\t' '{ printf "  %s (since %s, %s)\n", $1, $2, $4 }' <<<"$reds"
 if [ -n "$status" ]; then exit 1; fi

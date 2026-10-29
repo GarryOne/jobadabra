@@ -81,7 +81,15 @@ function main(argv) {
   for (const {suite, entry, issue} of found) {
     console.log(`## Proposed lanes.json entry\n${JSON.stringify({[suite]: entry}, null, 2)}\n\n## Owner issue\nTitle: ${issue.title}\n\n${issue.body}\n`);
     if (argv.includes('--open')) {
-      execFileSync('gh', ['issue', 'create', '--repo', value('--repo') || process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra', '--assignee', entry.owner, '--title', issue.title, '--body', issue.body], {stdio: 'inherit'});
+      const repo = value('--repo') || process.env.GITHUB_REPOSITORY || 'GarryOne/jobadabra';
+      // Why (29 Oct 2026, owner): suspension belongs to the suite until resolved, even if another run or SHA flips.
+      const open = JSON.parse(execFileSync('gh', ['issue', 'list', '--repo', repo, '--state', 'open', '--search', `in:title "Suspend ${suite}:"`, '--limit', '100', '--json', 'number,title,url'], {encoding: 'utf8'}));
+      const existing = open.find(row => row.title.startsWith(`Suspend ${suite}:`));
+      if (existing) {
+        console.log(`Suspension issue already open for ${suite}: ${existing.url || `#${existing.number}`}; no duplicate created.`);
+        continue;
+      }
+      execFileSync('gh', ['issue', 'create', '--repo', repo, '--assignee', entry.owner, '--title', issue.title, '--body', issue.body], {stdio: 'inherit'});
     }
   }
   if (!found.length) console.log('No new same-commit retry flips; no suspension proposed.');

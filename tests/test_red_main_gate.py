@@ -1,6 +1,7 @@
 """No beta while main's e2e is red (tools/red-main-gate.sh, gate G2, 26 Oct 2026: beta 2 started 1.5 h after main went red on the same suites)."""
 import json
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -8,7 +9,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-GATE = ROOT / 'tools/red-main-gate.sh'
 RED_SHA, NEW_SHA = 'f' * 40, 'e' * 40
 
 FAKE_GH = r'''#!/usr/bin/env python3
@@ -45,21 +45,52 @@ RED_RUN = {'id': 2, 'display_title': 'E2E check · on time (Worker cron)', 'conc
 RED_JOBS = {'2': [{'name': 'cardstates', 'conclusion': 'failure'}, {'name': 'settings', 'conclusion': 'failure'}, {'name': 'jobs', 'conclusion': 'success'}]}
 
 
-def gate(data, *extra):
+def gate(data, *extra, lanes=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / 'bin').mkdir()
+        (tmp / 'tools').mkdir()
+        for script in ('red-main-gate.sh', 'main_e2e_state.py'):
+            shutil.copyfile(ROOT / 'tools' / script, tmp / 'tools' / script)
+        # The bisect's issue lifecycle is outside this gate test; never reach the real checkout or accounts.
+        (tmp / 'tools/e2e_bisect.py').write_text('# Fake issue lifecycle boundary for gate tests.\n')
+        if lanes is not None:
+            (tmp / 'desktop/e2e').mkdir(parents=True)
+            (tmp / 'desktop/e2e/lanes.json').write_text(lanes)
         gh = tmp / 'bin/gh'
         gh.write_text(FAKE_GH)
         gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
         (tmp / 'data.json').write_text(json.dumps({'recheck_jobs': [{'name': 'cardstates', 'conclusion': 'success'}, {'name': 'settings', 'conclusion': 'success'}], **data}))
         env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'FAKE_GH': str(tmp), 'RED_MAIN_POLL': '0', 'RED_MAIN_FIND_S': '2', 'RED_MAIN_WAIT_S': '2'}
-        proc = subprocess.run(['bash', str(GATE), 'o/r', *extra], env=env, capture_output=True, text=True, timeout=120)
+        proc = subprocess.run(['bash', str(tmp / 'tools/red-main-gate.sh'), 'o/r', *extra], env=env, capture_output=True, text=True, timeout=120)
         dispatch = (tmp / 'dispatched').read_text() if (tmp / 'dispatched').exists() else ''
         return proc.returncode, proc.stdout + proc.stderr, dispatch
 
 
 class RedMainGate(unittest.TestCase):
+    def test_only_suspended_reds_allow_beta_and_are_visible(self):
+        lanes = json.dumps({'suites': {suite: {'lane': 'suspended'} for suite in ('cardstates', 'settings')}})
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': RED_SHA}, lanes=lanes)
+        self.assertEqual(code, 0, out)
+        for suite in ('cardstates', 'settings'):
+            self.assertIn(f'suspended (owner issue, not blocking): {suite}', out)
+        self.assertEqual(dispatch, '')
+
+    def test_suspended_suite_is_not_dispatched_but_tolerant_red_still_is(self):
+        lanes = json.dumps({'suites': {'cardstates': {'lane': 'suspended'}, 'settings': {'lane': 'tolerant'}}})
+        code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, lanes=lanes)
+        self.assertEqual(code, 0, out)
+        self.assertIn('suspended (owner issue, not blocking): cardstates', out)
+        self.assertIn('suite=settings', dispatch)
+        self.assertNotIn('cardstates', dispatch)
+
+    def test_invalid_registry_and_unlisted_reds_still_block(self):
+        for lanes in ('{', '{"suites": {"cardstates": {"lane": "suspended"}}}'):
+            code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': RED_SHA}, '--status', lanes=lanes)
+            self.assertEqual(code, 1, out)
+            self.assertIn('settings', out)
+            self.assertEqual(dispatch, '')
+
     def test_green_main_lets_the_beta_go(self):
         code, out, dispatch = gate({'runs': [{**RED_RUN, 'conclusion': 'success'}], 'jobs': {'2': [{'name': 'cardstates', 'conclusion': 'success'}]}, 'head': RED_SHA})
         self.assertEqual(code, 0, out)

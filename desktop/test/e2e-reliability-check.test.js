@@ -194,6 +194,12 @@ test('rule F requires exactly one valid Job line on a changed revert workflow', 
   assert.equal(push(before, {[file]: `# Job: run the backbone\n${after}`}, message), '');
 });
 
+test('rule F covers the flip reporter and requires its design job', () => {
+  const file = '.github/workflows/e2e-flip.yml', messages = ['Harness-job: report health'];
+  assert.match(harnessProblems([{file, after: 'name: Flip reporter'}], messages).join('\n'), /needs exactly one Job:/);
+  assert.deepEqual(harnessProblems([{file, after: '# Job: report health\nname: Flip reporter'}], messages), []);
+});
+
 test('both push and PR checks run the gate; review rules block E, F and excessive Gitar rounds', () => {
   const script = fs.readFileSync(path.join(root, 'tools/pre-push-check.sh'), 'utf8');
   assert.match(script, /node tools\/e2e-reliability-check\.mjs --base origin\/main/);

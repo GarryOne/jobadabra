@@ -59,7 +59,7 @@ test('every chooser engine, Free AI included, has a name and model names; an unk
 
 // The extension's panel and popup texts have no engine to name: they say "AI". Generic "Claude" strings there may only shrink (decision logs and
 // Claude-only takeover texts: panel-claude.js).
-const ALLOWED_EXT = {'extension/panel-claude.js': 6, 'extension/flow.js': 7, 'extension/fill-flow.js': 2, 'extension/messages-panel.js': 2, 'extension/background.js': 1, 'extension/visit.js': 1};
+const ALLOWED_EXT = {'extension/panel-claude.js': 6, 'extension/flow.js': 2, 'extension/fill-tab-inputs.js': 1, 'extension/fill-tab-finish.js': 4, 'extension/fill-flow.js': 2, 'extension/messages-panel.js': 2, 'extension/background.js': 1, 'extension/visit.js': 1};
 test('no new hard-coded generic "Claude" in the extension (the panel, popup and progress lines say "AI")', () => {
   const dir = path.join(root, '..', 'extension'), found = {};
   for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) {

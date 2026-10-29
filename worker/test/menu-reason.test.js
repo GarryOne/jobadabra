@@ -51,7 +51,7 @@ test('applyCombos replaces the page label by what the click observed, for the la
 
 test('both passes of the fill flow write the clicks\' observations onto the rows', async () => {
   const { readFileSync } = await import('node:fs');
-  const source = readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../../extension/fill-tab-finish.js', import.meta.url), 'utf8');
   assert.equal(source.split('applyCombos(summary.trace, combos)').length - 1, 2);
 });
 

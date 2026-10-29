@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
 
-const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+const flow = ['../../extension/flow.js', '../../extension/fill-tab-inputs.js', '../../extension/fill-tab-finish.js']
+    .map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
 const background = fs.readFileSync(new URL('../../extension/background.js', import.meta.url), 'utf8');
 
 test('without a kit, Claude is asked and the known fields are filled before its answer is awaited', () => {

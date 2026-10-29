@@ -31,6 +31,6 @@ test('every object-valued field the extension\'s decide lines send is a count ma
     const clean = cleanFields(payload);
     assert.equal(clean.dropped, undefined, `${line}: ${clean.dropped} was cut`);
   }
-  const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  const flow = fs.readFileSync(new URL('../../extension/fill-tab-finish.js', import.meta.url), 'utf8');
   assert.match(flow, /decide\('fill', 'tries per control', tries\)/, 'the tries line is the one this test names');
 });

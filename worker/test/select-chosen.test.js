@@ -34,7 +34,7 @@ test('every reader reads menus by the one rule (page/read-back.js), and no copy 
     assert.doesNotMatch(read(path), /o\.index === 0 && \/\^\(\|0\|-1\)\$\//, `${path} keeps no copy of the menu rule`);
     assert.match(read(path), /__jobPilottoReadBack/, `${path} asks the one reader`);
   }
-  assert.match(read('extension/flow.js'), /window\.__jobPilottoDescribeForm\?\.\(true\)/, 'the end of a fill reads settled');
+  assert.match(read('extension/fill-tab-finish.js'), /window\.__jobPilottoDescribeForm\?\.\(true\)/, 'the end of a fill reads settled');
   assert.match(read('extension/page/coverage.js'), /window\.__jobPilottoChosen\(el\)/);
 });
 

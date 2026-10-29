@@ -140,8 +140,8 @@ test('a kit fill starts at once: kit and contact details prefetched, no fixed wa
   assert.match(background, /if \(!fast\) await new Promise/);
   // Your CV is read again when the prefetch is a few seconds old: a CV tailored after the form was first seen must be the one attached.
   assert.match(background, /Date\.now\(\) - ready\.meAt > ME_FRESH_MS/);
-  const flow = read('extension/flow.js');
-  assert.match(flow, /const me = early \|\| await apiFor\(tab\.id, /);
+  const flow = read('extension/fill-tab-inputs.js');
+  assert.match(flow, /return early \|\| await apiFor\(tab\.id, /);
   assert.match(read('extension/combo-click.js'), /limit = PATIENCE\.first; waited < limit; waited = waitedNow\(\)/);   // the quick wait moved with the menu click (combo-click.js); real time since 14 Oct 2026, never counted ticks, less the page's busy time (#731)
 });
 

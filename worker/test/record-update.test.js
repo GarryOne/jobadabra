@@ -77,7 +77,7 @@ test('the page\'s value_stayed message reaches it (progress.js), only from a tab
 
 test('the ends of the record: flow.js arms after it sends the run; every reader of the fields line knows the updated one', () => {
   const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
-  assert.match(read('extension/flow.js'), /armRecordUpdate\(tab\.id,/);
+  assert.match(read('extension/fill-tab-finish.js'), /armRecordUpdate\(tab\.id,/);
   assert.match(read('extension/ladder/progress.js'), /noteLateRetype\(/);
   const smoke = read('desktop/e2e/lib/record-sites.mjs');
   assert.ok(!/fields: \(\\d\+\) filled/.test(smoke) && !/fill: fields: \\d\+ filled/.test(smoke), 'record-sites.mjs reads the fields line through FIELDS_LINE, never its own copy of the words');
@@ -94,7 +94,7 @@ test('the run row\'s update: the same run with the counts of the new record, nev
 });
 
 test('flow.js sends the update to the run it logged (its id), and only when the store gave one', () => {
-  const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  const flow = fs.readFileSync(new URL('../../extension/fill-tab-finish.js', import.meta.url), 'utf8');
   assert.match(flow, /runUpdateBody\(/);
   assert.match(flow, /\(await logged\)\?\.id/);
 });

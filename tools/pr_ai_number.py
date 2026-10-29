@@ -20,7 +20,9 @@ def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status=
     try:
         if 'qualityai' in reports:
             main_module = lru_cache()(main_state)
-            rates = numbers(repo, runs, jobs, gh, lambda run: main_module().counts_green(run), my_run, my_status, runner)
+            # Why (29 Oct 2026, qu): after-merge artifacts measure main's code even though their green cannot clear a suite's state.
+            rates = numbers(repo, runs, jobs, gh, lambda run: not main_module().NOT_MAIN_CHECK.match(run.get('display_title') or ''),
+                            my_run, my_status, runner, night_module=lambda: main_state('beta_rate_gate'))
     except Exception as error:
         print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
     return reports, (lambda why: description(why, *rates)) if rates is not None else str
@@ -123,21 +125,32 @@ def artifact_rates(repo, rid, gh, artifact=ARTIFACT):
         return True, None
 
 
-def main_rates(repo, gh, comparable):
-    """Search at most ten completed main runs; a broken newest artifact never falls back to an older number."""
+def main_rates(repo, gh, comparable, night_module=None):
+    """Read main's newest measurement, then desktop nights only if no e2e artifact exists; broken artifacts never fall back."""
     try:
         runs = json.loads(gh('api', f'repos/{repo}/actions/workflows/e2e.yml/runs?branch=main&status=completed&per_page=10'))['workflow_runs']
         for run in runs[:10]:
-            if comparable(run):
+            # Why (29 Oct 2026, qu): the API filters are checked again; PR-title runs measure a branch, never main.
+            if run.get('head_branch') == 'main' and run.get('status') == 'completed' and not (run.get('display_title') or '').startswith(PR_TITLE) and comparable(run):
                 exists, rates = artifact_rates(repo, run['id'], gh)
                 if exists:
                     return rates
+        # Why (29 Oct 2026, qu): a quiet e2e history still has desktop measurements; reuse the nightly reader without a circular import.
+        try:
+            from .beta_rate_gate import main_nights
+        except ImportError:  # Direct tools invocation or the verdict's standalone helper copy.
+            if night_module is not None:
+                main_nights = night_module().main_nights
+            else:
+                from beta_rate_gate import main_nights
+        nights = main_nights(repo, 'qualityai', gh, first_only=True)
+        return nights[0][1] if nights else None
     except Exception as error:
         print(f'main AI counts unavailable ({type(error).__name__})', file=sys.stderr)
     return None
 
 
-def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner=''):
+def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner='', night_module=None):
     """Read this PR's newest qualityai measurement and main once; failed or unfinished samples are n/a."""
     selected = [run for run in runs if str(run.get('displayTitle', '')).startswith(PR_TITLE)
                 and 'qualityai' in run['displayTitle'][len(PR_TITLE):].split(' · ')[0].split(',')]
@@ -156,7 +169,7 @@ def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner=''
             _, current = artifact_rates(repo, rid, gh)
     except Exception as error:
         print(f'PR AI counts unavailable ({type(error).__name__})', file=sys.stderr)
-    return current, main_rates(repo, gh, comparable)
+    return current, main_rates(repo, gh, comparable, night_module)
 
 
 RATE_METRICS = (*METRICS, ('steady', 'within8', 'pairs', 'steady'))

@@ -38,7 +38,7 @@ test('payload skips only matching comment verdicts or reviewing without any verd
 });
 
 /** Runs the real CLI with only gh replaced; the fake records calls and persists label writes for convergence reads. */
-function runCliCase(t, {event = 'issue_comment', body = APPROVED, labels = [], failure = '', legacy = false, eventFile = 'present', issueBody = ''} = {}) {
+function runCliCase(t, {event = 'issue_comment', body = APPROVED, labels = [], failure = '', legacy = false, eventFile = 'present', issueBody = '', working = false} = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'gitar-label-'));
   t.after(() => rmSync(dir, {recursive: true, force: true}));
   const stateFile = join(dir, 'state.json'), preload = join(dir, 'fake-gh.mjs'), payloadFile = join(dir, 'event.json');
@@ -90,7 +90,7 @@ syncBuiltinESMExports();
     : {pull_request: {labels: labelObjects}};
   writeFileSync(payloadFile, JSON.stringify(payload));
   const eventPath = legacy || eventFile === 'unset' ? '' : eventFile === 'missing' ? join(dir, 'missing.json') : eventFile === 'unreadable' ? dir : payloadFile;
-  const done = spawnSync(process.execPath, ['--import', preload, fileURLToPath(new URL('../tools/gitar-label.mjs', import.meta.url)), '1'], {
+  const done = spawnSync(process.execPath, ['--import', preload, fileURLToPath(new URL('../tools/gitar-label.mjs', import.meta.url)), ...(working ? ['working', '1'] : ['1'])], {
     encoding: 'utf8',
     env: {PATH: process.env.PATH, GITHUB_REPOSITORY: 'o/r', GITHUB_EVENT_NAME: event,
       GITHUB_EVENT_PATH: eventPath, FAKE_GH_STATE: stateFile,
@@ -231,4 +231,13 @@ test('a "working" label event with the label gone is not "working" (Gitar, #2445
   const gone = structuredClone(GQL);
   gone.repository.pullRequest.labels.nodes = [{name: 'Gitar: reviewing'}];   // the label event is still in the timeline
   assert.equal(fromGraphql(gone).workingSince, null, 'the REST path only looks the time up while the label is on the PR');
+});
+
+ test('marking work repeatedly or after approval leaves labels unchanged', t => {
+  for (const [body, labels] of [[APPROVED, [LABELS.approved.name]], [SUGGEST, [LABELS.suggestions.name, WORKING.name]]]) {
+    const result = runCliCase(t, {working: true, body, labels, legacy: true});
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(result.labels, labels);
+    assert.equal(result.calls, 1, 'only the live state read; no label writes');
+  }
 });

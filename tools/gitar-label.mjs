@@ -144,10 +144,13 @@ function syncOnce(pr) {
 
 function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
+  const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
+  // Why (#2386, 29 Oct 2026): preserve the existing event time; repeated comments must not remove and re-add the same label.
+  if (read.state !== 'open' || verdict === LABELS.approved.name || read.labels.includes(WORKING.name)) return;
   ensure(repo, WORKING);
-  if (pages(`repos/${repo}/issues/${pr}/labels`).some(l => l.name === WORKING.name)) gh('pr', 'edit', String(pr), '--remove-label', WORKING.name, '-R', repo);   // Why (#2386, Gitar): re-adding a present label makes no new labeled event, so its time would stay old
   gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
-  main(pr);   // Why (#2386, Gitar): an approved PR must not keep "working"; the sync drops it again
+  main(pr); // Approval or a newer push can arrive during the write; reconcile against the live state.
 }
 
 /** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */

@@ -1,4 +1,4 @@
-// Guards tools/clean-code-js.mjs: new JS code over the complexity limit or copying a function is refused; old code and simple code are not.
+// Guards tools/clean-code-js.mjs: new JS code over the complexity limit, an old function a change makes more complex, or a copied function is refused; old code and simple code are not.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-const {check, baseCommit, changedFiles, COMPLEXITY_LIMIT} = await import('../../tools/clean-code-js.mjs');
+const {check, baseCommit, baseLineOf, changedFiles, COMPLEXITY_LIMIT} = await import('../../tools/clean-code-js.mjs');
 
 // A function with `n` nested ifs, each holding a statement (so they cannot be merged): cognitive complexity grows with each nesting level.
 const nested = (name, n) => `export function ${name}(x) {\n${Array.from({length: n}, (_, i) => `${'  '.repeat(i + 1)}if (x > ${i}) {\n${'  '.repeat(i + 2)}x += 1;`).join('\n')}\n${'  '.repeat(n + 1)}return x;\n${Array.from({length: n}, (_, i) => `${'  '.repeat(n - i)}}`).join('\n')}\n  return 0;\n}\n`;
@@ -21,10 +21,51 @@ test('a new function over the complexity limit is refused, with its line and the
   assert.match(found[0].message, new RegExp(`${COMPLEXITY_LIMIT}`));
 });
 
-test('the same function in old code, where no added line touches its head, is not refused', async () => {
+test('an old function over the limit that the change does not make more complex passes', async () => {
   const source = nested('tangled', 8);
-  const found = await check([{path: 'desktop/lib/x.js', source, added: new Set([5])}]);
+  const found = await check([{path: 'desktop/lib/x.js', source, added: new Set([5]), base: {source, lineOf: line => line}}]);
   assert.deepEqual(found, []);
+});
+
+// Why (29 Oct 2026, owner: "do we have PR CI guardrails to not get back again in this situation"): fillTab (113) and consider (247) grew a few
+// lines at a time; each change passed because complexity is reported on a function's head line, which those changes never touched.
+test('an old function that a commit makes more complex is refused, though its head line is unchanged', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-grown-'));
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']});
+  fs.mkdirSync(path.join(dir, 'extension'));
+  const file = path.join(dir, 'extension', 'flow.js');
+  fs.writeFileSync(file, `export const top = 1;\n${nested('fillTab', 7)}`);
+  git('init', '-q', '-b', 'main'); git('add', '.'); git('commit', '-q', '-m', 'base');
+  const base = git('rev-parse', 'HEAD').trim();
+  fs.writeFileSync(file, `export const top = 1;\n${nested('fillTab', 8)}`);
+  git('commit', '-q', '-am', 'one more branch');
+  const found = await check(changedFiles(base, dir));
+  assert.equal(found.length, 1, JSON.stringify(found));
+  assert.deepEqual([found[0].path, found[0].line, found[0].rule], ['extension/flow.js', 2, 'sonarjs/cognitive-complexity']);
+  assert.match(found[0].message, /raised it from 28/);
+});
+
+test('an old function under the limit that the change pushes over it is refused; one the change simplifies passes', async () => {
+  const grown = nested('tangled', 8);
+  const over = await check([{path: 'desktop/lib/x.js', source: grown, added: new Set([5]), base: {source: nested('tangled', 4), lineOf: line => line}}]);
+  assert.equal(over.length, 1, JSON.stringify(over));
+  assert.match(over[0].message, new RegExp(`raised it from at most ${COMPLEXITY_LIMIT}`));
+  const simpler = await check([{path: 'desktop/lib/x.js', source: nested('tangled', 7), added: new Set([5]), base: {source: grown, lineOf: line => line}}]);
+  assert.deepEqual(simpler, []);
+});
+
+test('a line keeps its base line number across added, changed and removed lines', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-lines-'));
+  const lines = n => Array.from({length: n}, (_, i) => `line ${i + 1}`);
+  const before = lines(30), after = [...before];
+  after.splice(19, 2);                       // remove base lines 20-21
+  after[9] = 'changed 10';                   // change base line 10
+  after.splice(3, 0, 'new a', 'new b');      // add two lines after base line 3
+  fs.writeFileSync(path.join(dir, 'a'), `${before.join('\n')}\n`); fs.writeFileSync(path.join(dir, 'b'), `${after.join('\n')}\n`);
+  let diff = '';
+  try { execFileSync('git', ['diff', '--no-index', '-U0', 'a', 'b'], {cwd: dir, encoding: 'utf8'}); } catch (error) { diff = error.stdout; }   // exit 1 = files differ
+  const lineOf = baseLineOf(diff);
+  after.forEach((text, i) => assert.equal(lineOf(i + 1), text.startsWith('line ') ? Number(text.slice(5)) : null, `new line ${i + 1}: ${text}`));
 });
 
 test('a small new function passes', async () => {

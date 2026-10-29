@@ -32,7 +32,8 @@ test('reach follows imports to the end, a folder read covers every file under it
   assert.deepEqual([...paths].sort(), ['e2e/lib/g.mjs', 'e2e/lib/h.mjs', 'e2e/test/x.test.mjs', 'renderer/']);
   assert.equal(browser, true);
   const picked = reachedTests({root, tests: ['e2e/test/x.test.mjs'], changed: ['renderer/ui-menu.css']});
-  assert.deepEqual(picked.files, ['e2e/test/x.test.mjs']);
+  // Why (#2435/#2450, 29 Oct 2026): even a single reached test must bring the workflow coverage guard along.
+  assert.deepEqual(picked.files, [inRepo('test-reach.test.mjs'), 'e2e/test/x.test.mjs']);
   assert.equal(picked.why['e2e/test/x.test.mjs'], 'renderer/ui-menu.css');
   assert.deepEqual(reachedTests({root, tests: ['e2e/test/x.test.mjs'], changed: ['docs/x.md']}).files, [], 'the root read reaches nothing by itself');
 });
@@ -43,6 +44,41 @@ test('the pr set runs when the harness changed, not for a recorded case alone', 
   for (const file of always) assert.ok(harness.files.includes(file), file);
   assert.ok(harness.files.includes(inRepo('test-reach.test.mjs')), 'a change to the reach code runs this test, though it is in the daily set');
   assert.deepEqual(reachedTests({root: ROOT, tests, changed: ['desktop/e2e/recorded/x/case.json'], always}).files, []);
+});
+
+// Why (#2458, 29 Oct 2026): excluded replay data needs a read inside its DATA tree; a desktop/ ancestor read must still cover harness code.
+test('a parent directory read selects lib changes but replay data needs its own file or directory read', t => {
+  const parent = inRepo('parent.test.mjs'), folder = inRepo('folder.test.mjs'), file = inRepo('file.test.mjs');
+  const reading = relative => `const input = new URL('${relative}', import.meta.url);`;
+  const root = tree({[parent]: reading('../..'), [folder]: reading('../recorded/x/'), [file]: reading('../recorded/x/case.json')});
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const changed = ['desktop/e2e/recorded/x/case.json'];
+  assert.deepEqual(reachedTests({root, tests: [parent], changed}).files, []);
+  assert.deepEqual(reachedTests({root, tests: [parent], changed: ['desktop/e2e/lib/helper.mjs']}).files,
+    [parent, inRepo('test-reach.test.mjs')]);
+  assert.deepEqual(reachedTests({root, tests: [parent, folder, file], changed}).files,
+    [file, folder, inRepo('test-reach.test.mjs')]);
+});
+
+// Why (#2435/#2450, 29 Oct 2026): a parent-only URL is a directory even without a trailing slash; desktop/** must cover it.
+test('parent-only URL specifiers reach a directory with its trailing slash', t => {
+  const root = tree({'desktop/e2e/test/x.test.mjs': ''});
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  for (const spec of ['../..', '../../', './../..']) {
+    fs.writeFileSync(path.join(root, 'desktop/e2e/test/x.test.mjs'), `const dir = new URL('${spec}', import.meta.url);`);
+    const {paths} = reach(root, 'desktop/e2e/test/x.test.mjs');
+    assert.deepEqual([...paths].sort(), ['desktop/', 'desktop/e2e/test/x.test.mjs'], spec);
+    assert.ok([...paths].every(file => file.startsWith('desktop/')), 'desktop/** covers every reached path');
+  }
+});
+
+// Why (#2435/#2450, 29 Oct 2026): changing another test's inputs must run the guard that checks every test's workflow coverage.
+test('the PRs that escaped the workflow coverage guard now select it; docs alone select nothing', () => {
+  const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo);
+  const picked = ['desktop/e2e/test/pr-suites-cap.test.mjs', 'desktop/e2e/lib/ai-answers.mjs']
+    .map(file => reachedTests({root: ROOT, tests, changed: [file]}).files.includes(inRepo('test-reach.test.mjs')));
+  assert.deepEqual(picked, [true, true], '#2435 and #2450 must both run the workflow coverage guard');
+  assert.deepEqual(reachedTests({root: ROOT, tests, changed: ['docs/x.md']}).files, []);
 });
 
 test('the two changes that left harness-daily red reach the tests they broke (owner, 27 Oct 2026: "Yes, reached files")', () => {

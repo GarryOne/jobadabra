@@ -21,7 +21,10 @@ on:
       # ... except the ones a harness test reads (a later pattern wins)
       - 'desktop/e2e/fixtures/cv.json'
       - 'desktop/e2e/fixtures/cv.pdf'
-      - 'desktop/e2e/fixtures/golden/truth.json'
+      # Why (#2435/#2450, 29 Oct 2026): ai-answers.mjs reads the golden directory and the photographer's stored sources and truth.
+      - 'desktop/e2e/fixtures/golden/**'
+      - 'desktop/e2e/fixtures/golden-photographer/sources.json'
+      - 'desktop/e2e/fixtures/golden-photographer/truth.json'
       - 'desktop/e2e/fixtures/real-forms/**'
       - 'desktop/e2e/recorded/multi-select-menu-1/form.html'
       - 'extension/**'

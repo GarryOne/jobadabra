@@ -1,4 +1,5 @@
 // Which harness test files a change reaches: each test's relative imports (static, dynamic, and files it reads via new URL(..., import.meta.url)), followed to the end.
+// Job: pick the suites
 // Why (owner, 27 Oct 2026, "Yes, reached files"): a PR ran only the 30-file "pr" set, so a harness or app change broke its own daily-set tests unseen;
 // harness-daily stayed red 10 days. A PR now also runs every test file whose imports reach a file it changed. Guard: test/test-reach.test.mjs.
 import fs from 'node:fs';
@@ -45,7 +46,9 @@ export function reach(root, file, cache = new Map()) {
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it
-      queue.push(unstage(spec.endsWith('/') || spec === '.' || spec === '..' ? `${joined.replace(/\/?$/, '/')}` : joined));
+      // Why (#2435/#2450, 29 Oct 2026): parent-only specifiers such as ../.. name directories, which workflow globs need with a trailing slash.
+      const directory = spec.endsWith('/') || spec.split('/').every(part => part === '.' || part === '..');
+      queue.push(unstage(directory ? `${joined.replace(/\/?$/, '/')}` : joined));
     }
   }
   return {paths, browser};
@@ -54,10 +57,12 @@ export function reach(root, file, cache = new Map()) {
 // Test data other jobs replay (harness.yml's paths leave them out): a change there runs only the tests that read it, not the pr set.
 const DATA = /^desktop\/e2e\/(?:recorded|recorded-pending|fixtures|ladder-fixtures|widget-zoo)\//;
 const HARNESS_INPUTS = new Set(['.github/workflows/harness.yml', 'desktop/package.json', 'desktop/package-lock.json', 'desktop/scripts/stage.mjs']);
-const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item));
+// Why (#2458, 29 Oct 2026): replay data only reaches reads inside DATA trees; ancestor directories would select tests for paths the workflow excludes.
+const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item) && (!DATA.test(changed) || DATA.test(item)));
 
 /**
  * The harness test files a change reaches. Assumes `changed` is repo-relative with '/' separators.
+ * Invariant: any nonempty selection includes the workflow coverage guard; no reached tests means no guard.
  * @param {{root: string, tests: string[], changed: string[], always?: string[]}} input tests: repo-relative test files; always: run when the harness itself changed
  * @returns {{files: string[], browser: boolean, why: Record<string, string>}} files sorted; why: each file's first changed path that reached it
  */
@@ -73,5 +78,7 @@ export function reachedTests({root, tests, changed, always = []}) {
     why[test] = hit;
     browser ||= reached.browser;
   }
+  // Why (#2435/#2450, 29 Oct 2026): another test's reads can break workflow coverage without importing the guard that checks it.
+  if (Object.keys(why).length) why['desktop/e2e/test/test-reach.test.mjs'] ||= 'a harness test was reached: check workflow paths';
   return {files: Object.keys(why).sort(), browser, why};
 }

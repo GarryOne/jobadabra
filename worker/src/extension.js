@@ -10,7 +10,7 @@
 // origin, so the extension needs no host permission for the Worker; the token is the access control.
 
 import { anthropicClient, priceOf } from './ai.js';
-import { cleanFields } from './extension-log.js';
+import { cleanEntries } from './extension-log.js';
 import { askAgainForGaps, unanswered } from './answer-missing.js';
 import { withholdOwner } from './owner-guard.js';
 import { BILLED, billedTo, learnings, runBlocks, runData, runRecord } from './extension-run-record.js';
@@ -455,12 +455,7 @@ export async function handleExtension(request, env) {
       // the boundary: counts and ids, never a form answer or a message body (lib/log.js's rule, enforced on the way
       // in). The desktop app writes them to logs/app.log; a Cloudflare Worker prints them.
       const { entries } = await request.json().catch(() => ({}));
-      const clean = (Array.isArray(entries) ? entries : []).slice(-50).map((entry) => ({
-        at: typeof entry?.at === 'string' ? entry.at.slice(0, 30) : '',
-        kind: String(entry?.kind || 'note').slice(0, 24),
-        text: String(entry?.text || '').slice(0, 300),
-        fields: cleanFields(entry?.fields),
-      }));
+      const clean = cleanEntries(entries);
       if (env.onLog) await env.onLog(clean);
       else console.log(`extension log: ${clean.map((entry) => `${entry.kind}: ${entry.text}`).join(' | ')}`);
       return json({ ok: true, kept: clean.length });

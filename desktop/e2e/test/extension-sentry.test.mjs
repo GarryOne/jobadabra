@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {copyExtension, freePort, launchBrowser} from '../lib/extension.mjs';
-import {cleanFields} from '../../../worker/src/extension-log.js';   // not extension.js: it imports the AI SDK, which the desktop CI job does not install
+import {cleanEntries} from '../../../worker/src/extension-log.js';   // not extension.js: it imports the AI SDK, which the desktop CI job does not install
 import {createWatcher} from '../../lib/real-errors.js';
 import {create} from '../../lib/sentry.js';
 import {create as telemetry, reportingOff} from '../../lib/telemetry.js';
@@ -46,8 +46,7 @@ async function exercise(start) {
     let response;
     if (req.url === '/extension/log' && authorised) {
       const {entries} = JSON.parse(body || '{}');
-      const clean = entries.slice(-50).map(entry => ({at: String(entry.at || '').slice(0, 30), kind: String(entry.kind || 'note').slice(0, 24),
-        text: String(entry.text || '').slice(0, 300), fields: cleanFields(entry.fields)}));
+      const clean = cleanEntries(entries);
       logged.push(...clean);
       watch(clean);
       response = Response.json({ok: true, kept: clean.length});

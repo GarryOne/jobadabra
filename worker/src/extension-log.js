@@ -45,3 +45,8 @@ export function fieldRows(rows) {
       // The pack meaning that placed the field (a field key such as "location", never a value), only when there was one (the live twin loop, 9 Oct 2026).
       ...(typeof row.alias === 'string' && /^[a-z_]{1,30}$/.test(row.alias) ? {alias: row.alias} : {})}));
 }
+
+/** The /extension/log entries as the route keeps them: the last 50, each cut to short fields. One copy, used by the route and by the e2e stand-in for it. */
+export const cleanEntries = entries => (Array.isArray(entries) ? entries : []).slice(-50).map(entry => ({
+  at: typeof entry?.at === 'string' ? entry.at.slice(0, 30) : '', kind: String(entry?.kind || 'note').slice(0, 24),
+  text: String(entry?.text || '').slice(0, 300), fields: cleanFields(entry?.fields)}));

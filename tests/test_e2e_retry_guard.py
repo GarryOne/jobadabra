@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LocalRetryGuard(unittest.TestCase):
-    def guard(self, registry=None, malformed=False, node_missing=False):
+    def guard(self, registry=None, malformed=False, node_missing=False, pr_run=True):
         """Run the workflow's actual lookup and output commands in a temporary suite directory."""
         workflow = (ROOT / '.github/workflows/e2e.yml').read_text()
         first = workflow.split('        id: suite_run\n', 1)[1].split('      # Flaky or real?', 1)[0]
@@ -28,6 +28,9 @@ class LocalRetryGuard(unittest.TestCase):
                 (cwd / 'lanes.json').write_text('{broken' if malformed else json.dumps(registry))
             output = Path(folder) / 'output'
             env = {**os.environ, 'GITHUB_OUTPUT': str(output)}
+            env.pop('PR_RUN', None)
+            if pr_run:
+                env['PR_RUN'] = '1'
             if node_missing:
                 env['PATH'] = folder
             result = subprocess.run([shutil.which('bash'), '-e', '-c', script], cwd=cwd, env=env,
@@ -52,3 +55,13 @@ class LocalRetryGuard(unittest.TestCase):
 
     def test_missing_node_keeps_retry_without_failing_the_step(self):
         self.assertEqual(self.guard(node_missing=True), 'report_only=0')
+
+    def test_only_a_pr_run_skips_the_retry(self):
+        self.assertEqual(self.guard({'suites': {'qualityai': {'lane': 'tolerant', 'pr': 'number'}}}, pr_run=False), 'report_only=0')
+
+    def test_a_failed_report_only_try_still_fails_the_job(self):
+        workflow = (ROOT / '.github/workflows/e2e.yml').read_text()
+        step = workflow.split('- name: "Report-only ${{ matrix.key }} failed its only try', 1)[1].split('- name: "First try failed', 1)[0]
+        self.assertIn("steps.suite_run.outcome == 'failure'", step)
+        self.assertIn("steps.suite_run.outputs.report_only == '1'", step)
+        self.assertIn('run: exit 1', step)

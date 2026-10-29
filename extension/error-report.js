@@ -1,5 +1,5 @@
 // Build a worker exception's diagnostic payload without reading arbitrary messages, page content, URLs or form values.
-const NATIVE_TYPE = /^(?:Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError|AggregateError)$/;
+const NATIVE_TYPE = /^(?:Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError|AggregateError)$/;   // words-ok: the JS engine's own fixed error class names, not page knowledge
 
 function locationFrame(url, line, column, origin) {
   if (!origin || !url.startsWith(origin)) return '';

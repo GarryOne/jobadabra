@@ -7,6 +7,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
+import {runAiGuards} from './no-real-ai.mjs';
 
 // Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
 const TEARDOWN_STOP_MS = 3 * 60000;
@@ -42,7 +43,7 @@ export async function runSuite(name, report = null) {
     // Start-up and close-down are one step each in the report, so its top level is the suite's own steps, not Playwright's calls.
     const {keychainChanges, snapshot} = await import('./keychain-guard.mjs');
     const keychainBefore = snapshot();   // the owner's real Keychain, names and dates only (lib/keychain-guard.mjs); null on CI
-    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, aggregateBudget: suite.aggregateBudget, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
+    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, offlineAi: !!suite.offlineAi, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, aggregateBudget: suite.aggregateBudget, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
     ctx = await (report ? report.step('Start the app and its test services', open) : open());
     if (ctx.skipAll) {
       const message = skipMessage(name, ctx.needs.filter(item => !item.value).map(item => item.name));
@@ -55,8 +56,7 @@ export async function runSuite(name, report = null) {
       const changes = keychainChanges(keychainBefore, snapshot() || new Map());
       if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
     }, {critical: true});   // critical: an E2E_STEPS filter never skips it
-    // A suite that declares `export const realAi = false` answers every AI call with a stand-in: one that reached a real model fails the run (lib/no-real-ai.mjs; test/suite-ai-mode.test.mjs).
-    if (suite.realAi === false) await runAlways('no AI call of this suite reached a real model: the stand-in answered or refused every one', async () => { (await import('./no-real-ai.mjs')).assertNoRealAi(ctx); }, {critical: true});
+    await runAiGuards(suite, ctx, runAlways);
     if (!suite.light) await ctx.run('nothing was queued to report to the product', async () => { assertNothingQueued(ctx.profile); });   // a light suite has no app
     // P7: a request the in-memory Notion does not know is a gap in the stand-in, and the app swallows many such errors (9 Oct 2026: a missing url filter
     // left a form without its kit, three layers away). Each one fails here by name, so the stand-in grows instead of hiding it (lib/notion-fake.mjs).

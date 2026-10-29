@@ -42,6 +42,27 @@ async function preflightKeys({family, engine, key}) {
   await checkOtherKeys({engine: family === 'free' ? 'free' : engine});
   if (checked) console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
 }
+
+/** Select the context's keys and prerequisites, checking live CI keys only for AI suites. */
+export async function contextAiKeys({offlineAi = false, light = false, family, engine}) {
+  // Why (29 Oct 2026, owner): an offline suite must run with revoked or missing CI AI secrets, without checking either family's key.
+  const offlineCi = offlineAi && isCi();
+  const key = offlineCi ? DUMMY_KEY : light ? KEY() : testKey(process.env, engine, family);
+  if (!offlineAi && !light && isCi()) await preflightKeys({family, engine, key});
+  const needsKey = isCi() && !offlineAi ? [{name: familySecret(family, engine), value: key}] : [];
+  const lightNeeds = !offlineAi && isCi() ? [{name: 'E2E_ANTHROPIC_KEY', value: key}] : [];
+  return {key, judgeKey: offlineCi ? DUMMY_KEY : KEY(), appKey: appKey(key), needsKey, lightNeeds, needs: ['api', 'openai'].includes(engine) ? needsKey : []};
+}
+
+/** Start both provider-shaped proxies; offline suites have only a refusing stand-in behind them. */
+export async function contextAiProxies({offlineAi = false, family}) {
+  const offline = {target: 'http://127.0.0.1:1'};
+  const proxy = await startAiProxy({delayMs: 0, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
+  // Why (29 Oct 2026, owner): offline questions refuse before stored replies, caches, the Free AI relay or the Codex broker, with no live fallback target. Why (29 Oct 2026, st): the app asks background AI questions on its own (59 in one Settings run, CI run 40930376557); offline means every one is refused and none reaches a model, not that none is asked.
+  if (offlineAi) proxy.setCanned(() => ({refuse: 'invalid-key'}));
+  const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
+  return {proxy, openaiProxy};
+}
 // Each suite has its own Notion page and connection, so suites can run at the same time. E2E_NOTION_TOKEN is the wizard's; a suite without its own token falls
 // back to it on a developer's Mac (one suite at a time), and is skipped in CI. own: the real workspace (notion-real) takes its own token or none, never the
 // wizard's: with `fresh` it empties its page, and the fallback's page is another suite's.
@@ -55,8 +76,8 @@ export function notionToken(suite, {own: ownOnly = false, env = process.env} = {
 
 // browser: the suite drives a real Chromium with the extension (lib/extension.mjs): the fixture forms are served, and the app's `open` reaches that browser.
 // engine: a suite whose steps the AI proxy answers pins 'api' (a placeholder key on a Mac); otherwise a Mac uses Claude Code, CI the API key (lib/engine.mjs).
-// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call
-export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, stepNeeds = null, report = null} = {}) {
+// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call; st adds offlineAi (score falls, 75 to 63)
+export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});
@@ -69,20 +90,19 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   if (store && store !== 'notion') useNotionAt(notionFarSide({store, standIn: standIn?.url}));
   const family = pickFamily(), engine = pickEngine({suiteEngine, family});   // family: claude | openai | free (CI on Free AI: lib/engine.mjs freeAi)
   // The app's key follows its engine's family (E2E_OPENAI_KEY for OpenAI); a light suite is the judges' own calls: Claude's key.
-  const key = light ? KEY() : testKey(process.env, engine, family), token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
+  const aiKeys = await contextAiKeys({offlineAi, light, family, engine});
+  const {key, judgeKey} = aiKeys, token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
   if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
-  if (!light && isCi()) await preflightKeys({family, engine, key});   // a refused key stops the suite here, named, not as a puzzling AI step later
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
   const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
   countNotionRequestsByStep(runner, standIn);
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).
   // The test's own judges and evals (lib/judge.mjs, fit.mjs, model.mjs, the explore agent) are Claude whatever the app runs on, so both families are judged
   // by one model: always the Anthropic test key, never the app's (9 Oct 2026: the first OpenAI run sent the OpenAI key to Anthropic, 401).
-  const judgeKey = KEY();
-  if (light) return {suite, key, judgeKey, engine, runner, run: runner.run, ARTIFACTS, E2E, needs: isCi() ? [{name: 'E2E_ANTHROPIC_KEY', value: key}] : [], skipAll: isCi() && !key, close: async () => {}};
+  if (light) return {suite, key, judgeKey, engine, runner, run: runner.run, ARTIFACTS, E2E, needs: aiKeys.lightNeeds, skipAll: isCi() && !key, close: async () => {}};
   const ctx = {suite, key, judgeKey, token, runner, standIn, store, run: runner.run, ARTIFACTS, E2E, cv: process.env.E2E_CV || path.join(E2E, 'fixtures', 'cv.pdf'),
-    engine, family, appKey: appKey(key), needsKey: isCi() ? [{name: familySecret(family, engine), value: key}] : [],   // CI only: on a Mac nothing needs a key
-    needs: [...(['api', 'openai'].includes(engine) && isCi() ? [{name: familySecret(family, engine), value: key}] : []),
+    engine, family, appKey: aiKeys.appKey, needsKey: aiKeys.needsKey,
+    needs: [...aiKeys.needs,
       // A suite with no Notion part (`export const notion = false`, the update flow) needs no Notion token and gets no page.
       ...(onNotion ? [{name: `a Notion token for the ${suite} suite (E2E_NOTION_TOKEN${suite === 'wizard' ? '' : `_${(notionTokenOf || suite).toUpperCase()}`})`, value: token}] : [])]};
   if (ctx.needs.some(item => !item.value)) { ctx.skipAll = true; return ctx; }
@@ -99,10 +119,9 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   ctx.built = onNotion && !fresh && await workspaceReady(token);
   ctx.feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-feeds-'));
   fs.cpSync(path.join(E2E, 'fixtures', 'feeds'), ctx.feeds, {recursive: true});
-  ctx.proxy = await startAiProxy({delayMs: 0, ...(aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});   // CI on Free AI: the app's calls go on to the relay
   // The OpenAI engine's calls (the app's and the engine's SDK follow OPENAI_BASE_URL in a test run): metered as app-openai, replayed like Claude's, and they obey
   // ctx.proxy's controls: a suite's stand-ins (setCanned), faults (setMode) and delay apply on an OpenAI turn too, in OpenAI's own shapes (lib/ai-proxy.mjs).
-  ctx.openaiProxy = ctx.family === 'openai' ? await startAiProxy({target: 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: ctx.proxy}) : null;
+  Object.assign(ctx, await contextAiProxies({offlineAi, family}));
   // A suite that breaks Notion on purpose (`export const notionProxy = true`) gets the Notion stand-in between the app and Notion (lib/notion-proxy.mjs).
   // Its far side is the stand-in, never real Notion, unless the suite pins the real workspace; on this Mac's store a dead port (the app has no business with Notion there).
   if (notionProxy) ctx.notion = await startNotionProxy({target: notionFarSide({store, standIn: standIn?.url})});

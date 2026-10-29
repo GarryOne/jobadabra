@@ -1,6 +1,7 @@
 // What a run of the e2e workflow does, decided in one place (plan-run.mjs): which suites, which commit, whether the AI reviews screenshots, and, for the release gate
 // (the release run's "Test · Mac + Linux", desktop.yml), which release to approve when everything passes. gh is a stub: no network.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {test} from 'node:test';
 import {planRun} from '../plan-run.mjs';
 import {MAX_RUNS_PER_COMMIT, exploreDecision, reviewNeeded, shouldSkipScheduled, waitingFindings} from '../lib/plan.mjs';
@@ -27,6 +28,24 @@ function gh({files = [], runs = [], issues = [], releases = [], build = 'success
   };
 }
 const plan = (env, stub, varies = ['jobs']) => planRun({env: {REPO: 'o/r', ...env}, gh: gh(stub), all: ALL, minutes: () => 15, varies});
+
+test('only offline suites need no plan-level AI preflight or screenshot AI review; mixed runs still do', async () => {
+  const run = only => planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: only}, gh: gh(), all: ALL,
+    minutes: () => 15, offlineAi: ['settings']});
+  const offline = await run('settings');
+  assert.equal(offline.ai_required, '0');
+  assert.equal(offline.review, '0');
+  assert.equal(JSON.parse(offline.matrix).include[0].offlineAi, true);
+  assert.equal((await run('settings,jobs')).ai_required, '1');
+  const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
+  assert.ok(workflow.indexOf('id: list') < workflow.indexOf("- name: Is CI's AI ready?"));
+  assert.match(workflow, /- name: Is CI's AI ready\?[^\n]*\n\s+if: steps\.list\.outputs\.ai_required == '1'/);
+  assert.match(workflow, /- name: The Free AI relay from this workflow's own commit\n\s+if: matrix\.offlineAi != true\n/);
+  assert.match(workflow, /- name: Free AI relay \(CI's AI since 26 Oct 2026[^\n]*\n\s+if: matrix\.offlineAi != true\n/);
+  assert.match(workflow, /- name: What the suite spent on Free AI[^\n]*\n\s+if: always\(\) && matrix\.offlineAi != true && env\.E2E_FREE_AI_URL != ''/);
+  const planner = fs.readFileSync(new URL('../plan-run.mjs', import.meta.url), 'utf8');
+  assert.match(planner, /if \(module\.offlineAi\) offlineAi\.push\(suite\)/);
+});
 
 test('findings that wait for a second sighting are counted; parked ones are not', () => {
   assert.equal(waitingFindings([issue(0), issue(1), issue(0, ['needs-human']), issue(0, ['wontfix-auto'])]), 1);

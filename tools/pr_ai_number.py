@@ -74,14 +74,15 @@ def _count(rates, part, numerator, denominator):
     return f'{counts[numerator]}/{counts[denominator]}' if counts and counts[denominator] else 'n/a'
 
 
-def description(why, current, baseline):
+def description(why, current, baseline, below=False):
     """Fit the existing status into 140 characters, dropping CV first and never slicing an AI count."""
     prefix = why
     if 'workflow(s) green in ' in why:
         prefix = why.rsplit('; ', 1)[0] if '; ' in why else ''
     parts = [f'{label} {_count(current, part, num, den)} (main {_count(baseline, part, num, den)})'
              for part, num, den, label in METRICS]
-    ending = comparison(current, baseline)
+    # Why (30 Oct 2026, qu, owner choice via a8): a measured dip names BELOW in text only; the required status is unchanged.
+    ending = "BELOW main's range" if below else comparison(current, baseline)
     line = lambda: 'AI: ' + ' · '.join([*parts, ending])
     if len((prefix + ' · ' if prefix else '') + line()) > 140:
         parts.pop()   # CV is always the first part dropped.
@@ -125,6 +126,18 @@ def artifact_rates(repo, rid, gh, artifact=ARTIFACT):
         return True, None
 
 
+def _night_reader(night_module=None):
+    """Load the shared nightly reader lazily, including for the verdict's standalone helper copy."""
+    try:
+        from .beta_rate_gate import main_nights
+    except ImportError:  # Direct tools invocation or the verdict's standalone helper copy.
+        if night_module is not None:
+            main_nights = night_module().main_nights
+        else:
+            from beta_rate_gate import main_nights
+    return main_nights
+
+
 def main_rates(repo, gh, comparable, night_module=None):
     """Read main's newest measurement, then desktop nights only if no e2e artifact exists; broken artifacts never fall back."""
     try:
@@ -136,14 +149,7 @@ def main_rates(repo, gh, comparable, night_module=None):
                 if exists:
                     return rates
         # Why (29 Oct 2026, qu): a quiet e2e history still has desktop measurements; reuse the nightly reader without a circular import.
-        try:
-            from .beta_rate_gate import main_nights
-        except ImportError:  # Direct tools invocation or the verdict's standalone helper copy.
-            if night_module is not None:
-                main_nights = night_module().main_nights
-            else:
-                from beta_rate_gate import main_nights
-        nights = main_nights(repo, 'qualityai', gh, first_only=True)
+        nights = _night_reader(night_module)(repo, 'qualityai', gh, first_only=True)
         return nights[0][1] if nights else None
     except Exception as error:
         print(f'main AI counts unavailable ({type(error).__name__})', file=sys.stderr)
@@ -151,7 +157,7 @@ def main_rates(repo, gh, comparable, night_module=None):
 
 
 def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner='', night_module=None):
-    """Read this PR's newest qualityai measurement and main once; failed or unfinished samples are n/a."""
+    """Read the PR and latest main counts plus a text-only comparison with main's usual nightly range."""
     selected = [run for run in runs if str(run.get('displayTitle', '')).startswith(PR_TITLE)
                 and 'qualityai' in run['displayTitle'][len(PR_TITLE):].split(' · ')[0].split(',')]
     if not selected:
@@ -169,7 +175,16 @@ def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner=''
             _, current = artifact_rates(repo, rid, gh)
     except Exception as error:
         print(f'PR AI counts unavailable ({type(error).__name__})', file=sys.stderr)
-    return current, main_rates(repo, gh, comparable, night_module)
+    baseline, below = main_rates(repo, gh, comparable, night_module), False
+    if current is not None and baseline is not None:
+        try:
+            nights = _night_reader(night_module)(repo, 'qualityai', gh)
+            # Why (30 Oct 2026, qu, owner choice via a8): only the beta gate's shared band and verdict decide BELOW; missing observations keep the existing wording.
+            results = verdict(current, band([rates for _, rates in nights]))
+            below = any(result and result['blocked'] for result in results.values())
+        except Exception as error:
+            print(f'main AI range unavailable ({type(error).__name__})', file=sys.stderr)
+    return current, baseline, below
 
 
 RATE_METRICS = (*METRICS, ('steady', 'within8', 'pairs', 'steady'))

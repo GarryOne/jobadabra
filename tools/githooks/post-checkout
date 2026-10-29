@@ -1,0 +1,5 @@
+#!/bin/sh
+# A new worktree (`git worktree add`, or a clone) is linked to the main checkout's installed folders at once (tools/link-modules.sh); any other checkout does nothing.
+# Why (29 Oct 2026, owner, #2462): sessions that made a worktree without tools/worktree.sh had no node_modules and their push failed minutes later with the cause hidden. Guard: tests/test_worktree.py.
+[ "$1" = 0000000000000000000000000000000000000000 ] && sh "$(dirname "$0")/../link-modules.sh" "$PWD"
+exit 0

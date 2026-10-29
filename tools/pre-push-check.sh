@@ -304,6 +304,17 @@ if [ "${JP_E2E_UNIT:-0}" = 1 ] && command -v node >/dev/null && [ -f "$repo/tool
   if [ -z "$changed" ] || printf '%s\n' "$changed" | node "$repo/tools/e2e-unit-wanted.mjs"; then want_e2e=1; fi
 fi
 
+# Why (29 Oct 2026, owner, #2462): a worktree made without the installed folders (a bare `git worktree add`) ran this gate 437 s, failed in "desktop (clean checkout)" and showed no cause; refused in a second,
+# with the way out. Only a linked worktree whose main checkout HAS the folder (a plain repo or the main checkout itself is left to the suites). Guard: tests/test_pre_push_check.py.
+common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"; main="$(dirname "${common:-$repo/.git}")"
+if [ -d "$main" ] && [ "$(cd "$main" && pwd -P)" != "$(cd "$repo" && pwd -P)" ]; then
+  missing=""
+  for dir in desktop worker; do
+    want="want_$dir"
+    [ "${!want}" = 1 ] && [ -d "$main/$dir/node_modules" ] && [ ! -e "$repo/$dir/node_modules" ] && missing="$missing $dir/node_modules"
+  done
+  [ -z "$missing" ] || { echo "Push blocked: this worktree has no$missing, which the main checkout has: the suites cannot run here. Run tools/link-modules.sh in it (tools/worktree.sh and the post-checkout hook do this for a new worktree), then push again." >&2; exit 2; }
+fi
 failed=()
 log="$(mktemp)"
 # Local pushes run only the tests the change can break (tools/affected-tests.py: imports + mentions, "all" when in doubt); CI and
@@ -423,7 +434,7 @@ if [ ${#failed[@]} -gt 0 ]; then
   {
     echo "Push blocked: tests failed in ${failed[*]} ($repo)."
     echo "Fix them, then push again. Last lines of the test output:"
-    grep -E "^FAIL:|^ERROR:|AssertionError|^not ok|npm ERR|npm error|\.yml:[0-9]+:[0-9]+:|^fatal:" "$log" | sort -u | tail -15
+    grep -E "^FAIL:|^ERROR:|AssertionError|^not ok|npm ERR|npm error|\.yml:[0-9]+:[0-9]+:|^fatal:|Cannot find module|ERR_MODULE_NOT_FOUND" "$log" | sort -u | tail -15   # the last two: a suite that dies on a missing package (29 Oct 2026, #2462)
   } >&2
   rm -f "$log"
   exit 2

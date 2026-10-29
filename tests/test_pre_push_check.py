@@ -1,4 +1,6 @@
 """tools/pre-push-check.sh, the Claude Code hook before every git commit/push (1 of 3: commit subjects, red main, the clean checkouts, the gates beside the suites). Fixture: pre_push_fixture.py."""
+import json
+import subprocess
 import unittest
 import shutil
 import time
@@ -38,6 +40,49 @@ class PrePushCheckTest(PrePushFixture):
         self.assertEqual(code, 2)
         self.assertIn('clean checkout', err)
         self.assertNotIn(str(self.repo), self.log.read_text())
+
+    def linked_worktree(self):
+        """A linked worktree of the fixture repo with one desktop change, whose main checkout HAS the installed folders (what a session's bare `git worktree add` looks like)."""
+        self.needed_committed()
+        for folder in ('desktop/node_modules', 'worker/node_modules'):
+            (self.repo / folder).mkdir(parents=True)   # the main checkout's install; git-ignored in the real repo
+        tree = self.tmp / 'wt'
+        git(self.repo, 'worktree', 'add', '-q', str(tree), '-b', 'wt')
+        (tree / 'desktop' / 'x.js').write_text('export {};\n')
+        git(tree, 'add', '-A')
+        git(tree, 'commit', '-qm', 'Change the desktop')
+        return tree
+
+    def hook_in(self, tree, command):
+        payload = json.dumps({'tool_input': {'command': command}, 'cwd': str(tree)})
+        done = subprocess.run(['bash', str(tree / 'tools' / 'pre-push-check.sh')], input=payload, capture_output=True, text=True, env=self.env, timeout=120)
+        return done.returncode, done.stderr
+
+    def test_a_worktree_without_the_modules_its_main_checkout_has_is_refused_at_once_with_the_way_out(self):
+        # Owner, 29 Oct 2026 (#2462: a bare worktree add, no node_modules: the gate ran 437 s, failed in "desktop (clean checkout)" and showed no cause).
+        tree = self.linked_worktree()
+        started = time.time()
+        code, err = self.hook_in(tree, 'git push origin HEAD:main')
+        self.assertEqual(code, 2, err)
+        self.assertLess(time.time() - started, 15, 'refused before any suite runs')
+        self.assertIn('desktop/node_modules', err)
+        self.assertIn('tools/link-modules.sh', err)
+        self.assertFalse(self.log.exists(), 'no suite ran')
+
+    def test_the_same_worktree_with_its_links_pushes(self):   # the positive control of the test above: only the links differ
+        tree = self.linked_worktree()
+        for folder in ('desktop/node_modules', 'worker/node_modules'):
+            (tree / folder).symlink_to(self.repo / folder)
+        code, err = self.hook_in(tree, 'git push origin HEAD:main')
+        self.assertEqual(code, 0, err)
+
+    def test_a_missing_module_is_named_in_the_blocked_push(self):
+        # The same 29 Oct 2026 incident: the failure filter matched "not ok" and "npm ERR" but not "Cannot find module", so a suite that died on a missing package printed only timings.
+        self.needed_committed()
+        self.commit('Break the suite', {'tools/check.sh': "#!/usr/bin/env bash\necho \"Error: Cannot find module 'globals'\"\nexit 1\n"})
+        code, err = self.hook('git push origin HEAD:main')
+        self.assertEqual(code, 2)
+        self.assertIn("Cannot find module 'globals'", err)
 
     def test_each_area_runs_alone_and_no_worktree_is_left(self):
         self.needed_committed()

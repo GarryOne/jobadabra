@@ -22,6 +22,9 @@ class WorktreeTest(unittest.TestCase):
         subprocess.run(['git', 'init', '-q', '--bare', '-b', 'main', str(origin)], check=True)
         (self.main / 'tools').mkdir(parents=True)
         shutil.copy(ROOT / 'tools' / 'worktree.sh', self.main / 'tools' / 'worktree.sh')
+        shutil.copy(ROOT / 'tools' / 'link-modules.sh', self.main / 'tools' / 'link-modules.sh')   # the one place that links (worktree.sh and the post-checkout hook call it)
+        (self.main / 'tools' / 'githooks').mkdir()
+        shutil.copy(ROOT / 'tools' / 'githooks' / 'post-checkout', self.main / 'tools' / 'githooks' / 'post-checkout')
         (self.main / '.gitignore').write_text('.venv\nnode_modules\n.claude/\n')
         for name in ('desktop', 'desktop/e2e', 'worker', 'site'):
             (self.main / name).mkdir(parents=True, exist_ok=True)
@@ -67,6 +70,21 @@ class WorktreeTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_a_bare_git_worktree_add_is_linked_by_the_post_checkout_hook(self):
+        # Owner, 29 Oct 2026 (#2462: a bare `git worktree add` had no node_modules; the push gate failed in desktop after 437 s with the cause hidden):
+        # "how can we fix the root cause of this?" Every way of making a worktree gets the links, not only tools/worktree.sh.
+        git(self.main, 'config', 'core.hooksPath', 'tools/githooks')
+        tree = self.main / '.claude' / 'worktrees' / 'bare'
+        git(self.main, 'worktree', 'add', '-q', str(tree), '-b', 'bare')
+        self.assert_linked(tree)
+
+    def test_a_clone_or_a_plain_checkout_links_nothing(self):
+        # the hook also runs on `git checkout` in the main checkout and in a clone: nothing to link there, and it must not touch what is there
+        git(self.main, 'config', 'core.hooksPath', 'tools/githooks')
+        git(self.main, 'checkout', '-q', 'release/x')
+        git(self.main, 'checkout', '-q', 'main')
+        self.assertFalse((self.main / 'desktop' / 'node_modules').is_symlink(), 'the main checkout keeps its own folder')
 
 
 class PruneTest(WorktreeTest):

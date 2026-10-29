@@ -218,7 +218,7 @@ class EveryReadTests(unittest.TestCase):
 
     def test_a_today_check_shares_too(self):
         source = Path(__file__).resolve().parents[1] / 'src' / 'daily_search.py'
-        self.assertIn("args.mode in ('scheduled', 'run', 'today'):\n                try:  # opt-in", source.read_text())
+        self.assertIn("args.mode in ('scheduled', 'run', 'today'):\n        try:  # opt-in", source.read_text())
 
 
 class OnlyChangedTests(unittest.TestCase):

@@ -6,7 +6,7 @@ import {install} from './tiny-dom.js';
 import {rowPicks} from '../renderer/proposal-pick.js';
 
 const body = install();
-for (const id of ['job-drawer-backdrop', 'ss-loading', 'ss-empty', 'ss-grid', 'ss-refreshing', 'ss-title', 'ss-role', 'ss-status', 'ss-more']) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }   // elements the page's modules look up when imported
+for (const id of ['job-drawer-backdrop', 'ss-loading', 'ss-empty', 'ss-grid', 'ss-refreshing', 'ss-title', 'ss-role', 'ss-status', 'ss-more', 'ss-stop']) { const node = globalThis.document.createElement('div'); node.id = id; body.append(node); }   // elements the page's modules look up when imported
 for (const name of ['setInterval', 'setTimeout']) { const real = globalThis[name]; globalThis[name] = (...args) => real(...args).unref(); }   // timers the page starts (usage-signals.js on import, Use's 5 s check) must not hold the test open
 const filled = [];
 globalThis.window.pilot = new Proxy({sessionFillField: async (id, label, value) => { filled.push([id, label, value]); return {ok: true}; }}, {get: (all, key) => all[key] || (async () => ({ok: true}))});

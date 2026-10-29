@@ -31,19 +31,26 @@ def archive(value=RATES, raw=None):
 
 def run(rid, title='E2E check · on time', **extra):
     """Main-state API run fixture; not a recorded live measurement."""
-    return {'id': rid, 'head_branch': 'main', 'conclusion': 'success', 'display_title': title, **extra}
+    return {'id': rid, 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success', 'display_title': title, **extra}
 
 
 class Github:
     """Injected GitHub transport: any unplanned API call fails without network access."""
-    def __init__(self, runs=(), artifacts=None, blobs=None):
+    def __init__(self, runs=(), artifacts=None, blobs=None, nights=()):
         self.runs, self.artifacts, self.blobs, self.calls = list(runs), artifacts or {}, blobs or {}, []
+        self.nights = list(nights)
 
     def __call__(self, *args, binary=False):
         self.calls.append((args, binary))
         url = next(a for a in args if a.startswith('repos/'))
         if '/workflows/e2e.yml/runs?' in url:
             return json.dumps({'workflow_runs': self.runs})
+        if '/workflows/desktop.yml/runs?' in url:
+            return json.dumps({'workflow_runs': self.nights})
+        if '/contents/desktop/e2e/lanes.json' in url:
+            return json.dumps({'suites': {'qualityai': {'lane': 'tolerant', 'pr': 'number'}}})
+        if '/jobs?' in url:
+            return json.dumps([{'jobs': [{'name': 'E2E · Mac + Linux · qualityai', 'status': 'completed', 'conclusion': 'success'}]}])
         if '/artifacts?' in url:
             rid = int(url.split('/runs/')[1].split('/')[0])
             return json.dumps([{'artifacts': self.artifacts.get(rid, [])}])
@@ -127,15 +134,70 @@ class Formatting(unittest.TestCase):
 
 
 class Artifacts(unittest.TestCase):
+    def pr_line(self, github):
+        """Run the PR preparation and formatter with only GitHub responses replaced."""
+        runs = [{'databaseId': 99, 'displayTitle': 'E2E for PR · qualityai · topic'}]
+        jobs = {99: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}]}
+        _, line = ai.prepare('o/r', runs, jobs, github, lambda name='main_e2e_state': __import__('tools.' + name, fromlist=[name]))
+        return line('3 workflow(s) green in 2.0 min')
+
+    def test_pr_compares_with_after_merge_main_artifact(self):
+        # Hand-made API responses use the supervisor's run/title shapes and reported counts; no live service is reached.
+        rates = {**RATES, 'facts': {'exact': 68, 'total': 69}, 'flags': {'judged': 20, 'flagged': 1},
+                 'cv': {'found': 8, 'expected': 9, 'corrected': 1}, 'steady': {'pairs': 10, 'within8': 10}}
+        runs = [run(rid, f'E2E after merge · {sha} · quality,qualityai,settings')
+                for rid, sha in [(40970607939, '3adb386'), (40967443209, 'e238a08'), (40963836597, 'f58e901')]]
+        gh = Github(runs, {40970607939: [{'id': 12940402913, 'name': ai.ARTIFACT}],
+                           99: [{'id': 99, 'name': ai.ARTIFACT}]}, {12940402913: archive(rates), 99: archive(rates)})
+        line = self.pr_line(gh)
+        self.assertIn('facts 68/69 (main 68/69)', line)
+        self.assertIn('same as main', line)
+        self.assertLessEqual(len(line), 140)
+
+    def test_completed_failed_or_cancelled_main_run_still_supplies_its_measurement(self):
+        for conclusion in ('failure', 'cancelled'):
+            with self.subTest(conclusion=conclusion):
+                gh = Github([run(30, 'E2E after merge · sha · qualityai', conclusion=conclusion)],
+                            {rid: [{'id': rid, 'name': ai.ARTIFACT}] for rid in (99, 30)},
+                            {99: archive(), 30: archive()})
+                self.assertIn('same as main', self.pr_line(gh))
+
+    def test_pr_uses_newest_desktop_night_when_main_e2e_has_no_artifact(self):
+        older = {**RATES, 'facts': {'exact': 60, 'total': 63}}
+        nights = [run(20, 'E2E check · nightly backup', event='schedule'),
+                  run(19, 'Nightly beta', event='workflow_dispatch')]
+        gh = Github([run(30, 'E2E after merge · sha · settings')],
+                    {rid: [{'id': rid, 'name': ai.ARTIFACT}] for rid in (99, 20, 19)},
+                    {99: archive(), 20: archive(), 19: archive(older)}, nights=nights)
+        line = self.pr_line(gh)
+        self.assertIn('facts 63/63 (main 63/63)', line)
+        self.assertIn('same as main', line)
+
+    def test_broken_newest_main_artifact_does_not_use_older_main_or_nightly(self):
+        gh = Github([run(30, 'E2E after merge · sha · qualityai'), run(29)],
+                    {rid: [{'id': rid, 'name': ai.ARTIFACT}] for rid in (99, 30, 29, 20)},
+                    {99: archive(), 30: b'broken ZIP', 29: archive(), 20: archive()},
+                    nights=[run(20, 'E2E check · nightly backup', event='schedule')])
+        self.assertIn('main unavailable', self.pr_line(gh))
+        self.assertFalse(any('/workflows/desktop.yml/' in ' '.join(args) for args, _ in gh.calls))
+
+    def test_pr_mutant_bisect_branch_and_unfinished_runs_cannot_supply_main_number(self):
+        for rejected in (run(30, 'E2E for PR · qualityai · main'), run(30, 'Mutant qualityai'),
+                         run(30, 'Bisect qualityai sha'), run(30, head_branch='topic'), run(30, status='in_progress')):
+            with self.subTest(run=rejected):
+                gh = Github([rejected, run(29)], {rid: [{'id': rid, 'name': ai.ARTIFACT}] for rid in (99, 30, 29)},
+                            {99: archive(), 30: archive({**RATES, 'facts': {'exact': 0, 'total': 63}}), 29: archive()})
+                self.assertIn('same as main', self.pr_line(gh))
+
     def test_main_uses_comparable_runs_only_and_searches_at_most_ten(self):
         runs = [run(20, 'Bisect qualityai abc'), run(19, 'Beta E2E tests desktop-v1'),
                 run(18, 'Mutant ai'), run(17, 'RC soak v1'), run(16, 'Stable canary v1'),
                 run(15, head_branch='topic'), run(14, 'E2E after merge · sha · qualityai'), run(13), run(12), run(11), run(10)]
         gh = Github(runs, {12: [{'id': 112, 'name': ai.ARTIFACT, 'expired': False}],
                            10: [{'id': 110, 'name': ai.ARTIFACT}]}, {112: archive()})
-        self.assertEqual(ai.main_rates('o/r', gh, main_e2e_state.counts_green), RATES)
+        self.assertEqual(ai.main_rates('o/r', gh, main_e2e_state.is_main_check), RATES)
         asked = ' '.join(' '.join(a) for a, _ in gh.calls)
-        self.assertNotIn('/runs/14/', asked)
+        self.assertIn('/runs/14/', asked)
         self.assertNotIn('/runs/10/', asked)
         self.assertIn('per_page=10', asked)
 
@@ -145,12 +207,12 @@ class Artifacts(unittest.TestCase):
                                  ({1: [{'id': 1, 'name': ai.ARTIFACT}]}, {1: archive(raw='{bad')}),
                                  ({1: [{'id': 1, 'name': ai.ARTIFACT}]}, {1: archive({**RATES, 'v': 2})})]:
             with self.subTest(artifacts=artifacts, blobs=blobs):
-                self.assertIsNone(ai.main_rates('o/r', Github([run(1)], artifacts, blobs), main_e2e_state.counts_green))
+                self.assertIsNone(ai.main_rates('o/r', Github([run(1)], artifacts, blobs), main_e2e_state.is_main_check))
 
     def test_newest_artifact_wins_and_an_invalid_newest_never_reverts_to_an_old_number(self):
         gh = Github([run(2), run(1)], {2: [{'id': 22, 'name': ai.ARTIFACT}, {'id': 21, 'name': ai.ARTIFACT}],
                                     1: [{'id': 10, 'name': ai.ARTIFACT}]}, {22: archive({**RATES, 'v': 3})})
-        self.assertIsNone(ai.main_rates('o/r', gh, main_e2e_state.counts_green))
+        self.assertIsNone(ai.main_rates('o/r', gh, main_e2e_state.is_main_check))
         self.assertEqual(sum(binary for _, binary in gh.calls), 1)
 
     def test_pr_uses_newest_counted_run_and_never_a_failed_or_running_measurement(self):
@@ -158,10 +220,10 @@ class Artifacts(unittest.TestCase):
                  'displayTitle': 'E2E for PR · qualityai,settings · topic'} for rid in (1, 2)]
         jobs = {rid: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}] for rid in (1, 2)}
         gh = Github([], {2: [{'id': 22, 'name': ai.ARTIFACT}]}, {22: archive()})
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.counts_green), (RATES, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check), (RATES, None))
         for conclusion in ('failure', 'cancelled', 'timed_out', None):
             jobs[2][0].update(status='in_progress' if conclusion is None else 'completed', conclusion=conclusion)
-            self.assertEqual(ai.numbers('o/r', runs, jobs, Github(), main_e2e_state.counts_green), (None, None))
+            self.assertEqual(ai.numbers('o/r', runs, jobs, Github(), main_e2e_state.is_main_check), (None, None))
 
     def test_lane_lookup_is_base_scoped_and_only_tolerant_number_entries_count(self):
         calls = []
@@ -173,10 +235,10 @@ class Artifacts(unittest.TestCase):
         self.assertTrue(calls[0][-1].endswith('lanes.json?ref=release'))
 
     def test_absent_qualityai_or_failed_api_never_produces_a_fake_measurement(self):
-        self.assertIsNone(ai.numbers('o/r', [], {}, Github(), main_e2e_state.counts_green))
+        self.assertIsNone(ai.numbers('o/r', [], {}, Github(), main_e2e_state.is_main_check))
         def broken(*args, **kwargs):
             raise OSError('unavailable')
-        self.assertIsNone(ai.main_rates('o/r', broken, main_e2e_state.counts_green))
+        self.assertIsNone(ai.main_rates('o/r', broken, main_e2e_state.is_main_check))
         self.assertEqual(ai.report_suites('o/r', broken), set())
 
     def test_main_classifier_failure_preserves_the_pr_number_and_says_main_unavailable(self):
@@ -191,13 +253,13 @@ class Artifacts(unittest.TestCase):
         runs = [{'databaseId': 2, 'displayTitle': 'E2E for PR · qualityai · topic'}]
         jobs = {2: [{'name': 'qualityai', 'status': 'in_progress', 'runner_name': 'ours'}]}
         gh = Github([], {2: [{'id': 22, 'name': ai.ARTIFACT}]}, {22: archive()})
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.counts_green, '2', 'success', 'ours'), (RATES, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (RATES, None))
 
     def test_a_finished_failure_cannot_be_reinterpreted_by_a_stale_own_status(self):
         runs = [{'databaseId': 2, 'displayTitle': 'E2E for PR · qualityai · topic'}]
         jobs = {2: [{'name': 'qualityai', 'status': 'completed', 'conclusion': 'failure', 'runner_name': 'ours'}]}
         gh = Github()
-        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.counts_green, '2', 'success', 'ours'), (None, None))
+        self.assertEqual(ai.numbers('o/r', runs, jobs, gh, main_e2e_state.is_main_check, '2', 'success', 'ours'), (None, None))
         self.assertFalse(any('/artifacts?' in ' '.join(args) for args, _ in gh.calls))
 
 
@@ -218,9 +280,12 @@ if '/contents/tools/' in url:
 elif '/contents/desktop/e2e/lanes.json' in url:
     print(json.dumps({'suites': {'qualityai': {'lane': 'tolerant', 'pr': 'number'}, 'notion-real': {'lane': 'tolerant'}}}))
 elif '/workflows/e2e.yml/runs?' in url:
-    print(json.dumps({'workflow_runs': [{'id': 10, 'head_branch': 'main', 'conclusion': 'success', 'display_title': 'E2E check · on time'}]}))
+    print(json.dumps({'workflow_runs': [] if os.environ.get('FAKE_NIGHTLY') else [{'id': 10, 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success', 'display_title': 'E2E check · on time'}]}))
+elif '/workflows/desktop.yml/runs?' in url:
+    print(json.dumps({'workflow_runs': [{'id': 20, 'head_branch': 'main', 'status': 'completed', 'event': 'schedule', 'display_title': 'E2E check · nightly backup'}]}))
 elif '/jobs?' in url:
-    print(json.dumps([{'id': 71, 'name': 'qualityai', 'status': 'completed', 'conclusion': 'success'}]))
+    jobs = [{'id': 71, 'name': 'E2E · Mac + Linux · qualityai' if '/runs/20/' in url else 'qualityai', 'status': 'completed', 'conclusion': 'success'}]
+    print(json.dumps([{'jobs': jobs}] if '--slurp' in a else jobs))
 elif '/artifacts?' in url:
     print(json.dumps([{'artifacts': [{'id': 22, 'name': 'e2e-artifacts-qualityai'}]}]))
 elif url.endswith('/zip'):
@@ -234,13 +299,20 @@ else:
 
 class StandaloneWriter(unittest.TestCase):
     def test_copied_script_loads_its_helpers_and_posts_the_number(self):
+        self.copied_writer()
+
+    def test_copied_script_loads_the_shared_nightly_reader_and_posts_the_number(self):
+        self.copied_writer(nightly=True)
+
+    def copied_writer(self, nightly=False):
+        """Run the copied CI writer with fetched companion files and an offline gh executable."""
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as folder:
             tmp = Path(folder)
             copied = tmp / 'standalone'
             copied.mkdir()
             (copied / 'pr-verdict.py').write_text((root / 'tools/pr-verdict.py').read_text())
-            for name in ('pr_ai_number.py', 'main_e2e_state.py'):
+            for name in ('pr_ai_number.py', 'main_e2e_state.py', 'beta_rate_gate.py'):
                 (tmp / name).write_text((root / 'tools' / name).read_text())
             gh = tmp / 'gh'
             gh.write_text(f'#!{sys.executable}\n' + FAKE_GH)
@@ -253,6 +325,8 @@ class StandaloneWriter(unittest.TestCase):
                 {'number': 1, 'state': 'OPEN', 'mergedAt': None, 'files': {'pageInfo': {'hasNextPage': False}, 'nodes': []}, 'commits': {'nodes': []}}]}}}}}))
             env = {**os.environ, 'PATH': folder + os.pathsep + os.environ['PATH'], 'FAKE_DIR': folder,
                    'GITHUB_RUN_ID': '99', 'GITHUB_SHA': 'head', 'GITHUB_BASE_REF': 'release', 'PYTHONDONTWRITEBYTECODE': '1'}
+            if nightly:
+                env['FAKE_NIGHTLY'] = '1'
             command = [sys.executable, str(copied / 'pr-verdict.py'), '--repo', 'o/r']
             done = subprocess.run([*command, '--sha', 'head'], env=env, capture_output=True, text=True, timeout=15)
             self.assertEqual(done.returncode, 0, done.stderr)

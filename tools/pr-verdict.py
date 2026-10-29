@@ -269,7 +269,8 @@ def main_state_module(repo, ref, name='main_e2e_state'):
         with open(here, 'w', encoding='utf-8') as file:
             file.write(text)
     spec = importlib.util.spec_from_file_location(name, here)
-    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    module = sys.modules[name] = importlib.util.module_from_spec(spec)  # Why (29 Oct 2026, qu): the nightly reader imports this same AI companion in standalone CI.
+    spec.loader.exec_module(module)
     return module
 
 
@@ -419,7 +420,7 @@ def main():
     if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
         try:
             ref = os.environ.get('GITHUB_SHA') or a.sha
-            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda: main_state_module(a.repo, ref), base_branch(), my_run, a.job_status, os.environ.get('RUNNER_NAME', ''))
+            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, a.job_status, os.environ.get('RUNNER_NAME', ''))
         except Exception as error:
             print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
     for attempt in range(20):   # at most ~60 s, only while jobs with a lower id end with us

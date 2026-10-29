@@ -17,6 +17,8 @@ import {goView} from '../lib/go-view.mjs';
 export const offlineAi = true;
 export const realAi = false;
 export const name = 'interviews';
+// Why (30 Oct 2026, ap): SQLite keeps stored answers on one setup path without the stand-in's paced Notion requests; all steps support SQLite.
+export const store = 'sqlite';
 const REVIEW_MS = 5 * 60 * 1000;
 
 export async function run(ctx) {

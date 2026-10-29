@@ -31,11 +31,11 @@ test('the form tab is the one that shows the form\'s address, not the harness\'s
   const page = url => ({url: () => url, isClosed: () => false});
   const url = 'https://boards.greenhouse.io/e2e/jobs/4001001#jobpilotto-fill=2ce1ef73';
   const picked = page('about:blank'), real = page(url);
-  const browser = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': picked}, context: {pages: () => [picked, real]}};
+  const browser = {pages: {[url]: picked}, context: {pages: () => [picked, real]}};
   assert.equal(formTab(browser, url), real);
-  const shown = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': real}, context: {pages: () => [page(url), real]}};
+  const shown = {pages: {[url]: real}, context: {pages: () => [page(url), real]}};
   assert.equal(formTab(shown, url), real, 'the first pick wins while it shows the form');
-  const loading = {pages: {'https://boards.greenhouse.io/e2e/jobs/4001001': picked}, context: {pages: () => [picked]}};
+  const loading = {pages: {[url]: picked}, context: {pages: () => [picked]}};
   assert.equal(formTab(loading, url), picked, 'nothing shows it yet: the first pick, still loading');
 });
 

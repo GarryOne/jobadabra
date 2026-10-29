@@ -82,13 +82,8 @@ class WorkflowAiAnswers(unittest.TestCase):
         for line in ('        if: always()', '        uses: actions/upload-artifact@v6',
                      '          path: e2e-artifacts/${{ matrix.key }}'):
             self.assertIn(line, upload.splitlines())
-        suffix = "${{ " + RECORD_GUARD + " && '-ai-answer-candidates' || '' }}"
-        self.assertIn('          name: e2e-artifacts-${{ matrix.key }}' + suffix, upload.splitlines())
-        actual = re.search(r'(?m)^          name: e2e-artifacts-\$\{\{ matrix.key \}\}(.+)$', upload).group(1)
-        self.assertEqual(expression(actual, mode='record'), '-ai-answer-candidates')
-        self.assertEqual(expression(actual, mode='off'), '')
-        self.assertEqual(expression(actual, event='schedule', mode='record'), '')
-        self.assertEqual(expression(actual, mode='record', attempt=2), '')
+        self.assertIn('          name: e2e-artifacts-${{ matrix.key }}', upload.splitlines())
+        self.assertNotIn('ai-answer-candidates', upload)
 
     def test_summary_runs_after_failure_but_only_for_record_dispatches(self):
         summary = self.step('name: AI answer candidates written for review')
@@ -109,7 +104,7 @@ class WorkflowAiAnswers(unittest.TestCase):
           if [ -d "$E2E_ARTIFACTS" ]; then
             candidates=$(find "$E2E_ARTIFACTS" -type f \( -name 'ai-answers-candidates.json' -o -name 'ai-answers-item-*.json' \) | wc -l | tr -d '[:space:]')
           fi
-          echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (artifact: e2e-artifacts-${{ matrix.key }}-ai-answer-candidates)." >> "$GITHUB_STEP_SUMMARY"
+          echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (in the e2e-artifacts-${{ matrix.key }} artifact)."
 ''', summary)
 
 

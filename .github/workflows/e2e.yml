@@ -447,7 +447,7 @@ jobs:
           if [ -d "$E2E_ARTIFACTS" ]; then
             candidates=$(find "$E2E_ARTIFACTS" -type f \( -name 'ai-answers-candidates.json' -o -name 'ai-answers-item-*.json' \) | wc -l | tr -d '[:space:]')
           fi
-          echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (artifact: e2e-artifacts-${{ matrix.key }}-ai-answer-candidates)." >> "$GITHUB_STEP_SUMMARY"
+          echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (in the e2e-artifacts-${{ matrix.key }} artifact)."
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run
@@ -524,7 +524,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-artifacts-${{ matrix.key }}${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && '-ai-answer-candidates' || '' }}
+          name: e2e-artifacts-${{ matrix.key }}
           path: e2e-artifacts/${{ matrix.key }}
           if-no-files-found: ignore
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read

@@ -204,6 +204,9 @@ export function extensionActing(items, formsOpen, readyOf = () => false) {
     || (item.kind === 'form' && !item.stuck && !!formsOpen?.known && formsOpen.ids.includes(String(item.id)) && !readyOf(item))));
 }
 
+/** -> whether the header Stop is drawn: the extension is acting, or the ⌘K entry pinned it visible until `pinnedUntil` (ms). The one rule for the page's render and the entry's timer (#2512). */
+export const stopShown = (acting, pinnedUntil = 0, now = Date.now()) => !!acting || now < pinnedUntil;
+
 // What the card says on a sign-in or sign-up page (owner, 9 Oct 2026: the account step gets its own count, what is left for you and the next press, apart from the application's
 // progress). state: the form page's review state ({account, total, left, needs, pending, missing}); null when this is not an account page with fields.
 export function accountCardOf(item, state) {

@@ -20,7 +20,8 @@ test('the app\'s surfaces: the sessions page button, the ⌘K entry, the IPC, th
   assert.match(read('renderer/pages/sessions.js'), /'🛑 Stop the extension', run: \(\) => \$\('ss-stop'\)\.click\(\)/, 'the ⋯ menu entry');
   assert.match(read('renderer/index.html'), /id="ss-stop" hidden/, 'hidden until the extension acts (session-state.js extensionActing)');
   assert.match(read('renderer/pages/session-log.js'), /shared\.stopActing = extensionActing\(/);
-  assert.match(read('renderer/pages/session-log.js'), /\$\('ss-stop'\)\.hidden = !\(shared\.stopActing \|\| Date\.now\(\) < \(shared\.stopPinnedUntil \|\| 0\)\)/);
+  assert.match(read('renderer/pages/session-log.js'), /\$\('ss-stop'\)\.hidden = !stopShown\(shared\.stopActing, shared\.stopPinnedUntil\)/);
+  assert.match(read('renderer/pages/nav.js'), /\$\('ss-stop'\)\.hidden = !stopShown\(shared\.stopActing, shared\.stopPinnedUntil\)/, 'the entry timer uses the same rule');
   assert.match(read('renderer/pages/session-stop.js'), /window\.pilot\.sessionsStopExtension\(\)/);
   assert.match(read('renderer/app.js'), /sessionStop\(\)/);
   assert.match(read('preload.cjs'), /sessionsStopExtension: call\('sessionsStopExtension'\)/);

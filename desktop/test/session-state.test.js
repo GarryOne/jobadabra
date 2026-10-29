@@ -384,3 +384,12 @@ test('the header Stop shows only while the extension is acting, never when Chrom
   for (const state of ['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), true, `Full automation: ${state}`);
   for (const state of ['ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), false, `Full automation: ${state} waits`);
 });
+
+test('the header Stop rule: shown while acting or until a pin ends; a later pin outlives an earlier timer (Gitar #2512)', async () => {
+  const {stopShown} = await import('../renderer/session-state.js');
+  assert.equal(stopShown(false, 0, 1000), false, 'idle, nothing pinned');
+  assert.equal(stopShown(true, 0, 1000), true, 'acting');
+  assert.equal(stopShown(false, 51000, 30100), true, 'revealed at t=0 and again at t=20 s: the first timer fires at 30.1 s and the pin still holds');
+  assert.equal(stopShown(false, 51000, 51000), false, 'the pin has ended');
+  assert.equal(stopShown(false, undefined, 1000), false);
+});

@@ -9,6 +9,7 @@ import {paletteEntry as browserOfferEntry} from './browser-offer-rows.js';
 import {COMMAND_KIND, KIND, TASK_BUTTONS, kindOf, lastActivity, openActivity, prepareActions, unqueue} from './activity.js';
 import {$, show} from './core.js';
 import {shared} from './shared.js';
+import {stopShown} from '../session-state.js';
 import {showRunsTab} from './runs-tab.js';
 import {showCvChanged} from './cv-change.js';
 import {loadFocus} from './focus.js';
@@ -196,7 +197,7 @@ export function paletteCommands() {
   // Why (#2512, Gitar; owner 18 Oct 2026: an entry brings you to a button, never presses it): the header Stop shows only while the extension acts, so this entry (always listed) opens Sessions and shows it for 30 s, then the usual reveal focuses it.
   addNode($('ss-stop'), 'Sessions', 'Stop the extension', 'Stops everything the extension does, on every tab', 'stop freeze halt panic extension chrome everything cancel emergency', () => {
     openView('sessions'); shared.stopPinnedUntil = Date.now() + 30 * 1000; $('ss-stop').hidden = false;
-    setTimeout(() => { if (!shared.stopActing) $('ss-stop').hidden = true; }, 30 * 1000 + 100);
+    setTimeout(() => { $('ss-stop').hidden = !stopShown(shared.stopActing, shared.stopPinnedUntil); }, 30 * 1000 + 100);   // a later reveal moved the pin: the first timer must not hide it early
   });
   button('jobs', 'refresh', 'find jobs scan');
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');

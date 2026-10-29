@@ -15,6 +15,12 @@
       "pr": "number",
       "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates."
     },
+    "mailreading": {
+      "lane": "tolerant",
+      "input": "ai",
+      "since": "2026-10-30",
+      "why": "An eval: invented emails go to the real model through the mail check's own prompt; its result is the model's reading, not our code's (rule A). Red on #2505 (run 40969422470) only because the CI Anthropic key is refused (401)."
+    },
     "notion-real": {
       "lane": "tolerant",
       "input": "outside",

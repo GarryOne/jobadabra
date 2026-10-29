@@ -1,4 +1,5 @@
 name: CI · End-to-end on Mac + Linux
+# Job: serve stored answers
 
 # The real Jobadabra app, driven by Playwright on a macOS runner, one suite per Notion test page (desktop/e2e/README.md). It does two jobs, on two clocks:
 #  1. RELEASE GATE. The release run (desktop.yml, "Release · Build, test, beta") calls this workflow as its "E2E · Mac + Linux" job right after the build (7 Oct 2026: one run
@@ -17,6 +18,11 @@ run-name: ${{ inputs.bisect && format('Bisect {0} {1}', inputs.suite, inputs.tar
 on:
   workflow_dispatch:
     inputs:
+      ai_answers:
+        description: 'Record candidate AI answers for owner review (requires owner approval before dispatch); off keeps normal suite behavior'
+        type: choice
+        options: ['off', record]
+        default: 'off'
       ai_provider:
         description: 'AI provider for the judges in this run only: codex, claude or free. Empty = the repo variable CI_AI_PROVIDER, else free (lib/ai-provider.mjs)'
         type: string
@@ -385,6 +391,9 @@ jobs:
           esac
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
+        env:
+          # Why (29 Oct 2026, plan PR 19 slice 2): only an explicit manual first attempt may spend AI on answer candidates; retries and called workflows stay off.
+          E2E_AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || 'off' }}
         # A red first run is not the verdict (owner, 6 Oct 2026): the step below runs the suite once more on the same commit and decides. Flaky (red, then green)
         # passes the job and is filed and labelled `flaky`; red twice fails it. A mutation test has no second try: its red means the bug was caught.
         continue-on-error: ${{ !inputs.mutant }}
@@ -404,6 +413,8 @@ jobs:
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant
+        env:
+          E2E_AI_ANSWERS: 'off'
         working-directory: desktop/e2e
         timeout-minutes: 15
         run: |
@@ -428,6 +439,15 @@ jobs:
             echo "Failed again on the same commit: a real failure."
             exit 1   # red twice: the job (and the gate) fail
           fi
+      - name: AI answer candidates written for review
+        if: always() && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'
+        shell: bash
+        run: |
+          candidates=0
+          if [ -d "$E2E_ARTIFACTS" ]; then
+            candidates=$(find "$E2E_ARTIFACTS" -type f \( -name 'ai-answers-candidates.json' -o -name 'ai-answers-item-*.json' \) | wc -l | tr -d '[:space:]')
+          fi
+          echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (artifact: e2e-artifacts-${{ matrix.key }}-ai-answer-candidates)." >> "$GITHUB_STEP_SUMMARY"
       - name: What the suite spent on Free AI (the relay's own meter)
         if: always() && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run
@@ -504,7 +524,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: e2e-artifacts-${{ matrix.key }}
+          name: e2e-artifacts-${{ matrix.key }}${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && '-ai-answer-candidates' || '' }}
           path: e2e-artifacts/${{ matrix.key }}
           if-no-files-found: ignore
       # The second try writes its own folder (e2e-rerun): without this upload its logs reached no one and a retry's own failure could not be read

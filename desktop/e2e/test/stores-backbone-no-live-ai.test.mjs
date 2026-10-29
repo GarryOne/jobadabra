@@ -1,44 +1,18 @@
 // Prove stores' declared background kinds refuse at every seam without a key or live transport.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {loadTable, storedAnswer} from '../lib/ai-answers.mjs';
 import {FAILURES} from '../lib/ai-proxy.mjs';
-import {contextAiKeys, contextAiProxies} from '../lib/context.mjs';
+import {backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
-import {assertNoRealAi} from '../lib/no-real-ai.mjs';
 
 const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const kinds = ['organize_lines', 'answer_home', 'contact_asks', 'missing_facts_wording', 'covered_facts',
   'reuse_verdict', 'question_formats', 'contact_from_cv', 'cv_queue', 'places', 'field_redraft'];
 
-async function harness(t, family = 'claude') {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stores-backbone-'));
-  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const env = {CI: 'true', E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: tableFile, E2E_ARTIFACTS: dir,
-    E2E_SUITE: 'stores', E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'codex'};
-  const saved = {...process.env};
-  for (const key of Object.keys(process.env)) if (/^(E2E_|CI_AI_PROVIDER)/.test(key)) delete process.env[key];
-  Object.assign(process.env, env);
-  t.after(() => { for (const key of Object.keys(process.env)) delete process.env[key]; Object.assign(process.env, saved); });
-  let networkCalls = 0, engines = 0;
-  const localFetch = globalThis.fetch;
-  t.mock.method(globalThis, 'fetch', () => { networkCalls++; assert.fail('backbone must never reach a transport or relay'); });
-  const keys = await contextAiKeys({offlineAi: true, family, engine: 'api'});
-  assert.deepEqual(keys.needsKey, []);
-  const proxies = await contextAiProxies({offlineAi: true, family});
-  t.after(async () => { await proxies.openaiProxy?.close(); await proxies.proxy.close(); });
-  assert.equal(proxies.proxy.canned(), null, 'backbone must consult the table rather than the blanket offline stand-in');
-  return {...proxies, env, localFetch, options: {env, engine: () => { engines++; assert.fail('must not select an engine'); }},
-    assertNoLive: () => {
-      assert.equal(networkCalls, 0); assert.equal(engines, 0);
-      assert.equal(proxies.proxy.stats.paid || 0, 0);
-      assertNoRealAi(proxies);
-    }};
-}
+const harness = (t, family) => backboneHarness(t, 'stores', family);
 
 const request = action => ({method: 'POST', headers: {'content-type': 'application/json', ...(action ? {'x-jp-action': action} : {})},
   body: JSON.stringify({model: 'test', messages: [{role: 'user', content: 'What is your notice period?: Three months, negotiable'}]})});

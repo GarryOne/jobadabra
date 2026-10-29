@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {copyExtension, freePort, launchBrowser} from '../lib/extension.mjs';
-import {handleExtension} from '../../../worker/src/extension.js';
+import {cleanFields} from '../../../worker/src/extension-log.js';   // not extension.js: it imports the AI SDK, which the desktop CI job does not install
 import {createWatcher} from '../../lib/real-errors.js';
 import {create} from '../../lib/sentry.js';
 import {create as telemetry, reportingOff} from '../../lib/telemetry.js';
@@ -39,13 +39,20 @@ async function exercise(start) {
   const app = http.createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk;
-    const url = `http://127.0.0.1:${port}${req.url}`;
-    const response = req.url === '/extension/log'
-      ? await handleExtension(new Request(url, {method: req.method, headers: req.headers, body}), {
-        EXTENSION_TOKEN: 'isolated-token', onLog: entries => { logged.push(...entries); watch(entries); },
-      })
-      : Response.json(req.url === '/extension/pair' ? {url: `http://127.0.0.1:${port}`, token: 'isolated-token'} : {});
-    res.writeHead(response.status, Object.fromEntries(response.headers));
+    // The route's own cleaning (worker/src/extension.js, /extension/log) with the real field whitelist; the route file itself needs the worker's packages.
+    const cors = {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type'};
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }   // the browser's preflight, as handleExtension answers it
+    const authorised = req.headers.authorization === 'Bearer isolated-token';
+    let response;
+    if (req.url === '/extension/log' && authorised) {
+      const {entries} = JSON.parse(body || '{}');
+      const clean = entries.slice(-50).map(entry => ({at: String(entry.at || '').slice(0, 30), kind: String(entry.kind || 'note').slice(0, 24),
+        text: String(entry.text || '').slice(0, 300), fields: cleanFields(entry.fields)}));
+      logged.push(...clean);
+      watch(clean);
+      response = Response.json({ok: true, kept: clean.length});
+    } else response = Response.json(req.url === '/extension/pair' ? {url: `http://127.0.0.1:${port}`, token: 'isolated-token'} : {}, {status: req.url === '/extension/log' ? 401 : 200});
+    res.writeHead(response.status, {...cors, ...Object.fromEntries(response.headers)});
     res.end(await response.text());
   });
   await new Promise(resolve => app.listen(port, '127.0.0.1', resolve));
@@ -58,7 +65,9 @@ export function plant(reject) {
   if (reject) { void Promise.reject(error); return; }
   setTimeout(() => { throw error; }, 0);
 }
+globalThis.plantSentry = plant;   // a service worker cannot import() dynamically; log.js imports this file statically
 `);
+  fs.appendFileSync(path.join(extensionDir, 'log.js'), "\nimport './sentry-plant.js';\n");
   let browser;
   try {
     browser = await start({port, spool, extensionDir});
@@ -117,8 +126,11 @@ test('real worker errors and rejections report safe frames, obey both gates and 
         await globalThis.chrome.storage.local.set({workerUrl: `http://127.0.0.1:${port}`, token: 'isolated-token'});
       }, options.port);
       return {close: browser.close, requested: browser.requested,
-        plant: rejection => worker.evaluate(async reject => { (await import('./sentry-plant.js')).plant(reject); }, rejection),
-        local: () => worker.evaluate(async () => (await import('./log.js')).decisions())};
+        plant: rejection => worker.evaluate(async ([reject, port]) => {   // paired again just before: the worker's boot sweep may have dropped the pairing
+          await globalThis.chrome.storage.local.set({workerUrl: `http://127.0.0.1:${port}`, token: 'isolated-token'});
+          globalThis.plantSentry(reject);
+        }, [rejection, options.port]),
+        local: () => worker.evaluate(async () => (await globalThis.chrome.storage.local.get('jp-decisions'))['jp-decisions'] || [])};   // read the stored log: import() is not allowed in a service worker
     } catch (error) { await browser.close(); throw error; }
   });
 });

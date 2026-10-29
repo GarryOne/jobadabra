@@ -11,7 +11,7 @@ import {checkPush, entryProblems, FILE, lanesProblems} from '../../tools/lanes-c
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WHY = 'Twelve golden postings go through the real check and a judge reads the free text.';
-const entry = (over = {}) => ({lane: 'tolerant', input: 'ai', since: '2026-10-28', why: WHY, ...over});
+const entry = (over = {}) => ({lane: 'tolerant', input: 'ai', since: '2026-10-28', why: WHY, returns: 'Back to the backbone when the AI answers are keyed and a PR run proves it.', ...over});
 const file = suites => JSON.stringify({v: 1, about: 'the registry', suites}, null, 2);
 
 test('a tolerant suite with its input, its reason and a date passes', () => {
@@ -22,6 +22,17 @@ test('a tolerant suite with no input is refused, naming the suite and what it la
   const found = lanesProblems(file({}), file({settings: entry({input: undefined})}));
   assert.equal(found.length, 1);
   assert.match(found[0], /^settings: input must be one of ai, clock, outside/);
+});
+
+test('every lane entry needs a non-empty returns string', () => {
+  for (const lane of ['tolerant', 'suspended', 'retired']) {
+    for (const returns of [undefined, null, '', ' \t\n', 42, {}]) {
+      const found = lanesProblems(file({}), file({quality: entry({lane, returns})}));
+      assert.equal(found.length, 1, `${lane}: ${JSON.stringify(returns)}`);
+      assert.match(found[0], /^quality: returns must be a non-empty string/);
+    }
+    assert.deepEqual(entryProblems(entry({lane, returns: 'Retire when its coverage is replaced.'})), []);
+  }
 });
 
 test('an input outside the three, a one-word reason and a missing date are each refused', () => {

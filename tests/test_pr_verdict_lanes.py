@@ -144,8 +144,12 @@ class RegistryFile(unittest.TestCase):
             self.assertRegex(entry.get('since', ''), r'^2026-\d\d-\d\d$', f'{name}: the date it left the backbone')
 
     def test_the_registry_keeps_the_first_cut_and_adds_the_live_quality_journey(self):
-        listed = {name: entry['lane'] for name, entry in self.registry['suites'].items()}
-        self.assertEqual(listed, {'qualityai': 'tolerant', 'mailreading': 'tolerant', 'notion-real': 'tolerant'})
+        listed = {name: (entry['lane'], entry['returns']) for name, entry in self.registry['suites'].items()}
+        self.assertEqual(listed, {
+            'qualityai': ('tolerant', 'Stays tolerant: it measures the live model.'),
+            'mailreading': ('tolerant', 'Stays tolerant: an eval of the live model.'),
+            'notion-real': ('tolerant', 'Stays tolerant: it tests Notion itself.'),
+        })
 
 
 if __name__ == '__main__':

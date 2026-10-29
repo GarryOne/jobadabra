@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Rule E on the lane registry (docs/superpowers/specs/2026-10-28-e2e-reliability-design.md): a suite leaves the backbone only by naming what its result depends on.
 // Judged: an entry of desktop/e2e/lanes.json this push adds or changes. Free: the rest of the file (`about`, an old entry nobody touched) and a removed entry, which brings a suite back.
-// tolerant needs `input` (ai | clock | outside), `why` (a sentence of 8+ words) and `since` (a date); suspended and retired need `why` and `since`.
+// tolerant needs `input` (ai | clock | outside), `why` (a sentence of 8+ words) and `since` (a date); suspended and retired need `why` and `since`. Every lane needs `returns` (a non-empty string).
 // Why (28 Oct 2026, spec rule E): 5395279 ("allowance for model noise (1 in 9)") loosened a test to get green; a suite listed as tolerant with no named
 // input is the same move one level up, so the entry itself carries the input and the reason, and a test that cannot name one stays in the backbone (our own races are bugs).
 // Usage: node tools/lanes-check.mjs [--base origin/main]   exit 1 with the entries and what each lacks. Guard: desktop/test/lanes-check.test.js.
@@ -14,7 +14,7 @@ export const LANES = ['tolerant', 'suspended', 'retired'];
 export const INPUTS = ['ai', 'clock', 'outside'];
 const WHY_WORDS = 8;   // a mechanical floor for "a sentence": "flaky" and "model noise" are not one; whether the reason is true is Gitar's and the owner's to read
 const words = text => String(text || '').trim().split(/\s+/).filter(Boolean).length;
-const HOW = 'A suite leaves the backbone only by naming what its result depends on (ai, clock or outside) and why; a test that cannot name one stays in the backbone: our own races are bugs, not tolerance.\nTo bring a suite back, delete its entry. (spec 2026-10-28-e2e-reliability-design.md, rule E)';
+const HOW = 'A suite leaves the backbone only by naming what its result depends on (ai, clock or outside) and why; a test that cannot name one stays in the backbone: our own races are bugs, not tolerance.\nEvery entry names when it returns or retires in returns. To bring a suite back, delete its entry. (spec 2026-10-28-e2e-reliability-design.md, rules D and E)';
 
 // One entry -> what it lacks, as short phrases ([] when it is complete). Takes the parsed entry of `suites`.
 export function entryProblems(entry) {
@@ -24,6 +24,8 @@ export function entryProblems(entry) {
   if (entry.lane === 'tolerant' && !INPUTS.includes(entry.input)) lacks.push(`input must be one of ${INPUTS.join(', ')}: the non-deterministic thing its result depends on`);
   if (words(entry.why) < WHY_WORDS) lacks.push(`why must say in a sentence what the result depends on (${WHY_WORDS}+ words)`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(entry.since || ''))) lacks.push('since must be a date (YYYY-MM-DD)');
+  // Why (30 Oct 2026, owner): every grey suite names what brings it back or retires it, for the page and weekly review.
+  if (typeof entry.returns !== 'string' || !entry.returns.trim()) lacks.push('returns must be a non-empty string naming when the suite returns or retires');
   return lacks;
 }
 

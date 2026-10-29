@@ -70,9 +70,12 @@ export function buildEvent(kind, fields = {}, {release = '', environment = 'prod
 function extensionFields(fields) {
   const type = /^(?:Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError|AggregateError)$/.test(fields.type) ? fields.type : 'Error';
   // Why (29 Oct 2026, owner): a page-derived string can appear even in an Error; extension reports carry fixed messages and own filenames only.
+  // Why (29 Oct 2026, Gitar on #2449): the top frame (file:line, already free of page data) is `where`, so errors in different files neither share a Sentry issue nor mute each other's minute.
+  const stack = String(fields.stack || '').split('\n').filter(line => /^at [\w-]+\.m?js:\d{1,9}:\d{1,9}$/.test(line)).slice(0, 8);
   return {type, message: fields.rejection === true ? `Unhandled ${type} rejection` : `Uncaught ${type}`,
+    where: (stack[0] || '').replace(/^at /, '').replace(/:\d+$/, ''),
     extVersion: /^\d+(?:\.\d+){1,3}$/.test(fields.extVersion) ? fields.extVersion : '',
-    stack: String(fields.stack || '').split('\n').filter(line => /^at [\w-]+\.m?js:\d{1,9}:\d{1,9}$/.test(line)).slice(0, 8).join('\n')};
+    stack: stack.join('\n')};
 }
 
 // The tester's own run log, scrubbed line by line (same rules as every other field), the last 200 lines and 40 KB at most.

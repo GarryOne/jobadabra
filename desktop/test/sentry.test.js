@@ -5,6 +5,15 @@ import * as sentry from '../lib/sentry.js';
 
 const DSN = 'https://abc123@o1.ingest.de.sentry.io/4500001';
 
+test('extension errors in different files are different issues and do not mute each other', () => {
+  const sent = [];
+  const client = sentry.create({dsn: DSN, release: 'r', installId: 'i', now: () => 0, enabled: () => true, fetcher: (url, init) => { sent.push(init.body); return Promise.resolve(); }});
+  assert.equal(client.capture('extension_error', {type: 'TypeError', stack: 'at fill.js:42:7'}), true);
+  assert.equal(client.capture('extension_error', {type: 'TypeError', stack: 'at flow.js:91:3'}), true, 'another file, same type: reported');
+  assert.equal(client.capture('extension_error', {type: 'TypeError', stack: 'at fill.js:42:7'}), false, 'same frame: held');
+  assert.equal(JSON.parse(sent[1].split('\n')[2]).tags.where, 'flow.js:91');
+});
+
 test('extension exceptions use safe diagnostics, filename-only frames and a one-minute limit', () => {
   const sent = [];
   let time = 0, on = true;

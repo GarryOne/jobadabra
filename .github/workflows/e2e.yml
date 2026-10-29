@@ -253,7 +253,7 @@ jobs:
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/${{ matrix.key }}
       # A pull request runs only the steps its changed lines reach (owner, 26 Oct 2026: "not even an entire e2e suite, but just few tests/scenarios/cases"; lib/runner.mjs).
       E2E_STEP_NAMES: ${{ inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
-      E2E_FALLBACK_SUITES: ${{ needs.plan.outputs.suites }}
+      E2E_FALLBACK_SUITES: ${{ matrix.fallbackSuites }}
       E2E_FALLBACK_SUITE: ${{ matrix.suite }}
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
       # AI cost (7 Oct 2026: the e2e key billed ~$10 a day, mostly unseen). Only the scheduled runs ask the model live; every other run (gates, soaks, the canary, reruns,

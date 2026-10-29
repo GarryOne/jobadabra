@@ -10,6 +10,7 @@ import {SUITES} from '../lib/context.mjs';
 import * as pick from '../lib/pr-suites.mjs';
 import {suitesUsing} from '../lib/import-graph.mjs';
 import {suitesFor} from '../lib/plan.mjs';
+import {planRun} from '../plan-run.mjs';
 
 const root = new URL('../', import.meta.url);
 const sources = Object.fromEntries(['suites', 'lib'].flatMap(dir => fs.readdirSync(new URL(`${dir}/`, root))
@@ -43,16 +44,52 @@ test('shared lib ownership retains recorded steps, respects ownsStep, and accept
   assert.deepEqual(pick.ownedStepNames({...input, sources: {'suites/jobs.mjs': "import {run} from '../lib/deep.mjs';"}}), ['known', 'new']);
 });
 
+for (const [lib, name] of [
+  ['apply-journeys', 'two applications side by side: a new journey step'],
+  ['apply-live', 'a real posting, watched live: a new live step'],
+]) test(`a new ${lib} step belongs to applyflows through its suite import`, async () => {
+  const own = {};
+  assert.ok(!pick.stepCalls(sources[`lib/${lib}.mjs`]).some(call => call.name === name), 'the step has no prior source or coverage record');
+  for (const suite of SUITES) {
+    if (!suitesUsing('', sources)[`lib/${lib}.mjs`].includes(suite)) continue;
+    const {ownsStep} = await import(`../suites/${suite}.mjs`);
+    const names = pick.ownedStepNames({suite, file: `desktop/e2e/lib/${lib}.mjs`, names: [name], sources, ownsStep});
+    if (names.length) own[suite] = names;
+  }
+  assert.deepEqual(own, {applyflows: [name]});
+});
+
+const planned = Array.from({length: 19}, (_, i) => `suite-${i}`);
+async function fallbackPlan(picks) {
+  const out = await planRun({env: {EVENT: 'workflow_dispatch', PR_SUITES: planned.join(','), ONLY: planned.join(','), PR_STEPS: JSON.stringify(picks)},
+    all: planned, gh: () => '[]', minutes: () => 15, shards: {'suite-7': 2}});
+  return JSON.parse(out.matrix).include;
+}
+
+test('among 19 planned suites, a lone picked suite 7 keeps its fallback on every leg', async t => {
+  const matrix = await fallbackPlan({'suite-7': ['stale'], 'suite-1': [], '(why)': ['not a suite'], absent: ['not selected']});
+  assert.ok(matrix.every(leg => leg.fallbackSuites === 'suite-7'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'picker-lone-fallback-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const file = path.join(dir, 'failures.json');
+  fs.writeFileSync(file, JSON.stringify([{suite: 'suite-7', step: 'steps picked for this PR'}]));
+  const result = spawnSync(process.execPath, [cli, '--renamed-only', file], {env: {...process.env,
+    E2E_FALLBACK_SUITES: matrix[0].fallbackSuites, E2E_FALLBACK_SUITE: 'suite-7'}, encoding: 'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+});
+
 const cli = fileURLToPath(new URL('../red-steps.mjs', import.meta.url));
-test('19 stale picked suites allow only three whole-suite fallbacks, including the retry path', t => {
+test('19 stale picked suites allow only three whole-suite fallbacks, including the retry path', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'picker-fallback-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const suites = Array.from({length: 19}, (_, i) => `suite-${i}`);
+  const suites = planned;
+  const matrix = await fallbackPlan(Object.fromEntries([...suites].reverse().map(suite => [suite, ['stale']])));
+  assert.ok(matrix.every(leg => leg.fallbackSuites === suites.join(',')), 'only picked suites, in plan order, once per suite');
   const allowed = [], blocked = [];
   for (const suite of suites) {
     const file = path.join(dir, `${suite}.json`);
     fs.writeFileSync(file, JSON.stringify([{suite, step: 'steps picked for this PR', message: 'picked step not found'}]));
-    const env = {...process.env, E2E_FALLBACK_SUITES: suites.join(','), E2E_FALLBACK_SUITE: suite};
+    const env = {...process.env, E2E_FALLBACK_SUITES: matrix[0].fallbackSuites, E2E_FALLBACK_SUITE: suite};
     const first = spawnSync(process.execPath, [cli, '--renamed-only', file], {env, encoding: 'utf8'});
     (first.status === 0 ? allowed : blocked).push(suite);
     if (first.status !== 0) {
@@ -69,10 +106,11 @@ test('19 stale picked suites allow only three whole-suite fallbacks, including t
 test('the workflow keeps a capped pick red on both attempts without launching a whole suite', t => {
   if (spawnSync('bash', ['--version']).error) return t.skip('requires bash');
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /E2E_FALLBACK_SUITES: \$\{\{ needs\.plan\.outputs\.suites \}\}/);
+  assert.match(workflow, /E2E_FALLBACK_SUITES: \$\{\{ matrix\.fallbackSuites \}\}/);
   assert.match(workflow, /E2E_FALLBACK_SUITE: \$\{\{ matrix\.suite \}\}/);
   const windows = fs.readFileSync(new URL('../../../.github/workflows/e2e-windows.yml', import.meta.url), 'utf8');
   assert.match(windows, /E2E_FALLBACK_SUITES:.*needs\.plan\.outputs\.matrix/);
+  assert.match(windows, /E2E_FALLBACK_SUITES:.*inputs\.pr_steps != ''.*fromJSON\(inputs\.pr_steps\)\[0\]/);
   assert.match(windows, /E2E_FALLBACK_SUITE: \$\{\{ matrix\.suite \}\}/);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'picker-workflow-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));

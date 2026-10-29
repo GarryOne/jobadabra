@@ -181,7 +181,7 @@ jobs:
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
       # A PR's short Windows check (pr-suites.yml, owner's yes 26 Oct 2026): only these steps (lib/runner.mjs), on a fresh SQLite store, so no Notion page and no lock.
       E2E_STEP_NAMES: ${{ inputs.pr_steps }}
-      E2E_FALLBACK_SUITES: ${{ join(fromJSON(needs.plan.outputs.matrix).include.*.suite, ',') }}
+      E2E_FALLBACK_SUITES: ${{ inputs.pr_steps != '' && fromJSON(inputs.pr_steps)[0] && join(fromJSON(needs.plan.outputs.matrix).include.*.suite, ',') || '' }}
       E2E_FALLBACK_SUITE: ${{ matrix.suite }}
       E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}
     permissions:

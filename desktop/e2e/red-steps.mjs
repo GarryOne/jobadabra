@@ -2,7 +2,7 @@
 // Job: pick the suites
 // Usage (e2e.yml, desktop.yml): node red-steps.mjs <first try's suite-failures.json> -> a JSON list for E2E_STEP_NAMES, or nothing (run the whole suite).
 //   node red-steps.mjs --renamed-only <suite-failures.json>   exit 0 when the only red is a picked name that matched no step (e2e.yml, e2e-windows.yml: run whole now).
-// E2E_FALLBACK_SUITES reserves the first three distinct planned suites; E2E_FALLBACK_SUITE identifies this leg. Both CLI modes exit 2 beyond that cap.
+// E2E_FALLBACK_SUITES reserves the first three distinct picked suites; E2E_FALLBACK_SUITE identifies this leg. Both CLI modes exit 2 beyond that cap.
 // The runner adds each picked step's setup (lib/runner.mjs pickedNames, stepNeeds). Guard: test/red-steps.test.mjs, tests/test_retry_red_steps.py.
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';

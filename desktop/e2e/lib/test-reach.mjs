@@ -61,19 +61,22 @@ const HARNESS_INPUTS = new Set(['.github/workflows/harness.yml', 'desktop/packag
 const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item) && (!DATA.test(changed) || DATA.test(item)));
 
 /**
- * The harness test files a change reaches. Assumes `changed` is repo-relative with '/' separators.
+ * The harness test files a change reaches through imports, URL reads, or declared folder readers. Paths use '/' separators.
  * Invariant: any nonempty selection includes the workflow coverage guard; no reached tests means no guard.
- * @param {{root: string, tests: string[], changed: string[], always?: string[]}} input tests: repo-relative test files; always: run when the harness itself changed
+ * @param {{root: string, tests: string[], changed: string[], always?: string[], folderReaders?: Record<string, string[]>}} input tests/readers: repo-relative test files; folder keys: under desktop/e2e/ ('./' = direct files only); always: run when the harness itself changed
  * @returns {{files: string[], browser: boolean, why: Record<string, string>}} files sorted; why: each file's first changed path that reached it
  */
-export function reachedTests({root, tests, changed, always = []}) {
+export function reachedTests({root, tests, changed, always = [], folderReaders = {}}) {
   const cache = new Map(), why = {};
   let browser = false;
   // What the job installs and stages from runs the pr set too, as before #2241 (review on #2241): no test imports a package file or stage.mjs.
   const harnessChanged = changed.some(file => (file.startsWith('desktop/e2e/') && !DATA.test(file)) || HARNESS_INPUTS.has(file));
+  // Why (29 Oct 2026, a8, #2495): folder readers are declared because static guessing missed a shape in each of 3 review rounds.
   for (const test of tests) {
     const reached = reach(root, test, cache);
-    const hit = changed.find(file => covers(reached.paths, file)) || (harnessChanged && always.includes(test) ? 'the harness changed: the pr set' : '');
+    const hit = changed.find(file => covers(reached.paths, file) || Object.entries(folderReaders).some(([folder, readers]) =>
+      readers.includes(test) && (folder === './' ? path.posix.dirname(file) === 'desktop/e2e' : file.startsWith(`desktop/e2e/${folder}`))))
+      || (harnessChanged && always.includes(test) ? 'the harness changed: the pr set' : '');
     if (!hit) continue;
     why[test] = hit;
     browser ||= reached.browser;

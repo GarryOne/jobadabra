@@ -2,8 +2,7 @@
 // Job: run tolerant suites as rates
 import fs from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
-import {qualityJourney} from '../lib/quality-journey.mjs';
+import {PLANNER, collectFacts, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
 import {execFileSync} from 'node:child_process';
 import {python, pythonEnv} from '../lib/python.mjs';
 import {modelClient} from '../lib/model.mjs';
@@ -14,27 +13,20 @@ import {failures, judge} from '../lib/factjudge.mjs';
 import {placesNote} from '../lib/quality-places.mjs';
 import {plainTextOf} from '../lib/seed-texts.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
-import {capViolations, checkFacts, matchRows, rankingViolations, unstable} from '../lib/quality.mjs';
+import {matchRows, unstable} from '../lib/quality.mjs';
 
 export const name = 'qualityai';
 export const store = 'sqlite';
-// About $0.03 a run on Haiku 5.5 (was ~$0.3 on Sonnet until 27 Oct 2026): the nightly release gate, and a push that touches what it judges (scoring and enrichment prompts, the model ids, its own fixtures), not the three-a-day schedule.
-export const cadence = 'nightly';
-// Each slow step has its own time limit (owner, 27 Oct 2026: "Code gate + AI rate"): a replayed gate takes ~2 min (the Jobs check 26 s); the night's live run
-// ~6-9 min (the Jobs check up to 330 s, the second scoring 120 s, 26-27 Oct 2026). The budget holds the live run; minutes holds it twice plus the setup.
-export const budgetMinutes = 10;
-export const minutes = 24;
+// Live every run on the shipped model: facts, rescores, judge flags and CV matches.
+// The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
+export const cadence = PLANNER.cadence;
+export const budgetMinutes = PLANNER.budgetMinutes;
+export const minutes = PLANNER.minutes;
+export const sameOnEveryOs = PLANNER.sameOnEveryOs;
+export const judges = PLANNER.judges;
+export const watches = PLANNER.watches;
+export const env = PLANNER.env;
 const STEP = 60000;
-// It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
-export const sameOnEveryOs = true;
-// Prompt changes must reach this live journey as well as the exact quality journey.
-export const judges = ['src/ai/'];
-export const watches = ['src/ai/score.py', 'src/ai/score_bands.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/lib/question-reuse.js', 'desktop/lib/match-check.js', 'desktop/e2e/fixtures/golden/'];
-// This suite measures what a user gets, so the app under test runs on the shipped model (about $0.3 a run); the other suites run on Haiku. For a cheap run:
-// E2E_APP_MODEL=claude-haiku-4-5 (Haiku 4.5 scored the same job up to 10 points apart between two scorings, Sonnet within 6).
-export const env = {JOB_PILOTTO_MODEL_OVERRIDE: process.env.E2E_APP_MODEL || 'claude-sonnet-5-5'};
-// A persona's Profile is a file the engine reads instead of the test page's Profile (test-only: desktop/lib/pipeline.js JOB_PILOTTO_E2E_PROFILE_FILE).
-if (process.env.E2E_QUALITY_PERSONA) env.JOB_PILOTTO_E2E_PROFILE_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', `golden-${process.env.E2E_QUALITY_PERSONA}`, 'profile.md');
 /** Run the golden journey and report every independent final check. */
 export async function run(ctx) {
   const journey = qualityJourney(ctx);
@@ -56,20 +48,8 @@ export async function run(ctx) {
     rows = journey.rows;
 
     await ctx.run('every enriched fact equals the ground truth (seniority, work mode, location, languages, salary, role family)', async () => {
-      const {byId} = matchRows(truth, rows);
-      const problems = [];
-      let missed = 0;
-      for (const item of postings) {
-        const found = byId[item.id];
-        if (!found) {   // a job the store lost: every fact it holds counts as missed in the rate
-          if (!item.filterMayDrop) { problems.push(`"${item.title}" is missing from Notion`); missed += checkFacts(item, {props: {}}).length; }
-          continue;
-        }
-        for (const result of checkFacts(item, found[0])) {
-          summary.facts.total++;
-          if (result.ok) summary.facts.exact++; else problems.push(`"${result.posting}": ${result.fact} should be ${JSON.stringify(result.expected)}, the app wrote ${JSON.stringify(result.actual)}`);
-        }
-      }
+      const {exact, total, problems, missed} = collectFacts(journey);
+      summary.facts = {exact, total};
       console.log(`  ${summary.facts.exact}/${summary.facts.total} facts exact${notKeptNote(rows) ? `; ${notKeptNote(rows)}` : ''}`);
       if (problems.length) console.log(`  ${problems.length} wrong or missing fact(s) tonight:\n    ${problems.join('\n    ')}`);
       measured.facts = {exact: summary.facts.exact, total: summary.facts.total + missed};
@@ -79,20 +59,13 @@ export async function run(ctx) {
     }, {needs: ctx.needs});
 
     await ctx.run('relevant jobs rank above irrelevant ones, and scores are whole numbers from 0 to 100', async () => {
-      const scores = scoresOf();
-      const outside = rows.filter(row => !(Number.isInteger(row.props.Score) && row.props.Score >= 0 && row.props.Score <= 100));
-      if (outside.length) throw new Error(`a score is not a whole number from 0 to 100: ${outside.map(row => `${row.props.Job} = ${row.props.Score}`).join(', ')}`);
-      const high = postings.filter(item => item.fit === 'high');
-      const missing = high.filter(item => scores[item.id] == null);
-      if (missing.length) throw new Error(`relevant job(s) were not scored: ${missing.map(item => item.title).join(', ')}`);
-      const violations = rankingViolations(truth, scores);
-      summary.ranking = violations.length ? `${violations.length} violation(s)` : 'ok';
-      measured.ranking = summary.ranking;
-      console.log(`  scores: ${postings.map(item => `${item.id}=${scores[item.id] ?? 'dropped'}`).join(' ')}`);
-      if (violations.length) throw new Error(violations.map(v => `"${v.low}" (${v.lowScore}) is not below "${v.high}" (${v.highScore})`).join('; '));
-      const over = capViolations(truth, scores), said = over.map(v => `"${v.title}" scored ${v.score}, above its cap ${v.cap}`).join('; ');
-      measured.caps = over.length ? `${over.length} over` : 'ok';
-      if (over.length) console.log(`  above a cap tonight: ${said}`);
+      rankingCheck(journey, {
+        onRanking: ranking => { summary.ranking = ranking; measured.ranking = ranking; },
+        onCap: (over, said) => {
+          measured.caps = over.length ? `${over.length} over` : 'ok';
+          if (over.length) console.log(`  above a cap tonight: ${said}`);
+        },
+      });
     }, {needs: ctx.needs});
 
     await soft(() => ctx.run('scoring the same jobs again is steady over the last nights', async () => {

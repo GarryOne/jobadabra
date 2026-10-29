@@ -10,7 +10,7 @@ import {ensureSetUp} from './seed.mjs';
 import {clearData} from './start-state.mjs';
 import {rewriteTextLines} from './seed-texts.mjs';
 import {MATCHES, matchRowsOf} from './quality-rows.mjs';
-import {fingerprints, leaks, matchRows, workLeft} from './quality.mjs';
+import {capViolations, checkFacts, fingerprints, leaks, matchRows, rankingViolations, workLeft} from './quality.mjs';
 import {withRoles} from './search-roles.mjs';
 
 const STEP = 60000;
@@ -20,6 +20,52 @@ const PERSONA = process.env.E2E_QUALITY_PERSONA || '';
 const GOLDEN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', PERSONA ? `golden-${PERSONA}` : 'golden');
 const persona = PERSONA ? JSON.parse(fs.readFileSync(path.join(GOLDEN, 'persona.json'), 'utf8')) : null;
 const read = file => JSON.parse(fs.readFileSync(path.join(GOLDEN, file), 'utf8'));
+
+/** Shared planner facts: both suites keep the same schedule, watched inputs and model environment. */
+export const PLANNER = Object.freeze({
+  cadence: 'nightly', budgetMinutes: 10, minutes: 24, sameOnEveryOs: true,
+  judges: Object.freeze(['src/ai/']),
+  watches: Object.freeze(['src/ai/score.py', 'src/ai/score_bands.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/lib/question-reuse.js', 'desktop/lib/match-check.js', 'desktop/e2e/fixtures/golden/']),
+  env: Object.freeze({JOB_PILOTTO_MODEL_OVERRIDE: process.env.E2E_APP_MODEL || 'claude-sonnet-5-5',
+    // The engine reads the persona's Profile instead of the test page's Profile.
+    ...(PERSONA ? {JOB_PILOTTO_E2E_PROFILE_FILE: path.join(GOLDEN, 'profile.md')} : {})}),
+});
+
+/** Collect checked facts without policy: required missing jobs add diagnostics and missed facts, optional drops add neither. */
+export function collectFacts({truth, postings, rows}) {
+  const {byId} = matchRows(truth, rows);
+  const problems = [];
+  let exact = 0, total = 0, missed = 0;
+  for (const item of postings) {
+    const found = byId[item.id];
+    if (!found) {
+      if (!item.filterMayDrop) { problems.push(`"${item.title}" is missing from Notion`); missed += checkFacts(item, {props: {}}).length; }
+      continue;
+    }
+    for (const result of checkFacts(item, found[0])) {
+      total++;
+      if (result.ok) exact++; else problems.push(`"${result.posting}": ${result.fact} should be ${JSON.stringify(result.expected)}, the app wrote ${JSON.stringify(result.actual)}`);
+    }
+  }
+  return {exact, total, problems, missed};
+}
+
+/** Check score range and ranking first; report ranking before failure, then let each suite handle caps. */
+export function rankingCheck(journey, {onRanking, onCap}) {
+  const {truth, postings, rows, scoresOf} = journey;
+  const scores = scoresOf();
+  const outside = rows.filter(row => !(Number.isInteger(row.props.Score) && row.props.Score >= 0 && row.props.Score <= 100));
+  if (outside.length) throw new Error(`a score is not a whole number from 0 to 100: ${outside.map(row => `${row.props.Job} = ${row.props.Score}`).join(', ')}`);
+  const high = postings.filter(item => item.fit === 'high');
+  const missing = high.filter(item => scores[item.id] == null);
+  if (missing.length) throw new Error(`relevant job(s) were not scored: ${missing.map(item => item.title).join(', ')}`);
+  const violations = rankingViolations(truth, scores);
+  onRanking(violations.length ? `${violations.length} violation(s)` : 'ok');
+  console.log(`  scores: ${postings.map(item => `${item.id}=${scores[item.id] ?? 'dropped'}`).join(' ')}`);
+  if (violations.length) throw new Error(violations.map(v => `"${v.low}" (${v.lowScore}) is not below "${v.high}" (${v.highScore})`).join('; '));
+  const over = capViolations(truth, scores), said = over.map(v => `"${v.title}" scored ${v.score}, above its cap ${v.cap}`).join('; ');
+  onCap(over, said);
+}
 
 /** Build one isolated journey; rows and appJobs always reflect its latest read2(). */
 export function qualityJourney(ctx) {

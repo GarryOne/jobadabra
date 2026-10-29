@@ -509,8 +509,8 @@ jobs:
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
       E2E_AI_REPLAY: ${{ matrix.suite == 'qualityai' && '0' || '1' }}   # qualityai asks live; the backbone gate replays (lib/ai-meter.mjs)
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
-      # Quality's gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): its recorded answers never expire, and on main a question with no recorded
-      # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). How steady the AI is: the night's fresh run. Guard: tests/test_quality_replay_gate.py
+      # Quality keeps strict replay until PR 2/4 stores its AI answers (owner, 27 Oct 2026: "Code gate + AI rate"): recorded answers never expire; on main a question with no recorded
+      # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). qualityai asks live every run to measure AI steadiness. Guard: tests/test_quality_replay_gate.py
       E2E_AI_STRICT: ${{ matrix.suite == 'quality' && '1' || '' }}
       E2E_AI_MAX_AGE_DAYS: ${{ matrix.suite == 'quality' && '3650' || '' }}
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}

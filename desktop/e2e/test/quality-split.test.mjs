@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
+import * as journeyLib from '../lib/quality-journey.mjs';
 import {qualityRates} from '../lib/quality-rates.mjs';
 import * as quality from '../suites/quality.mjs';
 import * as qualityai from '../suites/qualityai.mjs';
@@ -24,6 +25,7 @@ test('rates contain only the contracted counts and verdicts, never judge texts o
 });
 
 test('both suites export the planner fields and share the golden journey', async () => {
+  assert.ok(Object.isFrozen(journeyLib.PLANNER));
   const facts = await suiteFacts();
   for (const suite of [quality, qualityai]) {
     assert.equal(suite.cadence, 'nightly');
@@ -32,9 +34,9 @@ test('both suites export the planner fields and share the golden journey', async
     assert.equal(suite.budgetMinutes, 10);
     assert.equal(suite.minutes, 24);
     assert.equal(typeof suite.run, 'function');
-    assert.deepEqual(suite.env, quality.env);
-    assert.deepEqual(suite.watches, quality.watches);
-    assert.deepEqual(suite.judges, quality.judges);
+    assert.equal(suite.env, journeyLib.PLANNER.env);
+    assert.equal(suite.watches, journeyLib.PLANNER.watches);
+    assert.equal(suite.judges, journeyLib.PLANNER.judges);
     assert.ok(facts.all.includes(suite.name));
     assert.equal(facts.cadence[suite.name], 'nightly');
     assert.ok(facts.sameOnEveryOs.includes(suite.name));
@@ -82,4 +84,38 @@ test('the shared steps and the remaining backbone steps keep their names and ord
     const calls = ['await journey.setUp()', 'await journey.reset()', 'await journey.jobs()', 'every enriched fact', 'await soft(privacyLogs)'].map(call => code.indexOf(call));
     assert.ok(calls.every((at, i) => at >= 0 && (!i || calls[i - 1] < at)), `${suite}: shared journey order`);
   }
+});
+
+// A refactor must preserve early score failures and report ranking before cap handling.
+test('the shared ranking check preserves score assertions and the two cap policies', () => {
+  const truth = [{id: 'high', title: 'Relevant', fit: 'high'}, {id: 'low', title: 'Other', fit: 'low', maxScore: 49}];
+  const check = (scores, onCap = () => {}, onRanking = () => {}) => journeyLib.rankingCheck({truth, postings: truth,
+    rows: Object.entries(scores).map(([id, Score]) => ({props: {Job: id, Score}})), scoresOf: () => scores}, {onCap, onRanking});
+  assert.throws(() => check({high: 100.5}), {message: 'a score is not a whole number from 0 to 100: high = 100.5'});
+  assert.throws(() => check({low: 10}), {message: 'relevant job(s) were not scored: Relevant'});
+  let ranking = 'not checked';
+  assert.throws(() => check({high: 20, low: 30}, () => assert.fail('caps follow ranking'), value => { ranking = value; }),
+    {message: '"Other" (30) is not below "Relevant" (20)'});
+  assert.equal(ranking, '1 violation(s)');
+  assert.throws(() => check({high: 90, low: 60}, (_over, said) => { throw new Error(`a job with an unmet stated requirement is scored too high: ${said}`); }),
+    {message: 'a job with an unmet stated requirement is scored too high: "Other" scored 60, above its cap 49'});
+  let caps;
+  check({high: 90, low: 60}, over => { caps = over.length ? `${over.length} over` : 'ok'; });
+  assert.equal(caps, '1 over');
+  check({high: 90, low: 40}, over => { caps = over.length ? `${over.length} over` : 'ok'; }, value => { ranking = value; });
+  assert.equal(caps, 'ok');
+  assert.equal(ranking, 'ok');
+});
+
+// Missing required jobs count toward the live denominator; optional drops do not.
+test('shared fact collection keeps exact counts, diagnostics and missed facts separate', () => {
+  const truth = [{id: 'a', title: 'A', url: 'https://a.test', seniority: 'Senior', location: 'Zurich'},
+    {id: 'b', title: 'B', url: 'https://b.test', seniority: 'Senior', location: 'Bern'},
+    {id: 'c', title: 'C', url: 'https://c.test', location: 'Basel', filterMayDrop: true},
+    {id: 'd', title: 'Duplicate', duplicateOf: 'a', url: 'https://a.test', location: 'Zurich'}];
+  const rows = [{props: {'Job URL': 'https://a.test', Seniority: 'Senior', Location: 'Bern'}}];
+  assert.deepEqual(journeyLib.collectFacts({truth, postings: truth.filter(item => !item.duplicateOf), rows}), {
+    exact: 1, total: 2, missed: 2,
+    problems: ['"A": location should be "Zurich", the app wrote "Bern"', '"B" is missing from Notion'],
+  });
 });

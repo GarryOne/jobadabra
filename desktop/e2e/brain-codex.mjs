@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {askBroker} from './lib/broker-client.mjs';
+import {aiProvider, providerLine} from './lib/ai-provider.mjs';
 
 const BRIEF_KEYS = ['lens', 'serves', 'evidence', 'action', 'why', 'effort', 'expected', 'check_in_days', 'details'];
 export const BRIEF_SCHEMA = {type: 'object', additionalProperties: false, required: BRIEF_KEYS, properties: {...Object.fromEntries(BRIEF_KEYS.map(key => [key, {type: 'string'}])), check_in_days: {type: 'integer'}}};
@@ -34,7 +35,17 @@ export function fileText(step, reply) {
   return JSON.stringify(brief, null, 2);
 }
 
+/** 'claude' only when the resolver (lib/ai-provider.mjs, consumer "brain") says claude; free and codex both mean the broker here, the brain has no Workers AI path. */
+export const brainProvider = (env = process.env) => (aiProvider(env, 'brain').provider === 'claude' ? 'claude' : 'codex');
+
+/** Logs which variable decided (providerLine) and puts BRAIN_AI into the job's env for the steps' guards. */
+function exportProvider() {
+  console.log(providerLine(process.env, 'brain'));
+  if (process.env.GITHUB_ENV) fs.appendFileSync(process.env.GITHUB_ENV, `BRAIN_AI=${brainProvider()}\n`);
+}
+
 async function main() {
+  if (process.argv.includes('--provider')) return exportProvider();
   const step = process.argv[process.argv.indexOf('--step') + 1];
   if (!MODEL[step]) throw new Error('--step must be brief, another, review or explore');
   if (!process.env.BRAIN_PROMPT) throw new Error('BRAIN_PROMPT is empty (the secret BRAIN_PROMPT_* of this step)');

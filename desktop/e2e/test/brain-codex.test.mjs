@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {buildRequest, fileText, MODEL} from '../brain-codex.mjs';
+import {brainProvider, buildRequest, fileText, MODEL} from '../brain-codex.mjs';
 import {toBrokerCall} from '../lib/broker-client.mjs';
 
 const workflow = fs.readFileSync(new URL('../../../.github/workflows/product-brain.yml', import.meta.url), 'utf8');
@@ -42,7 +42,8 @@ test('a brief without an action or a lens, or a plan that is empty, stops the st
 });
 
 test('the workflow runs the brain on Codex by default, with no repo variable, and only an explicit claude uses the API key', () => {
-  assert.match(workflow, /BRAIN_AI: .*\|\| 'codex' \}\}/);
+  assert.doesNotMatch(workflow, /BRAIN_AI: \$\{\{/, 'the provider is resolved by lib/ai-provider.mjs, not by an expression');
+  assert.match(workflow, /name: Which AI provider\n\s+run: node desktop\/e2e\/brain-codex\.mjs --provider/);
   assert.match(workflow, /id-token: write/);
   for (const step of ['brief', 'review', 'explore']) assert.match(workflow, new RegExp(`brain-codex\\.mjs --step ${step === 'brief' ? '"\\$STEP"' : step}`));
   const claudeSteps = workflow.split('\n').filter(line => /^\s+uses: anthropics\/claude-code-action/.test(line)).length;
@@ -50,4 +51,12 @@ test('the workflow runs the brain on Codex by default, with no repo variable, an
   const guards = [...workflow.matchAll(/- name: Claude (?:picks|reviews|explores)[^\n]*\n\s+if: ([^\n]*)/g)].map(match => match[1]);
   assert.equal(guards.length, 3);
   for (const guard of guards) assert.match(guard, /env\.BRAIN_AI == 'claude'/, 'a Claude step never runs unless asked');
+});
+
+test('the brain provider: Codex with no variable set, free means Codex, claude only when named, a typo is refused', () => {
+  assert.equal(brainProvider({CI: 'true'}), 'codex');
+  assert.equal(brainProvider({CI: 'true', CI_AI_PROVIDER: 'free'}), 'codex');
+  assert.equal(brainProvider({CI: 'true', CI_AI_PROVIDER: 'claude'}), 'claude');
+  assert.equal(brainProvider({CI: 'true', CI_AI_PROVIDER: 'claude', E2E_AI_PROVIDER_BRAIN: 'codex'}), 'codex', 'the brain\'s own variable is the more specific');
+  assert.throws(() => brainProvider({CI: 'true', E2E_AI_PROVIDER_BRAIN: 'claud'}), /must be codex, claude or free/);
 });

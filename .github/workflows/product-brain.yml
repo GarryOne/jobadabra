@@ -2,16 +2,16 @@ name: Product brain · Daily brief
 # Every morning: reads the product's signals (the owner's 📍 Product Compass and strategy pages, website + app numbers,
 # the website as visitors see it, GitHub, its own past decisions), recommends ONE action that serves the Compass's
 # phase and goal, and sends it to the owner's "Job Pilotto Brain" Telegram bot. Nothing goes further without a tap:
-#   ✅ Explore it   -> step explore: Claude (Opus) brainstorms options and a plan into the Notion page, then stops
+#   ✅ Explore it   -> step explore: the large model (Codex; Claude Opus when asked) brainstorms options and a plan into the Notion page, then stops
 #   ✅ Approve plan -> step approve: marked Approved (building it is a normal session, with the owner)
 #   ⏭ / ✖           -> step skip: Not now      🔁 -> step another: Not now + a different recommendation
-# Sundays: step review, a 30-day strategy review (Opus, web research) that proposes Compass changes; ✅ writes them in.
+# Sundays: step review, a 30-day strategy review (large model; web research only on Claude) that proposes Compass changes; ✅ writes them in.
 # Every message and tap is also logged in the site's D1 (brain_messages) for /admin/intelligence/brain; step sync copies Notion's rows there.
 # Buttons: the bot's webhook is the website (api/brain.js). Plumbing: tools/product_brain.py, tools/site-shots.mjs.
-# AI: Codex plan through the broker by default (desktop/e2e/brain-codex.mjs); BRAIN_AI=claude runs claude-code-action on the key. Secrets: ANTHROPIC_API_KEY (claude only), NOTION_BRAIN_TOKEN (Notion connection "Job Pilotto Brain": the Decisions database and
+# AI: Codex plan through the broker by default (desktop/e2e/brain-codex.mjs; the provider is lib/ai-provider.mjs with consumer "brain": E2E_AI_PROVIDER_BRAIN, CI_AI_PROVIDER, free = Codex here); BRAIN_AI=claude runs claude-code-action on the key. Secrets: ANTHROPIC_API_KEY (claude only), NOTION_BRAIN_TOKEN (Notion connection "Job Pilotto Brain": the Decisions database and
 # the pages the owner shares with it), BRAIN_BOT_TOKEN, BRAIN_CHAT_ID, JOB_PILOTTO_TELEMETRY_KEY; variable BRAIN_DATABASE_ID.
 # Prompts: private (GarryOne/jobadabra-lab/prompts, synced into the secrets BRAIN_PROMPT_BRIEF|REVIEW|EXPLORE).
-# Cost: brief ~$0.10-0.30 (Sonnet), explore and review ~$0.50-1 each (Opus): owner's budget $5-10 a month.
+# Cost: on Codex a call is a share of the owner's weekly plan (the broker counts it), no dollars; on Claude: brief ~$0.10-0.30 (Sonnet), explore and review ~$0.50-1 each (Opus).
 
 on:
   schedule:
@@ -51,9 +51,10 @@ jobs:
     env:
       STEP: ${{ inputs.step || (github.event.schedule == '0 16 * * 0' && 'review' || 'brief') }}
       DECISION: ${{ inputs.id }}
-      # Why (29 Oct 2026, owner: CI AI on his Codex plan; the brief failed every morning with "Credit balance is too low"): Codex is this workflow's default, with no repo variable needed. Claude only when asked:
-      # the input, vars.CI_AI_PROVIDER_BRAIN or the global vars.CI_AI_PROVIDER set to claude (free, the global default elsewhere, means Codex here: the brain has no Workers AI path).
-      BRAIN_AI: ${{ (inputs.ai_provider != 'auto' && inputs.ai_provider) || vars.CI_AI_PROVIDER_BRAIN || (vars.CI_AI_PROVIDER == 'claude' && 'claude') || 'codex' }}
+      # Why (29 Oct 2026, owner + Gitar on #2460): the provider is resolved once by lib/ai-provider.mjs (step "Which AI provider"), never by an expression here; its answer is BRAIN_AI.
+      E2E_AI_PROVIDER: ${{ inputs.ai_provider != 'auto' && inputs.ai_provider || '' }}
+      E2E_AI_PROVIDER_BRAIN: ${{ vars.E2E_AI_PROVIDER_BRAIN }}
+      CI_AI_PROVIDER: ${{ vars.CI_AI_PROVIDER }}
       GH_TOKEN: ${{ github.token }}
       NOTION_BRAIN_TOKEN: ${{ secrets.NOTION_BRAIN_TOKEN }}
       BRAIN_DATABASE_ID: ${{ vars.BRAIN_DATABASE_ID }}
@@ -80,6 +81,8 @@ jobs:
         if: env.STEP == 'sync'
         run: python tools/product_brain.py sync
 
+      - name: Which AI provider
+        run: node desktop/e2e/brain-codex.mjs --provider
       - name: Which day (web research on Growth and Business days)
         id: day
         run: |

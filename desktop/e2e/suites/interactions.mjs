@@ -15,7 +15,7 @@ import {VIEWS} from '../lib/uicheck.mjs';
 import {measureRecall, recallFindings} from '../lib/recall.mjs';
 import {lateShiftFindings, nowInPage, shiftsIn, watchShifts} from '../lib/shift.mjs';
 import {goView} from '../lib/go-view.mjs';
-import {probe, problems} from '../lib/rail-markers.mjs';
+import {probe, problems, waitForRail} from '../lib/rail-markers.mjs';
 
 // Why (29 Oct 2026, owner): hang caps = 3 x calm p95 of ten main runs (tools/e2e-step-timings.mjs); they catch a hang, never a slow runner; the suite has no aggregate budget
 const HANG_CAP_SECONDS = {
@@ -114,6 +114,7 @@ export async function run(ctx) {
     const was = await resize([1024, 640]);
     try {
       await ctx.page.click('.nav[data-view="jobs"]');
+      await waitForRail(ctx.page);
       const bad = problems(await ctx.page.evaluate(probe));
       if (bad.length) throw new Error(bad.join('; '));
     } finally {

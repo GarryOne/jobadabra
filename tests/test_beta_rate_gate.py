@@ -234,6 +234,27 @@ class Gate(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn('main runs 20,19', '\n'.join(lines))
 
+    def test_history_scan_stops_after_three_weeks_of_nights_without_artifacts(self):
+        # Gitar on #2504: a new tolerant suite has no nights yet; the scan must not walk all of desktop.yml's history.
+        store, gh = self.fixture(counts(40), nights=0)
+        jobs_calls, pages = [], []
+        def endless(*args, **kwargs):
+            url = next(a for a in args if a.startswith('repos/'))
+            if '/workflows/desktop.yml/runs?' in url:
+                page = int(url.split('&page=')[1])
+                pages.append(page)
+                return json.dumps({'workflow_runs': [{'id': page * 1000 + n, 'head_branch': 'main', 'event': 'schedule', 'status': 'completed',
+                                                     'display_title': 'E2E check · nightly backup'} for n in range(100)]})
+            if '/jobs?' in url:
+                jobs_calls.append(url)
+                return json.dumps([{'jobs': [{'name': 'E2E · Mac + Linux · settings', 'status': 'completed', 'conclusion': 'success'}]}])
+            return gh(*args, **kwargs)
+        status, lines = self.gate().check('o/r', 99, {'qualityai': {'lane': 'tolerant', 'input': 'ai'}}, endless)
+        self.assertEqual(status, 0)
+        self.assertIn('no band yet', '\n'.join(lines))
+        self.assertEqual(len(jobs_calls), 21)
+        self.assertLessEqual(max(pages), 2)
+
     def test_history_pages_past_manual_runs_and_keeps_completed_red_nights(self):
         store, gh = self.fixture(counts(40), nights=8)
         def paged(*args, **kwargs):

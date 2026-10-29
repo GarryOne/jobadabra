@@ -13,6 +13,7 @@ except ImportError:  # Direct workflow invocation: python3 tools/beta_rate_gate.
     import pr_ai_number as ai
 
 LANES = Path(__file__).resolve().parents[1] / 'desktop/e2e/lanes.json'
+MAX_NIGHTS_INSPECTED, MAX_PAGES = 21, 2   # three weeks of nights; two pages of 100 runs hold them with manual runs between
 
 
 def gh(*args, binary=False):
@@ -45,16 +46,20 @@ def blocking_jobs(jobs, registry, platform):
 
 def main_nights(repo, suite, github, platform='mac', current_run=''):
     """Read seven completed desktop nights with valid rates, regardless of their job conclusion."""
-    selected, page = [], 1
+    selected, page, inspected = [], 1, 0
     prefix = 'E2E · Windows · ' if platform == 'windows' else 'E2E · Mac + Linux · '
     artifact = f"e2e-artifacts-{'windows-' if platform == 'windows' else ''}{suite}"
-    while len(selected) < 7:
+    # Why (29 Oct 2026, a8, #2504): a new tolerant suite has no nights yet; three weeks of nights bound the scan instead of all of desktop.yml's history.
+    while len(selected) < 7 and page <= MAX_PAGES and inspected < MAX_NIGHTS_INSPECTED:
         runs = json.loads(github('api', f'repos/{repo}/actions/workflows/desktop.yml/runs?branch=main&status=completed&per_page=100&page={page}'))['workflow_runs']
         for run in sorted(runs, key=lambda r: r['id'], reverse=True):
             scheduled = (run.get('event'), run.get('display_title')) in (
                 ('schedule', 'E2E check · nightly backup'), ('workflow_dispatch', 'Nightly beta'))
             if str(run['id']) == str(current_run) or run.get('head_branch') != 'main' or not scheduled or run.get('status') != 'completed':
                 continue
+            if inspected == MAX_NIGHTS_INSPECTED:
+                break
+            inspected += 1
             jobs = [j for j in jobs_of(repo, run['id'], github) if re.sub(r'-\d+of\d+$', '', j.get('name', '')) == prefix + suite]
             if jobs and all(j.get('status') == 'completed' for j in jobs):
                 _, rates = ai.artifact_rates(repo, run['id'], github, artifact)

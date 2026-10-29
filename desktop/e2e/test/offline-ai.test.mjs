@@ -16,11 +16,17 @@ test('apply declares offline AI with the real-model guard enabled', () => {
   assert.match(source, /^export const realAi = false;/m);
 });
 
-test('apply answers the contact-label question in the shape the app parses', () => {
+test('apply preserves contact answers and each context\'s unmatched-ask fallback', () => {
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
-  const callback = /proxy\.setCanned\((body => \{[\s\S]*?)\n    \}\);/.exec(source);
-  assert.ok(callback, 'exercise the installed stand-in without starting the suite or app');
-  const ctx = {}, answer = runInNewContext(`(${callback[1]}\n})`, {ctx});
+  const setup = /\/\/ The app's own AI calls[\s\S]*?\n    \}\);/.exec(source);
+  assert.ok(setup, 'exercise the installed stand-in without starting the suite or app');
+  const ctx = {}, install = fallback => {
+    let answer = fallback;
+    const proxy = {canned: () => answer, setCanned: handler => { answer = handler; }};
+    runInNewContext(setup[0], {ctx, proxy});
+    return answer;
+  };
+  const answer = install(() => ({refuse: 'invalid-key'}));
   const labels = ['resume/cv', 'i agree to the privacy policy and the processing of my data'];
   const contact = fs.readFileSync(new URL('../../lib/contact-keys.js', import.meta.url), 'utf8');
   const system = /const INSTRUCTIONS = `([^\n]+)/.exec(contact)[1];
@@ -34,6 +40,9 @@ test('apply answers the contact-label question in the shape the app parses', () 
   const digest = {system: 'You help a job seeker who is on a job posting page in any language. The page has no application form the program can fill.',
     messages: [{role: 'user', content: 'Address path: /e2e/jobs/4001001\nCandidates (number...'}]};
   assert.deepEqual({...answer(digest)}, {refuse: 'invalid-key'});
+  const passThrough = install(null);
+  assert.equal(passThrough(digest), null, 'applyflows retains its unmatched digest pass-through');
+  assert.equal(passThrough({...body, system: 'A different question with the same labels'}), null);
   assert.equal(ctx.answerAsks, undefined);
   assert.equal(ctx.kindAsks, undefined);
 });

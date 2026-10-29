@@ -187,9 +187,7 @@ def job_spans(repo, runs, reports=()):
 
 
 def gh(*args, binary=False):
-    """Run `gh <args>` and return its stdout as UTF-8 text (bytes with binary=True, for an artifact ZIP); a failing call prints gh's error to stderr and re-raises CalledProcessError."""
-    # UTF-8 always: on a Windows runner text=True alone decodes as cp1252, "E2E for PR · " no longer matched, and #2062's Windows job wrote a false green
-    # while the Linux e2e run still ran.
+    """Run `gh <args>`; stdout as UTF-8 text (a Windows runner's cp1252 default once hid "E2E for PR · " and wrote a false green, #2062), bytes for an artifact ZIP (binary=True). A failure prints gh's error and re-raises."""
     try:
         return subprocess.run(['gh', *args], check=True, capture_output=True, encoding=None if binary else 'utf-8').stdout
     except subprocess.CalledProcessError as error:

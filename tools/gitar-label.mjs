@@ -94,12 +94,13 @@ export function fromGraphql(data) {
   if (!reviews.length && pr.comments.pageInfo.hasPreviousPage) return null;
   const commit = pr.commits.nodes[0].commit;
   const latest = reviews.sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt)).at(-1);
-  const workedAt = pr.timelineItems.nodes.filter(e => e.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null;
+  const labels = pr.labels.nodes.map(l => l.name);
+  const workedAt = labels.includes(WORKING.name) ? pr.timelineItems.nodes.filter(e => e.label?.name === WORKING.name).map(e => e.createdAt).sort().at(-1) || null : null;   // only while the label is on the PR, as the REST read does (Gitar, #2445): a removed label must not come back
   return {
     state: pr.state.toLowerCase(),
     headTime: [commit.committedDate, commit.checkSuites.nodes.map(c => c.createdAt).sort()[0]].filter(Boolean).sort().at(-1),
     review: latest ? {body: latest.body, updated_at: latest.updatedAt} : null,
-    labels: pr.labels.nodes.map(l => l.name),
+    labels,
     workingSince: workedAt,
   };
 }

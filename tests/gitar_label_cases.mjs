@@ -84,3 +84,9 @@ test('a label run asks GitHub once, not once per fact', () => {
   assert.equal(asked.length, 1);
   assert.equal(read.labels.length, 2);
 });
+
+test('a "working" label event with the label gone is not "working" (Gitar, #2445): a removed label must not come back', () => {
+  const gone = structuredClone(GQL);
+  gone.repository.pullRequest.labels.nodes = [{name: 'Gitar: reviewing'}];   // the label event is still in the timeline
+  assert.equal(fromGraphql(gone).workingSince, null, 'the REST path only looks the time up while the label is on the PR');
+});

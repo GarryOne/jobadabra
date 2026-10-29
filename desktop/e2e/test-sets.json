@@ -163,6 +163,7 @@
   "notion-proxy.test.mjs",
   "notion-real.test.mjs",
   "notion-request-count.test.mjs",
+  "offline-ai.test.mjs",
   "offline-app.test.mjs",
   "offline-site-password.test.mjs",
   "old-extension.test.mjs",

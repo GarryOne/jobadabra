@@ -17,6 +17,9 @@ import {exportedFileDigests} from '../lib/export-snapshot.mjs';
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
 export const stepNeeds = {'AI engine panel': ['every Settings section renders']};
 export const name = 'settings';
+// Why (29 Oct 2026, owner): settings saves keys without validation and parses CVs locally, so CI needs neither live AI nor an AI secret.
+export const offlineAi = true;
+export const realAi = false;
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.
 export const keepGoing = true;
 

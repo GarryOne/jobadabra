@@ -20,5 +20,6 @@ test('a declaration is exactly true or false, and strategy (all stand-in) declar
 });
 
 test('the harness runs the real-AI check for a suite declaring false', () => {
-  assert.match(fs.readFileSync(path.join(SUITES, '..', 'lib', 'suite-main.mjs'), 'utf8'), /suite\.realAi === false\) await runAlways\(/);
+  assert.match(fs.readFileSync(path.join(SUITES, '..', 'lib', 'suite-main.mjs'), 'utf8'), /await runAiGuards\(suite, ctx, runAlways\)/);
+  assert.match(fs.readFileSync(path.join(SUITES, '..', 'lib', 'no-real-ai.mjs'), 'utf8'), /suite\.realAi === false\) await runAlways\(/);
 });

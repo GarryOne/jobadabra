@@ -178,16 +178,6 @@ jobs:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
           E2E_DAILY_BUDGET: ${{ vars.E2E_DAILY_BUDGET }}
         run: node ai-spend.mjs >> "$GITHUB_OUTPUT"
-      # Why (owner, 27 Oct 2026: "let's close the gaps", part 4): one look at CI's AI before the matrix, as desktop.yml's ai-ready; a refused Free AI token is one red line here,
-      # not a red suite each (each suite's relay starts without checking it). Guard: tests/test_ci_free_ai.py test_every_relay_matrix_checks_the_ai_once_first.
-      - name: Is CI's AI ready? (one check before the suites)
-        env:
-          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
-          E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
-          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
-          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # with the token: the day's $1 cap on Workers AI neurons (lib/ai-cap.mjs; owner, 28 Oct 2026)
-          CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
-        run: node desktop/e2e/key-preflight.mjs
       - name: What to run (suites, commit, AI review, release to promote)
         id: list
         working-directory: desktop/e2e
@@ -205,6 +195,18 @@ jobs:
           OVER: ${{ steps.spend.outputs.over }}
         shell: bash -eo pipefail {0}   # a program piped into tee/cat keeps its exit code (tests/test_workflow_pipefail.py)
         run: node plan-run.mjs | { if [ "$OVER" = true ] || [ -n "$PR_SUITES" ]; then sed 's/^review=.*/review=0/'; else cat; fi; } >> "$GITHUB_OUTPUT"   # a pull request: no AI screenshot review
+      # Why (29 Oct 2026, owner): only selected AI suites need preflight; offline settings must run with missing or revoked AI secrets.
+      # Why (owner, 27 Oct 2026: "let's close the gaps", part 4): one look at CI's AI before the matrix, as desktop.yml's ai-ready; a refused Free AI token is one red line here,
+      # not a red suite each (each suite's relay starts without checking it). Guard: tests/test_ci_free_ai.py test_every_relay_matrix_checks_the_ai_once_first.
+      - name: Is CI's AI ready? (one check before the suites)
+        if: steps.list.outputs.ai_required == '1'
+        env:
+          E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
+          E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}
+          CI_FREE_AI_CF_TOKEN: ${{ secrets.CI_FREE_AI_CF_TOKEN }}   # set: the suites run on Free AI, so this token is what is checked (key-preflight.mjs)
+          CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # with the token: the day's $1 cap on Workers AI neurons (lib/ai-cap.mjs; owner, 28 Oct 2026)
+          CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
+        run: node desktop/e2e/key-preflight.mjs
   suite:
     name: ${{ matrix.key }}
     needs: plan
@@ -302,13 +304,16 @@ jobs:
           python-version: '3.12'
       # The relay comes from this workflow's own commit: a bisect or a soak checks out an older commit above, which may have no relay (26 Oct 2026: every bisect
       # failed with "Can't find 'action.yml'"). Guard: tests/test_ci_free_ai.py test_no_job_loads_a_local_action_from_another_commit.
+      # Why (29 Oct 2026, owner): offline suites need neither the relay checkout nor its GitHub App and Cloudflare credentials.
       - name: The Free AI relay from this workflow's own commit
+        if: matrix.offlineAi != true
         uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           path: .ci-relay
           persist-credentials: false
       - name: Free AI relay (CI's AI since 26 Oct 2026; the site's handler on this runner, CI's own Workers AI token)
+        if: matrix.offlineAi != true
         uses: ./.ci-relay/.github/actions/free-ai-relay
         with:
           public-tree: .ci-relay
@@ -448,8 +453,9 @@ jobs:
             candidates=$(find "$E2E_ARTIFACTS" -type f \( -name 'ai-answers-candidates.json' -o -name 'ai-answers-item-*.json' \) | wc -l | tr -d '[:space:]')
           fi
           echo "AI answers: record run · ${{ matrix.key }} · $candidates candidate file(s) written (in the e2e-artifacts-${{ matrix.key }} artifact)."
+      # Why (29 Oct 2026, owner): an offline suite must not contact even the relay's usage meter.
       - name: What the suite spent on Free AI (the relay's own meter)
-        if: always() && env.E2E_FREE_AI_URL != ''
+        if: always() && matrix.offlineAi != true && env.E2E_FREE_AI_URL != ''
         continue-on-error: true   # a report never decides a run
         shell: bash
         run: |

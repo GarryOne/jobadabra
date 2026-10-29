@@ -245,21 +245,6 @@ test('fresh() asks the model for everything inside it, and replay comes back aft
   } finally { process.env.E2E_AI_REPLAY = saved ?? ''; }
 });
 
-test('strict: a recorded answer never expires, a live answer is not kept', async () => {
-  const {keep, recall, strict} = await import('../lib/ai-meter.mjs');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'strict-'));
-  const env = {E2E_AI_REPLAY: '1', E2E_AI_CACHE: path.join(dir, 'cache'), E2E_ARTIFACTS: path.join(dir, 'art'), E2E_AI_STRICT: '1'};
-  assert.equal(strict(env), true);
-  assert.equal(strict({...env, E2E_AI_STRICT: ''}), false);
-  keep('old', {status: 200, contentType: 'application/json', body: Buffer.from('{"ok":1}')}, {...env, E2E_AI_STRICT: '0'});
-  const saved = Date.parse(JSON.parse(fs.readFileSync(path.join(dir, 'cache', 'old.json'), 'utf8')).savedAt);
-  assert.equal(recall('old', env, saved + 30 * 86400000)?.body.toString(), '{"ok":1}', 'strict: still replayed after 30 days');
-  assert.equal(recall('old', {...env, E2E_AI_STRICT: '0'}, saved + 30 * 86400000), null, 'positive control: expired when not strict');
-  keep('new', {status: 200, contentType: 'application/json', body: Buffer.from('{}')}, env);
-  assert.equal(fs.existsSync(path.join(dir, 'cache', 'new.json')), false, 'strict: a live answer is not kept');
-  fs.rmSync(dir, {recursive: true, force: true});
-});
-
 // #2205's run 40451177894 (27 Oct 2026): Free AI's relay answered a quality judge with a 200 and an empty text; kept, every retry replayed "did not answer with JSON".
 test('an answer that says nothing is never kept: an empty text, no block, a broken JSON; a stream or another shape is kept as it came', t => {
   const json = data => Buffer.from(JSON.stringify(data));

@@ -121,16 +121,16 @@ test('shared fact collection keeps exact counts, diagnostics and missed facts se
 });
 
 // The guard must reject before creating the journey or calling any setup step.
-test('exact quality refuses off or unset answers before setup; explicit modes and local opt-in pass the guard', async t => {
+test('exact quality refuses off, unset or invalid answers before setup; backbone and record pass the guard', async t => {
   const saved = {...process.env};
   t.after(() => { for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); });
   const message = 'quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)';
   const touched = new Error('setup boundary reached');
   const ctx = {get page() { throw touched; }};
-  for (const mode of [undefined, 'off', 'backbone', 'record']) for (const allow of ['', '1']) {
+  for (const mode of [undefined, 'off', 'backbone', 'record', '', 'invalid']) {
     if (mode === undefined) delete process.env.E2E_AI_ANSWERS; else process.env.E2E_AI_ANSWERS = mode;
-    process.env.E2E_QUALITY_ALLOW_LIVE = allow;
-    if ((!mode || mode === 'off') && allow !== '1') await assert.rejects(quality.run(ctx), {message});
+    if (mode === undefined || mode === 'off') await assert.rejects(quality.run(ctx), {message});
+    else if (mode === '' || mode === 'invalid') await assert.rejects(quality.run(ctx), {message: `invalid E2E_AI_ANSWERS: ${mode}`});
     else await assert.rejects(quality.run(ctx), error => error === touched);
   }
 });

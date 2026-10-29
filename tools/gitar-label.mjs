@@ -3,7 +3,7 @@
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
 // Why (28 Oct 2026): Gitar records no approving review (#2377 had none), so only the verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>
-//   node tools/gitar-label.mjs working <pr-number>   a session says it is handling the comments (tools/ship-watch.sh). Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
+//   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -54,10 +54,10 @@ function headTime(repo, sha) {
   return [committed, suites.sort()[0]].filter(Boolean).sort().at(-1);   // the first suite created for the head
 }
 
-/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or an approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
-export function wantedLabels({verdict, workingSince, headTime}) {
+/** The labels a PR should hold: Gitar's current verdict or "reviewing" when it has none for this head; "working" (when since, its time) stays only if it was set after the head's push and Gitar has not approved: a push or a later approval ends it (owner, 28 Oct 2026: "if the PR is approved on a subsequent commit, we should clear this gray label"). Why (#2386, Gitar): judged from times, not from the push event, which a Gitar comment run could cancel. */
+export function wantedLabels({verdict, workingSince, headTime, verdictTime}) {
   const names = [verdict || WAITING.name];
-  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && verdict !== LABELS.approved.name) names.push(WORKING.name);
+  if (workingSince && Date.parse(workingSince) >= Date.parse(headTime) && (verdict !== LABELS.approved.name || Date.parse(workingSince) > Date.parse(verdictTime))) names.push(WORKING.name);
   return names;
 }
 
@@ -136,7 +136,7 @@ function syncOnce(pr) {
   const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
-  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime});
+  const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at});
   const changed = setLabels(repo, pr, wanted, read.labels);
   console.log(`gitar-label: #${pr} → ${wanted.join(' + ')}`);
   return changed > 0;
@@ -144,10 +144,16 @@ function syncOnce(pr) {
 
 function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
+  const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
+  // Why (#2386, 29 Oct 2026): a current mark keeps its time; a stale mark is refreshed after a push.
+  if (read.state !== 'open') return;
+  const present = read.labels.includes(WORKING.name);
+  if (present && read.workingSince && Date.parse(read.workingSince) >= Date.parse(read.headTime)) return;
   ensure(repo, WORKING);
-  if (pages(`repos/${repo}/issues/${pr}/labels`).some(l => l.name === WORKING.name)) gh('pr', 'edit', String(pr), '--remove-label', WORKING.name, '-R', repo);   // Why (#2386, Gitar): re-adding a present label makes no new labeled event, so its time would stay old
+  // Why (#2386, Gitar): a stale mark needs a new event time after the latest push.
+  if (present) gh('pr', 'edit', String(pr), '--remove-label', WORKING.name, '-R', repo);
   gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
-  main(pr);   // Why (#2386, Gitar): an approved PR must not keep "working"; the sync drops it again
+  main(pr); // Reconcile a push or verdict that arrived while marking work.
 }
 
 /** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */

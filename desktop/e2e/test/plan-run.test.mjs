@@ -264,3 +264,18 @@ test('the gate runs each suite that keeps data on both stores, one job each; oth
   const manual = await planRun({env: {REPO: 'o/r', EVENT: 'workflow_dispatch', SHA: 'cafe'.repeat(10), ONLY: 'jobs'}, gh: stub, all: ['jobs', 'updates'], minutes: () => 15});
   assert.deepEqual(JSON.parse(manual.matrix).include.map(({key, store}) => ({key, store})), [{key: 'jobs', store: ''}]);
 });
+
+test('outside health still runs on unchanged exhausted nights and carries a nonblocking AI-free leg', async () => {
+  const all = ['settings', 'notion-real'], cadence = {'notion-real': 'outside'};
+  const runs = [sched(1), sched(2), sched(3)];
+  const out = await planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD}, gh: gh({runs}), all, cadence,
+    offlineAi: all, storeless: ['notion-real'], minutes: () => 15, os: () => 'ubuntu-24.04'});
+  assert.deepEqual(suitesOf(out), ['notion-real']);
+  assert.equal(JSON.parse(out.matrix).include[0].outside, true);
+  assert.equal(out.ai_required, '0');
+  const beta = await planRun({env: {EVENT: 'gate', REPO: 'o/r', SHA: HEAD, GATE_TAG: 'desktop-v9.9', GATE_KIND: 'beta'},
+    gh: args => args[0] === 'release' && args[1] === 'view' ? '{"body":"Beta-approved: yes"}' : gh({releases: [['desktop-v9.8', OLD]], files: []})(args),
+    all, cadence, offlineAi: all, storeless: ['notion-real'], minutes: () => 15});
+  assert.ok(suitesOf(beta).includes('notion-real'), 'an unchanged beta still checks the outside world');
+  assert.equal(JSON.parse(beta.matrix).include.filter(leg => leg.suite === 'notion-real').length, 1, 'no duplicate store legs');
+});

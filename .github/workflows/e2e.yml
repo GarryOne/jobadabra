@@ -213,6 +213,8 @@ jobs:
     if: needs.plan.outputs.count != '0'   # a push that changed no suite, a scheduled run with nothing new, or a night with no build: no suites
     runs-on: ${{ inputs.all_on_mac && 'macos-latest' || matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
     timeout-minutes: 360   # the lock's wait (up to 3 h) plus the suite; each step below has its own limit, so this only ends a hung wait
+    # Outside failures stay red in their job and report, but do not decide the beta gate.
+    continue-on-error: ${{ matrix.outside == true }}
     strategy:
       fail-fast: false      # one suite failing must not hide what the others found
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
@@ -417,7 +419,7 @@ jobs:
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only != '1'
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
         env:
           E2E_AI_ANSWERS: ${{ matrix.suite == 'quality' && 'backbone' || 'off' }}
         working-directory: desktop/e2e
@@ -444,6 +446,13 @@ jobs:
             echo "Failed again on the same commit: a real failure."
             exit 1   # red twice: the job (and the gate) fail
           fi
+      - name: Outside-world health
+        if: always() && matrix.outside == true
+        env:
+          OUTCOME: ${{ steps.suite_run.outcome }}
+        run: |
+          echo "::notice title=Outside-world health::${{ matrix.key }}: $OUTCOME (tolerant; does not block beta). Steps, screenshots and failures are in the Mac HTML report and e2e-artifacts-${{ matrix.key }}."
+          test "$OUTCOME" = success
       - name: AI answer candidates written for review
         if: always() && github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'
         shell: bash

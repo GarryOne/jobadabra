@@ -19,7 +19,7 @@
       "lane": "tolerant",
       "input": "outside",
       "since": "2026-10-28",
-      "why": "The one suite on a real Notion workspace (cadence manual): what the in-memory stand-in cannot prove depends on Notion's own pages and rate limits, which are not ours."
+      "why": "The one suite on a real Notion workspace (nightly and before beta; never PR/push reach): what the in-memory stand-in cannot prove depends on Notion's own pages and rate limits, which are not ours."
     }
   }
 }

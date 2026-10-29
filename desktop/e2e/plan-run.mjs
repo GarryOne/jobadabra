@@ -87,9 +87,14 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     if (releasing.length) { decision.run = false; why = `a release run is testing (${releasing[0].displayTitle}): skipped, so its gate jobs are not cancelled in the shared suite groups`; }
     // Exploring (an unchanged commit): only the suites that walk a different path each run; the others would repeat themselves at full cost. None vary: nothing to explore.
     suites = !decision.run ? [] : decision.exploring ? autoSuites(all, cadence, true).filter(suite => varies.includes(suite)) : autoSuites(all, cadence, true);
+    // Outside availability changes even on an unchanged commit; keep the release-in-progress exclusion above.
+    if (!releasing.length) suites = all.filter(suite => suites.includes(suite) || cadence[suite] === 'outside');
   }
   // names: exactly those, even a manual one; none: everything not manual. A release's repeat (TARGET_REF without a gate: a soak top-up, the stable canary) leaves the slim ones out.
   else suites = String(env.ONLY || '').trim() ? suitesNamed(env.ONLY, all) : autoSuites(all, cadence, false, !!env.TARGET_REF);
+
+  // Stale PR/after-merge dispatch inputs must never reintroduce the outside world.
+  if (env.PR_SUITES || event === 'pull_request') suites = suites.filter(suite => cadence[suite] !== 'outside');
 
   const files = lastSha ? changed(lastSha, ref) : null;
   let review = exploring || reviewNeeded({files: files || [], waiting, known: files !== null});   // an exploring run exists for what the AI review sees
@@ -117,7 +122,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));

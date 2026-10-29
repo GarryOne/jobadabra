@@ -179,6 +179,7 @@
   "panel-plain-ai-errors.test.mjs",
   "panel-tailor.test.mjs",
   "panel-theme-stop.test.mjs",
+  "picker-owns-steps.test.mjs",
   "picture-asks.test.mjs",
   "plan-run.test.mjs",
   "png-grid.test.mjs",

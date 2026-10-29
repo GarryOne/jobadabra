@@ -1,4 +1,5 @@
 name: CI · End-to-end on Windows
+# Job: run the backbone
 
 # The Mac is the product's main platform (e2e.yml); Windows users get the same app, and a Windows-only break (paths, quoting, the installer's
 # environment) was invisible there. One job per suite, like e2e.yml. By hand: the `suites` input (empty = all), `fixed: true` = the fixed path (E2E_SEED=0).
@@ -180,6 +181,8 @@ jobs:
       E2E_AI_PROVIDER: ${{ inputs.ai_provider }}   # one run's choice from the dispatch input (empty = CI_AI_PROVIDER decides)
       # A PR's short Windows check (pr-suites.yml, owner's yes 26 Oct 2026): only these steps (lib/runner.mjs), on a fresh SQLite store, so no Notion page and no lock.
       E2E_STEP_NAMES: ${{ inputs.pr_steps }}
+      E2E_FALLBACK_SUITES: ${{ join(fromJSON(needs.plan.outputs.matrix).include.*.suite, ',') }}
+      E2E_FALLBACK_SUITE: ${{ matrix.suite }}
       E2E_STORE: ${{ inputs.pr_steps != '' && 'sqlite' || '' }}
     permissions:
       contents: write   # tools/e2e-lock.sh creates the lock ref

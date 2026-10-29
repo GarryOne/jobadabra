@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
@@ -77,9 +77,9 @@ try {
       byStep.add(file);
       const suites = [...new Set([...(rel.startsWith('suites/') ? [rel.slice(7, -4)] : []), ...(users[rel] || [])])].filter(name => facts.all.includes(name));
       for (const suite of suites) {
-        const owns = (await import(`./suites/${suite}.mjs`)).ownsStep || (() => true);
+        const {ownsStep} = await import(`./suites/${suite}.mjs`);
         // a step another suite runs (it imports this file) is that suite's (lib/pr-suites.mjs stepHomes)
-        for (const name of touched.steps.filter(owns)) for (const home of stepHomes(map, suite, name)) if (facts.all.includes(home)) (own[home] ||= []).push(name);
+        for (const name of ownedStepNames({suite, file, names: touched.steps, sources, map, ownsStep})) for (const home of stepHomes(map, suite, name)) if (facts.all.includes(home)) (own[home] ||= []).push(name);
       }
     }
     const exactWatches = {...pointing, watches: Object.fromEntries(Object.entries(pointing.watches).map(([suite, paths]) => [suite, paths.filter(path => !path.endsWith('/'))]))};

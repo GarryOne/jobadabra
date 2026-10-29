@@ -47,7 +47,7 @@ export function buildBrief(groups, cause, listing, {oneLine = ''} = {}) {
     '- No whole test suites by hand: lint plus the test files you touch; tools/ship.sh\'s gate runs the rest.',
     '- Claim the flow core before editing FLOW_CORE / FLOW_FILES (message every peer, read the file\'s "Invariants:" block, say "released" when done; claim-part for one function).',
     '- The commit message carries `Pool-row: <a row name from the list above, exactly>`; the commit hook refuses anything else.',
-    '- Land with `tools/ship.sh --background` and arm a Monitor on its log; no edits in the worktree until DONE. Never remove another session\'s worktree.',
+    '- Land with `tools/ship.sh --background` and wait with `tools/ship-wait.sh <log>` in the background (run it again after each event until MERGED, CLOSED, DONE or FAILED); no edits in the worktree until DONE. Never remove another session\'s worktree.',
     '- Files stay at 500 lines or less; a new file starts with a one-line purpose comment. Tests also run on Windows and Linux CI.',
     '- No subagents. No new tooling during the round: a gap goes on a list.', '',
     'WHEN IT LANDS, report five lines to job-pilotto-cc: time per step (pick the cause, decide, code and failing tests, real asks, replay/capture, live row, ship), the ladder numbers, and the hash on origin/main.'].join('\n');

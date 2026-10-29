@@ -301,6 +301,7 @@
   "store-call.test.mjs",
   "store.test.mjs",
   "storemove-process.test.mjs",
+  "stores-answer.test.mjs",
   "strategy-headings.test.mjs",
   "strategy-start.test.mjs",
   "suite-ai-mode.test.mjs",

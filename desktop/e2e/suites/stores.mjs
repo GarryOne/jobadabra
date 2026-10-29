@@ -54,13 +54,21 @@ export async function run(ctx) {
     if (await gateShown()) throw new Error('Interviews shows the Notion gate on the SQLite store');
   });
 
-  await ctx.run('a remembered answer is kept in this Mac\'s answers.md', async () => {
-    const result = await page.evaluate(() => window.pilot.rememberAnswer('What is your notice period?', 'Three months, negotiable'));
-    if (result?.needsNotion) throw new Error(`the app asked for Notion: ${result.text}`);
-    if (result && result.ok === false) throw new Error(`rememberAnswer failed: ${result.text || JSON.stringify(result)}`);
-    const file = path.join(ctx.profile, 'answers.md');
-    const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    if (!text.includes('Three months, negotiable')) throw new Error(`answers.md does not hold the answer (${text.length} characters)`);
+  await ctx.run('a remembered answer is kept in this Mac\'s Availability & compensation', async () => {
+    const before = ctx.proxy.canned();
+    // Why (29 Oct 2026, run 40836904987; #2427 exposed it): the backbone proves persistence in the returned home, given a fixed classification.
+    ctx.proxy.setCanned(body => body.messages?.[0]?.content === JSON.stringify([{id: 'q', line: 'What is your notice period?: Three months, negotiable'}])
+      ? JSON.stringify({items: [{id: 'q', home: 'availability', topic: 'notice period', clarity: 'clear'}]}) : {refuse: 'invalid-key'});
+    try {
+      await ctx.withApi(async () => {
+        const result = await page.evaluate(() => window.pilot.rememberAnswer('What is your notice period?', 'Three months, negotiable'));
+        if (!result?.ok || result.home !== 'availability') throw new Error(`rememberAnswer did not save to Availability & compensation: ${JSON.stringify(result)}`);
+        const saved = await page.evaluate(() => window.pilot.detailsFactsNow());
+        if (!saved?.ok || !saved.sections?.[result.home]?.some(field => field.label === 'What is your notice period?' && field.value === 'Three months, negotiable')) {
+          throw new Error(`${result.homeName} does not hold the remembered answer`);
+        }
+      });
+    } finally { ctx.proxy.setCanned(before); }
   });
 
   // Jobs → Board and the saved views (renderer/jobs-board-rules.js, pages/jobs-board.js): two applications made on the store, then moved

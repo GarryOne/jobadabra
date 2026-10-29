@@ -2,6 +2,7 @@
 // The real first-run path, step by step (Notion later, 3 Oct 2026): the setup wizard with a key, a CV and a strategy built by the AI, finished WITHOUT Notion
 // (the app only tries: the Jobs list opens, Focus asks to connect), then Notion connected with a token: the workspace is built and the strategy moves in.
 // The wizard suite runs it on an emptied page; any other suite runs it once to build its own Notion workspace when its page has none yet, and then keeps the workspace.
+// Job: run the backbone
 import fs from 'node:fs';
 import path from 'node:path';
 import {pageText} from './notion.mjs';
@@ -73,10 +74,27 @@ export async function runWizard(ctx) {
       await page.locator('#anthropic-key').waitFor();
       if (!(await page.locator('#ai-save').isDisabled())) throw new Error('"Check and save" is enabled with no key typed');
     });
+    // Why (29 Oct 2026, run 40836904987; #2427 exposed it): key acceptance is a backbone check; only the setup validator is stubbed, never the AI transport or secret persistence.
+    await ctx.run('an invalid API key is rejected without saving', async () => {
+      await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: 'reject'}));
+      try {
+        await page.fill('#anthropic-key', `${KEY}-rejected`);
+        await page.click('#ai-save');
+        await page.waitForFunction(() => document.getElementById('ai-message')?.textContent.includes('This key was rejected'));
+        await ctx.expectStep('ai');
+        const state = await page.evaluate(() => window.pilot.state());
+        if (state.secrets.ANTHROPIC_API_KEY) throw new Error('the rejected API key was saved');
+      } finally { await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: null})); }
+    }, {needs: [{name: 'E2E_ANTHROPIC_KEY', value: KEY}]});
     await ctx.run('a valid API key is accepted and saved', async () => {
-      await page.fill('#anthropic-key', KEY);
-      await page.click('#ai-save');
-      await ctx.expectStep('cv');
+      await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: 'accept'}));
+      try {
+        await page.fill('#anthropic-key', KEY);
+        await page.click('#ai-save');
+        await ctx.expectStep('cv');
+        const state = await page.evaluate(() => window.pilot.state());
+        if (!state.secrets.ANTHROPIC_API_KEY || state.settings.aiEngine !== 'api') throw new Error('the accepted API key or engine was not saved');
+      } finally { await page.evaluate(() => window.pilot.saveSettings({anthropicKeyTest: null})); }
     }, {needs: [{name: 'E2E_ANTHROPIC_KEY', value: KEY}]});
   }
   await ctx.run('a CV is chosen and read', async () => {

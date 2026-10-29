@@ -4,29 +4,36 @@ import {mkdtempSync, readdirSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {suiteOfKey} from '../desktop/e2e/lib/suite-shards.mjs';
 
 // Usage: node tools/e2e-step-timings.mjs --suite applyflows --runs 12 [--dir artifacts] [--json]
-// Invariants: only passed, finite, nonnegative timings count; shard totals never pool.
+// Invariants: only comparable full runs and the default store count; only passed, finite, nonnegative timings count; shard totals never pool.
 const ghCommand = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024});
-const artifactMatches = (name, suite) => name === `e2e-artifacts-${suite}` || name.startsWith(`e2e-artifacts-${suite}-`);
+// Mirrors tools/main_e2e_state.py NOT_MAIN_CHECK + AFTER_MERGE, plus PR runs; guarded against drift in the test.
+// Partial after-merge runs are never a fallback: their totals cannot set full-run hang caps.
+const comparable = title => typeof title === 'string' && title.length > 0 && !/^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E for PR|E2E after merge) /.test(title);
+const artifactMatches = (name, suite) => name.startsWith('e2e-artifacts-') && !/-(standin|sqlite)$/.test(name)
+  && suiteOfKey(name.slice('e2e-artifacts-'.length)) === suite;
 const median = sorted => (sorted[Math.floor((sorted.length - 1) / 2)] + sorted[Math.floor(sorted.length / 2)]) / 2;
 const valid = step => step.status === 'passed' && (typeof step.seconds === 'number' || typeof step.seconds === 'string' && step.seconds.trim() !== '')
   && Number.isFinite(Number(step.seconds)) && Number(step.seconds) >= 0;
 
-/** Download the newest N completed main runs with this suite; inject gh to stay offline. */
+/** Download the newest N comparable completed main runs with this suite; inject gh to stay offline. */
 export function downloadArtifacts({suite, runs, dir}, gh = ghCommand) {
   const seen = new Set();
   let downloaded = 0;
   for (let limit = runs; downloaded < runs; limit *= 2) {
     const candidates = JSON.parse(gh(['run', 'list', '--workflow', 'e2e.yml', '--branch', 'main', '--status', 'completed',
-      '--limit', String(limit), '--json', 'databaseId']));
-    for (const {databaseId} of candidates) {
+      '--limit', String(limit), '--json', 'databaseId,displayTitle']));
+    for (const {databaseId, displayTitle} of candidates) {
       if (seen.has(databaseId)) continue;
       seen.add(databaseId);
+      if (!comparable(displayTitle)) continue;
       const names = gh(['api', '--paginate', `repos/{owner}/{repo}/actions/runs/${databaseId}/artifacts`,
         '--jq', '.artifacts[] | select(.expired == false) | .name']).trim().split('\n');
-      if (!names.some(name => artifactMatches(name, suite))) continue;
-      gh(['run', 'download', String(databaseId), '--pattern', `e2e-artifacts-${suite}*`, '--dir', path.join(dir, String(databaseId))]);
+      const matching = names.filter(name => artifactMatches(name, suite));
+      if (!matching.length) continue;
+      gh(['run', 'download', String(databaseId), ...matching.flatMap(name => ['--name', name]), '--dir', path.join(dir, String(databaseId))]);
       downloaded++;
       if (downloaded === runs) break;
     }

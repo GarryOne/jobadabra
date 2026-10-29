@@ -101,6 +101,7 @@ on:
       - 'tools/lanes-check.mjs'
       - 'tools/e2e-reliability-check.mjs'
       - 'tools/e2e-step-timings.mjs'
+      - 'tools/main_e2e_state.py'
       - '.github/workflows/prompt-cases.yml'
       - 'src/ai/insights_text.py'
       - 'src/ai/mail_config.py'

@@ -1,7 +1,7 @@
 // Measures calm e2e step samples and exercises artifact acquisition without network access.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
@@ -90,14 +90,15 @@ test('acquisition selects newest completed main runs with suite artifacts, not j
       assert.equal(args[args.indexOf('--workflow') + 1], 'e2e.yml');
       assert.equal(args[args.indexOf('--branch') + 1], 'main');
       assert.equal(args[args.indexOf('--status') + 1], 'completed');
-      return JSON.stringify([{databaseId: 4}, {databaseId: 3}, {databaseId: 2}, {databaseId: 1}].slice(0, Number(args[args.indexOf('--limit') + 1])));
+      return JSON.stringify([4, 3, 2, 1].map(databaseId => ({databaseId, displayTitle: 'E2E check · on time (Worker cron)'}))
+        .slice(0, Number(args[args.indexOf('--limit') + 1])));
     }
     if (args[0] === 'api') {
       if (args.some(a => a.includes('/runs/4/'))) return 'e2e-artifacts-applycv\n';
       return 'e2e-artifacts-apply-1of2\ne2e-artifacts-apply-2of2\n';
     }
     assert.deepEqual(args.slice(0, 2), ['run', 'download']);
-    assert.equal(args[args.indexOf('--pattern') + 1], 'e2e-artifacts-apply*');
+    assert.deepEqual(args.slice(3, -2), ['--name', 'e2e-artifacts-apply-1of2', '--name', 'e2e-artifacts-apply-2of2']);
     const dest = args[args.indexOf('--dir') + 1];
     downloaded.push(args[2]);
     artifact(path.dirname(dest), path.basename(dest), 'apply-1of2', [passed('fill', 10)]);
@@ -106,6 +107,63 @@ test('acquisition selects newest completed main runs with suite artifacts, not j
   downloadArtifacts({suite: 'apply', runs: 2, dir}, gh);
   assert.deepEqual(downloaded, ['3', '2']);
   assert.equal(measure(dir, 'apply').runs, 2);
+});
+
+test('partial and mutant runs plus alternate stores cannot change the comparable baseline', t => {
+  const dir = fixture(t), baseline = fixture(t), downloaded = [];
+  const fullRuns = [10, 10, 10, 10, 15, 30].map((seconds, i) => {
+    const databaseId = 90 - i;
+    artifact(baseline, databaseId, 'applyflows-1of2', [passed('fill', seconds)]);
+    return {databaseId, displayTitle: i % 2 ? 'E2E Mac + Linux · applyflows · main' : 'E2E check · on time (Worker cron)', seconds};
+  });
+  // Half the candidates are partial after-merge runs; the mutant is also newer than every full run.
+  const candidates = [
+    ...Array.from({length: 7}, (_, i) => ({databaseId: 107 - i, displayTitle: 'E2E after merge · abc123 · applyflows', seconds: 1})),
+    {databaseId: 99, displayTitle: 'Mutant fill', seconds: 500}, ...fullRuns,
+  ];
+  downloadArtifacts({suite: 'applyflows', runs: 6, dir}, args => {
+    if (args[0] === 'run' && args[1] === 'list') {
+      assert.equal(args[args.indexOf('--json') + 1], 'databaseId,displayTitle');
+      return JSON.stringify(candidates.slice(0, Number(args[args.indexOf('--limit') + 1])));
+    }
+    if (args[0] === 'api') return 'e2e-artifacts-applyflows-1of2\ne2e-artifacts-applyflows-1of2-standin\ne2e-artifacts-applyflows-1of2-sqlite\n';
+    assert.deepEqual(args.slice(0, 2), ['run', 'download']);
+    assert.deepEqual(args.slice(3, -2), ['--name', 'e2e-artifacts-applyflows-1of2']);
+    downloaded.push(Number(args[2]));
+    const run = candidates.find(candidate => candidate.databaseId === Number(args[2]));
+    artifact(dir, run.databaseId, 'applyflows-1of2', [passed('fill', run.seconds)]);
+    return '';
+  });
+  assert.deepEqual(downloaded, [90, 89, 88, 87, 86, 85]);
+  const report = measure(dir, 'applyflows');
+  assert.deepEqual(report, measure(baseline, 'applyflows'));
+  assert.deepEqual([report.steps[0].p95Seconds, report.droppedSlowShardRuns, report.steps[0].capSeconds], [15, 1, 45]);
+});
+
+test('local measurement ignores standin and sqlite artifacts, including sharded keys', t => {
+  const dir = fixture(t);
+  artifact(dir, 1, 'applyflows', [passed('fill', 10)]);
+  for (const store of ['standin', 'sqlite']) for (const key of ['applyflows', 'applyflows-1of2']) {
+    artifact(dir, 2, `${key}-${store}`, [passed('fill', 999)]);
+  }
+  const report = measure(dir, 'applyflows');
+  assert.deepEqual([report.runs, report.shardRuns, report.steps[0].p95Seconds], [1, 1, 10]);
+});
+
+test('title exclusions track main_e2e_state and reject PR runs without falling back to partial runs', t => {
+  const state = readFileSync(new URL('../../tools/main_e2e_state.py', import.meta.url), 'utf8');
+  const kinds = state.match(/^NOT_MAIN_CHECK = re\.compile\(r'\^\(([^)]+)\) '\)/m)[1].split('|');
+  const afterMerge = state.match(/^AFTER_MERGE = '([^']+)'/m)[1];
+  const source = readFileSync(tool, 'utf8');
+  const excluded = source.match(/^const comparable = .*!\/\^\(([^)]+)\) /m);
+  assert.ok(excluded, 'keep one comparable(title) definition with the canonical excluded run kinds');
+  assert.deepEqual(excluded[1].split('|'), [...kinds, 'E2E for PR', afterMerge.split(' · ')[0]]);
+  const candidates = [...kinds.map(kind => `${kind} abc123`), 'E2E for PR · applyflows · main', `${afterMerge}abc123 · applyflows`]
+    .map((displayTitle, databaseId) => ({databaseId, displayTitle}));
+  assert.throws(() => downloadArtifacts({suite: 'applyflows', runs: 1, dir: fixture(t)}, args => {
+    assert.deepEqual(args.slice(0, 2), ['run', 'list'], 'excluded runs must never reach artifact lookup or download');
+    return JSON.stringify(candidates.slice(0, Number(args[args.indexOf('--limit') + 1])));
+  }), /No downloadable artifacts/);
 });
 
 test('rejects invalid arguments and missing suite data instead of printing a baseline', t => {

@@ -142,7 +142,7 @@ export function createBackgroundApplyController(storage, {store = null, browser 
    * Returns the session ids it handed over.
    */
   async function sweepStalled(afterMs = STALL_MS) {
-    return handOverMidPress(() => true, {afterMs});
+    return handOverMidPress(entry => entry.background?.state === 'submitting', {afterMs});   // the cached state (set by every store move) spares the store a subprocess per idle session every 30 s (Gitar on #2451)
   }
   async function judgment(body, answer) {
     const context = body?.background, item = itemFor(context?.session);

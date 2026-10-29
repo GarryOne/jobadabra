@@ -5,7 +5,7 @@ import fs from 'node:fs';
 
 export const PLANT_WINDOW_MS = 120_000;   // what a planted failure causes (a run's warning, a stopped task) is reported within this long after it was served
 
-// report: {kind, message}
+// report: {kind, message, source?, stack?}; extension plants name their own frame because arbitrary error messages are deliberately dropped.
 export function causedByPlant(report, env = process.env, now = Date.now(), read = file => fs.readFileSync(file, 'utf8')) {
   const file = env.JOB_PILOTTO_E2E_PLANTED_FILE;
   if (!file || !env.JOB_PILOTTO_E2E) return false;
@@ -14,7 +14,10 @@ export function causedByPlant(report, env = process.env, now = Date.now(), read 
     return read(file).split('\n').some(line => {
       try {
         const plant = JSON.parse(line);
-        return plant.at > 0 && now - plant.at <= PLANT_WINDOW_MS && plant.kinds?.includes(report?.kind) && (!plant.text || message.includes(String(plant.text).toLowerCase()));
+        return plant.at > 0 && now - plant.at <= PLANT_WINDOW_MS && plant.kinds?.includes(report?.kind)
+          && (!plant.source || plant.source === report?.source)
+          && (!plant.frame || String(report?.stack || '').split('\n').some(frame => frame.startsWith(`at ${plant.frame}`)))
+          && (!plant.text || message.includes(String(plant.text).toLowerCase()));
       } catch { return false; }
     });
   } catch { return false; }

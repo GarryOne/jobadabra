@@ -5,6 +5,34 @@ import * as sentry from '../lib/sentry.js';
 
 const DSN = 'https://abc123@o1.ingest.de.sentry.io/4500001';
 
+test('extension exceptions use safe diagnostics, filename-only frames and a one-minute limit', () => {
+  const sent = [];
+  let time = 0, on = true;
+  const client = sentry.create({dsn: DSN, release: 'job-pilotto@1.2', installId: 'install-test', now: () => time,
+    enabled: () => on, fetcher: (url, init) => { sent.push(init.body); return Promise.resolve(); }});
+  client.note('PAGE_TEXT_CANARY');
+  const fields = {type: 'TypeError', message: 'PAGE_TEXT_CANARY https://private.example/URL_CANARY',
+    stack: 'at fill.js:42:7\nat flow.js:91:3', extVersion: '0.9.12', host: 'URL_CANARY', logLines: ['PAGE_TEXT_CANARY']};
+  assert.equal(client.capture('extension_error', fields), true);
+  assert.equal(client.capture('extension_error', fields), false, 'also deduplicates at time zero');
+  time = 59_999;
+  assert.equal(client.capture('extension_error', fields), false);
+  time = 60_000;
+  assert.equal(client.capture('extension_error', fields), true);
+  on = false;
+  time += 60_000;
+  assert.equal(client.capture('extension_error', fields), false);
+  assert.equal(sent.length, 2);
+  const event = JSON.parse(sent[0].split('\n')[2]);
+  assert.equal(event.tags.source, 'extension');
+  assert.equal(event.tags.extVersion, '0.9.12');
+  assert.equal(event.release, 'job-pilotto@1.2');
+  assert.equal(event.user.id, 'install-test');
+  assert.equal(event.exception.values[0].type, 'TypeError');
+  assert.deepEqual(event.exception.values[0].stacktrace.frames.map(f => [f.filename, f.lineno]), [['flow.js', 91], ['fill.js', 42]]);
+  assert.doesNotMatch(sent.join(''), /PAGE_TEXT_CANARY|URL_CANARY|private\.example|attachment|breadcrumbs/);
+});
+
 test('a DSN gives the envelope and minidump addresses; anything else is off', () => {
   const target = sentry.parseDsn(DSN);
   assert.equal(target.envelope, 'https://o1.ingest.de.sentry.io/api/4500001/envelope/');

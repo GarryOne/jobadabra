@@ -1,6 +1,7 @@
 // The extension's decision log (moved out of background.js, 8 Oct 2026): every part that decides something (fill, tabs, account pages)
 // writes one line here, and it reaches the app's logs/app.log. Shared by every flow; owns no flow itself.
 import {settings} from './flow.js';
+import {errorReport} from './error-report.js';
 
 // ---- What the extension decided, and why ----
 // A service worker's console dies with it, and a decision it made (marking a job Applied, or refusing to) used to
@@ -42,9 +43,13 @@ async function pushNow() {
   } catch { /* not paired, or the app is closed: they stay unsent for the next push */ }
 }
 
-// An error nobody caught in the extension's worker is a decision line of kind "error" (desktop/lib/real-errors.js reports it): message and stack frames only.
+// Uncaught worker errors keep their local decision line and reach the app's reporter through the same authenticated log channel.
 if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') {
-  const said = error => ({error: String(error?.message || error || '').slice(0, 200), at: String(error?.stack || '').split('\n').slice(1, 5).map(line => line.trim()).join(' | ').slice(0, 300)});
-  self.addEventListener('error', event => { decide('error', 'uncaught error', said(event?.error || event?.message)).catch(() => {}); });
-  self.addEventListener('unhandledrejection', event => { decide('error', 'unhandled rejection', said(event?.reason)).catch(() => {}); });
+  const origin = chrome.runtime.getURL('');
+  self.addEventListener('error', event => {
+    decide('error', 'uncaught error', errorReport(event?.error, {origin, filename: event?.filename, lineno: event?.lineno, colno: event?.colno})).catch(() => {});
+  });
+  self.addEventListener('unhandledrejection', event => {
+    decide('error', 'unhandled rejection', errorReport(event?.reason, {origin, rejection: true})).catch(() => {});
+  });
 }

@@ -34,7 +34,7 @@ export function frames(stack) {
   return out.reverse().slice(-40);
 }
 
-const LEVEL = {crash: 'fatal', run_failed: 'error', stuck: 'error', run_warning: 'warning', fill_error: 'error'};   // fill_error: lib/real-errors.js
+const LEVEL = {crash: 'fatal', run_failed: 'error', stuck: 'error', run_warning: 'warning', fill_error: 'error', extension_error: 'error'};   // extension errors: lib/real-errors.js
 export const CAPTURED = Object.keys(LEVEL);
 // What makes two reports one problem: the kind and the part of the message that is not a number or an id.
 const normal = text => String(text ?? '').replace(/0x[0-9a-f]+|\b[0-9a-f]{8,}\b|[0-9a-f-]{36}/gi, '<id>').replace(/\d+/g, '#').slice(0, 120);
@@ -44,19 +44,20 @@ const normal = text => String(text ?? '').replace(/0x[0-9a-f]+|\b[0-9a-f]{8,}\b|
 export const e2eTags = (env = process.env) => (env.JOB_PILOTTO_E2E_SUITE ? {suite: env.JOB_PILOTTO_E2E_SUITE, expected: env.JOB_PILOTTO_E2E_EXPECTS_FAILURES ? 'yes' : 'no'} : {});
 
 export function buildEvent(kind, fields = {}, {release = '', environment = 'production', installId = '', platform = process.platform, os = '', now = Date.now(), trail = [], tags = {}} = {}) {
+  if (kind === 'extension_error') { fields = extensionFields(fields); trail = []; }
   const message = scrub([fields.message, fields.error, fields.warning, fields.action].find(text => String(text ?? '').trim()) || kind, 300);   // an empty string is no message (Sentry 2C: "run_failed · src.stores call:")
   const event = {
     event_id: crypto.randomBytes(16).toString('hex'), timestamp: now / 1000, platform: 'javascript', level: LEVEL[kind] || 'error',
     release, environment, user: {id: installId}, server_name: undefined,
     tags: {kind, platform, os: String(os).slice(0, 20), ...(fields.job ? {job: scrub(fields.job, 60)} : {}), ...(fields.where ? {where: scrub(fields.where, 40)} : {}),
       ...(fields.host ? {host: scrub(fields.host, 80)} : {}), ...(fields.extVersion ? {extVersion: scrub(fields.extVersion, 20)} : {}),
-      ...(fields.timedOut ? {timedOut: 'yes'} : {}), ...tags},
+      ...(fields.timedOut ? {timedOut: 'yes'} : {}), ...tags, ...(kind === 'extension_error' ? {source: 'extension'} : {})},
     fingerprint: [kind, normal(fields.job || fields.where || ''), normal(message)],
     contexts: {runtime: {name: 'electron'}},
     ...(trail.length ? {breadcrumbs: {values: trail.map(item => ({timestamp: item.at / 1000, category: 'step', message: item.message, level: 'info'}))}} : {}),
   };
   const stack = frames(fields.stack);
-  if ((kind === 'crash' || kind === 'fill_error') && stack.length) {
+  if (kind === 'extension_error' || ((kind === 'crash' || kind === 'fill_error') && stack.length)) {
     event.exception = {values: [{type: scrub(fields.type || 'Error', 60), value: message, stacktrace: {frames: stack}}]};
   } else {
     event.message = `${kind}${fields.job ? ` · ${scrub(fields.job, 60)}` : ''}: ${message}`;
@@ -64,6 +65,14 @@ export function buildEvent(kind, fields = {}, {release = '', environment = 'prod
     if (Array.isArray(fields.tail) && fields.tail.length) event.extra = {tail: fields.tail.slice(-5).map(line => scrub(line, 200))};
   }
   return event;
+}
+
+function extensionFields(fields) {
+  const type = /^(?:Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError|AggregateError)$/.test(fields.type) ? fields.type : 'Error';
+  // Why (29 Oct 2026, owner): a page-derived string can appear even in an Error; extension reports carry fixed messages and own filenames only.
+  return {type, message: fields.rejection === true ? `Unhandled ${type} rejection` : `Uncaught ${type}`,
+    extVersion: /^\d+(?:\.\d+){1,3}$/.test(fields.extVersion) ? fields.extVersion : '',
+    stack: String(fields.stack || '').split('\n').filter(line => /^at [\w-]+\.m?js:\d{1,9}:\d{1,9}$/.test(line)).slice(0, 8).join('\n')};
 }
 
 // The tester's own run log, scrubbed line by line (same rules as every other field), the last 200 lines and 40 KB at most.
@@ -80,7 +89,7 @@ export function envelope(event, dsn, attachment = null) {
     : head;
 }
 
-// capture(kind, fields): fire and forget, never throws. At most one report per problem every 10 minutes and 30 an hour.
+// capture(kind, fields): fire and forget, never throws. Per problem: extension errors once a minute, others every 10 minutes; at most 30 an hour.
 export function create({dsn, release, environment = 'production', installId, platform = process.platform, os = '', tags = {}, enabled = () => true,
   fetcher = globalThis.fetch, now = () => Date.now()} = {}) {
   const target = parseDsn(dsn);
@@ -100,11 +109,13 @@ export function create({dsn, release, environment = 'production', installId, pla
         const key = event.fingerprint.join('|');
         const t = now();
         while (hour.length && t - hour[0] > 3600_000) hour.shift();
-        if (hour.length >= 30 || (seen.get(key) && t - seen.get(key) < 600_000)) return false;
+        // Why (29 Oct 2026, owner): an extension loop must report the same message at most once a minute per install, across worker restarts.
+        const cooldown = kind === 'extension_error' ? 60_000 : 600_000;
+        if (hour.length >= 30 || (seen.has(key) && t - seen.get(key) < cooldown)) return false;
         seen.set(key, t);
         hour.push(t);
         void Promise.resolve(fetcher(target.envelope, {method: 'POST', headers: {'Content-Type': 'application/x-sentry-envelope', 'X-Sentry-Auth': target.auth},
-          body: envelope(event, dsn, logAttachment(fields.logLines))})).catch(() => {});
+          body: envelope(event, dsn, kind === 'extension_error' ? null : logAttachment(fields.logLines))})).catch(() => {});
         return true;
       } catch { return false; }
     },

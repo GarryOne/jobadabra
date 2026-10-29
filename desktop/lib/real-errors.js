@@ -36,6 +36,11 @@ export function createWatcher({sentry = () => false, notice = () => {}, now = ()
     for (const entry of Array.isArray(entries) ? entries : []) {
       const found = classify(entry);
       if (!found) continue;
+      if (entry.kind === 'error' && entry.fields?.source === 'extension') {
+        const fields = entry.fields;
+        try { sentry('extension_error', {message: found.message, type: fields.type, stack: found.stack, source: 'extension', rejection: fields.rejection, extVersion: found.extVersion}); } catch { /* never breaks the log */ }
+        continue;
+      }
       try { sentry('fill_error', {message: found.message, stack: found.stack, where: 'extension', host: found.host, extVersion: found.extVersion}); } catch { /* never breaks the log */ }
       const at = now();
       if (told.has(found.key) && at - told.get(found.key) < HOUR) continue;

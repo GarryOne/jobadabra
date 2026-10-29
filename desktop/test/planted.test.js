@@ -11,6 +11,16 @@ const RECALL = line({at: 99_000, why: 'recall tiny', kinds: ['crash'], text: 're
 const HUNG = line({at: 99_000, why: 'ai hang', kinds: ['run_failed', 'stuck'], text: ''});
 const asked = (report, text, now = 100_000, env = E2E) => causedByPlant(report, env, now, () => text);
 
+test('an extension plant hides only its own frame, even beside another error with the same safe wording', () => {
+  const plant = line({at: 99_000, kinds: ['extension_error'], source: 'extension', frame: 'sentry-plant.js:17:2'});
+  const report = {kind: 'extension_error', source: 'extension', message: 'Uncaught TypeError', stack: 'at sentry-plant.js:17:2'};
+  assert.equal(asked(report, plant), true);
+  assert.equal(asked({...report, stack: 'at fill.js:17:2'}, plant), false);
+  assert.equal(asked({...report, stack: 'at other-sentry-plant.js:17:2'}, plant), false);
+  assert.equal(asked({...report, source: 'window'}, plant), false);
+  assert.equal(asked({...report, kind: 'crash'}, plant), false);
+});
+
 test('a report is dropped when a recent plant names its kind and its words', () => {
   assert.equal(asked({kind: 'run_warning', message: 'AI limit reached'}, AI), true);
   assert.equal(asked({kind: 'crash', message: 'Uncaught Error: recall planted error'}, RECALL), true);

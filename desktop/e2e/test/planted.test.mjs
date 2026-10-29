@@ -31,6 +31,18 @@ test('markPlanted writes the kinds a plant causes, and does nothing without a fi
   assert.equal(causedByPlant({kind: 'run_warning', message: 'AI limit'}, env, 1000 + 200_000), false, 'an old plant hides nothing');
 });
 
+test('an extension plant records its source and exact frame, hiding only that exception', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-extension-plant-'));
+  const env = {JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_PLANTED_FILE: path.join(root, 'planted.log')};
+  try {
+    markPlanted('extension exception', {kinds: ['extension_error'], source: 'extension', frame: 'sentry-plant.js:3:'}, env, 1000);
+    const report = {kind: 'extension_error', source: 'extension', message: 'Uncaught TypeError', stack: 'at sentry-plant.js:3:17'};
+    assert.equal(causedByPlant(report, env, 2000), true);
+    assert.equal(causedByPlant({...report, stack: 'at flow.js:3:17'}, env, 2000), false);
+    assert.equal(causedByPlant({...report, source: 'window'}, env, 2000), false);
+  } finally { fs.rmSync(root, {recursive: true, force: true}); }
+});
+
 test('every fake that serves a failure marks it planted', async () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jp-planted-')), 'planted.log');
   process.env.JOB_PILOTTO_E2E_PLANTED_FILE = file;

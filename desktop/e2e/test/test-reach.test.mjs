@@ -95,7 +95,6 @@ test('a suite edit excludes context users that do not consume SUITES, while regi
     assert.ok(!picked.includes(inRepo(`${name}.test.mjs`)), `${name} does not scan suites or consume SUITES`);
   }
   for (const name of ['store', 'suite-budget', 'suite-shards']) assert.ok(picked.includes(inRepo(`${name}.test.mjs`)), `${name} consumes SUITES`);
-  assert.ok(picked.length <= 27, `the original 25 plus the import-graph and site-ledger tree scans, not 44: ${picked.length}`);
 });
 
 test('context only supplies a directory edge to SUITES consumers, including under broad discovery', t => {

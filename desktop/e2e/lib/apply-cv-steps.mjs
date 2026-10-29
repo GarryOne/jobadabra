@@ -1,10 +1,12 @@
 /* global document, window */
 // The apply suite's tailored-CV steps (moved out of suites/apply.mjs, 8 Oct 2026): Tailor CV on a job, the panel's way to it in the app, Tailor CVs for top matches, Apply without a kit. Guards the CV flow in docs/flows/applying.md.
+// Job: wait on state
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {FORMS} from './forms.mjs';
-import {POSTING, pause} from './apply-fixtures.mjs';
+import {POSTING} from './apply-fixtures.mjs';
+import {waitForFill} from './fill-attempt.mjs';
 import {addKitJob, removeJobsByUrl, tailoredFiles} from './seed-data.mjs';
 import {cvProblems} from './applycheck.mjs';
 import {readForm, readPanel} from './extension.mjs';
@@ -12,7 +14,7 @@ import {showFilter} from './jobs-filter.mjs';
 import {openRunsList} from './runs-list.mjs';
 
 export async function runCvSteps(ctx, h) {
-  const {apply, cv, fail, page, proxy} = h;
+  const {apply, cv, fail, page, proxy, until} = h;
   await ctx.run('Tailor CV on a job writes a CV from its posting: the PDF on this Mac, the file on the job in Notion, and the extension attaches it, not the base CV', async () => {
     const form = FORMS.greenhouse;
     const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
@@ -21,53 +23,49 @@ export async function runCvSteps(ctx, h) {
     // Under "Everything", whatever filter an earlier step left on the list: this job is Opened/Form filled by now and is not under "New matches" (10 Oct 2026: Windows CI,
     // "waiting for the More actions button of E2E Greenhouse Labs" for 30 s, the list showing other jobs).
     await showFilter(page, 'everything');
-    await page.locator('article.job-row').filter({hasText: form.company}).first().waitFor({timeout: 60000})
+    const row = page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`);
+    await row.waitFor({timeout: 60000})
       .catch(() => { throw new Error(`${form.company} is not in the Jobs list even under Everything`); });
     // The list redraws while sessions update, which closes an open ⋯ menu: open it again until the item is there.
     let items = [];
     for (let attempt = 0; attempt < 8; attempt++) {
-      await page.locator('article.job-row').filter({hasText: form.company}).first().getByRole('button', {name: 'More actions'}).click();
-      await pause(600);
-      items = await page.getByRole('menuitem').allInnerTexts();
-      if (items.some(text => /Tailor CV/.test(text))) break;
+      await row.getByRole('button', {name: 'More actions'}).click();
+      const menu = await waitForFill({capMs: 2500, pickTab: () => ({tab: page}), readState: () => page.getByRole('menuitem').allInnerTexts(), accept: texts => texts.some(text => /Tailor CV/.test(text))});
+      items = menu.state;
+      if (menu.ok) break;
     }
     if (!items.some(text => /Tailor CV/.test(text))) throw new Error(`the ⋯ menu of ${form.company} has no Tailor CV (it lists: ${items.join(' | ') || 'nothing'})`);
     await page.getByRole('menuitem', {name: /Tailor CV/}).click();
-    for (let waited = 0; !fs.existsSync(tailoredPdf) && waited < 120000; waited += 1000) await pause(1000);
-    if (!fs.existsSync(tailoredPdf)) throw new Error('Tailor CV wrote no PDF within two minutes (see the "Tailoring failed" toast)');
+    await until('Tailor CV wrote no PDF within two minutes (see the "Tailoring failed" toast)', () => fs.existsSync(tailoredPdf), 120000);
     const size = fs.statSync(tailoredPdf).size;
     if (size === cv.size) throw new Error('the tailored PDF is the size of the base CV: it was not written from the posting');
     let files = 0;
-    for (let i = 0; i < 10 && !files; i++) { files = await tailoredFiles(ctx, form.url); if (!files) await pause(3000); }
-    if (!files) throw new Error(ctx.store === 'sqlite' ? 'the tailored CV is not among the job\'s files in this Mac\'s store (applications.attach)' : 'the tailored CV is not on the job\'s row in Notion (column "Tailored CV")');
+    await until(ctx.store === 'sqlite' ? 'the tailored CV is not among the job\'s files in this Mac\'s store (applications.attach)' : 'the tailored CV is not on the job\'s row in Notion (column "Tailored CV")', async () => { files = await tailoredFiles(ctx, form.url); return files; }, 30000);
     const {tab, state} = await apply(form, {viaApi: true});
     if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
     fail(cvProblems(await readForm(tab), {name: 'CV_Ada_Tester_E2E_Greenhouse_Labs.pdf', size}));   // the tailored file's bytes, under its own name: the form shows which CV it got
   }, {needs: ctx.needs});
 
   // Why (27 Oct 2026, owner: "remove the line with 'general CV attached… Tailor in Jobadabra'"): the panel neither tailors nor links to it; Tailor lives on the session page,
-  // and the app restarts the form when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press.
+  // and the app restarts the form when the tailored CV is ready, so it is attached from the start (desktop/lib/tailored-restart.js), with no Fill press; wait on that session's attachment (29 Oct 2026, ap).
   await ctx.run('Tailor on the session page of a form restarts the form with the tailored CV under its own name', async () => {
     const form = FORMS.lever;
     const code = crypto.createHash('sha1').update(form.url.trim()).digest('hex').slice(0, 8);
     const tailoredPdf = path.join(ctx.profile, 'cv', 'tailored', `${code}.pdf`);
     fs.rmSync(tailoredPdf, {force: true});
-    const {tab, state} = await apply(form, {viaApi: true});
+    const {tab, state, session} = await apply(form, {viaApi: true});
     if (state.state === 'error') throw new Error(`the fill ended in an error: ${state.error}`);
     fail(cvProblems(await readForm(tab), cv).map(problem => `${problem} (before Tailor the form has the general CV)`));
     await page.click('.nav[data-view="sessions"]');
-    await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page`); });
+    await page.locator('#ss-list .ss-row').filter({hasText: form.company}).filter({hasText: form.title}).click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page`); });
+    await page.waitForFunction(id => window.__jp.openSession?.id === id, session, {timeout: 20000});
     const tailor = page.locator('#ss-before-cv-btn');
     await tailor.waitFor({state: 'visible', timeout: 20000}).catch(() => { throw new Error(`the session page of ${form.company} has no Tailor button`); });
     await tailor.click();
-    for (let waited = 0; !fs.existsSync(tailoredPdf) && waited < 120000; waited += 1000) await pause(1000);
-    if (!fs.existsSync(tailoredPdf)) throw new Error('Tailor on the session page wrote no tailored CV within two minutes');
+    await until('Tailor on the session page wrote no tailored CV within two minutes', () => fs.existsSync(tailoredPdf), 120000);
     // No Fill press: the app reloads the form's tab and its mark fills it again from the start, now with the tailored CV.
     const expected = {name: 'CV_Ada_Tester_E2E_Lever_Systems.pdf', size: fs.statSync(tailoredPdf).size};
-    for (let waited = 0; waited < 120000; waited += 1000) {
-      await pause(1000);
-      if (!cvProblems(await readForm(tab).catch(() => ({})), expected).length) break;
-    }
+    await tab.waitForFunction(wanted => [...document.querySelectorAll('input[type="file"]')].some(input => [...input.files].some(file => file.name === wanted.name && file.size === wanted.size)), expected, {timeout: 120000});
     const after = await readPanel(tab).catch(() => null);
     fail(cvProblems(await readForm(tab), expected).map(problem => `${problem} (the form did not restart with the tailored CV${after?.note ? `; the panel says: "${after.note}"` : ''})`));
   }, {needs: ctx.needs});
@@ -105,6 +103,7 @@ export async function runCvSteps(ctx, h) {
     let release;
     ctx.tailorHold = new Promise(resolve => { release = resolve; });
     console.log('  HELD by the test: the tailoring answers once Run is checked off');
+    let runId;
     try {
       await page.click('#tailor-top');
       // A tracked task: the banner follows it and Recent activity holds its row, with the result line as its summary.
@@ -119,13 +118,15 @@ export async function runCvSteps(ctx, h) {
       await page.click('#run-banner-view');
       await page.waitForFunction(() => { const detail = document.querySelector('.ap-detail'); return !!detail?.offsetParent && /Running/.test(detail.innerText); }, null, {timeout: 10000})
         .catch(() => { throw new Error('"View details" did not open the running Tailor CVs task'); });
+      runId = await page.evaluate(() => window.__jp.shared.selectedRun);
+      if (runId == null) throw new Error('the running Tailor CVs task has no id');
       if (!(await page.locator('#tailor-top').isDisabled())) throw new Error('Run is still pressable while Tailor CVs is running');
     } finally { ctx.tailorHold = null; release(); }
     let said = '';
-    for (let waited = 0; !/Tailored \d+ of \d+ CV/.test(said) && waited < 420000; waited += 3000) {
-      await pause(3000);
-      said = await page.evaluate(async () => ((await window.pilot.runs()).runs || []).find(run => run.kind === 'tailor')?.summary || '');
-    }
+    await until('the Tailor CVs task did not finish within 420 s', async () => {
+      said = await page.evaluate(async id => ((await window.pilot.runs()).runs || []).filter(run => String(run.id) === String(id)).pop()?.summary || '', runId);
+      return /Tailored \d+ of \d+ CV/.test(said);
+    }, 420000);
     await page.waitForFunction(() => !document.getElementById('tailor-top').disabled, null, {timeout: 20000}).catch(() => { throw new Error('Run stayed disabled after Tailor CVs ended'); });
     if (!/Tailored 2 of 2 CVs/.test(said)) throw new Error(`Recent activity has no Tailor CVs run that says two CVs were tailored: "${said}"`);
     const made = topUrls.map(url => fs.existsSync(tailoredAt(url)));
@@ -148,17 +149,17 @@ export async function runCvSteps(ctx, h) {
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     await page.click('.nav[data-view="jobs"]');
     await showFilter(page, 'saved');   // Saved jobs are not in the default "New matches"
-    const rowText = () => page.evaluate(() => [...document.querySelectorAll('article.job-row')].filter(row => /E2E Bare/.test(row.textContent)).map(row => row.querySelector('.row-main')?.textContent.trim())[0] || '');
-    for (let waited = 0; !(await rowText()) && waited < 120000; waited += 2000) await pause(2000);
+    const row = page.locator(`article.job-row[data-url=${JSON.stringify(bareUrl)}]`);
+    const rowText = () => row.locator('.row-main').textContent({timeout: 120000}).then(text => text.trim());
     if ((await rowText()) !== 'Apply') throw new Error(`a saved job without a kit should show Apply, it shows "${await rowText()}"`);
     const opened = ctx.browser.opened.length, asked = proxy.stats.calls;
     proxy.setMode('server-error');
     try {
-      await page.locator('article.job-row').filter({hasText: 'E2E Bare'}).first().locator('.row-main').click();
-      for (let waited = 0; (await rowText()) !== 'Retry apply' && waited < 180000; waited += 1000) {
+      await row.locator('.row-main').click();
+      await until('the button never said Retry apply', async () => {
         if (ctx.browser.opened.length !== opened) throw new Error('a form was opened for a job whose kit was never drafted');
-        await pause(1000);
-      }
+        return (await rowText()) === 'Retry apply';
+      }, 180000);
     } finally { proxy.setMode('pass'); }
     if (proxy.stats.calls === asked) throw new Error('the AI was never asked to draft the kit, so this step did not test a failed draft');
     if ((await rowText()) !== 'Retry apply') throw new Error(`the button never said Retry apply (it says "${await rowText()}")`);

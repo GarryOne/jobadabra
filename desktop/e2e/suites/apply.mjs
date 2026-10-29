@@ -8,7 +8,9 @@ import {stepSlicer} from '../lib/step-slices.mjs';
 import path from 'node:path';
 import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProblems, submitProblems} from '../lib/applycheck.mjs';
 import {CHAIN, FORMS, HOSTS, LATE, REAL_FORMS, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED, realFieldId} from '../lib/forms.mjs';
-import {formTab, launchBrowser, readForm, readPanel, fillState} from '../lib/extension.mjs';
+import {formTab, launchBrowser, readForm, readPanel, fillState, fillNote} from '../lib/extension.mjs';
+import {waitForFill} from '../lib/fill-attempt.mjs';
+import {markedSession, sessionTabUrl} from '../../lib/session-tab.js';
 import {addKitJob, removeJobsByUrl, seedLivePosting, stageOf} from '../lib/seed-data.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {appLogLines, appLogText} from '../lib/app-log.mjs';
@@ -18,7 +20,7 @@ import {proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
-import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, pause, tailoredFrom} from '../lib/apply-fixtures.mjs';
+import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, tailoredFrom} from '../lib/apply-fixtures.mjs';
 
 // Walks other data and timing on each seeded run (lib/forms.mjs varyForms): an exploring run on an unchanged commit includes it.
 export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
@@ -32,6 +34,16 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60};
+// Why (29 Oct 2026, ap): hang caps, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
+// A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
+export const hangCaps = {'the app has an applicant': 300000, 'the app is seeded': 90000, 'the app is set up on this Mac\'s store': 90000,
+  'a Greenhouse-like form': 195000, 'a Workday-shaped form': 195000, 'a Lever-like form': 150000, 'a form with a control the extension cannot operate': 180000,
+  'real forms the extension once failed on': Math.max(540000, REAL_FORMS.length * 165000 + 30000), 'Open in Chrome on a form the night filled': 160000,
+  'a multi-step form': 300000, 'the session page says it too': 105000, 'Tailor CV on a job': 480000, 'Apply on a saved job without a kit': 390000,
+  'Tailor on the session page': 445000, 'the person submits a form': 270000, 'through all of it': 50000,
+  'the panel does not say "Ready to submit"': 75000, 'nothing was queued': 5000,
+  'The hidden browser fills a form': 385000,
+  'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form'] * 1000};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
   'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,
@@ -80,15 +92,18 @@ export async function runApply(ctx, parts) {
   // A seeded run (E2E_SEED, lib/variation.mjs) fills forms with other data and other timing (lib/forms.mjs varyForms); the written seed replays it.
   fs.writeFileSync(path.join(ctx.ARTIFACTS, 'seed.json'), JSON.stringify({seed: ctx.vary.seed, fixed: ctx.vary.fixed, detail: forms.variation}));
   console.log(ctx.vary.fixed ? '  variation: fixed forms' : `  variation: seed ${ctx.vary.seed}; ${forms.variation}; replay with E2E_SEED=${ctx.vary.seed}`);
-  await ensureSetUp(ctx);   // before the filter below: a new Notion page is built by the wizard's own steps
   const all = ctx.run;
+  const capped = (name, fn, options) => all(name, fn, {...options, limitMs: Object.entries(hangCaps).filter(([head]) => name.startsWith(head)).pop()?.[1] ?? options?.limitMs});
+  ctx.run = capped;
+  await ensureSetUp(ctx);   // before the filter below: a new Notion page is built by the wizard's own steps
   const live = parts.includes('live') ? livePosting() : null;   // the live run: one real posting, read from this Mac's job list; the fixture checks do not apply to it
   // A slice (the suite's `shards`, JP_REPLAY_SHARD=i/n): the shared steps run in every slice; the others split by weight, take turns, or follow a step they need (lib/step-slices.mjs).
   const takes = stepSlicer(live ? null : parseShard(process.env.JP_REPLAY_SHARD), {seconds: parts.includes('flows') ? flowSeconds : stepSeconds, needs: stepNeeds, setup: SETUP});
   ctx.run = (name, fn, options) => {
+    if (name.startsWith('nothing was queued')) return capped(name, fn, options);
     if (!((partOf(name) === 'both' && !(live && name.startsWith('through all of it'))) || parts.includes(partOf(name)))) return undefined;
-    if (partOf(name) !== 'both' && !takes(name)) return all(name, fn, {...options, elsewhere: true});   // the other slice runs it (a PR's picked step is found there)
-    return all(name, fn, options);
+    if (partOf(name) !== 'both' && !takes(name)) return capped(name, fn, {...options, elsewhere: true});   // the other slice runs it (a PR's picked step is found there)
+    return capped(name, fn, options);
   };
   // The jobs this part seeds: the journeys use their own fixtures, the forms and the CV steps the form fixtures.
   const fixtures = [...(live ? [live] : []), ...(parts.some(part => !['flows', 'live'].includes(part)) ? Object.values(FORMS) : []), ...(parts.includes('flows') ? [CHAIN, SCRIPTED, LATE, SIGNUP, SIGNIN, SIGNIN_REFUSED, MENU_FIRST, MENU_AGAIN, PROPOSE, REVEAL, COLLAPSED, ONEPAGE, MISLABELLED] : [])];
@@ -168,37 +183,39 @@ export async function runApply(ctx, parts) {
   async function apply(form, {viaApi = false} = {}) {
     const opened = ctx.browser.opened.length;
     // A job whose form tab is still open keeps it (22 Oct 2026, 0e359e1): the app has that tab reload and fill again instead of opening a second one, so a reload of an open tab counts as the open.
-    const reloaded = [];
-    for (const open of ctx.browser.context.pages()) open.once('load', () => reloaded.push(open));
-    await page.click('.nav[data-view="jobs"]');
-    // viaApi: the same call the button makes ("Fill in Chrome" in the ⋯ menu), for a job whose button now says "View session".
-    if (viaApi) await page.evaluate(job => window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: 'Zurich, Switzerland', workMode: ''}), form);
-    else await page.locator('article.job-row').filter({hasText: form.company}).first().locator('.row-main').click();
-    const deadline = Date.now() + 30000;
-    while (ctx.browser.opened.length === opened && !reloaded.length && Date.now() < deadline) await pause(250);
-    if (ctx.browser.opened.length === opened && !reloaded.length) throw new Error(`Apply did not open ${form.title} in the browser (the app's open command was never called, and no open tab reloaded)`);
-    let tab = reloaded[0];
-    if (ctx.browser.opened.length !== opened) {
-      const url = ctx.browser.opened.at(-1);
-      if (!/#jobpilotto-fill=[A-Za-z0-9_-]+$/.test(url)) throw new Error(`Apply opened ${url} without the fill marker that names its session (every tab the app opens carries one: lib/session-tab.js)`);
-      tab = formTab(ctx.browser, url);
-    }
-    const openedUrl = ctx.browser.opened.length !== opened ? ctx.browser.opened.at(-1) : '';
-    for (let waited = 0; waited < 90000; waited += 500) {
-      if (openedUrl) tab = formTab(ctx.browser, openedUrl);   // the tab that shows the form now (lib/extension.mjs formTab)
-      const state = await fillState(tab).catch(() => null);
-      if (state?.state === 'done' || state?.state === 'error') return {tab, state};
-      await pause(500);
-    }
-    await dumpExtension();
-    throw new Error(`the extension never finished filling ${form.title} (state: ${JSON.stringify(await fillState(tab))}, read on ${tab.url().split('#')[0].slice(0, 100)}, ${ctx.browser.context.pages().length} tab(s))`);   // the address read and the tab count: a null from the wrong tab (26 Oct) and from the right one (28 Oct) look alike
+    const reloaded = new Set(), listeners = new Map();
+    for (const tab of ctx.browser.context.pages()) { const onLoad = () => reloaded.add(tab); listeners.set(tab, onLoad); tab.on('load', onLoad); }
+    try {
+      await page.click('.nav[data-view="jobs"]');
+      // viaApi: the same call the button makes ("Fill in Chrome" in the ⋯ menu), for a job whose button now says "View session".
+      if (viaApi) await page.evaluate(job => window.pilot.applyOne(job.url, {title: job.title, company: job.company, location: 'Zurich, Switzerland', workMode: ''}), form);
+      else await page.locator(`article.job-row[data-url=${JSON.stringify(form.url)}]`).locator('.row-main').click();
+      let attemptUrl = '';
+      const pickTab = () => ({tab: formTab(ctx.browser, attemptUrl), tabs: ctx.browser.context.pages().length});
+      const opening = await waitForFill({capMs: 30000, pickTab: async () => {
+        const sessions = await page.evaluate(url => window.pilot.sessions().then(list => list.filter(item => item.kind === 'form' && !item.outcome && item.url === url)), form.url);
+        if (sessions.length !== 1) return {tab: null, tabs: ctx.browser.context.pages().length};
+        attemptUrl = sessionTabUrl(form.url, sessions.pop().id);
+        const own = ctx.browser.opened.slice(opened).filter(url => markedSession(url) === markedSession(attemptUrl));
+        const openedHere = own.length === 1;
+        if (openedHere) attemptUrl = own.pop();
+        const picked = pickTab();
+        return openedHere || reloaded.has(picked.tab) ? picked : {...picked, tab: null};
+      }, readState: async () => ({opened: true}), accept: state => state?.opened === true});
+      if (!opening.ok) throw new Error(`Apply did not open ${form.title} in the browser (the app's open command was never called, and no open tab reloaded)`);
+      const result = await waitForFill({capMs: 90000, pickTab, readState: fillState});
+      if (result.ok) return {...result, session: markedSession(attemptUrl)};
+      await dumpExtension();
+      throw new Error(`the extension never finished filling ${form.title} (${fillNote(result.state, 90)}, read on ${result.url}, ${result.tabs} tab(s))`);
+    } finally { for (const [tab, onLoad] of listeners) tab.off('load', onLoad); }
   }
   // The panel opens by itself while a fill runs; open it only when it is closed (a click on the pill toggles).
   const panelOf = async tab => {
     const closed = await tab.evaluate(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.card')?.hidden);
     if (closed) await tab.locator('#jobpilotto-review-host .pill').click({timeout: 15000});
-    await pause(1500);
-    return readPanel(tab);
+    const result = await waitForFill({capMs: 30000, pickTab: () => ({tab, tabs: ctx.browser.context.pages().length}), readState: readPanel, accept: panel => !!panel?.progress});
+    if (!result.ok) throw new Error(`the form panel did not become readable within 30 s (last read: ${JSON.stringify(result.state)})`);
+    return result.state;
   };
   let unknownTab = null;
   const fail = problems => { if (problems.length) throw new Error(problems.join('; ')); };
@@ -287,10 +304,10 @@ export async function runApply(ctx, parts) {
       const asked = (ctx.answerAsks || []).slice(answered);
       if (asked.includes(form.open.field)) problems.push('the question the night answered went to the AI');
       let said = '';
-      for (let waited = 0; waited < 10000 && !/Last night.s fill is back/.test(said); waited += 500) {   // the panel redraws on its own beat after the fill
+      await until('the panel never showed last night\'s fill', async () => {
         said = await tab.evaluate(() => document.getElementById('jobpilotto-review-host')?.shadowRoot?.querySelector('.pill small')?.textContent || '');
-        if (!/Last night.s fill is back/.test(said)) await pause(500);
-      }
+        return /Last night.s fill is back/.test(said);
+      }, 10000);
       if (!/Last night.s fill is back/.test(said)) problems.push(`the panel says "${said}", not "Last night's fill is back"`);
       fail([...problems, ...submitProblems(forms.fired, form.path)]);
       console.log(`  night's answer typed; page-kind asks ${(ctx.kindAsks || 0) - kinds}; questions asked: ${asked.join(', ') || 'none'}; panel: "${said}"`);
@@ -310,12 +327,12 @@ export async function runApply(ctx, parts) {
     await tab.locator('#jobpilotto-review-host .fill').click({timeout: 15000});
     await tab.waitForFunction(() => document.getElementById('salary')?.value, null, {timeout: 60000}).catch(() => { throw new Error('"Fill again" did not fill step 2 (salary stayed empty)'); });
     // The consent boxes are ticked at the end of the fill, after the answers: the salary showing is not the end of it.
-    await tab.waitForFunction(ids => ids.every(id => document.getElementById(id)?.checked), form.consent, {timeout: 15000}).catch(() => {});
+    await tab.waitForFunction(ids => ids.every(id => document.getElementById(id)?.checked), form.consent, {timeout: 15000}).catch(() => { throw new Error('"Fill again" did not tick the fixture consent boxes within 15 s'); });
     actual = await readForm(tab);
     fail([...fillProblems({expected: expectedOf(form), left: form.legal, actual}), ...submitProblems(forms.fired, form.path)]);
     let left = await readPanel(tab);
     // The panel's list is redrawn when the fill ends, a moment after the box is ticked.
-    for (let waited = 0; waited < 15000 && left.left.some(item => form.consentWords.some(word => item.toLowerCase().includes(word))); waited += 500) { await tab.waitForTimeout(500); left = await readPanel(tab); }
+    await until('the panel still lists the ticked consent boxes after 15 s', async () => { left = await readPanel(tab); return left && !left.filling && !left.left.some(item => form.consentWords.some(word => item.toLowerCase().includes(word))); }, 15000);
     fail([...leftProblems(left.left, ['sponsorship']), ...notLeftProblems(left.left, form.consentWords)]);   // the knockout question stays the person's; the consent box is ticked
     // The question a hiring system can be set to reject on comes first, with its warning, and any tip the panel shows carries one of the labels that say how strong it is.
     if (!/sponsorship/i.test(left.left[0] || '')) throw new Error(`the knockout question is not first in "Left for you" (the list: ${left.left.join(' | ')})`);
@@ -329,14 +346,14 @@ export async function runApply(ctx, parts) {
     // The session this form belongs to. The job row's button says "View session" only on a Mac with Claude Code installed (claudeReady, jobs.js); here it is the fill
     // button ("Opened ↻"), and clicking it fills the form again and stays on the Jobs list (apply run 37134779221). A session card in the dock opens the same page for everyone,
     // and the Sessions page lists them all when the dock (three cards at most) does not show this one.
-    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).first();
+    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).filter({hasText: form.title});
     if (await card.count()) {
       if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');   // the dock starts collapsed: its cards are in the page but hidden (apply run 37135786161)
       await card.click();
     }
     else {
       await page.click('.nav[data-view="sessions"]');
-      await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page or in the dock`); });
+      await page.locator('#ss-list .ss-row').filter({hasText: form.company}).filter({hasText: form.title}).click({timeout: 15000}).catch(() => { throw new Error(`no session for ${form.company} on the Sessions page or in the dock`); });
     }
     const strip = page.locator('#ss-before');
     await strip.waitFor({state: 'visible', timeout: 30000}).catch(async () => {
@@ -344,12 +361,12 @@ export async function runApply(ctx, parts) {
     });
     // This session's strip, not the one shown before (6 Oct 2026: the row named the Greenhouse form's work-permit question, read the moment the strip appeared).
     let knock = '';
-    for (const started = Date.now(); Date.now() - started < 15000; await page.waitForTimeout(500)) {
+    await until(`the session page did not show ${form.company}'s sponsorship question within 15 s`, async () => {
       knock = (await page.locator('#ss-before-knock').innerText()).replace(/\s+/g, ' ');
-      if (/sponsorship/i.test(knock)) break;
-    }
+      return /sponsorship/i.test(knock) && await page.evaluate(url => window.__jp.openSession?.url === url, form.url);
+    }, 15000);
     if (!/1 question can reject you automatically/i.test(knock) || !/sponsorship/i.test(knock)) {
-      const shown = (await page.locator('.view[data-view="session"] h1, #ss-title, #ss-form-card').first().innerText().catch(() => '?')).replace(/\s+/g, ' ').slice(0, 120);
+      const shown = (await page.locator('#ss-title').innerText().catch(() => '?')).replace(/\s+/g, ' ').slice(0, 120);
       throw new Error(`the knockout row does not count and name the sponsorship question after 15 s: "${knock}" (the page shows: "${shown}", expected ${form.company})`);
     }
     await page.locator('#ss-before-cv').waitFor({state: 'visible', timeout: 15000});
@@ -366,11 +383,10 @@ export async function runApply(ctx, parts) {
     // Reported to the app: it keeps the control's shape in misses.json and says so in its log.
     const file = path.join(ctx.profile, 'misses.json');
     let kept = [];
-    for (let waited = 0; waited < 30000 && !kept.some(entry => entry.kind === 'slider'); waited += 1000) {
+    await until('the app was never told about the slider (no "slider" entry in misses.json)', async () => {
       kept = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
-      await pause(1000);
-    }
-    if (!kept.some(entry => entry.kind === 'slider')) throw new Error('the app was never told about the slider (no "slider" entry in misses.json)');
+      return kept.some(entry => entry.kind === 'slider');
+    }, 30000);
     const log = appLogText(ctx.profile);
     if (!/\[misses\] \d+ new control/.test(log)) throw new Error('the app kept the miss but did not log it');
     unknownTab = tab;
@@ -382,8 +398,9 @@ export async function runApply(ctx, parts) {
   const sessionsOf = url => page.evaluate(target => window.pilot.sessions().then(list => list.filter(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, '')).map(item => `${item.kind}:${item.id}`)), url);
   const logTail = () => { try { return appLogLines(ctx.profile).filter(line => /\[extension\]|\[applied\]/.test(line)).slice(-6).map(line => line.slice(0, 220)).join('\n    '); } catch { return '(no log)'; } };
   async function until(what, check, ms = 60000) {
-    for (let waited = 0; waited < ms; waited += 1000) { if (await check()) return; await pause(1000); }
-    throw new Error(`${what}. The app's last extension lines:\n    ${logTail()}`);
+    const result = await waitForFill({capMs: ms, pickTab: () => ({tab: page, tabs: ctx.browser.context.pages().length}), readState: check, accept: state => !!state});
+    if (!result.ok) throw new Error(`${what}. The app's last extension lines:\n    ${logTail()}`);
+    return result.state;
   }
 
   // Found by the owner on a real form (OK Job, 3 Oct 2026): the person submitted, the page said "successfully submitted", and the app stayed on "Ready to submit".
@@ -413,7 +430,7 @@ export async function runApply(ctx, parts) {
     if ((await stageOf(ctx, CHAIN.url)) !== 'Applied') throw new Error('the Notion row is not Applied');
   }, {needs: ctx.needs});
 
-  await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy});   // lib/apply-cv-steps.mjs
+  await runCvSteps(ctx, {apply, cv, fail, page, panelOf, proxy, until});   // lib/apply-cv-steps.mjs
 
   await ctx.run('through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', async () => {
     fail(submitProblems(forms.fired, ''));

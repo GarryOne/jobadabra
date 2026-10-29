@@ -3,6 +3,7 @@
 // job-site host names the extension is allowed on (lib/forms.mjs), and the app's own "Apply" click reaches this browser through a stand-in `open` command
 // on the app's PATH (the app runs `open -a "Google Chrome" <url>`: here that URL is handed to this Chromium instead).
 // Reaches: ../../../extension/   (EXTENSION_DIR, loaded whole into the browser: lib/test-reach.mjs runs the tests that load it when any extension file changes)
+// Job: wait on state
 import {guardLiveVisit} from './site-ledger.mjs';
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';
@@ -14,6 +15,7 @@ import {E2E} from './app.mjs';
 import {hostRules} from './forms.mjs';
 import {stamp, stampedAt} from '../../scripts/extension-stamp.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
+import {markedSession} from '../../lib/session-tab.js';
 
 export const EXTENSION_DIR = path.resolve(E2E, '..', '..', 'extension');
 export const DEFAULT_APP_PORT = 47111;   // the extension's built-in address for the app (extension/flow.js APP)
@@ -121,7 +123,7 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
         if (!/^https:\/\//.test(url)) continue;   // the app asked `open` for something else: nothing to do here
         try { visitGuard(real)(url, {who: process.env.JOB_PILOTTO_SESSION || 'browser'}); } catch (error) { console.error(error.message); continue; }   // the per-site daily limit (lib/site-ledger.mjs): a refused address is not opened
         const tab = context.pages().find(page => blank(page) && !Object.values(pages).includes(page)) || await context.newPage();
-        pages[url.split('#')[0]] = tab;
+        pages[url] = tab;
         opened.push(url);   // after the tab exists: a caller that sees the URL finds its tab
         tab.goto(url).catch(() => {});
       }
@@ -133,12 +135,18 @@ export async function launchBrowser({port, spool, extensionDir, real = false, pr
     close: async () => { stopped = true; await watcher.catch(() => {}); await context.close().catch(() => {}); }};
 }
 
-// The tab showing a form the app opened: the harness's first pick while it shows that address, else the newest open tab that does (beta 40281407461, Edge:
-// the extension's install tab raced the reuse of a blank tab and the form loaded in another one). Nothing shows it yet: the first pick, still loading.
+// The tab showing this session's marker, even after navigation (background.js markPage restores it). Beta 40281407461, Edge: the install tab raced the reuse
+// of a blank tab and the form loaded in another one. The spool's exact pick is only a loading fallback, never a different marked session at the same address.
+/** Resolve a marked attempt by session, retaining the spool's tab while its first navigation loads. */
 export function formTab(browser, url) {
-  const address = String(url).split('#')[0], shows = page => !page?.isClosed?.() && String(page?.url?.() || '').split('#')[0] === address;
-  const picked = browser.pages[address];
-  return shows(picked) ? picked : browser.context.pages().filter(shows).at(-1) || picked;
+  const session = markedSession(url), address = String(url).split('#')[0];
+  const picked = browser.pages[url];
+  const live = page => page && !page.isClosed?.();
+  const shows = page => live(page) && (session ? markedSession(page.url()) === session : String(page.url()).split('#')[0] === address);
+  if (shows(picked)) return picked;
+  const matches = browser.context.pages().filter(shows);
+  if (matches.length === 1) return matches.pop();
+  return !matches.length && live(picked) && (!session || !markedSession(picked.url())) ? picked : null;
 }
 
 // The form as the page holds it now: field id (or name) -> {type, value, checked, files: [{name, size}], ai}. `ai` is the extension's own marker on an

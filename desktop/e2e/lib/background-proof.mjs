@@ -1,5 +1,6 @@
 /* global document, window */
-// Job: wait on state. The end-to-end proof of Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills a fictional
+// Job: wait on state
+// The end-to-end proof of Background automation (spec 2026-10-27-background-apply-execution, step B): the app's own hidden browser fills a fictional
 // form, the person's Submit (liveSubmit, after the app re-reads the page) lands, the job becomes Applied. Only the fixture server and the proxy's stand-ins answer; every
 // wait is on a state the app shows (the session's background state, the stage), the cap only catches a hang.
 import fs from 'node:fs';
@@ -50,16 +51,20 @@ const valuesOf = socketUrl => new Promise(done => {
 });
 
 /** The console lines and exceptions the page behind `socketUrl` already holds (Runtime.enable replays them), for a failure message. */
-const consoleOf = socketUrl => new Promise(done => {
-  const lines = [], socket = new WebSocket(socketUrl), end = () => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(lines.slice(-8).join(' // ') || '(empty)'); }, timer = setTimeout(end, 2500);
+const consoleOf = socketUrl => new Promise((done, fail) => {
+  const pending = new Set([1, 2]);
+  const lines = [], socket = new WebSocket(socketUrl), end = error => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } if (error) fail(error); else done(lines.slice(-8).join(' // ') || '(empty)'); };
+  const timer = setTimeout(() => end(new Error('the hidden console never acknowledged Runtime.enable and Log.enable (10 s hang cap)')), 10000);
   socket.onopen = () => { socket.send(JSON.stringify({id: 1, method: 'Runtime.enable'})); socket.send(JSON.stringify({id: 2, method: 'Log.enable'})); };
   socket.onmessage = event => {
     const message = JSON.parse(event.data);
     if (message.method === 'Runtime.consoleAPICalled') lines.push(`${message.params.type}: ${(message.params.args || []).map(arg => arg.value ?? arg.description ?? '').join(' ')}`.slice(0, 200));
     if (message.method === 'Runtime.exceptionThrown') lines.push(`EXCEPTION: ${message.params.exceptionDetails?.exception?.description || message.params.exceptionDetails?.text}`.slice(0, 240));
     if (message.method === 'Log.entryAdded') lines.push(`log ${message.params.entry.level}: ${message.params.entry.text}`.slice(0, 200));
+    // Why (29 Oct 2026, ap): CDP replays stored events before acknowledging enable; both replies end collection even when the console is empty.
+    if (pending.delete(message.id) && !pending.size) end();
   };
-  socket.onerror = end;
+  socket.onerror = () => end();
 });
 
 /** Asks the hidden browser's extension itself, from a page of its own (options.html): its permission for the form's site, what its storage holds, the tabs and the worker's session keys. */
@@ -69,23 +74,28 @@ async function askExtension(profile, port) {
     const id = Object.entries(prefs.extensions?.settings || {}).find(([, item]) => String(item.path || '').endsWith(`${path.sep}background-browser${path.sep}extension`))?.[0];
     if (!id) return 'extension not in the profile';
     const {webSocketDebuggerUrl} = await (await fetch(`http://127.0.0.1:${port}/json/version`, {signal: AbortSignal.timeout(3000)})).json();
-    return await new Promise(done => {
+    return await new Promise((done, fail) => {
       const socket = new WebSocket(webSocketDebuggerUrl), waits = new Map();
       let counter = 0;
       const call = (method, params = {}, sessionId) => new Promise(resolve => { const n = ++counter; waits.set(n, resolve); socket.send(JSON.stringify({id: n, method, params, ...(sessionId ? {sessionId} : {})})); });
-      const timer = setTimeout(() => done('(no answer from the extension)'), 8000);
+      const end = (error, answer) => { clearTimeout(timer); socket.close(); if (error) fail(error); else done(answer); };
+      const timer = setTimeout(() => end(new Error('the extension options page never became ready or answered (10 s hang cap)')), 10000);
       socket.onmessage = event => { const message = JSON.parse(event.data); if (message.id && waits.has(message.id)) { waits.get(message.id)(message); waits.delete(message.id); } };
       socket.onopen = async () => {
-        const {result: {targetId}} = await call('Target.createTarget', {url: `chrome-extension://${id}/options.html`});
-        const {result: {sessionId}} = await call('Target.attachToTarget', {targetId, flatten: true});
-        await new Promise(next => setTimeout(next, 800));
-        const run = async expression => { const reply = (await call('Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true}, sessionId)).result; const value = reply?.result?.value; return value === undefined ? `(${String(reply?.exceptionDetails?.exception?.description).slice(0, 100)})` : typeof value === 'string' ? value : JSON.stringify(value); };
-        const answer = await run(`(async () => { const local = await chrome.storage.local.get(null), session = await chrome.storage.session.get(null), tabs = await chrome.tabs.query({});
-          return JSON.stringify({page: location.protocol, siteAllowed: await chrome.permissions.contains({origins: ['https://e2e.recruitee.com/*']}), localKeys: Object.keys(local), owner: !!local.backgroundOwner, worker: String(local.workerUrl || ''),
-            sessionKeys: Object.keys(session).slice(0, 14), tabs: tabs.map(item => item.url.slice(0, 60))}); })()`);
-        await call('Target.closeTarget', {targetId}); clearTimeout(timer); socket.close(); done(answer);
+        try {
+          const {result: {targetId}} = await call('Target.createTarget', {url: `chrome-extension://${id}/options.html`});
+          const {result: {sessionId}} = await call('Target.attachToTarget', {targetId, flatten: true});
+          const run = async expression => { const reply = (await call('Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true}, sessionId)).result; const value = reply?.result?.value; return value === undefined ? `(${String(reply?.exceptionDetails?.exception?.description).slice(0, 100)})` : typeof value === 'string' ? value : JSON.stringify(value); };
+          while (await run(`location.href === 'chrome-extension://${id}/options.html' && document.readyState === 'complete' && !!globalThis.chrome?.storage?.local && !!globalThis.chrome?.storage?.session && !!globalThis.chrome?.tabs`) !== 'true') {
+            await new Promise(next => setTimeout(next, 100));
+          }
+          const answer = await run(`(async () => { const local = await chrome.storage.local.get(null), session = await chrome.storage.session.get(null), tabs = await chrome.tabs.query({});
+            return JSON.stringify({page: location.protocol, siteAllowed: await chrome.permissions.contains({origins: ['https://e2e.recruitee.com/*']}), localKeys: Object.keys(local), owner: !!local.backgroundOwner, worker: String(local.workerUrl || ''),
+              sessionKeys: Object.keys(session).slice(0, 14), tabs: tabs.map(item => item.url.slice(0, 60))}); })()`);
+          await call('Target.closeTarget', {targetId}); end(null, answer);
+        } catch (error) { end(error); }
       };
-      socket.onerror = () => done('(unreadable)');
+      socket.onerror = () => end(null, '(unreadable)');
     });
   } catch (error) { return `(${String(error?.message || error).slice(0, 80)})`; }
 }

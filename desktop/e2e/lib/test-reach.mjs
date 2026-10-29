@@ -27,24 +27,32 @@ export function specifiers(text) {
   return [...SPECIFIERS.flatMap(pattern => [...text.matchAll(pattern)].map(found => found[1])), ...declared];
 }
 
-/** Code directories a harness test enumerates; conservative static reads, never execute a test to discover its dependencies. */
-function scannedDirectories(text) {
+const ENUMERATES = /\b(?:readdir(?:Sync)?|glob(?:Sync)?|opendir(?:Sync)?|walk|scandir|listFiles)\s*\(/;
+
+/** Code directories a test or its helper enumerates; enumerates also covers a helper exporting the directory constant a scanning test imports. */
+function scannedDirectories(text, enumerates = false) {
   const dirs = new Set();
   // Why (29 Oct 2026, #2476): directory-scanning guards read suites without importing them; import-only reach let an undeclared AI stand-in pass its PR.
-  if (/\b(?:readdir(?:Sync)?|glob(?:Sync)?)\s*\(/.test(text)) {
+  if (enumerates || ENUMERATES.test(text)) {
     // Literal paths and loop/helper arguments cover joins, URL paths and globs. Ignore a directory component followed by a concrete filename.
-    for (const found of text.matchAll(/['"`](?:desktop\/e2e\/|(?:\.{1,2}\/)*)(suites|lib)\/?(?:\*[^'"`]*)?['"`]/g)) {
+    for (const found of text.matchAll(/['"`](?:\$\{[^}]+\}\/|desktop\/e2e\/|(?:\.{1,2}\/)*)(suites|lib)\/?(?:\*[^'"`]*)?['"`]/g)) {
       if (!/^\s*,\s*['"][^'"]+\.(?:mjs|js|cjs)['"]/.test(text.slice(found.index + found[0].length))) dirs.add(found[1]);
     }
     // A scan may derive its directory from a module URL, e.g. dirname(fileURLToPath(new URL('../lib/planted.mjs', ...))).
     for (const found of text.matchAll(/\bdirname\([^;\n]*?['"](?:\.{1,2}\/)+(suites|lib)\/[^'"]+['"]/g)) dirs.add(found[1]);
+    // Recursive walkers read suites beneath a computed root, including helpers that identify suite files with a path regex.
+    if (/\.isDirectory\s*\(/.test(text) && (text.includes('suites/') || text.includes('suites\\/'))) dirs.add('suites');
   }
   if (/\bimport\s*\{[^}]*\bSUITES\b[^}]*\}\s*from\s*['"]\.\.\/lib\/context\.mjs['"]/.test(text)) dirs.add('suites');
   return [...dirs].map(dir => `desktop/e2e/${dir}/`);
 }
 
-// Directory edges of a harness test cover additions and deletions too; following every suite's imports would turn pure source scans into browser dependencies.
-const directoryEdges = (current, text) => (/^desktop\/e2e\/test\/[^/]+\.test\.m?js$/.test(current) ? scannedDirectories(text) : []);
+// Both test directories and imported lib helpers can enumerate suites. Directory edges cover additions/deletions without importing every suite's runtime dependencies.
+// state.enumerates: the starting test itself lists files, so the lib helpers it imports are read as lister too (set once, when the loop is at the start file).
+function directoryEdges(current, text, state) {
+  if (current === state.file) state.enumerates = ENUMERATES.test(text);
+  return /^desktop\/(?:e2e\/)?(?:test|lib)\//.test(current) ? scannedDirectories(text, state.enumerates) : [];
+}
 
 /**
  * Every repo-relative path a test file reaches (itself included); a directory read via new URL ends with '/' and covers every file under it.
@@ -54,6 +62,7 @@ const directoryEdges = (current, text) => (/^desktop\/e2e\/test\/[^/]+\.test\.m?
 export function reach(root, file, cache = new Map()) {
   const paths = new Set(), queue = [file];
   let browser = false;
+  const state = {file, enumerates: false};
   while (queue.length) {
     const current = queue.pop();
     if (paths.has(current)) continue;
@@ -62,7 +71,7 @@ export function reach(root, file, cache = new Map()) {
     let text = cache.get(current);
     if (text === undefined) { try { text = fs.readFileSync(path.join(root, current), 'utf8'); } catch { text = ''; } cache.set(current, text); }
     if (BROWSER.test(text)) browser = true;
-    queue.push(...directoryEdges(current, text));
+    queue.push(...directoryEdges(current, text, state));
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it

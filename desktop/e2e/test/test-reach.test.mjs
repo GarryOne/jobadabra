@@ -17,6 +17,34 @@ function tree(files) {
   return root;
 }
 
+// Deliberately lexical and overinclusive: no path-literal matching or dependency extraction from the picker is used here.
+function suitesReaders(root) {
+  const mentionsSuites = source => /\bsuites\b/i.test(source);
+  const listsFiles = source => /\b(?:readdir(?:Sync)?|glob(?:Sync)?|opendir(?:Sync)?|walk|scandir|listFiles)\b/i.test(source);
+  const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+  return ['desktop/e2e/test', 'desktop/test'].flatMap(dir => {
+    if (!fs.existsSync(path.join(root, dir))) return [];
+    return fs.readdirSync(path.join(root, dir)).filter(name => /\.test\.[cm]?js$/.test(name)).map(name => `${dir}/${name}`);
+  }).filter(file => {
+    const source = read(file);
+    if (mentionsSuites(source) && listsFiles(source)) return true;
+    // One hop only. Ignore helper prose so a comment about suites does not turn an artifact/cache-directory read into a suite scan.
+    return [...source.matchAll(/(?:from\s*|import\(\s*|import\s*)['"](\.[^'"]+)['"]/g)].some(([, spec]) => {
+      const helper = path.posix.normalize(path.posix.join(path.posix.dirname(file), spec));
+      if (!helper.includes('/lib/') || !fs.existsSync(path.join(root, helper))) return false;
+      const code = read(helper).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
+      return mentionsSuites(code) && /\breaddir(?:Sync)?\b/.test(code);
+    });
+  }).sort();
+}
+
+const SUITE_READER_EXCEPTIONS = {
+  'desktop/e2e/test/ai-meter.test.mjs': 'Enumerates temporary answer-cache directories; suites occur only in prose.',
+  'desktop/e2e/test/owns-step.test.mjs': 'Enumerates apply-* lib helpers and reads the two named apply suites, not every suite.',
+  'desktop/e2e/test/store-call.test.mjs': 'Enumerates SQLite files in its temporary profile data directory.',
+  'desktop/test/flows-matrix.test.js': 'Enumerates apply-* lib helpers and reads the one named apply suite, not every suite.',
+};
+
 test('a module\'s relative specifiers: static, side-effect, dynamic, files read via new URL, and a declared "// Reaches:" line; never a package', () => {
   const text = `import {a} from './a.mjs';\nimport './b.mjs';\nconst c = await import('../c.js');\nconst d = new URL('../../renderer/', import.meta.url);\n// Reaches: ./child.mjs ../app/\nimport {chromium} from 'playwright';`;
   assert.deepEqual(specifiers(text).sort(), ['../../renderer/', '../app/', '../c.js', './a.mjs', './b.mjs', './child.mjs']);
@@ -53,27 +81,44 @@ test('a suite edit reaches the AI declaration guard without selecting an unrelat
   assert.ok(!picked.includes(inRepo('ai-meter.test.mjs')), 'an ordinary test with only temp-directory reads stays out');
 });
 
-// Discover readers from the real test registry, independently of the picker's dependency edges, so a new scanning guard joins this class check.
-test('every registered suite reaches every suites-directory reader', () => {
-  const {pr, daily} = testSets();
-  const readers = [...pr, ...daily].map(inRepo).filter(file => {
-    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    const enumerates = /\breaddir(?:Sync)?\s*\(|\bglob(?:Sync)?\s*\(/.test(source);
-    const namesDirectory = /['"](?:\.\.\/)?suites\/?(?:\*[^'"]*)?['"]/.test(source);
-    const registry = /import\s*\{[^}]*\bSUITES\b[^}]*\}\s*from\s*['"]\.\.\/lib\/context\.mjs['"]/.test(source);
-    return (enumerates && namesDirectory) || registry;
-  });
+// Inspect both test directories on disk, including unregistered tests, using a broader oracle than scannedDirectories.
+test('every registered suite reaches every suites-directory reader', t => {
+  const readers = suitesReaders(ROOT);
   assert.ok(readers.includes(inRepo('suite-ai-mode.test.mjs')));
   assert.ok(readers.includes(inRepo('suite-shards.test.mjs')), 'registry readers are part of the class');
+  for (const [file, reason] of Object.entries(SUITE_READER_EXCEPTIONS)) {
+    assert.ok(readers.includes(file), `remove stale exception: ${file}`);
+    assert.ok(reason.length > 20, `explain why ${file} does not scan suites`);
+  }
   // context.mjs builds SUITES from these .mjs entries; do not import it and start loading the app just to read the registry.
   const suites = fs.readdirSync(path.join(ROOT, 'desktop/e2e/suites')).filter(name => name.endsWith('.mjs'));
   assert.ok(suites.includes('stores.mjs'));
   const missing = [];
   for (const suite of suites) {
     const picked = reachedTests({root: ROOT, tests: readers, changed: [`desktop/e2e/suites/${suite}`]}).files;
-    for (const reader of readers) if (!picked.includes(reader)) missing.push(`${suite} -> ${reader}`);
+    if (suite === 'stores.mjs') {
+      const extra = readers.filter(file => !picked.includes(file));
+      t.diagnostic(`broader discovery: ${readers.length} candidates, ${extra.length} beyond the picker (${Object.keys(SUITE_READER_EXCEPTIONS).length} documented exceptions): ${extra.join(', ')}`);
+    }
+    for (const reader of readers) if (!picked.includes(reader) && !SUITE_READER_EXCEPTIONS[reader]) missing.push(`${suite} -> ${reader}`);
   }
   assert.deepEqual(missing, []);
+});
+
+test('independent discovery catches template paths, helper constants and one-hop scans in both test directories', t => {
+  const root = tree({
+    'desktop/e2e/test/template.test.mjs': 'fs.readdirSync(`${root}/suites`);',
+    'desktop/test/helper.test.js': "import {scan} from '../e2e/lib/scanner.mjs'; scan();",
+    'desktop/e2e/lib/scanner.mjs': 'export const scan = () => fs.readdirSync(`${root}/suites`);',
+    'desktop/e2e/test/constant.test.mjs': "import {SUITES} from '../lib/directory.mjs'; fs.readdirSync(SUITES);",
+    'desktop/e2e/lib/directory.mjs': "export const SUITES = 'suites';",
+    'desktop/e2e/test/ordinary.test.mjs': 'fs.readdirSync(temp);',
+  });
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const readers = suitesReaders(root);
+  assert.deepEqual(readers, ['desktop/e2e/test/constant.test.mjs', 'desktop/e2e/test/template.test.mjs', 'desktop/test/helper.test.js']);
+  const picked = reachedTests({root, tests: readers, changed: ['desktop/e2e/suites/planted.mjs']}).files;
+  assert.deepEqual(readers.filter(reader => !picked.includes(reader)), [], 'every planted scanner, including the template path, must be reached');
 });
 
 test('directory scans reach suites and lib through joins, loops, globs and the SUITES registry, without a filename list', t => {

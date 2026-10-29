@@ -45,6 +45,19 @@ class OutsideWorkflow(unittest.TestCase):
                     if 'uses: ./.github/actions/free-ai-relay' in step:
                         self.assertIn('if: matrix.offlineAi != true', step)
 
+    def test_the_outside_world_has_its_own_daily_cron_never_a_main_check(self):
+        """Gitar on #2502: inferring "the day's first run" from history missed the Worker's dispatches; one cron string decides it."""
+        text = (ROOT / '.github/workflows/e2e.yml').read_text()
+        cron = re.search(r"(?m)^    - cron: '([^']+)'.*outside world", text).group(1)
+        self.assertIn(f"OUTSIDE: ${{{{ github.event.schedule == '{cron}' && '1' || '' }}}}", text)
+        self.assertIn(f"github.event.schedule == '{cron}' && 'E2E check · outside world (real Notion)'", text)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('main_e2e_state', ROOT / 'tools/main_e2e_state.py')
+        state = importlib.util.module_from_spec(spec); spec.loader.exec_module(state)
+        run = {'head_branch': 'main', 'conclusion': 'failure', 'display_title': 'E2E check · outside world (real Notion)'}
+        self.assertFalse(state.is_main_check(run), 'a Notion outage must never turn main red')
+        self.assertTrue(state.is_main_check({**run, 'display_title': 'E2E check · on time (Worker cron)'}))
+
     def test_beta_summary_distinguishes_required_checks_from_outside_health(self):
         text = (ROOT / '.github/workflows/desktop.yml').read_text()
         release = text.split('  release-mac:', 1)[1].split('  release-windows:', 1)[0]

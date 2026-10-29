@@ -265,20 +265,19 @@ test('the gate runs each suite that keeps data on both stores, one job each; oth
   assert.deepEqual(JSON.parse(manual.matrix).include.map(({key, store}) => ({key, store})), [{key: 'jobs', store: ''}]);
 });
 
-test('exhausted schedules stay empty; beta keeps one nonblocking AI-free outside leg', async () => {
+test('schedules never carry the outside world; its own daily run carries only it; beta keeps one nonblocking AI-free outside leg', async () => {
   const all = ['settings', 'notion-real'], cadence = {'notion-real': 'outside'};
-  const runs = [sched(1), sched(2), sched(3)];
-  const day = hours => () => new Date(Date.UTC(2026, 9, 3, 12) + hours * 3600000);   // sched() runs are on 3 Oct; the clock is injected
-  const plan = hours => planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD}, gh: gh({runs}), all, cadence, now: day(hours),
+  const plan = (env, runs = []) => planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD, ...env}, gh: gh({runs}), all, cadence,
     offlineAi: all, storeless: ['notion-real'], minutes: () => 15, os: () => 'ubuntu-24.04'});
-  const out = await plan(0);
-  assert.deepEqual(suitesOf(out), [], 'a later exhausted schedule the same day must stay Nothing tested');
-  assert.equal(out.count, '0');
-  assert.equal(out.ai_required, '0');
-  // Gitar on #2502: the nightly gate skips a night with no app change, so the day's first schedule run carries the outside world.
-  const firstOfDay = await plan(24);
-  assert.deepEqual(suitesOf(firstOfDay), ['notion-real'], 'the first schedule run of a new day checks real Notion even on an unchanged commit');
-  assert.equal(JSON.parse(firstOfDay.matrix).include[0].outside, true);
+  const exhausted = await plan({}, [sched(1), sched(2), sched(3)]);
+  assert.deepEqual(suitesOf(exhausted), [], 'an exhausted schedule stays Nothing tested');
+  assert.equal(exhausted.ai_required, '0');
+  // Gitar on #2502: the Worker starts the looks as dispatches, so run history never decided a day's first; no look carries the outside world.
+  assert.ok(!suitesOf(await plan({})).includes('notion-real'), 'a look on a new commit never checks real Notion');
+  const outside = await plan({OUTSIDE: '1'}, [sched(1), sched(2), sched(3)]);
+  assert.deepEqual(suitesOf(outside), ['notion-real'], 'the daily outside run checks real Notion even on an unchanged commit, and nothing else');
+  assert.equal(JSON.parse(outside.matrix).include[0].outside, true);
+  assert.equal(outside.ai_required, '0');
   const beta = await planRun({env: {EVENT: 'gate', REPO: 'o/r', SHA: HEAD, GATE_TAG: 'desktop-v9.9', GATE_KIND: 'beta'},
     gh: args => args[0] === 'release' && args[1] === 'view' ? '{"body":"Beta-approved: yes"}' : gh({releases: [['desktop-v9.8', OLD]], files: []})(args),
     all, cadence, offlineAi: all, storeless: ['notion-real'], minutes: () => 15});

@@ -62,9 +62,9 @@ export function choose(candidates, prs = [], now = Date.now(), verdicts = []) {
 }
 
 // What a fix may touch: the app's code and the engine, and their tests. Never what reports, secrets, licences or the build itself.
-const ALLOWED = [/^desktop\/lib\/[^/]+\.js$/, /^desktop\/main\.js$/, /^desktop\/renderer\/.+/, /^src\/.+\.py$/, /^desktop\/test\/[^/]+\.test\.js$/, /^tests\/[^/]+\.py$/];
-const FORBIDDEN = /(secret|license|licence|crash_reporting|telemetry|sentry|analytics|keychain|\.\.)/i;
-const TEST = /^(desktop\/test\/[^/]+\.test\.js|tests\/[^/]+\.py)$/;
+export const ALLOWED = [/^desktop\/lib\/[^/]+\.js$/, /^desktop\/main\.js$/, /^desktop\/renderer\/.+/, /^src\/.+\.py$/, /^desktop\/test\/[^/]+\.test\.js$/, /^tests\/[^/]+\.py$/];
+export const FORBIDDEN = /(secret|license|licence|crash_reporting|telemetry|sentry|analytics|keychain|\.\.)/i;
+export const TEST = /^(desktop\/test\/[^/]+\.test\.js|tests\/[^/]+\.py)$/;
 export function checkChange(files) {
   const bad = files.filter(file => !ALLOWED.some(pattern => pattern.test(file)) || FORBIDDEN.test(file));
   if (bad.length) return {ok: false, why: `edits outside what a fix may touch: ${bad.join(', ')}`};

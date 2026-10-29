@@ -48,6 +48,8 @@ on:
       - 'tools/pool-rows.mjs'
       - 'tools/record-env.mjs'
       - 'tools/rung-trailer.mjs'
+      - 'tools/sentry-fixer/codex-fix.mjs'
+      - 'tools/sentry-fixer/lib.mjs'
       - 'tools/suspend-flip.mjs'
       - 'worker/src/**'   # staged into desktop/shared/worker/, which the app's server imports (review on #2241)
 

@@ -19,6 +19,11 @@ test('the call reads only the stack\'s allowed files, once each, newest frame fi
   assert.deepEqual(framesFiles({}), []);
 });
 
+test('a packaged app\'s frame maps to the repo file it was built from', () => {
+  const packaged = {exceptions: [{frames: [{file: 'app.asar/lib/pipeline.js'}, {file: 'app.asar/renderer/pages/jobs.js'}]}]};
+  assert.deepEqual(framesFiles(packaged), ['desktop/renderer/pages/jobs.js', 'desktop/lib/pipeline.js']);
+});
+
 test('the call has the rules and the files as data, no tools, and the answer schema', () => {
   const body = requestFor({prompt: 'RULES', files: [{path: 'src/a.py', content: 'print(1)'}]});
   assert.match(body.system, /^RULES/);
@@ -42,12 +47,28 @@ test('a fix writes the body and only the files inside the allowed folders', () =
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'sentry-repo-'));
   process.chdir(work);
   try {
+    fs.mkdirSync('src', {recursive: true});
+    fs.writeFileSync('src/telegram.py', 'old\n');
     const written = apply({verdict: 'fix', reason: 'r', title: 'Fix the telegram crash', pr_body: 'Root cause src/telegram.py:9', files: [
       {path: 'src/telegram.py', content: 'ok = True\n'},
-      {path: '.github/workflows/x.yml', content: 'evil'}, {path: 'desktop/test/telegram.test.js', content: 'test'}, {path: '../escape.py', content: 'no'}, {path: 'secrets.py', content: 'no'}]}, dir);
+      {path: '.github/workflows/x.yml', content: 'evil'}, {path: 'desktop/test/telegram.test.js', content: 'test'}, {path: '../escape.py', content: 'no'}, {path: 'secrets.py', content: 'no'}]}, dir, new Set(['src/telegram.py']));
     assert.deepEqual(written, ['src/telegram.py', 'desktop/test/telegram.test.js']);
+    assert.equal(fs.readFileSync('src/telegram.py', 'utf8'), 'ok = True\n');
     assert.equal(fs.existsSync('.github/workflows/x.yml'), false);
     assert.match(fs.readFileSync(path.join(dir, 'pr-body.md'), 'utf8'), /^Fix the telegram crash\n\nRoot cause/);
+  } finally { process.chdir(cwd); }
+});
+
+test('an existing file the model was not shown is never overwritten', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sentry-'));
+  const cwd = process.cwd();
+  process.chdir(fs.mkdtempSync(path.join(os.tmpdir(), 'sentry-repo-')));
+  try {
+    fs.mkdirSync('desktop/lib', {recursive: true});
+    fs.writeFileSync('desktop/lib/pipeline.js', 'real\n');
+    const written = apply({verdict: 'fix', reason: 'r', title: 't', pr_body: 'b', files: [{path: 'desktop/lib/pipeline.js', content: 'whole rewrite'}]}, dir, new Set(['src/other.py']));
+    assert.deepEqual(written, []);
+    assert.equal(fs.readFileSync('desktop/lib/pipeline.js', 'utf8'), 'real\n');
   } finally { process.chdir(cwd); }
 });
 

@@ -7,8 +7,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {askBroker} from '../../desktop/e2e/lib/broker-client.mjs';
+import {ALLOWED, FORBIDDEN, TEST} from './lib.mjs';   // one owner of the allowed paths: the guard's list (lib.mjs)
 
-export const ALLOWED = [/^desktop\/lib\/[^/]+\.js$/, /^desktop\/main\.js$/, /^desktop\/renderer\//, /^src\/[^/]+\.py$/, /^desktop\/test\/[^/]+\.test\.js$/, /^tests\/[^/]+\.py$/];
+/** A path a fix may write: the guard's rules (lib.mjs ALLOWED, not FORBIDDEN), never a parent folder. */
+export const allowedPath = name => ALLOWED.some(rule => rule.test(name)) && !FORBIDDEN.test(name) && !name.includes('..');
 export const MAX_FILES = 4, MAX_FILE_BYTES = 60000;
 const VERDICTS = ['fix', 'not-a-bug', 'needs-human'];
 
@@ -16,10 +18,10 @@ export const SCHEMA = {type: 'object', additionalProperties: false, required: ['
   verdict: {type: 'string', enum: VERDICTS}, reason: {type: 'string'}, title: {type: 'string'}, pr_body: {type: 'string'},
   files: {type: 'array', maxItems: MAX_FILES, items: {type: 'object', additionalProperties: false, required: ['path', 'content'], properties: {path: {type: 'string'}, content: {type: 'string'}}}}}};
 
-/** The in-app files the issue's stack names (inside the allowed folders, once each, the newest frames first). */
+/** The in-app files the issue's stack names (inside the allowed folders, once each, the newest frames first). A packaged app's frame (app.asar/lib/x.js) is the repo's desktop/lib/x.js. */
 export function framesFiles(candidate) {
-  const names = (candidate.exceptions || []).flatMap(item => (item.frames || []).map(frame => String(frame.file || '').replace(/\\/g, '/').replace(/^.*?(desktop\/|src\/)/, '$1')));
-  return [...new Set(names.reverse())].filter(name => ALLOWED.some(rule => rule.test(name)) && !name.includes('..'));
+  const names = (candidate.exceptions || []).flatMap(item => (item.frames || []).map(frame => String(frame.file || '').replace(/\\/g, '/').replace(/^.*?app\.asar\//, 'desktop/').replace(/^.*?(desktop\/|src\/)/, '$1')));
+  return [...new Set(names.reverse())].filter(allowedPath);
 }
 
 /** Reads those files from the repo (bounded), as data. -> [{path, content}] */
@@ -36,14 +38,16 @@ export function requestFor({prompt, files}) {
     output_config: {format: {type: 'json_schema', schema: SCHEMA}}};
 }
 
-/** Writes what the answer allows: .heal/verdict.md always; the PR body and edits only for "fix", and only inside ALLOWED. -> the list of written paths. */
-export function apply(answer, dir) {
+/** Writes what the answer allows: .heal/verdict.md always; the PR body and edits only for "fix". An existing file is written only when its text was shown (shown = the paths sent); a new file only when it is a test path. -> the list of written paths. */
+export function apply(answer, dir, shown = new Set()) {
   const written = [];
   fs.writeFileSync(path.join(dir, 'verdict.md'), `${answer.verdict}\n${answer.reason}\n`);
   if (answer.verdict !== 'fix') return written;
   fs.writeFileSync(path.join(dir, 'pr-body.md'), `${answer.title}\n\n${answer.pr_body}\n`);
   for (const file of answer.files.slice(0, MAX_FILES)) {
-    if (!ALLOWED.some(rule => rule.test(file.path)) || file.path.includes('..')) continue;
+    if (!allowedPath(file.path)) continue;
+    const isNew = !fs.existsSync(file.path);
+    if (!shown.has(file.path) && !(isNew && TEST.test(file.path))) continue;   // never a whole file the model did not see
     fs.mkdirSync(path.dirname(file.path), {recursive: true});
     fs.writeFileSync(file.path, file.content);
     written.push(file.path);
@@ -59,7 +63,7 @@ async function main() {
   const answer = await askBroker(requestFor({prompt, files}));
   if (!answer.ok) throw new Error(`Codex did not answer (${answer.status}): ${answer.detail}`);
   const parsed = JSON.parse(answer.message.content[0].text);
-  const written = apply(parsed, dir);
+  const written = apply(parsed, dir, new Set(files.map(file => file.path)));
   console.log(`sentry fixer (Codex): verdict ${parsed.verdict}; ${written.length} file(s) written: ${written.join(', ') || 'none'}`);
 }
 

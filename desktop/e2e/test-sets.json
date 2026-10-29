@@ -333,6 +333,7 @@
   "telegram-html.test.mjs",
   "test-accounts.test.mjs",
   "test-reach.test.mjs",
+  "timing-ratchet.test.mjs",
   "trace-real-browser.test.mjs",
   "triage-cli.test.mjs",
   "triage-evidence.test.mjs",
@@ -410,6 +411,7 @@
    "suite-cadence.test.mjs",
    "suite-shards.test.mjs",
    "suites-report-every-red-step.test.mjs",
+   "timing-ratchet.test.mjs",
    "windows-two.test.mjs"
   ],
   "lib/": [

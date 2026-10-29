@@ -1,3 +1,4 @@
+// Job: wait on state
 // Measures calm e2e step samples and exercises artifact acquisition without network access.
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
@@ -6,7 +7,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {measure, downloadArtifacts, main} from '../../tools/e2e-step-timings.mjs';
+import {measure, downloadArtifacts, main, capsModule} from '../../tools/e2e-step-timings.mjs';
 
 const tool = fileURLToPath(new URL('../../tools/e2e-step-timings.mjs', import.meta.url));
 const passed = (name, seconds) => ({name, status: 'passed', seconds});
@@ -49,7 +50,7 @@ test('ignores skipped or failed steps, missing seconds, and invalid durations', 
     {name: 'skipped', status: 'skipped'}, {name: 'failed', status: 'failed', seconds: 1000},
     passed('missing'), passed('invalid', 'oops'), passed('negative', -1), passed('null', null)]);
   assert.deepEqual(measure(dir, 'applyflows').steps, [
-    {name: 'valid', n: 5, medianSeconds: 2, p95Seconds: 2, maxSeconds: 2, capSeconds: 10},
+    {name: 'valid', n: 5, medianSeconds: 2, p95Seconds: 2, maxSeconds: 2, capSeconds: 30},
   ]);
 });
 
@@ -65,8 +66,8 @@ test('withholds the cap below five calm samples and prints n too small', t => {
 
 test('rounds 3 x p95 upwards to five seconds, preserving exact multiples', t => {
   const dir = fixture(t);
-  for (let i = 0; i < 5; i++) artifact(dir, i, 'applyflows', [passed('fraction', 5.1), passed('exact', 5)]);
-  assert.deepEqual(measure(dir, 'applyflows').steps.map(s => [s.name, s.capSeconds]), [['exact', 15], ['fraction', 20]]);
+  for (let i = 0; i < 5; i++) artifact(dir, i, 'applyflows', [passed('fraction', 10.1), passed('exact', 10)]);
+  assert.deepEqual(measure(dir, 'applyflows').steps.map(s => [s.name, s.capSeconds]), [['exact', 30], ['fraction', 35]]);
 });
 
 test('--json emits only the structured report and --dir bypasses acquisition', t => {
@@ -208,4 +209,28 @@ test('cleans temporary downloads and reports acquisition errors without printing
     write: () => assert.fail('failed acquisition must not print a baseline'),
   }), /download failed/);
   assert.equal(existsSync(downloadedTo), false);
+});
+
+test('generated caps preserve measured seconds, the floor, and exact shared caps for sparse steps', () => {
+  const report = {suite: 'settings', runs: 10, calmShardRuns: 9, shardRuns: 10, steps: [
+    {name: 'open', n: 9, p95Seconds: 22, capSeconds: 70},
+    {name: 'shared seed', n: 2, p95Seconds: 14, capSeconds: null},
+  ]};
+  assert.throws(() => capsModule(report), /shared seed.*fewer than 5 calm samples/);
+  const source = capsModule(report, {sharedCaps: {'shared seed': 60}, sharedImport: './shared-caps.mjs'});
+  assert.match(source, /"open": 70/);
+  assert.match(source, /"shared seed": sharedCaps\["shared seed"\]/);
+  assert.match(source, /n=9, p95=22 s/);
+  assert.equal((source.match(/Job: wait on state/g) || []).length, 1);
+});
+
+test('CLI generates a caps module from local artifacts without acquisition', t => {
+  const dir = fixture(t);
+  for (let i = 0; i < 5; i++) artifact(dir, i, 'settings', [passed('open', 0.2)]);
+  let source;
+  main(['--suite', 'settings', '--dir', dir, '--caps'], {
+    acquire: () => assert.fail('local input must never download'), write: value => { source = value; },
+  });
+  assert.match(source, /export const hangCaps/);
+  assert.match(source, /"open": 30/);
 });

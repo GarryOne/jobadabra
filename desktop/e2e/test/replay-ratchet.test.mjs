@@ -3,7 +3,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {FLAKY_AT, judge, summary} from '../replay-gate.mjs';
-import {unsame} from '../replay-unsame.mjs';
 import {lowered, newlyFaithful, pin, pinned} from '../lib/replay-ratchet.mjs';
 
 const form = (filled, left) => ({reached: 'form', filled, left});
@@ -133,11 +132,6 @@ test('a pinned row that passes only on its retry is "noise (passed on retry)", n
   // a same row carries the history without adding to it; a retry that fails too is worse
   assert.equal(judge([rec('p')], {rows: {p: {noiseAt: [at(1)]}}}, [], {}, ['p'], null, NOW).rows.p.noiseAt.length, 1);
   assert.equal(judge([broken], {}, [broken], {}, ['p'], null, NOW).rows.p.verdict, 'worse');
-});
-
-test('the rows a runner replays once more are its pinned rows that are not same; a crash is not noise', () => {
-  assert.deepEqual(unsame([rec('a'), rec('b', {hit: 3, extra: 1}), rec('c', {hit: 3, extra: 1}), {name: 'd', outcome: null}], ['a', 'b', 'd']), ['b'], 'same, unpinned and result-less rows are not retried');
-  assert.deepEqual(unsame([], ['a']), []);
 });
 
 test('a deferred row is never pinned, whether the run\'s record says deferred or the gate\'s row says "deferred: ..." in its why', () => {

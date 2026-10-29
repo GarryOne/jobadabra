@@ -42,6 +42,16 @@ class FailureReason(unittest.TestCase):
                 self.assertRegex(text, r"if: failure\(\)\n(?:\s+env:[^\n]*\n(?:\s+\w+: [^\n]*\n)+)?\s+run: python3 tools/claude-failure-reason\.py",
                                  os.path.basename(path))
 
+    def test_every_claude_failure_step_passes_the_alert_secrets(self):
+        # Why (29 Oct 2026, owner: "when the AI balance/credit is 0 please send me a telegram notification"): the credit alert needs the bot in every step that prints Claude's failure.
+        for path in glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yml")):
+            text = open(path, encoding="utf-8").read()
+            if "tools/claude-failure-reason.py" not in text:
+                continue
+            step = text[text.index("tools/claude-failure-reason.py") - 400:text.index("tools/claude-failure-reason.py")]
+            for name in ("CI_ALERTS_TELEGRAM_BOT_TOKEN", "CI_ALERTS_TELEGRAM_CHAT_ID"):
+                self.assertIn(f"{name}: ${{{{ secrets.{name} }}}}", step, os.path.basename(path))
+
     def test_a_credit_failure_is_handed_to_the_telegram_alert(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location("claude_failure_reason", SCRIPT)

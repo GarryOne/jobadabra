@@ -6,23 +6,20 @@ tests/test_contribute.py, tests/test_watch.py, tests/test_score.py, tests/test_s
 """
 import json
 import random
-import sys  # noqa: F401 -- retained for callers that patch daily_search.sys
 from collections import Counter
 from datetime import datetime, timezone
 from . import read_methods, contribute, coverage, digest, first_jobs, employer_index, jobs_so_far, run_counts, scout, source_yield, store
-from . import doctor, features, ledger_store, notify, telegram  # noqa: F401 -- preserve the existing module exports
+from . import doctor, ledger_store, notify, telegram  # noqa: F401 -- patched by tests/test_daily_search_phases.py
 from .ai import budget, kit
-from .ai import enrich, insights, interviews, score  # noqa: F401 -- preserve the existing module exports
+from .ai import enrich, insights, interviews  # noqa: F401 -- patched by tests/test_daily_search_phases.py
 from .notion import client as notion_client
-from .notion import funnel  # noqa: F401 -- preserve the existing module exports
+from .notion import funnel  # noqa: F401 -- patched by tests/test_daily_store.py
 from .paths import DATA, REPORTS, load_search_config
 from .ai import engine as _engine
 from .store_access import open_run
 from .sources import describe, feeds, google_jobs
 from .daily_helpers import (STALE_DAYS, crawl_counts, downloaded_index, for_job_matches, log_crawl, new_cron_run,
                             new_job_lines, save_run, scoring_plan, starter_sources, top_new, url_stages)
-from .daily_helpers import (  # noqa: F401 -- preserve the existing module exports
-    digest_note, left_out, no_profile, none_scored, time_budget_on, to_score)
 
 from . import time_budget
 from .daily_search_scoring import score_jobs

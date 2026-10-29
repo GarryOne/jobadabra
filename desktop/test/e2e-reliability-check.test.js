@@ -185,6 +185,15 @@ test('workflows and root harness modules are covered; untouched legacy files nee
   assert.deepEqual(harnessProblems([{file: lib, after: '// Job: wait on state\n// Job: run the backbone'}], ['Harness-job: wait on state']).length > 0, true);
 });
 
+test('rule F requires exactly one valid Job line on a changed revert workflow', () => {
+  const file = '.github/workflows/e2e-revert.yml';
+  const before = {[file]: '# Job: run the backbone\nname: Revert'};
+  const after = 'name: Offer a revert';
+  const message = 'Change\n\nHarness-job: run the backbone';
+  assert.match(push(before, {[file]: after}, message), /Rule F: \.github\/workflows\/e2e-revert\.yml: needs exactly one Job:/);
+  assert.equal(push(before, {[file]: `# Job: run the backbone\n${after}`}, message), '');
+});
+
 test('both push and PR checks run the gate; review rules block E, F and excessive Gitar rounds', () => {
   const script = fs.readFileSync(path.join(root, 'tools/pre-push-check.sh'), 'utf8');
   assert.match(script, /node tools\/e2e-reliability-check\.mjs --base origin\/main/);

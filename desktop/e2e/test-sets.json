@@ -49,6 +49,7 @@
   "a11y.test.mjs",
   "activity.test.mjs",
   "ai-answers.test.mjs",
+  "ai-answers-decide.test.mjs",
   "ai-budget.test.mjs",
   "ai-cost-report.test.mjs",
   "ai-meter.test.mjs",

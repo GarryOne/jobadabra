@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {decideCandidates, decideQuestion, itemCandidateName} from './ai-answers-decide.mjs';
 
 const GOLDEN = new URL('../fixtures/golden/', import.meta.url);
 const TABLE = fileURLToPath(new URL('ai-answers.json', GOLDEN));
@@ -11,6 +12,11 @@ const refusals = new Map();
 const suiteOf = env => env.E2E_SUITE || env.E2E_STEPS_SUITE || 'default';
 const artifactsOf = env => path.resolve(env.E2E_ARTIFACTS || fileURLToPath(new URL(`../artifacts/${suiteOf(env)}/`, import.meta.url)));
 
+/** Wrap stored text with the same Messages reply used by the proxy's canned answers. */
+// Why (#2450 slice 3): score and decide replay share the existing wrapper without a circular proxy dependency.
+export const message = text => ({id: 'msg_e2e', type: 'message', role: 'assistant', model: 'e2e-canned', stop_reason: 'end_turn', stop_sequence: null,
+  content: [{type: 'text', text}], usage: {input_tokens: 1, output_tokens: 1}});
+
 /** Read the answer mode; unknown settings fail rather than silently allowing live AI. */
 export function answersMode(env = process.env) {
   const mode = env.E2E_AI_ANSWERS ?? 'off';
@@ -18,7 +24,7 @@ export function answersMode(env = process.env) {
   return mode;
 }
 
-/** Load a versioned table whose entries hold complete, object-shaped provider replies. */
+/** Load reviewed provider replies and optional per-item decide answers, validating both shapes. */
 export function loadTable(file = TABLE) {
   const table = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (table?.v !== 1) throw new Error(`AI answers: unsupported v in ${file}`);
@@ -26,6 +32,15 @@ export function loadTable(file = TABLE) {
   for (const [operation, entries] of Object.entries(table.answers)) {
     if (!object(entries)) throw new Error(`AI answers: ${operation} must be an object`);
     for (const [id, entry] of Object.entries(entries)) if (!object(entry?.reply)) throw new Error(`AI answers: ${operation}/${id} reply must be an object`);
+  }
+  if (table.items !== undefined) {
+    if (!object(table.items)) throw new Error('AI answers: items must be an object');
+    for (const [operation, entries] of Object.entries(table.items)) {
+      if (!object(entries)) throw new Error(`AI answers: ${operation} items must be an object`);
+      for (const [key, entry] of Object.entries(entries)) {
+        if (typeof entry?.text !== 'string' || typeof entry?.answer !== 'string' || !entry.answer.trim()) throw new Error(`AI answers: ${operation}/${key} needs text and a non-empty answer`);
+      }
+    }
   }
   return table;
 }
@@ -50,19 +65,30 @@ function scoreQuestion(body, persona) {
   return {operation: 'app.score', id: persona ? `${persona}/${matches[0].id}` : String(matches[0].id)};
 }
 
-/** Identify a score or fact-judge question within the environment's golden persona; default IDs stay unchanged. */
+/** Identify scores, decide items or fact questions within the environment's persona. */
 export function questionOf({url, headers, body, hint}, env = process.env) {
   // Why (#2450): golden personas reuse posting IDs, so their stored scores and verdicts must never share an answer.
   const persona = env.E2E_QUALITY_PERSONA || '';
   if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: persona ? `${persona}/${hint.id}` : hint.id};
   const data = parsed(body), action = actionOf(headers, data);
   if (action === 'score') return scoreQuestion(data, persona);
-  if (action === 'decide') return {unkeyable: 'decide: topic and item keys are not in the request'};
+  if (action === 'decide') return decideQuestion(data, persona);
   return {unkeyable: `${action || hint?.operation || 'unknown'}: question identity is not in the request${!action && !hint ? ` (${url || 'unknown path'})` : ''}`};
 }
 
 /** Return a complete stored reply, or name the precise question that has no answer. */
 export function answerFor(question, table) {
+  if (question.operation === 'app.decide') {
+    const results = [], allowed = question.context.allowedAnswers.split(', ');
+    for (const item of question.items) {
+      const entries = table.items?.['app.decide'];
+      const entry = object(entries) && Object.hasOwn(entries, item.key) ? entries[item.key] : null;
+      // Why (#2450 slice 3): a batch is replayable only when every exact item has a valid stored answer for this task.
+      if (!entry || entry.text !== item.text || !allowed.includes(entry.answer)) return {missing: `app.decide item ${item.index} ${JSON.stringify(item.text.slice(0, 80))} key ${item.key}`};
+      results.push({index: item.index, answer: entry.answer});
+    }
+    return {reply: message(JSON.stringify({results}))};
+  }
   const entries = table.answers[question.operation];
   const entry = object(entries) && Object.hasOwn(entries, question.id) ? entries[question.id] : null;
   return entry ? {reply: entry.reply} : {missing: `${question.operation}/${question.id}`};
@@ -76,10 +102,21 @@ export function refusal(suite, question, why) {
   return error;
 }
 
-/** Merge a keyed live reply into review candidates; the committed table is never written. */
+/** Write keyed live replies or validated items for review; never write the committed table. */
 export function recordCandidate(dir, question, reply) {
   if (question.unkeyable) return;
   if (!object(reply)) throw new Error('AI answer candidate reply must be an object');
+  if (question.operation === 'app.decide') {
+    const items = decideCandidates(question, reply);
+    if (!items.length) return;
+    fs.mkdirSync(dir, {recursive: true});
+    for (const {key, text, answer} of items) {
+      // Why (#2450 slice 3): each item is reviewed independently, and recording never changes the committed answer table.
+      const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {'app.decide': {[key]: {text, answer}}}};
+      fs.writeFileSync(path.join(dir, itemCandidateName(key)), `${JSON.stringify(table, null, 2)}\n`);
+    }
+    return;
+  }
   fs.mkdirSync(dir, {recursive: true});
   const file = path.join(dir, 'ai-answers-candidates.json');
   const table = fs.existsSync(file) ? loadTable(file) : {v: 1, about: 'Live AI answers awaiting human review.', answers: {}};
@@ -101,7 +138,8 @@ export function storedAnswer(request, env = process.env) {
   if (found.reply) return {reply: found.reply};
   // Why (29 Oct 2026, a8; owner approved the sketch): those 47 misses reached live AI in strict replay, so backbone misses must refuse before cache, relay, broker or CLI selection.
   if (mode === 'backbone') {
-    const error = refusal(suiteOf(env), question, question.unkeyable ? 'is unkeyable' : 'has no stored answer');
+    // Why (#2450 slice 3): the registry must name the first missing item, even when product code swallows the refusal.
+    const error = refusal(suiteOf(env), found.missing ? {...question, unkeyable: found.missing} : question, question.unkeyable ? 'is unkeyable' : 'has no stored answer');
     const list = refusals.get(dir) || [];
     list.push({code: error.code, message: error.message, question});
     refusals.set(dir, list);

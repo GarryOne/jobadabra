@@ -11,6 +11,7 @@ import path from 'node:path';
 import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
+import {waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
 
 export async function runJourneys(ctx, h) {
   const {cv, dumpExtension, fail, forms, page} = h;
@@ -83,8 +84,8 @@ export async function runJourneys(ctx, h) {
       let state = null;
       for (let waited = 0; waited < 90000; waited += 500) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; await pause(500); }
       if (state?.state !== 'done') { problems.push(`${job.company}: its form was reached but not filled (${fillNote(state, 90)})`); continue; }
-      const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? "");
-      if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}", its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
+      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, answer);
+      if (value !== answer) problems.push(`${job.company}: Kubernetes years "${value}" after waiting ${ms} ms, its own kit says ${answer}${value === (answer === '9' ? '7' : '9') ? ' (the other job\'s kit)' : ''}`);
     }
     fail(problems);
   }, {needs: ctx.needs});
@@ -138,13 +139,9 @@ export async function runJourneys(ctx, h) {
     for (let waited = 0; waited < 60000; waited += 500) { if (tab.url().startsWith(SIGNUP.formUrl)) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; } await pause(500); }
     if (state?.state !== 'done') problems.push(`the application form after the sign-up was not filled (at ${tab.url()}, ${fillNote(state, 60)})`);
     else {
-      // The fill's last pass (the read-back after the page settled, ~0.8 s) can commit the box just after "done" is written (13 Oct 2026, flow e2e on #558: read 50 ms
-      // before it): the value has 5 s to land, and a wait is said, so a slower fill stays visible.
-      let value = '';
-      const since = Date.now();
-      for (let waited = 0; waited <= 5000 && value !== '5'; waited += 250) { const read = (await readForm(tab)).question_3001; value = String(read?.value ?? read ?? ''); if (value !== '5') await pause(250); }
-      if (value === '5' && Date.now() - since > 300) console.log(`  the Kubernetes years box held its answer ${Date.now() - since} ms after the fill said done`);
-      if (value !== '5') problems.push(`the form after the sign-up has Kubernetes years "${value}" 5 s after the fill said done, its kit says 5`);
+      // The last fill pass can commit after "done" (13 Oct 2026, #558): wait for the box itself, with a hang cap and a measured wait.
+      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '5');
+      if (value !== '5') problems.push(`the form after the sign-up has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 5`);
     }
     for (let waited = 0; waited < 20000 && at?.stage !== 'form'; waited += 1000) { at = await session(); await pause(1000); }
     if (at?.stage !== 'form') problems.push(`on the application form the session did not move to the form step (stage: ${at?.stage})`);
@@ -190,8 +187,8 @@ export async function runJourneys(ctx, h) {
     for (let waited = 0; waited < 60000 && presses.length; waited += 500) { if (tab.url().startsWith(SIGNIN.formUrl)) { state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') break; } await pause(500); }
     if (presses.length && state?.state !== 'done') problems.push(`the form after signing in was not filled (at ${tab.url()}, ${fillNote(state, 60)})`);
     else if (presses.length) {
-      const read = (await readForm(tab)).question_3001, value = String(read?.value ?? read ?? '');
-      if (value !== '4') problems.push(`the form after signing in has Kubernetes years "${value}", its kit says 4`);
+      const {value, ms} = await waitForFormValue(async () => { const read = (await readForm(tab)).question_3001; return String(read?.value ?? read ?? ''); }, '4');
+      if (value !== '4') problems.push(`the form after signing in has Kubernetes years "${value}" after waiting ${ms} ms, its kit says 4`);
     }
     if (pressesOf(SIGNIN).length > 1) problems.push(`"Sign in" was pressed ${pressesOf(SIGNIN).length} times (once per tab is the floor)`);
     let at = null;
@@ -228,24 +225,23 @@ export async function runJourneys(ctx, h) {
     if (!/account result: refused/.test(log)) problems.push('the account AI\'s "refused" is not in the app log');
     if (!/account page: the extension could not finish it/.test(log)) problems.push('the account step was not handed to the person after the refused sign-in');
     // The session is stuck on the sign-up page the refusal led to (a box only a person can tick): Claude is OFFERED there, never started (owner, 9 Oct 2026).
-    // Read as a person sees it: the panel open (the offer is drawn only in its open card, extension/panel-claude.js). Claude not ready (no Claude Code): no "Let Claude finish this page";
-    // ready (settings.claudeReadyTest, which only the e2e run honours): offered at the panel's next report. No Claude session starts by itself. Back to off for the steps after.
+    // Read the open panel (extension/panel-claude.js). Readiness is masked by the takeover flag in the report (lib/claude-ready.js); no Claude session starts by itself.
     const panelTakeOver = async () => {
-      await tab.evaluate(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot; if (root?.querySelector('.card')?.hidden) root.querySelector('.pill')?.click(); }).catch(() => {});
-      await pause(500);
+      await tab.waitForFunction(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot, card = root?.querySelector('.card'); if (card?.hidden) root.querySelector('.pill')?.click();
+        return !!card && !card.hidden; }, null, {timeout: 45000, polling: 250}).catch(() => {});
       return tab.evaluate(() => { const root = document.getElementById('jobpilotto-review-host')?.shadowRoot, card = root?.querySelector('.card'), offer = root?.querySelector('.claude-offer');
         return {url: location.pathname, panel: !!card && !card.hidden, offered: !!card && !card.hidden && !!offer && !offer.hidden && [...offer.querySelectorAll('button')].some(button => /Let Claude finish this page/.test(button.textContent))}; }).catch(error => ({error: String(error.message).slice(0, 80)}));
     };
     const claudes = async () => (await page.evaluate(() => window.pilot.sessions())).filter(item => (item.kind || 'claude') === 'claude' && String(item.url || '').replace(/\/$/, '') === SIGNIN_REFUSED.url).length;
     const claudesBefore = await claudes();
     await page.evaluate(() => window.pilot.saveSettings({claudeReadyTest: 'off'}));   // this Mac may have Claude Code: the step says "not ready" itself
-    await pause(6000);   // the panel learns it at its next report
+    await pause(6000);   // Clock kept (review.js keeps claudeAsk private; takeoverOffered masks readiness while takeover is off): no state is readable
     const off = await panelTakeOver();
     if (!off.panel) problems.push(`the stuck page has no panel to open (${JSON.stringify(off)}): Take over cannot be checked`);
     else if (off.offered) problems.push('Claude is not ready, yet the stuck page offers "Let Claude finish this page"');
     await page.evaluate(() => window.pilot.saveSettings({claudeReadyTest: 'on'}));
     let on = null;
-    await pause(6000); on = await panelTakeOver();   // the takeover is off for now (renderer/claude-help.js SHOW_RESUME_CLAUDE, owner 15 Oct 2026): the panel never offers Claude, ready or not   // OpenAI: a few reports, still nothing   // the panel learns the switch at its next report
+    await pause(6000); on = await panelTakeOver();   // Clock kept (panel-claude.js renders the same report view for on/off while SHOW_RESUME_CLAUDE is false): no state is readable
     // An OpenAI engine (odd CI runs, lib/engine.mjs): Claude is never offered, whatever the switch (owner, 9 Oct 2026; the app's claudeHelp needs the Claude family).
     if (ctx.family === 'openai') { if (on?.offered) problems.push('an OpenAI engine is chosen, yet the panel offers "Let Claude finish this page"'); }
     else if (on?.offered) problems.push(`Claude's takeover is off, yet the stuck page offers "Let Claude finish this page" (${JSON.stringify(on)})`);
@@ -408,7 +404,7 @@ export async function runJourneys(ctx, h) {
   // The form tab closed (owner, 8 Oct 2026): the app sees it, and Reopen opens the form again with the fill mark, for the same session, filled again.
   await ctx.run('the form tab is closed: the app sees it and Reopen opens the form again, filled, for the same session', async () => {
     for (const item of ctx.browser.context.pages()) if (item.url().startsWith(ONEPAGE.url)) await item.close();   // an earlier step's tab of the same job
-    await pause(2000);
+    await waitJobFormClosed(page, ONEPAGE.url);
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
     const tabOf = () => ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null;
     const filled = async tab => { for (let waited = 0; waited < 90000; waited += 500) { const state = await fillState(tab).catch(() => null); if (state?.state === 'done' || state?.state === 'error') return state; await pause(500); } return null; };
@@ -441,7 +437,7 @@ export async function runJourneys(ctx, h) {
   // Coop form flipped to "Form closed"). Each browser says what IT has open: a second one with no tabs never closes the first one's form.
   await ctx.run('a second browser with the extension and no tabs: the form open in the first stays open', async () => {
     for (const item of ctx.browser.context.pages()) if (item.url().startsWith(ONEPAGE.url)) await item.close();   // an earlier step's tab of the same job
-    await pause(2000);
+    await waitJobFormClosed(page, ONEPAGE.url);
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [ONEPAGE.url, {title: ONEPAGE.title, company: ONEPAGE.company}]);
     let tab = null;
     for (let waited = 0; waited < 60000 && !tab; waited += 1000) { tab = ctx.browser.context.pages().find(item => item.url().startsWith(ONEPAGE.url)) || null; await pause(1000); }

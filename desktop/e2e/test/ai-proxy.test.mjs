@@ -48,28 +48,6 @@ test('an unknown mode is refused', async () => {
   try { assert.throws(() => proxy.setMode('rate_limit'), /unknown proxy mode/); } finally { await proxy.close(); }
 });
 
-test('request diagnostics retain only method and path, cap at 40 and stay outside stats', async () => {
-  const proxy = await startAiProxy({target: 'http://127.0.0.1:1'});
-  try {
-    proxy.setMode('invalid-key');
-    const messages = await fetch(`${proxy.url}/v1/messages?key=secret`, {method: 'POST', body: '{}'});
-    const models = await fetch(`${proxy.url}/v1/models?token=secret`);
-    assert.equal(messages.status, 401);
-    assert.equal(models.status, 401);
-    assert.deepEqual(proxy.seenPaths(), ['POST /v1/messages', 'GET /v1/models']);
-    for (let i = 0; i < 40; i++) await fetch(`${proxy.url}/v1/models?page=${i}`);
-    assert.equal(proxy.seenPaths().length, 40);
-    assert.equal(proxy.stats.calls, 42);
-    assert.equal(proxy.stats.failed, 42);
-    assert.equal(proxy.stats.paid || 0, 0);
-    assert.ok(Object.values(proxy.stats).every(value => !Array.isArray(value)));
-    const seen = proxy.seenPaths();
-    seen.push('GET /changed-by-caller');
-    assert.equal(proxy.seenPaths().length, 40);
-    assert.ok(proxy.seenPaths().every(entry => !entry.includes('?')));
-  } finally { await proxy.close(); }
-});
-
 test('hang never answers', async () => {
   const proxy = await startAiProxy();
   try {

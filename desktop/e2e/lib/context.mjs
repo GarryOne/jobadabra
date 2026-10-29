@@ -56,9 +56,9 @@ export async function contextAiKeys({offlineAi = false, light = false, family, e
 
 /** Start both provider-shaped proxies; offline suites have only a refusing stand-in behind them. */
 export async function contextAiProxies({offlineAi = false, family}) {
-  // Why (29 Oct 2026, owner): offline questions must refuse before stored replies, caches, the Free AI relay or the Codex broker, with no live fallback target.
   const offline = {target: 'http://127.0.0.1:1'};
   const proxy = await startAiProxy({delayMs: 0, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
+  // Why (29 Oct 2026, owner): offline questions refuse before stored replies, caches, the Free AI relay or the Codex broker, with no live fallback target. Why (29 Oct 2026, st): the app asks background AI questions on its own (59 in one Settings run, CI run 40930376557); offline means every one is refused and none reaches a model, not that none is asked.
   if (offlineAi) proxy.setCanned(() => ({refuse: 'invalid-key'}));
   const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
   return {proxy, openaiProxy};

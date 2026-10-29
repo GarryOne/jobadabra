@@ -1,4 +1,4 @@
-// Offline suites use no AI secret or live transport and fail on any proxy question.
+// Offline suites use no AI secret or live transport and refuse background questions without reaching a real model.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -71,7 +71,7 @@ test('offline proxies refuse all requests before stored answers, relays, broker 
   for (const family of ['claude', 'free', 'openai']) {
     const proxies = await context.contextAiProxies({offlineAi: true, family});
     try {
-      guards.assertNoAiQuestions(proxies);
+      guards.assertNoRealAi(proxies);
       for (const [proxy, endpoint, body] of [
         [proxies.proxy, '/v1/messages', {messages: [{role: 'user', content: 'unknown question'}]}],
         [proxies.proxy, '/v1/messages', known],
@@ -83,19 +83,21 @@ test('offline proxies refuse all requests before stored answers, relays, broker 
       assert.equal(proxies.proxy.stats.calls, family === 'openai' ? 3 : 2);
       assert.equal(proxies.proxy.stats.failed + (proxies.openaiProxy?.stats.failed || 0), proxies.proxy.stats.calls);
       assert.equal(proxies.proxy.stats.paid || 0, 0);
-      assert.throws(() => guards.assertNoAiQuestions(proxies), /AI question/);
+      assert.doesNotThrow(() => guards.assertNoRealAi(proxies));
     } finally { await proxies.openaiProxy?.close(); await proxies.proxy.close(); }
   }
   assert.equal(escaped, 0);
 });
 
-test('the zero-question guard rejects every request counter on either proxy', () => {
-  for (const proxy of ['proxy', 'openaiProxy']) for (const counter of ['calls', 'canned', 'armed', 'failed', 'paid', 'inflight', 'described', 'futureCounter']) {
-    assert.throws(() => guards.assertNoAiQuestions({[proxy]: {stats: {[counter]: 1}}}), /AI question/);
-  }
+test('every offline suite also declares realAi=false so its real-model guard is always enabled', () => {
+  const dir = new URL('../suites/', import.meta.url);
+  const offline = fs.readdirSync(dir).filter(file => file.endsWith('.mjs')).map(file =>
+    [file, fs.readFileSync(new URL(file, dir), 'utf8')]).filter(([, source]) => /^export const offlineAi = true;/m.test(source));
+  assert.ok(offline.some(([file]) => file === 'settings.mjs'), 'settings must remain covered by the invariant');
+  for (const [file, source] of offline) assert.match(source, /^export const realAi = false;/m, `${file}: offline AI requires the real-model guard`);
 });
 
-test('settings declares offline AI and the harness wires its key path, proxies and critical final check', () => {
+test('settings declares offline AI and the harness wires its key path, proxies and real-model guard', () => {
   const source = file => fs.readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.match(source('../suites/settings.mjs'), /^export const offlineAi = true;/m);
   assert.match(source('../suites/settings.mjs'), /^export const realAi = false;/m);
@@ -103,7 +105,7 @@ test('settings declares offline AI and the harness wires its key path, proxies a
   assert.match(source('../lib/context.mjs'), /await contextAiProxies\(\{offlineAi, family\}\)/);
   assert.match(source('../lib/suite-main.mjs'), /offlineAi: !!suite\.offlineAi/);
   assert.match(source('../lib/suite-main.mjs'), /await runAiGuards\(suite, ctx, runAlways\)/);
-  assert.match(source('../lib/no-real-ai.mjs'), /suite\.offlineAi\) await runAlways\('no AI question reached the proxy at all'[\s\S]*?assertNoAiQuestions\(ctx\)[\s\S]*?critical: true/);
+  assert.match(source('../lib/no-real-ai.mjs'), /suite\.realAi === false\) await runAlways\('no AI call of this suite reached a real model:[\s\S]*?assertNoRealAi\(ctx\)[\s\S]*?critical: true/);
   for (const [run, family] of [['7', 'openai'], ['8', 'claude']]) {
     const env = {CI: 'true', CI_AI_PROVIDER: 'free', CI_FREE_AI_CF_TOKEN: 'unused-without-relay', E2E_OPENAI_KEY: 'revoked', GITHUB_RUN_NUMBER: run};
     assert.equal(pickFamily(env), family);

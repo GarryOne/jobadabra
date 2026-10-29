@@ -61,10 +61,11 @@ test('autoSuites: slim is an always suite except in a repeat', () => {
 });
 
 // Outside-world availability changes without a source diff: never let reach pick it.
-test('real Notion runs in nightly and beta gates, never schedules or PR/push reach', async () => {
+test('real Notion runs in nightly and beta gates and the day\'s first schedule, never PR/push reach', async () => {
   const facts = await suiteFacts();
   assert.equal(facts.cadence['notion-real'], 'outside');
-  assert.ok(!(await plan({EVENT: 'schedule'})).has('notion-real'), 'the repeated schedule is not the nightly release gate');
+  // No tested schedule run today (the stub lists none): this is the day's first, so it carries the outside world (plan-run.test covers a later one).
+  assert.ok((await plan({EVENT: 'schedule'})).has('notion-real'), 'the day\'s first schedule run checks real Notion');
   for (const kind of ['nightly', 'beta']) {
     const env = {EVENT: 'gate', GATE_TAG: 'desktop-v9.9', TARGET_REF: 'desktop-v9.9', GATE_KIND: kind};
     assert.ok((await plan(env)).has('notion-real'), JSON.stringify(env));

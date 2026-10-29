@@ -31,7 +31,7 @@ function aiPlanOutputs(suites, offlineAi, review) {
 
 // all: every suite; cadence / watches: what each suite exports (lib/plan.mjs says what they mean).
 // clean-code-ok: Why (29 Oct 2026, st): old function; this change adds one option to its signature (offlineAi) and its score falls (63 to 62)
-export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = []}) {
+export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], now = () => new Date()}) {
   const {EVENT: event, REPO: repo, SHA: sha} = env;
   // TARGET_REF (the gate, the soak top-ups and the stable canary): test THAT release's commit, with this workflow file. The workflow file of an old tag does not know newer
   // inputs (canary, soak), so the run is started on main and told which tag to check out.
@@ -87,6 +87,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     if (releasing.length) { decision.run = false; why = `a release run is testing (${releasing[0].displayTitle}): skipped, so its gate jobs are not cancelled in the shared suite groups`; }
     // Exploring (an unchanged commit): only the suites that walk a different path each run; the others would repeat themselves at full cost. None vary: nothing to explore.
     suites = !decision.run ? [] : decision.exploring ? autoSuites(all, cadence, true).filter(suite => varies.includes(suite)) : autoSuites(all, cadence, true);
+    // Why (29 Oct 2026, a8, #2502): the nightly gate skips a night with no app change, so the outside world rides the day's first tested schedule run, once.
+    const today = now().toISOString().slice(0, 10);
+    if (!releasing.length && !runs.some(run => run.event === 'schedule' && tested(run) && String(run.createdAt).startsWith(today))) suites = all.filter(suite => suites.includes(suite) || cadence[suite] === 'outside');
   }
   // names: exactly those, even a manual one; none: everything not manual. A release's repeat (TARGET_REF without a gate: a soak top-up, the stable canary) leaves the slim ones out.
   else suites = String(env.ONLY || '').trim() ? suitesNamed(env.ONLY, all) : autoSuites(all, cadence, false, !!env.TARGET_REF);

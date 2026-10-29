@@ -268,11 +268,17 @@ test('the gate runs each suite that keeps data on both stores, one job each; oth
 test('exhausted schedules stay empty; beta keeps one nonblocking AI-free outside leg', async () => {
   const all = ['settings', 'notion-real'], cadence = {'notion-real': 'outside'};
   const runs = [sched(1), sched(2), sched(3)];
-  const out = await planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD}, gh: gh({runs}), all, cadence,
+  const day = hours => () => new Date(Date.UTC(2026, 9, 3, 12) + hours * 3600000);   // sched() runs are on 3 Oct; the clock is injected
+  const plan = hours => planRun({env: {EVENT: 'schedule', REPO: 'o/r', SHA: HEAD}, gh: gh({runs}), all, cadence, now: day(hours),
     offlineAi: all, storeless: ['notion-real'], minutes: () => 15, os: () => 'ubuntu-24.04'});
-  assert.deepEqual(suitesOf(out), [], 'an exhausted schedule must stay Nothing tested');
+  const out = await plan(0);
+  assert.deepEqual(suitesOf(out), [], 'a later exhausted schedule the same day must stay Nothing tested');
   assert.equal(out.count, '0');
   assert.equal(out.ai_required, '0');
+  // Gitar on #2502: the nightly gate skips a night with no app change, so the day's first schedule run carries the outside world.
+  const firstOfDay = await plan(24);
+  assert.deepEqual(suitesOf(firstOfDay), ['notion-real'], 'the first schedule run of a new day checks real Notion even on an unchanged commit');
+  assert.equal(JSON.parse(firstOfDay.matrix).include[0].outside, true);
   const beta = await planRun({env: {EVENT: 'gate', REPO: 'o/r', SHA: HEAD, GATE_TAG: 'desktop-v9.9', GATE_KIND: 'beta'},
     gh: args => args[0] === 'release' && args[1] === 'view' ? '{"body":"Beta-approved: yes"}' : gh({releases: [['desktop-v9.8', OLD]], files: []})(args),
     all, cadence, offlineAi: all, storeless: ['notion-real'], minutes: () => 15});

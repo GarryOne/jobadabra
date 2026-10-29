@@ -4,16 +4,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {sample, watch} from './activity.mjs';
-import {quiet} from './activity-steps.mjs';
+import {quiet, runsData} from './activity-steps.mjs';
 import {ensureSetUp} from './seed.mjs';
 import {clearData} from './start-state.mjs';
 import {rewriteTextLines} from './seed-texts.mjs';
 import {MATCHES, matchRowsOf} from './quality-rows.mjs';
-import {capViolations, checkFacts, fingerprints, leaks, matchRows, rankingViolations, workLeft} from './quality.mjs';
+import {capViolations, checkFacts, fingerprints, leaks, matchRows, normalizeUrl, rankingViolations, workLeft} from './quality.mjs';
 import {withRoles} from './search-roles.mjs';
+import {QUALITY_CLOCK, qualityEvidence, waitForQualityState} from './quality-waits.mjs';
 
-const STEP = 60000;
 // E2E_QUALITY_PERSONA=photographer runs the same checks for a fictional commercial photographer in Zurich (fixtures/golden-photographer: her CV, her Profile, 12 postings with a
 // known truth, and her CV for the CV-match step), so scoring, ranking, facts and the judge are proven for a profession that is not IT. Default: the SRE.
 const PERSONA = process.env.E2E_QUALITY_PERSONA || '';
@@ -21,7 +20,7 @@ const GOLDEN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fi
 const persona = PERSONA ? JSON.parse(fs.readFileSync(path.join(GOLDEN, 'persona.json'), 'utf8')) : null;
 const read = file => JSON.parse(fs.readFileSync(path.join(GOLDEN, file), 'utf8'));
 
-/** Shared planner facts: both suites keep the same schedule, watched inputs and model environment. */
+/** Shared schedule and model inputs; budgetMinutes/minutes remain the live qualityai allowances only. */
 export const PLANNER = Object.freeze({
   cadence: 'nightly', budgetMinutes: 10, minutes: 24,
   // It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
@@ -71,57 +70,90 @@ export function rankingCheck(journey, {onRanking, onCap}) {
   onCap(over, said);
 }
 
-/** Build one isolated journey; rows and appJobs always reflect its latest read2(). */
-export function qualityJourney(ctx) {
+/** Build one isolated journey; strict reads require complete store and Jobs-page rows, live reads keep partial results. */
+export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
   const {page} = ctx;
+  const backbone = ctx.suite === 'quality';
+  // Why (29 Oct 2026, qu 3/4): only the stored-answer journey uses calm-run hang caps; live AI keeps its larger allowances.
+  const clocks = backbone ? QUALITY_CLOCK : {stateMs: 90000, jobsMs: 360000};
+  const state = async (readState, ready, label, capMs = clocks.stateMs, evidence = () => qualityEvidence(ctx)) => {
+    let last;
+    const previous = ctx.qualityWaitEvidence;
+    // The enclosing step/suite cap may fire first: keep this phase's latest evidence available to it too.
+    ctx.qualityWaitEvidence = () => evidence(last);
+    try {
+      return await waitForQualityState(async () => (last = await readState()), ready, {label, capMs, evidence, ...wait});
+    } finally { ctx.qualityWaitEvidence = previous; }
+  };
+  const jobsStateMs = backbone ? clocks.jobsMs : clocks.stateMs;
   const truth = process.env.E2E_QUALITY_TRUTH ? JSON.parse(fs.readFileSync(process.env.E2E_QUALITY_TRUTH, 'utf8')) : read('truth.json');   // a different truth: to prove the suite fails
   const candidate = fs.readFileSync(path.join(GOLDEN, 'candidate.txt'), 'utf8');
   const postings = truth.filter(item => !item.duplicateOf);
   let rows = [], appJobs = [];
   const setUp = async () => {
-    await ensureSetUp(ctx);
-    // Why (29 Oct 2026, a8): a search the setup started must end before the Jobs checks read the postings; quiet() returns after 3 s when none runs.
-    if (!ctx.built) await ctx.run('the first search after the setup has ended', () => quiet(ctx, {forMs: 3000, maxMs: 300000}), {needs: ctx.needs, critical: true});
+    await ensureSetUp(ctx, {readyMs: backbone ? clocks.stateMs : 60000});
+    // Why (29 Oct 2026, qu 3/4): history-loaded, no running/queued work and no start-up work is the observable reset boundary; no settling sleep.
+    if (!ctx.built) await ctx.run('the first search after the setup has ended', () => backbone
+      ? state(() => runsData(page), data => !data.running && !data.queued.length && data.historyLoaded && !data.busy.length,
+        'the first search after the setup', clocks.stateMs, data => `${JSON.stringify(data)}\n${qualityEvidence(ctx)}`)
+      : quiet(ctx, {forMs: 3000, maxMs: 300000}), {needs: ctx.needs, critical: true});
   };
-  const check = async label => {   // one Jobs check; ends when the task is no longer running
+  const check = async label => {
     await page.click('.nav[data-view="jobs"]');
-    const before = (await sample(page)).newest;
+    // Why (29 Oct 2026, qu 3/4): setup and earlier refreshes can still appear in Recent runs; only an ID added by this refresh can satisfy it.
+    const before = new Set((await runsData(page)).runs.map(run => run.id));
     await page.click('#refresh');
-    // The task must show up first: a watcher that looks too early sees "nothing running" and calls the check done.
-    const began = Date.now();
-    for (;;) {
-      const now = await sample(page);
-      if (now.running || JSON.stringify(now.newest) !== JSON.stringify(before)) break;
-      if (Date.now() - began > 90000) throw new Error(`the ${label} never started: Refresh on the Jobs page started no task within 90 s`);
-      await page.waitForTimeout(1500);
-    }
-    const {samples, endedAt} = await watch(page, {every: 3000, maxMs: 420000});
+    const fresh = data => data.runs.filter(run => !before.has(run.id) && run.kind === 'search' && run.trigger !== 'schedule');
+    const evidence = data => `${JSON.stringify({running: data?.running, queued: data?.queued, runs: data?.runs.map(({id, kind, ok}) => ({id, kind, ok}))})}\n${qualityEvidence(ctx)}`;
+    await state(() => runsData(page), data => !!data.running || fresh(data).length > 0,
+      `${label} start`, jobsStateMs, evidence);
+    const ended = await state(() => runsData(page), data => !data.running && !data.queued.length && fresh(data).length > 0,
+      label, backbone ? clocks.jobsMs : 420000, evidence);
     const engineLog = path.join(ctx.profile, 'logs', 'engine.log');
     if (fs.existsSync(engineLog)) fs.copyFileSync(engineLog, path.join(ctx.ARTIFACTS, `quality-engine-${label.split(' ')[0]}.log`));
-    if (endedAt == null) throw new Error(`the ${label} was still running after 7 minutes`);
-    const newest = samples.at(-1).newest;
-    if (newest?.ok === false) {
-      const log = path.join(ctx.profile, 'logs', 'engine.log');
-      if (fs.existsSync(log)) fs.copyFileSync(log, path.join(ctx.ARTIFACTS, 'quality-engine.log'));
-      const tail = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').slice(-12).join('\n    ') : '(no engine log)';
-      throw new Error(`the ${label} ended as failed: ${newest.result || '(no result text)'}\n  engine log, last lines:\n    ${tail}`);
-    }
-    await page.waitForTimeout(2000);
+    const newest = fresh(ended)[0];
+    if (newest.ok === false) throw new Error(`the ${label} ended as failed: ${newest.result || '(no result text)'}\n${qualityEvidence(ctx)}`);
+    // read2 observes the committed rows; task completion needs no fixed delay.
+  };
+  const storeDiagnostics = () => {
+    const config = path.join(ctx.profile, 'config');
+    const text = file => fs.existsSync(path.join(config, file)) ? fs.readFileSync(path.join(config, file), 'utf8').replace(/\s+/g, ' ') : 'missing';
+    return `profile config: ${fs.existsSync(config) ? fs.readdirSync(config).join(', ') : 'none'}; sources.json: ${text('sources.json')}; feed folder: ${ctx.feeds && fs.existsSync(ctx.feeds) ? fs.readdirSync(ctx.feeds).join(', ') : 'none'}; search.json: ${text('search.json').slice(0, 700)}`;
   };
   const read2 = async () => {
-    const expected = postings.filter(item => !item.filterMayDrop).length;
-    for (let waited = 0; waited < 90000; waited += 5000) {   // Notion's query can trail a write by a few seconds: wait for every posting that must be there
-      rows = await matchRowsOf(ctx);   // the store's matches: Notion's rows, or this Mac's records (lib/quality-rows.mjs)
-      if (Object.keys(matchRows(truth, rows).byId).length >= expected) break;
-      await page.waitForTimeout(5000);
-    }
-    appJobs = await page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => ({title: job.title, url: job.url, fit: job.fit, reason: job.reason})));
+    const required = postings.filter(item => !item.filterMayDrop);
+    const missing = (candidateRows = []) => {
+      const {byId} = matchRows(truth, candidateRows);
+      return required.filter(item => !byId[item.id]);
+    };
+    // Why (29 Oct 2026, qu 3/4, #2501 review): only exact quality requires every required posting; live qualityai keeps partial rows at its allowance.
+    let partial = [];
+    const complete = await state(async () => (partial = await matchRowsOf(ctx)), candidateRows => strict
+      ? missing(candidateRows).length === 0 : Object.keys(matchRows(truth, candidateRows).byId).length >= required.length,
+      'the required postings reaching the store', strict ? jobsStateMs : 90000, candidateRows => {
+        const absent = missing(candidateRows);
+        return `${required.length - absent.length} of ${required.length} required postings reached the store; missing: ${absent.map(item => `${item.id} "${item.title}" (${item.url})`).join(', ')}\n${strict ? storeDiagnostics() + '\n' : ''}${qualityEvidence(ctx)}`;
+      }).catch(error => {
+        if (strict || error.name !== 'QualityHangError') throw error;
+        return partial;
+      });
+    rows = complete;
+    const readAppJobs = () => page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => ({title: job.title, url: job.url, fit: job.fit, reason: job.reason})));
+    // Why (29 Oct 2026, qu 3/4, #2501 review): only exact quality waits for startSearch's asynchronous Jobs-page reload; live qualityai reads the available list once.
+    appJobs = strict ? await state(readAppJobs,
+      jobs => complete.every(row => jobs.some(job => normalizeUrl(job.url) === normalizeUrl(row.props['Job URL']))),
+      'the Jobs page showing the stored postings', jobsStateMs, jobs => `store rows=${complete.length}, Jobs page rows=${jobs?.length ?? 0}\n${qualityEvidence(ctx)}`) : await readAppJobs();
   };
+  // SQLite gets a fresh profile per attempt (app.mjs launch); reset asserts its matches empty below. Thus list[0] cannot select an earlier attempt's match.
   const scoresOf = () => Object.fromEntries(Object.entries(matchRows(truth, rows).byId).map(([id, list]) => [id, list[0].props.Score]));
 
   const reset = async () => {
     await ctx.run('this suite starts with no jobs and no runs in its Notion page', async () => {
-      await clearData(ctx, MATCHES); await clearData(ctx, 'Cronjob Runs');
+      if (backbone) {
+        // Why (29 Oct 2026, qu 3/4, #2501 review): startup may leave run history; assert only empty matches, preserve history and let check() exclude pre-refresh run IDs.
+        const held = await ctx.data('matches', 'list', {});
+        if (held.length) throw Object.assign(new Error(`quality reset: store holds ${held.length} matches row(s); expected no matches`), {name: 'QualityStartStateError'});
+      } else { await clearData(ctx, MATCHES); await clearData(ctx, 'Cronjob Runs'); }
       // The candidate's compensation is known, not whatever the wizard's AI drafted from the CV ("CHF 180,000 (estimate)"): target 170k, minimum 140k.
     if (!persona) {   // a persona states its own compensation in its Profile file
     // The Profile through the store the app uses (this Mac's profile.md or Notion's Profile page).
@@ -160,9 +192,8 @@ export function qualityJourney(ctx) {
         console.log(`  refresh ${round} ran out of time with jobs left (engine ${ctx.engine}): refreshing again`);
       }
       await read2(); if (!rows.length) {
-        const config = path.join(ctx.profile, 'config');
-        throw new Error(`no Job Matches row was in ${ctx.store === 'sqlite' ? 'this Mac\'s store (matches.list)' : 'Notion'} a minute after the check (app's Notion: ${JSON.stringify(await page.evaluate(() => { const n = window.__jp?.shared?.state?.notion; return n && typeof n === 'object' ? Object.fromEntries(Object.entries(n).filter(([, v]) => typeof v === 'string' && /[0-9a-f]{8}-/.test(v)).map(([k, v]) => [k, v.slice(0, 13)])) : String(n); }))}; profile config: ${fs.existsSync(config) ? fs.readdirSync(config).join(', ') : 'none'}; sources.json: ${fs.existsSync(path.join(config, 'sources.json')) ? fs.readFileSync(path.join(config, 'sources.json'), 'utf8').replace(/\s+/g, ' ') : 'missing'}; feed folder: ${fs.readdirSync(ctx.feeds).join(', ')}; search.json: ${fs.readFileSync(path.join(config, 'search.json'), 'utf8').replace(/\s+/g, ' ').slice(0, 700)})`);
-      } }, {needs: ctx.needs, limitMs: 6 * STEP});
+        throw new Error(`no Job Matches row was in ${ctx.store === 'sqlite' ? 'this Mac\'s store (matches.list)' : 'Notion'} after the 90 s read allowance (app's Notion: ${JSON.stringify(await page.evaluate(() => { const n = window.__jp?.shared?.state?.notion; return n && typeof n === 'object' ? Object.fromEntries(Object.entries(n).filter(([, v]) => typeof v === 'string' && /[0-9a-f]{8}-/.test(v)).map(([k, v]) => [k, v.slice(0, 13)])) : String(n); }))}; ${storeDiagnostics()})`);
+      } }, {needs: ctx.needs, limitMs: clocks.jobsMs});
   };
   const privacyLogs = () => ctx.run('no job text, CV text or secret reached the logs', async () => {
     const logs = path.join(ctx.profile, 'logs');

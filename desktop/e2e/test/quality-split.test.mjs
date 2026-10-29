@@ -24,15 +24,15 @@ test('rates contain only the contracted counts and verdicts, never judge texts o
   assert.equal(qualityRates({ranking: 'ok', caps: 'ok'}).caps, 'ok');
 });
 
-test('both suites export the planner fields and share the golden journey', async () => {
+test('both suites share planner inputs and the golden journey, with separate clocks', async () => {
   assert.ok(Object.isFrozen(journeyLib.PLANNER));
   const facts = await suiteFacts();
   for (const suite of [quality, qualityai]) {
     assert.equal(suite.cadence, 'nightly');
     assert.equal(suite.store, 'sqlite');
     assert.equal(suite.sameOnEveryOs, true);
-    assert.equal(suite.budgetMinutes, 10);
-    assert.equal(suite.minutes, 24);
+    assert.equal(suite.budgetMinutes, suite.name === 'qualityai' ? 10 : undefined);
+    assert.equal(suite.minutes, suite.name === 'qualityai' ? 24 : 3);
     assert.equal(typeof suite.run, 'function');
     assert.equal(suite.env, journeyLib.PLANNER.env);
     assert.equal(suite.watches, journeyLib.PLANNER.watches);
@@ -42,7 +42,7 @@ test('both suites export the planner fields and share the golden journey', async
     assert.ok(facts.sameOnEveryOs.includes(suite.name));
     assert.ok(facts.storeless.includes(suite.name));
     assert.deepEqual(facts.judges[suite.name], quality.judges);
-    assert.equal(await facts.minutes(suite.name), 24);
+    assert.equal(await facts.minutes(suite.name), suite.name === 'qualityai' ? 24 : 3);
     assert.deepEqual(facts.watches[suite.name], quality.watches);
     assert.match(source(`../suites/${suite.name}.mjs`), /quality-journey.mjs/);
   }

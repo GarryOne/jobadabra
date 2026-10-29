@@ -31,3 +31,13 @@ test('a closed page still returns false and logs just one diagnostic', async t =
   assert.equal(lines.length, 1);
   assert.match(lines[0], /unavailable/);
 });
+
+test('a successful read with no loader reports none visible now', async t => {
+  const lines = [];
+  t.mock.method(console, 'log', line => lines.push(line));
+  const page = {waitForFunction: async () => { throw new Error('Timeout'); }, evaluate: async () => null};
+  assert.equal(await settle(page), false);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /none visible now/);
+  assert.doesNotMatch(lines[0], /unavailable/);
+});

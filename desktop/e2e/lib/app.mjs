@@ -145,8 +145,10 @@ export async function settle(page, seconds = 20) {
     const indicator = await page.evaluate(() => {
       const node = [...document.querySelectorAll('.view:not([hidden]) .skeleton, .view:not([hidden]) .spinner')].find(el => el.offsetParent !== null);
       return node ? {id: node.id || node.parentElement?.id || '', classes: node.className} : null;
-    }).catch(() => null);
-    console.log(`  settle: gave up after ${seconds}s; first visible loader: ${indicator ? `${indicator.id ? `#${indicator.id} ` : ''}${indicator.classes}` : 'unavailable (page changed or closed)'}`);
+    }).catch(() => undefined);
+    const detail = indicator === undefined ? 'unavailable (page changed or closed)' : indicator === null ? 'none visible now'
+      : `${indicator.id ? `#${indicator.id} ` : ''}${indicator.classes}`;
+    console.log(`  settle: gave up after ${seconds}s; first visible loader: ${detail}`);
     return false;
   }
 }

@@ -130,3 +130,11 @@ summary.survey-saved::-webkit-details-marker { display: none; }
 .fact-sum > .link { justify-self: start; }
 .panel.roomy .read-values { margin-left: calc(var(--tile-lg) + var(--sp-3)); }
 @container (max-width: 520px) { .fact-sum, .panel.roomy .read-values { margin-left: 0; } .fact-sum-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Your details → To check (pages/details-to-check.js): the count and the one primary in the header; notices and set-aside values as divided rows, never a box inside the card. */
+.panel.roomy.to-check.needs-you { box-shadow: inset 4px 0 0 var(--warn); }
+.to-check-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.to-check-row > .icon { width: 18px; height: 18px; flex: none; color: var(--ink-2); }
+.to-check-words { flex: 1 1 18rem; min-width: 0; display: grid; gap: 2px; max-width: 72ch; }
+.to-check-row > button { margin-left: auto; }
+.to-check #facts-tidied:empty, .to-check #facts-set-aside:empty { display: none; }

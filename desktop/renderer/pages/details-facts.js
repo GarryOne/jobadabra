@@ -6,9 +6,8 @@
 import {el, loadingCard} from '../components.js';
 import {keep, swr} from '../swr.js';
 import {$} from './core.js';
-import {showOnTab} from './tab-part.js';
+import {drawToCheck} from './details-to-check.js';
 import {detailsChanged, factsDirty, factsRead} from './details-drafts.js';
-import {setAsideRows} from './set-aside.js';
 import {factOf, factRow} from '../fact-line.js';
 import {countText, loadQuestions, questionsNow} from './jobs-questions.js';
 import {NATIONALITY, STATUSES, SUGGESTED, ZONES, freer, inZones, isAnswered, isAsked, isOldAsked, nationalityOf, zoneOfLabel, zonesOpenedBy} from '../work-eligibility.js';
@@ -108,23 +107,6 @@ function suggestionRow(zone, value, saved) {
   return line;
 }
 
-// "Tidied": the lines that got their kind, or their note for the AI, on first open, with Undo (lib/details-kinds.js, lib/details-notes.js).
-function drawTidied(tidied) {
-  const box_ = $('facts-tidied');
-  if (!tidied) { box_.replaceChildren(); return; }
-  const undo = el('button', 'secondary', 'Undo');
-  undo.type = 'button';
-  undo.addEventListener('click', async () => {
-    undo.disabled = true;
-    const result = await window.pilot.undoDetailsTidy();
-    if (result.ok) showFacts(); else { $('facts-message').textContent = result.error; undo.disabled = false; }
-  });
-  // Why (owner, 28 Oct 2026, "Save them automatically"): Work eligibility is concluded and saved on open, so its part of this notice says so (lib/eligibility-settle.js).
-  const eligibility = tidied.eligibility || 0, rest = tidied.changed - eligibility;
-  const said = [rest ? `${rest} of your details were tidied: a typed control, or the rules folded as a note for the AI.` : '', eligibility ? 'Work eligibility was filled in from your earlier answers and saved.' : ''].filter(Boolean).join(' ');
-  box_.replaceChildren(el('p', 'muted small', `${said} The words you saved are kept, and the copy from before is backed up.`), undo);
-}
-
 // "N missing": Fill your details' items, counted from the drawer's own list (read once when Jobs has not read it yet), Review opens it at the first.
 let last = {aside: [], tidied: null}, queueAsked = false;
 document.addEventListener?.('questions-read', () => drawWhich(last.aside, last.tidied));
@@ -132,15 +114,17 @@ function drawWhich(aside = [], tidied = null) {
   last = {aside, tidied};
   if (!questionsNow().read && !queueAsked) { queueAsked = true; loadQuestions().then(() => drawWhich(last.aside, last.tidied)).catch(() => {}); }
   const items = questionsNow().details;   // Fill your details' list: the card's and the tab's count
-  showOnTab($('setting-which'), items.length > 0 || aside.length > 0 || Boolean(tidied));
-  drawTidied(tidied);
-  $('facts-set-aside').replaceChildren(...setAsideRows(aside, showFacts, text => { $('facts-message').textContent = text; }));
-  if (!items.length) { $('which-list').replaceChildren(); return; }
-  const banner = el('div', 'notice qa-banner');
-  const go = Object.assign(el('button', 'primary small-btn', 'Review'), {type: 'button', id: 'details-review-go'});
-  go.addEventListener('click', () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details', start: items[0].key})));
-  banner.append(el('span', '', `⚠ ${countText.details(items.length)}`), go);
-  $('which-list').replaceChildren(banner);
+  const say = text => { $('facts-message').textContent = text; };
+  drawToCheck({count: items.length, aside, tidied}, {
+    onReview: () => import('./question-review.js').then(review => review.openQuestionReview({queue: 'details', start: items[0].key})),
+    onUndoTidy: async undo => {
+      undo.disabled = true;
+      const result = await window.pilot.undoDetailsTidy();
+      if (result.ok) showFacts(); else { say(result.error); undo.disabled = false; }
+    },
+    onChange: showFacts,
+    showError: say,
+  }, countText.details);
 }
 
 // Reads and draws the sections: the saved lines at once (lib/details-facts-handlers.js 'detailsFactsNow'), then the one-time moves settle in the background (the first time the app

@@ -1,8 +1,9 @@
 /* global document, window, location */
 // The apply suite's journey steps (moved out of suites/apply.mjs, 8 Oct 2026): a posting that opens a tab, side-by-side applications, sign-up, one page, a closed form tab, a wrong page kind. Guards the flows in docs/flows/applying.md.
+// Job: run the backbone
 import {CHAIN, LATE, MENU_AGAIN, MENU_CHOICES, MENU_FIRST, MISLABELLED, NOTICE_CHOICES, ONEPAGE, PROPOSE, REVEAL, COLLAPSED, SCRIPTED, SIGNIN, SIGNIN_PASSWORD, SIGNIN_REFUSED, SIGNUP} from './forms.mjs';
 import {CONTACT, pause} from './apply-fixtures.mjs';
-import {appLogText, rearmedSessions} from './app-log.mjs';
+import {appLogText, rearmedSessions, sessionPoll} from './app-log.mjs';
 import {cvProblems, fillProblems, submitProblems} from './applycheck.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -176,7 +177,10 @@ export async function runJourneys(ctx, h) {
     if (!tab) { await dumpExtension(); throw new Error(`the sign-in page was never reached. Tabs: ${ctx.browser.context.pages().map(item => item.url()).join(' | ')}`); }
     return tab;
   };
-  const sessionOf = async fixture => (await page.evaluate(() => window.pilot.sessions())).find(item => String(item.url || '').replace(/\/$/, '') === fixture.url) || null;
+  const sessionOf = async fixture => {
+    const startedAt = Date.now(), sessions = await page.evaluate(() => window.pilot.sessions());
+    return sessionPoll(sessions, fixture.url, {startedAt, record: snapshot => fs.appendFileSync(path.join(ctx.ARTIFACTS, 'account-state-polls.jsonl'), `${JSON.stringify(snapshot)}\n`)});
+  };
   const pressesOf = fixture => forms.signinPosts.filter(post => post.path === fixture.accountPath);
 
   await ctx.run('a sign-in page before the form: your email and saved password are filled, "Sign in" is pressed once, and the form behind it is filled', async () => {

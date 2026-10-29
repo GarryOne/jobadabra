@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {appLogLines, rearmedSessions} from '../lib/app-log.mjs';
+import {appLogLines, rearmedSessions, sessionPoll} from '../lib/app-log.mjs';
 
 test('a line rolled into yesterday\'s day file is still read, in order', () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'applog-'));
@@ -39,4 +39,19 @@ test('rearmedSessions names each session whose menu was armed again, so a step c
   assert.deepEqual([...first], ['e83f4cb1']);
   assert.deepEqual([...rearmedSessions(log.slice(mark))].filter(id => !first.has(id)), [], 'the first form\'s 10 s re-arm is not the next form\'s detour');
   assert.deepEqual([...rearmedSessions(`${log}\n[fill] menu armed again with the choice that means the same {"id":"77aa01bc","times":1}`)].sort(), ['77aa01bc', 'e83f4cb1']);
+});
+
+
+test('session polling records every matching state with its time without changing selection or exposing answers', () => {
+  const lines = [], records = [], first = {id: 'old', url: 'https://jobs.example.test/1/', stage: 'account', stuck: 'incomplete', email: 'private@example.test'};
+  const second = {id: 'new', url: 'https://jobs.example.test/1', stage: 'account', stuck: 'account', accountNeeds: 'private answer'};
+  const other = {id: 'other', url: 'https://jobs.example.test/2', stage: 'form'};
+  const log = line => lines.push(line), now = () => 123;
+  assert.equal(sessionPoll([first, other, second], 'https://jobs.example.test/1', {startedAt: 100, now, log, record: value => records.push(value)}), first, 'retain the original first-match behavior so diagnostics do not repair the race');
+  const record = JSON.parse(lines[0].slice('account-state poll '.length));
+  assert.deepEqual(record, {requestedAt: '1970-01-01T00:00:00.100Z', at: '1970-01-01T00:00:00.123Z', selected: 'old', matches: [{id: 'old', stage: 'account', stuck: 'incomplete'}, {id: 'new', stage: 'account', stuck: 'account'}]});
+  assert.deepEqual(records, [record], 'the step artifact receives the same privacy-filtered snapshot');
+  assert.doesNotMatch(lines[0], /private|email|accountNeeds|https:/);
+  assert.equal(sessionPoll([], 'https://jobs.example.test/1', {now, log}), null);
+  assert.deepEqual(JSON.parse(lines[1].slice('account-state poll '.length)).matches, []);
 });

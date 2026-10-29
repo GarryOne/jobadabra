@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {askBroker} from './lib/broker-client.mjs';
-import {aiProvider, providerLine} from './lib/ai-provider.mjs';
+import {aiProvider} from './lib/ai-provider.mjs';
 
 const BRIEF_KEYS = ['lens', 'serves', 'evidence', 'action', 'why', 'effort', 'expected', 'check_in_days', 'details'];
 export const BRIEF_SCHEMA = {type: 'object', additionalProperties: false, required: BRIEF_KEYS, properties: {...Object.fromEntries(BRIEF_KEYS.map(key => [key, {type: 'string'}])), check_in_days: {type: 'integer'}}};

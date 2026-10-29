@@ -22,7 +22,7 @@ import {hiddenBrowserEnv} from './hidden-browser-env.mjs';
 import {createVariation, placeOf} from './variation.mjs';
 import {ARTIFACTS, E2E, launch, pickFile, step} from './app.mjs';
 import {clearRoot, testRoot, workspaceReady} from './notion.mjs';
-import {createRunner} from './runner.mjs';
+import {budgetMsOf, createRunner} from './runner.mjs';
 import {notionFarSide, pickStore, runToken, storeSettings} from './store.mjs';
 import {storeCall} from './store-call.mjs';
 import {lockNeeded, takeNotionPage} from './notion-page-lock.mjs';
@@ -54,7 +54,8 @@ export function notionToken(suite, {own: ownOnly = false, env = process.env} = {
 
 // browser: the suite drives a real Chromium with the extension (lib/extension.mjs): the fixture forms are served, and the app's `open` reaches that browser.
 // engine: a suite whose steps the AI proxy answers pins 'api' (a placeholder key on a Mac); otherwise a Mac uses Claude Code, CI the API key (lib/engine.mjs).
-export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, stepNeeds = null, report = null} = {}) {
+// clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call
+export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
   const store = light || !usesNotion ? '' : pickStore({suiteStore: suiteStore || (notionStandIn ? 'standin' : '')});
@@ -71,7 +72,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
   if (!light && isCi()) await preflightKeys({family, engine, key});   // a refused key stops the suite here, named, not as a puzzling AI step later
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
-  const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), ...(budgetMinutes ? {budgetMs: budgetMinutes * 60000} : {})});
+  const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).
   // The test's own judges and evals (lib/judge.mjs, fit.mjs, model.mjs, the explore agent) are Claude whatever the app runs on, so both families are judged
   // by one model: always the Anthropic test key, never the app's (9 Oct 2026: the first OpenAI run sent the OpenAI key to Anthropic, 401).

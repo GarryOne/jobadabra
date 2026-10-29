@@ -33,7 +33,7 @@ export function downloadArtifacts({suite, runs, dir}, gh = ghCommand) {
         '--jq', '.artifacts[] | select(.expired == false) | .name']).trim().split('\n');
       const matching = names.filter(name => artifactMatches(name, suite));
       if (!matching.length) continue;
-      gh(['run', 'download', String(databaseId), ...matching.flatMap(name => ['--name', name]), '--dir', path.join(dir, String(databaseId))]);
+      gh(['run', 'download', String(databaseId), ...matching.flatMap(name => ['--pattern', name]), '--dir', path.join(dir, String(databaseId))]);
       downloaded++;
       if (downloaded === runs) break;
     }

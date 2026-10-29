@@ -28,14 +28,27 @@ export function failureFor(mode) {
   return failure ? {status: failure.status, body: JSON.stringify({type: 'error', error: {type: failure.type, message: failure.message}})} : null;
 }
 
+function createRequestPaths() {
+  const seen = [];
+  return {
+    record(request) {
+      // Why (29 Oct 2026, owner): diagnose offline traffic with at most 40 method/path entries, without query strings, bodies or new stats fields.
+      if (seen.length < 40) seen.push(`${request.method} ${request.url.split('?')[0]}`);
+    },
+    seenPaths: () => seen.slice(),
+  };
+}
+
 // kind / metered: the tally a paid call goes to and which API path is a model call (Anthropic: /messages; OpenAI: /responses, kind 'app-openai').
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
 /** Start the app's AI proxy with fault controls, stored answers and metered live fallback. */
 export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
   const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
+  const requests = createRequestPaths();
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic
   const server = http.createServer(async (req, res) => {
+    requests.record(req);
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     stats.calls++;
@@ -120,7 +133,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  return {url: `http://127.0.0.1:${server.address().port}`, stats, setDelay: ms => { stats.delayMs = ms; },
+  return {url: `http://127.0.0.1:${server.address().port}`, stats, seenPaths: requests.seenPaths, setDelay: ms => { stats.delayMs = ms; },
     // 'pass' (default), 'hang', or a key of FAILURES. Every call after this one is answered that way.
     setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; },
     // From now on, calls `answer` returns a text for are answered with it (no model, no cost); the rest go through.

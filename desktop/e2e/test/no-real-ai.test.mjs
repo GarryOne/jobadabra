@@ -22,3 +22,17 @@ test('suite AI guards preserve their names, critical status, order and zero-ques
   await aiGuards.runAiGuards({realAi: true}, ctx, runAlways);
   assert.deepEqual(names, []);
 });
+
+test('the zero-question error names distinct request paths and counts for both proxies', () => {
+  const ctx = {
+    proxy: {stats: {calls: 3, failed: 3}, seenPaths: () => ['POST /v1/messages', 'GET /v1/models', 'POST /v1/messages']},
+    openaiProxy: {stats: {calls: 2, failed: 2}, seenPaths: () => ['POST /v1/responses', 'POST /v1/responses']},
+  };
+  assert.throws(() => aiGuards.assertNoAiQuestions(ctx), error => {
+    assert.match(error.message, /proxy\.calls=3/);
+    assert.match(error.message, /proxy: POST \/v1\/messages x2, proxy: GET \/v1\/models x1/);
+    assert.match(error.message, /openaiProxy: POST \/v1\/responses x2/);
+    assert.match(error.message, /40 per proxy/);
+    return true;
+  });
+});

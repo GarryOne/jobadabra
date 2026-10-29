@@ -42,3 +42,13 @@ for (const name of ['profile.md', 'answers.md']) {
     assert.deepEqual(roundTripFileDifferences(before, {[name]: 'different-digest'}, log), [`files.${name} "exported-digest" -> "different-digest"`]);
   });
 }
+
+
+test('Windows CRLF drop lines justify missing local copies in this launch', t => {
+  const log = launchLog(t, '[app] start current\r\n' +
+    '[files] local copies dropped, the store has them {"files":["profile.md","answers.md"]}\r\n' +
+    '[migrate] startup moves finished {"moved":1}\r\n');
+  assert.deepEqual(roundTripFileDifferences(
+    {'profile.md': 'profile-digest', 'answers.md': 'answers-digest'},
+    {'profile.md': null, 'answers.md': null}, log), []);
+});

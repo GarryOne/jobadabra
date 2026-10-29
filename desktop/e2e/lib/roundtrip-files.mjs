@@ -5,7 +5,7 @@
 export function roundTripFileDifferences(before, after, launchLog) {
   // Why (29 Oct 2026, st): run 40943734538 correctly dropped profile copies after import; earlier launches cannot excuse missing restored bytes.
   const dropped = new Set();
-  for (const line of launchLog.split('\n')) {
+  for (const line of launchLog.split(/\r?\n/)) {
     const match = /\[files\] local copies dropped, the store has them (\{.*\})$/.exec(line);
     if (!match) continue;
     try {

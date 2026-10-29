@@ -118,6 +118,18 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       return save(app, {...state, state: 'receipt_confirmed', receiptAt: now()});
     });
   }
+  /**
+   * A press the app's quit cut off: the job is still `submitting` with no receipt, and the hidden browser that pressed it died with the app, so nothing will ever read the site's reply.
+   * Hands it to the person as `submission_outcome_unknown` ("check whether it went through") whichever browser owned it; the attempt stays used, so it is never reserved again.
+   * Returns the saved state, or null when this session's job is not mid-press (another session's record is never touched).
+   */
+  async function interrupted(url, session) {
+    return serial(async () => {
+      const app = await appOf(url), state = await load(app);
+      if (!state || state.session !== session || state.state !== 'submitting' || state.receiptAt) return null;
+      return manual(app, state, 'submission_outcome_unknown');
+    });
+  }
   async function humanReceipt(url, session, owner, pressedAt) {
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
@@ -125,5 +137,5 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
       return save(app, {...state, state: 'receipt_confirmed', humanSubmittedAt: pressedAt, receiptAt: now()});
     });
   }
-  return {queue, claim, handoff, ready, checkpoint, reserve, receipt, humanReceipt, read};
+  return {queue, claim, handoff, ready, checkpoint, reserve, receipt, interrupted, humanReceipt, read};
 }

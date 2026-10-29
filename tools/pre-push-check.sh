@@ -304,7 +304,7 @@ if [ "${JP_E2E_UNIT:-0}" = 1 ] && command -v node >/dev/null && [ -f "$repo/tool
   if [ -z "$changed" ] || printf '%s\n' "$changed" | node "$repo/tools/e2e-unit-wanted.mjs"; then want_e2e=1; fi
 fi
 
-# Why (29 Oct 2026, owner, #2462): a worktree made without the installed folders (a bare `git worktree add`) ran this gate 437 s, failed in "desktop (clean checkout)" and showed no cause; refused in a second,
+# Why (29 Oct 2026, owner, #2462): a worktree made without the installed folders (a bare git worktree add) ran this gate 437 s, failed in "desktop (clean checkout)" and showed no cause; refused in a second,
 # with the way out. Only a linked worktree whose main checkout HAS the folder (a plain repo or the main checkout itself is left to the suites). Guard: tests/test_pre_push_check.py.
 common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"; main="$(dirname "${common:-$repo/.git}")"
 if [ -d "$main" ] && [ "$(cd "$main" && pwd -P)" != "$(cd "$repo" && pwd -P)" ]; then

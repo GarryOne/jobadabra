@@ -51,7 +51,8 @@ class E2eFlipWorkflow(unittest.TestCase):
         block = re.search(r'      - name: Download first-try artifacts\n(.*?)(?=\n      - )', self.text, re.S)
         self.assertIsNotNone(block, 'attempt 1 needs the first-try artifacts, not only job conclusions')
         self.assertIn("if: steps.attempts.outputs.artifact_patterns != ''", block.group(1))
-        self.assertIn('--pattern "$pattern"', block.group(1))
+        self.assertIn('--name "$name"', block.group(1))
+        self.assertNotIn('--pattern', block.group(1), 'a prefix pattern pulls applyflows into apply')
         self.assertIn('gh run download "$RUN_ID"', block.group(1))
         self.assertIn('--repo "$GITHUB_REPOSITORY"', block.group(1))
         self.assertIn('--artifacts "$ARTIFACTS"', self.text)
@@ -65,29 +66,26 @@ class E2eFlipWorkflow(unittest.TestCase):
             tmp = Path(folder)
             fake = tmp / 'gh'
             fake.write_text(f'#!{sys.executable}\n' + textwrap.dedent('''\
-                import fnmatch, json, os, sys
+                import json, os, sys
                 from pathlib import Path
                 args = sys.argv[1:]
                 assert args[:3] == ['run', 'download', '9001'], args
-                assert args[args.index('--pattern') + 1] == 'e2e-artifacts-applyflows*', args
+                wanted = args[args.index('--name') + 1]
                 assert args[args.index('--repo') + 1] == 'example/fixture', args
                 fixture = json.loads(Path(os.environ['RETRY_FIXTURE']).read_text())
-                root = Path(args[args.index('--dir') + 1])
+                dest = Path(args[args.index('--dir') + 1])
                 with (Path(os.environ['RUNNER_TEMP']) / 'downloads').open('a') as log: log.write(json.dumps(args) + '\\n')
-                for name, files in fixture['folders'].items():
-                    if not fnmatch.fnmatch(name, args[args.index('--pattern') + 1]): continue
-                    dest = root / name
-                    dest.mkdir()
-                    for name, data in files.items(): (dest / name).write_text(json.dumps(data))
+                dest.mkdir(parents=True)
+                for name, data in fixture['folders'][wanted].items(): (dest / name).write_text(json.dumps(data))
             '''))
             fake.chmod(0o755)
             fixture = ROOT / 'desktop/e2e/test/fixtures/suspend-flip-in-job.json'
-            (tmp / 'patterns').write_text('e2e-artifacts-applyflows*\n')
+            (tmp / 'patterns').write_text('e2e-artifacts-applyflows-1of2\ne2e-artifacts-applyflows-2of2\n')
             env = {**os.environ, 'PATH': f"{tmp}{os.pathsep}{os.environ['PATH']}", 'RUNNER_TEMP': str(tmp),
                    'GITHUB_OUTPUT': str(tmp / 'output'), 'RUN_ID': '9001', 'GITHUB_REPOSITORY': 'example/fixture', 'RETRY_FIXTURE': str(fixture), 'PATTERNS': str(tmp / 'patterns')}
             done = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], env=env, cwd=tmp, capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stderr)
-            self.assertEqual(len((tmp / 'downloads').read_text().splitlines()), 1, 'one download per suite')
+            self.assertEqual(len((tmp / 'downloads').read_text().splitlines()), 2, 'one exact download per failed job')
             artifacts = re.search(r'^folder=(.+)$', (tmp / 'output').read_text(), re.M).group(1)
             self.assertEqual(sorted(path.name for path in Path(artifacts).iterdir()),
                              ['e2e-artifacts-applyflows-1of2', 'e2e-artifacts-applyflows-2of2'])
@@ -113,6 +111,36 @@ class E2eFlipWorkflow(unittest.TestCase):
             done = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], env=env, cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(done.returncode, 0, done.stderr)
             self.assertIn('No new same-commit retry flips', done.stdout)
+
+    @unittest.skipUnless(shutil.which('bash'), 'download step requires bash')
+    def test_download_asks_each_artifact_by_its_exact_name_and_survives_a_missing_one(self):
+        # Why (29 Oct 2026, Gitar on #2473): a prefix pattern let `apply*` swallow applyflows and gh refused to overwrite; a job that
+        # failed before uploading made gh exit non-zero and skipped the proposal.
+        block = self.text.split('      - name: Download first-try artifacts\n', 1)[1].split('      - name: ', 1)[0]
+        script = textwrap.dedent(block.split('run: |\n', 1)[1])
+        with tempfile.TemporaryDirectory() as folder:
+            tmp = Path(folder)
+            (tmp / 'patterns.txt').write_text('e2e-artifacts-apply\ne2e-artifacts-applyflows-1of2\n')
+            fake = tmp / 'bin/gh'
+            fake.parent.mkdir()
+            fake.write_text(f'#!{sys.executable}\n' + textwrap.dedent('''\
+                import os, sys
+                from pathlib import Path
+                args = sys.argv[1:]
+                Path(os.environ['RUNNER_TEMP'], 'calls').open('a').write(' '.join(args) + '\\n')
+                if '--name' not in args: sys.exit('prefix patterns are refused')
+                if args[args.index('--name') + 1] == 'e2e-artifacts-apply': sys.exit(1)
+            '''))
+            fake.chmod(0o755)
+            env = {**os.environ, 'PATH': f"{tmp / 'bin'}{os.pathsep}{os.environ['PATH']}", 'RUNNER_TEMP': str(tmp), 'GITHUB_OUTPUT': str(tmp / 'output'),
+                   'RUN_ID': '9001', 'GITHUB_REPOSITORY': 'example/fixture', 'PATTERNS': str(tmp / 'patterns.txt')}
+            done = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', script], env=env, cwd=tmp, capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            calls = (tmp / 'calls').read_text().splitlines()
+            self.assertEqual(len(calls), 2)
+            self.assertTrue(all('--pattern' not in call for call in calls))
+            self.assertIn('::warning::No first-try artifact for e2e-artifacts-apply', done.stdout)
+            self.assertIn('folder=', (tmp / 'output').read_text())
 
     @unittest.skipUnless(shutil.which('jq') and shutil.which('bash'), 'collector requires bash and jq')
     def test_collector_reads_all_attempts_and_pages_and_refuses_other_runs(self):
@@ -174,7 +202,7 @@ class E2eFlipWorkflow(unittest.TestCase):
                             self.assertIsNone(patterns, 'no failed attempt-1 jobs: skip artifact download')
                         else:
                             self.assertIsNotNone(patterns, 'failed shards need their suite artifacts')
-                            self.assertEqual(Path(patterns.group(1)).read_text().splitlines(), ['e2e-artifacts-settings*'])
+                            self.assertEqual(Path(patterns.group(1)).read_text().splitlines(), ['e2e-artifacts-settings-1of2', 'e2e-artifacts-settings-2of2'])
                         (tmp / 'lanes.json').write_text('{"suites": {}}')
                         proposal = subprocess.run(['node', str(ROOT / 'tools/suspend-flip.mjs'), '--attempts', str(attempts_file),
                                                    '--registry', str(tmp / 'lanes.json'), '--owner', 'e2e-owner'], capture_output=True, text=True)

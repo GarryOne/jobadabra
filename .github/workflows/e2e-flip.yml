@@ -60,8 +60,9 @@ jobs:
           jq -s --argjson run "$run" '{run: $run, attempts: [.[][]]}' "${pages[@]}" > "$dir/attempts.json"
           echo "attempts=$dir/attempts.json" >> "$GITHUB_OUTPUT"
           # Why (29 Oct 2026, owner): G5 keeps wrong-value flips red; green jobs need no traces or screenshots downloaded.
+          # Why (29 Oct 2026, Gitar on #2473): the job name is matrix.key and its artifact is exactly e2e-artifacts-<key>; a prefix pattern pulled applyflows into apply and made gh refuse to overwrite.
           jq -r '[.attempts[].jobs[] | select(.run_attempt == 1 and .conclusion == "failure") |
-            .name | sub("-[0-9]+of[0-9]+$"; "") | "e2e-artifacts-\(.)*"] | unique[]' \
+            "e2e-artifacts-\(.name)"] | unique[]' \
             "$dir/attempts.json" > "$dir/artifact-patterns.txt"
           if [ -s "$dir/artifact-patterns.txt" ]; then echo "artifact_patterns=$dir/artifact-patterns.txt" >> "$GITHUB_OUTPUT"; fi
       - name: Download first-try artifacts
@@ -73,8 +74,9 @@ jobs:
           PATTERNS: ${{ steps.attempts.outputs.artifact_patterns }}
         run: |
           dir="$(mktemp -d "$RUNNER_TEMP/flip-artifacts.XXXXXX")"
-          while IFS= read -r pattern; do
-            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern "$pattern" --dir "$dir"
+          while IFS= read -r name; do
+            # A job that failed before the suite wrote anything uploaded no artifact: the flip is still judged from the job results.
+            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$name" --dir "$dir/$name" || echo "::warning::No first-try artifact for $name"
           done < "$PATTERNS"
           echo "folder=$dir" >> "$GITHUB_OUTPUT"
       - name: Propose suspension and open its owner issue

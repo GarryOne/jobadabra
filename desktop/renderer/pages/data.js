@@ -5,6 +5,7 @@ import {shared} from './shared.js';
 import {MOVE_WORDS, movedText} from '../store-move-text.js';
 import {toastMessage} from './startup.js';
 import {startProgress} from './data-progress.js';
+import {whileBusy} from '../busy-dialog.js';
 
 // ---------- automatic backup of this computer's data (lib/backup.js) ----------
 async function showBackup() {
@@ -111,11 +112,10 @@ export async function init() {
   $('clear-jobs-cancel').addEventListener('click', () => { show(clearBox, false); show($('clear-jobs'), true); });
   $('clear-jobs-go').addEventListener('click', async () => {
     $('clear-jobs-go').disabled = true;
-    message('data-message', 'Backing up, then clearing your job list…', 'waiting');
-    const result = await window.pilot.clearJobs();
+    // Why (29 Oct 2026, owner): a blocking wait is one centered dialog over whatever screen is open, never a strip in this page; its end is a toast.
+    const result = await whileBusy($('busy-dialog'), {title: 'Backing up, then clearing your job list…', note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
     show(clearBox, false); show($('clear-jobs'), true);
-    if (!result?.ok) { message('data-message', result?.error || 'Not cleared.', 'error'); return; }
-    message('data-message', `Cleared ✓ ${result.cleared} job${result.cleared === 1 ? '' : 's'}, ${result.kept} kept. Your next search starts fresh.`, 'ok');
+    if (!result?.ok) { toastMessage('Job list not cleared', result?.error || 'Nothing was changed.', {card: 'data'}, 'bad'); return; }
     shared.allJobs = [];
     toastMessage('Job list cleared', `${result.cleared} removed, ${result.kept} kept. Run Check for new jobs to fill it again.`, {view: 'jobs'}, 'good');
   });

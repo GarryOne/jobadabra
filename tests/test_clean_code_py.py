@@ -1,5 +1,5 @@
 """tools/clean-code-py.py: new Python code that is too tangled, imports what it never uses or hides a loop variable is refused on the lines a change adds,
-never on old code (the Python half of the clean-code checks, docs/superpowers/plans/2026-10-28-clean-code-checks.md)."""
+and an old function a change makes more complex while over the limit is refused; old code left as it was never is (the Python half of the clean-code checks, docs/superpowers/plans/2026-10-28-clean-code-checks.md)."""
 import importlib.util
 import subprocess
 import tempfile
@@ -38,17 +38,24 @@ class CheckTest(unittest.TestCase):
         if cls.ruff is None:
             raise unittest.SkipTest('ruff cannot be installed here (offline): the tool skips with a note, CI installs it')
 
-    def found(self, source, added):
-        return tool.check([{'path': 'src/x.py', 'source': source, 'added': added}], self.ruff)
+    def found(self, source, added, base=None):
+        return tool.check([{'path': 'src/x.py', 'source': source, 'added': added, 'base': base}], self.ruff)
 
     def test_a_new_function_over_the_complexity_limit_is_refused_with_its_line(self):
         source = tangled(tool.MAX_COMPLEXITY + 3)
         found = self.found(source, all_lines(source))
         self.assertEqual([(f['rule'], f['line']) for f in found], [('C901', 1)], found)
 
-    def test_the_same_function_in_old_code_is_not_refused(self):
+    def test_an_old_function_over_the_limit_that_the_change_does_not_make_more_complex_passes(self):
         source = tangled(tool.MAX_COMPLEXITY + 3)
-        self.assertEqual(self.found(source, {5}), [])
+        self.assertEqual(self.found(source, {5}, {'source': source, 'line_of': lambda line: line}), [])
+
+    def test_an_old_function_the_change_pushes_over_the_limit_is_refused_and_one_it_simplifies_passes(self):
+        grown = tangled(tool.MAX_COMPLEXITY + 3)
+        over = self.found(grown, {5}, {'source': tangled(3), 'line_of': lambda line: line})
+        self.assertEqual([(f['rule'], f['line']) for f in over], [('C901', 1)], over)
+        self.assertIn(f'raised it from at most {tool.MAX_COMPLEXITY}', over[0]['message'])
+        self.assertEqual(self.found(tangled(tool.MAX_COMPLEXITY + 2), {5}, {'source': grown, 'line_of': lambda line: line}), [])
 
     def test_a_small_function_passes(self):
         source = tangled(3)
@@ -89,6 +96,33 @@ class ChangedFilesTest(unittest.TestCase):
         files = tool.changed_files(self.base, self.dir)
         self.assertEqual([f['path'] for f in files], ['src/new.py'])
         self.assertEqual(files[0]['source'], 'import os\n')
+
+    # Why (29 Oct 2026, owner: "do we have PR CI guardrails to not get back again in this situation"): desktop.py main (64) and daily_search
+    # search (84) grew a few lines at a time; each change passed because C901 is reported on the def line, which none of them touched.
+    def test_an_old_function_that_a_commit_makes_more_complex_is_refused_though_its_def_line_is_unchanged(self):
+        ruff = tool.ruff_command()
+        if ruff is None:
+            self.skipTest('ruff cannot be installed here (offline)')
+        (self.dir / 'src' / 'search.py').write_text('TOP = 1\n' + tangled(tool.MAX_COMPLEXITY + 3))
+        self.git('add', '.'); self.git('commit', '-q', '-m', 'an old tangled function')
+        base = self.git('rev-parse', 'HEAD').strip()
+        (self.dir / 'src' / 'search.py').write_text('TOP = 1\n' + tangled(tool.MAX_COMPLEXITY + 4))
+        self.git('commit', '-q', '-am', 'one more branch')
+        found = tool.check(tool.changed_files(base, self.dir), ruff)
+        self.assertEqual([(f['path'], f['line'], f['rule']) for f in found], [('src/search.py', 2, 'C901')], found)
+        self.assertIn(f'raised it from {tool.MAX_COMPLEXITY + 4}', found[0]['message'])
+
+    def test_a_line_keeps_its_base_line_number_across_added_changed_and_removed_lines(self):
+        before = [f'line {i}' for i in range(1, 31)]
+        after = list(before)
+        del after[19:21]                      # remove base lines 20-21
+        after[9] = 'changed 10'               # change base line 10
+        after[3:3] = ['new a', 'new b']       # add two lines after base line 3
+        (self.dir / 'a').write_text('\n'.join(before) + '\n'); (self.dir / 'b').write_text('\n'.join(after) + '\n')
+        diff = subprocess.run(['git', 'diff', '--no-index', '-U0', 'a', 'b'], cwd=self.dir, capture_output=True, text=True).stdout
+        line_of = tool.base_line_of(diff)
+        for number, text in enumerate(after, 1):
+            self.assertEqual(line_of(number), int(text[5:]) if text.startswith('line ') else None, f'new line {number}: {text}')
 
     def test_a_renamed_and_edited_file_is_checked_with_its_added_lines(self):
         self.git('mv', 'src/old.py', 'src/moved.py')

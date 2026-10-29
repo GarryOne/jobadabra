@@ -208,7 +208,7 @@ if command -v node >/dev/null && [ -d "$repo/desktop/test" ] && git -C "$repo" d
 $(echo "$classes" | grep -E '^not ok|✖|^# fail' | head -6)" >&2; exit 2; }
 fi
 # New Python code (src/, tools/) over McCabe complexity 15, with an unused import or local, a lambda over a loop variable or a raise in except without `from`
-# is refused on the lines a push adds, never old code (tools/clean-code-py.py, Ruff pinned; owner, 28 Oct 2026; CI's pr-gate runs this script too).
+# is refused on the lines a push adds, and an old function the push makes more complex while over the limit (29 Oct 2026) (tools/clean-code-py.py, Ruff pinned; owner, 28 Oct 2026; CI's pr-gate runs this script too).
 if command -v python3 >/dev/null && [ -f "$repo/tools/clean-code-py.py" ] && git -C "$repo" rev-parse --verify -q origin/main >/dev/null; then
   cleanpy="$(cd "$repo" && timed "clean code (python)" python3 tools/clean-code-py.py --base origin/main 2>&1)" || { echo "Push blocked: $cleanpy" >&2; exit 2; }
 fi

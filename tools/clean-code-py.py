@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Refuse new Python code that is too tangled or has a plain bug shape (Ruff), on the lines a change adds, never on old code.
-  python3 tools/clean-code-py.py [--base origin/main]    exit 1 with file:line, the rule and the fix for each finding on an added line
+"""Refuse new Python code that is too tangled or has a plain bug shape (Ruff), on the lines a change adds, and an old
+function a change makes more complex while it is over the limit; old code left as complex as it was is never refused.
+  python3 tools/clean-code-py.py [--base origin/main]    exit 1 with file:line, the rule and the fix for each finding
 Run by tools/pre-push-check.sh (the push gate, and CI's pr-gate job through it). Ruff is pinned and installed on first use into
 ~/.cache/jobadabra (no manual step); with no network and no Ruff it says so and checks nothing.
 Why (28 Oct 2026, owner): "our code is very clean so that AI hallucinations are less prone to introduce bugs". Rules kept by a 20-finding sample on the
@@ -51,17 +52,62 @@ def ruff_command():
     return [str(binary)] if version([str(binary)]) == RUFF_VERSION else None
 
 
+def base_line_of(diff):
+    """For a diff with no context lines (-U0): a function giving each new line's base line number, or None for a line the diff adds.
+    Invariant: a hunk with no new lines (`+c,0`) removes base lines after new line c."""
+    hunks = [(int(removed or 1), int(start), int(count or 1)) for removed, start, count in re.findall(r'^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@', diff, re.M)]
+
+    def line_of(line):
+        shift = 0
+        for removed, start, count in hunks:
+            if start <= line < start + count:
+                return None
+            if line > (start + count - 1 if count else start):
+                shift += removed - count
+        return line + shift
+    return line_of
+
+
+def lint(ruff, path, source):
+    """Ruff's findings for one source text, as its JSON items; a Ruff failure stops the gate instead of reading as a clean file."""
+    run = subprocess.run([*ruff, 'check', '--isolated', '--select', RULES, '--config', f'lint.mccabe.max-complexity = {MAX_COMPLEXITY}', '--output-format', 'json',
+                          '--stdin-filename', path, '-'], input=source, capture_output=True, text=True, cwd=ROOT)
+    if run.returncode not in (0, 1):   # 1 = findings
+        raise SystemExit(f"clean-code-py: Ruff failed on {path} (exit {run.returncode}): {run.stderr.strip()}")
+    return json.loads(run.stdout or '[]')
+
+
+def complexity(item):
+    """The McCabe score in a C901 message ("`f` is too complex (19 > 15)")."""
+    return int(re.search(r'\((\d+) > \d+\)', item['message']).group(1))
+
+
+def grown(file, item, ruff, before):
+    """The message when an old function's C901 finding (its def line unchanged) shows the change made it more complex, else None.
+    `before` caches the base's scores by line for the file."""
+    if item['code'] != 'C901' or not file.get('base'):
+        return None
+    if 'scores' not in before:
+        before['scores'] = {i['location']['row']: complexity(i) for i in lint(ruff, file['path'], file['base']['source']) if i['code'] == 'C901'}
+    was = before['scores'].get(file['base']['line_of'](item['location']['row']), 0)
+    if complexity(item) <= was:
+        return None
+    return f"{item['message']}: this change raised it from {was or f'at most {MAX_COMPLEXITY}'}; an old function over the limit may not grow"
+
+
 def check(files, ruff):
-    """Lint each {path, source, added} and keep the findings that sit on an added line: [{path, line, rule, message}]."""
+    """Lint each {path, source, added, base} and keep the findings on an added line, and each old function (def line unchanged) the change
+    made more complex while it is over the limit: [{path, line, rule, message}]. `base` is {source, line_of} before the change, None for a new file."""
     found = []
     for file in files:
-        run = subprocess.run([*ruff, 'check', '--isolated', '--select', RULES, '--config', f'lint.mccabe.max-complexity = {MAX_COMPLEXITY}', '--output-format', 'json',
-                              '--stdin-filename', file['path'], '-'], input=file['source'], capture_output=True, text=True, cwd=ROOT)
-        if run.returncode not in (0, 1):   # 1 = findings; anything else is Ruff itself failing, which must not read as a clean file
-            raise SystemExit(f"clean-code-py: Ruff failed on {file['path']} (exit {run.returncode}): {run.stderr.strip()}")
-        for item in json.loads(run.stdout or '[]'):
-            if item['location']['row'] in file['added']:
-                found.append({'path': file['path'], 'line': item['location']['row'], 'rule': item['code'], 'message': item['message']})
+        before = {}
+        for item in lint(ruff, file['path'], file['source']):
+            row = item['location']['row']
+            # Why (29 Oct 2026, owner: "do we have PR CI guardrails to not get back again in this situation"): desktop.py main (64) and
+            # daily_search search (84) grew a few lines at a time, each change passing because C901 is reported on the def line only.
+            message = item['message'] if row in file['added'] else grown(file, item, ruff, before)
+            if message:
+                found.append({'path': file['path'], 'line': row, 'rule': item['code'], 'message': message})
     return found
 
 
@@ -71,10 +117,17 @@ def git(*args, root=ROOT):
 
 
 def changed_files(base, root=ROOT):
-    """The in-scope Python files the committed HEAD adds or edits since `base`, as [{path, source, added}]: the pushed commits only (never the working
-    tree) and renames counted as new files, so a moved-and-edited file is checked too."""
-    names = [n for n in git('diff', '--name-only', '--no-renames', '--diff-filter=AM', base, 'HEAD', root=root).split('\n') if SCOPE.match(n)]
-    return [{'path': n, 'source': git('show', f'HEAD:{n}', root=root), 'added': added_lines(git('diff', '-U0', '--no-renames', base, 'HEAD', '--', n, root=root))} for n in names]
+    """The in-scope Python files the committed HEAD adds or edits since `base`, as [{path, source, added, base}]: the pushed commits only (never the
+    working tree) and renames counted as new files (base None), so a moved-and-edited file is checked too."""
+    rows = [row.split('\t') for row in git('diff', '--name-status', '--no-renames', '--diff-filter=AM', base, 'HEAD', root=root).split('\n') if '\t' in row]
+    files = []
+    for status, name in rows:
+        if not SCOPE.match(name):
+            continue
+        diff = git('diff', '-U0', '--no-renames', base, 'HEAD', '--', name, root=root)
+        before = {'source': git('show', f'{base}:{name}', root=root), 'line_of': base_line_of(diff)} if status == 'M' else None
+        files.append({'path': name, 'source': git('show', f'HEAD:{name}', root=root), 'added': added_lines(diff), 'base': before})
+    return files
 
 
 def main():
@@ -95,7 +148,7 @@ def main():
     for f in found:
         print(f"{f['path']}:{f['line']}  {f['rule']}  {f['message']} ({FIXES.get(f['rule'], '')})", file=sys.stderr)
     if found:
-        print(f'clean-code-py: {len(found)} finding(s) on lines this change adds. A justified exception: # noqa: <rule> (Why: <reason>)', file=sys.stderr)
+        print(f'clean-code-py: {len(found)} finding(s) in this change. A justified exception: # noqa: <rule> (Why: <reason>)', file=sys.stderr)
         return 1
     return 0
 

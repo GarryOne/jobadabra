@@ -45,7 +45,7 @@ Findings in production code of the baseline tree; a sample of up to 20 per rule 
 | `sonarjs/no-inverted-boolean-check` | 22 | dropped: `!(x > 0)` differs from `x <= 0` when x is NaN |
 | `no-empty-collection`, `no-unused-collection`, `no-dead-store` | 4, 3, 1 | dropped: misfires on test resets and destructuring |
 
-Mode: `tools/clean-code-js.mjs` runs inside `npm run lint` (push gate and the desktop CI job) and reports a finding only on a line the change adds (diff against the merge base with `origin/main`), in `desktop/` and `extension/`. A function's finding sits on its head line, so editing the body of an old tangled function is not blocked; a new or rewritten head is.
+Mode: `tools/clean-code-js.mjs` runs inside `npm run lint` (push gate and the desktop CI job) and reports a finding only on a line the change adds (diff against the merge base with `origin/main`), in `desktop/` and `extension/`. A function's finding sits on its head line, so a new or rewritten head is refused; since 29 Oct 2026 (owner: "PR CI guardrails to not get back again") an old function over the limit whose body the change makes more complex is refused too, by its score before and after.
 
 ## Python rules: sampled precision (3/4)
 Ruff 0.17.3, `--isolated`, over `src tools tests worker` of the baseline tree; production = not under `tests/`. Samples of up to 20 per rule read as for the JS rules.
@@ -62,7 +62,7 @@ Ruff 0.17.3, `--isolated`, over `src tools tests worker` of the baseline tree; p
 | `F811` redefinition | 38 | dropped: re-export blocks in `src/scout.py` |
 | `SIM115`, `RET503`, `PERF401`, `SIM105`, `RUF005`, `B905` | 17, 7, 31, 24, 43, 29 | dropped: style, scripts |
 
-Mode: `tools/clean-code-py.py` runs in `tools/pre-push-check.sh` (the push gate; CI's pr-gate job runs the same script) on changed `src/` and `tools/` files and keeps findings on added lines. Ruff is pinned and installed on first use into `~/.cache/jobadabra` (about 10 s once; 0.6 s after).
+Mode: `tools/clean-code-py.py` runs in `tools/pre-push-check.sh` (the push gate; CI's pr-gate job runs the same script) on changed `src/` and `tools/` files and keeps findings on added lines, and C901 on an old function the change makes more complex (29 Oct 2026). Ruff is pinned and installed on first use into `~/.cache/jobadabra` (about 10 s once; 0.6 s after).
 
 ## 4/4: SonarQube Cloud, skipped
 Owner, 28 Oct 2026: "Skip SonarQube for now". Why: its free tier is for public repos with an OSI-approved licence; this repo is FSL-1.1-ALv2 (source-available, not OSI), and the free tier for other projects is private-only up to 50k lines (the repo is about 327k). A paid plan needs the owner's yes and a looked-up price first. Nothing was signed up for or bought.

@@ -1,0 +1,48 @@
+# Offer an owner-reviewed revert for a twice-red after-merge backbone suite.
+# Job: run the backbone
+# Why (28 Oct 2026, owner): after-merge backbone reds leave main by revert, not fix-forward.
+name: E2E · Revert a red backbone merge
+on:
+  workflow_run:
+    workflows: ['CI · End-to-end on Mac + Linux']
+    types: [completed]
+
+# Why (29 Oct 2026, a8 on Gitar #2424): skipped runs must never replace a pending real after-merge revert check.
+concurrency:
+  group: ${{ startsWith(github.event.workflow_run.display_title, 'E2E after merge · ') && 'e2e-revert' || 'e2e-revert-skipped' }}
+  cancel-in-progress: false
+
+jobs:
+  revert:
+    name: Offer a revert for a twice-red backbone merge
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main' && startsWith(github.event.workflow_run.display_title, 'E2E after merge · ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      # Why (28 Oct 2026, owner): a workflow-token PR cannot start its own checks; require the existing CI App token before writing.
+      - name: The App token, so the revert PR gets checks
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-actions: read
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+      - name: Prove the red twice and open its revert PR
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RERUN_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          git config user.name 'jobadabra-ci'
+          git config user.email 'noreply@users.noreply.github.com'
+          python3 tools/backbone_red.py --repo "$GITHUB_REPOSITORY" --run "$RUN_ID" --open

@@ -91,7 +91,7 @@ class AfterRun(unittest.TestCase):
 
 
 class AfterMerge(AfterRun):
-    """The steps run after a merge (PR 4, owner's yes 26 Oct 2026): a red already names its commit, so no bisect; a green of a few steps closes nothing."""
+    """Completed after-merge runs go to the revert job; the old alert must never ask for fix-forward."""
     def setUp(self):
         super().setUp()
         self.saved_pr = (b.pr_of, b.report)
@@ -103,19 +103,16 @@ class AfterMerge(AfterRun):
         b.pr_of, b.report = self.saved_pr
         super().tearDown()
 
-    def test_a_red_names_the_merged_pr_without_a_bisect_and_a_green_closes_nothing(self):
+    def test_after_merge_requests_no_fix_forward_or_bisect_and_closes_nothing(self):
         b.after_merge('9')
         self.assertEqual(self.started(), [], 'no bisect: the merge is the only commit in range')
         self.assertEqual([c for c in self.calls if c[:2] == ('issue', 'close')], [], 'cardstates green on a few steps: its issue stays open')
-        self.assertEqual([suite for suite, _, _ in self.reports], ['interactions', 'recorded'], 'settings already has an issue')
-        suite, body, pr = self.reports[0]
-        self.assertEqual(pr['number'], 2057)
-        self.assertRegex(body, r'Breaking PR: #2057 \(branch `ci-steps`\)')
+        self.assertEqual(self.reports, [], 'completed-run revert evidence owns after-merge reds; no fix-forward comment')
 
     def test_an_environment_red_is_not_filed(self):
         self.logs[2] = CREDIT
         b.after_merge('9')
-        self.assertEqual([suite for suite, _, _ in self.reports], ['recorded'])
+        self.assertEqual(self.reports, [], 'health never asks for a fix PR')
 
     def test_its_green_is_never_the_bisect_s_last_green(self):
         runs = [{'id': 5, 'head_sha': '5' * 40, 'head_branch': 'main', 'conclusion': 'success', 'display_title': 'E2E after merge · 5555555 · interactions'},
@@ -138,9 +135,29 @@ class Workflows(unittest.TestCase):
     def test_one_bisect_at_a_time(self):
         # 26 Oct 2026: `group: e2e-bisect-${{ inputs.suite }}` let 10 bisects run at once; one group: one runs, the newest waits.
         flow = (ROOT / '.github/workflows/e2e-bisect.yml').read_text()
-        block = re.search(r'(?ms)^concurrency:[^\n]*\n(.*?)(?=^\S)', flow).group(1)
-        self.assertRegex(block, r'group: e2e-bisect\s*(#|\n)')
-        self.assertIn('cancel-in-progress: false', block)
+        self.assertRegex(flow, r'(?m)^concurrency:[^\n]*\n  group: e2e-bisect\s*\n  cancel-in-progress: false')
+
+    def test_skipped_workflow_runs_cannot_replace_a_pending_bisect(self):
+        # Separate workflows keep skipped completed-run events out of the manual bisect queue.
+        flow = (ROOT / '.github/workflows/e2e-bisect.yml').read_text()
+        self.assertNotIn('workflow_run:', flow)
+        self.assertNotIn('  revert:', flow)
+        revert = (ROOT / '.github/workflows/e2e-revert.yml').read_text()
+        self.assertIn("&& 'e2e-revert' || 'e2e-revert-skipped'", revert)
+        self.assertNotIn('group: e2e-bisect', revert)
+
+    def test_completed_after_merge_runs_reach_the_revert_proof_not_the_bisect(self):
+        flow = (ROOT / '.github/workflows/e2e-revert.yml').read_text()
+        trigger = flow.split('\njobs:')[0]
+        self.assertIn("workflows: ['CI · End-to-end on Mac + Linux']", trigger)
+        self.assertIn('types: [completed]', trigger)
+        revert = flow.split('\n  revert:', 1)[1]
+        self.assertIn("startsWith(github.event.workflow_run.display_title, 'E2E after merge · ')", revert)
+        self.assertIn('github.event.workflow_run.head_repository.full_name == github.repository', revert)
+        self.assertIn('python3 tools/backbone_red.py --repo "$GITHUB_REPOSITORY" --run "$RUN_ID" --open', revert)
+        self.assertIn('permission-actions: read', revert)
+        self.assertIn('actions: write', revert)
+        self.assertIn('RERUN_TOKEN: ${{ github.token }}', revert)
 
 
 if __name__ == '__main__':

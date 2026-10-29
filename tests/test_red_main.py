@@ -28,6 +28,7 @@ CLASSIFIED = {
     'CI · Pull request': 'ignored: runs on pull requests only, never on main; its checks gate the merge',
     'CI · PR verdict': 'ignored: writes a pull request\'s "All checks passed" status when its workflows end; it runs on main\'s copy but judges PR commits only',
     'E2E · Bisect a red main suite': 'ignored: started by e2e.yml after a red main suite (gate G2b); it bisects, it never runs on a push to main',
+    'E2E · Revert a red backbone merge': 'ignored: after an "E2E after merge" run on main ends; it reads that run and offers one revert PR (plan PR 18), never tests a push to main',
     'E2E · Weekly root causes': 'ignored: a Monday report (gate G6); it reads runs and writes one issue, never runs on a push to main',
     'CI · E2E steps after a merge': 'ignored: it only plans and starts e2e.yml on main; that run\'s red is filed on the merged PR and counted by the beta gate (tools/main_e2e_state.py), not a block on every landing',
     'CI · Search check (6 personas)': 'ignored: live public job sites; its main runs only record the floor that the next search PR is compared with (owner, 27 Oct 2026), so their noise never blocks a landing',

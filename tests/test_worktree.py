@@ -67,10 +67,6 @@ class WorktreeTest(unittest.TestCase):
         self.assertTrue((tree / 'release.txt').exists(), 'the worktree starts from the base it was given')
         self.assertEqual(git(tree, 'rev-parse', '--abbrev-ref', 'HEAD'), 'lane')
 
-
-if __name__ == '__main__':
-    unittest.main()
-
     def test_a_bare_git_worktree_add_is_linked_by_the_post_checkout_hook(self):
         # Owner, 29 Oct 2026 (#2462: a bare `git worktree add` had no node_modules; the push gate failed in desktop after 437 s with the cause hidden):
         # "how can we fix the root cause of this?" Every way of making a worktree gets the links, not only tools/worktree.sh.
@@ -85,6 +81,10 @@ if __name__ == '__main__':
         git(self.main, 'checkout', '-q', 'release/x')
         git(self.main, 'checkout', '-q', 'main')
         self.assertFalse((self.main / 'desktop' / 'node_modules').is_symlink(), 'the main checkout keeps its own folder')
+
+
+if __name__ == '__main__':
+    unittest.main()
 
 
 class PruneTest(WorktreeTest):

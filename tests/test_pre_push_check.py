@@ -76,6 +76,22 @@ class PrePushCheckTest(PrePushFixture):
         code, err = self.hook_in(tree, 'git push origin HEAD:main')
         self.assertEqual(code, 0, err)
 
+    def test_the_gates_own_checkouts_are_not_linked_twice(self):
+        # Fresh review of 070c412, 29 Oct 2026: the post-checkout hook links each clean checkout the gate makes; the gate then linked again, and `ln -s` onto a link to a folder puts a new
+        # link INSIDE that folder: here the main checkout's shared desktop/node_modules would gain a node_modules inside itself.
+        self.needed_committed()
+        for name in ('link-modules.sh', 'githooks/post-checkout'):
+            dest = self.repo / 'tools' / name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / 'tools' / name, dest)   # the mode (executable) is kept
+        git(self.repo, 'config', 'core.hooksPath', 'tools/githooks')
+        git(self.repo, 'add', '-A')
+        git(self.repo, 'commit', '-qm', 'Add the link hook')
+        (self.repo / 'desktop' / 'node_modules').mkdir()   # the main checkout's install
+        code, err = self.hook('git push origin HEAD:main')
+        self.assertEqual(code, 0, err)
+        self.assertEqual(list((self.repo / 'desktop' / 'node_modules').iterdir()), [], 'nothing was linked into the shared folder')
+
     def test_a_missing_module_is_named_in_the_blocked_push(self):
         # The same 29 Oct 2026 incident: the failure filter matched "not ok" and "npm ERR" but not "Cannot find module", so a suite that died on a missing package printed only timings.
         self.needed_committed()

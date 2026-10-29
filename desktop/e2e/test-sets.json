@@ -35,6 +35,7 @@
  "daily": [
   "ai-cap.test.mjs",
   "ai-provider.test.mjs",
+  "brain-codex.test.mjs",
   "broker-relay.test.mjs",
   "credit-alert.test.mjs",
   "extension-sentry.test.mjs",

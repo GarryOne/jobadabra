@@ -20,6 +20,7 @@ export const notionPage = 'Job Pilotto E2E — Failures Notion';   // the one pa
 export const fresh = true;                       // the page starts empty: last night's workspace would make the move land in an existing one
 // Why (28 Oct 2026, owner): the reliability design rule C supersedes the 26 Oct audit: nightly + before beta, tolerant outside-world health, never PR/push reach.
 export const cadence = 'outside';
+export const realAi = false;   // the harness fails the run if an AI call reaches a real model
 export const offlineAi = true;   // dummy keys and refusing local proxies: real Notion, zero live AI
 export const keepGoing = true;
 export const minutes = 15;

@@ -71,6 +71,7 @@
   "applying-report.test.mjs",
   "artifacts.test.mjs",
   "ask-diff.test.mjs",
+  "async-state-predicates.test.mjs",
   "background-proof.test.mjs",
   "bare-capture.test.mjs",
   "bug-tracker.test.mjs",

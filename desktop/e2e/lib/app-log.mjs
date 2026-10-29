@@ -14,6 +14,19 @@ export function appLogText(profile) {
 }
 export const appLogLines = profile => appLogText(profile).split('\n');
 
+/** Capture matching counts; later reads count new matches across rolls or a shorter replacement log. */
+export function logCursor(profile, match) {
+  const count = () => appLogLines(profile).filter(line => new RegExp(match.source, match.flags).test(line)).length;
+  const before = count();
+  return () => { const current = count(); return current < before ? current : current - before; };
+}
+
+/** Read only the latest launch, once at least `starts` launches have logged their start. */
+export function currentLaunchLog(profile, starts = 1) {
+  const text = appLogText(profile), launches = [...text.matchAll(/\[app\] start /g)];
+  return launches.length >= starts ? text.slice(launches.at(-1).index) : '';
+}
+
 /** Log the states a session poll actually read; preserve its first-match selection and omit applicant values. */
 export function sessionPoll(sessions, url, {startedAt, now = Date.now, log = console.log, record = () => {}} = {}) {
   const matches = sessions.filter(item => String(item.url || '').replace(/\/$/, '') === url);

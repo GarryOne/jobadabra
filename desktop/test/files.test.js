@@ -1,4 +1,5 @@
 // Mac-only files kept safe: the CV (every version) and tailored CVs in Notion, the rest in a weekly backup.
+import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -108,4 +109,25 @@ test('the approved cover letter reaches the Notion Profile once per version, als
   fs.writeFileSync(pdf, '%PDF letter v2');
   assert.ok(await files.coverLetterToProfile(s, pdf, n.fetcher));
   assert.equal(n.calls.filter(([, route]) => route === 'file_uploads').length, 2);
+});
+
+test('backup timer logs each not-due decision without changing when it backs up', () => {
+  const source = fs.readFileSync(new URL('../lib/background-handlers.js', import.meta.url), 'utf8');
+  const block = source.slice(source.indexOf('const backupIfDue ='), source.indexOf("backupIfDue('due at start');"));
+  const calls = [], lines = [];
+  let settings = {setupDone: true, lastBackupAt: new Date().toISOString()};
+  const decide = vm.runInNewContext(`${block} backupIfDue`, {
+    storage: {settings: () => settings}, backup, backupNow: why => calls.push(why),
+    appLog: (...args) => lines.push(JSON.parse(JSON.stringify(args))),
+  });
+  decide('weekly tick');
+  assert.deepEqual(lines, [['data', 'backup not due', {decidedBy: 'weekly tick'}]]);
+  assert.deepEqual(calls, []);
+  settings = {setupDone: true, lastBackupAt: ''};
+  decide('due at start');
+  assert.deepEqual(calls, ['due at start']);
+  assert.equal(lines.length, 1);
+  settings = {setupDone: false};
+  decide('weekly tick');
+  assert.deepEqual(calls, ['due at start']);
 });

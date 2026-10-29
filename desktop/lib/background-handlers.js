@@ -144,7 +144,10 @@ export function registerBackgroundHandlers(ctx) {
       .then(() => telegramCloud.refresh(storage))
       .then(result => result && appLog('cloud', result.ok ? 'Telegram Worker redeployed: other code or settings' : 'Telegram Worker not redeployed', {error: result.error, decidedBy: 'app start'}),
         error => appLog('cloud', 'Telegram Worker not redeployed', {error: error.message}));
-    const backupIfDue = why => { if (storage.settings().setupDone && backup.due(storage.settings())) backupNow(why); };
+    const backupIfDue = why => {
+      if (storage.settings().setupDone && backup.due(storage.settings())) backupNow(why);
+      else appLog('data', 'backup not due', {decidedBy: why});
+    };
     backupIfDue('due at start');
     setInterval(() => backupIfDue('weekly tick'), e2eMs('BACKUP_TICK', 6 * 3600 * 1000));
     // Catch-up share to the central pool: what a cut-short or offline run could not send (finds go out one by one as they happen).

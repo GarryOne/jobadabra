@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import * as appLog from '../lib/app-log.mjs';
 import {appLogLines, rearmedSessions, sessionPoll, pollSessions} from '../lib/app-log.mjs';
 
 test('a line rolled into yesterday\'s day file is still read, in order', () => {
@@ -71,4 +72,43 @@ test('a real polling read writes one structured diagnostic artifact and returns 
     assert.deepEqual(rows[0].matches, [{id: session.id, stage: 'account', stuck: 'incomplete'}]);
     assert.ok(Date.parse(rows[0].requestedAt) <= Date.parse(rows[0].at));
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('a log cursor counts only matching decisions after its capture, including a midnight roll', t => {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'log-cursor-'));
+  t.after(() => fs.rmSync(profile, {recursive: true, force: true}));
+  const logs = path.join(profile, 'logs');
+  fs.mkdirSync(logs);
+  const file = path.join(logs, 'app.log');
+  const saved = '[data] backup saved {"decidedBy":"weekly tick"}\n';
+  fs.writeFileSync(file, saved);
+  assert.equal(typeof appLog.logCursor, 'function', 'the cursor must capture a baseline');
+  const since = appLog.logCursor(profile, /\[data\] backup saved.*"decidedBy":"weekly tick"/g);
+  assert.equal(since(), 0, 'an old step cannot satisfy a new wait');
+  fs.appendFileSync(file, '[data] backup not due {"decidedBy":"weekly tick"}\n');
+  assert.equal(since(), 0);
+  fs.renameSync(file, path.join(logs, 'app-2026-10-07.log'));
+  fs.writeFileSync(file, saved + saved);
+  assert.equal(since(), 2);
+  assert.equal(since(), 2, 'global regex state cannot change the count');
+});
+
+
+test('a log cursor treats matches in a replacement log as new and never returns a negative count', t => {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'log-replaced-'));
+  t.after(() => fs.rmSync(profile, {recursive: true, force: true}));
+  const logs = path.join(profile, 'logs');
+  fs.mkdirSync(logs);
+  const file = path.join(logs, 'app.log');
+  const saved = '[data] backup saved {"decidedBy":"weekly tick"}\n';
+  fs.writeFileSync(file, saved.repeat(3));
+  const since = appLog.logCursor(profile, /\[data\] backup saved/);
+  assert.equal(since(), 0);
+  fs.rmSync(file);
+  fs.writeFileSync(file, '');
+  assert.equal(since(), 0, 'a fresh empty log has no new matches');
+  fs.appendFileSync(file, saved);
+  assert.equal(since(), 1, 'all matches in the shorter replacement log are new');
+  fs.appendFileSync(file, saved);
+  assert.equal(since(), 2);
 });

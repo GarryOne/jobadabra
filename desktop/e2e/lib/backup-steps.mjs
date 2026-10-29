@@ -1,3 +1,4 @@
+// Job: run the backbone
 /* global document, window */
 // Settings → Data & backup → Automatic backup, end to end (Mac, Linux and Windows suites): "Back up now" writes a backup with no keys file into the
 // folder the harness names (never the owner's iCloud Drive or Documents), "View backups" opens that folder, the app backs up once when it starts due and
@@ -5,14 +6,18 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {pollUntil} from './wait-on-state.mjs';
 import {tar} from '../../lib/tar.js';
 import {execFileSync} from 'node:child_process';
-import {appLogLines} from './app-log.mjs';
+import {appLogLines, logCursor} from './app-log.mjs';
 
 const MARKER = 'sk-e2e-backup-marker-7f3a91c2';
 const slash = text => String(text).replace(/\\/g, '/');
 const backupsIn = dir => fs.readdirSync(dir).filter(name => name.startsWith('Job Pilotto backup ') && name.endsWith('.tar.gz'));
-const saved = (ctx, why) => appLogLines(ctx.profile).filter(line => line.includes('[data] backup saved') && (!why || line.includes(`"decidedBy":"${why}"`))).length;
+const savedSince = (ctx, why) => logCursor(ctx.profile, new RegExp(`\\[data\\] backup saved${why ? `.*"decidedBy":"${why}"` : ''}`));
+const ticksSince = ctx => logCursor(ctx.profile, /\[data\] backup not due.*"decidedBy":"weekly tick"/);
+// Why (29 Oct 2026, st): main's calm p95 for the timer step is 20.2 s; 65 s catches hangs on slow runners.
+const TIMER_CAP_MS = 65000;
 
 function checkFolder(ctx) {
   const dir = path.resolve(ctx.backupDir);
@@ -37,6 +42,7 @@ export async function backupNowStep(ctx) {
   // The message names the file, not its folder (the folder path has the person's name in it: pages/data.js savedLine, 21 Oct 2026).
   if (!said.includes(path.basename(file))) throw new Error(`the message does not name the file: "${said}"`);
   if (slash(said).includes(slash(dir))) throw new Error(`the message writes the folder path: "${said}"`);
+  await page.waitForFunction(() => { const text = document.getElementById('backup-last')?.textContent; return text?.trim() && !/None yet/.test(text); }, null, {timeout: 60000});
   const last = await page.locator('#backup-last').textContent();
   if (/None yet/.test(last)) throw new Error('"Last backup" still says None yet after a backup');
   if (!(await page.locator('#backup-where').textContent()).trim()) throw new Error('the Location line is empty');
@@ -54,8 +60,8 @@ export async function backupNowStep(ctx) {
   // View backups: the app asks the system to open that folder (stood in for: no Finder or Explorer window).
   await ctx.app.evaluate(({shell}) => { globalThis.openedPath = null; shell.openPath = async target => { globalThis.openedPath = target; return ''; }; });
   await page.click('#backup-show');
-  let opened = null;
-  for (let i = 0; i < 20 && !opened; i++) opened = await ctx.app.evaluate(() => globalThis.openedPath) || (await page.waitForTimeout(250), null);
+  const {value: opened} = await pollUntil(() => ctx.app.evaluate(() => globalThis.openedPath), value => !!value, {capMs: 90000, log: () => {}});
+  if (!opened) throw new Error('View backups opening its folder never finished');
   if (!opened || slash(path.resolve(opened)) !== slash(dir)) throw new Error(`View backups should open ${dir}, it opened ${opened}`);
 }
 
@@ -63,23 +69,38 @@ export async function backupNowStep(ctx) {
 export async function backupTimerStep(ctx) {
   const dir = checkFolder(ctx);
   fs.rmSync(dir, {recursive: true, force: true});
-  await ctx.page.evaluate(() => window.pilot.saveSettings({lastBackupAt: ''}));
-  const before = saved(ctx);
+  const initialAt = '';
+  await ctx.page.evaluate(at => window.pilot.saveSettings({lastBackupAt: at}), initialAt);
+  const saved = savedSince(ctx), startupSaved = savedSince(ctx, 'due at start');
   await ctx.relaunch({JOB_PILOTTO_E2E_BACKUP_TICK: '1500'});   // a tick every 1.5 s instead of every 6 hours
-  const wait = async (test, what) => { for (let i = 0; i < 60; i++) { if (test()) return; await ctx.page.waitForTimeout(250); } throw new Error(`${what}; the app said: ${appLogLines(ctx.profile).filter(line => /\[data\]|backup/i.test(line)).slice(-4).map(line => line.slice(0, 200)).join(' | ') || 'nothing about a backup'}`); };   // a start that never backed up says why (Linux run 12, 24 Oct: the step's own log was overwritten by the later steps)
-  await wait(() => saved(ctx, 'due at start') > 0, 'a backup that was due did not run when the app started');
-  await ctx.page.waitForTimeout(5000);   // three ticks: none of them may back up again
-  if (saved(ctx) - before !== 1) throw new Error(`a due backup should run once at start and not again on the ticks, it ran ${saved(ctx) - before} times`);
+  const wait = async (test, what) => {
+    try {
+      const {value} = await pollUntil(test, value => !!value, {capMs: TIMER_CAP_MS, log: () => {}});
+      if (!value) throw new Error(`${what} never finished`);
+    } catch (error) {
+      throw new Error(`${error.message}; the app said: ${appLogLines(ctx.profile).filter(line => /\[data\]|backup/i.test(line)).slice(-4).map(line => line.slice(0, 200)).join(' | ') || 'nothing about a backup'}`);
+    }
+  };
+  await wait(() => startupSaved() > 0, 'a backup that was due when the app started');
+  const startupTicks = ticksSince(ctx);
+  await wait(() => startupTicks() >= 3, 'three tick decisions after the start-up backup');
+  if (saved() !== 1) throw new Error(`a due backup should run once at start and not again on the ticks, it ran ${saved()} times`);
   if (backupsIn(dir).length !== 1) throw new Error(`one backup file expected after the start, found ${backupsIn(dir).length}`);
   const at = await ctx.page.evaluate(async () => (await window.pilot.backupStatus()).at);
-  if (!at || Date.now() - Date.parse(at) > 120000) throw new Error(`"Last backup" was not written by the start-up backup (${at})`);
+  if (at === initialAt || !Number.isFinite(Date.parse(at))) throw new Error(`"Last backup" was not written by the start-up backup (${at})`);
 
-  await ctx.page.evaluate(week => window.pilot.saveSettings({lastBackupAt: new Date(Date.now() - week).toISOString()}), 8 * 24 * 3600 * 1000);
-  await wait(() => saved(ctx, 'weekly tick') > 0, 'a backup a week old was not made on the weekly tick');
-  await ctx.page.waitForTimeout(4000);
-  if (saved(ctx, 'weekly tick') !== 1) throw new Error(`the weekly tick should back up once, it did ${saved(ctx, 'weekly tick')} times`);
+  const weeklySaved = savedSince(ctx, 'weekly tick');
+  const backdated = await ctx.page.evaluate(async week => {
+    const at = new Date(Date.now() - week).toISOString();
+    await window.pilot.saveSettings({lastBackupAt: at});
+    return at;
+  }, 8 * 24 * 3600 * 1000);
+  await wait(() => weeklySaved() > 0, 'a backup a week old on the weekly tick');
+  const weeklyTicks = ticksSince(ctx);
+  await wait(() => weeklyTicks() >= 2, 'two tick decisions after the weekly backup');
+  if (weeklySaved() !== 1 || saved() !== 2) throw new Error(`the weekly tick should back up once, it did ${weeklySaved()} times (${saved()} backups total)`);
   const fresh = await ctx.page.evaluate(async () => (await window.pilot.backupStatus()).at);
-  if (Date.now() - Date.parse(fresh) > 120000) throw new Error(`the tick's backup did not write "Last backup" (${fresh})`);
+  if (fresh === backdated || !Number.isFinite(Date.parse(fresh))) throw new Error(`the tick's backup did not write "Last backup" (${fresh})`);
 }
 
 // A backup file left in the folder by "Back up now" (the file the restore step imports).

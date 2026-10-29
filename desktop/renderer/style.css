@@ -232,7 +232,8 @@ label.radio input { width: auto; margin-top: 3px; }
 .schedule label small { display: block; font-weight: 400; color: var(--muted); }
 .schedule select { padding: 6px 8px; border-radius: var(--r-md); border: 1px solid var(--field-line); background: var(--field); font: inherit; font-weight: 400; }
 /* A message while the app waits on something (e.g. Notion sharing the workspace): spinner + calm colour. */
-.message.waiting { color: var(--navy); display: flex; gap: 8px; align-items: center; }
+/* Why (2026-10-29): --navy turns near-black in dark mode (it is a surface colour there), so text takes --ink, which flips with the theme (guard test/no-navy-text.test.js). */
+.message.waiting { color: var(--ink); display: flex; gap: 8px; align-items: center; }
 .message.waiting::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%;
   border: 2px solid var(--line-strong); border-top-color: var(--signal-edge); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -274,7 +275,7 @@ table.runs tr.run:hover, table.runs tr.run.open { background: var(--surface-2); 
 .row-actions .row-main.busy::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--on-accent) 50%, transparent);
   border-top-color: var(--surface); animation: spin .8s linear infinite; flex: none; }
 #refresh { min-width: 9.5em; justify-content: center; }
-.device-code { display: inline-block; margin: 8px 6px 6px 0; padding: 6px 12px; font: 700 var(--fs-xl) var(--font-mono); letter-spacing: .12em; background: var(--signal-soft); color: var(--navy); border-radius: var(--r-md); user-select: all; }
+.device-code { display: inline-block; margin: 8px 6px 6px 0; padding: 6px 12px; font: 700 var(--fs-xl) var(--font-mono); letter-spacing: .12em; background: var(--signal-soft); color: var(--ink); border-radius: var(--r-md); user-select: all; }
 /* Not eligible: a badge; the reason shows on hover or keyboard focus. */
 .tip { position: relative; }
 .tip:hover::after, .tip:focus::after { content: attr(data-tip); position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; width: 280px;

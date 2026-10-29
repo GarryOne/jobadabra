@@ -23,9 +23,13 @@ const read = file => JSON.parse(fs.readFileSync(path.join(GOLDEN, file), 'utf8')
 
 /** Shared planner facts: both suites keep the same schedule, watched inputs and model environment. */
 export const PLANNER = Object.freeze({
-  cadence: 'nightly', budgetMinutes: 10, minutes: 24, sameOnEveryOs: true,
+  cadence: 'nightly', budgetMinutes: 10, minutes: 24,
+  // It judges the AI's answers (scores, facts), which are the same on every OS: the Mac lane only, no Windows run (owner, 7 Oct 2026: $1.36 a day on Windows).
+  sameOnEveryOs: true,
   judges: Object.freeze(['src/ai/']),
   watches: Object.freeze(['src/ai/score.py', 'src/ai/score_bands.py', 'src/ai/enrich.py', 'src/ai/hints.py', 'desktop/lib/pipeline.js', 'desktop/lib/question-reuse.js', 'desktop/lib/match-check.js', 'desktop/e2e/fixtures/golden/']),
+  // This suite measures what a user gets, so the app under test runs on the shipped model (about $0.3 a run); the other suites run on Haiku. For a cheap run:
+  // E2E_APP_MODEL=claude-haiku-4-5 (Haiku 4.5 scored the same job up to 10 points apart between two scorings, Sonnet within 6).
   env: Object.freeze({JOB_PILOTTO_MODEL_OVERRIDE: process.env.E2E_APP_MODEL || 'claude-sonnet-5-5',
     // The engine reads the persona's Profile instead of the test page's Profile.
     ...(PERSONA ? {JOB_PILOTTO_E2E_PROFILE_FILE: path.join(GOLDEN, 'profile.md')} : {})}),

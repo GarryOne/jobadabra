@@ -119,7 +119,7 @@ export async function runApply(ctx, parts) {
     console.log(`  removed ${await removeJobsByUrl(ctx, urls)} job row(s) left by an earlier run`);
     for (const form of fixtures) await (form === live ? seedLivePosting(ctx, live)   // the live posting as a real user's fresh one: no kit (lib/seed-data.mjs)
       : addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}));
-    // The app's own AI calls go to the test proxy: the one question no kit covers gets a fixed answer, everything else would pass through (and is counted).
+    // The app's own AI calls go to the test proxy: fixture questions get fixed answers, and unmatched asks are refused before cache or paid fallback.
     proxy.setCanned(body => {
       const content = body.messages?.[0]?.content;
       if (Array.isArray(content) && content.some(part => part.type === 'document')) return JSON.stringify(BASE_CV);   // the CV import (lib/cv.js)
@@ -162,7 +162,8 @@ export async function runApply(ctx, parts) {
         return JSON.stringify({kind: kinds[where.replace(/\/$/, '')] || 'form', confidence: 0.95});
       }
       const asked = /<form_fields>\n([\s\S]*?)\n<\/form_fields>/.exec(typeof content === 'string' ? content : (content || []).map(part => part.text || '').join(''));
-      if (!asked) return null;
+      // Why (29 Oct 2026, ap): replacing the offline context's stand-in must keep unmatched asks off the cache and paid path (CI run 40946356221).
+      if (!asked) return {refuse: 'invalid-key'};
       ctx.answerAsks = [...(ctx.answerAsks || []), ...JSON.parse(asked[1]).map(item => item.field)];   // counted: a question the night answered is never asked
       const answers = fixtureAnswers(JSON.parse(asked[1]));
       return JSON.stringify({eligible: true, eligibility_note: '', answers});

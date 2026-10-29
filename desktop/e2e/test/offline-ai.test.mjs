@@ -30,7 +30,10 @@ test('apply answers the contact-label question in the shape the app parses', () 
   assert.deepEqual(JSON.parse(text), {items: labels.map(label => ({label, key: 'none'}))});
   const blocks = {system: [{type: 'text', text: system}], messages: [{role: 'user', content: [{type: 'text', text: body.messages[0].content}]}]};
   assert.deepEqual(JSON.parse(answer(blocks)), JSON.parse(text));
-  assert.equal(answer({...body, system: 'A different question with the same labels'}), null);
+  assert.deepEqual({...answer({...body, system: 'A different question with the same labels'})}, {refuse: 'invalid-key'});
+  const digest = {system: 'You help a job seeker who is on a job posting page in any language. The page has no application form the program can fill.',
+    messages: [{role: 'user', content: 'Address path: /e2e/jobs/4001001\nCandidates (number...'}]};
+  assert.deepEqual({...answer(digest)}, {refuse: 'invalid-key'});
   assert.equal(ctx.answerAsks, undefined);
   assert.equal(ctx.kindAsks, undefined);
 });

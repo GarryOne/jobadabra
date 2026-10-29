@@ -1,10 +1,12 @@
 // One suite, start to end: open its context, run its steps, leave its artifacts, close; -> {code, skipped}. Called by suite.mjs directly (E2E_REPORT=0) or inside
 // Playwright's test runner (report/suite.spec.mjs), which passes `report` so each step is a step of the Playwright HTML report: {step, skipStep, attach}.
 // It never exits the process: the caller does (a Playwright worker must not be killed from inside).
+// Job: serve stored answers
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
+import {refusedQuestions} from './ai-answers.mjs';
 
 export async function runSuite(name, report = null) {
   const {assertNothingQueued, traceFiles} = await import('./app.mjs');
@@ -67,6 +69,8 @@ export async function runSuite(name, report = null) {
       };
       await (report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
+      const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
+      if (refused.length) { code = 1; ctx.stopped = refused.map(item => item.message).join('; '); console.error(`✗ ${ctx.stopped}`); }
       if (ctx.runner.summary()) code = 1;
       report?.decided?.(code);   // the exit code is known: lib/report.mjs stops a Playwright runner that stays open long after this (6 Oct 2026: wander hung 10 min)
       // The steps and the kept traces as data, for the owner's /admin/e2e page (site/src/e2e-report.js reads it out of the e2e-view-<suite> artifact).

@@ -2,11 +2,13 @@
 // (2 Oct 2026: a friend's Jobs check scored 60 jobs for 35 minutes with nothing to show). Real answers, real cost, only slower.
 // It can also fail on purpose (setMode): the API answering 429 / 500 / 401, an empty credit balance, or never answering, so the failure states of a run are tested
 // without a real outage and without spending anything.
+// Job: serve stored answers
 import http from 'node:http';
 import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 import {count, countError, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
+import {keepCandidateBody, storedAnswer} from './ai-answers.mjs';
 
 // The stub modes any proxy of this run was armed with: a refusal that matches one came from the suite's own stub, not from the account (lib/ai-refused.mjs).
 export const STUBBED = new Set();
@@ -27,6 +29,7 @@ export function failureFor(mode) {
 // kind / metered: the tally a paid call goes to and which API path is a model call (Anthropic: /messages; OpenAI: /responses, kind 'app-openai').
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
+/** Start the app's AI proxy with fault controls, stored answers and metered live fallback. */
 export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
   const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic
@@ -64,8 +67,16 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
         return;
       }
     }
+    let stored;
+    try {
+      stored = storedAnswer({url: req.url, headers: req.headers, body: Buffer.concat(chunks)});
+      if (stored.reply) { sendStored(res, stored.reply, openai, JSON.parse(Buffer.concat(chunks)).stream); return; }
+    } catch (error) {
+      res.writeHead(503, {'content-type': 'application/json'});
+      res.end(JSON.stringify({type: 'error', error: {type: 'api_error', code: error.code, message: error.message}})); return;
+    }
     // Replay (CI, lib/ai-meter.mjs): the same request answered before is answered from the cache, free; anything new is paid, counted, and kept for next time.
-    const body = Buffer.concat(chunks), key = requestKey(req.url, body), kept = recall(key);
+    const body = Buffer.concat(chunks), key = requestKey(req.url, body), kept = stored.mode === 'record' ? null : recall(key);
     if (!kept) keepMiss(key, req.url, body);   // what changed since a run replay could answer (lib/ai-meter.mjs keepMiss)
     if (kept) {
       countReplay(kind, usageOf(kept.body.toString('utf8'), kept.contentType));
@@ -79,6 +90,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       try { answered = await relay(JSON.parse(body.toString('utf8') || '{}')); }
       catch (error) { res.writeHead(502, {'content-type': 'application/json'}); res.end(JSON.stringify({type: 'error', error: {type: 'api_error', message: `relay: ${error.message}`}})); return; }   // Why (#2427, Gitar): a bad PDF or body is an answer, never a crashed proxy
       if (answered.status === 200) { try { count(kind, usageOf(answered.counted, 'application/json')); } catch { /* counting never breaks the call */ } keep(key, {status: 200, contentType: answered.contentType, body: answered.body}); }
+      if (answered.status === 200) keepCandidateBody(stored, answered.body);
       res.writeHead(answered.status, {'content-type': answered.contentType, 'content-length': answered.body.length}); res.end(answered.body); return;
     }
     if (kind === 'app-free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs): a miss past it is refused, never paid
@@ -94,6 +106,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       const answered = Buffer.from(await answer.arrayBuffer()), contentType = answer.headers.get('content-type') || 'application/json';
       if (!answer.ok) { countError(answer.status, answered.toString('utf8')); describeRefusal(stats, answer, req, body); }   // Anthropic's own answer: which limit, which error (lib/ai-meter.mjs); the first few with the request's shape
       if (answer.ok && metered.test(req.url)) { count(kind, usageOf(answered.toString('utf8'), contentType)); keep(key, {status: answer.status, contentType, body: answered}); }
+      if (answer.ok) keepCandidateBody(stored, answered);
       stats.inflight--;
       res.writeHead(answer.status, {'content-type': contentType, 'content-length': answered.length});
       res.end(answered);
@@ -109,6 +122,14 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; },
     // From now on, calls `answer` returns a text for are answered with it (no model, no cost); the rest go through.
     setCanned: answer => { canned = answer; }, canned: () => canned, close: () => { server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
+}
+
+function sendStored(res, reply, openai, stream) {
+  const text = reply.output_text ?? (reply.content || (reply.output || []).flatMap(item => item.content || [])).map(part => part.text || '').join('');
+  const data = openai ? (reply.object === 'response' ? reply : responseOf(text)) : (reply.object === 'response' ? message(text) : reply);
+  const body = openai && stream ? streamOf(text) : JSON.stringify(data);
+  res.writeHead(200, {'content-type': openai && stream ? 'text/event-stream' : 'application/json'});
+  res.end(body);
 }
 
 // 18 Oct 2026 (strategy): every app call was refused "credit balance is too low" while the key, the balance and a preflight call were fine, and the log showed no more than that.

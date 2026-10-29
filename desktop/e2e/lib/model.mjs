@@ -1,5 +1,6 @@
 // How test code (the judges, the explorer) asks a model. CI posts to the Anthropic API with the test key; a Mac runs `claude -p` (this Mac's Claude Code, the plan's fixed price,
 // never a key). `modelFetch` has fetch's shape for the Messages API, so a caller keeps its own request and answer handling and only the transport changes.
+// Job: serve stored answers
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,6 +11,7 @@ import {askBroker} from './broker-client.mjs';
 import {judgeFamily, pickEngine} from './engine.mjs';
 import {count, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
 import {withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
+import {keepCandidate, keepCandidateBody, storedAnswer} from './ai-answers.mjs';
 
 // A bare `claude -p` loads the owner's MCP servers, skills and settings: 106k tokens for a one-word answer. These flags leave about 400.
 export const CLI_FLAGS = ['-p', '--output-format', 'json', '--tools', '', '--no-session-persistence', '--strict-mcp-config', '--disable-slash-commands', '--setting-sources', ''];
@@ -66,11 +68,14 @@ export function judgeTarget(url, init, env = process.env) {
   return {url: String(url).replace(/^https:\/\/api\.anthropic\.com/, env.E2E_FREE_AI_URL), init: {...init, headers: {...init.headers, 'x-api-key': env.E2E_FREE_AI_KEY}}};
 }
 
+/** Fetch a judge reply, consulting question answers before choosing any live engine. */
 export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
+  const stored = storedAnswer({url, headers: init?.headers, body: init?.body, hint: init?.hint}, env);
+  if (stored.reply) return reply(200, stored.reply);
   if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
     // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
     const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's
-    const kept = recall(key, env);
+    const kept = stored.mode === 'record' ? null : recall(key, env);
     if (kept) {
       try { countReplay('judges', usageOf(kept.body.toString('utf8'), kept.contentType || '')); } catch { /* counting never breaks the call */ }
       return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});
@@ -84,6 +89,7 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
       }
       const answer = JSON.stringify({type: 'message', role: 'assistant', model: asked.model, ...asked.message});   // TODO(AI): count broker calls in the judges ai-meter and admin ai-cost (28 Oct 2026)
       keep(key, {status: 200, contentType: 'application/json', body: Buffer.from(answer)}, env);
+      keepCandidateBody(stored, answer);
       return new Response(answer, {status: 200, headers: {'content-type': 'application/json'}});
     }
     if (judgeFamily(env) === 'free') {   // the day's cap on CI's Workers AI neurons (lib/ai-cap.mjs)
@@ -92,6 +98,7 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
     }
     const target = judgeTarget(url, init, env);
     const response = await fetch(target.url, target.init);
+    if (response.ok && stored.mode === 'record') keepCandidateBody(stored, await response.clone().text());
     try {
       if (response.ok) {
         const text = await response.clone().text(), contentType = response.headers.get('content-type') || '';
@@ -109,6 +116,8 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
     let out;
     try { out = JSON.parse(done.stdout); } catch { return reply(500, {error: {message: `Claude Code gave no JSON (exit ${done.code}): ${(done.stderr || done.stdout).trim().slice(0, 200)}`}}); }
     if (done.code !== 0 || out.is_error) return reply(500, {error: {message: `Claude Code failed: ${String(out.result || done.stderr).slice(0, 200)}`}});
-    return reply(200, messagesAnswer(out, body));
+    const answered = messagesAnswer(out, body);
+    keepCandidate(stored, answered);
+    return reply(200, answered);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 }

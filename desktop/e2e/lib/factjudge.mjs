@@ -1,5 +1,6 @@
 // A judge (Haiku 5.5) for the free text the app writes (a job's score reason, strengths and gaps): is it true to the posting and the candidate? Pure functions here
 // (build the request, parse and rule on the verdict); judge() makes the call. The verdict has a fixed shape, so a rambling or broken reply can never pass as "fine".
+// Job: serve stored answers
 import {modelFetch} from './model.mjs';
 export const JUDGE_MODEL = process.env.E2E_JUDGE_MODEL || 'claude-haiku-5-5';   // Haiku in every suite (owner, 27 Oct 2026: the quality judge too; was Sonnet there since 7 Oct)
 const FLAGS = ['grounded', 'contradicts_posting', 'invents_facts', 'useful'];
@@ -35,10 +36,11 @@ export function failures(verdict) {
   return [verdict.invents_facts && 'invents facts', verdict.contradicts_posting && 'contradicts the posting'].filter(Boolean);
 }
 
-export async function judge({key, posting, profile, produced, facts, fetchImpl = modelFetch}) {
+/** Judge score text, optionally identifying its stored question through the transport hint. */
+export async function judge({key, posting, profile, produced, facts, question, fetchImpl = modelFetch}) {
   const ask = async () => {
     const response = await fetchImpl('https://api.anthropic.com/v1/messages', {method: 'POST',
-      headers: {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}, body: JSON.stringify(buildRequest({posting, profile, produced, facts}))});
+      headers: {'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'}, body: JSON.stringify(buildRequest({posting, profile, produced, facts})), hint: question});
     const data = await response.json();
     if (!response.ok) throw new Error(`the judge call failed (${response.status}): ${data?.error?.message || 'unknown'}`);
     return parseVerdict((data.content || []).map(part => part.text || '').join(''));

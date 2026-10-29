@@ -97,19 +97,28 @@ class RatchetTest(RepoTest):
         code, _, err = self.run_gate(findings=[[violation()], [violation(source='desktop/new.js')]])
         self.assertEqual(code, 0, err)
 
-    def test_snapshot_uses_commits_not_working_tree_and_excludes_nonproduction(self):
+    def test_snapshot_preserves_committed_js_except_modules_and_symlinks(self):
         self.write('desktop/b.js', "import './a.js';\n")
-        for folder in ('test', 'e2e', 'shared', 'vendor', 'node_modules', 'scripts', 'demo'):
+        folders = ('test', 'tests', 'e2e', 'shared', 'vendor', 'scripts', 'demo')
+        for folder in (*folders, 'node_modules'):
             self.write(f'desktop/{folder}/excluded.js', 'invalid javascript')
         self.write('desktop/lib/x.test.js', 'invalid javascript')
+        self.write('desktop/link-target.txt', 'a.js')
         self.commit('new module')
+        # Index a symlink without requiring Windows symlink privileges or creating a real one.
+        target = self.git('rev-parse', 'HEAD:desktop/link-target.txt').strip()
+        self.git('update-index', '--add', '--cacheinfo', f'120000,{target},desktop/link.js')
+        self.git('commit', '-qm', 'indexed symlink')
         self.write('desktop/b.js', 'uncommitted')
         self.write('desktop/untracked.js', 'untracked')
         dest = self.root / 'snapshot'
         tool.snapshot(self.root, 'HEAD', dest)
         self.assertEqual((dest / 'desktop/b.js').read_text(), "import './a.js';\n")
         self.assertEqual(sorted(p.relative_to(dest).as_posix() for p in dest.rglob('*.js')),
-                         ['desktop/a.js', 'desktop/b.js', 'extension/a.js'])
+                         sorted(['desktop/a.js', 'desktop/b.js', 'desktop/lib/x.test.js', 'extension/a.js',
+                                 *(f'desktop/{folder}/excluded.js' for folder in folders)]))
+        self.assertFalse((dest / 'desktop/link.js').exists())
+        self.assertFalse((dest / 'desktop/link.js').is_symlink())
         base = self.root / 'baseline'
         tool.snapshot(self.root, 'origin/main', base)
         self.assertFalse((base / 'desktop/b.js').exists())
@@ -249,6 +258,16 @@ class CruiserIntegrationTest(RepoTest):
         self.commit('clean import')
         code, _, err = self.actual()
         self.assertEqual(code, 0, err)
+
+    def test_config_excludes_tests_folders_from_all_rule_counts(self):
+        self.write('desktop/lib/node.js', 'export const value = 1;\n')
+        self.write('desktop/renderer/tests/a.js', "import './b.js';\nimport '../../lib/node.js';\n")
+        self.write('desktop/renderer/tests/b.js', "import './a.js';\n")
+        self.write('extension/tests/a.js', "import '../../desktop/lib/node.js';\n")
+        self.commit('excluded cycle and forbidden imports')
+        code, out, err = self.run_gate(['--report'], command=self.command)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out), {rule: {'main': 0, 'head': 0} for rule in tool.FIXES})
 
 
 if __name__ == '__main__':

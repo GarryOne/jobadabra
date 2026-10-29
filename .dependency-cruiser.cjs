@@ -1,9 +1,10 @@
 // Guard production JavaScript cycles and the existing browser/runtime import boundaries.
 // Why (29 Oct 2026, owner): "Let's add/implement this"; keep only boundaries already true on main.
-// Acorn reconnaissance on origin/main: renderer -> lib/main 0; extension -> desktop 0.
+// dependency-cruiser on origin/main (supervisor, 29 Oct 2026): no-circular 388
+// (cycle entries, one per module in a cycle), renderer-no-node-layer 0, extension-no-desktop 0.
+// Gate: 5.0 s warm cache; 12.7 s first use, including the one-time pinned install (about 7 s).
 // Rejected lib -> renderer: 79 imports (about-you -> question-filter/preferences-model,
 // answer-home -> question-kind); these are shared pure helpers, not a boundary to impose.
-// dependency-cruiser measurements remain pending when the pinned tool is unavailable.
 module.exports = {
   forbidden: [
     {name: 'no-circular', severity: 'error', from: {}, to: {circular: true}},

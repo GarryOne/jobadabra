@@ -22,6 +22,8 @@ exit 0. Tool/config/parse errors: exit 2; growing counts: exit 1, else exit 0.
 First use installs only dependency-cruiser into a versioned ~/.cache/jobadabra
 folder (JOBADABRA_CACHE overrides it), never a repo node_modules or lockfile.
 Offline with no cached tool: explicitly checks nothing; --offline never installs.
+CI does not keep the cache, so it installs the pinned tool on every run: budget
+about 13 s (12.7 s measured, including about 7 s for installation; warm cache 5.0 s).
 """
 import argparse
 from collections import Counter
@@ -42,7 +44,8 @@ FIXES = {
     'renderer-no-node-layer': 'use the preload/IPC interface, or move pure code to a shared module',
     'extension-no-desktop': 'use the app API, or move pure code to a shared module',
 }
-EXCLUDED = re.compile(r'(^|/)(tests?|e2e|vendor|shared|node_modules|dist|build|demo|scripts|\.design-system)/|\.(test|spec)\.[cm]?js$')
+# Why (29 Oct 2026, owner): the config's options.exclude alone owns what is checked; snapshot skips only installed modules and symlinks.
+EXCLUDED = re.compile(r'(^|/)node_modules/')
 
 
 def cruiser_command(offline=False):
@@ -93,10 +96,10 @@ def git(root, *args, data=None):
 
 
 def snapshot(root, ref, destination):
-    """Materialize only committed production JS and package metadata, never symlinks.
+    """Materialize committed JS and package metadata, never node_modules or symlinks.
 
-    Batched object reads avoid one git process per file. No installed modules or
-    excluded shared copies are needed to resolve the checked production graph.
+    Batched object reads avoid one git process per file. Preserve source folders
+    so the config's options.exclude is the sole owner of the checked scope.
     """
     objects = []
     tree = git(root, 'ls-tree', '-rz', ref, '--', 'desktop', 'extension')

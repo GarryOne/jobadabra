@@ -27,39 +27,6 @@ export function specifiers(text) {
   return [...SPECIFIERS.flatMap(pattern => [...text.matchAll(pattern)].map(found => found[1])), ...declared];
 }
 
-const ENUMERATES = /\b(?:readdir(?:Sync)?|glob(?:Sync)?|opendir(?:Sync)?|walk|scandir|listFiles)\s*\(/;
-
-/** Code directories a test or its helper enumerates; enumerates also covers a helper exporting the directory constant a scanning test imports. */
-function scannedDirectories(text, enumerates = false) {
-  const dirs = new Set();
-  // Why (29 Oct 2026, #2476): directory-scanning guards read suites without importing them; import-only reach let an undeclared AI stand-in pass its PR.
-  if (enumerates || ENUMERATES.test(text)) {
-    // Literal paths and loop/helper arguments cover joins, URL paths and globs. Ignore a directory component followed by a concrete filename.
-    for (const found of text.matchAll(/['"`](?:\$\{[^}]+\}\/|desktop\/e2e\/|(?:\.{1,2}\/)*)(suites|lib)\/?(?:\*[^'"`]*)?['"`]/g)) {
-      if (!/^\s*,\s*['"][^'"]+\.(?:mjs|js|cjs)['"]/.test(text.slice(found.index + found[0].length))) dirs.add(found[1]);
-    }
-    // A scan may derive its directory from a module URL, e.g. dirname(fileURLToPath(new URL('../lib/planted.mjs', ...))).
-    for (const found of text.matchAll(/\bdirname\([^;\n]*?['"](?:\.{1,2}\/)+(suites|lib)\/[^'"]+['"]/g)) dirs.add(found[1]);
-    // Recursive walkers read suites beneath a computed root, including helpers that identify suite files with a path regex.
-    if (/\.isDirectory\s*\(/.test(text) && (text.includes('suites/') || text.includes('suites\\/'))) dirs.add('suites');
-  }
-  if (/\bimport\s*\{[^}]*\bSUITES\b[^}]*\}\s*from\s*['"]\.\.\/lib\/context\.mjs['"]/.test(text)) dirs.add('suites');
-  return [...dirs].map(dir => `desktop/e2e/${dir}/`);
-}
-
-// Both test directories and imported lib helpers can enumerate suites. Directory edges cover additions/deletions without importing every suite's runtime dependencies.
-// state.enumerates: the starting test lists files; only its direct helpers may supply the directory constant or scan, not unrelated transitive lib imports.
-function directoryEdges(current, text, state) {
-  if (current === state.file) {
-    state.enumerates = ENUMERATES.test(text);
-    state.direct = new Set(specifiers(text).map(spec => path.posix.normalize(path.posix.join(path.posix.dirname(current), spec))));
-  }
-  // Why (29 Oct 2026, a8, #2495): context lists suites for every importer; only SUITES consumers need the edge, supplied by the registry-import rule.
-  if (current === 'desktop/e2e/lib/context.mjs') return [];
-  if (current !== state.file && !state.direct.has(current)) return [];
-  return /^desktop\/(?:e2e\/)?(?:test|lib)\//.test(current) ? scannedDirectories(text, state.enumerates) : [];
-}
-
 /**
  * Every repo-relative path a test file reaches (itself included); a directory read via new URL ends with '/' and covers every file under it.
  * @param {string} root the repo root  @param {string} file a repo-relative path  @param {Map} [cache] shared between calls
@@ -68,7 +35,6 @@ function directoryEdges(current, text, state) {
 export function reach(root, file, cache = new Map()) {
   const paths = new Set(), queue = [file];
   let browser = false;
-  const state = {file, enumerates: false};
   while (queue.length) {
     const current = queue.pop();
     if (paths.has(current)) continue;
@@ -77,7 +43,6 @@ export function reach(root, file, cache = new Map()) {
     let text = cache.get(current);
     if (text === undefined) { try { text = fs.readFileSync(path.join(root, current), 'utf8'); } catch { text = ''; } cache.set(current, text); }
     if (BROWSER.test(text)) browser = true;
-    queue.push(...directoryEdges(current, text, state));
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it
@@ -96,19 +61,22 @@ const HARNESS_INPUTS = new Set(['.github/workflows/harness.yml', 'desktop/packag
 const covers = (reached, changed) => reached.has(changed) || [...reached].some(item => item.endsWith('/') && changed.startsWith(item) && (!DATA.test(changed) || DATA.test(item)));
 
 /**
- * The harness test files a change reaches. Assumes `changed` is repo-relative with '/' separators.
+ * The harness test files a change reaches through imports, URL reads, or declared folder readers. Paths use '/' separators.
  * Invariant: any nonempty selection includes the workflow coverage guard; no reached tests means no guard.
- * @param {{root: string, tests: string[], changed: string[], always?: string[]}} input tests: repo-relative test files; always: run when the harness itself changed
+ * @param {{root: string, tests: string[], changed: string[], always?: string[], folderReaders?: Record<string, string[]>}} input tests/readers: repo-relative test files; folder keys: under desktop/e2e/ ('./' = direct files only); always: run when the harness itself changed
  * @returns {{files: string[], browser: boolean, why: Record<string, string>}} files sorted; why: each file's first changed path that reached it
  */
-export function reachedTests({root, tests, changed, always = []}) {
+export function reachedTests({root, tests, changed, always = [], folderReaders = {}}) {
   const cache = new Map(), why = {};
   let browser = false;
   // What the job installs and stages from runs the pr set too, as before #2241 (review on #2241): no test imports a package file or stage.mjs.
   const harnessChanged = changed.some(file => (file.startsWith('desktop/e2e/') && !DATA.test(file)) || HARNESS_INPUTS.has(file));
+  // Why (29 Oct 2026, a8, #2495): folder readers are declared because static guessing missed a shape in each of 3 review rounds.
   for (const test of tests) {
     const reached = reach(root, test, cache);
-    const hit = changed.find(file => covers(reached.paths, file)) || (harnessChanged && always.includes(test) ? 'the harness changed: the pr set' : '');
+    const hit = changed.find(file => covers(reached.paths, file) || Object.entries(folderReaders).some(([folder, readers]) =>
+      readers.includes(test) && (folder === './' ? path.posix.dirname(file) === 'desktop/e2e' : file.startsWith(`desktop/e2e/${folder}`))))
+      || (harnessChanged && always.includes(test) ? 'the harness changed: the pr set' : '');
     if (!hit) continue;
     why[test] = hit;
     browser ||= reached.browser;

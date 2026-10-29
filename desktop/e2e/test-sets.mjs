@@ -1,4 +1,5 @@
 // Which harness test files run where (test-sets.json): the PR set or the daily set; prints one set's files for the CI workflows to hand to node --test.
+// Job: pick the suites
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -6,9 +7,10 @@ import {reachedTests} from './lib/test-reach.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 
+/** The PR and daily test sets, plus folder-reader declarations and discovery exceptions (empty in older manifests). */
 export function testSets() {
-  const {pr, daily} = JSON.parse(readFileSync(`${here}test-sets.json`, 'utf8'));
-  return {pr, daily};
+  const {pr, daily, folderReaders = {}, folderReaderExceptions = {}} = JSON.parse(readFileSync(`${here}test-sets.json`, 'utf8'));
+  return {pr, daily, folderReaders, folderReaderExceptions};
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === 'reached') {
@@ -16,8 +18,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === 'r
   const base = process.argv.includes('--base') ? process.argv[process.argv.indexOf('--base') + 1] : 'origin/main';
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const changed = execFileSync('git', ['-C', root, 'diff', '--name-only', `${base}...HEAD`], {encoding: 'utf8'}).split('\n').filter(Boolean);
-  const {pr, daily} = testSets(), inRepo = file => `desktop/e2e/test/${file}`;
-  const {files, browser, why} = reachedTests({root, tests: [...pr, ...daily].map(inRepo), changed, always: pr.map(inRepo)});
+  const {pr, daily, folderReaders} = testSets(), inRepo = file => `desktop/e2e/test/${file}`;
+  const {files, browser, why} = reachedTests({root, tests: [...pr, ...daily].map(inRepo), changed, always: pr.map(inRepo),
+    folderReaders: Object.fromEntries(Object.entries(folderReaders).map(([folder, files]) => [folder, files.map(inRepo)]))});
   for (const file of files) console.error(`runs ${file.replace('desktop/e2e/', '')}: ${why[file]}`);
   console.error(`${files.length} of ${pr.length + daily.length} harness test files reached by ${changed.length} changed file(s)`);
   console.log(`files=${files.map(file => file.replace('desktop/e2e/', '')).join(' ')}`);
@@ -25,7 +28,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url) && process.argv[2] === 'r
 } else if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const sets = testSets();
   const which = process.argv[2];
-  if (!sets[which] && which !== 'all') { console.error('usage: node test-sets.mjs pr|daily|all|reached [--base <ref>]'); process.exit(2); }
+  if (!['pr', 'daily', 'all'].includes(which)) { console.error('usage: node test-sets.mjs pr|daily|all|reached [--base <ref>]'); process.exit(2); }
   const files = which === 'all' ? [...sets.pr, ...sets.daily] : sets[which];
   console.log(files.map((f) => `test/${f}`).join(' '));
 }

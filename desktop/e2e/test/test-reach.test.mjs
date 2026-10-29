@@ -17,38 +17,26 @@ function tree(files) {
   return root;
 }
 
-// Deliberately lexical and overinclusive: no path-literal matching or dependency extraction from the picker is used here.
+// Deliberately lexical and overinclusive: discovery is independent of the picker's specifiers and declared readers.
 function suitesReaders(root) {
   const mentionsSuites = source => /\bsuites\b/i.test(source);
   const listsFiles = source => /\b(?:readdir(?:Sync)?|glob(?:Sync)?|opendir(?:Sync)?|walk|scandir|listFiles)\b/i.test(source);
   const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-  return ['desktop/e2e/test', 'desktop/test'].flatMap(dir => {
-    if (!fs.existsSync(path.join(root, dir))) return [];
-    return fs.readdirSync(path.join(root, dir)).filter(name => /\.test\.[cm]?js$/.test(name)).map(name => `${dir}/${name}`);
-  }).filter(file => {
+  const dir = 'desktop/e2e/test';
+  return fs.readdirSync(path.join(root, dir)).filter(name => /\.test\.[cm]?js$/.test(name)).map(name => `${dir}/${name}`).filter(file => {
     const source = read(file);
-    if (mentionsSuites(source) && listsFiles(source)) return true;
-    // One hop only. Ignore helper prose so a comment about suites does not turn an artifact/cache-directory read into a suite scan.
+    if (/\bSUITES\b/.test(source) || (listsFiles(source) && (mentionsSuites(source) || /\bE2E\b|['"]\.\.\/?['"]/.test(source)))) return true;
+    // Any relative import, static or dynamic, can supply a scanner or consume the registry one hop away.
     return [...source.matchAll(/(?:from\s*|import\(\s*|import\s*)['"](\.[^'"]+)['"]/g)].some(([, spec]) => {
       const helper = path.posix.normalize(path.posix.join(path.posix.dirname(file), spec));
-      if (!helper.includes('/lib/') || !fs.existsSync(path.join(root, helper))) return false;
-      // Context's registry is consumed by the named SUITES import, not by every user of its unrelated APIs.
+      if (!fs.existsSync(path.join(root, helper)) || !fs.statSync(path.join(root, helper)).isFile()) return false;
+      // Context has unrelated APIs too; importing one alone does not consume the registry.
       if (helper === 'desktop/e2e/lib/context.mjs' && !/\bSUITES\b/.test(source)) return false;
       const code = read(helper).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
-      // The lowercase directory word distinguishes a suite scan from a helper that uses the SUITES registry but enumerates blobs/artifacts.
-      return /\bsuites\b/.test(code) && /\breaddir(?:Sync)?\b/.test(code);
+      return /\bSUITES\b/.test(code) || (/\bsuites\b/.test(code) && listsFiles(code));
     });
   }).sort();
 }
-
-const SUITE_READER_EXCEPTIONS = {
-  'desktop/e2e/test/ai-meter.test.mjs': 'Enumerates temporary answer-cache directories; suites occur only in prose.',
-  'desktop/e2e/test/ensure-staged.test.mjs': 'Enumerates e2e entrypoints and lib modules that import suites, not the suites directory.',
-  'desktop/e2e/test/owns-step.test.mjs': 'Enumerates apply-* lib helpers and reads the two named apply suites, not every suite.',
-  'desktop/e2e/test/pr-store.test.mjs': 'walk is a synthetic coverage-step key; reads named watched suites without enumerating suites.',
-  'desktop/e2e/test/store-call.test.mjs': 'Enumerates SQLite files in its temporary profile data directory.',
-  'desktop/test/flows-matrix.test.js': 'Enumerates apply-* lib helpers and reads the one named apply suite, not every suite.',
-};
 
 test('a module\'s relative specifiers: static, side-effect, dynamic, files read via new URL, and a declared "// Reaches:" line; never a package', () => {
   const text = `import {a} from './a.mjs';\nimport './b.mjs';\nconst c = await import('../c.js');\nconst d = new URL('../../renderer/', import.meta.url);\n// Reaches: ./child.mjs ../app/\nimport {chromium} from 'playwright';`;
@@ -79,100 +67,88 @@ test('the pr set runs when the harness changed, not for a recorded case alone', 
   assert.deepEqual(reachedTests({root: ROOT, tests, changed: ['desktop/e2e/recorded/x/case.json'], always}).files, []);
 });
 
-test('a suite edit reaches the AI declaration guard without selecting an unrelated test', () => {
-  const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo);
-  const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/stores.mjs']}).files;
-  assert.ok(picked.includes(inRepo('suite-ai-mode.test.mjs')), 'the guard that would have stopped #2476 must run on the PR');
-  assert.ok(!picked.includes(inRepo('ai-meter.test.mjs')), 'an ordinary test with only temp-directory reads stays out');
+test('independent discovery finds registry consumers through any relative import, only in harness tests', t => {
+  const root = tree({
+    [inRepo('direct.test.mjs')]: "const {SUITES} = await import('../lib/context.mjs');",
+    [inRepo('static.test.mjs')]: "import {facts} from '../plan-run.mjs';",
+    [inRepo('dynamic.test.mjs')]: "const {facts} = await import('../plan-run.mjs');",
+    [inRepo('root.test.mjs')]: "fs.readdirSync(new URL('../', import.meta.url));",
+    [inRepo('scanner.test.mjs')]: "import {scan} from '../lib/scanner.mjs';",
+    [inRepo('plain.test.mjs')]: "import {openContext} from '../lib/context.mjs';",
+    'desktop/e2e/plan-run.mjs': "const {SUITES} = await import('./lib/context.mjs');",
+    'desktop/e2e/lib/context.mjs': "export const SUITES = fs.readdirSync('suites');",
+    'desktop/e2e/lib/scanner.mjs': "export const scan = () => fs.readdirSync('suites');",
+    'desktop/test/outside.test.js': "const {SUITES} = await import('../e2e/lib/context.mjs');",
+  });
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  assert.deepEqual(suitesReaders(root), ['direct', 'dynamic', 'root', 'scanner', 'static'].map(name => inRepo(`${name}.test.mjs`)));
 });
 
-test('a suite edit excludes context users that do not consume SUITES, while registry consumers still run', t => {
-  const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo);
-  const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/stores.mjs']}).files;
+test('declared folder readers select exactly their tests, including additions and deletions', t => {
+  const entry = inRepo('root-reader.test.mjs'), suite = inRepo('suite-reader.test.mjs'), lib = inRepo('lib-reader.test.mjs'), both = inRepo('both.test.mjs'), ordinary = inRepo('ordinary.test.mjs');
+  const tests = [entry, suite, lib, both, ordinary];
+  const root = tree(Object.fromEntries(tests.map(file => [file, ''])));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const folderReaders = {'./': [entry], 'suites/': [suite, both], 'lib/': [lib, both]};
+  for (const [folder, readers] of Object.entries(folderReaders)) {
+    const changed = `desktop/e2e/${folder === './' ? '' : folder}brand-new.mjs`;
+    const picked = reachedTests({root, tests, changed: [changed], folderReaders});
+    assert.deepEqual(picked.files, [...readers, inRepo('test-reach.test.mjs')].sort());
+    for (const file of readers) assert.equal(picked.why[file], changed);
+  }
+  assert.deepEqual(reachedTests({root, tests, changed: ['desktop/e2e/suites-alike/new.mjs'], folderReaders}).files, []);
+  assert.deepEqual(reachedTests({root, tests, changed: ['desktop/e2e/recorded/new/case.json'], folderReaders}).files, []);
+  assert.deepEqual(reachedTests({root, tests, changed: ['desktop/e2e/suites/new.mjs']}).files, [], 'no implicit folder readers');
+});
+
+test('a brand-new suite reaches the AI declaration, cadence and real gate guards', () => {
+  const {pr, daily, folderReaders = {}} = testSets(), tests = [...pr, ...daily].map(inRepo);
+  const readers = Object.fromEntries(Object.entries(folderReaders).map(([folder, files]) => [folder, files.map(inRepo)]));
+  const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/brand-new.mjs'], folderReaders: readers}).files;
+  for (const name of ['suite-ai-mode', 'suite-cadence', 'plan-gate-real', 'net-records-key']) assert.ok(picked.includes(inRepo(`${name}.test.mjs`)), `${name} reads every suite`);
+});
+
+test('a stores edit reaches suite readers and excludes unrelated context users', t => {
+  const {pr, daily, folderReaders = {}} = testSets(), tests = [...pr, ...daily].map(inRepo);
+  const readers = Object.fromEntries(Object.entries(folderReaders).map(([folder, files]) => [folder, files.map(inRepo)]));
+  const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/stores.mjs'], folderReaders: readers}).files;
   t.diagnostic(`stores.mjs directly reaches ${picked.length} tests`);
+  assert.ok(picked.includes(inRepo('suite-ai-mode.test.mjs')));
   for (const name of ['key-check', 'clock-out', 'issue-links', 'plan-run', 'run-all']) {
     assert.ok(tests.includes(inRepo(`${name}.test.mjs`)), `the real negative control exists: ${name}`);
     assert.ok(!picked.includes(inRepo(`${name}.test.mjs`)), `${name} does not scan suites or consume SUITES`);
   }
-  for (const name of ['store', 'suite-budget', 'suite-shards']) assert.ok(picked.includes(inRepo(`${name}.test.mjs`)), `${name} consumes SUITES`);
 });
 
-test('context only supplies a directory edge to SUITES consumers, including under broad discovery', t => {
-  const plain = inRepo('plain.test.mjs'), registry = inRepo('registry.test.mjs'), indirect = inRepo('indirect.test.mjs'), transitive = inRepo('transitive.test.mjs');
-  const root = tree({
-    [plain]: "import {openContext} from '../lib/context.mjs';",
-    [registry]: "import {SUITES as names} from '../lib/context.mjs';",
-    [indirect]: "import {open} from '../lib/open.mjs';",
-    [transitive]: "import {other} from '../lib/middle.mjs';",
-    'desktop/e2e/lib/open.mjs': "import {openContext} from './context.mjs';",
-    'desktop/e2e/lib/context.mjs': "export const SUITES = fs.readdirSync(path.join(root, 'suites')); export const openContext = () => {};",
-    'desktop/e2e/lib/middle.mjs': "import {scan} from './scanner.mjs'; export const other = () => 1;",
-    'desktop/e2e/lib/scanner.mjs': 'export const scan = () => fs.readdirSync(`${root}/suites`);',
-  });
-  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
-  const picked = reachedTests({root, tests: [plain, registry, indirect, transitive], changed: ['desktop/e2e/suites/stores.mjs']}).files;
-  assert.deepEqual(picked, [registry, inRepo('test-reach.test.mjs')]);
-  assert.deepEqual(suitesReaders(root), [registry], 'importing another context API does not consume its directory listing');
+test('a new harness root file reaches ensure-staged, while replay data alone reaches nothing', () => {
+  const {pr, daily, folderReaders} = testSets(), tests = [...pr, ...daily].map(inRepo);
+  const readers = Object.fromEntries(Object.entries(folderReaders).map(([folder, files]) => [folder, files.map(inRepo)]));
+  const pick = changed => reachedTests({root: ROOT, tests, changed: [changed], folderReaders: readers}).files;
+  for (const name of ['ensure-staged', 'net-records-key']) assert.ok(pick('desktop/e2e/brand-new.mjs').includes(inRepo(`${name}.test.mjs`)), `${name} reads the harness root`);
+  assert.deepEqual(pick('desktop/e2e/recorded/x/case.json'), []);
 });
 
-// Inspect both test directories on disk, including unregistered tests, using a broader oracle than scannedDirectories.
-test('every registered suite reaches every suites-directory reader', t => {
-  const readers = suitesReaders(ROOT);
-  assert.ok(readers.includes(inRepo('suite-ai-mode.test.mjs')));
-  assert.ok(readers.includes(inRepo('suite-shards.test.mjs')), 'registry readers are part of the class');
-  for (const [file, reason] of Object.entries(SUITE_READER_EXCEPTIONS)) {
-    assert.ok(readers.includes(file), `remove stale exception: ${file}`);
-    assert.ok(reason.length > 20, `explain why ${file} does not scan suites`);
+test('every discovered folder-reader candidate is declared or has an exception with a reason', () => {
+  const candidates = suitesReaders(ROOT), {pr, daily, folderReaders = {}, folderReaderExceptions = {}} = testSets();
+  const exceptions = Object.fromEntries(Object.entries(folderReaderExceptions).map(([file, reason]) => [inRepo(file), reason]));
+  const listed = new Set(Object.values(folderReaders).flat().map(inRepo));
+  for (const name of ['suite-ai-mode', 'suite-shards', 'suite-cadence', 'plan-gate-real', 'ensure-staged', 'wide-local']) assert.ok(candidates.includes(inRepo(`${name}.test.mjs`)), `${name} must be discovered`);
+  for (const file of candidates) {
+    assert.ok(listed.has(file) || exceptions[file], `add ${file} to folderReaders in test-sets.json, or to the exceptions with a reason`);
   }
-  // context.mjs builds SUITES from these .mjs entries; do not import it and start loading the app just to read the registry.
-  const suites = fs.readdirSync(path.join(ROOT, 'desktop/e2e/suites')).filter(name => name.endsWith('.mjs'));
-  assert.ok(suites.includes('stores.mjs'));
-  const missing = [];
-  for (const suite of suites) {
-    const picked = reachedTests({root: ROOT, tests: readers, changed: [`desktop/e2e/suites/${suite}`]}).files;
-    if (suite === 'stores.mjs') {
-      const extra = readers.filter(file => !picked.includes(file));
-      t.diagnostic(`broader discovery: ${readers.length} candidates, ${extra.length} beyond the picker (${Object.keys(SUITE_READER_EXCEPTIONS).length} documented exceptions): ${extra.join(', ')}`);
+  for (const [folder, files] of Object.entries(folderReaders)) {
+    assert.ok(['./', 'suites/', 'lib/'].includes(folder), `unknown reader folder: ${folder}`);
+    assert.deepEqual(files, [...new Set(files)].sort(), `${folder} readers must be sorted and unique`);
+    for (const file of files) {
+      assert.ok(fs.existsSync(path.join(ROOT, inRepo(file))), `missing reader: ${file}`);
+      assert.ok([...pr, ...daily].includes(file), `add ${file} to the pr or daily set`);
     }
-    for (const reader of readers) if (!picked.includes(reader) && !SUITE_READER_EXCEPTIONS[reader]) missing.push(`${suite} -> ${reader}`);
   }
-  assert.deepEqual(missing, []);
-});
-
-test('independent discovery catches template paths, helper constants and one-hop scans in both test directories', t => {
-  const root = tree({
-    'desktop/e2e/test/template.test.mjs': 'fs.readdirSync(`${root}/suites`);',
-    'desktop/test/helper.test.js': "import {scan} from '../e2e/lib/scanner.mjs'; scan();",
-    'desktop/e2e/lib/scanner.mjs': 'export const scan = () => fs.readdirSync(`${root}/suites`);',
-    'desktop/e2e/test/constant.test.mjs': "import {SUITES} from '../lib/directory.mjs'; fs.readdirSync(SUITES);",
-    'desktop/e2e/lib/directory.mjs': "export const SUITES = 'suites';",
-    'desktop/e2e/test/ordinary.test.mjs': 'fs.readdirSync(temp);',
-  });
-  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
-  const readers = suitesReaders(root);
-  assert.deepEqual(readers, ['desktop/e2e/test/constant.test.mjs', 'desktop/e2e/test/template.test.mjs', 'desktop/test/helper.test.js']);
-  const picked = reachedTests({root, tests: readers, changed: ['desktop/e2e/suites/planted.mjs']}).files;
-  assert.deepEqual(readers.filter(reader => !picked.includes(reader)), [], 'every planted scanner, including the template path, must be reached');
-});
-
-test('directory scans reach suites and lib through joins, loops, globs and the SUITES registry, without a filename list', t => {
-  const sources = {
-    join: `const dir = path.join(import.meta.dirname, '..', 'suites'); fs.readdirSync(dir);`,
-    loop: `for (const dir of ['suites', 'lib']) fs.readdirSync(path.join(root, dir));`,
-    glob: `globSync('../suites/*.mjs');`,
-    registry: `import {SUITES as names} from '../lib/context.mjs';`,
-    lib: `fs.readdirSync(path.join(root, 'lib'));`,
-    dirname: `const dir = path.dirname(fileURLToPath(new URL('../lib/plant.mjs', import.meta.url))); fs.readdirSync(dir);`,
-    ordinary: `import {x} from '../lib/helper.mjs'; fs.readdirSync(temp);`,
-    mention: `const label = 'suites'; import {x} from '../lib/helper.mjs';`,
-  };
-  const tests = Object.keys(sources).map(name => inRepo(`${name}.test.mjs`));
-  const root = tree(Object.fromEntries(Object.entries(sources).map(([name, source]) => [inRepo(`${name}.test.mjs`), source])));
-  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
-  const picked = file => reachedTests({root, tests, changed: [`desktop/e2e/${file}`]}).files;
-  assert.deepEqual(picked('suites/new-suite.mjs'), ['glob', 'join', 'loop', 'registry', 'test-reach'].map(name => inRepo(`${name}.test.mjs`)));
-  assert.deepEqual(picked('lib/new-helper.mjs'), ['dirname', 'lib', 'loop', 'test-reach'].map(name => inRepo(`${name}.test.mjs`)));
-  assert.deepEqual(picked('recorded/new/case.json'), [], 'scanning code directories never reaches replay data');
+  for (const [file, reason] of Object.entries(exceptions)) {
+    assert.ok(candidates.includes(file), `remove stale exception: ${file}`);
+    assert.ok(typeof reason === 'string' && reason.length > 20, `explain why ${file} does not read a whole folder`);
+    assert.ok(!listed.has(file), `remove listed reader from exceptions: ${file}`);
+  }
 });
 
 // Why (#2458, 29 Oct 2026): excluded replay data needs a read inside its DATA tree; a desktop/ ancestor read must still cover harness code.

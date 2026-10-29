@@ -37,23 +37,26 @@ const parsed = body => {
 const textOf = content => typeof content === 'string' ? content : (Array.isArray(content) ? content.map(part => part.text || '').join('\n') : '');
 const actionOf = (headers, body) => new Headers(headers || {}).get('x-jp-action') || String(body.prompt_cache_key || '').replace(/^job-pilotto-/, '');
 
-function scoreQuestion(body) {
+function scoreQuestion(body, persona) {
   const messages = body.messages || (Array.isArray(body.input) ? body.input : [{role: 'user', content: body.input}]);
   const text = messages.filter(item => item.role === 'user').map(item => textOf(item.content)).join('\n');
   const identities = [...text.matchAll(/^Title: ([^\r\n]+)\r?\nCompany: ([^\r\n]+)\r?\nLocation: ([^\r\n]*)/gm)];
-  const truth = JSON.parse(fs.readFileSync(new URL('truth.json', GOLDEN), 'utf8'));
-  const sources = JSON.parse(fs.readFileSync(new URL('sources.json', GOLDEN), 'utf8'));
+  const golden = persona ? new URL(`../fixtures/golden-${persona}/`, import.meta.url) : GOLDEN;
+  const truth = JSON.parse(fs.readFileSync(new URL('truth.json', golden), 'utf8'));
+  const sources = JSON.parse(fs.readFileSync(new URL('sources.json', golden), 'utf8'));
   const matches = truth.filter(item => identities.some(([, title, company, location]) =>
     item.title === title.trim() && (item.company || sources[0].company) === company.trim() && item.location === location.trim()));
   if (identities.length !== 1 || matches.length !== 1) return {unkeyable: 'app.score: posting title, company and location must match exactly one golden row'};
-  return {operation: 'app.score', id: String(matches[0].id)};
+  return {operation: 'app.score', id: persona ? `${persona}/${matches[0].id}` : String(matches[0].id)};
 }
 
-/** Identify only a score's exact golden posting or an explicitly named fact-judge question. */
-export function questionOf({url, headers, body, hint}) {
-  if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: hint.id};
+/** Identify a score or fact-judge question within the environment's golden persona; default IDs stay unchanged. */
+export function questionOf({url, headers, body, hint}, env = process.env) {
+  // Why (#2450): golden personas reuse posting IDs, so their stored scores and verdicts must never share an answer.
+  const persona = env.E2E_QUALITY_PERSONA || '';
+  if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: persona ? `${persona}/${hint.id}` : hint.id};
   const data = parsed(body), action = actionOf(headers, data);
-  if (action === 'score') return scoreQuestion(data);
+  if (action === 'score') return scoreQuestion(data, persona);
   if (action === 'decide') return {unkeyable: 'decide: topic and item keys are not in the request'};
   return {unkeyable: `${action || hint?.operation || 'unknown'}: question identity is not in the request${!action && !hint ? ` (${url || 'unknown path'})` : ''}`};
 }
@@ -92,7 +95,7 @@ export function refusedQuestions(env = process.env) {
 
 /** Apply the shared table-first rule; E2E_AI_ANSWERS_FILE permits isolated test tables. */
 export function storedAnswer(request, env = process.env) {
-  const mode = answersMode(env), question = questionOf(request), dir = artifactsOf(env);
+  const mode = answersMode(env), question = questionOf(request, env), dir = artifactsOf(env);
   // Why (29 Oct 2026, a8; owner approved the sketch): beta 4 missed 47 hash-keyed questions after setup text changed, so stable question answers precede every cache and transport.
   const found = question.unkeyable ? {} : answerFor(question, loadTable(env.E2E_AI_ANSWERS_FILE || TABLE));
   if (found.reply) return {reply: found.reply};

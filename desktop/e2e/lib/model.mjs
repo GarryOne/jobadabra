@@ -75,7 +75,8 @@ export async function modelFetch(url, init, {engine = () => pickEngine({family: 
   if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
     // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
     const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's
-    const kept = stored.mode === 'record' ? null : recall(key, env);
+    // Why (#2450): only keyed misses can become review candidates; unkeyable asks must retain their free hash replays.
+    const kept = stored.mode === 'record' && !stored.question.unkeyable ? null : recall(key, env);
     if (kept) {
       try { countReplay('judges', usageOf(kept.body.toString('utf8'), kept.contentType || '')); } catch { /* counting never breaks the call */ }
       return new Response(kept.body, {status: kept.status, headers: {'content-type': kept.contentType || 'application/json'}});

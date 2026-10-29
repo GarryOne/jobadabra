@@ -126,11 +126,36 @@ for (const mode of ['off', 'record']) test(`${mode} miss uses localhost upstream
   assert.deepEqual(await (await fetch(`${proxy.url}/v1/messages`, init(score()))).json(), live); assert.equal(up.calls(), 1);
   const candidates = path.join(dir, 'ai-answers-candidates.json');
   if (mode === 'record') {
+    assert.deepEqual(loadTable(candidates).answers, {'app.score': {'3001': {reply: live}}}, 'one keyed live reply writes one candidate');
     recordCandidate(dir, {operation: 'judge.facts', id: '3002/first'}, stored);
     assert.deepEqual(answerFor(keyed, loadTable(candidates)), {reply: live});
     assert.deepEqual(answerFor({operation: 'judge.facts', id: '3002/first'}, loadTable(candidates)), {reply: stored});
     assert.deepEqual(loadTable(env.E2E_AI_ANSWERS_FILE).answers, {});
   } else assert.ok(!fs.existsSync(candidates));
+});
+
+for (const action of ['decide', 'strategy', 'places', 'saved-answers']) test(`record proxy replays a warm unkeyable ${action} answer without paying or recording`, async t => {
+  const {env, dir} = fixture(t, {});
+  environment(t, {...env, E2E_AI_ANSWERS: 'record', E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir});
+  const body = {model: 'test', messages: [{role: 'user', content: `An unkeyable ${action} question.`}]};
+  keep(requestKey('/v1/messages', Buffer.from(JSON.stringify(body))), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(stored))});
+  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url});
+  const response = await fetch(`${proxy.url}/v1/messages`, {...init(body), headers: {'content-type': 'application/json', 'x-jp-action': action}});
+  assert.equal(up.calls(), 0);
+  assert.deepEqual(await response.json(), stored);
+  assert.equal(proxy.stats.paid || 0, 0);
+  assert.ok(!fs.existsSync(path.join(dir, 'ai-answers-candidates.json')));
+});
+
+test('record modelFetch replays a warm unkeyable answer without paying or recording', async t => {
+  const {env, dir} = fixture(t, {}), up = await upstream(t);
+  Object.assign(env, {E2E_AI_ANSWERS: 'record', E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir});
+  const request = {...init({model: 'test', messages: []}), headers: {'x-jp-action': 'strategy'}};
+  keep(requestKey('judge claude /v1/messages', Buffer.from(request.body)), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(stored))}, env);
+  const response = await modelFetch(`${up.url}/v1/messages`, request, {env, engine: () => 'api'});
+  assert.equal(up.calls(), 0);
+  assert.deepEqual(await response.json(), stored);
+  assert.ok(!fs.existsSync(path.join(dir, 'ai-answers-candidates.json')));
 });
 
 test('modelFetch hints replay before engine selection and refuse before API, broker or CLI', async t => {
@@ -169,6 +194,54 @@ for (const mode of ['off', 'backbone', 'record']) test(`modelFetch table hit in 
   const {env} = fixture(t, {'judge.facts': {[hint.id]: {reply: stored}}});
   const response = await fresh(() => modelFetch('http://127.0.0.1:1/v1/messages', {...init({}), hint}, {env: {...env, E2E_AI_ANSWERS: mode}, engine: () => { throw new Error('must not choose an engine'); }}));
   assert.deepEqual(await response.json(), stored);
+});
+
+for (const mode of ['off', 'backbone', 'record']) test(`photographer judge in ${mode} never replays the default persona's verdict`, async t => {
+  const hint = {operation: 'judge.facts', id: '3001/second'};
+  const {env, dir} = fixture(t, {'judge.facts': {[hint.id]: {reply: stored}}}), up = await upstream(t);
+  Object.assign(env, {E2E_AI_ANSWERS: mode, E2E_QUALITY_PERSONA: 'photographer'});
+  const ask = () => modelFetch(`${up.url}/v1/messages`, {...init({}), hint}, {env, engine: () => 'api'});
+  if (mode === 'backbone') {
+    await assert.rejects(ask(), /judge.facts\/photographer\/3001\/second.*has no stored answer/);
+    assert.equal(up.calls(), 0);
+  } else {
+    assert.deepEqual(await (await ask()).json(), live);
+    assert.equal(up.calls(), 1);
+    if (mode === 'record') {
+      const table = loadTable(path.join(dir, 'ai-answers-candidates.json'));
+      assert.deepEqual(Object.keys(table.answers['judge.facts']), ['photographer/3001/second']);
+      assert.deepEqual(answerFor({operation: 'judge.facts', id: 'photographer/3001/second'}, table), {reply: live});
+    }
+  }
+});
+
+for (const mode of ['off', 'backbone', 'record']) test(`photographer score in ${mode} uses its own golden posting and stored answer`, async t => {
+  const posting = JSON.parse(fs.readFileSync(new URL('../fixtures/golden-photographer/truth.json', import.meta.url)))[0];
+  const employer = JSON.parse(fs.readFileSync(new URL('../fixtures/golden-photographer/sources.json', import.meta.url)))[0].company;
+  const body = {model: 'test', messages: [{role: 'user', content: `Title: ${posting.title}\nCompany: ${employer}\nLocation: ${posting.location}\nPosting:\n${posting.description}`} ]};
+  const {env} = fixture(t, {'app.score': {'3001': {reply: stored}, 'photographer/3001': {reply: live}}});
+  environment(t, {...env, E2E_AI_ANSWERS: mode, E2E_QUALITY_PERSONA: 'photographer'});
+  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url});
+  const response = await fetch(`${proxy.url}/v1/messages`, init(body));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), live);
+  assert.equal(up.calls(), 0, 'the photographer entry must be served before any live transport');
+  assert.deepEqual(questionOf({headers: {'x-jp-action': 'score'}, body}), {operation: 'app.score', id: 'photographer/3001'});
+});
+
+for (const mode of ['off', 'backbone', 'record']) test(`photographer score in ${mode} cannot match a default-only posting`, async t => {
+  const {env} = fixture(t);
+  environment(t, {...env, E2E_AI_ANSWERS: mode, E2E_QUALITY_PERSONA: 'photographer'});
+  const up = await upstream(t), proxy = await proxyFor(t, {target: up.url});
+  const response = await fetch(`${proxy.url}/v1/messages`, init(score()));
+  if (mode === 'backbone') {
+    assert.equal(response.status, 503);
+    assert.match((await response.json()).error.message, /app.score:.*is unkeyable/);
+    assert.equal(up.calls(), 0);
+  } else {
+    assert.deepEqual(await response.json(), live);
+    assert.equal(up.calls(), 1);
+  }
 });
 
 test('modelFetch backbone refuses warm hash replays both normally and inside fresh', async t => {

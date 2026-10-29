@@ -13,13 +13,13 @@ const SUGGEST = wrap('<kbd>👍 Approved with suggestions</kbd> <kbd>2 closed / 
 const CHANGES = wrap('<kbd>⚠️ Changes requested</kbd> <kbd>0 closed / 3 findings</kbd>');   // #2382
 
 const payloadCases = [
-  {name: 'approved already held', body: APPROVED, labels: [LABELS.approved.name], skip: true, before: 5},
-  {name: 'suggestions already held', body: SUGGEST, labels: [LABELS.suggestions.name], skip: true, before: 5},
-  {name: 'changes already held', body: CHANGES, labels: [LABELS.changes.name], skip: true, before: 5},
-  {name: 'still reviewing', body: 'Gitar is reviewing…', labels: [WAITING.name], skip: true, before: 5},
-  {name: 'different verdict', body: APPROVED, labels: [LABELS.changes.name], skip: false, before: 13},
-  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 12},
-  {name: 'push clears stale approval', event: 'pull_request_target', body: APPROVED, labels: [LABELS.approved.name], skip: false, before: 13},
+  {name: 'approved already held', body: APPROVED, labels: [LABELS.approved.name], skip: true, before: 1},
+  {name: 'suggestions already held', body: SUGGEST, labels: [LABELS.suggestions.name], skip: true, before: 1},
+  {name: 'changes already held', body: CHANGES, labels: [LABELS.changes.name], skip: true, before: 1},
+  {name: 'still reviewing', body: 'Gitar is reviewing…', labels: [WAITING.name], skip: true, before: 1},
+  {name: 'different verdict', body: APPROVED, labels: [LABELS.changes.name], skip: false, before: 5},
+  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 3},
+  {name: 'push clears stale approval', event: 'pull_request_target', body: APPROVED, labels: [LABELS.approved.name], skip: false, before: 5},
 ];
 
 test('payload skips only matching comment verdicts or reviewing without any verdict label', () => {
@@ -57,7 +57,14 @@ childProcess.execFileSync = (file, args) => {
   let result;
   if (args[0] === 'api') {
     const path = args[1];
-    if (path === 'repos/o/r/pulls/1') result = {state: 'open', head: {sha: 'head'}};
+    if (path === 'graphql') result = {data: {repository: {pullRequest: {
+      state: 'OPEN', headRefOid: 'head',
+      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:05:00Z'}]},
+      labels: {nodes: names},
+      timelineItems: {nodes: [{label: {name: 'Working on PR comments'}, createdAt: '2026-10-28T20:05:00Z'}]},
+      commits: {nodes: [{commit: {committedDate: process.env.FAKE_HEAD_TIME, checkSuites: {nodes: []}}}]},
+    }}}};
+    else if (path === 'repos/o/r/pulls/1') result = {state: 'open', head: {sha: 'head'}};
     else if (path === 'repos/o/r/commits/head') result = {commit: {committer: {date: process.env.FAKE_HEAD_TIME}}};
     else if (path.endsWith('/check-suites')) result = {check_suites: []};
     else if (path.endsWith('/comments')) result = [[{user: {login: 'gitar-bot[bot]'}, body: state.body, updated_at: '2026-10-28T20:05:00Z'}]];
@@ -113,12 +120,12 @@ test('CLI reads event files over 128 KB and falls back to live reads for unavail
   for (const eventFile of ['unset', 'missing', 'unreadable']) {
     const done = runCliCase(t, {labels: [LABELS.approved.name], eventFile});
     assert.equal(done.status, 0, done.stderr);
-    assert.equal(done.calls, 5, `${eventFile}: no payload means the existing live path`);
+    assert.equal(done.calls, 1, `${eventFile}: no payload means the existing live path`);
     assert.deepEqual(done.labels, [LABELS.approved.name]);
   }
 });
 
-test('CLI notices rate limits but permission-denied 403 and server errors still fail', t => {
+test('CLI notices comment rate limits; push, permission-denied 403 and server errors fail', t => {
   for (const [failure, status] of [
     ['HTTP 403 API rate limit exceeded for installation', 0],
     ['HTTP 403 secondary rate limit exceeded', 0],
@@ -127,14 +134,18 @@ test('CLI notices rate limits but permission-denied 403 and server errors still 
     ['HTTP 403 Resource not accessible by integration', 1],
     ['HTTP 500 Internal Server Error', 1],
   ]) {
-    const done = runCliCase(t, {failure, labels: [WAITING.name]});
-    assert.equal(done.status, status, done.stderr);
-    assert.equal(done.calls, 1, 'never retry a failed gh call');
-    assert.deepEqual(done.labels, [WAITING.name]);
-    const notices = done.stdout.split('\n').filter(line => line.startsWith('::notice::'));
-    assert.equal(notices.length, status === 0 ? 1 : 0);
-    if (notices.length) assert.match(notices[0], /label.*left as it is/i);
-    else assert.ok(done.stderr.includes(failure), done.stderr);
+    for (const event of ['issue_comment', 'pull_request_target']) {
+      const labels = [event === 'issue_comment' ? WAITING.name : LABELS.approved.name];
+      const done = runCliCase(t, {event, failure, labels});
+      const expected = event === 'issue_comment' ? status : 1;
+      assert.equal(done.status, expected, `${event}: ${failure}; stderr: ${done.stderr}`);
+      assert.equal(done.calls, 1, 'never retry a failed gh call');
+      assert.deepEqual(done.labels, labels, 'a failed read leaves every label as it was');
+      const notices = done.stdout.split('\n').filter(line => line.startsWith('::notice::'));
+      assert.equal(notices.length, expected === 0 ? 1 : 0);
+      if (notices.length) assert.match(notices[0], /label.*left as it is/i);
+      else assert.ok(done.stderr.includes(failure), done.stderr);
+    }
   }
 });
 

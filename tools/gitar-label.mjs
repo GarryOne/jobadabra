@@ -150,7 +150,7 @@ function markWorking(pr) {
   main(pr);   // Why (#2386, Gitar): an approved PR must not keep "working"; the sync drops it again
 }
 
-/** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only rate limits exit cleanly. */
+/** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */
 function cli() {
   try {
     let payload = {};
@@ -161,8 +161,8 @@ function cli() {
       labels: (payload.issue?.labels || payload.pull_request?.labels || []).map(label => label.name)}) && process.argv[2] !== 'working') return;
     process.argv[2] === 'working' ? markWorking(process.argv[3]) : main(process.argv[2]);
   } catch (error) {
-    // Why (29 Oct 2026, a8): 27 label runs turned PRs red on rate-limited HTTP 403 after 200+ runs in 65 minutes exhausted the installation budget; quota failures leave cosmetic labels alone, but permission failures stay visible.
-    if (/rate limit|HTTP 429/i.test(error.message)) {
+    // Why (29 Oct 2026, a8): 27 label runs turned PRs red on rate-limited HTTP 403 after 200+ runs in 65 minutes exhausted the installation budget; quota failures leave cosmetic labels alone, but permission failures stay visible; Gitar's finding (29 Oct 2026, #2448): push failures must stay red when a stale approval cannot be cleared.
+    if (process.env.GITHUB_EVENT_NAME === 'issue_comment' && /rate limit|HTTP 429/i.test(error.message)) {
       console.log('::notice::Gitar label left as it is because GitHub API access is rate limited.');
       return;
     }

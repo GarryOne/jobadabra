@@ -1,12 +1,13 @@
 // Poll form values, closed job tabs and app log completions with one hang cap; tolerate reads by composition.
 // Job: wait on state
 /* global window */
-import {appLogText} from './app-log.mjs';
+import {appLogText, currentLaunchLog} from './app-log.mjs';
 import {pause as sleep} from './apply-fixtures.mjs';
 
-/** Waits until every app start in `profile`'s log has `done` logged after it (as many `done` lines as `[app] start ` lines); throws after `capMs` (a hang), naming `what`. */
+/** Wait for `done` after the latest recorded launch; no recorded starts are already settled. */
 export async function waitForLogLine(profile, done, {what = done.source, capMs = 90000, now = Date.now, pause = sleep} = {}) {
-  const settled = () => { const log = appLogText(profile); return (log.match(done) || []).length >= (log.match(/\[app\] start /g) || []).length; };
+  const starts = (appLogText(profile).match(/\[app\] start /g) || []).length;
+  const settled = () => starts === 0 || new RegExp(done.source, done.flags).test(currentLaunchLog(profile, starts));
   const {value} = await pollUntil(settled, value => value, {capMs, now, pause, log: () => {}});
   if (!value) throw new Error(`${what} never finished (no "${done.source}" in the app's log)`);
 }

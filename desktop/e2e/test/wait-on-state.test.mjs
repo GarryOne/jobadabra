@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {currentLaunchLog} from '../lib/app-log.mjs';
 import {formsClosedForJob, pollUntil, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
 
 const clock = () => {
@@ -159,4 +160,56 @@ test('a finished log at the cap is accepted and the default error names the rege
   await assert.rejects(waitForLogLine(profile, /finished/g, {...time, capMs: -1}), {
     message: 'finished never finished (no "finished" in the app\'s log)',
   });
+});
+
+
+test('old completions cannot cover a later launch', async t => {
+  const {profile, file} = logFile(t), time = clock();
+  fs.writeFileSync(file, '[app] start old\nstartup moves finished\nstartup moves finished\n[app] start new\n');
+  await assert.rejects(waitForLogLine(profile, /startup moves finished/g, {...time, capMs: 500}), /never finished/);
+  assert.deepEqual(time.ticks, [250, 250]);
+});
+
+test('an empty log with no recorded start is already settled', async t => {
+  const {profile, file} = logFile(t), time = clock();
+  fs.writeFileSync(file, '');
+  assert.equal(await waitForLogLine(profile, /startup moves finished/g, time), undefined);
+  assert.deepEqual(time.ticks, []);
+  assert.deepEqual(time.logs, []);
+});
+
+test('a logged start without a completion cannot pass', async t => {
+  const {profile, file} = logFile(t), time = clock();
+  fs.writeFileSync(file, '[app] start new\n');
+  await assert.rejects(waitForLogLine(profile, /startup moves finished/g, {...time, capMs: 500}), /never finished/);
+  assert.deepEqual(time.ticks, [250, 250]);
+});
+
+test('a completion after the last start passes even if an older launch never completed', async t => {
+  const {profile, file} = logFile(t), time = clock();
+  fs.writeFileSync(file, '[app] start old\n[app] start new\nstartup moves finished\n');
+  await waitForLogLine(profile, /startup moves finished/g, {...time, capMs: 500});
+  assert.deepEqual(time.ticks, []);
+});
+
+test('the latest launch stays pending across a midnight log roll', async t => {
+  const {profile, file} = logFile(t), time = clock();
+  fs.writeFileSync(file, '[app] start old\nstartup moves finished\nstartup moves finished\n[app] start new\n');
+  const pause = async tick => {
+    await time.pause(tick);
+    fs.renameSync(file, path.join(profile, 'logs', 'app-2026-10-28.log'));
+    fs.writeFileSync(file, 'startup moves finished\n');
+  };
+  await waitForLogLine(profile, /startup moves finished/g, {...time, pause, capMs: 500});
+  assert.deepEqual(time.ticks, [250]);
+});
+
+test('launch-scoped reads exclude retained telemetry until the expected launch starts', t => {
+  const {profile, file} = logFile(t);
+  fs.writeFileSync(file, '[app] start old\n[telemetry] reporting is off: demo mode\n');
+  assert.equal(currentLaunchLog(profile, 2), '');
+  fs.appendFileSync(file, '[app] start new\n');
+  assert.doesNotMatch(currentLaunchLog(profile, 2), /reporting is off/);
+  fs.appendFileSync(file, '[telemetry] reporting is off: the end-to-end journey\n');
+  assert.match(currentLaunchLog(profile, 2), /reporting is off/);
 });

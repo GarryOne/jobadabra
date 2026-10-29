@@ -1,3 +1,4 @@
+// Job: run the backbone
 /* global document, window */
 // Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
@@ -14,7 +15,7 @@ export const E2E = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '.
 export const DESKTOP = path.resolve(E2E, '..');
 // Windows has no .bin/electron executable (it is a .cmd that Playwright cannot start): the package itself says where electron.exe is. Elsewhere: unchanged.
 import {createRequire} from 'node:module';
-import {appLogText} from './app-log.mjs';
+import {appLogText, currentLaunchLog} from './app-log.mjs';
 import {keepRunLogs} from './run-logs.mjs';
 import {pythonCoverage, saveCoverage, startCoverage, takeSetup, takeStep} from './coverage.mjs';   // E2E_COVERAGE=1: what app code this session, and each step, ran (gate G1b)
 import {refuseWrapper, withoutWrappers} from './real-claude.mjs';   // never a terminal's claude wrapper (e2e/test/real-claude.test.mjs)
@@ -38,6 +39,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   // It chose Standard automation already (the first-Apply dialog, lib/apply-choice-gate.js): an Apply step goes on as before; a suite that tests the dialog passes settings.apply.
   if (!again) fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({telemetry: false, shareEmployers: false, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'}, ...settings}));
   pythonCoverage();   // E2E_COVERAGE=1: the engine's Python records its lines per step too (lib/coverage.mjs)
+  const launchNumber = (appLogText(profile).match(/\[app\] start /g) || []).length + 1;
   // Linux (CI runners, 6 Oct 2026): no keyring there, so Chromium's basic password store keeps the app's keys (test keys only, a throwaway profile).
   const app = await electron.launch({
     executablePath: executablePath || electronPath(),
@@ -57,7 +59,7 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   page.on('console', message => { if (message.type() === 'error') journey.consoleErrors.push(message.text()); });
   // Only the app's own files (the window's scripts, styles, images): an outside address failing is not the app's bug.
   page.on('requestfailed', request => { if (/^file:/.test(request.url()) && !/ERR_ABORTED/.test(request.failure()?.errorText || '')) journey.failedLoads.push(request.url().replace(/^.*\/desktop\//, 'desktop/')); });
-  await confirmQuiet(profile);
+  await confirmQuiet(profile, launchNumber);
   const trace = await startTrace(app);
   const coverage = await startCoverage(app, page).catch(() => null);
   const shot = name => page.screenshot({path: path.join(ARTIFACTS, `${name}.png`)}).catch(() => {});
@@ -154,9 +156,9 @@ export async function settle(page, seconds = 20) {
 }
 
 // The journey must never alter the live telemetry (the owner's rule, 2 Oct 2026). The app says in its own log why it is not reporting; no such line, no run.
-async function confirmQuiet(profile) {
+async function confirmQuiet(profile, launchNumber) {
   for (let waited = 0; waited < 20000; waited += 500) {
-    const text = appLogText(profile);
+    const text = currentLaunchLog(profile, launchNumber);
     if (/\[telemetry\] reporting is off: (?:the end-to-end journey|demo mode)/.test(text)) return;   // demo mode never reports either
     if (/\[telemetry\] reporting follows/.test(text)) throw new Error('the app would report to the live product: refusing to run the journey');
     await new Promise(resolve => setTimeout(resolve, 500));

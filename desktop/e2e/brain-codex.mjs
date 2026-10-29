@@ -40,8 +40,10 @@ export const brainProvider = (env = process.env) => (aiProvider(env, 'brain').pr
 
 /** Logs which variable decided (providerLine) and puts BRAIN_AI into the job's env for the steps' guards. */
 function exportProvider() {
-  console.log(providerLine(process.env, 'brain'));
-  if (process.env.GITHUB_ENV) fs.appendFileSync(process.env.GITHUB_ENV, `BRAIN_AI=${brainProvider()}\n`);
+  const {from} = aiProvider(process.env, 'brain');
+  const used = brainProvider();   // free maps to codex here, so the line names what runs, not the resolver's raw word
+  console.log(`AI provider: ${used} (from ${from}${used === 'codex' && from !== 'default' && aiProvider(process.env, 'brain').provider !== 'codex' ? '; free runs on the broker here' : ''})`);
+  if (process.env.GITHUB_ENV) fs.appendFileSync(process.env.GITHUB_ENV, `BRAIN_AI=${used}\n`);
 }
 
 async function main() {

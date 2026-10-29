@@ -38,7 +38,7 @@ export function fileText(step, reply) {
 /** 'claude' only when the resolver (lib/ai-provider.mjs, consumer "brain") says claude; free and codex both mean the broker here, the brain has no Workers AI path. */
 export const brainProvider = (env = process.env) => (aiProvider(env, 'brain').provider === 'claude' ? 'claude' : 'codex');
 
-/** Logs which variable decided (providerLine) and puts BRAIN_AI into the job's env for the steps' guards. */
+/** Logs the provider the brain runs on and which variable decided, and puts BRAIN_AI into the job's env for the steps' guards. */
 function exportProvider() {
   const {from} = aiProvider(process.env, 'brain');
   const used = brainProvider();   // free maps to codex here, so the line names what runs, not the resolver's raw word

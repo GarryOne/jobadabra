@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {startAiProxy} from './ai-proxy.mjs';
+import {answersMode} from './ai-answers.mjs';
 import {aiProvider} from './ai-provider.mjs';
 import {answerViaBroker} from './broker-relay.mjs';
 import {startNotionProxy} from './notion-proxy.mjs';
@@ -54,12 +55,12 @@ export async function contextAiKeys({offlineAi = false, light = false, family, e
   return {key, judgeKey: offlineCi ? DUMMY_KEY : KEY(), appKey: appKey(key), needsKey, lightNeeds, needs: ['api', 'openai'].includes(engine) ? needsKey : []};
 }
 
-/** Start both provider-shaped proxies; offline suites have only a refusing stand-in behind them. */
+/** Start both proxies; offline backbone suites use declared answers and other offline suites refuse all asks. */
 export async function contextAiProxies({offlineAi = false, family}) {
   const offline = {target: 'http://127.0.0.1:1'};
   const proxy = await startAiProxy({delayMs: 0, ...(offlineAi ? offline : aiProvider(process.env, 'app').provider === 'codex' && isCi() ? {kind: 'app-codex', relay: answerViaBroker} : family === 'free' ? {target: process.env.E2E_FREE_AI_URL, kind: 'app-free'} : {})});
-  // Why (29 Oct 2026, owner): offline questions refuse before stored replies, caches, the Free AI relay or the Codex broker, with no live fallback target. Why (29 Oct 2026, st): the app asks background AI questions on its own (59 in one Settings run, CI run 40930376557); offline means every one is refused and none reaches a model, not that none is asked.
-  if (offlineAi) proxy.setCanned(() => ({refuse: 'invalid-key'}));
+  // Why (29 Oct 2026, ap): backbone must reach declared answers and fail unknown kinds by name; other offline modes keep the blanket refusal for background asks (59 in Settings run 40930376557).
+  if (offlineAi && answersMode() !== 'backbone') proxy.setCanned(() => ({refuse: 'invalid-key'}));
   const openaiProxy = family === 'openai' ? await startAiProxy({target: offlineAi ? offline.target : 'https://api.openai.com', kind: 'app-openai', metered: /\/responses(\?|$)/, shape: 'openai', follow: proxy}) : null;
   return {proxy, openaiProxy};
 }

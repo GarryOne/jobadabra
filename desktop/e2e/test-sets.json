@@ -319,6 +319,7 @@
   "store.test.mjs",
   "storemove-process.test.mjs",
   "stores-answer.test.mjs",
+  "stores-backbone-no-live-ai.test.mjs",
   "strategy-headings.test.mjs",
   "strategy-start.test.mjs",
   "suite-ai-mode.test.mjs",

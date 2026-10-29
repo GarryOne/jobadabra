@@ -391,8 +391,8 @@ jobs:
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         env:
-          # Why (29 Oct 2026, owner-approved design rule A): manual first attempts may record; quality otherwise uses backbone answers on both tries.
-          E2E_AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || matrix.suite == 'quality' && 'backbone' || 'off' }}
+          # Why (29 Oct 2026, ap; owner-approved design rule A): manual first attempts may record; quality and stores otherwise use backbone answers on both tries, so stores needs no live AI.
+          E2E_AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || contains(fromJSON('["quality","stores"]'), matrix.suite) && 'backbone' || 'off' }}
           PR_RUN: ${{ inputs.pr_suites != '' && inputs.after_merge == '' && '1' || '' }}   # a report-only suite skips its retry on a PR only; main, nightly and gate runs keep it
         # A red first run is not the verdict (owner, 6 Oct 2026): the step below runs the suite once more on the same commit and decides. Flaky (red, then green)
         # passes the job and is filed and labelled `flaky`; red twice fails it. A mutation test has no second try: its red means the bug was caught.
@@ -423,7 +423,7 @@ jobs:
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
         env:
-          E2E_AI_ANSWERS: ${{ matrix.suite == 'quality' && 'backbone' || 'off' }}
+          E2E_AI_ANSWERS: ${{ contains(fromJSON('["quality","stores"]'), matrix.suite) && 'backbone' || 'off' }}
         working-directory: desktop/e2e
         timeout-minutes: 15
         run: |

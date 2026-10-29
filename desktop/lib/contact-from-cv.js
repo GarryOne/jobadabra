@@ -85,7 +85,7 @@ export async function propose(client, cvPdf, wanted, profile = '') {
       ...(String(profile || '').trim() ? [{type: 'text', text: `<profile>\n${String(profile).slice(0, 20000)}\n</profile>`}] : []),
       {type: 'text', text: `Fields to fill: ${wanted.map(key => `${key} (${LABELS[key]})`).join(', ')}`}]}],
     output_config: {format: {type: 'json_schema', schema: SCHEMA}},
-  });
+  }, {headers: {'x-jp-action': 'contact_from_cv'}});
   if (response.stop_reason === 'refusal') throw new Error(`${nameOfClient(client)} declined to read the CV`);
   if (response.stop_reason === 'max_tokens') throw new Error(`${nameOfClient(client)}'s answer was cut short`);
   const text = response.content?.find(block => block.type === 'text')?.text || '{}';

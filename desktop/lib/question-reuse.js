@@ -55,7 +55,7 @@ async function classifyChunk(ai, {labels, answered, facts, company, host}) {
     model: MODEL, max_tokens: 2000, system: INSTRUCTIONS,
     messages: [{role: 'user', content: `<employer>${company}</employer>\n<site>${host}</site>\n<saved_answers>\n${JSON.stringify(answered.map(a => ({question: a.question, answer: String(a.answer || '').slice(0, 300)}))).slice(0, 12000)}\n</saved_answers>\n<facts>\n${JSON.stringify(facts.map(fact => fact.label))}\n</facts>\n<questions>\n${JSON.stringify(labels)}\n</questions>`}],
     output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'},
-  });
+  }, {headers: {'x-jp-action': 'reuse_verdict'}});
   out.usage = response.usage || {};
   const text = response.content?.find(block => block.type === 'text')?.text || '{"verdicts":[]}';
   let verdicts = [];

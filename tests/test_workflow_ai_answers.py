@@ -1,5 +1,6 @@
 # Check manual-only AI answer recording, candidate artifacts and the record-run summary.
 from pathlib import Path
+import json
 import re
 import unittest
 
@@ -9,13 +10,16 @@ RECORD_GUARD = "github.event_name == 'workflow_dispatch' && github.run_attempt =
 
 
 def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs'):
-    """Evaluate only ==, && and || over these workflow inputs and string/integer literals."""
+    """Evaluate ==, &&, || and contains(fromJSON(...), matrix.suite) over workflow inputs."""
     context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite}
 
     def atom(token):
         token = token.strip()
         if re.fullmatch(r"'[^']*'", token):
             return token[1:-1]
+        contains = re.fullmatch(r"contains\(fromJSON\('([^']+)'\), matrix\.suite\)", token)
+        if contains:
+            return suite in json.loads(contains[1])
         if token.isdigit():
             return int(token)
         return context[token]
@@ -59,7 +63,7 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || matrix.suite == 'quality' && 'backbone' || 'off' }}")
+        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || contains(fromJSON('[\"quality\",\"stores\"]'), matrix.suite) && 'backbone' || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -69,18 +73,18 @@ class WorkflowAiAnswers(unittest.TestCase):
                   ('schedule', 'push', 'pull_request', 'workflow_call', 'retry')]
         for event, mode, attempt, want in cases:
             with self.subTest(event=event, mode=mode, attempt=attempt):
-                for suite in ('jobs', 'quality', 'qualityai', 'apply'):
-                    expected = 'backbone' if suite == 'quality' and want == 'off' else want
+                for suite in ('jobs', 'quality', 'stores', 'qualityai', 'apply'):
+                    expected = 'backbone' if suite in ('quality', 'stores') and want == 'off' else want
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
 
-    def test_the_suites_second_try_uses_backbone_only_for_quality(self):
+    def test_the_suites_second_try_uses_backbone_only_for_quality_and_stores(self):
         retry = self.step('if again ')
         value = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', retry).group(1)
-        for suite in ('quality', 'qualityai', 'jobs', 'apply'):
+        for suite in ('quality', 'stores', 'qualityai', 'jobs', 'apply'):
             for mode in ('off', 'record'):
                 with self.subTest(suite=suite, mode=mode):
                     self.assertEqual(expression(value, mode=mode, suite=suite),
-                                     'backbone' if suite == 'quality' else 'off')
+                                     'backbone' if suite in ('quality', 'stores') else 'off')
 
     def test_candidates_stay_in_the_existing_artifact_upload(self):
         self.assertNotIn('E2E_AI_CANDIDATES', self.suite)

@@ -89,10 +89,10 @@ test('a live context still checks the CI key and requires it; Mac key selection 
   assert.deepEqual(keys.needs, []);
 });
 
-test('offline proxies refuse all requests before stored answers, relays, broker or provider fetch', async t => {
+test('offline proxies outside backbone refuse before stored answers, relays, broker or provider fetch', async t => {
   const fetchLocal = globalThis.fetch;
   let escaped = 0;
-  environment(t, {E2E_AI_PROVIDER: 'codex', E2E_FREE_AI_URL: 'http://127.0.0.1:1', E2E_FREE_AI_KEY: 'JPF1.test', E2E_AI_ANSWERS: 'backbone'});
+  environment(t, {E2E_AI_PROVIDER: 'codex', E2E_FREE_AI_URL: 'http://127.0.0.1:1', E2E_FREE_AI_KEY: 'JPF1.test', E2E_AI_ANSWERS: 'off'});
   const golden = file => JSON.parse(fs.readFileSync(new URL(`../fixtures/golden/${file}`, import.meta.url), 'utf8'));
   const item = golden('truth.json')[0], company = item.company || golden('sources.json')[0].company;
   const known = {messages: [{role: 'user', content: `Title: ${item.title}\nCompany: ${company}\nLocation: ${item.location}`} ]};

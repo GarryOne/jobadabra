@@ -244,7 +244,7 @@ def refresh(search, client=None, file=None):
         from .ai import engine
         if not engine.ready():
             return 0
-        client = engine.client(action='scout')
+        client = engine.client(action='places')
     cache.update(ask(client, words))
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text(json.dumps(cache, indent=1, ensure_ascii=False) + '\n')

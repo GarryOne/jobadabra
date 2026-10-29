@@ -61,6 +61,13 @@ export const modelClient = ({key = '', ...options} = {}) => ({messages: {create:
 
 const reply = (status, data) => ({ok: status < 400, status, json: async () => data});
 
+/** Resolve a stored judge answer before any live engine or cache is consulted. */
+function storedJudgeReply(stored) {
+  // Why (29 Oct 2026, ap): a judge receiving a declared refusal must fail before selecting an engine or consulting its cache.
+  if (stored.refuse) throw new Error(`AI stored answer refused: ${stored.refuse}`);
+  return stored.reply ? reply(200, stored.reply) : null;
+}
+
 // fetch-shaped. `engine`/`exec` can be replaced by a test.
 // CI on Free AI (lib/engine.mjs judgeFamily): the same Messages call goes to the relay on the runner with its JPF1 key instead of Anthropic with the Claude key.
 export function judgeTarget(url, init, env = process.env) {
@@ -71,7 +78,8 @@ export function judgeTarget(url, init, env = process.env) {
 /** Fetch a judge reply, consulting question answers before choosing any live engine. */
 export async function modelFetch(url, init, {engine = () => pickEngine({family: 'claude'}), exec = run, timeoutMs = 5 * 60 * 1000, env = process.env} = {}) {
   const stored = storedAnswer({url, headers: init?.headers, body: init?.body, hint: init?.hint}, env);
-  if (stored.reply) return reply(200, stored.reply);
+  const answered = storedJudgeReply(stored);
+  if (answered) return answered;
   if (engine() === 'api') {   // paid: counted for /ai-cost as the judges' spend (lib/ai-meter.mjs)
     // A judge answer seen before is replayed like the app's (owner, 27 Oct 2026: "with the judges replaying in the gate too"); a fresh run asks live.
     const body = Buffer.from(String(init?.body ?? '')), key = requestKey(`judge ${aiProvider(env, 'judges').provider === 'codex' ? 'codex' : judgeFamily(env)} ${new URL(url).pathname}`, body);   // Why (#2416): a Codex answer never replays as Claude's or Free AI's

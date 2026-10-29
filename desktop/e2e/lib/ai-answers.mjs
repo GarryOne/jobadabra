@@ -24,7 +24,7 @@ export function answersMode(env = process.env) {
   return mode;
 }
 
-/** Load reviewed provider replies and optional per-item decide answers, validating both shapes. */
+/** Load reviewed replies, optional decide items and declared kind answers, validating each shape. */
 export function loadTable(file = TABLE) {
   const table = JSON.parse(fs.readFileSync(file, 'utf8'));
   if (table?.v !== 1) throw new Error(`AI answers: unsupported v in ${file}`);
@@ -34,7 +34,21 @@ export function loadTable(file = TABLE) {
     for (const [id, entry] of Object.entries(entries)) if (!object(entry?.reply)) throw new Error(`AI answers: ${operation}/${id} reply must be an object`);
   }
   checkItems(table);
+  checkKinds(table.kinds);
   return table;
+}
+
+/** Validate optional kind answers: exactly one provider reply or a named proxy failure. */
+function checkKinds(kinds) {
+  if (kinds === undefined) return;
+  if (!object(kinds)) throw new Error('AI answers: kinds must be an object');
+  for (const [kind, entry] of Object.entries(kinds)) {
+    const answer = entry?.answer;
+    // Why (29 Oct 2026, ap): declared refusals use only failureFor's named API failures, never a blanket fallback for unknown kinds.
+    const valid = object(answer) && Object.keys(answer).length === 1 &&
+      (object(answer.reply) || ['rate-limit', 'server-error', 'invalid-key', 'no-credit'].includes(answer.refuse));
+    if (!valid) throw new Error(`AI answers: ${kind} needs an answer with an object reply or known refuse name`);
+  }
 }
 
 /** Validate the optional item table with the same errors as complete-reply validation. */
@@ -70,19 +84,27 @@ function scoreQuestion(body, persona) {
   return {operation: 'app.score', id: persona ? `${persona}/${matches[0].id}` : String(matches[0].id)};
 }
 
-/** Identify scores, decide items or fact questions within the environment's persona. */
-export function questionOf({url, headers, body, hint}, env = process.env) {
+/** Identify scores, decide items, declared kinds or fact questions; an explicit table keeps kind lookup pure. */
+export function questionOf({url, headers, body, hint}, env = process.env, table) {
   // Why (#2450): golden personas reuse posting IDs, so their stored scores and verdicts must never share an answer.
   const persona = env.E2E_QUALITY_PERSONA || '';
   if (hint?.operation === 'judge.facts' && typeof hint.id === 'string' && hint.id.trim()) return {operation: hint.operation, id: persona ? `${persona}/${hint.id}` : hint.id};
   const data = parsed(body), action = actionOf(headers, data);
   if (action === 'score') return scoreQuestion(data, persona);
   if (action === 'decide') return decideQuestion(data, persona);
+  const kinds = (table ?? loadTable(env.E2E_AI_ANSWERS_FILE || TABLE)).kinds;
+  // Why (29 Oct 2026, ap): background answers have one identity per declared kind, independent of applicant content or persona.
+  // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path.
+  if (object(kinds) && Object.hasOwn(kinds, action) && answersMode(env) === 'backbone') return {operation: 'app.kind', id: action};
   return {unkeyable: `${action || hint?.operation || 'unknown'}: question identity is not in the request${!action && !hint ? ` (${url || 'unknown path'})` : ''}`};
 }
 
 /** Return a complete stored reply, or name the precise question that has no answer. */
 export function answerFor(question, table) {
+  if (question.operation === 'app.kind') {
+    const entry = object(table.kinds) && Object.hasOwn(table.kinds, question.id) ? table.kinds[question.id] : null;
+    return entry ? {...entry.answer} : {missing: `app.kind/${question.id}`};
+  }
   if (question.operation === 'app.decide') {
     const results = [], allowed = question.context.allowedAnswers.split(', ');
     for (const item of question.items) {
@@ -137,10 +159,11 @@ export function refusedQuestions(env = process.env) {
 
 /** Apply the shared table-first rule; E2E_AI_ANSWERS_FILE permits isolated test tables. */
 export function storedAnswer(request, env = process.env) {
-  const mode = answersMode(env), question = questionOf(request, env), dir = artifactsOf(env);
-  // Why (29 Oct 2026, a8; owner approved the sketch): beta 4 missed 47 hash-keyed questions after setup text changed, so stable question answers precede every cache and transport.
-  const found = question.unkeyable ? {} : answerFor(question, loadTable(env.E2E_AI_ANSWERS_FILE || TABLE));
-  if (found.reply) return {reply: found.reply};
+  const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), question = questionOf(request, env, table), dir = artifactsOf(env);
+  // Why (29 Oct 2026, ap; owner-approved rule A): beta 4 missed 47 hash-keyed questions after setup text changed; question and declared-kind answers share one validated table before every cache and transport.
+  const found = question.unkeyable ? {} : answerFor(question, table);
+  // Why (29 Oct 2026, ap): an explicit kind refusal is a stored answer, so it must stop before caches and live transports too.
+  if (found.reply || found.refuse) return found;
   // Why (29 Oct 2026, a8; owner approved the sketch): those 47 misses reached live AI in strict replay, so backbone misses must refuse before cache, relay, broker or CLI selection.
   if (mode === 'backbone') {
     // Why (#2450 slice 3): the registry must name the first missing item, even when product code swallows the refusal.

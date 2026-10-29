@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {answersMode, loadTable, questionOf, answerFor, refusal, recordCandidate, refusedQuestions} from '../lib/ai-answers.mjs';
-import {message, startAiProxy} from '../lib/ai-proxy.mjs';
+import {FAILURES, message, startAiProxy} from '../lib/ai-proxy.mjs';
 import {fresh, keep, requestKey} from '../lib/ai-meter.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {judge} from '../lib/factjudge.mjs';
@@ -78,6 +78,43 @@ test('score identity uses exact posting triples, not wording, model, schemas or 
   assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: {...a, messages: [{role: 'user', content: a.messages[0].content.replace(company, 'Other employer')}]}}).unkeyable, /app.score/);
   assert.deepEqual(questionOf({body: a, hint: {operation: 'judge.facts', id: '3001/first'}}), {operation: 'judge.facts', id: '3001/first'});
   assert.deepEqual(questionOf({headers: {'x-jp-action': 'decide'}, body: a}), {unkeyable: 'decide: missing recognised system prefix'});
+});
+
+test('kind declarations validate exactly one known refusal or object reply', t => {
+  const {file} = fixture(t);
+  const write = kinds => fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, kinds}));
+  for (const answer of [...Object.keys(FAILURES).map(refuse => ({refuse})), {reply: stored}]) {
+    write({answer_home: {answer}});
+    assert.deepEqual(loadTable(file).kinds.answer_home.answer, answer);
+  }
+  for (const kinds of [null, [], {answer_home: {}}, {answer_home: {answer: {}}},
+    {answer_home: {answer: {refuse: 'unknown'}}}, {answer_home: {answer: {reply: []}}},
+    {answer_home: {answer: {refuse: 'invalid-key', reply: stored}}}]) {
+    write(kinds);
+    assert.throws(() => loadTable(file), /AI answers:.*kinds|AI answers:.*answer_home/);
+  }
+});
+
+test('kind identity and answers depend only on the declared action name', t => {
+  const fixed = fixture(t), {file} = fixed, env = {...fixed.env, E2E_AI_ANSWERS: 'backbone'};
+  const kinds = {answer_home: {answer: {refuse: 'invalid-key'}}, field_redraft: {answer: {reply: stored}}};
+  fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, kinds}));
+  const table = loadTable(file);
+  for (const [kind, {answer}] of Object.entries(kinds)) {
+    for (const body of [{messages: [{role: 'user', content: 'first item'}]}, {input: 'another item'}]) {
+      const question = questionOf({headers: {'x-jp-action': kind}, body}, env);
+      assert.deepEqual(question, {operation: 'app.kind', id: kind});
+      assert.deepEqual(answerFor(question, table), answer);
+    }
+    assert.deepEqual(questionOf({body: {prompt_cache_key: `job-pilotto-${kind}`}}, env), {operation: 'app.kind', id: kind});
+    assert.deepEqual(questionOf({headers: {'x-jp-action': kind}}, {...env, E2E_QUALITY_PERSONA: 'photographer'}, table), {operation: 'app.kind', id: kind});
+  }
+  for (const mode of ['off', 'record']) {
+    const live = questionOf({headers: {'x-jp-action': 'answer_home'}}, {...env, E2E_AI_ANSWERS: mode}, table);
+    assert.match(live.unkeyable, /answer_home: question identity is not in the request/, `${mode}: live suites keep their replay and live path`);
+  }
+  assert.deepEqual(answerFor({operation: 'app.kind', id: 'undeclared_kind'}, table), {missing: 'app.kind/undeclared_kind'});
+  assert.match(questionOf({headers: {'x-jp-action': 'undeclared_kind'}}, env).unkeyable, /undeclared_kind/);
 });
 
 for (const mode of ['off', 'backbone', 'record']) test(`table hit in ${mode} bypasses upstream, relay and hash cache`, async t => {

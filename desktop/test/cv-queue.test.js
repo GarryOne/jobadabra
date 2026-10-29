@@ -119,3 +119,11 @@ test('a detail Your details already has is not asked again', async () => {
   const asked = (await review.pending(storage, {ai: {client}})).filter(each => each.details.kind === 'contact').map(each => each.question);
   assert.ok(!asked.some(each => /first_name|last_name|email|phone|location/.test(each)), `nothing held is asked: ${asked}`);
 });
+
+
+test('CV fact proposals name their AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await cvQueue.factProposals(fresh(), {client, wanted: ['nationality'], read: () => Buffer.from('fake cv')});
+  assert.equal(sent?.headers?.['x-jp-action'], 'cv_queue');
+});

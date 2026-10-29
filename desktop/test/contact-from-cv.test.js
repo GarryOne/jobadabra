@@ -115,3 +115,11 @@ test('the CV read copies the applicant\'s own name even when it matches a signed
   assert.match(calls[0].system, /copy it even when it is the same as the name of an account you are signed in with/);
   assert.ok(MODEL);
 });
+
+
+test('contact extraction from a CV names its AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await forCv(memoryStorage(), {contact: {}, client, cvHash: 'cv-action', read: pdf});
+  assert.equal(sent?.headers?.['x-jp-action'], 'contact_from_cv');
+});

@@ -33,7 +33,7 @@ export async function covered(storage, labels, {ai = {}} = {}) {
   if (!open.length || !lines.length || !client) return [];
   try {
     const response = await client.messages.create({model: MODEL, max_tokens: 300, system: INSTRUCTIONS, output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'},
-      messages: [{role: 'user', content: `<facts>\n${open.map(fact => `${fact.id}: ${fact.label}`).join('\n')}\n</facts>\n<lines>\n${JSON.stringify(lines).slice(0, 6000)}\n</lines>`}]});
+      messages: [{role: 'user', content: `<facts>\n${open.map(fact => `${fact.id}: ${fact.label}`).join('\n')}\n</facts>\n<lines>\n${JSON.stringify(lines).slice(0, 6000)}\n</lines>`}]}, {headers: {'x-jp-action': 'covered_facts'}});
     const ids = (JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}').covered || []).filter(id => open.some(fact => fact.id === id));   // an id the AI invented keeps nothing
     storage.saveSettings({missingFacts: {...(storage.settings().missingFacts || {}), covered: {sig, ids}}});
     return ids;
@@ -48,7 +48,7 @@ the applicant (their language; <language> when given, else English) and a hint o
 date = a day, duration = a length of time, salary = an amount and currency, language = the languages and the level in each, text = a few words.`;
 export async function wording(storage, {client, language = ''} = {}) {
   const sig = [...CATALOG.map(fact => `${fact.id}:${fact.kind}:${fact.label}`), language].join('~');
-  const list = await written(storage, {cache: 'factWording', sig, system: WORDING, tag: 'facts', client, maxTokens: 1000,
+  const list = await written(storage, {cache: 'factWording', action: 'missing_facts_wording', sig, system: WORDING, tag: 'facts', client, maxTokens: 1000,
     fields: CATALOG.map(fact => ({key: fact.id, label: `${fact.label}; answer: ${fact.kind}`})), extra: language ? `\n<language>${language}</language>` : ''});
   return new Map((list || []).map(each => [each.field, {question: each.question, hint: each.hint}]));
 }

@@ -80,3 +80,18 @@ test('without an AI only a line with the fact\'s own label counts, and nothing i
   await missing.covered(storage, ['Notice period', 'Phone'], {ai: fake([], calls)});
   assert.ok(!/notice:/.test(calls[0].messages[0].content), 'a fact whose own label is saved is not sent to the AI');
 });
+
+
+test('covered facts name their AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await missing.covered(fresh({}), ['Citizenship'], {ai: {client}});
+  assert.equal(sent?.headers?.['x-jp-action'], 'covered_facts');
+});
+
+test('missing-fact wording names its AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await missing.wording(fresh({}), {client});
+  assert.equal(sent?.headers?.['x-jp-action'], 'missing_facts_wording');
+});

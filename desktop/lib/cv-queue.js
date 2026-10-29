@@ -55,7 +55,7 @@ export async function factProposals(storage, {client, wanted, read = fs.readFile
   try {
     const response = await client.messages.create({model: MODEL, max_tokens: 4000, system: INSTRUCTIONS, output_config: {format: {type: 'json_schema', schema: SCHEMA}},
       messages: [{role: 'user', content: [{type: 'document', source: {type: 'base64', media_type: 'application/pdf', data: Buffer.from(read(storage.path('cv.pdf'))).toString('base64')}},
-        {type: 'text', text: `<facts>\n${CATALOG.map(fact => `${fact.id}: ${fact.label}; answer: ${fact.kind}`).join('\n')}\n</facts>`}]}]});
+        {type: 'text', text: `<facts>\n${CATALOG.map(fact => `${fact.id}: ${fact.label}; answer: ${fact.kind}`).join('\n')}\n</facts>`}]}]}, {headers: {'x-jp-action': 'cv_queue'}});
     if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') throw new Error(`the read ended: ${response.stop_reason}`);
     proposals = clean(JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}').facts, CATALOG.map(fact => fact.id));
   } catch (failure) { error = String(failure?.message || failure).slice(0, 200); }

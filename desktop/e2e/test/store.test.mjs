@@ -40,15 +40,17 @@ test('quality pins SQLite for every CI store alternation so recorded answers use
   }
 });
 
-test('every stored-answer backbone suite pins its store so reviewed answers cover its path', async () => {
+test('every stored-answer backbone suite pins its store or bypasses store alternation', async () => {
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
   const condition = workflow.match(/^\s*E2E_AI_ANSWERS:.*backbone.*$/m)?.[0] || '';
-  const suites = [...condition.matchAll(/matrix\.suite\s*==\s*'([^']+)'/g)].map(match => match[1]);
+  const suites = JSON.parse(condition.match(/contains\(fromJSON\('([^']+)'\), matrix\.suite\)/)?.[1] || '[]');
   assert.ok(suites.length > 0, 'stored answers must name at least one suite');
   assert.ok(suites.includes('quality'), 'quality must use stored backbone answers');
+  assert.ok(suites.includes('stores'), 'stores must use declared backbone kinds');
   for (const name of suites) {
     const suite = await import(`../suites/${name}.mjs`);
-    assert.ok(STORES.includes(suite.store), `${name}: stored answers require an exported store pin`);
+    // Why (29 Oct 2026, ap): notion=false bypasses context's store alternation; stores sets up SQLite itself and its declared kind refusals contain no store-specific data.
+    assert.ok(STORES.includes(suite.store) || suite.notion === false, `${name}: stored answers require a store pin or no store alternation`);
   }
 });
 

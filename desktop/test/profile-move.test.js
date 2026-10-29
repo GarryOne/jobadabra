@@ -9,7 +9,7 @@ import {test} from 'node:test';
 import {createStorage} from '../lib/storage.js';
 import * as store from '../lib/store/index.js';
 import * as sections from '../lib/profile-sections.js';
-import {move, openConflicts, resolve} from '../lib/profile-move.js';
+import {judge, move, openConflicts, resolve} from '../lib/profile-move.js';
 import {fakeNotion} from './fake-notion.js';
 
 const PROFILE = ['## Targets', '**Roles:** Site Reliability Engineer (senior)', '**Work permit:** EU citizen (no sponsorship needed in Switzerland)',
@@ -152,3 +152,16 @@ test('"Which is right?" shows only conflicts the pages still have', async () => 
     assert.deepEqual(storage.settings().profileConflicts, [], `${name}: the queue is saved without it`);
   }
 });
+
+
+for (const [action, options] of [
+  ['answer_home', {}],
+  ['organize_lines', {destinations: [{id: 'availability', page: 'profile', heading: 'Availability', path: []}]}],
+]) {
+  test(`${action}: profile judgments name their AI request`, async () => {
+    let sent;
+    const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+    await judge([{id: 'profile:1', label: 'Notice', value: '2 months'}], {client}, options);
+    assert.equal(sent?.headers?.['x-jp-action'], action);
+  });
+}

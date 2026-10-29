@@ -51,9 +51,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
       const asked = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
       const text = await answerWith(openai ? asAnthropic(asked) : asked);   // may be async (the live run asks a real model)
       if (text?.refuse) {   // a stand-in may also refuse a call the way the API does (a FAILURES mode), for the calls it must not answer and must not pass on
-        const refusal = openai ? openaiFailureFor(text.refuse) : failureFor(text.refuse);
-        stats.failed++; STUBBED.add(text.refuse);
-        res.writeHead(refusal.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(refusal.body), 'retry-after-ms': '10'}); res.end(refusal.body); return;
+        sendRefusal(res, text.refuse, openai, stats); return;
       }
       if (text != null) {
         stats.canned++;
@@ -72,7 +70,7 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     let stored;
     try {
       stored = storedAnswer({url: req.url, headers: req.headers, body: Buffer.concat(chunks)});
-      if (stored.reply) { sendStored(res, stored.reply, openai, JSON.parse(Buffer.concat(chunks)).stream); return; }
+      if (sendStored(res, stored, openai, Buffer.concat(chunks), stats)) return;
     } catch (error) {
       res.writeHead(503, {'content-type': 'application/json'});
       res.end(JSON.stringify({type: 'error', error: {type: 'api_error', code: error.code, message: error.message}})); return;
@@ -127,12 +125,25 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     setCanned: answer => { canned = answer; }, canned: () => canned, close: () => { server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
 }
 
-function sendStored(res, reply, openai, stream) {
+/** Send the same provider-shaped error for a suite stand-in and a declared stored refusal. */
+function sendRefusal(res, mode, openai, stats) {
+  const refusal = openai ? openaiFailureFor(mode) : failureFor(mode);
+  stats.failed++; STUBBED.add(mode);
+  res.writeHead(refusal.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(refusal.body), 'retry-after-ms': '10'}); res.end(refusal.body);
+}
+
+/** Serve a stored reply or refusal, returning whether the request is complete. */
+function sendStored(res, stored, openai, requestBody, stats) {
+  // Why (29 Oct 2026, ap): declared refusals count exactly like stand-ins and stop before cache, relay or transport.
+  if (stored.refuse) { sendRefusal(res, stored.refuse, openai, stats); return true; }
+  if (!stored.reply) return false;
+  const {reply} = stored, stream = JSON.parse(requestBody).stream;
   const text = reply.output_text ?? (reply.content || (reply.output || []).flatMap(item => item.content || [])).map(part => part.text || '').join('');
   const data = openai ? (reply.object === 'response' ? reply : responseOf(text)) : (reply.object === 'response' ? message(text) : reply);
   const body = openai && stream ? streamOf(text) : JSON.stringify(data);
   res.writeHead(200, {'content-type': openai && stream ? 'text/event-stream' : 'application/json'});
   res.end(body);
+  return true;
 }
 
 // 18 Oct 2026 (strategy): every app call was refused "credit balance is too low" while the key, the balance and a preflight call were fine, and the log showed no more than that.

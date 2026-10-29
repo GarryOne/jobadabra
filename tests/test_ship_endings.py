@@ -36,6 +36,20 @@ class ShipEndingsTest(unittest.TestCase):
         for end in ENDS: self.assertIn(f'ship: {end}', announce)
         self.assertIn('^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|COMMENT)', announce)
 
+    def test_every_wait_on_a_ship_log_is_the_background_wait_not_a_monitor(self):
+        # Owner, 30 Oct 2026: "we don't have anymore the watches/monitors for when a PR merges": a Monitor ends after 30 min, before most merges.
+        # Gitar on #2510: AGENTS.md, the desktop-change skill, the fixer brief and change-loop.md still said Monitor after ship.sh's hint changed.
+        stale, named = [], 0
+        for path in tracked():
+            try: lines = (ROOT / path).read_text(encoding='utf-8').splitlines()
+            except (OSError, UnicodeDecodeError): continue
+            for number, line in enumerate(lines, 1):
+                named += 'ship-wait.sh' in line
+                if 'Monitor' in line and ('^ship: (' in line or 'ship.sh --background' in line) and 'ship-wait.sh' not in line:
+                    stale.append(f'{path}:{number}: {line.strip()[:120]}')
+        self.assertGreater(named, 0, 'positive control: the scan sees the lines that name the background wait')
+        self.assertEqual(stale, [], 'wait on a ship log with `tools/ship-wait.sh <log>` in the background, not a Monitor (it ends after 30 min)')
+
     def test_ship_prints_each_ending_it_announces(self):
         source = ''.join((ROOT / 'tools' / name).read_text() for name in ('ship.sh', 'ship-pr.sh', 'ship-watch.sh'))
         for end in ENDS: self.assertRegex(source, rf'echo "ship: {end}\b|ship: {end} |say "{end} ', end)

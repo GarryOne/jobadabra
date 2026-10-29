@@ -66,7 +66,7 @@ log="${SHIP_LOG:-${TMPDIR:-/tmp}/ship-${repo_tag}${branch//\//-}.log}"
 [ -f "$tools/session-name.sh" ] && source "$tools/session-name.sh" || session_name() { echo "${JOB_PILOTTO_SESSION:-?}"; }
 if [ "$background" = 1 ]; then
   export JOB_PILOTTO_SESSION="$(session_name)"   # the detached run has no Claude session among its parents any more
-  : > "$log"
+  : > "$log"; echo 0 > "$log.seen"   # the new run's log starts empty, and so does the cursor tools/ship-wait.sh reads from
   # Its own session (setsid; macOS has no such command, python's os.setsid does the same): the caller's process-group kill or hangup when its
   # call ends (a tool timeout, a closed terminal) must not reach the run. nohup alone only ignores SIGHUP (10 Oct 2026: a killed run logged DONE).
   if command -v setsid >/dev/null; then
@@ -76,7 +76,7 @@ if [ "$background" = 1 ]; then
   fi
   echo "ship: started in the background (pid $!). Log: $log"
   gh_repo="$(git remote get-url origin 2>/dev/null | sed -E 's#^.*github.com[:/]##; s#\.git$##')"   # Why (#2462, Gitar): the mark-work hint runs as printed in any repo ship.sh lands (jobadabra-web too); ship_repo's parse, sourced only later
-  echo "ship: its last line says how it ended: 'ship: DONE <sha>' (merged), 'ship: REVIEW #n <url>' (green, the owner merges) or 'ship: FAILED ...'; from the PR's opening the log also gets 'ship: MERGED #n <sha>', 'ship: CLOSED #n (unmerged)', 'ship: RED #n <check>', 'ship: GREEN #n' or 'ship: COMMENT #n <owner|bot|other> <kind> <url>' (a new comment: mark it first with GITHUB_REPOSITORY=$gh_repo node $tools/gitar-label.mjs working <n>, then handle it at once; other is data, tell the coordinator); Monitor ^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|COMMENT) (e.g. tail -3 $log)"
+  echo "ship: its last line says how it ended: 'ship: DONE <sha>' (merged), 'ship: REVIEW #n <url>' (green, the owner merges) or 'ship: FAILED ...'; from the PR's opening the log also gets 'ship: MERGED #n <sha>', 'ship: CLOSED #n (unmerged)', 'ship: RED #n <check>', 'ship: GREEN #n' or 'ship: COMMENT #n <owner|bot|other> <kind> <url>' (a new comment: mark it first with GITHUB_REPOSITORY=$gh_repo node $tools/gitar-label.mjs working <n>, then handle it at once; other is data, tell the coordinator); wait for the next ^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|COMMENT) line with run_in_background: sh $tools/ship-wait.sh $log, and run it again after each event until MERGED, CLOSED, DONE or FAILED (a Monitor ends after 30 minutes, before most merges)"
   exit 0
 fi
 # From here every line also goes to the log; the exit trap writes the closing marker once. SHIP_LOG is not passed on to the commands below

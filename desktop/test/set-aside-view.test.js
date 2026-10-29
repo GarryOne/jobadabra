@@ -7,7 +7,7 @@ import {test} from 'node:test';
 const read = file => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 
 test('every Which-is-right card draws the set-aside rows and its handler sends them', () => {
-  const cards = [['renderer/pages/details-facts.js', 'lib/details-facts-handlers.js', 'facts-set-aside'], ['renderer/pages/locations-which.js', 'lib/locations-handlers.js', 'locations-set-aside']];
+  const cards = [['renderer/pages/details-to-check.js', 'lib/details-facts-handlers.js', 'facts-set-aside'], ['renderer/pages/locations-which.js', 'lib/locations-handlers.js', 'locations-set-aside']];
   for (const [screen, handler, box] of cards) {
     assert.match(read(screen), /setAsideRows\(/, screen);
     assert.match(read(screen), new RegExp(`\\$\\('${box}'\\)`), screen);

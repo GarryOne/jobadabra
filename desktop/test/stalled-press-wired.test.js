@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {watchStalled} from '../lib/background-apply-controller.js';
 
 test('the watch runs the sweep on each tick, reports a failure instead of throwing, and stops when asked', async () => {
+  // Import inside the test so CI's reporter retains module-load errors and their missing path.
+  const {watchStalled} = await import('../lib/background-apply-controller.js');
   let tick = null, cleared = null, calls = 0;
   const errors = [];
   const stop = watchStalled(async () => { calls += 1; if (calls === 2) throw new Error('store busy'); }, {every: 30000, set: (fn, ms) => { tick = fn; assert.equal(ms, 30000); return 'timer-1'; }, clear: id => { cleared = id; }, onError: error => errors.push(error.message)});

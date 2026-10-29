@@ -8,6 +8,7 @@ import {pickFamily} from '../lib/engine.mjs';
 import {notionFarSide, pickStore, runToken, STORES, storeSettings} from '../lib/store.mjs';
 import {E2E} from '../lib/app.mjs';
 import {SUITES} from '../lib/context.mjs';
+import * as quality from '../suites/quality.mjs';
 
 test('a Mac runs on its own store (what a new install gets) unless pinned; E2E_NOTION_STANDIN=1 still means the stand-in', () => {
   assert.equal(pickStore({env: {}}), 'sqlite');
@@ -30,6 +31,25 @@ test('CI alternates the store on bit 1, so all four family x store pairs come ro
   }
   assert.deepEqual([...pairs].sort(), ['claude/sqlite', 'claude/standin', 'openai/sqlite', 'openai/standin']);
   assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: '6', E2E_STORE: 'sqlite'}}), 'sqlite');   // a pinned gate leg
+});
+
+test('quality pins SQLite for every CI store alternation so recorded answers use one path', () => {
+  assert.equal(quality.store, 'sqlite');
+  for (const run of [...Array(16).keys(), 985, 987]) { // 985 and 987 are beta 3 and beta 4's run numbers
+    assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run)}, suiteStore: quality.store}), 'sqlite', 'run ' + run);
+  }
+});
+
+test('every strict AI replay suite pins its store so recorded answers cover its path', async () => {
+  const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
+  const condition = workflow.match(/^\s*E2E_AI_STRICT:\s*(.+)$/m)?.[1] || '';
+  const suites = [...condition.matchAll(/matrix\.suite\s*==\s*'([^']+)'/g)].map(match => match[1]);
+  assert.ok(suites.length > 0, 'strict replay must name at least one suite');
+  assert.ok(suites.includes('quality'), 'quality must remain covered by the strict replay guard');
+  for (const name of suites) {
+    const suite = await import(`../suites/${name}.mjs`);
+    assert.ok(STORES.includes(suite.store), `${name}: strict replay requires an exported store pin`);
+  }
 });
 
 test('only the sqlite store is written into a fresh profile; the Notion store is the app\'s default', () => {

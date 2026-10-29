@@ -1,6 +1,7 @@
 /* global document, window */
 // Everything a suite needs, built once: its own Notion test page (token per suite), the fixture feeds (a copy a step can change), the slow-AI proxy, and the
 // launched app. A suite is a short file in suites/ that calls ctx.run(...) with its steps. See README.md.
+// Job: run the backbone
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -85,8 +86,8 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // The real workspace names the page it may empty (`notionPage`): a token that sees another page fails here, before `fresh` trashes anything.
   if (store === 'notion' && (!notionPage || ctx.root.title !== notionPage)) throw new Error(`refusing the Notion page "${ctx.root.title}": the ${suite} suite may only use "${notionPage || '(its notionPage export is missing)'}"`);
   if (fresh && ctx.root) console.log(`Notion test page "${ctx.root.title}": ${await clearRoot(token, ctx.root.id)} item(s) moved to the trash`);
-  // The stand-in starts empty: built once here unless the suite tests a fresh setup (the wizard), like the real test page that is built already. A suite that
-  // reads what the setup drafted from the CV (the Profile: `standInFromWizard = true`, quality) builds it through the wizard, as a first real run did.
+  // The stand-in starts empty: built once here unless the suite tests a fresh setup (the wizard), like the real test page that is built already.
+  // TODO(AI): remove standInFromWizard here and in lib/suite-main.mjs: no suite sets it since #2441 (quality pins SQLite); held back by the clean-code check on openContext (29 Oct 2026).
   if (store === 'standin' && !fresh && !standInFromWizard) await buildStandIn(standIn);
   ctx.built = onNotion && !fresh && await workspaceReady(token);
   ctx.feeds = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-e2e-feeds-'));

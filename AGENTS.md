@@ -126,6 +126,9 @@ them from colliding in one checkout:
 - Never use a bare `git stash`/`stash pop`: the stash stack is shared across worktrees and sessions.
 - Read-only work and Notion-only updates don't need a worktree.
 
+### PR feedback status
+When you actually start addressing PR comments, run `GITHUB_REPOSITORY=<owner/repo> node tools/gitar-label.mjs working <pr-number>`. When handing off without a push, clear it with `gh pr edit <pr-number> --remove-label "Working on PR comments" -R <owner/repo>`. A push or Gitar approval also clears it. The watcher only reports comments; detecting feedback does not mean an agent has started work.
+
 ### Change tiers: pick one, say it in one line, stop when it is met (6 Oct 2026)
 A transcription banner took 1–2 hours: harnesses, real downloads, e2e runs, CI waits, three rejected pushes. Before the gates, commits landed
 every 30 seconds. Keep the guardrails that catch real breakage; stop paying the full price for every change.

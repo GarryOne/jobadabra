@@ -94,6 +94,15 @@ class WatcherCommentsTest(Base):
         self.assertEqual(self.watch(), [f'ship: COMMENT #7 bot comment {URL}#issuecomment-IC_1'], 'the log keeps the one line; nothing was added')
         self.assertEqual((self.tmp / 'watch.pid.comments').read_text().split(), ['IC_1'])
 
+    def test_watcher_reports_comments_without_marking_work(self):
+        self.answer(view(comments=[comment('IC_1', 'gitar-bot')]))
+        marker = self.tmp / 'node-called'
+        node = self.tmp / 'bin' / 'node'
+        node.write_text(f'#!/bin/sh\ntouch "{marker}"\n')
+        node.chmod(0o755)
+        self.watch()
+        self.assertFalse(marker.exists(), 'reporting a comment is not the start of work')
+
     def test_a_session_s_own_comment_is_silent(self):
         self.answer(view(comments=[comment('IC_2', 'GarryOne', 'fixed it' + CLAUDE)]), lines=[{'id': 9, 'user': {'login': 'GarryOne'}, 'body': 'ok' + CLAUDE, 'html_url': 'u', 'created_at': 'x'}])
         self.assertEqual(self.watch(), [])

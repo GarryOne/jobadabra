@@ -233,11 +233,17 @@ test('a "working" label event with the label gone is not "working" (Gitar, #2445
   assert.equal(fromGraphql(gone).workingSince, null, 'the REST path only looks the time up while the label is on the PR');
 });
 
- test('marking work repeatedly or after approval leaves labels unchanged', t => {
-  for (const [body, labels] of [[APPROVED, [LABELS.approved.name]], [SUGGEST, [LABELS.suggestions.name, WORKING.name]]]) {
+ test('marking already active work leaves labels unchanged', t => {
+  for (const [body, labels] of [[APPROVED, [LABELS.approved.name, WORKING.name]], [SUGGEST, [LABELS.suggestions.name, WORKING.name]]]) {
     const result = runCliCase(t, {working: true, body, labels, legacy: true});
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(result.labels, labels);
     assert.equal(result.calls, 1, 'only the live state read; no label writes');
   }
+});
+
+test('starting work on an approved PR marks actual activity', t => {
+  const result = runCliCase(t, {working: true, body: APPROVED, labels: [LABELS.approved.name], legacy: true});
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.labels, [LABELS.approved.name, WORKING.name]);
 });

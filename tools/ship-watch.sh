@@ -40,8 +40,6 @@ report_comments() {  # <view json>
     echo "$id" >> "$seen"
     if [[ "$t" > "$started" ]] || grep -qxF "$id" <<<"$open"; then
       say "COMMENT #$n $who $kind $url"
-      # Why (#2386, owner 28 Oct 2026): the PR list shows "Working on PR comments" while a session handles feedback; a push or Gitar's approval clears it (gitar-label.yml).
-      [ "$who" = other ] || GITHUB_REPOSITORY="$repo" node "$here/gitar-label.mjs" working "$n" >/dev/null 2>&1 || true
     fi
   done <<<"$rows"
 }

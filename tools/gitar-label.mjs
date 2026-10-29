@@ -3,7 +3,7 @@
 // Why (owner, 28 Oct 2026): "how can I know from this view if the PR has PR comments, or change requested, or not yet approved? … red 'gitar requested changes', or 'approved with suggestions', or green 'fully approved'".
 // Why (28 Oct 2026): Gitar records no approving review (#2377 had none), so only the verdict line of its own comment says approved; a verdict older than the head commit is stale and gets no label.
 // Usage (workflow .github/workflows/gitar-label.yml): node tools/gitar-label.mjs <pr-number>
-//   node tools/gitar-label.mjs working <pr-number>   a session says it is handling the comments (tools/ship-watch.sh). Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
+//   node tools/gitar-label.mjs working <pr-number>   a session says it has started handling the comments. Needs GH_TOKEN and GITHUB_REPOSITORY; guard tests/test_gitar_label.py.
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -145,12 +145,10 @@ function syncOnce(pr) {
 function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
-  const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
-  // Why (#2386, 29 Oct 2026): preserve the existing event time; repeated comments must not remove and re-add the same label.
-  if (read.state !== 'open' || verdict === LABELS.approved.name || read.labels.includes(WORKING.name)) return;
+  // Why (#2386, 29 Oct 2026): preserve the existing event time; repeated starts must not remove and re-add the same label.
+  if (read.state !== 'open' || read.labels.includes(WORKING.name)) return;
   ensure(repo, WORKING);
   gh('pr', 'edit', String(pr), '--add-label', WORKING.name, '-R', repo);
-  main(pr); // Approval or a newer push can arrive during the write; reconcile against the live state.
 }
 
 /** Reads the runner's event file before any gh call; an unavailable payload falls back to live reads, and only comment rate limits exit cleanly. */

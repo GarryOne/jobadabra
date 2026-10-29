@@ -3,6 +3,7 @@
 # Invariants: only BASE grants exemptions; artifact counts never decide the required status.
 import io
 import json
+import math
 import sys
 import zipfile
 from fractions import Fraction
@@ -101,10 +102,10 @@ def report_suites(repo, gh, base='main'):
         return set()
 
 
-def artifact_rates(repo, rid, gh):
+def artifact_rates(repo, rid, gh, artifact=ARTIFACT):
     """Return (artifact exists, validated rates) from the newest artifact, without extracting ZIP paths."""
     pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repo}/actions/runs/{rid}/artifacts?per_page=100'))
-    artifacts = [a for page in pages for a in page['artifacts'] if a.get('name') == ARTIFACT]
+    artifacts = [a for page in pages for a in page['artifacts'] if a.get('name') == artifact]
     if not artifacts:
         return False, None
     latest = max(artifacts, key=lambda a: a['id'])
@@ -156,3 +157,49 @@ def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner=''
     except Exception as error:
         print(f'PR AI counts unavailable ({type(error).__name__})', file=sys.stderr)
     return current, main_rates(repo, gh, comparable)
+
+
+RATE_METRICS = (*METRICS, ('steady', 'within8', 'pairs', 'steady'))
+
+
+def wilson(successes, total):
+    """Wilson two-sided 95% interval for a nonempty binomial sample."""
+    z = 1.959963984540054
+    rate, z2 = successes / total, z * z
+    center = (rate + z2 / (2 * total)) / (1 + z2 / total)
+    radius = z * math.sqrt(rate * (1 - rate) / total + z2 / (4 * total * total)) / (1 + z2 / total)
+    return {'rate': rate, 'lower': max(0, center - radius), 'upper': min(1, center + radius),
+            'successes': successes, 'total': total}
+
+
+def _sample(rates, part, numerator, denominator):
+    counts = (rates or {}).get(part)
+    if not counts or not counts[denominator]:
+        return None
+    success, total = counts[numerator], counts[denominator]
+    # Flags measure defects; their quality rate is the unflagged share.
+    return (total - success if part == 'flags' else success), total
+
+
+def band(main_counts_list):
+    """Pool at most seven validated nights; each metric needs three measured nights."""
+    nights = [valid_rates(night) for night in list(main_counts_list)[:7]]
+    if len(nights) < 3 or any(night is None for night in nights):
+        return {}
+    result = {}
+    for part, numerator, denominator, _ in RATE_METRICS:
+        samples = [sample for night in nights if (sample := _sample(night, part, numerator, denominator))]
+        result[part] = wilson(sum(s[0] for s in samples), sum(s[1] for s in samples)) if len(samples) >= 3 else None
+    return result
+
+
+def verdict(this_counts, baseline):
+    """Block only nonoverlapping intervals below main; missing observations stay unavailable."""
+    current = valid_rates(this_counts)
+    result = {}
+    for part, numerator, denominator, _ in RATE_METRICS:
+        sample = _sample(current, part, numerator, denominator)
+        before = baseline.get(part)
+        measured = wilson(*sample) if sample and before else None
+        result[part] = {**measured, 'blocked': measured['upper'] < before['lower']} if measured else None
+    return result

@@ -25,7 +25,6 @@ concurrency:
 
 jobs:
   flip:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.run_attempt > 1
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -46,9 +45,9 @@ jobs:
           run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")"
           if ! jq -e --arg repo "$GITHUB_REPOSITORY" '
             .head_branch == "main" and .head_repository.full_name == $repo and
-            .path == ".github/workflows/e2e.yml" and .status == "completed" and .run_attempt > 1
+            .path == ".github/workflows/e2e.yml" and .status == "completed" and .run_attempt >= 1
           ' <<< "$run" >/dev/null; then
-            echo 'No completed main e2e rerun to inspect.'
+            echo 'No completed main e2e run to inspect.'
             exit 0
           fi
           count="$(jq -r .run_attempt <<< "$run")"
@@ -58,12 +57,34 @@ jobs:
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$n/jobs?per_page=100" --paginate --slurp > "$dir/$n.json"
             pages+=("$dir/$n.json")
           done
-          jq -s '{attempts: [.[][]]}' "${pages[@]}" > "$dir/attempts.json"
+          jq -s --argjson run "$run" '{run: $run, attempts: [.[][]]}' "${pages[@]}" > "$dir/attempts.json"
           echo "attempts=$dir/attempts.json" >> "$GITHUB_OUTPUT"
+          # Why (29 Oct 2026, owner): G5 keeps wrong-value flips red; green jobs need no traces or screenshots downloaded.
+          jq -r '[.attempts[].jobs[] | select(.run_attempt == 1 and .conclusion == "failure") |
+            .name | sub("-[0-9]+of[0-9]+$"; "") | "e2e-artifacts-\(.)*"] | unique[]' \
+            "$dir/attempts.json" > "$dir/artifact-patterns.txt"
+          if [ -s "$dir/artifact-patterns.txt" ]; then echo "artifact_patterns=$dir/artifact-patterns.txt" >> "$GITHUB_OUTPUT"; fi
+      - name: Download first-try artifacts
+        id: artifacts
+        if: steps.attempts.outputs.artifact_patterns != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+          PATTERNS: ${{ steps.attempts.outputs.artifact_patterns }}
+        run: |
+          dir="$(mktemp -d "$RUNNER_TEMP/flip-artifacts.XXXXXX")"
+          while IFS= read -r pattern; do
+            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern "$pattern" --dir "$dir"
+          done < "$PATTERNS"
+          echo "folder=$dir" >> "$GITHUB_OUTPUT"
       - name: Propose suspension and open its owner issue
         if: steps.attempts.outputs.attempts != ''
         env:
           GH_TOKEN: ${{ github.token }}
           ATTEMPTS: ${{ steps.attempts.outputs.attempts }}
+          ARTIFACTS: ${{ steps.artifacts.outputs.folder }}
           OWNER: ${{ github.repository_owner }}
-        run: node tools/suspend-flip.mjs --attempts "$ATTEMPTS" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"
+        run: |
+          artifacts=()
+          [ -z "$ARTIFACTS" ] || artifacts=(--artifacts "$ARTIFACTS")
+          node tools/suspend-flip.mjs --attempts "$ATTEMPTS" "${artifacts[@]}" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"

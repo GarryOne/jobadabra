@@ -1,0 +1,56 @@
+{
+  "provenance": "Reconstructed first-try artifact folders from e2e.yml; run, SHA and messages are fictional.",
+  "run": {
+    "id": 9001,
+    "run_attempt": 1,
+    "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "html_url": "https://github.com/example/fixture/actions/runs/9001"
+  },
+  "folders": {
+    "e2e-artifacts-applyflows-1of2": {
+      "flaky.json": {
+        "rerun": "passed"
+      },
+      "suite-failures.json": [
+        {
+          "suite": "applyflows",
+          "step": "Review keeps the saved value",
+          "message": "Expected saved value 42, got 0"
+        }
+      ]
+    },
+    "e2e-artifacts-applyflows-2of2": {
+      "flaky.json": {
+        "rerun": "passed"
+      },
+      "suite-failures.json": [
+        {
+          "suite": "applyflows",
+          "step": "Second shard keeps the saved value",
+          "message": "Expected saved value 42, got 0"
+        }
+      ]
+    },
+    "e2e-artifacts-settings": {
+      "flaky.json": {
+        "rerun": "passed"
+      },
+      "suite-failures.json": [
+        {
+          "suite": "settings",
+          "step": "Settings load",
+          "message": "locator timed out: Timeout 30000ms exceeded"
+        }
+      ]
+    },
+    "e2e-artifacts-apply": {
+      "suite-failures.json": [
+        {
+          "suite": "apply",
+          "step": "Apply keeps the saved value",
+          "message": "Expected saved value 42, got 0"
+        }
+      ]
+    }
+  }
+}

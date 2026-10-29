@@ -232,7 +232,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [ ] The AI rate is tolerant, with the PR's AI number in the check summary.
 
 ### 5. applyflows
-- [ ] State waits and hang caps, Notion stubbed, its races as owner issues.
+- [x] State waits and hang caps, Notion stubbed, its races as owner issues. (proof: desktop/e2e/test/applyflows-caps.test.mjs)
 
 ### 6. settings and apply
 - [ ] settings the same way.

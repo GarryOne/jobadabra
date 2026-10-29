@@ -68,6 +68,7 @@
   "apply-parts.test.mjs",
   "apply-verdict.test.mjs",
   "applycheck.test.mjs",
+  "applyflows-caps.test.mjs",
   "applying-report.test.mjs",
   "artifacts.test.mjs",
   "ask-diff.test.mjs",

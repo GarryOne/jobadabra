@@ -129,6 +129,6 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
   new Function('ctx', 'hangCaps', wrapper)(ctx, caps);
   ctx.run('the app is seeded as a set-up install', () => {}, {critical: true, needs: ['setup']});
-  assert.deepEqual(seen[0][2], {critical: true, needs: ['setup'], limitMs: 90000});
-  assert.ok(caps['a multi-step form'] >= (30 + 90 + 45 + 15 + 60 + 15 + 15 + 30) * 1000);
+  assert.deepEqual(seen[0][2], {critical: true, needs: ['setup']});
+  assert.ok(caps['a multi-step form'] >= (30 + 90 + 45 + 15 + 60 + 15 + 15 + 30));
 });

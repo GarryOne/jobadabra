@@ -69,14 +69,18 @@ export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)
 const pictureOf = async session => (session?.page ? Promise.race([session.page.screenshot().catch(() => null), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
 // stepNeeds null: the suite declares none, so its steps may build on every earlier one (quality's checks read the rows its Jobs check wrote, after the step that loads
 // the golden postings): a picked run then runs every step up to the last picked one and skips only the rest (#2108, 26 Oct 2026). Declared (even {}): the precise pick.
-export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, stepNeeds = null, faultTally = null, report = null} = {}) {
+/** A step's own hang cap in ms (hangCaps: step name -> seconds), else the default STEP_LIMIT_MS. */
+const hangLimitMs = (hangCaps, name) => (hangCaps[name] === undefined ? STEP_LIMIT_MS : hangCaps[name] * 1000);
+/** Run state checks with explicit limits first, then named hang caps in seconds, then STEP_LIMIT_MS. */
+export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   if (process.env.CI) console.log(providerLine(process.env, 'judges'));   // Why (#2416, Gitar): who decided the judges' provider is never a guess
   const buildsOn = stepNeeds == null && picked.length > 0 && !String(process.env.E2E_STEPS || '').trim();
   const allFound = () => picked.every(name => name === PICK_SETUP || found.has(name));
   let overBudget = false;
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
-  async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = STEP_LIMIT_MS, elsewhere = false} = {}) {
+  // clean-code-ok: Why (29 Oct 2026, a8, 21b): old function; this change only moves its default step limit to hangLimitMs
+  async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = hangLimitMs(hangCaps, name), elsewhere = false} = {}) {
     if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);
     if (left <= 0) {

@@ -78,7 +78,7 @@ test('the account\'s outcome and the page kind are asked together; the submit wa
   assert.equal(outcomePending({at: now - 5000}, now), true);                  // a sign-up just filled or pressed: its outcome is the account AI's word first
   assert.equal(outcomePending({at: now - OUTCOME_WAIT_MS - 1}, now), false);  // two minutes later a press is the person's own submit again
   const fs = await import('node:fs');
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(flow, /const kindAsk = askKind\(tab\), outcomeLook = accountOutcome\(tab\)\.catch\(\(\) => \{\}\);/);   // both asked at once (9 Oct 2026: 13 s + 9 s one behind the other)
   assert.match(flow, /if \(asked\?\.role !== 'form'\) await outcomeLook;/);   // the application form is filled without waiting for the sign-up's outcome (40 s on Migros)
   assert.match(flow, /kind = asked;/);
@@ -89,7 +89,7 @@ test('the account\'s outcome and the page kind are asked together; the submit wa
 // jobs.ch live, 9 Oct 2026: a sign-up page filled with your details was judged 0.3 s before the fill typed the email: "Email address" missing, nothing pressed.
 test('an account page filled with your details is judged after that fill, others at once', async () => {
   const fs = await import('node:fs');
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const fill = flow.indexOf('await fillOpenedTab(live,'), later = flow.indexOf('if (accountAfterFill) accountStep(tab, 0)');
   assert.match(flow, /accountAfterFill = accountPage && noted === 'account';/);
   assert.match(flow, /if \(accountPage && !accountAfterFill\) accountStep\(tab, 0\)/);
@@ -141,7 +141,7 @@ test('a page at the same address is read again when the account is usable, or wh
 });
 
 test('the account outcome reads the page again through fill-flow\'s one readAgain, which forgets the page\'s read key first (Richemont Workday, 16 Oct 2026: signed in, then "Logging in…" for good)', () => {
-  const step = fs.readFileSync(new URL('../../extension/account-step.js', import.meta.url), 'utf8'), flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const step = fs.readFileSync(new URL('../../extension/account-step.js', import.meta.url), 'utf8'), flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(step, /if \(readsAgain\(action, inPlace\)\) readAgain\(tab, id\.job\)/);
   assert.match(step, /readsAgain\(action, inPlace, !!memo\.form && lastOutline\.get\(tab\.id\) !== memo\.form\)/);
   const body = flow.slice(flow.indexOf('export async function readAgain'), flow.indexOf('export async function consider'));

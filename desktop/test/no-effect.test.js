@@ -21,7 +21,7 @@ test('the memory is per tab and page, ignores case and spacing, and is forgotten
 });
 
 test('every press site notes a press that changed nothing and passes the memory to the floor', () => {
-  const flow = read('fill-flow.js');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n');
   assert.equal((flow.match(/pressApply\(/g) || []).length, (flow.match(/pressApply\([^;]*noEffectOf\(key\)\)/g) || []).length, 'every pressApply call passes the no-effect list');
   assert.equal((flow.match(/noteNoEffect\(key,/g) || []).length, 3, 'the Apply press, the start route and the digest press each note a dead press');
   assert.match(flow, /noEffect: noEffectOf\(fillKey\(tab\.id, tab\.url\)\)/, 'every ask of the page kind (route, digest) carries it');

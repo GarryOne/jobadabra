@@ -61,7 +61,7 @@ test('every evidence key a caller passes is listed', () => {
   const read = file => fs.readFileSync(path.join(EXTENSION, file), 'utf8');
   const keysOf = object => [...object.matchAll(/(?:^|[{,])\s*([A-Za-z]+)\s*(?=[:,}])/g)].map(found => found[1]);
   const passed = new Set();
-  for (const [, object] of read('fill-flow.js').matchAll(/\b(?:deadEndHere|noteProgress)\([^;]*?(\{[^{}]*\})\)/g)) keysOf(object).forEach(key => passed.add(key));
+  for (const [, object] of ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n').matchAll(/\b(?:deadEndHere|noteProgress)\([^;]*?(\{[^{}]*\})\)/g)) keysOf(object).forEach(key => passed.add(key));
   for (const [, object] of read('account-step.js').matchAll(/\bdeadEnd\(\{[^{}]*\}, (\{[^{}]*\})/g)) keysOf(object).forEach(key => passed.add(key));
   for (const [, object] of read('ladder/silence.js').matchAll(/\bnotice\(clock\.host, (\{[^{}]*\})(?:, clock\.tab)?\)/g)) keysOf(object).forEach(key => passed.add(key));   // the silent rule's notice
   assert.ok(passed.has('role') && passed.has('status') && passed.has('reason') && passed.has('fields') && passed.has('silentMs'), [...passed].join(', '));

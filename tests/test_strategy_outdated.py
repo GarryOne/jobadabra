@@ -58,7 +58,9 @@ class CommandTests(unittest.TestCase):
         from pathlib import Path
         source = (Path(__file__).resolve().parents[1] / 'src' / 'desktop.py').read_text()
         self.assertIn("sub.add_parser('rescore-outdated')", source)
-        self.assertIn("rescore_outdated(db, stages)", source)
+        self.assertIn("'rescore-outdated': _rescore_outdated", source)
+        handlers = (Path(__file__).resolve().parents[1] / 'src' / 'desktop_tracker.py').read_text()
+        self.assertIn("rescore_outdated(db, stages)", handlers)
 
 
 if __name__ == '__main__':

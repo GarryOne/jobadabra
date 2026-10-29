@@ -48,9 +48,9 @@ test('a page that cannot be watched waits the full old time', async () => {
 });
 
 test('consider() and formAfterPress() wait for a still page; the late-form look keeps its own steps', () => {
-  const source = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const source = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const body = name => { const start = source.indexOf(`function ${name}(`); return source.slice(start, source.indexOf('\n}\n', start)); };
-  for (const name of ['consider', 'formAfterPress']) {
+  for (const name of ['consider', 'formAfterPress', 'preparePage', 'readPage', 'afterFill']) {
     const fixed = body(name).match(/setTimeout\(resolve, (1000|1500|800)\)/g) || [];
     assert.deepEqual(fixed, [], `${name} still waits a fixed ${fixed.join(', ')}`);
   }

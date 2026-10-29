@@ -20,10 +20,12 @@ import {proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
 import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
-import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, tailoredFrom} from '../lib/apply-fixtures.mjs';
+import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, contactKeysAnswer, expectedOf, systemOf, tailoredFrom, unmatched} from '../lib/apply-fixtures.mjs';
 
 // Walks other data and timing on each seeded run (lib/forms.mjs varyForms): an exploring run on an unchanged commit includes it.
-export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
+// Why (29 Oct 2026, ap): apply's fixture answers cover every AI ask, so CI needs neither live AI nor an AI secret.
+export const offlineAi = true;
+export const realAi = false;
 export const varies = true;
 // Why (29 Oct 2026, ap): the 7-minute aggregate ended three apply runs on the Notion stand-in leg; each step has its own hang cap.
 export const aggregateBudget = false;
@@ -117,7 +119,8 @@ export async function runApply(ctx, parts) {
     console.log(`  removed ${await removeJobsByUrl(ctx, urls)} job row(s) left by an earlier run`);
     for (const form of fixtures) await (form === live ? seedLivePosting(ctx, live)   // the live posting as a real user's fresh one: no kit (lib/seed-data.mjs)
       : addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}));
-    // The app's own AI calls go to the test proxy: the one question no kit covers gets a fixed answer, everything else would pass through (and is counted).
+    // The app's own AI calls go to the test proxy: fixture questions get fixed answers, and unmatched asks keep the context's fallback.
+    const fallback = proxy.canned();
     proxy.setCanned(body => {
       const content = body.messages?.[0]?.content;
       if (Array.isArray(content) && content.some(part => part.type === 'document')) return JSON.stringify(BASE_CV);   // the CV import (lib/cv.js)
@@ -125,6 +128,9 @@ export async function runApply(ctx, parts) {
       if (typeof content === 'string' && content.startsWith('<cv>')) return Promise.resolve(ctx.tailorHold).then(() => JSON.stringify(tailoredFrom(JSON.parse(/<cv>\n([\s\S]*?)\n<\/cv>/.exec(content)[1]))));
       // The page after a Submit (lib/confirmation.js): the stand-in answers like a model that reads the words, so the suite proves the chain around it.
       const text = typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('');
+      const system = systemOf(body);
+      const contact = contactKeysAnswer(system, text);
+      if (contact) return contact;
       if (/^URL path:/m.test(text) && /^Page:/m.test(text)) return JSON.stringify({confirmation: /successfully submitted|received your application/i.test(text) && !/must be completed|required/i.test(text)});
       // The menu choice that means the same (lib/option-pick.js: {question, answer, choices} -> {choice}): the stand-in knows what a model would, for the menu
       // fixture only ("+41" is Suisse); each ask is counted, so the remembered choice can be proven to need none (ctx.optionPicks).
@@ -143,7 +149,6 @@ export async function runApply(ctx, parts) {
       }
       // What kind of page (lib/page-kind.js): the stand-in answers with each fixture's true kind, so every flow row runs on the AI's word, as in use.
       if (/^Address path:/m.test(text) && /^Controls/m.test(text)) {
-        const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join('');
         if (system === KIND_RULES) ctx.kindAsks = (ctx.kindAsks || 0) + 1;   // counted: the night's page kind is never asked (the Open in Chrome step); the "ready to submit?" judge shares this sketch and still runs
         const where = /^Address path: (.*)$/m.exec(text)?.[1] || '';
         const kinds = {[CHAIN.path]: 'posting', [CHAIN.stepPath]: 'posting', [CHAIN.formPath]: 'form', [SCRIPTED.path]: 'posting', [SCRIPTED.formPath]: 'form', [LATE.path]: 'posting',
@@ -157,7 +162,7 @@ export async function runApply(ctx, parts) {
         return JSON.stringify({kind: kinds[where.replace(/\/$/, '')] || 'form', confidence: 0.95});
       }
       const asked = /<form_fields>\n([\s\S]*?)\n<\/form_fields>/.exec(typeof content === 'string' ? content : (content || []).map(part => part.text || '').join(''));
-      if (!asked) return null;
+      if (!asked) return unmatched(fallback, body);
       ctx.answerAsks = [...(ctx.answerAsks || []), ...JSON.parse(asked[1]).map(item => item.field)];   // counted: a question the night answered is never asked
       const answers = fixtureAnswers(JSON.parse(asked[1]));
       return JSON.stringify({eligible: true, eligibility_note: '', answers});

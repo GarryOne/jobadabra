@@ -4,10 +4,49 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {runInNewContext} from 'node:vm';
 import * as context from '../lib/context.mjs';
 import {DUMMY_KEY, pickEngine, pickFamily} from '../lib/engine.mjs';
 import {answerFor, loadTable, questionOf} from '../lib/ai-answers.mjs';
 import * as guards from '../lib/no-real-ai.mjs';
+import {contactKeysAnswer, systemOf, unmatched} from '../lib/apply-fixtures.mjs';
+
+test('apply declares offline AI with the real-model guard enabled', () => {
+  const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
+  assert.match(source, /^export const offlineAi = true;/m);
+  assert.match(source, /^export const realAi = false;/m);
+});
+
+test('apply preserves contact answers and each context\'s unmatched-ask fallback', () => {
+  const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
+  const setup = /\/\/ The app's own AI calls[\s\S]*?\n    \}\);/.exec(source);
+  assert.ok(setup, 'exercise the installed stand-in without starting the suite or app');
+  const ctx = {}, install = fallback => {
+    let answer = fallback;
+    const proxy = {canned: () => answer, setCanned: handler => { answer = handler; }};
+    runInNewContext(setup[0], {ctx, proxy, contactKeysAnswer, systemOf, unmatched});
+    return answer;
+  };
+  const answer = install(() => ({refuse: 'invalid-key'}));
+  const labels = ['resume/cv', 'i agree to the privacy policy and the processing of my data'];
+  const contact = fs.readFileSync(new URL('../../lib/contact-keys.js', import.meta.url), 'utf8');
+  const system = /const INSTRUCTIONS = `([^\n]+)/.exec(contact)[1];
+  const body = {system, messages: [{role: 'user', content: JSON.stringify(labels)}]};
+  const text = answer(body);
+  assert.equal(typeof text, 'string', 'the recorded contact-label ask must not fall through');
+  assert.deepEqual(JSON.parse(text), {items: labels.map(label => ({label, key: 'none'}))});
+  const blocks = {system: [{type: 'text', text: system}], messages: [{role: 'user', content: [{type: 'text', text: body.messages[0].content}]}]};
+  assert.deepEqual(JSON.parse(answer(blocks)), JSON.parse(text));
+  assert.deepEqual({...answer({...body, system: 'A different question with the same labels'})}, {refuse: 'invalid-key'});
+  const digest = {system: 'You help a job seeker who is on a job posting page in any language. The page has no application form the program can fill.',
+    messages: [{role: 'user', content: 'Address path: /e2e/jobs/4001001\nCandidates (number...'}]};
+  assert.deepEqual({...answer(digest)}, {refuse: 'invalid-key'});
+  const passThrough = install(null);
+  assert.equal(passThrough(digest), null, 'applyflows retains its unmatched digest pass-through');
+  assert.equal(passThrough({...body, system: 'A different question with the same labels'}), null);
+  assert.equal(ctx.answerAsks, undefined);
+  assert.equal(ctx.kindAsks, undefined);
+});
 
 function environment(t, extra = {}) {
   const saved = {...process.env};

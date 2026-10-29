@@ -15,6 +15,7 @@ export const name = 'stores';
 export const notion = false;
 export const keepGoing = true;
 export const minutes = 6;
+export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 // One store method on the e2e app's own SQLite store (its profile's data folder, as lib/pipeline-env.js gives the engine), never anyone's data:

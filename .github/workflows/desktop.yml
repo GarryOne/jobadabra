@@ -507,12 +507,13 @@ jobs:
       # by hand) answers a request it has seen before from the replay cache, and pays only for new ones (lib/ai-meter.mjs). Judges on Haiku, except the quality suite,
       # which measures Sonnet's scoring.
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
-      E2E_AI_REPLAY: '1'   # the gate replays AI answers it has seen (lib/ai-meter.mjs)
+      E2E_AI_REPLAY: ${{ matrix.suite == 'qualityai' && '0' || '1' }}   # qualityai asks live; the backbone gate replays (lib/ai-meter.mjs)
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
-      # Quality's gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): its recorded answers never expire, and on main a question with no recorded
-      # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). How steady the AI is: the night's fresh run. Guard: tests/test_quality_replay_gate.py
+      # Quality keeps strict replay until PR 2/4 stores its AI answers (owner, 27 Oct 2026: "Code gate + AI rate"): recorded answers never expire; on main a question with no recorded
+      # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). qualityai asks live every run to measure AI steadiness. Guard: tests/test_quality_replay_gate.py
       E2E_AI_STRICT: ${{ matrix.suite == 'quality' && '1' || '' }}
       E2E_AI_MAX_AGE_DAYS: ${{ matrix.suite == 'quality' && '3650' || '' }}
+      E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate   # how an issue names the run (lib/replay.mjs)
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
@@ -574,6 +575,13 @@ jobs:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-
+      - name: The live qualityai rate history (lib/quality-rate.mjs)
+        if: matrix.suite == 'qualityai'
+        uses: actions/cache/restore@v5
+        with:
+          path: desktop/e2e/.quality-rate
+          key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: quality-rate-
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
       - name: The App token for the lock (a re-run attempt's workflow token cannot create refs)
         id: lock_app
@@ -660,6 +668,12 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Keep the live qualityai rate history, red or green on main
+        if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+        uses: actions/cache/save@v5
+        with:
+          path: desktop/e2e/.quality-rate
+          key: quality-rate-${{ github.run_id }}-${{ github.run_attempt }}
       - name: The suite's part of the HTML report
         if: always()
         uses: actions/upload-artifact@v6
@@ -751,7 +765,7 @@ jobs:
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
       # AI cost: as e2e.yml. A Windows run follows a Mac run that already asked live, so it always replays what it has seen (its own cache: paths differ).
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
-      E2E_AI_REPLAY: '1'
+      E2E_AI_REPLAY: ${{ matrix.suite == 'qualityai' && '0' || '1' }}
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: gate

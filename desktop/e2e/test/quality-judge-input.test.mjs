@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 
 test('the score-text judge is given the Profile the scorer read, not the CV text', () => {
-  const source = fs.readFileSync(new URL('../suites/quality.mjs', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../suites/qualityai.mjs', import.meta.url), 'utf8');
   const step = source.slice(source.indexOf("ctx.run('the score reasons say nothing invented"), source.indexOf('summary.invented ='));
   const line = /const profile = (.+);/.exec(step)?.[1] || '';
   assert.match(line, /THE PROFILE/);
@@ -19,7 +19,7 @@ test('the score-text judge is given the places the scorer was told', async () =>
   const note = placesNote({top_tier: ['zurich', 'geneva'], country_wide: ['switzerland', 'basel', 'bern'], abroad: []});
   for (const word of ['zurich', 'geneva', 'switzerland', 'basel', 'bern']) assert.ok(note.includes(word), `${word} is missing from the judge's places`);
   assert.equal(placesNote({}), '', 'no places set: nothing to say');
-  const source = fs.readFileSync(new URL('../suites/quality.mjs', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../suites/qualityai.mjs', import.meta.url), 'utf8');
   const step = source.slice(source.indexOf("ctx.run('the score reasons say nothing invented"), source.indexOf('summary.invented ='));
   assert.match(step, /placesNote\(/, 'the judge\'s candidate text no longer carries the places');
 });

@@ -61,12 +61,14 @@ test('the real tree: the audited PRs pick the watched suites their files reach, 
   const {suiteFacts} = await import('../plan-run.mjs');
   const facts = await suiteFacts();
   const watches = watchesWithImports(facts.watches);
-  const pick = files => suitesFor(files, facts.all, {watches, cadence: {}}).filter(suite => ['mailreading', 'quality'].includes(suite));
+  const pick = files => suitesFor(files, facts.all, {watches, cadence: {}}).filter(suite => ['mailreading', 'quality', 'qualityai'].includes(suite));
   assert.ok(watches.mailreading.length < 25, `mailreading watches ${watches.mailreading.length} files: the import closure is back`);
   assert.deepEqual(pick(['src/ai/decide.py', 'src/sources/careers.py']), [], '#2068: neither suite reads decide.py');
-  assert.deepEqual(pick(['src/ai/score.py', 'src/ai/score_search.py']), ['quality'], '#2060: a scoring change runs quality only');
+  assert.deepEqual(pick(['src/ai/score.py', 'src/ai/score_search.py']), ['quality', 'qualityai'], '#2060: a scoring change runs both quality journeys');
+  assert.deepEqual(pick(['src/ai/enrich.py']), ['quality', 'qualityai']);
+  assert.deepEqual(pick(['desktop/lib/question-reuse.js']), ['quality', 'qualityai']);
   assert.deepEqual(pick(['src/ai/interviews.py']), [], 'an interviews change runs neither');
-  assert.deepEqual(pick(['src/ai/schema_notes.py']), ['quality'], '#2043 still: score.py imports it');
+  assert.deepEqual(pick(['src/ai/schema_notes.py']), ['quality', 'qualityai'], '#2043 still: score.py imports it');
   assert.deepEqual(pick(['src/ai/providers/anthropic_api.py']), ['mailreading'], '#2077 broke main\'s mailreading (#2086): the providers the mail check imports');
   assert.deepEqual(pick(['src/ai/mail_lines.py']), ['mailreading']);
 });

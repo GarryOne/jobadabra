@@ -6,7 +6,13 @@
       "lane": "tolerant",
       "input": "ai",
       "since": "2026-10-28",
-      "why": "Twelve golden postings go through the real Jobs check and the model's facts and scores are compared with a ground truth; a Haiku judge reads the free text. 4 of its 7 red rows in the week of 2026-W44 were an AI answer, a key or the 7-minute budget."
+      "why": "Exact checks on the golden postings (facts, duplicates, ranking, columns, logs). Tolerant until PR 2/4 stores its AI answers (qu plan, 29 Oct 2026); then it leaves the registry. The live AI judgements moved to qualityai."
+    },
+    "qualityai": {
+      "lane": "tolerant",
+      "input": "ai",
+      "since": "2026-10-29",
+      "why": "A live Jobs check on the golden postings measures the model's facts, scores and judge texts as rates."
     },
     "notion-real": {
       "lane": "tolerant",

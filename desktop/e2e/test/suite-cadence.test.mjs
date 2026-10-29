@@ -5,7 +5,7 @@ import {test} from 'node:test';
 import {planRun, suiteFacts} from '../plan-run.mjs';
 import {SLIM, autoSuites} from '../lib/plan.mjs';
 
-const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'cardstates', 'employers', 'failureschannels', 'interactions', 'mailreading', 'quality', 'settings'];
+const KEEP = ['activity', 'activityfailures', 'apply', 'applyflows', 'cardstates', 'employers', 'failureschannels', 'interactions', 'mailreading', 'quality', 'qualityai', 'settings'];
 const DROPPED = ['foryou', 'notion-real', 'personas', 'pool'];
 const BY_HAND = ['explore'];   // never scheduled by design: it spends the owner's AI credit
 
@@ -38,7 +38,7 @@ test('slim suites run at night and in both release gates; never in a soak top-up
   assert.deepEqual(SLIM.filter(suite => !night.has(suite)), [], 'the night schedule left out a slim suite (the code → suite map is built from it)');
   const repeat = await plan({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9'});   // canary-promote.yml's soak top-up and stable-canary.yml: a release's commit, no gate
   assert.deepEqual(SLIM.filter(suite => repeat.has(suite)), [], 'a soak top-up or the canary ran a slim suite');
-  assert.deepEqual(KEEP.filter(suite => !repeat.has(suite) && !['mailreading', 'quality'].includes(suite)), [], 'a kept suite left the soak top-up');
+  assert.deepEqual(KEEP.filter(suite => !repeat.has(suite) && !['mailreading', 'quality', 'qualityai'].includes(suite)), [], 'a kept suite left the soak top-up');
   const named = await plan({EVENT: 'workflow_dispatch', TARGET_REF: 'desktop-v9.9', ONLY: 'jobs'});
   assert.ok(named.has('jobs'), 'a slim suite named by hand still runs on a release');
 });

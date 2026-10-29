@@ -260,13 +260,13 @@ jobs:
       # by hand) answers a request it has seen before from the replay cache, and pays only for new ones (lib/ai-meter.mjs). Every judge runs on Haiku, the quality
       # suite's too since 27 Oct 2026 (its verdicts keep their inputs, so Sonnet can re-judge the same texts offline).
       E2E_AI_CACHE: ${{ github.workspace }}/desktop/e2e/.ai-cache
-      E2E_AI_REPLAY: '1'   # every run replays an answer it has seen; only a request never seen goes to the model (owner, 7 Oct 2026: "$30 a week"; the schedule used to ask live)
+      E2E_AI_REPLAY: ${{ matrix.suite == 'qualityai' && '0' || '1' }}   # qualityai asks live; every other suite keeps its existing replay path
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
-      # Quality's gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): its recorded answers never expire, and on main a question with no recorded
-      # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). How steady the AI is: the night's fresh run. Guard: tests/test_quality_replay_gate.py
+      # Quality keeps strict replay until PR 2/4 stores its AI answers (owner, 27 Oct 2026: "Code gate + AI rate"): recorded answers never expire; on main a question with no recorded
+      # answer is asked but not kept, and named red by the suite (lib/ai-meter.mjs strict). qualityai asks live every run to measure AI steadiness. Guard: tests/test_quality_replay_gate.py
       E2E_AI_STRICT: ${{ matrix.suite == 'quality' && (inputs.pr_suites == '' || inputs.after_merge != '') && '1' || '' }}   # Why (#2210, owner 27 Oct 2026): a PR asks a new question once and records it; main only replays
       E2E_AI_MAX_AGE_DAYS: ${{ matrix.suite == 'quality' && '3650' || '' }}
-      E2E_QUALITY_HISTORY: ${{ matrix.suite == 'quality' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}   # lib/quality-rate.mjs
+      E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}   # lib/quality-rate.mjs
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py
@@ -366,9 +366,9 @@ jobs:
           KEY: ${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}
         run: node desktop/e2e/pr-answers.mjs "$MERGED" "$KEY" desktop/e2e/.ai-cache
       # The lock is taken as late as possible (after the installs, which never touch the suite's Notion page): a waiting job holds its runner.
-      - name: The score-steadiness history of the night's live quality runs (lib/quality-rate.mjs)
+      - name: The score-steadiness history of the night's live qualityai runs (lib/quality-rate.mjs)
         # Owner, 27 Oct 2026 ("Code gate + AI rate"): "same scores twice" is a rate over the last 90 pairs, red below 80% within 8 points or above 2% more than 20 apart.
-        if: matrix.suite == 'quality'
+        if: matrix.suite == 'qualityai'
         uses: actions/cache/restore@v5
         with:
           path: desktop/e2e/.quality-rate
@@ -387,15 +387,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh acquire "${{ matrix.key }}"
-      - name: Fresh AI answers for quality once a day (the night's first main check)
-        # Owner, 26 Oct 2026: "Fresh daily + rate gate". Replayed answers hid that Free AI's scores moved and invented facts (sketch "Free AI score stability");
-        # the night's first main check (21:47 UTC) asks the model for every answer, about $0.06 of Free AI; the other runs replay, except quality's second scoring.
-        if: matrix.suite == 'quality' && !inputs.gate_tag && (github.event_name == 'schedule' || inputs.scheduled)
-        run: |
-          case "$(date -u +%H)" in
-            21|22) { echo "E2E_AI_REPLAY=0"; echo "E2E_AI_STRICT=0"; } >> "$GITHUB_ENV"; echo "The day's fresh quality run: every AI answer is asked, none replayed" ;;
-            *) echo "Not the night's first main check: answers seen before are replayed" ;;
-          esac
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         env:
@@ -487,8 +478,8 @@ jobs:
         with:
           path: desktop/e2e/.ai-cache
           key: ai-answers-${{ matrix.key }}${{ matrix.key == 'mailreading' && '-v2' || '' }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Keep the score-steadiness history, red or green (the night's live quality run on main)
-        if: always() && matrix.suite == 'quality' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
+      - name: Keep the score-steadiness history, red or green (the night's live qualityai run on main)
+        if: always() && matrix.suite == 'qualityai' && env.E2E_AI_REPLAY != '1' && github.ref == 'refs/heads/main' && hashFiles('desktop/e2e/.quality-rate/history.json') != ''
         uses: actions/cache/save@v5
         with:
           path: desktop/e2e/.quality-rate

@@ -73,7 +73,7 @@ test('the fill ends in a stuck report when nothing was filled and required field
   const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(flow, /!\(result\?\.filled > 0\) && result\?\.unfilledRequired > 0 && open\.length/);
   assert.match(flow, /deadEndHere\(tab, jobUrl, host, 'incomplete',/, 'the incomplete dead end (ladder/dead-end.js)');
-  const fill = fs.readFileSync(new URL('../../extension/page/fill.js', import.meta.url), 'utf8');
+  const fill = fs.readFileSync(new URL('../../extension/page/fill-report.js', import.meta.url), 'utf8');
   assert.match(fill, /resume\?\.data \? 'no place to attach it was found on this page' : 'no CV in the app'/);
 });
 

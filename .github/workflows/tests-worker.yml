@@ -32,6 +32,7 @@ on:
       - 'tools/browser-form-snapshot.js'
       - 'tools/browser-submit-guard.js'
       - 'tools/fill-fixture.mjs'
+      - 'desktop/test/fake-fill-page.js'   # worker/test/fill-page-characterization.test.js drives the page fill with it
       - '.github/workflows/tests-worker.yml'
 
 permissions:

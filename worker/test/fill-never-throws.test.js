@@ -4,11 +4,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const code = fs.readFileSync(new URL('../../extension/page/fill.js', import.meta.url), 'utf8');
+const code = ['fill-plan.js', 'fill-report.js', 'fill.js'].map(file => fs.readFileSync(new URL(`../../extension/page/${file}`, import.meta.url), 'utf8')).join('\n');
 const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
 
 test('a throw inside the page fill comes back as {error, pageError}, with where it happened', async () => {
-  const kit = new Proxy({}, {get: () => () => ''});
+  const kit = new Proxy({}, {get: (target, key) => target[key] || (() => '')});
   const window = {__jobPilottoFillKit: kit, __jobPilottoGuardActive: true, __jobPilottoDescribeForm: () => { throw new TypeError("Cannot read properties of null (reading 'x')"); }};
   vm.runInContext(code, vm.createContext({window, document: {querySelectorAll: () => []}, console}));
   const result = await window.__jobPilottoExtensionFill([], {}, null, '', false);
@@ -24,7 +24,7 @@ test('flow.js turns a null or errored page result into an error result before an
 });
 
 test('a result holding something that cannot be copied loses only that key and names it', async () => {
-  const kit = new Proxy({}, {get: () => () => ''});
+  const kit = new Proxy({}, {get: (target, key) => target[key] || (() => '')});
   const window = {__jobPilottoFillKit: kit, __jobPilottoGuardActive: true, __jobPilottoDescribeForm: () => []};
   const context = vm.createContext({window, document: {querySelectorAll: () => []}, console, structuredClone});
   vm.runInContext(code.replace('return summary;\n  };', 'summary.operated = [{node: () => 1}]; return summary;\n  };'), context);

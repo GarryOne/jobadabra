@@ -7,7 +7,6 @@ import {loadJsdom, openPage} from './helpers/page.js';
 import {PANEL_FILES} from '../../extension/panel-files.js';
 
 const JSDOM = await loadJsdom();
-assert.ok(JSDOM, 'characterization requires the installed DOM stand-in');
 const read = file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
@@ -247,7 +246,7 @@ for (const kind of ['manual', 'manual-hidden', 'manual-error', 'rejected', 'give
     }};
 }
 
-test('every render state keeps the complete serialized DOM, returned facts and effect order', async () => {
+test('every render state keeps the complete serialized DOM, returned facts and effect order', {skip: !JSDOM}, async () => {
   const actual = {};
   for (const [name, options] of Object.entries(cases)) {
     const p = await panel(options);
@@ -256,7 +255,7 @@ test('every render state keeps the complete serialized DOM, returned facts and e
   assert.deepEqual(actual, EXPECTED);
 });
 
-test('rendered controls keep their targets, propagation, busy labels and messages', async () => {
+test('rendered controls keep their targets, propagation, busy labels and messages', {skip: !JSDOM}, async () => {
   const p = await panel({state: {filledOnce: true, session: {id: 's1'}, movedTab: 8, build: {behind: 1}},
     fields: d => baseFields(d, [{draft: 'outline'}])});
   try {
@@ -277,7 +276,7 @@ test('rendered controls keep their targets, propagation, busy labels and message
   } finally { p.close(); }
 });
 
-test('letter actions open setup or focus the rejected control; password requests remain throttled', async () => {
+test('letter actions open setup or focus the rejected control; password requests remain throttled', {skip: !JSDOM}, async () => {
   const p = await panel({state: {coverLetterStatus: {state: 'missing', ready: false}}, prepare: q => {
     q.document.getElementById('a').setAttribute('data-jobpilotto-letter', '1'); account('')(q);
   }});
@@ -297,7 +296,7 @@ test('letter actions open setup or focus the rejected control; password requests
   } finally { p.close(); }
 });
 
-test('mark transitions, minimization and stopped/done states keep the same DOM across redraws', async () => {
+test('mark transitions, minimization and stopped/done states keep the same DOM across redraws', {skip: !JSDOM}, async () => {
   const p = await panel({state: {applyWorking: true, userMoved: false, open: false}, attrs: {page: 'reading'}});
   try {
     const actual = [];

@@ -224,7 +224,9 @@ class SearchCharacterization(unittest.TestCase):
     def test_deadline_hit_during_gather_keeps_partial_jobs_and_clock(self):
         self.jobs.append({**JOB, 'id': 'two', 'url': 'https://example.test/two', 'title': 'Second SRE'})
         self.expire = True
-        out = self.run_search()
+        # Why (29 Oct 2026): now=0 sets deadline 180; a fresh Linux runner's monotonic clock can still be below it.
+        with mock.patch.object(time_budget.time, 'monotonic', return_value=181):
+            out = self.run_search()
         self.assertEqual(len(self.report['jobs']), 1)
         self.assertEqual(time_budget.DEADLINE, 180)
         self.assertEqual(self.stores.matches.list(), [])

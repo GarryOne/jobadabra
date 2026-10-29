@@ -29,10 +29,10 @@ on:
         type: string
         default: ''
       ai_provider:
-        description: codex (the owner's Codex plan, the default) or claude (the API key); empty = the repo variables
+        description: auto (the repo variables, else Codex), codex (the owner's Codex plan) or claude (the API key)
         type: choice
-        options: ['', codex, claude]
-        default: ''
+        options: [auto, codex, claude]
+        default: auto
 
 permissions:
   id-token: write   # the broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
@@ -53,7 +53,7 @@ jobs:
       DECISION: ${{ inputs.id }}
       # Why (29 Oct 2026, owner: CI AI on his Codex plan; the brief failed every morning with "Credit balance is too low"): Codex is this workflow's default, with no repo variable needed. Claude only when asked:
       # the input, vars.CI_AI_PROVIDER_BRAIN or the global vars.CI_AI_PROVIDER set to claude (free, the global default elsewhere, means Codex here: the brain has no Workers AI path).
-      BRAIN_AI: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER_BRAIN || (vars.CI_AI_PROVIDER == 'claude' && 'claude') || 'codex' }}
+      BRAIN_AI: ${{ (inputs.ai_provider != 'auto' && inputs.ai_provider) || vars.CI_AI_PROVIDER_BRAIN || (vars.CI_AI_PROVIDER == 'claude' && 'claude') || 'codex' }}
       GH_TOKEN: ${{ github.token }}
       NOTION_BRAIN_TOKEN: ${{ secrets.NOTION_BRAIN_TOKEN }}
       BRAIN_DATABASE_ID: ${{ vars.BRAIN_DATABASE_ID }}

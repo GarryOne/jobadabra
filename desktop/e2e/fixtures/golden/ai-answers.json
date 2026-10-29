@@ -1,5 +1,6 @@
 {
   "v": 1,
   "about": "Stored AI answers keyed by question come from a record run, reviewed and committed by a person.",
-  "answers": {}
+  "answers": {},
+  "items": {"app.decide": {}}
 }

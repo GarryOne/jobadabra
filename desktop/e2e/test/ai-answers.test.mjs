@@ -77,7 +77,7 @@ test('score identity uses exact posting triples, not wording, model, schemas or 
   assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: score({title: 'Unknown', location: 'Nowhere'})}).unkeyable, /app.score/);
   assert.match(questionOf({headers: {'x-jp-action': 'score'}, body: {...a, messages: [{role: 'user', content: a.messages[0].content.replace(company, 'Other employer')}]}}).unkeyable, /app.score/);
   assert.deepEqual(questionOf({body: a, hint: {operation: 'judge.facts', id: '3001/first'}}), {operation: 'judge.facts', id: '3001/first'});
-  assert.deepEqual(questionOf({headers: {'x-jp-action': 'decide'}, body: a}), {unkeyable: 'decide: topic and item keys are not in the request'});
+  assert.deepEqual(questionOf({headers: {'x-jp-action': 'decide'}, body: a}), {unkeyable: 'decide: missing recognised system prefix'});
 });
 
 for (const mode of ['off', 'backbone', 'record']) test(`table hit in ${mode} bypasses upstream, relay and hash cache`, async t => {
@@ -104,13 +104,13 @@ test('OpenAI JSON and stream replies use the existing normal response wrappers',
   assert.equal(up.calls(), 0);
 });
 
-test('backbone refuses decide and keyed misses despite warm cache, replay off and fresh; harness remembers each', async t => {
+test('backbone refuses unparseable decide and keyed misses despite warm cache, replay off and fresh; harness remembers each', async t => {
   const {env, dir} = fixture(t, {}); environment(t, {...env, E2E_AI_ANSWERS: 'backbone', E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir});
   const up = await upstream(t); let relays = 0;
   const proxy = await proxyFor(t, {target: up.url, relay: async () => { relays++; throw new Error('must not relay'); }});
   const body = score(); keep(requestKey('/v1/messages', Buffer.from(JSON.stringify(body))), {status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(live))});
   const ask = async options => { const r = await fetch(`${proxy.url}/v1/messages`, options); assert.equal(r.status, 503); const data = await r.json(); assert.equal(data.error.code, 'E2E_AI_ANSWER_MISSING'); return data.error.message; };
-  assert.match(await ask({...init(body), headers: {'x-jp-action': 'decide'}}), /decide: topic and item keys/);
+  assert.match(await ask({...init(body), headers: {'x-jp-action': 'decide'}}), /decide: missing recognised system prefix/);
   assert.match(await ask(init(body)), /app.score\/3001/);
   await fresh(() => ask(init(body)));
   process.env.E2E_AI_REPLAY = '0'; await ask(init(body));

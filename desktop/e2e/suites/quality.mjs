@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {answersMode} from '../lib/ai-answers.mjs';
 import {PLANNER, collectFacts, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
+import {QUALITY_CLOCK, qualityEvidence, qualityHang, withQualityHang} from '../lib/quality-waits.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
 import {dirtyRows, dirtyText, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl} from '../lib/quality.mjs';
 
@@ -13,10 +14,13 @@ export const name = 'quality';
 // changes setup requests and leaves questions without stored answers, so every run must follow the recorded SQLite path.
 export const store = 'sqlite';
 // Exact golden facts, duplicates, ranking, columns and logs; no judge or rescore calls.
-// The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
+// Why (29 Oct 2026, qu 3/4): the backbone has measured hang caps, not a speed budget; qualityai retains PLANNER's live allowances.
+export const aggregateBudget = false;
+export const hangCaps = Object.freeze({'': QUALITY_CLOCK.stateMs / 1000,
+  'a Jobs check on the golden postings finishes and scores them': QUALITY_CLOCK.jobsMs / 1000});
 export const cadence = PLANNER.cadence;
-export const budgetMinutes = PLANNER.budgetMinutes;
-export const minutes = PLANNER.minutes;
+// CI accepts whole minutes: round the measured whole-journey hang cap upward.
+export const minutes = Math.ceil(QUALITY_CLOCK.suiteMs / 60000);
 export const sameOnEveryOs = PLANNER.sameOnEveryOs;
 // Why (27 Oct 2026, #2234): the AI files this suite judges. Its answers are replayed strictly, so a changed prompt it ran must run its own steps on the PR (which records
 // the new answers for main); a line in them is never "shared code" another suite runs for it (lib/coverage-pick.mjs stepsCovering). #2234 changed place_triage.py
@@ -29,6 +33,15 @@ export const env = PLANNER.env;
 /** Run the golden journey and report every independent final check. */
 export async function run(ctx) {
   if (answersMode(process.env) === 'off') throw new Error('quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)');
+  const runStep = ctx.run;
+  // Why (29 Oct 2026, qu 3/4): the runner's outer step cap must preserve the same named hang and engine evidence as an inner state wait.
+  ctx.run = (name, work, options) => runStep(name, work, {...options, hangError: capMs => qualityHang(name, capMs, ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx))});
+  try {
+    return await withQualityHang(() => runJourney(ctx), {label: 'the quality journey', capMs: QUALITY_CLOCK.suiteMs, evidence: () => ctx.qualityWaitEvidence?.() ?? qualityEvidence(ctx)});
+  } finally { ctx.run = runStep; }
+}
+
+async function runJourney(ctx) {
   const {page} = ctx;
   const journey = qualityJourney(ctx);
   const {truth, privacyLogs} = journey;

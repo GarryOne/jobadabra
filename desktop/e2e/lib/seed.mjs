@@ -1,6 +1,7 @@
 /* global window */
 // Puts a freshly launched app into the "set up" state the way the wizard leaves it, without the wizard: the app's own calls for the key, the Notion connection
 // (which finds the workspace already built in this suite's page) and "setup done". About ten seconds. A suite whose page is empty bootstraps with the real wizard path instead.
+// Job: run the backbone
 import fs from 'node:fs';
 import path from 'node:path';
 import {applicantDraft} from './applicant-seed.mjs';
@@ -8,7 +9,8 @@ import {appKey, DUMMY_KEY} from './engine.mjs';
 import {runWizard} from './wizard.mjs';
 import {RECONNECT} from './notion-reuse.mjs';
 
-export async function fastSeed(ctx) {
+/** Seed the app and wait for its visible view within the caller's hang allowance. */
+export async function fastSeed(ctx, {readyMs = 60000} = {}) {
   const {page} = ctx;
   // The engine under test (lib/engine.mjs: the family alternates on CI). A placeholder Anthropic key is always saved (a key is "saved" in every install, and ctx.withApi needs
   // one); an OpenAI engine also gets its key. A CLI (Claude Code, Codex) is verified and chosen the way the engine panel does it.
@@ -38,15 +40,17 @@ export async function fastSeed(ctx) {
   }, {anthropic: ctx.engine === 'api' ? appKey(ctx.key) : DUMMY_KEY, openai: ctx.engine === 'openai' ? ctx.key : '', token: ctx.token, engine: ctx.engine, strategy, reconnect: RECONNECT});
   fs.copyFileSync(ctx.cv, path.join(ctx.profile, 'cv.pdf'));   // forms and tailoring read the CV from the data folder
   await page.reload();
-  await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
+  // Why (29 Oct 2026, qu 3/4): quality supplies its measured setup hang cap; other journeys keep their existing allowance.
+  await page.waitForSelector('.view:not([hidden])', {timeout: readyMs});
 }
 
 // The workspace exists in this suite's page: seed in seconds. Otherwise build it once with the real wizard path (and keep it for the next run).
-export async function ensureSetUp(ctx) {
+/** Reuse an existing workspace or build it, preserving the caller's setup hang cap. */
+export async function ensureSetUp(ctx, options = {}) {
   // This Mac's store (lib/store.mjs): no Notion to build or connect; set up the way the wizard leaves it (the key, the engine, the applicant's strategy kept here).
-  if (ctx.store === 'sqlite') return ctx.run('the app is set up on this Mac\'s store with the applicant\'s strategy', () => fastSeed(ctx), {needs: ctx.needs, critical: true});
+  if (ctx.store === 'sqlite') return ctx.run('the app is set up on this Mac\'s store with the applicant\'s strategy', () => fastSeed(ctx, options), {needs: ctx.needs, critical: true});
   if (ctx.built) {
-    await ctx.run('the app is seeded as a set-up install from the existing workspace', () => fastSeed(ctx), {needs: ctx.needs, critical: true});   // every later step needs a set-up app
+    await ctx.run('the app is seeded as a set-up install from the existing workspace', () => fastSeed(ctx, options), {needs: ctx.needs, critical: true});   // every later step needs a set-up app
   } else {
     console.log(`The ${ctx.suite} suite's Notion page has no workspace yet: building it once with the real wizard path.`);
     await runWizard(ctx);

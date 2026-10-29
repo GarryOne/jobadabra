@@ -8,7 +8,7 @@ name: Product brain · Daily brief
 # Sundays: step review, a 30-day strategy review (Opus, web research) that proposes Compass changes; ✅ writes them in.
 # Every message and tap is also logged in the site's D1 (brain_messages) for /admin/intelligence/brain; step sync copies Notion's rows there.
 # Buttons: the bot's webhook is the website (api/brain.js). Plumbing: tools/product_brain.py, tools/site-shots.mjs.
-# Secrets: ANTHROPIC_API_KEY, NOTION_BRAIN_TOKEN (Notion connection "Job Pilotto Brain": the Decisions database and
+# AI: Codex plan through the broker by default (desktop/e2e/brain-codex.mjs); BRAIN_AI=claude runs claude-code-action on the key. Secrets: ANTHROPIC_API_KEY (claude only), NOTION_BRAIN_TOKEN (Notion connection "Job Pilotto Brain": the Decisions database and
 # the pages the owner shares with it), BRAIN_BOT_TOKEN, BRAIN_CHAT_ID, JOB_PILOTTO_TELEMETRY_KEY; variable BRAIN_DATABASE_ID.
 # Prompts: private (GarryOne/jobadabra-lab/prompts, synced into the secrets BRAIN_PROMPT_BRIEF|REVIEW|EXPLORE).
 # Cost: brief ~$0.10-0.30 (Sonnet), explore and review ~$0.50-1 each (Opus): owner's budget $5-10 a month.
@@ -28,8 +28,14 @@ on:
         description: The decision's Notion page id (explore, approve, skip, another)
         type: string
         default: ''
+      ai_provider:
+        description: codex (the owner's Codex plan, the default) or claude (the API key); empty = the repo variables
+        type: choice
+        options: ['', codex, claude]
+        default: ''
 
 permissions:
+  id-token: write   # the broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
   contents: read
   issues: read
   actions: read
@@ -45,6 +51,9 @@ jobs:
     env:
       STEP: ${{ inputs.step || (github.event.schedule == '0 16 * * 0' && 'review' || 'brief') }}
       DECISION: ${{ inputs.id }}
+      # Why (29 Oct 2026, owner: CI AI on his Codex plan; the brief failed every morning with "Credit balance is too low"): Codex is this workflow's default, with no repo variable needed. Claude only when asked:
+      # the input, vars.CI_AI_PROVIDER_BRAIN or the global vars.CI_AI_PROVIDER set to claude (free, the global default elsewhere, means Codex here: the brain has no Workers AI path).
+      BRAIN_AI: ${{ inputs.ai_provider || vars.CI_AI_PROVIDER_BRAIN || (vars.CI_AI_PROVIDER == 'claude' && 'claude') || 'codex' }}
       GH_TOKEN: ${{ github.token }}
       NOTION_BRAIN_TOKEN: ${{ secrets.NOTION_BRAIN_TOKEN }}
       BRAIN_DATABASE_ID: ${{ vars.BRAIN_DATABASE_ID }}
@@ -100,8 +109,15 @@ jobs:
         run: |
           node "$RUNNER_TEMP/shots/site-shots.mjs" https://www.jobpilotto.top/ "$GITHUB_WORKSPACE/.brain"
 
+      - name: Codex picks today's one action
+        if: (env.STEP == 'brief' || env.STEP == 'another') && env.BRAIN_AI != 'claude'
+        env:
+          BRAIN_PROMPT: |
+            ${{ secrets.BRAIN_PROMPT_BRIEF }}
+            - ${{ env.STEP == 'another' && 'The owner rejected the latest proposal (Not now today): propose something clearly different.' || 'This is the regular morning brief.' }}
+        run: node desktop/e2e/brain-codex.mjs --step "$STEP"
       - name: Claude picks today's one action
-        if: env.STEP == 'brief' || env.STEP == 'another'
+        if: (env.STEP == 'brief' || env.STEP == 'another') && env.BRAIN_AI == 'claude'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.PRODUCT_BRAIN_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
@@ -114,8 +130,13 @@ jobs:
             ${{ secrets.BRAIN_PROMPT_BRIEF }}
             - ${{ env.STEP == 'another' && 'The owner rejected the latest proposal (Not now today): propose something clearly different.' || 'This is the regular morning brief.' }}
 
+      - name: Codex reviews the strategy (Sundays)
+        if: env.STEP == 'review' && env.BRAIN_AI != 'claude'
+        env:
+          BRAIN_PROMPT: ${{ secrets.BRAIN_PROMPT_REVIEW }}
+        run: node desktop/e2e/brain-codex.mjs --step review
       - name: Claude reviews the strategy (Sundays)
-        if: env.STEP == 'review'
+        if: env.STEP == 'review' && env.BRAIN_AI == 'claude'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.PRODUCT_BRAIN_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
@@ -137,8 +158,13 @@ jobs:
           python tools/product_brain.py decision --id "$DECISION" > .brain/decision.md
           python tools/product_brain.py signals --out .brain/signals.md
 
+      - name: Codex explores it (brainstorm, options, plan) and stops
+        if: env.STEP == 'explore' && env.BRAIN_AI != 'claude'
+        env:
+          BRAIN_PROMPT: ${{ secrets.BRAIN_PROMPT_EXPLORE }}
+        run: node desktop/e2e/brain-codex.mjs --step explore
       - name: Claude explores it (brainstorm, options, plan) and stops
-        if: env.STEP == 'explore'
+        if: env.STEP == 'explore' && env.BRAIN_AI == 'claude'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.PRODUCT_BRAIN_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
@@ -159,7 +185,7 @@ jobs:
         run: python tools/product_brain.py plan --id "$DECISION" --file .brain/plan.md
 
       - name: Report the AI cost to /ai-cost
-        if: always() && (env.STEP == 'brief' || env.STEP == 'another' || env.STEP == 'review' || env.STEP == 'explore')
+        if: always() && env.BRAIN_AI == 'claude' && (env.STEP == 'brief' || env.STEP == 'another' || env.STEP == 'review' || env.STEP == 'explore')   # Codex calls are the broker's own counters
         env:
           AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
         run: node desktop/e2e/ai-cost-report.mjs --job product-brain --suffix "${{ env.STEP }}" --execution /home/runner/work/_temp/claude-execution-output.json

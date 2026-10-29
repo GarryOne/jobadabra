@@ -2,6 +2,7 @@
 // Interactions: what each safe control of every page DOES when pressed. A click that changes nothing and reaches nothing, an expandable that does not expand, an action that
 // runs seconds with no sign of work and a click that throws are found from recorded behaviour (page changes, the window's calls to the app, errors), not from a picture.
 // Nothing that deletes, sends, signs in, leaves the app or spends AI credit is ever pressed (lib/interact.mjs isSafe). Starts from a set-up install.
+// Job: wait on state
 import fs from 'node:fs';
 import path from 'node:path';
 import {finish, sweep, visitNarrow} from '../lib/layout.mjs';
@@ -16,12 +17,24 @@ import {lateShiftFindings, nowInPage, shiftsIn, watchShifts} from '../lib/shift.
 import {goView} from '../lib/go-view.mjs';
 import {probe, problems} from '../lib/rail-markers.mjs';
 
+// Why (29 Oct 2026, owner): hang caps = 3 x calm p95 of ten main runs (tools/e2e-step-timings.mjs); they catch a hang, never a slow runner; the suite has no aggregate budget
+const HANG_CAP_SECONDS = {
+  still: 90,
+  controls: 175,
+  recall: 80,
+  narrow: 45,
+  sizes: 220,
+  rail: 30,
+  findings: 30,
+};
+
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.
 export const keepGoing = true;
 // A seeded run visits every page from another time zone and language (lib/variation.mjs placeOf): the truth and layout checks see dates and numbers as a person there would.
 export const variesPlace = true;
+export const aggregateBudget = false;
 export const minutes = 25;   // was 10: the suite grew (sweeps of sizes, themes, time zones, the late-shift watch) and was cancelled at 10 min in two gate runs in a row (5 Oct 2026), its partial findings filed as issues
 // The engine's coverage answer takes seconds on a real machine (the owner's: about 5): a card that arrives that late must not move the page (lib/shift.mjs, #strategy-coverage-checking).
 export const env = {JOB_PILOTTO_E2E_COVERAGE_MS: '4500'};
@@ -64,7 +77,7 @@ export async function run(ctx) {
       console.log(`  ${view}: ${after.length} layout shift(s) after it was ready${after.length ? ` (${after.map(item => `${((item.at - since) / 1000).toFixed(1)}s score ${item.value.toFixed(3)}${item.input ? ' by input' : ''} ${item.node}`).join('; ')})` : ''}`);
       for (const item of late) console.log(`  ! [${view}] ${item.kind}: ${item.detail}`);
       ctx.findings.push(...late);
-    }, {needs: ctx.needs});
+    }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.still * 1000});
   }
   if (process.env.E2E_ONLY_STILL) return;   // a by-hand check of this one detector: skip the rest of the suite
   const goTo = view => goToPage(page, view);   // answers Strategy's unsaved-edits prompt (lib/leave-prompt.mjs)
@@ -79,7 +92,7 @@ export async function run(ctx) {
       ctx.replayPath.pressed.push(...results.map(item => ({view, name: item.control, effects: (item.effects || []).join(', '), flagged: !!item.rechecked})));
       ctx.findings.push(...findings);
       console.log(`  ${view}: ${results.length} controls pressed, ${findings.length} flagged, ${skipped.length} left alone (${skipped.slice(0, 6).join(' | ')})`);
-    }, {needs: ctx.needs});
+    }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.controls * 1000});
   }
   // Recall (lib/recall.mjs): known bugs planted into the page one at a time; each detector must catch its own. A miss is filed as a finding about the detector.
   await ctx.run('the detectors catch the bugs planted for them (recall)', async () => {
@@ -89,13 +102,13 @@ export async function run(ctx) {
     fs.writeFileSync(path.join(ARTIFACTS, 'recall.json'), JSON.stringify(result, null, 2));
     ctx.findings.push(...recallFindings(result));
     console.log(`  recall: ${result.caught} of ${result.planted} planted bugs caught${result.caught < result.planted ? ` (missed: ${result.rows.filter(row => !row.caught).map(row => row.id).join(', ')})` : ''}`);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.recall * 1000});
   await ctx.run('the narrowest window: the sidebar is an icon rail and every page still fits', async () => {
     await visitNarrow(ctx, ['focus', 'jobs', 'actions', 'settings']);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.narrow * 1000});
   await ctx.run('every page at four window sizes and in both themes: nothing is cut off, unreachable or broken (no screenshots, no AI)', async () => {
     await sweep(ctx, ['focus', 'jobs', 'actions', 'calendar', 'interviews', 'strategy', 'settings', 'sessions']);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.sizes * 1000});
   await ctx.run('the icon rail: every badge and dot sits inside its button, clear of the icon', async () => {
     const resize = size => ctx.app.evaluate(({BrowserWindow}, [w, h]) => { const win = BrowserWindow.getAllWindows()[0]; const was = win.getSize(); win.setSize(w, h); return was; }, size);
     const was = await resize([1024, 640]);
@@ -106,10 +119,10 @@ export async function run(ctx) {
     } finally {
       await resize(was);
     }
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.rail * 1000});
   fs.writeFileSync(path.join(ARTIFACTS, 'interactions.json'), JSON.stringify(all, null, 2));
   await ctx.run('interaction findings are written', async () => {
     if (!all.length) throw new Error('the probe pressed no control on any page: it found nothing to test');
     finish(ctx);
-  }, {needs: ctx.needs});
+  }, {needs: ctx.needs, limitMs: HANG_CAP_SECONDS.findings * 1000});
 }

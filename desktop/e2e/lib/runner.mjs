@@ -1,4 +1,5 @@
 // Runs a suite's steps: names, timings, a screenshot on the first failure, a summary, an exit code. Steps that need a secret that is not there are skipped, loudly.
+// Job: wait on state
 import path from 'node:path';
 import {ARTIFACTS} from './app.mjs';
 import {refusalNote} from './ai-refused.mjs';
@@ -25,7 +26,7 @@ export function withLimit(promise, ms, name, getSession = () => null, budget = 0
   let timer;
   const limit = new Promise((_, fail) => { timer = setTimeout(async () => fail(new Error(budget
     ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it): ${await hangReport(getSession())}`
-    : `the step did not finish within ${Math.round(ms / 60000)} min (it hung): ${await hangReport(getSession())}`)), ms); });
+    : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung): ${await hangReport(getSession())}`)), ms); });
   return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
 }
 
@@ -54,8 +55,10 @@ export const PICK_SETUP = '(setup)';
 // A whole suite has a budget too (owner, 6 Oct 2026: no suite over 5-7 minutes). Past it, the steps left are recorded as not run and the suite fails, naming its
 // slowest steps; a running step is cut at the budget's end. A suite that truly needs more says so (`export const budgetMinutes`): a manual suite, or the recorded replay (it grows a case at a time; sharded in page-cases.yml and, by its `shards`, in the gates: lib/suite-shards.mjs).
 export const SUITE_BUDGET_MS = Number(process.env.E2E_SUITE_BUDGET_MS) || 7 * 60000;
-// A suite's own budget (`export const budgetMinutes`), else the default: the runner (lib/context.mjs) and the force-stop (suite.mjs) both read it here, and the CI step and job limits must stay above it + 3 min.
-export const budgetMsOf = suite => (suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
+/** A suite can leave the aggregate budget; otherwise its own budget or the existing default applies. */
+export const budgetMsOf = suite => (suite?.aggregateBudget === false ? Infinity : suite?.budgetMinutes ? suite.budgetMinutes * 60000 : SUITE_BUDGET_MS);
+/** Budgeted suites keep budget plus three minutes; suites without an aggregate have no start-time stop. */
+export const stopMsOf = suite => (suite?.aggregateBudget === false ? null : budgetMsOf(suite) + 3 * 60000);
 export const slowest = (results, count = 5) => results.filter(result => result.seconds).sort((a, b) => b.seconds - a.seconds).slice(0, count).map(result => `${result.name.slice(0, 70)} (${Math.round(result.seconds)} s)`);
 
 // The screenshot a failed step leaves (without .png); the HTML report attaches it.

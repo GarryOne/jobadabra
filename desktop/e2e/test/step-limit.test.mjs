@@ -6,6 +6,18 @@ import {createRunner, hangReport, withLimit} from '../lib/runner.mjs';
 const never = () => new Promise(() => {});
 const session = {page: {evaluate: never}, app: {evaluate: async () => 1}, shot: async () => {}, keepLogs: async () => {}};
 
+test('hang messages keep exact seconds below ten minutes and minutes at ten or more', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  for (const [ms, duration] of [[90000, '90 s'], [599000, '599 s'], [600000, '10 min']]) {
+    const rejected = assert.rejects(withLimit(never(), ms, 'hang'), error => {
+      assert.equal(error.message, `the step did not finish within ${duration} (it hung): no app session`);
+      return true;
+    });
+    t.mock.timers.tick(ms);
+    await rejected;
+  }
+});
+
 test('a hung step fails at its limit and says which side does not answer', async () => {
   await assert.rejects(withLimit(never(), 50, 'x', () => session), /did not finish.*the window does NOT answer, the main process answers/);
   assert.equal(await withLimit(Promise.resolve(7), 50, 'x'), 7);

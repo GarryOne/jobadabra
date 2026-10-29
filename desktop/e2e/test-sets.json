@@ -79,6 +79,7 @@
   "capture-page.test.mjs",
   "chrome-lean.test.mjs",
   "ci-alert.test.mjs",
+  "clock-out.test.mjs",
   "code-review.test.mjs",
   "combo-click.test.mjs",
   "cv-facts-cases.test.mjs",

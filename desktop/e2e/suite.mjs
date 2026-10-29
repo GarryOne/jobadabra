@@ -1,4 +1,5 @@
 // Runs one suite of the end-to-end tests:   node suite.mjs wizard|jobs|interviews|settings
+// Job: wait on state
 // A suite may export `env` (extra environment for the app) and `fresh` (empty its Notion page first).
 // Each suite has its own Notion test page and starts from its own state (see README.md), so suites can run at the same time.
 const name = process.argv[2];
@@ -29,14 +30,17 @@ process.env.JOB_PILOTTO_E2E_SUITE = name;   // the app tags its Sentry reports w
 process.env.JOB_PILOTTO_E2E_PLANTED_FILE ||= (await import('node:path')).join((await import('node:os')).tmpdir(), `jp-e2e-planted-${name}-${process.pid}.log`);   // the fakes write here when they plant a failure (lib/planted.mjs); the app's Sentry reporter reads it
 process.env.E2E_SUITE = name;   // read when lib/app.mjs loads: each suite writes its own artifacts folder
 // A hard stop for the whole process (6 Oct 2026: a Windows jobs suite ran 14+ min after its last step failed: something outside the steps hung, closing the app
-// or a test server). The runner cuts steps at the 7-minute budget; nothing may outlive it by more than 3 minutes. unref: a suite that ends earlier exits as usual.
+// or a test server). Only budgeted suites get this start-time stop, at their budget plus 3 minutes. unref: earlier finishes exit as usual.
 {
-  const {budgetMsOf} = await import('./lib/runner.mjs');
-  const stopAt = budgetMsOf(await import(`./suites/${name}.mjs`).catch(() => null)) + 3 * 60000;   // the suite's own budget (budgetMinutes) + 3 min
-  setTimeout(() => {
-    console.log(`✗ the ${name} suite was still running ${Math.round(stopAt / 60000)} min after it started: stopped by force (something outside the steps hung: closing the app, a test server, or writing artifacts)`);
-    process.exit(1);
-  }, stopAt).unref();
+  const {stopMsOf} = await import('./lib/runner.mjs');
+  const suite = await import(`./suites/${name}.mjs`).catch(() => null);
+  if (suite?.aggregateBudget !== false) {
+    const stopAt = stopMsOf(suite);
+    setTimeout(() => {
+      console.log(`✗ the ${name} suite was still running ${Math.round(stopAt / 60000)} min after it started: stopped by force (something outside the steps hung: closing the app, a test server, or writing artifacts)`);
+      process.exit(1);
+    }, stopAt).unref();
+  }
 }
 // The Playwright HTML report (6 Oct 2026, owner: the GitHub logs and our own page did not help to debug): the suite runs inside Playwright's test runner
 // (lib/report.mjs, report/suite.spec.mjs), each step a step of the report with a screenshot, the trace and the logs attached; the exit code is the suite's own,

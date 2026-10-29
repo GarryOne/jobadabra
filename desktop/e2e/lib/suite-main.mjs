@@ -8,6 +8,27 @@ import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
 
+// Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
+const TEARDOWN_STOP_MS = 3 * 60000;
+const closeDownHangMessage = suite => `the ${suite.name} suite's close-down was still running 3 min after its steps ended: moving on (closing the app, a test server, or writing artifacts)`;
+
+/** Without an aggregate budget, record close-down hangs in the runner; always clear the unref'd timer when the race settles. */
+export function limitCloseDown(suite, ctx, work, {ms = TEARDOWN_STOP_MS, log = console.log} = {}) {
+  if (suite.aggregateBudget !== false) return work;
+  let timer;
+  const hung = new Promise(resolve => {
+    timer = setTimeout(() => {
+      const message = closeDownHangMessage(suite);
+      log(message);
+      ctx.runner.results.push({name: 'close the app and save the artifacts', status: 'failed', note: message});
+      ctx.stopped = message;
+      resolve();
+    }, ms);
+    timer.unref();
+  });
+  return Promise.race([work, hung]).then(() => undefined).finally(() => clearTimeout(timer));
+}
+
 export async function runSuite(name, report = null) {
   const {assertNothingQueued, traceFiles} = await import('./app.mjs');
   const {SUITES, openContext} = await import('./context.mjs');
@@ -21,7 +42,7 @@ export async function runSuite(name, report = null) {
     // Start-up and close-down are one step each in the report, so its top level is the suite's own steps, not Playwright's calls.
     const {keychainChanges, snapshot} = await import('./keychain-guard.mjs');
     const keychainBefore = snapshot();   // the owner's real Keychain, names and dates only (lib/keychain-guard.mjs); null on CI
-    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
+    const open = () => openContext(name, {engine: suite.engine, fresh: !!suite.fresh, env: suite.env, browser: !!suite.browser, light: !!suite.light, notionProxy: !!suite.notionProxy, telegram: !!suite.telegram, google: !!suite.google, budgetMinutes: suite.budgetMinutes || 0, aggregateBudget: suite.aggregateBudget, stepNeeds: suite.stepNeeds ?? null, releases: !!suite.releases, notionStandIn: !!suite.notionStandIn, store: suite.store || '', newInstall: !!suite.newInstall, standInFromWizard: !!suite.standInFromWizard, notionTokenOf: suite.notionTokenOf || '', notionPage: suite.notionPage || '', notion: suite.notion !== false, keepGoing: !!suite.keepGoing, variesPlace: !!suite.variesPlace, report});
     ctx = await (report ? report.step('Start the app and its test services', open) : open());
     if (ctx.skipAll) {
       const message = skipMessage(name, ctx.needs.filter(item => !item.value).map(item => item.name));
@@ -67,7 +88,7 @@ export async function runSuite(name, report = null) {
       try { await writeReplay(ctx, name); } catch (error) { console.log(`  (replay.json not written: ${error.message})`); }
       await ctx.close();
       };
-      await (report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
+      await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
       const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
       if (refused.length) { code = 1; ctx.stopped = refused.map(item => item.message).join('; '); console.error(`✗ ${ctx.stopped}`); }

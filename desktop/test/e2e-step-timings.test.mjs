@@ -98,7 +98,7 @@ test('acquisition selects newest completed main runs with suite artifacts, not j
       return 'e2e-artifacts-apply-1of2\ne2e-artifacts-apply-2of2\n';
     }
     assert.deepEqual(args.slice(0, 2), ['run', 'download']);
-    assert.deepEqual(args.slice(3, -2), ['--name', 'e2e-artifacts-apply-1of2', '--name', 'e2e-artifacts-apply-2of2']);
+    assert.deepEqual(args.slice(3, -2), ['--pattern', 'e2e-artifacts-apply-1of2', '--pattern', 'e2e-artifacts-apply-2of2']);
     const dest = args[args.indexOf('--dir') + 1];
     downloaded.push(args[2]);
     artifact(path.dirname(dest), path.basename(dest), 'apply-1of2', [passed('fill', 10)]);
@@ -128,7 +128,7 @@ test('partial and mutant runs plus alternate stores cannot change the comparable
     }
     if (args[0] === 'api') return 'e2e-artifacts-applyflows-1of2\ne2e-artifacts-applyflows-1of2-standin\ne2e-artifacts-applyflows-1of2-sqlite\n';
     assert.deepEqual(args.slice(0, 2), ['run', 'download']);
-    assert.deepEqual(args.slice(3, -2), ['--name', 'e2e-artifacts-applyflows-1of2']);
+    assert.deepEqual(args.slice(3, -2), ['--pattern', 'e2e-artifacts-applyflows-1of2']);
     downloaded.push(Number(args[2]));
     const run = candidates.find(candidate => candidate.databaseId === Number(args[2]));
     artifact(dir, run.databaseId, 'applyflows-1of2', [passed('fill', run.seconds)]);
@@ -148,6 +148,18 @@ test('local measurement ignores standin and sqlite artifacts, including sharded 
   }
   const report = measure(dir, 'applyflows');
   assert.deepEqual([report.runs, report.shardRuns, report.steps[0].p95Seconds], [1, 1, 10]);
+});
+
+test('one artifact downloads into its named folder so an unsharded suite can be measured', t => {
+  const dir = fixture(t);
+  downloadArtifacts({suite: 'interactions', runs: 1, dir}, args => {
+    if (args[0] === 'run' && args[1] === 'list') return JSON.stringify([{databaseId: 42, displayTitle: 'E2E check · on time (Worker cron)'}]);
+    if (args[0] === 'api') return 'e2e-artifacts-interactions\n';
+    assert.deepEqual(args, ['run', 'download', '42', '--pattern', 'e2e-artifacts-interactions', '--dir', path.join(dir, '42')]);
+    artifact(dir, 42, 'interactions', [passed('sweep', 60)]);
+    return '';
+  });
+  assert.equal(measure(dir, 'interactions').steps[0].p95Seconds, 60);
 });
 
 test('title exclusions track main_e2e_state and reject PR runs without falling back to partial runs', t => {

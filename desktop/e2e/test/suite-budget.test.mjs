@@ -2,12 +2,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {SUITES} from '../lib/context.mjs';
-import {budgetMsOf, SUITE_BUDGET_MS} from '../lib/runner.mjs';
+import * as runner from '../lib/runner.mjs';
+const {budgetMsOf, SUITE_BUDGET_MS} = runner;
 
 test('a suite without its own budget gets the default, one with budgetMinutes gets that', () => {
   assert.equal(budgetMsOf({}), SUITE_BUDGET_MS);
   assert.equal(budgetMsOf(null), SUITE_BUDGET_MS);
   assert.equal(budgetMsOf({budgetMinutes: 11}), 11 * 60000);
+  assert.equal(budgetMsOf({aggregateBudget: false, budgetMinutes: 7}), Infinity);
+});
+
+test('there is no start-time force-stop without an aggregate; budgeted suites keep budget plus three minutes', () => {
+  assert.equal(runner.stopMsOf({aggregateBudget: false}), null);
+  assert.equal(runner.stopMsOf({budgetMinutes: 11}), 840000);
+  assert.equal(runner.stopMsOf({}), SUITE_BUDGET_MS + 180000);
+  assert.equal(runner.stopMsOf(null), SUITE_BUDGET_MS + 180000);
 });
 
 test('every suite with its own budget has a job limit above two runs of it (the first, and the "once more" after a red one)', async () => {

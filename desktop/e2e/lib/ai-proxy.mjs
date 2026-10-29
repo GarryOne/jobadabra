@@ -8,7 +8,9 @@ import {HUNG_REPORTS, markPlanted} from './planted.mjs';
 import {keyFingerprint} from './key-check.mjs';
 import {capMessage, capReached, noteCapped} from './ai-cap.mjs';
 import {count, countError, countReplay, keep, keepMiss, recall, requestKey, usageOf} from './ai-meter.mjs';
-import {keepCandidateBody, storedAnswer} from './ai-answers.mjs';
+import {keepCandidateBody, message, storedAnswer} from './ai-answers.mjs';
+// Why (#2450 slice 3): test/ai-answers.test.mjs and test/applycheck.test.mjs still import this shared wrapper here.
+export {message} from './ai-answers.mjs';
 
 // The stub modes any proxy of this run was armed with: a refusal that matches one came from the suite's own stub, not from the account (lib/ai-refused.mjs).
 export const STUBBED = new Set();
@@ -144,10 +146,6 @@ export function describeRefusal(stats, answer, req, body, log = console.log) {
   const fingerprint = keyFingerprint(sent);
   log(`  ai-proxy refusal ${answer.status}: request-id ${answer.headers.get('request-id') || answer.headers.get('x-request-id') || '?'}, model ${asked.model || '?'}, max_tokens ${asked.max_tokens ?? asked.max_output_tokens ?? '?'}, input ${body.length} bytes, ${stats.inflight || 0} in flight, key fingerprint ${fingerprint}`);
 }
-
-// What the Messages API returns for a reply that is `text`.
-export const message = text => ({id: 'msg_e2e', type: 'message', role: 'assistant', model: 'e2e-canned', stop_reason: 'end_turn', stop_sequence: null,
-  content: [{type: 'text', text}], usage: {input_tokens: 1, output_tokens: 1}});
 
 // ---- The OpenAI side (shape 'openai'): the Responses API the app's OpenAI engine calls (desktop/lib/ai/openai-api.js body / fromResponse) ----
 // A Responses request as the Messages body the suites' stand-ins read: instructions -> system; one text part -> a string content; files -> document, images -> image.

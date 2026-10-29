@@ -30,10 +30,17 @@ import {tally} from './faults.mjs';
 
 // A suite is a file in suites/ (adding one needs no other list). It may export `minutes` (its time limit in CI, default 15).
 import {readdirSync} from 'node:fs';
-import {checkKeyAccepted, checkOtherKeys, keyFingerprint} from './key-check.mjs';
+import {checkAppKey, checkOtherKeys, keyFingerprint} from './key-check.mjs';
 import {waitForFolderFree} from './folder-free.mjs';
 export const SUITES = readdirSync(path.join(E2E, 'suites')).filter(file => file.endsWith('.mjs')).map(file => file.slice(0, -4)).sort();
 const KEY = () => testKey();   // empty on a Mac, whatever the environment holds: the key is for CI (lib/engine.mjs)
+/** CI only: checks the app's AI key (never under Codex: checkAppKey), then the other family's, and logs the key's fingerprint when one was checked. */
+async function preflightKeys({family, engine, key}) {
+  let checked = true;
+  if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key}); else checked = await checkAppKey({provider: aiProvider(process.env, 'app').provider, engine, key});
+  await checkOtherKeys({engine: family === 'free' ? 'free' : engine});
+  if (checked) console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
+}
 // Each suite has its own Notion page and connection, so suites can run at the same time. E2E_NOTION_TOKEN is the wizard's; a suite without its own token falls
 // back to it on a developer's Mac (one suite at a time), and is skipped in CI. own: the real workspace (notion-real) takes its own token or none, never the
 // wizard's: with `fresh` it empties its page, and the fallback's page is another suite's.
@@ -62,10 +69,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   // The app's key follows its engine's family (E2E_OPENAI_KEY for OpenAI); a light suite is the judges' own calls: Claude's key.
   const key = light ? KEY() : testKey(process.env, engine, family), token = runToken({store, standIn, light, fromEnv: () => notionToken(notionTokenOf || suite, {own: store === 'notion'})});
   if (!light) console.log(`  AI family under test: ${{openai: 'OpenAI', free: 'Free AI (Workers AI, the relay on this runner)'}[family] || 'Claude'} (engine ${engine}${isCi() && family !== 'free' ? `, CI run ${process.env.GITHUB_RUN_NUMBER || '?'}: odd runs OpenAI, even runs Claude` : ''})`);
-  if (!light && isCi()) {
-    if (family === 'free') await checkRelay({url: process.env.E2E_FREE_AI_URL, key}); else await checkKeyAccepted({engine, key});
-    await checkOtherKeys({engine: family === 'free' ? 'free' : engine}); console.log(`  preflight: the ${familySecret(family, engine)} key fingerprint ${keyFingerprint(key)}`);
-  }   // a refused key stops the suite here, named, not as a puzzling AI step later
+  if (!light && isCi()) await preflightKeys({family, engine, key});   // a refused key stops the suite here, named, not as a puzzling AI step later
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
   const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), ...(budgetMinutes ? {budgetMs: budgetMinutes * 60000} : {})});
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).

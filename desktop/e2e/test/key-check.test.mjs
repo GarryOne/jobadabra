@@ -93,3 +93,21 @@ test('an empty credit balance (a 400 on the app-shaped call) stops the run with 
   const credit = async url => (/\/v1\/messages$/.test(url) ? {status: 400, json: async () => ({error: {message: 'Your credit balance is too low to access the Anthropic API.'}})} : {status: 200});
   await assert.rejects(checkKeyAccepted({engine: 'api', key: 'k', fetchImpl: credit}), /credit balance is too low/);
 });
+
+test('the app on codex: the placeholder key is never sent to the provider, so a 401 from it cannot stop the suite; any other provider still checks', async () => {
+  const {checkAppKey} = await import('../lib/key-check.mjs');
+  let asked = 0;
+  const refusing = async () => { asked++; return new Response('{"error":{"message":"invalid x-api-key"}}', {status: 401}); };
+  const lines = [];
+  assert.equal(await checkAppKey({provider: 'codex', engine: 'api', key: 'sk-ant-api03-placeholder', fetchImpl: refusing, log: line => lines.push(line)}), false);
+  assert.equal(asked, 0, 'nothing is asked of api.anthropic.com');
+  assert.match(lines[0], /app is on Codex/);
+  for (const provider of ['free', 'claude'])
+    await assert.rejects(checkAppKey({provider, engine: 'api', key: 'sk-ant-api03-placeholder', fetchImpl: refusing}), /refused \(401\)/);
+});
+
+test('the suite context checks the app key only through checkAppKey, so the codex rule cannot be skipped', () => {
+  const context = fs.readFileSync(new URL('../lib/context.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(context, /\bcheckKeyAccepted\(/);
+  assert.match(context, /checkAppKey\(\{provider: aiProvider\(process\.env, 'app'\)\.provider/);
+});

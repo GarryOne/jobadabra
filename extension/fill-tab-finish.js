@@ -24,7 +24,7 @@ const MECHANICAL = [...MENU_REASONS.map(item => item.text), OLD_MENU_REASON,
   'question on the page not read'];
 
 // Records the first pass and returns the reason updater used by both menu passes.
-export function noteFirstFill({tab, summary, pendingAI, later, me, step}) {
+export function noteFirstFill({summary, pendingAI, later, me, step}) {
   step('filled the page');
   if (pendingAI) decide('fill', 'first fields filled', {fields: summary?.filled || 0, waiting: later.length}).catch(() => {});   // before Claude's answers
   // Your details couldn't be read (Notion failed and there was no earlier copy): say so on the fields it left,

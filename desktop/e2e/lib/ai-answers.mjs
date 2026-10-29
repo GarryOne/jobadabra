@@ -33,6 +33,12 @@ export function loadTable(file = TABLE) {
     if (!object(entries)) throw new Error(`AI answers: ${operation} must be an object`);
     for (const [id, entry] of Object.entries(entries)) if (!object(entry?.reply)) throw new Error(`AI answers: ${operation}/${id} reply must be an object`);
   }
+  checkItems(table);
+  return table;
+}
+
+/** Validate the optional item table with the same errors as complete-reply validation. */
+function checkItems(table) {
   if (table.items !== undefined) {
     if (!object(table.items)) throw new Error('AI answers: items must be an object');
     for (const [operation, entries] of Object.entries(table.items)) {
@@ -42,7 +48,6 @@ export function loadTable(file = TABLE) {
       }
     }
   }
-  return table;
 }
 
 const parsed = body => {

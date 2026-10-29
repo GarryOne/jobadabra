@@ -92,10 +92,10 @@ test('the gate: nothing covers the form (a cookie bar away from its controls rea
 
 test('the fill asks the gate first and a held fill types nothing', async () => {
   const fs = await import('node:fs');
-  const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  const flow = fs.readFileSync(new URL('../../extension/fill-tab-inputs.js', import.meta.url), 'utf8');
   assert.match(flow, /clearBeforeFill\(tab\.id/);
   const gateAt = flow.indexOf('clearBeforeFill(tab.id');
-  assert.ok(!flow.slice(flow.indexOf('export async function fillTab'), gateAt).includes('files: PAGE_FILES'), 'the gate comes before the fill injects its page scripts');
+  assert.ok(!flow.slice(flow.indexOf('export async function prepareFillPage'), gateAt).includes('files: PAGE_FILES'), 'the gate comes before the fill injects its page scripts');
   const bg = fs.readFileSync(new URL('../../extension/background.js', import.meta.url), 'utf8');
   assert.match(bg, /result\?\.held\) return holdFill/);
 });
@@ -138,8 +138,8 @@ test('the fill\'s stages ask the gate, and the bridge is injected with the page 
   const fill = read('extension/page/fill.js');
   assert.ok((fill.match(/await gate\(\)/g) || []).length >= 3, 'a gate between the stages');
   assert.match(fill, /summary\.held = held/);
-  assert.match(read('extension/flow.js'), /files: \['guard-bridge\.js'\]/);
-  assert.match(read('extension/flow.js'), /summary\?\.held\) return \{held: true/);
+  assert.match(read('extension/fill-tab-inputs.js'), /files: \['guard-bridge\.js'\]/);
+  assert.match(read('extension/fill-tab-inputs.js'), /summary\?\.held\) return \{held: true/);
 });
 
 // Recruitee, 11 Oct 2026: a closable notice drawn over the page centre, no control covered, nothing the list found to press: it held the whole fill (1 of 13 filled).

@@ -30,7 +30,8 @@ test('the switch is on unless the person turned it off, in the app and in the ex
   assert.equal(consentOn(undefined), true);
   assert.equal(consentOn({}), true);
   assert.equal(consentOn({acceptConsents: false}), false);
-  const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  const flow = ['../../extension/flow.js', '../../extension/fill-tab-inputs.js', '../../extension/fill-tab-finish.js']
+    .map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
   assert.equal(flow.match(/\(me\?\.acceptConsents \?\? config\.acceptConsents\) !== false/g).length, 3);
   assert.match(fs.readFileSync(new URL('../lib/server-contact.js', import.meta.url), 'utf8'), /acceptConsents: storage\.settings\(\)\.acceptConsents !== false/);
   assert.match(fs.readFileSync(new URL('../renderer/index.html', import.meta.url), 'utf8'), /id="consent-tick"/);

@@ -49,6 +49,7 @@ test('an old note left in the store is never served to the extension', async () 
 test('no module writes or reads the site notes any more, and the extension uses none', () => {
   const here = path.dirname(fileURLToPath(import.meta.url));
   for (const gone of ['../lib/learn.js', '../lib/knowledge.js', '../renderer/knowledge-model.js']) assert.equal(fs.existsSync(path.join(here, gone)), false, gone);
-  const flow = fs.readFileSync(path.join(here, '../../extension/flow.js'), 'utf8');
+  const flow = ['../../extension/flow.js', '../../extension/fill-tab-inputs.js', '../../extension/fill-tab-finish.js']
+    .map(file => fs.readFileSync(path.join(here, file), 'utf8')).join('\n');
   assert.doesNotMatch(flow, /me\?\.knowledge|'form knowledge'/);
 });

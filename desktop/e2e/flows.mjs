@@ -1,10 +1,12 @@
 // The Applying flows' scenario matrix (docs/flows/applying.md): every scenario a session and the Chrome extension handle, and the e2e
 // step or unit tests that guard it. A change to any FLOW_FILES file runs the WHOLE matrix (npm run flows), not only its own row, so a
 // fix for one flow (account creation) can't quietly break another (the application form). On CI the steps run with every e2e (no push gate since 9 Oct 2026).
+// Job: pick the suites
 import crypto from 'node:crypto';
 
 // The code the flows run on. A file added for a flow goes here too (test/flows-matrix.test.js).
 export const FLOW_FILES = [
+  'extension/fill-tab-inputs.js', 'extension/fill-tab-finish.js',
   'extension/background.js', 'extension/tab-pages.js', 'extension/same-tab.js', 'extension/review.js', 'extension/panel-form.js', 'extension/panel-markup.js', 'extension/panel-learn.js', 'extension/panel-written.js', 'extension/panel-files.js', 'extension/panel-overlay.js', 'extension/input-gap.js', 'extension/page/submit-press.js', 'extension/flow.js', 'extension/page-reads.js',
   'extension/tabs.js', 'extension/account.js', 'extension/account-step.js', 'extension/form-ready.js', 'extension/on-top.js', 'extension/next-step.js', 'extension/ladder/rung4-picture.js', 'extension/account-fill.js', 'extension/log.js', 'extension/tab-memory.js', 'extension/fill-flow.js', 'extension/fill-flow-read.js', 'extension/fill-flow-steps.js', 'extension/page-still.js', 'extension/early-answers.js', 'extension/apply-press.js', 'extension/start-route.js', 'extension/ladder/outcomes.js', 'extension/ladder/core.js',
   'extension/page-kind-final.js', 'extension/stop.js', 'extension/stop-state.js', 'extension/stop-messages.js', 'extension/settle-tabs.js', 'extension/panel-report.js', 'extension/messages-report.js', 'extension/messages-learning.js', 'extension/messages-panel.js', 'extension/messages-app.js', 'extension/submit-watch.js', 'extension/tab-report.js',
@@ -15,7 +17,7 @@ export const FLOW_FILES = [
 // The flows' decision core: which page is what and which tab belongs to which application. A change here can break another flow, so
 // a big change here deserves the whole matrix (npm run flows, on demand). Any other flow file is checked with the best-fit method (owner, 8 Oct
 // 2026: "let's not run it so often… the best fit one for every case"; AGENTS.md "Which test for which question").
-export const FLOW_CORE = ['extension/ladder/core.js', 'extension/ladder/outcomes.js', 'extension/tab-pages.js', 'extension/tabs.js', 'extension/same-tab.js', 'extension/account.js', 'extension/fill-flow.js', 'extension/fill-flow-read.js', 'extension/fill-flow-steps.js', 'extension/apply-press.js', 'extension/start-route.js',
+export const FLOW_CORE = ['extension/fill-tab-inputs.js', 'extension/fill-tab-finish.js', 'extension/ladder/core.js', 'extension/ladder/outcomes.js', 'extension/tab-pages.js', 'extension/tabs.js', 'extension/same-tab.js', 'extension/account.js', 'extension/fill-flow.js', 'extension/fill-flow-read.js', 'extension/fill-flow-steps.js', 'extension/apply-press.js', 'extension/start-route.js',
   'desktop/lib/session-flow.js', 'desktop/lib/ladder/rung1-kept.js', 'desktop/lib/ladder/rung2-sketch.js', 'desktop/lib/review.js', 'desktop/lib/application-journey.js', 'desktop/lib/terminals.js', 'desktop/lib/journey-identity.js', 'extension/tab-identity.js'];
 
 // The journey tests: the applying scenarios as event sequences (no browser, seconds). tools/journey-gate.mjs runs them on every push that touches a flow file.

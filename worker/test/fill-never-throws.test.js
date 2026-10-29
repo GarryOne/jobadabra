@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const code = ['fill-plan.js', 'fill-report.js', 'fill.js'].map(file => fs.readFileSync(new URL(`../../extension/page/${file}`, import.meta.url), 'utf8')).join('\n');
-const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+const flow = ['../../extension/fill-tab-inputs.js', '../../extension/fill-tab-finish.js']
+  .map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
 
 test('a throw inside the page fill comes back as {error, pageError}, with where it happened', async () => {
   const kit = new Proxy({}, {get: (target, key) => target[key] || (() => '')});

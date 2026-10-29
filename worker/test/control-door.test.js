@@ -54,6 +54,6 @@ test('one repair pass: wrong and unreachable verdicts, a repair left to the pers
 test('the climb and the flow call the door; no file logs a control door by hand', () => {
   const read = file => fs.readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
   assert.match(read('extension/ladder/fill-climb.js'), /repairDoors\(\{sketch, verdicts: verified\?\.verdicts, results\}, decide\)/);
-  assert.match(read('extension/flow.js'), /controlDoor\(\{rung: 0, signal: 'stalled', reason: 'tries', tried: spent\.tries\}, decide\)/);
-  assert.doesNotMatch(read('extension/flow.js') + read('extension/ladder/fill-climb.js'), /level: 'control'/);
+  assert.match(read('extension/fill-tab-finish.js'), /controlDoor\(\{rung: 0, signal: 'stalled', reason: 'tries', tried: spent\.tries\}, decide\)/);
+  assert.doesNotMatch(read('extension/fill-tab-finish.js') + read('extension/ladder/fill-climb.js'), /level: 'control'/);
 });

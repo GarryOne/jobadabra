@@ -24,7 +24,7 @@ test('class: every toast the worker draws asks the panel first, and the panel an
   for (const [, name, , body] of toasts) assert.ok(body.indexOf('tellPanel(') > -1 && body.indexOf('tellPanel(') < body.indexOf('top:12px'), `${name} draws before asking the panel`);
   assert.match(read('review.js'), /message\?\.type !== 'panelNote'[\s\S]*note\(String\(message\.text/);
   // dialog-after-fill.js and submit-watch.js reach the screen only through note() (their own box would be a second surface).
-  for (const file of ['dialog-after-fill.js', 'submit-watch.js', 'fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'flow.js']) assert.doesNotMatch(read(file), /top:12px;right:12px/, `${file} draws its own box`);
+  for (const file of ['dialog-after-fill.js', 'submit-watch.js', 'fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'flow.js', 'fill-tab-inputs.js', 'fill-tab-finish.js']) assert.doesNotMatch(read(file), /top:12px;right:12px/, `${file} draws its own box`);
 });
 
 test('a page mark of posting or opening is never Ready and never counts; the fill flow sets it from the AI\'s kind', async () => {

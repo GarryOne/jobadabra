@@ -185,7 +185,7 @@ test('every person-pressed start on a tab clears that page\'s own Stop, tells it
 });
 
 test('the page fill waits for the page\'s Stop to clear before it starts', () => {
-  const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
+  const flow = fs.readFileSync(new URL('../../extension/fill-tab-inputs.js', import.meta.url), 'utf8');
   assert.match(flow, /const summary = await pageStarted\(tab\.id\)\.then\(\(\) => inPage\(tab\.id, \(list, profile, resume, letter, consents\) => window\.__jobPilottoExtensionFill/, 'flow.js awaits pageStarted right before the page fill');
   const stopFile = fs.readFileSync(new URL('../../extension/stop.js', import.meta.url), 'utf8');
   assert.doesNotMatch(stopFile.match(/function stoppedPage\(\) \{[\s\S]*?\n\}/)[0].match(/for \(const id of \[[^\]]*\]\) document\.getElementById\(id\)\?\.remove\(\)/)[0], /'jobpilotto-review-host'/, 'Stop keeps the panel: it says "Stopped by you" with Check form again (owner mockup 03), never a panel taken away and drawn back working');

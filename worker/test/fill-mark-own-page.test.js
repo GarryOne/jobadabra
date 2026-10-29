@@ -65,7 +65,8 @@ test('the card id and the fill state each keep their own attribute, whichever is
 
 test('the class: the state attribute holds only JSON states; every reader of the card id reads its own attribute', () => {
   const source = name => fs.readFileSync(new URL(`../../extension/${name}`, import.meta.url), 'utf8');
-  const flow = source('flow.js'), panel = source('panel-learn.js'), report = source('tab-report.js');
+  const flow = ['flow.js', 'fill-tab-inputs.js', 'fill-tab-finish.js'].map(source).join('\n');
+  const panel = source('panel-learn.js'), report = source('tab-report.js');
   assert.doesNotMatch(flow, /dataset\.jobpilottoFill = id/, 'flow.js writes the id through markCardId, not into the state attribute');
   assert.match(flow, /inPage\(tab\.id, markCardId, \[summary\.card\.id\]\)/);
   assert.equal([...panel.matchAll(/dataset\.jobpilottoFillId/g)].length, 2, 'both Submit reports (sent, and refused) read the id attribute');

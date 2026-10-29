@@ -125,7 +125,7 @@ test('class: every call to the app is bracketed as an ask of its tab (flow.js ap
   assert.match(flow, /export const apiFor = \(tabId, config, path, init = \{\}\) => api\(config, path, init, true, tabId\);/);
   assert.match(flow, /return apiCall\(Object\.assign\(config, fresh\), path, init, false\)/, 'the retry after a 401 is inside the same bracket');
   // The fill path: files that work on a tab. A plain api( in them is a new ask that would not pause its own tab's clock.
-  for (const file of ['flow.js', 'fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'account-step.js', 'form-ready.js', 'format-retry.js', 'consent.js', 'submit-watch.js', 'ladder/fill-climb.js', 'ladder/rung4-picture.js']) {
+  for (const file of ['flow.js', 'fill-tab-inputs.js', 'fill-tab-finish.js', 'fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'account-step.js', 'form-ready.js', 'format-retry.js', 'consent.js', 'submit-watch.js', 'ladder/fill-climb.js', 'ladder/rung4-picture.js']) {
     const plain = read(file).split('\n').filter(line => /(?<![\w.])api\(/.test(line) && !/^export (async function api\(|const apiFor = )/.test(line));
     assert.deepEqual(plain, [], `${file}: use apiFor(tabId, ...)`);
   }

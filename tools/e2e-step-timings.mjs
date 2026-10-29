@@ -1,4 +1,5 @@
 // Reports calm main e2e step timings and measured hang caps from downloaded artifacts.
+// Job: wait on state
 import {execFileSync} from 'node:child_process';
 import {mkdtempSync, readdirSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -6,7 +7,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {suiteOfKey} from '../desktop/e2e/lib/suite-shards.mjs';
 
-// Usage: node tools/e2e-step-timings.mjs --suite applyflows --runs 12 [--dir artifacts] [--json]
+// Usage: node tools/e2e-step-timings.mjs --suite applyflows --runs 12 [--dir artifacts] [--json | --caps]
 // Invariants: only comparable full runs and the default store count; only passed, finite, nonnegative timings count; shard totals never pool.
 const ghCommand = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024});
 // Mirrors tools/main_e2e_state.py NOT_MAIN_CHECK + AFTER_MERGE, plus PR runs; guarded against drift in the test.
@@ -77,11 +78,35 @@ export function measure(dir, suite) {
   const steps = [...samples].sort(([a], [b]) => a.localeCompare(b)).map(([name, values]) => {
     values.sort((a, b) => a - b);
     const n = values.length, p95Seconds = values[Math.ceil(0.95 * n) - 1]; // Nearest-rank p95; median averages the middle pair.
-    return {name, n, medianSeconds: median(values), p95Seconds, maxSeconds: values[n - 1], capSeconds: n < 5 ? null : Math.ceil(3 * p95Seconds / 5) * 5};
+    return {name, n, medianSeconds: median(values), p95Seconds, maxSeconds: values[n - 1], capSeconds: n < 5 ? null : Math.max(30, Math.ceil(3 * p95Seconds / 5) * 5)};
   });
   const shardRuns = shards.reduce((sum, shard) => sum + shard.runs, 0);
   const droppedSlowShardRuns = shards.reduce((sum, shard) => sum + shard.droppedSlowRuns, 0);
   return {suite, runs: runIds.size, shardRuns, calmShardRuns: shardRuns - droppedSlowShardRuns, droppedSlowShardRuns, shards, steps};
+}
+
+/** Render measured state-wait caps as an importable suite module. */
+export function capsModule(report, {sharedCaps = {}, sharedImport = ''} = {}) {
+  let usesShared = false;
+  const rows = report.steps.map(step => {
+    const key = JSON.stringify(step.name);
+    if (step.capSeconds == null) {
+      if (!sharedImport || !Number.isFinite(sharedCaps[step.name]) || sharedCaps[step.name] < 30) {
+        throw new Error(`${step.name}: fewer than 5 calm samples; supply a measured cap for this exact shared step`);
+      }
+      usesShared = true;
+      return `  ${key}: sharedCaps[${key}], // n=${step.n}; shared step's measured cap`;
+    }
+    return `  ${key}: ${step.capSeconds}, // n=${step.n}, p95=${step.p95Seconds} s`;
+  });
+  return [
+    `// Generated state-wait hang caps for ${report.suite}; never a speed assertion.`,
+    '// Job: wait on state',
+    `// tools/e2e-step-timings.mjs: ${report.runs} main runs, ${report.calmShardRuns}/${report.shardRuns} calm shard-runs.`,
+    '// 3 x calm p95, rounded up to 5 s, with a 30 s floor; at least 5 calm samples.',
+    ...(usesShared ? [`import {hangCaps as sharedCaps} from ${JSON.stringify(sharedImport)};`] : []),
+    'export const hangCaps = {', ...rows, '};', '',
+  ].join('\n');
 }
 
 function table(report) {
@@ -89,7 +114,7 @@ function table(report) {
     [step.name, String(step.n), step.medianSeconds.toFixed(2), step.p95Seconds.toFixed(2), step.maxSeconds.toFixed(2), step.capSeconds == null ? 'n too small' : String(step.capSeconds)])];
   const widths = rows[0].map((_, col) => Math.max(...rows.map(row => row[col].length)));
   return [`${report.suite}: ${report.runs} runs, ${report.calmShardRuns}/${report.shardRuns} calm shard-runs; ${report.droppedSlowShardRuns} slow shard-runs dropped`,
-    'Seconds; cap = 3 x nearest-rank p95, rounded up to 5 s (at least 5 calm samples).',
+    'Seconds; cap = 3 x nearest-rank p95, rounded up to 5 s, minimum 30 s (at least 5 calm samples).',
     ...rows.map(row => row.map((cell, col) => cell.padEnd(widths[col])).join('  ').trimEnd())].join('\n');
 }
 
@@ -99,18 +124,20 @@ export function main(args = process.argv.slice(2), {acquire = downloadArtifacts,
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
     if (flag === '--json') options.json = true;
+    else if (flag === '--caps') options.caps = true;
     else if (['--suite', '--runs', '--dir'].includes(flag) && args[i + 1] && !args[i + 1].startsWith('--')) options[flag.slice(2)] = args[++i];
     else throw new Error(`Unknown or incomplete argument: ${flag}`);
   }
   const {suite} = options, runs = Number(options.runs);
+  if (options.json && options.caps) throw new Error('Choose --json or --caps');
   if (!suite || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(suite) || !Number.isSafeInteger(runs) || runs < 1) {
-    throw new Error('Usage: --suite <name> [--runs <positive integer>] [--dir <folder>] [--json]');
+    throw new Error('Usage: --suite <name> [--runs <positive integer>] [--dir <folder>] [--json | --caps]');
   }
   const temporary = !options.dir, dir = options.dir || mkdtempSync(path.join(tmpdir(), 'e2e-step-timings-'));
   try {
     if (temporary) acquire({suite, runs, dir});
     const report = measure(dir, suite);
-    write(options.json ? JSON.stringify(report, null, 2) : table(report));
+    write(options.caps ? capsModule(report) : options.json ? JSON.stringify(report, null, 2) : table(report));
     return report;
   } finally {
     if (temporary) rmSync(dir, {recursive: true, force: true});

@@ -1,0 +1,130 @@
+{
+  "activity": {
+    "fixedWaits": 2,
+    "elapsedAssertions": 0
+  },
+  "activityfailures": {
+    "fixedWaits": 3,
+    "elapsedAssertions": 1
+  },
+  "apply": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "applyflows": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "calendar": {
+    "fixedWaits": 3,
+    "elapsedAssertions": 0
+  },
+  "cardstates": {
+    "fixedWaits": 1,
+    "elapsedAssertions": 0
+  },
+  "employers": {
+    "fixedWaits": 5,
+    "elapsedAssertions": 0
+  },
+  "explore": {
+    "fixedWaits": 4,
+    "elapsedAssertions": 0
+  },
+  "failureschannels": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "failuresnotion": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "focus": {
+    "fixedWaits": 14,
+    "elapsedAssertions": 1
+  },
+  "focusdismiss": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "foryou": {
+    "fixedWaits": 3,
+    "elapsedAssertions": 0
+  },
+  "interactions": {
+    "fixedWaits": 1,
+    "elapsedAssertions": 0
+  },
+  "interviews": {
+    "fixedWaits": 3,
+    "elapsedAssertions": 0
+  },
+  "jobs": {
+    "fixedWaits": 5,
+    "elapsedAssertions": 2
+  },
+  "mailreading": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "notion-real": {
+    "fixedWaits": 2,
+    "elapsedAssertions": 0
+  },
+  "personas": {
+    "fixedWaits": 2,
+    "elapsedAssertions": 0
+  },
+  "pool": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "quality": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "qualityai": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "recorded": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "settings": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "storemove": {
+    "fixedWaits": 3,
+    "elapsedAssertions": 0
+  },
+  "stores": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "strategy": {
+    "fixedWaits": 3,
+    "elapsedAssertions": 0
+  },
+  "updates": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "visitread": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  },
+  "visitsauto": {
+    "fixedWaits": 1,
+    "elapsedAssertions": 0
+  },
+  "wander": {
+    "fixedWaits": 2,
+    "elapsedAssertions": 0
+  },
+  "wizard": {
+    "fixedWaits": 0,
+    "elapsedAssertions": 0
+  }
+}

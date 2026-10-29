@@ -1,4 +1,5 @@
 /* global document, window */
+// Job: wait on state
 // Settings: every section, with each AI engine chosen. Starts from a set-up install (a key saved, a workspace connected).
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
@@ -18,6 +19,9 @@ import {roundTripFileDifferences} from '../lib/roundtrip-files.mjs';
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
 export const stepNeeds = {'AI engine panel': ['every Settings section renders']};
 export const name = 'settings';
+export {hangCaps} from '../lib/settings-caps.mjs';
+// Why (29 Oct 2026, owner, Rule B): measured per-step hang caps replace the aggregate clock; a slow runner is not a failed state assertion.
+export const aggregateBudget = false;
 // Why (29 Oct 2026, owner): settings saves keys without validation and parses CVs locally, so CI needs neither live AI nor an AI secret.
 export const offlineAi = true;
 export const realAi = false;

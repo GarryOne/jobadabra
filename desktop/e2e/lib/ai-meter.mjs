@@ -4,6 +4,7 @@
 //   judges: every call test code makes through lib/model.mjs on the API engine (judge, factjudge, fit)
 // Replay (CI): the proxy keeps each paid answer under a hash of its request in E2E_AI_CACHE; with E2E_AI_REPLAY=1 an identical request is answered from there, at no
 // cost. Only the scheduled runs ask the model live (e2e.yml); a request seen for the first time always goes to the model and is kept for next time.
+// Job: serve stored answers
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

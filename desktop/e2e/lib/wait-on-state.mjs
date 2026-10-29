@@ -1,4 +1,4 @@
-// Wait for committed form values, closed job tabs and app log completions; caps only catch hangs.
+// Poll form values, closed job tabs and app log completions with one hang cap; tolerate reads by composition.
 // Job: wait on state
 /* global window */
 import {appLogText} from './app-log.mjs';
@@ -7,7 +7,7 @@ import {pause as sleep} from './apply-fixtures.mjs';
 /** Waits until every app start in `profile`'s log has `done` logged after it (as many `done` lines as `[app] start ` lines); throws after `capMs` (a hang), naming `what`. */
 export async function waitForLogLine(profile, done, {what = done.source, capMs = 90000, now = Date.now, pause = sleep} = {}) {
   const settled = () => { const log = appLogText(profile); return (log.match(done) || []).length >= (log.match(/\[app\] start /g) || []).length; };
-  const {value} = await waitForFormValue(settled, value => value, {capMs, now, pause, strictCap: true, retryRead: false, log: () => {}});
+  const {value} = await pollUntil(settled, value => value, {capMs, now, pause, log: () => {}});
   if (!value) throw new Error(`${what} never finished (no "${done.source}" in the app's log)`);
 }
 
@@ -25,39 +25,39 @@ export async function waitJobFormClosed(page, url, options = {}) {
   if (!closed || !formsClosedForJob(closed, url)) throw new Error(`the app never saw the earlier form closed after waiting ${ms} ms (last report: ${JSON.stringify(closed)})`);
 }
 
-// Preserve the last value across transient reads; log waits propagate read failures instead.
-async function readState(read, value, retryRead) {
-  try { return {value: await read(), readOk: true}; } catch (error) {
-    if (!retryRead) throw error;
-    return {value, readOk: false};
-  }
-}
+const UNREAD = Symbol('unread');
 
-// Log waits keep full ticks and a strict deadline; value waits stop on the cap without oversleeping it.
-function pollLimit(ms, capMs, tickMs, strictCap) {
-  return {expired: strictCap ? ms > capMs : ms >= capMs, delay: strictCap ? tickMs : Math.min(tickMs, capMs - ms)};
+// A failed read keeps the last good value for diagnostics, marked so it cannot satisfy a predicate.
+function tolerant(read) {
+  let value = '';
+  return async () => {
+    try { value = await read(); return value; } catch { return {[UNREAD]: true, value}; }
+  };
 }
 
 /**
- * Poll until a string matches or a predicate accepts the read value.
- * Exhaustion returns the last successful read and elapsed ms; now/pause allow clock-free tests.
- * Value reads retry transient errors. Log waits retain their strict deadline, whole ticks and read errors.
- * The label formats a slow success for log; app log completion waits stay silent.
+ * Poll fresh reads until accepts succeeds or elapsed ms reaches capMs; return the last value and elapsed ms.
+ * Read errors propagate unless the reader is composed with tolerant; unread values skip accepts.
+ * Ticks are clipped to the remaining cap. The label formats slow successes; now/pause allow clock-free tests.
  */
-export async function waitForFormValue(read, wanted, {capMs = 45000, tickMs = 250, log = console.log, label = ms => `the form value held its answer ${ms} ms after the wait started`, now = Date.now, pause = sleep, strictCap = false, retryRead = true} = {}) {
+export async function pollUntil(read, accepts, {capMs = 45000, tickMs = 250, label = ms => `the state was observed ${ms} ms after the wait started`, log = console.log, now = Date.now, pause = sleep} = {}) {
   const start = now();
-  const accepts = typeof wanted === 'function' ? wanted : value => value === wanted;
   let value = '';
   for (;;) {
-    const result = await readState(read, value, retryRead);
-    value = result.value;
+    const result = await read(), unread = result?.[UNREAD] === true;
+    value = unread ? result.value : result;
     const ms = now() - start;
-    if (result.readOk && accepts(value)) {
+    if (!unread && accepts(value)) {
       if (ms > 300) log(`  ${label(ms)}`);
       return {value, ms};
     }
-    const limit = pollLimit(ms, capMs, tickMs, strictCap);
-    if (limit.expired) return {value, ms};
-    await pause(limit.delay);
+    if (ms >= capMs) return {value, ms};
+    await pause(Math.min(tickMs, capMs - ms));
   }
+}
+
+/** Wait for a matching form value or predicate, tolerating transient reads without accepting stale values. */
+export function waitForFormValue(read, wanted, options = {}) {
+  const accepts = typeof wanted === 'function' ? wanted : value => value === wanted;
+  return pollUntil(tolerant(read), accepts, {label: ms => `the form value held its answer ${ms} ms after the wait started`, ...options});
 }

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {formsClosedForJob, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
+import {formsClosedForJob, pollUntil, waitForFormValue, waitForLogLine, waitJobFormClosed} from '../lib/wait-on-state.mjs';
 
 const clock = () => {
   let ms = 0;
@@ -62,6 +62,31 @@ test('read time counts toward the cap and a failed read preserves the last value
   }, '9', {...time, capMs: 1000}), {value: '7', ms: 1050});
 });
 
+test('an untolerated poll propagates read errors without a tick', async () => {
+  const time = clock(), error = new Error('log unreadable');
+  await assert.rejects(pollUntil(async () => { throw error; }, () => true, time), failure => failure === error);
+  assert.deepEqual(time.ticks, []);
+});
+
+test('tolerance retains the last good value without running the predicate on failed reads', async () => {
+  const time = clock(), accepted = [];
+  const result = await waitForFormValue(async () => {
+    if (time.now() > 0) throw new Error('page navigating');
+    return '7';
+  }, value => { accepted.push(value); return false; }, {...time, capMs: 500});
+  assert.deepEqual(result, {value: '7', ms: 500});
+  assert.deepEqual(accepted, ['7']);
+});
+
+test('an unread initial value cannot satisfy an empty wanted string', async () => {
+  const time = clock();
+  const result = await waitForFormValue(async () => {
+    if (time.now() === 0) throw new Error('page navigating');
+    return '';
+  }, '', time);
+  assert.deepEqual(result, {value: '', ms: 250});
+});
+
 const url = 'https://fixture.test/job';
 for (const {name, forms, sessions, done} of [
   {name: 'no matching session needs no extension report', forms: {known: false, ids: []}, sessions: [{id: 'other', url: 'https://fixture.test/other'}], done: true},
@@ -115,21 +140,21 @@ test('a log wait counts every app start and stays silent when the final completi
   assert.deepEqual(time.logs, []);
 });
 
-test('a hung log wait keeps its strict deadline, whole ticks and exact custom error', async t => {
+test('a hung log wait expires at the cap and keeps its exact custom error', async t => {
   const {profile, file} = logFile(t), time = clock();
   fs.writeFileSync(file, '[app] start 1\n');
   await assert.rejects(waitForLogLine(profile, /startup moves finished/g, {...time, what: 'the move', capMs: 500}), {
     message: 'the move never finished (no "startup moves finished" in the app\'s log)',
   });
-  assert.deepEqual(time.ticks, [250, 250, 250]);
+  assert.deepEqual(time.ticks, [250, 250]);
 });
 
-test('a finished log wins before checking the expired cap and the default error names the regex', async t => {
+test('a finished log at the cap is accepted and the default error names the regex', async t => {
   const {profile, file} = logFile(t), time = clock();
   fs.writeFileSync(file, '[app] start 1\n');
   const pause = async tick => { await time.pause(tick); fs.appendFileSync(file, 'finished\n'); };
   await waitForLogLine(profile, /finished/g, {...time, pause, capMs: 100});
-  assert.deepEqual(time.ticks, [250]);
+  assert.deepEqual(time.ticks, [100]);
   fs.writeFileSync(file, '[app] start 1\n');
   await assert.rejects(waitForLogLine(profile, /finished/g, {...time, capMs: -1}), {
     message: 'finished never finished (no "finished" in the app\'s log)',

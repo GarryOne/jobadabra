@@ -34,9 +34,10 @@ function callEnd(text, start) {
 const numbersIn = text => text.match(/[-+]?\b(?:0[xX][\da-fA-F]+|\d[\d_]*(?:\.\d+)?(?:e[+-]?\d+)?)\b/g) || [];
 
 // Suite scheduling is plumbing too: a shard/budget patch must not bypass rules E/F because it changed no assertion.
-const executionSettings = (raw = '') => {
+const executionSettings = (raw = '', includeWeights = true) => {
   const text = mask(raw || '');
-  return [...text.matchAll(/\bexport\s+const\s+(shards|budgetMinutes|minutes|stepSeconds|flowSeconds)\s*=\s*/g)].map(match => {
+  return [...text.matchAll(/\bexport\s+const\s+(shards|budgetMinutes|minutes|stepSeconds|flowSeconds)\s*=\s*/g)]
+    .filter(match => includeWeights || !['stepSeconds', 'flowSeconds'].includes(match[1])).map(match => {
     const start = match.index + match[0].length, end = text.indexOf(';', start);
     // Keep step names and literal whitespace: reassigning the same seconds to different journeys changes the split too.
     const value = (raw || '').slice(start, end < 0 ? undefined : end).replace(new RegExp(`${TOKENS.source}|\\s+`, 'g'),
@@ -44,7 +45,7 @@ const executionSettings = (raw = '') => {
     return `execution setting:${match[1]}:${value}`;
   });
 };
-const changedExecution = (before, after) => before != null && JSON.stringify(executionSettings(before).sort()) !== JSON.stringify(executionSettings(after).sort());
+const changedExecution = (before, after, includeWeights = true) => before != null && JSON.stringify(executionSettings(before, includeWeights).sort()) !== JSON.stringify(executionSettings(after, includeWeights).sort());
 
 // Read one comparison operand, including nested calls/indexes, stopping at a surrounding expression boundary.
 function operand(text, start, direction) {
@@ -106,7 +107,7 @@ export function expectationChanges(before, after, file = '') {
   }
   const skips = text => [...mask(text).matchAll(/\b(?:test|it)\s*\.\s*skip\s*\(/g)].length;
   if (skips(after) > skips(before)) changes.push('added test.skip/it.skip');
-  if (SUITE.test(file) && changedExecution(before, after)) changes.push('changed suite execution setting (shards, budget or measured weights)');
+  if (SUITE.test(file) && changedExecution(before, after, false)) changes.push('changed suite execution setting (shards or budget)');
   return changes;
 }
 

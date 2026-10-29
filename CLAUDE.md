@@ -24,7 +24,7 @@ The full pre-diet text: `git show c7bed98:CLAUDE.md`.
 - **Ask before spending money on AI** (new model, large re-runs); show the measured cost. Evals never use the production AI account (`tools/free-ai-eval.mjs` refuses; random draws and CI have their own tokens).
 
 ## Working rules
-- **Red e2e: design first, before diagnosis or edits.** Read the [reliability design](docs/superpowers/specs/2026-10-28-e2e-reliability-design.md), lanes and **fix-failing-e2e** skill; classify the failed input and original/retry evidence before choosing a repair. A log's "split it" advice never overrides that design.
+- **Red e2e: design first.** Follow the [canonical repair rule](docs/superpowers/specs/2026-10-28-e2e-reliability-design.md#the-rules) and **fix-failing-e2e** before diagnosis or edits.
 - **Every fix works for any user through the Desktop App**; a manual step (terminal, Keychain, `gh secret set`) is a product bug. Large optional parts (LibreOffice, transcription, Chromium) download on first use with progress and Cancel, never in the installer (guard `desktop/test/no-bundled-browser.test.js`).
 - **Sites a run reads or offers fit the current search** (AI-judged for current roles and places; a strategy change re-judges; `tests/test_sources_follow_strategy.py`). **Find jobs takes ≤ 3 min wall clock**, every stage on one deadline from the press (`tests/test_three_minutes.py`).
 - **Every mention of AI credit says what it buys** ("about N applications or N searches") from one shared measured function; a test loops over every surface.

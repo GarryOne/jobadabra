@@ -8,16 +8,25 @@ import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
 
-// Why (29 Oct 2026, Gitar on #2479): the steps judge themselves by their own caps; this only catches a hang AFTER the steps: closing the app, a test server, writing artifacts.
+// Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
 const TEARDOWN_STOP_MS = 3 * 60000;
+const closeDownHangMessage = suite => `the ${suite.name} suite's close-down was still running 3 min after its steps ended: moving on (closing the app, a test server, or writing artifacts)`;
 
-/** After the steps end, cap teardown hangs only for suites without an aggregate budget. */
-export function armTeardownStop(suite, name, {set = setTimeout, exit = process.exit, log = console.log} = {}) {
-  if (suite.aggregateBudget !== false) return;
-  set(() => {
-    log(`the ${name} suite's steps ended but it was still running 3 min later: stopped by force (closing the app, a test server, or writing artifacts)`);
-    exit(1);
-  }, TEARDOWN_STOP_MS).unref();
+/** Without an aggregate budget, record close-down hangs in the runner; always clear the unref'd timer when the race settles. */
+export function limitCloseDown(suite, ctx, work, {ms = TEARDOWN_STOP_MS, log = console.log} = {}) {
+  if (suite.aggregateBudget !== false) return work;
+  let timer;
+  const hung = new Promise(resolve => {
+    timer = setTimeout(() => {
+      const message = closeDownHangMessage(suite);
+      log(message);
+      ctx.runner.results.push({name: 'close the app and save the artifacts', status: 'failed', note: message});
+      ctx.stopped = message;
+      resolve();
+    }, ms);
+    timer.unref();
+  });
+  return Promise.race([work, hung]).then(() => undefined).finally(() => clearTimeout(timer));
 }
 
 export async function runSuite(name, report = null) {
@@ -42,7 +51,6 @@ export async function runSuite(name, report = null) {
     }
     const runAlways = ctx.run;   // a suite may wrap ctx.run with its own filter (suites/apply.mjs parts): the Keychain check runs whatever the suite picked
     await suite.run(ctx);
-    armTeardownStop(suite, name);
     if (keychainBefore) await runAlways('nothing in this Mac\'s real Keychain changed (a test run keeps its secrets in its own file)', async () => {
       const changes = keychainChanges(keychainBefore, snapshot() || new Map());
       if (changes.length) throw new Error(`the real Keychain changed during the run: ${changes.join('; ')}. A test reached it (desktop/lib/keychain.js isolation), or something else on this Mac saved a secret meanwhile: check, then re-run`);
@@ -80,7 +88,7 @@ export async function runSuite(name, report = null) {
       try { await writeReplay(ctx, name); } catch (error) { console.log(`  (replay.json not written: ${error.message})`); }
       await ctx.close();
       };
-      await (report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
+      await limitCloseDown(suite, ctx, report ? report.step('Close the app, save the artifacts', closeDown) : closeDown()).catch(error => console.log(`  (close-down: ${error.message})`));
       try { (await import('./ai-meter.mjs')).writeUsage(ctx.ARTIFACTS); } catch (error) { console.log(`  (AI usage not written: ${error.message})`); }   // what this suite paid, for /ai-cost (e2e.yml reports it)
       const refused = refusedQuestions({...process.env, E2E_ARTIFACTS: ctx.ARTIFACTS});
       if (refused.length) { code = 1; ctx.stopped = refused.map(item => item.message).join('; '); console.error(`✗ ${ctx.stopped}`); }

@@ -9,26 +9,35 @@ import * as suiteMain from '../lib/suite-main.mjs';
 const pause = ms => new Promise(done => setTimeout(done, ms));
 const fixture = {aggregateBudget: false, budgetMinutes: 120 / 60000};
 
-test('the teardown watchdog arms an unref\'d three-minute timer only without an aggregate, then logs and exits 1', () => {
-  const timers = [], messages = [], exits = [];
-  let unrefs = 0;
-  const options = {
-    set: (callback, ms) => { timers.push({callback, ms}); return {unref: () => { unrefs++; }}; },
-    exit: code => exits.push(code),
-    log: message => messages.push(message),
-  };
-  suiteMain.armTeardownStop({}, 'budgeted', options);
-  suiteMain.armTeardownStop({aggregateBudget: true, budgetMinutes: 7}, 'budgeted', options);
-  assert.equal(timers.length, 0);
-  suiteMain.armTeardownStop(fixture, 'interactions', options);
-  assert.equal(timers.length, 1);
-  assert.equal(timers[0].ms, 180000);
-  assert.equal(unrefs, 1);
+test('a budgeted suite keeps the same close-down promise untouched', t => {
+  t.mock.method(globalThis, 'setTimeout', () => assert.fail('budgeted close-down must not arm a timer'));
+  const work = Promise.resolve('closed'), ctx = {runner: {results: []}};
+  assert.equal(suiteMain.limitCloseDown({}, ctx, work), work);
+  assert.equal(suiteMain.limitCloseDown({aggregateBudget: true}, ctx, work), work);
+  assert.deepEqual(ctx.runner.results, []);
+});
+
+test('an aggregate-off close-down that never settles records a failure and logs once', async () => {
+  const messages = [], ctx = {runner: {results: []}};
+  const [result] = await Promise.all([
+    suiteMain.limitCloseDown(interactions, ctx, new Promise(() => {}), {ms: 20, log: message => messages.push(message)}),
+    pause(40),   // keep the test alive while the close-down timer is unref'd
+  ]);
+  assert.equal(result, undefined);
+  assert.deepEqual(messages, ["the interactions suite's close-down was still running 3 min after its steps ended: moving on (closing the app, a test server, or writing artifacts)"]);
+  assert.deepEqual(ctx.runner.results, [{name: 'close the app and save the artifacts', status: 'failed', note: messages[0]}]);
+  assert.equal(ctx.stopped, messages[0]);
+});
+
+test('close-down that settles first records no failure and clears its unref\'d timer', async t => {
+  const clear = t.mock.method(globalThis, 'clearTimeout');
+  const messages = [], ctx = {runner: {results: []}};
+  assert.equal(await suiteMain.limitCloseDown(interactions, ctx, Promise.resolve('closed'), {ms: 20, log: message => messages.push(message)}), undefined);
+  assert.equal(clear.mock.callCount(), 1);
+  assert.equal(clear.mock.calls[0].arguments[0].hasRef(), false);
   assert.deepEqual(messages, []);
-  assert.deepEqual(exits, []);
-  timers[0].callback();
-  assert.deepEqual(messages, ["the interactions suite's steps ended but it was still running 3 min later: stopped by force (closing the app, a test server, or writing artifacts)"]);
-  assert.deepEqual(exits, [1]);
+  assert.deepEqual(ctx.runner.results, []);
+  assert.equal(ctx.stopped, undefined);
 });
 
 test('five 60 ms steps all pass even though their total exceeds the old 120 ms budget', async () => {

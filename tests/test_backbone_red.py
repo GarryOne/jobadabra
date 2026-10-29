@@ -227,11 +227,11 @@ class OneBackboneSuiteRedAfterMerge(unittest.TestCase):
         for lane in ('tolerant', 'suspended', 'retired'):
             self.assertIsNone(backbone.second_attempt_run(records()[:1], SHA, {'apply': {'lane': lane}}), lane)
         data = records()[:1]
-        data[0]['run']['display_title'] = f'E2E after merge · {SHA[:7]} · quality'
-        data[0]['jobs'][0]['name'] = 'quality'
+        data[0]['run']['display_title'] = f'E2E after merge · {SHA[:7]} · qualityai'
+        data[0]['jobs'][0]['name'] = 'qualityai'
         result, output, writes = self.run_main(data)
         self.assertEqual(result, 0, output)
-        self.assertEqual(writes, [], 'real registry makes quality tolerant')
+        self.assertEqual(writes, [], 'real registry makes qualityai tolerant')
 
     def test_one_backbone_suite_red_after_merge_moved_main_or_other_run_waits(self):
         self.assertIsNone(backbone.second_attempt_run(records()[:1], 'b' * 40, {}))

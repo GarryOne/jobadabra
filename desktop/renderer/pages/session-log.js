@@ -9,7 +9,7 @@ import {clockTime} from './activity.js';
 import {$, show} from './core.js';
 import {renderJobs} from './jobs.js';
 import {openView, remembered} from './nav.js';
-import {isSubmitted, tabAddress} from '../session-state.js';
+import {extensionActing, isSubmitted, tabAddress} from '../session-state.js';
 import {backgroundStatus} from '../background-status.js';
 import {checkingTab, tabLost, tabStatus, formGone, formReady, reviewStates, silentChrome, waitingChrome} from './session-needs.js';
 import {nudgeMissingDetails} from './contact-proposals.js';
@@ -63,6 +63,7 @@ export function renderSessionPage() {
   show($('ss-grid'), panels.grid);
   show($('ss-refreshing'), panels.refreshing);
   syncTips({active: panels.grid, url: item?.url});
+  $('ss-stop').hidden = !extensionActing(sessionList, shared.formsOpen, formReady);   // the header Stop only while the extension acts (state: session-state.js extensionActing)
   if (panels.loading) { clearHeader(); return; }  // nothing to describe yet
   $('ss-list').replaceChildren(...sessionList.slice().reverse().map(entry => {
     const [label, tone] = stateOf(entry);

@@ -14,7 +14,10 @@ const ext = file => fs.readFileSync(new URL(`../../extension/${file}`, import.me
 
 test('the app\'s surfaces: the sessions page button, the ⌘K entry, the IPC, the preload and the demo stub', () => {
   assert.match(read('renderer/index.html'), /id="ss-stop"[^>]*>Stop the extension</);
-  assert.match(read('renderer/pages/nav.js'), /button\('sessions', 'ss-stop'/);
+  assert.match(read('renderer/pages/nav.js'), /add\('Sessions', 'Stop the extension'.*\$\('ss-stop'\)\.click\(\)/, 'the palette entry is always there (the header button is hidden while the extension is idle)');
+  assert.match(read('renderer/pages/sessions.js'), /'🛑 Stop the extension', run: \(\) => \$\('ss-stop'\)\.click\(\)/, 'the ⋯ menu entry');
+  assert.match(read('renderer/index.html'), /id="ss-stop" hidden/, 'hidden until the extension acts (session-state.js extensionActing)');
+  assert.match(read('renderer/pages/session-log.js'), /\$\('ss-stop'\)\.hidden = !extensionActing\(/);
   assert.match(read('renderer/pages/session-stop.js'), /window\.pilot\.sessionsStopExtension\(\)/);
   assert.match(read('renderer/app.js'), /sessionStop\(\)/);
   assert.match(read('preload.cjs'), /sessionsStopExtension: call\('sessionsStopExtension'\)/);

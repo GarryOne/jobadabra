@@ -122,6 +122,7 @@ export function sessionMenu(item) {
   if (isLive(item)) menu.push({label: '⏸ Pause Claude (Esc)', run: () => pauseSession()});
   if (item.resumable && !isSubmitted(item) && resumeOffered()) menu.push({label: '▶ Resume Claude', run: () => resumeSession(item)});
   if (isLive(item)) menu.push({label: '⏹ Stop Claude', run: () => window.pilot.sessionStop(item.id)});
+  menu.push({label: '🛑 Stop the extension', run: () => $('ss-stop').click()});   // always here: the header's own Stop shows only while the extension acts (owner, 29 Oct 2026)
   menu.push({label: '✕ Close this session', danger: true, run: () => closeSession(item)});
   return menu;
 }

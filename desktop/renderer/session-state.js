@@ -191,6 +191,19 @@ export const chromeWaiting = (item, formsOpen, sinceStart) => silentCase(item, f
 /** The pill of a card whose tab can't be seen: the connection, or Chrome. */
 export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 'Chrome not reporting');
 
+// Full-automation fills in Jobadabra's browser that are filling or submitting now (lib/background-apply-controller.js states).
+const BACKGROUND_ACTING = new Set(['preflight', 'filling', 'waiting_to_submit', 'submitting']);
+/**
+ * -> whether the extension is acting right now, so the header's Stop is worth showing: a form open in Chrome that the extension reports, with nothing stopped or waiting on the person and not yet
+ * ready, or a Full-automation fill or submit running in Jobadabra's browser. Never when Chrome is not reporting (the stop rides on the answer to the extension's next report and could not reach it).
+ * Why (29 Oct 2026, owner: "stop the extension shouldn't be shown in the desktop app all the times"): the extension has its own Stop on every tab; ⌘K and the ⋯ menu keep this one always reachable.
+ * items: the session list; formsOpen: the extension's tab report ({known, ids}); readyOf(item): the form page says every required field is filled.
+ */
+export function extensionActing(items, formsOpen, readyOf = () => false) {
+  return (items || []).some(item => !!item && !isSubmitted(item) && !item.outcome && (BACKGROUND_ACTING.has(item.background?.state)
+    || (item.kind === 'form' && !item.stuck && !!formsOpen?.known && formsOpen.ids.includes(String(item.id)) && !readyOf(item))));
+}
+
 // What the card says on a sign-in or sign-up page (owner, 9 Oct 2026: the account step gets its own count, what is left for you and the next press, apart from the application's
 // progress). state: the form page's review state ({account, total, left, needs, pending, missing}); null when this is not an account page with fields.
 export function accountCardOf(item, state) {

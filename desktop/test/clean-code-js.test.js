@@ -108,8 +108,12 @@ test('what is checked is the committed HEAD against the base: a dirty tree chang
 test('the exception marker clears a finding on its line or the line above, and needs a reason; the main lint pass accepts the comment', async () => {
   const marked = `// clean-code-ok: Why (29 Oct 2026, #2441): old function, only its signature line was edited\n${nested('tangled', 8)}`;
   assert.deepEqual(await check([{path: 'desktop/lib/x.js', source: marked, added: allLines(marked)}]), []);
-  const bare = marked.replace(/ Why .*/, '');
-  assert.equal((await check([{path: 'desktop/lib/x.js', source: bare, added: allLines(bare)}])).length, 1, 'a marker without a reason does not count');
+  for (const weak of ['', ' Why x', ' Why (#1):', ' Why (#1): ']) {   // no reason, no (PR) part, no reason after the colon
+    const bare = marked.replace(/ Why .*/, weak);
+    assert.equal((await check([{path: 'desktop/lib/x.js', source: bare, added: allLines(bare)}])).length, 1, `a marker "${weak}" does not count`);
+  }
+  const inString = `const s = 'clean-code-ok: Why (#1): reason';\n${nested('tangled', 8)}`;
+  assert.equal((await check([{path: 'desktop/lib/x.js', source: inString, added: allLines(inString)}])).length, 1, 'the words in a string are not a marker');
   const {ESLint} = createRequire(import.meta.url)('eslint');
   const main = new ESLint({overrideConfigFile: path.resolve(import.meta.dirname, '../../eslint.config.mjs')});
   const [result] = await main.lintText(marked, {filePath: path.resolve(import.meta.dirname, '../../desktop/lib/x.js')});

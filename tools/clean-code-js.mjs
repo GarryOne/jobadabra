@@ -43,8 +43,8 @@ async function eslint() {
   return linter;
 }
 
-/** The exception comment: `// clean-code-ok: Why (<PR or date>): <reason>`, on the finding's line or the line above. A bare marker with no reason does not count. */
-const EXCEPTION = /clean-code-ok:\s*Why\b.*\S/;
+/** The exception comment: `// clean-code-ok: Why (<PR or date>): <reason>`, on the finding's line or the line above. A marker with no `//`, no `(<PR or date>)` or no reason does not count. */
+const EXCEPTION = /\/\/\s*clean-code-ok:\s*Why\s*\([^)]+\)\s*:\s*\S/;
 
 /**
  * Lints each file's source and keeps the findings that sit on a line the change added and carry no exception comment.

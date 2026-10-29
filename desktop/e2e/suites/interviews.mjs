@@ -171,7 +171,7 @@ export async function run(ctx) {
     if (!(await record.isDisabled())) throw new Error('Record is still enabled after the consent box is unticked');
   });
 
-  // The one-time setup (add-on + speech models) shows a banner only on a Mac without the models, which no suite has: send the app's own progress events instead,
+  // The one-time setup (add-on + speech models) shows a banner only on a Mac without the models, and a test run never starts that setup (desktop/lib/e2e-host.js prefetchForRun, 29 Oct 2026): send the app's own progress events instead,
   // so the banner is on screen for the checks and the screenshot review (it was invisible to them, and its spinner was stretched, 6 Oct 2026).
   await step('the one-time setup banner shows its step and percent, then goes away when transcribing starts', async () => {
     await openInterviews();

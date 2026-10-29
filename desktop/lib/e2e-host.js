@@ -1,10 +1,16 @@
-// Test runs only (an e2e run, or a screenshot run): stands in for the Electron calls that reach the owner's own computer (a page in their default browser, a Finder window, their clipboard, their login items).
+// Test runs only: stands in for transcription setup and Electron calls that reach the owner's computer (browser, Finder, clipboard, login items).
 // A test run never opens, writes or registers anything there; each call is recorded instead (globalThis.__jpHost, and host.log in the run's spool when there is one).
 // Why (#2362 / 28 Oct 2026, owner): a local interactions run put ch.indeed.com in the owner's Chrome three times. The PATH stand-in for `open` (e2e/lib/extension.mjs)
 // covers only the `open` that lib/browser-launch.js runs; shell.openExternal and the rest reach the OS through LaunchServices and never read PATH.
 // Guard: test/e2e-host.test.js (the doors below, and every host call in the app is a door or on its reviewed list).
 import fs from 'node:fs';
 import path from 'node:path';
+
+/** Answer as an already prepared install in e2e; otherwise preserve setup and its progress events. */
+export function prefetchForRun(prefetch, env = process.env) {
+  // Why (29 Oct 2026, owner): backbone runs must not install libraries or download speech models when a page opens.
+  return env.JOB_PILOTTO_E2E ? {ok: true} : prefetch();
+}
 
 // [object on `host`, method, what the real one returns when it works]: the doors a test run closes.
 export const DOORS = [

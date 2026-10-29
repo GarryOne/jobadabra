@@ -7,6 +7,7 @@ import path from 'node:path';
 import * as storeEngine from './store/engine.js';
 import {byStore} from './store/words.js';
 import {demoPath} from './demo.js';
+import {prefetchForRun} from './e2e-host.js';
 
 export function registerInterviewHandlers(ctx) {
   const writeHandle = (channel, fn) => ipcMain.handle(channel, afterWrite(fn));   // a finished write closes the running reads' join (shared-read.js)
@@ -74,7 +75,7 @@ export function registerInterviewHandlers(ctx) {
       return {ok: false, error: error.message};
     }
   });
-  ipcMain.handle('ivPrefetch', () => (DEMO ? {ok: true} : interviews.prefetch(storage, step => toWindow('ivProgress', step))));
+  ipcMain.handle('ivPrefetch', () => (DEMO ? {ok: true} : prefetchForRun(() => interviews.prefetch(storage, step => toWindow('ivProgress', step)))));
   handleImportant('ivTranscribe', 'Transcribing an interview', async (_, id, options) => {
     const meta = await interviews.transcribe(storage, id, options, step => toWindow('ivProgress', step));
     if (meta.status === 'ready') notify('Transcript ready', `${meta.title}: ${meta.pageId ? byStore(storage, 'already in your Notion; ', 'already saved; ') : ''}name the speakers, pick the job, then Save.`, {view: 'interviews'}, 'good');

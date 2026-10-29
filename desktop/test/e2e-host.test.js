@@ -7,6 +7,7 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {DOORS, standInHost} from '../lib/e2e-host.js';
+import {registerInterviewHandlers} from '../lib/interview-handlers.js';
 
 const fresh = () => {
   const called = [];
@@ -14,6 +15,44 @@ const fresh = () => {
   const host = {shell: {openExternal: real('openExternal'), openPath: real('openPath'), showItemInFolder: real('showItemInFolder')}, clipboard: {writeText: real('writeText'), readImage: real('readImage')}, app: {setLoginItemSettings: real('setLoginItemSettings')}};
   return {host, called};
 };
+
+test('every e2e app answers ivPrefetch without a downloader or progress event', async () => {
+  const before = process.env.JOB_PILOTTO_E2E;
+  process.env.JOB_PILOTTO_E2E = '1';
+  try {
+    let downloads = 0;
+    const handlers = {}, progress = [];
+    registerInterviewHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = fn; }},
+      sharedRead: (_name, fn) => fn, handleImportant: () => {},
+      interviews: {prefetch: () => { downloads += 1; throw new Error('real downloader reached'); }},
+      toWindow: (...args) => progress.push(args)});
+    assert.deepEqual(await handlers.ivPrefetch(), {ok: true});
+    assert.equal(downloads, 0);
+    assert.deepEqual(progress, []);
+    const launch = fs.readFileSync(new URL('../e2e/lib/app.mjs', import.meta.url), 'utf8');
+    assert.match(launch, /JOB_PILOTTO_E2E: '1'/, 'every harness app enables the shared seam');
+  } finally {
+    if (before === undefined) delete process.env.JOB_PILOTTO_E2E; else process.env.JOB_PILOTTO_E2E = before;
+  }
+});
+
+test('without the e2e flag ivPrefetch still runs the real setup and forwards progress', async () => {
+  const before = process.env.JOB_PILOTTO_E2E;
+  delete process.env.JOB_PILOTTO_E2E;
+  try {
+    let downloads = 0;
+    const handlers = {}, progress = [], step = {id: 'setup', setup: true};
+    registerInterviewHandlers({ipcMain: {handle: (name, fn) => { handlers[name] = fn; }},
+      sharedRead: (_name, fn) => fn, handleImportant: () => {},
+      interviews: {prefetch: (_storage, onProgress) => { downloads += 1; onProgress(step); return {ok: true}; }},
+      toWindow: (...args) => progress.push(args)});
+    assert.deepEqual(await handlers.ivPrefetch(), {ok: true});
+    assert.equal(downloads, 1);
+    assert.deepEqual(progress, [['ivProgress', step]]);
+  } finally {
+    if (before !== undefined) process.env.JOB_PILOTTO_E2E = before;
+  }
+});
 
 test('a person\'s app (no JOB_PILOTTO_E2E) keeps every call real', () => {
   const {host} = fresh(), before = {...host.shell};

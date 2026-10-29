@@ -14,7 +14,7 @@ import {VIEWS} from '../lib/uicheck.mjs';
 import {measureRecall, recallFindings} from '../lib/recall.mjs';
 import {lateShiftFindings, nowInPage, shiftsIn, watchShifts} from '../lib/shift.mjs';
 import {goView} from '../lib/go-view.mjs';
-import {probe, problems} from '../lib/rail-markers.mjs';
+import {probe, problems, waitForRail} from '../lib/rail-markers.mjs';
 
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';
@@ -101,6 +101,7 @@ export async function run(ctx) {
     const was = await resize([1024, 640]);
     try {
       await ctx.page.click('.nav[data-view="jobs"]');
+      await waitForRail(ctx.page);
       const bad = problems(await ctx.page.evaluate(probe));
       if (bad.length) throw new Error(bad.join('; '));
     } finally {

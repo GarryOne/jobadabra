@@ -1,4 +1,5 @@
 /* global document, window */
+// Job: wait on state
 // Launch the real Jobadabra app (Electron) with a throwaway profile, like a first-time user, and drive it through Playwright.
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
 import {journey} from './journey.mjs';
@@ -140,7 +141,14 @@ export async function settle(page, seconds = 20) {
       null, {timeout: seconds * 1000});
     await page.waitForTimeout(400);
     return true;
-  } catch { return false; }
+  } catch {
+    const indicator = await page.evaluate(() => {
+      const node = [...document.querySelectorAll('.view:not([hidden]) .skeleton, .view:not([hidden]) .spinner')].find(el => el.offsetParent !== null);
+      return node ? {id: node.id || node.parentElement?.id || '', classes: node.className} : null;
+    }).catch(() => null);
+    console.log(`  settle: gave up after ${seconds}s; first visible loader: ${indicator ? `${indicator.id ? `#${indicator.id} ` : ''}${indicator.classes}` : 'unavailable (page changed or closed)'}`);
+    return false;
+  }
 }
 
 // The journey must never alter the live telemetry (the owner's rule, 2 Oct 2026). The app says in its own log why it is not reporting; no such line, no run.

@@ -92,3 +92,23 @@ test('a log cursor counts only matching decisions after its capture, including a
   assert.equal(since(), 2);
   assert.equal(since(), 2, 'global regex state cannot change the count');
 });
+
+
+test('a log cursor treats matches in a replacement log as new and never returns a negative count', t => {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'log-replaced-'));
+  t.after(() => fs.rmSync(profile, {recursive: true, force: true}));
+  const logs = path.join(profile, 'logs');
+  fs.mkdirSync(logs);
+  const file = path.join(logs, 'app.log');
+  const saved = '[data] backup saved {"decidedBy":"weekly tick"}\n';
+  fs.writeFileSync(file, saved.repeat(3));
+  const since = appLog.logCursor(profile, /\[data\] backup saved/);
+  assert.equal(since(), 0);
+  fs.rmSync(file);
+  fs.writeFileSync(file, '');
+  assert.equal(since(), 0, 'a fresh empty log has no new matches');
+  fs.appendFileSync(file, saved);
+  assert.equal(since(), 1, 'all matches in the shorter replacement log are new');
+  fs.appendFileSync(file, saved);
+  assert.equal(since(), 2);
+});

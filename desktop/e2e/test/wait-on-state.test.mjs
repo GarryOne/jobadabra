@@ -213,3 +213,19 @@ test('launch-scoped reads exclude retained telemetry until the expected launch s
   fs.appendFileSync(file, '[telemetry] reporting is off: the end-to-end journey\n');
   assert.match(currentLaunchLog(profile, 2), /reporting is off/);
 });
+
+
+test('a fresh one-start log captures its own start count after replacing a completed launch', async t => {
+  const {profile, file} = logFile(t), time = clock();
+  fs.writeFileSync(file, '[app] start old\nstartup moves finished\n');
+  await waitForLogLine(profile, /startup moves finished/g, time);
+  assert.deepEqual(time.ticks, []);
+  fs.rmSync(file);
+  fs.writeFileSync(file, '[app] start fresh\n');
+  const pause = async tick => {
+    await time.pause(tick);
+    fs.appendFileSync(file, 'startup moves finished\n');
+  };
+  await waitForLogLine(profile, /startup moves finished/g, {...time, pause, capMs: 500});
+  assert.deepEqual(time.ticks, [250], 'the fresh launch must finish before this call settles');
+});

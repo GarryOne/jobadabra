@@ -3,7 +3,7 @@
 import {finish, snap} from '../lib/layout.mjs';
 import fs from 'node:fs';
 import {appLogText} from '../lib/app-log.mjs';
-import {waitForLogLine} from '../lib/wait-on-state.mjs';
+import {pollUntil, waitForLogLine} from '../lib/wait-on-state.mjs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {FIXTURES} from '../lib/cvfixtures.mjs';
@@ -66,11 +66,14 @@ export async function run(ctx) {
       return;
     }
     await page.waitForFunction(selector => document.querySelector(selector)?.getAttribute('aria-checked') === 'true', card(pair.cli), {timeout: 15000});
-    await page.waitForFunction(async id => (await window.pilot.state()).settings.aiEngine === id, pair.cli, {timeout: 15000});
+    // Why (29 Oct 2026, st): poll resolved state so an async predicate's Promise cannot finish the wait at once.
+    const {value: cliChosen} = await pollUntil(() => page.evaluate(async id => (await window.pilot.state()).settings.aiEngine === id, pair.cli), value => value, {capMs: 15000, log: () => {}});
+    if (!cliChosen) throw new Error(`${pair.name} engine selection never finished`);
     await snap(ctx, `settings-engine-${pair.cli}-chosen`, {view: 'settings', situation: `${pair.name} is the chosen engine, and an ${openai ? 'OpenAI' : 'Anthropic'} API key is saved`});
     await page.locator(card(pair.api)).click();
     await page.waitForFunction(selector => document.querySelector(selector)?.getAttribute('aria-checked') === 'true', card(pair.api), {timeout: 15000});
-    await page.waitForFunction(async id => (await window.pilot.state()).settings.aiEngine === id, pair.api, {timeout: 15000});
+    const {value: apiChosen} = await pollUntil(() => page.evaluate(async id => (await window.pilot.state()).settings.aiEngine === id, pair.api), value => value, {capMs: 15000, log: () => {}});
+    if (!apiChosen) throw new Error(`${pair.api} engine selection never finished`);
     await snap(ctx, `settings-engine-${pair.api}-chosen`, {view: 'settings', situation: `The ${openai ? 'OpenAI' : 'Anthropic'} API key is the chosen engine`});
   }, {needs: ctx.needs});
   await ctx.run('the CV check reads real PDFs: a plain CV passes, each known problem is found, a picture of a CV fails', async () => {
@@ -236,8 +239,9 @@ async function roundTrip(ctx, makeBackup = null) {   // makeBackup: makes the au
   await ctx.page.click('#welcome-import').catch(() => {});   // the app exits under the click
   await ctx.waitForExit();
   await ctx.relaunch();
-  await ctx.page.waitForFunction(async () => (await window.pilot.state()).settings.setupDone === true, null, {timeout: 60000})
-    .catch(async () => { throw new Error(`after the import the app is not set up again (${JSON.stringify(await ctx.page.evaluate(() => window.pilot.lastReset()))})`); });
+  // Why (29 Oct 2026, st): poll resolved state so an async predicate's Promise cannot finish the wait at once.
+  const {value: setUp} = await pollUntil(() => ctx.page.evaluate(async () => (await window.pilot.state()).settings.setupDone === true), value => value, {capMs: 60000, log: () => {}});
+  if (!setUp) throw new Error(`after the import the app is not set up again (${JSON.stringify(await ctx.page.evaluate(() => window.pilot.lastReset()))})`);
   await waitForLogLine(ctx.profile, /startup moves finished/g, {what: 'the imported launch\'s start-up move into the store'});
   const after = {files: Object.fromEntries(FILES.map(name => [name, digest(name)])), ...await ctx.page.evaluate(async () => {
     const state = await window.pilot.state();

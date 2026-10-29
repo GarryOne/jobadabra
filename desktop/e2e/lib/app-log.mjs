@@ -14,11 +14,11 @@ export function appLogText(profile) {
 }
 export const appLogLines = profile => appLogText(profile).split('\n');
 
-/** Capture matching-line counts now; the returned reader counts only later matches, across log rolls. */
+/** Capture matching counts; later reads count new matches across rolls or a shorter replacement log. */
 export function logCursor(profile, match) {
   const count = () => appLogLines(profile).filter(line => new RegExp(match.source, match.flags).test(line)).length;
   const before = count();
-  return () => count() - before;
+  return () => { const current = count(); return current < before ? current : current - before; };
 }
 
 /** Read only the latest launch, once at least `starts` launches have logged their start. */

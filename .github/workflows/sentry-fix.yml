@@ -1,14 +1,14 @@
 name: CI · Sentry fixer
 
 # THE SENTRY FIXER, once a day. It reads the unresolved issues of the app's Sentry project (org job-pilotto, project job-pilotto-app, EU region), keeps only what is REAL and
-# FRESH, picks the most critical (people affected, then events) and lets Claude Code fix it and open ONE pull request for the owner to review. Never merges anything.
+# FRESH, picks the most critical (people affected, then events) and lets Codex (the owner's plan, one broker call) fix it and open ONE pull request for the owner to review. Never merges anything.
 # Left out, and said so in the run log: reports of end-to-end runs (environment e2e) unless tagged expected:no (a surprise in a suite that breaks nothing on purpose = synthetic monitoring), warnings (the app telling the user something, e.g. a spend limit), issues not seen for
 # 7 days (stale), one-offs (one event, one person, unless fatal), issues in Sentry already resolved or ignored, issues that already have a pull request (open, or merged/closed within 14 days),
-# bugs planted on purpose by the recall benchmark (exception type RecallPlant), and issues Claude already judged need no change within 14 days (a closed issue labelled sentry-fix-verdict).
-# Claude only edits files (no git, no gh, no network). The last step checks the paths (tools/sentry-fixer/lib.mjs: the app's code and the engine and their tests, never reporting, secrets or
+# bugs planted on purpose by the recall benchmark (exception type RecallPlant), and issues the fixer already judged need no change within 14 days (a closed issue labelled sentry-fix-verdict).
+# Codex only writes files the call's answer allows (no git, no gh, no network). The last step checks the paths (tools/sentry-fixer/lib.mjs: the app's code and the engine and their tests, never reporting, secrets or
 # workflows), requires a test, runs both test suites, and only then pushes `sentry-fix/<short id>` and opens the PR. At most 3 automatic Sentry PRs may be open at once.
 # The run log is public: it names issues by short id and reason only; no event content, no transcript artifact.
-# Needs: SENTRY_AUTH_TOKEN (read-only internal integration "sentry-fixer", Keychain job-pilotto.sentry.auth_token) and ANTHROPIC_API_KEY.
+# Needs: SENTRY_AUTH_TOKEN (read-only internal integration "sentry-fixer", Keychain job-pilotto.sentry.auth_token) and no AI key (the Codex broker's login is the owner's, held by the broker).
 on:
   schedule:
     - cron: '30 6 * * *'
@@ -18,6 +18,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write   # the Codex broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
 
 concurrency:
   group: sentry-fix
@@ -59,29 +60,12 @@ jobs:
         run: |
           (cd desktop && npm ci)
           pip install --quiet -r requirements.txt
-      - name: Claude Code fixes the problem (files only)
-        id: claude
+      - name: Codex fixes the problem (files only, one broker call)
+        id: fix
         if: steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.SENTRY_FIX_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          # Least privilege: read and edit files, run the tests, read-only git. No push, no gh, no network.
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 50
-            --allowedTools "Read,Glob,Grep,Edit,Write,Bash(node --test:*),Bash(python -m unittest:*),Bash(python3 -m unittest:*),Bash(git diff:*),Bash(git status:*)"
-          prompt: Read .heal/prompt.md and follow it exactly.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        env:   # a credit failure also goes to the owner on Telegram (desktop/e2e/credit-alert.mjs)
-          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-        run: python3 tools/claude-failure-reason.py
-      - name: Report the AI cost to /ai-cost
-        if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true' && steps.claude.outcome != 'skipped'
-        env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: node desktop/e2e/ai-cost-report.mjs --job sentry-fix --execution /home/runner/work/_temp/claude-execution-output.json
+        # Why (29 Oct 2026, owner: CI AI on the Codex plan; the fixer failed 26–28 Oct on "Credit balance is too low"): the broker answers one prompt with no tools, so the
+        # stack's files go in the prompt and the answer's edits are written only inside tools/sentry-fixer/codex-fix.mjs's ALLOWED folders; the guard below still checks them.
+        run: node tools/sentry-fixer/codex-fix.mjs --dir .heal
       # GitHub starts no workflow for a push or PR made with GITHUB_TOKEN, so the PR would sit without checks: push and open it with the CI GitHub App's token (else the workflow token, and no checks).
       - name: The App token, so the PR's checks start
         id: pr_app
@@ -97,23 +81,23 @@ jobs:
         if: always() && steps.pick.outputs.candidate != 'none' && steps.capacity.outputs.full != 'true'
         env:
           PR_TOKEN: ${{ steps.pr_app.outputs.token }}
-          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          CODEX_OUTCOME: ${{ steps.fix.outcome }}
           SHORT_ID: ${{ steps.pick.outputs.candidate }}
         run: |
           set -euo pipefail
-          # Claude did not run (no credit, a bad key, an outage): that says nothing about the issue.
-          if [ "$CLAUDE_OUTCOME" != success ]; then
-            echo "Claude Code did not run ($CLAUDE_OUTCOME); nothing was changed."
+          # Codex did not run (a broker outage, a capped plan): that says nothing about the issue.
+          if [ "$CODEX_OUTCOME" != success ]; then
+            echo "Codex did not run ($CODEX_OUTCOME); nothing was changed."
             exit 1
           fi
           changed=$(git status --porcelain --untracked-files=all | awk '{print $NF}' | grep -v -E '^\.heal/' || true)
           if [ -z "$changed" ]; then
             verdict=$(head -1 .heal/verdict.md 2>/dev/null | awk '{print $1}' | tr -cd 'a-z-')
-            echo "No change for $SHORT_ID: $(head -1 .heal/verdict.md 2>/dev/null || echo 'Claude made no change')."
+            echo "No change for $SHORT_ID: $(head -1 .heal/verdict.md 2>/dev/null || echo 'no edit made')."
             # Remember the verdict for 14 days (tools/sentry-fixer/lib.mjs judgedRecently), or the next run picks the same issue again. Short id and verdict word only: the log is public.
             gh label create sentry-fix-verdict --repo "$REPO" --force --color C5DEF5 --description 'The Sentry fixer judged an issue needs no change'
             num=$(gh issue create --repo "$REPO" --title "Sentry fixer: $SHORT_ID ${verdict:-no-change}" --label sentry-fix-verdict \
-              --body "Claude made no change for Sentry issue $SHORT_ID (${verdict:-no verdict written}). The fixer leaves it out for 14 days. Run: $RUN_URL" | grep -o '[0-9]*$')
+              --body "No change was made for Sentry issue $SHORT_ID (${verdict:-no verdict written}). The fixer leaves it out for 14 days. Run: $RUN_URL" | grep -o '[0-9]*$')
             gh issue close "$num" --repo "$REPO" --reason 'not planned'
             exit 0
           fi

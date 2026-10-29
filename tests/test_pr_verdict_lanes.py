@@ -141,7 +141,7 @@ class RegistryFile(unittest.TestCase):
 
     def test_the_registry_keeps_the_first_cut_and_adds_the_live_quality_journey(self):
         listed = {name: entry['lane'] for name, entry in self.registry['suites'].items()}
-        self.assertEqual(listed, {'quality': 'tolerant', 'qualityai': 'tolerant', 'notion-real': 'tolerant'})
+        self.assertEqual(listed, {'quality': 'tolerant', 'qualityai': 'tolerant', 'mailreading': 'tolerant', 'notion-real': 'tolerant'})
 
 
 if __name__ == '__main__':

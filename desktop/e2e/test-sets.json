@@ -36,6 +36,7 @@
   "ai-cap.test.mjs",
   "ai-provider.test.mjs",
   "broker-relay.test.mjs",
+  "credit-alert.test.mjs",
   "extension-sentry.test.mjs",
   "review-codex-run.test.mjs",
   "context-imports-no-app-code.test.mjs",

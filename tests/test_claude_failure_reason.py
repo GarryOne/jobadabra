@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(ROOT, "tools", "claude-failure-reason.py")
@@ -38,8 +39,25 @@ class FailureReason(unittest.TestCase):
         for path in glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yml")):
             text = open(path, encoding="utf-8").read()
             if "claude-code-action@" in text:
-                self.assertRegex(text, r"if: failure\(\)\n\s+run: python3 tools/claude-failure-reason\.py",
+                self.assertRegex(text, r"if: failure\(\)\n(?:\s+env:[^\n]*\n(?:\s+\w+: [^\n]*\n)+)?\s+run: python3 tools/claude-failure-reason\.py",
                                  os.path.basename(path))
+
+    def test_a_credit_failure_is_handed_to_the_telegram_alert(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("claude_failure_reason", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        calls = []
+        done = unittest.mock.Mock(stdout="credit-alert: sent")
+        with unittest.mock.patch.object(module.subprocess, "run", side_effect=lambda cmd, **kw: calls.append(cmd) or done):
+            with tempfile.TemporaryDirectory() as d:
+                p = os.path.join(d, "out.json")
+                json.dump([{"type": "result", "is_error": True, "api_error_status": 400, "result": "Credit balance is too low"}], open(p, "w"))
+                module.main(["x", p])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], "node")
+        self.assertTrue(calls[0][1].endswith(os.path.join("desktop", "e2e", "credit-alert.mjs")))
+        self.assertIn("Credit balance is too low", calls[0][3])
 
 
 if __name__ == "__main__":

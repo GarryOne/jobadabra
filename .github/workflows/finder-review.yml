@@ -61,6 +61,9 @@ jobs:
             Follow desktop/e2e/finder-review-prompt.md exactly. The facts are in .finder-review/facts.md.
       - name: Why Claude failed (the API's own error)
         if: failure()
+        env:   # a credit failure also goes to the owner on Telegram (desktop/e2e/credit-alert.mjs)
+          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
+          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
         run: python3 tools/claude-failure-reason.py
       - name: The AI's cost and limit
         if: always() && steps.budget.outputs.skip != 'true'

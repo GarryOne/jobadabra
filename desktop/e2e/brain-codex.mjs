@@ -2,6 +2,7 @@
 //   node brain-codex.mjs --step brief|another|review|explore     (.github/workflows/product-brain.yml; BRAIN_PROMPT = the private prompt of the step)
 // Why (29 Oct 2026, owner: CI AI on his Codex plan; "Product brain is failing" every morning since 22 Oct, "Credit balance is too low"): one Messages call through lib/broker-client.mjs, no tools, no web search
 // (the broker's model has no shell: the signals and README are put in the prompt). brief/another/review write .brain/brief.json (the keys tools/product_brain.py post wants), explore writes .brain/plan.md.
+// Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';

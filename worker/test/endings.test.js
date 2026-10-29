@@ -30,7 +30,7 @@ test('every "can\'t reach" reason names its ending: told for the page\'s own way
 test('every reason the extension sends with a "can\'t reach" report is a listed reason', () => {
   const read = file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8');
   const sent = new Set();
-  for (const file of ['fill-flow.js', 'account-step.js']) {   // every give-up goes through ladder/dead-end.js: deadEndHere(tab, jobUrl, host, '<why>', ...) or deadEnd({why: '<why>', ...})
+  for (const file of ['fill-flow.js', 'fill-flow-steps.js', 'account-step.js']) {   // every give-up goes through ladder/dead-end.js: deadEndHere(tab, jobUrl, host, '<why>', ...) or deadEnd({why: '<why>', ...})
     for (const call of read(file).match(/\bdeadEndHere\([^;]*\)/g) || []) for (const [, word] of call.matchAll(/'([a-z][a-z_-]*)'/g)) sent.add(word);
     for (const [, word] of read(file).matchAll(/\bwhy: '([a-z][a-z_-]*)'/g)) sent.add(word);
   }

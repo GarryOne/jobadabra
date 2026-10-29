@@ -95,7 +95,7 @@ class TheFirstPressMarksItsCalls(unittest.TestCase):
 POOL_CALL = re.compile(r'\b(pool|executor|_worker)\.(submit|map)\(\s*(?!slots\.carry\()([\w.]+)')
 # Pools whose work never reaches a slot, or never runs under a FIRST or LATER caller: (file, the function handed to the pool) -> why.
 NO_CARRY = {
-    ('src/scout.py', 'check'): 'the scout runs after the slice, always at NORMAL (at its 500-line limit)',
+    ('src/scout_run.py', 'check'): 'the scout runs after the slice, always at NORMAL (at its 500-line limit)',
     ('src/scout_index.py', 'check'): 'the central scout, on CI, always at NORMAL',
     ('src/scout_notion.py', 'check'): 'Notion feed rows, no AI',
     ('src/doctor.py', '_safe'): 'the doctor screen, no search',
@@ -117,7 +117,7 @@ class EveryPoolCarriesItsCallersLevel(unittest.TestCase):
             for n, line in enumerate(path.read_text().splitlines(), 1):
                 for match in POOL_CALL.finditer(line):
                     found[(path.relative_to(ROOT).as_posix(), match.group(3))] = n
-        self.assertIn(('src/scout.py', 'check'), found, 'positive control: the pattern sees a pool call')
+        self.assertIn(('src/scout_run.py', 'check'), found, 'positive control: the pattern sees a pool call')
         missing = sorted(f'{path}:{n} {fn}' for (path, fn), n in found.items() if (path, fn) not in NO_CARRY)
         self.assertEqual(missing, [], "wrap the pool's function in slots.carry(...), or list it in NO_CARRY with why it never needs the level")
         self.assertEqual(sorted(set(NO_CARRY) - set(found)), [], 'a NO_CARRY entry whose pool is gone')

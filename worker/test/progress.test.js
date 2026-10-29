@@ -51,7 +51,7 @@ test('a page script may send only value_stayed; any other kind, or a message fro
 });
 
 test('the fill flow notes each kind of its own where it happens (a new page, fields that appeared, a required field filled); value_stayed only from a page script', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(flow, /useProgressLog\(decide\)/);
   assert.match(flow, /started\.add\(key\);\n\s*notePage\(tab\.id, key, \{job: jobUrl \|\| tab\.url, page: tab\.url\}\)/);
   assert.match(flow, /noteProgress\(tab\.id, 'new_controls'/);

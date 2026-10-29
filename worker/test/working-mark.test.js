@@ -21,7 +21,7 @@ test('a working mark is never an end verdict, for every role, kind, step and pre
 });
 
 test('fill-flow: marks set while the read goes on are working marks; the end verdict waits for a field watch that may judge the page again', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const marks = [...flow.matchAll(/markPage\(tab\.id, role, [^)]*\)/g)].map((m) => m[0]);
   const plain = marks.filter((m) => m === 'markPage(tab.id, role, pressed, kind)');
   assert.ok(plain.length >= 1, 'the verdict is said somewhere');
@@ -33,7 +33,7 @@ test('fill-flow: marks set while the read goes on are working marks; the end ver
 });
 
 test('fill-flow: the field watch says the verdict on every ending with no form (ran out, or looked at once already), never after a re-judge', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const body = flow.slice(flow.indexOf('async function watchForFields('), flow.indexOf('\n}\n', flow.indexOf('async function watchForFields(')));
   assert.match(body, /if \(lookedAgain\.has\(key\)\) \{ if \(onEnd\) await onEnd\(\); return false; \}/);
   assert.match(body, /'watch ended: no form and no new frame'[^\n]*\n\s*if \(onEnd\) await onEnd\(\);/);

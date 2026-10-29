@@ -18,7 +18,7 @@ test('Export options sit inside the Export card and still hold both checkboxes',
 });
 
 test('the dismissed-jobs option is gone end to end: dismissed jobs always stay', () => {
-  for (const file of ['renderer/index.html', 'renderer/pages/data.js', 'lib/pipeline-commands.js', 'lib/system-handlers.js', '../src/desktop.py']) {
+  for (const file of ['renderer/index.html', 'renderer/pages/data.js', 'lib/pipeline-commands.js', 'lib/system-handlers.js', '../src/desktop.py', '../src/desktop_tracker.py', '../src/desktop_visits.py']) {
     assert.ok(!/clear-jobs-dismissed|clearDismissed|clear-dismissed|clear_dismissed/.test(read(file)), file);
   }
 });

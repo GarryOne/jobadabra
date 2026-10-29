@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import {beginRead, dropIfLate, forgetReads, isCurrent, openRead} from '../../extension/read-gen.js';
 
-const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
 const consider = flow.slice(flow.indexOf('export async function consider('));
 
 test('a newer read of the tab makes the older one stale; another tab is not touched; a forgotten tab starts again', () => {
@@ -21,7 +21,7 @@ test('a newer read of the tab makes the older one stale; another tab is not touc
 });
 
 test('class: every ask consider() waits on is checked right after, and the read is begun once the call is not skipped', () => {
-  assert.match(consider, /if \(started\.has\(key\)\) return;\s*started\.add\(key\);/, 'a call that returns at once is not a read');
+  assert.match(consider, /if \(started\.has\(key\)\) return(?: false)?;\s*started\.add\(key\);/, 'a call that returns at once is not a read');
   const waits = [...consider.matchAll(/await (kindAsk|outcomeLook|readWhileDrawing\(|climbOnUnsure\(|climbOnStall\()/g)];
   assert.ok(waits.length >= 4, `${waits.length} awaited asks found: the list of late-answer sites changed, update this test`);
   for (const wait of waits) {
@@ -38,7 +38,7 @@ test('class: a read writes the page\'s state only while it is current (no await 
   for (const write of writes) {
     const before = consider.slice(0, write.index), lastCheck = before.lastIndexOf('late(tab, gen,');
     assert.ok(lastCheck >= 0, 'no late() check before a page-state write');
-    const between = before.slice(lastCheck).replace(/late\(tab, gen,[^)]*\)\) return;/, '').replace(/await\s*$/, '');   // the write's own await
+    const between = before.slice(lastCheck).replace(/late\(tab, gen,[^)]*\)\) return(?: false)?;/, '').replace(/await\s*$/, '');   // the write's own await
     assert.doesNotMatch(between, /\bawait\b/, `an await sits between the last late() check and the write at "${consider.slice(write.index, write.index + 50)}"`);
   }
 });

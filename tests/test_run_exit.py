@@ -47,7 +47,7 @@ class TheProcessEndsAtTheDeadline(unittest.TestCase):
         done, took = run(budget=1, read=8, search=False)
         self.assertLess(took, 4, f'the process waited {took:.1f} s for a check past its own 1 s deadline')
         self.assertEqual(done.returncode, 3, done.stderr)
-        self.assertIn('run_exit.until(None if scout_core.CENTRAL else deadline)', (ROOT / 'src' / 'scout.py').read_text(),
+        self.assertIn('run_exit.until(None if scout_core.CENTRAL else deadline)', (ROOT / 'src' / 'scout_run.py').read_text(),
                       "the app's scout gives the process its deadline; the central one keeps scout_overrun")
 
     def test_the_command_line_ends_through_it(self):

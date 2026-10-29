@@ -125,7 +125,7 @@ test('every trace word the classifier reads is still written by the code that wr
 });
 
 test('the stop lines the classifier reads are the extension\'s own words: a rename in fill-flow.js fails here, never silently', () => {
-  const flow = ['fill-flow.js', 'ladder/site-broken.js'].map(file => fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js', 'ladder/site-broken.js'].map(file => fs.readFileSync(new URL(`../../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   for (const [name, words] of Object.entries(STOP_LINES)) assert.ok(flow.includes(words), `${name}: "${words}" is no longer a line of extension/fill-flow.js or ladder/site-broken.js`);
 });
 

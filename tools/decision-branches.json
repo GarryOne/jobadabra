@@ -1,13 +1,19 @@
 {
  "schemaVersion": 1,
  "counts": {
-  "consider": 21,
-  "accountStep": 15
+  "consider": 1,
+  "accountStep": 15,
+  "fill-flow-read.js": 6,
+  "fill-flow-steps.js": 14
  },
  "reasons": [
   {
    "date": "2026-10-12",
    "reason": "first baseline: the page-kind/role conditions in consider() and the account step (spec 2026-10-12-one-next-move.md, phase 3)"
+  },
+  {
+   "date": "2026-10-28",
+   "reason": "qf 2/8: consider split into named steps; same conditions, moved"
   }
  ]
 }

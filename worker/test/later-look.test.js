@@ -22,7 +22,7 @@ test('controls: a weaker, still-drawing or failed later look changes nothing', (
 });
 
 test('fill-flow uses it on the look after the press, before the bot-check hand-over', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const use = flow.indexOf('laterLookIsForm(kind, lookAfterPress)'), handover = flow.indexOf('a bot check in front of the page: handed to the person');
   assert.ok(use > 0 && handover > use);
 });

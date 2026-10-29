@@ -33,7 +33,7 @@ test('the owner\'s words for each step, on the card and the list row', () => {
 test('the worker says every step to the app, and the sign-in press says "Logging in"', async () => {
   const read = name => fs.readFileSync(new URL(`../../extension/${name}`, import.meta.url), 'utf8');
   assert.match(read('page-mark.js'), /type: 'page', page, session/);
-  assert.match(read('fill-flow.js'), /sayStep\(tab\.id, 'Reading this page…'\); markPage\(tab\.id, 'reading'\);/);
+  assert.match(['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(read).join('\n'), /sayStep\(tab\.id, 'Reading this page…'\); markPage\(tab\.id, 'reading'\);/);
   assert.match(read('account-step.js'), /markPage\(tab\.id, 'signing', false, \{accountStep: step\}\);/);
   const {markOf} = await import('../../extension/tab-pages.js');
   assert.deepEqual([markOf('signing', false, 'sign_in'), markOf('signing', false, 'sign_up')], ['signing-in', 'signing-up']);
@@ -71,7 +71,7 @@ test('a broken page mid-application goes back to its posting once; never from th
 
 test('both dead ends of a broken page go through it, and the app reopens a closed tab from the posting', () => {
   const read = name => fs.readFileSync(new URL(`../../${name}`, import.meta.url), 'utf8');
-  const flow = read('extension/fill-flow.js');
+  const flow = ['extension/fill-flow.js', 'extension/fill-flow-read.js', 'extension/fill-flow-steps.js'].map(read).join('\n');
   assert.match(flow, /if \(other && await restartFromPosting\(tab, jobUrl, \{decide\}\)\) return;/);
   assert.match(flow, /report: async need => \(await restartFromPosting\(tab, jobUrl, \{decide\}\)\) \|\| deadEndHere\(tab, jobUrl, host, 'site_broken'/);
   assert.match(read('desktop/lib/session-handlers.js'), /const opened = apply\.openOne\(old\.url, \{session: old\.id, reuse: true\}\);/);

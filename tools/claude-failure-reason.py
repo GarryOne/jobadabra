@@ -5,7 +5,9 @@ is_error:true, 0 turns, $0 and no reason. The text is in the execution file on t
 annotation. Tests: tests/test_claude_failure_reason.py.
 """
 import json
+import os
 import re
+import subprocess
 import sys
 
 DEFAULT_FILE = "/home/runner/work/_temp/claude-execution-output.json"
@@ -29,12 +31,26 @@ def reason(path):
     return ""
 
 
+def tell_owner(line):
+    """An empty credit also reaches the owner on Telegram (desktop/e2e/credit-alert.mjs decides by the wording; no secrets or no node: nothing, the ::error:: above stays).
+
+    Why (29 Oct 2026, owner: "when the AI balance/credit is 0 please send me a telegram notification. This is blind to me"): three workflows failed for days on it, unseen.
+    """
+    script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "desktop", "e2e", "credit-alert.mjs")
+    try:
+        done = subprocess.run(["node", script, "anthropic", line], capture_output=True, text=True, timeout=60)
+        print(done.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        print("credit-alert: not run (node missing or too slow)")
+
+
 def main(argv):
     line = reason(argv[1] if len(argv) > 1 else DEFAULT_FILE)
     if not line:
         return 0
     msg = f"Claude did not run; the API said: {line}"
     print(f"::error::{msg}")
+    tell_owner(line)
     return 0
 
 

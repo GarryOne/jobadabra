@@ -29,7 +29,7 @@ on:
       - 'desktop/e2e/recorded/multi-select-menu-1/form.html'
       - 'extension/**'
       - 'src/**'   # test/quality.test.mjs reads the engine's folder
-      - '.github/workflows/harness.yml'
+      - '.github/workflows/**'
       - '.github/workflows/e2e-windows.yml'
       - '.github/workflows/e2e.yml'
       - '.github/workflows/journeys.yml'

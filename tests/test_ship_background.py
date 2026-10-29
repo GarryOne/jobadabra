@@ -52,6 +52,20 @@ class ShipTest(ShipFixture):
         self.assertTrue(log.read_text().splitlines()[-1].startswith('ship: DONE '), log.read_text())
         self.assertIn('Slow hook', git(self.origin, 'log', '--format=%s', 'main'))
 
+    def test_the_printed_wait_reports_this_runs_ending_not_an_older_one(self):
+        # Owner, 30 Oct 2026: "we don't have anymore the watches/monitors for when a PR merges": a Monitor ends after 30 min, so the hint names a background wait.
+        log = self.tmp / 'ship-again.log'
+        log.write_text('ship: FAILED (exit 2), log: an older run of this branch\n')
+        Path(f'{log}.seen').write_text('0\n')   # its waiter never read it
+        result = subprocess.run(['bash', str(self.tree / 'tools' / 'ship.sh'), '--background'], cwd=self.tree, capture_output=True, text=True, timeout=60,
+                                env={**os.environ, 'SHIP_LOG': str(log)})
+        command = re.search(r'run_in_background: (sh \S+ship-wait\.sh \S+),', result.stdout)
+        self.assertIsNotNone(command, result.stdout)
+        waited = subprocess.run(command.group(1).split(), capture_output=True, text=True, timeout=60, env={**os.environ, 'SHIP_WAIT_POLL': '1'})
+        self.assertEqual(waited.returncode, 0, waited.stdout)
+        self.assertRegex(waited.stdout, r'^ship: DONE ')
+        self.assertNotIn('older run', waited.stdout)
+
     def test_a_background_run_killed_during_the_checks_ends_failed_and_pushes_nothing(self):
         # 10 Oct 2026: a killed run logged "ship: DONE nothing to push" with its commit unpushed.
         # 18 Oct 2026, CI: TERM sent the moment the log said "running the push checks" (before the check process existed) ended "FAILED (exit 1)": send it once the hook is running.

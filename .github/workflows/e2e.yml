@@ -253,6 +253,8 @@ jobs:
       E2E_ARTIFACTS: ${{ github.workspace }}/e2e-artifacts/${{ matrix.key }}
       # A pull request runs only the steps its changed lines reach (owner, 26 Oct 2026: "not even an entire e2e suite, but just few tests/scenarios/cases"; lib/runner.mjs).
       E2E_STEP_NAMES: ${{ inputs.pr_steps != '' && toJSON(fromJSON(inputs.pr_steps)[matrix.suite]) || '' }}
+      E2E_FALLBACK_SUITES: ${{ matrix.fallbackSuites }}
+      E2E_FALLBACK_SUITE: ${{ matrix.suite }}
       JP_REPLAY_SHARD: ${{ matrix.shard }}   # a sharded suite's slice (lib/suite-shards.mjs: the recorded replay, 13 Oct 2026); empty: the whole suite
       # AI cost (7 Oct 2026: the e2e key billed ~$10 a day, mostly unseen). Only the scheduled runs ask the model live; every other run (gates, soaks, the canary, reruns,
       # by hand) answers a request it has seen before from the replay cache, and pays only for new ones (lib/ai-meter.mjs). Every judge runs on Haiku, the quality
@@ -409,7 +411,7 @@ jobs:
           if [ ! -f "suites/${{ matrix.suite }}.mjs" ]; then echo "The ${{ matrix.suite }} suite does not exist in this build: skipped."; exit 0; fi
           # A red first try shows as an error (GitHub draws a continue-on-error step green; owner, 26 Oct 2026); the next step decides (tests/test_first_try_visible.py).
           once() { if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a --server-args='-screen 0 1440x900x24' node suite.mjs "$1"; else node suite.mjs "$1"; fi; }
-          # A picked step renamed since the coverage map is no red: when that is the only red, the whole suite runs now (red-steps.mjs --renamed-only; 26-27 Oct 2026: 19 of 54 reds).
+          # Only a reserved suite may fall back on a renamed pick (red-steps.mjs); the same cap guards the retry below.
           once ${{ matrix.suite }} || { [ -n "${E2E_STEP_NAMES:-}" ] && node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json" \
               && echo "::notice title=Picked step renamed::A step picked for this PR has a new name: the whole ${{ matrix.key }} suite runs now" && unset E2E_STEP_NAMES && once ${{ matrix.suite }}; } \
             || { echo "::error title=First try failed::The ${{ matrix.key }} suite failed its first try; the next step runs it once more and decides"; exit 1; }

@@ -62,6 +62,17 @@ export function stepTouched(suite, changedFiles, sources) {
   return changedFiles.some(file => file.startsWith('desktop/e2e/') && [own, ...libs].includes(file.slice('desktop/e2e/'.length)));
 }
 
+/** Filter changed shared-lib steps by recorded ownership or a direct step-file import, including one hop through another suite.
+ * Transitive seed imports prove reach, not that a suite runs a helper's steps. New direct steps need no coverage history.
+ * Suite files retain their explicit ownsStep routing (some export parts run by another suite).
+ */
+export function ownedStepNames({suite, file, names, sources, map = {}, ownsStep = () => true}) {
+  const shared = file.startsWith('desktop/e2e/lib/');
+  const viaSuites = [...String(sources[`suites/${suite}.mjs`] || '').matchAll(/from\s+['"]\.\/([^/'"]+)\.mjs['"]/g)].map(match => match[1]);
+  const direct = [suite, ...viaSuites].some(name => stepTouched(name, [file], sources));
+  return names.filter(name => ownsStep(name) && (!shared || direct || Object.hasOwn(map.suites?.[suite]?.steps || {}, name)));
+}
+
 export function report({strings, hits, changedFiles, sources}) {
   const rows = Object.entries(hits).map(([suite, words]) => ({suite, words, updated: stepTouched(suite, changedFiles, sources)}));
   const stale = rows.filter(row => !row.updated);

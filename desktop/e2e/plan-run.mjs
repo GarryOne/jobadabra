@@ -110,11 +110,14 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   // run number picks): a duplicate that waited on its twin in the suite's group, and a third contender for GitHub's single waiting slot there when the Windows job of the suite
   // arrived (15 of 41 Mac jobs cancelled, 10 Oct 2026). Both stores in one job is the next step; until then one leg loses nothing the duplicate covered.
   // A PR's run: each suite on the store its picked steps were recorded on (pr-suites.mjs "(stores)"; e2e.yml falls back to SQLite).
-  const prStores = String(env.PR_SUITES || '').trim() ? prSteps(env)[STORES] || {} : {};
+  const picks = prSteps(env);
+  const prStores = String(env.PR_SUITES || '').trim() ? picks[STORES] || {} : {};
+  // Only suites handed step names can need a renamed-pick fallback; each leg carries the same roster for both attempts.
+  const fallbackSuites = suites.filter(suite => Array.isArray(picks[suite]) && picks[suite].length > 0).join(',');
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));

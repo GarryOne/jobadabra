@@ -161,3 +161,11 @@ test('a generic text field is semantically judged, while typed controls remain a
   await formats.ensure(storage, labels, {ai: {client}});
   assert.equal(calls, 1, 'the judgment survives the next fill and does not call AI again');
 });
+
+
+test('question formats name their AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await formats.ensure(storageWith({}), ['Notice period?'], {ai: {client}});
+  assert.equal(sent?.headers?.['x-jp-action'], 'question_formats');
+});

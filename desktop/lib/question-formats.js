@@ -73,7 +73,7 @@ export async function ensure(storage, labels, {ai = {}, allow = []} = {}) {
   if (!fresh.length || !client) return {formats: known, usage: null};
   const response = await client.messages.create({model: MODEL, max_tokens: 4000, system: [INSTRUCTIONS, ...allow.map(kind => EXTRA[kind]).filter(Boolean)].join('\n'),
     messages: [{role: 'user', content: `<questions>\n${JSON.stringify(fresh)}\n</questions>`}],
-    output_config: {format: {type: 'json_schema', schema: schemaFor(allow)}, effort: 'low'}});
+    output_config: {format: {type: 'json_schema', schema: schemaFor(allow)}, effort: 'low'}}, {headers: {'x-jp-action': 'question_formats'}});
   const next = {...kept(storage)}, at = new Date().toISOString().slice(0, 10);
   // A label the AI left out or answered wrongly is kept as text: judged once, never asked again (a fill's reading replaces it).
   const seen = new Set(fresh.filter(label => !known[keyOf(label)] || (known[keyOf(label)].from === 'fill' && known[keyOf(label)].kind === 'text')));

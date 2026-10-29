@@ -24,13 +24,13 @@ const clean = (raw, keys, rated) => {
 };
 
 // fields: [{key, label}] sent as "<tag>key: label</tag>"; extra: more of the user message (the saved lines, the language). -> [{field, question, hint, (importance, held)}] or null.
-export async function written(storage, {cache, sig, system, tag, fields, extra = '', client, rated = false, maxTokens = 1500}) {
+export async function written(storage, {cache, sig, system, tag, fields, extra = '', client, rated = false, maxTokens = 1500, action = ''}) {
   const kept = storage.settings()[cache];
   if (kept?.sig === sig && kept.asks?.length) return kept.asks;
   if (!client || !fields.length) return null;
   try {
     const response = await client.messages.create({model: MODEL, max_tokens: maxTokens, system, output_config: {format: {type: 'json_schema', schema: schemaOf(rated)}, effort: 'low'},
-      messages: [{role: 'user', content: `<${tag}>\n${fields.map(each => `${each.key}: ${each.label}`).join('\n')}\n</${tag}>${extra}`}]});
+      messages: [{role: 'user', content: `<${tag}>\n${fields.map(each => `${each.key}: ${each.label}`).join('\n')}\n</${tag}>${extra}`}]}, action ? {headers: {'x-jp-action': action}} : undefined);
     const list = clean(JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}').asks, fields.map(each => each.key), rated);
     if (list.length) storage.saveSettings({[cache]: {sig, asks: list}});
     return list.length ? list : null;

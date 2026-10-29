@@ -171,3 +171,11 @@ test('sensitive: the AI\'s true and false pass through; a missing flag counts as
   const got = await classify({labels: ['Gender', 'Notice period', 'Veteran status'], client});
   assert.deepEqual(['Gender', 'Notice period', 'Veteran status'].map(label => got.get(label).sensitive), [true, false, true]);
 });
+
+
+test('reuse verdicts name their AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await classify({labels: ['Notice period?'], client});
+  assert.equal(sent?.headers?.['x-jp-action'], 'reuse_verdict');
+});

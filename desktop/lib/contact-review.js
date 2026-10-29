@@ -26,7 +26,7 @@ export async function emptyKeys(storage, {fetcher} = {}) {
 }
 
 // The AI's list for this set of empty fields (kept), or null. have: labels of the lines already saved.
-const generated = (storage, keys, {client, have = [], language = ''} = {}) => written(storage, {cache: 'contactAsks', system: INSTRUCTIONS, tag: 'empty', client, rated: true,
+const generated = (storage, keys, {client, have = [], language = ''} = {}) => written(storage, {cache: 'contactAsks', action: 'contact_asks', system: INSTRUCTIONS, tag: 'empty', client, rated: true,
   sig: [...keys, '|', ...[...new Set(have.map(label => String(label).trim()).filter(Boolean))].sort()].join('~'),
   fields: keys.map(key => ({key, label: contactDetails.LABELS[key]})),
   extra: `\n<lines>\n${JSON.stringify(have).slice(0, 6000)}\n</lines>${language ? `\n<language>${language}</language>` : ''}`});

@@ -1,5 +1,62 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds.",
+  "kinds": {
+    "organize_lines": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "answer_home": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "contact_asks": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "missing_facts_wording": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "covered_facts": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "reuse_verdict": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "question_formats": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "contact_from_cv": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "cv_queue": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "places": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
+    "field_redraft": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    }
+  },
   "answers": {
     "app.score": {
       "3001": {

@@ -10,7 +10,7 @@ import {createStorage} from '../lib/storage.js';
 import * as contactDetails from '../lib/contact.js';
 import * as review from '../lib/details-review.js';
 import {BLOCKED, MUST} from '../renderer/question-filter.js';
-import {weightOf} from '../lib/contact-review.js';
+import {asks, weightOf} from '../lib/contact-review.js';
 
 const plainCrypto = {encrypt: v => v, decrypt: v => v};
 const fresh = () => {
@@ -63,4 +63,12 @@ test('no AI at all: the first four empty fields by their label, outranking a blo
 
 test('the weight of a rating: 3 above any blocked fill, 2 right below them, 0 none', () => {
   assert.ok(weightOf(3) > BLOCKED && weightOf(2) < BLOCKED && weightOf(2) > weightOf(1) && weightOf(0) === 0);
+});
+
+
+test('contact wording names its AI request', async () => {
+  let sent;
+  const client = {messages: {create: async (_request, options) => { sent = options; return {content: []}; }}};
+  await asks(fresh(), ['first_name'], {client});
+  assert.equal(sent?.headers?.['x-jp-action'], 'contact_asks');
 });

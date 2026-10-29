@@ -1,4 +1,4 @@
-"""Quality replays reviewed question answers on both tries; qualityai keeps its live path."""
+"""Quality and stores replay declared answers on both tries; qualityai keeps its live path."""
 import re
 import unittest
 from pathlib import Path
@@ -28,6 +28,8 @@ class QualityReplayGateTests(unittest.TestCase):
                     for attempt in (1, 2):
                         with self.subTest(file=name, step=marker, event=event, attempt=attempt):
                             self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite='quality'), 'backbone')
+                            if name == 'e2e.yml':
+                                self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite='stores'), 'backbone')
                             for other in ('qualityai', 'jobs', 'apply'):
                                 self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite=other), 'off')
 

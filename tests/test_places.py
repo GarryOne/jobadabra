@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import paths, places  # noqa: E402
@@ -35,6 +36,13 @@ ANSWER = {'places': [{'word': 'Germany', 'kind': 'country', 'names': ['Berlin', 
 
 
 class WhatIsAskedTests(unittest.TestCase):
+    def test_place_words_use_their_own_ai_action(self):
+        from src.ai import engine
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(places, 'from_pack', return_value={}), \
+                mock.patch.object(engine, 'ready', return_value=True), mock.patch.object(engine, 'client', return_value=FakeClient(ANSWER)) as client:
+            places.refresh(search(country=['germany']), file=Path(tmp) / 'places.json')
+        client.assert_called_once_with(action='places')
+
     def test_only_place_words_that_may_need_it_are_asked(self):
         found = places.words_of(search(top=['berlin', '\\bz[uü]rich\\b', '/regex-like/', 'ab'], country=['germany', 'Romandie', 'switzerland'], abroad=['asia', 'germany']))
         self.assertEqual(found, ['berlin', 'zürich', 'germany', 'asia'])   # not a regex entry, a Swiss region word, a two-letter word, or twice

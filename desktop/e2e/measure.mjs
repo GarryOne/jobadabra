@@ -1,3 +1,4 @@
+// Job: report health
 // npm run measure -- [--days N] [--every] [--root <captures>] [--old <extension dir>] [--compare] [--out <dir>]: the pool's numbers for THIS build, offline, on the
 // captures library (lib/capture-library.mjs): each row's newest capture of the last N days (default 1) replayed by lib/row-replay.mjs (unchanged), read as a live row is
 // (lib/measure.mjs: parseLive, the ending, the shadow / acted / person tables). Nothing reaches a site, no site limit is used, $0: the kept answers only (memo); an ask the capture
@@ -48,7 +49,7 @@ if (has('compare')) {   // the positive control's other side: the captures' own 
   const builds = [...new Set(rows.map(row => `${String(row.build.commit || '?').slice(0, 9)} (ext ${row.build.extension || '?'})`))];
   for (const line of tableLines(tablesOf(rows, 'live'), `live, captured on ${builds.join(', ')}`)) console.log(line);
 }
-// The same files a live pool run leaves (<day>.json + <day>-<row>.app.log), so pool-shadow.mjs / pool-acted.mjs read them too, labelled by the folder's name.
+// Emit the live pool report shape (<day>.json + <day>-<row>.app.log); its logs can be analyzed with lib/pool-shadow.mjs and lib/pool-acted.mjs.
 const out = path.resolve(flag('out') || fs.mkdtempSync(path.join(os.tmpdir(), 'jp-measure-')));
 const day = new Date().toISOString().slice(0, 10), report = {label, results: {}};
 fs.mkdirSync(out, {recursive: true});

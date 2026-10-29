@@ -1,6 +1,7 @@
+// Job: report health
 // The acted presses of CI pool runs (spec docs/superpowers/specs/2026-10-12-one-next-move.md, phase 3 step 2 "press": pooled across the doors, >= 10 presses acted, 0 worse by effect, the unblock rate and the cost
 // shown; per-door counts are the kill switch). Each "dead end fallback (acted)" line (extension/ladder/fallback.js) is judged by its EFFECT: worked / failed, and WORSE when the press led to an account page (the next
-// page kind the run judged starts with "account": a sign-in or a password step) or the row's final reading is not the application any more (`left`). Pure: the caller reads the logs (pool-acted.mjs).
+// page kind the run judged starts with "account": a sign-in or a password step) or the row's final reading is not the application any more (`left`). Pure: callers provide the logs; lib/measure.mjs reads captures.
 // Guard: e2e/test/pool-acted.test.mjs.
 const ACTED = /^(\S+Z) \[extension\] fill: dead end fallback \(acted\) (\{.*\})\s*$/;
 const KIND = /^(\S+Z) \[extension\] fill: page kind: ([a-z_-]+) /;

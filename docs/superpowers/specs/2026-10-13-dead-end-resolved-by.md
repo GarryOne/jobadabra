@@ -25,7 +25,7 @@ On landing, box 7 becomes three boxes (pool: ticked; replay: parked with its rea
 The digest's candidate number is **not** in the cross-install record: it is a position in one page's list and means nothing across installs (cc). It may stay on the local line for joining one page's own stop to the move (`-1`: the control was not listed, the `not_listed` label of #583).
 
 ## Where it lives
-- **A stop is written at the stop; the resolution comes later.** One logical record, two physical lines joined by `door`: the stop line stays as it is; a later line `dead end resolved {door, by, verb, role, form}`. Readers (`pool-shadow.mjs`, the move labeller) merge them by `door`, as `pool-shadow.mjs` already joins the shadow question.
+- **A stop is written at the stop; the resolution comes later.** One logical record, two physical lines joined by `door`: the stop line stays as it is; a later line `dead end resolved {door, by, verb, role, form}`. Readers (`desktop/e2e/lib/pool-shadow.mjs`, the move labeller) merge them by `door`, as `desktop/e2e/lib/pool-shadow.mjs` already joins the shadow question.
 - **Log only, like the door record.** No store, no adapter, no schema. (If fill-ladder's record is stored later, `resolved` rides along, through every adapter then.)
 - `RESOLVED_KEYS`, a fixed-values check and a guard test like `worker/test/dead-end.test.js` (a caller's keys must be listed; no page word can reach the line).
 
@@ -41,7 +41,7 @@ The digest's candidate number is **not** in the cross-install record: it is a po
   - The site aggregates with k>=3 only when it is built (below).
 
 ## Build order (each its own PR, no spend, no live run)
-1. **Record:** `resolved` keys, the `dead end resolved` line, the guard test, the reader merge in `pool-shadow.mjs`; after fill-ladder's door PR lands (or its key list is sent to it). Tested on a synthetic resolution; yields no real fixture, as above.
+1. **Record:** `resolved` keys, the `dead end resolved` line, the guard test, the reader merge in `desktop/e2e/lib/pool-shadow.mjs`; after fill-ladder's door PR lands (or its key list is sent to it). Tested on a synthetic resolution; yields no real fixture, as above.
 2. **Person observer (owner OK'd 13 Oct 2026, with the conditions above):** the flow-core touch, recording role and position only; a journey scenario.
 3. **Counts:** the counts map in `learning.js` / `recipes.js` for what step 1-2 log. **The site aggregation is out of this spec** until person resolutions exist in numbers (a separate spec then).
 

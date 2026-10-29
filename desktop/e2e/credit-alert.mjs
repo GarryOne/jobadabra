@@ -2,7 +2,9 @@
 //   node credit-alert.mjs <anthropic|openai|codex> "<the failure's own words>"      (CI_ALERTS_TELEGRAM_BOT_TOKEN + _CHAT_ID, GITHUB_* from the runner; a text that is no credit message sends nothing)
 // Why (29 Oct 2026, owner: "when the AI balance/credit is 0 please send me a telegram notification. This is blind to me"): Anthropic's credit ran out on 22 Oct and only the product brain's own
 // "failed" message reached him; the AI code review and the Sentry fixer failed for days with "Credit balance is too low" and told nobody. Called by tools/claude-failure-reason.py (every claude-code-action
-// workflow) and by the Codex steps when the broker is capped. Guard: test/credit-alert.test.mjs.
+// workflow). Guard: test/credit-alert.test.mjs.
+// TODO(AI): Wire Codex broker callers and their provider advice in the brain/code-review/Sentry follow-up PRs (2026-10-29).
+// Alert policy: send once per failed workflow run, including during an ongoing outage, so each affected workflow has its own run link. No cross-run suppression.
 // Job: report health
 import path from 'node:path';
 import {alertHtml} from './lib/telegram-html.mjs';

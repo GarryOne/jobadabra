@@ -3,7 +3,7 @@ import {el, pill} from '../components.js';
 import {resumeOffered} from '../claude-help.js';
 import {renderSteps} from './session-steps.js';
 import {replyOf, splitLabel, unbold} from '../session-message.js';
-import {checkingTabs, chromeSilent, chromeWaiting, tabClosed, tabNotFound, stepShown} from '../session-state.js';
+import {checkingTabs, chromeSilent, chromeWaiting, pageLine, silentPill, tabClosed, tabNotFound, stepShown} from '../session-state.js';
 import {icon} from '../icons.js';
 import {sameQuestion} from '../labels.js';
 import {answerOptions} from '../answer-options.js'; import {clearAnswers, queue, sendAnswer} from './need-send.js'; import {choiceButtons, choiceChips} from './need-choice.js'; import {proposalFor, proposedRow} from './need-proposal.js'; import {markKnockout} from './need-knockout.js';
@@ -87,6 +87,15 @@ export const waitingChrome = item => chromeWaiting(item, shared.formsOpen, perfo
 // The session's tab is on a posting (or its Apply was just pressed): the extension marked it so, and the card says only that (owner, 15 Oct 2026: "Apply button detected. Redirecting…").
 export const redirecting = item => stepShown(item, reviewStates.get(item?.id)) && !formGone(item) && !tabLost(item);   // a stop that needs the person keeps its own card   // a closed or lost tab redirects nothing (owner, 15 Oct 2026: "No tab open")
 export const formGone = item => tabClosed(item, shared.formsOpen, !!reviewStates.get(item.id)?.total);
+/** -> [text, tone] for the tab part of a session's status pill (checking, waiting, redirecting, unseen, lost); null when the tab says nothing and the caller goes on to the session's own state. One ladder for the Sessions list and the log header. */
+export function tabStatus(item) {
+  if (checkingTab(item)) return ['Checking…', 'neutral'];
+  if (redirecting(item)) return [pageLine(reviewStates.get(item.id)?.page, true), 'neutral'];
+  if (waitingChrome(item)) return ['Waiting for Chrome…', 'neutral'];
+  if (silentChrome(item)) return [silentPill(shared.formsOpen), 'warn'];
+  if (tabLost(item)) return ['Tab not found', 'warn'];
+  return null;
+}
 // What's left, said the way you act on it: "2 actions remaining". The split it counts (in the form, to check) is the
 // pill's tooltip — the rows themselves say which is which.
 export function updateNeedsCount() {

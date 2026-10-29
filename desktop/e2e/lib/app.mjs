@@ -4,6 +4,7 @@
 // Nothing here touches the real user's data: JOB_PILOTTO_USER_DATA points at a fresh temp folder and no .env is read.
 import {journey} from './journey.mjs';
 import {ownerGuardEnv} from './owner-guard-env.mjs';
+import {ownPortEnv} from './own-port.mjs';
 import {_electron as electron} from 'playwright-core';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,13 +40,14 @@ export async function launch({env = {}, executablePath, args, profile: again, la
   if (!again) fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({telemetry: false, shareEmployers: false, apply: {mode: 'check', chosenAt: '2026-10-26T00:00:00.000Z'}, ...settings}));
   pythonCoverage();   // E2E_COVERAGE=1: the engine's Python records its lines per step too (lib/coverage.mjs)
   // Linux (CI runners, 6 Oct 2026): no keyring there, so Chromium's basic password store keeps the app's keys (test keys only, a throwaway profile).
+  const port = await ownPortEnv(env);   // Why (29 Oct 2026, owner): a test app without its own port took 47111 and, left running, kept the owner's app from ever hearing Chrome
   const app = await electron.launch({
     executablePath: executablePath || electronPath(),
     args: args || [DESKTOP, ...(process.platform === 'linux' ? ['--no-sandbox', '--password-store=basic'] : []), ...(lang ? [`--lang=${lang}`] : [])],
     // The app counts days in the computer's own zone; the suites check it against Europe/Zurich (lib/focus-data.mjs). On a CI runner in UTC the two disagreed
     // about "today" from 0:00 to 2:00 Zurich time, and Focus's 14-day count failed only then (4 Oct 2026). A suite that tests another zone sets TZ, and the engine follows it
     // (it reads JOB_PILOTTO_TZ first: the calendar suite's Tokyo and Honolulu must reach both the window and the engine).
-    env: withoutWrappers({...process.env, TZ: zoneOf(env), JOB_PILOTTO_TZ: env.JOB_PILOTTO_TZ || zoneOf(env), JOB_PILOTTO_USER_DATA: profile, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...ownerGuardEnv(), JOB_PILOTTO_E2E_HIDDEN: hidden(), ...env}),   // the app watches this runner and ends when it is gone, even if it was killed (lib/e2e-host.js watchRunner)
+    env: withoutWrappers({...process.env, TZ: zoneOf(env), JOB_PILOTTO_TZ: env.JOB_PILOTTO_TZ || zoneOf(env), JOB_PILOTTO_USER_DATA: profile, JOB_PILOTTO_NO_DOTENV: '1', JOB_PILOTTO_E2E: '1', JOB_PILOTTO_E2E_RUNNER_PID: String(process.pid), ...ownerGuardEnv(), JOB_PILOTTO_E2E_HIDDEN: hidden(), ...port, ...env}),   // the app watches this runner and ends when it is gone, even if it was killed (lib/e2e-host.js watchRunner)
     timeout: 90000,
   });
   const page = await app.firstWindow();

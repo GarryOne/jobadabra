@@ -8,7 +8,6 @@ import {guardLiveVisit} from './site-ledger.mjs';
 import {chromium} from 'playwright-core';
 import fs from 'node:fs';
 import {leanChrome} from './chrome-lean.mjs';
-import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import {E2E} from './app.mjs';
@@ -16,22 +15,10 @@ import {hostRules} from './forms.mjs';
 import {stamp, stampedAt} from '../../scripts/extension-stamp.mjs';
 import {LAUNCH_TIMEOUT_MS, launchGuard} from './launch-guard.mjs';
 import {markedSession} from '../../lib/session-tab.js';
+import {DEFAULT_APP_PORT, freePort} from './own-port.mjs';
 
 export const EXTENSION_DIR = path.resolve(E2E, '..', '..', 'extension');
-export const DEFAULT_APP_PORT = 47111;   // the extension's built-in address for the app (extension/flow.js APP)
-
-// A port nothing listens on. The test app and its extension use it, so the suite runs next to the user's own Jobadabra, which keeps 47111: the extension
-// under test can never pair with a live app.
-export async function freePort() {
-  for (;;) {
-    const port = await new Promise((resolve, reject) => {
-      const server = net.createServer();
-      server.once('error', reject);
-      server.listen(0, '127.0.0.1', () => { const {port: got} = server.address(); server.close(() => resolve(got)); });
-    });
-    if (port !== DEFAULT_APP_PORT) return port;
-  }
-}
+export {DEFAULT_APP_PORT, freePort};   // moved so lib/app.mjs can use them without importing this file (it imports app.mjs)
 
 // A copy of the extension folder whose built-in app address is `port` (extension/ itself is never edited). Throws when the address is not found in the
 // source: a rewrite that silently did nothing would leave the extension talking to the live app on 47111.

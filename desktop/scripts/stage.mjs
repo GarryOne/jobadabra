@@ -3,6 +3,7 @@
 //                                   npm start and npm test, so dev and packaged use the same files)
 //   node scripts/stage.mjs --files-only   only the plain copies, nothing removed first, no bundle: for code that imports shared/ where the app's
 //                                   dependencies are not installed (the e2e tests' own tests on CI's plan job, 9 Oct 2026: esbuild missing failed them)
+//   node scripts/stage.mjs --files-only --into <dir>   the same copies into <dir> instead of desktop/shared (test/stage-atomic.test.js stages into a temp folder)
 //   node scripts/stage.mjs --app    also stage build/pilot: what a packaged app runs (the Python
 //                                   pipeline, config, tools, docs, the Chrome extension, requirements)
 import {execFileSync} from 'node:child_process';
@@ -19,7 +20,10 @@ const copy = (from, to) => fs.cpSync(path.join(repo, from), to, {recursive: true
 const filesOnly = process.argv.includes('--files-only');
 // A full staging builds into its own temporary folder and swaps it in at the end (11 Oct 2026: the Stop hook's npm test re-staged while ship.sh's push
 // gate ran in the same worktree; the gate's tests saw a half-deleted shared/ and failed in 0 s). --files-only copies over, as before.
-const shared = path.join(desktop, 'shared');
+// Why (29 Oct 2026): test/stage-atomic.test.js re-ran this over the live desktop/shared while other test files imported it (files missing or half-written: random
+// "test failed" on stalled-press-wired.test.js); a test stages with --into a temp folder, so no reader of shared/ ever sees a rewrite.
+const into = process.argv.indexOf('--into');
+const shared = into > 0 ? path.resolve(process.argv[into + 1]) : path.join(desktop, 'shared');
 const out = filesOnly ? shared : path.join(desktop, `.shared-staging-${process.pid}`);
 if (!filesOnly) fs.rmSync(out, {recursive: true, force: true});
 copy('worker/src', path.join(out, 'worker'));

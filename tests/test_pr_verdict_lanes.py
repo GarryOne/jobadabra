@@ -33,6 +33,33 @@ PR = {'databaseId': 1, 'workflowName': 'CI · Pull request', 'status': 'complete
 
 
 class LaneGreys(unittest.TestCase):
+    def test_number_suite_outcomes_never_decide_or_hold_the_required_state(self):
+        for conclusion in ('success', 'failure', 'cancelled', 'timed_out', None):
+            with self.subTest(conclusion=conclusion):
+                measurement = job(71, 'qualityai', conclusion, 'in_progress' if conclusion is None else 'completed')
+                jobs = {7: [job(70, 'plan'), job(72, 'settings'), measurement]}
+                r = run(7)
+                r['status'] = 'in_progress' if conclusion is None else 'completed'
+                state, why, *_ = pv.verdict([PR, r], jobs=jobs, reports={'qualityai'})
+                self.assertEqual(state, 'success', why)
+                self.assertNotIn('qualityai', why)
+                jobs[7][1]['conclusion'] = 'failure'
+                self.assertEqual(pv.verdict([PR, r], jobs=jobs, reports={'qualityai'})[:2], ('failure', 'red: e2e settings'))
+
+    def test_a_number_job_writing_its_own_failure_does_not_turn_the_pr_red(self):
+        jobs = {7: [job(71, 'qualityai', None, 'in_progress'), job(72, 'settings')]}
+        self.assertEqual(pv.verdict([PR, run(7)], jobs=jobs, me=71, my_status='failure', reports={'qualityai'})[0], 'success')
+
+    def test_number_job_time_is_excluded_from_the_ci_budget(self):
+        from unittest import mock
+        jobs = [{'name': 'qualityai', 'started_at': '2026-10-28T11:00:00Z', 'completed_at': '2026-10-28T11:20:00Z'},
+                {'name': 'settings', 'started_at': '2026-10-28T11:00:00Z', 'completed_at': '2026-10-28T11:01:00Z'}]
+        with mock.patch.object(pv, 'gh', return_value=json.dumps(jobs)):
+            spans = pv.job_spans('o/r', [run(7)], reports={'qualityai'})
+        self.assertEqual(len(spans), 1)
+        listed = {7: [job(71, 'qualityai', 'failure'), job(72, 'settings')]}
+        self.assertEqual(pv.verdict([run(7)], files=['tools/pr-verdict.py'], jobs=listed, spans=spans, reports={'qualityai'})[0], 'success')
+
     def test_a_red_tolerant_suite_is_grey_named_with_its_lane_and_never_red(self):
         jobs = {7: [job(70, 'plan'), job(71, 'quality-1of2', 'failure'), job(72, 'quality-2of2'), job(73, 'HTML report')]}
         greys = pv.lane_greys('o/r', [PR, run(7)], jobs, read_lanes=lambda: REGISTRY)

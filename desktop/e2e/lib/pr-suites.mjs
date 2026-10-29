@@ -100,15 +100,18 @@ export function report({strings, hits, changedFiles, sources}) {
 // (owner, 27 Oct 2026: "Drop it"; slow cases stay on main, lib/replay-slow.mjs; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
 // After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
 export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
-/** Pick reached backbone suites; only PRs apply lanes and the cap. Preserve the old order at five or fewer.
+/** Pick reached backbone suites plus explicitly report-only numbers; only backbone uses the PR cap.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
  * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base by the CLI.
- * left keeps every reached suite not run; deferred contains only cap overflow, in rank order (empty without a cut).
+ * left keeps unrun backbone suites; report-only numbers use no place or deferral. deferred is ranked cap overflow.
  */
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
+  const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number').map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite =>
-    (cadence[suite] || 'always') !== 'manual' && !(pullRequest && (ON_PR_ELSEWHERE[suite] || ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane))));
+    (cadence[suite] || 'always') !== 'manual' && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane)))));
   let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+  const numbers = run.filter(suite => reports.has(suite));
+  run = run.filter(suite => !reports.has(suite));
   let deferred = [];
   if (pullRequest && run.length > 5) {
     const reach = suite => direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
@@ -117,7 +120,7 @@ export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [
     run = ranked.slice(0, 5);
     deferred = ranked.slice(5);
   }
-  return {suites: run, left: wanted.filter(suite => !run.includes(suite)), deferred};
+  return {suites: [...run, ...numbers], left: wanted.filter(suite => !reports.has(suite) && !run.includes(suite)), deferred};
 }
 
 /** Explain every deferred suite with the same reach evidence as the selected suites in the CLI summary. */

@@ -36,14 +36,15 @@ test('equal reach uses suite name independently of input order', () => {
   }
 });
 
-test('five suite names keep all places even when apply and applyflows expand beyond five jobs', async () => {
+test('five suite names defer nothing despite more than five jobs: fails if the planner counts jobs', async () => {
+  // Why (29 Oct 2026, a8; owner on #2421): a suite split into jobs takes one of the five places, so the five names stay whole; counting slice jobs would defer some of them.
   const {shards: apply} = await import('../suites/apply.mjs');
   const {shards: applyflows} = await import('../suites/applyflows.mjs');
   const shards = {apply, applyflows};
   const pointed = ['settings', 'applyflows', 'jobs', 'apply', 'calendar'];
   const plan = pick.planPrSuites({...args, pointed});
   assert.deepEqual(plan, {suites: pointed, left: [], deferred: []});
-  const jobs = plan.suites.flatMap(suite => shardLegs(suite, shards[suite]));
+  const jobs = pointed.flatMap(suite => shardLegs(suite, shards[suite]));
   assert.equal(jobs.length, apply + applyflows + 3);
   assert.ok(jobs.length > 5, 'the cap counts suite names, not their slice jobs');
 
@@ -54,7 +55,7 @@ test('five suite names keep all places even when apply and applyflows expand bey
   });
 });
 
-test('recorded takes no PR place and remains one suite with all slice jobs after merge', async () => {
+test('recorded takes no PR place (page-cases.yml replays it) and is one suite name with its slice jobs after merge', async () => {
   const {shards} = await import('../suites/recorded.mjs');
   const ordinary = ['strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'];
   const pointed = ['recorded', ...ordinary];
@@ -63,6 +64,7 @@ test('recorded takes no PR place and remains one suite with all slice jobs after
     suites: ['calendar', 'focus', 'interviews', 'jobs', 'settings'],
     left: ['strategy'], deferred: ['strategy'],
   });
+  // Why (29 Oct 2026, a8): page-cases.yml replays recorded on a PR, so ON_PR_ELSEWHERE removes it before the cap counts anything.
   assert.ok(!plan.suites.includes('recorded'));
   assert.ok(!plan.deferred.includes('recorded'));
 
@@ -72,7 +74,7 @@ test('recorded takes no PR place and remains one suite with all slice jobs after
   const jobs = main.suites.flatMap(suite => shardLegs(suite, suite === 'recorded' ? shards : undefined).map(leg => ({suite, ...leg})));
   assert.equal(jobs.filter(job => job.suite === 'recorded').length, shards);
   assert.equal(jobs.length, ordinary.length + shards);
-  assert.ok(shards > 1, 'one recorded suite expands into several jobs');
+  assert.ok(shards > 1, 'after merge, one recorded suite name expands into several slice jobs');
 });
 
 test('optional catch counts break a reach tie, never outrank a stronger reach', () => {

@@ -139,3 +139,20 @@ test('at start every background job left mid-press is handed to the person with 
   assert.deepEqual(launched, [], 'no browser starts');
   assert.deepEqual(touched, [], 'nothing is reserved or readied');
 });
+
+test('a press with no reply after 3 minutes is handed to the person by the app itself, with the same words, and nothing launches or presses', async () => {
+  const reports = [], notices = [], launched = [], asked = [];
+  const controller = createBackgroundApplyController({}, {
+    store: {interrupted: async (url, session, options) => { asked.push([session, options]); return session === 's1' ? {state: 'needs_user_handoff', reason: 'submission_outcome_unknown', mode: 'auto', manualOverride: true} : null; }, ready: spy('store.ready'), reserve: spy('store.reserve')},
+    browser: {start: (...args) => launched.push(args)},
+    terminals: {list: () => [{id: 's1', url: 'https://jobs.example.test/1', background: {}, outcome: '', startedAt: new Date().toISOString()}, {id: 's2', url: 'https://jobs.example.test/2', background: {}, outcome: ''},
+      {id: 'v', url: 'https://jobs.example.test/4', outcome: ''}], record: () => ({}), report: (id, event) => reports.push([id, event])},
+    notify: (...args) => notices.push(args)});
+  touched.length = 0;
+  assert.deepEqual(await controller.sweepStalled(), ['s1'], 'a press of this very run counts too; a visible session is not asked');
+  assert.deepEqual(asked.map(([, options]) => options.afterMs), [180000, 180000], 'only a press older than 3 minutes');
+  assert.match(notices[0][1], /Check whether it went through/);
+  assert.doesNotMatch(notices[0][1], /closed/, 'the words fit a lost reply as well as a quit');
+  assert.match(reports[0][1].message, /Check whether it went through/);
+  assert.deepEqual([launched, touched], [[], []]);
+});

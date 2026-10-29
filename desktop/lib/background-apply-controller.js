@@ -12,12 +12,21 @@ import {log as appLog} from './log.js';
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
 const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
-  submission_outcome_unknown: 'Jobadabra closed while this application was being sent. Check whether it went through, and do not send it again until you know.'};
+  submission_outcome_unknown: 'No confirmation of this application came back. Check whether it went through, and do not send it again until you know.'};
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 export {e2eFullAutomation};
+/**
+ * Runs `sweep` every `every` ms (default 30 s) and logs a failure instead of throwing; returns the function that stops it. `set` and `clear` are injectable so a test never waits for a clock.
+ * Why (2026-10-29, owner): the stall sweep is the app's own timer; with the extension closed nothing else asks.
+ */
+export function watchStalled(sweep, {every = 30000, set = setInterval, clear = clearInterval, onError = () => {}} = {}) {
+  const timer = set(() => { Promise.resolve().then(sweep).catch(onError); }, every);
+  return () => clear(timer);
+}
 /** Return this app profile's single serialized controller; settings and store are rechecked for each proposed submit. */
 const APP_STARTED = Date.now() - process.uptime() * 1000;   // when this run of the app began
+const STALL_MS = 3 * 60000;   // a press with no receipt this long after it was sent is handed to the person (sweepStalled)
 export function backgroundApplyFor(storage) {
   if (!instances.has(storage)) instances.set(storage, createBackgroundApplyController(storage));
   return instances.get(storage);
@@ -104,23 +113,36 @@ export function createBackgroundApplyController(storage, {store = null, browser 
     }
     return {ok: true, jobs, checks, handoffs};
   }
-  /**
-   * At start: every background job an earlier run left mid-press (`submitting`, no receipt) is handed to the person as "check whether it went through", never retried and never pressed again.
-   * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said
-   * "Submission attempted" for ever. Returns the session ids it handed over.
-   */
-  async function sweepInterrupted(startedBefore = APP_STARTED) {
+  // Hands to the person every background job of `fits` that is mid-press (`submitting`, no receipt, and older than `afterMs`); returns their session ids.
+  async function handOverMidPress(fits, options) {
     const handed = [];
-    // Why (2026-10-29, Gitar on the PR): the sweep waits for the start-up moves, so a press this run started meanwhile is still in flight; only sessions older than this run were cut off by a quit.
-    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && Date.parse(entry.startedAt) < startedBefore)) {
-      const state = await store.interrupted(item.url, item.id).catch(() => null);
+    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && fits(entry))) {
+      const state = await store.interrupted(item.url, item.id, options).catch(() => null);
       if (!state) continue;
       cache(item, state);
       notify('Application needs you', NOTICES.submission_outcome_unknown, {view: 'sessions', session: item.id}, 'warn');
-      log('apply', 'background application cut off mid-press handed to the person', {session: item.id, mode: state.mode});
+      log('apply', 'background application mid-press handed to the person', {session: item.id, mode: state.mode, afterMs: options.afterMs || 0});
       handed.push(item.id);
     }
     return handed;
+  }
+  /**
+   * At start: every background job an earlier run left mid-press (`submitting`, no receipt) is handed to the person as "check whether it went through", never retried and never pressed again.
+   * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said
+   * "Submission attempted" for ever. Why (2026-10-29, Gitar on the PR): the sweep waits for the start-up moves, so a press this run started meanwhile is still in flight; only sessions older than this run were cut off by a quit.
+   * Returns the session ids it handed over.
+   */
+  async function sweepInterrupted(startedBefore = APP_STARTED) {
+    return handOverMidPress(entry => Date.parse(entry.startedAt) < startedBefore, {});
+  }
+  /**
+   * While the app runs: a press with no receipt `afterMs` after it was sent is handed to the person too, because a reply that never arrives (the extension closed, the tab gone) has no other reader.
+   * Why (2026-10-29, owner: "Hand-off PR first, then the switch"): the extension's watcher hands off after its own two reads, but with the extension closed nothing runs; this is the app's own timer. 3 minutes
+   * is far past the watcher's own 20 seconds of reading (submit-watch.js SUBMIT_WAIT_MS), so a reply it is still reading is never taken from it, and short enough that a lost reply is on your list the same session.
+   * Returns the session ids it handed over.
+   */
+  async function sweepStalled(afterMs = STALL_MS) {
+    return handOverMidPress(() => true, {afterMs});
   }
   async function judgment(body, answer) {
     const context = body?.background, item = itemFor(context?.session);
@@ -214,5 +236,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted};
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted, sweepStalled};
 }

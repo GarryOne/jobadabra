@@ -13,7 +13,7 @@ import * as runHistory from './run-history.js';
 import * as startupMove from './startup-move.js';
 import * as telegramCloud from './telegram-cloud.js';
 import * as viewCache from './view-cache.js';
-import {backgroundApplyFor} from './background-apply-controller.js';
+import {backgroundApplyFor, watchStalled} from './background-apply-controller.js';
 import {e2eMs} from './e2e-timing.js';
 import {log as appLog} from './log.js';
 import {resumeDelay, scheduleResume} from './resume-queue.js';
@@ -35,6 +35,8 @@ export function registerBackgroundHandlers(ctx) {
     moves.then(moved => { if (moved.length) toWindow('moved', moved); }, () => {});   // a failed move is already in the log line above
     // Crash rule (2026-10-29, owner): a press the last run's quit cut off is handed to the person once the store is settled; never retried (guard test/crash-rule-wired.test.js).
     moves.catch(() => {}).then(() => backgroundApplyFor(storage).sweepInterrupted()).catch(error => appLog('apply', `interrupted presses not checked: ${error.message}`));
+    // Stalled press (2026-10-29, owner): a press with no reply 3 minutes on is handed to the person by the app's own timer, extension open or not (guard test/stalled-press-wired.test.js).
+    watchStalled(() => backgroundApplyFor(storage).sweepStalled(), {onError: error => appLog('apply', `stalled presses not checked: ${error.message}`)});
     syncCv();
     // Recent activity from Notion ⏱️ Search runs (every run's row, wherever it ran), every 15 s.
     let notionTimer;

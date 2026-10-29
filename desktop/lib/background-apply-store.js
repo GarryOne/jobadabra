@@ -121,12 +121,14 @@ export function createBackgroundApplyStore(storage, {call = engineCall, now = Da
   /**
    * A press the app's quit cut off: the job is still `submitting` with no receipt, and the hidden browser that pressed it died with the app, so nothing will ever read the site's reply.
    * Hands it to the person as `submission_outcome_unknown` ("check whether it went through") whichever browser owned it; the attempt stays used, so it is never reserved again.
-   * Returns the saved state, or null when this session's job is not mid-press (another session's record is never touched).
+   * `afterMs` (default 0): only a press older than that is handed over, for a reply that never came with the app still open (the extension closed); a younger press may still be answered.
+   * Returns the saved state, or null when this session's job is not mid-press or not old enough (another session's record is never touched).
    */
-  async function interrupted(url, session) {
+  async function interrupted(url, session, {afterMs = 0} = {}) {
     return serial(async () => {
       const app = await appOf(url), state = await load(app);
       if (!state || state.session !== session || state.state !== 'submitting' || state.receiptAt) return null;
+      if (afterMs && now() - (state.submittedAt || 0) < afterMs) return null;
       return manual(app, state, 'submission_outcome_unknown');
     });
   }

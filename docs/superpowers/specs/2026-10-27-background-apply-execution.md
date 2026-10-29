@@ -101,7 +101,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] The automatic Submit press in the hidden browser, one attempt, never retried. Behind a test-only switch until the switch PR. (proof: desktop/e2e/lib/background-auto-proof.mjs)
 - [x] A press cut off by a quit is handed to the person as "check whether it went through" at the next start, never retried or pressed again. (proof: desktop/test/background-apply-store.test.js)
 - [x] Applied only from a receipt the confirmation judge reads. (proof: desktop/test/confirmation.test.js)
-- [ ] A press whose page is no receipt after the watcher's two reads goes to the person (`extension/submit-watch.js`, `submission_outcome_unknown`).
+- [x] A press with no receipt 3 minutes after it was sent goes to the person by the app's own timer, extension open or not (`sweepStalled`, `submission_outcome_unknown`). (proof: desktop/test/background-apply-controller.test.js)
 - [x] End-to-end proof against a fake local submit endpoint (never a real site). One POST on the happy path, none after Stop; the failed-check, restart and page-change rows are still to add. (proof: desktop/e2e/lib/background-auto-proof.mjs)
 - [ ] README and privacy wording change from "never submits".
 - [x] Each submitted job's fill row is stamped Submitted with the receipt time, the same row in every Apply mode (its answers stay labels and sources, never values). (proof: desktop/test/run-receipt.test.js)

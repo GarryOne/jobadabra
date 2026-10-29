@@ -38,11 +38,14 @@ export function loadTable(file = TABLE) {
   return table;
 }
 
-/** Validate optional kind answers: exactly one provider reply or a named proxy failure. */
+/** Validate kind declarations: a caption identity, or exactly one reply or named failure. */
 function checkKinds(kinds) {
   if (kinds === undefined) return;
   if (!object(kinds)) throw new Error('AI answers: kinds must be an object');
   for (const [kind, entry] of Object.entries(kinds)) {
+    // Why (29 Oct 2026, ap): a caption-keyed kind has no blanket answer; unknown rounds must fail by their own name.
+    if (entry?.identity === 'caption' && Object.keys(entry).length === 1) continue;
+    if (entry?.identity !== undefined) throw new Error(`AI answers: ${kind} needs only a supported caption identity`);
     const answer = entry?.answer;
     // Why (29 Oct 2026, ap): declared refusals use only failureFor's named API failures, never a blanket fallback for unknown kinds.
     const valid = object(answer) && Object.keys(answer).length === 1 &&
@@ -84,6 +87,17 @@ function scoreQuestion(body, persona) {
   return {operation: 'app.score', id: persona ? `${persona}/${matches[0].id}` : String(matches[0].id)};
 }
 
+/** Identify the explicit caption before transcript text; transcript lines cannot supply or override it. */
+function captionQuestion(body, action) {
+  const messages = body.messages || (Array.isArray(body.input) ? body.input : [{role: 'user', content: body.input}]);
+  const captions = messages.filter(item => item.role === 'user').flatMap(item => {
+    const text = textOf(item.content).split(/\r?\nTranscript or notes:\r?\n/, 1)[0];
+    return [...text.matchAll(/^Caption: ([^\r\n]+)$/gm)].map(match => match[1].trim());
+  });
+  if (captions.length !== 1 || !captions[0] || captions[0] === '(none)') return {unkeyable: `${action}: request needs exactly one non-empty caption`};
+  return {operation: `app.${action}`, id: captions[0]};
+}
+
 /** Identify scores, decide items, declared kinds or fact questions; an explicit table keeps kind lookup pure. */
 export function questionOf({url, headers, body, hint}, env = process.env, table) {
   // Why (#2450): golden personas reuse posting IDs, so their stored scores and verdicts must never share an answer.
@@ -93,9 +107,12 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
   if (action === 'score') return scoreQuestion(data, persona);
   if (action === 'decide') return decideQuestion(data, persona);
   const kinds = (table ?? loadTable(env.E2E_AI_ANSWERS_FILE || TABLE)).kinds;
-  // Why (29 Oct 2026, ap): background answers have one identity per declared kind, independent of applicant content or persona.
-  // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path.
-  if (object(kinds) && Object.hasOwn(kinds, action) && answersMode(env) === 'backbone') return {operation: 'app.kind', id: action};
+  // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path, for caption-keyed kinds too (30 Oct 2026, ap: interviews).
+  if (object(kinds) && Object.hasOwn(kinds, action) && answersMode(env) === 'backbone') {
+    if (kinds[action].identity === 'caption') return captionQuestion(data, action);
+    // Why (29 Oct 2026, ap): kind-only answers have no stable request identity; caption-keyed reviews must never fall through here.
+    return {operation: 'app.kind', id: action};
+  }
   return {unkeyable: `${action || hint?.operation || 'unknown'}: question identity is not in the request${!action && !hint ? ` (${url || 'unknown path'})` : ''}`};
 }
 

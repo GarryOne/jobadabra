@@ -45,7 +45,8 @@ const request = action => ({method: 'POST', headers: {'content-type': 'applicati
 
 test('stores declares all eleven background kinds, refused before live AI at every seam', async t => {
   const h = await harness(t), table = loadTable(tableFile);
-  assert.deepEqual(Object.keys(table.kinds).sort(), [...kinds].sort());
+  // Why (29 Oct 2026, ap): the shared table adds interview kinds; stores still requires every background refusal.
+  for (const kind of kinds) assert.ok(Object.hasOwn(table.kinds, kind), `${kind} must stay declared`);
   for (const kind of kinds) {
     assert.deepEqual(table.kinds[kind], {answer: {refuse: 'invalid-key'}});
     assert.ok(FAILURES[table.kinds[kind].answer.refuse]);

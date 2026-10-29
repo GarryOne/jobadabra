@@ -314,3 +314,37 @@ test('native OpenAI replies without output_text replay as Messages and as a stre
   assert.match(await (await fetch(`${openai.url}/v1/responses`, init({...request, stream: true}))).text(), /score/);
   assert.equal(up.calls(), 0);
 });
+
+
+test('declared caption identities survive prompt and application-list changes without reading the disk', () => {
+  const backbone = {E2E_AI_ANSWERS: 'backbone'};
+  const table = {v: 1, kinds: {interview: {identity: 'caption'}}, answers: {'app.interview': {
+    'recruiter-call-gamma': {reply: stored}, 'E2E Acme · Round 1': {reply: live}
+  }}};
+  for (const [caption, entry] of Object.entries(table.answers['app.interview'])) {
+    for (const content of [`Applications:\n0. Example\n\nCaption: ${caption}\n\nTranscript or notes:\nnotes`,
+      `Applications:\n9. Reordered\n\nCaption: ${caption}\n\nTranscript or notes:\nchanged\nCaption: spoof`]) {
+      const question = questionOf({headers: {'x-jp-action': 'interview'}, body: {messages: [
+        {role: 'system', content: 'Caption: wrong'}, {role: 'user', content: [{type: 'text', text: content}]}]}}, backbone, table);
+      assert.deepEqual(question, {operation: 'app.interview', id: caption});
+      assert.deepEqual(answerFor(question, table), {reply: entry.reply});
+      assert.deepEqual(questionOf({body: {prompt_cache_key: 'job-pilotto-interview', input: content}}, backbone, table), question);
+    }
+  }
+  for (const content of ['no caption', 'Caption: (none)\n\nTranscript or notes:\nCaption: recruiter-call-gamma',
+    'Caption: recruiter-call-gamma\nCaption: E2E Acme · Round 1']) {
+    assert.match(questionOf({headers: {'x-jp-action': 'interview'}, body: {messages: [{role: 'user', content}]}}, backbone, table).unkeyable, /interview.*caption/);
+  }
+  assert.deepEqual(answerFor({operation: 'app.interview', id: 'new-round'}, table), {missing: 'app.interview/new-round'});
+});
+
+test('caption kind declarations validate without permitting a fallback answer or unknown identity', t => {
+  const {file} = fixture(t);
+  const write = entry => fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, kinds: {interview: entry}}));
+  write({identity: 'caption'});
+  assert.deepEqual(loadTable(file).kinds.interview, {identity: 'caption'});
+  for (const entry of [{identity: 'unknown'}, {identity: 'caption', answer: {refuse: 'invalid-key'}}]) {
+    write(entry);
+    assert.throws(() => loadTable(file), /AI answers:.*interview/);
+  }
+});

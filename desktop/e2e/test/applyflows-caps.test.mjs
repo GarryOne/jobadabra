@@ -6,18 +6,22 @@ import {budgetMsOf, createRunner, STEP_LIMIT_MS} from '../lib/runner.mjs';
 import {stepCalls} from '../lib/pr-suites.mjs';
 import {hangCaps} from '../lib/applyflows-caps.mjs';
 import * as applyflows from '../suites/applyflows.mjs';
+import * as apply from '../suites/apply.mjs';
+import {REAL_FORMS} from '../lib/forms.mjs';
 
 const read = file => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 const names = file => stepCalls(read(file).replace(/\brunAlways\(/g, 'ctx.run(')).map(call => call.name).filter(Boolean);
 
-for (const {name, options, ms} of [
+for (const {name, options, ms, caps = {'measured journey': 45}} of [
   {name: 'measured journey', options: {}, ms: 45000},
   {name: 'unmeasured journey', options: {}, ms: STEP_LIMIT_MS},
   {name: 'measured journey', options: {limitMs: 20000}, ms: 20000},
-]) test(`runner caps ${name} at ${ms / 1000} seconds${options.limitMs ? ' with an explicit override' : ''}`, async t => {
+  {name: 'measured journey', options: {}, ms: 45000, caps: {'measured journey': 45, measured: 10}},
+  {name: 'measured journey details', options: {}, ms: 35000, caps: {'measured journey': 35, measured: 10}},
+]) test(`runner caps ${name} at ${ms / 1000} seconds${options.limitMs ? ' with an explicit override' : ''}${caps.measured ? ' with overlapping prefixes' : ''}`, async t => {
   t.mock.method(console, 'log', () => {});
   t.mock.timers.enable({apis: ['setTimeout']});
-  const runner = createRunner(() => null, {keepGoing: true, budgetMs: Infinity, hangCaps: {'measured journey': 45}});
+  const runner = createRunner(() => null, {keepGoing: true, budgetMs: Infinity, hangCaps: caps});
   let entered;
   const started = new Promise(resolve => { entered = resolve; });
   const pending = runner.run(name, () => { entered(); return new Promise(() => {}); }, options);
@@ -61,4 +65,48 @@ test('the suite passes its caps through context to the runner', () => {
   assert.match(read('lib/suite-main.mjs'), /openContext\(name, \{[^\n]*hangCaps: suite\.hangCaps/);
   assert.match(read('lib/context.mjs'), /openContext\(suite, \{[^\n]*hangCaps\s*=/);
   assert.match(read('lib/context.mjs'), /createRunner\(\(\) => session, \{[^\n]*\bhangCaps\b/);
+});
+
+test('apply exports caps in seconds, preserving the real-forms hang limit', () => {
+  assert.notEqual(apply.hangCaps, applyflows.hangCaps, 'each suite supplies its own table');
+  for (const [name, seconds] of Object.entries(apply.hangCaps)) {
+    // The real-forms cap scales with fixture count and has its own equality check below.
+    if (name === 'real forms the extension once failed on') continue;
+    assert.ok(Number.isFinite(seconds) && seconds >= 5 && seconds <= 700, `${name}: ${seconds}`);
+  }
+  assert.equal(apply.hangCaps['real forms the extension once failed on'], Math.max(540000, REAL_FORMS.length * 165000 + 30000) / 1000);
+});
+
+test('apply delegates hang caps to the runner instead of passing a table-derived limitMs', () => {
+  const source = read('suites/apply.mjs');
+  assert.doesNotMatch(source, /limitMs\s*:[^;\n]*hangCaps/);
+  const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
+  assert.doesNotMatch(wrapper, /hangCaps|limitMs\s*:/);
+});
+
+for (const [name, seconds] of [
+  ['the app has an applicant, jobs with drafted kits for every fixture form, and an AI that answers only what the kits do not', 305],
+  ['the app is seeded as a set-up install from the existing workspace', 60],
+  ["the app is set up on this Mac's store with the applicant's strategy", 35],
+  ['through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', 55],
+]) test(`applyflows keeps its ${seconds} s cap through runApply: ${name}`, async t => {
+  t.mock.method(console, 'log', () => {});
+  t.mock.timers.enable({apis: ['setTimeout']});
+  const runner = createRunner(() => null, {keepGoing: true, budgetMs: Infinity, hangCaps: applyflows.hangCaps});
+  const ctx = {run: runner.run};
+  const source = read('suites/apply.mjs');
+  const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
+  new Function('ctx', 'hangCaps', wrapper)(ctx, apply.hangCaps);
+  let entered;
+  const started = new Promise(resolve => { entered = resolve; });
+  const pending = ctx.run(name, () => { entered(); return new Promise(() => {}); });
+  await started;
+  t.mock.timers.tick(seconds * 1000 - 1);
+  await new Promise(setImmediate);
+  assert.deepEqual(runner.results, [], 'apply must not replace the suite cap with a shorter cap');
+  t.mock.timers.tick(1);
+  await new Promise(setImmediate);
+  assert.equal(runner.results[0]?.status, 'failed', 'the suite cap must cut the step at its own limit');
+  await pending;
+  assert.equal(runner.results[0].note, `the step did not finish within ${seconds} s (it hung): no app session`);
 });

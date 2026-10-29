@@ -69,9 +69,13 @@ export const shotName = name => `failed-${name.replace(/\W+/g, '-').slice(0, 60)
 const pictureOf = async session => (session?.page ? Promise.race([session.page.screenshot().catch(() => null), new Promise(done => setTimeout(() => done(null), 10000))]) : null);
 // stepNeeds null: the suite declares none, so its steps may build on every earlier one (quality's checks read the rows its Jobs check wrote, after the step that loads
 // the golden postings): a picked run then runs every step up to the last picked one and skips only the rest (#2108, 26 Oct 2026). Declared (even {}): the precise pick.
-/** A step's own hang cap in ms (hangCaps: step name -> seconds), else the default STEP_LIMIT_MS. */
-const hangLimitMs = (hangCaps, name) => (hangCaps[name] === undefined ? STEP_LIMIT_MS : hangCaps[name] * 1000);
-/** Run state checks with explicit limits first, then named hang caps in seconds, then STEP_LIMIT_MS. */
+/** Resolve seconds to ms: exact name wins, else the longest matching prefix, else STEP_LIMIT_MS. */
+const hangLimitMs = (hangCaps, name) => {
+  if (hangCaps[name] !== undefined) return hangCaps[name] * 1000;
+  const prefix = Object.keys(hangCaps).filter(head => name.startsWith(head)).sort((a, b) => b.length - a.length)[0];
+  return prefix === undefined ? STEP_LIMIT_MS : hangCaps[prefix] * 1000;
+};
+/** Run state checks with explicit limits first, then exact/prefix hang caps in seconds, then STEP_LIMIT_MS. */
 export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   if (process.env.CI) console.log(providerLine(process.env, 'judges'));   // Why (#2416, Gitar): who decided the judges' provider is never a guess

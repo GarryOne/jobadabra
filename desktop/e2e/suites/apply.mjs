@@ -34,16 +34,16 @@ export const stepSharded = true;   // its slices are steps, not recorded cases (
 export const stepSeconds = {'real forms the extension once failed on': 76, 'Tailor CVs for top matches': 51, 'a multi-step form': 37, 'a form with a control the extension cannot operate': 35,
   'Tailor CV on a job': 34, 'a Lever-like form': 33, 'Open in Chrome on a form the night filled': 29, 'Tailor on the session page of a form': 23, 'the person submits a form': 21,
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60};
-// Why (29 Oct 2026, ap): hang caps, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
+// Why (29 Oct 2026, ap): hang caps in seconds, 3 x calm p95 from tools/e2e-step-timings.mjs, raised to the step's own inner caps + 30 s where a step waits in sequence; they catch a hang, never a speed.
 // A step whose inner caps add up past the runner's 8-minute default (Tailor CVs for top matches, Full automation) has no entry: the default stays.
-export const hangCaps = {'the app has an applicant': 300000, 'the app is seeded': 90000, 'the app is set up on this Mac\'s store': 90000,
-  'a Greenhouse-like form': 195000, 'a Workday-shaped form': 195000, 'a Lever-like form': 150000, 'a form with a control the extension cannot operate': 180000,
-  'real forms the extension once failed on': Math.max(540000, REAL_FORMS.length * 165000 + 30000), 'Open in Chrome on a form the night filled': 160000,
-  'a multi-step form': 300000, 'the session page says it too': 105000, 'Tailor CV on a job': 480000, 'Apply on a saved job without a kit': 390000,
-  'Tailor on the session page': 445000, 'the person submits a form': 270000, 'through all of it': 50000,
-  'the panel does not say "Ready to submit"': 75000, 'nothing was queued': 5000,
-  'The hidden browser fills a form': 385000,
-  'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form'] * 1000};
+export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 90, 'the app is set up on this Mac\'s store': 90,
+  'a Greenhouse-like form': 195, 'a Workday-shaped form': 195, 'a Lever-like form': 150, 'a form with a control the extension cannot operate': 180,
+  'real forms the extension once failed on': Math.max(540, REAL_FORMS.length * 165 + 30), 'Open in Chrome on a form the night filled': 160,
+  'a multi-step form': 300, 'the session page says it too': 105, 'Tailor CV on a job': 480, 'Apply on a saved job without a kit': 390,
+  'Tailor on the session page': 445, 'the person submits a form': 270, 'through all of it': 50,
+  'the panel does not say "Ready to submit"': 75, 'nothing was queued': 5,
+  'The hidden browser fills a form': 385,
+  'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form']};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.
 export const flowSeconds = {'the account and the application on one page': 97, 'a menu whose choices are not the answer': 79, '"Needs your attention" from the extension': 78, 'the form tab is closed': 76,
   'a second browser with the extension': 73, 'a posting whose Apply opens a new tab': 65, 'two applications side by side': 61, 'a sign-in page before the form that refuses': 38,
@@ -93,7 +93,7 @@ export async function runApply(ctx, parts) {
   fs.writeFileSync(path.join(ctx.ARTIFACTS, 'seed.json'), JSON.stringify({seed: ctx.vary.seed, fixed: ctx.vary.fixed, detail: forms.variation}));
   console.log(ctx.vary.fixed ? '  variation: fixed forms' : `  variation: seed ${ctx.vary.seed}; ${forms.variation}; replay with E2E_SEED=${ctx.vary.seed}`);
   const all = ctx.run;
-  const capped = (name, fn, options) => all(name, fn, {...options, limitMs: Object.entries(hangCaps).filter(([head]) => name.startsWith(head)).pop()?.[1] ?? options?.limitMs});
+  const capped = (name, fn, options) => all(name, fn, options);
   ctx.run = capped;
   await ensureSetUp(ctx);   // before the filter below: a new Notion page is built by the wizard's own steps
   const live = parts.includes('live') ? livePosting() : null;   // the live run: one real posting, read from this Mac's job list; the fixture checks do not apply to it

@@ -12,7 +12,7 @@ import {suiteOfKey} from '../desktop/e2e/lib/suite-shards.mjs';
 const ghCommand = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024});
 // Mirrors tools/main_e2e_state.py NOT_MAIN_CHECK + AFTER_MERGE, plus PR runs; guarded against drift in the test.
 // Partial after-merge runs are never a fallback: their totals cannot set full-run hang caps.
-const comparable = title => typeof title === 'string' && title.length > 0 && !/^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E for PR|E2E after merge) /.test(title);
+const comparable = title => typeof title === 'string' && title.length > 0 && !/^(Mutant|RC soak|Stable canary|Beta E2E tests|Gate|Bisect|E2E check · outside world|E2E for PR|E2E after merge) /.test(title);
 const artifactMatches = (name, suite) => name.startsWith('e2e-artifacts-') && !/-(standin|sqlite)$/.test(name)
   && suiteOfKey(name.slice('e2e-artifacts-'.length)) === suite;
 const median = sorted => (sorted[Math.floor((sorted.length - 1) / 2)] + sorted[Math.floor(sorted.length / 2)]) / 2;

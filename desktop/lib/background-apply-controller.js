@@ -11,11 +11,13 @@ import {log as appLog} from './log.js';
 
 const instances = new WeakMap();
 const HANDOFF = new Set(['manual_submit_required', 'needs_user_handoff']);
-const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.'};   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+const NOTICES = {captcha_preflight: 'This application needs a CAPTCHA check. Open it, solve the check and press Submit yourself.', captcha_runtime: 'This application stopped at a CAPTCHA. The same form is open for you. Solve the check and press Submit yourself.', stopped: 'Background application stopped. Review and submit this form yourself.',   // words-ok: our own hand-off reason id / user-facing word, not page knowledge
+  submission_outcome_unknown: 'Jobadabra closed while this application was being sent. Check whether it went through, and do not send it again until you know.'};
 export const MAX_BACKGROUND_SESSIONS = 10;
 
 export {e2eFullAutomation};
 /** Return this app profile's single serialized controller; settings and store are rechecked for each proposed submit. */
+const APP_STARTED = Date.now() - process.uptime() * 1000;   // when this run of the app began
 export function backgroundApplyFor(storage) {
   if (!instances.has(storage)) instances.set(storage, createBackgroundApplyController(storage));
   return instances.get(storage);
@@ -101,6 +103,24 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       cache(item, state);
     }
     return {ok: true, jobs, checks, handoffs};
+  }
+  /**
+   * At start: every background job an earlier run left mid-press (`submitting`, no receipt) is handed to the person as "check whether it went through", never retried and never pressed again.
+   * Why (2026-10-29, owner: "Yes, go" to the crash rule): the hidden browser dies with the app (lib/browser-reaper.js), so no watcher will ever read the site's reply; without this the card said
+   * "Submission attempted" for ever. Returns the session ids it handed over.
+   */
+  async function sweepInterrupted(startedBefore = APP_STARTED) {
+    const handed = [];
+    // Why (2026-10-29, Gitar on the PR): the sweep waits for the start-up moves, so a press this run started meanwhile is still in flight; only sessions older than this run were cut off by a quit.
+    for (const item of terminals.list().filter(entry => entry.background && !entry.outcome && Date.parse(entry.startedAt) < startedBefore)) {
+      const state = await store.interrupted(item.url, item.id).catch(() => null);
+      if (!state) continue;
+      cache(item, state);
+      notify('Application needs you', NOTICES.submission_outcome_unknown, {view: 'sessions', session: item.id}, 'warn');
+      log('apply', 'background application cut off mid-press handed to the person', {session: item.id, mode: state.mode});
+      handed.push(item.id);
+    }
+    return handed;
   }
   async function judgment(body, answer) {
     const context = body?.background, item = itemFor(context?.session);
@@ -194,5 +214,5 @@ export function createBackgroundApplyController(storage, {store = null, browser 
       return {ok: true, handoff};
     });
   }
-  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver};
+  return {enqueue, handle, judgment, reveal, outcome, cancel, page, submitControl, handOver, sweepInterrupted};
 }

@@ -174,3 +174,22 @@ test('with no wait saved the press waits the shared default (2 minutes), not 10'
   const later = await store.reserve(job.url, session, 'owned-browser', ready, unset);
   assert.equal(later.submit, true, 'after 2 minutes the checks decide, not a 10-minute fallback');
 });
+
+// Crash rule (owner, 29 Oct 2026: a job left in "submitting" after a quit is handed over, never retried): the hidden browser dies with the app, so a press in flight has no receipt to wait for.
+test('a press interrupted by a quit becomes "check whether it went through", whatever browser owned it, and is never reserved again', async () => {
+  const waitNow = {...config, auto: {...config.auto, waitMin: 0}}, r = rig(), {store, job, session} = await prepared(r, r.add(), 'auto', waitNow);
+  assert.equal((await store.reserve(job.url, session, 'owned-browser', ready, waitNow)).submit, true, 'the press was reserved');
+  const restarted = r.make();   // a new run of the app: no browser owns anything
+  const state = await restarted.interrupted(job.url, session);
+  assert.equal(state.state, 'needs_user_handoff');
+  assert.equal(state.reason, 'submission_outcome_unknown');
+  assert.equal(state.manualOverride, true);
+  assert.equal((await restarted.reserve(job.url, session, 'new-browser', ready, waitNow)).submit, false, 'a second attempt never goes out');
+  assert.equal(await restarted.interrupted(job.url, session), null, 'once handed over, nothing is interrupted again');
+});
+
+test('a job that was not mid-press, or already has its receipt, is left alone by the interrupted check', async () => {
+  const r = rig(), {store, job, session} = await prepared(r, r.add(), 'auto');
+  assert.equal(await store.interrupted(job.url, session), null, 'waiting to submit is not an interrupted press');
+  assert.equal(await store.interrupted(job.url, 'someone-else'), null, 'another session\'s record is not touched');
+});

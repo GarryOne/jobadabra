@@ -3,8 +3,10 @@
 // honours in a test run (JOB_PILOTTO_E2E_NOTION_BASE_URL). Real Notion behaviour the app must handle is kept where it is cheap (editing an archived page fails);
 // lag is off unless a suite turns it on (`setLag(ms)`, 27 Oct 2026: focusdismiss, which is about Notion listing a write late): then a database query answers
 // each row as it stood `ms` ago, as Notion's query does, while a page read by its id is fresh. `seed(snapshot)` loads a scenario as plain data.
+// Job: run the backbone
 import crypto from 'node:crypto';
 import http from 'node:http';
+import {createNotionRequestCount} from './notion-request-count.mjs';
 
 const uuid = () => crypto.randomUUID();
 // Notion answers every id with dashes, whatever the request sent (6 Oct 2026: the stand-in echoed a dashless parent as sent, and the app's discover(), which groups a
@@ -309,8 +311,10 @@ function fileOf(raw) {
 // with any other token gets Notion's 401. Files are served without one (Notion's file links are plain signed URLs).
 export async function startNotionFake() {
   const fake = createNotionFake();
+  const requests = createNotionRequestCount();
   const token = `ntn_e2e_${crypto.randomBytes(18).toString('hex')}`;
   const server = http.createServer(async (req, res) => {
+    requests.record(req);
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const raw = Buffer.concat(chunks), multipart = String(req.headers['content-type'] || '').startsWith('multipart/');
     const url = new URL(req.url, 'http://fake');
@@ -327,7 +331,7 @@ export async function startNotionFake() {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   fake.setBase(`http://127.0.0.1:${server.address().port}`);
-  return {...fake, token, url: `http://127.0.0.1:${server.address().port}`, close: () => { server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
+  return {...fake, requests, token, url: `http://127.0.0.1:${server.address().port}`, close: () => { server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
 }
 
 // The workspace built once in a fresh stand-in, by the app's own code (desktop/lib/notion-workspace.js), as the real test page already holds it: a suite then

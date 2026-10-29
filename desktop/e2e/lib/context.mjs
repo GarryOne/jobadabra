@@ -32,6 +32,7 @@ import {tally} from './faults.mjs';
 import {readdirSync} from 'node:fs';
 import {checkAppKey, checkOtherKeys, keyFingerprint} from './key-check.mjs';
 import {waitForFolderFree} from './folder-free.mjs';
+import {countNotionRequestsByStep} from './notion-request-count.mjs';
 export const SUITES = readdirSync(path.join(E2E, 'suites')).filter(file => file.endsWith('.mjs')).map(file => file.slice(0, -4)).sort();
 const KEY = () => testKey();   // empty on a Mac, whatever the environment holds: the key is for CI (lib/engine.mjs)
 /** CI only: checks the app's AI key (never under Codex: checkAppKey), then the other family's, and logs the key's fingerprint when one was checked. */
@@ -73,6 +74,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   if (!light && isCi()) await preflightKeys({family, engine, key});   // a refused key stops the suite here, named, not as a puzzling AI step later
   let session = null, fakes = [];   // the fake services of this suite, once started: the runner checks that a step's fault fired (lib/faults.mjs)
   const runner = createRunner(() => session, {keepGoing, stepNeeds, report, faultTally: () => tally(fakes), budgetMs: budgetMsOf({aggregateBudget, budgetMinutes})});
+  if (standIn) countNotionRequestsByStep(runner, standIn.requests);
   // A light suite needs only the AI key: no Notion page, no app, no browser (a model-only eval).
   // The test's own judges and evals (lib/judge.mjs, fit.mjs, model.mjs, the explore agent) are Claude whatever the app runs on, so both families are judged
   // by one model: always the Anthropic test key, never the app's (9 Oct 2026: the first OpenAI run sent the OpenAI key to Anthropic, 401).
@@ -157,7 +159,7 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   adopt(await launch({env, lang: ctx.place?.locale || '', settings: newInstall ? {} : storeSettings(store)}));
   // The app's trace is kept when the suite failed so far: a failed step, or an error outside the steps (lib/suite-main.mjs sets ctx.stopped first).
   const failed = () => !!ctx.stopped || runner.results.some(result => result.status === 'failed');
-  ctx.close = async () => { try { await session?.shot('last'); await ctx.browser?.close(); await session?.close({keepTrace: failed()}); await ctx.proxy?.close(); await ctx.openaiProxy?.close(); await ctx.notion?.close(); await ctx.telegram?.close(); await ctx.google?.close(); await ctx.releases?.close(); if (ctx.standIn) { try { fs.writeFileSync(path.join(ARTIFACTS, 'notion-standin.json'), JSON.stringify(ctx.standIn.dump(), null, 1)); } catch {} await ctx.standIn.close(); } await ctx.forms?.close(); } finally { ctx.pageLock?.release(); } };
+  ctx.close = async () => { try { await session?.shot('last'); await ctx.browser?.close(); await session?.close({keepTrace: failed()}); await ctx.proxy?.close(); await ctx.openaiProxy?.close(); await ctx.notion?.close(); await ctx.telegram?.close(); await ctx.google?.close(); await ctx.releases?.close(); if (ctx.standIn) { try { fs.writeFileSync(path.join(ARTIFACTS, 'notion-standin.json'), JSON.stringify(ctx.standIn.dump(), null, 1)); } catch {} try { fs.writeFileSync(path.join(ARTIFACTS, 'notion-requests.json'), JSON.stringify(ctx.standIn.requests.snapshot(), null, 1)); } catch {} await ctx.standIn.close(); } await ctx.forms?.close(); } finally { ctx.pageLock?.release(); } };
   // Quit the app the hard way (as a crash or a power cut would: nothing gets to tidy up) and start it again on the same profile. `extra` adds to the environment; `between(profile)` runs while the app is down.
   ctx.relaunch = async (extra = {}, between) => { const profile = session.profile; await session.close({keepTrace: failed()}); await between?.(profile); adopt(await launch({env: {...env, ...extra}, profile, lang: ctx.place?.locale || ''})); };
   // Some actions end with the app's OWN exit (a reset, an import): it finishes its work first (a reset disconnects the Gmail sign-in through a Python call since 645cef9), so a

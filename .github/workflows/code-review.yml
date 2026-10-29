@@ -1,6 +1,6 @@
 name: CI · AI code review
 
-# Claude reads main's latest changes for bugs that would hurt a person (a wrong result, a crash, technical text shown, a leaked secret, a broken release) and files
+# Codex (one broker call per batch of diffs; desktop/e2e/code-review-codex.mjs) reads main's latest changes for bugs that would hurt a person (a wrong result, a crash, technical text shown, a leaked secret, a broken release) and files
 # each one, with its file:line, a concrete scenario and the test that would fail, on the same board as the UI loop (label auto-ui, source:code-review).
 # Why: reading code found 12 of the first 36 tracked bugs, 7 of them on paths no end-to-end run reached (3 Oct 2026). Twice a day over the last 13 hours,
 # not per push (dozens a day). Read-only: it changes no file in the repo and pushes nothing; the verdict pass or a person confirms a finding before a fix.
@@ -17,6 +17,7 @@ permissions:
   contents: read
   issues: write
   actions: read   # the last review's artifact: where it ended and what it left out
+  id-token: write   # the Codex broker knows a run by its OIDC token (desktop/e2e/lib/broker-client.mjs)
 
 concurrency:
   group: code-review
@@ -76,30 +77,11 @@ jobs:
           { cat desktop/e2e/code-review-prompt.md; echo; echo "RANGE: $range"; echo "COMMITS (review these, all of them):"; cat .review/commits.txt; } > .review/prompt.md
           carried=$(wc -l < .review/carried.txt | tr -d ' ')
           echo "Reviewing $picked of $total product-code commit(s) in $range (${carried} carried from the last review)$([ "$picked" -lt "$total" ] && echo "; the $((total - picked)) smallest are carried to the next run")."
-      - name: Claude reads the changes (read-only)
+      - name: Codex reads the changes (read-only, one broker call per batch of diffs)
         if: steps.range.outputs.range != ''
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.CODE_REVIEW_ANTHROPIC_KEY || secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model claude-sonnet-5-5 --max-turns 100
-            --allowedTools "Read,Glob,Grep,Write,Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
-          prompt: Read .review/prompt.md and follow it exactly.
-      - name: Why Claude failed (the API's own error)
-        if: failure()
-        env:   # a credit failure also goes to the owner on Telegram (desktop/e2e/credit-alert.mjs)
-          CI_ALERTS_TELEGRAM_BOT_TOKEN: ${{ secrets.CI_ALERTS_TELEGRAM_BOT_TOKEN }}
-          CI_ALERTS_TELEGRAM_CHAT_ID: ${{ secrets.CI_ALERTS_TELEGRAM_CHAT_ID }}
-        run: python3 tools/claude-failure-reason.py
-      - name: AI budget and cost of this run
-        if: always() && steps.range.outputs.range != ''
-        run: node desktop/e2e/ai-budget.mjs --after /home/runner/work/_temp/claude-execution-output.json --job code-review
-      - name: Report the AI cost to /ai-cost
-        if: always() && steps.range.outputs.range != ''
         env:
-          AI_COST_PUBLISH_KEY: ${{ secrets.AI_COST_PUBLISH_KEY }}
-        run: node desktop/e2e/ai-cost-report.mjs --job code-review --execution /home/runner/work/_temp/claude-execution-output.json
+          RANGE: ${{ steps.range.outputs.range }}
+        run: node desktop/e2e/code-review-codex.mjs   # Why (29 Oct 2026, owner: CI AI on the Codex plan): the Claude step ran up to 100 tool turns; the broker answers one prompt, so the diffs go in the prompt
       - name: Keep what it read and found (to audit a review)
         if: always() && steps.range.outputs.range != ''
         uses: actions/upload-artifact@v6
@@ -108,7 +90,6 @@ jobs:
           path: |
             .review/
             ${{ runner.temp }}/ai-cost.json
-            /home/runner/work/_temp/claude-execution-output.json
           if-no-files-found: ignore
           include-hidden-files: true   # .review/ is a dot folder: skipped by default, so the first audit artifact had no findings or list
       - uses: actions/setup-node@v5

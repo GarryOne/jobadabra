@@ -85,9 +85,8 @@ import json, os, sys
 d = os.environ['FAKE_DIR']; a = sys.argv[1:]; path = next((x for x in a if x.startswith('repos/')), '')
 def out(name): sys.stdout.write(open(os.path.join(d, name), encoding='utf-8').read())
 if a[:2] == ['run', 'list']: out('runs.json')
-elif path.endswith('/pulls') and '/commits/' in path: print(json.dumps([{'number': 2342, 'state': 'open', 'merged_at': None}]))
-elif '/files' in path: print('desktop/renderer/pages/focus.js')
-elif '/commits?' in path: print('["Keep the typed daily target"]')
+elif a[:2] == ['api', 'graphql']: print(json.dumps({'data': {'repository': {'object': {'associatedPullRequests': {'nodes': [{'number': 2342, 'state': 'OPEN', 'mergedAt': None,
+    'files': {'pageInfo': {'hasNextPage': False}, 'nodes': [{'path': 'desktop/renderer/pages/focus.js'}]}, 'commits': {'nodes': [{'commit': {'message': 'Keep the typed daily target'}}]}}]}}}}}))
 elif '/contents/tools/main_e2e_state.py' in path: out('main_e2e_state.py')
 elif '/actions/workflows/e2e.yml/runs' in path: out('main-runs.json')
 elif '/logs' in path:

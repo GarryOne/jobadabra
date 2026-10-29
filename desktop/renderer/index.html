@@ -2160,6 +2160,16 @@
     </div>
   </form>
 </dialog>
+<dialog id="auto-confirm-dialog" class="panel-dialog">
+  <form method="dialog">
+    <div class="dialog-head"><span class="dialog-icon"><i data-icon="zap"></i></span>
+      <h2>Turn on Full automation?</h2>
+    </div>
+    <p class="dialog-lead">Jobadabra then fills in and submits applications in its hidden browser, one at a time, when these checks pass. You can turn it off at any time in Settings → Apply.</p>
+    <ul class="dialog-steps" id="auto-confirm-checks"></ul>
+    <div class="panel-actions"><button type="button" class="secondary" id="auto-confirm-cancel" value="cancel">Not now</button><button type="button" class="primary" id="auto-confirm-go" value="yes">Turn on Full automation</button></div>
+  </form>
+</dialog>
 <dialog id="busy-dialog" class="panel-dialog busy-dialog" aria-live="polite">
   <p class="busy-line"><span class="spinner"></span><b data-busy-title></b></p>
   <p class="dialog-lead" data-busy-note></p>

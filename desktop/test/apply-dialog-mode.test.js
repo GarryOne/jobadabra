@@ -57,7 +57,7 @@ test('a built mode is saved through Settings → Apply\'s writer, keeping the fi
 });
 
 test('a mode is built exactly when it names its batch runner; Standard\'s is the visible Chrome batch, Background\'s the hidden browser', () => {
-  assert.deepEqual(Object.fromEntries(MODES.map(mode => [mode.id, modeRunner(mode.id)])), {check: 'chrome', fill: 'background', auto: ''});
+  assert.deepEqual(Object.fromEntries(MODES.map(mode => [mode.id, modeRunner(mode.id)])), {check: 'chrome', fill: 'background', auto: 'background'});
   for (const mode of MODES) assert.equal(modeBuilt(mode.id), !!modeRunner(mode.id), mode.id);
   const handlers = read('lib/apply-handlers.js');
   assert.match(handlers, /applyMode = fromSettings \? applyOf\(storage\.settings\(\)\)\.mode/, 'main reads the saved (built) mode');
@@ -89,15 +89,6 @@ test('a saved Background automation starts the hidden browser\'s runner (no exte
   const result = await applyDialogStart({count: '2', start: args => registered.handles.get('apply')({}, args)});
   assert.equal(result.ok, true);
   assert.deepEqual(registered.starts, [{n: 2, mode: 'background', applyMode: 'fill'}]);
-});
-
-test('an older save of an unbuilt mode reads as Standard automation in the cards and the runner alike', async () => {
-  for (const mode of ['auto']) {
-    assert.equal(applyOf({apply: {mode}}).mode, 'check', 'the cards draw Standard selected');
-    const registered = register(mode);
-    await applyDialogStart({count: '2', start: args => registered.handles.get('apply')({}, args)});
-    assert.deepEqual(registered.starts, [{n: 2, mode: 'chrome', applyMode: 'check'}], 'the runner is the one the cards showed');
-  }
 });
 
 test('the first-choice gate holds Start, then the main process reads the mode chosen in it', async () => {

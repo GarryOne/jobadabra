@@ -4,7 +4,8 @@
 // Guards: test/apply-settings.test.js, test/apply-choice-gate.test.js.
 import {$} from './core.js';
 import {choiceCards} from '../components.js';
-import {ANSWERS_TEXT, MODES, applyOf, applyPatch, modeBuilt, needsBrowser} from '../apply-settings-model.js';
+import {ANSWERS_TEXT, MODES, applyOf, modeBuilt, needsBrowser} from '../apply-settings-model.js';
+import {saveApply} from '../apply-save.js';
 import {offerBrowser} from './browser-progress.js';
 import {openSetting} from './settings.js';
 
@@ -71,11 +72,30 @@ export function draw(settings = current) {
 /** Saves a change of settings.apply and redraws; -> the saved settings, or null when the save failed (the last saved ones stay drawn). */
 export async function save(change = {}, {chosen = false} = {}) {
   await ready;
-  const saved = await window.pilot.saveSettings(applyPatch(current, change, {chosen})).catch(() => null);
+  // Why (2026-10-29, owner: "go ahead" with the switch; Gitar on #2471): every route into Full automation (Settings, Jobs, the first-Apply dialog) comes through saveApply, which asks the one confirmation and writes nothing on "Not now".
+  const saved = await saveApply({change, chosen, current, confirm: askFullAutomation, write: patch => window.pilot.saveSettings(patch).catch(() => null)});
   if (saved) current = saved;
   draw();
   if (saved) offerBrowser($('ss-browser'), needsBrowser(saved));   // Why (2026-10-28, B follow-up 2): the offer was decided once at start-up, so choosing Background automation later showed none until a restart
   return saved ? current : null;
+}
+
+/** The one confirmation for Full automation: the checks it will run under, one button to turn it on. Resolves true only on that button. */
+export function askFullAutomation() {
+  const dialog = $('auto-confirm-dialog');
+  const auto = applyOf(current).auto;
+  $('auto-confirm-checks').replaceChildren(...[
+    ['No required field empty', auto.noEmpty], ['Answers come from your saved facts', auto.factsOnly],
+    [`Fit ${auto.minFit}+ only`, true], [`At most ${auto.perDay} a day`, true],
+    [`${auto.perEmployer} application per employer`, true], [auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : 'No wait before each submit (optional: Settings → Apply)', true],
+  ].filter(([, on]) => on).map(([text]) => Object.assign(document.createElement('li'), {textContent: text})));
+  return new Promise(resolve => {
+    const finish = yes => { dialog.close(); resolve(yes); };
+    $('auto-confirm-go').onclick = () => finish(true);
+    dialog.addEventListener('cancel', () => finish(false), {once: true});
+    $('auto-confirm-cancel').onclick = () => finish(false);
+    dialog.showModal();
+  });
 }
 
 // "Adjust settings…" in the first-Apply dialog: Settings → Apply with a Confirm bar; answer(true) after Confirm, answer(false) after Not now.

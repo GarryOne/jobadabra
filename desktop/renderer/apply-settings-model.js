@@ -6,20 +6,13 @@
 // runner: the batch runner the main process starts for the mode (lib/apply-handlers.js); a mode with none is not built. Why (28 Oct 2026, owner, #2317
 // rework): a mode not built is drawn disabled with "Coming soon" and can never be the saved mode, so no screen offers a choice that does nothing.
 // The PR that ships a mode's runner names it here.
-// Why (2026-10-28, owner: "Yes, go" to the fake-endpoint e2e green on CI before the switch): Full automation has a runner only in a test run that asks for it (the main process
-// under JOB_PILOTTO_E2E + JOB_PILOTTO_E2E_FULL_AUTOMATION=1, the same pair lib/background-apply-controller.js reads); the window has no `process`, so no screen offers it. The switch PR makes this 'background'.
-/**
- * True only in a test run that asks for it (JOB_PILOTTO_E2E and JOB_PILOTTO_E2E_FULL_AUTOMATION=1, set by desktop/e2e/lib/background-auto-proof.mjs); the window has no `process`, so it is false there.
- * The one definition both the runner below and lib/background-apply-controller.js read (Gitar on #2430): they cannot drift apart. The switch PR replaces it with the person's choice.
- */
-export const e2eFullAutomation = (env = typeof process === 'undefined' ? {} : process.env) => !!(env?.JOB_PILOTTO_E2E && env.JOB_PILOTTO_E2E_FULL_AUTOMATION === '1');
-const FULL_AUTOMATION_RUNNER = e2eFullAutomation() ? 'background' : '';
+// Why (2026-10-29, owner: "go ahead" with the switch): Full automation's runner is 'background' in every build; it runs only after the person confirmed it (autoConfirmedAt, stamped by save() in pages/apply-settings.js and read by lib/background-apply-controller.js).
 export const MODES = Object.freeze([
   {id: 'check', icon: 'eye', title: 'Standard automation', badge: ['Best quality', 'good'], runner: 'chrome',
     text: 'Fills in a visible browser; you review and submit.'},
   {id: 'fill', icon: 'layers', title: 'Background automation', runner: 'background',
     text: 'Fills in a hidden browser; you review and submit when ready.'},
-  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'], runner: FULL_AUTOMATION_RUNNER,
+  {id: 'auto', icon: 'zap', title: 'Full automation', badge: ['More applications, lower quality', 'warn'], runner: 'background',
     text: 'Fills and submits in a hidden browser when your checks pass.'},
 ]);
 export const MODE_IDS = MODES.map(mode => mode.id);
@@ -38,7 +31,7 @@ export const ANSWERS_TEXT = {
 };
 
 // Full automation's checks: each one the person's to change (CLAUDE.md "The app submits only in Full automation").
-export const AUTO_DEFAULTS = Object.freeze({minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 2});   // Why (2026-10-28, owner: "Why 10 minutes? Why not 1 minute?", chose 2): the wait is a review window before an irreversible Submit, not bot evasion; long enough to see the notice and press Stop, short enough for a batch; the person's to change
+export const AUTO_DEFAULTS = Object.freeze({minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 0});   // Why (2026-10-29, owner: "by default, we should go with no" wait; a 2-minute wait is not proven long enough, so it is optional): the wait is a review window before an irreversible Submit, not bot evasion; off by default, the person sets it in Settings → Apply
 const LIMITS = {minFit: [0, 100], perDay: [1, 200], perEmployer: [1, 20], waitMin: [0, 120]};
 const clamp = (key, value) => {
   const [low, high] = LIMITS[key], n = Math.round(Number(value));
@@ -53,9 +46,14 @@ export function applyOf(settings) {
     if (!(key in (saved.auto || {}))) continue;
     auto[key] = key in LIMITS ? clamp(key, saved.auto[key]) : saved.auto[key] !== false;
   }
-  return {mode: modeBuilt(saved.mode) ? saved.mode : 'check', answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || ''};
+  const mode = modeBuilt(saved.mode) ? saved.mode : 'check';
+  return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : ''};
 }
 export const applyChosen = settings => !!settings?.apply?.chosenAt;
+/** True once the person confirmed Full automation for the mode it is saved in; a change to another mode clears it. */
+export const autoConfirmed = settings => !!applyOf(settings).autoConfirmedAt;
+/** True when a save would turn Full automation on without a confirmation yet: the dialog must ask first (save() in pages/apply-settings.js). */
+export const needsAutoConfirm = (change, settings) => change.mode === 'auto' && !change.autoConfirmedAt && !autoConfirmed(settings);
 /** Background automation (the mode that runs in Jobadabra's own browser) is the saved mode, so the Applying page offers that browser's download. One rule for the start-up and for a change in Settings. */
 export const needsBrowser = settings => applyOf(settings).mode === 'fill';
 
@@ -63,5 +61,6 @@ export const needsBrowser = settings => applyOf(settings).mode === 'fill';
 export function applyPatch(settings, change = {}, {chosen = false, now = new Date()} = {}) {
   const current = applyOf(settings);
   const next = {...current, ...change, auto: {...current.auto, ...(change.auto || {})}};
-  return {apply: applyOf({apply: {...next, chosenAt: chosen ? now.toISOString() : current.chosenAt}})};
+  const autoConfirmedAt = next.mode === 'auto' ? change.autoConfirmedAt || current.autoConfirmedAt : '';
+  return {apply: applyOf({apply: {...next, autoConfirmedAt, chosenAt: chosen ? now.toISOString() : current.chosenAt}})};
 }

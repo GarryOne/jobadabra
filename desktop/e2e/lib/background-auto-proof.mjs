@@ -1,5 +1,6 @@
 /* global window */
-// Job: wait on state. The end-to-end proof of Full automation's press (spec 2026-10-27-background-apply-execution, step C): the app's hidden browser fills a fictional form and, once the
+// Job: wait on state
+// The end-to-end proof of Full automation's press (spec 2026-10-27-background-apply-execution, step C): the app's hidden browser fills a fictional form and, once the
 // wait has run, presses Submit itself exactly once against the fixture server's fake submit endpoint (never a real site); a Stop in the wait presses nothing. Every wait is on a state.
 import {backgroundStateOf, closeHiddenBrowser, describeHidden, linkRuntime, withFormJudge} from './background-proof.mjs';
 import {stageOf} from './seed-data.mjs';
@@ -8,13 +9,13 @@ import {appLogLines} from './app-log.mjs';
 /** The app's own words for why it handed a background application to the person (its log line, with the reason id), for a failure message. */
 const handedWhy = profile => { try { return appLogLines(profile).filter(line => /handed to the person/.test(line)).slice(-2).map(line => line.slice(0, 200)).join(' // ') || 'no hand-off logged'; } catch { return '(app log unreadable)'; } };
 
-const E2E_FULL_AUTOMATION = {JOB_PILOTTO_E2E_FULL_AUTOMATION: '1'};   // the pair lib/background-apply-controller.js reads with JOB_PILOTTO_E2E; no user can set it
-
 async function startAuto(ctx, {form, seed, waitMin}) {   // `seed(form)` adds the job the run starts
   const {page, proxy} = ctx;
   proxy.setCanned(withFormJudge(proxy.canned(), 'Submit Application'));
   await seed(form);
-  await page.evaluate(({chosenAt, waitMin: wait}) => window.pilot.saveSettings({apply: {mode: 'auto', chosenAt, auto: {waitMin: wait}}}), {chosenAt: new Date().toISOString(), waitMin});
+  // The confirmation the Full automation dialog stamps (save() in pages/apply-settings.js): the controller refuses Full automation without it.
+  const now = new Date().toISOString();
+  await page.evaluate(({chosenAt, waitMin: wait}) => window.pilot.saveSettings({apply: {mode: 'auto', chosenAt, autoConfirmedAt: chosenAt, auto: {waitMin: wait}}}), {chosenAt: now, waitMin});
   const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
   if (started?.ok === false) throw new Error(`the app refused to start Full automation: ${started.error}`);
   return started;
@@ -30,7 +31,7 @@ export async function proveAutomatic(ctx, {form, seed, until}) {
   const {forms} = ctx;   // `ctx.page` is read after the relaunch: it is a new window
   const unlinked = linkRuntime(ctx.profile);
   if (unlinked) { if (process.platform === 'win32') { console.log(`  skipped here: ${unlinked}`); return; } throw new Error(unlinked); }
-  await ctx.relaunch(E2E_FULL_AUTOMATION);
+  await ctx.relaunch();
   try {
     const posted = forms.posts.length;
     await startAuto(ctx, {form, seed, waitMin: 0});

@@ -16,7 +16,7 @@
 - **What a person sees when a job needs them (captcha, login, review before Submit):** a **live view of the same held page in the app**, reusing Ready to send's `hosted/ready-fill/live.mjs` (measured 17 Oct: open p50 155 ms, input p50 79 ms). The person types, solves and presses Submit in it. "Open in my browser" (`ready-handoff.js`) stays as an extra. This closes the "owner design choice pending" below: no native window reveal.
 - **Hidden browser, a Settings → Apply choice:** (1) **Jobadabra's browser**, Chromium, headless, hidden: **the default**. (2) **My Chrome**: the person's own Chrome, a normal visible window with focus. The minimized-Chrome option is dropped: owner, "Probably it's not much worth over the 3rd one" (it flashes focus anyway, per the 27 Oct finding). My Chrome's advantages are the person's sign-ins and site cookies, and passive "checking your browser" pages clear more often on a real profile (never disguised).
 - **Mode capability API (#2317):** each mode names its batch runner in `MODES[].runner` (desktop/renderer/apply-settings-model.js). A mode with no runner is a disabled "Coming soon" card on every surface and can never be the saved mode. Main starts `modeRunner(applyOf(settings).mode)`. `fill` then `auto` get `runner: 'background'` in the PR that makes each one pass this spec's acceptance.
-- **The Full automation recap is PR C of "What we learned"** (`2026-10-28-what-we-learned-design.md`, "Remember, by Apply mode"): after a Full automation run, a recap of what was answered and learned, with Change. Here: emit each submitted job's answers and receipt through the store so PR C can draw it. The recap screen is PR C's, not this spec's. Full automation does not ship to people before that recap exists.
+- **The Full automation recap is PR C of "What we learned"** (`2026-10-28-what-we-learned-design.md`, "Remember, by Apply mode"): after a Full automation run, a recap of what was answered and learned, with Change. Here: emit each submitted job's answers and receipt through the store so PR C can draw it. The recap screen is PR C's, not this spec's. Full automation does not ship to people before that recap exists. [Owner decision 29 Oct 2026: Full automation ships before the recap; the recap follows.]
 - **Step order (one PR each):** A, the 27 Oct work committed as reviewable state, store, controller and safety, with modes still Coming soon. B, headless browser plus first-use download plus the in-app live view; `fill` gets its runner. C, Full automation gates, wait with Stop, receipts, README/privacy wording, then `auto` gets its runner (after the What-we-learned recap). D, the My Chrome choice.
 
 ## Problem and observable behavior
@@ -103,9 +103,10 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [x] Applied only from a receipt the confirmation judge reads. (proof: desktop/test/confirmation.test.js)
 - [x] A press with no receipt 3 minutes after it was sent goes to the person by the app's own timer, extension open or not (`sweepStalled`, `submission_outcome_unknown`). (proof: desktop/test/background-apply-controller.test.js)
 - [x] End-to-end proof against a fake local submit endpoint (never a real site). One POST on the happy path, none after Stop; the failed-check, restart and page-change rows are still to add. (proof: desktop/e2e/lib/background-auto-proof.mjs)
-- [ ] README and privacy wording change from "never submits".
+- [x] README and privacy wording change from "never submits" (README and CLAUDE.md say Full automation submits only after the person's confirmation; proof: none: wording, reviewed in the PR).
 - [x] Each submitted job's fill row is stamped Submitted with the receipt time, the same row in every Apply mode (its answers stay labels and sources, never values). (proof: desktop/test/run-receipt.test.js)
-- [ ] `auto` gets its runner, after the recap screen exists; PR C green and Gitar approved.
+- [x] `auto` gets its runner and the person's confirmation (switch PR, 29 Oct 2026; the owner chose to ship before the recap, so the recap is open below). (proof: desktop/test/auto-confirm.test.js)
+- [ ] The "What we learned" recap screen (PR C); the owner's decision of 29 Oct 2026 ships Full automation before it, so this is the open follow-up.
 
 ### 4. My Chrome choice (PR D)
 

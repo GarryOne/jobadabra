@@ -880,6 +880,8 @@ button.danger-solid:disabled { opacity: 1; background: var(--danger-surface); co
 .save-dialog.panel-dialog:not(:has(.dialog-foot button:not([hidden]))) { padding-bottom: var(--sp-6); }
 /* A blocking wait (renderer/busy-dialog.js): spinner + one line, the shared dialog and its backdrop; no button, so the padding below is its own. */
 .busy-dialog.panel-dialog { width: min(420px, 92vw); padding-bottom: var(--sp-6); }
+/* The Full automation confirm (pages/apply-settings.js askFullAutomation): the shared dialog with its buttons inset from the bottom edge. */
+#auto-confirm-dialog.panel-dialog { padding-bottom: var(--sp-6); }
 .busy-line { display: flex; align-items: center; gap: var(--sp-3); margin: 0; color: var(--ink); font-size: var(--fs-md); }
 .busy-line .spinner { flex: none; }
 

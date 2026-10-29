@@ -3,9 +3,8 @@
 Job-search automation for any role across Europe. Fork it, point it at your own places,
 languages and CV, and it crawls job boards and employer feeds every 4 hours, has Claude score each
 posting against your profile, drafts a cover letter and form answers for your best matches, and
-sends a ranked digest to Telegram. Applications are tracked in Notion. **It never submits an
-application on your behalf** — drafting and filling can be automated; clicking Submit always stays
-with you.
+sends a ranked digest to Telegram. Applications are tracked in Notion. **It submits only if you turn on
+Full automation** (Settings → Apply, with a confirm dialog; an optional wait with Stop before each submit, off by default). Otherwise drafting and filling are automated and clicking Submit stays with you.
 
 **Not a developer?** Use the free [Mac app](#mac-app) (Windows beta too): a guided setup in about ten minutes, no
 terminal, with a Chrome extension that fills the forms. Website:
@@ -241,8 +240,8 @@ The same list, with more detail, is on the website: [Intelligence](https://www.j
   in Chrome — each takes job URLs, `-f jobs.txt` or `--max N` and fills the real form from the kit.
 - ⚡ **Fast-path form helpers** (`tools/browser-form-fastpath.js`): map the form once, fill every
   plain field in one call, audit what's missing, click dropdown options by live coordinates.
-- 🛡️ **Never submits**: an in-page guard blocks Submit and legal-consent clicks while an agent works;
-  you review and click Submit yourself, every time.
+- 🛡️ **Never submits in Standard or Background automation**: an in-page guard blocks Submit and legal-consent
+  clicks while an agent works; you review and click Submit yourself, every time. Full automation submits only when you turn it on.
 - ✅ **Auto-marked applied**: when the confirmation page appears in Chrome, the job moves to Applied
   in Notion by itself, whichever launcher filled it.
 - 🔍 **Every run recorded** in a Notion 🤖 Agent Runs database — Claude and Codex, one row per
@@ -339,7 +338,7 @@ doesn't.
   (read-only, connected in Settings → Gmail and Calendar).
 - 🙋 **Asks you only for what it must not do**: the CAPTCHA and the terms boxes. You get a notification,
   the session page says what to tick, and it carries on.
-- 🛡️ **Never presses Submit.** It stops on the review page; you read it and submit.
+- 🛡️ **Never presses Submit in Standard or Background automation.** It stops on the review page; you read it and submit. Full automation presses it only after you turned it on, and its optional wait.
 - ⚡ **Teams up with the extension**: on a form the extension knows, Claude hands it over for the fast fill
   (kit answers, details, CV, dropdowns in seconds), then fills only what's left. Needs the app open (it
   issues a one-time ticket per job, so a web page can't trigger a fill by itself).
@@ -524,8 +523,8 @@ live chart.
 
 Jobadabra is for people who want a self-managed pipeline they control end to end: public job
 feeds, explicit location and language filters, evidence-based match scores, reviewable application
-kits, Telegram triage, Notion tracking — and browser agents that fill the form but **never submit
-it**. Compared from each project's published features and source code, September 2026; this is not
+kits, Telegram triage, Notion tracking — and browser agents that fill the form and, by default, **never submit
+it** (Full automation submits only when you turn it on). Compared from each project's published features and source code, September 2026; this is not
 a measured accuracy or success-rate benchmark.
 
 **Score:** ✅ = 1, ⚠️ = ½, ❌ or ➖ = 0 on the 10 rows below (➖ counts as 0: not described publicly).

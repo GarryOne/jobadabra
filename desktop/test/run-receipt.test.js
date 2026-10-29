@@ -44,3 +44,11 @@ test('a row logged under the extension\'s own URL is found by the job key when t
   assert.deepEqual(await store.receiptRun('https://job-boards.greenhouse.io/acme/jobs/5114768008', '2026-10-29T01:00:00.000Z'), {ok: true, id: 'q'});
   assert.equal(updated[0].run_id, 'q');
 });
+
+test('the newest row of the job wins whichever URL it was logged under', async () => {
+  const canonical = 'https://job-boards.greenhouse.io/acme/jobs/5114768008';
+  const older = {id: 'night', url: canonical, outcome: 'Ready', fields: {}}, newer = {id: 'live', url: `${canonical}?gh_src=abc`, outcome: 'Ready', fields: {}};
+  const {store, updated} = storeOf([newer, older]);   // newest first
+  assert.deepEqual(await store.receiptRun(canonical, '2026-10-29T01:00:00.000Z'), {ok: true, id: 'live'});
+  assert.equal(updated[0].run_id, 'live', 'the fill that submitted, not the night\'s older one');
+});

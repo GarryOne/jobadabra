@@ -36,5 +36,18 @@ export function extensionStore(storage, {call = engine.call} = {}) {
       await store('agent_runs', 'update', {run_id: id, fields: {outcome, learnings, fields: {...(was.fields || {}), ...changed}}});
       return {ok: true, id};
     },
+    /**
+     * A confirmed submit stamped on the job's newest fill row: outcome and status "Submitted", the job's stage "Applied", the time in `data.submitted_at`; the fill's own numbers and trace stay.
+     * A job with no fill row gets none made up.
+     * Why (2026-10-29, owner: "use the same mechanism wherever it's background or live mode"): every mode's fill is logged by logRun, and every confirmed submit passes markApplied (lib/server-env.js), so the recap reads one row per job in any mode.
+     */
+    async receiptRun(url, at) {
+      const rows = (await store('agent_runs', 'list', {transcript: false})) || [], key = jobKey(url);   // the transcript is not needed: only `outcome` and `fields` are written
+      const row = rows.find(each => each.url === url || (key && String(each.url || '').includes(key)));   // newest first: the newest row of this job under either URL (the row holds the extension's own URL, `url` the list's canonical one)
+      if (!row) return {ok: false, skipped: true};
+      const was = row.fields || {};
+      await store('agent_runs', 'update', {run_id: row.id, fields: {outcome: 'Submitted', fields: {...was, status: 'Submitted', job_stage: 'Applied', data: {...(was.data || {}), submitted_at: at}}}});
+      return {ok: true, id: row.id};
+    },
   };
 }

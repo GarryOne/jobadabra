@@ -104,7 +104,7 @@ No vendor/host-specific CAPTCHA or page rules, CAPTCHA solving/bypass, profile c
 - [ ] A press whose page is no receipt after the watcher's two reads goes to the person (`extension/submit-watch.js`, `submission_outcome_unknown`).
 - [x] End-to-end proof against a fake local submit endpoint (never a real site). One POST on the happy path, none after Stop; the failed-check, restart and page-change rows are still to add. (proof: desktop/e2e/lib/background-auto-proof.mjs)
 - [ ] README and privacy wording change from "never submits".
-- [ ] Each submitted job's answers and receipt reach the store for the What-we-learned recap.
+- [x] Each submitted job's fill row is stamped Submitted with the receipt time, the same row in every Apply mode (its answers stay labels and sources, never values). (proof: desktop/test/run-receipt.test.js)
 - [ ] `auto` gets its runner, after the recap screen exists; PR C green and Gitar approved.
 
 ### 4. My Chrome choice (PR D)

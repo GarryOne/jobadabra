@@ -43,8 +43,7 @@ jobs:
         env:
           ASKED: ${{ inputs.range }}
         run: |
-          node desktop/e2e/ai-budget.mjs --check
-          if grep -q '^skip=true' "$GITHUB_OUTPUT"; then echo "range=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Why (29 Oct 2026, Gitar on #2463): no ai-budget gate here. That gate skips while the Anthropic limit issue is open, the empty-credit case this review now avoids; the broker's own cap fails the run (code-review-codex.mjs).
           # EVERY product commit is reviewed (5 Oct 2026): the range starts where the last review that really ran ended (the newest run with a `code-review` artifact),
           # not at a fixed 7-hour window, and the commits that run's 30-commit cap left out (candidates it did not read) are carried into this one.
           mkdir -p .review .previous

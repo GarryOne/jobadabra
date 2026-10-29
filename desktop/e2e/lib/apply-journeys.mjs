@@ -11,7 +11,7 @@ import path from 'node:path';
 import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
-import {waitForFormValue, waitJobFormClosed} from './wait-for-form-value.mjs';
+import {waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
 
 export async function runJourneys(ctx, h) {
   const {cv, dumpExtension, fail, forms, page} = h;

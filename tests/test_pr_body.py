@@ -164,6 +164,13 @@ class PrBodyTest(unittest.TestCase):
         laid = subprocess.run(['python3', str(ROOT / 'tools' / 'pr-body-format.py'), ''], input=raw, capture_output=True, text=True, check=True).stdout
         self.assertIn('> [!NOTE]\n> **Why:** the owner saw it\n\n> [!TIP]\n> **Unblocks:** #1\n\n> [!CAUTION]\n> **Root cause:** `a.js:3` did y', laid)
 
+    def test_design_is_a_panel_like_why_and_unblocks(self):
+        # Owner, 29 Oct 2026 (a PR body showed Why and Unblocks as panels and Design as a plain paragraph): "let Design also be properly formatted with a panel, just like the 2 above".
+        raw = '🧱 X\n\n**Why:** the owner saw it\n**Unblocks:** #1\n**Design:** `ai_answers` is a `workflow_dispatch` input; every other event reads the stored answers\n\n- ✅ one\n'
+        laid = subprocess.run(['python3', str(ROOT / 'tools' / 'pr-body-format.py'), ''], input=raw, capture_output=True, text=True, check=True).stdout
+        self.assertIn('> [!NOTE]\n> **Why:** the owner saw it\n\n> [!TIP]\n> **Unblocks:** #1\n\n> [!IMPORTANT]\n> **Design:** `ai_answers` is a `workflow_dispatch` input', laid)
+        self.assertEqual(laid.count('**Design:**'), 1, 'the line is moved into the panel, not repeated')
+
     def test_the_summary_is_laid_out_with_headings_a_callout_and_linked_runs(self):
         # Owner, 15 Oct 2026: "use headings, different font size, proper spacing/formatting"; "run 38756824411 should be a hyperlink, not plain text".
         git(self.repo, 'remote', 'add', 'origin', 'https://github.com/owner/repo.git')

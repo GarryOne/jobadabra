@@ -87,8 +87,6 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
     if (releasing.length) { decision.run = false; why = `a release run is testing (${releasing[0].displayTitle}): skipped, so its gate jobs are not cancelled in the shared suite groups`; }
     // Exploring (an unchanged commit): only the suites that walk a different path each run; the others would repeat themselves at full cost. None vary: nothing to explore.
     suites = !decision.run ? [] : decision.exploring ? autoSuites(all, cadence, true).filter(suite => varies.includes(suite)) : autoSuites(all, cadence, true);
-    // Outside availability changes even on an unchanged commit; keep the release-in-progress exclusion above.
-    if (!releasing.length) suites = all.filter(suite => suites.includes(suite) || cadence[suite] === 'outside');
   }
   // names: exactly those, even a manual one; none: everything not manual. A release's repeat (TARGET_REF without a gate: a soak top-up, the stable canary) leaves the slim ones out.
   else suites = String(env.ONLY || '').trim() ? suitesNamed(env.ONLY, all) : autoSuites(all, cadence, false, !!env.TARGET_REF);

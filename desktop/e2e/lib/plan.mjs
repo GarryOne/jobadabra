@@ -10,13 +10,14 @@ const SMOKE = 'settings';   // AI-free, about 30 s: proof that the shared test c
 // A suite's cadence (its `cadence` export): 'always' (default) runs on every automatic run, 'nightly' only in the nightly release gate and on a push that touches
 // its own files or `watches`, 'watched' never in a schedule or the nightly gate but ONLY on a push that touches its own files or `watches` (a suite that
 // costs real AI money and judges one piece of code: the mail reading eval), 'manual' never by itself (a person names it). cadence: {suite: 'nightly'}; watches: {suite: ['src/ai/score.py', 'dir/']}.
-// 'outside' runs on the night schedule and before beta, never by push/PR reach or in soak/canary repeats.
+// 'outside' runs in the nightly and beta release gates, never on the repeated schedule, by push/PR reach or in soak/canary repeats.
 // 'slim' runs like 'always' (the night's schedule, every release gate, a push that touches it) but never in a release's repeats: the soak top-ups and the stable canary
 // (`repeat`). The e2e audit's keep 11 / slim 15 / drop 4 (owner's yes, 26 Oct 2026): no product bug caught in 30 days, so a night and a beta are enough.
 export function autoSuites(all, cadence = {}, alwaysOnly = false, repeat = false) {
   return all.filter(suite => {
     const when = cadence[suite] || 'always';
-    if (when === 'slim' || when === 'outside') return !repeat;
+    if (when === 'outside') return !alwaysOnly && !repeat;
+    if (when === 'slim') return !repeat;
     return alwaysOnly ? when === 'always' : (when !== 'manual' && when !== 'watched');
   });
 }

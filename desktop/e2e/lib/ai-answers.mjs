@@ -94,7 +94,8 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
   if (action === 'decide') return decideQuestion(data, persona);
   const kinds = (table ?? loadTable(env.E2E_AI_ANSWERS_FILE || TABLE)).kinds;
   // Why (29 Oct 2026, ap): background answers have one identity per declared kind, independent of applicant content or persona.
-  if (object(kinds) && Object.hasOwn(kinds, action)) return {operation: 'app.kind', id: action};
+  // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path.
+  if (object(kinds) && Object.hasOwn(kinds, action) && answersMode(env) === 'backbone') return {operation: 'app.kind', id: action};
   return {unkeyable: `${action || hint?.operation || 'unknown'}: question identity is not in the request${!action && !hint ? ` (${url || 'unknown path'})` : ''}`};
 }
 

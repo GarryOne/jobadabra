@@ -96,7 +96,7 @@ test('kind declarations validate exactly one known refusal or object reply', t =
 });
 
 test('kind identity and answers depend only on the declared action name', t => {
-  const {file, env} = fixture(t);
+  const fixed = fixture(t), {file} = fixed, env = {...fixed.env, E2E_AI_ANSWERS: 'backbone'};
   const kinds = {answer_home: {answer: {refuse: 'invalid-key'}}, field_redraft: {answer: {reply: stored}}};
   fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, kinds}));
   const table = loadTable(file);
@@ -108,6 +108,10 @@ test('kind identity and answers depend only on the declared action name', t => {
     }
     assert.deepEqual(questionOf({body: {prompt_cache_key: `job-pilotto-${kind}`}}, env), {operation: 'app.kind', id: kind});
     assert.deepEqual(questionOf({headers: {'x-jp-action': kind}}, {...env, E2E_QUALITY_PERSONA: 'photographer'}, table), {operation: 'app.kind', id: kind});
+  }
+  for (const mode of ['off', 'record']) {
+    const live = questionOf({headers: {'x-jp-action': 'answer_home'}}, {...env, E2E_AI_ANSWERS: mode}, table);
+    assert.match(live.unkeyable, /answer_home: question identity is not in the request/, `${mode}: live suites keep their replay and live path`);
   }
   assert.deepEqual(answerFor({operation: 'app.kind', id: 'undeclared_kind'}, table), {missing: 'app.kind/undeclared_kind'});
   assert.match(questionOf({headers: {'x-jp-action': 'undeclared_kind'}}, env).unkeyable, /undeclared_kind/);

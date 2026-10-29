@@ -10,6 +10,7 @@ const asCounts = value => Object.entries(value).map(([key, count]) => `${key}:${
 
 // An entry's fields -> the cleaned fields. Up to 8 keys, each key cut to 24.
 export function cleanFields(raw) {
+  if (raw?.source === 'extension') return crashFields(raw);
   const out = {}, dropped = [], entries = Object.entries(raw && typeof raw === 'object' ? raw : {});
   for (const [name] of entries.slice(8)) dropped.push(String(name).slice(0, 24));   // past the 8th key: named too
   for (const [name, value] of entries.slice(0, 8)) {
@@ -21,6 +22,15 @@ export function cleanFields(raw) {
     else { out[key] = ''; dropped.push(key); }
   }
   return dropped.length ? {...out, dropped: dropped.join(',').slice(0, 60)} : out;
+}
+
+// Invariant: only fixed wording, native types, version numbers and filename/line frames cross the crash boundary.
+function crashFields(raw) {
+  const type = /^(?:Error|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError|AggregateError)$/.test(raw.type) ? raw.type : 'Error';
+  const rejection = raw.rejection === true;
+  const at = String(raw.at || '').split('\n').filter(line => /^at [\w-]+\.m?js:\d{1,9}:\d{1,9}$/.test(line)).slice(0, 8).join('\n');
+  return {source: 'extension', type, error: rejection ? `Unhandled ${type} rejection` : `Uncaught ${type}`, at, rejection,
+    version: /^\d+(?:\.\d+){1,3}$/.test(raw.version) ? raw.version : ''};
 }
 
 // A fill's per-field outcomes (extension/background.js "fields: …"): the one list the log boundary lets through, row by row and only these
@@ -35,3 +45,8 @@ export function fieldRows(rows) {
       // The pack meaning that placed the field (a field key such as "location", never a value), only when there was one (the live twin loop, 9 Oct 2026).
       ...(typeof row.alias === 'string' && /^[a-z_]{1,30}$/.test(row.alias) ? {alias: row.alias} : {})}));
 }
+
+/** The /extension/log entries as the route keeps them: the last 50, each cut to short fields. One copy, used by the route and by the e2e stand-in for it. */
+export const cleanEntries = entries => (Array.isArray(entries) ? entries : []).slice(-50).map(entry => ({
+  at: typeof entry?.at === 'string' ? entry.at.slice(0, 30) : '', kind: String(entry?.kind || 'note').slice(0, 24),
+  text: String(entry?.text || '').slice(0, 300), fields: cleanFields(entry?.fields)}));

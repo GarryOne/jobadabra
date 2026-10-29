@@ -61,7 +61,7 @@ export function registerTelemetryHandlers(ctx) {
     const keys = analyticsConfig.load(pipeline.REPO);
     const identity = {installId: sentryOnly ? 'e2e' : telemetryInstallId(storage), version: app.getVersion(), os: os.release()};
     const sentryClient = sentryLib.create({dsn: keys.sentryDsn, release: `job-pilotto@${identity.version}`, installId: identity.installId, os: identity.os,
-      ...(sentryOnly ? {environment: 'e2e', tags: sentryLib.e2eTags(), enabled: (kind, fields = {}) => !causedByPlant({kind, message: fields.message ?? fields.error ?? fields.warning ?? fields.action ?? ''})} : {enabled: telemetry.enabled})});
+      ...(sentryOnly ? {environment: 'e2e', tags: sentryLib.e2eTags(), enabled: (kind, fields = {}) => !causedByPlant({kind, source: fields.source, stack: fields.stack, message: fields.message ?? fields.error ?? fields.warning ?? fields.action ?? ''})} : {enabled: telemetry.enabled})});
     if (sentryClient.active) {
       const record = telemetry.record.bind(telemetry);
       trail = sentryClient.note;

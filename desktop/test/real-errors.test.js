@@ -6,6 +6,19 @@ import * as sentry from '../lib/sentry.js';
 import {classify, createWatcher} from '../lib/real-errors.js';
 
 const DSN = 'https://abc123@o1.ingest.de.sentry.io/4500001';
+
+test('a worker exception uses its own report kind and preserves the type and safe locations', () => {
+  const reports = [], notices = [];
+  createWatcher({sentry: (...args) => reports.push(args), notice: text => notices.push(text)})([
+    {kind: 'error', text: 'uncaught error', fields: {source: 'extension', type: 'TypeError', error: 'Uncaught TypeError', at: 'at fill.js:42:7', version: '0.9.12', rejection: false}},
+  ]);
+  assert.equal(reports[0][0], 'extension_error');
+  assert.equal(reports[0][1].type, 'TypeError');
+  assert.equal(reports[0][1].stack, 'at fill.js:42:7');
+  assert.equal(reports[0][1].source, 'extension');
+  assert.equal(reports[0][1].extVersion, '0.9.12');
+  assert.equal(notices.length, 0, 'uncaught worker exceptions are crash reports, not fill notices');
+});
 const entry = (text, fields = {}, kind = 'fill') => ({at: '2026-10-15T20:00:00Z', kind, text, fields: {version: '0.9.12', ...fields}});
 const failing = entry('the page fill failed', {error: "the fill failed on this page: Cannot read properties of null (reading 'trace') for ada@example.com", url: 'https://boards.example.com/jobs/12345/apply?name=Ada',
   at: 'at fill (chrome-extension://abcdef/page/fill.js:40:7) | at run (chrome-extension://abcdef/page/fill.js:90:3)'});

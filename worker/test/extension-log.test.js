@@ -5,6 +5,18 @@ import fs from 'node:fs';
 import {test} from 'node:test';
 import {cleanFields} from '../src/extension-log.js';
 
+test('extension crashes cross the log boundary with complete safe frames and no arbitrary fields', () => {
+  const at = 'at fill.js:42:7\nat flow.js:91:3\nat sentry-plant.js:17:2\nat background.js:118:9';
+  assert.ok(at.length > 60, 'the ordinary log string cap would truncate these frames');
+  const clean = cleanFields({source: 'extension', type: 'TypeError', error: 'PAGE_TEXT_CANARY', at,
+    rejection: false, version: '0.9.123', url: 'https://private.example/URL_CANARY', value: 'FORM_CANARY'});
+  assert.deepEqual(clean, {source: 'extension', type: 'TypeError', error: 'Uncaught TypeError', at, rejection: false, version: '0.9.123'});
+  const bad = cleanFields({source: 'extension', type: 'PAGE_TEXT_CANARY', at: 'at https://private.example/URL_CANARY:1:2', version: 'URL_CANARY'});
+  assert.equal(bad.type, 'Error');
+  assert.equal(bad.at, '');
+  assert.equal(bad.version, '');
+});
+
 test('a count map (digit keys, number values) arrives as a short string; the tries line of the attempt log is whole', () => {
   const tries = {byTries: {1: 3, 2: 1}, gaveUp: 0, worked: {1: 3}};   // what extension/page/attempts.js summary() sends (flow.js "tries per control")
   assert.deepEqual(cleanFields(tries), {byTries: '1:3,2:1', gaveUp: 0, worked: '1:3'});

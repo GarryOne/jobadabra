@@ -1,0 +1,69 @@
+# Report a same-commit retry flip as an owner issue with a proposed registry entry; never edit lanes.json.
+# Job: report health
+name: E2E · Suspend a retry flip
+on:
+  workflow_run:
+    workflows: ['CI · End-to-end on Mac + Linux']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Completed main e2e run to inspect (all attempts)'
+        type: string
+        required: true
+
+permissions:
+  actions: read
+  issues: write
+  contents: read
+
+# Keep the lookup and issue creation together, including different runs flipping the same suite.
+concurrency:
+  group: e2e-flip
+  cancel-in-progress: false
+
+jobs:
+  flip:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.run_attempt > 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Collect every attempt
+        id: attempts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+        run: |
+          case "$RUN_ID" in ''|*[!0-9]*) echo 'Run id must be numeric.' >&2; exit 1 ;; esac
+          run="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")"
+          if ! jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .head_branch == "main" and .head_repository.full_name == $repo and
+            .path == ".github/workflows/e2e.yml" and .status == "completed" and .run_attempt > 1
+          ' <<< "$run" >/dev/null; then
+            echo 'No completed main e2e rerun to inspect.'
+            exit 0
+          fi
+          count="$(jq -r .run_attempt <<< "$run")"
+          dir="$(mktemp -d "$RUNNER_TEMP/flip.XXXXXX")"
+          pages=()
+          for ((n=1; n<=count; n++)); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$n/jobs?per_page=100" --paginate --slurp > "$dir/$n.json"
+            pages+=("$dir/$n.json")
+          done
+          jq -s '{attempts: [.[][]]}' "${pages[@]}" > "$dir/attempts.json"
+          echo "attempts=$dir/attempts.json" >> "$GITHUB_OUTPUT"
+      - name: Propose suspension and open its owner issue
+        if: steps.attempts.outputs.attempts != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTEMPTS: ${{ steps.attempts.outputs.attempts }}
+          OWNER: ${{ github.repository_owner }}
+        run: node tools/suspend-flip.mjs --attempts "$ATTEMPTS" --owner "$OWNER" --open --repo "$GITHUB_REPOSITORY"

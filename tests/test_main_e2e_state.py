@@ -1,7 +1,12 @@
 """Main's e2e state per suite (tools/main_e2e_state.py, gate G2): the 25 Oct 21:47 reds stay red until a main-check run passes them; other runs never count."""
 import sys
+import io
+import json
+import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import main_e2e_state as m  # noqa: E402
@@ -47,6 +52,35 @@ class MainE2eState(unittest.TestCase):
 
     def test_a_shard_red_makes_its_suite_red(self):
         self.assertEqual(self.state['recorded']['conclusion'], 'failure')
+
+    def report(self, registry):
+        with tempfile.TemporaryDirectory() as tmp:
+            lanes = Path(tmp) / 'lanes.json'
+            if registry is not None:
+                lanes.write_text(registry)
+            output = io.StringIO()
+            with patch.object(m, 'LANES', lanes, create=True), patch.object(m, 'live', return_value=self.state), redirect_stdout(output):
+                self.assertEqual(m.main(['--json']), 0)
+            return json.loads(output.getvalue())
+
+    def test_suspended_red_is_reported_separately_while_unlisted_and_tolerant_still_block(self):
+        report = self.report(json.dumps({'suites': {'cardstates': {'lane': 'suspended'}, 'interactions': {'lane': 'tolerant'}}}))
+        self.assertEqual([s['suite'] for s in report['red']], ['interactions', 'recorded'])
+        self.assertEqual([s['suite'] for s in report['suspended']], ['cardstates'])
+        self.assertEqual(report['suspended'][0]['conclusion'], 'failure')
+        self.assertEqual(report['suspended'][0]['url'], 'u2')
+
+    def test_missing_or_invalid_registry_fails_closed(self):
+        for registry in (None, '{', 'null', '[]', '{}', '{"suites": []}', '{"suites": {"cardstates": null}}'):
+            with self.subTest(registry=registry):
+                report = self.report(registry)
+                self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
+                self.assertEqual(report['suspended'], [])
+
+    def test_retired_or_unknown_lane_does_not_exclude_a_red(self):
+        for lane in ('retired', 'backbone', 'unknown'):
+            report = self.report(json.dumps({'suites': {'cardstates': {'lane': lane}}}))
+            self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
 
     def test_an_older_green_does_not_hide_a_newer_red(self):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)

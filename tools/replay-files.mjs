@@ -114,4 +114,9 @@ if (MAIN && flag === '--check') {
   }
   console.log(`${value}: its pull_request paths list everything it loads (${wanted.length} entries)`);
 }
-if (MAIN && flag === '--paths') console.log(entries(value).map(entry => `      - '${entry}'`).join('\n'));
+if (MAIN && flag === '--paths') {
+  const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows', value), 'utf8');
+  // workflow_run/dispatch health reports have no PR path filter or install entries to generate.
+  if (!/^  pull_request:/m.test(workflow)) console.log(`# ${value}: no pull_request paths (event-driven workflow).`);
+  else console.log(entries(value).map(entry => `      - '${entry}'`).join('\n'));
+}

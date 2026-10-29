@@ -117,16 +117,18 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   const caps = new Function('REAL_FORMS', 'stepSeconds', `return ${source.match(/export const hangCaps = ([\s\S]*?);/)[1]}`)([], weights);
   const cv = fs.readFileSync(new URL('../lib/apply-cv-steps.mjs', import.meta.url), 'utf8');
   const names = [...(source + cv).matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(match => match[1].replace(/\\'/g, "'"));
-  for (const name of names.filter(name => !name.startsWith('"I submitted it"'))) {
+  // Inner caps add up past the runner's 8-minute default: the default stays, no entry (Why (29 Oct 2026, ap) above hangCaps).
+  const UNCAPPED = ['"I submitted it"', 'Tailor CVs for top matches', 'Full automation presses Submit once on its own'];
+  for (const name of names.filter(name => !UNCAPPED.some(head => name.startsWith(head)))) {
     const matches = Object.keys(caps).filter(head => name.startsWith(head));
     assert.equal(matches.length, 1, name);
     assert.ok(caps[matches[0]] > 0);
   }
+  for (const head of UNCAPPED.slice(1)) assert.equal(Object.keys(caps).filter(key => head.startsWith(key)).length, 0, head);
   const seen = [], ctx = {run: (...args) => seen.push(args)};
   const wrapper = source.slice(source.indexOf('  const all = ctx.run;'), source.indexOf('  await ensureSetUp(ctx);'));
   new Function('ctx', 'hangCaps', wrapper)(ctx, caps);
   ctx.run('the app is seeded as a set-up install', () => {}, {critical: true, needs: ['setup']});
   assert.deepEqual(seen[0][2], {critical: true, needs: ['setup'], limitMs: 90000});
   assert.ok(caps['a multi-step form'] >= (30 + 90 + 45 + 15 + 60 + 15 + 15 + 30) * 1000);
-  assert.ok(caps['Tailor CVs for top matches'] >= (60 + 120 + 60 + 10 + 10 + 420 + 20 + 60 + 90 + 30) * 1000);
 });

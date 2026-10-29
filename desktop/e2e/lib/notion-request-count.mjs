@@ -1,5 +1,7 @@
 // Counts the Notion stand-in's HTTP traffic as elapsed times and anonymous route shapes.
 // Job: report health
+import fs from 'node:fs';
+import path from 'node:path';
 
 /** Count arrivals only: snapshots contain no bodies, headers, query values or UUIDs. */
 export function createNotionRequestCount({clock = () => performance.now()} = {}) {
@@ -20,7 +22,9 @@ export function createNotionRequestCount({clock = () => performance.now()} = {})
 }
 
 /** Annotate the existing step results, including failed steps; filtered steps create no result. */
-export function countNotionRequestsByStep(runner, requests) {
+export function countNotionRequestsByStep(runner, standIn) {
+  const requests = standIn?.requests;
+  if (!requests) return;
   const run = runner.run;
   runner.run = async (...args) => {
     const before = requests.snapshot().total, at = runner.results.length;
@@ -29,4 +33,9 @@ export function countNotionRequestsByStep(runner, requests) {
       for (const result of runner.results.slice(at)) result.notionRequests = requests.snapshot().total - before;
     }
   };
+}
+
+/** Write notion-requests.json beside notion-standin.json; a failed write never fails the suite. */
+export function writeNotionRequests(dir, requests) {
+  try { fs.writeFileSync(path.join(dir, 'notion-requests.json'), JSON.stringify(requests.snapshot(), null, 1)); } catch { /* the run's verdict does not depend on this file */ }
 }

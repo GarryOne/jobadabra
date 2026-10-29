@@ -35,7 +35,7 @@ test('step results keep request deltas on success and failure without counting s
     try { await fn(); runner.results.push({name, status: 'passed'}); }
     catch (error) { runner.results.push({name, status: 'failed'}); throw error; }
   }};
-  countNotionRequestsByStep(runner, count);
+  countNotionRequestsByStep(runner, {requests: count});
   request();
   await runner.run('setup', async () => { request(); request(); });
   await runner.run('filtered', request, {filtered: true});

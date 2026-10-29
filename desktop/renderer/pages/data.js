@@ -113,8 +113,12 @@ export async function init() {
   $('clear-jobs-go').addEventListener('click', async () => {
     $('clear-jobs-go').disabled = true;
     // Why (29 Oct 2026, owner): a blocking wait is one centered dialog over whatever screen is open, never a strip in this page; its end is a toast.
-    const result = await whileBusy($('busy-dialog'), {title: 'Backing up, then clearing your job list…', note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
-    show(clearBox, false); show($('clear-jobs'), true);
+    // A rejected clear (an IPC error, a thrown write) still ends the wait: the toast says it, and the Clear button comes back (Gitar on #2466).
+    let result;
+    try {
+      result = await whileBusy($('busy-dialog'), {title: 'Backing up, then clearing your job list…', note: 'Please wait; this takes a moment.'}, () => window.pilot.clearJobs());
+    } catch (error) { result = {ok: false, error: error?.message || String(error)}; }
+    finally { $('clear-jobs-go').disabled = false; show(clearBox, false); show($('clear-jobs'), true); }
     if (!result?.ok) { toastMessage('Job list not cleared', result?.error || 'Nothing was changed.', {card: 'data'}, 'bad'); return; }
     shared.allJobs = [];
     toastMessage('Job list cleared', `${result.cleared} removed, ${result.kept} kept. Run Check for new jobs to fill it again.`, {view: 'jobs'}, 'good');

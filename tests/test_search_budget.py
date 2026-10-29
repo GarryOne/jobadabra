@@ -104,7 +104,7 @@ class NoShadowTests(unittest.TestCase):
         import ast
         import pathlib
         # daily.py was split (8 Oct 2026): main() into daily.py, daily_modes.py (one function per mode) and daily_search.py; all of them are checked.
-        for name in ('daily.py', 'daily_modes.py', 'daily_search.py', 'daily_helpers.py'):
+        for name in ('daily.py', 'daily_modes.py', 'daily_search.py', 'daily_search_scoring.py', 'daily_search_reporting.py', 'daily_helpers.py'):
             tree = ast.parse(pathlib.Path('src', name).read_text())
             local = [node.lineno for fn in ast.walk(tree) if isinstance(fn, ast.FunctionDef) for node in ast.walk(fn)
                      if isinstance(node, (ast.Import, ast.ImportFrom)) and any((alias.asname or alias.name) == 'budget' for alias in node.names)]

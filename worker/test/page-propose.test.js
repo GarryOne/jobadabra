@@ -40,7 +40,7 @@ test('propose.js is loaded with the page scripts, before fill.js, as the extensi
   const flow = fs.readFileSync(new URL('../../extension/flow.js', import.meta.url), 'utf8');
   // The order, not the exact list: propose.js and menu-pick.js (the armed menus' pick) load before fill.js, which calls them.
   assert.match(flow, /import \{PAGE_FILES\} from '\.\/page-files\.js'/);
-  for (const before of ['page/propose.js', 'page/menu-pick.js', 'page/fill-labels.js', 'page/fill-read.js', 'page/fill-menus.js', 'page/fill-checks.js', 'page/fill-marks.js']) {
+  for (const before of ['page/propose.js', 'page/menu-pick.js', 'page/fill-labels.js', 'page/fill-read.js', 'page/fill-menus.js', 'page/fill-checks.js', 'page/fill-marks.js', 'page/fill-plan.js', 'page/fill-report.js']) {
     assert.ok(PAGE_FILES.indexOf(before) > 0 && PAGE_FILES.indexOf(before) < PAGE_FILES.indexOf('page/fill.js'), `${before} is injected before fill.js`);
   }
   assert.deepEqual(PAGE_SCRIPTS, PAGE_FILES.map(file => `extension/${file}`), 'the tests load the page scripts the extension injects');

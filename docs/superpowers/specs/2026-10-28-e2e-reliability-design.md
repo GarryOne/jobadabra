@@ -178,7 +178,7 @@ Who builds what: the verdict session takes rows 16-17 and the push-checks sessio
 | 14 | Renderer class tests on push | 9 | ✅ #2400 |
 | 15 | Rule E for test edits (citation check, Gitar review file) and rule F (`Job:` lines, harness-PR trailer) | 3 | 🔨 #2419 |
 | 16 | Health greys: AI credit, runner, install | 2 | ✅ #2415 |
-| 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | 🔨 #2421 |
+| 17 | At most 5 suites picked by reach, and the suspension tool for a red-then-green flip | 2 | ✅ #2421 |
 | 18 | `tools/revert-red.sh` wired to a backbone red | 8 | push-checks session |
 | 19 | Stored AI answers keyed by question; no live AI call in the backbone | 4 | fl |
 | 20 | quality cut at the seam; the AI rate as a number in the check summary | 4 | fl |
@@ -243,7 +243,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 - [ ] Outside-world suite nightly.
 
 ### 8. Revert, don't fix forward
-- [ ] `tools/revert-red.sh` wired to a backbone red after merge.
+- [x] `tools/revert-red.sh` wired to a backbone red after merge: e2e-revert.yml's `revert` job runs `tools/backbone_red.py` on an after-merge run, requests the second attempt itself once when the first has a backbone red, and only a same-suite red/red pair on main's head offers a revert PR for the owner (a flip, a grey, a tolerant suite or a moved main never does). The live workflow path is proven by its first real twice-red; fixtures are hand-made and labelled so. (proof: tests/test_backbone_red.py, tests/test_revert_red.py)
 
 ### 9. Pure checks on push (rule H)
 - [x] Measured the affected desktop unit tests on a PR push: 108 s here against 2.3 min in CI; not done, the owner's 12 Oct rule stands. (proof: none: measured 28 Oct 2026 with tools/check.sh on #2367, numbers in rule H)

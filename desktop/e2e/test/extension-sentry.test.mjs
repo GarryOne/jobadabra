@@ -114,7 +114,7 @@ test('real worker errors and rejections report safe frames, obey both gates and 
     try {
       const worker = await browser.serviceWorker();
       await worker.evaluate(async port => {
-        await chrome.storage.local.set({workerUrl: `http://127.0.0.1:${port}`, token: 'isolated-token'});
+        await globalThis.chrome.storage.local.set({workerUrl: `http://127.0.0.1:${port}`, token: 'isolated-token'});
       }, options.port);
       return {close: browser.close, requested: browser.requested,
         plant: rejection => worker.evaluate(async reject => { (await import('./sentry-plant.js')).plant(reject); }, rejection),

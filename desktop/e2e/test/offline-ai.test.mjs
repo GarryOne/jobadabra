@@ -4,10 +4,36 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
+import {runInNewContext} from 'node:vm';
 import * as context from '../lib/context.mjs';
 import {DUMMY_KEY, pickEngine, pickFamily} from '../lib/engine.mjs';
 import {answerFor, loadTable, questionOf} from '../lib/ai-answers.mjs';
 import * as guards from '../lib/no-real-ai.mjs';
+
+test('apply declares offline AI with the real-model guard enabled', () => {
+  const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
+  assert.match(source, /^export const offlineAi = true;/m);
+  assert.match(source, /^export const realAi = false;/m);
+});
+
+test('apply answers the contact-label question in the shape the app parses', () => {
+  const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
+  const callback = /proxy\.setCanned\((body => \{[\s\S]*?)\n    \}\);/.exec(source);
+  assert.ok(callback, 'exercise the installed stand-in without starting the suite or app');
+  const ctx = {}, answer = runInNewContext(`(${callback[1]}\n})`, {ctx});
+  const labels = ['resume/cv', 'i agree to the privacy policy and the processing of my data'];
+  const contact = fs.readFileSync(new URL('../../lib/contact-keys.js', import.meta.url), 'utf8');
+  const system = /const INSTRUCTIONS = `([^\n]+)/.exec(contact)[1];
+  const body = {system, messages: [{role: 'user', content: JSON.stringify(labels)}]};
+  const text = answer(body);
+  assert.equal(typeof text, 'string', 'the recorded contact-label ask must not fall through');
+  assert.deepEqual(JSON.parse(text), {items: labels.map(label => ({label, key: 'none'}))});
+  const blocks = {system: [{type: 'text', text: system}], messages: [{role: 'user', content: [{type: 'text', text: body.messages[0].content}]}]};
+  assert.deepEqual(JSON.parse(answer(blocks)), JSON.parse(text));
+  assert.equal(answer({...body, system: 'A different question with the same labels'}), null);
+  assert.equal(ctx.answerAsks, undefined);
+  assert.equal(ctx.kindAsks, undefined);
+});
 
 function environment(t, extra = {}) {
   const saved = {...process.env};

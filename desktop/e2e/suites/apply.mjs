@@ -23,7 +23,9 @@ import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
 import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, tailoredFrom} from '../lib/apply-fixtures.mjs';
 
 // Walks other data and timing on each seeded run (lib/forms.mjs varyForms): an exploring run on an unchanged commit includes it.
-export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
+// Why (29 Oct 2026, ap): apply's fixture answers cover every AI ask, so CI needs neither live AI nor an AI secret.
+export const offlineAi = true;
+export const realAi = false;
 export const varies = true;
 // Why (29 Oct 2026, ap): the 7-minute aggregate ended three apply runs on the Notion stand-in leg; each step has its own hang cap.
 export const aggregateBudget = false;
@@ -125,6 +127,10 @@ export async function runApply(ctx, parts) {
       if (typeof content === 'string' && content.startsWith('<cv>')) return Promise.resolve(ctx.tailorHold).then(() => JSON.stringify(tailoredFrom(JSON.parse(/<cv>\n([\s\S]*?)\n<\/cv>/.exec(content)[1]))));
       // The page after a Submit (lib/confirmation.js): the stand-in answers like a model that reads the words, so the suite proves the chain around it.
       const text = typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('');
+      const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join('');
+      // Why (29 Oct 2026, ap): the recorded contact-label ask classified the CV and consent labels as none; keep that answer without a live model.
+      if (system.startsWith('For each label of a job application form field, say which of the applicant\'s contact details it asks for, or "none".'))
+        return JSON.stringify({items: JSON.parse(text).map(label => ({label, key: 'none'}))});
       if (/^URL path:/m.test(text) && /^Page:/m.test(text)) return JSON.stringify({confirmation: /successfully submitted|received your application/i.test(text) && !/must be completed|required/i.test(text)});
       // The menu choice that means the same (lib/option-pick.js: {question, answer, choices} -> {choice}): the stand-in knows what a model would, for the menu
       // fixture only ("+41" is Suisse); each ask is counted, so the remembered choice can be proven to need none (ctx.optionPicks).
@@ -143,7 +149,6 @@ export async function runApply(ctx, parts) {
       }
       // What kind of page (lib/page-kind.js): the stand-in answers with each fixture's true kind, so every flow row runs on the AI's word, as in use.
       if (/^Address path:/m.test(text) && /^Controls/m.test(text)) {
-        const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join('');
         if (system === KIND_RULES) ctx.kindAsks = (ctx.kindAsks || 0) + 1;   // counted: the night's page kind is never asked (the Open in Chrome step); the "ready to submit?" judge shares this sketch and still runs
         const where = /^Address path: (.*)$/m.exec(text)?.[1] || '';
         const kinds = {[CHAIN.path]: 'posting', [CHAIN.stepPath]: 'posting', [CHAIN.formPath]: 'form', [SCRIPTED.path]: 'posting', [SCRIPTED.formPath]: 'form', [LATE.path]: 'posting',

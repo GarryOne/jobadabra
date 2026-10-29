@@ -14,7 +14,7 @@ test('a failed step from a suite that passed on its rerun is a flaky finding; on
 
 test('a red suite runs once more: green then passes the job (flaky, labelled), red twice fails it; mutants never retry', () => {
   const yml = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  assert.match(yml, /continue-on-error: \$\{\{ !inputs\.mutant \}\}/, 'a red first run is not the verdict');
+  assert.match(yml, /continue-on-error: \$\{\{ !inputs\.mutant && !matrix\.burnIn \}\}/, 'ordinary suites retry; a burn-in leg keeps its first failure');
   assert.match(yml, /if: steps\.suite_run\.outcome == 'failure' && !inputs\.mutant/);
   assert.match(yml, /a real failure\."\n\s+exit 1/, 'red twice fails the job');
   assert.match(yml, /E2E_ARTIFACTS="\$\{\{ github\.workspace \}\}\/e2e-rerun\//);

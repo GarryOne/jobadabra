@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
@@ -97,7 +97,12 @@ try {
         if (!lanes?.suites || typeof lanes.suites !== 'object' || Array.isArray(lanes.suites)) throw new Error('not a registry');
       } catch { lanes = {}; console.log('pr-suites: base lane registry not read; every reached suite remains backbone'); }
     }
-    const plan = planPrSuites({pointed, hits, covering, direct: [...direct], catches, lanes, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
+    const admitted = pullRequest ? admittedSuites({
+      addedFiles: git(['diff', '--name-only', '--diff-filter=A', `${base}...HEAD`]).trim().split('\n'),
+      deletedFiles: git(['diff', '--name-only', '--diff-filter=D', `${base}...HEAD`]).trim().split('\n'),
+      baseLanes: lanes, headLanes: JSON.parse(git(['show', 'HEAD:desktop/e2e/lanes.json'])),
+    }).filter(suite => facts.all.includes(suite)) : [];
+    const plan = planPrSuites({pointed, hits, covering, direct: [...direct], catches, lanes, admitted, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
     // Steps per suite after a merge; a pull request runs each suite whole (lib/pr-suites.mjs stepLists).
     const steps = stepLists({suites: plan.suites, pullRequest, pointedElse, quoting, picked, byLines: stepNamesFor(picked), own});
     // The store each suite's picked steps run on: the one they were recorded on (lib/coverage-pick.mjs storeFor; #2156's settings and strategy picked steps that exist
@@ -114,13 +119,14 @@ try {
     if (why) console.log(`\n### Steps that run the lines this PR changes (coverage map)\n\n| Suite | Steps | Why |\n|---|---|---|\n${why}\n`);
     const stepCount = Object.values(steps).reduce((sum, names) => sum + names.length, 0), whole = plan.suites.filter(suite => !steps[suite]);
     const elsewhere = pullRequest ? [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => ON_PR_ELSEWHERE[suite]) : [];
-    const reasons = [...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}),
+    const burnIn = admitted.filter(suite => plan.suites.includes(suite));
+    const reasons = [...burnIn.map(suite => `${suite} · backbone admission ← burn-in 5/5 required on this PR`), ...whyLines({suites: plan.suites, steps, stores, dropped, picked, pointedBy, hits, quoting, own}),
       ...deferredLines({left: plan.deferred, picked, pointedBy, hits, quoting, own}), ...elsewhere.map(suite => `${suite} · not in this run ← ${ON_PR_ELSEWHERE[suite]}`)];
     console.log(`\n### Why each one runs (suite [store] · step ← the changed line that reached it)\n${reasons.join('\n')}\n`);
     console.log(`Precise: ${plan.suites.length} suite(s); ${stepCount} picked step(s) in ${Object.keys(steps).length}, ${whole.length} whole (${whole.join(', ') || 'none'})`);
     const stepless = steplessSuites(map);
     if (stepless.length) console.log(`Map: ${stepless.length} of ${Object.keys(map.suites).length} suites have no steps yet (${[...new Set(stepless.map(entry => `${entry.sha} ${entry.at}`))].join('; ')}): a line they ran picks them whole until a whole run of each records its steps`);
-    const stepsOut = JSON.stringify({...steps, ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // two keys no suite has: e2e.yml reads steps by suite name
+    const stepsOut = JSON.stringify({...steps, ...(burnIn.length ? {'(burn-in)': burnIn} : {}), ...(Object.keys(stores).length ? {[STORES]: stores} : {}), [WHY]: reasons});   // metadata keys no suite has: e2e.yml reads steps by suite name
     console.log(`suites=${plan.suites.join(',')}\nleft=${plan.left.join(',')}\nsteps=${stepsOut}`);
     const ciText = windowsCiText(file => { try { return fs.readFileSync(path.join(here, '..', '..', file), 'utf8'); } catch { return null; } });
     const windows = windowsSmoke(changedFiles, ciText) ? JSON.stringify(WINDOWS_SMOKE.steps) : '';

@@ -210,7 +210,7 @@ jobs:
           CI_CF_ANALYTICS_TOKEN: ${{ secrets.CI_CF_ANALYTICS_TOKEN }}   # Account Analytics: Read only; unreadable count = the AI is capped (lib/ai-cap.mjs, fail closed)
         run: node desktop/e2e/key-preflight.mjs
   suite:
-    name: ${{ matrix.key }}
+    name: ${{ matrix.burnIn && format('{0} · burn-in {1}/5', matrix.suite, matrix.burnIn) || matrix.key }}
     needs: plan
     if: needs.plan.outputs.count != '0'   # a push that changed no suite, a scheduled run with nothing new, or a night with no build: no suites
     runs-on: ${{ inputs.all_on_mac && 'macos-latest' || matrix.os || 'macos-latest' }}   # Linux unless the suite needs the Mac (lib/plan.mjs runnerOf); a virtual display there
@@ -391,12 +391,13 @@ jobs:
       - name: Run the ${{ matrix.key }} suite (first try)
         id: suite_run
         env:
-          # Why (29 Oct 2026, ap; owner-approved design rule A): manual first attempts may record; quality, stores and interviews otherwise use backbone answers on both tries without live AI.
-          E2E_AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || contains(fromJSON('["quality","stores","interviews"]'), matrix.suite) && 'backbone' || 'off' }}
+          # Why (29 Oct 2026, owner-approved rule A, ap and burn-in): admission uses stored answers; manual first attempts may record; quality, stores and interviews otherwise use backbone answers on both tries without live AI.
+          E2E_AI_ANSWERS: ${{ matrix.burnIn && 'backbone' || github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || contains(fromJSON('["quality","stores","interviews"]'), matrix.suite) && 'backbone' || 'off' }}
           PR_RUN: ${{ inputs.pr_suites != '' && inputs.after_merge == '' && '1' || '' }}   # a report-only suite skips its retry on a PR only; main, nightly and gate runs keep it
         # A red first run is not the verdict (owner, 6 Oct 2026): the step below runs the suite once more on the same commit and decides. Flaky (red, then green)
         # passes the job and is filed and labelled `flaky`; red twice fails it. A mutation test has no second try: its red means the bug was caught.
-        continue-on-error: ${{ !inputs.mutant }}
+        # Why (2026-10-29, owner): a burn-in leg must pass its first attempt; retries cannot turn a flip into admission.
+        continue-on-error: ${{ !inputs.mutant && !matrix.burnIn }}
         working-directory: desktop/e2e
         timeout-minutes: 15   # the suite stops itself at its budget (7 min, recorded 11: lib/runner.mjs) with its evidence, by force 3 min later (suite.mjs); this catches only a suite that cannot
         run: |
@@ -412,7 +413,7 @@ jobs:
           # Only a reserved suite may fall back on a renamed pick (red-steps.mjs); the same cap guards the retry below.
           once ${{ matrix.suite }} || { [ -n "${E2E_STEP_NAMES:-}" ] && node red-steps.mjs --renamed-only "$E2E_ARTIFACTS/suite-failures.json" \
               && echo "::notice title=Picked step renamed::A step picked for this PR has a new name: the whole ${{ matrix.key }} suite runs now" && unset E2E_STEP_NAMES && once ${{ matrix.suite }}; } \
-            || { echo "::error title=First try failed::The ${{ matrix.key }} suite failed its first try; the next step runs it once more and decides"; exit 1; }
+            || { echo "::error title=First try failed::The ${{ matrix.key }} suite failed its first try; burn-in admits only 5/5 first tries, other suites retry below"; exit 1; }
       # Flaky or real? A red suite runs once more on the same commit (6 Oct 2026); red twice fails the job. A pass the second time passes it only with proof (gate G5,
       # flaky-proof.mjs): every first-try failure was timing or the test's environment. A wrong value that came right keeps it red: a bug that shows sometimes (#1897).
       # Either way the pass writes the marker beside the first run's artifacts, and triage labels those steps `flaky` or `intermittent`. Its own artifacts stay out of the upload.
@@ -421,7 +422,7 @@ jobs:
         if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only == '1'
         run: exit 1
       - name: "First try failed: the ${{ matrix.key }} suite once more, to tell flaky from real"
-        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
+        if: steps.suite_run.outcome == 'failure' && !inputs.mutant && !matrix.burnIn && steps.suite_run.outputs.report_only != '1' && matrix.outside != true
         env:
           E2E_AI_ANSWERS: ${{ contains(fromJSON('["quality","stores","interviews"]'), matrix.suite) && 'backbone' || 'off' }}
         working-directory: desktop/e2e

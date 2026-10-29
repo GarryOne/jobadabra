@@ -16,6 +16,26 @@ const eight = {
   covering: {'c-map': 'runs app.js:3', 'b-map': 'runs app.js:2', 'a-map': 'runs app.js:1'},
 };
 
+test('admission follows added files and BASE to HEAD backbone promotions only', () => {
+  const baseLanes = {suites: {quality: {lane: 'tolerant'}, paused: {lane: 'suspended'}, old: {lane: 'retired'}}};
+  const admitted = input => pick.admittedSuites({baseLanes, headLanes: baseLanes, ...input});
+  assert.deepEqual(admitted({addedFiles: ['desktop/e2e/suites/new.mjs']}), ['new']);
+  assert.deepEqual(admitted({headLanes: {suites: {paused: {lane: 'suspended'}, old: {lane: 'retired'}}}}), ['quality']);
+  assert.deepEqual(admitted({headLanes: {suites: {quality: {lane: 'backbone'}, paused: {lane: 'suspended'}, old: {lane: 'retired'}}}}), ['quality']);
+  assert.deepEqual(admitted({}), []);
+  assert.deepEqual(admitted({headLanes: {suites: {...baseLanes.suites, paused: {lane: 'tolerant'}}}}), []);
+  assert.deepEqual(admitted({baseLanes: {}, headLanes: {suites: {quality: {lane: 'tolerant'}}}}), []);
+  assert.deepEqual(admitted({addedFiles: ['desktop/e2e/suites/new.mjs'], headLanes: {suites: {...baseLanes.suites, new: {lane: 'tolerant'}}}}), []);
+  assert.deepEqual(admitted({headLanes: {}, deletedFiles: ['desktop/e2e/suites/quality.mjs', 'desktop/e2e/suites/paused.mjs', 'desktop/e2e/suites/old.mjs']}), []);
+});
+
+test('admission overrides BASE tolerance, Mac and cadence exclusions ahead of reach within five places', () => {
+  const out = pick.planPrSuites({...eight, admitted: ['quality'], lanes: {suites: {quality: {lane: 'tolerant', pr: 'number'}}},
+    cadence: {quality: 'manual'}, linux: suite => suite !== 'quality'});
+  assert.deepEqual(out.suites, ['quality', 'x-own', 'z-own', 'a-quote', 'b-quote']);
+  assert.equal(out.deferred.length, 4);
+});
+
 test('eight reached suites: own files above imports/quotes above coverage; three wait for merge', () => {
   const plan = pick.planPrSuites(eight);
   assert.deepEqual(plan.suites, ['x-own', 'z-own', 'a-quote', 'b-quote', 'y-import']);
@@ -135,7 +155,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, listed = {}, suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
+function cliPlan({catches, pullRequest = true, listed = {}, headListed = listed, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -145,7 +165,7 @@ function cliPlan({catches, pullRequest = true, listed = {}, suites = ['wizard', 
       return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'show') console.log(${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
+    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
     fs.writeFileSync(map, JSON.stringify(coverage));
@@ -206,4 +226,14 @@ test('CLI labels only the capped Linux suite for merge, not the Mac-only loader'
   assert.deepEqual(reasons.filter(line => line.includes(' · run after merge ←')), [
     'strategy · run after merge ← desktop/e2e/suites/strategy.mjs (the suite watches or imports it, and its recorded run never loaded it)',
   ]);
+});
+
+
+test('CLI admits a new file or a lane promotion even when no watched app line reaches it', () => {
+  const added = cliPlan({suites: ['settings'], addedFiles: ['desktop/e2e/suites/settings.mjs']});
+  assert.deepEqual(JSON.parse(added.values.steps)['(burn-in)'], ['settings']);
+  const promoted = cliPlan({suites: [], extraFiles: ['desktop/e2e/lanes.json'], listed: {quality: {lane: 'tolerant'}}, headListed: {}});
+  assert.ok(promoted.values.suites.split(',').includes('quality'));
+  assert.deepEqual(JSON.parse(promoted.values.steps)['(burn-in)'], ['quality']);
+  assert.match(promoted.text, /quality.*burn-in.*5/);
 });

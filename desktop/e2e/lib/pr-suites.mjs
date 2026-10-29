@@ -100,21 +100,34 @@ export function report({strings, hits, changedFiles, sources}) {
 // (owner, 27 Oct 2026: "Drop it"; slow cases stay on main, lib/replay-slow.mjs; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
 // After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
 export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
+const OUTSIDE_BACKBONE = ['tolerant', 'suspended', 'retired'];
+/** Suite names seeking backbone admission, from git's added/deleted files and BASE/HEAD lane registries.
+ * Invariants: deleted suites and HEAD's non-backbone lanes never burn in; existing backbone edits keep their normal reach.
+ */
+export function admittedSuites({addedFiles = [], deletedFiles = [], baseLanes = {}, headLanes = {}}) {
+  const nameOf = file => /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
+  const deleted = new Set(deletedFiles.map(nameOf));
+  const candidates = [...addedFiles.map(nameOf), ...Object.keys(baseLanes.suites || {}).filter(suite => OUTSIDE_BACKBONE.includes(baseLanes.suites[suite]?.lane))];
+  return [...new Set(candidates)].filter(suite => suite && !deleted.has(suite) && !OUTSIDE_BACKBONE.includes(headLanes.suites?.[suite]?.lane)).sort();
+}
+
 /** Pick reached backbone suites plus explicitly report-only numbers; only backbone uses the PR cap.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
+ * admitted: git-derived backbone admissions outrank all reaches and override BASE exemptions.
  * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base by the CLI.
  * left keeps unrun backbone suites; report-only numbers use no place or deferral. deferred is ranked cap overflow.
  */
-export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, linux, cadence = {}, pullRequest = false}) {
-  const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number').map(([suite]) => suite)) : new Set();
-  const wanted = [...new Set([...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite =>
-    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && ['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[suite]?.lane)))));
-  let run = wanted.filter(suite => linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
+export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], linux, cadence = {}, pullRequest = false}) {
+  const admissions = new Set(pullRequest ? admitted : []);
+  const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
+  const wanted = [...new Set([...admissions, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => admissions.has(suite) || (
+    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && OUTSIDE_BACKBONE.includes(lanes.suites?.[suite]?.lane))))));
+  let run = wanted.filter(suite => admissions.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));
   let deferred = [];
   if (pullRequest && run.length > 5) {
-    const reach = suite => direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
+    const reach = suite => admissions.has(suite) ? 4 : direct.includes(suite) ? 3 : (pointed.includes(suite) || Object.hasOwn(hits, suite)) ? 2 : 1;
     const caught = suite => Number.isFinite(catches[suite]) && catches[suite] >= 0 ? catches[suite] : 0;
     const ranked = [...run].sort((a, b) => reach(b) - reach(a) || caught(b) - caught(a) || (a < b ? -1 : a > b ? 1 : 0));
     run = ranked.slice(0, 5);

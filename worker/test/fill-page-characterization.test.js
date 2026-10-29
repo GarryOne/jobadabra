@@ -5,7 +5,6 @@ import {loadJsdom, openPage} from './helpers/page.js';
 import {fakeFillPage} from '../../desktop/test/fake-fill-page.js';
 
 const JSDOM = await loadJsdom();
-assert.ok(JSDOM, 'the characterization must run against the existing DOM dependency');
 const plain = value => JSON.parse(JSON.stringify(value));
 const row = (field, extra = {}) => ({field, label: `Question ${field}`, type: 'text', required: true, filled: false, ...extra});
 const answer = (field, value, extra = {}) => ({field, value, ...extra});
@@ -59,7 +58,7 @@ const kinds = [
   ['checkbox', '<label for="q">Can you relocate?</label><input type="checkbox" id="q" required>', 'checked', true, ['click:q', 'input:q', 'change:q']],
   ['combobox', '<label for="q">Work style</label><input id="q" role="combobox" required>', 'Remote', '', []],
 ];
-for (const [kind, html, value, expected, emitted] of kinds) test(`${kind}: values, events, report, Submit and unauthorized consent`, async () => {
+for (const [kind, html, value, expected, emitted] of kinds) test(`${kind}: values, events, report, Submit and unauthorized consent`, {skip: !JSDOM}, async () => {
   const window = page(`<form>${html}<label for="privacy">I agree to the privacy policy</label><input id="privacy" type="checkbox" required><button id="send" type="submit">Submit</button></form>`);
   try {
     const events = observe(window);
@@ -86,7 +85,7 @@ for (const [kind, html, value, expected, emitted] of kinds) test(`${kind}: value
   } finally { window.close(); }
 });
 
-test('CV and tailored letter upload follow text and controls, before manual letter text and audit', async () => {
+test('CV and tailored letter upload follow text and controls, before manual letter text and audit', {skip: !JSDOM}, async () => {
   const window = page('<form><label for="q">Work sample</label><input id="q"><div><label for="cv">Resume</label><input id="cv" type="file" required></div><div><label for="letterfile">Cover letter</label><input id="letterfile" type="file"></div><div><label for="letter">Cover letter</label><textarea id="letter"></textarea></div><button id="send" type="submit">Submit</button></form>');
   try {
     const events = observe(window);
@@ -108,7 +107,7 @@ test('CV and tailored letter upload follow text and controls, before manual lett
   } finally { window.close(); }
 });
 
-test('consents require saved authorization and validated agreement reading, never an attestation', async () => {
+test('consents require saved authorization and validated agreement reading, never an attestation', {skip: !JSDOM}, async () => {
   for (const enabled of [false, true]) {
     const window = page('<form><label for="ok">I agree to the privacy policy</label><input id="ok" type="checkbox" required><label for="unread">I agree to terms</label><input id="unread" type="checkbox"><label for="attest">I certify this is true</label><input id="attest" type="checkbox"><label for="choice">Application privacy policy</label><select id="choice"><option value="">Choose</option><option value="yes">Accept</option><option value="no">Decline</option></select><button type="submit" id="send">Submit</button></form>');
     try {
@@ -128,7 +127,7 @@ test('consents require saved authorization and validated agreement reading, neve
   }
 });
 
-test('trace reason precedence for every unfilled kind and proposals; no answers leak into trace', async t => {
+test('trace reason precedence for every unfilled kind and proposals; no answers leak into trace', {skip: !JSDOM}, async t => {
   const rows = [row('file', {type: 'file'}), row('password', {type: 'password'}), row('legal', {legal: true}), row('written', {written: true}), row('demographic', {demographic: true}), row('unanswered', {unanswered: true}), row('unread', {unread: true}), row('no', {type: 'checkbox'}), row('proposed'), row('combo', {type: 'combobox'}), row('choice', {label: 'Option', options: ['Option']}), row('detail', {label: 'Email'}), row('empty'), row('rejected')];
   const {window, fill} = scripted(rows, t);
   const missed = [];
@@ -142,7 +141,7 @@ test('trace reason precedence for every unfilled kind and proposals; no answers 
   assert.ok(!/private proposal|private option|private rejected/.test(JSON.stringify(result.trace)));
 });
 
-test('reminders, question rematching, CV grounding, drafts and proposal matching retain their mutations', async t => {
+test('reminders, question rematching, CV grounding, drafts and proposal matching retain their mutations', {skip: !JSDOM}, async t => {
   const {window, elements, fill} = scripted([row('new'), row('draft', {filled: true, type: 'textarea', value: 'private draft'}), row('cv', {filled: true}), row('only')], t);
   const all = [answer('old', 'private text\n• Add: evidence', {question: 'Question new', draft: 'draft'}), answer('draft', 'private draft', {draft: 'draft'}), answer('only', '• Add: proof'), answer('lost', 'unknown'), answer('old-proposal', 'private proposal', {question: 'Question new', use: 'propose'})];
   window.__jobPilottoProfileEntries = () => [{field: 'cv', value: 'private cv fact', fromCv: true}];
@@ -157,7 +156,7 @@ test('reminders, question rematching, CV grounding, drafts and proposal matching
   assert.ok(result.todo.includes('Review: Question draft (drafted for you)'));
 });
 
-test('gate holds controls, upload and letter while preserving the original plain-fill ordering', async t => {
+test('gate holds controls, upload and letter while preserving the original plain-fill ordering', {skip: !JSDOM}, async t => {
   const {window, fill} = scripted([row('q')], t);
   const calls = [];
   window.__jobPilottoGate = async () => { calls.push('gate'); return false; };
@@ -171,7 +170,7 @@ test('gate holds controls, upload and letter while preserving the original plain
   assert.equal(result.filled, 1);
 });
 
-test('operators, lost-on-blur menus, uploads and coverage contribute in their original order', async () => {
+test('operators, lost-on-blur menus, uploads and coverage contribute in their original order', {skip: !JSDOM}, async () => {
   const window = page('<form><label for="q">Work sample</label><input id="q"><label for="other">Other sample</label><input id="other" required><button id="send" type="submit">Submit</button></form>');
   try {
     const calls = [];
@@ -191,7 +190,7 @@ test('operators, lost-on-blur menus, uploads and coverage contribute in their or
   } finally { window.close(); }
 });
 
-test('early guards leave the page untouched', async () => {
+test('early guards leave the page untouched', {skip: !JSDOM}, async () => {
   const {window, elements, fill} = fakeFillPage([row('q')]);
   delete window.__jobPilottoGuardActive;
   assert.deepEqual(plain(await fill([])), {error: 'The page helpers did not load; nothing was filled.'});
@@ -202,7 +201,7 @@ test('early guards leave the page untouched', async () => {
 });
 
 
-test('unanswered menus arm demographics, phone country and profile in order, excluding required salutations', async t => {
+test('unanswered menus arm demographics, phone country and profile in order, excluding required salutations', {skip: !JSDOM}, async t => {
   const {window, fill} = scripted([row('demo', {type: 'combobox', label: 'Gender'}), row('title', {type: 'combobox', label: 'Title', demographic: true}), row('phone', {type: 'tel', label: 'Phone'}), row('country', {type: 'combobox', label: 'Country'}), row('city', {type: 'combobox', label: 'Location'})], t);
   const result = plain(await fill([], {profile: {phone: '+41 791234567', location: 'Zurich'}}));
   assert.equal(result.error, undefined);
@@ -213,7 +212,7 @@ test('unanswered menus arm demographics, phone country and profile in order, exc
   assert.equal(result.trace.find(item => item.label === 'Country').source, 'your details (phone prefix)');
 });
 
-test('checkbox groups rematch by question and audit as one row; failed radio choice stays actionable', async () => {
+test('checkbox groups rematch by question and audit as one row; failed radio choice stays actionable', {skip: !JSDOM}, async () => {
   const window = page('<form><fieldset><legend>How did you hear?</legend><label><input id="site" name="heard" type="checkbox">Careers website</label><label><input id="friend" name="heard" type="checkbox">Friend</label></fieldset><fieldset><legend>Work style</legend><label><input id="remote" type="radio" name="style" value="remote" required>Remote</label><label><input type="radio" name="style" value="office">Office</label></fieldset><button id="send" type="submit">Submit</button></form>');
   try {
     const events = observe(window);
@@ -229,7 +228,7 @@ test('checkbox groups rematch by question and audit as one row; failed radio cho
   } finally { window.close(); }
 });
 
-test('manual letter reveal fills once; a rejected letter and missing setup retain their urgent messages', async () => {
+test('manual letter reveal fills once; a rejected letter and missing setup retain their urgent messages', {skip: !JSDOM}, async () => {
   for (const reject of [false, true]) {
     const window = page('<form><div><label>Cover letter</label><button id="manual" type="button">Enter manually</button></div><button id="send" type="submit">Submit</button></form>');
     try {

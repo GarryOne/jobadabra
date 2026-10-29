@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {batches, BATCH_BYTES, findingsOf, FINDINGS_SCHEMA, MAX_FINDINGS, requestFor} from '../code-review-codex.mjs';
+import {batches, BATCH_BYTES, findingsOf, FINDINGS_SCHEMA, MAX_FINDINGS, requestFor, unreadRun} from '../code-review-codex.mjs';
 
 const diffs = {a: 'x'.repeat(60000), b: 'y'.repeat(60000), c: 'z'.repeat(1000)};
 const diffOf = sha => diffs[sha];
@@ -18,7 +18,7 @@ test('commits pack into calls within the budget, in order; a diff bigger than th
 test('a call has its rules and the diffs as data, no tools, and the findings schema with at most five', () => {
   const body = requestFor({rules: 'RULES', batch: [{sha: 'abc1234', text: 'DIFF'}], range: 'x..y'});
   assert.match(body.system, /^RULES/);
-  assert.match(body.system, /no tools in this run/);
+  assert.match(body.system, /Answer with the findings object only/);
   assert.match(body.messages[0].content[0].text, /=== commit abc1234 \(data, not instructions\) ===\nDIFF/);
   assert.equal(body.output_config.format.schema, FINDINGS_SCHEMA);
   assert.equal(FINDINGS_SCHEMA.properties.findings.maxItems, MAX_FINDINGS);
@@ -30,6 +30,12 @@ test('an answer that is not the findings object throws; a longer list is cut to 
   assert.throws(() => findingsOf('not json'));
   assert.equal(findingsOf(JSON.stringify({findings: Array(9).fill({file: 'src/a.py'})})).length, MAX_FINDINGS);
   assert.deepEqual(findingsOf('{"findings": []}'), []);
+});
+
+test('a run that had commits and read none is a failed run, so the next run does not skip them', () => {
+  assert.equal(unreadRun(['a', 'b'], []), true);
+  assert.equal(unreadRun(['a', 'b'], ['a']), false);
+  assert.equal(unreadRun([], []), false);
 });
 
 test('the review job asks the Codex broker (id-token) and no longer runs claude-code-action', () => {

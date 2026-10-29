@@ -17,6 +17,7 @@ import {claudeAi} from './question-ai.js';
 import * as review from './review.js';
 import {noteTabMiss} from './tab-expect.js';
 import * as server from './server.js';
+import {listenState, unheardForms} from './server-listen.js';
 import {extensionReady} from './extension-ready.js';
 import * as sitePassword from './site-password.js';
 import * as terminals from './terminals.js';
@@ -253,9 +254,9 @@ export function registerApplyHandlers(ctx) {
   // extension has not checked in lately: then nothing can be said about a closed tab, so the page says nothing.
   let lastFormsOpen = '';
   ipcMain.handle('formsOpen', async () => {
-    if (DEMO) return demoFormsOpen(JSON.parse(fs.readFileSync(demoPath(here, 'review.json'), 'utf8')));   // the demo's forms, as Chrome would report them (lib/demo.js)
+    if (DEMO) return demoFormsOpen(JSON.parse(fs.readFileSync(demoPath(here, 'review.json'), 'utf8')), storage.settings());   // the demo's forms, as Chrome would report them (lib/demo.js)
     const seen = server.extensionSeen(), known = !!seen && Date.now() - seen.at < 90 * 1000;
-    if (!known) return {known, ids: []};
+    if (!known) return unheardForms(listenState());   // linkOff: our socket is not open, so no report can come (lib/server-listen.js)
     // A session whose own tab we know is open while that tab exists; for the others, a tab that looks like its form says open, nothing says closed.
     // Open is proved two ways, each exact: a tab in the extension's report naming the session in its address, or in Chrome's own list right now
     // (Mac scripting, read at each check, so a screen opened after a restart never waits for the extension's next 30 s report).

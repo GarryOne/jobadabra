@@ -156,7 +156,7 @@ const unsureTab = (item, formsOpen) => !!formsOpen?.known && !!formsOpen.unsure?
 // The first look is over for this session: CHECK_MS since the window started AND since the session did (a session opened later needs its own first look while its tab binds).
 const lookOver = (item, sinceStart, now) => sinceStart > CHECK_MS && !(now - Date.parse(item.startedAt || '') <= CHECK_MS);
 export function checkingTabs(item, formsOpen, sinceStart, now = Date.now()) {
-  if (!waitsOnTab(item)) return false;
+  if (!waitsOnTab(item) || formsOpen?.linkOff) return false;   // the app's own connection is off: nothing is being checked (see chromeSilent)
   // Heard from Chrome, yet nothing says this tab is open or closed: never "Form open" (owner, 12 Oct 2026); it checks for CHECK_MS, then tabNotFound says so.
   if (formsOpen?.known) return unsureTab(item, formsOpen) && !lookOver(item, sinceStart, now);
   return sinceStart <= CHECK_MS;
@@ -183,8 +183,13 @@ export function tabAddress(url, limit = 70) {
 // For the first WAIT_MS after the app starts or restarts, Chrome is still starting: a neutral "Waiting for Chrome…", the warning only after (owner, 15 Oct 2026).
 export const WAIT_MS = 60 * 1000;
 const silentCase = (item, formsOpen) => !!item && !formsOpen?.known && !isSubmitted(item) && !item.outcome && (item.kind === 'form' || ((item.kind || 'claude') === 'claude' && !isLive(item)));
-export const chromeSilent = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && sinceStart > WAIT_MS;
-export const chromeWaiting = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && sinceStart > CHECK_MS && sinceStart <= WAIT_MS;
+// Why (29 Oct 2026, owner): `formsOpen.linkOff` is the app saying its own socket for the extension is not open (a leaked test app held the port). No report can come, so the
+// 45 s "Checking…" and the 60 s "Waiting" are guesses about nothing: the warning shows at once, and says it is the connection, not Chrome.
+export const chromeSilent = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && (sinceStart > WAIT_MS || !!formsOpen?.linkOff);
+/** -> whether the card says the neutral "Waiting for Chrome…": no report yet, past the first look, before the warning; never when the app's own connection is off (see chromeSilent). Reads only its arguments. */
+export const chromeWaiting = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && !formsOpen?.linkOff && sinceStart > CHECK_MS && sinceStart <= WAIT_MS;
+/** The pill of a card whose tab can't be seen: the connection, or Chrome. */
+export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 'Chrome not reporting');
 
 // What the card says on a sign-in or sign-up page (owner, 9 Oct 2026: the account step gets its own count, what is left for you and the next press, apart from the application's
 // progress). state: the form page's review state ({account, total, left, needs, pending, missing}); null when this is not an account page with fields.

@@ -169,9 +169,10 @@ test('a new session opened after the app has been up for minutes gets its own fi
 });
 
 test('every view of the tab state (list, dock, session title, next-step card) draws "Tab not found" from the one function', () => {
-  for (const file of ['sessions.js', 'session-log.js', 'session-next-step.js']) {
+  // The list and the log header take the tab part of their pill from tabStatus in session-needs.js (one ladder, 30 Oct 2026), which is where tabLost is drawn.
+  for (const [file, drawn] of [['sessions.js', /tabStatus\(item\)/], ['session-log.js', /tabStatus\(item\)/], ['session-needs.js', /tabLost\(item\)/], ['session-next-step.js', /tabLost\(item\)/]]) {
     const source = fs.readFileSync(new URL(`../renderer/pages/${file}`, import.meta.url), 'utf8');
-    assert.match(source, /tabLost\(item\)/, `${file} draws the state without tabLost`);
+    assert.match(source, drawn, `${file} draws the state without tabLost`);
   }
 });
 
@@ -351,4 +352,17 @@ test('the menu foot names local sessions, never the Jobs chips\' words', async (
   const lines = [[3, 0, 0, 5], [0, 10, 0, 10], [0, 0, 2, 2], [0, 0, 0, 1], [1, 0, 0, 1]].map(([needs, working, ready, all]) => sessionsFoot(needs, working, ready, all).text);
   assert.deepEqual(lines, ['3 sessions need you', '10 sessions open', '2 sessions filled', '1 session', '1 session needs you']);
   for (const line of lines) assert.doesNotMatch(line, /applying|ready to submit/i);
+});
+
+// Owner, 29 Oct 2026: every card said "Checking…" for 45 s and then "Chrome not reporting" for hours, because the app's own socket never opened (a leaked
+// test app held port 47111). When the app knows its connection is off nothing is being checked: the card says so at once and says why.
+test('when the app\'s own connection is off, the card does not check or wait: it says so at once', async () => {
+  const {checkingTabs, chromeSilent, chromeWaiting, silentPill} = await import('../renderer/session-state.js');
+  const form = {id: 'f1', kind: 'form'}, off = {known: false, ids: [], linkOff: {port: 47111, code: 'EADDRINUSE'}};
+  assert.equal(checkingTabs(form, off, 500), false, 'not "Checking…"');
+  assert.equal(chromeWaiting(form, off, 50 * 1000), false, 'not "Waiting for Chrome…"');
+  assert.equal(chromeSilent(form, off, 500), true, 'said at the first look, not after WAIT_MS');
+  assert.equal(silentPill(off), 'Connection off');
+  assert.equal(silentPill({known: false, ids: []}), 'Chrome not reporting', 'Chrome closed or the extension off keeps its words');
+  assert.equal(chromeSilent(form, {known: false, ids: []}, 500), false, 'a connection that is up still gets its first look');
 });

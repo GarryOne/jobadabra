@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {DEFAULT_PORT} from './server-listen.js';
 
 // The folder the demo reads its fictional data from: the app's demo/, or JOB_PILOTTO_DEMO_DIR (the product media,
 // recorded in the private site repo). Every demo read goes through demoPath (desktop/test/demo-dir.test.js).
@@ -71,7 +72,8 @@ export const cloudRuns = (settings, demo) => !demo && !!settings?.cloud?.repo;
 // Which demo sessions' forms count as open in Chrome (the formsOpen check): those with a form state in review.json. No extension reports in the demo, so
 // the Applying card said "Checking Chrome for this application…" and then "Chrome isn't reporting" on every demo screen (owner, 24 Oct 2026: "Let it
 // show a more real/relevant status as form opened"). Guard: desktop/test/demo-forms-open.test.js.
-export const demoFormsOpen = states => ({known: true, ids: (Array.isArray(states) ? states : []).map(state => String(state.id)), unsure: []});
+// settings.demoLinkOff: a shot of the "connection off" card (npm run shot --settings '{"demoLinkOff":true}').
+export const demoFormsOpen = (states, settings = {}) => settings.demoLinkOff ? {known: false, ids: [], linkOff: {port: DEFAULT_PORT, code: 'EADDRINUSE'}} : ({known: true, ids: (Array.isArray(states) ? states : []).map(state => String(state.id)), unsure: []});
 
 // Python jobs in demo mode: only the ones that read the demo folder (the Strategy page, a job's posting).
 const LOCAL = ['src.desktop strategy', 'src.desktop posting'];

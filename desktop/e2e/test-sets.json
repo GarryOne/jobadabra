@@ -168,6 +168,7 @@
   "notion-request-count.test.mjs",
   "offline-ai.test.mjs",
   "offline-app.test.mjs",
+  "own-port.test.mjs",
   "offline-site-password.test.mjs",
   "old-extension.test.mjs",
   "older-tree.test.mjs",

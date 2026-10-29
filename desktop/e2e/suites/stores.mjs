@@ -15,6 +15,7 @@ export const name = 'stores';
 export const notion = false;
 export const keepGoing = true;
 export const minutes = 6;
+export const realAi = false;   // every AI call is answered by the stand-in in the remembered-answer step or refused; the harness fails the run if one reaches a real model
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 // One store method on the e2e app's own SQLite store (its profile's data folder, as lib/pipeline-env.js gives the engine), never anyone's data:

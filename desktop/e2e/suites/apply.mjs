@@ -41,7 +41,7 @@ export const hangCaps = {'the app has an applicant': 300000, 'the app is seeded'
   'real forms the extension once failed on': Math.max(540000, REAL_FORMS.length * 165000 + 30000), 'Open in Chrome on a form the night filled': 160000,
   'a multi-step form': 300000, 'the session page says it too': 105000, 'Tailor CV on a job': 480000, 'Apply on a saved job without a kit': 390000,
   'Tailor on the session page': 445000, 'the person submits a form': 270000, 'through all of it': 50000,
-  'the panel does not say "Ready to submit"': 75000, 'nothing was queued': 5000, 'the Notion stand-in answered': 5000,
+  'the panel does not say "Ready to submit"': 75000, 'nothing was queued': 5000,
   'The hidden browser fills a form': 385000,
   'the form\'s panel offers a tailored CV': 3 * stepSeconds['Tailor on the session page of a form'] * 1000};
 // applyflows' journeys, weighed the same way (26 Oct 2026, beta 40275152602 + main 40274183649, the slowest attempt of each): turn-taking put 392 s of them in one slice and 299 s in the other.

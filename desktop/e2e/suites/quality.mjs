@@ -28,6 +28,9 @@ export const watches = PLANNER.watches;
 export const env = PLANNER.env;
 /** Run the golden journey and report every independent final check. */
 export async function run(ctx) {
+  if ((process.env.E2E_AI_ANSWERS === undefined || process.env.E2E_AI_ANSWERS === 'off') && process.env.E2E_QUALITY_ALLOW_LIVE !== '1') {
+    throw new Error('quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)');
+  }
   const {page} = ctx;
   const journey = qualityJourney(ctx);
   const {truth, privacyLogs} = journey;

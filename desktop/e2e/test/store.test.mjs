@@ -40,15 +40,15 @@ test('quality pins SQLite for every CI store alternation so recorded answers use
   }
 });
 
-test('every strict AI replay suite pins its store so recorded answers cover its path', async () => {
+test('every stored-answer backbone suite pins its store so reviewed answers cover its path', async () => {
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
-  const condition = workflow.match(/^\s*E2E_AI_STRICT:\s*(.+)$/m)?.[1] || '';
+  const condition = workflow.match(/^\s*E2E_AI_ANSWERS:.*backbone.*$/m)?.[0] || '';
   const suites = [...condition.matchAll(/matrix\.suite\s*==\s*'([^']+)'/g)].map(match => match[1]);
-  assert.ok(suites.length > 0, 'strict replay must name at least one suite');
-  assert.ok(suites.includes('quality'), 'quality must remain covered by the strict replay guard');
+  assert.ok(suites.length > 0, 'stored answers must name at least one suite');
+  assert.ok(suites.includes('quality'), 'quality must use stored backbone answers');
   for (const name of suites) {
     const suite = await import(`../suites/${name}.mjs`);
-    assert.ok(STORES.includes(suite.store), `${name}: strict replay requires an exported store pin`);
+    assert.ok(STORES.includes(suite.store), `${name}: stored answers require an exported store pin`);
   }
 });
 

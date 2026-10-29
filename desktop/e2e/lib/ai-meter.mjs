@@ -78,8 +78,7 @@ export function requestKey(url, body) {
 
 const cacheDir = (env = process.env) => env.E2E_AI_CACHE || '';
 export const replaying = (env = process.env) => env.E2E_AI_REPLAY === '1' && !!cacheDir(env);
-// Why (#2210, owner 27 Oct 2026: "Code gate + AI rate"): the quality gate on main replays only (e2e.yml E2E_AI_STRICT): a recorded answer never expires, a question with
-// no answer is asked (the run goes on) but never kept, so the retry misses it too, and the suite names it (missedQuestions). Guard: test/ai-meter.test.mjs.
+// Optional strict hash replay is used by recall() and keep(); quality uses stored question answers.
 export const strict = (env = process.env) => env.E2E_AI_STRICT === '1';
 // Everything inside fn asks the model, whatever E2E_AI_REPLAY says; replay is back after it. For a check whose point is a second, independent answer (quality's
 // second scoring: replayed, it got the first answers back and always read ±0, 26 Oct 2026). Guard: test/ai-meter.test.mjs.
@@ -119,20 +118,6 @@ export function keepMiss(key, url, body, env = process.env) {
     fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify({url, request}, null, 1));
     misses++;
   } catch {}
-}
-
-// The questions replay could not answer in this run (its ai-misses/): key, path and the first words of the last user message, for a red that names them.
-export function missedQuestions(env = process.env) {
-  const dir = path.join(env.E2E_ARTIFACTS || '', 'ai-misses');
-  if (!env.E2E_ARTIFACTS || !fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter(file => file.endsWith('.json')).sort().map(file => {
-    try {
-      const {url, request} = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-      const last = [...(request?.messages || [])].reverse().find(message => message.role === 'user')?.content;
-      const text = typeof last === 'string' ? last : (last || []).map(part => part.text || '').join(' ');
-      return {key: file.slice(0, -5), url, about: text.replace(/\s+/g, ' ').trim().slice(0, 100)};
-    } catch { return {key: file.slice(0, -5), url: '', about: ''}; }
-  });
 }
 
 // Keep a successful answer (CI only: E2E_AI_CACHE is set by the workflow; a Mac never records).

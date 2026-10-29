@@ -1,6 +1,356 @@
 {
-  "v": 1,
-  "about": "Stored AI answers keyed by question come from a record run, reviewed and committed by a person.",
-  "answers": {},
-  "items": {"app.decide": {}}
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes.",
+  "answers": {
+    "app.score": {
+      "3001": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":83,\"tier\":\"A\",\"components\":{\"role_fit\":89,\"location\":100,\"compensation\":100,\"growth\":88,\"risk\":22},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong senior SRE match in Zurich; Datadog and SLO experience are not named.\",\"strengths\":[\"Kubernetes on AWS, Terraform and OpenTelemetry\",\"Incident response and 8 years running Kubernetes on AWS\",\"Zurich hybrid and English fit; CHF 185,000 - 205,000 above your target\"],\"gaps\":[\"Datadog and SLO experience not stated in profile\",\"Workload and permanent contract not stated\",\"On-call expectations unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile.\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16128,
+            "output_tokens": 192
+          }
+        }
+      },
+      "3002": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":78,\"tier\":\"B\",\"components\":{\"role_fit\":80,\"location\":100,\"compensation\":null,\"growth\":85,\"risk\":32},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong platform stack match; staff technical direction and programming are gaps.\",\"strengths\":[\"Kubernetes on AWS EKS and Terraform experience\",\"Argo CD experience relevant to GitOps\",\"Zurich hybrid and English working language fit\"],\"gaps\":[\"Staff technical direction and Python or Go experience not stated in profile\",\"Salary not stated\",\"Workload, permanent contract and on-call not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":97,\"career_change\":false,\"cv_gap\":\"Staff technical direction and Python or Go experience not stated in profile\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16088,
+            "output_tokens": 172
+          }
+        }
+      },
+      "3003": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":86,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":70,\"growth\":80,\"risk\":25},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior AWS and Kubernetes work fits closely, with remote work from Zurich.\",\"strengths\":[\"AWS, Kubernetes and Terraform experience\",\"Prometheus and Grafana observability\",\"Senior SRE experience and incident response\"],\"gaps\":[\"EUR 95,000\u2013120,000 stated; no conversion to CHF target\",\"CI/CD experience not explicitly stated in profile\",\"Permanent status and 100% workload not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD experience is not explicitly stated in the profile.\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 15896,
+            "output_tokens": 224
+          }
+        }
+      },
+      "3004": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\n  \"score\": 35,\n  \"tier\": \"C\",\n  \"components\": {\n    \"role_fit\": 35,\n    \"location\": 55,\n    \"compensation\": null,\n    \"growth\": 15,\n    \"risk\": 65\n  },\n  \"basis\": {\n    \"salary_stated\": false,\n    \"level_stated\": true,\n    \"one_job\": true\n  },\n  \"reason\": \"DevOps work fits your search, but the junior scope falls below your senior minimum.\",\n  \"strengths\": [\n    \"Terraform changes match your Terraform experience\",\n    \"English working language matches your fluent English\"\n  ],\n  \"gaps\": [\n    \"Junior role for up to 2 years conflicts with your senior minimum and 8 years\",\n    \"Five days on-site in Basel requires a location compromise from Zurich\",\n    \"Salary, workload and permanent contract status not stated\"\n  ],\n  \"confidence\": \"high\",\n  \"search\": {\n    \"fit\": 90,\n    \"career_change\": false,\n    \"cv_gap\": \"CI pipelines and Docker image management are not named in your profile.\"\n  }\n}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16100,
+            "output_tokens": 292
+          }
+        }
+      },
+      "3005": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":45,\"tier\":\"C\",\"components\":{\"role_fit\":88,\"location\":60,\"compensation\":null,\"growth\":75,\"risk\":40},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong SRE skills, but required German C1 exceeds your B1.\",\"strengths\":[\"Kubernetes and Terraform experience\",\"Incident response experience\",\"Senior SRE experience matches the stated seniority\"],\"gaps\":[\"Required fluent German C1; profile states B1\",\"Bern office two days a week; home base Zurich\",\"Salary, workload, contract and on-call not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"Required German C1 exceeds the profile's German B1.\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16098,
+            "output_tokens": 171
+          }
+        }
+      },
+      "3006": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":20,\"tier\":\"C\",\"components\":{\"role_fit\":10,\"location\":100,\"compensation\":null,\"growth\":10,\"risk\":65},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Helpdesk duties do not match the SRE and platform engineering search.\",\"strengths\":[\"On-site in Zurich matches home base\",\"English working language matches fluent English\"],\"gaps\":[\"Customer helpdesk and CRM experience not stated in profile\",\"Salary not stated\",\"Workload and permanent contract not stated\"],\"confidence\":\"high\",\"search\":{\"fit\":5,\"career_change\":false,\"cv_gap\":\"Customer care, phone and email helpdesk, and CRM experience are not stated.\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16081,
+            "output_tokens": 159
+          }
+        }
+      },
+      "3008": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":78,\"tier\":\"B\",\"components\":{\"role_fit\":94,\"location\":55,\"compensation\":null,\"growth\":85,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Strong senior platform fit; five days on-site in Geneva requires relocation.\",\"strengths\":[\"Kubernetes on AWS with Terraform matches platform responsibilities\",\"Senior role matches Senior SRE experience\",\"Fluent English meets the working-language requirement\"],\"gaps\":[\"Five days on-site in Geneva; home base is Zurich\",\"Salary not stated\",\"Contract, workload and on-call not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16133,
+            "output_tokens": 158
+          }
+        }
+      },
+      "3009": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":58,\"tier\":\"B\",\"components\":{\"role_fit\":70,\"location\":95,\"compensation\":20,\"growth\":30,\"risk\":30},\"basis\":{\"salary_stated\":true,\"level_stated\":true,\"one_job\":true},\"reason\":\"AWS and Terraform match, but the mid-level role and pay fall below your requirements.\",\"strengths\":[\"AWS operations and Terraform experience\",\"Hybrid in Zurich fits your home base\",\"English working language matches fluent English\"],\"gaps\":[\"Mid-level role is below your Senior minimum\",\"CHF 110,000 - 130,000 is below your minimum\",\"Workload and permanent contract status unknown\"],\"confidence\":\"high\",\"search\":{\"fit\":93,\"career_change\":false,\"cv_gap\":\"\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 16065,
+            "output_tokens": 162
+          }
+        }
+      },
+      "3010": {
+        "reply": {
+          "content": [
+            {
+              "text": "{\"score\":88,\"tier\":\"A\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":null,\"growth\":85,\"risk\":20},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior observability platform work matches closely; Datadog is the main skill gap.\",\"strengths\":[\"OpenTelemetry, Prometheus and Grafana experience\",\"Senior SRE experience aligns with senior platform work\",\"Remote within Switzerland; English working language\"],\"gaps\":[\"Datadog experience not stated in profile\",\"Salary not stated\",\"Permanent contract and 100% workload not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":100,\"career_change\":false,\"cv_gap\":\"Datadog experience not stated in profile\"}}",
+              "type": "text"
+            }
+          ],
+          "id": "msg_codex",
+          "model": "gpt-6.1-sol",
+          "role": "assistant",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "type": "message",
+          "usage": {
+            "input_tokens": 15857,
+            "output_tokens": 167
+          }
+        }
+      }
+    }
+  },
+  "items": {
+    "app.decide": {
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/0e071b6f555c12a0851e607f6fb621f46f22e71d2f90169d12ce8df4cd620ccc": {
+        "answer": "ch-bern",
+        "text": ": <!w bern !w <!w berne !w"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/13b0a63aa355f8c3a697007bbaecc4e752f9c551e6a1c8601d92b475c202be6b": {
+        "answer": "ch-basel",
+        "text": "basel"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/323ffa49fe23683712e89c19c1247ab948d2cad411f11e76b83d7c6ca3855b08": {
+        "answer": "ch-bern",
+        "text": "bern"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/399e9ccb5fd19e537114d234a0a2ab2f9a96d8288082dbdba98706c761ae46ac": {
+        "answer": "ch-basel",
+        "text": ": <!w basel !w"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/3eed57c414c2c0c71676fc8ccc356865f79ad41fd121b80fd8e30117eaca319a": {
+        "answer": "ch-zurich",
+        "text": ": <!w zurich !w"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/4931abc01df5c3ed8379580512f785067ea9b775f8a260d055e737ead96c9839": {
+        "answer": "ch-geneva",
+        "text": ": <!w geneva !w <!w geneve !w"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "answer": "ch-zurich",
+        "text": "zurich"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/a7996bbcd2b449e77e67eec4d2b0ba8872fbd9069dedf52ff2d8d06e12df9cd3": {
+        "answer": "ch-geneva",
+        "text": "geneva"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/af3e16c99861b23d686af7fc57adf6cbda71967fd5ba16d64d26d8a22ffb89b0": {
+        "answer": "none",
+        "text": ":z :\u00fcrich winterthur uster d\u00fcbendorf wallisellen opfikon kloten glattbrugg schlieren dietikon w\u00e4denswil horgen thalwil pf\u00e4ffikon volketswil regensdorf basel b\u00e2le liestal muttenz pratteln allschwil riehen binningen reinach arlesheim rheinfelden bern berne biel bienne thun k\u00f6niz burgdorf langenthal solothurn aarau olten <!w baden !- fribourg freiburg !s :ims breisgau schwarzenburg gen\u00e8va genf lausanne nyon morges vevey montreux renens yverdon pully meyrin carouge neuch\u00e2tel sion sitten del\u00e9mont del\u00e9mont martigny sierre monthey la chaux-de-fonds l\u00fccerne luzern zug cham baar schwyz altdorf stans sa"
+      },
+      "default/6ddd2461a581fc580d8bddbf2ef22fb798067b815cc7a5b49f2bd0b8a6648760/c32f5de8269a9aced9a2a66afe8d228052211b0008b80b6993811ce29496bc91": {
+        "answer": "none",
+        "text": "switzerland"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/091d4475c66b3c8a9fde757e966a956eecddf14fb17cf15d83d18a99308f05c3": {
+        "answer": "sre_devops_cloud",
+        "text": "platform engineer"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/4162641e0e902a03be0eecb3e3d7bc3a6014ae5fd9b63f4ac0613a94041690b6": {
+        "answer": "sre_devops_cloud",
+        "text": "devops engineer"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/594101c50c9b833b06a6d30814b1d953ca51c818dd557e8be99ff7697424538b": {
+        "answer": "sre_devops_cloud",
+        "text": "site reliability"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/69b4bcbc6ed36c1de44a75ce1deabd1e2e2482081d8fafcd9ef3bc115d257f92": {
+        "answer": "sre_devops_cloud",
+        "text": "sre"
+      },
+      "default/89307a17298dafc6c8acfe0bb19a63dc40cb225dbfe5b017aa935b144e01ede9/8c851bc1dbac36282942015a1e44f81d0db5370d788d5e8a5407c9d19aaa7e6e": {
+        "answer": "sre_devops_cloud",
+        "text": "infrastructure engineer"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/13b0a63aa355f8c3a697007bbaecc4e752f9c551e6a1c8601d92b475c202be6b": {
+        "answer": "europe",
+        "text": "basel"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/323ffa49fe23683712e89c19c1247ab948d2cad411f11e76b83d7c6ca3855b08": {
+        "answer": "europe",
+        "text": "bern"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "answer": "europe",
+        "text": "zurich"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/a7996bbcd2b449e77e67eec4d2b0ba8872fbd9069dedf52ff2d8d06e12df9cd3": {
+        "answer": "europe",
+        "text": "geneva"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/c32f5de8269a9aced9a2a66afe8d228052211b0008b80b6993811ce29496bc91": {
+        "answer": "europe",
+        "text": "switzerland"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/091d4475c66b3c8a9fde757e966a956eecddf14fb17cf15d83d18a99308f05c3": {
+        "answer": "sre_devops",
+        "text": "platform engineer"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/4162641e0e902a03be0eecb3e3d7bc3a6014ae5fd9b63f4ac0613a94041690b6": {
+        "answer": "sre_devops",
+        "text": "devops engineer"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/594101c50c9b833b06a6d30814b1d953ca51c818dd557e8be99ff7697424538b": {
+        "answer": "sre_devops",
+        "text": "site reliability"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/69b4bcbc6ed36c1de44a75ce1deabd1e2e2482081d8fafcd9ef3bc115d257f92": {
+        "answer": "sre_devops",
+        "text": "sre"
+      },
+      "default/b15eeeee937e77e08f1f35200deff769847d89397b3058d81dafe6415d201e54/8c851bc1dbac36282942015a1e44f81d0db5370d788d5e8a5407c9d19aaa7e6e": {
+        "answer": "sre_devops",
+        "text": "infrastructure engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/091d4475c66b3c8a9fde757e966a956eecddf14fb17cf15d83d18a99308f05c3": {
+        "answer": "software",
+        "text": "platform engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/3b6c2cb88ab316aaab71edc923b9108f377352c96f6ba6c79a8e7c54d8a8e65c": {
+        "answer": "unsure",
+        "text": "bsre b"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/4162641e0e902a03be0eecb3e3d7bc3a6014ae5fd9b63f4ac0613a94041690b6": {
+        "answer": "software",
+        "text": "devops engineer"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/594101c50c9b833b06a6d30814b1d953ca51c818dd557e8be99ff7697424538b": {
+        "answer": "software",
+        "text": "site reliability"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/69b4bcbc6ed36c1de44a75ce1deabd1e2e2482081d8fafcd9ef3bc115d257f92": {
+        "answer": "software",
+        "text": "sre"
+      },
+      "default/d9f06c97101cdc68b97f8c3572320a414ed64b78d079d9587efd9e5f0094cfdb/8c851bc1dbac36282942015a1e44f81d0db5370d788d5e8a5407c9d19aaa7e6e": {
+        "answer": "software",
+        "text": "infrastructure engineer"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/0e071b6f555c12a0851e607f6fb621f46f22e71d2f90169d12ce8df4cd620ccc": {
+        "answer": "ch",
+        "text": ": <!w bern !w <!w berne !w"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/13b0a63aa355f8c3a697007bbaecc4e752f9c551e6a1c8601d92b475c202be6b": {
+        "answer": "ch",
+        "text": "basel"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/323ffa49fe23683712e89c19c1247ab948d2cad411f11e76b83d7c6ca3855b08": {
+        "answer": "ch",
+        "text": "bern"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/399e9ccb5fd19e537114d234a0a2ab2f9a96d8288082dbdba98706c761ae46ac": {
+        "answer": "ch",
+        "text": ": <!w basel !w"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/3eed57c414c2c0c71676fc8ccc356865f79ad41fd121b80fd8e30117eaca319a": {
+        "answer": "ch",
+        "text": ": <!w zurich !w"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/4931abc01df5c3ed8379580512f785067ea9b775f8a260d055e737ead96c9839": {
+        "answer": "ch",
+        "text": ": <!w geneva !w <!w geneve !w"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "answer": "ch",
+        "text": "zurich"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/a7996bbcd2b449e77e67eec4d2b0ba8872fbd9069dedf52ff2d8d06e12df9cd3": {
+        "answer": "ch",
+        "text": "geneva"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/af3e16c99861b23d686af7fc57adf6cbda71967fd5ba16d64d26d8a22ffb89b0": {
+        "answer": "ch",
+        "text": ":z :\u00fcrich winterthur uster d\u00fcbendorf wallisellen opfikon kloten glattbrugg schlieren dietikon w\u00e4denswil horgen thalwil pf\u00e4ffikon volketswil regensdorf basel b\u00e2le liestal muttenz pratteln allschwil riehen binningen reinach arlesheim rheinfelden bern berne biel bienne thun k\u00f6niz burgdorf langenthal solothurn aarau olten <!w baden !- fribourg freiburg !s :ims breisgau schwarzenburg gen\u00e8va genf lausanne nyon morges vevey montreux renens yverdon pully meyrin carouge neuch\u00e2tel sion sitten del\u00e9mont del\u00e9mont martigny sierre monthey la chaux-de-fonds l\u00fccerne luzern zug cham baar schwyz altdorf stans sa"
+      },
+      "default/e995bd9989d0a7adfbe0da64ce7637e300e64118f5ca7d4ee602d227dee5759c/c32f5de8269a9aced9a2a66afe8d228052211b0008b80b6993811ce29496bc91": {
+        "answer": "ch",
+        "text": "switzerland"
+      }
+    }
+  },
+  "v": 1
 }

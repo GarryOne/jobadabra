@@ -1,9 +1,8 @@
-"""Quality's gate replays only (owner, 27 Oct 2026: "Code gate + AI rate"): its recorded answers never expire, on main a question with no recorded answer is
-named red (lib/ai-meter.mjs strict), its retry replays like its first try, and the separate qualityai journey always asks live. Main 27 Oct 2026: a gate asked 8-12
-questions live, got other answers than its PR, and went red with no code change (runs 40434477266, 40440720029)."""
+"""Quality replays reviewed question answers on both tries; qualityai keeps its live path."""
 import re
 import unittest
 from pathlib import Path
+from tests.test_workflow_ai_answers import expression
 
 WORKFLOWS = Path(__file__).resolve().parent.parent / '.github/workflows'
 SUITE_WORKFLOWS = ('e2e.yml', 'desktop.yml')
@@ -15,19 +14,28 @@ def env_line(text, name):
 
 
 class QualityReplayGateTests(unittest.TestCase):
-    def test_quality_replays_strictly_with_answers_that_never_expire(self):
+    def test_quality_uses_stored_answers_on_both_tries_for_pr_and_main(self):
+        for name, job in (('e2e.yml', 'suite'), ('desktop.yml', 'test-mac')):
+            text = (WORKFLOWS / name).read_text()
+            suite = re.search(rf'(?ms)^  {job}:\n.*?(?=^  [a-z][\w-]*:|\Z)', text).group()
+            job_env = re.search(r'(?m)^      E2E_AI_ANSWERS: (.+)$', suite)
+            steps = re.split(r'(?m)^      - ', suite)[1:]
+            for marker in ('id: suite_run', 'if again '):
+                step = next(step for step in steps if marker in step)
+                mode = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', step) or job_env
+                self.assertIsNotNone(mode, f'{name}: {marker} needs a stored-answer mode')
+                for event in ('pull_request', 'workflow_call', 'push', 'schedule', 'workflow_dispatch'):
+                    for attempt in (1, 2):
+                        with self.subTest(file=name, step=marker, event=event, attempt=attempt):
+                            self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite='quality'), 'backbone')
+                            for other in ('qualityai', 'jobs', 'apply'):
+                                self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite=other), 'off')
+
+    def test_quality_no_longer_sets_hash_strictness_or_expiry(self):
         for name in SUITE_WORKFLOWS:
             text = (WORKFLOWS / name).read_text()
-            with self.subTest(file=name):
-                strict = env_line(text, 'E2E_AI_STRICT')
-                self.assertIsNotNone(strict, 'one E2E_AI_STRICT for the suite job')
-                self.assertIn("matrix.suite == 'quality'", strict)
-                self.assertIn("matrix.suite == 'quality' && '3650'", env_line(text, 'E2E_AI_MAX_AGE_DAYS') or '')
-
-    def test_a_prs_own_run_records_and_main_replays_only(self):
-        strict = env_line((WORKFLOWS / 'e2e.yml').read_text(), 'E2E_AI_STRICT')
-        # A PR's own run (pr_suites set, no after_merge) asks a new question once and records it; every main run is strict.
-        self.assertIn("inputs.pr_suites == '' || inputs.after_merge != ''", strict)
+            self.assertNotRegex(text, r'(?m)^\s+E2E_AI_STRICT:')
+            self.assertNotRegex(text, r'(?m)^\s+E2E_AI_MAX_AGE_DAYS:')
 
     def test_live_quality_needs_no_separate_fresh_night_step(self):
         text = (WORKFLOWS / 'e2e.yml').read_text()
@@ -53,7 +61,7 @@ class QualityReplayGateTests(unittest.TestCase):
                     self.assertIn("matrix.suite == 'qualityai' && '0' || '1'", replay)
                 strict = env_line(text, 'E2E_AI_STRICT') or ''
                 self.assertNotIn('qualityai', strict)
-                self.assertIn("matrix.suite == 'quality'", strict)
+                self.assertEqual(strict, '')
 
     # A retry adds each part of its night once; red live nights count, PRs never save the history.
     def test_the_score_steadiness_history_is_kept_for_qualityai_only(self):

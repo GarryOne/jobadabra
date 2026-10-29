@@ -115,9 +115,9 @@ class CommandTests(unittest.TestCase):
         from pathlib import Path
         source = (Path(__file__).resolve().parents[1] / 'src' / 'desktop.py').read_text()
         self.assertIn("sub.add_parser('refresh-locations')", source)
-        self.assertIn("args.command == 'refresh-locations'", source)
+        self.assertIn("'refresh-locations': _refresh_locations", source)
         self.assertIn("sub.add_parser('places-now')", source)   # the drawer asks which places are current (lib/places-now.js)
-        self.assertIn("args.command == 'places-now'", source)
+        self.assertIn("'places-now': _places_now", source)
 
 
 if __name__ == '__main__':

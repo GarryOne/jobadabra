@@ -30,7 +30,7 @@ test('another set of questions, another page, a late or a failed answer: the fil
 test('consider starts it only on a page showing a form; fillTab takes it before asking; one path asks /extension/answer', () => {
   const flow = ['../../extension/flow.js', '../../extension/fill-tab-inputs.js', '../../extension/fill-tab-finish.js']
     .map(file => fs.readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
-  const fill = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const fill = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   assert.match(fill, /if \(counts\.fields \+ counts\.textareas >= 2 && !counts\.passwords\) askEarly\(/);
   assert.match(flow, /pendingAI = askedEarly \? askedEarly\.then\(found => found \|\| askAnswers\(tab, config, open\)\) : askAnswers\(tab, config, open\)/);
   assert.equal((flow.match(/'\/extension\/answer'/g) || []).length, 1, 'the answers are asked in one place (askAnswers), for the fill and the early ask alike');

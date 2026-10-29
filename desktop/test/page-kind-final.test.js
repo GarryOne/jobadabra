@@ -14,7 +14,7 @@ test('"other" is final at any confidence, kept or asked again; a posting, a form
 });
 
 test('the fill flow\'s correction asks it before it forgets the AI\'s answer', () => {
-  const source = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const source = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const line = source.split('\n').findIndex(text => text.includes("a posting with no Apply but a form\\'s fields"));
   assert.ok(line > 0, 'the correction is still there for a posting');
   assert.match(source.split('\n').slice(line - 3, line + 1).join('\n'), /noJobPage\(kind\)/);

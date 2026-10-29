@@ -62,6 +62,8 @@ fact() {   # emoji, label, trailer key
 }
 fact '🎯' 'Pool row' Pool-row; fact '🪜' 'Rung' Rung; fact '🧪' 'Fixture' Fixture; fact '🔧' 'Fix of' Fix-commit; fact '📌' 'Pins' Recorded-pins
 fact '📼' 'No recorded page' Recorded-unneeded; fact '🐞' 'E2E issue' E2E-issue
+fact '🧪' 'Expectation changed by' Expect-changed-by; fact '🧪' 'Test was wrong' Test-was-wrong
+fact '🔧' 'Harness job' Harness-job; fact '🔴' 'Backbone red' Fixes-backbone-red
 if [ -n "$facts" ]; then printf '\n---\n\n### 🧾 Facts\n\n| | |\n|---|---|\n%s\n' "$facts"; fi
 printf '\n---\n\n'
 count="$(git rev-list --count "$base"..HEAD)"

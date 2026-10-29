@@ -8,42 +8,35 @@
 //  2. A popup is closed before the page is read, and a link that leaves the page is never pressed (fdd9638; worker/test/visit-consent.test.js, worker/test/popup-page.test.js).
 //  3. A fill that put nothing in climbs the closer-look ladder, then reports 'incomplete', kept until something is filled (c1a2fcc; desktop/test/session-flow.test.js).
 //  4. After a fill the AI is asked what the page needs next; a middle step's Next is pressed under the Submit floors, Submit never (worker/test/form-ready.test.js).
+import {preparePage, readPage, askPage, correctPage, describePage} from './fill-flow-read.js';
+import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';
 import {backgroundMayFill, backgroundPage} from './background-apply.js';
-import {PAGE_FILES, apiFor, askEarly, clickCombos, forgetGivenUp, settings} from './flow.js';
+import {PAGE_FILES, apiFor, clickCombos, settings} from './flow.js';
 import {decide} from './log.js';
-import {laterLookIsForm} from './later-look.js';
 import {retireFill} from './one-fill.js';
 import {handoffKey} from './ready-handoff.js';
-import {noteRole} from './account.js';
-import {expandSections} from './sections.js';
-import {closeConsentEverywhere} from './consent.js';
 import {sweepConsent} from './consent-sweep.js';
-import {closerLook, lastLook} from './ladder/rung4-picture.js';
-import {formNext, handGivenUpToPerson} from './form-ready.js';
-import {accountOutcome, accountStep} from './account-step.js';
-import {applyPressed, moveTab} from './tabs.js';
-import {noJobPage} from './page-kind-final.js';
-import {markPage} from './page-mark.js';
+import {closerLook} from './ladder/rung4-picture.js';
+import {applyPressed} from './tabs.js';
 import {isStopped} from './stop-state.js';
 import {pageStill} from './page-still.js';
-import {STILL_MS, readWhileDrawing} from './ladder/still-drawing.js';
-import {bindSession, identityOf, sessionOf} from './tab-identity.js';
-import {formCame, pageKey, pageRole} from './tab-pages.js';
+import {sessionOf} from './tab-identity.js';
+import {formCame, pageKey} from './tab-pages.js';
 import {restoreLostQuery} from './restore-query.js';
 import {restartFromPosting} from './restart-from-posting.js';
-import {applyPhrases, pressApply, wouldPress} from './apply-press.js';
-import {forgetNoEffect, noEffectOf, noteNoEffect} from './no-effect.js';
-import {clickTrace, modalTrace} from './ladder/press-why.js';
-import {forgetRouteTries, startRoute} from './start-route.js';
-import {emailReport, mailsOf} from './ladder/outcomes.js';
-import {brokenOf, closedReport, onBrokenPage} from './ladder/site-broken.js';
+import {pressApply, wouldPress} from './apply-press.js';
+import {forgetNoEffect, noEffectOf} from './no-effect.js';
+import {modalTrace} from './ladder/press-why.js';
+import {forgetRouteTries} from './start-route.js';
+import {mailsOf} from './ladder/outcomes.js';
+import {brokenOf, onBrokenPage} from './ladder/site-broken.js';
 import {deadEnd, useFallback, useReporter} from './ladder/dead-end.js';
 import {notePage, noteProgress, useProgressLog} from './ladder/progress.js';
 import {onTop} from './on-top.js';
 import {labelReaderIn, pageShape, pageSketchOf} from './page-reads.js';
 import {setApply} from './apply-state.js';
 import {dropIfLate, openRead} from './read-gen.js';
-import {blindOn, blindOr, candidatesOf, claimFrame, climbOnStall, confirmedBody, digestAsked, frameBecameCandidate, climbOnUnsure, controlsOf, forgetClimb, frameSketch, frameSrcOf, framesOf, noteFrames, notePressed, noteSignal, otherReport, takePressed, toldReport, verifiedBody} from './ladder/climb.js';
+import {candidatesOf, digestAsked, frameBecameCandidate, forgetClimb, frameSketch, framesOf, noteFrames, noteSignal} from './ladder/climb.js';
 
 let started = new Set(), fillOpenedTab = async () => null, reportFlow = async () => {}, onPage = async () => true, fillsNow = new Set(), arm = async () => {}, progress = async () => {};
 export function initFillFlow(shared) {
@@ -243,6 +236,7 @@ export async function readAgain(tab, jobUrl) {
   await pageStill(tab.id, {maxMs: 1500});
   return consider(tab, jobUrl);
 }
+// Read one armed page through the guards, page decisions, fill and after-fill steps.
 export async function consider(tab, jobUrl) {
   if (isStopped()) return;   // stopped by the person: nothing is read, pressed or filled until they press Apply again (stop.js)
   if (!(await backgroundMayFill(tab.id))) return;
@@ -255,246 +249,41 @@ export async function consider(tab, jobUrl) {
   const live = await chrome.tabs.get(tab.id).catch(() => null);
   const gen = openRead(tab.id, key, started, !live || pageKey(live.url) !== pageKey(tab.url));
   if (!gen) return;   // only a read that goes on makes older ones late: one that found the tab moved on (above) must not kill the read of the page the tab is on now
-  // A popup over the page (a cookie banner: Deloitte, 9 Oct 2026; any other, in any flow) is closed the way a person would, before the page is read (consent.js).
-  const banner = await closeConsentEverywhere(tab.id, {cookiesOnly: true}).catch(() => '');
-  if (banner) { decide('fill', 'closed a popup', {label: banner.slice(0, 40), tab: tab.id}); sayStep(tab.id, `Closed a popup ("${banner.slice(0, 30)}")`); await pageStill(tab.id, {maxMs: 800}); }
-  await expandSections(live);   // a form drawn with collapsed sections (SuccessFactors) is read open, or it looks empty and is judged "no form" (sections.js)
-  // The page can refuse a read right after its load (still swapping documents, the worker just woke): look again before giving up,
-  // or the tab is left with no fill and no state at all, for Claude and the app to wait on.
-  let counts = await pageShape(tab.id);
-  for (let again = 0; !counts && again < 8; again++) {   // every 0.5 s, up to the same 4 s
-    await new Promise(resolve => setTimeout(resolve, 500));
-    counts = await pageShape(tab.id);
-  }
-  // No control at all while the page is still growing (a form rendered by script after its load, "Chargement en cours…"): read it again
-  // before anyone judges it, or a loading form is called a posting and its Submit pressed as Apply (9 Oct 2026, SuccessFactors). A static page: one still half second.
-  for (let wait = 0; counts && emptyShape(counts) && wait < 4; wait++) {
-    await pageStill(tab.id, {maxMs: 1000});
-    const next = await pageShape(tab.id);
-    if (!next) break;
-    const growing = next.nodes !== counts.nodes;
-    counts = next;
-    if (!growing) break;
-  }
-  if (!counts) {
-    started.delete(key);
-    decide('fill', 'the page could not be read', {host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
-    await brokenPage(tab, jobUrl, key, null);   // loaded again, then reported plainly: never a silent stop (ladder/site-broken.js)
-    return;
-  }
-  // The server answered with an error (a posting gone, the site down) and the page shows no form: loaded again, then reported plainly; never judged as a page.
-  if (brokenOf(counts)) { await brokenPage(tab, jobUrl, key, counts); return; }
-  // A sign-up form was open in this tab (we filled it) and the page changed: what became of it is the account AI's word (account-step.js accountOutcome).
-  // The two AI looks do not depend on each other (the outcome of a sign-up, the kind of this page): asked together, the wait is the longer one, not the sum (9 Oct 2026, Migros: 13 s then 9 s, one after the other).
-  // A page that already shows a form (2+ fields, no password): its questions go to the AI now, beside the page-kind ask; the fill takes the answer only if
-  // this page is filled as a form (flow.js askEarly, early-answers.js). A count of controls only starts a question early: it never decides what the page is.
-  if (counts.fields + counts.textareas >= 2 && !counts.passwords) askEarly(live, await settings(), jobUrl).catch(() => {});
-  const lookedAt = Date.now();
-  sayStep(tab.id, 'Reading this page…'); markPage(tab.id, 'reading');   // the panel and the desktop say so at once (page-mark.js)
-  const kindAsk = askKind(tab), outcomeLook = accountOutcome(tab).catch(() => {});
-  const firstAsked = (await kindAsk) || await climbOnUnsure(tab, askKind);   // unsure: the numbered digest (rung 3), not the structure rule
-  if (late(tab, gen, 'page kind')) return;
-  // The AI says the page is still being drawn (a placeholder, a cover over an empty shell): read it again once it is still, never plan a fill from it (ladder/still-drawing.js).
-  const asked = await readWhileDrawing(firstAsked, {again: () => askKind(tab, {fresh: true}), still: () => pageStill(tab.id, STILL_MS), unanswered: async () => { const now = await pageShape(tab.id); return !!now && emptyShape(now); }, log: decide, host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
-  if (late(tab, gen, 'page kind, read again')) return;
-  if (await backgroundPage(tab.id, asked?.role || pageRole(counts, tab.url), asked?.botCheck === true)) return;
-  // The application form: fill it now; what became of the sign-up before it is the account AI's word a moment later, for the card only (owner, 9 Oct 2026: the fill
-  // waited 40 s on it on Migros while the page was already the form). Any other page (an account page, a posting, nothing known) waits for it, as the sign-in →
-  // sign-up switch and the account step go by it. Guard: worker/test/account-step.test.js.
-  if (asked?.role !== 'form') await outcomeLook;
-  if (late(tab, gen, 'account outcome')) return;
-  const outcomeMs = Date.now() - lookedAt;   // what the fill waited before it could go on
-  // What kind of page this is: the AI's word for this site and page shape (asked once, kept), in any language; the structure rule when
-  // there is none (no AI, unsure). Every flow below goes by the role either one gives (docs/flows/applying.md).
-  const ruled = pageRole(counts, tab.url);
-  let kind = asked;
-  let role = kind?.role || ruled, noted = '';   // noted: what the page is called to the app and the learning, when the fill below treats it as something else
-  // Self-correction: a "form" with nothing to fill is not one. The kept answer goes; the structure rule decides this visit.
-  const controls = (Number(counts.fields) || 0) + (Number(counts.files) || 0) + (Number(counts.textareas) || 0) + (Number(counts.passwords) || 0) + (Number(counts.choices) || 0);
-  if (kind && role === 'form' && controls === 0) {
-    await forgetKind(tab, kind, 'a form with no fields'); role = ruled;
-    if (role === 'no-form') { noteSignal(tab.id, {rung: kind.rung ?? 2, signal: 'contradicted'}, controlsOf(tab.id)); kind = (await climbOnUnsure(tab, askKind)) || kind; if (late(tab, gen, 'contradicted page')) return; role = kind?.role === 'no-form' ? 'no-form' : role; }   // the page contradicts the kept answer: a signal, so the ladder climbs (ladder/climb.js)
-  }
-  // Every account page gets the normal fill: its fields are judged by meaning (any language) and your details go in, whatever step the AI named or did not
-  // (owner, 12 Oct 2026: "we see an email, the AI judges, we fill"; a remembered answer with no step left the page to Claude and the email box empty).
-  // Filling presses nothing: which way to go (register, sign in, leave), the passwords and the account button stay account-step.js's (accountMove, dffa024).
-  if (role === 'account') {
-    const host0 = (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })();
-    const id = await identityOf(tab);
-    const peek = await apiFor(tab.id, await settings(), '/extension/site-password', {method: 'POST', body: JSON.stringify({host: host0, peek: true, session: id.session, job: id.job, url: id.url})}).catch(() => null);
-    await bindSession(tab.id, peek?.session, id.session);
-    if (peek?.mode !== 'confirm') { role = 'form'; noted = 'account'; decide('fill', `account page${kind?.accountStep ? ` (${kind.accountStep})` : ''}: filled with your details`, {host: host0}); }   // 'confirm': waiting for its mail, nothing typed again
-  }
-  if (late(tab, gen, 'account details')) return;   // the peek waits on the app: the person may have pressed on meanwhile (beta run 38383983490: a sign-up's read filled the form after it)
-  decide('fill', `page kind: ${kind?.kind || ruled}`, {by: kind ? kind.by : 'structure rule', confidence: kind?.confidence ?? null, ms: Date.now() - lookedAt, outcomeMs,
-    ...(kind && kind.role !== ruled ? {rule: ruled} : {}), host: (() => { try { return new URL(tab.url).hostname; } catch { return ''; } })()});
-  await markPage(tab.id, role, false, kind, {working: true});   // a page with no form says so to the panel: never Ready, never counts (page-mark.js); no verdict yet: the read goes on (working-mark.js)
-  const carried = takePressed(tab.id);   // the Apply press that brought the tab here: confirmed below only if this page takes the fill (ladder/climb.js)
-  await noteRole(tab.id, tab.url, noted || role);   // a sign-up page filled like a form is still an account page: no application learning, no "application form" stage (Migros, 8 Oct 2026)
-  // Event-driven: an account page is looked at the moment its kind is known, not at the panel's next tick. One filled with your details is looked at AFTER
-  // that fill: its "ready?" judgment must see the email in (jobs.ch, 9 Oct 2026: judged 0.3 s before the fill typed it, "Email address" missing, nothing pressed).
-  const accountPage = kind?.role === 'account' || ruled === 'account', accountAfterFill = accountPage && noted === 'account';
-  if (accountPage && !accountAfterFill) accountStep(tab, 0).catch(() => {});
-  let host = '';
-  try { host = new URL(tab.url).hostname; } catch { /* not a url */ }
-  // Tier 2: the posting before its form. Press its "Apply" button once (by rule), then wait for the form.
-  let pressed = false, buttonsSeen = [], lookAfterPress = null;   // lookAfterPress: the fresh page-kind answer asked after an Apply that brought no form (the frame it lists may have come with the press)
-  if (role === 'no-form' && !triedApply.has(key)) {
-    triedApply.add(key);
-    // The shared phrases, and the button the page-kind AI named on this page (any language; already checked against the page and the schema).
-    const phrases = [...await applyPhrases(), ...(kind?.applyButton ? [{key: 'apply_button', phrase: kind.applyButton}] : [])];
-    applyPressed.set(tab.id, {at: Date.now(), url: tab.url});   // before the click: the site opens its new tab during it (same-tab.js)
-    notePressed(tab.id, confirmedBody(kind, tab.url, controlsOf(tab.id), 'pressed'));   // before the click too: the page it opens can be judged before this press's own wait ends (ladder/climb.js)
-    const attempt = await pressApply(tab.id, phrases, '', kind?.applyButton || '', noEffectOf(key));
-    if (!attempt.pressed) { applyPressed.delete(tab.id); notePressed(tab.id, null); }
-    const label = attempt.pressed;
-    buttonsSeen = attempt.buttons;
-    if (!label) decide('fill', 'no Apply button to press', {host, listed: attempt.buttons?.length ?? 0, named: !!kind?.applyButton, ...(attempt.why || {})});   // why nothing was pressed (Hornbach, 10 Oct 2026: no line said); the named control's flags: found, visible, enabled, submits, href kinds, pickable
-    if (label) {
-      pressed = true;
-      decide('fill', 'pressed the Apply button', {host, label, tag: attempt.tag, aimed: attempt.aimed, sameTab: attempt.same});   // sameTab: a link/form aimed at a new tab, pointed at this one
-      const after = await formAfterPress(tab.id, tab.url, 8000, counts);
-      decide('fill', `after the press: ${after === 'navigated' ? 'the page moved' : after ? 'a form came' : 'no form came'}`, {host, label, ...(after ? {} : await clickTrace(tab.id))});   // what the press did (Aldi, 10 Oct 2026: no line said)
-      if (attempt.via) reportFlow(tab, null, {aliasUse: [{phrase: attempt.via, ok: after !== null}]});   // did a phrase from the service open the form?
-      if (after === 'navigated') { started.delete(key); return; }   // the next page decides for itself (onUpdated); if it takes the fill, this press is confirmed (notePressed above)
-      notePressed(tab.id, null);   // no other page: a form here is confirmed just below, no form is nothing
-      if (after) { role = 'form'; await noteRole(tab.id, tab.url, role); const proof = verifiedBody(kind, tab.url, controlsOf(tab.id)) || confirmedBody(kind, tab.url, controlsOf(tab.id), 'pressed'); if (proof) apiFor(tab.id, await settings(), '/extension/page-kind', {method: 'POST', body: JSON.stringify(proof)}).catch(() => {}); }   // the press led to a form: a digest's answer may be kept, the fast tier's is counted (ladder/learning.js)
-      else {
-        noteNoEffect(key, label);   // pressed, nothing came: never pressed again on this page, and the AI's next look is told so (no-effect.js)
-        // No form and the page did not move: it may be a step that offers several ways to start (Workday's dialog). The AI names the route of its button; only the manual one is pressed (start-route.js).
-        // A look that names the form frame is the way on: no route is pressed ahead of it (15 Oct 2026: a "here" link to a PDF went first, the frame it named was never opened).
-        const chosen = await startRoute(key, {ask: async () => { lookAfterPress = await askKind(tab, {fresh: true}); return Number.isInteger(lookAfterPress?.form_frame) && lookAfterPress.form_frame >= 0 && frameSrcOf(tab.id, lookAfterPress.form_frame) ? null : lookAfterPress; }, press: async routePhrases => {
-          applyPressed.set(tab.id, {at: Date.now(), url: tab.url});
-          const next = await pressApply(tab.id, routePhrases, routePhrases[0]?.phrase || '', '', noEffectOf(key));
-          if (!next.pressed) applyPressed.delete(tab.id);
-          return next;
-        }});
-        if (chosen.route) decide('fill', chosen.pressed ? 'pressed the start route: manual' : `start route not pressed: ${chosen.route}`, {host, route: chosen.route, label: chosen.pressed});
-        if (chosen.pressed) {
-          const afterRoute = await formAfterPress(tab.id, tab.url, 8000, counts);
-          if (afterRoute === 'navigated') { started.delete(key); return; }
-          if (afterRoute) { role = 'form'; pressed = true; await noteRole(tab.id, tab.url, role); } else noteNoEffect(key, chosen.pressed);
-        }
-        // The look after the press says this page IS the form, as sure as the first answer: filled, never handed over as a bot check (later-look.js).
-        if (laterLookIsForm(kind, lookAfterPress)) {   // also after a form came by the route: the later look is the newer answer
-          decide('fill', 'a later look says this page is the form: filled', {host, first: kind?.kind || '', confidence: lookAfterPress.confidence});
-          await forgetKind(tab, kind, 'a later look says form'); kind = lookAfterPress; role = 'form'; await noteRole(tab.id, tab.url, role);
-        }
-      }
-    }
-  }
-  // Self-correction: called a posting, but there was no Apply to press and the page has an application form's fields: it is the form.
-  // Never for an "other", at any confidence: fields do not make a page a job page (13 Oct 2026, the owner's Chrome: a pull request was filled); the AI's answer stands, a weak one is asked again next visit (page-kind-final.js).
-  if (kind?.role === 'no-form' && !pressed && ruled === 'form') {
-    if (noJobPage(kind)) decide('fill', 'the AI says this is no job page: its fields do not make it a form', {host, confidence: kind.confidence});
-    else { await forgetKind(tab, kind, 'a posting with no Apply but a form\'s fields'); role = 'form'; await noteRole(tab.id, tab.url, role); }
-  }
-  await markPage(tab.id, role, pressed, kind, {working: true});   // after the Apply press: the form came (cleared) or is opening; the climbs below still work
-  // The application form is inside a frame of this page (Datadog, 10 Oct 2026): the page-kind AI named it by index; its stored address is opened in this same tab, https only, once per tab and page.
-  // The numbered digest names a frame too (rung 2 unsure, 14 Oct 2026: a posting with its form in a frame got no frame from the unsure rung): the same opening, from the answer that carries it.
-  const openFormFrame = async answer => {
-    if (role !== 'no-form' || !Number.isInteger(answer?.form_frame) || answer.form_frame < 0) return false;
-    const src = frameSrcOf(tab.id, answer.form_frame);
-    if (!src || !claimFrame(key)) return false;
-    decide('fill', 'opening the application form frame as the page', {host, frame: new URL(src).hostname, by: answer.by || 'ai'});
-    await moveTab(tab.id, src); started.delete(key); return true;
-  };
-  if (await openFormFrame(lookAfterPress) || await openFormFrame(kind)) return;   // the look after the press first: the form frame often loads only after Apply (14 Oct 2026)
-  // Nothing to press and no form: the numbered digest looks once (ladder/climb.js). It may name a control the sketch lost (Aldi, 10 Oct 2026: 20 menu links ahead of "Postuler"): pressed through the same floors as any Apply button.
-  let stall = null;
-  if (role === 'no-form' && kind?.botCheck !== true && !emailReport(kind) && !toldReport(kind)) {
-    stall = await climbOnStall(tab, askKind, key, kind);
-    if (late(tab, gen, 'stall climb')) return;
-    if (await openFormFrame(stall)) return;
-    if (stall?.applyButton) {
-      applyPressed.set(tab.id, {at: Date.now(), url: tab.url});
-      const attempt = await pressApply(tab.id, [{key: 'apply_button', phrase: stall.applyButton}], stall.applyButton, '', noEffectOf(key));
-      if (!attempt.pressed) applyPressed.delete(tab.id);
-      else {
-        decide('fill', 'pressed the control the digest named', {host, label: attempt.pressed});
-        const afterDigest = await formAfterPress(tab.id, tab.url, 8000, counts);
-        if (afterDigest === 'navigated') { started.delete(key); return; }
-        if (afterDigest) { role = 'form'; pressed = true; await noteRole(tab.id, tab.url, role); } else noteNoEffect(key, attempt.pressed);
-      }
-    }
-  }
-  // The ladder ended at the person with nothing to say (the digest answered nothing usable): the picture rung looks once at the posting, from the sketch alone. It may press ONE control the page lists that the AI
-  // calls Apply and the Apply floor accepts (desktop/lib/ladder/rung4-picture.js vetPage); the press is the next-step press, which never presses a control that submits.
-  if (role === 'no-form' && kind?.botCheck !== true && !emailReport(stall || kind) && !toldReport(stall || kind) && otherReport(stall || kind, tab.id)) {
-    // A blind page (the digest said the way on is not in its list) is looked at with its PICTURE, in test runs only (the harness's ladderAct switch: the CI pool; owner, 13 Oct 2026, users keep it off);
-    // the log says whether the picture confirmed the blind spot: the control it named led to a form, which the numbered list lacked.
-    const blindLook = blindOn(tab.id) && (await settings().catch(() => null))?.ladderAct === true;
-    const look = await closerLook(tab, 0, 'the ladder ended at the person', {kind: 'page', picture: blindLook}).catch(() => 'none');
-    let led = false;
-    if (look === 'click') {
-      const afterLook = await formAfterPress(tab.id, tab.url, 8000, counts);
-      if (afterLook === 'navigated') { blindVerdict(blindLook, look, true); started.delete(key); return; }
-      if (afterLook) { role = 'form'; pressed = true; led = true; await noteRole(tab.id, tab.url, role); }
-    }
-    blindVerdict(blindLook, look, led);
-  }
-  if (await backgroundPage(tab.id, role, kind?.botCheck === true)) return;
-  if (role !== 'form') {
-    await progress(tab.id, '', '', 'your-turn');   // no fill here: the panel's "Starting…" ends now, not after its 20 s (owner, 9 Oct 2026: it spun on a sign-in page left to them)
-    // A check that the visitor is human in front of the page (the page-kind AI's bot_check): the person solves it in this tab; the form is watched for two
-    // minutes and filled once it shows (SmartRecruiters, 9 Oct 2026: the check was read as an empty page, "no form", and nobody was told).
-    const botCheck = role === 'no-form' && kind?.botCheck === true;
-    const watching = botCheck || (role === 'no-form' && counts && emptyShape(counts));   // judged while still empty, or a check: look again if fields come
-    // No verdict while the flow still works (owner, 27 Oct 2026: "don't show a verdict" ... "IF the extension didn't stop thinking"): stopped and sure, the verdict now; a watch that
-    // may judge the page again keeps "Reading this page…" and says the verdict only when it ends with no form (Greenhouse: "no application", then filled seconds later).
-    await markPage(tab.id, role, pressed, kind, {working: !!watching});
-    if (watching) watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(() => markPage(tab.id, role, pressed, kind));
-    if (late(tab, gen, 'page state')) return;   // a stale read never writes the page's state (worker/test/read-generation.test.js)
-    await writeState(tab.id, {state: role});
-    const said = stall || kind;   // the digest's answer at a stall, else what the page-kind said
-    const email = role === 'no-form' ? emailReport(said) : null, told = role === 'no-form' && !email ? toldReport(said) : null, closed = email || told ? null : closedReport(kind, counts), other = role === 'no-form' && !email && !told && !closed ? otherReport(said, tab.id) : null;   // the page asks for email (ladder/outcomes.js) or tells what to do (ladder/climb.js)
-    decide('fill', role === 'account' ? 'account page left for Claude' : botCheck ? 'a bot check in front of the page: handed to the person' : email ? 'the posting asks for the application by email: reported to the app' : closed ? 'the posting is closed (the AI says so): reported to the app' : told ? 'the page tells what to do: reported to the app' : other ? 'the ladder ended at the person: reported as other' : 'no form on this page', {host, role, ...(kind?.applyBy ? {applyBy: kind.applyBy} : {})});
-    if (other && await restartFromPosting(tab, jobUrl, {decide})) return;   // a broken page mid-application: from the posting again (restart-from-posting.js)
-    if (other) apiFor(tab.id, await settings(), '/extension/page-kind', {method: 'POST', body: JSON.stringify({why: 'other', url: tab.url.split('#')[0], controls: controlsOf(tab.id)})}).catch(() => {});   // the shape is counted by the app (no text): the ladder ended at the person
-    if (email || told || closed || other) deadEndHere(tab, jobUrl, host, (email || told || closed || other).why, (email || told || closed || other).needs, {role, rung: said?.rung, signal: blindOr(tab.id, said?.signal)});   // the address is the need: the card says where to send it
-    else if (!(role === 'account' && kind?.accountStep)) deadEndHere(tab, jobUrl, host, role === 'account' ? 'account' : 'no-form', botCheck ? BOT_CHECK_NEED : '', {role, botCheck, pressed: !!pressed, rung: kind?.rung, signal: kind?.signal});   // tier 3: the app offers Apply with Claude; an account page the AI has a step for is the account step's (it reports when it cannot finish)
-    reportFlow(tab, {role, pressed}, {buttons: pressed ? [] : buttonsSeen});
-    return;
-  }
-  forgetGivenUp(tab.id);   // a new fill: its menus are tried afresh
-  decide('fill', 'filling', {host, job: new URL(String(jobUrl || tab.url)).pathname, page: new URL(tab.url).pathname});   // which posting's kit this page uses
-  if (late(tab, gen, 'fill start')) return;   // the closer looks above wait too: only the tab's current read fills it
-  const fillToken = crypto.randomUUID(); await writeState(tab.id, {state: 'running'}, fillToken);
-  const result = await fillOpenedTab(live, String(jobUrl || tab.url).split('#')[0], false, {fast: true, quiet: true});
-  // The end state is this page's: a tab that moved on during the fill (the person pressed the page's own "Create account") shows another page, which writes its own
-  // (13 Oct 2026: a sign-up's fill error was read on the application form after it, as if the form had failed).
-  const still = await chrome.tabs.get(tab.id).catch(() => null);
-  if (!still || String(still.url || '').split('#')[0] === String(live.url || tab.url).split('#')[0]) await writeState(tab.id, result?.error ? {state: 'error', error: String(result.error).slice(0, 160)}
-    : {state: 'done', filled: result?.filled || 0, left: (result?.todo || []).length, todo: (result?.todo || []).slice(0, 20)}, fillToken);
-  else decide('fill', 'the tab moved on during the fill: its end state is left to the next page', {page: new URL(String(live.url || tab.url)).pathname}).catch(() => {});
-  reportFlow(tab, {role: 'form', ok: !result?.error});
-  const requiredIn = (result?.trace || []).filter(row => row.required && row.outcome === 'filled').length; if (!result?.error && requiredIn) noteProgress(tab.id, 'required_down', {filled: requiredIn});
-  const filledProof = !result?.error && result?.filled > 0 && !pressed && !noted ? confirmedBody(kind?.role === 'form' ? kind : null, tab.url, controlsOf(tab.id), 'filled') : null;   // the page took the fill: the decision that called it a form is counted (a kind the structure overrode is the rule's, rung 0)
-  for (const proof of filledProof ? [filledProof, carried].filter(Boolean) : []) apiFor(tab.id, await settings(), '/extension/page-kind', {method: 'POST', body: JSON.stringify(proof)}).catch(() => {});
-  // A fill that put nothing in and left required fields open has no next move of its own (Deloitte's "how will you give your CV" step, 9 Oct 2026: "Form open",
-  // 0 filled, 2 left, nobody told): the session says what is left and offers Claude. Counted from the fill's own rows, no word of any page.
-  const open = (result?.trace || []).filter(row => row.required && row.outcome === 'left').map(row => String(row.label || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
-  if (!result?.error && !(result?.filled > 0) && result?.unfilledRequired > 0 && open.length) {
-    // The ladder (owner, 9 Oct 2026: "3 levels of solving"): 1 the rules did their part; 2 the page AI looks again from the page's own controls (never the remembered answer);
-    // 3 the same look with the picture; 4 the person is told, with the control the AI named when it may not press it. Levels 2 and 3 are the closer look (opt-in, capped, lib/ladder/rung4-picture.js).
-    let moved = false, named = '';
-    for (const picture of [false, true]) {
-      const did = await closerLook(live, 0, 'the fill put nothing in and required fields are left', {kind: 'form', picture}).catch(() => 'none');
-      if (did === 'click') { moved = true; break; }
-      named = lastLook.get(tab.id)?.control || named;
-      if (did === 'none' && !picture) break;   // off, capped or no AI: a picture would not change that
-    }
-    if (moved) {   // the page moved on by that press: the fill looks at it once more (a new state, a new look, never more than once)
-      started.delete(key);
-      decide('fill', 'the closer look pressed a control: the page is filled again', {host});
-      await pageStill(tab.id, {maxMs: 1500});
-      await consider(tab, jobUrl).catch(() => {});
-      return;
-    }
-    decide('fill', 'nothing filled, required fields left: the person is told, Claude is offered', {host, left: open.length, aiNamed: !!named});
-    deadEndHere(tab, jobUrl, host, 'incomplete', [...new Set(open)].slice(0, 3).join(', ') + (named ? ` · try "${named}"` : ''), {left: open.length, aiNamed: !!named});
-  }
-  if (!result?.error && !accountPage) handGivenUpToPerson(live, 0, result?.trace).catch(() => {});   // a required menu the fill gave up on is the person's (form-ready.js)
-  if (!result?.error && !accountPage) formNext(live, 0).catch(() => {});   // the AI says what this page needs next, and a middle step's Continue is pressed (next-step.js)
-  if (accountAfterFill) accountStep(tab, 0).catch(() => {});   // the account page, now with your details in (above)
+  /* Step writes: consider seeds tab, jobUrl, key, live, gen, flow; readPage sets counts; askPage sets asked, lookedAt, outcomeMs;
+   * correctPage sets ruled, noted; describePage sets carried, accountPage, accountAfterFill, host; pressPosting sets buttonsSeen;
+   * climbPosting sets stall; watchPage sets botCheck; fillPage sets result. Multiple writers retained from the original local variables:
+   * role: correctPage, rememberPressedForm, routeAfterApply, correctPosting, climbPosting, pressDigest, lookAtPosting (classification and later form discoveries);
+   * kind: correctPage, routeAfterApply (initial judgment and the newer post-press judgment);
+   * pressed: pressPosting, afterApply, routeAfterApply, climbPosting, pressDigest, lookAtPosting (initial false and later press results);
+   * lookAfterPress: pressPosting, routeAfterApply (initial null and the fresh post-press answer). Some assignments carry an unchanged value onward. */
+  const step = {tab, jobUrl, key, live, gen, flow: fillFlowParts};
+  await preparePage(step);
+  if (!await readPage(step)) return;
+  if (!await askPage(step)) return;
+  if (!await correctPage(step)) return;
+  await describePage(step);
+  if (!await pressPosting(step)) return;
+  await correctPosting(step);
+  if (!await climbPosting(step)) return;
+  if (!await lookAtPosting(step)) return;
+  if (await backgroundPage(tab.id, step.role, step.kind?.botCheck === true)) return;
+  if (step.role !== 'form') { await leavePage(step); return; }
+  if (!await fillPage(step)) return;
+  await afterFill(step);
 }
+
+// Steps borrow these parts; the worker's mutable state and shared callbacks keep their one owner here.
+const fillFlowParts = {
+  // Return the worker's current set of pages whose fill has started.
+  get started() { return started; },
+  // Return the one memory of Apply attempts, never a copy.
+  get triedApply() { return triedApply; },
+  // Return the worker's current fill-report callback.
+  get reportFlow() { return reportFlow; },
+  // Return the worker's current tab-fill callback.
+  get fillOpenedTab() { return fillOpenedTab; },
+  // Return the worker's current progress callback.
+  get progress() { return progress; },
+  askKind, sayStep, late, forgetKind, brokenPage, formAfterPress, blindVerdict,
+  emptyShape, watchForFields, writeState, deadEndHere, consider, BOT_CHECK_NEED,
+};

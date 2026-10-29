@@ -29,9 +29,9 @@ test('with no earlier shape the page alone decides, as before; a page that is no
 });
 
 test('every press-then-wait site in the fill flow gives formAfterPress the shape from before the press', () => {
-  const flow = fs.readFileSync(new URL('../../extension/fill-flow.js', import.meta.url), 'utf8');
+  const flow = ['fill-flow.js', 'fill-flow-read.js', 'fill-flow-steps.js'].map(file => fs.readFileSync(new URL(`../../extension/${file}`, import.meta.url), 'utf8')).join('\n');
   const calls = [...flow.matchAll(/formAfterPress\(([^)]*)\)/g)].map(match => match[1]).filter(args => args.startsWith('tab.id'));
-  assert.ok(calls.length >= 5, `found ${calls.length} calls`);
+  assert.equal(calls.length, 5, `found ${calls.length} calls`);
   for (const args of calls) assert.match(args, /, 8000, (counts|before)$/, `formAfterPress(${args}) has no baseline`);
   assert.match(flow, /formCame\(before, counts, live\.url\)/);
 });

@@ -1,5 +1,5 @@
 // Ready to send, the container's pure parts (hosted/ready-fill/): the extension copy holds the account button and points at the stand-in, the stand-in answers from the batch only, a submit is refused,
-// the live view lets only mouse and keys through, and the outcome words are the server's. The browser run itself is desktop/e2e/ready-fill-proof.mjs.
+// the live view lets only mouse and keys through, and the outcome words are the server's.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

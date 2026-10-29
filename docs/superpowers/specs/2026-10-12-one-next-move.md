@@ -118,7 +118,7 @@ A test source claimed without the key is dropped and flagged (`ladder-source`), 
 
 - **The list:** `extension/ladder/endings.js` (`ENDINGS`; imported, never copied: extension, app, harness, site).
 - **The classifier:** `desktop/e2e/lib/ending.mjs` `endingOf(result, appLog)`, pure, over a pool row's existing report (reached, the run parser's notes, each required field's reason via the fill card's `causeOf`, the extension's own stop line). The worst required field decides a form: we missed it > not seen > the person's data > the person's choice. Every trace word it reads is a named constant with a guard test that the code still writes it (a reworded reason fails a test, never silently moves rows).
-- **The baseline, no new run** (`node desktop/e2e/endings-baseline.mjs <reports>... --platforms <admin json>`; Mac pool 10-12 Oct + 18 CI artifacts, newest run per row):
+- **The baseline, no new run** (measured from the Mac pool 10-12 Oct + 18 CI artifacts, newest run per row):
 
 | Measured 52 rows | |
 |---|---|

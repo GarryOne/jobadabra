@@ -129,23 +129,6 @@ test('the stop lines the classifier reads are the extension\'s own words: a rena
   for (const [name, words] of Object.entries(STOP_LINES)) assert.ok(flow.includes(words), `${name}: "${words}" is no longer a line of extension/fill-flow.js or ladder/site-broken.js`);
 });
 
-test('the baseline CLI: unresolved first with its cause, the test\'s holds apart, a CI artifact counts only its own run\'s rows', async () => {
-  const {execFileSync} = await import('node:child_process');
-  const os = await import('node:os'), path = await import('node:path');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-endings-')), mac = path.join(root, 'mac'), ci = path.join(root, 'ci-123', 'smoke-reports');
-  fs.mkdirSync(mac, {recursive: true}); fs.mkdirSync(ci, {recursive: true});
-  const row = extra => ({fieldList: [], errors: [], exit: 0, ...extra});
-  fs.writeFileSync(path.join(mac, '2026-10-12.json'), JSON.stringify({day: '2026-10-12', results: {
-    'A form': row({reached: 'form', fieldList: [field('dropdown clicked, but no option matched (9.8 s)', {type: 'combobox'})]}), 'A sign-up': row({reached: 'account', note: ACCOUNT_HELD})}}));
-  fs.writeFileSync(path.join(ci, '2026-10-12.json'), JSON.stringify({day: '2026-10-12', thisRun: {ran: ['A wall']}, results: {'A wall': row({reached: 'code/bot'}), 'Not this run': row({reached: 'ready'})}}));
-  const out = execFileSync(process.execPath, [new URL('../endings-baseline.mjs', import.meta.url).pathname, mac, ci], {encoding: 'utf8'});
-  assert.match(out.split('\n')[0], /^UNRESOLVED \(the work list, newest run per row\): 1$/);
-  assert.match(out, /- A form \[Custom, mac 2026-10-12\]: 1 required left; the first unresolved: combobox, dropdown clicked, but no option matched/);
-  assert.match(out, /HELD BY THE TEST, not measured: 2 \(1 account-first, 1 bot wall on the CI address\)/);
-  assert.match(out, /resolution, raw: 0% of 1 rows/);
-  assert.doesNotMatch(out, /Not this run/);
-});
-
 // ONE ending rule (cc's review, 12 Oct 2026): the replays (lib/page-replay.mjs: endingOfStuck on the report) and the pool's classifier (this file: the row's app log) get the same
 // stops and must give the same ending, so the Resolution score and the replays cannot drift.
 test('the same stop gives the same ending to the replays and to the pool classifier: the door\'s line, and every older stop line', () => {

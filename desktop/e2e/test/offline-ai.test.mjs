@@ -9,6 +9,7 @@ import * as context from '../lib/context.mjs';
 import {DUMMY_KEY, pickEngine, pickFamily} from '../lib/engine.mjs';
 import {answerFor, loadTable, questionOf} from '../lib/ai-answers.mjs';
 import * as guards from '../lib/no-real-ai.mjs';
+import {contactKeysAnswer, systemOf, unmatched} from '../lib/apply-fixtures.mjs';
 
 test('apply declares offline AI with the real-model guard enabled', () => {
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
@@ -23,7 +24,7 @@ test('apply preserves contact answers and each context\'s unmatched-ask fallback
   const ctx = {}, install = fallback => {
     let answer = fallback;
     const proxy = {canned: () => answer, setCanned: handler => { answer = handler; }};
-    runInNewContext(setup[0], {ctx, proxy});
+    runInNewContext(setup[0], {ctx, proxy, contactKeysAnswer, systemOf, unmatched});
     return answer;
   };
   const answer = install(() => ({refuse: 'invalid-key'}));

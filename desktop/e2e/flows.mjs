@@ -1,6 +1,7 @@
 // The Applying flows' scenario matrix (docs/flows/applying.md): every scenario a session and the Chrome extension handle, and the e2e
 // step or unit tests that guard it. A change to any FLOW_FILES file runs the WHOLE matrix (npm run flows), not only its own row, so a
 // fix for one flow (account creation) can't quietly break another (the application form). On CI the steps run with every e2e (no push gate since 9 Oct 2026).
+// Job: pick the suites
 import crypto from 'node:crypto';
 
 // The code the flows run on. A file added for a flow goes here too (test/flows-matrix.test.js).

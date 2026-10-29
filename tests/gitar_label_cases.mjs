@@ -18,7 +18,7 @@ const payloadCases = [
   {name: 'changes already held', body: CHANGES, labels: [LABELS.changes.name], skip: true, before: 1},
   {name: 'still reviewing', body: 'Gitar is reviewing…', labels: [WAITING.name], skip: true, before: 1},
   {name: 'different verdict', body: APPROVED, labels: [LABELS.changes.name], skip: false, before: 5},
-  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 1},
+  {name: 'working plus approval', body: APPROVED, labels: [LABELS.approved.name, WORKING.name], skip: false, before: 3},
   {name: 'push clears stale approval', event: 'pull_request_target', body: APPROVED, labels: [LABELS.approved.name], skip: false, before: 5},
 ];
 
@@ -59,7 +59,7 @@ childProcess.execFileSync = (file, args) => {
     const path = args[1];
     if (path === 'graphql') result = {data: {repository: {pullRequest: {
       state: 'OPEN', headRefOid: 'head',
-      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:04:00Z'}]},
+      comments: {pageInfo: {hasPreviousPage: false}, nodes: [{author: {login: 'gitar-bot'}, body: state.body, updatedAt: '2026-10-28T20:05:00Z'}]},
       labels: {nodes: names},
       timelineItems: {nodes: [{label: {name: 'Working on PR comments'}, createdAt: state.workedAt || '2026-10-28T20:05:00Z'}]},
       commits: {nodes: [{commit: {committedDate: process.env.FAKE_HEAD_TIME, checkSuites: {nodes: []}}}]},

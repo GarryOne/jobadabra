@@ -7,7 +7,8 @@ import {ensureStaged} from '../lib/ensure-staged.mjs';
 import {shardLegs} from '../lib/suite-shards.mjs';
 
 // Suite imports need generated shared/ even when this test runs alone in a fresh worktree.
-ensureStaged(fileURLToPath(new URL('../..', import.meta.url)));
+// Why (29 Oct 2026, Gitar on #2457): the folder is a path argument, not a read of every file under it; a `new URL('../..')` would count as one in lib/test-reach.mjs.
+ensureStaged(path.resolve(fileURLToPath(import.meta.url), '..', '..', '..'));
 
 const args = {pullRequest: true, linux: () => true};
 const eight = {

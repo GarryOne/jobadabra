@@ -37,6 +37,13 @@ test('reach follows imports to the end, a folder read covers every file under it
   assert.deepEqual(reachedTests({root, tests: ['e2e/test/x.test.mjs'], changed: ['docs/x.md']}).files, [], 'the root read reaches nothing by itself');
 });
 
+test('a specifier ending in `..` names a folder: a read of `../..` covers the folder, not a file of that name (Gitar on #2457)', () => {
+  const up = ['..', '..'].join('/');   // built, so this file does not itself name a folder the scanner would follow
+  const root = tree({'app/e2e/test/y.test.mjs': `const app = new URL('${up}', import.meta.url);`});
+  const {paths} = reach(root, 'app/e2e/test/y.test.mjs');
+  assert.deepEqual([...paths].sort(), ['app/', 'app/e2e/test/y.test.mjs']);
+});
+
 test('the pr set runs when the harness changed, not for a recorded case alone', () => {
   const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo), always = pr.map(inRepo);
   const harness = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/lib/test-reach.mjs'], always});

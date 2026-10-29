@@ -21,7 +21,8 @@ on:
       # ... except the ones a harness test reads (a later pattern wins)
       - 'desktop/e2e/fixtures/cv.json'
       - 'desktop/e2e/fixtures/cv.pdf'
-      - 'desktop/e2e/fixtures/golden/truth.json'
+      - 'desktop/e2e/fixtures/golden/**'   # quality.test.mjs reads truth.json and sources.json (#2450 added sources.json)
+      - 'desktop/e2e/fixtures/golden-photographer/**'
       - 'desktop/e2e/fixtures/real-forms/**'
       - 'desktop/e2e/recorded/multi-select-menu-1/form.html'
       - 'extension/**'

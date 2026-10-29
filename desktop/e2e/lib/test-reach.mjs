@@ -1,3 +1,4 @@
+// Job: pick the suites
 // Which harness test files a change reaches: each test's relative imports (static, dynamic, and files it reads via new URL(..., import.meta.url)), followed to the end.
 // Why (owner, 27 Oct 2026, "Yes, reached files"): a PR ran only the 30-file "pr" set, so a harness or app change broke its own daily-set tests unseen;
 // harness-daily stayed red 10 days. A PR now also runs every test file whose imports reach a file it changed. Guard: test/test-reach.test.mjs.
@@ -45,7 +46,9 @@ export function reach(root, file, cache = new Map()) {
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it
-      queue.push(unstage(spec.endsWith('/') || spec === '.' || spec === '..' ? `${joined.replace(/\/?$/, '/')}` : joined));
+      // A specifier that ends in a dot or two dots names a folder, like one ending in a slash (Gitar on #2457). Not spelled out here: this file is scanned too.
+      const folder = spec.endsWith('/') || /(^|\/)\.\.?$/.test(spec);
+      queue.push(unstage(folder ? `${joined.replace(/\/?$/, '/')}` : joined));
     }
   }
   return {paths, browser};

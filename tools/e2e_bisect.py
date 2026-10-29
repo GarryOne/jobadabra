@@ -24,7 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.e2e_causes import ENVIRONMENT_CAUSES, classify  # noqa: E402
-from tools.main_e2e_state import NOT_SUITE, counts_green, suite_of  # noqa: E402
+from tools.main_e2e_state import NOT_SUITE, counts_green, lane_suites, suite_of  # noqa: E402
 
 REPO = os.environ.get('GITHUB_REPOSITORY', 'GarryOne/jobadabra')
 LABEL = 'red-main'
@@ -118,7 +118,10 @@ def after_run(run_id):
     results = suite_results(jobs)
     issues = {i['title']: i['number'] for i in open_issues()}
     started = None
+    excluded = lane_suites()
     for suite, result in sorted(results.items()):
+        if suite in excluded:
+            continue
         number = issues.get(issue_title(suite))
         if result == 'success' and number:
             gh('issue', 'close', str(number), '-R', REPO, '--comment', f"Main's `{suite}` passed again in {run['html_url']} ({run['head_sha'][:7]}).")
@@ -197,6 +200,9 @@ def report(suite, body, pr):
 
 
 def run_bisect(suite, bad, run_url):
+    if suite_of(suite) in lane_suites():
+        print(f"{suite}: non-backbone result; no red-main issue or bisect")
+        return
     good = last_green(suite, bad, lambda a, b: git('merge-base', '--is-ancestor', a, b).returncode == 0)
     if not good:
         report(suite, issue_body(suite, bad, run_url, candidates=[bad]) + '\n\nNo green main check of this suite in the last 100 runs: nothing to bisect from.', None)

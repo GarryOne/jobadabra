@@ -129,14 +129,15 @@ export function admittedSuites({addedFiles = [], deletedFiles = [], baseLanes = 
 /** Pick reached backbone suites plus explicitly report-only numbers; only backbone uses the PR cap.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
  * admitted: git-derived backbone admissions outrank all reaches and override BASE exemptions.
- * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base by the CLI.
+ * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base or merged checkout by the CLI.
  * left keeps unrun backbone suites; report-only numbers use no place or deferral. deferred is ranked cap overflow.
  */
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], linux, cadence = {}, pullRequest = false}) {
   const admissions = new Set(pullRequest ? admitted : []);
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...admissions, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => admissions.has(suite) || (
-    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && OUTSIDE_BACKBONE.includes(lanes.suites?.[suite]?.lane))))));
+    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
+    (reports.has(suite) || !OUTSIDE_BACKBONE.includes(lanes.suites?.[suite]?.lane))));
   let run = wanted.filter(suite => admissions.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));

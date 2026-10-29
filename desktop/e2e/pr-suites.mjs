@@ -91,12 +91,10 @@ try {
     const pullRequest = process.argv.includes('--pull-request');   // pr-suites.yml; main-steps.yml (after a merge) leaves it out
     // Why (2026-10-28, owner; same as verdict #2376): a PR cannot exempt itself by changing its own registry.
     let lanes = {};
-    if (pullRequest) {
-      try {
-        lanes = JSON.parse(git(['show', `${base}:desktop/e2e/lanes.json`]));
-        if (!lanes?.suites || typeof lanes.suites !== 'object' || Array.isArray(lanes.suites)) throw new Error('not a registry');
-      } catch { lanes = {}; console.log('pr-suites: base lane registry not read; every reached suite remains backbone'); }
-    }
+    try {
+      lanes = JSON.parse(pullRequest ? git(['show', `${base}:desktop/e2e/lanes.json`]) : fs.readFileSync(path.join(here, 'lanes.json'), 'utf8'));
+      if (!lanes?.suites || typeof lanes.suites !== 'object' || Array.isArray(lanes.suites)) throw new Error('not a registry');
+    } catch { lanes = {}; console.log('pr-suites: lane registry not read; every reached suite remains backbone'); }
     const admitted = pullRequest ? admittedSuites({
       addedFiles: git(['diff', '--name-only', '--diff-filter=A', `${base}...HEAD`]).trim().split('\n'),
       deletedFiles: git(['diff', '--name-only', '--diff-filter=D', `${base}...HEAD`]).trim().split('\n'),

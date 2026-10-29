@@ -146,7 +146,7 @@ test('tolerant, suspended and retired entries never use a PR place or join the d
   const out = pick.planPrSuites({...args, pointed, lanes});
   assert.deepEqual(out, {suites: ['a', 'b', 'c', 'd', 'e'], left: ['f'], deferred: ['f']});
   assert.deepEqual(pick.planPrSuites({...args, pointed: ['tolerant', 'b'], lanes}), {suites: ['b'], left: [], deferred: []});
-  assert.deepEqual(pick.planPrSuites({...args, pullRequest: false, pointed, lanes}).suites, pointed);
+  assert.deepEqual(pick.planPrSuites({...args, pullRequest: false, pointed, lanes}).suites, ['f', 'e', 'd', 'c', 'b', 'a']);
 });
 
 test('a reached tolerant number runs outside the five backbone places and never joins deferrals', () => {
@@ -226,7 +226,7 @@ test('CLI reads catch counts only when supplied and applies the base registry be
   assert.equal(values.suites, 'interviews,jobs,settings,strategy,wander');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
-  assert.equal(main.values.suites.split(',').length, 8);
+  assert.equal(main.values.suites.split(',').length, 8);   // calendar is backbone in the merged checkout, regardless of the old base registry
   assert.equal(main.values.left, '');
 });
 
@@ -267,10 +267,22 @@ test('CLI admits a new file or a lane promotion even when no watched app line re
   assert.match(promoted.text, /quality.*burn-in.*5/);
 });
 
-
 test('CLI keeps main tip exemptions without burning in a stale branch after a main demotion', () => {
   const {values} = cliPlan({suites: ['quality'], listed: {quality: {lane: 'tolerant'}}, mergeBaseListed: {}, headListed: {}});
   assert.equal(values.suites, '');
   assert.equal(values.left, '');
   assert.equal(JSON.parse(values.steps)['(burn-in)'], undefined);
+});
+
+// Owner's 30 Oct merges reached live-AI suites: only backbone belongs in the after-merge plan.
+test('after merge drops quality and mailreading but keeps reached backbone and PR-only numbers', () => {
+  const lanes = {suites: {quality: {lane: 'tolerant'}, mailreading: {lane: 'tolerant'}, qualityai: {lane: 'tolerant', pr: 'number'}}};
+  const input = {linux: () => true, pointed: ['quality', 'mailreading', 'apply', 'qualityai'], lanes};
+  assert.deepEqual(pick.planPrSuites({...input, pullRequest: false}), {suites: ['apply'], left: [], deferred: []});
+  assert.deepEqual(pick.planPrSuites({...input, pullRequest: true}).suites, ['apply', 'qualityai']);
+});
+
+test('after-merge CLI reads the merged registry, including a lane changed by this merge', () => {
+  const {values} = cliPlan({pullRequest: false, suites: ['quality', 'mailreading', 'focus']});
+  assert.equal(values.suites, 'focus');
 });

@@ -69,11 +69,49 @@ test('the same failure on the same commit alerts once: a repeat needs a new comm
 // 27 Oct 2026 (6e): main's quality red said "the steps merge e7ab156 touched"; its step said "3 AI question(s) had no recorded answer" (#2234's prompt change).
 test('the cause quotes each failed job\'s own step annotation ("<suite> · <step>"), not the runner\'s exit line; none found or an error: []', async () => {
   const fetcher = async url => {
-    if (/runs\/42\/jobs/.test(url)) return {json: async () => ({jobs: [{id: 7, name: 'E2E · quality', conclusion: 'failure'}, {id: 8, name: 'plan', conclusion: 'success'}]})};
+    if (/runs\/42\/jobs/.test(url)) return {json: async () => ({jobs: [{id: 7, name: 'E2E · apply', conclusion: 'failure'}, {id: 8, name: 'plan', conclusion: 'success'}]})};
     if (/check-runs\/7\/annotations/.test(url)) return {json: async () => [{title: '', message: 'Process completed with exit code 1.'}, {title: 'First try failed', message: 'the next step decides'},
-      {title: 'quality · a Jobs check on the golden postings', message: '3 AI question(s) had no recorded answer (asked live, not kept)'}]};
+      {title: 'apply · fill the form', message: '3 AI question(s) had no recorded answer (asked live, not kept)'}]};
     throw new Error(`unexpected ${url}`);
   };
-  assert.deepEqual(await stepCauses('42', env, fetcher), ['quality · a Jobs check on the golden postings: 3 AI question(s) had no recorded answer (asked live, not kept)']);
+  assert.deepEqual(await stepCauses('42', env, fetcher), ['apply · fill the form: 3 AI question(s) had no recorded answer (asked live, not kept)']);
   assert.deepEqual(await stepCauses('42', env, async () => { throw new Error('down'); }), []);
+});
+
+const e2eEnv = {...env, GITHUB_WORKFLOW: 'CI · End-to-end on Mac + Linux', GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/e2e.yml@refs/heads/main'};
+const failed = names => names.map(name => ({name, url: 'https://job/' + encodeURIComponent(name)}));
+
+test('owner scenario: quality and mailreading red send no message, including shards, stand-ins and burn-in names', () => {
+  for (const names of [['quality', 'mailreading'], ['quality-1of2-standin · burn-in 2/5', 'mailreading-standin']]) {
+    assert.equal(messageOf({status: 'failure', jobs: failed(names), env: e2eEnv}), '');
+  }
+});
+
+test('owner scenario: quality and apply red name only apply in the message', () => {
+  const message = messageOf({status: 'failure', jobs: failed(['quality', 'apply']), env: e2eEnv});
+  assert.match(message.text, /🔴/);
+  assert.match(message.text, /apply/);
+  assert.doesNotMatch(message.text, /quality/);
+});
+
+test('tolerant failed step annotations do not enter a mixed alert cause', async () => {
+  const asked = [];
+  const fetcher = async url => {
+    asked.push(url);
+    return {json: async () => url.includes('/jobs?') ? {jobs: [{id: 1, name: 'quality', conclusion: 'failure'}, {id: 2, name: 'apply', conclusion: 'failure'}]} : [{title: 'apply · fill', message: 'missing field'}]};
+  };
+  assert.deepEqual(await stepCauses('42', e2eEnv, fetcher), ['apply · fill: missing field']);
+  assert.ok(!asked.some(url => url.includes('/check-runs/1/')));
+});
+
+test('a success following only tolerant reds sends no back-to-green message', async () => {
+  const fetcher = async url => ({json: async () => url.includes('/jobs?') ? {jobs: [{name: 'quality', conclusion: 'failure'}, {name: 'mailreading', conclusion: 'failure'}]} : {workflow_runs: [{id: 41, conclusion: 'failure'}]}});
+  const previous = await previousConclusion(e2eEnv, fetcher);
+  assert.equal(messageOf({status: 'success', previous, env: e2eEnv}), '');
+});
+
+test('suspended and retired jobs are also silent while unlisted plan failures still alert', () => {
+  const lanes = {suites: {old: {lane: 'retired'}, flipped: {lane: 'suspended'}}};
+  assert.equal(messageOf({status: 'failure', jobs: failed(['old-1of2', 'flipped-standin · burn-in 1/5']), lanes, env: e2eEnv}), '');
+  assert.match(messageOf({status: 'failure', jobs: failed(['old', 'plan']), lanes, env: e2eEnv}).text, /Failed job: plan/);
 });

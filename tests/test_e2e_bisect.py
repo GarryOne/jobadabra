@@ -2,6 +2,7 @@
 import re
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,7 +57,7 @@ class AfterRun(unittest.TestCase):
     def setUp(self):
         self.calls = []
         self.saved = (b.gh, b.gh_json, b.open_issues, b.jobs_of)
-        b.gh = lambda *args, check=True: self.calls.append(args) or ''
+        b.gh = lambda *args, check=True: self.calls.append(args) or ('https://github.com/o/r/issues/123' if args[:2] == ('issue', 'create') else '')
         b.gh_json = lambda *args: {'html_url': 'https://run/9', 'head_sha': 'a' * 40}
         b.open_issues = lambda: [{'number': 70, 'title': 'Red main: cardstates'}, {'number': 71, 'title': 'Red main: settings'}]
         self.saved += (b.log_of,)
@@ -71,6 +72,16 @@ class AfterRun(unittest.TestCase):
 
     def started(self):
         return [next(a for a in c if a.startswith('suite=')) for c in self.calls if c[:2] == ('workflow', 'run')]
+
+    def test_tolerant_red_never_starts_bisect_or_opens_issue(self):
+        b.jobs_of = lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'mailreading-standin')]
+        b.after_run('9')
+        self.assertEqual(self.calls, [], 'tolerant reds never create red-main work')
+
+    def test_explicit_bisect_of_tolerant_suite_opens_no_issue(self):
+        with patch.object(b, 'last_green', return_value=None):
+            b.run_bisect('quality', 'a' * 40, 'https://run/9')
+        self.assertEqual(self.calls, [], 'even an already queued bisect must respect the current lane')
 
     def test_closes_green_again_and_bisects_one_new_red(self):
         b.after_run('9')

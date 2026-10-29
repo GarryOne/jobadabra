@@ -63,9 +63,9 @@ class MainE2eState(unittest.TestCase):
                 self.assertEqual(m.main(['--json']), 0)
             return json.loads(output.getvalue())
 
-    def test_suspended_red_is_reported_separately_while_unlisted_and_tolerant_still_block(self):
+    def test_suspended_red_is_separate_and_tolerant_never_blocks(self):
         report = self.report(json.dumps({'suites': {'cardstates': {'lane': 'suspended'}, 'interactions': {'lane': 'tolerant'}}}))
-        self.assertEqual([s['suite'] for s in report['red']], ['interactions', 'recorded'])
+        self.assertEqual([s['suite'] for s in report['red']], ['recorded'])
         self.assertEqual([s['suite'] for s in report['suspended']], ['cardstates'])
         self.assertEqual(report['suspended'][0]['conclusion'], 'failure')
         self.assertEqual(report['suspended'][0]['url'], 'u2')
@@ -77,10 +77,18 @@ class MainE2eState(unittest.TestCase):
                 self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
                 self.assertEqual(report['suspended'], [])
 
-    def test_retired_or_unknown_lane_does_not_exclude_a_red(self):
-        for lane in ('retired', 'backbone', 'unknown'):
+    def test_unknown_or_backbone_lane_does_not_exclude_a_red(self):
+        for lane in ('backbone', 'unknown'):
             report = self.report(json.dumps({'suites': {'cardstates': {'lane': lane}}}))
             self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
+
+    def test_owner_tolerant_reds_never_make_main_red(self):
+        self.state = m.state([run(9, 'E2E after merge · ed2f834 · quality,mailreading,apply')],
+                             lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'mailreading-standin', 'apply')])
+        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'mailreading': {'lane': 'tolerant'}, 'apply': {'lane': 'backbone'}}}))
+        self.assertEqual([s['suite'] for s in report['red']], ['apply'])
+        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'mailreading': {'lane': 'tolerant'}, 'apply': {'lane': 'retired'}}}))
+        self.assertEqual(report['red'], [])
 
     def test_an_older_green_does_not_hide_a_newer_red(self):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)

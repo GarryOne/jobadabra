@@ -27,8 +27,10 @@ MAX_RUNS = 15   # main-check runs read, newest first (two days of schedule plus 
 
 
 def suite_of(job_name):
-    """`recorded-2of5` → `recorded`: a sharded suite is red when any slice is."""
-    return re.sub(r'-\d+of\d+$', '', job_name)
+    """Job key → suite, without burn-in, store-leg or shard suffixes; any backbone slice can be red."""
+    key = re.sub(r' · burn-in \d+/\d+$', '', job_name)
+    key = re.sub(r'-(?:standin|sqlite)$', '', key)
+    return re.sub(r'-\d+of\d+$', '', key)
 
 
 def is_main_check(run):
@@ -61,8 +63,8 @@ def state(runs, jobs_of):
     return out
 
 
-def suspended_suites():
-    """Read checkout suspensions; a missing, unreadable or malformed registry excludes nothing."""
+def lane_suites(lanes=('tolerant', 'suspended', 'retired')):
+    """Read checkout suites in the requested lanes; a missing, unreadable or malformed registry excludes nothing."""
     try:
         registry = json.loads(LANES.read_text(encoding='utf-8'))
         if not isinstance(registry, dict) or not isinstance(registry.get('suites'), dict):
@@ -70,15 +72,16 @@ def suspended_suites():
         entries = registry['suites']
         if any(not isinstance(entry, dict) for entry in entries.values()):
             return set()
-        return {suite for suite, entry in entries.items() if entry.get('lane') == 'suspended'}
+        return {suite for suite, entry in entries.items() if entry.get('lane') in lanes}
     except (OSError, ValueError):
         return set()
 
 
-def red(st, suspended=()):
-    """Blocking red suites only; tolerant and unlisted suites retain their red verdict."""
-    # Why (29 Oct 2026, owner): spec "backbone -> suspended" keeps a flipped suite visible with its owner issue, never blocking a beta.
-    return sorted(((suite, s) for suite, s in st.items() if s['conclusion'] == 'failure' and suite not in suspended), key=lambda item: item[0])
+def red(st, excluded=None):
+    """Blocking backbone reds only; tolerant, suspended and retired results never make main red."""
+    # Why (30 Oct 2026, owner): rule D reports non-backbone results as rates or suspensions, never red main.
+    excluded = lane_suites() if excluded is None else excluded
+    return sorted(((suite, s) for suite, s in st.items() if s['conclusion'] == 'failure' and suite not in excluded), key=lambda item: item[0])
 
 
 def gh_json(args):
@@ -99,8 +102,8 @@ def main(argv):
         print(f'main_e2e_state: could not read main\'s e2e runs ({error}); unknown', file=sys.stderr)
         print(json.dumps({'unknown': True}) if '--json' in argv else '')
         return 3   # unknown is never green: the gate refuses a beta on it
-    suspended = suspended_suites()
-    reds = red(st, suspended)
+    suspended = lane_suites(('suspended',))
+    reds = red(st)
     if '--json' in argv:
         print(json.dumps({'red': [{'suite': suite, **s} for suite, s in reds],
                           'suspended': [{'suite': suite, **st[suite]} for suite in sorted(suspended) if suite in st]}))

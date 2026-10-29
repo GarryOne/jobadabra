@@ -67,8 +67,8 @@ class RevertRedTest(ShipFixture):
 
     def test_tolerant_red_is_refused_using_the_real_registry(self):
         for item in self.data['records']:
-            item['run']['display_title'] = item['run']['display_title'].replace('apply', 'quality')
-            item['jobs'][0]['name'] = 'quality'
+            item['run']['display_title'] = item['run']['display_title'].replace('apply', 'qualityai')
+            item['jobs'][0]['name'] = 'qualityai'
         result = self.revert('--dry-run', self.bad, '--runs-json', str(self.evidence))
         self.assertEqual(result.returncode, 2)
         self.assertIn('non-backbone', result.stdout + result.stderr)

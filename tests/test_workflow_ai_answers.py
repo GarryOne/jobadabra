@@ -8,9 +8,9 @@ WORKFLOW = ROOT / '.github/workflows/e2e.yml'
 RECORD_GUARD = "github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'"
 
 
-def expression(value, event='workflow_dispatch', mode='off', attempt=1):
+def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs'):
     """Evaluate only ==, && and || over these workflow inputs and string/integer literals."""
-    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt}
+    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite}
 
     def atom(token):
         token = token.strip()
@@ -59,7 +59,7 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || 'off' }}")
+        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || matrix.suite == 'quality' && 'backbone' || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -69,11 +69,18 @@ class WorkflowAiAnswers(unittest.TestCase):
                   ('schedule', 'push', 'pull_request', 'workflow_call', 'retry')]
         for event, mode, attempt, want in cases:
             with self.subTest(event=event, mode=mode, attempt=attempt):
-                self.assertEqual(expression(value, event, mode, attempt), want)
+                for suite in ('jobs', 'quality', 'qualityai', 'apply'):
+                    expected = 'backbone' if suite == 'quality' and want == 'off' else want
+                    self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
 
-    def test_the_suites_second_try_is_always_off(self):
+    def test_the_suites_second_try_uses_backbone_only_for_quality(self):
         retry = self.step('if again ')
-        self.assertIn("        env:\n          E2E_AI_ANSWERS: 'off'\n", retry)
+        value = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', retry).group(1)
+        for suite in ('quality', 'qualityai', 'jobs', 'apply'):
+            for mode in ('off', 'record'):
+                with self.subTest(suite=suite, mode=mode):
+                    self.assertEqual(expression(value, mode=mode, suite=suite),
+                                     'backbone' if suite == 'quality' else 'off')
 
     def test_candidates_stay_in_the_existing_artifact_upload(self):
         self.assertNotIn('E2E_AI_CANDIDATES', self.suite)

@@ -74,8 +74,8 @@ test('every workflow job that runs a suite passes its slice and names everything
     for (const block of text.split(/\n(?=  [\w-]+:\n)/)) if (/(node suite\.mjs|once) \$\{\{ matrix\.suite \}\}/.test(block)) jobs.push({file, id: /^\s*([\w-]+):/.exec(block)[1], block});
   }
   assert.deepEqual(jobs.map(job => `${job.file}:${job.id}`).sort(), ['desktop.yml:test-mac', 'desktop.yml:test-windows', 'e2e-windows.yml:suite', 'e2e.yml:suite']);
-  // Where the suite's own name is right: its file, command, comparison, step title, picked steps, and the fallback cap's suite identity (shared by every slice).
-  const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|once \$\{\{ matrix\.suite \}\}|\[ "\$\{\{ matrix\.suite \}\}" != quality|matrix\.suite == '|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]|^\s*E2E_FALLBACK_SUITE: \$\{\{ matrix\.suite \}\}\s*$/;
+  // Where the suite's own name is right: its file, command, comparison, step title, picked steps, the fallback cap's suite identity and the lane registry lookup (lanes.json is keyed by suite, shared by every slice; qu 4/4, 29 Oct 2026).
+  const allowed = /suites\/\$\{\{ matrix\.suite \}\}\.mjs|suite\.mjs \$\{\{ matrix\.suite \}\}|again \$\{\{ matrix\.suite \}\}|once \$\{\{ matrix\.suite \}\}|\[ "\$\{\{ matrix\.suite \}\}" != quality|matrix\.suite == '|name: .*\$\{\{ matrix\.suite \}\} suite|fromJSON\(inputs\.pr_steps\)\[matrix\.suite\]|^\s*E2E_FALLBACK_SUITE: \$\{\{ matrix\.suite \}\}\s*$|report_only=\$\(SUITE='\$\{\{ matrix\.suite \}\}'/;
   for (const job of jobs) {
     assert.match(job.block, /JP_REPLAY_SHARD: \$\{\{ matrix\.shard \}\}/, `${job.file} ${job.id}: pass the slice to the suite (JP_REPLAY_SHARD: \${{ matrix.shard }})`);
     for (const line of job.block.split('\n').filter(text => text.includes('matrix.suite') && !allowed.test(text)))

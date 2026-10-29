@@ -220,6 +220,8 @@
   "prompt-sources.test.mjs",
   "proposals-to-use.test.mjs",
   "python-env.test.mjs",
+  "quality-answers-table.test.mjs",
+  "quality-backbone-no-live-ai.test.mjs",
   "quality-judge-input.test.mjs", "quality-rate.test.mjs",
   "quality-rows.test.mjs",
   "quality-split.test.mjs",

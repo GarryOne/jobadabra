@@ -119,3 +119,18 @@ test('shared fact collection keeps exact counts, diagnostics and missed facts se
     problems: ['"A": location should be "Zurich", the app wrote "Bern"', '"B" is missing from Notion'],
   });
 });
+
+// The guard must reject before creating the journey or calling any setup step.
+test('exact quality refuses off, unset or invalid answers before setup; backbone and record pass the guard', async t => {
+  const saved = {...process.env};
+  t.after(() => { for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]; Object.assign(process.env, saved); });
+  const message = 'quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)';
+  const touched = new Error('setup boundary reached');
+  const ctx = {get page() { throw touched; }};
+  for (const mode of [undefined, 'off', 'backbone', 'record', '', 'invalid']) {
+    if (mode === undefined) delete process.env.E2E_AI_ANSWERS; else process.env.E2E_AI_ANSWERS = mode;
+    if (mode === undefined || mode === 'off') await assert.rejects(quality.run(ctx), {message});
+    else if (mode === '' || mode === 'invalid') await assert.rejects(quality.run(ctx), {message: `invalid E2E_AI_ANSWERS: ${mode}`});
+    else await assert.rejects(quality.run(ctx), error => error === touched);
+  }
+});

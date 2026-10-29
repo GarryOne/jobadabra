@@ -3,6 +3,7 @@
 // Job: run the backbone
 import fs from 'node:fs';
 import path from 'node:path';
+import {answersMode} from '../lib/ai-answers.mjs';
 import {PLANNER, collectFacts, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
 import {dirtyRows, dirtyText, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl} from '../lib/quality.mjs';
@@ -12,7 +13,6 @@ export const name = 'quality';
 // changes setup requests and leaves questions without stored answers, so every run must follow the recorded SQLite path.
 export const store = 'sqlite';
 // Exact golden facts, duplicates, ranking, columns and logs; no judge or rescore calls.
-// Strict replay remains until PR 2/4 stores the AI answers.
 // The shared budget and planner allowance cover Jobs checks and setup; each slow step has its own limit.
 export const cadence = PLANNER.cadence;
 export const budgetMinutes = PLANNER.budgetMinutes;
@@ -28,6 +28,7 @@ export const watches = PLANNER.watches;
 export const env = PLANNER.env;
 /** Run the golden journey and report every independent final check. */
 export async function run(ctx) {
+  if (answersMode(process.env) === 'off') throw new Error('quality is a backbone suite: set E2E_AI_ANSWERS=backbone (or record for a record run)');
   const {page} = ctx;
   const journey = qualityJourney(ctx);
   const {truth, privacyLogs} = journey;

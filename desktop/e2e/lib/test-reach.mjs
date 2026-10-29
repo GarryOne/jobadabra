@@ -27,6 +27,25 @@ export function specifiers(text) {
   return [...SPECIFIERS.flatMap(pattern => [...text.matchAll(pattern)].map(found => found[1])), ...declared];
 }
 
+/** Code directories a harness test enumerates; conservative static reads, never execute a test to discover its dependencies. */
+function scannedDirectories(text) {
+  const dirs = new Set();
+  // Why (29 Oct 2026, #2476): directory-scanning guards read suites without importing them; import-only reach let an undeclared AI stand-in pass its PR.
+  if (/\b(?:readdir(?:Sync)?|glob(?:Sync)?)\s*\(/.test(text)) {
+    // Literal paths and loop/helper arguments cover joins, URL paths and globs. Ignore a directory component followed by a concrete filename.
+    for (const found of text.matchAll(/['"`](?:desktop\/e2e\/|(?:\.{1,2}\/)*)(suites|lib)\/?(?:\*[^'"`]*)?['"`]/g)) {
+      if (!/^\s*,\s*['"][^'"]+\.(?:mjs|js|cjs)['"]/.test(text.slice(found.index + found[0].length))) dirs.add(found[1]);
+    }
+    // A scan may derive its directory from a module URL, e.g. dirname(fileURLToPath(new URL('../lib/planted.mjs', ...))).
+    for (const found of text.matchAll(/\bdirname\([^;\n]*?['"](?:\.{1,2}\/)+(suites|lib)\/[^'"]+['"]/g)) dirs.add(found[1]);
+  }
+  if (/\bimport\s*\{[^}]*\bSUITES\b[^}]*\}\s*from\s*['"]\.\.\/lib\/context\.mjs['"]/.test(text)) dirs.add('suites');
+  return [...dirs].map(dir => `desktop/e2e/${dir}/`);
+}
+
+// Directory edges of a harness test cover additions and deletions too; following every suite's imports would turn pure source scans into browser dependencies.
+const directoryEdges = (current, text) => (/^desktop\/e2e\/test\/[^/]+\.test\.m?js$/.test(current) ? scannedDirectories(text) : []);
+
 /**
  * Every repo-relative path a test file reaches (itself included); a directory read via new URL ends with '/' and covers every file under it.
  * @param {string} root the repo root  @param {string} file a repo-relative path  @param {Map} [cache] shared between calls
@@ -43,6 +62,7 @@ export function reach(root, file, cache = new Map()) {
     let text = cache.get(current);
     if (text === undefined) { try { text = fs.readFileSync(path.join(root, current), 'utf8'); } catch { text = ''; } cache.set(current, text); }
     if (BROWSER.test(text)) browser = true;
+    queue.push(...directoryEdges(current, text));
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it

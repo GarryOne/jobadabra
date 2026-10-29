@@ -46,6 +46,56 @@ test('the pr set runs when the harness changed, not for a recorded case alone', 
   assert.deepEqual(reachedTests({root: ROOT, tests, changed: ['desktop/e2e/recorded/x/case.json'], always}).files, []);
 });
 
+test('a suite edit reaches the AI declaration guard without selecting an unrelated test', () => {
+  const {pr, daily} = testSets(), tests = [...pr, ...daily].map(inRepo);
+  const picked = reachedTests({root: ROOT, tests, changed: ['desktop/e2e/suites/stores.mjs']}).files;
+  assert.ok(picked.includes(inRepo('suite-ai-mode.test.mjs')), 'the guard that would have stopped #2476 must run on the PR');
+  assert.ok(!picked.includes(inRepo('ai-meter.test.mjs')), 'an ordinary test with only temp-directory reads stays out');
+});
+
+// Discover readers from the real test registry, independently of the picker's dependency edges, so a new scanning guard joins this class check.
+test('every registered suite reaches every suites-directory reader', () => {
+  const {pr, daily} = testSets();
+  const readers = [...pr, ...daily].map(inRepo).filter(file => {
+    const source = fs.readFileSync(path.join(ROOT, file), 'utf8');
+    const enumerates = /\breaddir(?:Sync)?\s*\(|\bglob(?:Sync)?\s*\(/.test(source);
+    const namesDirectory = /['"](?:\.\.\/)?suites\/?(?:\*[^'"]*)?['"]/.test(source);
+    const registry = /import\s*\{[^}]*\bSUITES\b[^}]*\}\s*from\s*['"]\.\.\/lib\/context\.mjs['"]/.test(source);
+    return (enumerates && namesDirectory) || registry;
+  });
+  assert.ok(readers.includes(inRepo('suite-ai-mode.test.mjs')));
+  assert.ok(readers.includes(inRepo('suite-shards.test.mjs')), 'registry readers are part of the class');
+  // context.mjs builds SUITES from these .mjs entries; do not import it and start loading the app just to read the registry.
+  const suites = fs.readdirSync(path.join(ROOT, 'desktop/e2e/suites')).filter(name => name.endsWith('.mjs'));
+  assert.ok(suites.includes('stores.mjs'));
+  const missing = [];
+  for (const suite of suites) {
+    const picked = reachedTests({root: ROOT, tests: readers, changed: [`desktop/e2e/suites/${suite}`]}).files;
+    for (const reader of readers) if (!picked.includes(reader)) missing.push(`${suite} -> ${reader}`);
+  }
+  assert.deepEqual(missing, []);
+});
+
+test('directory scans reach suites and lib through joins, loops, globs and the SUITES registry, without a filename list', t => {
+  const sources = {
+    join: `const dir = path.join(import.meta.dirname, '..', 'suites'); fs.readdirSync(dir);`,
+    loop: `for (const dir of ['suites', 'lib']) fs.readdirSync(path.join(root, dir));`,
+    glob: `globSync('../suites/*.mjs');`,
+    registry: `import {SUITES as names} from '../lib/context.mjs';`,
+    lib: `fs.readdirSync(path.join(root, 'lib'));`,
+    dirname: `const dir = path.dirname(fileURLToPath(new URL('../lib/plant.mjs', import.meta.url))); fs.readdirSync(dir);`,
+    ordinary: `import {x} from '../lib/helper.mjs'; fs.readdirSync(temp);`,
+    mention: `const label = 'suites'; import {x} from '../lib/helper.mjs';`,
+  };
+  const tests = Object.keys(sources).map(name => inRepo(`${name}.test.mjs`));
+  const root = tree(Object.fromEntries(Object.entries(sources).map(([name, source]) => [inRepo(`${name}.test.mjs`), source])));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const picked = file => reachedTests({root, tests, changed: [`desktop/e2e/${file}`]}).files;
+  assert.deepEqual(picked('suites/new-suite.mjs'), ['glob', 'join', 'loop', 'registry', 'test-reach'].map(name => inRepo(`${name}.test.mjs`)));
+  assert.deepEqual(picked('lib/new-helper.mjs'), ['dirname', 'lib', 'loop', 'test-reach'].map(name => inRepo(`${name}.test.mjs`)));
+  assert.deepEqual(picked('recorded/new/case.json'), [], 'scanning code directories never reaches replay data');
+});
+
 // Why (#2458, 29 Oct 2026): excluded replay data needs a read inside its DATA tree; a desktop/ ancestor read must still cover harness code.
 test('a parent directory read selects lib changes but replay data needs its own file or directory read', t => {
   const parent = inRepo('parent.test.mjs'), folder = inRepo('folder.test.mjs'), file = inRepo('file.test.mjs');

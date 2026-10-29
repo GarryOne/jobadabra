@@ -25,7 +25,9 @@ import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, expectedOf, tailoredFrom} from '
 // Walks other data and timing on each seeded run (lib/forms.mjs varyForms): an exploring run on an unchanged commit includes it.
 export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
 export const varies = true;
-export const minutes = 20;   // the job's limit: a first attempt may use the suite's 7-minute budget and the retry ('once more, to tell flaky from real') another 7, plus setup (12 Oct 2026: 12 cancelled the retry)
+// Why (29 Oct 2026, ap): the 7-minute aggregate ended three apply runs on the Notion stand-in leg; each step has its own hang cap.
+export const aggregateBudget = false;
+export const minutes = 20;   // the job's limit; no aggregate budget since 29 Oct 2026, each step has a hang cap
 export const shards = 2;   // the forms and CV steps split across two gate jobs (JP_REPLAY_SHARD, runApply below); the setup and the final checks run in both. 26 Oct 2026: one job
 // took 6-6.5 min of its 7 and ran over on a slow attempt (beta 40155147300 too, 25 Oct): the same steps vary 2-4x between runners (real forms 46-122 s)
 export const stepSharded = true;   // its slices are steps, not recorded cases (test/suite-shards.test.mjs)

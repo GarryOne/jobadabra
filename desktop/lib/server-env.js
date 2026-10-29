@@ -137,6 +137,8 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected}
       // form is over too, not left in Application sessions as if Claude were still on it. The "I submitted it"
       // button's own end, without pressing anything.
       submitted(job.url);
+      // The fill's row says it was submitted (what the recap reads): the same row in every Apply mode. A row that cannot be stamped never undoes Applied.
+      if (!notionTexts && notionGate.tracking(storage)) await extensionStore(storage).receiptRun(job.url, new Date().toISOString()).catch(error => appLog('extension', `run row not stamped as submitted: ${error.message}`));
       appliedHook({how: 'extension'});
       const where = notionGate.notionInUse(storage) ? 'in your Notion' : 'in Jobadabra';   // about Notion
       notify('Marked Applied ✓', `${jobName(job)}. Saved ${where}.`, {view: 'jobs', job: job.code || job.url}, 'good');

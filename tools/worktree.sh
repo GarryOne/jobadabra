@@ -55,14 +55,5 @@ tree="$main/.claude/worktrees/$topic"
 git -C "$main" fetch -q origin
 git -C "$main" worktree add -q "$tree" -b "$topic" "$base"
 git -C "$main" config core.hooksPath tools/githooks   # the commit-msg hook (trailer values); shared by every worktree, relative so each uses its own copy
-for dir in desktop desktop/e2e worker site; do
-  if [ -d "$main/$dir/node_modules" ] && [ ! -e "$tree/$dir/node_modules" ]; then
-    ln -s "$main/$dir/node_modules" "$tree/$dir/node_modules"
-  fi
-done
-# The app runs the engine with <repo>/.venv/bin/python when it exists, else the system python3, which has no `anthropic`: every AI step then fails with
-# "ModuleNotFoundError: No module named 'anthropic'" (seen in the Technical log of an e2e run from a worktree).
-if [ -d "$main/.venv" ] && [ ! -e "$tree/.venv" ]; then
-  ln -s "$main/.venv" "$tree/.venv"
-fi
+sh "$(dirname "$0")/link-modules.sh" "$tree"   # the copy beside this script, so a worktree based on an older commit is linked too; the installed folders and .venv (the post-checkout hook does the same for a bare `git worktree add`; the hook path was only set a line above)
 echo "$tree"

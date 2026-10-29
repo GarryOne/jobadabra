@@ -304,6 +304,17 @@ if [ "${JP_E2E_UNIT:-0}" = 1 ] && command -v node >/dev/null && [ -f "$repo/tool
   if [ -z "$changed" ] || printf '%s\n' "$changed" | node "$repo/tools/e2e-unit-wanted.mjs"; then want_e2e=1; fi
 fi
 
+# Why (29 Oct 2026, owner, #2462): a worktree made without the installed folders (a bare git worktree add) ran this gate 437 s, failed in "desktop (clean checkout)" and showed no cause; refused in a second,
+# with the way out. Only a linked worktree whose main checkout HAS the folder (a plain repo or the main checkout itself is left to the suites). Guard: tests/test_pre_push_check.py.
+common="$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"; main="$(dirname "${common:-$repo/.git}")"
+if [ -d "$main" ] && [ "$(cd "$main" && pwd -P)" != "$(cd "$repo" && pwd -P)" ]; then
+  missing=""
+  for dir in desktop worker; do
+    want="want_$dir"
+    [ "${!want}" = 1 ] && [ -d "$main/$dir/node_modules" ] && [ ! -e "$repo/$dir/node_modules" ] && missing="$missing $dir/node_modules"
+  done
+  [ -z "$missing" ] || { echo "Push blocked: this worktree has no$missing, which the main checkout has: the suites cannot run here. Run tools/link-modules.sh in it (tools/worktree.sh and the post-checkout hook do this for a new worktree), or npm ci there if it is meant to have its own (tools/worktree.sh own-modules), then push again." >&2; exit 2; }
+fi
 failed=()
 log="$(mktemp)"
 # Local pushes run only the tests the change can break (tools/affected-tests.py: imports + mentions, "all" when in doubt); CI and
@@ -368,9 +379,13 @@ verify_area() {  # area [extra check.sh flags]
   local name="tree_$area"; local tree="${!name:-}"
   if [ "$area" = site ] && [ ! -d "$repo/admin" ]; then echo "site: lives in the private repo jobadabra-web (docs/rules/private-site.md): skipped here"; return 0; fi
   [ -n "$tree" ] || { echo "fatal: git could not make a clean checkout for $area"; return 1; }
+  # Why (29 Oct 2026, fresh review of the link fix): the post-checkout hook has already linked the main checkout's folders into this clean checkout; `ln -s` onto such a link would add a link INSIDE the shared folder.
+  # The pushing checkout's own folders win (a worktree with its own install after `worktree.sh own-modules`), so a link the hook made is replaced, never added to. Guard: tests/test_pre_push_check.py.
   for dir in desktop desktop/e2e worker; do
+    [ -L "$tree/$dir/node_modules" ] && rm "$tree/$dir/node_modules"
     [ -e "$repo/$dir/node_modules" ] && ln -s "$repo/$dir/node_modules" "$tree/$dir/node_modules"
   done
+  [ -L "$tree/.venv" ] && rm "$tree/.venv"
   [ -e "$repo/.venv" ] && ln -s "$repo/.venv" "$tree/.venv"
   (cd "$tree" && gate_cache_run "$repo" "$area" "flag=$affected_flag args=$* pick=$picks" bash tools/check.sh --area "$area" $affected_flag "$@")
 }
@@ -423,7 +438,7 @@ if [ ${#failed[@]} -gt 0 ]; then
   {
     echo "Push blocked: tests failed in ${failed[*]} ($repo)."
     echo "Fix them, then push again. Last lines of the test output:"
-    grep -E "^FAIL:|^ERROR:|AssertionError|^not ok|npm ERR|npm error|\.yml:[0-9]+:[0-9]+:|^fatal:" "$log" | sort -u | tail -15
+    grep -E "^FAIL:|^ERROR:|AssertionError|^not ok|npm ERR|npm error|\.yml:[0-9]+:[0-9]+:|^fatal:|Cannot find module|ERR_MODULE_NOT_FOUND" "$log" | sort -u | tail -15   # the last two: a suite that dies on a missing package (29 Oct 2026, #2462)
   } >&2
   rm -f "$log"
   exit 2

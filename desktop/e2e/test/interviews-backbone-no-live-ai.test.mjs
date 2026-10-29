@@ -1,47 +1,30 @@
 // Prove interview reviews and patterns use declared answers with no live key or AI transport.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {loadTable, storedAnswer} from '../lib/ai-answers.mjs';
 import {DUMMY_KEY} from '../lib/engine.mjs';
 import {FAILURES} from '../lib/ai-proxy.mjs';
-import {contextAiKeys, contextAiProxies} from '../lib/context.mjs';
+import {backboneHarness} from '../lib/backbone-harness.mjs';
+import {contextAiKeys} from '../lib/context.mjs';
 import {modelFetch} from '../lib/model.mjs';
-import {assertNoRealAi} from '../lib/no-real-ai.mjs';
 
 const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const background = ['organize_lines', 'contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraft'];
 const captions = ['recruiter-call-gamma', 'E2E Acme · Round 1'];
 
 async function harness(t, family = 'claude') {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'interviews-backbone-'));
-  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const env = {CI: 'true', E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: tableFile, E2E_ARTIFACTS: dir,
-    E2E_ANTHROPIC_KEY: 'revoked', E2E_OPENAI_KEY: 'revoked', E2E_SUITE: 'interviews', E2E_AI_REPLAY: '1', E2E_AI_CACHE: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'codex'};
-  const saved = {...process.env};
-  for (const key of Object.keys(process.env)) if (/^(E2E_|CI_AI_PROVIDER)/.test(key)) delete process.env[key];
-  Object.assign(process.env, env);
-  t.after(() => { for (const key of Object.keys(process.env)) delete process.env[key]; Object.assign(process.env, saved); });
-  let networkCalls = 0, engines = 0;
-  const localFetch = globalThis.fetch;
-  t.mock.method(globalThis, 'fetch', () => { networkCalls++; assert.fail('backbone must never reach a transport or relay'); });
+  const h = await backboneHarness(t, 'interviews', family);
+  // Keep interviews' revoked-versus-missing key coverage inside the shared isolation.
+  Object.assign(h.env, {E2E_ANTHROPIC_KEY: 'revoked', E2E_OPENAI_KEY: 'revoked'});
+  Object.assign(process.env, h.env);
   const keys = await contextAiKeys({offlineAi: true, family, engine: 'api'});
   assert.deepEqual(keys.needsKey, []);
   assert.equal(keys.key, DUMMY_KEY);
   delete process.env.E2E_ANTHROPIC_KEY; delete process.env.E2E_OPENAI_KEY;
   assert.deepEqual(await contextAiKeys({offlineAi: true, family, engine: 'api'}), keys);
-  const proxies = await contextAiProxies({offlineAi: true, family});
-  t.after(async () => { await proxies.openaiProxy?.close(); await proxies.proxy.close(); });
-  assert.equal(proxies.proxy.canned(), null, 'backbone must consult the table rather than the blanket offline stand-in');
-  return {...proxies, env, localFetch, options: {env, engine: () => { engines++; assert.fail('must not select an engine'); }},
-    assertNoLive: () => {
-      assert.equal(networkCalls, 0); assert.equal(engines, 0);
-      assert.equal(proxies.proxy.stats.paid || 0, 0);
-      assertNoRealAi(proxies);
-    }};
+  return h;
 }
 
 const request = (action, content = 'background request') => ({method: 'POST',

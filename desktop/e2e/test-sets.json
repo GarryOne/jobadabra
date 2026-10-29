@@ -64,6 +64,7 @@
   "app-log.test.mjs",
   "applicant-grown.test.mjs",
   "applicant-seed.test.mjs",
+  "apply-clock-out.test.mjs",
   "apply-live-skip.test.mjs",
   "apply-parts.test.mjs",
   "apply-verdict.test.mjs",

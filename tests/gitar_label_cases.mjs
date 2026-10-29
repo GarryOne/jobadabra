@@ -76,6 +76,7 @@ childProcess.execFileSync = (file, args) => {
   if (args[0] === 'label' && args[1] === 'create') return '';
   if (args[0] !== 'pr' || args[1] !== 'edit') throw new Error('unexpected gh args: ' + args);
   const add = args.indexOf('--add-label'), remove = args.indexOf('--remove-label');
+  state.edits = [...(state.edits || []), args[add >= 0 ? add : remove]];
   if (add >= 0) { state.labels.push(args[add + 1]); state.workedAt = '2026-10-28T20:15:00Z'; }
   else if (remove >= 0) state.labels = state.labels.filter(name => name !== args[remove + 1]);
   else throw new Error('unexpected label edit: ' + args);
@@ -257,5 +258,6 @@ test('starting work refreshes a label from before the latest push', t => {
   const result = runCliCase(t, {working: true, event: 'pull_request_target', body: SUGGEST, labels: [WORKING.name], legacy: true});
   assert.equal(result.status, 0, result.stderr);
   assert.ok(result.labels.includes(WORKING.name));
-  assert.ok(result.calls > 3, 'refreshes stale mark and reconciles');
+  assert.deepEqual(result.edits.slice(0, 2), ['--remove-label', '--add-label']);
+  assert.ok(Date.parse(result.workedAt) > Date.parse('2026-10-28T20:10:00Z'));
 });

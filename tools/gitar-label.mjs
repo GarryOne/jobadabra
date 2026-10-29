@@ -145,7 +145,7 @@ function syncOnce(pr) {
 function markWorking(pr) {
   const repo = process.env.GITHUB_REPOSITORY;
   const read = readPr(repo, pr) || readPrByRest(repo, pr, JSON.parse(gh('api', `repos/${repo}/pulls/${pr}`)));
-  // Why (#2386, 29 Oct 2026): preserve the existing event time; repeated starts must not remove and re-add the same label.
+  // Why (#2386, 29 Oct 2026): a current mark keeps its time; a stale mark is refreshed after a push.
   if (read.state !== 'open') return;
   const present = read.labels.includes(WORKING.name);
   if (present && read.workingSince && Date.parse(read.workingSince) >= Date.parse(read.headTime)) return;

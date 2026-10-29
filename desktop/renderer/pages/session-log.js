@@ -63,7 +63,8 @@ export function renderSessionPage() {
   show($('ss-grid'), panels.grid);
   show($('ss-refreshing'), panels.refreshing);
   syncTips({active: panels.grid, url: item?.url});
-  $('ss-stop').hidden = !extensionActing(sessionList, shared.formsOpen, formReady);   // the header Stop only while the extension acts (state: session-state.js extensionActing)
+  shared.stopActing = extensionActing(sessionList, shared.formsOpen, formReady);   // the header Stop only while the extension acts (session-state.js extensionActing), or shown for 30 s by its ⌘K entry (nav.js)
+  $('ss-stop').hidden = !(shared.stopActing || Date.now() < (shared.stopPinnedUntil || 0));
   if (panels.loading) { clearHeader(); return; }  // nothing to describe yet
   $('ss-list').replaceChildren(...sessionList.slice().reverse().map(entry => {
     const [label, tone] = stateOf(entry);

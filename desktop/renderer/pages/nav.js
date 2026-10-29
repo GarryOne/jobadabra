@@ -193,8 +193,11 @@ export function paletteCommands() {
   if (GATED_FEATURES.promo(proGate(shared.licenseState || {})).shown) add('Settings', 'Redeem a promo code', 'Get Pro with a code you were given', 'promo code redeem pro voucher coupon gift free', () => openPromoDialog(reloadPlan));
   // Pro is not open yet: the Pro card on the Plan page, and its waitlist (pages/plan-waitlist.js).
   if (showsProWaitlist(shared.licenseState || {}) && !shared.state?.settings?.proWaitlist?.email) add('Settings', 'Join the Pro waitlist', 'Get one e-mail when Pro opens', 'pro waitlist early access upgrade plan price join email', () => { openSetting('license'); setTimeout(openWaitlist, 150); });
-  // Why (29 Oct 2026, owner): the header Stop shows only while the extension acts (session-log.js), so the palette no longer finds it as a visible button: this entry is always there and presses the same one.
-  add('Sessions', 'Stop the extension', 'Stops everything the extension does, on every tab', 'stop freeze halt panic extension chrome everything cancel emergency', () => { openView('sessions'); $('ss-stop').click(); }, {kind: 'part'});   // a part, like every button entry: a card of the same name ranks first (test/palette-one-row-per-card.test.js)
+  // Why (#2512, Gitar; owner 18 Oct 2026: an entry brings you to a button, never presses it): the header Stop shows only while the extension acts, so this entry (always listed) opens Sessions and shows it for 30 s, then the usual reveal focuses it.
+  addNode($('ss-stop'), 'Sessions', 'Stop the extension', 'Stops everything the extension does, on every tab', 'stop freeze halt panic extension chrome everything cancel emergency', () => {
+    openView('sessions'); shared.stopPinnedUntil = Date.now() + 30 * 1000; $('ss-stop').hidden = false;
+    setTimeout(() => { if (!shared.stopActing) $('ss-stop').hidden = true; }, 30 * 1000 + 100);
+  });
   button('jobs', 'refresh', 'find jobs scan');
   button('employers', 'emp-paste', 'add employers companies paste page text address list newsletter portfolio talent agent matches startups');
   // The two drawers, one question at a time (pages/question-review.js; owner, 28 Oct 2026): the same drawers as Jobs' cards and the Profile tabs.

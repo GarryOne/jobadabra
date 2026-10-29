@@ -381,6 +381,6 @@ test('the header Stop shows only while the extension is acting, never when Chrom
   assert.equal(extensionActing([form], {known: false, ids: [], linkOff: {port: 47111, code: 'EADDRINUSE'}}), false, 'connection off: the same');
   assert.equal(extensionActing([form], {known: true, ids: []}), false, 'its tab is closed');
   assert.equal(extensionActing([{...form, outcome: 'submitted', live: false}], open), false, 'submitted');
-  for (const state of ['preflight', 'filling', 'waiting_to_submit', 'submitting']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), true, `Full automation: ${state}`);
-  for (const state of ['queued', 'ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), false, `Full automation: ${state} waits`);
+  for (const state of ['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), true, `Full automation: ${state}`);
+  for (const state of ['ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), false, `Full automation: ${state} waits`);
 });

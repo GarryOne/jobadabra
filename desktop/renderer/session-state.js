@@ -191,8 +191,8 @@ export const chromeWaiting = (item, formsOpen, sinceStart) => silentCase(item, f
 /** The pill of a card whose tab can't be seen: the connection, or Chrome. */
 export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 'Chrome not reporting');
 
-// Full-automation fills in Jobadabra's browser that are filling or submitting now (lib/background-apply-controller.js states).
-const BACKGROUND_ACTING = new Set(['preflight', 'filling', 'waiting_to_submit', 'submitting']);
+// Full-automation jobs in Jobadabra's browser that are queued, filling or submitting: the same states as lib/lifecycle.js WORKING (test/stop-everywhere.test.js keeps them equal; a queued job still needs Stop, or a later poll fills what the person stopped, bot review #2324).
+const BACKGROUND_ACTING = new Set(['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']);
 /**
  * -> whether the extension is acting right now, so the header's Stop is worth showing: a form open in Chrome that the extension reports, with nothing stopped or waiting on the person and not yet
  * ready, or a Full-automation fill or submit running in Jobadabra's browser. Never when Chrome is not reporting (the stop rides on the answer to the extension's next report and could not reach it).

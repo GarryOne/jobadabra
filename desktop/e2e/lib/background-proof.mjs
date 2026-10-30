@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
-import {stageOf} from './seed-data.mjs';
+import {addKitJob, removeJobsByUrl, stageOf} from './seed-data.mjs';
 import {appLogLines} from './app-log.mjs';
 
 const FOLDER = {darwin: 'chrome-mac-', linux: 'chrome-linux64', win32: 'chrome-win64'};
@@ -56,23 +56,34 @@ export const withBotCheckJudge = (previous, submitText) => {
   return body => { const {judged, text} = askOf(body); return judged && /not a robot/i.test(text) ? verdict('needs_person', '', true) : plain(body); };
 };
 
-/** The background state of the application of `url`, from the Sessions list (item.background, lib/background-apply-controller.js cache), or ''. */
-export const backgroundStateOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => (list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background?.state) || ''), url);
+/** The need every hidden-browser step names: the runtime link (linkRuntime) does not exist on Windows. */
+export const HIDDEN_NEED = {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'};
+/** The submitter's details-only page, the one Full automation can take (a kit answer is never a saved fact); `query` gives a step its own address (one background session per address). */
+export const autoFormOf = (form, query = '') => ({...form, path: form.autoPath, url: `https://${form.host}${form.autoPath}${query}`, kit: []});
+/** The seed of a hidden-browser step: the suite's fixture jobs `urls` removed (so the one job Start picks is this step's), then `job` added with an eligible kit of its own answers. */
+export const kitSeeder = (ctx, urls, posting) => async job => {
+  await removeJobsByUrl(ctx, urls);
+  await addKitJob(ctx, {title: job.title, company: job.company, url: job.url, kit: {answers: job.kit || [], cover_letter: '', check_before_sending: [], eligible: true}, description: posting});
+};
+/** The session id of the application of `url`, from the Sessions list, or ''. */
+export const sessionOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), url);
 
-/** The whole background record of the application of `url` (state, reason, mode ...), from the Sessions list, or null. */
+/** The background record of the application of `url` ({state, reason, …}), from the Sessions list (item.background, lib/background-apply-controller.js cache), or null. */
 export const backgroundOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background || null), url);
+/** The background state of the application of `url`, or ''. */
+export const backgroundStateOf = async (page, url) => (await backgroundOf(page, url))?.state || '';
 
 /** Ends a proof's job the way the person does ("Skip this role": the job is dismissed, its session closes).
  * Why (30 Oct 2026, found by the bot-check steps): Start takes the first eligible job and the suite's steps assume one is left, so a job a proof leaves handed over is started again by the next proof. */
 export async function skipJob(page, form) {
-  const left = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url).catch(() => '');
+  const left = await sessionOf(page, form.url).catch(() => '');
   if (left) await page.evaluate(session => window.pilot.sessionSkip(session), left).catch(() => {});
 }
 
 /** Opens this application's session on the Sessions page: the card a click on its dock card or list row opens (pages/session-log.js openSession), picked by the session's id.
  * Why (30 Oct 2026, found by the bot-check steps in CI order): every submitter variant has one company and one title, so a card found by those words opened an earlier job's card ("Review the filled application"). */
 async function openSessionCard(page, form) {
-  const id = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url);
+  const id = await sessionOf(page, form.url);
   if (!id) throw new Error(`the app holds no session for ${form.url}`);
   await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
 }
@@ -219,7 +230,7 @@ export async function proveBotCheck(ctx, {form, mode, seed, until}) {
   await ctx.relaunch();   // Why (30 Oct 2026, found by this step): the step before closed the hidden browser behind the app's back, so a second run in the same app never got a browser to poll; each proof starts the app fresh (proveAutomatic does too)
   const {page, proxy, forms} = ctx;   // read after the relaunch: it is a new window
   proxy.setCanned(withBotCheckJudge(proxy.canned(), 'Submit Application'));
-  await seed();
+  await seed(form);   // `seed(form)` adds the job the run starts (kitSeeder), as proveAutomatic does
   try {
     const chosenAt = new Date().toISOString(), posted = forms.posts.length, pressed = () => appLogLines(ctx.profile).filter(line => /one-shot automatic submit authorized/.test(line)).length;
     const pressesBefore = pressed();

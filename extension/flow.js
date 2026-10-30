@@ -13,7 +13,7 @@ import {kitStance} from './tab-pages.js';
 import {driving} from './input-gap.js';
 import {PAGE_FILES} from './page-files.js';
 import {hasEarly, keepEarly} from './early-answers.js';
-import {decide} from './log.js';
+import {decide, span} from './log.js';
 import {guarded} from './read-gen.js';   // the one guard for every AI answer applied to a page (a newer judgment of the same page, a page left)
 import './popup-guard.js';   // the worker's answer to the page's gate (page/guard-gate.js)
 import {readReply} from './ai-reply.js';   // the AI's reply checked in one place; error texts a person sees
@@ -142,19 +142,21 @@ export async function pair() {
 // tabId: the tab whose silent dead-end clock stands still while this ask is out (ladder/silence.js); none: a tab-less ask pauses nothing. Use apiFor on the fill path.
 export async function api(config, path, init = {}, retry = true, tabId = null) {
   const ask = askStarted(tabId);
-  try { return await guarded(tabId, path, init, () => apiCall(config, path, init, retry), (what, fields) => decide('fill', what, fields)); } finally { askEnded(ask); }
+  // Why (30 Oct 2026, ap): trace only the page-kind transport and guarded browser reads; other routes keep their existing path.
+  const trace = (name, run) => path === '/extension/page-kind' ? span(`page-kind ${tabId} ${name}`, run) : run();
+  try { return await guarded(tabId, path, init, () => apiCall(config, path, init, retry, trace), (what, fields) => decide('fill', what, fields), trace); } finally { askEnded(ask); }
 }
 export const apiFor = (tabId, config, path, init = {}) => api(config, path, init, true, tabId);
-async function apiCall(config, path, init, retry) {
+async function apiCall(config, path, init, retry, trace) {
   if (usesApp(config) && !config.token) Object.assign(config, await pair());
-  const response = await fetch(`${config.workerUrl.replace(/\/$/, '')}${path}`, {
+  const response = await trace('fetch', () => fetch(`${config.workerUrl.replace(/\/$/, '')}${path}`, {
     ...init, headers: {Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json', ...(init.headers || {})},
-  });
+  }));
   if (response.status === 401 && retry && usesApp(config)) {
     const fresh = await pair().catch(() => null);
-    if (fresh && fresh.token !== config.token) return apiCall(Object.assign(config, fresh), path, init, false);
+    if (fresh && fresh.token !== config.token) return apiCall(Object.assign(config, fresh), path, init, false, trace);
   }
-  const data = await response.json().catch(() => ({}));
+  const data = await trace('json', () => response.json()).catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error(response.status === 401 ? NOT_CONNECTED : data.error || `HTTP ${response.status}`), {status: response.status, data});
   return data;
 }

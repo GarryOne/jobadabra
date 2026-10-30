@@ -155,8 +155,12 @@ export function localEnv(storage, submitted = sessionSubmitted, {find: injected,
     // in Chrome is in the app's log with everything else (1 Oct 2026: nothing recorded why a job went Applied).
     onLog: entries => {
       errorWatcher(entries);
+      const receivedAt = new Date();
       for (const entry of Array.isArray(entries) ? entries : []) {
-        appLog('extension', `${entry?.kind || 'note'}: ${entry?.text || ''}`, entry?.fields || {});
+        const at = Date.parse(entry?.at);
+        // Why (30 Oct 2026, ap): keep receipt-ordered prefixes for log readers, source time for spans, and a second clock only beyond 1 s skew.
+        const times = Number.isFinite(at) ? {extensionAt: entry.at, ...(Math.abs(receivedAt.getTime() - at) > 1000 ? {receivedAt: receivedAt.toISOString()} : {})} : {};
+        appLog('extension', `${entry?.kind || 'note'}: ${entry?.text || ''}`, {...entry?.fields, ...times});
       }
     },
     // Each AI answer for a form's questions (worker/src/extension.js answerForm): counts and field ids only, in the log; counts only to the site.

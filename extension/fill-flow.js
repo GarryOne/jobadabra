@@ -12,7 +12,7 @@ import {preparePage, readPage, askPage, correctPage, describePage} from './fill-
 import {pressPosting, correctPosting, climbPosting, lookAtPosting, leavePage, fillPage, afterFill} from './fill-flow-steps.js';
 import {backgroundMayFill, backgroundPage} from './background-apply.js';
 import {PAGE_FILES, apiFor, clickCombos, settings} from './flow.js';
-import {decide} from './log.js';
+import {decide, span} from './log.js';
 import {retireFill} from './one-fill.js';
 import {handoffKey} from './ready-handoff.js';
 import {sweepConsent} from './consent-sweep.js';
@@ -91,18 +91,19 @@ async function forgetKind(tab, kind, reason) {
 // What the person sees while the app waits for the AI (the panel's step line; nothing is drawn when the tab has no panel yet). Never throws.
 export const sayStep = (tabId, text) => progress(tabId, text).catch(() => {});
 export async function askKind(tab, {fresh = false, digest = false, shadow = false} = {}) {   // fresh: the page changed after a press, a kept answer for its shape does not apply (start-route.js); shadow: the dead-end question (ladder/fallback.js)
+  const trace = (name, run) => span(`askKind ${tab.id} ${name}`, run);
   const askedAt = Date.now();   // the three ways this returns null with no word from the app are logged below (Hornbach 0.9.176: null after 2.1 s, nothing said which)
-  await labelReaderIn(tab.id);
-  const sketch = await pageSketchOf(tab.id);
+  await trace('labels', () => labelReaderIn(tab.id));
+  const sketch = await trace('sketch', () => pageSketchOf(tab.id));
   if (!sketch) { decide('fill', 'page kind not asked: the page could not be sketched', {ms: Date.now() - askedAt, digest}); return null; }
-  if (fresh || digest) decide('fill', 'page sketched for a second look', {fresh, digest, buttons: sketch.buttons?.length ?? 0, ...(await modalTrace(tab.id) || {})});   // the dialogs the page shows now (counts)
-  const frameList = await framesOf(tab.id); noteFrames(tab.id, frameList); sketch.frameCandidates = frameSketch(frameList);   // the addresses stay in the extension (ladder/climb.js)
-  sketch.mails = await mailsOf(tab.id);   // the sentences and mailto links that carry an address (ladder/outcomes.js)
-  sketch.onTop = await chrome.scripting.executeScript({target: {tabId: tab.id, frameIds: [0]}, func: onTop}).then(rows => rows?.[0]?.result ?? null).catch(() => null);   // a dialog or overlay drawn over the page, by structure (on-top.js): the AI is told
+  if (fresh || digest) decide('fill', 'page sketched for a second look', {fresh, digest, buttons: sketch.buttons?.length ?? 0, ...(await trace('modal', () => modalTrace(tab.id)) || {})});   // the dialogs the page shows now (counts)
+  const frameList = await trace('frames', () => framesOf(tab.id)); noteFrames(tab.id, frameList); sketch.frameCandidates = frameSketch(frameList);   // the addresses stay in the extension (ladder/climb.js)
+  sketch.mails = await trace('mails', () => mailsOf(tab.id));   // the sentences and mailto links that carry an address (ladder/outcomes.js)
+  sketch.onTop = await trace('onTop', () => chrome.scripting.executeScript({target: {tabId: tab.id, frameIds: [0]}, func: onTop}).then(rows => rows?.[0]?.result ?? null).catch(() => null));   // a dialog or overlay drawn over the page, by structure (on-top.js): the AI is told
   try {
     const config = await settings();
     if (config.workerUrl && !config.workerUrl.startsWith('http://127.0.0.1')) return null;   // your own Worker: no app to ask
-    const answer = await Promise.race([apiFor(tab.id, config, '/extension/page-kind', {method: 'POST', body: JSON.stringify({url: tab.url.split('#')[0], ...(fresh ? {fresh: true} : {}), ...(noEffectOf(fillKey(tab.id, tab.url)).length ? {noEffect: noEffectOf(fillKey(tab.id, tab.url))} : {}), ...(digest ? {digest: true, candidates: await candidatesOf(tab.id)} : {}), ...sketch})}),
+    const answer = await Promise.race([apiFor(tab.id, config, '/extension/page-kind', {method: 'POST', body: JSON.stringify({url: tab.url.split('#')[0], ...(fresh ? {fresh: true} : {}), ...(noEffectOf(fillKey(tab.id, tab.url)).length ? {noEffect: noEffectOf(fillKey(tab.id, tab.url))} : {}), ...(digest ? {digest: true, candidates: await trace('candidates', () => candidatesOf(tab.id))} : {}), ...sketch})}),
       new Promise(resolve => setTimeout(() => resolve(null), 40000))]);   // a first visit asks the AI cold (the app's AI is the `claude` command: 5-25 s); the structure rule decides only after this, and a wrong rule costs more than the wait
     if (answer == null) decide('fill', 'page kind: the app gave no answer in time', {ms: Date.now() - askedAt, digest});   // an answer WITH an error is the app's own line (server-pages.js)
     if (shadow) return answer;   // the dead-end question in shadow: no climb signal, any answer (an unsure or failed one too) goes to its log
@@ -245,7 +246,8 @@ export async function consider(tab, jobUrl) {
   started.add(key);
   notePage(tab.id, key, {job: jobUrl || tab.url, page: tab.url});   // a new page in the tab is progress, for this application (ladder/progress.js)
   if (await restoreLostQuery(tab, jobUrl, {decide})) return;   // Why (27 Oct 2026, fair round form 264402): a redirect dropped the posting's ?job id, the embed showed its list; only the tab's first look may reopen it, before anything is read (restore-query.js)
-  await pageStill(tab.id, {maxMs: 1500});   // the form renders after the load event: read once the page has been still 0.5 s, at most the old 1.5 s (page-still.js)
+  // Why (30 Oct 2026, ap): spans name the pre-fill wait without changing its order, bounds or late-read guards.
+  await span(`consider ${tab.id} pageStill`, () => pageStill(tab.id, {maxMs: 1500}));   // the form renders after the load event: read once the page has been still 0.5 s, at most the old 1.5 s (page-still.js)
   const live = await chrome.tabs.get(tab.id).catch(() => null);
   const gen = openRead(tab.id, key, started, !live || pageKey(live.url) !== pageKey(tab.url));
   if (!gen) return;   // only a read that goes on makes older ones late: one that found the tab moved on (above) must not kill the read of the page the tab is on now
@@ -257,16 +259,16 @@ export async function consider(tab, jobUrl) {
    * pressed: pressPosting, afterApply, routeAfterApply, climbPosting, pressDigest, lookAtPosting (initial false and later press results);
    * lookAfterPress: pressPosting, routeAfterApply (initial null and the fresh post-press answer). Some assignments carry an unchanged value onward. */
   const step = {tab, jobUrl, key, live, gen, flow: fillFlowParts};
-  await preparePage(step);
-  if (!await readPage(step)) return;
-  if (!await askPage(step)) return;
+  await span(`consider ${tab.id}/${gen} preparePage`, () => preparePage(step));
+  if (!await span(`consider ${tab.id}/${gen} readPage`, () => readPage(step))) return;
+  if (!await span(`consider ${tab.id}/${gen} askPage`, () => askPage(step))) return;
   if (!await correctPage(step)) return;
   await describePage(step);
   if (!await pressPosting(step)) return;
   await correctPosting(step);
   if (!await climbPosting(step)) return;
   if (!await lookAtPosting(step)) return;
-  if (await backgroundPage(tab.id, step.role, step.kind?.botCheck === true)) return;
+  if (await span(`consider ${tab.id}/${gen} backgroundPage`, () => backgroundPage(tab.id, step.role, step.kind?.botCheck === true))) return;
   if (step.role !== 'form') { await leavePage(step); return; }
   if (!await fillPage(step)) return;
   await afterFill(step);

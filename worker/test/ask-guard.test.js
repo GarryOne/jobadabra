@@ -83,5 +83,5 @@ test('class: every route a call asks with a tab is guarded or exempt, and api() 
   assert.ok(used.has('/extension/page-kind') && used.has('/extension/escalate') && used.has('/extension/account-judge'), [...used].join(', '));
   const unclassified = [...used].filter(route => !GUARDED_ROUTES.includes(route) && !EXEMPT_ROUTES.includes(route));
   assert.deepEqual(unclassified, [], 'a new ask with a tab: name its route in GUARDED_ROUTES (an AI answer applied to a page) or EXEMPT_ROUTES (read-gen.js)');
-  assert.match(fs.readFileSync(path.join(root, 'flow.js'), 'utf8'), /return await guarded\(tabId, path, init, \(\) => apiCall\(config, path, init, retry\)/);
+  assert.match(fs.readFileSync(path.join(root, 'flow.js'), 'utf8'), /return await guarded\(tabId, path, init, \(\) => apiCall\(config, path, init, retry, trace\)/);
 });

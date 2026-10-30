@@ -58,12 +58,12 @@ export const forgetJudgments = tabId => { for (const slot of [...judged.keys()])
 globalThis.chrome?.tabs?.onRemoved?.addListener(forgetJudgments);
 const tabUrl = async tabId => (await globalThis.chrome?.tabs?.get(tabId).catch(() => null))?.url || '';
 
-// The api() wrapper: call() does the ask. log(what, fields) says what was dropped (fixed words, never page text).
-export async function guarded(tabId, path, init, call, log = () => {}) {
-  const ask = startAsk(tabId, path, init, FAMILIES[path] ? await tabUrl(tabId) : '');
+/** Guard the answer on its original page; an optional trace brackets the browser reads without awaiting its logging. */
+export async function guarded(tabId, path, init, call, log = () => {}, trace = (_name, run) => run()) {
+  const ask = startAsk(tabId, path, init, FAMILIES[path] ? await trace('tabs.get before', () => tabUrl(tabId)) : '');
   const answer = await call();
   if (!ask) return answer;
-  const landed = landAsk(ask, answer, await tabUrl(tabId));
+  const landed = landAsk(ask, answer, await trace('tabs.get after', () => tabUrl(tabId)));
   if (landed.dropped) log(`late answer dropped: ${landed.dropped === 'newer' ? 'a newer judgment of this page landed' : 'the tab left this page'}`, {route: path});
   return landed.answer;
 }

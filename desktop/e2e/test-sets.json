@@ -75,6 +75,7 @@
   "ai-proxy.test.mjs",
   "ai-refused.test.mjs",
   "ai-spend.test.mjs",
+  "answer-drift-nightly.test.mjs",
   "answer-reask.test.mjs",
   "app-log.test.mjs",
   "applicant-grown.test.mjs",

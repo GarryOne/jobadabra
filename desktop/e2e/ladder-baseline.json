@@ -140,6 +140,10 @@
   {
    "date": "2026-10-28",
    "reason": "form judge says bot_check in the same call (owner's yes 28 Oct 2026); 2 new form_ready fixtures (robot check, Robotics trap), form answers re-recorded on the plan path: form_ready 6/6, form_step unchanged (ashby-yes-no was already an unsure miss)"
+  },
+  {
+   "date": "2026-10-30",
+   "reason": "form judge also says login wall and account to create (apply triage read, PR C1); 22 judge answers re-recorded live, 9 form_flags cases added"
   }
  ],
  "promptFingerprint": {
@@ -147,7 +151,7 @@
   "rung2-frames": "062eb0c3862f408e",
   "rung3": "8004ebdcf1667435",
   "account-judge": "82bb54b889d5f14d",
-  "form-judge": "98e1b54afee345d9",
+  "form-judge": "99756e5bd134af06",
   "fill-verify": "fe0e393f3680f14e",
   "fill-repair": "b9110b61a1151dbe",
   "rung4": "20b3ddfcca2ce90f"
@@ -648,6 +652,105 @@
    },
    "outcome": "unsure",
    "status": "miss"
+  },
+  "flags-account-de": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "account",
+    "accept": [
+     "account"
+    ]
+   },
+   "outcome": "account",
+   "status": "exact"
+  },
+  "flags-account-en": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "account",
+    "accept": [
+     "account"
+    ]
+   },
+   "outcome": "account",
+   "status": "exact"
+  },
+  "flags-account-it": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "account",
+    "accept": [
+     "account"
+    ]
+   },
+   "outcome": "account",
+   "status": "exact"
+  },
+  "flags-login-de": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "login",
+    "accept": [
+     "login"
+    ]
+   },
+   "outcome": "login",
+   "status": "exact"
+  },
+  "flags-login-en": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "login",
+    "accept": [
+     "login"
+    ]
+   },
+   "outcome": "login",
+   "status": "exact"
+  },
+  "flags-login-fr": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "login",
+    "accept": [
+     "login"
+    ]
+   },
+   "outcome": "login",
+   "status": "exact"
+  },
+  "flags-neither-de": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "neither",
+    "accept": [
+     "neither"
+    ]
+   },
+   "outcome": "neither",
+   "status": "exact"
+  },
+  "flags-neither-en": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "neither",
+    "accept": [
+     "neither"
+    ]
+   },
+   "outcome": "neither",
+   "status": "exact"
+  },
+  "flags-neither-en-optional-signin": {
+   "question": "form_flags",
+   "expect": {
+    "outcome": "neither",
+    "accept": [
+     "neither"
+    ]
+   },
+   "outcome": "neither",
+   "status": "exact"
   },
   "formlabs-greenhouse-embed": {
    "expect": {

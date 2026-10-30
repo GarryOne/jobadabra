@@ -73,6 +73,35 @@ test('base lanes determine the protected suite; shared expectation files stay pr
   assert.match(push({[file]: '{"score":82}'}, {[file]: '{"score":80}'}), /Rule E/);
 });
 
+test('a ceiling-only backbone entry still needs the expectation citation', () => {
+  const before = {[suite]: 'assert.equal(n, 2)'};
+  const after = {[suite]: 'assert.equal(n, 3)'};
+  const lanes = {apply: {aiMissesMax: 0}};
+  assert.match(push(before, after, 'Change', lanes), /Rule E.*apply\.mjs/s);
+  assert.equal(push(before, after, `Change\n\n${why}`, lanes), '');
+});
+
+test('a ceiling-only backbone entry moving to another lane still needs a citation', () => {
+  for (const lane of ['tolerant', 'suspended', 'retired']) {
+    const registry = JSON.stringify({suites: {apply: {aiMissesMax: 0, lane}}});
+    const before = {[suite]: 'assert.equal(n, 2)'};
+    const after = {'desktop/e2e/lanes.json': registry};
+    const lanes = {apply: {aiMissesMax: 0}};
+    assert.match(push(before, after, 'Change', lanes), /Rule E.*apply leaves backbone/s);
+    assert.equal(push(before, after, `Change\n\n${why}`, lanes), '');
+  }
+});
+
+test('raising or dropping an AI-ask ceiling needs a citation; lowering it is free', () => {
+  const lanes = {apply: {aiMissesMax: 1}};
+  const registry = suites => ({'desktop/e2e/lanes.json': JSON.stringify({suites})});
+  for (const next of [{apply: {aiMissesMax: 2}}, {apply: {}}, {}]) {
+    assert.match(push({}, registry(next), 'Change', lanes), /Rule E.*apply loosens its AI-ask ceiling/s, JSON.stringify(next));
+    assert.equal(push({}, registry(next), `Change\n\n${why}`, lanes), '');
+  }
+  assert.equal(push({}, registry({apply: {aiMissesMax: 0}}), 'Change', lanes), '');
+});
+
 test('a tolerant suite changed throw guard needs a citation', () => {
   const before = {[suite]: 'if (count > 2) throw new Error("bad");'};
   const after = {[suite]: 'if (count > 3) throw new Error("bad");'};
@@ -81,10 +110,10 @@ test('a tolerant suite changed throw guard needs a citation', () => {
   assert.equal(push(before, after, `Change\n\n${why}`, lanes), '');
 });
 
-test('suspended, retired and other registered lanes keep changed throw guards free', () => {
+test('suspended and retired lanes keep changed throw guards free', () => {
   const before = {[suite]: 'if (count > 2) throw new Error("bad");'};
   const after = {[suite]: 'if (count > 3) throw new Error("bad");'};
-  for (const entry of [{lane: 'suspended'}, {lane: 'retired'}, {lane: 'other'}, {}]) {
+  for (const entry of [{lane: 'suspended'}, {lane: 'retired'}]) {
     assert.equal(push(before, after, 'Change', {apply: entry}), '', JSON.stringify(entry));
   }
 });

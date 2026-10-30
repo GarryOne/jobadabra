@@ -65,6 +65,23 @@ test('already listed lanes and duplicate evidence never add a suite twice', asyn
   assert.equal((await proposals([...attempts, ...attempts].reverse())).length, 1);
 });
 
+test('ceiling-only entries still allow suspension; entries with a lane stay alone on both evidence paths', async t => {
+  const {dir, run} = retryArtifacts(t);
+  for (const [attempts, extra, suite] of [
+    [data().attempts, {}, 'settings'],
+    [[], {artifacts: dir, run, suites: ['applyflows']}, 'applyflows'],
+  ]) {
+    const registry = {suites: {[suite]: {aiMissesMax: 0}}};
+    const found = await proposals(attempts, {...extra, registry});
+    assert.deepEqual(found.map(item => item.suite), [suite]);
+    assert.equal(found[0].entry.lane, 'suspended');
+    for (const lane of ['suspended', 'tolerant', 'retired']) {
+      registry.suites[suite].lane = lane;
+      assert.deepEqual(await proposals(attempts, {...extra, registry}), []);
+    }
+  }
+});
+
 test('a shard staying red prevents a suite green; non-suite plan jobs never become suspensions', async () => {
   const {attempts} = data();
   for (const attempt of attempts) {

@@ -17,14 +17,14 @@ const RETURNS = 'Back to the backbone when its fix PR lands and the next 3 main 
 /** Return suspension proposals for attempt flips or unproved in-job retries on the same run, SHA and suite.
  * Attempts are GitHub jobs API responses; suites lists actual journey names, so infrastructure jobs never become checks.
  * artifacts optionally names downloaded first-try folders; run supplies their GitHub head_sha and html_url.
- * registry is lanes.json's parsed object; any already-listed suite is left alone. owner is required, never guessed.
+ * registry is lanes.json's parsed object; only entries with a lane are left alone. owner is required, never guessed.
  */
 export function suspensions({attempts = [], artifacts, run, registry = {}, suites, owner, since = new Date().toISOString().slice(0, 10)}) {
   if (!owner?.trim()) throw new Error('A named --owner is required for a suspension.');
   const groups = new Map();
   for (const response of attempts) for (const job of response.jobs || []) {
     const suite = String(job.name || '').replace(/-\d+of\d+$/, '');
-    if (!suites.includes(suite) || Object.hasOwn(registry.suites || {}, suite)) continue;
+    if (!suites.includes(suite) || Object.hasOwn(registry.suites?.[suite] || {}, 'lane')) continue;
     if (!job.head_sha || !job.run_id || !Number.isInteger(job.run_attempt) || job.run_attempt < 1) continue;
     const key = JSON.stringify([job.run_id, job.head_sha, suite]);
     if (!groups.has(key)) groups.set(key, {suite, sha: job.head_sha, run: job.run_id, attempts: new Map()});
@@ -69,7 +69,7 @@ export function suspensions({attempts = [], artifacts, run, registry = {}, suite
       const wrong = unproved(failures);
       if (!wrong.length) continue;
       const suite = String(failures[0].suite || path.basename(folder).replace(/^e2e-artifacts-/, '')).replace(/-\d+of\d+$/, '');
-      if (!suites.includes(suite) || seen.has(suite) || Object.hasOwn(registry.suites || {}, suite)) continue;
+      if (!suites.includes(suite) || seen.has(suite) || Object.hasOwn(registry.suites?.[suite] || {}, 'lane')) continue;
       const why = `${suite}: in-job retry flip, wrong value on unchanged commit ${run.head_sha}: first try failed, rerun passed in ${run.html_url}. ${wrong[0].proof.why}. A retry flip leaves this check unable to protect a PR.`;
       out.push(proposal({suite, sha: run.head_sha, since, why, owner,
         detail: `Kind: in-job retry flip, wrong value. First failing step: ${failures[0].step}\n\nFirst-try message:\n\n${failures[0].message}\n\nRun: ${run.html_url}\n\nUnproved failure: ${wrong[0].step}: ${wrong[0].message}`}));

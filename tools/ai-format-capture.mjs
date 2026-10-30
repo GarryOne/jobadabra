@@ -13,16 +13,35 @@ const GOLDEN = new URL('../desktop/e2e/fixtures/golden/', import.meta.url);
 const PYTHON = new URL('ai-format-python.json', GOLDEN);
 const MANIFEST = new URL('ai-format-manifest.json', GOLDEN);
 const about = 'Fictional nightly AI-format requests captured offline through real senders; no AI calls. Regenerate with tools/ai-format-capture.mjs after refreshing its engine snapshots.';
+// Canonical subtree bytes match Python json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=False), UTF-8.
 const canonical = value => JSON.stringify(value, (_key, part) => part && typeof part === 'object' && !Array.isArray(part)
   ? Object.fromEntries(Object.keys(part).sort().map(key => [key, part[key]])) : part);
 
-function checkPython(snapshot) {
+/** Verify offline engine fingerprints; root may point to an isolated repository copy. */
+export function checkPython(snapshot, root = ROOT) {
   if (snapshot.v !== 1 || !snapshot.entries?.length || !Object.keys(snapshot.dependencies || {}).length) throw new Error('Missing fingerprinted engine captures');
-  for (const [file, sha] of Object.entries(snapshot.dependencies)) {
-    const resolved = path.resolve(ROOT, file);
-    if (!resolved.startsWith(ROOT) || !/^(?:src|tools|desktop)\//.test(file)) throw new Error(`Invalid capture dependency ${file}`);
-    const actual = createHash('sha256').update(fs.readFileSync(resolved)).digest('hex');
-    if (actual !== sha) throw new Error(`Engine capture stale: ${file}; run python3 tools/ai-format-python-capture.py`);
+  for (const [dependency, sha] of Object.entries(snapshot.dependencies)) {
+    const [file, selector] = dependency.split('#');
+    const resolved = path.resolve(root, file);
+    if (!resolved.startsWith(path.resolve(root) + path.sep) || !/^(?:src|tools|desktop)\//.test(file)) throw new Error(`Invalid capture dependency ${dependency}`);
+    const stale = () => new Error(`Engine capture stale: ${dependency}; run python3 tools/ai-format-python-capture.py`);
+    let bytes = fs.readFileSync(resolved);
+    if (selector !== undefined) {
+      let value = JSON.parse(bytes), remaining = selector;
+      if (!remaining) throw stale();
+      while (remaining) {
+        // Dotted object keys (app.interview) stay intact; prefer the longest matching key.
+        const keys = value !== null && typeof value === 'object' ? Object.keys(value) : [];
+        const key = keys
+          .filter(key => remaining === key || remaining.startsWith(key + '.')).sort((a, b) => b.length - a.length)[0];
+        if (key === undefined) throw stale();
+        value = value[key];
+        remaining = remaining.slice(key.length + 1);
+      }
+      bytes = canonical(value);
+    }
+    const actual = createHash('sha256').update(bytes).digest('hex');
+    if (actual !== sha) throw stale();
   }
 }
 

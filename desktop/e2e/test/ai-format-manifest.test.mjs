@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import childProcess from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
@@ -12,6 +13,11 @@ import {tierOf} from '../lib/broker-client.mjs';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const FILE = new URL('../fixtures/golden/ai-format-manifest.json', import.meta.url);
 const read = () => JSON.parse(fs.readFileSync(FILE, 'utf8'));
+const answerFile = 'desktop/e2e/fixtures/golden/ai-answers.json';
+const answerDependency = `${answerFile}#answers.app.interview.recruiter-call-gamma`;
+// Canonical subtree bytes match Python json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=False), UTF-8.
+const canonical = value => JSON.stringify(value, (_key, part) => part && typeof part === 'object' && !Array.isArray(part)
+  ? Object.fromEntries(Object.keys(part).sort().map(key => [key, part[key]])) : part);
 const families = table => [...new Set([
   ...Object.keys(table.kinds || {}), ...Object.keys(table.items || {}), ...Object.keys(table.answers || {}),
 ].map(kind => kind === 'app.interview' ? 'interview' : kind))].sort();
@@ -82,9 +88,14 @@ test('in-process regeneration reproduces the committed bytes without a subproces
 test('a changed Python sender refuses regeneration until its offline capture is refreshed', async () => {
   const {captureManifest} = await import('../../../tools/ai-format-capture.mjs');
   const pythonSnapshot = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url), 'utf8'));
-  // Why (30 Oct 2026, ap): another rebased source can be stale first; isolate the injected mismatch, while byte regeneration above still requires fresh committed snapshots.
-  const fresh = Object.fromEntries(Object.keys(pythonSnapshot.dependencies).map(file => [file,
-    createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex')]));
+  // Why (30 Oct 2026, ap; a8 on #2580, the answers fixture is fingerprinted by the one subtree the capture reads): another rebased source can be stale first; isolate the injected mismatch, while byte regeneration above still requires fresh committed snapshots.
+  const fresh = Object.fromEntries(Object.keys(pythonSnapshot.dependencies).map(dependency => {
+    const [file, selector] = dependency.split('#');
+    const bytes = fs.readFileSync(path.join(ROOT, file));
+    if (selector) assert.equal(dependency, answerDependency);
+    return [dependency, createHash('sha256').update(selector
+      ? canonical(JSON.parse(bytes).answers['app.interview']['recruiter-call-gamma']) : bytes).digest('hex')];
+  }));
   const sources = Object.keys(fresh).filter(file => file.startsWith('src/'));
   assert.ok(sources.length >= 2);
   for (const file of [sources[0], sources.at(-1)]) {
@@ -94,4 +105,30 @@ test('a changed Python sender refuses regeneration until its offline capture is 
       return true;
     });
   }
+});
+
+test('engine fingerprints ignore unrelated answers and reject changed or missing interview replies', async t => {
+  const {checkPython} = await import('../../../tools/ai-format-capture.mjs');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-format-fingerprint-'));
+  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
+  const filename = path.join(root, answerFile);
+  fs.mkdirSync(path.dirname(filename), {recursive: true});
+  const table = JSON.parse(fs.readFileSync(path.join(ROOT, answerFile), 'utf8'));
+  const stored = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url), 'utf8'));
+  assert.ok(stored.dependencies[answerDependency], 'capture must fingerprint only the interview subtree');
+  assert.ok(!(answerFile in stored.dependencies), 'the full answer table must not invalidate engine captures');
+  const snapshot = {...stored, dependencies: {[answerDependency]: stored.dependencies[answerDependency]}};
+  const write = () => fs.writeFileSync(filename, JSON.stringify(table));
+  write();
+  assert.doesNotThrow(() => checkPython(snapshot, root));
+  table.answers['app.interview']['unrelated-caption'] = {reply: {content: [{type: 'text', text: 'Unrelated Zürich answer'}]}};
+  write();
+  assert.doesNotThrow(() => checkPython(snapshot, root));
+  table.answers['app.interview']['recruiter-call-gamma'].reply.content[0].text += ' changed';
+  write();
+  const stale = {message: `Engine capture stale: ${answerDependency}; run python3 tools/ai-format-python-capture.py`};
+  assert.throws(() => checkPython(snapshot, root), stale);
+  delete table.answers['app.interview']['recruiter-call-gamma'];
+  write();
+  assert.throws(() => checkPython(snapshot, root), stale);
 });

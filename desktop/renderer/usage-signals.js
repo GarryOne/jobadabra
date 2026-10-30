@@ -39,7 +39,9 @@ export const usage = createUsage({send: payload => { try { window.pilot?.usage?.
 if (typeof document !== 'undefined' && typeof window !== 'undefined') {
   for (const type of ['keydown', 'pointerdown', 'pointermove', 'wheel']) document.addEventListener(type, usage.input, {capture: true, passive: true});
   document.addEventListener('click', event => usage.click({control: controlName(event.target), x: event.clientX, y: event.clientY, width: window.innerWidth, height: window.innerHeight}), {capture: true, passive: true});
-  setInterval(() => usage.tick(!document.hidden && document.hasFocus()), 1000);
+  // Why (30 Oct 2026, a8; nightly 40994891378): a stub DOM never defined hasFocus, so the first tick threw while the test was running; the interval lived for the whole process and kept it alive after tests, so tolerate missing hasFocus, unref in Node and stop on pagehide.
+  const timer = setInterval(() => usage.tick(!document.hidden && typeof document.hasFocus === 'function' && document.hasFocus()), 1000);
+  timer?.unref?.();
   document.addEventListener('visibilitychange', () => { if (document.hidden) usage.flush(); });
-  window.addEventListener('pagehide', usage.flush);
+  window.addEventListener('pagehide', () => { clearInterval(timer); usage.flush(); });
 }

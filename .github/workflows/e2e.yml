@@ -30,6 +30,11 @@ on:
       suite:
         description: 'Suites to run, comma-separated (empty = all)'
         required: false
+      persona:
+        description: 'Personas only: choose the fictional applicant; alternate keeps the daily choice'
+        type: choice
+        options: [alternate, austin, sao_paulo]
+        default: alternate
       pr_suites:
         description: 'Exactly these suites as a pull request would run them (pr-suites.yml starts it with this): SQLite store, no AI screenshot review, no harness-test step, the PR branch''s own concurrency group'
         type: string
@@ -232,6 +237,7 @@ jobs:
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_AI_FAMILY: ${{ (inputs.family == 'claude' || inputs.family == 'openai') && inputs.family || '' }}   # a manual run pinned to one family; else alternate
+      E2E_PERSONA: ${{ matrix.suite == 'personas' && inputs.persona || '' }}
       # The store under test (lib/store.mjs pickStore): the gate's two jobs per suite pin one store each (plan-run.mjs legs); any other run alternates on bit 1 of the
       # run number (beside the AI family's bit 0), unless a run by hand pins one.
       E2E_STORE: ${{ matrix.store || (inputs.pr_suites != '' && 'sqlite') || (inputs.store != 'alternate' && inputs.store) || 'alternate' }}   # a pull request: the store its picked steps were recorded on (plan-run.mjs), else SQLite; both are fresh per run

@@ -12,6 +12,7 @@ import {loadRequests, resolveRequest, pickSample, compareAnswer, buildReport} fr
 
 const fixture = new URL('../fixtures/golden/ai-answer-requests.json', import.meta.url);
 const table = loadTable();
+const promotedKeys = new Set(Object.entries(table.requests || {}).flatMap(([kind, entries]) => Object.keys(entries).map(key => `${kind}/${key}`)));
 const tmp = t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'answer-drift-'));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
@@ -32,7 +33,7 @@ test('sample rotates oldest first within each kind and spreads slots across kind
   assert.deepEqual(pickSample([...entries].reverse(), {}, 5), pickSample(entries, {}, 5));
 });
 
-test('seeding is byte deterministic, body-reference-only and links the measured 268 plus 3 keys', t => {
+test('seeding is byte deterministic and links historical plus promoted captured keys', t => {
   forbidNetwork(t);
   const entries = seedRequests();
   assert.equal(serializeRequests(entries), fs.readFileSync(fixture, 'utf8'));
@@ -40,9 +41,10 @@ test('seeding is byte deterministic, body-reference-only and links the measured 
   assert.equal(new Set(entries.map(e => e.id)).size, entries.length);
   assert.equal(new Set(entries.map(e => e.source.sha256)).size, entries.length);
   const linked = new Set(entries.flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(linked.size, 271);
+  assert.equal(linked.size, 271 + promotedKeys.size);
+  for (const key of promotedKeys) assert.ok(linked.has(key), `promoted request is unlinked: ${key}`);
   const historic = new Set(entries.filter(e => e.provenance !== 'sender capture').flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(historic.size, 268);
+  assert.equal([...historic].filter(key => !promotedKeys.has(key)).length, 268);
   assert.deepEqual(new Set(entries.map(e => e.provenance)), new Set(['captured', 'reconstructed', 'sender capture']));
   for (const entry of entries) {
     assert.ok(!('body' in entry));
@@ -152,7 +154,7 @@ test('dry reports count an unlinked key as a gap and make no calls', async t => 
   forbidNetwork(t);
   const entries = loadRequests();
   const report = await buildReport({entries, table});
-  assert.deepEqual(report.coverage, {total: 562, eligible: 271, unlinked: 291, checked: 0, unjudged: 0});
+  assert.deepEqual(report.coverage, {total: 562 + promotedKeys.size, eligible: 271 + promotedKeys.size, unlinked: 291, checked: 0, unjudged: 0});
   assert.equal(report.sample.length, 20);
   assert.equal(report.callsUsed.total, 0);
   const expanded = structuredClone(table);

@@ -96,3 +96,12 @@ test('personas: splitting jobs keeps one selected persona and the original aggre
   assert.equal(suite.budgetMinutes, undefined);
   assert.equal(suite.aggregateBudget, undefined);
 });
+
+test('personas: a manual workflow can select either persona without changing another suite', () => {
+  const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');
+  const input = workflow.split('      persona:')[1]?.split('      pr_suites:')[0];
+  assert.ok(input, 'the dispatch needs an explicit persona input');
+  assert.match(input, /options: \[alternate, austin, sao_paulo\]/);
+  assert.match(input, /default: alternate/);
+  assert.ok(workflow.includes("E2E_PERSONA: ${{ matrix.suite == 'personas' && inputs.persona || '' }}"));
+});

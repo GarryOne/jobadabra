@@ -20,6 +20,10 @@ export const notionStandIn = true;   // an empty stand-in to move into (lib/cont
 export const notionProxy = true;
 export const keepGoing = true;
 export const minutes = 12;
+// Why (30 Oct 2026, ap, main run 40985357367): stored organizer and background answers need no live key or relay.
+export const offlineAi = true;
+// Why (30 Oct 2026, ap, main run 40985357367): moving the store must never pay for a new background AI ask.
+export const realAi = false;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function setUp(page) {

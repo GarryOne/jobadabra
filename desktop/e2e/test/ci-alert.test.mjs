@@ -6,16 +6,18 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {failedJobLinks, failedJobs, isRepeat, messageOf, previousConclusion, sinceGreen, send, stepCauses} from '../ci-alert.mjs';
+import {annotationLines} from '../lib/artifacts.mjs';
 
 const env = {GITHUB_WORKFLOW: 'CI · Site replays · all (offline)', GITHUB_SHA: 'abcdef1234', GITHUB_REF_NAME: 'main', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42',
   GITHUB_WORKFLOW_REF: 'o/r/.github/workflows/site-replays.yml@refs/heads/main', GH_TOKEN: 'gh'};
 const lanes = {suites: {quality: {lane: 'tolerant'}, qualityai: {lane: 'tolerant'}, mailreading: {lane: 'tolerant'}}};
 const now = new Date('2026-10-14T00:30:00Z');
 
-test('a failure says which workflow, cause, commit, next step and run; a success says something only after a failure', () => {
+test('a failure says which workflow, cause, next step, commit and run; a success says something only after a failure', () => {
   const red = messageOf({lanes, status: 'failure', what: '1 row worse: Join', next: 'label the PR replay-accepted', env, now});
-  assert.match(red.text, /^🔴 <b>CI · Site replays · all \(offline\)<\/b> failed\n\n• Cause: 1 row worse: Join\n• Commit: <a href="https:\/\/github\.com\/o\/r\/commit\/abcdef1234">abcdef1<\/a> · main · 14 Oct, 02:30\n• Next: label the PR replay-accepted\n\n<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42">Open run<\/a>$/);
-  assert.match(messageOf({lanes, status: 'success', previous: 'failure', env, now}).text, /^🟢 <b>.*<\/b> is back to green/);
+  assert.equal(red.text, '🔴 <b>CI · Site replays · all (offline)</b> failed on main\n\n1 row worse: Join\nNext: label the PR replay-accepted\n\n'
+    + 'After <a href="https://github.com/o/r/commit/abcdef1234">abcdef1</a> · 14 Oct, 02:30\n<a href="https://github.com/o/r/actions/runs/42">Open the run</a>');
+  assert.match(messageOf({lanes, status: 'success', previous: 'failure', env, now}).text, /^🟢 <b>CI · Site replays · all \(offline\)<\/b> is green again on main\n\nAfter /);
   assert.equal(messageOf({lanes, status: 'success', previous: 'success', env, now}), '');
 });
 
@@ -46,14 +48,16 @@ test('no secrets: no send; a failed send never prints the token', async () => {
   assert.deepEqual([body.chat_id, body.text], ['7', 'hello']);
 });
 
-test('"Since green" names the newest 5 PRs as links and "+N more"; none when the last green run is this commit or unknown', async () => {
-  const commits = Array.from({length: 8}, (_, i) => ({commit: {message: `Fix ${i} (#${900 + i})\n\nbody`}})).concat([{commit: {message: 'A direct commit'}}]);
+test('"Since green" finds merged PRs (merge commit or squash), newest first; the alert links 3 and "+N more"; none when the last green run is this commit or unknown', async () => {
+  // Main merges by merge commit since 27 Oct 2026: "Merge pull request #n from …" counts like a squash title "… (#n)"; a PR's own commits do not.
+  const commits = Array.from({length: 8}, (_, i) => ({commit: {message: i % 2 ? `Fix ${i} (#${900 + i})\n\nbody` : `Merge pull request #${900 + i} from o/topic-${i}\n\nFix ${i}`}}))
+    .concat([{commit: {message: 'A direct commit'}}, {commit: {message: 'A PR branch commit naming #12 in passing'}}]);
   const fetcher = async url => ({json: async () => (/compare/.test(url) ? {commits} : {workflow_runs: [{head_sha: 'green0'}]})});
   assert.deepEqual(await sinceGreen(env, fetcher), {prs: ['907', '906', '905', '904', '903'], more: 3});
   assert.deepEqual(await sinceGreen({...env, GITHUB_SHA: 'green0'}, fetcher), {prs: [], more: 0});
   assert.deepEqual(await sinceGreen(env, async () => { throw new Error('down'); }), {prs: [], more: 0});
-  const text = messageOf({lanes, status: 'failure', what: 'x', since: {prs: ['907', '906'], more: 3}, env, now}).text;
-  assert.match(text, /• Since green: <a href="https:\/\/github\.com\/o\/r\/pull\/907">#907<\/a>, <a href="https:\/\/github\.com\/o\/r\/pull\/906">#906<\/a> \+3 more/);
+  const text = messageOf({lanes, status: 'failure', what: 'x', since: {prs: ['907', '906', '905', '904', '903'], more: 3}, env, now}).text;
+  assert.match(text, /\nAfter <a href="https:\/\/github\.com\/o\/r\/pull\/907">#907<\/a>, <a [^>]+>#906<\/a>, <a [^>]+>#905<\/a> \+5 more · 14 Oct, 02:30\n/);
 });
 
 test('the same failure on the same commit alerts once: a repeat needs a new commit or other failed jobs', async () => {
@@ -79,7 +83,7 @@ test('the cause quotes each failed job\'s own step annotation ("<suite> · <step
       {title: 'apply · fill the form', message: '3 AI question(s) had no recorded answer (asked live, not kept)'}]};
     throw new Error(`unexpected ${url}`);
   };
-  assert.deepEqual(await stepCauses('42', env, fetcher, lanes), ['apply · fill the form: 3 AI question(s) had no recorded answer (asked live, not kept)']);
+  assert.deepEqual(await stepCauses('42', env, fetcher, lanes), [{suite: 'apply', step: 'fill the form', message: '3 AI question(s) had no recorded answer (asked live, not kept)'}]);
   assert.deepEqual(await stepCauses('42', env, async () => { throw new Error('down'); }, lanes), []);
 });
 
@@ -105,7 +109,7 @@ test('tolerant failed step annotations do not enter a mixed alert cause', async 
     asked.push(url);
     return {json: async () => url.includes('/jobs?') ? {jobs: [{id: 1, name: 'quality', conclusion: 'failure'}, {id: 2, name: 'apply', conclusion: 'failure'}]} : [{title: 'apply · fill', message: 'missing field'}]};
   };
-  assert.deepEqual(await stepCauses('42', e2eEnv, fetcher, lanes), ['apply · fill: missing field']);
+  assert.deepEqual(await stepCauses('42', e2eEnv, fetcher, lanes), [{suite: 'apply', step: 'fill', message: 'missing field'}]);
   assert.ok(!asked.some(url => url.includes('/check-runs/1/')));
 });
 
@@ -165,7 +169,7 @@ globalThis.fetch = async (url, options) => {
       messages.push(fs.existsSync(sent) ? JSON.parse(fs.readFileSync(sent, 'utf8')).text : '');
     }
     assert.match(messages[0], /🔴/);
-    assert.match(messages[1], /🟢.*is back to green/);
+    assert.match(messages[1], /^🟢 <b>apply<\/b> is green again on main\n/, 'names the suite that was red');
     assert.equal(messages[2], '');
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
@@ -183,9 +187,24 @@ test('a cancelled backbone job beside a tolerant failure still alerts and counts
   assert.equal(await previousConclusion(e2eEnv, fetcher, lanes), 'failure');
 });
 
-test('step cause and failed-job context share the after-merge message formatter', () => {
-  const input = {lanes, status: 'failure', jobs: failed(['quality', 'apply']), env: {...e2eEnv, AFTER_MERGE: 'abc1234'}};
-  assert.match(messageOf(input).text, /Cause: Failed job: apply, after merge abc1234/);
-  assert.match(messageOf({...input, causes: ['apply · fill: missing field']}).text,
-    /Cause: apply · fill: missing field \(Failed job: apply, after merge abc1234\)/);
+test('with no step words the failed jobs are the cause, and an after-merge run names the merge it checked', () => {
+  const input = {lanes, status: 'failure', jobs: failed(['quality', 'apply']), env: {...e2eEnv, AFTER_MERGE: 'abc1234'}, now};
+  assert.match(messageOf(input).text, /^🔴 <b>apply<\/b> failed on main\n\nFailed job: apply\n\nAfter <a href="https:\/\/github\.com\/o\/r\/commit\/abc1234">abc1234<\/a> · /);
+  assert.match(messageOf({...input, causes: [{suite: 'apply', step: 'fill', message: 'missing field'}]}).text, /\n\nCheck: fill\nmissing field\n\nAfter /);
+});
+
+// Owner, 30 Oct 2026 (Telegram, main's quality red): "let's improve this telegram message. Let's make it more human radable. more succint." Picked shape A.
+// Before: "• Cause: quality · the app's list agrees with Notion (same jobs, same scores): …, the app shows null; … \"Senior DevOps Engineer\": Noti (Failed job: quality, after merge 6af7e52)".
+test('owner scenario: main\'s quality red reads as the suite, the check, 2 of its problems, how many more, and the PR it came after', async () => {
+  const jobs = ['Senior Platform Engineer', 'Cloud Infrastructure Engineer', 'Engineering Manager, Infrastructure', 'Junior DevOps Engineer', 'Senior DevOps Engineer'];
+  const step = {suite: 'quality', step: "the app's list agrees with Notion (same jobs, same scores)",
+    message: [...jobs, ...jobs].map((job, i) => `"${job}": Notion says ${[78, 58, 43, 35, 30][i % 5]}, the app shows null`).join('; ')};   // 10 problems: past the annotation's length
+  const [line] = annotationLines([step]);
+  const annotation = {title: decodeURIComponent(/title=([^:]+)::/.exec(line)[1]), message: decodeURIComponent(line.split('::')[2])};
+  const fetcher = async url => ({json: async () => (url.includes('/jobs?') ? {jobs: [{id: 7, name: 'quality', conclusion: 'failure', html_url: 'https://github.com/o/r/actions/runs/42/job/7'}]} : [annotation])});
+  const causes = await stepCauses('42', e2eEnv, fetcher, {suites: {}});
+  const message = messageOf({lanes: {suites: {}}, status: 'failure', causes, jobs: await failedJobLinks('42', e2eEnv, fetcher), since: {prs: ['2538'], more: 0}, env: e2eEnv, now: new Date('2026-10-30T01:29:00Z')});
+  assert.equal(message.text, "🔴 <b>quality</b> failed on main\n\nCheck: the app's list agrees with Notion\n10 problems:\n"
+    + '• Senior Platform Engineer: Notion says 78, the app shows nothing\n• Cloud Infrastructure Engineer: Notion says 58, the app shows nothing\n+8 more\n\n'
+    + 'After <a href="https://github.com/o/r/pull/2538">#2538</a> · 30 Oct, 02:29\n<a href="https://github.com/o/r/actions/runs/42/job/7">Open the failed job</a>');
 });

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {annotationLines, codeLine, failureRecords, writeFindings, writeSuiteFailures} from '../lib/artifacts.mjs';
+import {annotationLines, codeLine, failureRecords, fitItems, writeFindings, writeSuiteFailures} from '../lib/artifacts.mjs';
 
 const dir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'artifacts-'));
 const results = [{name: 'a step that passed', status: 'passed'}, {name: 'a step that failed', status: 'failed', note: 'x'.repeat(900)}, {name: 'a skipped step', status: 'skipped'}];
@@ -58,4 +58,18 @@ test('an unexpected error names its first line in our code, and the failure reco
   const [record] = failureRecords('apply', [{name: 'a step', status: 'failed', note: 'Unexpected end of JSON input', where: 'desktop/e2e/lib/x.mjs:3:9'}]);
   assert.equal(record.where, 'desktop/e2e/lib/x.mjs:3:9');
   assert.equal('where' in failureRecords('apply', [{name: 'a step', status: 'failed', note: 'why'}])[0], false);
+});
+
+// Owner, 30 Oct 2026: main's quality alert ended inside a word ("Noti") because the annotation was cut at 300 characters.
+test('an annotation keeps whole "; " items and counts the rest, never cuts a word, and leaves a short line alone', () => {
+  const items = Array.from({length: 9}, (_, i) => `"Job ${i}": Notion says ${50 + i}, the app shows null`);
+  const cut = fitItems(items.join('; '));
+  assert.ok(cut.length <= 300, `${cut.length} characters`);
+  const kept = cut.split('; ');
+  assert.match(kept.at(-1), /^\+\d+ more$/);
+  assert.equal(kept.length - 1 + Number(/\d+/.exec(kept.at(-1))[0]), 9, 'kept + counted = all problems');
+  assert.deepEqual(kept.slice(0, -1), items.slice(0, kept.length - 1), 'every kept item is whole');
+  const one = fitItems('word '.repeat(100).trim());
+  assert.ok(one.length <= 300 && one.endsWith('word…'), one.slice(-12));
+  assert.equal(fitItems('3 AI question(s) had no recorded answer'), '3 AI question(s) had no recorded answer');
 });

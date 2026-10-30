@@ -19,14 +19,15 @@ const KINDS = {
   'a very long cause': {status: 'failure', what: 'x '.repeat(3000), next: 'y '.repeat(3000), since, jobs},
 };
 
-test('every kind: status emoji + bold workflow first, a blank line, bullets, named links only, escaped, under the limit, no preview', () => {
+test('every kind: status emoji + bold name + verdict first, a blank line, plain lines, named links only, escaped, under the limit, no preview', () => {
   for (const [kind, input] of Object.entries(KINDS)) {
     const message = messageOf({...input, env, now});
     const {text} = message;
     assert.equal(message.parse_mode, 'HTML', kind);
     assert.equal(message.link_preview_options.is_disabled, true, kind);
-    assert.match(text, /^(🔴|🟢) <b>CI · E2E<\/b> (failed|is back to green)\n\n• /, kind);
-    assert.match(text, /\n\n<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42">Open run<\/a>/, kind);
+    assert.match(text, /^(🔴|🟢) <b>CI · E2E<\/b> (failed|is green again) on main\n\n[^\n•]/, kind);
+    if (input.status === 'failure') assert.match(text, /\nAfter .+\n<a href="https:\/\/github\.com\/o\/r\/actions\/runs\/42(\/job\/7)?">Open (the run|the failed job)<\/a>$/, kind);
+    assert.doesNotMatch(text, /\bnull\b/, `${kind}: human words`);
     assert.ok(text.length <= LIMIT, `${kind}: ${text.length} characters`);
     assert.doesNotMatch(text.replace(/<a href="[^"]*">/g, '<a>'), /https?:\/\//, `${kind}: a bare URL`);
     const tags = text.match(/<\/?[a-z]+/g) || [];
@@ -48,4 +49,13 @@ test('escaping, links and the size limit of the formatter itself', () => {
   // a Sentry-style message: bold title, bullets, one named link
   const sentry = alertHtml({icon: '🚨', title: 'New production error:', verdict: 'TypeError <x>', bullets: [{label: 'Events', parts: ['12']}, {label: 'Release', parts: ['0.9.540']}], links: [{text: 'Open in Sentry', url: 'https://sentry.io/i/1'}]});
   assert.equal(sentry.text, '🚨 <b>New production error:</b> TypeError &lt;x&gt;\n\n• Events: 12\n• Release: 0.9.540\n\n<a href="https://sentry.io/i/1">Open in Sentry</a>');
+});
+
+test('blocks: paragraphs of plain lines, "•" only where asked, empty paragraphs dropped, the links close the last paragraph', () => {
+  const message = alertHtml({icon: '🔴', title: 'quality', verdict: 'failed on main', blocks: [[{label: 'Check', parts: ['a & b']}, {bullet: true, parts: ['one']}], [], [{parts: ['After ', {text: '#1', url: 'https://e.test/1'}]}]],
+    links: [{text: 'Open the failed job', url: 'https://e.test/j'}]});
+  assert.equal(message.text, '🔴 <b>quality</b> failed on main\n\nCheck: a &amp; b\n• one\n\nAfter <a href="https://e.test/1">#1</a>\n<a href="https://e.test/j">Open the failed job</a>');
+  const huge = alertHtml({title: 'T', blocks: [[{parts: ['word '.repeat(3000)]}], [{parts: ['x']}]], links: [{text: 'Open', url: 'https://e.test/r'}]});
+  assert.ok(huge.text.length <= LIMIT);
+  assert.match(huge.text, /…\n\nx\n<a href="https:\/\/e\.test\/r">Open<\/a>$/, 'the long line is shortened at a word, the rest survives');
 });

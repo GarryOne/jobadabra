@@ -115,7 +115,7 @@ test('every ordinary apply step has one hang cap and setup remains critical', ()
   const source = fs.readFileSync(new URL('../suites/apply.mjs', import.meta.url), 'utf8');
   const weights = new Function(`return ${source.match(/export const stepSeconds = ([\s\S]*?);/)[1]}`)();
   const caps = new Function('REAL_FORMS', 'stepSeconds', `return ${source.match(/export const hangCaps = ([\s\S]*?);/)[1]}`)([], weights);
-  const cv = fs.readFileSync(new URL('../lib/apply-cv-steps.mjs', import.meta.url), 'utf8');
+  const cv = fs.readFileSync(new URL('../lib/apply-cv-steps.mjs', import.meta.url), 'utf8') + fs.readFileSync(new URL('../lib/apply-silent-steps.mjs', import.meta.url), 'utf8');
   const names = [...(source + cv).matchAll(/ctx\.run\('((?:[^'\\]|\\.)*)'/g)].map(match => match[1].replace(/\\'/g, "'"));
   // Inner caps add up past the runner's 8-minute default: the default stays, no entry (Why (29 Oct 2026, ap) above hangCaps).
   const UNCAPPED = ['"I submitted it"', 'Tailor CVs for top matches', 'Full automation presses Submit once on its own'];

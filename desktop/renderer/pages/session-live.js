@@ -6,6 +6,7 @@
 import {el, liveDot, pill} from '../components.js';
 import {icon} from '../icons.js';
 import {$} from './core.js';
+import {shared} from './shared.js';
 import {keyMessage, liveCard, toPage} from '../live-card.js';
 import {onLeaveView} from './view-leave.js';
 import {createLiveOpener} from '../live-opener.js';
@@ -139,7 +140,7 @@ const button = (text, kind, run, glyph) => {
 };
 // The header, picture marks, note and actions for the current state; `actions` are the session's own (Open in my browser, Skip, Stop).
 function drawCard(item) {
-  const v = viewFor(item), card = liveCard(item.background || {}, v.facts, {note: item.note || ''});
+  const v = viewFor(item), card = liveCard(item.background || {}, v.facts, {note: item.note || '', linkOff: shared.formsOpen?.linkOff});
   v.card = card; v.item = item;
   $('ss-decision').className = `ss-next tone-${card.tone}`;
   $('ss-next-title').textContent = card.title;

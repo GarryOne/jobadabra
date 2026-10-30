@@ -412,7 +412,8 @@ export async function startForms({vary = null} = {}) {
   const hits = [];
   const readPages = heldReadRoutes();
   const signinPosts = [];   // each press of a sign-in fixture's button the site received: which page, and whether the email and the password were the right ones
-  const server = https.createServer({key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(path.join(dir, 'cert.pem'))}, (req, res) => {
+  // clean-code-ok: Why (30 Oct 2026, g2, #2636): this change only wraps the fixture server's existing request handler (complexity 68 before it); splitting that handler is a separate refactor, parked in Linear.
+  const server = https.createServer({key: fs.readFileSync(path.join(dir, 'key.pem')), cert: fs.readFileSync(path.join(dir, 'cert.pem'))}, readPages.route((req, res) => {
     const url = new URL(req.url, 'https://x');
     const host = String(req.headers.host || '').split(':')[0];
     hits.push(`${host}${url.pathname}`);
@@ -477,11 +478,7 @@ export async function startForms({vary = null} = {}) {
     if (!name) { res.writeHead(404, {'content-type': 'text/plain'}).end('not a fixture form'); return; }
     res.writeHead(200, {'content-type': 'text/html; charset=utf-8'});
     res.end((PAGES[name] || realPage)(FORMS[name]));
-  });
-  // Why (30 Oct 2026, g2, #2636): the held-read routes sit in front of the handler above without editing it, so the clean-code check does not count this 1000-line handler as changed.
-  const handle = server.listeners('request')[0];
-  server.removeAllListeners('request');
-  server.on('request', readPages.route(handle));
+  }));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
   return {port, fired, posts, hits, holdReads: readPages.holdReads, signinPosts, variation, forms: FORMS, close: () => new Promise(resolve => { server.close(resolve); server.closeAllConnections?.(); }), html: name => (PAGES[name] || realPage)(FORMS[name])};

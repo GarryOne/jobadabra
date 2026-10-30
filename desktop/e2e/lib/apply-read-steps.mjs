@@ -2,33 +2,18 @@
 // The apply suite's triage-read step (spec 2026-10-30-apply-triage, PR C2a): the Jobs button reads a fixture job's form in the app's hidden browser, the chip shows the verdict, and the read never fills.
 // Why (30 Oct 2026, a8 on #2602): a behaviour change carries its e2e step in the same PR; the unit tests fake the browser, this one plays the owner's press end to end. The judge is the suite's stand-in (a model that reads the sketch).
 // Job: wait on state
-import fs from 'node:fs';
-import path from 'node:path';
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {FORMS} from './forms.mjs';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
-import {closeHiddenBrowser, describeHidden, linkRuntime, withFormJudge} from './background-proof.mjs';
-import {CHIP_VALUE} from './apply-triage-steps.mjs';
+import {closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
+import {CHIP_VALUE, sessionsNow} from './apply-triage-steps.mjs';
 
-const sessionsNow = ctx => { try { return fs.readFileSync(path.join(ctx.profile, 'sessions.json'), 'utf8'); } catch { return ''; } };
 const pause = ms => new Promise(done => setTimeout(done, ms));
+const FILLED = `[...document.querySelectorAll('input,textarea')].filter(item => !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file'].includes(item.type) && item.value).map(item => (item.name || item.id) + '=' + item.value)`;
 
-/** The http pages the hidden browser of `profile` holds, as [{url, webSocketDebuggerUrl}]; [] when it is not running. Never throws. */
-async function hiddenPages(profile) {
-  try {
-    const port = Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
-    const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`, {signal: AbortSignal.timeout(3000)})).json();
-    return targets.filter(item => item.type === 'page' && /^https?:/.test(item.url));
-  } catch { return []; }
-}
-
-/** The non-empty text-like values on the page behind `socketUrl` (one Runtime.evaluate over its debugging port); null when it cannot be read. */
-const filledValues = socketUrl => new Promise(done => {
-  const socket = new WebSocket(socketUrl), end = value => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(value); }, timer = setTimeout(() => end(null), 4000);
-  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression: `[...document.querySelectorAll('input,textarea')].filter(item => !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file'].includes(item.type) && item.value).map(item => (item.name || item.id) + '=' + item.value)`}}));
-  socket.onmessage = event => end(JSON.parse(event.data).result?.result?.value ?? null);
-  socket.onerror = () => end(null);
-});
+/** The http pages the hidden browser of `profile` holds, [] when it is not running. */
+const hiddenPages = profile => hiddenTargets(profile).then(targets => targets.filter(item => item.type === 'page' && /^https?:/.test(item.url)), () => []);
+const onHost = host => item => { try { return new URL(item.url).host === host; } catch { return false; } };
 
 /**
  * Looks at the hidden form page of `host` every 250 ms until `stop()`: how often it was seen, and every value found typed into it.
@@ -38,8 +23,8 @@ function watchHiddenForm(profile, host) {
   const seen = {samples: 0, filled: []};
   const done = (async () => {
     while (!seen.stop) {
-      const form = (await hiddenPages(profile)).find(item => { try { return new URL(item.url).host === host; } catch { return false; } });
-      const values = form ? await filledValues(form.webSocketDebuggerUrl) : null;
+      const form = (await hiddenPages(profile)).find(onHost(host));
+      const values = form ? await evaluateOn(form.webSocketDebuggerUrl, FILLED) : null;
       if (values) { seen.samples += 1; seen.filled.push(...values); }
       await pause(250);
     }
@@ -77,20 +62,25 @@ export async function runReadSteps(ctx, {until}) {
       const sessions = sessionsNow(ctx), posted = forms.posts.length;
       await page.click('#triage-open');
       await page.waitForSelector('#triage-dialog[open]', {timeout: 5000});
-      await page.click('#triage-by-best');
+      await page.click('#triage-by-fit');   // only this job: the suite's other fixture jobs sit below fit 90 and stay unread
+      await page.fill('#triage-fit', '90');
+      await page.fill('#triage-n', '1');
       await page.click('#triage-start');
       await until('the chip never showed the form read', async () => (await chipOfRow(page, form.title)) !== 'Not checked', 150000)
         .catch(async error => { throw new Error(`${error.message} | chips: ${JSON.stringify(await allChips(page))} | ${await describeHidden(ctx.profile)}`); });
       const chip = await chipOfRow(page, form.title);
       if (chip !== 'You review and submit') throw new Error(`a clean form with answers not yet saved should read "You review and submit", the chip says "${chip}"`);
       if (asked < 1) throw new Error('the verdict never went through the form judge');
-      await until('the read tab was never closed', async () => !(await hiddenPages(ctx.profile)).some(item => { try { return new URL(item.url).host === form.host; } catch { return false; } }), 30000);
+      await until('the read tab was never closed', async () => !(await hiddenPages(ctx.profile)).some(onHost(form.host)), 30000);
       await watch.stop();
       if (watch.seen.samples < 1) throw new Error('the hidden form page was never seen open: the "nothing was filled" check proved nothing');
       if (watch.seen.filled.length) throw new Error(`the read typed into the form: ${watch.seen.filled.join(', ')}`);
       if (forms.posts.length !== posted) throw new Error('a read posted the form');
       if (sessionsNow(ctx) !== sessions) throw new Error('a read created or changed a session; it is not an application');
     } finally {
+      await page.click('#triage-cancel').catch(() => {});   // a run still going would read on into the next hidden-browser step
+      await page.waitForSelector('#triage-progress', {state: 'hidden', timeout: 30000}).catch(() => {});
+      await page.click('#triage-close').catch(() => {});
       await watch.stop();
       proxy.setCanned(previous);
       await removeJobsByUrl(ctx, [form.url]).catch(() => 0);

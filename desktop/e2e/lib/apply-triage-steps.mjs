@@ -15,7 +15,8 @@ const JOBS = FITS.map((fit, index) => ({fit, title: `Triage Engineer ${index + 1
 export const CHIP_VALUE = '.role > .chip-tag .chip-value';
 
 const sessionsFile = ctx => path.join(ctx.profile, 'sessions.json');
-const sessionsNow = ctx => { try { return fs.readFileSync(sessionsFile(ctx), 'utf8'); } catch { return ''; } };
+/** The saved sessions file as text ('' when none): a step compares it before and after to prove nothing started. */
+export const sessionsNow = ctx => { try { return fs.readFileSync(sessionsFile(ctx), 'utf8'); } catch { return ''; } };
 
 /** Opens Jobs with the fictional jobs listed (the list is read again from the store, never the page's older copy). */
 async function openJobs(ctx) {

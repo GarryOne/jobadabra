@@ -1,9 +1,11 @@
 name: CI · PR verdict
-# The BACKSTOP since 26 Oct 2026 (#2042/#2044: this job waited minutes for a runner): every PR job's last step, "Write the PR's verdict", writes the status as it ends.
-# Writes the one required status of a pull request, "All checks passed" (tools/pr-verdict.py), each time one of its workflows ends: pending while any runs, red at
-# the first red, green when all ended green. A job of seconds per event; nothing holds a runner to wait (owner, 26 Oct 2026: "How could you design such a slow and
-# inefficient method of checking PRs?"). Until 26 Oct pr-gate.yml's "Other workflows passed" and pr-suites.yml's wait each sat on a runner ~20 min per push.
-# workflow_run runs main's copy of this file. Every workflow a pull request starts must be listed below (tests/test_pr_verdict.py), plus the e2e run pr-suites.yml starts.
+# Job: report health
+# The ONE writer of a pull request's one required status, "All checks passed" (tools/pr-verdict.py), each time one of its workflows ends: pending while any runs,
+# red when a run ended red, green when all ended green. A job of seconds per event; nothing holds a runner to wait (owner, 26 Oct 2026: "How could you design such a
+# slow and inefficient method of checking PRs?"). Until 26 Oct pr-gate.yml's "Other workflows passed" and pr-suites.yml's wait each sat on a runner ~20 min per push.
+# Why one writer (owner, 30 Oct 2026, "One writer"): every PR job also wrote it as its last step (#2042); ~21 jobs x ~24 GitHub calls per push spent the token's
+# 5,000 calls an hour by ~35 min past each hour, a failed read wrote nothing, and green PRs sat at "pending" (#2609, #2605, #2598, #2593).
+# workflow_run runs main's copy of this file. Every workflow a pull request starts must be listed below (tests/test_pr_verdict.py), plus the e2e runs pr-suites.yml starts.
 on:
   workflow_run:
     types: [completed]
@@ -11,6 +13,7 @@ on:
       - 'CI · Pull request'
       - 'CI · E2E suites for a PR'
       - 'CI · End-to-end on Mac + Linux'
+      - 'CI · End-to-end on Windows'
       - 'CI · Control tests (measure, not required)'
       - 'CI · Harness tests'
       - 'CI · Hosted Always on cost probe (one-off)'
@@ -56,7 +59,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: tools/pr-verdict.py
+          # Its companions too: each one a standalone copy fetched over the API cost a call per write (main_state_module).
+          sparse-checkout: |
+            tools/pr-verdict.py
+            tools/main_e2e_state.py
+            tools/pr_ai_number.py
+            tools/pr_burn_in.py
+            tools/pr_health_greys.py
+            tools/pr_speed_number.py
+            tools/beta_rate_gate.py
           sparse-checkout-cone-mode: false
       - name: All checks passed?
         env:

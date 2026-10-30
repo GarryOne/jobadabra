@@ -109,8 +109,13 @@ class CompletionWriter(unittest.TestCase):
         record['jobs']['5'] = [{'id': 50, 'name': 'python', 'status': 'in_progress', 'steps': []}]
         self.assertEqual(self.write(record)['state'], 'pending')
 
-    def test_an_ordinary_job_end_still_counts_its_own_status(self):
-        self.assertEqual(self.write(event_name='pull_request', job_status='success')['state'], 'success')
+    def test_a_job_s_own_step_writes_nothing_and_reads_nothing(self):
+        # Why (owner, 30 Oct 2026, "One writer"): a branch not yet rebased still runs the old per-job step; it must cost no GitHub call.
+        from unittest import mock
+        with mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', '263ca66', '--job-status', 'success']), \
+             mock.patch.object(pv, 'gh', side_effect=AssertionError('no GitHub call from a job step')) as gh, mock.patch.object(sys, 'stdout'):
+            self.assertEqual(pv.main(), 0)
+        self.assertEqual(gh.call_count, 0)
 
 
 if __name__ == '__main__':

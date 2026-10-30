@@ -18,8 +18,8 @@ const request = action => ({method: 'POST', headers: {'content-type': 'applicati
 
 test('the table declares exactly the refused and authored background kinds', () => {
   const table = loadTable(answersTableFile);
-  // Why (30 Oct 2026, ap): the shared table includes interview declarations and Strategy's headerless list_meanings (wander); list them explicitly so unlisted kinds still fail the exact check.
-  assert.deepEqual(Object.keys(table.kinds).sort(), [...kinds, ...Object.keys(empty), 'interview', 'interview_patterns', 'list_meanings'].sort());
+  // Why (30 Oct 2026, ap; #2562): the shared table includes interview declarations, Strategy's headerless list_meanings (wander) and applyflows' headerless learn_from_form refusal; list them explicitly so unlisted kinds still fail the exact check.
+  assert.deepEqual(Object.keys(table.kinds).sort(), [...kinds, ...Object.keys(empty), 'interview', 'interview_patterns', 'learn_from_form', 'list_meanings'].sort());
 });
 
 test('stores background refusals resolve before live AI at every seam', async t => {

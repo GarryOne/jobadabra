@@ -30,9 +30,9 @@ export const ANSWERS_TEXT = {
   ai: 'The AI answers what your Profile does not cover. You see which answers it wrote.',
 };
 
-// Full automation's checks: each one the person's to change (CLAUDE.md "The app submits only in Full automation").
-export const AUTO_DEFAULTS = Object.freeze({minFit: 80, noEmpty: true, factsOnly: true, perDay: 20, perEmployer: 1, waitMin: 0});   // Why (2026-10-29, owner: "by default, we should go with no" wait; a 2-minute wait is not proven long enough, so it is optional): the wait is a review window before an irreversible Submit, not bot evasion; off by default, the person sets it in Settings → Apply
-const LIMITS = {minFit: [0, 100], perDay: [1, 200], perEmployer: [1, 20], waitMin: [0, 120]};
+// Why (2026-10-29, owner: "remove all checks"; the wait is optional, default none): Full automation has no facts, fit or limit checks; the only setting is the optional wait before a submit (0 = none).
+export const AUTO_DEFAULTS = Object.freeze({waitMin: 0});
+const LIMITS = {waitMin: [0, 120]};
 const clamp = (key, value) => {
   const [low, high] = LIMITS[key], n = Math.round(Number(value));
   return Number.isFinite(n) ? Math.min(high, Math.max(low, n)) : AUTO_DEFAULTS[key];
@@ -44,7 +44,7 @@ export function applyOf(settings) {
   const saved = settings?.apply || {}, auto = {...AUTO_DEFAULTS};
   for (const key of Object.keys(AUTO_DEFAULTS)) {
     if (!(key in (saved.auto || {}))) continue;
-    auto[key] = key in LIMITS ? clamp(key, saved.auto[key]) : saved.auto[key] !== false;
+    auto[key] = clamp(key, saved.auto[key]);
   }
   const mode = modeBuilt(saved.mode) ? saved.mode : 'check';
   return {mode, answers: saved.answers === 'ai' ? 'ai' : 'facts', auto, chosenAt: saved.chosenAt || '', autoConfirmedAt: mode === 'auto' ? saved.autoConfirmedAt || '' : ''};

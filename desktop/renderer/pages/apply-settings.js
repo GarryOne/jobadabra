@@ -24,29 +24,13 @@ export function modeCards(selected, onPick, {busy = false} = {}) {
   return group;
 }
 
-// The checks, each the person's to change (CLAUDE.md "The app submits only in Full automation"): numbers as a short field, yes/no as a switch.
+// The one Full automation setting: the optional wait before a submit (owner, 29 Oct 2026: remove all checks), a number as a short field.
 export const CHECKS = [
-  {key: 'minFit', before: 'Fit is at least', after: '', min: 0, max: 100},
-  {key: 'noEmpty', title: 'No required field is empty'},
-  {key: 'factsOnly', title: 'Every answer comes from my saved facts', note: 'No AI guess in a form that is sent by itself.'},
-  {key: 'perDay', before: 'At most', after: 'applications a day', min: 1, max: 200},
-  {key: 'perEmployer', before: 'At most', after: 'per employer a day', min: 1, max: 20},
   {key: 'waitMin', before: 'Wait', after: 'minutes before sending, with Stop', min: 0, max: 120},
 ];
 const el = (tag, cls = '', text = '') => Object.assign(document.createElement(tag), cls ? {className: cls} : {}, text ? {textContent: text} : {});
 
 function checkRow(check) {
-  if (!('min' in check)) {
-    const row = el('label', 'switch-row'), sw = el('span', 'switch'), words = el('span');
-    const box = Object.assign(el('input'), {type: 'checkbox'});
-    box.dataset.applyCheck = check.key;
-    box.addEventListener('change', () => save({auto: {[check.key]: box.checked}}));
-    sw.append(box, el('span'));
-    words.append(el('span', '', check.title));
-    if (check.note) words.append(el('span', 'muted small', check.note));
-    row.append(sw, words);
-    return row;
-  }
   const row = el('label', 'inline-field');
   const box = Object.assign(el('input'), {type: 'number', min: check.min, max: check.max, step: 1});
   box.dataset.applyCheck = check.key;
@@ -64,7 +48,7 @@ export function draw(settings = current) {
   if ($('apply-answers-text')) $('apply-answers-text').textContent = ANSWERS_TEXT[apply.answers];
   document.querySelectorAll('[data-apply-check]').forEach(box => {
     const value = apply.auto[box.dataset.applyCheck];
-    if (box.type === 'checkbox') box.checked = !!value; else box.value = String(value);
+    box.value = String(value);
   });
 }
 
@@ -85,10 +69,8 @@ export function askFullAutomation() {
   const dialog = $('auto-confirm-dialog');
   const auto = applyOf(current).auto;
   $('auto-confirm-checks').replaceChildren(...[
-    ['No required field empty', auto.noEmpty], ['Answers come from your saved facts', auto.factsOnly],
-    [`Fit ${auto.minFit}+ only`, true], [`At most ${auto.perDay} a day`, true],
-    [`${auto.perEmployer} application per employer`, true], [auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : 'No wait before each submit (optional: Settings → Apply)', true],
-  ].filter(([, on]) => on).map(([text]) => Object.assign(document.createElement('li'), {textContent: text})));
+    auto.waitMin ? `A ${auto.waitMin}-minute wait with Stop before each submit (your setting)` : 'No wait before each submit (optional: Settings → Apply)',
+  ].map(text => Object.assign(document.createElement('li'), {textContent: text})));
   return new Promise(resolve => {
     const finish = yes => { dialog.close(); resolve(yes); };
     $('auto-confirm-go').onclick = () => finish(true);

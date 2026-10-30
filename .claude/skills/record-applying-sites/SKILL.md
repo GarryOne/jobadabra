@@ -134,7 +134,7 @@ Every extension fill writes a record (Notion "Job Apply — Agent Runs", Agent =
 
 ## Open threads to carry (10 Oct 2026; drop each when closed)
 - Discovery is serial (~90 s a candidate, ~45 min per 30) because the whole smoke holds the one heavy lock (not because of Notion or ports: each run already has its own). A `--workers` option is not built: it needs a second lock slot or workers inside one locked process, only when free memory covers two runs (measure first; two runs also double the `claude -p` page-kind calls on the owner's plan), and one shared results object so the report and the upload do not race.
-- Ask the owner: a `prestart` that prints npm's error on failure; renaming the Jobs "Closed" counter; multi-step AI answers for account recorded cases.
+- Ask the owner: renaming the Jobs "Closed" counter; multi-step AI answers for account recorded cases.
 - Chanel's Workday dialog has a fourth option, "Autofill with Resume", with no route in the page-kind answers (`desktop/lib/page-kind.js` `ROUTES`); the run still reached the form. Decide with the owner whether it needs a route.
 
 ## Traps found while building the pool (each cost time)

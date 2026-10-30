@@ -22,18 +22,22 @@ old="$(cat "$pidfile" 2>/dev/null || true)"
 echo $$ > "$pidfile"   # before the kill: the old watcher's exit trap then sees a newer pid and leaves the file alone
 [ -z "$old" ] || [ "$old" = "$$" ] || kill "$old" 2>/dev/null || true   # one watcher per branch
 trap '[ "$(cat "$pidfile" 2>/dev/null)" != "$$" ] || rm -f "$pidfile"' EXIT
-notify_codex() {
-  [ -z "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ] || python3 "$here/codex-pr-events.py" "$log"
+# Why (30 Oct 2026, owner: "Sessions are not watching their PR to be ready. Their PRs are broken but they take no action"): the session that shipped the PR is told by this
+#   watcher itself, not by a wait it must remember to re-arm: a Codex session through its thread (tools/codex-pr-events.py), a Claude Code session through cmux's
+#   agent message (tools/claude-pr-events.py: red, conflict, comment, ready, merged, closed). Outside a cmux session both exit 0 silently and the log stays the channel.
+notify_session() {
+  if [ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ]; then python3 "$here/codex-pr-events.py" "$log"
+  else python3 "$here/claude-pr-events.py" "$log"; fi
 }
-say() { echo "ship: $*" >> "$log"; notify_codex; }
+say() { echo "ship: $*" >> "$log"; notify_session; }
 finish_terminal() {
   # Why (30 Oct 2026, owner; #2558): retry delivery locally, never keep polling GitHub after the PR merged or closed.
   local attempt
   for attempt in 1 2; do
-    notify_codex && return 0
+    notify_session && return 0
     [ "$attempt" = 2 ] || sleep 1
   done
-  echo "ship: CODEX DELIVERY PENDING #$n (PR $1; events remain in the log)" >> "$log"
+  echo "ship: $([ -n "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ] && echo CODEX || echo CLAUDE) DELIVERY PENDING #$n (PR $1; events remain in the log)" >> "$log"
 }
 
 [ -n "$repo" ] || { say "WATCH ENDED #$n (no GitHub repository)"; exit 0; }
@@ -89,7 +93,7 @@ while :; do
       [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
     elif [ -n "$checks" ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
   fi
-  notify_codex   # retry a failed native queue even if the PR state has not changed
+  notify_session   # retry a failed delivery even if the PR state has not changed
   [ "$waited" -lt "$cap" ] || { say "WATCH ENDED #$n (still open)"; exit 0; }
   if [ -n "$view" ]; then backoff=0; else backoff=$(( backoff ? backoff * 2 : (poll > 0 ? poll : 1) * 2 )); [ "$backoff" -le "$backoff_max" ] || backoff="$backoff_max"; fi
   pause=$(( backoff ? backoff : poll )); sleep "$pause"; waited=$((waited + pause + 1))

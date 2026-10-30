@@ -60,6 +60,20 @@ class ShipWatchTest(unittest.TestCase):
         self.assertIn('RED #7 python', queued[0][4])
         self.assertIn('MERGED #7 abc1234', queued[1][4])
 
+    def test_claude_session_is_woken_by_the_watcher_for_a_red_and_the_merge_not_for_green(self):
+        # Owner, 30 Oct 2026: "Sessions are not watching their PR to be ready. Their PRs are broken but they take no action": the session never re-armed a wait, so the red went unseen.
+        cmux = self.tmp / 'bin' / 'cmux'
+        cmux.write_text(f'#!{sys.executable}\nimport json,sys\nwith open({str(self.tmp / "woken")!r}, "a") as out: out.write(json.dumps(sys.argv[1:])+"\\n")\n')
+        cmux.chmod(0o700)
+        self.codex_env = {'CMUX_SURFACE_ID': 'cce70bb3-2b25-44d7-8a24-202b1be5e33d', 'CMUX_BUNDLED_CLI_PATH': str(cmux)}
+        self.watch('OPEN\nOPEN\nOPEN\nMERGED abc1234\n', checks='python\n\n')
+        woken = [json.loads(line) for line in (self.tmp / 'woken').read_text().splitlines()]
+        self.assertEqual([m[:5] for m in woken], [['agent', 'message', 'CCE70BB3-2B25-44D7-8A24-202B1BE5E33D', '--from', 'PR watcher']] * len(woken))
+        said = ''.join(m[-1] for m in woken)
+        self.assertIn('ship: RED #7 python', said)
+        self.assertIn('ship: MERGED #7 abc1234', said)
+        self.assertNotIn('GREEN', said)
+
     def test_codex_terminal_queue_failure_is_retried_before_watcher_exits(self):
         codex = self.tmp / 'bin' / 'codex'
         attempts = self.tmp / 'attempts'

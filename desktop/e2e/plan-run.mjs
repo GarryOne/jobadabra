@@ -23,6 +23,12 @@ function offlineMatrixFlag(suite, offlineAi) {
   return offlineAi.includes(suite) ? {offlineAi: true} : {};
 }
 
+// Why (30 Oct 2026, beta 41078746088, owner's go on one fix for the class): a suite says itself that it answers its AI from the stored table (`aiAnswers`);
+// every workflow reads matrix.aiAnswers. Three hand-kept lists in two workflows drifted: the beta ran applyflows, jobs, interviews and failuresnotion live.
+function answersMatrixFlag(suite, backbone) {
+  return backbone.includes(suite) ? {aiAnswers: 'backbone'} : {};
+}
+
 function prLegs(suite, shards, env, picks) {
   const admitted = String(env.PR_SUITES || '').trim() && picks['(burn-in)']?.includes(suite);
   // Why (2026-10-29, owner): admission proves five complete journeys, never five slices of one journey. Keys retain the artifact parser's suite-NofM shape.
@@ -37,7 +43,7 @@ function aiPlanOutputs(suites, offlineAi, review) {
 
 // all: every suite; cadence / watches: what each suite exports (lib/plan.mjs says what they mean).
 // clean-code-ok: Why (29 Oct 2026, st): old function; this change adds one option to its signature (offlineAi) and its score falls (63 to 62)
-export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = []}) {
+export async function planRun({env, gh = realGh, all, minutes, os = async () => 'macos-latest', cadence = {}, watches = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = []}) {
   const {EVENT: event, REPO: repo, SHA: sha} = env;
   // TARGET_REF (the gate, the soak top-ups and the stable canary): test THAT release's commit, with this workflow file. The workflow file of an old tag does not know newer
   // inputs (canary, soak), so the run is started on main and told which tag to check out.
@@ -128,7 +134,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...answersMatrixFlag(suite, backbone), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));
@@ -139,9 +145,9 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
 export async function suiteFacts() {
   ensureStaged(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));   // suites/apply.mjs imports app code that needs desktop/shared/, which CI never staged (a crash hidden by the workflow's pipe)
   const {SUITES} = await import('./lib/context.mjs');
-  const cadence = {}, watches = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [];
-  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; if (module.judges) judges[suite] = module.judges; if (module.offlineAi) offlineAi.push(suite); if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); if (module.notion === false || module.light || module.store) storeless.push(suite); }   // storeless: no store to vary (no Notion part, a model-only eval, or a store of its own)
-  return {all: SUITES, cadence, watches, judges, varies, sameOnEveryOs, storeless, shards, offlineAi, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
+  const cadence = {}, watches = {}, judges = {}, varies = [], sameOnEveryOs = [], storeless = [], shards = {}, offlineAi = [], backbone = [];
+  for (const suite of SUITES) { const module = await import(`./suites/${suite}.mjs`); if (module.aiAnswers === 'backbone') backbone.push(suite); if (cadenceOf(suite, module)) cadence[suite] = cadenceOf(suite, module); if (module.watches) watches[suite] = module.watches; if (module.judges) judges[suite] = module.judges; if (module.offlineAi) offlineAi.push(suite); if (module.varies) varies.push(suite); if (module.shards > 1) shards[suite] = module.shards; if (module.sameOnEveryOs) sameOnEveryOs.push(suite); if (module.notion === false || module.light || module.store) storeless.push(suite); }   // storeless: no store to vary (no Notion part, a model-only eval, or a store of its own)
+  return {all: SUITES, cadence, watches, judges, varies, sameOnEveryOs, storeless, shards, offlineAi, backbone, minutes: async suite => (await import(`./suites/${suite}.mjs`)).minutes || 15,
     os: async (suite, options) => runnerOf(await import(`./suites/${suite}.mjs`), options)};
 }
 

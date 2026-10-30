@@ -14,6 +14,7 @@ import {goView} from '../lib/go-view.mjs';
 export const offlineAi = true;
 // Why (30 Oct 2026, ap, main run 40985357367): retain the harness guard against any undeclared live AI call.
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 // Why (30 Oct 2026, ap; a8's decision on #2565): stored answers need one store path (test/store.test.mjs); calendar takes its default store, SQLite, so the side-panel steps keep running. The one step that needs Notion ("a meeting opens its job in Notion", 3.6 s, minority store) is skipped by its needs guard and parked, not dropped; a second app launch on the stand-in store would need harness code this suite lacks.
 export const store = 'sqlite';
 export const name = 'calendar';

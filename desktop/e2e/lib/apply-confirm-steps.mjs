@@ -5,14 +5,15 @@
 // Job: wait on state
 import {autoFormOf, kitSeeder, sessionOf} from './background-proof.mjs';
 import {removeJobsByUrl} from './seed-data.mjs';
-import {pollUntil} from './wait-on-state.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
 
 let seen = '';   // what the step last waited on and read, for the hang report
-/** Waits until `read()` gives a value `accepts` takes, with no clock of its own (the step's hang cap ends a hang); -> that value. `what` says what never happened, for the hang report. */
+/** Waits until `read()` gives a value `accepts` takes, for as long as the step's hang cap leaves (lib/wait-on-state.mjs stepTimeLeft: no clock of its own); -> that value, or throws `what` with the last read. */
 async function waitOn(what, read, accepts) {
-  const {value} = await pollUntil(async () => { const now = await read(); seen = `${what} (last read: ${JSON.stringify(now)})`; return now; }, accepts, {capMs: Infinity, log: () => {}});
+  const {value} = await pollUntil(async () => { const now = await read(); seen = `${what} (last read: ${JSON.stringify(now)})`; return now; }, accepts, {capMs: stepTimeLeft(), log: () => {}});
+  if (!accepts(value)) throw new Error(seen);
   return value;
 }
 const hung = ms => new Error(`the step did not finish within ${ms / 1000} s (it hung): ${seen || 'before its first wait'}`);

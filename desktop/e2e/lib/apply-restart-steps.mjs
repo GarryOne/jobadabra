@@ -8,7 +8,7 @@ import {HIDDEN_NEED, autoFormOf, backgroundOf, backgroundStateOf, closeHiddenBro
 import {appLogLines} from './app-log.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
-import {pollUntil} from './wait-on-state.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 import {REPORT_PERIOD_MINUTES} from '../../../extension/report-alarm.js';
 
 const applyLines = profile => { try { return appLogLines(profile).filter(line => /\[apply\]/.test(line)).slice(-4).map(line => line.slice(0, 220)).join(' // '); } catch { return '(app log unreadable)'; } };
@@ -16,11 +16,17 @@ const applyLines = profile => { try { return appLogLines(profile).filter(line =>
 // A press waits for the extension's next report alarm (extension/report-alarm.js): one period after the app's own due time is when it would come, a second is the margin for the app to act on it.
 const WATCH_PAST_DUE_MS = 2 * REPORT_PERIOD_MINUTES * 60 * 1000;
 
-/** Waits until `read()` gives a value `accepts` takes, with no clock of its own (the step's hang cap ends a hang); -> that value. */
-const waitOn = async (read, accepts) => (await pollUntil(read, accepts, {capMs: Infinity, log: () => {}})).value;
+/** What a step that did not get its state reports: what it waited for and last read, the app's apply lines and the hidden browser's tabs. `seen` is read when it is needed. */
+const describe = async (ctx, seen) => `${seen.what} (last read: ${JSON.stringify(seen.state)}) | ${applyLines(ctx.profile)} | ${await describeHidden(ctx.profile)}`;
+/** The runner's hang report of a step (hangError): the same evidence. */
+const hangOf = (ctx, seen) => async ms => new Error(`the step did not finish within ${ms / 1000} s (it hung): ${await describe(ctx, seen)}`);
 
-/** The hang report of a step: what the step last saw, the app's apply lines and the hidden browser's tabs. `seen` is read when the cap fires. */
-const hangOf = (ctx, seen) => async ms => new Error(`the step did not finish within ${ms / 1000} s (it hung): ${seen.what} (last read: ${JSON.stringify(seen.state)}) | ${applyLines(ctx.profile)} | ${await describeHidden(ctx.profile)}`);
+/** Waits until `read()` gives a value `accepts` takes, for as long as the step's hang cap leaves (lib/wait-on-state.mjs stepTimeLeft: no clock of its own); -> that value, or throws what `seen` says. */
+const waitOn = async (ctx, seen, read, accepts) => {
+  const {value} = await pollUntil(read, accepts, {capMs: stepTimeLeft(), log: () => {}});
+  if (!accepts(value)) throw new Error(await describe(ctx, seen));
+  return value;
+};
 
 /** Starts one fixture job in `mode` (fill or auto, wait `waitMin`) and waits for the state the app holds it in. -> the posts count before the quit. */
 async function holdJob(ctx, {form, seed, mode, waitMin, held, seen}) {
@@ -32,14 +38,14 @@ async function holdJob(ctx, {form, seed, mode, waitMin, held, seen}) {
   const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
   if (started?.ok === false) throw new Error(`the app refused to start ${mode}: ${started.error}`);
   seen.what = `the job never reached ${held}`;
-  await waitOn(async () => (seen.state = (await backgroundStateOf(page, form.url)) || 'none'), state => state === held);
+  await waitOn(ctx, seen, async () => (seen.state = (await backgroundStateOf(page, form.url)) || 'none'), state => state === held);
   return forms.posts.length;
 }
 
 /** After the start: waits until the job of `url` is handed to the person because the app was closed (lib/background-apply-controller.js sweepInterrupted). -> its background record. */
 async function handedOver(ctx, url, seen) {
   seen.what = 'after the start the job the quit cut off was not handed to you (a quit is a Stop)';
-  const last = await waitOn(async () => (seen.state = await backgroundOf(ctx.page, url).catch(() => null)), record => record?.state === 'needs_user_handoff');
+  const last = await waitOn(ctx, seen, async () => (seen.state = await backgroundOf(ctx.page, url).catch(() => null)), record => record?.state === 'needs_user_handoff');
   if (last.reason !== 'app_closed') throw new Error(`the job was handed to you as "${last.reason}", not because the app was closed`);
   return last;
 }
@@ -71,7 +77,7 @@ export async function runRestartSteps(ctx, {urls}) {
       // until WATCH_PAST_DUE_MS past the app's own due time. A negative watch on the product's promise: it ends at that time, or at the first press.
       if (!dueAt) throw new Error('the handed-over job has no due time: the step cannot watch past the press it would have made');
       waiting.what = 'the watch past the wait did not end';
-      await waitOn(async () => Date.now() > dueAt + WATCH_PAST_DUE_MS || ctx.forms.posts.length !== posted, over => over);
+      await waitOn(ctx, waiting, async () => Date.now() > dueAt + WATCH_PAST_DUE_MS || ctx.forms.posts.length !== posted, over => over);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the app pressed Submit ${ctx.forms.posts.length - posted} time(s) on a wait the quit cut off`);
       if ((await backgroundStateOf(ctx.page, autoForm.url)) !== 'needs_user_handoff') throw new Error('after the wait ran out the job was no longer handed to you');
     } finally { await skipJob(ctx.page, autoForm); await closeHiddenBrowser(ctx.profile); }

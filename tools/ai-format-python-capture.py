@@ -335,6 +335,51 @@ def capture_engine(prompts=False):
     return entries
 
 
+def mixed_prompt_template(entry, source, template, joins):
+    """Capture a mixed sender and its auxiliary instructions with applicant values kept in data slots."""
+    def strings(node):
+        """Collect literal instruction boundaries, never evaluating a data expression or retaining docstrings."""
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+            return []
+        if isinstance(node, ast.JoinedStr):
+            # Invariant: conditional labels and concatenated literal prefixes inside slots are instructions too.
+            return [template(node)] + [text for part in node.values if isinstance(part, ast.FormattedValue) for text in strings(part.value)]
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return [template(node)]
+        return [value for child in ast.iter_child_nodes(node) for value in strings(child)]
+    file, function = source
+    tree = ast.parse(read(file))
+    scope = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function)
+    boundary = next(node for node in ast.walk(scope) if isinstance(node, ast.Call)
+                    and any(kw.arg == 'messages' for kw in node.keywords))
+    keywords = {kw.arg: kw.value for kw in boundary.keywords}
+    system = keywords['system']
+    if isinstance(system, ast.List):
+        system = next(v for k, v in zip(system.elts[0].keys, system.elts[0].values) if k.value == 'text')
+    def system_template(node):
+        """Resolve only the captured fixed prefix; profile and helper outputs remain slots."""
+        if isinstance(node, ast.Name) and node.id in ('SYSTEM', 'system'):
+            return entry['baseSystem']
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            return system_template(node.left) + system_template(node.right)
+        return template(node)
+    entry['systemTemplate'] = system_template(system)
+    content = next(v for k, v in zip(keywords['messages'].elts[0].keys, keywords['messages'].elts[0].values) if k.value == 'content')
+    if isinstance(content, ast.Name):
+        content = next(n.value for n in ast.walk(scope) if isinstance(n, ast.Assign)
+                       and any(isinstance(t, ast.Name) and t.id == content.id for t in n.targets))
+    entry['userTemplate'], entry['itemTemplates'] = template(content), joins(content)
+    helpers = {'app.score': [('src/ai/score.py', '_score_once'), ('src/ai/score_not_a_job.py', 'RECHECK'),
+                            ('src/ai/score_search.py', 'block'), ('src/ai/locations.py', 'block'),
+                            ('src/ai/hints.py', 'TEMPLATES'), ('src/ai/hints.py', 'text')],
+               'app.enrich': [('src/ai/enrich.py', 'AGAIN')],
+               'app.interview': [('src/ai/interviews_ai.py', 'analyse')], 'mail': [('src/ai/mail_read.py', 'listing')]}
+    entry['itemTemplates'] += [dict(instructions=strings(node)) for source, name in helpers[entry['kind']]
+                              for node in ast.parse(read(source)).body if getattr(node, 'name', None) == name
+                              or isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets)]
+    return entry
+
+
 def prompt_templates(entries):
     """Extract literal framing at real sender boundaries; every interpolation is a named data slot."""
     specs = {'app.decide': ('src/ai/decide.py', 'SYSTEM'), 'app.place': ('src/ai/place_triage.py', 'SYSTEM'),
@@ -360,50 +405,10 @@ def prompt_templates(entries):
         return [dict(separator=template(call.func.value), item=template(call.args[0].elt)) for call in ast.walk(node)
                 if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr == 'join'
                 and call.args and isinstance(call.args[0], ast.GeneratorExp)]
-    def strings(node):
-        """Collect literal instruction boundaries, never evaluating a data expression or retaining docstrings."""
-        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
-            return []
-        if isinstance(node, ast.JoinedStr):
-            # Invariant: conditional labels and concatenated literal prefixes inside slots are instructions too.
-            return [template(node)] + [text for part in node.values if isinstance(part, ast.FormattedValue) for text in strings(part.value)]
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            return [template(node)]
-        return [value for child in ast.iter_child_nodes(node) for value in strings(child)]
     result = []
     for entry in entries:
         if entry['kind'] in mixed:
-            file, function = mixed[entry['kind']]
-            tree = ast.parse(read(file))
-            scope = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function)
-            boundary = next(node for node in ast.walk(scope) if isinstance(node, ast.Call)
-                            and any(kw.arg == 'messages' for kw in node.keywords))
-            keywords = {kw.arg: kw.value for kw in boundary.keywords}
-            system = keywords['system']
-            if isinstance(system, ast.List):
-                system = next(v for k, v in zip(system.elts[0].keys, system.elts[0].values) if k.value == 'text')
-            def system_template(node):
-                """Resolve only the captured fixed prefix; profile and helper outputs remain slots."""
-                if isinstance(node, ast.Name) and node.id in ('SYSTEM', 'system'):
-                    return entry['baseSystem']
-                if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-                    return system_template(node.left) + system_template(node.right)
-                return template(node)
-            entry['systemTemplate'] = system_template(system)
-            content = next(v for k, v in zip(keywords['messages'].elts[0].keys, keywords['messages'].elts[0].values) if k.value == 'content')
-            if isinstance(content, ast.Name):
-                content = next(n.value for n in ast.walk(scope) if isinstance(n, ast.Assign)
-                               and any(isinstance(t, ast.Name) and t.id == content.id for t in n.targets))
-            entry['userTemplate'], entry['itemTemplates'] = template(content), joins(content)
-            helpers = {'app.score': [('src/ai/score.py', '_score_once'), ('src/ai/score_not_a_job.py', 'RECHECK'),
-                                    ('src/ai/score_search.py', 'block'), ('src/ai/locations.py', 'block'),
-                                    ('src/ai/hints.py', 'TEMPLATES'), ('src/ai/hints.py', 'text')],
-                       'app.enrich': [('src/ai/enrich.py', 'AGAIN')],
-                       'app.interview': [('src/ai/interviews_ai.py', 'analyse')], 'mail': [('src/ai/mail_read.py', 'listing')]}
-            entry['itemTemplates'] += [dict(instructions=strings(node)) for source, name in helpers[entry['kind']]
-                                      for node in ast.parse(read(source)).body if getattr(node, 'name', None) == name
-                                      or isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets)]
-            result.append(entry)
+            result.append(mixed_prompt_template(entry, mixed[entry['kind']], template, joins))
             continue
         if entry['kind'] not in specs:
             continue

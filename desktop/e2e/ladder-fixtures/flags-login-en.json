@@ -1,0 +1,58 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-login-en",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "en",
+ "why": "To apply you first sign in to an existing account",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-login-en.html"
+ },
+ "url": "https://careers.example.com/apply/4412",
+ "expect": {
+  "outcome": "login"
+ },
+ "sketch": {
+  "url": "https://careers.example.com/apply/4412",
+  "title": "Sign in to apply",
+  "headings": [
+   "Sign in to apply"
+  ],
+  "controls": [
+   {
+    "type": "email",
+    "label": "Email address",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Password",
+    "required": true,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Sign in",
+   "Forgot password?"
+  ],
+  "texts": [
+   "You need an account to apply. Sign in to continue."
+  ],
+  "frames": []
+ },
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "Email address",
+  "needs_kind": "field",
+  "step": "unsure",
+  "next_control": "",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": true,
+  "account_to_create": false,
+  "confidence": 0.9
+ },
+ "answer_path": "app"
+}

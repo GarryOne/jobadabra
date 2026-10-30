@@ -51,8 +51,10 @@ export const kitSeeder = (ctx, urls, posting) => async job => {
 /** The session id of the application of `url`, from the Sessions list, or ''. */
 export const sessionOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), url);
 
-/** The background state of the application of `url`, from the Sessions list (item.background, lib/background-apply-controller.js cache), or ''. */
-export const backgroundStateOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => (list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background?.state) || ''), url);
+/** The background record of the application of `url` ({state, reason, …}), from the Sessions list (item.background, lib/background-apply-controller.js cache), or null. */
+export const backgroundOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background || null), url);
+/** The background state of the application of `url`, or ''. */
+export const backgroundStateOf = async (page, url) => (await backgroundOf(page, url))?.state || '';
 
 /** The values of the inputs on the page behind `socketUrl` (one Runtime.evaluate over its debugging port), for a failure message. */
 const valuesOf = socketUrl => new Promise(done => {
@@ -125,14 +127,6 @@ export async function describeHidden(profile) {
     let said = ''; try { said = fs.readFileSync(path.join(folder, 'e2e-browser.log'), 'utf8').trim().split('\n').slice(-6).join(' // ').slice(0, 600); } catch { said = 'no log'; }
     return `hidden browser not reachable (${String(error?.message || error).slice(0, 80)}); its folder holds: ${held}; it said: ${said}`;
   }
-}
-
-/** The addresses of the pages the hidden browser of `profile` holds right now ([] when it is not running). Never throws. */
-export async function hiddenPages(profile) {
-  try {
-    const port = Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
-    return (await (await fetch(`http://127.0.0.1:${port}/json/list`, {signal: AbortSignal.timeout(3000)})).json()).filter(item => item.type === 'page').map(item => String(item.url));
-  } catch { return []; }
 }
 
 /** Closes the app's hidden browser of `profile` (it dies with the app, lib/browser-reaper.js; a run closes it itself so it does not wait for that): Browser.close over its own debugging port. Never throws. */

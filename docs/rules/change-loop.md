@@ -4,7 +4,7 @@ Linked from CLAUDE.md. The tiers and "which test for which question" are in [AGE
 Why each rule exists: [why.md](why.md#change-loop).
 
 ## The habits that prevented rework
-1. A bug the owner saw: find the root cause and write a failing test before any fix; its fix commit carries `Owner-report: <id>` (or `none <why>`) and `Escaped-e2e: <suite>[, <suite>] — <journey>` (exported suite names), or `Escaped-e2e: no suite — <journey>` when no suite plays it (`tools/owner-report.mjs`).
+1. A bug the owner saw: find the root cause and write a failing test before any fix; its fix commit carries `Owner-report: <id>` for a ⚑ capture (needs its recorded case), or `Owner-report: no-capture <why>` when there is no ⚑ capture (no recorded case needed). Both require `Escaped-e2e: <suite>[, <suite>] — <journey>` (exported suite names), or `Escaped-e2e: no suite — <journey>` when no suite plays it (`tools/owner-report.mjs`). `Owner-report: none <why>` means this is not an owner-seen bug: the trailer makes no claim, but owner words in the prose still do. Bare `none` and `no-capture` are refused: both need a reason.
 2. Tests first for new behaviour; watch the test fail for the right reason.
 3. UI from an owner mockup or request: confirm layout + behaviour in one message before code.
 4. "Done" = the test files you changed pass locally, and CI's suites pass on the PR (CI runs `python3 -m unittest discover -s tests`, desktop

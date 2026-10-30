@@ -118,6 +118,8 @@ export async function runTriageChipSteps(ctx, {urls}) {
       assert.equal(forms.fired.length, fired, 'a read pressed a sending control');
       assert.equal(forms.signinPosts.length, signedIn, 'a read signed in');
     } finally {
+      await page.click('#triage-cancel').catch(() => {});   // a run still going would read on into the next hidden-browser step
+      await page.waitForSelector('#triage-progress', {state: 'hidden'}).catch(() => {});
       proxy.setCanned(previous);
       for (const {form} of cases) await skipJob(page, form);
       await closeHiddenBrowser(ctx.profile);

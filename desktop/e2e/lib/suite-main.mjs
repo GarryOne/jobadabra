@@ -7,9 +7,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {ensureStaged} from './ensure-staged.mjs';
 import {refusedQuestions} from './ai-answers.mjs';
-import {recordAnswerRefusals, runAiGuards} from './no-real-ai.mjs';
+import {checkAiMisses, recordAnswerRefusals, runAiGuards} from './no-real-ai.mjs';
 import {writeSuiteFailures} from './artifacts.mjs';
-import {checkAiMisses} from './ai-misses-ratchet.mjs';
 
 // Why (29 Oct 2026, Gitar on #2479 x2): the steps judge themselves by their own caps; close-down is bounded in finally on success or failure, and only the caller exits the process.
 const TEARDOWN_STOP_MS = 3 * 60000;

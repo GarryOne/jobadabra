@@ -6,7 +6,7 @@ import path from 'node:path';
 import {registerHooks} from 'node:module';
 import {test} from 'node:test';
 import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
-import {aiMissesVerdict, checkAiMisses} from '../lib/ai-misses-ratchet.mjs';
+import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
 const ZERO_SUITES = ['stores', 'interviews', 'wander', 'activityfailures', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread'];
 

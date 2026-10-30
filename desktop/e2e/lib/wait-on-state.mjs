@@ -7,10 +7,13 @@ import {pause as sleep} from './apply-fixtures.mjs';
 // Why (30 Oct 2026, owner on #2612: "wait on the state, not on a specific time"): a step's measured hang cap (hang-caps.json, 3x calm main p95) is its
 // only clock. The runner notes when it ends; a wait inside the step runs until then, never to a cap of its own that undercuts a measured delay.
 let stepEndsAt = null;
+// Why (30 Oct 2026, Gitar on #2620): a wait that ran to the cap itself lost the race to the step's hang timer, so a missing decision read as "it hung" and
+// the step's own check ("not in the extension's decisions") never ran. The wait ends this much earlier; it is the step's time to report, not a wait.
+const REPORT_MS = 2000;
 /** Note that the running step's hang cap ends `ms` from now (lib/runner.mjs withLimit); null when the step is over. */
 export const stepClock = ms => { stepEndsAt = ms == null ? null : Date.now() + ms; };
-/** Milliseconds left in the running step; with no runner step (a unit test), undefined, so pollUntil keeps its own default. */
-export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0, stepEndsAt - Date.now()));
+/** Milliseconds a wait in the running step may take, leaving REPORT_MS for the step to name what was missing; with no runner step (a unit test), undefined. */
+export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0, stepEndsAt - Date.now() - REPORT_MS));
 
 /** Wait for `done` after the latest recorded launch; no recorded starts are already settled. */
 export async function waitForLogLine(profile, done, {what = done.source, capMs = 90000, now = Date.now, pause = sleep} = {}) {

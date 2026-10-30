@@ -55,6 +55,7 @@
   "coverage-steps.test.mjs",
   "a11y.test.mjs",
   "activity.test.mjs",
+  "ai-answer-prompts.test.mjs",
   "ai-answers-decide.test.mjs",
   "ai-answers-engine.test.mjs",
   "ai-answers-enrich.test.mjs",
@@ -468,6 +469,7 @@
  },
  "folderReaderExceptions": {
   "a11y.test.mjs": "Uses triage, which enumerates artifact directories and refers to suite paths without reading the suites folder.",
+  "ai-answer-prompts.test.mjs": "Imports no-real-ai.mjs and lists only a temporary ai-misses folder; its folder copies are src, tools and the golden fixtures into a temporary root for the offline prompt capture, never a harness code folder.",
   "ai-answers-engine.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); the only directories it lists are temporary answer tables, not harness code.",
   "ai-answers-place.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); the only directories it lists are temporary answer tables, not harness code.",
   "ai-answers-refusal.test.mjs": "Imports no-real-ai.mjs directly (its checkAiMisses lists a temporary ai-misses folder; this test never calls it); it lists no directory itself, only writes temporary answer tables.",

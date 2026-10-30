@@ -39,6 +39,7 @@ on:
       - '.github/workflows/replay-refill.yml'
       - 'hosted/ready-fill/extension-storage.mjs'
       - 'hosted/ready-fill/fill-video.mjs'
+      - 'tools/ai-answers-stamp.mjs'
       - 'tools/ai-format-capture.mjs'
       - 'tools/ai-format-js-capture.mjs'
       - 'tools/ai-format-python-capture.py'

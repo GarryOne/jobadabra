@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {answerFor, loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
-import {canonical, hash, valid} from '../lib/ai-answers-engine-items.mjs';
+import {canonical, hash, requestParts, valid} from '../lib/ai-answers-engine-items.mjs';
 import {FAILURES} from '../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
@@ -41,6 +41,15 @@ const validScore = (schema, value) => {
   return schema.type === 'array' ? Array.isArray(value) && value.every(item => validScore(schema.items, item)) : valid(schema, value);
 };
 
+const senderRequests = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url), 'utf8')).entries;
+// Invariant: feed data changes, but framing, generated system instructions and schemas come from the real offline senders.
+const postingCase = (name, post) => {
+  const c = engineCases.find(item => item.name === name), {request, context} = senderRequests.find(entry => entry.kind === c.operation);
+  const {system, schema, user} = requestParts(request), job = context.job;
+  return {...c, system, schema, user: user.replace(`Title: ${job.title}\nCompany: ${job.company}\nLocation: ${job.location}`,
+    `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}`).replace(job.description, post.description)};
+};
+
 const semanticCases = () => {
   const visit = engineCases.find(item => item.name === 'visit'), place = engineCases.find(item => item.name === 'place');
   const {roles, places, unsure} = feedAsks.visit.context;
@@ -55,22 +64,23 @@ const semanticCases = () => {
       name: `seeded Zurich ${index === 0 ? 'country' : 'metro'}`, schema: question.context.schema,
       user: `Task: ${question.context.task}\nAllowed answers: ${question.context.allowedAnswers}\n\n${question.items.map(item => `### Item ${item.index}\n${item.text}`).join('\n\n')}`, question})),
     {...place, user: `Their places (JSON): ${JSON.stringify(feedAsks.place.context)}\nThe job locations:\n1. ${feedAsks.place.question.items[0].text}`, question: feedAsks.place.question},
-    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich'),
-      name: `extract ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
-      question: {...feedAsks.enrich.question, items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
+    ...feedAsks.feedPostings.map(post => ({...postingCase('enrich', post),
+      name: `extract ${post.title}`,
+      // Captured JSON sorts property keys; the identity parser emits required fields in that same order.
+      question: {...feedAsks.enrich.question, responseSchema: {...feedAsks.enrich.question.responseSchema, required: [...feedAsks.enrich.question.responseSchema.required].sort()}, items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
         key: `default/app.enrich/${post.key.slice('feed/'.length)}/full`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich role'),
       name: `confirm role ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
       question: {operation: 'app.enrich', responseSchema: {type: 'object', additionalProperties: false, required: ['role_family'],
-        properties: {role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
+        properties: {duties: {type: 'string'}, role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
         items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
           key: `default/app.enrich/${post.key.slice('feed/'.length)}/role`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'title'),
       name: `sort ${post.title}`, user: `The search (JSON): ${JSON.stringify(feedAsks.titleSort.context)}\nThe titles:\n1. ${post.title.toLowerCase()}`,
       question: {operation: 'app.title', items: [{n: 1, text: post.title.toLowerCase(),
         key: `default/app.title/${hash({search: feedAsks.titleSort.context, pass: 'sort'}).slice(0, 12)}/${hash(post.title.toLowerCase())}`}]}})),
-    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'score'),
-      name: post.title, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
+    ...feedAsks.feedPostings.map(post => ({...postingCase('score', post),
+      name: post.title,
       question: {operation: 'app.score', id: post.key}})),
   ];
 };

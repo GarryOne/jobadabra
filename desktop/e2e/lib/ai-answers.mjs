@@ -226,13 +226,15 @@ export function refusedQuestions(env = process.env) {
 /** Apply the shared table-first rule; E2E_AI_ANSWERS_FILE permits isolated test tables. */
 export function storedAnswer(request, env = process.env) {
   const mode = answersMode(env), table = loadTable(env.E2E_AI_ANSWERS_FILE || TABLE), dir = artifactsOf(env);
-  // TODO(AI): capture mixed instruction/data templates and stamp score/interview/enrich/mail in JOB-44 slice 2 (30 Oct 2026).
   const prompt = table.promptHashes && promptOf(parsed(request.body), request.prompts, actionOf(request.headers, parsed(request.body)));
   const approved = prompt && table.promptHashes[prompt.family];
-  // Why (JOB-44, 30 Oct 2026, owner): stale answers refuse in every mode before table hits, hash cache or any transport; unstamped slice-2 families keep their existing behavior.
+  // Why (JOB-44, 30 Oct 2026, owner): all thirteen stamped families refuse stale instructions in every mode before table hits, hash cache or transport.
   if (approved && approved !== prompt.hash) {
     let question;
-    try { question = questionOf(request, env, table); } catch { question = {}; } // Schema edits can make the old identity parser inapplicable.
+    // Invariant: stale diagnostics use the captured family and caption identity in every mode, so provider retries count one miss.
+    const headers = new Headers(request.headers || {});
+    if (!headers.has('x-jp-action')) headers.set('x-jp-action', prompt.family.replace(/^app\./, ''));
+    try { question = questionOf({...request, headers}, {...env, E2E_AI_ANSWERS: 'backbone'}, table); } catch { question = {}; } // Schema edits can make the old identity parser inapplicable.
 
     const semantic = {operation: prompt.family, ...(question.items ? {keys: question.items.map(item => item.key).sort()} : {id: question.id || hash(parsed(request.body))})};
     const marker = {family: prompt.family, question: semantic, approved, current: prompt.hash};

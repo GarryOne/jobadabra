@@ -20,7 +20,7 @@ const extraScores = titles.map(suffix => {
   const body = structuredClone(score);
   const title = `Senior Site Reliability Engineer, ${suffix} (Site Reliability / Data Analyst)`;
   const location = suffix === 'save seed' ? 'Zurich, Switzerland' : 'Zurich, Switzerland or Amsterdam, Netherlands';
-  body.messages[0].content = `Title: ${title}\nCompany: E2E Acme\nLocation: ${location}\n\nPosting:\n${title}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.`;
+  body.messages[0].content = `Title: ${title}\nCompany: E2E Acme\nLocation: ${location}\nExtracted facts (stage 1): {}\n\nPosting:\n${title}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.`;
   return {action: 'score', request: body};
 });
 const asks = [...captured, ...extraScores];

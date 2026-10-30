@@ -41,7 +41,7 @@
   },
   "focus": {
     "fixedWaits": 14,
-    "elapsedAssertions": 1
+    "elapsedAssertions": 0
   },
   "focusdismiss": {
     "fixedWaits": 0,
@@ -61,7 +61,7 @@
   },
   "jobs": {
     "fixedWaits": 5,
-    "elapsedAssertions": 2
+    "elapsedAssertions": 0
   },
   "mailreading": {
     "fixedWaits": 0,

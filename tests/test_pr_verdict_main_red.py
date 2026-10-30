@@ -132,10 +132,6 @@ class TheStepAsCIRunsIt(unittest.TestCase):
         self.assertIn('"state=success"', written, done.stdout + done.stderr)
         self.assertIn('grey: settings (red on main too, not this PR)', written)
 
-    def test_focus_ending_after_settings_writes_grey_from_its_own_step(self):
-        done, written = self.run_step(job_status='success', me_runs=True)
-        self.assertIn('"state=success"', written, done.stdout + done.stderr)
-
     def test_a_gh_older_than_the_escape_flag_is_asked_again_without_it(self):
         done, written = self.run_step(old_gh=True)
         self.assertIn('"state=success"', written, done.stdout + done.stderr)

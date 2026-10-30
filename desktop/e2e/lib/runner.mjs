@@ -9,6 +9,7 @@ import {faultCheck, NEVER_FIRED, neverFiredNote} from './faults.mjs';
 import {codeLine} from './artifacts.mjs';
 import {causeOf, sharedCauseLines} from './step-cause.mjs';
 import {providerLine} from './ai-provider.mjs';
+import {stepClock} from './wait-on-state.mjs';
 
 // keepGoing (a suite's `export const keepGoing = true`): a failed step is recorded and the next one runs, so one failure never hides the rest of the suite
 // (5 Oct 2026: one outdated step hid fifteen, twice). A step marked `critical` (the setup the others need) still stops the suite.
@@ -25,11 +26,12 @@ export async function hangReport(session) {
 /** Bound a step; an optional factory preserves a suite's named hang and its existing evidence. */
 export function withLimit(promise, ms, name, getSession = () => null, budget = 0, hangError) {   // budget: set when the suite's budget, not the step's own limit, is what cuts it
   let timer;
-  // Why (#2501; 30 Oct 2026, owner redesign): named hang errors retain their evidence; only cap errors are marked so opted-in owned steps stop without retrying abandoned work. Other errors stay unchanged.
-  const limit = new Promise((_, fail) => { timer = setTimeout(async () => { const error = hangError ? hangError(ms) : new Error(budget
+  stepClock(ms);   // the step's own waits run until this cap, never to a shorter one of their own (lib/wait-on-state.mjs)
+  // Why (#2501; 30 Oct 2026, owner redesign; g2: hangError may be async, so a step whose waits carry no clock can read the hidden browser when its cap fires): named hang errors retain their evidence; only cap errors are marked so opted-in owned steps stop without retrying abandoned work. Other errors stay unchanged.
+  const limit = new Promise((_, fail) => { timer = setTimeout(async () => { const error = hangError ? await hangError(ms) : new Error(budget
     ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it): ${await hangReport(getSession())}`
     : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung): ${await hangReport(getSession())}`); error.stepHang = true; fail(error); }, ms); });
-  return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
+  return Promise.race([promise, limit]).finally(() => { clearTimeout(timer); stepClock(null); });
 }
 
 // E2E_STEPS=<words> runs only the steps whose name contains one; `stepNeeds` (a suite's export: {'step name words': ['words of a step it needs', ...]}) adds the

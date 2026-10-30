@@ -30,6 +30,11 @@ on:
       suite:
         description: 'Suites to run, comma-separated (empty = all)'
         required: false
+      persona:
+        description: 'Personas only: choose the fictional applicant; alternate keeps the daily choice'
+        type: choice
+        options: [alternate, austin, sao_paulo]
+        default: alternate
       pr_suites:
         description: 'Exactly these suites as a pull request would run them (pr-suites.yml starts it with this): SQLite store, no AI screenshot review, no harness-test step, the PR branch''s own concurrency group'
         type: string
@@ -189,6 +194,7 @@ jobs:
           SHA: ${{ github.sha }}
           BEFORE: ${{ github.event.before }}
           ONLY: ${{ inputs.suite || inputs.pr_suites }}
+          AI_ANSWERS: ${{ github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record' && 'record' || 'off' }}
           PR_SUITES: ${{ inputs.pr_suites }}
           PR_STEPS: ${{ inputs.pr_steps }}   # its "(stores)" and "(why)": the store each suite runs on, and the reasons printed below (desktop/e2e/pr-suites.mjs)
           TARGET_REF: ${{ inputs.target_ref || inputs.gate_tag }}
@@ -232,6 +238,7 @@ jobs:
       E2E_ANTHROPIC_KEY: ${{ secrets.E2E_ANTHROPIC_KEY }}
       E2E_OPENAI_KEY: ${{ secrets.E2E_OPENAI_KEY }}   # the OpenAI family's turn (odd runs; desktop/e2e/lib/engine.mjs pickFamily)
       E2E_AI_FAMILY: ${{ (inputs.family == 'claude' || inputs.family == 'openai') && inputs.family || '' }}   # a manual run pinned to one family; else alternate
+      E2E_PERSONA: ${{ matrix.suite == 'personas' && inputs.persona || '' }}
       # The store under test (lib/store.mjs pickStore): the gate's two jobs per suite pin one store each (plan-run.mjs legs); any other run alternates on bit 1 of the
       # run number (beside the AI family's bit 0), unless a run by hand pins one.
       E2E_STORE: ${{ matrix.store || (inputs.pr_suites != '' && 'sqlite') || (inputs.store != 'alternate' && inputs.store) || 'alternate' }}   # a pull request: the store its picked steps were recorded on (plan-run.mjs), else SQLite; both are fresh per run
@@ -288,7 +295,6 @@ jobs:
       contents: write   # tools/e2e-lock.sh creates the lock ref
       issues: read      # the screenshot review reads its by-design lessons from the closed issues (lib/review-lessons.mjs)
       id-token: write   # GitHub's per-run token the Codex broker checks (lib/broker-client.mjs); a fork run gets none and cannot spend the owner's plan
-      statuses: write   # the PR's "All checks passed", written as the job ends (tools/pr-verdict.py)
       actions: read     # the commit's runs and jobs, for that verdict
       pull-requests: read
     steps:
@@ -572,19 +578,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           E2E_LOCK_TOKEN: ${{ steps.lock_app_end.outputs.token }}
         run: bash lock-tools/tools/e2e-lock.sh release "${{ matrix.key }}"
-      # The PR's one required status, written as this job ends (tools/pr-verdict.py): no separate job waits for a runner to write it (owner on #2042, 26 Oct 2026).
-      - name: Write the PR's verdict
-        if: always() && inputs.pr_suites != '' && inputs.after_merge == ''   # the e2e run a PR started (pr-suites.yml); a run after a merge is main's, no PR's
-        continue-on-error: true   # never turns a job red; pr-verdict.yml writes it again when the workflow ends
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          gh api -H 'Accept: application/vnd.github.raw' "repos/$GITHUB_REPOSITORY/contents/tools/pr-verdict.py?ref=$GITHUB_SHA" > "$RUNNER_TEMP/pr-verdict.py"
-          py=python3; "$py" -c 1 2>/dev/null || py=python
-          "$py" "$RUNNER_TEMP/pr-verdict.py" --repo "$GITHUB_REPOSITORY" --sha "$SHA" --job-status "$JOB_STATUS"
 
   # Nothing tested is never green (gate G7, owner's yes 26 Oct 2026). A scheduled run on main that planned no suite (a release run was testing, the commit's looks were
   # used up, nothing varies) used to end green: on 25 Oct the 23:33 and 23:47 runs skipped while beta 2 ran and read as a green main. It now says why and ends CANCELLED

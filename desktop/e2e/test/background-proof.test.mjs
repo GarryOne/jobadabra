@@ -92,3 +92,29 @@ test('an unresponsive extension closes its socket and reports the readiness hang
   assert.match(await answer, /extension options page never became ready or answered/);
   assert.equal(sockets[0].closed, true);
 });
+
+test('the triage account stand-in reads login and account controls after the hidden-page observation', async () => {
+  const {withAccountReadJudge} = await import('../lib/background-proof.mjs');
+  const {INSTRUCTIONS} = await import('../../lib/form-judge.js');
+  let observed = 0;
+  const judge = withAccountReadJudge(() => 'other ask', 'Submit Application', async () => { observed++; });
+  const ask = text => ({system: INSTRUCTIONS, messages: [{content: text}]});
+  const login = JSON.parse(await judge(ask('Headings: Fixture job title | Sign in to apply\nControls: password · Password · required · empty')));
+  assert.equal(observed, 1);
+  assert.deepEqual([login.login_wall, login.account_to_create, login.bot_check], [true, false, false]);
+  const account = JSON.parse(await judge(ask('Controls: password · Confirm password · required · empty')));
+  assert.deepEqual([account.login_wall, account.account_to_create, account.bot_check], [false, true, false]);
+  assert.equal(observed, 2);
+  assert.equal(await judge({system: 'other question'}), 'other ask');
+  assert.equal(observed, 2, 'only form-judge asks observe the hidden page');
+});
+
+test('the triage account stand-in retains bot-check and clean-form answers', async () => {
+  const {withAccountReadJudge} = await import('../lib/background-proof.mjs');
+  const {INSTRUCTIONS} = await import('../../lib/form-judge.js');
+  const judge = withAccountReadJudge(null, 'Submit Application');
+  const ask = text => ({system: INSTRUCTIONS, messages: [{content: text}]});
+  assert.equal(JSON.parse(await judge(ask("checkbox · I'm not a robot · required · empty"))).bot_check, true);
+  const clean = JSON.parse(await judge(ask('email · Email · required · empty')));
+  assert.deepEqual([clean.login_wall, clean.account_to_create, clean.bot_check], [false, false, false]);
+});

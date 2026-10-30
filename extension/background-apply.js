@@ -81,6 +81,7 @@ export async function pollBackgroundApply(config) {
   try {
     const result = await api(config, '/extension/background-apply', {method: 'POST', body: JSON.stringify({action: 'poll', owner})});
     for (const command of result.jobs || []) await startCommand(owner, command);
+    for (const end of result.closes || []) await owned().closeSession(end.session).catch(() => false);   // a read the app ended without a report (Cancel, a timeout, #2624)
     for (const handoff of result.handoffs || []) {
       const row = await owned().inspect(handoff.session);
       if (!row) continue;

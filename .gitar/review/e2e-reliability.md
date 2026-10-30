@@ -1,7 +1,14 @@
 # E2E reliability: expectations and plumbing
 
 Why (28 Oct 2026, owner): 149 red runs included 19 product bugs; 604 of 847 harness commits were plumbing. Loosening a test to turn it green hides the bug.
-Source: docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules E, F and K.
+Source: docs/superpowers/specs/2026-10-28-e2e-reliability-design.md, rules B, E, F and K.
+
+## Rule B: a step's only clock is its measured hang cap
+Owner, 30 Oct 2026 (#2612): "wait on the state, not on a specific time". A wait inside an e2e step polls a state (`pollUntil`, `waitForDecisions` in desktop/e2e/lib/wait-on-state.mjs) and has no bound of its own;
+the runner hands it the step's measured hang cap (desktop/e2e/hang-caps.json, 3x calm main p95). The mechanical gate refuses a new or changed inline bound in step code
+(`waited < N`, `capMs`/`limitMs`/`timeout: N`, `until(…, N)`, `Date.now() - t < N`), and no trailer clears it. Raise a blocking finding for the forms it cannot see:
+a bound in a variable or constant, a fixed sleep used as the wait (`pause(5000)` then one read), or a step that reads a state through a slower copy of it
+(an extension decision from app.log instead of the extension's store: 3 tries in a row, 10 s, 45 s and 60 s, each raised the bound under a 14-62 s delivery lag).
 
 ## Rule E: a backbone expectation changes deliberately
 

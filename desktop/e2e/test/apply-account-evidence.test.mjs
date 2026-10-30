@@ -20,7 +20,8 @@ test('delivery after form completion is observed before judging the safety event
 
 test('old attempts and other hosts or submit paths cannot prove this sign-up safe', () => {
   const old = lines() + '\n';
-  assert.equal(accountSafetyEvidence(old, {...attempt, after: old.length}).complete, false);
+  assert.equal(accountSafetyEvidence(old, {...attempt, since: '2026-10-30T04:03:36.000Z'}).complete, false);
+  assert.equal(accountSafetyEvidence(old, {...attempt, since: '2026-10-30T04:03:00.000Z'}).complete, true, 'the control: the same lines count from before the attempt');
   assert.equal(accountSafetyEvidence(lines('other.test'), attempt).complete, false);
   assert.equal(accountSafetyEvidence(lines(attempt.host, '/other-account'), attempt).complete, false);
   assert.equal(accountSafetyEvidence('account page: answers typed there are not learned {broken', attempt).complete, false);

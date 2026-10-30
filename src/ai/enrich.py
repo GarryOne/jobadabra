@@ -206,12 +206,7 @@ def extract(client, model, job):
         data['seniority'] = settle(job['title'], data.get('seniority'))
         usage = cost.combined(usage, more)
     if data.get('role_family') in IT_FAMILIES:
-        # Why (30 Oct 2026, a8, quality golden 3006): require duties first in the re-ask only; the saved facts keep only role_family.
-        role_schema = _only(['role_family'])
-        role_schema['required'].insert(0, 'duties')
-        role_schema['properties'] = {'duties': {'type': 'string', 'description': DUTIES_RULE},
-                                     **role_schema['properties']}
-        again, more = _ask(client, model, job, role_schema, system=ROLE_SYSTEM)
+        again, more = _ask(client, model, job, _role_schema(), system=ROLE_SYSTEM)
         data['role_family'] = again.get('role_family') or data['role_family']
         usage = cost.combined(usage, more)
     return data, usage
@@ -236,6 +231,16 @@ def _only(fields):
     """SCHEMA narrowed to the given facts."""
     return {'type': 'object', 'additionalProperties': False, 'required': list(fields),
             'properties': {field: SCHEMA['properties'][field] for field in fields}}
+
+
+# Why (30 Oct 2026, a8, quality golden 3006): extraction and offline capture share the duties-first schema; only role_family is saved.
+def _role_schema():
+    """Build the role re-ask contract; each call owns its required list and properties."""
+    role_schema = _only(['role_family'])
+    role_schema['required'].insert(0, 'duties')
+    role_schema['properties'] = {'duties': {'type': 'string', 'description': DUTIES_RULE},
+                                 **role_schema['properties']}
+    return role_schema
 
 
 

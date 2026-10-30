@@ -10,6 +10,7 @@ import {FAILURES} from '../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {bodyOf, engineCases} from './ai-answers-engine-fixtures.mjs';
+import {capturePrompts} from '../lib/ai-answer-prompts.mjs';
 import * as activityfailures from '../suites/activityfailures.mjs';
 import {suitesFor} from '../lib/plan.mjs';
 
@@ -50,6 +51,8 @@ const postingCase = (name, post) => {
     `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}`).replace(job.description, post.description)};
 };
 
+// Why (30 Oct 2026, a8, quality golden 3006): replay current role wire instructions from the engine capture; legacy fixture schemas cannot pass the prompt stamp.
+const roleContract = capturePrompts()['app.enrich'].role;
 const semanticCases = () => {
   const visit = engineCases.find(item => item.name === 'visit'), place = engineCases.find(item => item.name === 'place');
   const {roles, places, unsure} = feedAsks.visit.context;
@@ -70,9 +73,10 @@ const semanticCases = () => {
       question: {...feedAsks.enrich.question, responseSchema: {...feedAsks.enrich.question.responseSchema, required: [...feedAsks.enrich.question.responseSchema.required].sort()}, items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
         key: `default/app.enrich/${post.key.slice('feed/'.length)}/full`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich role'),
+      system: roleContract.system, schema: roleContract.schema,
       name: `confirm role ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
       question: {operation: 'app.enrich', responseSchema: {type: 'object', additionalProperties: false, required: ['role_family'],
-        properties: {role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
+        properties: {duties: {type: 'string'}, role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
         items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
           key: `default/app.enrich/${post.key.slice('feed/'.length)}/role`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'title'),

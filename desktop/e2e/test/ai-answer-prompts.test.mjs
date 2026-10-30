@@ -253,6 +253,18 @@ for (const [family, source, from, to] of [
   for (const provider of [body => body, responses]) assert.throws(() => storedAnswer({body: provider(mixedRequest(family)), headers: {'x-jp-action': family.replace('app.', '')}, prompts: changed}, env), new RegExp(`stale: prompt changed ${family}`));
 });
 
+test('role capture uses the engine duties schema and follows its source edits offline', t => {
+  const role = contracts()['app.enrich'].role;
+  assert.deepEqual(role.schema.required, ['duties', 'role_family']);
+  assert.deepEqual(Object.keys(role.schema.properties), ['duties', 'role_family']);
+  assert.ok(role.system.includes(role.schema.properties.duties.description));
+  const {dir} = fixture(t); sourceCopy(dir);
+  edit(dir, 'src/ai/enrich.py', "'description': DUTIES_RULE", "'description': DUTIES_RULE + ' Only stated tasks.'");
+  const changed = capturePrompts(dir)['app.enrich'].role;
+  assert.equal(changed.schema.properties.duties.description, role.schema.properties.duties.description + ' Only stated tasks.');
+  assert.equal(changed.system, role.system, 'the schema edit is captured independently of the prompt');
+});
+
 test('mixed retry schemas and independent extraction role questions match their captured contracts', () => {
   const current = contracts(), hashes = familyHashes(current);
   for (const family of ['app.score', 'app.enrich']) for (const value of Object.values(current[family])) {

@@ -1,4 +1,15 @@
 {
+  "promptHashes": {
+    "app.decide": "d8e0c0411289742be11e04f55229e7ce49f09be58adee54dd75692a77aa68e62",
+    "app.geo": "a19b0c3e5cb04bd30f01bffe16bd5cc893b799caeb4a895cfe6cfd080eb2b1a6",
+    "app.place": "99a66952683745d680299ea8b463dbcb44c0fc5d71f3850571515e098d2f1d42",
+    "app.placeReading": "e10e4e0f166f44cdde1917d243c93b76f39a2a5881b87923802b5d96847bec08",
+    "app.placeVague": "e20c33145fd90bb5b19ae435eb5caa9a2c2b616b40f6665916d46feae8da545b",
+    "app.places": "836365bcd643a025542385384c2b95b907ce71bb983fbf8681c20995cb98b3ac",
+    "app.title": "d1cbfa74207511b56967356302ec9e57bc505ef029c0186ac5f1b9289c23b5bf",
+    "app.visa": "4285a84559a0a22b164a0d005ae55ef810135c4d69af849ffd7c4dec6bf6d1f5",
+    "app.visit": "d32cc44ca3c73510bceb0ddc435cd5c2903e7aa0bdaef39ba7ab466c1f62c3e9"
+  },
   "about": "Reviewed AI answers for backbone replay; put new notes in the PR description.",
   "kinds": {
     "learn_from_form": {

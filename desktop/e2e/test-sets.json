@@ -55,6 +55,7 @@
   "coverage-steps.test.mjs",
   "a11y.test.mjs",
   "activity.test.mjs",
+  "ai-answer-prompts.test.mjs",
   "ai-answers-decide.test.mjs",
   "ai-answers-engine.test.mjs",
   "ai-answers-enrich.test.mjs",

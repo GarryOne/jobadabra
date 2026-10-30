@@ -37,10 +37,22 @@ RUNS = [run(6, 'E2E check · on time (Worker cron)', conclusion='cancelled'),
 
 class MainE2eState(unittest.TestCase):
     def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        registry = patch.object(m, 'LANES', Path(tmp.name) / 'lanes.json')
+        registry.start()
+        self.addCleanup(registry.stop)
         self.state = m.state(RUNS, lambda rid: JOBS.get(rid, []))
 
     def test_red_suites_are_the_newest_main_check_result(self):
         self.assertEqual([suite for suite, _ in m.red(self.state)], ['cardstates', 'interactions', 'recorded'])
+
+    def test_real_job_name_shapes_resolve_to_the_suite(self):
+        for name in ('quality', 'quality-1of2', 'quality-1of2-standin', 'quality-1of2-sqlite',
+                     'quality · burn-in 2/5', 'quality-1of2-standin · burn-in 2/5',
+                     'E2E · Mac + Linux · quality-1of2-sqlite'):
+            with self.subTest(name=name):
+                self.assertEqual(m.suite_of(name), 'quality')
 
     def test_a_by_hand_rerun_on_main_clears_only_its_suite(self):
         self.assertEqual(self.state['settings']['conclusion'], 'success')
@@ -63,9 +75,9 @@ class MainE2eState(unittest.TestCase):
                 self.assertEqual(m.main(['--json']), 0)
             return json.loads(output.getvalue())
 
-    def test_suspended_red_is_reported_separately_while_unlisted_and_tolerant_still_block(self):
+    def test_suspended_red_is_separate_and_tolerant_never_blocks(self):
         report = self.report(json.dumps({'suites': {'cardstates': {'lane': 'suspended'}, 'interactions': {'lane': 'tolerant'}}}))
-        self.assertEqual([s['suite'] for s in report['red']], ['interactions', 'recorded'])
+        self.assertEqual([s['suite'] for s in report['red']], ['recorded'])
         self.assertEqual([s['suite'] for s in report['suspended']], ['cardstates'])
         self.assertEqual(report['suspended'][0]['conclusion'], 'failure')
         self.assertEqual(report['suspended'][0]['url'], 'u2')
@@ -77,10 +89,18 @@ class MainE2eState(unittest.TestCase):
                 self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
                 self.assertEqual(report['suspended'], [])
 
-    def test_retired_or_unknown_lane_does_not_exclude_a_red(self):
-        for lane in ('retired', 'backbone', 'unknown'):
+    def test_unknown_or_backbone_lane_does_not_exclude_a_red(self):
+        for lane in ('backbone', 'unknown'):
             report = self.report(json.dumps({'suites': {'cardstates': {'lane': lane}}}))
             self.assertEqual([s['suite'] for s in report['red']], ['cardstates', 'interactions', 'recorded'])
+
+    def test_owner_tolerant_reds_never_make_main_red(self):
+        self.state = m.state([run(9, 'E2E after merge · ed2f834 · quality,mailreading,apply')],
+                             lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'mailreading-standin', 'apply')])
+        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'mailreading': {'lane': 'tolerant'}, 'apply': {'lane': 'backbone'}}}))
+        self.assertEqual([s['suite'] for s in report['red']], ['apply'])
+        report = self.report(json.dumps({'suites': {'quality': {'lane': 'tolerant'}, 'mailreading': {'lane': 'tolerant'}, 'apply': {'lane': 'retired'}}}))
+        self.assertEqual(report['red'], [])
 
     def test_an_older_green_does_not_hide_a_newer_red(self):
         self.assertEqual(self.state['interactions']['sha'], 'f' * 40)

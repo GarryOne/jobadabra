@@ -10,7 +10,7 @@ import {SUITES} from '../lib/context.mjs';
 import {budgetMsOf} from '../lib/runner.mjs';
 import {shardOf, shardTurn} from '../lib/replay-shard.mjs';
 import {loadCases} from '../lib/page-replay.mjs';
-import {shardLegs, suiteOfKey, windowsMatrix} from '../lib/suite-shards.mjs';
+import {isBackbone, shardLegs, suiteOfKey, windowsMatrix} from '../lib/suite-shards.mjs';
 import {planRun} from '../plan-run.mjs';
 import {macSuites} from '../plan-windows.mjs';
 import {suiteOf} from '../triage.mjs';
@@ -62,6 +62,28 @@ test('a job\'s key, job name or artifact folder leads back to its suite', () => 
   assert.equal(suiteOf('e2e-artifacts-jobs-standin'), 'jobs');
   assert.deepEqual(macSuites([{name: 'recorded-1of4', conclusion: 'success'}, {name: 'recorded-2of4', conclusion: 'failure'}, {name: 'jobs', conclusion: 'success'}]), ['jobs', 'recorded']);
   assert.deepEqual(windowsMatrix(['jobs', 'recorded'], {recorded: 2}).include.map(item => item.key), ['jobs', 'recorded-1of2', 'recorded-2of2']);
+});
+
+test('suite identity survives shard, store, burn-in and workflow job labels', () => {
+  for (const key of ['jobs', 'jobs-1of2', 'jobs-standin', 'jobs-sqlite', 'jobs-1of2-standin', 'jobs-1of2-sqlite']) {
+    for (const prefix of ['', 'E2E · ', 'E2E · Mac + Linux · ']) {
+      for (const suffix of ['', ' · burn-in 1/5']) {
+        const name = `${prefix}${key}${suffix}`;
+        assert.equal(suiteOfKey(name), 'jobs', name);
+      }
+    }
+  }
+});
+
+test('backbone membership excludes non-blocking lanes and defaults unlisted suites to blocking', () => {
+  const lanes = {suites: {
+    quality: {lane: 'tolerant'}, paused: {lane: 'suspended'}, old: {lane: 'retired'},
+    jobs: {lane: 'backbone'}, apply: {},
+  }};
+  for (const [suite, expected] of Object.entries({quality: false, paused: false, old: false, jobs: true, apply: true, plan: true})) {
+    assert.equal(isBackbone(lanes, suite), expected, suite);
+  }
+  assert.equal(isBackbone({}, 'jobs'), true);
 });
 
 // The class: every workflow job that runs `node suite.mjs ${{ matrix.suite }}` (e2e.yml: through its `once` function, since 26 Oct 2026). Its slice reaches the suite, and its identity (job name, group, caches, artifacts) is the key,

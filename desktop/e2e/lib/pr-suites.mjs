@@ -3,6 +3,7 @@
 
 // Job: pick the suites
 import {whyLines} from './pick-why.mjs';
+import {isBackbone} from './suite-shards.mjs';
 
 const APP_FILE = /^desktop\/(renderer\/|lib\/|main\.js$|main\/|actions[^/]*\.js$|activity[^/]*\.js$)/;
 export const isAppFile = file => APP_FILE.test(file) && !/\.(test|spec)\.|\/test\//.test(file);
@@ -100,7 +101,6 @@ export function report({strings, hits, changedFiles, sources}) {
 // (owner, 27 Oct 2026: "Drop it"; slow cases stay on main, lib/replay-slow.mjs; #2164 replayed every case twice: page-cases 2 jobs and 5 runner-min, e2e's recorded 5 jobs and 44).
 // After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
 export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
-const OUTSIDE_BACKBONE = ['tolerant', 'suspended', 'retired'];
 /** Read admission registries through the injected git runner; unreadable registries become empty.
  * Invariant: admissions compare the merge-base with HEAD, never main's tip, matching the added/deleted file diff.
  */
@@ -122,21 +122,22 @@ export function admissionLanes(git, base) {
 export function admittedSuites({addedFiles = [], deletedFiles = [], baseLanes = {}, headLanes = {}}) {
   const nameOf = file => /^desktop\/e2e\/suites\/([^/]+)\.mjs$/.exec(file)?.[1];
   const deleted = new Set(deletedFiles.map(nameOf));
-  const candidates = [...addedFiles.map(nameOf), ...Object.keys(baseLanes.suites || {}).filter(suite => OUTSIDE_BACKBONE.includes(baseLanes.suites[suite]?.lane))];
-  return [...new Set(candidates)].filter(suite => suite && !deleted.has(suite) && !OUTSIDE_BACKBONE.includes(headLanes.suites?.[suite]?.lane)).sort();
+  const candidates = [...addedFiles.map(nameOf), ...Object.keys(baseLanes.suites || {}).filter(suite => !isBackbone(baseLanes, suite))];
+  return [...new Set(candidates)].filter(suite => suite && !deleted.has(suite) && isBackbone(headLanes, suite)).sort();
 }
 
 /** Pick reached backbone suites plus explicitly report-only numbers; only backbone uses the PR cap.
  * direct: suites whose own file or step file changed; pointed/hits: import, watch or quote reach; covering: recorded line reach.
  * admitted: git-derived backbone admissions outrank all reaches and override BASE exemptions.
- * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base by the CLI.
+ * lanes is the same {suites: {name: entry}} registry the verdict reads, supplied from the PR base or merged checkout by the CLI.
  * left keeps unrun backbone suites; report-only numbers use no place or deferral. deferred is ranked cap overflow.
  */
 export function planPrSuites({pointed = [], hits = {}, covering = {}, direct = [], catches = {}, lanes = {}, admitted = [], linux, cadence = {}, pullRequest = false}) {
   const admissions = new Set(pullRequest ? admitted : []);
   const reports = pullRequest ? new Set(Object.entries(lanes.suites || {}).filter(([suite, entry]) => entry?.lane === 'tolerant' && entry.pr === 'number' && !admissions.has(suite)).map(([suite]) => suite)) : new Set();
   const wanted = [...new Set([...admissions, ...pointed, ...Object.keys(hits), ...Object.keys(covering)])].filter(suite => admissions.has(suite) || (
-    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && (ON_PR_ELSEWHERE[suite] || (!reports.has(suite) && OUTSIDE_BACKBONE.includes(lanes.suites?.[suite]?.lane))))));
+    !['manual', 'outside'].includes(cadence[suite]) && !(pullRequest && ON_PR_ELSEWHERE[suite]) &&
+    (reports.has(suite) || isBackbone(lanes, suite))));
   let run = wanted.filter(suite => admissions.has(suite) || linux(suite) || pointed.includes(suite) || String(covering[suite] || '').startsWith('runs '));
   const numbers = run.filter(suite => reports.has(suite));
   run = run.filter(suite => !reports.has(suite));

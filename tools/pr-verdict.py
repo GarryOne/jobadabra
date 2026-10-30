@@ -301,8 +301,8 @@ def main_red_greys(repo, runs, jobs, ref='', read_main=None, log_of=None):
 
 def suite_of(job_name):
     """`quality-1of2` -> `quality`: a sharded suite is one suite. The same rule as tools/main_e2e_state.suite_of, copied because this file runs alone in CI (a test keeps them equal)."""
-    return re.sub(r'-\d+of\d+$', '', job_name)
-
+    key = re.sub(r' · burn-in \d+/\d+$', '', re.sub(r'^E2E · (?:Mac \+ Linux · )?', '', job_name))
+    return re.sub(r'-\d+of\d+$', '', re.sub(r'-(?:standin|sqlite)$', '', key))
 
 def base_branch(env=None):
     """The branch a PR merges into: GITHUB_BASE_REF on a pull_request run, else main (the workflow_run backstop)."""

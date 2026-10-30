@@ -15,7 +15,8 @@ const MAX_RENAMED_FALLBACK_SUITES = 3;
 // suite-failures.json's records -> the red steps' names (once each, in order), or null: no step to name, so the whole suite runs again.
 export function redSteps(records) {
   const names = [...new Set((Array.isArray(records) ? records : []).map(item => item?.step).filter(Boolean))];
-  if (!names.length || names.includes(NOT_A_STEP)) return null;
+  // Why (30 Oct 2026, owner; main 41000326672): a post-close answer guard has no runnable step; only its whole journey can reproduce the background question.
+  if (!names.length || names.includes(NOT_A_STEP) || records.some(item => String(item?.message || '').startsWith('E2E_AI_ANSWER_MISSING:'))) return null;
   return names;
 }
 

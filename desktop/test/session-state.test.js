@@ -366,3 +366,30 @@ test('when the app\'s own connection is off, the card does not check or wait: it
   assert.equal(silentPill({known: false, ids: []}), 'Chrome not reporting', 'Chrome closed or the extension off keeps its words');
   assert.equal(chromeSilent(form, {known: false, ids: []}, 500), false, 'a connection that is up still gets its first look');
 });
+
+// Owner, 29 Oct 2026: "stop the extension shouldn't be shown in the desktop app all the times … We have Stop in the browser tab, on the extension panel itself." The header
+// button shows only while the extension acts (a form being filled, or a Full-automation fill/submit in Jobadabra's browser); ⌘K and the ⋯ menu always keep it.
+test('the header Stop shows only while the extension is acting, never when Chrome is not reporting', async () => {
+  const {extensionActing} = await import('../renderer/session-state.js');
+  const open = {known: true, ids: ['f1']}, form = {id: 'f1', kind: 'form', status: 'done', stage: 'form'};
+  assert.equal(extensionActing([], open), false, 'idle: nothing to stop');
+  assert.equal(extensionActing([form], open), true, 'a form open in Chrome and not ready: the extension is filling it');
+  assert.equal(extensionActing([form], open, () => true), false, 'every field filled, waiting for you: not acting');
+  assert.equal(extensionActing([{...form, stuck: 'stopped'}], open), false, 'already stopped');
+  assert.equal(extensionActing([{...form, stuck: 'incomplete'}], open), false, 'waiting on a person');
+  assert.equal(extensionActing([form], {known: false, ids: []}), false, 'Chrome not reporting: a stop could not reach it');
+  assert.equal(extensionActing([form], {known: false, ids: [], linkOff: {port: 47111, code: 'EADDRINUSE'}}), false, 'connection off: the same');
+  assert.equal(extensionActing([form], {known: true, ids: []}), false, 'its tab is closed');
+  assert.equal(extensionActing([{...form, outcome: 'submitted', live: false}], open), false, 'submitted');
+  for (const state of ['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), true, `Full automation: ${state}`);
+  for (const state of ['ready_for_review', 'needs_user_handoff', 'manual_submit_required']) assert.equal(extensionActing([{id: 'b1', kind: 'form', background: {state}}], null), false, `Full automation: ${state} waits`);
+});
+
+test('the header Stop rule: shown while acting or until a pin ends; a later pin outlives an earlier timer (Gitar #2512)', async () => {
+  const {stopShown} = await import('../renderer/session-state.js');
+  assert.equal(stopShown(false, 0, 1000), false, 'idle, nothing pinned');
+  assert.equal(stopShown(true, 0, 1000), true, 'acting');
+  assert.equal(stopShown(false, 51000, 30100), true, 'revealed at t=0 and again at t=20 s: the first timer fires at 30.1 s and the pin still holds');
+  assert.equal(stopShown(false, 51000, 51000), false, 'the pin has ended');
+  assert.equal(stopShown(false, undefined, 1000), false);
+});

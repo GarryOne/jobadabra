@@ -6,7 +6,7 @@ import {geoKind, geoQuestion} from './ai-answers-geo.mjs';
 import {titleKind, titleQuestion} from './ai-answers-title.mjs';
 import {enrichKind, enrichQuestion} from './ai-answers-enrich.mjs';
 import {visitKind, visitQuestion} from './ai-answers-visit.mjs';
-import {visaKind, visaQuestion, vagueKind, vagueQuestion, readingKind, readingQuestion} from './ai-answers-place-extra.mjs';
+import {visaKind, visaQuestion, vagueKind, vagueQuestion, readingKind, readingQuestion, mailKind, mailQuestion} from './ai-answers-place-extra.mjs';
 import {decideCandidates, itemCandidateName} from './ai-answers-decide.mjs';
 import {placeAnswerFor, placeCandidates, validPlaceAnswer} from './ai-answers-place.mjs';
 
@@ -19,6 +19,7 @@ const registrations = [
   [visaKind, visaQuestion],
   [vagueKind, vagueQuestion],
   [readingKind, readingQuestion],
+  [mailKind, mailQuestion],
 ];
 const namedCandidates = (items, prefix = '') => items.map(item => ({...item, name: itemCandidateName(`${prefix}${item.key}`)}));
 

@@ -7,7 +7,7 @@ import unittest
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / '.github/workflows/e2e.yml'
 RECORD_GUARD = "github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'"
-BACKBONE = ('quality', 'stores', 'interviews', 'wander', 'activityfailures', 'storemove', 'calendar', 'failuresnotion', 'jobs', 'applyflows')
+BACKBONE = ('quality', 'stores', 'interviews', 'wander', 'activity', 'interactions', 'failureschannels', 'activityfailures', 'storemove', 'calendar', 'failuresnotion', 'jobs', 'applyflows')
 
 
 def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs', burn_in=0):

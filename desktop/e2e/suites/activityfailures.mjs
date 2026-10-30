@@ -10,7 +10,7 @@ import {digestProblems} from '../lib/telegram-fake.mjs';
 import {rows as notionRows} from '../lib/notion.mjs';
 import {waitForRunLock, waitedForLock} from '../lib/run-lock.mjs';
 import {finish, snap} from '../lib/layout.mjs';
-import {LABEL, appReady, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, resumedSearchSeen, runTask, runsData, setFeed, withSilenceLimit} from '../lib/activity-steps.mjs';
+import {LABEL, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, resumedSearchSeen, runTask, runsData, setFeed, sleep, withSilenceLimit} from '../lib/activity-steps.mjs';
 
 // Only this arming can prove consumption; global failures may belong to earlier delayed calls.
 function consumedFault(fault) {

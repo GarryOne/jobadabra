@@ -19,6 +19,7 @@ on:
       - '!desktop/e2e/ladder-fixtures/**'
       - '!desktop/e2e/widget-zoo/**'
       # ... except the ones a harness test reads (a later pattern wins)
+      - 'desktop/e2e/fixtures/activityfailures-main-timings.json'
       - 'desktop/e2e/fixtures/cv.json'
       - 'desktop/e2e/fixtures/cv.pdf'
       # Why (#2435/#2450, 29 Oct 2026): ai-answers.mjs reads the golden directory and the photographer's stored sources and truth.

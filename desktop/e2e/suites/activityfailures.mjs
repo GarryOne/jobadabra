@@ -2,6 +2,7 @@
 // Actions + Recent activity when things go WRONG: the AI answering 429, 500, 401, no credit and never answering; the same task asked twice; a Gmail check queued behind a search;
 // quitting the app in the middle of a run. Starts from a set-up install; resets only its own run rows in Notion. The task cards and the Recent activity screen are the
 // activity suite, in parallel, on its own Notion page (this split halves the wall-clock time).
+// Job: run the backbone
 import path from 'node:path';
 import {badSummary, leaks} from '../lib/activity.mjs';
 import {digestProblems} from '../lib/telegram-fake.mjs';
@@ -22,6 +23,9 @@ export const offlineAi = true;
 export const realAi = false;
 export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
 export const name = 'activityfailures';
+// Why (30 Oct 2026, owner-approved rules A/G2): fixture-only repairs missed this journey in the PR picker; its semantic inputs must run it whole.
+export const watches = ['desktop/e2e/fixtures/golden/activityfailures-decide.json',
+  'desktop/e2e/fixtures/golden/activityfailures-feed-asks.json', 'desktop/e2e/fixtures/golden/ai-answers.json'];
 // Why (30 Oct 2026, ap): shared Notion fault steps need the stand-in; stored AI answers are store-independent, so pin that store for one replay path.
 export const store = 'standin';
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup steps marked `critical` stop the suite.

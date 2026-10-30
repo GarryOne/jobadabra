@@ -10,8 +10,10 @@ import {FAILURES} from '../lib/ai-proxy.mjs';
 import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {bodyOf, engineCases} from './ai-answers-engine-fixtures.mjs';
+import * as activityfailures from '../suites/activityfailures.mjs';
+import {suitesFor} from '../lib/plan.mjs';
 
-const {request: captured, requests: capturedMore} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
+const {request: captured, requests: capturedMore, seededPlaceQuestions} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
 // organize_lines is authored (empty items) since wander (30 Oct 2026); activityfailures asks it too and gets that reply.
 const kinds = ['contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraft', 'places'];
 const expected = [['z[uü]rich', 'ch-zurich'], ['switzerland', 'none'], ['schweiz', 'none']];
@@ -49,7 +51,20 @@ const semanticCases = () => {
     {...engineCases.find(item => item.name === 'geo'), user: 'Strings:\n1. zürich', question: feedAsks.geo.question},
     {...engineCases.find(item => item.name === 'geo'), name: 'geo alternatives',
       user: `Strings:\n1. ${feedAsks.geoAlternatives.question.items[0].text}`, question: feedAsks.geoAlternatives.question},
+    ...seededPlaceQuestions.questions.map((question, index) => ({...engineCases.find(item => item.name === 'decide'),
+      name: `seeded Zurich ${index === 0 ? 'country' : 'metro'}`, schema: question.context.schema,
+      user: `Task: ${question.context.task}\nAllowed answers: ${question.context.allowedAnswers}\n\n${question.items.map(item => `### Item ${item.index}\n${item.text}`).join('\n\n')}`, question})),
     {...place, user: `Their places (JSON): ${JSON.stringify(feedAsks.place.context)}\nThe job locations:\n1. ${feedAsks.place.question.items[0].text}`, question: feedAsks.place.question},
+    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich'),
+      name: `extract ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
+      question: {...feedAsks.enrich.question, items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
+        key: `default/app.enrich/${post.key.slice('feed/'.length)}/full`, label: post.title}]}})),
+    ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'enrich role'),
+      name: `confirm role ${post.title}`, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
+      question: {operation: 'app.enrich', responseSchema: {type: 'object', additionalProperties: false, required: ['role_family'],
+        properties: {role_family: feedAsks.enrich.question.responseSchema.properties.role_family}},
+        items: [{n: 1, text: `${post.title}\n${post.company}\n${post.location}`,
+          key: `default/app.enrich/${post.key.slice('feed/'.length)}/role`, label: post.title}]}})),
     ...feedAsks.feedPostings.map(post => ({...engineCases.find(item => item.name === 'score'),
       name: post.title, user: `Title: ${post.title}\nCompany: ${post.company}\nLocation: ${post.location}\n\nPosting:\n${post.description}`,
       question: {operation: 'app.score', id: post.key}})),
@@ -102,6 +117,44 @@ test('activityfailures multi-location geo is unknown under the product schema', 
   const data = JSON.parse(answerFor(feedAsks.geoAlternatives.question, table).reply.content[0].text);
   assert.deepEqual(data, {places: [{n: 1, kind: 'unknown', cc: '', lat: 0, lon: 0, r_km: 0}]});
   assert.ok(validScore(geo.schema, data), 'unknown reply must satisfy the actual src/geo.py schema');
+});
+
+test('activityfailures raw seeded Zurich country and metro have authored answers', () => {
+  assert.equal(seededPlaceQuestions.questions.length, 2);
+  const table = loadTable(answersTableFile);
+  for (const [index, question] of seededPlaceQuestions.questions.entries()) {
+    assert.equal(question.items[0].text, 'zürich');
+    const reply = answerFor(question, table).reply;
+    assert.ok(reply, `missing seeded Zurich ${index === 0 ? 'country' : 'metro'} answer`);
+    const data = JSON.parse(reply.content[0].text);
+    assert.ok(validScore(question.context.schema, data));
+    assert.deepEqual(data, {results: question.items.map(item => ({index: item.index, answer: index === 0 ? 'ch' : item.index === 2 ? 'none' : 'ch-zurich'}))});
+  }
+});
+
+test('activityfailures full extraction facts use their own posting evidence and keep unknowns', () => {
+  const table = loadTable(answersTableFile), schema = engineCases.find(item => item.name === 'enrich').schema;
+  for (const post of feedAsks.feedPostings) {
+    const key = `default/app.enrich/${post.key.slice('feed/'.length)}/full`, row = table.items['app.enrich'][key];
+    assert.ok(row, `missing extraction facts for ${post.title}`);
+    assert.ok(validScore(schema, row.answer), `src/ai/enrich.py full schema: ${post.title}`);
+    const data = row.answer;
+    assert.deepEqual(data.salary, {stated: false, text: ''});
+    assert.equal(data.workload, 'unknown'); assert.equal(data.contract, 'unknown');
+    assert.deepEqual(data.visa_sponsorship, {value: 'unknown', evidence: ''});
+    assert.equal(data.deadline, ''); assert.equal(data.posted, '');
+    assert.equal(data.role_family, post.title.includes('Platform') ? 'platform' : 'sre');
+    const roleKey = key.replace(/full$/, 'role'), role = table.items['app.enrich'][roleKey];
+    assert.ok(role, `src/ai/enrich.py asks IT role family again: ${post.title}`);
+    assert.deepEqual(role.answer, {role_family: data.role_family});
+    assert.notEqual(data.seniority.value, 'unknown');
+    assert.notEqual(data.work_mode.value, 'unknown');
+    assert.ok(data.technologies.length, 'these full replies do not enter ASK_AGAIN narrow retry');
+    for (const fact of [data.english_is_enough, data.seniority, data.work_mode, data.employer_type, ...data.languages]) {
+      assert.ok(!fact.evidence || post.description.includes(fact.evidence), `${post.title}: ungrounded evidence ${fact.evidence}`);
+    }
+    for (const text of [...data.technologies, ...data.responsibilities]) assert.ok(post.description.includes(text));
+  }
 });
 
 test('activityfailures resolves every captured metro item and its batch before any transport', async t => {
@@ -238,4 +291,12 @@ test('activityfailures keeps its offline declaration and no-real-AI guard enable
   const source = fs.readFileSync(new URL('../suites/activityfailures.mjs', import.meta.url), 'utf8');
   assert.match(source, /^export const offlineAi = true;/m);
   assert.match(source, /^export const realAi = false;/m);
+});
+
+
+test('changing activityfailures answer fixtures selects its own whole CI journey', () => {
+  for (const file of ['desktop/e2e/fixtures/golden/activityfailures-decide.json',
+    'desktop/e2e/fixtures/golden/activityfailures-feed-asks.json', 'desktop/e2e/fixtures/golden/ai-answers.json']) {
+    assert.deepEqual(suitesFor([file], ['activityfailures'], {watches: {activityfailures: activityfailures.watches}}), ['activityfailures'], file);
+  }
 });

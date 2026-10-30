@@ -1,5 +1,5 @@
 {
-  "about": "Hand-reconstructed requests, not recorded AI replies. CI 40983489930 at 7d10ee4: 27 refusals, six distinct messages. Exact visit/geo/place questions copied from ai-answer-refusals.json; their context is reconstructed from the seeded roles and Zurich-only search and checked against the captured context hashes. Score identities/descriptions come from activityfailures.mjs setFeed and feeds/sources.json; three score titles are captured, the other three are pre-authored for the same AI journey. No enrich refusal is captured. This is only run evidence, not a claim that every future ask is inventoried.",
+  "about": "Hand-reconstructed requests, not recorded AI replies. CI 40983489930 at 7d10ee4: 27 refusals, six distinct messages. Exact visit/geo/place questions copied from ai-answer-refusals.json; their context is reconstructed from the seeded roles and Zurich-only search and checked against the captured context hashes. Score identities/descriptions come from activityfailures.mjs setFeed and feeds/sources.json; three score titles are captured, the other three are pre-authored for the same AI journey. No enrich refusal was captured in that older run; main recheck 41000326672 later captured the full restart extraction, preserved below. This is only run evidence, not a claim that every future ask is inventoried.",
   "feedPostings": [
     {
       "title": "Senior Site Reliability Engineer, rate-limit (Site Reliability / Data Analyst)",
@@ -139,6 +139,288 @@
           "key": "shared/app.geo/44136fa355b3/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7"
         }
       ]
+    }
+  },
+  "enrich": {
+    "about": "Exact full extraction question from main recheck 41000326672 on b734fd6, retry of activityfailures (30 Oct 2026). No live reply. The restart posting is captured; all six finite fixture feed postings may be read as backlog when a successful run follows faults, so full fact replies are authored from their own descriptions. Unknown salary/workload/contract/visa/dates remain unknown.",
+    "question": {
+      "operation": "app.enrich",
+      "items": [
+        {
+          "n": 1,
+          "text": "Senior Platform Engineer, restart (Site Reliability / Data Analyst)\nE2E Acme\nZurich, Switzerland or Amsterdam, Netherlands",
+          "key": "default/app.enrich/b8393735fbb246ce3e13b32086b7d2ce642bb49ccebc0721d2788bff5f64364c/full",
+          "label": "Senior Platform Engineer, restart (Site Reliability / Data Analyst)"
+        }
+      ],
+      "responseSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "languages",
+          "english_is_enough",
+          "seniority",
+          "work_mode",
+          "workload",
+          "salary",
+          "employer_type",
+          "role_family",
+          "technologies",
+          "responsibilities",
+          "on_call",
+          "visa_sponsorship",
+          "contract",
+          "deadline",
+          "posted",
+          "confidence"
+        ],
+        "properties": {
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "language",
+                "level",
+                "evidence"
+              ],
+              "properties": {
+                "language": {
+                  "type": "string",
+                  "enum": [
+                    "English",
+                    "German",
+                    "French",
+                    "Italian",
+                    "Spanish",
+                    "Portuguese",
+                    "Dutch",
+                    "Other"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "nice_to_have"
+                  ]
+                },
+                "evidence": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "english_is_enough": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value",
+              "evidence"
+            ],
+            "properties": {
+              "value": {
+                "type": "string",
+                "enum": [
+                  "yes",
+                  "no",
+                  "unknown"
+                ]
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          },
+          "seniority": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value",
+              "evidence"
+            ],
+            "properties": {
+              "value": {
+                "type": "string",
+                "enum": [
+                  "junior",
+                  "mid",
+                  "senior",
+                  "staff_principal",
+                  "lead_manager",
+                  "unknown"
+                ]
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          },
+          "work_mode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value",
+              "remote_scope",
+              "evidence"
+            ],
+            "properties": {
+              "value": {
+                "type": "string",
+                "enum": [
+                  "onsite",
+                  "hybrid",
+                  "remote",
+                  "unknown"
+                ]
+              },
+              "remote_scope": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          },
+          "workload": {
+            "type": "string"
+          },
+          "salary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stated",
+              "text"
+            ],
+            "properties": {
+              "stated": {
+                "type": "boolean"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          "employer_type": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value",
+              "evidence"
+            ],
+            "properties": {
+              "value": {
+                "type": "string",
+                "enum": [
+                  "direct_employer",
+                  "recruiter",
+                  "unknown"
+                ]
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          },
+          "role_family": {
+            "type": "string",
+            "enum": [
+              "sre",
+              "platform",
+              "devops",
+              "cloud_infrastructure",
+              "software",
+              "data",
+              "security",
+              "support_it",
+              "sales_b2b",
+              "sales_retail",
+              "logistics",
+              "hospitality",
+              "healthcare",
+              "creative_media",
+              "finance_admin",
+              "education",
+              "trades",
+              "engineering",
+              "business_ops",
+              "manufacturing",
+              "science",
+              "customer_service",
+              "legal",
+              "aviation_transport",
+              "public_security",
+              "other"
+            ]
+          },
+          "technologies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "responsibilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "on_call": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ]
+          },
+          "visa_sponsorship": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value",
+              "evidence"
+            ],
+            "properties": {
+              "value": {
+                "type": "string",
+                "enum": [
+                  "offered",
+                  "not_offered",
+                  "unknown"
+                ]
+              },
+              "evidence": {
+                "type": "string"
+              }
+            }
+          },
+          "contract": {
+            "type": "string",
+            "enum": [
+              "permanent",
+              "fixed_term",
+              "freelance",
+              "internship",
+              "unknown"
+            ]
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "posted": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          }
+        }
+      }
     }
   }
 }

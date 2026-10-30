@@ -26,6 +26,16 @@ notify_codex() {
   [ -z "${CODEX_THREAD_ID:-${CODEX_SESSION_ID:-}}" ] || python3 "$here/codex-pr-events.py" "$log"
 }
 say() { echo "ship: $*" >> "$log"; notify_codex; }
+finish_terminal() {
+  # Why (30 Oct 2026, owner; #2558): retry delivery locally, never keep polling GitHub after the PR merged or closed.
+  local attempt
+  for attempt in 1 2; do
+    notify_codex && return 0
+    [ "$attempt" = 2 ] || sleep 1
+  done
+  echo "ship: CODEX DELIVERY PENDING #$n (PR $1; events remain in the log)" >> "$log"
+}
+
 [ -n "$repo" ] || { say "WATCH ENDED #$n (no GitHub repository)"; exit 0; }
 fixer="${SHIP_WATCH_FIX:-$here/pr-conflict-fix.sh}"
 seen="$pidfile.comments"; touch "$seen" 2>/dev/null
@@ -50,15 +60,15 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     fi
   done <<<"$rows"
 }
-waited=0; red=""; green=""; conflict=""; ready=""; waiting=0; terminal=""
+waited=0; red=""; green=""; conflict=""; ready=""; waiting=0
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
   case "$state" in
-    MERGED) [ "$terminal" = MERGED ] || { terminal=MERGED; say "MERGED #$n $(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; }; notify_codex && exit 0 ;;
-    CLOSED) [ "$terminal" = CLOSED ] || { terminal=CLOSED; say "CLOSED #$n (unmerged)"; }; notify_codex && exit 0 ;;
+    MERGED) say "MERGED #$n $(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; finish_terminal MERGED; exit 0 ;;
+    CLOSED) say "CLOSED #$n (unmerged)"; finish_terminal CLOSED; exit 0 ;;
   esac
-  if [ -n "$state" ] && [ -z "$terminal" ]; then
+  if [ -n "$state" ]; then
     case "$(jq -r '.mergeable // empty' <<<"$view" 2>/dev/null)" in   # UNKNOWN (GitHub is still working it out) keeps the last known state
       CONFLICTING) if [ -z "$conflict" ]; then conflict=1; say "CONFLICT #$n"; (cd "$start_dir" && bash "$fixer" "$n" "$log") >/dev/null 2>&1 || true; fi ;;
       MERGEABLE) [ -z "$conflict" ] || { conflict=""; green=""; } ;;

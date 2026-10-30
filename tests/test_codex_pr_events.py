@@ -40,6 +40,18 @@ class CodexPrEventsTest(unittest.TestCase):
         self.assertEqual(self.run.call_count, 2)
         self.assertNotIn('RED #7', self.run.call_args.args[0][5])
 
+    def test_cmux_routes_to_the_known_surface_without_terminal_typing(self):
+        surface = 'CCE70BB3-2B25-44D7-8A24-202B1BE5E33D'
+        self.run.return_value.stdout = json.dumps({'id': 'queued-event', 'state': 'queued'})
+        self.assertTrue(self.module.deliver(self.log, THREAD, '/fake/codex', run=self.run,
+                                           cmux='/fake/cmux', surface=surface))
+        args = self.run.call_args.args[0]
+        self.assertEqual(args[:4], ['/fake/cmux', 'agent', 'message', surface])
+        self.assertIn('ship: RED #7 python', args[-1])
+        self.assertIn(THREAD, args[-1])
+        self.assertNotIn('send-key', args)
+        self.assertNotIn('paste', args)
+
     def test_failed_queue_is_retried_without_losing_the_event(self):
         self.run.return_value.returncode = 1
         self.assertFalse(self.deliver())

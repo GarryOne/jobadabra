@@ -14,7 +14,7 @@ import uuid
 EVENT = re.compile(r'^ship: (?:DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|CONFLICT|COMMENT)\b')
 
 
-def deliver(log, thread, codex, *, run=subprocess.run):
+def deliver(log, thread, codex, *, run=subprocess.run, cmux=None, surface=None):
     """Queue complete unseen state events; only successful queueing advances the locked cursor.
 
     Invariants: one owning thread, no terminal input, no AI call or GitHub read here.
@@ -44,17 +44,21 @@ def deliver(log, thread, codex, *, run=subprocess.run):
             if events:
                 message = ('PR watcher events for your existing work. Inspect new failures/comments, '
                            'events may be superseded: verify the current head. Continue authorized work, and report READY only on its exact head. '
-                           'Do not merge or submit applications.\n' + '\n'.join(events) + f'\nLog: {log}')
+                           f'Do not merge or submit applications. Owning Codex thread: {thread}; if this is not your thread, do not act on its work.\n' + '\n'.join(events) + f'\nLog: {log}')
                 env = dict(os.environ)
-                env['PATH'] = f'{Path(codex).parent}{os.pathsep}{env.get("PATH", "")}'
-                result = run([codex, 'queue', '--thread', thread, '--message', message, '--resume'],
-                             capture_output=True, text=True, timeout=15, env=env)
+                if cmux and surface:
+                    surface = str(uuid.UUID(surface)).upper()
+                    command = [cmux, 'agent', 'message', surface, '--from', 'PR watcher', '--json', '--', message]
+                else:
+                    env['PATH'] = f'{Path(codex).parent}{os.pathsep}{env.get("PATH", "")}'
+                    command = [codex, 'queue', '--thread', thread, '--message', message, '--resume']
+                result = run(command, capture_output=True, text=True, timeout=15, env=env)
                 if result.returncode:
                     return False
                 # Queue success is not an acknowledgement; Codex receives this through its native inbox.
             cursor.write_text(json.dumps({'offset': end, 'prefix': hashlib.sha256(content[:end]).hexdigest()}))
             return True
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return False
 
 
@@ -67,7 +71,9 @@ def main():
     if not args.thread:
         return 0
     codex = os.environ.get('CMUX_AGENT_LAUNCH_EXECUTABLE') or shutil.which('codex')
-    if not codex or not deliver(args.log, args.thread, codex):
+    surface = os.environ.get('CMUX_SURFACE_ID')
+    cmux = (os.environ.get('CMUX_BUNDLED_CLI_PATH') or shutil.which('cmux')) if surface else None
+    if not (codex or cmux) or not deliver(args.log, args.thread, codex, cmux=cmux, surface=surface):
         print('codex-pr-events: queue failed; events remain pending in the ship log', file=sys.stderr)
         return 1
     return 0

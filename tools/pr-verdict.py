@@ -362,6 +362,19 @@ def number_description(repo, ref, runs, why, ai_line, state):
     return why
 
 
+def speed_state(state, live, jobs, me, reports, job_status):
+    """Preserve the verdict state, but defer speed reads for a red whose deciding peers have not ended."""
+    result = state
+    # Why (30 Oct 2026, Gitar on #2531): an early red is not the last writer; wait for its peers before spending speed calls.
+    if state == 'failure':
+        for r in live:
+            if r.get('status') == 'completed': continue
+            deciding = [j for j in jobs.get(r['databaseId'], []) if j.get('name') not in REPORT_JOBS and suite_of(j.get('name', '')) not in reports]
+            if not any(j.get('id') == me for j in deciding) or any(job_state(j, me, job_status) in ('running', 'finishing') for j in deciding):
+                result = 'pending'; break
+    return result
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')   # a Windows runner's console is cp1252
     ap = argparse.ArgumentParser()
@@ -409,15 +422,7 @@ def main():
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
-    speed_state = state
-    # Why (30 Oct 2026, Gitar on #2531): an early red is not the last writer; wait for its peers before spending speed calls.
-    if state == 'failure':
-        for r in live:
-            if r.get('status') == 'completed': continue
-            deciding = [j for j in jobs.get(r['databaseId'], []) if j.get('name') not in REPORT_JOBS and suite_of(j.get('name', '')) not in reports]
-            if not any(j.get('id') == me for j in deciding) or any(job_state(j, me, a.job_status) in ('running', 'finishing') for j in deciding):
-                speed_state = 'pending'; break
-    why = number_description(a.repo, ref, runs, why, ai_line, speed_state)
+    why = number_description(a.repo, ref, runs, why, ai_line, speed_state(state, live, jobs, me, reports, a.job_status))
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

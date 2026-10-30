@@ -23,6 +23,14 @@ test('the whole suite runs again when the red has no step to name', () => {
   assert.equal(redSteps([record('steps picked for this PR')]), null);   // a picked name matched no step (renamed): only the whole suite can tell
 });
 
+test('a suite-level stored-answer guard replays the journey that can produce its question', () => {
+  const guard = {suite: 'activityfailures', step: 'every backbone AI question had a stored answer',
+    message: 'E2E_AI_ANSWER_MISSING: activityfailures: app.decide zürich has no stored answer'};
+  assert.equal(redSteps([guard]), null);
+  assert.equal(redSteps([record('an ordinary red step'), guard]), null);
+  assert.equal(onlyRenamedPicks([guard]), false, 'a genuine guard failure is not a renamed pick');
+});
+
 test('a red that is only a stale pick (a renamed step) runs the whole suite in the first try, not as a red (26-27 Oct 2026: 19 of 54 reds)', () => {
   assert.equal(onlyRenamedPicks([record('steps picked for this PR')]), true);
   assert.equal(onlyRenamedPicks([record('steps picked for this PR'), record('Automatic backup: the message names the file')]), false, 'a real red too: the retry decides');

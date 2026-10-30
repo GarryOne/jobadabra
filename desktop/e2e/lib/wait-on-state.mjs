@@ -1,8 +1,16 @@
 // Poll form values, closed job tabs and app log completions with one hang cap; tolerate reads by composition.
 // Job: wait on state
-/* global window */
+/* global chrome, window */
 import {appLogText, currentLaunchLog} from './app-log.mjs';
 import {pause as sleep} from './apply-fixtures.mjs';
+
+// Why (30 Oct 2026, owner on #2612: "wait on the state, not on a specific time"): a step's measured hang cap (hang-caps.json, 3x calm main p95) is its
+// only clock. The runner notes when it ends; a wait inside the step runs until then, never to a cap of its own that undercuts a measured delay.
+let stepEndsAt = null;
+/** Note that the running step's hang cap ends `ms` from now (lib/runner.mjs withLimit); null when the step is over. */
+export const stepClock = ms => { stepEndsAt = ms == null ? null : Date.now() + ms; };
+/** Milliseconds left in the running step; with no runner step (a unit test), undefined, so pollUntil keeps its own default. */
+export const stepTimeLeft = () => (stepEndsAt === null ? undefined : Math.max(0, stepEndsAt - Date.now()));
 
 /** Wait for `done` after the latest recorded launch; no recorded starts are already settled. */
 export async function waitForLogLine(profile, done, {what = done.source, capMs = 90000, now = Date.now, pause = sleep} = {}) {
@@ -65,9 +73,9 @@ export function waitForFormValue(read, wanted, options = {}) {
 
 const accountEvents = ['account page: answers typed there are not learned', 'account page: a sign-in or sign-up press, not an application submit'];
 
-/** Read only events appended by this attempt and host; a submit event must also name its account path. */
-export function accountSafetyEvidence(log, {after = 0, host, path}) {
-  const lines = String(log).slice(after).split('\n');
+/** Read only events made since this attempt began (each line starts with its ISO time) on its host; a submit event must also name its account path. */
+export function accountSafetyEvidence(log, {since = '', host, path}) {
+  const lines = String(log).split('\n').filter(line => line.slice(0, 24) >= since);
   const missing = accountEvents.filter((message, index) => !lines.some(line => {
     if (!line.includes(message)) return false;
     try {
@@ -75,21 +83,27 @@ export function accountSafetyEvidence(log, {after = 0, host, path}) {
       return fields.host === host && (index === 0 || fields.path === path);
     } catch { return false; }
   }));
-  return {complete: missing.length === 0, missing, log: String(log).slice(after)};
+  return {complete: missing.length === 0, missing, log: lines.join('\n')};
 }
 
 /**
- * Wait until every expected extension decision line is in the app's log; resolves {value: the last log read, ms}. Lines are RegExps (a g flag is ignored).
- * Why (30 Oct 2026, a8, #2608): the extension pushes its decisions in batches, and in beta 41090972183 they reached the app 14-62 s after they were made;
- * a step that read the log once, as the form finished, missed "page kind corrected". The cap catches a line that never arrives and is never a speed assertion.
+ * The extension's decisions as app.log lines (desktop/lib/server-env.js onLog writes them the same way), read where they are made: the extension's own store
+ * (extension/log.js), then app.log for those the store has rolled out. Why (30 Oct 2026, owner on #2612; #2608): the store is a decision's one owner, written
+ * at once; app.log gets it by a push that ran 14-62 s late, so steps that read app.log waited on delivery, not on the decision (3 tries: 10 s, 45 s, 60 s).
  */
-export function waitForDecisions(readLog, lines, options = {}) {
-  return pollUntil(tolerant(readLog), log => lines.every(line => String(log).search(line) !== -1),
-    {capMs: 60000, label: ms => `the extension's decision lines arrived ${ms} ms after the wait started`, ...options});
+export async function extensionDecisions({browser, profile}) {
+  const kept = await browser.serviceWorker().then(worker => worker.evaluate(async () => (await chrome.storage.local.get('jp-decisions'))['jp-decisions'] || [])).catch(() => []);
+  return [...kept.map(entry => `${entry.at} [extension] ${entry.kind}: ${entry.text} ${JSON.stringify(entry.fields || {})}`), appLogText(profile)].join('\n');
 }
 
-/** Poll the actual account safety events; the cap catches missing delivery and is never a speed assertion. */
-export function waitForAccountSafety(readLog, attempt, options = {}) {
-  return pollUntil(() => accountSafetyEvidence(readLog(), attempt), value => value.complete,
-    {capMs: 45000, label: ms => `the account safety events arrived ${ms} ms after the wait started`, ...options});
+/** Wait until every expected decision line (RegExps; a g flag is ignored) is read; resolves {value: the last read, ms}. The step's hang cap is the only clock. */
+export function waitForDecisions(readDecisions, lines, options = {}) {
+  return pollUntil(tolerant(readDecisions), log => lines.every(line => String(log).search(line) !== -1),
+    {capMs: stepTimeLeft(), label: ms => `the extension's decision lines were read ${ms} ms after the wait started`, ...options});
+}
+
+/** Poll the account safety events made since the attempt began; the step's hang cap is the only clock. */
+export function waitForAccountSafety(readDecisions, attempt, options = {}) {
+  return pollUntil(tolerant(async () => accountSafetyEvidence(await readDecisions(), attempt)), value => value.complete,
+    {capMs: stepTimeLeft(), label: ms => `the account safety events were read ${ms} ms after the wait started`, ...options});
 }

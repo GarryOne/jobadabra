@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
 import {test} from 'node:test';
 import {config, exportTo, pullInbox, pushConfig, state, turnOff, turnOn} from '../lib/hosted-search.js';
 
@@ -88,5 +89,12 @@ test('the wizard step sits after the strategy and before the extras; its words f
   assert.match(fs.readFileSync(new URL('../renderer/hosted-words.js', import.meta.url), 'utf8'), /Your profile is stored encrypted on our servers\. Turn it off anytime = deleted\./);
   assert.match(view, /switchRow\('hosted-news', NEWS, true/);   // pre-checked (owner, 16 Oct 2026; a lawyer checks before launch)
   assert.doesNotMatch(view.replace(/\/\/.*$/gm, ''), /GitHub|container|\$\d/);
-  // setup-step-count.test.js checks every mounted eyebrow against the sidebar; fixed totals drift.
+  const html = read('renderer/index.html');
+  const sidebar = [...html.matchAll(/<li data-step="([a-z]+)"/g)].map(match => match[1]);
+  sidebar.splice(sidebar.indexOf('extras'), 0, 'hosted');
+  const numbered = [...html.matchAll(/<div class="step" data-step="([a-z]+)"[^>]*>([\s\S]*?)(?=\n    <div class="step" data-step=|\n  <\/div>\n)/g)]
+    .filter(([, , body]) => body.includes('data-step-count')).map(([, key]) => key);
+  const pure = read('renderer/pages/wizard.js').match(/export function setupStepLabels\(steps\) \{[\s\S]*?\n\}/)[0].replace('export ', '');
+  const labels = vm.runInNewContext(`${pure}\nsetupStepLabels`)(sidebar).filter(label => numbered.includes(label.key)).map(label => label.eyebrow);
+  assert.deepEqual(JSON.parse(JSON.stringify(labels)), ['Step 2 of 7', 'Step 3 of 7', 'Step 4 of 7', 'Step 7 of 7']);
 });

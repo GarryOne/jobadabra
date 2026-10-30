@@ -51,7 +51,8 @@ function assertLabels(view) {
   const items = view.list.children.filter(item => !item.hidden && item.style.display !== 'none' && item.style.visibility !== 'hidden');
   for (const [index, item] of items.entries()) {
     const page = view.document.querySelector(`.step[data-step="${item.dataset.step}"]`);
-    const eyebrows = page.querySelectorAll('.eyebrow');
+    if (['welcome', 'letter'].includes(item.dataset.step)) continue;
+    const eyebrows = page.querySelectorAll('[data-step-count]');
     assert.ok(eyebrows.length, `${item.dataset.step}: a numbered eyebrow`);
     for (const eyebrow of eyebrows) assert.match(eyebrow.textContent, new RegExp(`^Step ${index + 1} of ${items.length}(?:$| · )`), item.dataset.step);
   }
@@ -59,7 +60,7 @@ function assertLabels(view) {
   for (const node of view.document.querySelectorAll('[data-step-reference="draft"]')) assert.equal(node.textContent, `step ${strategyNumber}`);
 }
 
-test('every wizard eyebrow matches its sidebar position after Always on mounts', () => {
+test('every numbered wizard eyebrow matches its sidebar position after Always on mounts', () => {
   const view = fixture();
   assert.equal(view.list.children.length, 7);
   view.goStep('draft');
@@ -87,4 +88,12 @@ test('the pure numbering function uses only the supplied sidebar order', () => {
     {key: 'extras', eyebrow: 'Step 1 of 2', reference: 'step 1'},
     {key: 'draft', eyebrow: 'Step 2 of 2', reference: 'step 2'},
   ]));
+});
+
+test('Welcome keeps its original first-run and completion wording; Cover letter has no eyebrow', () => {
+  const view = fixture();
+  view.goStep('draft');
+  assert.deepEqual(view.document.querySelector('.step[data-step="welcome"]').querySelectorAll('.eyebrow').map(node => node.textContent),
+    ['Check-in · about 5 minutes', 'Setup complete']);
+  assert.equal(view.document.querySelector('.step[data-step="letter"]').querySelectorAll('.eyebrow').length, 0);
 });

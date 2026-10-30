@@ -11,6 +11,7 @@ import path from 'node:path';
 import {fillNote, fillState, launchBrowser, readForm} from './extension.mjs';
 import {writePrivate} from '../../lib/private-file.js';
 import {pressed, ticked} from './free-click.mjs';
+import {waitForAccountSafety} from './apply-account-evidence.mjs';
 import {waitForFormValue, waitJobFormClosed} from './wait-on-state.mjs';
 
 export async function runJourneys(ctx, h) {
@@ -114,12 +115,11 @@ export async function runJourneys(ctx, h) {
     }
     fail(problems);
   }, {needs: ctx.needs});
-
   // Account creation and the application form kept apart (owner, 8 Oct 2026). The posting's Apply leads to a sign-up page: the extension leaves it alone and
   // the session shows the account step, no form progress (since 12 Oct 2026 the extension fills the page's detail fields by meaning, and presses neither the box nor the button). The test, as the person, creates the account; the form behind it is filled from the kit and the
   // session moves on to the form. Nothing typed on the sign-up page is learned as an answer or a fill miss, and "Create account" is not the application sent.
   await ctx.run('a sign-up page before the form: the account step is kept apart from the application form', async () => {
-    const appLog = () => appLogText(ctx.profile);
+    const appLog = () => appLogText(ctx.profile), accountLogStart = appLog().length;
     await page.evaluate(([url, details]) => window.pilot.applyOne(url, details), [SIGNUP.url, {title: SIGNUP.title, company: SIGNUP.company}]);
     const find = url => ctx.browser.context.pages().find(item => item.url().startsWith(url)) || null;
     let tab = null;
@@ -149,13 +149,13 @@ export async function runJourneys(ctx, h) {
     }
     for (let waited = 0; waited < 20000 && at?.stage !== 'form'; waited += 1000) { at = await session(); await pause(1000); }
     if (at?.stage !== 'form') problems.push(`on the application form the session did not move to the form step (stage: ${at?.stage})`);
-    const log = appLog();
-    if (!/account page: answers typed there are not learned/.test(log)) problems.push('the answers typed on the sign-up page were not kept out of the learned answers (no "not learned" line in the app log)');
-    if (!/account page: a sign-in or sign-up press, not an application submit/.test(log)) problems.push('"Create account" was not told apart from submitting the application');
+    const {value: safety} = await waitForAccountSafety(appLog, {after: accountLogStart, host: SIGNUP.accountHost, path: SIGNUP.accountPath});
+    const log = safety.log;
+    if (safety.missing.includes('account page: answers typed there are not learned')) problems.push('the answers typed on the sign-up page were not kept out of the learned answers (no "not learned" line in the app log)');
+    if (safety.missing.includes('account page: a sign-in or sign-up press, not an application submit')) problems.push('"Create account" was not told apart from submitting the application');
     if (/learned.*Username|Username.*learned/i.test(log)) problems.push('"Username" from the sign-up page reached the learned answers');
     fail(problems);
   }, {needs: ctx.needs});
-
   // A sign-in page before the form where we have an account (8 Oct 2026: a saved site password + "email=" on its item = sign-in). The run's own password store
   // (never the Keychain: lib/keychain.js) holds the fixture host's test password with the applicant's email. The extension fills the email and the password, presses
   // "Sign in" once on the account AI's "ready", and the form behind it is filled from the kit; Settings → Credentials lists the host with the email. Then the same

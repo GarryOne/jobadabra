@@ -30,8 +30,7 @@
   "row-case-gates.test.mjs",
   "server-closes-on-failure.test.mjs",
   "site-ledger.test.mjs",
-  "test-sets.test.mjs",
-  "applyflows-backbone.test.mjs"
+  "test-sets.test.mjs"
  ],
  "daily": [
   "activity-steps-state.test.mjs",
@@ -389,7 +388,9 @@
   "widget-zoo.test.mjs",
   "check-fill.test.mjs",
   "wrong-values.test.mjs",
-  "pr-linux.test.mjs"
+  "pr-linux.test.mjs",
+  "apply-account-evidence.test.mjs",
+  "applyflows-backbone.test.mjs"
  ],
  "folderReaders": {
   "./": [

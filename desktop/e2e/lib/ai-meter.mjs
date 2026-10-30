@@ -87,17 +87,14 @@ export async function fresh(fn, env = process.env) {
   try { return await fn(); } finally { if (saved === undefined) delete env.E2E_AI_REPLAY; else env.E2E_AI_REPLAY = saved; }   // process.env turns undefined into 'undefined'
 }
 
-// A kept answer is replayed for MAX_AGE_DAYS after it was paid for, then asked again live and kept fresh (owner, 7 Oct 2026): replayed forever, a change in
-// the model's own behaviour (a model update) would never reach the suites. An answer kept before this rule has no date: it is asked again once.
-export const MAX_AGE_DAYS = 3;
-const maxAgeMs = () => MAX_AGE_DAYS * 86400000;
-
-// -> {status, contentType, body: Buffer} kept for this request, or null (none, or older than its maximum age).
-export function recall(key, env = process.env, now = Date.now()) {
+// Why (30 Oct 2026, owner: "go" on the beta batch; design rule L): a kept answer never expires. With a 3-day expiry (7 Oct 2026) and a suite's ceiling of 0
+// asks without an answer, the forced live re-ask turned the suite red, and a red run never saves its cache, so it stayed red (beta 41078746088: focus,
+// focusdismiss, employers, wizard). A model update reaches the live lanes (qualityai, mailreading), never a gate through its cache.
+// -> {status, contentType, body: Buffer} kept for this request, or null (none).
+export function recall(key, env = process.env) {
   if (!replaying(env)) return null;
   try {
     const file = path.join(cacheDir(env), `${key}.json`), kept = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (!(now - Date.parse(kept.savedAt) < maxAgeMs())) return null;   // too old, or undated: asked live, and keep() saves it fresh
     try { const now = new Date(); fs.utimesSync(file, now, now); } catch {}   // still in use: the workflow drops answers untouched for a week
     return {status: kept.status, contentType: kept.contentType, body: Buffer.from(kept.body, 'base64')};
   } catch { return null; }

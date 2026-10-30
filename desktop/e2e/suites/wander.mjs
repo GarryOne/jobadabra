@@ -17,6 +17,7 @@ import {goView} from '../lib/go-view.mjs';
 // Why (30 Oct 2026, ap): wander checks UI resilience with declared answers; no live AI key or transport is needed.
 export const offlineAi = true;
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 export const name = 'wander';
 export const keepGoing = true;
 export const notionProxy = true;

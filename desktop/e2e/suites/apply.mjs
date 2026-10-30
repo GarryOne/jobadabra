@@ -2,6 +2,7 @@
 // Apply with the real Chrome extension on fixture forms: the app's Apply click opens a form, the extension fills it from the job's kit, leaves what is the
 // person's to decide, and never submits. Starts from a set-up install; writes and removes only its own jobs in its Notion page. The forms are local
 // (lib/forms.mjs, behind the real job-site host names), the AI answer is canned, so the suite costs nothing and no employer site is contacted.
+// Job: wait on state
 import fs from 'node:fs';
 import {parseShard} from '../lib/replay-shard.mjs';
 import {stepSlicer} from '../lib/step-slices.mjs';

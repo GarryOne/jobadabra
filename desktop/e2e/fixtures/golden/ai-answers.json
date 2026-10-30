@@ -952,6 +952,30 @@
       "default/app.title/e26073108d21/f2abdfeef08da005b50ecde7d2f76d0c9e63067f3c296c6479554ffb2652814c": {
         "text": "senior site reliability engineer",
         "answer": true
+      },
+      "default/app.title/a8034c8810b9/b3668671496f5c1cc629f710dbe272129e972e86473ee938e43e2bd3a2f983a7": {
+        "text": "senior site reliability engineer, rate-limit (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/6c9f3cbdd5f5b550b7b2fdacdd92bc165f8e5038d69496125ab72beca713700c": {
+        "text": "senior site reliability engineer, server-error (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/4dbba166d166ed546690b4ad2250252bc84175ceabba060f71be276960c1adbb": {
+        "text": "senior site reliability engineer, invalid-key (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/7c83ec1a77a1ae428cb6603bc7f3efa8f8ab86afdcd7a85e70ea30675a3f8930": {
+        "text": "senior site reliability engineer, no-credit (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/62715269dd00f91f9355c0e3009e5b208b220486e84565743f0bb295824f3917": {
+        "text": "lead platform engineer, silence (site reliability / data analyst)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/b36b0b3b7eb6d2d8830bdc0cac27f32e145b9674de19afce76cd5bb687728c2d": {
+        "text": "senior platform engineer, restart (site reliability / data analyst)",
+        "answer": true
       }
     },
     "app.place": {

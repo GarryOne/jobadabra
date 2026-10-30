@@ -1,0 +1,121 @@
+{
+  "about": "Completed first-try behavioral steps from MAIN runs 40992468315 and 41000326672. Both runs later failed the post-close missing-answer guard; that guard is not a timing sample. n=2, nearest-rank p95=max; limited baseline disclosed, no new runs commissioned.",
+  "runs": [
+    40992468315,
+    41000326672
+  ],
+  "rows": [
+    {
+      "name": "this suite starts with no run rows in its store",
+      "seconds": [
+        4.6,
+        0.5
+      ]
+    },
+    {
+      "name": "this suite starts with no job rows in its store's Job Matches",
+      "seconds": [
+        0.2,
+        0.3
+      ]
+    },
+    {
+      "name": "the app is seeded as a set-up install from the existing workspace",
+      "seconds": [
+        14.7,
+        15.4
+      ]
+    },
+    {
+      "name": "the app is quiet before the first task: no schedule, no first search, its history read",
+      "seconds": [
+        8.7,
+        8.8
+      ]
+    },
+    {
+      "name": "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running",
+      "seconds": [
+        28.6,
+        30.0
+      ]
+    },
+    {
+      "name": "the AI answers 500: the run ends as Failed or with warnings, in words, with nothing left Running",
+      "seconds": [
+        16.9,
+        19.7
+      ]
+    },
+    {
+      "name": "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running",
+      "seconds": [
+        18.8,
+        20.0
+      ]
+    },
+    {
+      "name": "the AI says the credit balance is empty (the spending limit): the run ends as Failed or with warnings, in words, with nothing left Running",
+      "seconds": [
+        17.4,
+        21.5
+      ]
+    },
+    {
+      "name": "a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure",
+      "seconds": [
+        16.6,
+        18.9
+      ]
+    },
+    {
+      "name": "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running",
+      "seconds": [
+        50.4,
+        50.6
+      ]
+    },
+    {
+      "name": "the AI out of credit while reading the CV: the card says it in words, never the API's JSON (#94)",
+      "seconds": [
+        2.0,
+        2.4
+      ]
+    },
+    {
+      "name": "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it",
+      "seconds": [
+        157.3,
+        158.0
+      ]
+    },
+    {
+      "name": "the failure and queued states render without layout problems",
+      "seconds": [
+        0.2,
+        0.3
+      ]
+    },
+    {
+      "name": "no AI call of this suite reached a real model: the stand-in answered or refused every one",
+      "seconds": [
+        0.2,
+        0.2
+      ]
+    },
+    {
+      "name": "nothing was queued to report to the product",
+      "seconds": [
+        0.2,
+        0.2
+      ]
+    },
+    {
+      "name": "the Notion stand-in answered every request the app made",
+      "seconds": [
+        0.2,
+        0.2
+      ]
+    }
+  ]
+}

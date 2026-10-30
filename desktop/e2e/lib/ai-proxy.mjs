@@ -28,12 +28,49 @@ export function failureFor(mode) {
   return failure ? {status: failure.status, body: JSON.stringify({type: 'error', error: {type: failure.type, message: failure.message}})} : null;
 }
 
+/** One arming owns its requests and failures; changing mode never retags delayed work. */
+function faultScope(mode) { return {mode, calls: 0, failed: 0, pending: 0, delayed: 0}; }
+
+/** Capture controls at receipt and cancel the delay when the response connection closes. */
+function requestFault(control, res, pending) {
+  const fault = control.fault, delayMs = control.delayMs;
+  fault.calls++; fault.pending++;
+  if (delayMs) fault.delayed++;
+  let timer, settle;
+  const ready = new Promise(resolve => {
+    settle = resolve;
+    timer = setTimeout(() => { timer = null; if (delayMs) fault.delayed--; resolve(true); }, delayMs);
+  });
+  const finish = () => {
+    if (!pending.delete(finish)) return;
+    fault.pending--;
+    if (timer) { clearTimeout(timer); timer = null; if (delayMs) fault.delayed--; settle(false); }
+  };
+  pending.add(finish);
+  res.once('close', finish);
+  return {fault, ready};
+}
+
+/** Serve only the request's captured fault; cancelled delays cannot consume any fault. */
+async function serveFault(control, fault, ready, res, openai) {
+  if (!await ready) return true;
+  if (fault.mode === 'pass') return false;
+  control.failed++; fault.failed++;
+  markPlanted(`ai ${fault.mode}`, fault.mode === 'hang' ? HUNG_REPORTS : undefined);
+  if (fault.mode === 'hang') return true;   // never answers; the client or teardown closes the connection
+  const failure = openai ? openaiFailureFor(fault.mode) : failureFor(fault.mode);
+  res.writeHead(failure.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(failure.body), 'retry-after-ms': '10'});
+  res.end(failure.body);
+  return true;
+}
+
 // kind / metered: the tally a paid call goes to and which API path is a model call (Anthropic: /messages; OpenAI: /responses, kind 'app-openai').
 // follow: the Claude proxy of the same suite, whose controls (canned answers, fault mode, delay) this one obeys, so a suite's stand-ins and faults work on an OpenAI
 // turn too (9 Oct 2026: the first OpenAI run let every stand-in pass through to the real model). shape 'openai': the Responses API, translated both ways.
 /** Start the app's AI proxy with fault controls, stored answers and metered live fallback. */
 export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic.com', kind = 'app', metered = /\/messages(\?|$)/, shape = 'anthropic', follow = null, maxCalls = 0, relay = null} = {}) {   // maxCalls: the refill's per-row cap on paid calls (lib/refill.mjs): the next one is refused here, before Anthropic
-  const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
+  const stats = {calls: 0, delayMs, mode: 'pass', canned: 0, armed: 0, failed: 0, fault: faultScope('pass')};   // armed / failed: the runner's check that a step's fault fired (lib/faults.mjs)
+  const pending = new Set();
   let canned = null;   // (request body as an object) -> the text a model would answer, or null to pass the call through to Anthropic
   const server = http.createServer(async (req, res) => {
     const chunks = [];
@@ -41,12 +78,8 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
     stats.calls++;
     if (follow) follow.stats.calls++;   // the suite's proxy counts every AI call of the turn, as it counts the faults below: steps compare its `calls` before and after (10 Oct 2026: apply failed on an OpenAI turn, "the AI was never asked")
     const control = follow ? follow.stats : stats, openai = shape === 'openai';   // the faults and the delay a step set on the suite's proxy
-    await new Promise(resolve => setTimeout(resolve, control.delayMs));
-    if (control.mode !== 'pass') { control.failed++; markPlanted(`ai ${control.mode}`, control.mode === 'hang' ? HUNG_REPORTS : undefined); }
-    if (control.mode === 'hang') return;   // never answers; the connection closes with the proxy
-    const failure = openai ? openaiFailureFor(control.mode) : failureFor(control.mode);
-    if (failure) { res.writeHead(failure.status, {'content-type': 'application/json', 'content-length': Buffer.byteLength(failure.body), 'retry-after-ms': '10'}); res.end(failure.body); return; }   // retry-after-ms: the SDK retries a 429 / 500 after what the answer says, not after seconds of backoff
-    const answerWith = follow ? follow.canned() : canned;
+    const {fault, ready} = requestFault(control, res, pending), answerWith = follow ? follow.canned() : canned;
+    if (await serveFault(control, fault, ready, res, openai)) return;
     if (answerWith) {
       const asked = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
       const text = await answerWith(openai ? asAnthropic(asked) : asked);   // may be async (the live run asks a real model)
@@ -120,9 +153,9 @@ export async function startAiProxy({delayMs = 0, target = 'https://api.anthropic
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return {url: `http://127.0.0.1:${server.address().port}`, stats, setDelay: ms => { stats.delayMs = ms; },
     // 'pass' (default), 'hang', or a key of FAILURES. Every call after this one is answered that way.
-    setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; },
+    setMode: mode => { if (mode !== 'pass' && mode !== 'hang' && !FAILURES[mode]) throw new Error(`unknown proxy mode: ${mode}`); if (mode !== 'pass') { stats.armed++; STUBBED.add(mode); } stats.mode = mode; stats.fault = faultScope(mode); return stats.fault; },
     // From now on, calls `answer` returns a text for are answered with it (no model, no cost); the rest go through.
-    setCanned: answer => { canned = answer; }, canned: () => canned, close: () => { server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
+    setCanned: answer => { canned = answer; }, canned: () => canned, close: () => { for (const finish of pending) finish(); server.closeAllConnections?.(); return new Promise(resolve => server.close(resolve)); }};
 }
 
 /** Send the same provider-shaped error for a suite stand-in and a declared stored refusal. */

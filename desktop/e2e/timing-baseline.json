@@ -4,8 +4,8 @@
     "elapsedAssertions": 0
   },
   "activityfailures": {
-    "fixedWaits": 3,
-    "elapsedAssertions": 1
+    "fixedWaits": 1,
+    "elapsedAssertions": 0
   },
   "apply": {
     "fixedWaits": 0,

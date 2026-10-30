@@ -1,6 +1,7 @@
 /* global document, window */
 // What the two activity suites (activity, activityfailures) share: reading the Actions page and Recent activity the way a person sees them, running a task and counting
 // its rows, the feed the engine reads, and the common start (a set-up install, its own run rows cleared, no schedule, the app quiet). The suites themselves are in suites/.
+// Job: wait on state
 import fs from 'node:fs';
 import path from 'node:path';
 import {badSummary, leaks, sample} from './activity.mjs';
@@ -8,6 +9,7 @@ import {clearData} from './start-state.mjs';
 import {snap} from './layout.mjs';
 import {ensureSetUp} from './seed.mjs';
 import {pressTask} from './task-card.mjs';
+import {pollUntil} from './wait-on-state.mjs';
 
 export const RUNS_DB = 'Cronjob Runs';
 
@@ -87,17 +89,13 @@ export async function openRun(ctx, label, {inPanel = false, id, snapAs, situatio
     await openPanel(ctx);
     await page.click('#activity-filter');
     await chooseMenu(page, new RegExp(`^${label}`));
-    await sleep(page, 500);
+    if (!ctx.activityStateWaits) await sleep(page, 500);
     await page.locator('#activity-recent .recent-row').first().click();
   } else {
     await (id ? page.locator(`#runs-table .runs-row[data-run-id="${id}"]`) : page.locator('#runs-table .runs-row').filter({has: page.locator('b', {hasText: new RegExp(`^${label}$`)})}).first()).click();
   }
   await page.waitForFunction(runPanelShown, null, {timeout: 10000});
-  await sleep(page, 1500);   // a run read from Notion fetches its page for the log
-  // The pill is drawn from the run's log: while the app still says it reads it from Notion the pill says "Completed" for a run the list calls "With warnings" (beta 12, CI: 25 s+ behind the start-up reads). Wait for the reading to end, not a longer sleep.
-  await page.waitForFunction(() => !/Reading from Notion|Waiting for the log/.test(document.getElementById('log')?.textContent || ''), null, {timeout: 40000}).catch(() => {});   // a log that never arrives is the step's own finding
-  // A page read is two Notion calls that wait their turn behind the app's start-up reads (25 s+ seen): wait for the result instead of a fixed look (6 Oct 2026: the step looked before the read ended).
-  if (untilResult) await page.waitForFunction(() => ['activity-card', 'activity-message', 'activity-result', 'activity-warnings'].some(id => { const node = document.getElementById(id); return node && !node.hidden && node.textContent.trim(); }), null, {timeout: 90000}).catch(() => {});
+  await waitForDetail(ctx, id, untilResult);
   const seen = await page.evaluate(() => {
     const text = id => (document.getElementById(id)?.hidden ? '' : document.getElementById(id)?.textContent || '').replace(/\s+/g, ' ').trim();
     return {title: text('activity-selected'), status: text('activity-status'), warningsTitle: text('activity-warnings-title'), warnings: text('activity-warnings-summary'),
@@ -116,10 +114,53 @@ export async function openRun(ctx, label, {inPanel = false, id, snapAs, situatio
   return seen;
 }
 
+/** Browser predicate: only the selected run with all pending detail reads settled is ready. */
+export function activityDetailReady(id) {
+  const state = window.__activity?.();
+  return !!state?.shownId && (!id || String(state.shownId) === String(id)) &&
+    (!state.selected || String(state.selected) === String(state.shownId)) && state.reading?.length === 0;
+}
+
+/** Browser predicate: old history cannot stand in for a resumed search in this launch. */
+export async function resumedSearchSeen(ids) {
+  const data = await window.pilot.runs();
+  return data.running?.kind === 'search' || data.runs.some(run => run.kind === 'search' && !ids.includes(run.id) && run.ok);
+}
+
+// activityfailures opts into the approved state wait; the remaining activity siblings keep their own legacy wait pending redesign.
+async function waitForDetail(ctx, id, untilResult) {
+  const {page} = ctx;
+  if (ctx.activityStateWaits) {
+    await page.waitForFunction(activityDetailReady, id || null, {timeout: 90000});
+    return;
+  }
+  await sleep(page, 1500);   // a run read from Notion fetches its page for the log
+  // The pill is drawn from the run's log: while the app still says it reads it from Notion the pill says "Completed" for a run the list calls "With warnings" (beta 12, CI: 25 s+ behind the start-up reads). Wait for the reading to end, not a longer sleep.
+  await page.waitForFunction(() => !/Reading from Notion|Waiting for the log/.test(document.getElementById('log')?.textContent || ''), null, {timeout: 40000}).catch(() => {});   // a log that never arrives is the step's own finding
+  // A page read is two Notion calls that wait their turn behind the app's start-up reads (25 s+ seen): wait for the result instead of a fixed look (6 Oct 2026: the step looked before the read ended).
+  if (untilResult) await page.waitForFunction(() => ['activity-card', 'activity-message', 'activity-result', 'activity-warnings'].some(id => { const node = document.getElementById(id); return node && !node.hidden && node.textContent.trim(); }), null, {timeout: 90000}).catch(() => {});
+}
+
 // After a (re)launch: the window is up and the app has read its history and has nothing to do.
 export async function appReady(ctx) {
   await ctx.page.waitForSelector('.view:not([hidden])', {timeout: 60000});
-  await quiet(ctx, {forMs: 3000, maxMs: 240000});
+  await quiet(ctx, {forMs: ctx.activityStateWaits ? 0 : 3000, maxMs: 240000});
+}
+
+/** Keep the temporary silence limit inside its cleanup scope, including startup failures. */
+export async function withSilenceLimit(ctx, run) {
+  try {
+    await ctx.relaunch({JOB_PILOTTO_E2E_IDLE_MS: '10000'});
+    await appReady(ctx);
+    return await run();
+  } finally {
+    const fault = ctx.proxy.stats.fault;
+    ctx.proxy.setMode('pass');
+    // Closing a hung suite must never be followed by a late relaunch from its abandoned step.
+    if (!ctx.page.isClosed()) { await ctx.relaunch(); await appReady(ctx); }
+    const {value} = await pollUntil(() => fault.pending, pending => pending === 0, {log: () => {}});
+    if (value !== 0) throw new Error(`AI ${fault.mode} left ${value} request(s) after the silence instance closed`);
+  }
 }
 
 // The rows of the open Recent activity panel as a person sees them: {kind, what, state}.
@@ -131,7 +172,7 @@ export async function openPanel(ctx) {
   await page.click('.nav[data-view="actions"]');
   await page.click('#runs-all');
   await page.waitForFunction(() => !document.getElementById('actions-runs')?.hidden && !!document.querySelector('#actions-runs .ap-grid'), null, {timeout: 10000});
-  await sleep(page, 800);
+  if (!ctx.activityStateWaits) await sleep(page, 800);
 }
 // The one run panel is on screen, in the drawer or in Actions → Runs.
 export const runPanelShown = () => !!document.querySelector('.ap-detail')?.offsetParent;
@@ -145,11 +186,14 @@ export const searchRows = async (page, before) => { const {mine, twice} = own((a
 export const idsNow = async page => new Set((await runsData(page)).runs.map(run => run.id));
 
 // The feed the engine reads: these postings, nothing else (an empty list means a search finds nothing new and asks the AI nothing).
-let nextId = Math.floor(Date.now() / 1000);   // new in every run of the suite: a posting seen by an earlier run (its Job Matches row stays in Notion) is not new
+// Each isolated store starts with the same ids; later steps still introduce unseen postings.
+const feedIds = new WeakMap();
 export function setFeed(ctx, titles = [], {location = 'Zurich, Switzerland or Amsterdam, Netherlands'} = {}) {
   // The titles say both "Site Reliability Engineer" and "Data Analyst": the roles a wizard-built page searches for, and the example's (a page whose Search settings were not built from the CV).
+  let nextId = feedIds.get(ctx) ?? 100000;
   const jobs = titles.map(title => { const id = nextId++; title = `${title} (Site Reliability / Data Analyst)`; return {id, title, location: {name: location}, absolute_url: `https://boards.e2e.test/job/${id}`, updated_at: '2026-10-02T09:00:00Z',
     content: `<p>${title}: run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.</p>`}; });
+  feedIds.set(ctx, nextId);
   fs.writeFileSync(path.join(ctx.feeds, 'acme.json'), JSON.stringify({jobs}));
   fs.writeFileSync(path.join(ctx.feeds, 'beta.json'), JSON.stringify({jobs: []}));
   return jobs;
@@ -220,7 +264,7 @@ export async function prepare(ctx) {
   await ctx.run('the app is quiet before the first task: no schedule, no first search, its history read', async () => {
     // A set-up install's first search (pressed on the Find jobs card) and a schedule that catches up what is due: neither belongs in a count of "one click, one row".
     await page.evaluate(() => window.pilot.saveSettings({autoSearch: false, schedule: {search: 0, mail: 0, scout: 'off', insights: 'off'}}));
-    await quiet(ctx, {forMs: 8000, maxMs: 300000});
+    await quiet(ctx, {forMs: ctx.activityStateWaits ? 0 : 8000, maxMs: 300000});
   }, {needs: ctx.needs, critical: true});
   return page;
 }

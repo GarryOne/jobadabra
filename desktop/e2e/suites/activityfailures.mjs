@@ -4,12 +4,25 @@
 // activity suite, in parallel, on its own Notion page (this split halves the wall-clock time).
 // Job: run the backbone
 import path from 'node:path';
+import {pollUntil, waitForLogLine} from '../lib/wait-on-state.mjs';
 import {badSummary, leaks} from '../lib/activity.mjs';
 import {digestProblems} from '../lib/telegram-fake.mjs';
 import {rows as notionRows} from '../lib/notion.mjs';
 import {waitForRunLock, waitedForLock} from '../lib/run-lock.mjs';
 import {finish, snap} from '../lib/layout.mjs';
-import {LABEL, appReady, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, runTask, runsData, setFeed, sleep} from '../lib/activity-steps.mjs';
+import {LABEL, idsNow, noRowStaysRunning, openRun, own, prepare, quiet, resumedSearchSeen, runTask, runsData, setFeed, sleep, withSilenceLimit} from '../lib/activity-steps.mjs';
+
+// Only this arming can prove consumption; global failures may belong to earlier delayed calls.
+function consumedFault(fault) {
+  if (!fault.failed) throw new Error(`this run never consumed its own ${fault.mode} fault`);
+}
+
+// Restore the next scenario's controls, then require this arming's own connections to close.
+async function releaseFault(proxy, fault) {
+  proxy.setMode('pass');
+  const {value} = await pollUntil(() => fault.pending, pending => pending === 0, {log: () => {}});
+  if (value !== 0) throw new Error(`AI ${fault.mode} left ${value} request(s) pending after its run ended`);
+}
 
 // Where the list's and the panel's pills got their words when they disagree (betas 13, 19, 20, 25 Oct 2026): the record's flags and what each log holds.
 const warnLine = line => /^Warning|\b429\b|Too Many Requests|\b(?:skipped|failed)\b|^AI limit reached/i.test(String(line));
@@ -22,6 +35,28 @@ const disagreement = (mine, opened, run) => {
 export const offlineAi = true;
 export const realAi = false;
 export const minutes = 40;   // + Notion, Telegram and Gmail failures (5 Oct 2026)
+// Rule B: nearest-rank p95 from two completed MAIN first-try behavioral samples; see fixtures/activityfailures-main-timings.json.
+// Runs later failed only the missing-answer guard. Caps are hang stops, rounded up to 5 s with a 30 s floor, not speed assertions.
+export const aggregateBudget = false;
+export const hangCaps = {
+  "this suite starts with no run rows in its store": 30,
+  "this suite starts with no job rows in its store's Job Matches": 30,
+  "the app is seeded as a set-up install from the existing workspace": 50,
+  "the app is quiet before the first task: no schedule, no first search, its history read": 30,
+  "the AI answers 429 (rate limit): the run ends as Failed or with warnings, in words, with nothing left Running": 90,
+  "the AI answers 500: the run ends as Failed or with warnings, in words, with nothing left Running": 60,
+  "the AI says the key is invalid (401): the run ends as Failed or with warnings, in words, with nothing left Running": 60,
+  "the AI says the credit balance is empty (the spending limit): the run ends as Failed or with warnings, in words, with nothing left Running": 65,
+  "a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure": 60,
+  "the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running": 155,
+  "the AI out of credit while reading the CV: the card says it in words, never the API's JSON (#94)": 30,
+  "quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it": 475,
+  "the failure and queued states render without layout problems": 30,
+  "no AI call of this suite reached a real model: the stand-in answered or refused every one": 30,
+  "nothing was queued to report to the product": 30,
+  "the Notion stand-in answered every request the app made": 30,
+};
+
 export const name = 'activityfailures';
 // Why (30 Oct 2026, owner-approved rules A/G2): fixture-only repairs missed this journey in the PR picker; its semantic inputs must run it whole.
 export const watches = ['desktop/e2e/fixtures/golden/activityfailures-decide.json',
@@ -41,6 +76,7 @@ export const env = {JOB_PILOTTO_E2E_HISTORY_MS: '3000', JOB_PILOTTO_E2E_RESUME_M
 // The three parts are the suites activityfailures (the AI), failuresnotion and failureschannels (Telegram, Gmail, Google): each on its own Notion page, in parallel.
 export async function runParts(ctx, parts) {
   const {proxy} = ctx;
+  ctx.activityStateWaits = parts.includes('ai');
   const page = await prepare(ctx);
   // The steps that need the AI proxy in front of the app (a refusal, a delay, silence) run on the API engine with a dummy key when the Mac uses Claude Code (lib/engine.mjs).
   const api = fn => () => ctx.withApi(fn);
@@ -56,7 +92,7 @@ export async function runParts(ctx, parts) {
     for (const failure of FAILURES) {
       await ctx.run(`${failure.what}: the run ends as Failed or with warnings, in words, with nothing left Running`, api(async () => {
         setFeed(ctx, [`Senior Site Reliability Engineer, ${failure.mode}`]);
-        proxy.setMode(failure.mode);
+        const fault = proxy.setMode(failure.mode);
         const callsBefore = proxy.stats.calls;
         try {
           const {fresh, shown, seconds} = await runTask(ctx, 'run', {maxMs: 300000, kind: 'search'});
@@ -67,6 +103,7 @@ export async function runParts(ctx, parts) {
           const problems = [];
           if (fresh.length !== 1) problems.push(`${fresh.length} Recent runs rows for one click`);
           if (proxy.stats.calls - callsBefore < 1) problems.push('the AI was never asked, so nothing was tested');
+          consumedFault(fault);
           const bad = badSummary(mine?.result);
           if (bad) problems.push(`the list's words are wrong: ${bad}`);
           if (/Completed$/.test(opened.status) && !opened.warnings && !opened.warningList) problems.push('the run says plain "Completed" with no warning, though the AI refused every call');
@@ -79,15 +116,16 @@ export async function runParts(ctx, parts) {
           for (const leak of leaks(`${opened.log}\n${shownWords}`, {secrets: [ctx.appKey, ctx.token], dirs: [ctx.profile, ctx.feeds]})) problems.push(`the log shows ${leak}`);
           if (problems.length) throw new Error(problems.join('; '));
           await noRowStaysRunning(ctx);
-        } finally { proxy.setMode('pass'); }
-      }), {needs: ctx.needs});
+        } finally { await releaseFault(proxy, fault); }
+      }), {needs: ctx.needs, faults: true, stopOnHang: true});
     }
     await ctx.run('a search analysis paused by the spending limit is a run with a warning that names the limit, not a failure', api(async () => {
-      proxy.setMode('no-credit');
+      const fault = proxy.setMode('no-credit');
       try {
         const {fresh, shown} = await runTask(ctx, 'weekly', {maxMs: 240000, kind: 'weekly'});
         const mine = shown.find(row => row.id === String(fresh[0].id));
         const opened = await openRun(ctx, LABEL.weekly, {id: fresh[0].id, snapAs: 'activity-limit-paused', situation: 'A search analysis paused because the Anthropic spending limit was reached: With warnings, naming the limit, in the Recent activity panel'});
+        consumedFault(fault);
         const words = `${opened.warnings} ${opened.warningList} ${mine?.result}`;
         console.log(`  search analysis at the limit: list "${mine?.result}" [${mine?.pill}]; panel [${opened.status}] ${opened.warnings.slice(0, 120)}`);
         const problems = [];
@@ -96,8 +134,8 @@ export async function runParts(ctx, parts) {
         if (/terminal/i.test(words)) problems.push('the words send an app user to a terminal');
         if (problems.length) throw new Error(problems.join('; '));
         await noRowStaysRunning(ctx);
-      } finally { proxy.setMode('pass'); }
-    }), {needs: ctx.needs});
+      } finally { await releaseFault(proxy, fault); }
+    }), {needs: ctx.needs, faults: true, stopOnHang: true});
   }
   if (parts.includes('notion')) {
     // ---------- (2b) Notion fails (5 Oct 2026) ----------
@@ -247,50 +285,47 @@ export async function runParts(ctx, parts) {
     }, {needs: ctx.needs, faults: true});
   }
   if (parts.includes('ai')) {
-    await ctx.run('the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running', api(async () => {
+    await ctx.run('the AI never answers: the run is stopped after its silence limit and ends as Stopped, in words, with nothing left Running', api(() => withSilenceLimit(ctx, async () => {
       // The app stops a run that prints nothing for 15 minutes; this test shortens that to 10 s (JOB_PILOTTO_E2E_IDLE_MS, honoured only in the journey).
-      await ctx.relaunch({JOB_PILOTTO_E2E_IDLE_MS: '10000'});
-      await appReady(ctx);
       // An earlier step's run may still hold the engine's run lock (#1662: 0.8.6/0.8.7 mixed "check your AI key" with "another search is running"): wait it out, so the 10 s are this run's own silence.
       await waitForRunLock(path.join(ctx.profile, 'data'));
       setFeed(ctx, ['Lead Platform Engineer, silence']);
-      proxy.setMode('hang');
-      try {
+      const fault = proxy.setMode('hang');
         const {fresh, shown, seconds} = await runTask(ctx, 'run', {maxMs: 180000, kind: 'search'});
         const mine = shown.find(row => row.id === String(fresh[0].id));
         const opened = await openRun(ctx, LABEL.search, {id: fresh[0].id, snapAs: 'activity-run-failed', situation: 'A Jobs check stopped by Jobadabra after the AI went silent: Stopped, with its reason, the step it was on and Run again, in the Recent activity panel'});
         console.log(`  silence: ${seconds}s; ok=${fresh[0].ok}; list: "${mine?.result}" [${mine?.pill}]; panel: [${opened.status}] ${opened.warnings.slice(0, 160)}`);
         const problems = [];
         if (fresh.length !== 1) problems.push(`${fresh.length} rows for one click: ${fresh.map(run => `[${run.id} ${run.trigger} ${run.where} ok=${run.ok} start=${run.startedAt} notion=${run.notionUrl.slice(-6)} result="${run.result.slice(0, 50)}" log=${run.log.length}]`).join(' ')}`);
+        consumedFault(fault);
         if (fresh[0].ok) problems.push('a run whose AI never answered ended as a success');
         if (waitedForLock(`${fresh[0].log.join('\n')} ${opened.log}`)) problems.push('the stopped run waited for another run\'s lock, so it was not the AI\'s silence that was tested');
-        if (seconds > 150) problems.push(`it took ${seconds} s to give up (the limit was 30 s)`);
         const bad = badSummary(mine?.result);
         if (bad) problems.push(`the list's words are wrong: ${bad}`);
         if (!/no output|stopp|did not answer|silen/i.test(`${fresh[0].log.join('\n')} ${fresh[0].result} ${opened.log} ${opened.warnings}`)) problems.push('nothing in the log or the words says the run was stopped for its silence');
         if (problems.length) throw new Error(problems.join('; '));
         await noRowStaysRunning(ctx);
-      } finally { proxy.setMode('pass'); }
-    }), {needs: ctx.needs});
+    })), {needs: ctx.needs, faults: true, stopOnHang: true});
 
     // ---------- (2b) the AI fails where a person asked for something on the spot (not a run) ----------
     // #94 (3 Oct 2026): with the AI out of credit, "Read my CV PDF" put the API's JSON in the CV card ("400 {"type":"error",…,"request_id":…}"). A failure state is where
     // such text shows, so the card is read here, and photographed: the layout check flags technical text shown to a person, and the AI review sees the page.
     await ctx.run('the AI out of credit while reading the CV: the card says it in words, never the API\'s JSON (#94)', api(async () => {
-      proxy.setMode('no-credit');
+      const fault = proxy.setMode('no-credit');
       try {
         await page.click('.nav[data-view="settings"]');
         page.once('dialog', dialog => dialog.accept().catch(() => {}));   // "Replace your CV data…?" when a CV was read before
         await page.locator('#cv-more .ui-more').click({timeout: 30000});   // the CV row's ⋯ holds Read my CV PDF (mockup 08, 18 Oct 2026)
         await page.locator('.ui-menu button', {hasText: 'Read my CV PDF'}).click({timeout: 10000});
         await page.waitForFunction(() => { const said = document.getElementById('cv-message')?.textContent || ''; return said && !/Reading your CV/.test(said); }, null, {timeout: 180000, polling: 1000});
+        consumedFault(fault);
         const said = (await page.locator('#cv-message').innerText()).trim();
         console.log(`  the CV card says: ${said.slice(0, 160)}`);
         if (/[{}]|"type"|request_id|invalid_request_error|Error code/.test(said)) throw new Error(`the CV card shows the API's raw answer: ${said.slice(0, 200)}`);
         if (!/credit|limit/i.test(said)) throw new Error(`the CV card does not say the AI is out of credit: ${said.slice(0, 200)}`);
         await snap(ctx, 'settings-cv-no-credit', {view: 'settings', situation: 'Read my CV PDF pressed while the AI has no credit'});
-      } finally { proxy.setMode('pass'); }
-    }), {needs: ctx.needs});
+      } finally { await releaseFault(proxy, fault); }
+    }), {needs: ctx.needs, faults: true, stopOnHang: true});
 
     // ---------- (3) two things at once, and a quit in the middle ----------
     // Removed 6 Oct 2026 (7-minute suite budget): a double-clicked Run (every task step already fails on a run listed twice: runTask), a Gmail check queued behind a
@@ -298,19 +333,21 @@ export async function runParts(ctx, parts) {
     await ctx.run('quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it', api(async () => {
       setFeed(ctx, ['Senior Platform Engineer, restart']);
       proxy.setDelay(10000);
+      const delayed = proxy.setMode('pass');
       try {
         const before = await idsNow(page);
         await page.click('.nav[data-view="actions"]');
         await page.click('[data-command="run"]');
         await page.waitForFunction(() => window.pilot.runs().then(data => data.running?.kind === 'search'), null, {timeout: 60000, polling: 1000});
-        await sleep(page, 3000);
+        const {value: held} = await pollUntil(() => delayed.delayed, pending => pending > 0, {capMs: 60000});
+        if (!held) throw new Error('the interrupted search never reached the delayed AI request');
         await ctx.relaunch();   // the app is killed as a crash or a power cut would: nothing gets to tidy up
         await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
         // The app asks whether to start again what you had started (a native dialog; the journey answers "Start again": lib/resume-queue.js askResume),
         // 3 s after launch here (20 s for a user). Wait for that run to start, then until it is idle again.
-        await page.waitForFunction(() => window.pilot.runs().then(data => !!data.running || data.runs.some(run => run.kind === 'search')), null, {timeout: 60000, polling: 1000}).catch(() => {});
-        await sleep(page, 4000);
-        await quiet(ctx, {forMs: 3000, maxMs: 300000});
+        await waitForLogLine(ctx.profile, /started again after a quit/);
+        await page.waitForFunction(resumedSearchSeen, [...before], {timeout: 60000, polling: 1000});
+        await quiet(ctx, {forMs: 0, maxMs: hangCaps['quitting the app in the middle of a run: it is not shown Running for ever, and the app says what became of it'] * 1000});
         const data = await runsData(page);
         const rows = own(data.runs.filter(run => run.kind === 'search' && run.trigger !== 'schedule' && !before.has(run.id))).mine;
         console.log(`  after the quit: running=${JSON.stringify(data.running)}; search rows: ${rows.map(run => `${run.ok ? 'ok' : 'failed'} ${run.startedAt.slice(11, 19)}`).join(', ')}`);
@@ -319,7 +356,7 @@ export async function runParts(ctx, parts) {
         if (!rows.some(run => run.ok)) throw new Error('the search you had started was not picked up again after the restart');
         await noRowStaysRunning(ctx, {waitMs: 90000});
       } finally { proxy.setDelay(0); }
-    }), {needs: ctx.needs});
+    }), {needs: ctx.needs, stopOnHang: true});
 
     await ctx.run('the failure and queued states render without layout problems', async () => {
       finish(ctx);

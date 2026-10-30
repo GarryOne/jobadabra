@@ -78,6 +78,14 @@ export function notionToken(suite, {own: ownOnly = false, env = process.env} = {
 // browser: the suite drives a real Chromium with the extension (lib/extension.mjs): the fixture forms are served, and the app's `open` reaches that browser.
 // engine: a suite whose steps the AI proxy answers pins 'api' (a placeholder key on a Mac); otherwise a Mac uses Claude Code, CI the API key (lib/engine.mjs).
 // clean-code-ok: Why (29 Oct 2026, ia): old function; this change adds one option to its signature (aggregateBudget) and one argument of the createRunner call; st adds offlineAi (score falls, 75 to 63); a8 (21b) forwards hangCaps to createRunner
+/** Teardown owns the last session: a late launch is closed, never adopted into a closed context. */
+export async function adoptSessionUnlessClosing(ctx, open, adopt) {
+  if (ctx.closing) return;
+  const session = await open();
+  if (ctx.closing) { await session.close(); return; }
+  adopt(session);
+}
+
 export async function openContext(suite, {fresh = false, env: suiteEnv = {}, browser = false, light = false, offlineAi = false, notionProxy = false, telegram = false, google = false, releases = false, notion: usesNotion = true, notionStandIn = false, store: suiteStore = '', newInstall = false, standInFromWizard = false, notionTokenOf = '', notionPage = '', keepGoing = false, variesPlace = false, engine: suiteEngine = '', budgetMinutes = 0, aggregateBudget = true, hangCaps = {}, stepNeeds = null, report = null} = {}) {
   // Where the app keeps the person's data (lib/store.mjs): this Mac (sqlite, no Notion at all), the in-memory Notion (fresh and private for this run, no
   // token, no shared page: lib/notion-fake.mjs), or the real test workspace for a suite that pins it. A suite with no Notion part keeps its own setup.
@@ -179,9 +187,9 @@ export async function openContext(suite, {fresh = false, env: suiteEnv = {}, bro
   adopt(await launch({env, lang: ctx.place?.locale || '', settings: newInstall ? {} : storeSettings(store)}));
   // The app's trace is kept when the suite failed so far: a failed step, or an error outside the steps (lib/suite-main.mjs sets ctx.stopped first).
   const failed = () => !!ctx.stopped || runner.results.some(result => result.status === 'failed');
-  ctx.close = async () => { try { await session?.shot('last'); await ctx.browser?.close(); await session?.close({keepTrace: failed()}); await ctx.proxy?.close(); await ctx.openaiProxy?.close(); await ctx.notion?.close(); await ctx.telegram?.close(); await ctx.google?.close(); await ctx.releases?.close(); if (ctx.standIn) { try { fs.writeFileSync(path.join(ARTIFACTS, 'notion-standin.json'), JSON.stringify(ctx.standIn.dump(), null, 1)); } catch {} writeNotionRequests(ARTIFACTS, ctx.standIn.requests); await ctx.standIn.close(); } await ctx.forms?.close(); } finally { ctx.pageLock?.release(); } };
+  ctx.close = async () => { ctx.closing = true; try { await session?.shot('last'); await ctx.browser?.close(); await session?.close({keepTrace: failed()}); await ctx.proxy?.close(); await ctx.openaiProxy?.close(); await ctx.notion?.close(); await ctx.telegram?.close(); await ctx.google?.close(); await ctx.releases?.close(); if (ctx.standIn) { try { fs.writeFileSync(path.join(ARTIFACTS, 'notion-standin.json'), JSON.stringify(ctx.standIn.dump(), null, 1)); } catch {} writeNotionRequests(ARTIFACTS, ctx.standIn.requests); await ctx.standIn.close(); } await ctx.forms?.close(); } finally { ctx.pageLock?.release(); } };
   // Quit the app the hard way (as a crash or a power cut would: nothing gets to tidy up) and start it again on the same profile. `extra` adds to the environment; `between(profile)` runs while the app is down.
-  ctx.relaunch = async (extra = {}, between) => { const profile = session.profile; await session.close({keepTrace: failed()}); await between?.(profile); adopt(await launch({env: {...env, ...extra}, profile, lang: ctx.place?.locale || ''})); };
+  ctx.relaunch = async (extra = {}, between) => { const profile = session.profile; await session.close({keepTrace: failed()}); await between?.(profile); await adoptSessionUnlessClosing(ctx, () => launch({env: {...env, ...extra}, profile, lang: ctx.place?.locale || ''}), adopt); };
   // Some actions end with the app's OWN exit (a reset, an import): it finishes its work first (a reset disconnects the Gmail sign-in through a Python call since 645cef9), so a
   // relaunch straight after the click closes the app half way and nothing was reset (10 Oct 2026, settings suite on Mac and Windows). Wait for that exit, then relaunch.
   ctx.waitForExit = (timeout = 60000) => { const mainPid = ctx.app.process().pid; return new Promise((resolve, reject) => {

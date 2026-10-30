@@ -25,11 +25,21 @@
 
 ## Progress
 
+### 1. Narrow repair and truthful failure proof
+
 - [x] Narrow geo repair merged as c567ff9, no owner merge performed by this agent. (proof: desktop/e2e/test/activityfailures-backbone-no-live-ai.test.mjs @5fe23fa)
 - [x] Read full first/retry CI artifacts and identify vacuous retry proof. (proof: none: run 40996297795, original refusals=5 and suite-failures=[])
 - [x] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI. (proof: desktop/e2e/test/no-real-ai.test.mjs @6cb36b4)
+### 2. Deterministic inputs and fault lifecycle
+
 - [ ] Deterministic input and lifecycle audit, evidence-based fix and CI.
+
+### 3. State waits and measured hang caps
+
 - [ ] State waits, measured hang caps and CI.
+
+### 4. Fresh main proof
+
 - [ ] Fresh main evidence after owner merges; full redesign claim only then.
 
 ## Isolation follow-up evidence
@@ -37,3 +47,23 @@
 The launcher explicitly wrote shareEmployers:false but omitted shareEmployersChosen. The real openPoolShare startup migration reopens that value; background-handlers can then schedule contribution after 60 seconds. Record the harness opt-out as a choice, using the same setting as the product switch. A focused regression exercises launcher defaults and the real migration through restart; explicit suite overrides remain available. This fixes a demonstrated external-input leak, without asserting that it caused every missing question.
 
 Finite semantic catalog and synthetic guard retry selection are separate PRs #2560 and #2566; both pass final-head CI with full Gitar approval. Full redesign still requires fault lifecycle, observable state waits, measured caps, CI and fresh main proof.
+## Remaining A–F audit (state-wait follow-up)
+
+| Rule | Evidence and implementation | Remaining proof |
+|---|---|---|
+| A: semantic AI | #2560 covers the finite seeded country/metro batches, six posting extractions and six separate role calls, alongside score/place/geo/refusal rows. Direct and HTTP Claude/OpenAI seams fail on missing keys before cache/transport. Post-close guard records unknown/background questions; #2566 retries their producing journey, never the synthetic guard name. | Full final-head CI and owner-controlled fresh main evidence. |
+| B: clock | Activityfailures uses selected/shown/read-complete state, current-launch resume marker and active/new completed search. Restart first witnesses a pending delayed request. No aggregate clock verdict or silence elapsed assertion. Existing pipeline-run timer-contract unit test remains. Named caps are 3x nearest-rank p95, rounded up to 5s, 30s floor, from the two disclosed existing main first tries; no additional main run. | Full journey; cap baseline is n=2, not a claim of a stable long-term percentile. |
+| C: inputs/lifecycle | Stand-in store, fake Google/Telegram, fixed feed content/date/location, fixed fixture sources/scout seeds, per-context repeating feed IDs, no owner profile/cache dependency. #2572 preserves the explicit employer-sharing opt-out through migration. #2573 captures request fault/responder at receipt, cancels delayed work on close, and requires own consumption/drain. Silence setup and restoration share one protected scope. | Shared helpers keep legacy waits for siblings; their ordinary behavior is preserved, not redesigned here. |
+| D: truthful results | Missing/empty first-failure proof stays red. Full journey first-try versus retry is reported explicitly; no live AI or clock rate was measured or invented. | Read actual final artifacts and fresh main, not the step icon alone. |
+| E: expectations | Owner's 30 Oct request authorizes the existing approved design. Behavioral error/status/row/lock/leak assertions remain. A new opt-in stopOnHang ends activityfailures on an uncancelled step hang; ordinary assertion failures keep collecting evidence. It does not retry or accept a hang. | Final review/CI. |
+| F: scope | Existing runner, activity helper, proxy, stored-answer seams and state poller are reused. Changed modules declare one approved Job. No new polling framework, lane move, live model use, Submit, or agent merge. | Harness gates and final CI. |
+
+Focused regressions cover deterministic IDs and real detail-state predicates, rejection of stale resume history, every measured cap using the real runner with a fake clock, stop-on-hang versus ordinary keep-going, and restoration after silence startup failure without late relaunch after closure.
+
+Review resolved two lifecycle findings: every activityfailures AI step opts into stop-on-hang (ordinary assertions keep going), and temporary silence configuration is protected from installation onward. A deferred-launch regression also proves context teardown closes an app that finishes opening late instead of adopting it. No new module or polling framework was added.
+
+## PR #2573 final boundary and exact first/retry evidence
+
+CI41053809561 on81ffce0 failed both tries on the same two causes: `AI hang left 1 request(s) pending after its run ended`, and captured title sort key `default/app.title/a8034c8810b9/b36b0b3b7eb6d2d8830bdc0cac27f32e145b9674de19afce76cd5bb687728c2d`. The stopped Python task does not itself close its parent app's pending provider request. Close/restore the silence app first, then prove the captured fault scope drained. A local hanging proxy request regression reproduces the ordering failure; the behavioral stopped-run assertions remain.
+
+The reviewed state-wait work is folded into #2573 so its own lifecycle scenario is complete, rather than publishing a dependent PR against a red parent. Six authored true title-sort verdicts cover the existing finite feed catalog for the exact seeded search. The captured context has six role words, intern/junior exclusions and no level; each accepted title explicitly contains one of those role words. Sort acceptance means the second-look rejection branch is not reached; unrelated contexts remain fail-closed. Exact refusal, reconstructed semantic context and provenance are preserved in the feed-asks fixture. Claude/OpenAI direct and HTTP seams each have independent red/green proof. No live calls, baseline cache borrowing or broad kind fallback.

@@ -150,14 +150,15 @@ jobs:
       - name: Install the tests
         working-directory: desktop/e2e
         run: npm ci || npm install
-      # The offline app (test/offline-app.test.mjs) imports desktop/lib/server.js and its packages (@anthropic-ai/sdk): without them the plan job died with ERR_MODULE_NOT_FOUND (11 Oct 2026).
+      # Why (a8, 30 Oct 2026): "What to run" (plan-run.mjs) imports lib/ensure-staged.mjs and every suites/*.mjs through context.mjs, which reach the app's code and its
+      # packages (@anthropic-ai/sdk); without them the beta and nightly plan dies with ERR_MODULE_NOT_FOUND (11 Oct 2026). The harness tests that once needed them run in harness.yml.
       - name: Install the app's own packages
-        if: inputs.pr_suites == ''   # a pull request runs the harness tests in its own required job
+        if: inputs.pr_suites == ''   # beta, nightly and scheduled plans import every suite
         working-directory: desktop
         run: npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts
-      # desktop/shared is generated (gitignored): test/judge-sketch-picklist.test.mjs imports it, and passed only when another test happened to stage it first (12 Oct 2026).
+      # desktop/shared is generated (gitignored): the suites the plan imports reach it (lib/ensure-staged.mjs), as the step above explains.
       - name: Stage the app's shared files
-        if: inputs.pr_suites == ''   # a pull request runs the harness tests in its own required job
+        if: inputs.pr_suites == ''   # beta, nightly and scheduled plans import every suite
         working-directory: desktop
         run: node scripts/stage.mjs --files-only
       # The harness's own tests no longer run here (owner, 30 Oct 2026, option C): harness.yml runs every one on each PR that reaches them, harness-daily.yml nightly on main.

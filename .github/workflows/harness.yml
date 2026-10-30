@@ -92,7 +92,7 @@ jobs:
       - name: The browsers for the tests' own tests (the full one loads the extension)
         uses: ./.github/actions/playwright-browser
         with: {working-directory: desktop/e2e, mode: both}
-      # The same command as harness-daily.yml and the push hook (tools/pre-push-check.sh): one list, the folder itself.
+      # The same command as harness-daily.yml: one list, the folder itself.
       - name: Every harness test
         working-directory: desktop/e2e
         run: npm test

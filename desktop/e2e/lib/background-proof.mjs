@@ -127,6 +127,14 @@ export async function describeHidden(profile) {
   }
 }
 
+/** The addresses of the pages the hidden browser of `profile` holds right now ([] when it is not running). Never throws. */
+export async function hiddenPages(profile) {
+  try {
+    const port = Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+    return (await (await fetch(`http://127.0.0.1:${port}/json/list`, {signal: AbortSignal.timeout(3000)})).json()).filter(item => item.type === 'page').map(item => String(item.url));
+  } catch { return []; }
+}
+
 /** Closes the app's hidden browser of `profile` (it dies with the app, lib/browser-reaper.js; a run closes it itself so it does not wait for that): Browser.close over its own debugging port. Never throws. */
 export async function closeHiddenBrowser(profile) {
   try {

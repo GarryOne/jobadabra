@@ -3,7 +3,7 @@
 // Why (30 Oct 2026, owner: "app quits mid-job" picked from the coverage sketch): only unit tests played a cut-off job (sweepInterrupted covers a press, not a held form). The hidden browser dies
 // with the app (lib/browser-reaper.js), so after the start nothing may press, and the job may not be left on a page that is gone. Every wait is on a state; the caps only catch a hang.
 // Job: wait on state
-import {HIDDEN_NEED, autoFormOf, backgroundStateOf, closeHiddenBrowser, describeHidden, kitSeeder, linkRuntime, sessionOf, withFormJudge} from './background-proof.mjs';
+import {HIDDEN_NEED, autoFormOf, backgroundStateOf, closeHiddenBrowser, describeHidden, hiddenPages, kitSeeder, linkRuntime, sessionOf, withFormJudge} from './background-proof.mjs';
 import {appLogLines} from './app-log.mjs';
 import {FORMS} from './forms.mjs';
 import {POSTING} from './apply-fixtures.mjs';
@@ -54,7 +54,9 @@ export async function runRestartSteps(ctx, {urls, until}) {
       console.log(`  after the start: ${seen.map(item => `${item.state || 'none'}@${item.at}s`).join(' → ')} | ${applyLines(ctx.profile)}`);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the form was posted ${ctx.forms.posts.length - posted} time(s)`);
       unread(seen);
-      if (seen.at(-1)?.state === 'ready_for_review') throw new Error(`a minute after the start the job still says ready for review on the hidden page that died with the app: ${await describeHidden(ctx.profile)}`);
+      // Measured on CI (30 Oct 2026, #2598): after the start the hidden browser holds the filled form again and the extension judges it ready, so "ready for review" can be true; it is wrong only with no page behind it.
+      const id = await sessionOf(ctx.page, form.url), pages = await hiddenPages(ctx.profile);
+      if (seen.at(-1)?.state === 'ready_for_review' && !pages.some(url => url.includes(`jobpilotto-fill=${id}`))) throw new Error(`a minute after the start the job says ready for review, but the hidden browser holds no page of session ${id}: ${pages.join(' | ') || 'no page'}`);
     } finally { await closeHiddenBrowser(ctx.profile); }
   }, {needs});
 
@@ -69,7 +71,8 @@ export async function runRestartSteps(ctx, {urls, until}) {
       console.log(`  after the start (${id}): ${seen.map(item => `${item.state || 'none'}@${item.at}s`).join(' → ')} | ${applyLines(ctx.profile)}`);
       if (ctx.forms.posts.length !== posted) throw new Error(`after the start the app pressed Submit ${ctx.forms.posts.length - posted} time(s) on a wait the quit cut off`);
       unread(seen);
-      if (seen.at(-1)?.state === 'waiting_to_submit') throw new Error(`90 s after the start (the wait was 1 minute) the job still waits on the hidden page that died with the app: ${await describeHidden(ctx.profile)}`);
+      const pages = await hiddenPages(ctx.profile);
+      if (seen.at(-1)?.state === 'waiting_to_submit' && !pages.some(url => url.includes(`jobpilotto-fill=${id}`))) throw new Error(`90 s after the start (the wait was 1 minute) the job still waits, but the hidden browser holds no page of session ${id}: ${pages.join(' | ') || 'no page'}`);
     } finally { await closeHiddenBrowser(ctx.profile); }
   }, {needs});
 }

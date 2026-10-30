@@ -96,6 +96,23 @@ test('other scout asks and malformed place layouts/schema remain unkeyable', () 
   for (const texts of [[], ['Paris\n1. Ambiguous'], Array(31).fill('Paris')]) assert.ok(question(request(texts)).unkeyable);
 });
 
+test('a recognized place SYSTEM preserves the missing-schema refusal before any transport', t => {
+  const {env} = fixture(t);
+  for (const shape of ['anthropic', 'openai']) {
+    const body = request(undefined, shape);
+    delete body.output_config; delete body.text;
+    for (const action of ['scout', 'place_triage', '']) {
+      const ask = {headers: action ? {'x-jp-action': action} : {}, body};
+      assert.throws(() => storedAnswer(ask, env), error => {
+        assert.equal(error.code, 'E2E_AI_ANSWER_MISSING');
+        assert.match(error.message, /app\.place: missing place-triage schema/);
+        assert.doesNotMatch(error.message, /question identity is not in the request/);
+        return true;
+      });
+    }
+  }
+});
+
 test('place item table validates exact answer fields, enum and integer km', t => {
   const {file} = fixture(t);
   const bad = [{answer: zurich}, {text: 2, answer: zurich}, {text: 'Paris', answer: 'out'}, ...[

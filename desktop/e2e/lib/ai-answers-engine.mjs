@@ -1,6 +1,6 @@
 // Dispatch engine item kinds through questionOf and the existing single answer table.
 // Job: serve stored answers
-import {engineBatchAnswer, engineBatchCandidates} from './ai-answers-engine-items.mjs';
+import {engineBatchAnswer, engineBatchCandidates, object} from './ai-answers-engine-items.mjs';
 import {placesKind, placesQuestion} from './ai-answers-places.mjs';
 import {geoKind, geoQuestion} from './ai-answers-geo.mjs';
 import {titleKind, titleQuestion} from './ai-answers-title.mjs';
@@ -20,7 +20,6 @@ const registrations = [
   [vagueKind, vagueQuestion],
   [readingKind, readingQuestion],
 ];
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const namedCandidates = (items, prefix = '') => items.map(item => ({...item, name: itemCandidateName(`${prefix}${item.key}`)}));
 
 function validateTextEntry(operation, entry, key) {

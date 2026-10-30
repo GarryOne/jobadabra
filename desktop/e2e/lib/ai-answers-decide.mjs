@@ -1,12 +1,8 @@
 // Parse batched decide requests and validate per-item answers without guessing identity.
 // Job: serve stored answers
 // Invariants: keys retain exact context/text; ambiguous layouts refuse; invalid batches record nothing.
-import {createHash} from 'node:crypto';
+import {canonical, hash as sha, object, replyData, textOf} from './ai-answers-engine-items.mjs';
 
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const canonical = value => JSON.stringify(value, (_key, part) => object(part) ? Object.fromEntries(Object.keys(part).sort().map(key => [key, part[key]])) : part);
-const sha = text => createHash('sha256').update(text).digest('hex');
-const textOf = value => typeof value === 'string' ? value : Array.isArray(value) && value.every(part => object(part) && ['text', 'input_text'].includes(part.type) && typeof part.text === 'string') ? value.map(part => part.text).join('\n') : '';
 const unkeyable = reason => ({unkeyable: `decide: ${reason}`});
 
 /** Parse only the engine's decide layout; item text and context retain their exact bytes. */
@@ -39,10 +35,7 @@ export function decideQuestion(body, persona) {
 
 /** Return every validated item candidate, or none; index order in a live reply is immaterial. */
 export function decideCandidates(question, reply) {
-  if (reply.stop_reason && reply.stop_reason !== 'end_turn' || reply.status && reply.status !== 'completed') return [];
-  const text = reply.output_text ?? (reply.content || (reply.output || []).flatMap(item => item.content || [])).filter(part => ['text', 'output_text'].includes(part.type)).map(part => part.text || '').join('');
-  let data;
-  try { data = JSON.parse(text); } catch { return []; }
+  const data = replyData(reply);
   if (!object(data) || Object.keys(data).length !== 1 || !Array.isArray(data.results) || data.results.length !== question.items.length) return [];
   const found = new Map(), allowed = question.context.allowedAnswers.split(', ');
   for (const result of data.results) {

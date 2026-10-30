@@ -6,10 +6,10 @@ import {fileURLToPath} from 'node:url';
 import {decideQuestion} from './ai-answers-decide.mjs';
 import {placeQuestion} from './ai-answers-place.mjs';
 import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
+import {object} from './ai-answers-engine-items.mjs';
 
 const GOLDEN = new URL('../fixtures/golden/', import.meta.url);
 const TABLE = fileURLToPath(new URL('ai-answers.json', GOLDEN));
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const refusals = new Map();
 const suiteOf = env => env.E2E_SUITE || env.E2E_STEPS_SUITE || 'default';
 const artifactsOf = env => path.resolve(env.E2E_ARTIFACTS || fileURLToPath(new URL(`../artifacts/${suiteOf(env)}/`, import.meta.url)));
@@ -73,6 +73,7 @@ const parsed = body => {
   if (object(body) && !Buffer.isBuffer(body)) return body;
   try { return JSON.parse(String(body || '{}')); } catch { return {}; }
 };
+// Why (30 Oct 2026, qu): score/caption identities and refusal previews retain their permissive text extraction; engine parsers require strict text-only blocks.
 const textOf = content => typeof content === 'string' ? content : (Array.isArray(content) ? content.map(part => part?.text || '').join('\n') : '');
 const actionOf = (headers, body) => new Headers(headers || {}).get('x-jp-action') || String(body.prompt_cache_key || '').replace(/^job-pilotto-/, '');
 
@@ -110,9 +111,11 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
   const system = textOf(data.system ?? data.instructions);
   if (action === 'score' || system.startsWith('You rank job postings for one candidate.')) return scoreQuestion(data, persona);
   if (action === 'decide' || system.startsWith('You decide what short pieces of content mean')) return decideQuestion(data, persona);
-  if (action === 'scout' || action === 'place_triage' || system.startsWith('You decide where job postings are, for one job seeker.')) {
+  // Why (30 Oct 2026, qu): a recognized place SYSTEM owns its malformed-request reason; header-only scout asks may still belong to a declared kind.
+  const placeSystem = system.startsWith('You decide where job postings are, for one job seeker.');
+  if (placeSystem || action === 'scout' || action === 'place_triage') {
     const place = placeQuestion(data, persona);
-    if (!place.unkeyable) return place;
+    if (!place.unkeyable || placeSystem) return place;
   }
   const kinds = (table ?? loadTable(env.E2E_AI_ANSWERS_FILE || TABLE)).kinds;
   // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path, for caption-keyed kinds too (30 Oct 2026, ap: interviews).

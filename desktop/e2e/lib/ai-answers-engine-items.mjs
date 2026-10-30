@@ -9,7 +9,8 @@ export const object = value => value !== null && typeof value === 'object' && !A
 export const canonical = value => JSON.stringify(value, (_key, part) => object(part) ? Object.fromEntries(Object.keys(part).sort().map(key => [key, part[key]])) : part);
 /** Hash semantic item/context values, never an assembled prompt. */
 export const hash = value => createHash('sha256').update(typeof value === 'string' ? value : canonical(value)).digest('hex');
-const textOf = value => typeof value === 'string' ? value : Array.isArray(value) && value.every(part => object(part) && ['text', 'input_text'].includes(part.type) && typeof part.text === 'string') ? value.map(part => part.text).join('\n') : '';
+/** Read strict provider text blocks without accepting malformed or non-text parts. */
+export const textOf = value => typeof value === 'string' ? value : Array.isArray(value) && value.every(part => object(part) && ['text', 'input_text'].includes(part.type) && typeof part.text === 'string') ? value.map(part => part.text).join('\n') : '';
 /** Extract a single user turn and its SYSTEM and schema from either provider's wire shape. */
 export function requestParts(body) {
   const messages = body?.messages ?? body?.input;

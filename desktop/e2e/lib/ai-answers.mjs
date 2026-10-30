@@ -175,10 +175,20 @@ export function refusal(suite, question, why, request) {
   return error;
 }
 
-/** Write keyed live replies or validated items for review; never write the committed table. */
-export function recordCandidate(dir, question, reply) {
+/** Retain the prompt body and identity hints, never metadata or transport headers. */
+function candidateRequest(request) {
+  if (!request) return undefined;
+  const body = JSON.parse(JSON.stringify(parsed(request.body)));
+  delete body.metadata;
+  const action = request.action || new Headers(request.headers || {}).get('x-jp-action');
+  return {url: request.url || '/v1/messages', ...(action ? {action} : {}), ...(request.hint ? {hint: request.hint} : {}), body};
+}
+
+/** Write keyed live replies and their prompts for review; never write the committed table. */
+export function recordCandidate(dir, question, reply, request) {
   if (question.unkeyable) return;
   if (!object(reply)) throw new Error('AI answer candidate reply must be an object');
+  const savedRequest = candidateRequest(request);
   const operation = itemOperation(question.operation);
   if (operation) {
     const items = operation.candidates(question, reply);
@@ -187,6 +197,7 @@ export function recordCandidate(dir, question, reply) {
     for (const {key, text, answer, name} of items) {
       // Why (30 Oct 2026, qu; #2450 slice 3): all registered items remain independently reviewed; recording never changes the committed table.
       const table = {v: 1, about: 'Live AI item answer awaiting human review.', answers: {}, items: {[question.operation]: {[key]: {text, answer}}}};
+      if (savedRequest) table.requests = {[question.operation]: {[key]: savedRequest}};
       fs.writeFileSync(path.join(dir, name), `${JSON.stringify(table, null, 2)}\n`);
     }
     return;
@@ -196,6 +207,11 @@ export function recordCandidate(dir, question, reply) {
   const table = fs.existsSync(file) ? loadTable(file) : {v: 1, about: 'Live AI answers awaiting human review.', answers: {}};
   table.answers[question.operation] ??= {};
   table.answers[question.operation][question.id] = {reply};
+  if (savedRequest) {
+    table.requests ??= {};
+    table.requests[question.operation] ??= {};
+    table.requests[question.operation][question.id] = savedRequest;
+  }
   fs.writeFileSync(file, `${JSON.stringify(table, null, 2)}\n`);
 }
 
@@ -223,12 +239,12 @@ export function storedAnswer(request, env = process.env) {
     fs.writeFileSync(path.join(dir, 'ai-answer-refusals.json'), JSON.stringify(list, null, 2));
     throw error;
   }
-  return {mode, question, dir: env.E2E_AI_CANDIDATES || dir};
+  return {mode, question, dir: env.E2E_AI_CANDIDATES || dir, ...(mode === 'record' ? {request: candidateRequest(request)} : {})};
 }
 
 /** Keep a successful live reply only for a keyed record-mode miss, never a hash replay. */
 export function keepCandidate(state, reply) {
-  if (state.mode === 'record') recordCandidate(state.dir, state.question, reply);
+  if (state.mode === 'record') recordCandidate(state.dir, state.question, reply, state.request);
 }
 
 /** Decode a successful provider body, including a completed stream, for candidate review. */

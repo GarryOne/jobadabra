@@ -52,6 +52,7 @@ on:
       - 'tools/pool-rows.mjs'
       - 'tools/record-env.mjs'
       - 'tools/rung-trailer.mjs'
+      - 'tools/seed-ai-answer-requests.mjs'
       - 'tools/sentry-fixer/codex-fix.mjs'
       - 'tools/sentry-fixer/lib.mjs'
       - 'tools/suspend-flip.mjs'

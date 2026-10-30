@@ -70,6 +70,36 @@ class PrRestLibTest(unittest.TestCase):
         checks = json.loads(self.sh('pr_checks o/r h1')[1])
         self.assertEqual([(c['name'], c['bucket']) for c in checks], [('a', 'pass'), ('b', 'fail'), ('c', 'cancel'), ('d', 'pending'), ('e', 'skipping'), ('All checks passed', 'fail')])
 
+    def test_manual_and_old_head_runs_cannot_replace_the_pr_check(self):
+        self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [
+            {'id': i, 'name': 'python', 'head_sha': sha, 'status': 'completed', 'conclusion': result,
+             'html_url': f'https://github.com/o/r/actions/runs/{i}/job/{i}'}
+            for i, sha, result in [(1, 'h1', 'success'), (2, 'h1', 'failure'), (3, 'old', 'failure')]]})
+        self.put('repos/o/r/commits/h1/status', {'statuses': []})
+        for i, sha, event in [(1, 'h1', 'pull_request'), (2, 'h1', 'workflow_dispatch'), (3, 'old', 'pull_request')]:
+            self.put(f'repos/o/r/actions/runs/{i}', {'head_sha': sha, 'event': event})
+        self.assertEqual([(c['name'], c['bucket']) for c in json.loads(self.sh('pr_checks o/r h1')[1])], [('python', 'pass')])
+
+    def test_a_status_response_from_an_old_head_invalidates_the_read(self):
+        self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': []})
+        self.put('repos/o/r/commits/h1/status', {'sha': 'old', 'statuses': [
+            {'context': 'All checks passed', 'state': 'failure'}]})
+        self.assertEqual(self.sh('pr_checks o/r h1'), (1, ''))
+
+    def test_a_status_pointing_at_a_manual_run_is_not_a_pr_failure(self):
+        self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': []})
+        self.put('repos/o/r/commits/h1/status', {'statuses': [
+            {'context': 'All checks passed', 'state': 'failure', 'target_url': 'https://github.com/o/r/actions/runs/2'}]})
+        self.put('repos/o/r/actions/runs/2', {'head_sha': 'h1', 'event': 'workflow_dispatch'})
+        self.assertEqual(json.loads(self.sh('pr_checks o/r h1')[1]), [])
+
+    def test_unreadable_actions_provenance_does_not_report_a_red(self):
+        self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [
+            {'id': 1, 'name': 'python', 'head_sha': 'h1', 'status': 'completed', 'conclusion': 'failure',
+             'html_url': 'https://github.com/o/r/actions/runs/1/job/1'}]})
+        self.put('repos/o/r/commits/h1/status', {'statuses': []})
+        self.assertEqual(self.sh('pr_checks o/r h1'), (1, ''))
+
     def test_only_the_newest_run_of_a_check_counts(self):
         """#2282: the body edit and the retitle each started the PR gate; the first run was cancelled, the second passed; ship read the cancelled one as a failure."""
         self.put('repos/o/r/commits/h1/check-runs?per_page=100', {'check_runs': [

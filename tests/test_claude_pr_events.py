@@ -87,6 +87,21 @@ class ClaudePrEventsTest(unittest.TestCase):
         self.assertEqual(self.run.call_count, 2)
         self.assertIn('RED #8', self.run.call_args.args[0][-1])
 
+    def test_a_red_pending_delivery_is_dropped_after_the_head_changes(self):
+        self.log.write_text('ship: RED #7 python oldhead\n')
+        Path(f'{self.log}.head').write_text('7 oldhead\n')
+        self.run.return_value.returncode = 1
+        self.assertFalse(self.deliver())
+        Path(f'{self.log}.head').write_text('7 newhead\n')
+        self.run.reset_mock()
+        self.run.return_value.returncode = 0
+        self.assertTrue(self.deliver())
+        self.assertEqual(self.run.call_count, 0)
+        with self.log.open('a') as out:
+            out.write('ship: RED #7 python newhead\n')
+        self.assertTrue(self.deliver())
+        self.assertIn('ship: RED #7 python newhead', str(self.run.call_args))
+
     def test_a_bad_surface_or_none_is_silent(self):
         self.assertTrue(self.module.deliver(self.log, 'not-a-uuid', '/fake/cmux', run=self.run))
         self.assertTrue(self.module.deliver(self.log, None, '/fake/cmux', run=self.run))

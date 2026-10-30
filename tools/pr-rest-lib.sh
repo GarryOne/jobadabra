@@ -43,7 +43,7 @@ pr_view() {
     c="$(pr_get "repos/$1/issues/$2/comments?per_page=100")" && r="$(pr_get "repos/$1/pulls/$2/reviews?per_page=100")" && k="$(pr_get "repos/$1/pulls/$2/commits?per_page=100")" || return 1
   else c='[]'; r='[]'; k='[]'; fi
   printf '%s\n%s\n%s\n%s\n' "$p" "$c" "$r" "$k" | jq -sc '.[0] as $p | {number: $p.number, url: $p.html_url, title: $p.title, headRefOid: $p.head.sha, headRefName: $p.head.ref,
-      state: (if $p.merged_at then "MERGED" elif $p.state == "closed" then "CLOSED" else "OPEN" end),
+      isDraft: ($p.draft // false), state: (if $p.merged_at then "MERGED" elif $p.state == "closed" then "CLOSED" else "OPEN" end),
       mergeable: (if $p.mergeable == true then "MERGEABLE" elif $p.mergeable == false then "CONFLICTING" else "UNKNOWN" end),
       mergeCommit: (if $p.merged_at then {oid: $p.merge_commit_sha} else null end), labels: [$p.labels[]?.name],
       comments: [.[1][]? | {id: .node_id, author: {login: (.user.login // "")}, body, url: .html_url, createdAt: .created_at}],
@@ -54,11 +54,26 @@ pr_view() {
 # pr_checks <repo> <sha>: the newest check-run of each name and every commit status of the sha like `gh pr checks --json name,bucket,link` (bucket pass|fail|pending|skipping|cancel).
 # Why (#2282, its own first run): two edits of a PR start the same workflow twice and the first run is cancelled; the list keeps both, gh's checks keep only the newest.
 pr_checks() {
-  local runs st
+  local runs st id run excluded='[]'
   runs="$(pr_get "repos/$1/commits/$2/check-runs?per_page=100")" && st="$(pr_get "repos/$1/commits/$2/status")" || return 1
-  printf '%s\n%s\n' "$runs" "$st" | jq -sc '[(.[0].check_runs // [] | group_by(.name) | map(max_by(.id))[] | {name, link: (.html_url // ""), bucket: (if .status != "completed" then "pending"
+  # A cached or mismatched combined status cannot decide this head's red or green state.
+  jq -e --arg sha "$2" '(.sha // $sha) == $sha' <<<"$st" >/dev/null || return 1
+  # Why (#2618, 30 Oct 2026): a manual record run on the same SHA is not a PR check; filter before choosing the newest check by name.
+  # Actions URLs identify their workflow run; non-Actions checks still belong to the requested commit. Unknown provenance leaves the read pending.
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    run="$(pr_get "repos/$1/actions/runs/$id")" || return 1
+    if ! jq -e --arg sha "$2" '.head_sha == $sha and .event != "workflow_dispatch"' <<<"$run" >/dev/null; then
+      excluded="$(jq -c --arg id "$id" '. + [$id]' <<<"$excluded")"
+    fi
+  done < <(printf '%s\n%s\n' "$runs" "$st" | jq -sr '[((.[0].check_runs[]?.html_url), (.[1].statuses[]?.target_url)) | . // "" | capture("/actions/runs/(?<id>[0-9]+)")? | .id] | unique[]')
+  printf '%s\n%s\n' "$runs" "$st" | jq -sc --arg sha "$2" --argjson excluded "$excluded" '
+    def allowed: ((. // "" | capture("/actions/runs/(?<id>[0-9]+)").id) // "") as $id | $excluded | index($id) | not;
+    [(.[0].check_runs // []
+      | map(select((.head_sha // $sha) == $sha) | select(.html_url | allowed))
+      | group_by(.name) | map(max_by(.id))[] | {name, link: (.html_url // ""), bucket: (if .status != "completed" then "pending"
         elif (.conclusion | IN("success", "neutral")) then "pass" elif .conclusion == "skipped" then "skipping" elif .conclusion == "cancelled" then "cancel" else "fail" end)}),
-      (.[1].statuses[]? | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
+      (.[1].statuses[]? | select(.target_url | allowed) | {name: .context, link: (.target_url // ""), bucket: (if .state == "success" then "pass" elif .state == "pending" then "pending" else "fail" end)})]'
 }
 
 # pr_list <repo> <state open|closed> [pages=1]: every PR of the state, 100 a page, newest first, as [{number, headRefName, headRefOid, merged}]. Each page is a conditional read.

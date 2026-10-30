@@ -30,3 +30,29 @@ test('one earlier PR is no circle; no earlier PR (or only tests/docs shared) is 
   assert.equal(one.at(-1), 'AREA-CIRCLES 7d=1 30d=1 files=x.js');
   assert.deepEqual(report([c('b1', 40, 'Old (#2)', ['x.js']), c('b2', 1, 'Docs (#3)', ['docs/a.md'])], ['x.js', 'docs/a.md'], NOW), ['AREA-CIRCLES 7d=0 30d=0 files=x.js'], 'no earlier PR: the counter says 0 itself');
 });
+
+test('three earlier harness code PRs in seven days are a circle', async () => {
+  const {report} = await load();
+  const files = ['desktop/e2e/lib/context.mjs'];
+  const commits = [c('a1', 1, 'Repair context (#1)', files), c('b1', 3, 'Repair context again (#2)', files),
+    c('c1', 6, 'Repair context once more (#3)', files)];
+  const lines = report(commits, files, NOW);
+  assert.equal(lines.at(-1), 'AREA-CIRCLES 7d=3 30d=3 files=desktop/e2e/lib/context.mjs');
+  assert.ok(lines.some(line => line.startsWith('circle:')));
+});
+
+test('shared e2e tests and golden fixtures never count as an area', async () => {
+  const {report} = await load();
+  const files = ['desktop/e2e/test/x.test.mjs', 'desktop/e2e/fixtures/golden/a.json'];
+  const commits = [c('a1', 1, 'Update fixtures (#1)', files), c('b1', 2, 'Update tests (#2)', files)];
+  assert.deepEqual(report(commits, files, NOW), ['AREA-CIRCLES 7d=0 30d=0 files=']);
+});
+
+test('harness suites and root scripts count while shared registries and non-code evidence stay excluded', async () => {
+  const {report} = await load();
+  const files = ['desktop/e2e/suites/settings.mjs', 'desktop/e2e/run-all.mjs', 'desktop/e2e/test-sets.json', 'desktop/e2e/lanes.json', 'desktop/e2e/timing-baseline.json',
+    'desktop/e2e/tests/x.mjs', 'desktop/e2e/recorded/a.json', 'desktop/e2e/docs/a.json', 'desktop/e2e/README.md',
+    'desktop/e2e/lib/x.test.mjs', 'desktop/e2e/package-lock.json'];
+  const lines = report([c('a1', 1, 'Update harness (#1)', files)], files, NOW);
+  assert.equal(lines.at(-1), 'AREA-CIRCLES 7d=1 30d=1 files=desktop/e2e/suites/settings.mjs,desktop/e2e/run-all.mjs');
+});

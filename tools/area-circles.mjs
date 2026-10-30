@@ -7,9 +7,11 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 export const CIRCLE_AT = 2;   // Why (owner, 27 Oct 2026): a 3rd fix on the same files within 7 days gets no patch; 2 earlier = this PR would be the 3rd
-// Why (27 Oct 2026): no keyword list decides "is this a fix" (the AI-decides rule), and it would miss the very panel-dim case: those subjects say "Keep the panel steady", not "Fix".
-// The tool counts every earlier PR on the files and prints the subjects; the Gitar reviewer judges which were fixes. Tests and docs are not "the area": every PR touches them.
-export const NOT_AREA = /(^|\/)(tests?|docs?|e2e|fixtures)\/|\.md$|\.test\.|package-lock\.json$/;
+// Why (27 Oct 2026): no keyword list decides "is this a fix" (the AI-decides rule), and it would miss the very panel-dim case: those subjects say "Keep the panel steady", not "Fix". Since 30 Oct 2026 the same applies to harness code (see the Why below).
+// The tool counts every earlier PR on the files and prints the subjects; the Gitar reviewer judges which were fixes. Tests, docs and the shared harness registries are not "the area": every PR touches them.
+// Why (30 Oct 2026, a8: e2e audit): harness code now counts; 19 of 102 e2e PRs were rework. Tests, fixtures and recordings stay excluded.
+// Shared registries test-sets.json, lanes.json and timing-baseline.json stay excluded: every harness PR touches them (measured 30 Oct: test-sets 112 and lanes 12 commits in 7 days).
+export const NOT_AREA = /(^|\/)(tests?|docs?|fixtures|recorded)\/|\.md$|\.test\.|package-lock\.json$|^desktop\/e2e\/(test-sets|lanes|timing-baseline)\.json$/;
 const DAY = 86400e3;
 
 // Commits {hash, time (ms), subject, files} -> the PRs ("#N" from the subject, else the commit hash) touching `files` within `days` of `now`, as {id, subject}.

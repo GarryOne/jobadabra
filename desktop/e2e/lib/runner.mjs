@@ -25,7 +25,7 @@ export async function hangReport(session) {
 /** Bound a step; an optional factory preserves a suite's named hang and its existing evidence. */
 export function withLimit(promise, ms, name, getSession = () => null, budget = 0, hangError) {   // budget: set when the suite's budget, not the step's own limit, is what cuts it
   let timer;
-  // Why (29 Oct 2026, qu 3/4): a state-wait suite can name its hang and attach its existing engine evidence; all other errors stay unchanged.
+  // Why (#2501; 30 Oct 2026, owner redesign): named hang errors retain their evidence; only cap errors are marked so opted-in owned steps stop without retrying abandoned work. Other errors stay unchanged.
   const limit = new Promise((_, fail) => { timer = setTimeout(async () => { const error = hangError ? hangError(ms) : new Error(budget
     ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it): ${await hangReport(getSession())}`
     : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung): ${await hangReport(getSession())}`); error.stepHang = true; fail(error); }, ms); });
@@ -88,7 +88,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
   const allFound = () => picked.every(name => name === PICK_SETUP || found.has(name));
   let overBudget = false;
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
-  // clean-code-ok: Why (29 Oct 2026, qu 3/4): old function; pass the optional hang error factory to the existing cap without changing other suites.
+  // clean-code-ok: Why (#2501; 30 Oct 2026, owner redesign): old function; reuse its cap and opt-in stopOnHang while preserving other suites' retry and keep-going defaults.
   async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs = hangLimitMs(hangCaps, name), hangError, elsewhere = false} = {}) {
     if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);

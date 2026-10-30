@@ -81,11 +81,11 @@ test('a review run waits until Gitar\'s comment is newer than the review, then l
   assert.equal(done.reads, 4, 'two reads before the edit, the one that sees it, and converge\'s check that nothing is left to change');
 });
 
-test('a comment that never catches up ends the wait after 12 re-reads, and the run labels from what it read', t => {
+test('a comment that never catches up ends the wait after 12 re-reads, labels from what it read and goes red, so a re-run corrects it (Gitar on #2525)', t => {
   const done = runCliCase(t, {body: SUGGEST, labels: []});
-  assert.equal(done.status, 0, done.stderr);
+  assert.equal(done.status, 1, 'a green run would hide a stale label');
   assert.equal(done.reads, 13 + 1, 'the first read, 12 re-reads, then converge\'s check after its write');
-  assert.ok(done.stdout.includes('::warning::'), 'a wait that runs out says so on the run');
+  assert.ok(done.stdout.includes('::error::'), 'a wait that runs out says so on the run');
   assert.deepEqual(done.labels, [LABELS.suggestions.name]);
 });
 

@@ -33,7 +33,7 @@ export function verdictKind(body) {
 }
 
 /** A run started by Gitar's review: re-reads (one GraphQL call each) until Gitar's comment was updated at or after the review, at most `tries` times; -> the last read.
- * Why (30 Oct 2026, measured on 25 PRs): Gitar submits its review first and edits the verdict line of its comment 2 s to minutes later, and only the comment tells
+ * Why (30 Oct 2026, measured on 60 PRs): Gitar submits its review first and edits the verdict line of its comment up to 7 s later, and only the comment tells
  * "approved with suggestions" (an empty COMMENTED review) from a plain comment batch. */
 export function awaitComment(read, since, reread, {tries = 12, pause = () => {}} = {}) {
   let current = read;
@@ -165,7 +165,12 @@ const pause = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 function syncOnce(pr, since) {
   const repo = process.env.GITHUB_REPOSITORY;
   const read = readForRun(readLive(repo, pr), since, () => readLive(repo, pr), {pause});
-  if (since && !(read.review && Date.parse(read.review.updated_at) >= Date.parse(since))) console.log(`::warning::gitar-label: Gitar's comment on #${pr} did not catch up with its review in 12 reads; labelled from what it read`);
+  // Why (30 Oct 2026, Gitar on #2525): the comment trailed the review by at most 7 s on the last 60 PRs; one still behind after 2 minutes may hold a stale
+  // verdict, so the run goes red (a re-run corrects it) instead of a green run with a wrong label.
+  if (since && !(read.review && Date.parse(read.review.updated_at) >= Date.parse(since))) {
+    console.log(`::error::gitar-label: Gitar's comment on #${pr} did not catch up with its review in 12 reads; labelled from what it read, re-run to correct it`);
+    process.exitCode = 1;
+  }
   if (read.state !== 'open') { console.log(`gitar-label: #${pr} is ${read.state}, left as it is`); return false; }
   const verdict = read.review ? wantedLabel(read.review.body, read.review.updated_at, read.headTime) : null;
   const wanted = wantedLabels({verdict, workingSince: read.workingSince, headTime: read.headTime, verdictTime: read.review?.updated_at});

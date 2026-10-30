@@ -48,6 +48,12 @@ class ShipWaitTest(unittest.TestCase):
         second = subprocess.run(['sh', str(WAIT), str(self.log)], capture_output=True, text=True, timeout=10, env={**os.environ, 'SHIP_WAIT_POLL': '1'})
         self.assertEqual(second.stdout, 'ship: GREEN #7\n')
 
+    def test_old_head_red_is_dropped_but_current_red_and_comments_are_printed(self):
+        Path(f'{self.log}.head').write_text('7 newhead\n')
+        self.append('ship: RED #7 python oldhead\nship: RED #7 python newhead\nship: COMMENT #7 owner comment u\n')
+        done = subprocess.run(['sh', str(WAIT), str(self.log)], capture_output=True, text=True, timeout=10)
+        self.assertEqual(done.stdout, 'ship: RED #7 python newhead\nship: COMMENT #7 owner comment u\n')
+
     def test_a_line_still_being_written_waits_for_its_newline(self):
         self.append('ship: MERGED #7 9d0')
         waiter = self.start(SHIP_WAIT_CAP='2')

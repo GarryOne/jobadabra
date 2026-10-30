@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Watches a PR from the moment tools/ship.sh opens it (so also when ship itself ends FAILED or is killed) and appends to ship's log: `ship: RED #n <check>` (a check
+# Watches a PR from the moment tools/ship.sh opens it (so also when ship itself ends FAILED or is killed) and appends to ship's log: `ship: RED #n <check> <head-sha>` (a check
 # failed; once per red check, it keeps watching), `ship: GREEN #n` (every check passed; once per green), `ship: READY #n <sha>` (below), `ship: MERGED #n <sha>`, `ship: CLOSED #n (unmerged)`
 # or `ship: WATCH ENDED #n (still open)` after the cap. `ship: CONFLICT #n` (GitHub says the PR cannot merge into main; once per conflict, UNKNOWN is never reported) is followed at once by
 # tools/pr-conflict-fix.sh, which rebases the stacked-parent case and logs `ship: CONFLICT FIXED #n (stacked parent #m)`; a cleared conflict re-arms GREEN. No AI, only gh.
@@ -7,7 +7,7 @@
 # `ship: COMMENT #n <owner|bot|other> <comment|review-<state>|line> <url>` (27 Oct 2026): once per new comment or review by the owner, a review bot or anyone else, never a session's own; the ids already told live in <pidfile>.comments,
 # so a restart or a second ship repeats none. Every read is REST with the last ETag (tools/pr-rest-lib.sh), free while nothing changed. Guard: tests/test_pr_comments.py.
 # `ship: READY #n <sha>` (30 Oct 2026): the owner's "ready" on this head: every check green, Gitar ✅ Approved (its label), no "Working on PR comments" label, no unanswered
-# owner or other comment and no conflict; once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
+# owner or other comment, no conflict and not a draft; once per head, re-armed when any of it drops. Only READY lets a session tell the owner a PR is ready.
 # Started detached by tools/ship.sh when the PR opens (18 Oct 2026: #1321 sat red for hours because the watcher began only after REVIEW); a second ship of the same branch replaces the old watcher through the pid file (18 Oct 2026: the owner merges by hand and
 # sessions only learned of it when told). Guard: tests/test_ship_watch.py, tests/test_pr_conflict_fix.py.
 set -u
@@ -49,7 +49,7 @@ seen="$pidfile.comments"; touch "$seen" 2>/dev/null
 #   Only items created before this watcher started may be silenced (gitar-bot on #2258): a comment that arrives while it runs and meets an unrelated push before the next look is still told.
 started="${SHIP_WATCH_STARTED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 report_comments() {  # <view json>; sets $waiting: the owner's and others' items still unanswered (a bot's are judged by Gitar's verdict label)
-  local lines rows open id who kind url t last
+  local lines rows open id who kind url t last summary
   lines="$(pr_get "repos/$repo/pulls/$n/comments?per_page=100")" || lines=""
   rows="$(pc_items "$1" "${lines:-null}")"
   last="$(pc_last_authored "$1")"
@@ -60,7 +60,12 @@ report_comments() {  # <view json>; sets $waiting: the owner's and others' items
     grep -qxF "$id" "$seen" 2>/dev/null && continue
     echo "$id" >> "$seen"
     if [[ "$t" > "$started" ]] || grep -qxF "$id" <<<"$open"; then
+      summary=""
+      if [ "$who" = bot ] && [ "$kind" = comment ]; then summary="$(pc_gitar_summary "$1" "$id")"; fi
+      # Why (#2618, 30 Oct 2026): Gitar deletes and re-posts an unchanged verdict after a push; compare only with the last summary actually reported for this PR.
+      if [ -n "$summary" ] && [ "$(cat "$seen.gitar-$n" 2>/dev/null)" = "$summary" ]; then continue; fi
       say "COMMENT #$n $who $kind $url"
+      [ -z "$summary" ] || printf '%s\n' "$summary" > "$seen.gitar-$n"
     fi
   done <<<"$rows"
 }
@@ -68,6 +73,11 @@ waited=0; red=""; green=""; conflict=""; ready=""; waiting=0
 while :; do
   view="$(pr_view "$repo" "$n" full)" || view=""
   state="$(jq -r '.state // empty' <<<"$view" 2>/dev/null)"
+  if [ -n "$state" ]; then
+    head="$(jq -r '.headRefOid // empty' <<<"$view")"
+    # Publish before any notification, including comments and retrying a previously undelivered RED.
+    printf '%s %s\n' "$n" "$head" > "$log.head.$$" && mv -f "$log.head.$$" "$log.head"
+  fi
   case "$state" in
     MERGED) say "MERGED #$n $(jq -r '.mergeCommit.oid // empty' <<<"$view" | cut -c1-7)"; finish_terminal MERGED; exit 0 ;;
     CLOSED) say "CLOSED #$n (unmerged)"; finish_terminal CLOSED; exit 0 ;;
@@ -78,18 +88,19 @@ while :; do
       MERGEABLE) [ -z "$conflict" ] || { conflict=""; green=""; } ;;
     esac
     report_comments "$view"
-    head="$(jq -r '.headRefOid // empty' <<<"$view")"   # the head READY names
-    # Why (18 Oct 2026, #1476: GREEN 2 s after a push, RED minutes later): the checks are read on the PR's CURRENT head sha, never a rollup that may still hold the old head's.
+    # Why (18 Oct 2026, #1476; 30 Oct 2026, #2618): checks use this PR snapshot's head and RED names it; old rollups and manual runs must not decide it.
     #   GREEN also needs the required "All checks passed" green on it: a status pr-verdict.yml writes since 26 Oct 2026 (before: a check-run of pr-gate.yml with that name).
-    checks="$(pr_checks "$repo" "$(jq -r '.headRefOid // empty' <<<"$view")")" || checks=""
+    checks="$(pr_checks "$repo" "$head")" || checks=""
     now="$(jq -r '[.[]? | select(.bucket == "fail") | .name] | first // empty' <<<"${checks:-[]}" 2>/dev/null)" || now=""
-    [ "$now" = "$red" ] || { [ -z "$now" ] || say "RED #$n $now"; red="$now"; }   # once per red check; green again re-arms it
+    key="${now:+$head:$now}"
+    [ "$key" = "$red" ] || { [ -z "$now" ] || say "RED #$n $now $head"; red="$key"; }   # once per red check; green again re-arms it
     if jq -e 'length > 0 and all(.[]; .bucket == "pass" or .bucket == "skipping") and any(.[]; .name == "All checks passed")' <<<"${checks:-[]}" >/dev/null 2>&1; then
       [ -n "$green" ] || say "GREEN #$n"; green=1   # once per green; a push brings new pending checks, which re-arms it
     else green=""; fi
     # Why (30 Oct 2026, owner via d3: "my PRs are not fully approved by Gitar"): d3 told the owner ready on GREEN while Gitar read "approved with suggestions".
+    # Why (#2618, 30 Oct 2026): an intentionally held draft is never ready for the owner's merge.
     if [ -n "$green" ] && [ -z "$conflict" ] && [ "${waiting:-0}" = 0 ] \
-      && jq -e '(.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
+      && jq -e '(.isDraft != true) and (.labels // [] | index("Gitar: approved")) and (.labels // [] | index("Working on PR comments") | not)' <<<"$view" >/dev/null 2>&1; then
       [ "$ready" = "$head" ] || say "READY #$n ${head:0:7}"; ready="$head"
     elif [ -n "$checks" ]; then ready=""; fi   # a failed check read clears GREEN for one look, never READY: no second READY for the same head
   fi

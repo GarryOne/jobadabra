@@ -27,3 +27,16 @@ pc_last_authored() {
 pc_unanswered() {
   awk -F'\t' -v last="${1:-}" '$2=="self" && $5>last {last=$5} {r[NR]=$0} END {for (i=1;i<=NR;i++) {split(r[i],f,"\t"); if (f[2]!="self" && f[5]>=last) print r[i]}}'
 }
+
+# pc_gitar_summary <view JSON> <comment id> -> verdict + open finding count, or empty for an unrecognized comment.
+# Invariant: only Gitar's Code Review summary is comparable; ordinary bot and owner comments are never suppressed.
+pc_gitar_summary() {
+  jq -r --arg id "$2" '
+    .comments[]? | select(.id == $id and (.author.login | IN("gitar-bot", "gitar-bot[bot]"))) | .body
+    | capture("<summary><b>Code Review</b>\\s*<kbd>(?<verdict>[^<]*)</kbd>(?<counts>[^\\n]*?)</summary>")?
+    | (.verdict | ascii_downcase | gsub("^[^a-z0-9]+|[[:space:]]+$"; "")) as $verdict
+    | select($verdict != "")
+    | ((.counts | capture("(?<closed>[0-9]+) closed / (?<total>[0-9]+) findings?")?) // (if $verdict == "approved" then {closed: "0", total: "0"} else empty end))
+    | select((.total | tonumber) >= (.closed | tonumber))
+    | "\($verdict):\((.total | tonumber) - (.closed | tonumber))"' <<<"$1"
+}

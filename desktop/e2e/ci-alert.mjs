@@ -8,16 +8,19 @@ import fs from 'node:fs';
 import {alertHtml} from './lib/telegram-html.mjs';
 import {suiteOfKey} from './lib/suite-shards.mjs';
 
-const LANES = JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
+const readLanes = () => JSON.parse(fs.readFileSync(new URL('./lanes.json', import.meta.url), 'utf8'));
 // Invariant: a non-backbone suite result cannot cause an owner failure or recovery alert.
-const backbone = (name, lanes = LANES) => !['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[
-  suiteOfKey(String(name).replace(/^E2E · /, '').replace(/ · burn-in \d+\/\d+$/, ''))
+const backbone = (name, lanes = readLanes()) => !['tolerant', 'suspended', 'retired'].includes(lanes.suites?.[
+  suiteOfKey(String(name).replace(/^E2E · (?:Mac \+ Linux · )?/, '').replace(/ · burn-in \d+\/\d+$/, ''))
 ]?.lane);
 
-// The previous finished run of this workflow on the same branch (not this one) -> its conclusion, or ''.
 // Until 28 Oct 2026 a renamed workflow's old file is read too (replay-offline.yml → site-replays.yml, 14 Oct 2026).
 export const OLD_FILES = {'site-replays.yml': 'replay-offline.yml'};
-export async function previousConclusion(env = process.env, fetcher = fetch) {
+/**
+ * The previous finished run of this workflow on the same branch (not this one), from the GitHub runs API -> its conclusion, or '' when none is read
+ * (API errors try the old file name, then give ''). An e2e.yml run whose failed jobs are all non-backbone lanes counts as 'success'.
+ */
+export async function previousConclusion(env = process.env, fetcher = fetch, lanes = readLanes()) {
   const file = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]);
   for (const name of [file, OLD_FILES[file]].filter(Boolean)) {
     const url = `${env.GITHUB_API_URL || 'https://api.github.com'}/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${name}/runs?branch=${encodeURIComponent(env.GITHUB_REF_NAME || 'main')}&status=completed&per_page=10`;
@@ -27,7 +30,7 @@ export async function previousConclusion(env = process.env, fetcher = fetch) {
       const found = (body.workflow_runs || []).find(run => String(run.id) !== String(env.GITHUB_RUN_ID));
       if (file === 'e2e.yml' && found?.conclusion === 'failure') {
         const jobs = await failedJobLinks(found.id, env, fetcher);
-        if (jobs.length && !jobs.some(job => backbone(job.name))) return 'success';
+        if (jobs.length && !jobs.some(job => backbone(job.name, lanes))) return 'success';
       }
       if (found?.conclusion) return found.conclusion;
     } catch { /* try the next name */ }
@@ -36,29 +39,30 @@ export async function previousConclusion(env = process.env, fetcher = fetch) {
 }
 
 const API = env => env.GITHUB_API_URL || 'https://api.github.com';
+const unsuccessful = job => ['failure', 'cancelled', 'timed_out'].includes(job.conclusion);
 const get = (url, env, fetcher) => fetcher(url, {headers: {Authorization: `Bearer ${env.GH_TOKEN || ''}`, Accept: 'application/vnd.github+json'}, signal: AbortSignal.timeout(15000)}).then(answer => answer.json());
 
-// A run's failed jobs, sorted (the alert's own job is still running, so it never counts).
-export async function failedJobs(runId, env = process.env, fetcher = fetch) {
+// A run's unsuccessful backbone jobs, sorted (the alert's own job is still running, so it never counts).
+export async function failedJobs(runId, env = process.env, fetcher = fetch, lanes = readLanes()) {
   const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
-  return (body.jobs || []).filter(job => job.conclusion === 'failure' && backbone(job.name)).map(job => job.name).sort();
+  return (body.jobs || []).filter(job => unsuccessful(job) && backbone(job.name, lanes)).map(job => job.name).sort();
 }
 
-// The failed jobs of this run with their pages. -> [{name, url}]
+// The failed, cancelled or timed-out jobs of this run with their pages. -> [{name, url}]
 export async function failedJobLinks(runId, env = process.env, fetcher = fetch) {
   const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
-  return (body.jobs || []).filter(job => job.conclusion === 'failure').map(job => ({name: job.name, url: job.html_url}));
+  return (body.jobs || []).filter(unsuccessful).map(job => ({name: job.name, url: job.html_url}));
 }
 
 /**
  * The failed steps' own words: per failed job, its first annotation titled "<suite> · <step>" (lib/artifacts.mjs annotationLines). Errors: [] (the caller's cause stays).
  * @returns {Promise<string[]>} e.g. ['apply · fill the form: a required field is missing']
  */
-export async function stepCauses(runId, env = process.env, fetcher = fetch) {
+export async function stepCauses(runId, env = process.env, fetcher = fetch, lanes = readLanes()) {
   try {
     const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/runs/${runId}/jobs?per_page=100`, env, fetcher);
     const out = [];
-    for (const job of (body.jobs || []).filter(item => item.conclusion === 'failure' && backbone(item.name))) {
+    for (const job of (body.jobs || []).filter(item => item.conclusion === 'failure' && backbone(item.name, lanes))) {
       const notes = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/check-runs/${job.id}/annotations?per_page=50`, env, fetcher);
       const note = (Array.isArray(notes) ? notes : []).find(item => / · /.test(item.title || ''));
       if (note) out.push(`${note.title}: ${note.message}`);
@@ -80,26 +84,28 @@ export async function sinceGreen(env = process.env, fetcher = fetch, shown = 5) 
 }
 
 // One alert per (workflow, commit, failed jobs): true when an earlier finished run of this workflow on this commit failed with the same failed jobs. Errors: false (alert).
-export async function isRepeat(env = process.env, fetcher = fetch) {
+export async function isRepeat(env = process.env, fetcher = fetch, lanes = readLanes()) {
   const file = path.basename(String(env.GITHUB_WORKFLOW_REF || '').split('@')[0]);
   try {
     const body = await get(`${API(env)}/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${file}/runs?branch=${encodeURIComponent(env.GITHUB_REF_NAME || 'main')}&status=completed&per_page=10`, env, fetcher);
     const earlier = (body.workflow_runs || []).filter(run => String(run.id) !== String(env.GITHUB_RUN_ID) && run.head_sha === env.GITHUB_SHA && run.conclusion === 'failure');
     if (!earlier.length) return false;
-    const now = [...await failedJobs(env.GITHUB_RUN_ID, env, fetcher), ...(env.CI_ALERT_ASSUME_FAILED ? [env.CI_ALERT_ASSUME_FAILED] : [])].sort().join('|');   // ASSUME_FAILED: the job that sends is itself the failing one, not yet marked
+    const now = [...await failedJobs(env.GITHUB_RUN_ID, env, fetcher, lanes), ...(env.CI_ALERT_ASSUME_FAILED ? [env.CI_ALERT_ASSUME_FAILED] : [])].sort().join('|');   // ASSUME_FAILED: the job that sends is itself the failing one, not yet marked
     if (!now) return false;
-    for (const run of earlier) if ((await failedJobs(run.id, env, fetcher)).join('|') === now) return true;
+    for (const run of earlier) if ((await failedJobs(run.id, env, fetcher, lanes)).join('|') === now) return true;
   } catch { /* alert rather than stay silent */ }
   return false;
 }
 
 // -> the message ({text, parse_mode, ...} from lib/telegram-html.mjs), or '' when there is nothing to say (a success after a success).
 // cause / next: a few words each (the caller knows them); since: sinceGreen()'s answer; jobs: failedJobLinks()'s answer.
-export function messageOf({status, what = '', next = '', previous = '', since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = LANES}) {
+export function messageOf({status, what = '', causes = [], next = '', previous = '', since = {prs: [], more: 0}, jobs = [], env = process.env, now = new Date(), lanes = readLanes()}) {
   const blocking = jobs.filter(job => backbone(job.name, lanes));
-  if (status === 'failure' && jobs.length && !blocking.length) return '';
+  if (status === 'failure' && jobs.length && !blocking.length) status = 'success';
   jobs = blocking;
-  what ||= jobs.length ? `Failed job: ${jobs.map(job => job.name).join(', ')}${env.AFTER_MERGE ? ', after merge ' + env.AFTER_MERGE : ''}` : '';
+  // Why (27 Oct 2026; updated 30 Oct 2026): step words lead; one formatter adds failed-job and after-merge context for every caller.
+  const context = what || `Failed job: ${jobs.map(job => job.name).join(', ') || 'the run (see the link)'}${env.AFTER_MERGE ? ', after merge ' + env.AFTER_MERGE : ''}`;
+  what = causes.length ? `${causes.slice(0, 2).join('; ')} (${context})` : context;
   const name = env.GITHUB_WORKFLOW || 'CI', repo = env.GITHUB_REPOSITORY, site = env.GITHUB_SERVER_URL || 'https://github.com', branch = env.GITHUB_REF_NAME || 'main';
   const sha = String(env.GITHUB_SHA || ''), run = `${site}/${repo}/actions/runs/${env.GITHUB_RUN_ID}`;
   const time = new Intl.DateTimeFormat('en-GB', {timeZone: 'Europe/Zurich', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(now);
@@ -131,12 +137,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   if (status === 'failure' && await isRepeat()) console.log('ci-alert: not sent (same failure on this commit already alerted)');
   else {
     const failure = status === 'failure';
-    const previous = status === 'success' ? await previousConclusion() : '';
+    const previous = await previousConclusion();
     const since = failure ? await sinceGreen() : undefined, jobs = failure ? await failedJobLinks(process.env.GITHUB_RUN_ID).catch(() => []) : undefined;
-    // Why (27 Oct 2026): the failed step's own words lead the cause; the caller's words (which job, after which merge) follow as context.
     const causes = failure ? await stepCauses(process.env.GITHUB_RUN_ID) : [];
-    const names = (jobs || []).filter(job => backbone(job.name)).map(job => job.name);
-    const context = what || `Failed job: ${names.join(', ') || 'the run (see the link)'}${process.env.AFTER_MERGE ? ', after merge ' + process.env.AFTER_MERGE : ''}`;
-    console.log(await send(messageOf({status, what: causes.length ? `${causes.slice(0, 2).join('; ')} (${context})` : context, next, previous, since, jobs})));
+    console.log(await send(messageOf({status, what, causes, next, previous, since, jobs})));
   }
 }

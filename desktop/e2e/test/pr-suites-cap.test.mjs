@@ -184,7 +184,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, listed = {}, mergeBaseListed = listed, headListed = listed, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
+function cliPlan({catches, pullRequest = true, base = 'origin/main', listed = {}, mergeBaseListed = listed, headListed = listed, checkoutLanes = {}, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -194,11 +194,19 @@ function cliPlan({catches, pullRequest = true, listed = {}, mergeBaseListed = li
       return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
+    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--name-only') && !args.includes(${JSON.stringify(`${base || 'origin/main'}...HEAD`)})) throw new Error('wrong diff base');\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
     fs.writeFileSync(map, JSON.stringify(coverage));
-    const argv = [cli.pathname, '--base', 'origin/main', '--plan', '--map', map, ...(pullRequest ? ['--pull-request'] : [])];
+    // Isolate the merged-checkout registry too: a future lane promotion must not change these fixtures.
+    const preload = path.join(dir, 'registry.mjs');
+    fs.writeFileSync(preload, `import fs from 'node:fs'; import {syncBuiltinESMExports} from 'node:module';
+const read = fs.readFileSync;
+fs.readFileSync = function(file, ...args) {
+  return String(file) === ${JSON.stringify(new URL('../lanes.json', import.meta.url).pathname)} ? ${JSON.stringify(JSON.stringify({suites: checkoutLanes}))} : read.call(this, file, ...args);
+};
+syncBuiltinESMExports();`);
+    const argv = ['--import', preload, cli.pathname, ...(base ? ['--base', base] : []), '--plan', '--map', map, ...(pullRequest ? ['--pull-request'] : [])];
     if (catches) { const file = path.join(dir, 'catches.json'); fs.writeFileSync(file, JSON.stringify(catches)); argv.push('--catches', file); }
     const run = spawnSync(process.execPath, argv, {encoding: 'utf8', timeout: 30000, env: {...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, GITHUB_OUTPUT: output, GITHUB_REPOSITORY: ''}});
     assert.equal(run.status, 0, run.stderr);
@@ -226,7 +234,8 @@ test('CLI reads catch counts only when supplied and applies the base registry be
   assert.equal(values.suites, 'interviews,jobs,settings,strategy,wander');
   assert.equal(values.left, 'wizard');
   const main = cliPlan({pullRequest: false, catches: {wizard: 99}, listed: {calendar: {lane: 'tolerant'}}});
-  assert.equal(main.values.suites.split(',').length, 8);   // calendar is backbone in the merged checkout, regardless of the old base registry
+  assert.equal(main.values.suites.split(',').length, 7);   // --base applies even without --pull-request
+  assert.ok(!main.values.suites.split(',').includes('calendar'));
   assert.equal(main.values.left, '');
 });
 
@@ -282,7 +291,14 @@ test('after merge drops quality and mailreading but keeps reached backbone and P
   assert.deepEqual(pick.planPrSuites({...input, pullRequest: true}).suites, ['apply', 'qualityai']);
 });
 
-test('after-merge CLI reads the merged registry, including a lane changed by this merge', () => {
-  const {values} = cliPlan({pullRequest: false, suites: ['quality', 'mailreading', 'focus']});
+test('without --base the CLI reads the merged registry, including a lane changed by this merge', () => {
+  const {values} = cliPlan({pullRequest: false, base: '', suites: ['quality', 'mailreading', 'focus'],
+    checkoutLanes: {quality: {lane: 'tolerant'}, mailreading: {lane: 'tolerant'}}});
+  assert.equal(values.suites, 'focus');
+});
+
+
+test('--base without --pull-request cannot use the checkout lane to exempt a reached suite', () => {
+  const {values} = cliPlan({pullRequest: false, suites: ['focus'], listed: {}, checkoutLanes: {focus: {lane: 'tolerant'}}});
   assert.equal(values.suites, 'focus');
 });

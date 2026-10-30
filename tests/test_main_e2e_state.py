@@ -37,10 +37,22 @@ RUNS = [run(6, 'E2E check · on time (Worker cron)', conclusion='cancelled'),
 
 class MainE2eState(unittest.TestCase):
     def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        registry = patch.object(m, 'LANES', Path(tmp.name) / 'lanes.json')
+        registry.start()
+        self.addCleanup(registry.stop)
         self.state = m.state(RUNS, lambda rid: JOBS.get(rid, []))
 
     def test_red_suites_are_the_newest_main_check_result(self):
         self.assertEqual([suite for suite, _ in m.red(self.state)], ['cardstates', 'interactions', 'recorded'])
+
+    def test_real_job_name_shapes_resolve_to_the_suite(self):
+        for name in ('quality', 'quality-1of2', 'quality-1of2-standin', 'quality-1of2-sqlite',
+                     'quality · burn-in 2/5', 'quality-1of2-standin · burn-in 2/5',
+                     'E2E · Mac + Linux · quality-1of2-sqlite'):
+            with self.subTest(name=name):
+                self.assertEqual(m.suite_of(name), 'quality')
 
     def test_a_by_hand_rerun_on_main_clears_only_its_suite(self):
         self.assertEqual(self.state['settings']['conclusion'], 'success')

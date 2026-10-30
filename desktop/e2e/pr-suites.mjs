@@ -15,7 +15,8 @@ import {STORES, WHY, whyLines} from './lib/pick-why.mjs';
 import os from 'node:os';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const base = process.argv[process.argv.indexOf('--base') + 1] || 'origin/main';
+const hasBase = process.argv.includes('--base');
+const base = hasBase ? process.argv[process.argv.indexOf('--base') + 1] : 'origin/main';
 const git = args => execFileSync('git', args, {cwd: here, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024});
 // The code → suite map (gate G1b): --map <file>, else the newest `e2e-coverage-map` artifact (e2e.yml's coverage-map job after a scheduled main run). None yet: {}.
 function loadMap() {
@@ -89,10 +90,10 @@ try {
     const {hits, quoting} = rehomeQuotes(suitesExpecting(strings, sources), stepsQuoting(suitesExpecting(strings, sources), sources), map);
     const pointed = [...new Set([...pointedElse, ...Object.keys(own)])];
     const pullRequest = process.argv.includes('--pull-request');   // pr-suites.yml; main-steps.yml (after a merge) leaves it out
-    // Why (2026-10-28, owner; same as verdict #2376): a PR cannot exempt itself by changing its own registry.
+    // Why (2026-10-28, owner; verdict #2376; updated 30 Oct 2026): --base always supplies lanes, even without --pull-request, so a PR cannot exempt itself.
     let lanes = {};
     try {
-      lanes = JSON.parse(pullRequest ? git(['show', `${base}:desktop/e2e/lanes.json`]) : fs.readFileSync(path.join(here, 'lanes.json'), 'utf8'));
+      lanes = JSON.parse(hasBase ? git(['show', `${base}:desktop/e2e/lanes.json`]) : fs.readFileSync(path.join(here, 'lanes.json'), 'utf8'));
       if (!lanes?.suites || typeof lanes.suites !== 'object' || Array.isArray(lanes.suites)) throw new Error('not a registry');
     } catch { lanes = {}; console.log('pr-suites: lane registry not read; every reached suite remains backbone'); }
     const admitted = pullRequest ? admittedSuites({

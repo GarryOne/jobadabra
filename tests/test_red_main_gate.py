@@ -76,13 +76,13 @@ class RedMainGate(unittest.TestCase):
             self.assertIn(f'suspended (owner issue, not blocking): {suite}', out)
         self.assertEqual(dispatch, '')
 
-    def test_suspended_suite_is_not_dispatched_but_tolerant_red_still_is(self):
+    def test_suspended_and_tolerant_reds_are_neither_dispatched_nor_blocking(self):
         lanes = json.dumps({'suites': {'cardstates': {'lane': 'suspended'}, 'settings': {'lane': 'tolerant'}}})
         code, out, dispatch = gate({'runs': [RED_RUN], 'jobs': RED_JOBS, 'head': NEW_SHA, 'recheck': 'success'}, lanes=lanes)
         self.assertEqual(code, 0, out)
         self.assertIn('suspended (owner issue, not blocking): cardstates', out)
-        self.assertIn('suite=settings', dispatch)
-        self.assertNotIn('cardstates', dispatch)
+        self.assertEqual(dispatch, '')
+        self.assertNotIn('main is red', out)
 
     def test_invalid_registry_and_unlisted_reds_still_block(self):
         for lanes in ('{', '{"suites": {"cardstates": {"lane": "suspended"}}}'):

@@ -120,13 +120,11 @@ def after_run(run_id):
     started = None
     excluded = lane_suites()
     for suite, result in sorted(results.items()):
-        if suite in excluded:
-            continue
         number = issues.get(issue_title(suite))
         if result == 'success' and number:
             gh('issue', 'close', str(number), '-R', REPO, '--comment', f"Main's `{suite}` passed again in {run['html_url']} ({run['head_sha'][:7]}).")
             print(f'closed #{number}: {suite} green again')
-        elif result == 'failure' and not number:
+        elif result == 'failure' and not number and suite not in excluded:
             if started:
                 print(f'{suite}: red, bisected after `{started}` (one bisect at a time: the next main check starts it)')
                 continue

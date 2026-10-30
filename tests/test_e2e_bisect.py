@@ -1,5 +1,7 @@
 """A red main suite gets an owner (tools/e2e_bisect.py, gate G2b, 26 Oct 2026): bisect to the first red commit, one red-main issue per suite, closed when green again."""
 import re
+import json
+import tempfile
 import sys
 import unittest
 from unittest.mock import patch
@@ -7,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from tools import main_e2e_state as m
 from tools import e2e_bisect as b  # noqa: E402
 
 CREDIT = '✗ the interactions suite stopped: E2E_ANTHROPIC_KEY: the API refused model claude-haiku-5-5 (400): "Your credit balance is too low"'
@@ -55,6 +58,13 @@ class IssueContract(unittest.TestCase):
 
 class AfterRun(unittest.TestCase):
     def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        lanes = Path(tmp.name) / 'lanes.json'
+        lanes.write_text(json.dumps({'suites': {suite: {'lane': 'tolerant'} for suite in ('quality', 'mailreading')}}))
+        registry = patch.object(m, 'LANES', lanes)
+        registry.start()
+        self.addCleanup(registry.stop)
         self.calls = []
         self.saved = (b.gh, b.gh_json, b.open_issues, b.jobs_of)
         b.gh = lambda *args, check=True: self.calls.append(args) or ('https://github.com/o/r/issues/123' if args[:2] == ('issue', 'create') else '')
@@ -77,6 +87,13 @@ class AfterRun(unittest.TestCase):
         b.jobs_of = lambda rid: [{'name': name, 'conclusion': 'failure'} for name in ('quality-1of2-standin · burn-in 2/5', 'mailreading-standin')]
         b.after_run('9')
         self.assertEqual(self.calls, [], 'tolerant reds never create red-main work')
+
+    def test_tolerant_green_closes_its_existing_red_main_issue(self):
+        b.open_issues = lambda: [{'number': 72, 'title': 'Red main: quality'}]
+        b.jobs_of = lambda rid: [{'name': 'quality-1of2-standin · burn-in 2/5', 'conclusion': 'success'}]
+        b.after_run('9')
+        self.assertEqual([c[2] for c in self.calls if c[:2] == ('issue', 'close')], ['72'])
+        self.assertEqual(self.started(), [])
 
     def test_explicit_bisect_of_tolerant_suite_opens_no_issue(self):
         with patch.object(b, 'last_green', return_value=None):

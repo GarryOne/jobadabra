@@ -120,9 +120,13 @@ class LaneGreys(unittest.TestCase):
         self.assertTrue(asked[1][-1].endswith('lanes.json?ref=release'), "a pull_request run names its base in GITHUB_BASE_REF")
         self.assertNotIn('ref', inspect.signature(pv.lane_greys).parameters, "the caller has no way to hand it the PR's own commit")
 
-    def test_this_file_and_main_e2e_state_cut_a_sharded_name_the_same_way(self):
-        for name in ('quality', 'quality-1of2', 'applyflows-2of2', 'recorded-5of5', 'wander'):
-            self.assertEqual(pv.suite_of(name), main_e2e_state.suite_of(name), name)
+    def test_this_file_and_main_e2e_state_strip_every_real_job_shape_the_same_way(self):
+        for name in ('quality', 'quality-1of2', 'quality-standin', 'quality-sqlite', 'quality-1of2-standin',
+                     'quality-1of2-sqlite', 'quality · burn-in 2/5', 'quality-1of2-standin · burn-in 2/5',
+                     'E2E · Mac + Linux · quality-1of2-sqlite'):
+            with self.subTest(name=name):
+                self.assertEqual(pv.suite_of(name), 'quality')
+                self.assertEqual(pv.suite_of(name), main_e2e_state.suite_of(name))
 
 
 class RegistryFile(unittest.TestCase):

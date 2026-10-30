@@ -28,7 +28,8 @@ MAX_RUNS = 15   # main-check runs read, newest first (two days of schedule plus 
 
 def suite_of(job_name):
     """Job key → suite, without burn-in, store-leg or shard suffixes; any backbone slice can be red."""
-    key = re.sub(r' · burn-in \d+/\d+$', '', job_name)
+    key = re.sub(r'^E2E · (?:Mac \+ Linux · )?', '', job_name)
+    key = re.sub(r' · burn-in \d+/\d+$', '', key)
     key = re.sub(r'-(?:standin|sqlite)$', '', key)
     return re.sub(r'-\d+of\d+$', '', key)
 

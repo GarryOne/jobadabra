@@ -372,6 +372,7 @@
   "triage-rank.test.mjs",
   "triage-seen-again.test.mjs",
   "triage.test.mjs",
+  "typed-recorder.test.mjs",
   "truth-data.test.mjs",
   "truth.test.mjs",
   "twin-check.test.mjs",

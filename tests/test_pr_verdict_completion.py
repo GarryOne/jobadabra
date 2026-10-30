@@ -51,6 +51,7 @@ class CompletionWriter(unittest.TestCase):
                 argv += ['--job-status', job_status]
             with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', argv), \
                     patch.object(pv, 'gh', side_effect=gh), patch.object(sys, 'stdout'), \
+                    patch.object(pv, 'main_state_module', side_effect=OSError('offline replay')), \
                     patch.object(pv.time, 'sleep', side_effect=AssertionError('no retry or sleep')):
                 self.assertEqual(pv.main(), 0)
         self.assertEqual(len(writes), 1)
@@ -61,6 +62,29 @@ class CompletionWriter(unittest.TestCase):
         written = self.write()
         self.assertEqual(written['state'], 'success', written)
         self.assertIn('4.3 min', written['description'])
+
+    def e2e_record(self, conclusion='success'):
+        record = copy.deepcopy(RECORDED)
+        record['runs'][-1].update(workflowName='CI · End-to-end on Mac + Linux',
+                                  event='workflow_dispatch', displayTitle='E2E for PR · settings · stale-verdict')
+        record['jobs']['4'][0]['name'] = 'E2E · settings'
+        record['event']['workflow_run'].update(name='CI · End-to-end on Mac + Linux',
+                                                event='workflow_dispatch', conclusion=conclusion)
+        return record
+
+    def test_last_e2e_success_clears_lagging_run_and_job_lists(self):
+        written = self.write(self.e2e_record())
+        self.assertEqual(written['state'], 'success', written)
+        self.assertIn('4.3 min', written['description'])
+
+    def test_last_e2e_failure_preserves_real_jobs_and_their_verdict(self):
+        for status, conclusion, expected in [('in_progress', None, 'pending'), ('completed', 'failure', 'failure')]:
+            with self.subTest(status=status):
+                record = self.e2e_record('failure')
+                record['jobs']['4'][0].update(status=status, conclusion=conclusion)
+                with patch.object(pv, 'verdict', wraps=pv.verdict) as decide:
+                    self.assertEqual(self.write(record)['state'], expected)
+                self.assertEqual(decide.call_args.args[3][4], record['jobs']['4'])
 
     def test_a_sibling_still_running_keeps_the_verdict_pending(self):
         record = copy.deepcopy(RECORDED)

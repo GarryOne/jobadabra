@@ -238,10 +238,15 @@ def open_pr(pulls):
     return (str(live[0]['number']), True) if live else ('', False)
 
 
+def ended_run(run, ended):
+    """Match a head-validated completion event to the exact run and attempt; reruns stay untouched."""
+    return bool(ended) and run.get('databaseId') == ended.get('id') and run.get('attempt') == ended.get('run_attempt')
+
+
 def read(repo, sha, my_run):
     """Read the PR's runs and deciding jobs; a matching completed event outranks a lagging list.
     Invariant: completion evidence applies only to the same head, run id and attempt, never a rerun.
-    E2E job details still decide lane exemptions and burn-in admission.
+    Red E2E job details still decide lane exemptions and burn-in admission.
     """
     runs = json.loads(gh('run', 'list', '-R', repo, '--commit', sha, '-L', '100', '--json',
                          'databaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle,attempt'))
@@ -254,12 +259,16 @@ def read(repo, sha, my_run):
             ended = source
     for r in runs:
         # Why (30 Oct 2026, #2533): the final Python completion still listed itself running 15 s later; no later event repaired pending.
-        if ended and r.get('databaseId') == ended.get('id') and r.get('attempt') == ended.get('run_attempt'):
+        if ended_run(r, ended):
             r.update(status='completed', conclusion=ended['conclusion'], updatedAt=ended['updated_at'])
     jobs = {}
     for r in counted(runs):
         if r.get('status') != 'completed' or r.get('conclusion') in RED or str(r.get('databaseId')) == my_run or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE):
             jobs[r['databaseId']] = json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '.jobs'))
+            # Why (30 Oct 2026, Gitar on #2552): a successful last E2E completion outranks lagging jobs; red jobs retain exemption evidence.
+            if ended.get('conclusion') == 'success' and ended_run(r, ended):
+                for job in jobs[r['databaseId']]:
+                    job.update(status='completed', conclusion='success', completed_at=job.get('completed_at') or ended['updated_at'])
     return runs, jobs
 
 

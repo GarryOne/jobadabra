@@ -27,3 +27,11 @@ for (const key of ['libModules', 'harnessFiles']) test(`${key} matches the harne
     : `shrink ${key} back to ${baseline[key]}; the ratchet only moves down`;
   assert.equal(measured[key], baseline[key], `${counts}; ${action}. ${guidance}`);
 });
+
+// Why (30 Oct 2026, Gitar on #2554): a PR runs this test only when a folder reader in test-sets.json reaches its files, so a counted folder with no reader lets growth through unchecked until the daily run.
+test('every folder the ratchet counts has a reader that runs it', () => {
+  const sets = JSON.parse(fs.readFileSync(new URL('../test-sets.json', import.meta.url), 'utf8'));
+  const folders = fs.readdirSync(root, {withFileTypes: true}).filter(entry => entry.isDirectory() && !excluded.has(entry.name) && harnessFiles(path.join(root, entry.name)).length).map(entry => `${entry.name}/`);
+  const unread = ['./', ...folders].filter(folder => !sets.folderReaders?.[folder]?.includes('harness-size.test.mjs'));
+  assert.deepEqual(unread, [], 'add each folder to "folderReaders" in desktop/e2e/test-sets.json with harness-size.test.mjs, so a PR that grows it runs the ratchet');
+});

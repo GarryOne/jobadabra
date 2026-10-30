@@ -42,7 +42,7 @@ test('apply preserves contact answers and each context\'s unmatched-ask fallback
     messages: [{role: 'user', content: 'Address path: /e2e/jobs/4001001\nCandidates (number...'}]};
   assert.deepEqual({...answer(digest)}, {refuse: 'invalid-key'});
   const passThrough = install(null);
-  assert.equal(passThrough(digest), null, 'applyflows retains its unmatched digest pass-through');
+  assert.equal(passThrough(digest), null, 'an explicitly supplied null fallback permits pass-through');
   assert.equal(passThrough({...body, system: 'A different question with the same labels'}), null);
   assert.equal(ctx.answerAsks, undefined);
   assert.equal(ctx.kindAsks, undefined);
@@ -153,4 +153,22 @@ test('settings declares offline AI and the harness wires its key path, proxies a
     assert.equal(pickFamily(withoutSecrets), 'claude');
     assert.equal(pickEngine({env: withoutSecrets}), 'api');
   }
+});
+
+
+test('applyflows wrapper refuses paid AI calls in its fixture journeys', async () => {
+  const suite = await import('../suites/applyflows.mjs');
+  const {runAiGuards} = await import('../lib/no-real-ai.mjs');
+  await assert.rejects(runAiGuards(suite, {proxy: {stats: {paid: 1}}}, (_name, work) => work()), /1 AI call\(s\) reached a real model/);
+  assert.equal(suite.offlineAi, true, 'fixture journeys must create an offline proxy');
+});
+
+
+test('explicit LIVE mode keeps applyflows on its real-site measurement path', async t => {
+  const saved = process.env.LIVE;
+  process.env.LIVE = '1';
+  t.after(() => { if (saved === undefined) delete process.env.LIVE; else process.env.LIVE = saved; });
+  const suite = await import('../suites/applyflows.mjs?live-control');
+  assert.equal(suite.offlineAi, false);
+  assert.equal(suite.realAi, true);
 });

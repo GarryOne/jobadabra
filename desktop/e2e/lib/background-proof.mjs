@@ -62,16 +62,19 @@ export const backgroundStateOf = (page, url) => page.evaluate(target => window.p
 /** The whole background record of the application of `url` (state, reason, mode ...), from the Sessions list, or null. */
 export const backgroundOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background || null), url);
 
-/** Opens the application's session the way a person does: its dock card (expanding the collapsed dock first), else its row on the Sessions page. */
+/** Ends a proof's job the way the person does ("Skip this role": the job is dismissed, its session closes).
+ * Why (30 Oct 2026, found by the bot-check steps): Start takes the first eligible job and the suite's steps assume one is left, so a job a proof leaves handed over is started again by the next proof. */
+export async function skipJob(page, form) {
+  const left = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url).catch(() => '');
+  if (left) await page.evaluate(session => window.pilot.sessionSkip(session), left).catch(() => {});
+}
+
+/** Opens this application's session on the Sessions page: the card a click on its dock card or list row opens (pages/session-log.js openSession), picked by the session's id.
+ * Why (30 Oct 2026, found by the bot-check steps in CI order): every submitter variant has one company and one title, so a card found by those words opened an earlier job's card ("Review the filled application"). */
 async function openSessionCard(page, form) {
-  const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).first();
-  if (await card.count()) {
-    if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');
-    await card.click();
-  } else {
-    await page.click('.nav[data-view="sessions"]');
-    await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000});
-  }
+  const id = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url);
+  if (!id) throw new Error(`the app holds no session for ${form.url}`);
+  await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
 }
 
 /** The values of the inputs on the page behind `socketUrl` (one Runtime.evaluate over its debugging port), for a failure message. */
@@ -227,24 +230,21 @@ export async function proveBotCheck(ctx, {form, mode, seed, until}) {
       .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${(await backgroundOf(page, form.url))?.state || 'none'}`); });
     if (!/^captcha_/.test(handed.reason)) throw new Error(`the hand-off reason is "${handed.reason}", not a bot check (captcha_*)`);
     await openSessionCard(page, form);
-    const card = await until('the Applying card never said "A bot check needs you"', async () => {
-      const read = await page.evaluate(() => ({title: document.querySelector('#ss-next-title')?.innerText || '', pill: document.querySelector('#ss-stage')?.innerText || '',
-        submit: [...document.querySelectorAll('#ss-actions button')].filter(button => /^Submit application$/i.test(button.innerText.trim())).map(button => button.disabled)}));
-      return /A bot check needs you/.test(read.title) ? read : null;
-    }, 30000);
+    const readCard = () => page.evaluate(() => ({title: document.querySelector('#ss-next-title')?.innerText || '', pill: document.querySelector('#ss-stage')?.innerText || '', open: document.querySelector('#ss-title, .ss-title')?.innerText || '',
+      submit: [...document.querySelectorAll('#ss-actions button')].filter(button => /^Submit application$/i.test(button.innerText.trim())).map(button => button.disabled)}));
+    const card = await until('the Applying card never said "A bot check needs you"', async () => { const read = await readCard(); return /A bot check needs you/.test(read.title) ? read : null; }, 30000)
+      .catch(async error => { throw new Error(`${error.message} | the open card says ${JSON.stringify(await readCard())}; state: ${JSON.stringify(handed)}`); });
     if (!/Needs you/i.test(card.pill)) throw new Error(`the card's pill says "${card.pill.trim()}", not "Needs you"`);
     if (card.submit.length !== 1 || card.submit[0] !== true) throw new Error(`the card's Submit application is not one disabled button: ${JSON.stringify(card.submit)}`);
     await page.click('.nav[data-view="sessions"]');
-    const row = await page.locator('#ss-list .ss-row').filter({hasText: form.company}).first().innerText();
+    const row = await page.locator('#ss-list .ss-row.is-current').innerText();   // the row of the session openSessionCard opened, not another job of the same company
     if (!/Needs you/i.test(row)) throw new Error(`the Sessions list row does not say "Needs you": "${row.replace(/\s+/g, ' ')}"`);
-    const dock = await page.locator('#sd-cards .sd-card').filter({hasText: form.company}).first().innerText({timeout: 2000}).catch(() => '');
-    if (dock && !/Needs you/i.test(dock)) throw new Error(`the dock card does not say "Needs you": "${dock.replace(/\s+/g, ' ')}"`);
+    const dock = await page.locator('#sd-cards .sd-card').filter({hasText: form.company}).allInnerTexts().catch(() => []);   // the dock draws live sessions only; a job of the same company may sit beside this one
+    if (dock.length && !dock.some(text => /Needs you/i.test(text))) throw new Error(`no dock card says "Needs you": "${dock.join(' / ').replace(/\s+/g, ' ')}"`);
     if (forms.posts.length !== posted) throw new Error(`a bot check was met and the form still got ${forms.posts.length - posted} POST(s): nothing may be sent`);
     if (pressed() !== pressesBefore) throw new Error('the app authorized an automatic press on a page with a bot check');
   } finally {
-    // Why (30 Oct 2026, found by this step): Start takes the first eligible job and the suite's steps assume one is left; the person ends this one with the card's "Skip this role" (the job is dismissed, its session closes), so the next proof starts its own.
-    const left = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url).catch(() => '');
-    if (left) await page.evaluate(session => window.pilot.sessionSkip(session), left).catch(() => {});
+    await skipJob(page, form);
     await closeHiddenBrowser(ctx.profile);
   }
 }

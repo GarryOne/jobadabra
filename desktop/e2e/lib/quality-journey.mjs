@@ -70,6 +70,14 @@ export function rankingCheck(journey, {onRanking, onCap}) {
   onCap(over, said);
 }
 
+/** Find missing rows and unequal scores; the strict reader and final assertion share this exact comparison. */
+export function jobListDifferences(rows, jobs = []) {
+  return rows.flatMap(row => {
+    const job = jobs.find(item => normalizeUrl(item.url) === normalizeUrl(row.props['Job URL']));
+    return !job || Number(job.fit) !== row.props.Score ? [{row, job}] : [];
+  });
+}
+
 /** Build one isolated journey; strict reads require complete store and Jobs-page rows, live reads keep partial results. */
 export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
   const {page} = ctx;
@@ -139,10 +147,13 @@ export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
       });
     rows = complete;
     const readAppJobs = () => page.evaluate(() => (window.__jp.shared.allJobs || []).map(job => ({title: job.title, url: job.url, fit: job.fit, reason: job.reason})));
-    // Why (29 Oct 2026, qu 3/4, #2501 review): only exact quality waits for startSearch's asynchronous Jobs-page reload; live qualityai reads the available list once.
+    // Why (30 Oct 2026, qu-fit; run 40987027036): URLs can precede scores during startSearch's asynchronous reload; exact quality waits for the assertion's state, qualityai reads once.
     appJobs = strict ? await state(readAppJobs,
-      jobs => complete.every(row => jobs.some(job => normalizeUrl(job.url) === normalizeUrl(row.props['Job URL']))),
-      'the Jobs page showing the stored postings', jobsStateMs, jobs => `store rows=${complete.length}, Jobs page rows=${jobs?.length ?? 0}\n${qualityEvidence(ctx)}`) : await readAppJobs();
+      jobs => jobListDifferences(complete, jobs).length === 0,
+      'the Jobs page showing the stored postings and scores', jobsStateMs, jobs => {
+        const differences = jobListDifferences(complete, jobs).map(({row, job}) => `${row.props.Job} store ${row.props.Score} page ${job ? job.fit : '(missing)'}`);
+        return `store rows=${complete.length}, Jobs page rows=${jobs?.length ?? 0}\nJobs page rows with a score other than the store's: ${differences.join('; ')}\n${qualityEvidence(ctx)}`;
+      }) : await readAppJobs();
   };
   // SQLite gets a fresh profile per attempt (app.mjs launch); reset asserts its matches empty below. Thus list[0] cannot select an earlier attempt's match.
   const scoresOf = () => Object.fromEntries(Object.entries(matchRows(truth, rows).byId).map(([id, list]) => [id, list[0].props.Score]));

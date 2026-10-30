@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {answersMode} from '../lib/ai-answers.mjs';
-import {PLANNER, collectFacts, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
+import {PLANNER, collectFacts, jobListDifferences, qualityJourney, rankingCheck} from '../lib/quality-journey.mjs';
 import {qualityClocks, qualityEvidence, qualityHang, withQualityHang} from '../lib/quality-waits.mjs';
 import {notKeptNote} from '../lib/quality-rows.mjs';
 import {dirtyRows, dirtyText, matchRows, missingColumns, mayBeEmptyFor, normalizeUrl} from '../lib/quality.mjs';
@@ -98,10 +98,9 @@ async function runJourney(ctx) {
 
     await ctx.run('the app\'s list agrees with Notion (same jobs, same scores)', async () => {
       const problems = [];
-      for (const row of rows) {
-        const job = appJobs.find(item => normalizeUrl(item.url) === normalizeUrl(row.props['Job URL']));
+      for (const {row, job} of jobListDifferences(rows, appJobs)) {
         if (!job) problems.push(`"${row.props.Job}" is in Notion but not in the app's list`);
-        else if (Number(job.fit) !== row.props.Score) problems.push(`"${row.props.Job}": Notion says ${row.props.Score}, the app shows ${job.fit}`);
+        else problems.push(`"${row.props.Job}": Notion says ${row.props.Score}, the app shows ${job.fit}`);
       }
       if (problems.length) throw new Error(problems.join('; '));
     }, {needs: ctx.needs});

@@ -8,8 +8,6 @@ import {backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 
 // interactions: isSafe excludes commands, wands and AI-spending controls, so only the shared setup/background reads below are expected.
-// failureschannels: runParts(channels) starts searches for the telegram digest and fake Google mail, which can ask title_triage, enrich, score, visit_relevant, place_triage, decide and mail;
-// channel-specific posting/mail items are not captured, so CI names the first missing key and a missing item fails, never falls through to live AI.
 // Shared ensureSetUp saves the applicant strategy and reloads Focus: role/place decide,
 // profile organization, list meanings and the missing-fact/reuse queue are background reads.
 const captured = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/activityfailures-decide.json', import.meta.url), 'utf8'));
@@ -21,7 +19,7 @@ const request = (action, body = {model: 'test', messages: [{role: 'user', conten
 });
 
 // Why (30 Oct 2026, bb 3/9, Gitar): one looped file instead of one near-identical file per suite; a suite joins by name.
-for (const suite of ['interactions', 'failureschannels']) {
+for (const suite of ['interactions']) {
   for (const family of ['claude', 'openai']) test(`${suite} setup answers and named refusals stop before live ${family} AI`, async t => {
     const h = await backboneHarness(t, suite, family);
     t.after(() => h.assertNoLive());

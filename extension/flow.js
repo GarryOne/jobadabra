@@ -1,9 +1,9 @@
 // One fill run on a tab: read the form, get answers (AI and/or the drafted kit), fill, report.
 // Shared by the popup (the tab you're on) and the background worker (tabs the app opens to fill).
-import {backgroundContext} from './background-apply.js';
+import {createBackgroundSession} from './background-session.mjs';
 import {prepareFillPage, resolveFillContact, resolveFillAnswers, recordFillForm, rememberedFillChoices, fillKnownFields} from './fill-tab-inputs.js';
 import {noteFirstFill, chooseFillMenus, fillLaterAnswers, snapshotFill, retryFill, settleFill, reportFill} from './fill-tab-finish.js';
-import {KEY} from './tab-identity.js';
+import {KEY, sessionOf} from './tab-identity.js';
 import {attachDebugger, detachDebugger} from './stop-state.js';
 import {StepTimeout, within} from './step-bound.js';
 import {askEnded, askStarted} from './ladder/silence.js';
@@ -192,7 +192,7 @@ async function openQuestions(tab, form, kitAnswers, me, config) {
     [form || [], me?.contact || config.profile || {}]).catch(() => [])) || []);
   const PERSONAL = /^(first_name|last_name|preferred_name|email|phone|resume|resume_text|cover_letter|cover_letter_text|longitude|latitude)$/;
   const ask = (form || []).filter(f => !f.filled && f.type !== 'file' && (f.legal ? consentsOn : !fromKit.has(f.field)) && !PERSONAL.test(f.field)).map(({field, label, type, custom, required, options, multiple}) => ({field, label, type: custom ? 'combobox' : type, required, options, ...(multiple ? {multiple} : {})}));
-  // Why (#2200): contact boxes ride along when the AI is asked anyway, never alone (owner, 27 Oct 2026: no new call): its reading of a box beats the quick step's label pattern (page/fill.js)
+  // Why (#2200; 30 Oct 2026, owner): contact boxes ride along only when other questions need AI; expose the same profile-covered ids for triage's saved-facts check without changing that call rule.
   return {fromKit, contact, open: ask.some(f => !contact.has(f.field)) ? ask : []};
 }
 // Claude's answers for a fill, or the news that they were dropped: the app call gives null when the tab had left the page the answer was asked for (read-gen.js), and the fill went on to read
@@ -234,7 +234,8 @@ export async function planAnswers(tab, config) {
 // if this page is filled as a form with the same questions (early-answers.js). Not with a kit (Claude answers after that fill) or a cached answer.
 export async function askEarly(tab, config, jobUrl = '') {
   // Why (30 Oct 2026, owner): reads plan only after the judge calls the form usable, never speculatively beside the page-kind ask.
-  if ((await backgroundContext(tab.id))?.mode === 'read') return false;
+  const session = await sessionOf(tab.id);
+  if (session && (await createBackgroundSession({chrome}).inspect(session))?.mode === 'read') return false;
   if (hasEarly(tab.id, tab.url)) return false;
   const job = (jobUrl || tab.url).split('#')[0];
   const [kit, me] = await Promise.all([apiFor(tab.id, config, `/extension/kit?url=${encodeURIComponent(job)}`).catch(() => ({})),

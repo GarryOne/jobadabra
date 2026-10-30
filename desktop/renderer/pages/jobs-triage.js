@@ -1,6 +1,6 @@
 // Apply triage on the Jobs screen (spec 2026-10-30-apply-triage, PR B): the button, the popup (which jobs, how many), the progress with Cancel, and the chip on each job.
 // The form read itself is PR C: until it lands, `readJob` answers "not read" and the chips stay "Not checked".
-import {chip, el} from '../components.js';
+import {chip} from '../components.js';
 import {$} from './core.js';
 import {chipOf, pickForTriage} from '../apply-triage-pick.js';
 import {shared} from './shared.js';
@@ -18,7 +18,7 @@ export function triageChip(job) {
   return chip(label, {tone, detail, title: detail || 'Not read yet: press "See which jobs can apply automatically"'});
 }
 
-let cancelled = false;
+let cancelled = false, running = false;   // one run at a time: a second Start while one runs does nothing
 
 // The popup's choice: 10 best matches (the default, decision 2), or every job at or above a fit.
 function choiceNow() {
@@ -30,7 +30,7 @@ function paintCount() {
   const picked = pickForTriage(shared.allJobs || [], choiceNow());
   if ($('triage-count')) $('triage-count').textContent = `${picked.length} ${picked.length === 1 ? 'job' : 'jobs'}`;
   if ($('triage-start')) $('triage-start').textContent = `Check ${picked.length} ${picked.length === 1 ? 'job' : 'jobs'}`;
-  if ($('triage-start')) $('triage-start').disabled = picked.length === 0;
+  if ($('triage-start')) $('triage-start').disabled = picked.length === 0 || running;
 }
 
 /**
@@ -38,17 +38,23 @@ function paintCount() {
  * before the next one. Resolves with how many were read.
  */
 export async function runTriage(jobs, read) {
+  if (running) return 0;
+  running = true;
   cancelled = false;
   const bar = $('triage-bar'), words = $('triage-progress-text');
   $('triage-progress').hidden = false;
-  let done = 0;
-  for (const job of jobs) {
-    if (cancelled) break;
-    const result = await read(job).catch(() => null);
-    if (result) setRead(job.url, result);
-    done += 1;
-    if (bar) bar.style.width = `${Math.round((done / jobs.length) * 100)}%`;
-    if (words) words.textContent = `${done} of ${jobs.length}`;
+  let done = 0, seen = 0;
+  try {
+    for (const job of jobs) {
+      if (cancelled) break;
+      const result = await read(job).catch(() => null);
+      if (result) { setRead(job.url, result); done += 1; }   // only a real read counts as read
+      seen += 1;
+      if (bar) bar.style.width = `${Math.round((seen / jobs.length) * 100)}%`;
+      if (words) words.textContent = `${seen} of ${jobs.length}`;
+    }
+  } finally {
+    running = false;
   }
   return done;
 }
@@ -72,7 +78,7 @@ export function wireTriage({read = notYetRead, rerender = () => {}, toast = () =
     $('triage-start').disabled = true;
     const done = await runTriage(jobs, read);
     $('triage-progress').hidden = true;
-    $('triage-start').disabled = false;
+    paintCount();
     rerender();
     toast(done ? 'Checked your jobs' : 'Nothing was checked', done ? `${done} of ${jobs.length} read. Each chip shows how it can apply.` : 'The form check is not available in this version yet.', null, done ? 'good' : 'info');
   });

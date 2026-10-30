@@ -87,7 +87,7 @@ export async function ask(client, fields) {
       model: MODEL, max_tokens: 4000, system: INSTRUCTIONS,
       messages: [{role: 'user', content: [{type: 'text', text: brief(fields) + (problem ? `\nYour previous answer was rejected: ${problem}. Answer again in the exact shape.` : '')}]}],
       output_config: {format: {type: 'json_schema', schema: SCHEMA}},
-    });
+    }, {headers: {'x-jp-action': 'preferences_parse'}});   // Why (30 Oct 2026, bb 3/9): every sibling sender names its step; without it Free AI cannot count this step and the e2e answer table cannot key it (interactions red, run 41091251455).
     if (response.stop_reason === 'refusal') throw new Error(`${nameOfClient(client)} declined to read the preferences`);
     if (response.stop_reason === 'max_tokens') { problem = 'it was cut short'; continue; }
     try { return {parse: cleanAnswer(JSON.parse(response.content?.find(block => block.type === 'text')?.text || '{}'))}; } catch (failure) { problem = failure.message; }

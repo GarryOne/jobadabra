@@ -344,6 +344,7 @@
   "store-call.test.mjs",
   "store.test.mjs",
   "storemove-backbone-no-live-ai.test.mjs",
+  "stored-answer-suites-no-live-ai.test.mjs",
   "storemove-process.test.mjs",
   "stores-answer.test.mjs",
   "stores-backbone-no-live-ai.test.mjs",

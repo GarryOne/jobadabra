@@ -7,12 +7,11 @@ import {test} from 'node:test';
 import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {DUMMY_KEY} from '../lib/engine.mjs';
 import {FAILURES} from '../lib/ai-proxy.mjs';
-import {backboneHarness} from '../lib/backbone-harness.mjs';
+import {answersTableFile, backboneHarness} from '../lib/backbone-harness.mjs';
 import {contextAiKeys} from '../lib/context.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {python, pythonEnv} from '../lib/python.mjs';
 
-const tableFile = fileURLToPath(new URL('../fixtures/golden/ai-answers.json', import.meta.url));
 const background = ['organize_lines', 'contact_asks', 'covered_facts', 'reuse_verdict', 'field_redraft'];
 const captions = ['recruiter-call-gamma', 'E2E Acme · Round 1'];
 const {requests: decideRequests} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/interviews-decide.json', import.meta.url), 'utf8'));
@@ -42,7 +41,7 @@ const request = (action, content = 'background request') => ({method: 'POST',
 const review = caption => request('interview', `Applications:\n0. Reordered job\n\nCaption: ${caption}\n\nTranscript or notes:\nfixture transcript`);
 
 test('interviews resolves all ten captured decide items through the real validator before any transport', async t => {
-  const h = await harness(t), table = loadTable(tableFile), cases = [], seen = [];
+  const h = await harness(t), table = loadTable(answersTableFile), cases = [], seen = [];
   for (const body of decideRequests) {
     const init = {...request('decide'), body: JSON.stringify(body)}, question = questionOf(init, h.env, table);
     assert.equal(question.operation, 'app.decide');
@@ -106,7 +105,7 @@ print(json.dumps(found))
 });
 
 test('interviews serves both keyed reviews and the kind-only aggregate at every seam before live AI', async t => {
-  const h = await harness(t), table = loadTable(tableFile);
+  const h = await harness(t), table = loadTable(answersTableFile);
   const asks = [...captions.map(caption => [review(caption), table.answers['app.interview']?.[caption]?.reply]),
     ...['first review collection', 'changed reviews and dates'].map(text => [request('interview_patterns', text), table.kinds.interview_patterns?.answer.reply])];
   for (const [init, expected] of asks) {

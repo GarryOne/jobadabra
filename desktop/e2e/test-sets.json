@@ -33,6 +33,7 @@
   "test-sets.test.mjs"
  ],
  "daily": [
+  "activityfailures-backbone-no-live-ai.test.mjs",
   "ai-cap.test.mjs",
   "ai-format-manifest.test.mjs",
   "ai-provider.test.mjs",

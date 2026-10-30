@@ -9,6 +9,7 @@ import {notionFarSide, pickStore, runToken, STORES, storeSettings} from '../lib/
 import {E2E} from '../lib/app.mjs';
 import {SUITES} from '../lib/context.mjs';
 import * as interviews from '../suites/interviews.mjs';
+import * as activityfailures from '../suites/activityfailures.mjs';
 import * as quality from '../suites/quality.mjs';
 import * as wander from '../suites/wander.mjs';
 
@@ -49,13 +50,16 @@ test('interviews pins SQLite across CI store alternation and environment overrid
   }
 });
 
-test('wander keeps its Notion faults reachable on the stand-in across CI store alternation and environment pins', () => {
-  for (const run of [0, 1, 2, 3]) {
-    for (const E2E_STORE of ['', 'sqlite', 'standin', 'alternate']) {
-      assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_STORE}, suiteStore: wander.store}), 'standin');
+for (const [name, suite] of [['wander', wander], ['activityfailures', activityfailures]]) {
+  test(`${name} keeps its Notion faults reachable on the stand-in across CI store alternation and environment pins`, () => {
+    assert.equal(suite.store, 'standin');
+    for (const run of [0, 1, 2, 3]) {
+      for (const E2E_STORE of ['', 'sqlite', 'standin', 'alternate']) {
+        assert.equal(pickStore({env: {CI: 'true', GITHUB_RUN_NUMBER: String(run), E2E_STORE}, suiteStore: suite.store}), 'standin');
+      }
     }
-  }
-});
+  });
+}
 
 test('every stored-answer backbone suite pins its store or bypasses store alternation', async () => {
   const workflow = fs.readFileSync(new URL('../../../.github/workflows/e2e.yml', import.meta.url), 'utf8');

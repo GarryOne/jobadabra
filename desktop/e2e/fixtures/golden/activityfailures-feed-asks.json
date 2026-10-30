@@ -1,0 +1,131 @@
+{
+  "about": "Hand-reconstructed requests, not recorded AI replies. CI 40983489930 at 7d10ee4: 27 refusals, six distinct messages. Exact visit/geo/place questions copied from ai-answer-refusals.json; their context is reconstructed from the seeded roles and Zurich-only search and checked against the captured context hashes. Score identities/descriptions come from activityfailures.mjs setFeed and feeds/sources.json; three score titles are captured, the other three are pre-authored for the same AI journey. No enrich refusal is captured. This is only run evidence, not a claim that every future ask is inventoried.",
+  "feedPostings": [
+    {
+      "title": "Senior Site Reliability Engineer, rate-limit (Site Reliability / Data Analyst)",
+      "company": "E2E Acme",
+      "location": "Zurich, Switzerland or Amsterdam, Netherlands",
+      "key": "feed/1da6368cd24e62770f18a716a7b350fb3c6f01ae226a8f9c7c978541807d34c2",
+      "description": "Senior Site Reliability Engineer, rate-limit (Site Reliability / Data Analyst): run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.",
+      "captured": false
+    },
+    {
+      "title": "Senior Site Reliability Engineer, server-error (Site Reliability / Data Analyst)",
+      "company": "E2E Acme",
+      "location": "Zurich, Switzerland or Amsterdam, Netherlands",
+      "key": "feed/3d695acacf3962ef39abd7921bf38bed6d236b734f84d892fcc0e27cb47d5634",
+      "description": "Senior Site Reliability Engineer, server-error (Site Reliability / Data Analyst): run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.",
+      "captured": false
+    },
+    {
+      "title": "Senior Site Reliability Engineer, invalid-key (Site Reliability / Data Analyst)",
+      "company": "E2E Acme",
+      "location": "Zurich, Switzerland or Amsterdam, Netherlands",
+      "key": "feed/22a1f609c2fcddc16a63feee750e7330ffca3d684a352a8b62d98af110dbba0f",
+      "description": "Senior Site Reliability Engineer, invalid-key (Site Reliability / Data Analyst): run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.",
+      "captured": true
+    },
+    {
+      "title": "Senior Site Reliability Engineer, no-credit (Site Reliability / Data Analyst)",
+      "company": "E2E Acme",
+      "location": "Zurich, Switzerland or Amsterdam, Netherlands",
+      "key": "feed/6cbe018ccb67f7edd510cb3af14409471d51da8428386d37341f42ca30f9257d",
+      "description": "Senior Site Reliability Engineer, no-credit (Site Reliability / Data Analyst): run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.",
+      "captured": true
+    },
+    {
+      "title": "Lead Platform Engineer, silence (Site Reliability / Data Analyst)",
+      "company": "E2E Acme",
+      "location": "Zurich, Switzerland or Amsterdam, Netherlands",
+      "key": "feed/cab6da775114a4cab18423082e17b23309db928680f7392d263cf05ce481c788",
+      "description": "Lead Platform Engineer, silence (Site Reliability / Data Analyst): run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.",
+      "captured": false
+    },
+    {
+      "title": "Senior Platform Engineer, restart (Site Reliability / Data Analyst)",
+      "company": "E2E Acme",
+      "location": "Zurich, Switzerland or Amsterdam, Netherlands",
+      "key": "feed/b8393735fbb246ce3e13b32086b7d2ce642bb49ccebc0721d2788bff5f64364c",
+      "description": "Senior Platform Engineer, restart (Site Reliability / Data Analyst): run production on Kubernetes and AWS with Terraform, SLOs and on-call. Senior level, hybrid in Zurich, English working language.",
+      "captured": true
+    }
+  ],
+  "visit": {
+    "context": {
+      "roles": [
+        "site reliability engineer",
+        "platform engineer",
+        "devops engineer",
+        "infrastructure engineer",
+        "cloud engineer",
+        "systems administrator"
+      ],
+      "places": [
+        "z\u00fcrich"
+      ],
+      "unsure": "keep"
+    },
+    "question": {
+      "operation": "app.visit",
+      "items": [
+        {
+          "n": 1,
+          "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"LinkedIn\",\"url\":\"https://www.linkedin.com/jobs/search/?keywords=site%20reliability%20engineer&location=z%C3%BCrich\"}",
+          "key": "default/app.visit/2e062ba5b572/7a81e8bb96b5d8e133f5b40e2902ce0240ba7098b7969ac0ab8d98061776d289",
+          "label": "LinkedIn (https://www.linkedin.com/jobs/search/?keywords=site%20reliability%20engineer&location=z%C3%BCrich)"
+        },
+        {
+          "n": 2,
+          "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Indeed\",\"url\":\"https://ch.indeed.com/jobs?q=site%20reliability%20engineer&l=z%C3%BCrich\"}",
+          "key": "default/app.visit/2e062ba5b572/6d6370e24849b5920a5e26d3d85b9adaeee534b4d6b0e78cc9a9d29b4189e219",
+          "label": "Indeed (https://ch.indeed.com/jobs?q=site%20reliability%20engineer&l=z%C3%BCrich)"
+        },
+        {
+          "n": 3,
+          "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"Glassdoor\",\"url\":\"https://www.glassdoor.com/Job/jobs.htm?sc.keyword=site%20reliability%20engineer&locKeyword=z%C3%BCrich\"}",
+          "key": "default/app.visit/2e062ba5b572/1e46679dc9d55911cdf8b628d84b9e4e9838c06e70cdc69d44c04d84f790bfba",
+          "label": "Glassdoor (https://www.glassdoor.com/Job/jobs.htm?sc.keyword=site%20reliability%20engineer&locKeyword=z%C3%BCrich)"
+        },
+        {
+          "n": 4,
+          "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"levels.fyi\",\"url\":\"https://www.levels.fyi/jobs?searchText=site%20reliability%20engineer&location=z%C3%BCrich\"}",
+          "key": "default/app.visit/2e062ba5b572/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f",
+          "label": "levels.fyi (https://www.levels.fyi/jobs?searchText=site%20reliability%20engineer&location=z%C3%BCrich)"
+        }
+      ]
+    }
+  },
+  "geo": {
+    "question": {
+      "operation": "app.geo",
+      "items": [
+        {
+          "n": 1,
+          "text": "z\u00fcrich",
+          "key": "shared/app.geo/44136fa355b3/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e"
+        }
+      ]
+    }
+  },
+  "place": {
+    "context": {
+      "best_places": [
+        "z\u00fcrich"
+      ],
+      "anywhere_in": [],
+      "cities_abroad": [],
+      "remote_jobs": "yes",
+      "remote_limited_to_regions_they_cannot_work_from": []
+    },
+    "question": {
+      "operation": "app.place",
+      "items": [
+        {
+          "n": 1,
+          "text": "zurich, switzerland or amsterdam, netherlands",
+          "key": "default/places-289aa37c5864/c0c2300d71d1f496814e8b37d1e4283079d1fe90670bae9e3a15543ff3875de7"
+        }
+      ]
+    }
+  }
+}

@@ -876,7 +876,7 @@ working in this repo.
 
 ## Gmail and Calendar setup (optional)
 
-Read-only access (`gmail.readonly`, `calendar.readonly`): nothing in your mailbox or calendar is ever
+Read-only access (`gmail.readonly`, `calendar.events.readonly`): nothing in your mailbox or calendar is ever
 sent, changed or deleted.
 
 ### The quick way: the shared Jobadabra app (one click or one command)

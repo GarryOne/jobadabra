@@ -78,7 +78,8 @@ export function createBackgroundSession({chrome = globalThis.chrome, parseMark} 
     const row = await inspect(session); if (!row) return false;
     await requireManual(session, 'cancelled');
     const tab = await chrome.tabs.get(row.tab).catch(() => null);
-    if (!tab || parseMark(tab.url) !== String(session)) return false;
+    // Why (2026-10-30, g2's G4 step, #2624): a page whose response is still held has not committed, so the mark is in pendingUrl and url is empty; a timeout or Cancel on a stuck read is exactly that case.
+    if (!tab || ![tab.url, tab.pendingUrl].filter(Boolean).some(address => parseMark(address) === String(session))) return false;
     await chrome.tabs.remove(row.tab); return true;
   }
   return {start, requireManual, reveal, mayContinue, inspect, observe, patch, closeSession, all};

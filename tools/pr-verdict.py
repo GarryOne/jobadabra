@@ -351,10 +351,10 @@ def health_greys(repo, runs, jobs, annotations_of=None, log_of=None, ref=''):
     return greys
 
 
-def number_description(repo, ref, runs, why, ai_line):
-    """Compose AI and speed text; unavailable speed evidence preserves the AI description."""
+def number_description(repo, ref, runs, why, ai_line, state):
+    """Compose AI text in every state; only final success/failure may spend calls on speed evidence."""
     why = ai_line(why)
-    if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
+    if state in ('success', 'failure') and any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
         try:
             why = main_state_module(repo, ref, 'pr_speed_number').summary(repo, counted(runs), gh, why)
         except Exception as error:
@@ -409,7 +409,15 @@ def main():
         print(f"  {r.get('conclusion') or r.get('status'):10} {r['workflowName']}")
     if state is None:
         print(f'no pull request run on {a.sha[:7]}: nothing to write'); return 0
-    why = number_description(a.repo, ref, runs, why, ai_line)
+    speed_state = state
+    # Why (30 Oct 2026, Gitar on #2531): an early red is not the last writer; wait for its peers before spending speed calls.
+    if state == 'failure':
+        for r in live:
+            if r.get('status') == 'completed': continue
+            deciding = [j for j in jobs.get(r['databaseId'], []) if j.get('name') not in REPORT_JOBS and suite_of(j.get('name', '')) not in reports]
+            if not any(j.get('id') == me for j in deciding) or any(job_state(j, me, a.job_status) in ('running', 'finishing') for j in deciding):
+                speed_state = 'pending'; break
+    why = number_description(a.repo, ref, runs, why, ai_line, speed_state)
     print(f'{CONTEXT}: {state}: {why}')
     url = f'{server}/{a.repo}/actions/runs/{target or my_run}'   # the run it waits on, or the red one: the PR's e2e run is not in its checks list
     if not a.dry_run:

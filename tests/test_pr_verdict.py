@@ -409,9 +409,9 @@ class CompanionBoundaries(unittest.TestCase):
     def test_speed_failure_preserves_the_ai_description_and_plain_runs_need_no_companion(self):
         e2e = run('E2E', event='workflow_dispatch', title='E2E for PR · jobs · topic')
         with patch.object(pv, 'main_state_module', side_effect=OSError('unavailable')):
-            self.assertEqual(pv.number_description('o/r', 'writer-ref', [e2e], 'green', lambda why: why + ' · AI counts'), 'green · AI counts')
+            self.assertEqual(pv.number_description('o/r', 'writer-ref', [e2e], 'green', lambda why: why + ' · AI counts', 'success'), 'green · AI counts')
         with patch.object(pv, 'main_state_module', side_effect=AssertionError('no e2e, no number read')):
-            self.assertEqual(pv.number_description('o/r', 'writer-ref', [run('Tests')], 'green', str), 'green')
+            self.assertEqual(pv.number_description('o/r', 'writer-ref', [run('Tests')], 'green', str, 'success'), 'green')
 
     def test_standalone_copy_fetches_health_classifier_at_the_writers_ref(self):
         with tempfile.TemporaryDirectory() as folder:

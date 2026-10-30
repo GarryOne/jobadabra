@@ -21,6 +21,15 @@ PATHS = (
     ('focus', 'Focus finishes loading within 20 seconds, with no error text', 'Focus', 20, '20 s'),
     ('focusdismiss', 'Focus finishes loading within 20 seconds, with no error text', 'Focus', 20, '20 s'),
 )
+# Why (30 Oct 2026, Gitar on #2531): the verdict shares the 1,000/h token.
+MAX_ZIP_DOWNLOADS = 5
+MAX_ARTIFACT_LISTS = 8
+MAX_RUN_LISTS = 1
+MAIN_RUN_LIMIT = 100   # one gh run list page, shared by every timed suite; never expand history
+
+
+class _BudgetExhausted(Exception):
+    """Stop optional evidence reads before they can consume another REST request."""
 
 
 def comparable(title):
@@ -48,9 +57,8 @@ def valid_seconds(step):
 
 
 def artifact_list(repo, rid, gh):
-    """Read every artifact page without downloading or extracting any paths."""
-    pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repo}/actions/runs/{rid}/artifacts?per_page=100'))
-    return [artifact for page in pages for artifact in page['artifacts']]
+    """Read one artifact page; incomplete optional evidence must never trigger pagination."""
+    return json.loads(gh('api', f'repos/{repo}/actions/runs/{rid}/artifacts?per_page=100'))['artifacts']
 
 
 def observations(repo, artifacts, suite, gh):
@@ -63,7 +71,10 @@ def observations(repo, artifacts, suite, gh):
                 latest[name] = artifact
     result = []
     for name, artifact in latest.items():
-        data = gh('api', f"repos/{repo}/actions/artifacts/{artifact['id']}/zip", binary=True)
+        try:
+            data = gh('api', f"repos/{repo}/actions/artifacts/{artifact['id']}/zip", binary=True)
+        except _BudgetExhausted:
+            break
         with zipfile.ZipFile(io.BytesIO(data)) as zipped:
             member = zipped.getinfo('steps.json')
             if member.file_size > 4 * 1024 * 1024:
@@ -77,42 +88,39 @@ def observations(repo, artifacts, suite, gh):
 
 
 def calm_samples(observed, step_name):
-    """Mirror measure(): reject shard totals above 1.5 times their median before pooling a step."""
+    """Reject shard totals above 1.5 times their median; return pooled seconds and contributing run count."""
     by_shard = defaultdict(list)
-    for shard, steps in observed:
-        by_shard[shard].append((sum(seconds for _, seconds in steps), steps))
-    samples = []
+    for rid, shard, steps in observed:
+        by_shard[shard].append((sum(seconds for _, seconds in steps), rid, steps))
+    samples, sampled_runs = [], set()
     for runs in by_shard.values():
-        middle = statistics.median(total for total, _ in runs)
-        for total, steps in runs:
+        middle = statistics.median(total for total, _, _ in runs)
+        for total, rid, steps in runs:
             if total <= 1.5 * middle:
-                samples.extend(seconds for name, seconds in steps if name == step_name)
-    return sorted(samples)
+                values = [seconds for name, seconds in steps if name == step_name]
+                samples.extend(values)
+                if values:
+                    sampled_runs.add(rid)
+    return sorted(samples), len(sampled_runs)
 
 
-def main_samples(repo, suite, step_name, gh, artifacts, runs=12):
-    """Search newest completed main runs until N have suite artifacts, just like downloadArtifacts()."""
-    seen, observed, downloaded, limit = set(), [], 0, runs
-    while downloaded < runs:
-        candidates = json.loads(gh('run', 'list', '--repo', repo, '--workflow', 'e2e.yml', '--branch', 'main',
-                                   '--status', 'completed', '--limit', str(limit), '--json', 'databaseId,displayTitle'))
-        for run in candidates:
-            rid = run['databaseId']
-            if rid in seen:
-                continue
-            seen.add(rid)
-            if not comparable(run.get('displayTitle')):
-                continue
-            measured = observations(repo, artifacts(rid), suite, gh)
-            if not measured:
-                continue
-            observed.extend(measured)
-            downloaded += 1
-            if downloaded == runs:
+def _main_runs(repo, gh):
+    """Read at most one page of completed main runs; no expanding or paginated history search."""
+    return json.loads(gh('run', 'list', '--repo', repo, '--workflow', 'e2e.yml', '--branch', 'main',
+                         '--status', 'completed', '--limit', str(MAIN_RUN_LIMIT), '--json', 'databaseId,displayTitle'))
+
+
+def main_samples(repo, suite, step_name, gh, artifacts, candidates=None):
+    """Collect calm samples from one fixed main-run list, stopping when the shared read budget ends."""
+    observed = []
+    for run in _main_runs(repo, gh) if candidates is None else candidates:
+        rid = run['databaseId']
+        if comparable(run.get('displayTitle')):
+            try:
+                measured = observations(repo, artifacts(rid), suite, gh)
+            except _BudgetExhausted:
                 break
-        if len(candidates) < limit:
-            break
-        limit *= 2
+            observed.extend((rid, shard, steps) for shard, steps in measured)
     return calm_samples(observed, step_name)
 
 
@@ -123,9 +131,10 @@ def duration(seconds):
     return f'{minutes}m{rest:02}' if minutes else f'{rest}s'
 
 
-def description(label, seconds, samples, promise, promise_text):
+def description(label, seconds, samples, promise, promise_text, sample_runs=None):
     """Report median and an empirical upper band; neither a slower range nor a broken promise is a red."""
-    text = f'{label} {duration(seconds)}, main median {duration(statistics.median(samples))}'
+    count = len(samples) if sample_runs is None else sample_runs
+    text = f'{label} {duration(seconds)}, main median from {count} runs {duration(statistics.median(samples))}'
     # Three calm observations minimum, as with the AI number's three-night band; speed's upper spread is nearest-rank p95.
     if len(samples) >= 3 and seconds > samples[math.ceil(0.95 * len(samples)) - 1]:
         text += " · SLOWER than main's range"
@@ -135,8 +144,19 @@ def description(label, seconds, samples, promise, promise_text):
 
 
 def summary(repo, runs, gh, why):
-    """Append complete measured entries within GitHub's 140-character description; never change a verdict."""
-    artifacts = lru_cache()(lambda rid: artifact_list(repo, rid, gh))
+    """Append optional speed text with one run list, bounded artifact lists and ZIPs across ALL suites."""
+    remaining = {'runs': MAX_RUN_LISTS, 'lists': MAX_ARTIFACT_LISTS, 'zips': MAX_ZIP_DOWNLOADS}
+
+    def read(*args, binary=False):
+        """Charge every attempted request, including failures, before invoking GitHub."""
+        kind = 'runs' if args[0] == 'run' else 'zips' if binary else 'lists'
+        if not remaining[kind] or not remaining['zips']:
+            raise _BudgetExhausted()
+        remaining[kind] -= 1
+        return gh(*args, binary=binary)
+
+    artifacts = lru_cache()(lambda rid: artifact_list(repo, rid, read))
+    candidates = lru_cache()(lambda: _main_runs(repo, read))
     lines = []
     for suite, step_name, label, promise, promise_text in PATHS:
         selected = [run for run in runs if str(run.get('displayTitle', '')).startswith(PR_TITLE)
@@ -145,13 +165,13 @@ def summary(repo, runs, gh, why):
             continue
         try:
             run = max(selected, key=lambda r: (r.get('createdAt') or '', r['databaseId']))
-            current = [seconds for _, steps in observations(repo, artifacts(run['databaseId']), suite, gh)
+            current = [seconds for _, steps in observations(repo, artifacts(run['databaseId']), suite, read)
                        for name, seconds in steps if name == step_name]
             if not current:
                 continue
-            samples = main_samples(repo, suite, step_name, gh, artifacts)
+            samples, sample_runs = main_samples(repo, suite, step_name, read, artifacts, candidates())
             if samples:
-                line = description(label, statistics.median(current), samples, promise, promise_text)
+                line = description(label, statistics.median(current), samples, promise, promise_text, sample_runs)
                 print(line)
                 lines.append(line)
         except Exception as error:

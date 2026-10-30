@@ -2,15 +2,16 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {test} from 'node:test';
-import {loadTable} from '../lib/ai-answers.mjs';
+import {loadTable, questionOf} from '../lib/ai-answers.mjs';
 import {capViolations, rankingViolations} from '../lib/quality.mjs';
 
 const file = new URL('../fixtures/golden/ai-answers.json', import.meta.url);
 const truth = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url), 'utf8'));
-// Why (30 Oct 2026, ap): the suites' own feed postings (activityfailures, failuresnotion, jobs) are scored under qu's feed/<hash> keys, outside the golden truth; only keys a suite's fixture declares may stay out of it, and the golden ranking, cap and coverage checks read the golden rows alone.
+// Why (30 Oct 2026, bb; #2632): suite feed fixtures and captured channel score requests declare their own feed/<hash> keys outside golden truth; request identities are checked below, while golden ranking, cap and coverage still read golden rows alone.
 const fixture = name => JSON.parse(fs.readFileSync(new URL(`../fixtures/golden/${name}`, import.meta.url), 'utf8'));
+const capturedScores = fixture('ai-answers.json').requests['app.score'];
 const feedKeys = new Set([...['activityfailures-feed-asks.json', 'failuresnotion-asks.json'].flatMap(name => fixture(name).feedPostings.map(post => post.key)),
-  ...fixture('jobs-asks.json').scorePostings.map(post => post.id)]);
+  ...fixture('jobs-asks.json').scorePostings.map(post => post.id), ...Object.keys(capturedScores)]);
 const allScoresOf = table => Object.fromEntries(Object.entries(table.answers['app.score']).map(([id, {reply}]) =>
   [id, JSON.parse(reply.content.filter(part => part.type === 'text').map(part => part.text).join('')).score]));
 const scoresOf = table => Object.fromEntries(Object.entries(allScoresOf(table)).filter(([id]) => !feedKeys.has(id)));
@@ -20,6 +21,10 @@ test('the committed reviewed table loads through the real validator', () => {
 });
 
 test('every stored score names a golden posting and is an integer from 0 to 100', () => {
+  for (const [id, request] of Object.entries(capturedScores)) {
+    assert.match(id, /^feed\//);
+    assert.equal(questionOf({body: request.body, headers: {'x-jp-action': request.action}}, {}).id, id, 'captured feed score identity');
+  }
   const ids = new Set(truth.map(item => String(item.id)));
   const scores = scoresOf(loadTable(file));
   assert.ok(Object.keys(scores).length > 0, 'the reviewed score table must not be empty');

@@ -8,6 +8,7 @@ import path from 'node:path';
 import {chromium} from 'playwright-core';
 import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {stageOf} from './seed-data.mjs';
+import {appLogLines} from './app-log.mjs';
 
 const FOLDER = {darwin: 'chrome-mac-', linux: 'chrome-linux64', win32: 'chrome-win64'};
 /**
@@ -27,20 +28,54 @@ export function linkRuntime(profile, platform = process.platform, arch = process
   return '';
 }
 
+/** The form judge's ask in a proxy body: {judged, text} (judged: it is the form judge's system prompt; text: the sketch). */
+const askOf = body => {
+  const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join('');
+  const content = body?.messages?.[0]?.content;
+  return {judged: system.startsWith(FORM_JUDGE), text: typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('')};
+};
+const verdict = (answer, submitControl, botCheck = false) => JSON.stringify({answer, blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: submitControl, bot_check: botCheck, login_wall: false, account_to_create: false, confidence: 0.95});
+
 /**
  * The form judge's stand-in (lib/form-judge.js, a model that reads the sketch): ready on a final step once no required control is listed empty, naming the one Submit button;
  * every other ask goes to `previous`, the suite's own stand-ins.
  */
 export const withFormJudge = (previous, submitText) => body => {
-  const system = typeof body?.system === 'string' ? body.system : (body?.system || []).map(part => part.text || '').join('');
-  const content = body?.messages?.[0]?.content, text = typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('');
-  if (!system.startsWith(FORM_JUDGE)) return previous ? previous(body) : null;
+  const {judged, text} = askOf(body);
+  if (!judged) return previous ? previous(body) : null;
   const empty = /· required · empty/.test(text);
-  return JSON.stringify({answer: empty ? 'needs_person' : 'ready', blocked_kind: '', needs: '', needs_kind: '', step: 'final', next_control: '', submit_control: empty ? '' : submitText, bot_check: false, login_wall: false, account_to_create: false, confidence: 0.95});
+  return verdict(empty ? 'needs_person' : 'ready', empty ? '' : submitText);
+};
+
+/**
+ * The same stand-in for a page that lists a box asking to prove the visitor is no robot (forms.mjs BOT_CHECK): the answer a model gives, needs_person with bot_check true (form-judge.js BOT_RULE);
+ * a sketch without that box is answered by `withFormJudge`.
+ */
+export const withBotCheckJudge = (previous, submitText) => {
+  const plain = withFormJudge(previous, submitText);
+  return body => { const {judged, text} = askOf(body); return judged && /not a robot/i.test(text) ? verdict('needs_person', '', true) : plain(body); };
 };
 
 /** The background state of the application of `url`, from the Sessions list (item.background, lib/background-apply-controller.js cache), or ''. */
 export const backgroundStateOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => (list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background?.state) || ''), url);
+
+/** The whole background record of the application of `url` (state, reason, mode ...), from the Sessions list, or null. */
+export const backgroundOf = (page, url) => page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.background || null), url);
+
+/** Ends a proof's job the way the person does ("Skip this role": the job is dismissed, its session closes).
+ * Why (30 Oct 2026, found by the bot-check steps): Start takes the first eligible job and the suite's steps assume one is left, so a job a proof leaves handed over is started again by the next proof. */
+export async function skipJob(page, form) {
+  const left = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url).catch(() => '');
+  if (left) await page.evaluate(session => window.pilot.sessionSkip(session), left).catch(() => {});
+}
+
+/** Opens this application's session on the Sessions page: the card a click on its dock card or list row opens (pages/session-log.js openSession), picked by the session's id.
+ * Why (30 Oct 2026, found by the bot-check steps in CI order): every submitter variant has one company and one title, so a card found by those words opened an earlier job's card ("Review the filled application"). */
+async function openSessionCard(page, form) {
+  const id = await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url);
+  if (!id) throw new Error(`the app holds no session for ${form.url}`);
+  await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
+}
 
 /** The values of the inputs on the page behind `socketUrl` (one Runtime.evaluate over its debugging port), for a failure message. */
 const valuesOf = socketUrl => new Promise(done => {
@@ -148,14 +183,7 @@ export async function proveBackground(ctx, {form, seed, until}) {
     // the live view must still end up showing the page (renderer/live-opener.js asks again on every redraw).
     await until('the application never got a session', async () => !!(await page.evaluate(target => window.pilot.sessions().then(list => list.find(item => String(item.url || '').replace(/\/$/, '') === target.replace(/\/$/, ''))?.id || ''), form.url)), 60000);
     // The way e2e/suites/apply.mjs opens a session (proven on CI): the dock card, expanding the collapsed dock first; the Sessions page when the dock does not show this one.
-    const card = page.locator('#sd-cards .sd-card').filter({hasText: form.company}).first();
-    if (await card.count()) {
-      if (!await card.isVisible() && await page.locator('#sd-toggle').isVisible()) await page.click('#sd-toggle');
-      await card.click();
-    } else {
-      await page.click('.nav[data-view="sessions"]');
-      await page.locator('.view[data-view="sessions"]').getByText(form.company).first().click({timeout: 15000});
-    }
+    await openSessionCard(page, form);
     const shown = await page.evaluate(async () => {
       for (let waited = 0; waited < 40000; waited += 250) {
         const img = document.querySelector('.live-img');
@@ -176,4 +204,48 @@ export async function proveBackground(ctx, {form, seed, until}) {
     await until('the job never became Applied after the person submitted in the live view', async () => (await stageOf(ctx, form.url)) === 'Applied', 120000);
     if (forms.posts.length !== posted + 1) throw new Error(`expected the person's one Submit, the server saw ${forms.posts.length - posted}`);
   } finally { if (process.env.E2E_KEEP_HIDDEN !== '1') await closeHiddenBrowser(ctx.profile); }   // E2E_KEEP_HIDDEN=1: leave it running to probe by hand after a failure (local only)
+}
+
+const HANDOFF = /^(needs_user_handoff|manual_submit_required)$/;
+
+/**
+ * The proof of the bot-check hand-off in a hidden-browser mode (`mode` 'fill' = Background, 'auto' = Full automation, with no wait): the form (forms.mjs BOT_CHECK) asks to prove no robot, the judge's stand-in
+ * says bot_check, and the application is handed to the person with a captcha reason. The Applying card says "A bot check needs you" with Submit off, the list and dock say "Needs you", and nothing is solved or sent:
+ * the fixture server sees no POST and the app never authorizes a press. `until(what, check, ms)` is the suite's state wait.
+ */
+export async function proveBotCheck(ctx, {form, mode, seed, until}) {
+  const unlinked = linkRuntime(ctx.profile);
+  if (unlinked) { if (process.platform === 'win32') { console.log(`  skipped here: ${unlinked}`); return; } throw new Error(unlinked); }
+  await ctx.relaunch();   // Why (30 Oct 2026, found by this step): the step before closed the hidden browser behind the app's back, so a second run in the same app never got a browser to poll; each proof starts the app fresh (proveAutomatic does too)
+  const {page, proxy, forms} = ctx;   // read after the relaunch: it is a new window
+  proxy.setCanned(withBotCheckJudge(proxy.canned(), 'Submit Application'));
+  await seed();
+  try {
+    const chosenAt = new Date().toISOString(), posted = forms.posts.length, pressed = () => appLogLines(ctx.profile).filter(line => /one-shot automatic submit authorized/.test(line)).length;
+    const pressesBefore = pressed();
+    await page.evaluate(({kind, at}) => window.pilot.saveSettings({apply: {mode: kind, chosenAt: at, ...(kind === 'auto' ? {autoConfirmedAt: at, auto: {waitMin: 0}} : {})}}), {kind: mode, at: chosenAt});
+    const started = await page.evaluate(() => window.pilot.apply({n: 1, mode: 'settings'}));
+    if (started?.ok === false) throw new Error(`the app refused to start the ${mode} mode: ${started.error}`);
+    const handed = await until('the hidden browser never handed the bot check to the person', async () => { const held = await backgroundOf(page, form.url); return HANDOFF.test(held?.state || '') ? held : null; }, 180000)
+      .catch(async error => { throw new Error(`${error.message} | ${await describeHidden(ctx.profile)} | state: ${(await backgroundOf(page, form.url))?.state || 'none'}`); });
+    if (!/^captcha_/.test(handed.reason)) throw new Error(`the hand-off reason is "${handed.reason}", not a bot check (captcha_*)`);
+    await openSessionCard(page, form);
+    const readCard = () => page.evaluate(() => ({title: document.querySelector('#ss-next-title')?.innerText || '', pill: document.querySelector('#ss-stage')?.innerText || '', open: document.querySelector('#ss-title, .ss-title')?.innerText || '',
+      submit: [...document.querySelectorAll('#ss-actions button')].filter(button => /^Submit application$/i.test(button.innerText.trim())).map(button => button.disabled)}));
+    const card = await until('the Applying card never said "A bot check needs you"', async () => { const read = await readCard(); if (/A bot check needs you/.test(read.title)) return read; await openSessionCard(page, form); return null; }, 30000)   // asks for the card again: the page may have moved to another session meanwhile
+      .catch(async error => { throw new Error(`${error.message} | the open card says ${JSON.stringify(await readCard())}; state: ${JSON.stringify(handed)}`); });
+    if (!/Needs you/i.test(card.pill)) throw new Error(`the card's pill says "${card.pill.trim()}", not "Needs you"`);
+    if (card.submit.length !== 1 || card.submit[0] !== true) throw new Error(`the card's Submit application is not one disabled button: ${JSON.stringify(card.submit)}`);
+    await page.click('.nav[data-view="sessions"]');
+    // Why (30 Oct 2026, found on CI apply-1of2): the list marks one row current, and the page falls back to another session's (a Lever job "Ready to submit") when the open one is not the pick, so the check reads the company's rows: the other jobs of this company are Applied or skipped, only this one can say "Needs you".
+    const rows = await page.locator('#ss-list .ss-row').filter({hasText: form.company}).allInnerTexts();
+    if (!rows.some(text => /Needs you/i.test(text))) throw new Error(`no Sessions list row of ${form.company} says "Needs you": "${rows.join(' / ').replace(/\s+/g, ' ')}"`);
+    const dock = await page.locator('#sd-cards .sd-card').filter({hasText: form.company}).allInnerTexts().catch(() => []);   // the dock draws live sessions only; a job of the same company may sit beside this one
+    if (dock.length && !dock.some(text => /Needs you/i.test(text))) throw new Error(`no dock card says "Needs you": "${dock.join(' / ').replace(/\s+/g, ' ')}"`);
+    if (forms.posts.length !== posted) throw new Error(`a bot check was met and the form still got ${forms.posts.length - posted} POST(s): nothing may be sent`);
+    if (pressed() !== pressesBefore) throw new Error('the app authorized an automatic press on a page with a bot check');
+  } finally {
+    await skipJob(page, form);
+    await closeHiddenBrowser(ctx.profile);
+  }
 }

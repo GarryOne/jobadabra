@@ -9,11 +9,6 @@ import {finish, snap} from '../lib/layout.mjs';
 import {journey} from '../lib/journey.mjs';
 import {LABEL, appReady, chooseMenu, closeRunPanel, noRowStaysRunning, openPanel, openRun, runPanelShown, panelRows, prepare, problemsWith, runTask, runsData, sleep} from '../lib/activity-steps.mjs';
 
-// Why (30 Oct 2026, bb 3/9, rule A): setup and task asks must use the stored table; any miss fails before live AI.
-export const offlineAi = true;
-export const realAi = false;
-// Why (30 Oct 2026, bb 3/9): stored answers follow one store path (test/store.test.mjs), so the suite is pinned to the store it already ran its Notion/run-history steps on.
-export const store = 'standin';   // reads and resets its run rows on the Notion stand-in
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): the relaunch steps read a weekly run, and the filter shows only with two runs.
 export const stepNeeds = {'without its message': ['Analyze my job search', 'Find jobs'], 'read only from Notion': ['Analyze my job search', 'Find jobs']};

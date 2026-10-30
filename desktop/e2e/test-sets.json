@@ -33,7 +33,6 @@
   "test-sets.test.mjs"
  ],
  "daily": [
-  "activity-backbone-no-live-ai.test.mjs",
   "activity-steps-state.test.mjs",
   "activityfailures-backbone-no-live-ai.test.mjs",
   "ai-cap.test.mjs",
@@ -120,7 +119,6 @@
   "explore.test.mjs",
   "extension-browser.test.mjs",
   "factjudge.test.mjs",
-  "failureschannels-backbone-no-live-ai.test.mjs",
   "failuresnotion-backbone-no-live-ai.test.mjs",
   "failuresnotion-feed-coverage.test.mjs",
   "failuresnotion-missing-keys.test.mjs",
@@ -153,7 +151,6 @@
   "hold-notes-real-logs.test.mjs",
   "installed-only.test.mjs",
   "interact.test.mjs",
-  "interactions-backbone-no-live-ai.test.mjs",
   "interview-data.test.mjs",
   "interviews-backbone-no-live-ai.test.mjs",
   "isolation-check.test.mjs",
@@ -346,6 +343,7 @@
   "store-call.test.mjs",
   "store.test.mjs",
   "storemove-backbone-no-live-ai.test.mjs",
+  "stored-answer-suites-no-live-ai.test.mjs",
   "storemove-process.test.mjs",
   "stores-answer.test.mjs",
   "stores-backbone-no-live-ai.test.mjs",

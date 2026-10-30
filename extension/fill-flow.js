@@ -178,6 +178,7 @@ export const fillKey = (tabId, url) => `${tabId} ${pageKey(url)}`;
 // again; once it has fields the panel is put back (a page that replaced its document lost it) and the page is judged again (a new shape for
 // the page-kind AI), then filled. Once per tab and page. Guard: desktop/test/extension-look-again.test.js.
 const lookedAgain = new Set();
+// Result: true = controls handled; false = watch expired; null = stopped or tab left, so no old-page fallback may run.
 async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), looks = 10, seenHosts = null, onEnd = null) {   // onEnd: the verdict, said once the watch ends with no form
   const key = fillKey(tab.id, tab.url);
   if (lookedAgain.has(key)) { if (onEnd) await onEnd(); return false; }   // looked at once already: the verdict stands
@@ -188,10 +189,11 @@ async function watchForFields(tab, jobUrl, wait = ms => new Promise(resolve => s
   decide('fill', 'watching a page judged without a form', {host: hostOf(tab.url), looks, frames: hadFrames});   // why a late form or check was (not) seen: twin, 9 Oct 2026
   for (let i = 0; i < looks; i++) {
     await wait(2000);
+    if (isStopped()) return null; // Stop retires this watch before it can fill or recover the page
     const live = await chrome.tabs.get(tab.id).catch(() => null);
     // The same page when only its query string changed (a bot-check service appends its own parameter after the load: SmartRecruiters, 9 Oct 2026).
     const samePage = url => { try { const a = new URL(url), b = new URL(tab.url); return a.origin === b.origin && a.pathname.replace(/\/+$/, '') === b.pathname.replace(/\/+$/, ''); } catch { return false; } };
-    if (!live || !samePage(live.url)) { decide('fill', 'watch ended: the tab moved on', {host: hostOf(tab.url), after: (i + 1) * 2, closed: !live, sameHost: !!live && hostOf(live.url) === hostOf(tab.url)}); return false; }   // the next page decides for itself
+    if (!live || !samePage(live.url)) { decide('fill', 'watch ended: the tab moved on', {host: hostOf(tab.url), after: (i + 1) * 2, closed: !live, sameHost: !!live && hostOf(live.url) === hostOf(tab.url)}); return null; }   // the next page decides for itself; this is not an expired watch
     await sweepConsent(tab.id, 'watching a page without a form');   // a banner that drew itself after the first look (consent-sweep.js)
     const shape = await pageShape(tab.id);
     // Fields came (the form drew late), or a frame did on a page that had none (a bot check injected seconds after the load: SmartRecruiters,

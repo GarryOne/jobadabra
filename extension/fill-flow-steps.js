@@ -213,7 +213,11 @@ async function watchPage(step) {
   // No verdict while the flow still works (owner, 27 Oct 2026: "don't show a verdict" ... "IF the extension didn't stop thinking"): stopped and sure, the verdict now; a watch that
   // may judge the page again keeps "Reading this page…" and says the verdict only when it ends with no form (Greenhouse: "no application", then filled seconds later).
   await markPage(tab.id, role, pressed, kind, {working: !!watching});
-  if (watching) watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(() => markPage(tab.id, role, pressed, kind));
+  // Why (30 Oct 2026, applyflows 40992748380): the watch owns an empty page until it finishes; restarting the posting meanwhile removes the form before its fields arrive.
+  if (watching) {
+    const watched = await watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(() => false);
+    if (watched !== false) return false; // fields were handled, or the tab left: only expiry may continue to recovery
+  }
   if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (worker/test/read-generation.test.js)
   await writeState(tab.id, {state: role});
   step.botCheck = botCheck;

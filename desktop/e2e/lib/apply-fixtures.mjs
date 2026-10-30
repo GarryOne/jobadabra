@@ -32,6 +32,6 @@ export function contactKeysAnswer(system, text) {
 
 /** Delegate unmatched asks to the captured context fallback, or permit pass-through. */
 export function unmatched(fallback, body) {
-  // Why (29 Oct 2026, ap): the fall-through keeps the context's stand-in, so only offline suites refuse unmatched asks; applyflows keeps its pass-through.
+  // Why (30 Oct 2026, ap): the fall-through keeps the context's stand-in; applyflows fixture journeys now refuse unmatched asks too, while explicit LIVE mode permits pass-through.
   return fallback ? fallback(body) : null;
 }

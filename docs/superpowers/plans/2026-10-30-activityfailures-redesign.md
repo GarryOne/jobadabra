@@ -27,7 +27,7 @@
 
 - [x] Narrow geo repair merged as c567ff9, no owner merge performed by this agent. (proof: desktop/e2e/test/activityfailures-backbone-no-live-ai.test.mjs @5fe23fa)
 - [x] Read full first/retry CI artifacts and identify vacuous retry proof. (proof: none: run 40996297795, original refusals=5 and suite-failures=[])
-- [x] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI. (proof: desktop/e2e/test/no-real-ai.test.mjs @5552a9a)
+- [x] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI. (proof: desktop/e2e/test/no-real-ai.test.mjs @6cb36b4)
 - [ ] Deterministic input and lifecycle audit, evidence-based fix and CI.
 - [ ] State waits, measured hang caps and CI.
 - [ ] Fresh main evidence after owner merges; full redesign claim only then.

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {test} from 'node:test';
+import {pollUntil} from '../lib/wait-on-state.mjs';
 
 const suites = ['applyflows', 'failureschannels', 'interactions', 'jobs', 'personas', 'settings'];
 
@@ -21,7 +22,7 @@ async function personaJobs(key, jobs) {
   const source = fs.readFileSync(new URL('../suites/personas.mjs', import.meta.url), 'utf8');
   const profile = JSON.parse(fs.readFileSync(new URL(`../fixtures/personas/${key}/profile.json`, import.meta.url), 'utf8'));
   const steps = [], waits = [], clicks = [], finished = {id: 'new', kind: 'search', endedAt: 'done'};
-  let phase = 0, reads = 0;
+  let phase = 0, reads = 0, clock = 0;
   const window = {__jp: {shared: {allJobs: []}}, pilot: {
     runs: async () => ({runs: reads++ ? [finished] : [], running: reads === 2 ? {kind: 'search'} : null, queued: []}),
     jobs: async () => { assert.ok(reads >= 3, 'read jobs only after the fresh search finishes'); return {jobs}; },
@@ -41,6 +42,8 @@ async function personaJobs(key, jobs) {
   const run = vm.runInNewContext(`${source.slice(source.indexOf('export async function run')).replace('export ', '')}\nrun`, {
     fs, path, PERSONAS: [key], personaDir: () => new URL(`../fixtures/personas/${key}/`, import.meta.url).pathname,
     ensureSetUp: async () => {}, window, hangCaps, console: {log() {}},
+    pollUntil: (read, accepts, options) => pollUntil(read, accepts, {...options,
+      now: () => clock, pause: async ms => { clock += ms; }}),
   });
   const stop = new Error('end of jobs callbacks');
   let failure;

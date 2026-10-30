@@ -18,6 +18,7 @@ import {clearData} from '../lib/start-state.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {withRoles} from '../lib/search-roles.mjs';
 import {hangCapsFor} from '../lib/hang-caps.mjs';
+import {pollUntil} from '../lib/wait-on-state.mjs';
 
 export const minutes = 15;
 export const offlineAi = true;
@@ -137,10 +138,11 @@ export async function run(ctx) {
     await ctx.run(`${label}: the jobs check finishes and its results reach the Jobs list`, async () => {
       const timeout = hangCaps[`${label}: the jobs check finishes and its results reach the Jobs list`] * 1000;
       // Why (30 Oct 2026, owner; run 41092667989): a finished search with no scores cannot satisfy a score wait; wait for this run, then check its actual results separately.
-      await page.waitForFunction(async before => {
+      const {value: finished} = await pollUntil(() => page.evaluate(async before => {
         const data = await window.pilot.runs();
         return !data.running && !(data.queued || []).length && data.runs.some(run => run.kind === 'search' && run.endedAt && !before.includes(run.id));
-      }, searchBefore, {timeout, polling: 500});
+      }, searchBefore), value => value, {capMs: timeout, tickMs: 500, log: () => {}});
+      if (!finished) throw new Error('the jobs check never finished');
       const expected = await page.evaluate(async () => (await window.pilot.jobs()).jobs.map(({title, fit}) => ({title, fit})));
       await page.waitForFunction(expected => JSON.stringify((window.__jp.shared.allJobs || []).map(({title, fit}) => ({title, fit}))) === JSON.stringify(expected),
         expected, {timeout, polling: 500});

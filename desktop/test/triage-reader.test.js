@@ -76,3 +76,17 @@ test('a read ended without a report (Cancel, a timeout) is handed back once, to 
   await answered;
   assert.deepEqual(r.takeEnded(), [], 'a reported read already closed its own tab');
 });
+
+for (const [value, expected] of [[true, true], [false, false], [undefined, null], ['true', null]]) test(`read facts ${value} reach the mode table safely`, async () => {
+  const r = reader(), pending = r.read('https://jobs.example/facts');
+  r.report(r.take().id, {botCheck: false, loginWall: false, accountCreation: false, allFactsSaved: value});
+  assert.equal((await pending).allFactsSaved, expected);
+});
+
+test('the read deadline allows the judge and answer plan, without waiting on a clock', async () => {
+  let deadline;
+  const r = reader({set: (_fn, ms) => { deadline = ms; }, clear: () => {}}), pending = r.read('https://jobs.example/slow');
+  assert.equal(deadline, 150000);
+  r.cancelAll();
+  await pending;
+});

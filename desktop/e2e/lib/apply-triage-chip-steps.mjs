@@ -10,6 +10,7 @@ import {POSTING} from './apply-fixtures.mjs';
 import {CHIP_VALUE} from './apply-triage-steps.mjs';
 import {HIDDEN_NEED, autoFormOf, closeHiddenBrowser, evaluateOn, hiddenTargets, kitSeeder, linkRuntime, sessionOf, skipJob, withAccountReadJudge} from './background-proof.mjs';
 import {removeJobsByUrl} from './seed-data.mjs';
+import {showFilter} from './jobs-filter.mjs';
 import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
 
 const keyOf = read => JSON.stringify(modeOfRead(read));
@@ -23,7 +24,6 @@ function coverage(cases) {
   const verdicts = new Set(reads.map(keyOf));
   const saved = readFromJudge(plain, {allFactsSaved: true});
   const unreachable = new Map([
-    [keyOf(saved), 'triage-reader.report never passes allFactsSaved; apply-triage-mode.test.js and triage-read.test.js cover saved facts'],
     [keyOf({...saved, eligible: false}), 'triage-reader.report hardcodes eligible: true; apply-triage-mode.test.js covers an ineligible job'],
   ]);
   const covered = cases.map(item => keyOf(item.read));
@@ -73,11 +73,13 @@ export async function runTriageChipSteps(ctx, {urls}) {
   await ctx.run('each read verdict gives its own chip on Jobs after Check, with no fill, session or hidden page left', async () => {
     const {page, proxy, forms} = ctx;
     const cases = [
-      {form: autoFormOf(FORMS.submitter, '?triage-chip=plain'), judged: plain},
+      // Why (30 Oct 2026, owner): C2b plans the details-only form entirely from the profile; the extra required question has no canned saved answer.
+      {form: autoFormOf(FORMS.submitter, '?triage-chip=plain'), judged: plain, allFactsSaved: true},
+      {form: {...FORMS.submitter, url: `${FORMS.submitter.url}?triage-chip=unsaved`}, judged: plain, allFactsSaved: false},
       {form: autoFormOf(FORMS.submitter, '?check=triage-chip'), judged: {...plain, botCheck: true}},
       {form: {...SIGNIN, url: `${SIGNIN.accountUrl}?triage-chip=login`}, judged: {...plain, loginWall: true}},
       {form: {...ONEPAGE, url: `${ONEPAGE.url}?triage-chip=account`}, judged: {...plain, accountCreation: true}},
-    ].map(item => ({...item, read: readFromJudge(item.judged)}));
+    ].map(item => ({...item, read: readFromJudge(item.judged, {allFactsSaved: item.allFactsSaved})}));
     coverage(cases);
     const unlinked = linkRuntime(ctx.profile);
     if (unlinked) throw new Error(unlinked);
@@ -94,6 +96,8 @@ export async function runTriageChipSteps(ctx, {urls}) {
       await page.reload();
       await waitOn(seen, 'Jobs navigation', () => page.locator('.nav[data-view="jobs"]').isVisible(), Boolean);
       await page.click('.nav[data-view="jobs"]');
+      // Why (30 Oct 2026, owner): tracked kit fixtures are outside New matches; show them through the existing filter before waiting on their chips.
+      await showFilter(page, 'everything');
       await page.fill('#filter-text', 'Triage chip fixtures');
       await waitOn(seen, 'the unread fixture rows', () => screenOf(page, cases), screen => screen.rows.every(row => row.label === chipOf(null).label));
       await page.click('#triage-open');

@@ -76,7 +76,7 @@ class WorkflowAiAnswers(unittest.TestCase):
                   ('schedule', 'push', 'pull_request', 'workflow_call', 'retry')]
         for event, mode, attempt, want in cases:
             with self.subTest(event=event, mode=mode, attempt=attempt):
-                for suite in BACKBONE + ('jobs', 'qualityai', 'apply'):
+                for suite in BACKBONE + ('qualityai', 'apply'):
                     expected = 'backbone' if suite in BACKBONE and want == 'off' else want
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
                     self.assertEqual(expression(value, event, mode, attempt, suite, burn_in=3), 'backbone', f'{suite}: a burn-in leg never records')
@@ -84,7 +84,7 @@ class WorkflowAiAnswers(unittest.TestCase):
     def test_the_suites_second_try_uses_backbone_for_declared_suites(self):
         retry = self.step('if again ')
         value = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', retry).group(1)
-        for suite in BACKBONE + ('jobs', 'qualityai', 'apply'):
+        for suite in BACKBONE + ('qualityai', 'apply'):
             for mode in ('off', 'record'):
                 with self.subTest(suite=suite, mode=mode):
                     self.assertEqual(expression(value, mode=mode, suite=suite),

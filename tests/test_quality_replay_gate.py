@@ -29,8 +29,9 @@ class QualityReplayGateTests(unittest.TestCase):
                         with self.subTest(file=name, step=marker, event=event, attempt=attempt):
                             self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite='quality'), 'backbone')
                             if name == 'e2e.yml':
-                                self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite='stores'), 'backbone')
-                            for other in ('qualityai', 'jobs', 'apply'):
+                                for stored in ('stores', 'jobs'):
+                                    self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite=stored), 'backbone')
+                            for other in ('qualityai', 'apply'):
                                 self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite=other), 'off')
 
     def test_desktop_uses_default_history_judgment(self):

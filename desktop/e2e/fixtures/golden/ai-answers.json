@@ -567,6 +567,635 @@
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}
         }
+      },
+      "feed/5cf21fbcaff09b891521ae678c534e41d41dc0d24a38a1d164d85fa06bc29ec7": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/a3674fd149720051b99f7054614e0a63acc22308671ebb5342463d632476ba25": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/03107908801fc905da417e0d9a4bb0a5cc7df36f2322d55dabeb8a1ce969d33b": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/ecc5dfe03bfd88ab6d96bc78d75534aa9e9de0e7ad2d53930aa9d3dfb851dc90": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/71bc94200a87fe201eb9eb0c8963205e443f24a45385c95c0bc1adf3a9784eb5": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/b18aadc69bf4923641b2f891c7e45d17f6ef71b58dfe3f4bdec11c5ceb9e2015": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/62d930cb9fcde50901ab878f965e4190fe86e9ded26266d6881f7d19c85e40c7": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/492d562337d52958508cd18b162e74fc8e4f378266b81e1832d6a8ec708ea599": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":90,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":20},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Cloud and observability work fits; CI/CD experience is not stated.\",\"strengths\":[\"Kubernetes, AWS and Terraform match the named core skills\",\"Prometheus and Grafana match the observability experience\",\"Remote within Europe fits the location preferences\"],\"gaps\":[\"CI/CD experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call rotation is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"CI/CD experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/a0c8676670da9a81d08e8a03cb630882304d4a445f751dd94d0bb8ecb6059d28": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/1378e1e23024b19af0bade36a4bf6a2b1395c535ac79971b3aff9f255292ccf1": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/b060cb13026d8e74989f5b4ab991ac20d8e25e03401e7bd2e431a68bc94862d4": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":84,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Senior SRE work fits; Datadog and explicit SLO experience are not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the core skills\",\"Incident response matches the profile\u2019s stated experience\"],\"gaps\":[\"Datadog and explicit SLO experience are not stated in the profile\",\"Salary, workload, contract and on-call expectations are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Datadog and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/4f70f2cbd5748adf3aee239f76d73c5b6225d96c9031a796cd5f158d287a0d41": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/286bc727d67c874ccb3939975befd7661d76e5e2f5cd5f5eb66ced1d10ec579e": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/ec99a244f1d8b32f294e42268f775fe778ffba257bd20860291d0b8dde28b3cd": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":80,\"tier\":\"B\",\"components\":{\"role_fit\":85,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"EKS and Terraform fit; Python or Go and CI/CD experience are not stated.\",\"strengths\":[\"EKS clusters and Terraform match the AWS/Kubernetes skills\",\"Argo CD experience is relevant to the GitOps platform\"],\"gaps\":[\"Python or Go and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Python or Go and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/ad5c2db5e6b08b4b6ef5e68d2f3d03eecb0dd973a370949aa333deb589f2fed7": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/23a861f0d186531fd3e5d5271e8bbe5994abfd1d49baf9622d1274d88b73a72e": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/6aa29258f5fc1b82e703f9012992353253039b45f23975ae9379a6d448e2c3b8": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/78995bbbcd207da2629c4ac67e65ed0f93c39a3e1a18215d854fbddade65efb8": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/854cb0de66e845c02d9950205aff51446a6e9683f6e21e2df9765c5e4ae0d3c1": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/89d61af432419aa7a5addd53a6e1362ee6cf9c3cd6fd17507a5e154cba75908b": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/c6379dfd295f1a902dafa25fd66ae5dd27f50795ffb1e94ac2127a807ba605ac": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/f3cfe7740b34d0796120b5b642d9558668c00061f149155b161a4fd5c7b1b3c5": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/2b93abd3093183c742f5a30b8c8673f3fd835189e160df039d87c21397da491e": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/280cf4c40a4b8a0e0c77730c867400cfe340b7023a58b05ea2ec33657db3f111": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/4073bfb2f2a8ec66cee4f7ad4109b61971f64cd144a6907dec365775f259bab7": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/bd71871648717e4cda481494a71439d9ce897dbb2dbd71ed05aed5c38badc3b3": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":79,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Kubernetes and Terraform fit; developer tooling and CI/CD are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Developer tooling and CI/CD experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Developer tooling and CI/CD experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/bbd0aff9c2c8048bc4ab1dbac021f4d2a91333a14cf3a739b8d2230e9412a4d5": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/8ed6c9c91a385d7d09074fade5c95d3d95b991b69b9fe7e45e03aa935807a3f4": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/ab9dbfab286aee305524949ca3b17b2c762328437870d145b5b797f4e162c44d": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":77,\"tier\":\"B\",\"components\":{\"role_fit\":84,\"location\":100,\"compensation\":null,\"growth\":90,\"risk\":30},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Reliability platform work fits; staff scope and SLO experience are gaps.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"Staff scope and explicit SLO experience are not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"Staff scope and explicit SLO experience are not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/2aafac1e0b847f3b9722dcbf126733efa3eefce4fcef37f46a4262abf735bb2f": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/2623db80393c9f288e3d28be3df751b45f37cdb621467a832ebd4c8ee6b5211c": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/35555e4fa2dca8a73166ac9e6cb1c344b735a6724940cf72daef952f9823829c": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/97e18486c5bc7bef5446e4701747415a3917eedcf730b2d1764a35888392d198": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/75ef331b5b9356fa3f011b3a4f8a5996b0027735c3e63b12d3a32aae89468a75": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/6c2ced1199bc3cac1afd80932ed8b109469b78315fdf1b275c71899d514cc13f": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/812b4e361da8cafa6afd5dd7312f5f542841418cb19702aa1f461cc57fadf8f5": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      },
+      "feed/f6f8126e30781f4c7a91c6715406ecee48962f4476ee9a385287eb95f3b36f7b": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"score\":82,\"tier\":\"B\",\"components\":{\"role_fit\":88,\"location\":100,\"compensation\":null,\"growth\":84,\"risk\":22},\"basis\":{\"salary_stated\":false,\"level_stated\":true,\"one_job\":true},\"reason\":\"Production reliability on Kubernetes and AWS fits; SLO experience is not stated.\",\"strengths\":[\"Kubernetes on AWS and Terraform match the named core skills\",\"Production reliability matches the senior SRE profile\"],\"gaps\":[\"SLO experience is not stated in the profile\",\"Salary, workload and permanent contract are not stated\",\"On-call is stated; the candidate\u2019s preference is unknown\"],\"confidence\":\"medium\",\"search\":{\"fit\":95,\"career_change\":false,\"cv_gap\":\"SLO experience is not stated in the profile\"}}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
       }
     },
     "app.interview": {
@@ -915,6 +1544,54 @@
       "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/b89c65d0c3c894abded4ef283199780c454e3a12639dfb815b104781e71ce319": {
         "text": "Senior DevOps Engineer",
         "answer": "software"
+      },
+      "default/8ac5f5b3506863e6babc9cff899b609ed7094e67c7c6154b345f81d9e9d66668/201f10d5d64518d86d2d3a47d28675d1c788762c5345df643dadec71d4e0a91e": {
+        "text": "z\u00fcrich",
+        "answer": "europe"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/ed7e594e3196c4a85600a04e1fccbd05f4dc83d578a0f8bf43548f164702ee4e": {
+        "text": "Senior Site Reliability Engineer, Payments",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/67f66226e1e5ed8c4fc831f852a342311addf4b54e5a20e2882e7ecc0970f85f": {
+        "text": "Staff Site Reliability Engineer",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/8a034088e12f0f8e345300b4cbac02819ce033829f4138c0ddcbba1c469c78ed": {
+        "text": "Senior Infrastructure Engineer, Kubernetes",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/56631a557e886887919845dde985d6717b660a273d3663d9f36c5a5631dc9cf7": {
+        "text": "Staff Platform Engineer, Observability",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/57b0d2780338c544dd1d9494ceec44bd5dd1c9a7f18685f6511dfec7b88ea591": {
+        "text": "Senior DevOps Engineer, Cloud",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/4cf86b8834cfa9a3929c5ee73d6375542d3a9fd098e6a93eb251111787e6a91c": {
+        "text": "Platform Engineer, Kubernetes",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/ba5096468476f5362b314feda677b3cc5a648be8b364820117eb90c06f5ddb95": {
+        "text": "Site Reliability Engineer, Storage",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/73403eb41a5f781d85f5bf4c5b7db9028958da7e21dccc3c787702d7fa07a9e4": {
+        "text": "Senior Platform Engineer, Developer Experience",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/11d742d3f5d8f314bab83e76a69ca07e2b1e3bd07aabf70f747bc4c8bf18cddd": {
+        "text": "DevOps Engineer, CI/CD",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/cbce00711a5ffcc02a59e58a1755aef743ac96e93a66e2ba9a166102051cf8e1": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80",
+        "answer": "software"
+      },
+      "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/f13d7301eb889f1526b863f42472ffd8b148f42831a7bf96f61d1de9d7f02041": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)",
+        "answer": "software"
       }
     },
     "app.geo": {
@@ -1037,6 +1714,46 @@
           "lon": 8.5417,
           "r_km": 15
         }
+      },
+      "shared/app.geo/44136fa355b3/05406c552c70ee3eac5b06e3a9b5792afdc8ab7c78c6196b13de11f70ba9d2b0": {
+        "text": "zurich, zh, switzerland",
+        "answer": {
+          "kind": "city",
+          "cc": "CH",
+          "lat": 47.3769,
+          "lon": 8.5417,
+          "r_km": 15
+        }
+      },
+      "shared/app.geo/44136fa355b3/f037a09517904cd7e48604a0e978aeae9e09f1218a46b3efe90725beb3f0ff4b": {
+        "text": "remote - europe",
+        "answer": {
+          "kind": "remote",
+          "cc": "",
+          "lat": 0,
+          "lon": 0,
+          "r_km": 0
+        }
+      },
+      "shared/app.geo/44136fa355b3/b529d20ed15ee3ae97a330eeb8d8411b7c15c724e0d442f6ccf8a237bbb46ad6": {
+        "text": "z\u00fcrich, switzerland",
+        "answer": {
+          "kind": "city",
+          "cc": "CH",
+          "lat": 47.3769,
+          "lon": 8.5417,
+          "r_km": 15
+        }
+      },
+      "shared/app.geo/44136fa355b3/cd8b13f31dc63e0f33526f40c33beeb8f425b19bb478b0c6abb7fdd5fa5f4ceb": {
+        "text": "berlin, germany",
+        "answer": {
+          "kind": "city",
+          "cc": "DE",
+          "lat": 52.52,
+          "lon": 13.405,
+          "r_km": 20
+        }
       }
     },
     "app.title": {
@@ -1135,6 +1852,686 @@
       "default/app.title/a8034c8810b9/582c2873911360df6e9bb4167799c1db6bd7443d349a34ac28f557d33804f225": {
         "text": "senior site reliability engineer, save seed (site reliability / data analyst)",
         "answer": true
+      },
+      "default/app.title/a8034c8810b9/7792216400b6df5d43453c5fd9a5ac83e42602bb9c15234a9c4bee9be65c768c": {
+        "text": "staff site reliability engineer",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/721d68edb9c9256e1474afc35ebc6e0d38b68811c17b8de7a4151a537803ae38": {
+        "text": "platform engineering intern",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/3dd642a9690f74bf1ae55fb67042be0a223140032284ef0ae9994474d42e8002": {
+        "text": "platform engineer, kubernetes",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/ba9b52ecbc602f1930cbdfe23cfccfedd4833d91f3adacde90c564390c7ecb20": {
+        "text": "site reliability engineering intern",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/320e07c4b1c63e75c5c0be8e793b8ec6156727275861724f027a5c9f404fa19f": {
+        "text": "account executive, dach",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/be9bd15403e0c925785f32fd21aee8e346fc8aee3deaee6a6e958b6aa5b88686": {
+        "text": "senior site reliability engineer, payments",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/d87dfe617ddd65e951d582358410aa9b8970b57218732c1cd95671692891e7e2": {
+        "text": "staff platform engineer, observability",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/2d6a1e8ff140dccdf6abc73a93e85f6d396d1c36c2e166e704e303939010ff64": {
+        "text": "senior devops engineer, cloud",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/b4980d591284fae2d519dca0bcba167677a308ae62cc6f29225187525728cc9a": {
+        "text": "senior infrastructure engineer, kubernetes",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/9f71bd845c68d82efa42b72e1883f3ba9778813fd263ce6c63bfa0793b5ce02e": {
+        "text": "site reliability engineer, storage",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/bac8ee9577a6e2cb651951bda8b61c917c9e6fbb12e1199fe8339fb44a728a2b": {
+        "text": "senior platform engineer, developer experience",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/daa87ff9827fe950b7b8c404f4d01793b75bb1d33cb4b8f73380c06c7ab7c21d": {
+        "text": "devops engineer, ci/cd",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/c9c8db59cc7cc7ea05296872b6ef8dbd816ff599bd30ef3123099434d52c5bb5": {
+        "text": "site reliability engineer (m/w/d) \u2013 plattform & zuverl\u00e4ssigkeit \ud83d\ude80",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/823b89bf16f2603b555f968a6ea623246a7f1e87fa2173492c7dbcb90c609860": {
+        "text": "senior site reliability engineer, global payments infrastructure, kubernetes and multi-region disaster recovery (hybrid, zurich office, team lead track)",
+        "answer": true
+      },
+      "default/app.title/a8034c8810b9/a97b39c5333cf0ab2025ee0349da6f7c75f8bd6ed2eaad5fe4f2ff7f6fe09588": {
+        "text": "product designer",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7aebfcd631acc850c3b112fe00d6baa4138dc7bbdad5f032cc0e1c93b8ee984a": {
+        "text": "account executive, enterprise",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/17bba924b25ccfbe3499a43928d92d165f99cc11eb69e3730f7d0ad59b087c02": {
+        "text": "senior product designer",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/c1c592975b48f364e69dc1c2aa0af58ed6acceea94589cd298998f380041fea0": {
+        "text": "account executive, switzerland",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/6e4b71921d00616f3b4f1b50d35ab76f8bafef7c9974e67e81bca4bb6b9a63c6": {
+        "text": "account executive 1",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/ef21de2b79775f384539f69d6e78f33e6e28f3f877715e9d3c054a56daf61cb8": {
+        "text": "sales development representative 2",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/b6852b334d5bdb83d4490363b846745fe6f67adfb62530332920da1d15aad5f8": {
+        "text": "marketing manager 3",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/8a76b7c94a014dab1972b3c83f92a50dac3f87264f3b55a3f4b0e43859e0d447": {
+        "text": "product designer 4",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/29e2cdb3a3fd32d3157c273050a00734fe14fdab28181c744db262d392a6858b": {
+        "text": "recruiter 5",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/b57c2296d27ecbf143bdc24af966d37790f5335f71e7c8ddf944833a4bd11bfa": {
+        "text": "account executive 6",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/76e817823d6f4c0d70f0ee7b53ba95dbd37ba1173ddfe7fd9f18f562da3099d6": {
+        "text": "sales development representative 7",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1ffe3c0e9872beb28e2c9b48496c02a9b87a1ae0ccfe6fee085b7f4daa2dc5b3": {
+        "text": "marketing manager 8",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/d2f1a098b4a047adca5fdf32421655e9d8168854c616517f8a2e100832dcc6ce": {
+        "text": "product designer 9",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/12a9f64df5668ebd62fb4e631c3bb70cd9cc044d83c0919b720a97f91f80fbff": {
+        "text": "recruiter 10",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/02842ca79b8b123ca0866c5f79082f05096dd25824f871fc4144be99ac558d14": {
+        "text": "account executive 11",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/c2b89cc593826689716b99acc94d3c915e244ccf07deb1c9e4444b5775990934": {
+        "text": "sales development representative 12",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/c87a1138c2cbbe5cea97ff0a9c6c4a8ed3d7b8a98736ae18a8a7dae320e1ca35": {
+        "text": "marketing manager 13",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9c649e5c4c566a4f1c380d74b7b78eaee13680895a4c92c7901a54e854e69a9f": {
+        "text": "product designer 14",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/97bda9c43ed3e79d98e60c3e047494e70837c46de12a0f960f7acee25f860e71": {
+        "text": "recruiter 15",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/79de20fe1264cd88a2582a0c0ea9aef5be0ac0514fdc28d1fa80a4042ea8db28": {
+        "text": "account executive 16",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/6684bce715e04928071841f24e9cf5de49912a20bef3f7499b70dbd654058de0": {
+        "text": "sales development representative 17",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/209b2882768d8deb82b42c8c05aa18f5fd8f842cef3b3aaf67f6c754f3ca66d3": {
+        "text": "marketing manager 18",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/dd5b0994de0a32250b6674dac64b0613cca4d78193e172c21be41cd9056f49ad": {
+        "text": "product designer 19",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/cbefc2355e66533f4e38fd3c9ca7b3bbf4078f4b1885fb725e67b85494c38374": {
+        "text": "recruiter 20",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/a483c397abb06bdb772d482b0a0b7a8327f08ec51d7c51aa5bbaa2c82a7eac30": {
+        "text": "account executive 21",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/22ee3831c2dbf490fd75a5768be93862fd952f255da716f06429572b8933b406": {
+        "text": "sales development representative 22",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5244687441bf4f523308cd752117c5e8cfa80b369518fccad627528c95a84f14": {
+        "text": "marketing manager 23",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/838c5b73698f5218a3c43375fda54042ad9981122aca17e0ef40156332812bd4": {
+        "text": "product designer 24",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9a5aef5a1190232af16102f7f17798c594fb7ea2912431b15fe5e5000c24298f": {
+        "text": "recruiter 25",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7d8ce3f043e2a8aec81bc882d98113f8f9092e92d3d868deea44dfd8d5abd0a4": {
+        "text": "account executive 26",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5e56488f5d58e9af99f6c7f2843295a11ba972528612166c1e3c9c4ea27e6649": {
+        "text": "sales development representative 27",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/abe1851bcc7710168457b94f64f4993c09bbf59d2715abc3010ebde0316f31a1": {
+        "text": "marketing manager 28",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/e089d0b3b80c327701d11cfd3e29ab467f375e03b08ce100e6c5ee77711d13f4": {
+        "text": "product designer 29",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/ef78610eeaf1a56e07b6ec69f349dfe7340660a23003386bd2caf32f60d9a4bb": {
+        "text": "recruiter 30",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/0b847cb839f16103e0af70f83e0fa28a4230a156bed117c1b6ea6196852875da": {
+        "text": "account executive 31",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/67d934975ed80dc2d7df88fcdc6e762505e7ab2fdb87507fb11d152b7210d94d": {
+        "text": "sales development representative 32",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/3f005a6bc6f77bb65c3effc8b591207b2b0fce6a84ad02b189ca89c44d6c9df4": {
+        "text": "marketing manager 33",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/c74cf17907db488e9ba4f91b24d351093ab1b68738a4a6627a0f14e2a3da8d8e": {
+        "text": "product designer 34",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/41656a9fc5fe7526fc34d828320c28781b431aca001fe97dfc24de74e3fa7a3c": {
+        "text": "recruiter 35",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/d67f23a6de95cb85035babdec85524197399ac675a9ba9675d09173e64210181": {
+        "text": "account executive 36",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/f8187d087c0a7f19b9098407af90dd4cf94de26ce7ce0e1f82650667e6720fbe": {
+        "text": "sales development representative 37",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/d7576735b37a8ca43a25cd07acd91e4e9aa684bb59ded626ea96efc9d9c51929": {
+        "text": "marketing manager 38",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/8bac372b6c1f8cfe88761685cb00d03cc7b35c79861768600e1a8090bfb52c87": {
+        "text": "product designer 39",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/85db856aee9a30ab338739e96a09907595524f3ac1ac26e32f8a81faa1664f7f": {
+        "text": "recruiter 40",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/adbfa684271911cedd9cf5eb78a5cf6688bba587b3450372b146da1dbfd714a9": {
+        "text": "account executive 41",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/6ec991650c2525e2278a0bdf86ea5eef2c935fff701e5a30dfad3d1c09b02d22": {
+        "text": "sales development representative 42",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1a6604127542a69e62e3e5e92c17df76db0bfa189591d7f6e3c95f0f7ef95ac0": {
+        "text": "marketing manager 43",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/44714bafd007ae999a68896d067c2c06e8d36eb22e372c2911147a30f76438ba": {
+        "text": "product designer 44",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/cf1c1ebf4cba36d9ff0d99ebbf20e6a1db1cb86719b0e25820360b971db92c2b": {
+        "text": "recruiter 45",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/33187f3dc9a3252d1815cc195fc9b419d527a4a99922e77d5163773e19454154": {
+        "text": "account executive 46",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/0e672c238566bd01d160c8ec0d876b2fcadbbd69e347676e19089382205c910e": {
+        "text": "sales development representative 47",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/cbf1d9112eb45ac7e377ec5c00ffa05c495dafd314dd477b95c42a4f0b16f424": {
+        "text": "marketing manager 48",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/15b4a7b26f22c2046bc502bd007a531c130a2fc66460cbb798ef5d32e21ee5cc": {
+        "text": "product designer 49",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/b4961c7f64bc65410ce82f2cb45688c0f90df5914ec8deabe999a67ef47bbdb5": {
+        "text": "recruiter 50",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/ad3b28f09711c94d53448120e5578d55bac80109b1cdb5e9ca1818d8fdcf6dc2": {
+        "text": "account executive 51",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/f7b0a313bcd1108af508935bf0a6b98850b8f77e5ed3bcb38575eb43d4e2360a": {
+        "text": "sales development representative 52",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5adbf9f832755b8065b707319637dbdc67cfe10b265e60eb4c3df713fa525745": {
+        "text": "marketing manager 53",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/04c6deb500eb2732e05dc901152c2de2c2d282cd4e974503388fdcf9731d28d1": {
+        "text": "product designer 54",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/d5e1e666e8cb0bc6cb48c5e8a23a61c4c3a67010987a7ac9c360aa24e9bf308a": {
+        "text": "recruiter 55",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9f00657b0efb773a523ea6447f02458c79e54d24762c020a2626bed4fbf7aeff": {
+        "text": "account executive 56",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1c68cb18a46e123ccc47d59aa97311bec6fb00ee4f7bcfe91c1c97ad93fd8c63": {
+        "text": "sales development representative 57",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/aacada265dd989b44b75be68cd59168ae4bf9051b6e23d50395babba84a1c7bf": {
+        "text": "marketing manager 58",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/046bbd23525e0ec924b1e7730b8b1a6749c6dbc45bea7b3d9f57fe2cfc4d1adf": {
+        "text": "product designer 59",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1fa9489740af76c73632e1cebccba74b4aa7b9080dca1ca850c35083d61cff43": {
+        "text": "recruiter 60",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/f52771430a87e9d1d520705ec26cf258a9f099de6e44dbf6b9ea5f5c60e87e94": {
+        "text": "account executive 61",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/56cff39ece2656e3fa2bafdb1724c1abbb3c6c27df4cc85334328c3d62424837": {
+        "text": "sales development representative 62",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/df597b7e7eafed10e0fd22f87ee15bed20cafdb50a2b07b50775323227810257": {
+        "text": "marketing manager 63",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9a8535a63510fe4ebf6a288409f4e286f4a529d9af014fdf9880ea52e9b5b07e": {
+        "text": "product designer 64",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/bd98bb2ac62c716837e2bfbcd589e833d5947e9c2cc7d96a9438a7cca1d3c203": {
+        "text": "recruiter 65",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/ecb72c8e23685d2e04b766fec49d20688c9900154611fd18e2dde74c45d5c98e": {
+        "text": "account executive 66",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7a3e74112ac6426453e9319cf67ff334268de4f93f8908c4a2c45cb4a8f5ed7d": {
+        "text": "sales development representative 67",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/ce9d1a704652d0e72ea91950c0b8bb96504c0b080b8ca89959f030bbb54613fb": {
+        "text": "marketing manager 68",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/f74c04cad7512dd275b4f83c26433975ddb7fd2b44e7edfdfbf4adfbb4e2a0cc": {
+        "text": "product designer 69",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/3142a5531bd15e789f184f7a9841120f072a52dd06cc100210e86b2472c9de64": {
+        "text": "recruiter 70",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/52400ea73552f81e64229a5c5b193ba4f5909aa00a83e0e011679d438c60023f": {
+        "text": "account executive 71",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5e02b0316ed5c4064730a6fe1ae924f8df2fa474067bbf350bc16ce757094f77": {
+        "text": "sales development representative 72",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/f8c56839e488c7b2fe7f2ee7ee208c366265ca92dd6d5c2dd96f592b6cc9edcb": {
+        "text": "marketing manager 73",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/aff8459243b76cc8d07f8bc327ca88a3e287ea4bfd66b5719a805806cff7a515": {
+        "text": "product designer 74",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/25f897f54e0933c7e7e1b9aa7cafcf91ab007d116bdfb7b65844f9abc8437655": {
+        "text": "recruiter 75",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/b4502dd9f0fcbbb6bbc69d02c5e808aedbb8d0f14bffe14b4dc83b0bafce3e83": {
+        "text": "account executive 76",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/e267d080592d2bac2c5870f7eea5becaa583be5fbad1bb561372854a26627a62": {
+        "text": "sales development representative 77",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/09c759d23d7d54f4f8c130132e676297384659aedcd5068d82d2297baac5b642": {
+        "text": "marketing manager 78",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/655c3710e546d469e5a9180a44b625049cb9ddc501cd195998c523f3a83898fc": {
+        "text": "product designer 79",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7366fb0bea800eed2a0cddb0c6cbb09addc12a1e561e8c81c8e9e4fe4f47170d": {
+        "text": "recruiter 80",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/90d7302be3d9b4c6c3fb30a0d4b1d9c3dc183656586a1d4d6bf49a12d92994cb": {
+        "text": "account executive 81",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/54221bab1217096a280d3f206930ff85144b11024e534041f0e8f0c5c36b31e3": {
+        "text": "sales development representative 82",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/76729c67f88d2000c2fde921e49a0fbfb671a02d4cd0babe31308a9c75a758b2": {
+        "text": "marketing manager 83",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/544ad977a3355d9e2ee35a4b5fcaff28e2fe6ba051c814210e172809b4a80ddb": {
+        "text": "product designer 84",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5071209cd1399d6aef1691f6a3ea00dc39091d0bbec45dddeb5d2f0d610c64e9": {
+        "text": "recruiter 85",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/fd219656728069ce702053173b5e63ee65978ed219afbf7487008d50620ba3af": {
+        "text": "account executive 86",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/80de57f5aaf9282c0493cd532eab019a31686fc2fa0d470c852a2f1ff25825cd": {
+        "text": "sales development representative 87",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/289e77db3aff57bd4850cc6f09ea895a4becafa56800765d7575683e67fb2b79": {
+        "text": "marketing manager 88",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9fccfde08197dd800ab731585fbacf0ff4ed0109689f3aa4cbc952c16c18cd2d": {
+        "text": "product designer 89",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/673836b0976ec66012df2970f5913237545aefb35b74c58f573338bb2dacc7b4": {
+        "text": "recruiter 90",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/18461a2341672c223e27dc943df45599583966b0d589f60af9bee1fdbe2f92bd": {
+        "text": "account executive 91",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/bb223df4df100c85aa962dc7afc42308325a5dca6a2d06c17c00512ec7959888": {
+        "text": "sales development representative 92",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/4a805bcf3272a4e8b532a54347eac4d32241e63805475398c809474a46928e75": {
+        "text": "marketing manager 93",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/2e307325224bc3dd53fdc808bfac85b3ab778e2a0c879a92c26d14bfbfa40801": {
+        "text": "product designer 94",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/72ba214e032ab7856338a029c9db1b3081bbd2894c0dd4daac6a3c4c747d244a": {
+        "text": "recruiter 95",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/6f9e9dff000d6e97668b1410e52bf74cda9d2cae61ded6a327a9e4971310c850": {
+        "text": "account executive 96",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/f33b30e30d487c8311e0996c72a694b01efc1e02f85aaaf608b3842ce56cd6f2": {
+        "text": "sales development representative 97",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/b314d57b44ae7442e715f032e4011a2b613cfbe2e2b55871cf8698e9cfb4b5b3": {
+        "text": "marketing manager 98",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/a6c832a8d4c781372448415420e78ca2a9a8a70dddf2f34807bbffd496f768db": {
+        "text": "product designer 99",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/34c71f94f5dd5f654f47de8f8a90d679b6eafc5e28287137aac5229ca1a29b54": {
+        "text": "recruiter 100",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/80fb3dfd5e63edfec3fb38f77321aa8414004a5a5f5c0ca5f73db34a6d3d39dc": {
+        "text": "account executive 101",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/09232e58c0ce32b7b412a9645caa91518cc9934049c40ded85e2b92c66c75d03": {
+        "text": "sales development representative 102",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/d12470ebe7129f714cce42ca6587319303ba83ab3ea817892da927661367b85c": {
+        "text": "marketing manager 103",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9673870a9f3845dc19a51db6ade3cd50b204960bdf9babba44b4909d341c06f1": {
+        "text": "product designer 104",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/984dde4f804dd81eb76a7be4b1ad1a914004a2658150a624b4b7d376a59db7af": {
+        "text": "recruiter 105",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9f29c3e33aff51daaad2c4d16a5ef42291713d9f3bb73e850844efe06c8d79e3": {
+        "text": "account executive 106",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1dc6e5ddc67f885dee50092f9964a9acdf9df8a14b66bb64d897d6f593146e55": {
+        "text": "sales development representative 107",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7bf499842e5fbb73e61ff61fc545e946754455bdd31fd647e31b27b7d44c5611": {
+        "text": "marketing manager 108",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9d26ec0ffb1eee04e11bd4527ea9a53a8b6a5ea0a0552aefe7c7bdf57f0d52a7": {
+        "text": "product designer 109",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/be1ce818dcc42e39a99e2e183225c246984b44928ba13c441f771203d4d9e5f1": {
+        "text": "recruiter 110",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1c066f40feb57cc2f904262356eb2cde3db4ad0977cae9da2b35d91c6413616f": {
+        "text": "account executive 111",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/064431ad14f183b85a6af0141cdf4ac3d3960a7ab6a724f8c3808bbc5d86375a": {
+        "text": "sales development representative 112",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/cc0e1d53c1b8bffa6c36f2a3e3782aea84cc19b560c9d829ccb1c0a213dfa838": {
+        "text": "marketing manager 113",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/1d6d38c41b99ba8365ebf75cc78e6027d7dc016ae1703da56a2dae95cbcdc505": {
+        "text": "product designer 114",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/fa56f94ced3afe5a61eee6131535ca54d19d27d61c48b24d378432bee9bba4dd": {
+        "text": "recruiter 115",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/12dcc3621e080990d4cc8c07d706abfb16755a3b4e529b16d990365f489615e0": {
+        "text": "account executive 116",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/4ec1f5fe575f799bd522489e8439c97628698a8b690415242aaacc2306dd2d9e": {
+        "text": "sales development representative 117",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/e6ee35b687888c1567cb468d0b58bd55ff8383d38983c5e7f183cb53e78c3663": {
+        "text": "marketing manager 118",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/a8a50ce11e524b523bec1e31bf9f3b2dee4bb4553e975b057a1c8db25c60bdf7": {
+        "text": "product designer 119",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/8f4bfdccdc7362c062a48f710b4e560087458652f9f0ce9c4ad309bc1540d568": {
+        "text": "recruiter 120",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/093f2403a3f26532c157eb996b36f0dfed53058b0e79fa6fb559f97f3bfccf3d": {
+        "text": "account executive 121",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/c9b0bc61d6331b801ed90520ee247b56ff84324bd447f52475a44859e174d988": {
+        "text": "sales development representative 122",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/e960003160f77a3d1288fcb0ccb2ecfe704713d6e94e9f5ff7ff3b705f1e7d28": {
+        "text": "marketing manager 123",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/68e9efdc2975e2be165add2c9114ecc657e9aa8f80a7f7bbb2e841211c51459b": {
+        "text": "product designer 124",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/9a631b30f6131e865c3e521da240cd33545a78d16740984d93aba13588f55653": {
+        "text": "recruiter 125",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7b9917c650ef6751bc9d972b8e254b884e4e4e99a24a4a8a49ac3d8e2ab302d5": {
+        "text": "account executive 126",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/961f9489ed128617308ba88fba9f7fd386cd03579ce92333fbd12969c6c98f18": {
+        "text": "sales development representative 127",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/8322532b67ff024c0189bf13f0e8a4eae8476468939fe4bcb30dafc84ae53958": {
+        "text": "marketing manager 128",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/db0ad8bac2072234b46e498b059fe3a4b41541859145972c80f6d08b79c26494": {
+        "text": "product designer 129",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5f686d13cd945da8987cd4e284e6389611502ed6a7422af709fa24d32e6cc8b6": {
+        "text": "recruiter 130",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/77941b10c812dc47ba9e476a09eb5488f4d5ac76a7eb5f89151430980a5cc4a4": {
+        "text": "account executive 131",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/2f0bd533d692f1873317d3faebe7e955ed42fd8da3abe22467f9f82d893e823a": {
+        "text": "sales development representative 132",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/a7ea77f03850e86a67261e542118a681567ab47c5d53b33cb3889e597c7111de": {
+        "text": "marketing manager 133",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/46823cd72983d6b6353aaee7779e3c63065acd598fc53ecfd730ecde5997687e": {
+        "text": "product designer 134",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/401da76b783a273bf7383d64cadfd50e1228427b51b8d9cbf52218ddc89f0bec": {
+        "text": "recruiter 135",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/b334936133a9b2fcff32f7edc0c183decac8560a6d3e686bdadd8c85c2b8981a": {
+        "text": "account executive 136",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/4a70f489eead4de54f404be5e55b320f16f43280782cc3815db60df8f634e94e": {
+        "text": "sales development representative 137",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/d5874e3650ac3a71f4b2ebd74c3e32969b20845423edc10147753668e3ad28b0": {
+        "text": "marketing manager 138",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/521d9710c9549d92d2652f711fa0f2b1a8184f1f70e348c0bb4e05645f3c8578": {
+        "text": "product designer 139",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7e577cfd4f9991d528502f458dc350ec81e83942221e982845d77355a2536104": {
+        "text": "recruiter 140",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/e9ad2703e241efa42ad1832076762ccf43ca3fc771c38849e03df5084c639796": {
+        "text": "account executive 141",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/21257380d580e7ad45c3bd4276d7e4a363e65c23b2226488fb4f2702a0dcf801": {
+        "text": "sales development representative 142",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/05e4604a52aca5dd96bbee5682c898f71eba97c16871f3490e0dd2e4c54879de": {
+        "text": "marketing manager 143",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/a15775f8c4848ba4ac18bb995d7c3a8ff975b34776ec8963b1a58058cf1d28c6": {
+        "text": "product designer 144",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/7d544f8aa1d9cb7b745fdc236abef5ebc1d511fe989297e6babf3c38ad52e06c": {
+        "text": "recruiter 145",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/169457c3be29589650a4ed2938756cc54612013992c36a6ec3e833af72e950bc": {
+        "text": "account executive 146",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/5c8044fc855ee42314162cd8fb074b5d805ed429766acf0444675b2832787671": {
+        "text": "sales development representative 147",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/c40511f0bc83003f1bbc4d6a90140d6dc5b1eb09c187b7bd163a432f6eeea373": {
+        "text": "marketing manager 148",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/11e92ec6ad4939fa4b0645d72e0c47783a7e5d6d2b8395ead91d2c7758975b59": {
+        "text": "product designer 149",
+        "answer": false
+      },
+      "default/app.title/a8034c8810b9/da39af840f919da282fcbfb2b6ecc51c28722a19500b108744d02ce63e386602": {
+        "text": "recruiter 150",
+        "answer": false
+      },
+      "default/app.title/1997d9aef736/ba9b52ecbc602f1930cbdfe23cfccfedd4833d91f3adacde90c564390c7ecb20": {
+        "text": "site reliability engineering intern",
+        "answer": false
+      },
+      "default/app.title/1997d9aef736/721d68edb9c9256e1474afc35ebc6e0d38b68811c17b8de7a4151a537803ae38": {
+        "text": "platform engineering intern",
+        "answer": false
       }
     },
     "app.place": {
@@ -1297,6 +2694,86 @@
           "km": 0,
           "answer": "best"
         }
+      },
+      "default/places-2ce20ae2609b/0777b545c12b1a54ed07b977da9e8d7e2f6e9223e5abb7dcec678b169bb5aa4e": {
+        "text": "zurich, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-2ce20ae2609b/b529d20ed15ee3ae97a330eeb8d8411b7c15c724e0d442f6ccf8a237bbb46ad6": {
+        "text": "z\u00fcrich, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-2ce20ae2609b/05406c552c70ee3eac5b06e3a9b5792afdc8ab7c78c6196b13de11f70ba9d2b0": {
+        "text": "zurich, zh, switzerland",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-2ce20ae2609b/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "text": "zurich",
+        "answer": {
+          "where": "Zurich",
+          "country": "Switzerland",
+          "nearest": "z\u00fcrich",
+          "km": 0,
+          "answer": "best"
+        }
+      },
+      "default/places-2ce20ae2609b/f037a09517904cd7e48604a0e978aeae9e09f1218a46b3efe90725beb3f0ff4b": {
+        "text": "remote - europe",
+        "answer": {
+          "where": "Europe",
+          "country": "Europe",
+          "nearest": "",
+          "km": 0,
+          "answer": "inside"
+        }
+      },
+      "default/places-2ce20ae2609b/cd8b13f31dc63e0f33526f40c33beeb8f425b19bb478b0c6abb7fdd5fa5f4ceb": {
+        "text": "berlin, germany",
+        "answer": {
+          "where": "Berlin",
+          "country": "Germany",
+          "nearest": "z\u00fcrich",
+          "km": 670,
+          "answer": "out"
+        }
+      },
+      "default/places-289aa37c5864/f037a09517904cd7e48604a0e978aeae9e09f1218a46b3efe90725beb3f0ff4b": {
+        "text": "remote - europe",
+        "answer": {
+          "where": "Europe",
+          "country": "Europe",
+          "nearest": "",
+          "km": 0,
+          "answer": "inside"
+        }
+      },
+      "default/places-289aa37c5864/cd8b13f31dc63e0f33526f40c33beeb8f425b19bb478b0c6abb7fdd5fa5f4ceb": {
+        "text": "berlin, germany",
+        "answer": {
+          "where": "Berlin",
+          "country": "Germany",
+          "nearest": "z\u00fcrich",
+          "km": 670,
+          "answer": "out"
+        }
       }
     },
     "app.places": {
@@ -1350,11 +2827,45 @@
             "Z\u00fcrich"
           ]
         }
+      },
+      "switzerland": {
+        "text": "switzerland",
+        "answer": {
+          "countries": [
+            "Switzerland"
+          ],
+          "kind": "country",
+          "names": [
+            "Switzerland",
+            "Schweiz",
+            "Suisse",
+            "Svizzera"
+          ]
+        }
+      },
+      "schweiz": {
+        "text": "schweiz",
+        "answer": {
+          "countries": [
+            "Switzerland"
+          ],
+          "kind": "country",
+          "names": [
+            "Switzerland",
+            "Schweiz",
+            "Suisse",
+            "Svizzera"
+          ]
+        }
       }
     },
     "app.visa": {
       "default/app.visa/dd2b12daac1a/2275583196d791405892aaca0d87743c872f3fc0cf3308a6c3ef82528918aa8a": {
         "text": "Switzerland",
+        "answer": false
+      },
+      "default/app.visa/dd2b12daac1a/e595f45dc6c9e7665d108e8ea7940885a42e492918a522d44a1fc35494a4aa48": {
+        "text": "Europe",
         "answer": false
       }
     },
@@ -3409,6 +4920,2207 @@
         "answer": {
           "role_family": "sre"
         }
+      },
+      "default/app.enrich/492d562337d52958508cd18b162e74fc8e4f378266b81e1832d6a8ec708ea599/role": {
+        "text": "Senior DevOps Engineer\nE2E Beta\nRemote - Europe",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/492d562337d52958508cd18b162e74fc8e4f378266b81e1832d6a8ec708ea599/full": {
+        "text": "Senior DevOps Engineer\nE2E Beta\nRemote - Europe",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English only."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English only."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "remote",
+            "remote_scope": "Europe",
+            "evidence": "Fully remote within Europe."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "CI/CD",
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "Prometheus",
+            "Grafana"
+          ],
+          "responsibilities": [
+            "Run CI/CD, Kubernetes and AWS infrastructure for a fintech product.",
+            "Participate in the on-call rotation."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/854cb0de66e845c02d9950205aff51446a6e9683f6e21e2df9765c5e4ae0d3c1/role": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/71bc94200a87fe201eb9eb0c8963205e443f24a45385c95c0bc1adf3a9784eb5/role": {
+        "text": "Staff Platform Engineer, Observability\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/4f70f2cbd5748adf3aee239f76d73c5b6225d96c9031a796cd5f158d287a0d41/full": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level."
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "Hybrid in Zurich."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "EKS",
+            "GitOps",
+            "CI/CD",
+            "Terraform",
+            "Python",
+            "Go"
+          ],
+          "responsibilities": [
+            "Build the internal developer platform.",
+            "Build EKS clusters, GitOps, CI/CD and Terraform modules used by 100 engineers."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/a0c8676670da9a81d08e8a03cb630882304d4a445f751dd94d0bb8ecb6059d28/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Maintain SLOs and handle incident response.",
+            "Use Terraform and observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/a0c8676670da9a81d08e8a03cb630882304d4a445f751dd94d0bb8ecb6059d28/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/03107908801fc905da417e0d9a4bb0a5cc7df36f2322d55dabeb8a1ce969d33b/full": {
+        "text": "Senior Infrastructure Engineer, Kubernetes\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "cloud_infrastructure",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/4f70f2cbd5748adf3aee239f76d73c5b6225d96c9031a796cd5f158d287a0d41/role": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/b18aadc69bf4923641b2f891c7e45d17f6ef71b58dfe3f4bdec11c5ceb9e2015/role": {
+        "text": "Senior DevOps Engineer, Cloud\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/5cf21fbcaff09b891521ae678c534e41d41dc0d24a38a1d164d85fa06bc29ec7/full": {
+        "text": "Senior Site Reliability Engineer, Payments\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/854cb0de66e845c02d9950205aff51446a6e9683f6e21e2df9765c5e4ae0d3c1/full": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich, Switzerland"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/5cf21fbcaff09b891521ae678c534e41d41dc0d24a38a1d164d85fa06bc29ec7/role": {
+        "text": "Senior Site Reliability Engineer, Payments\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/b18aadc69bf4923641b2f891c7e45d17f6ef71b58dfe3f4bdec11c5ceb9e2015/full": {
+        "text": "Senior DevOps Engineer, Cloud\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/03107908801fc905da417e0d9a4bb0a5cc7df36f2322d55dabeb8a1ce969d33b/role": {
+        "text": "Senior Infrastructure Engineer, Kubernetes\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "cloud_infrastructure"
+        }
+      },
+      "default/app.enrich/71bc94200a87fe201eb9eb0c8963205e443f24a45385c95c0bc1adf3a9784eb5/full": {
+        "text": "Staff Platform Engineer, Observability\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "staff_principal",
+            "evidence": "Staff Platform Engineer, Observability"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/4073bfb2f2a8ec66cee4f7ad4109b61971f64cd144a6907dec365775f259bab7/full": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/ecc5dfe03bfd88ab6d96bc78d75534aa9e9de0e7ad2d53930aa9d3dfb851dc90/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/62d930cb9fcde50901ab878f965e4190fe86e9ded26266d6881f7d19c85e40c7/full": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/bbd0aff9c2c8048bc4ab1dbac021f4d2a91333a14cf3a739b8d2230e9412a4d5/full": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/4073bfb2f2a8ec66cee4f7ad4109b61971f64cd144a6907dec365775f259bab7/role": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/ecc5dfe03bfd88ab6d96bc78d75534aa9e9de0e7ad2d53930aa9d3dfb851dc90/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/62d930cb9fcde50901ab878f965e4190fe86e9ded26266d6881f7d19c85e40c7/role": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/bbd0aff9c2c8048bc4ab1dbac021f4d2a91333a14cf3a739b8d2230e9412a4d5/role": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/78995bbbcd207da2629c4ac67e65ed0f93c39a3e1a18215d854fbddade65efb8/full": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/78995bbbcd207da2629c4ac67e65ed0f93c39a3e1a18215d854fbddade65efb8/role": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/b060cb13026d8e74989f5b4ab991ac20d8e25e03401e7bd2e431a68bc94862d4/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/b060cb13026d8e74989f5b4ab991ac20d8e25e03401e7bd2e431a68bc94862d4/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/ec99a244f1d8b32f294e42268f775fe778ffba257bd20860291d0b8dde28b3cd/full": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/ec99a244f1d8b32f294e42268f775fe778ffba257bd20860291d0b8dde28b3cd/role": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/a3674fd149720051b99f7054614e0a63acc22308671ebb5342463d632476ba25/full": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/a3674fd149720051b99f7054614e0a63acc22308671ebb5342463d632476ba25/role": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/1378e1e23024b19af0bade36a4bf6a2b1395c535ac79971b3aff9f255292ccf1/full": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Maintain SLOs and handle incident response.",
+            "Use Terraform and observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/1378e1e23024b19af0bade36a4bf6a2b1395c535ac79971b3aff9f255292ccf1/role": {
+        "text": "Senior Site Reliability Engineer\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/286bc727d67c874ccb3939975befd7661d76e5e2f5cd5f5eb66ced1d10ec579e/full": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [],
+          "english_is_enough": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level."
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "Hybrid in Zurich."
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "EKS",
+            "GitOps",
+            "CI/CD",
+            "Terraform",
+            "Python",
+            "Go"
+          ],
+          "responsibilities": [
+            "Build the internal developer platform.",
+            "Build EKS clusters, GitOps, CI/CD and Terraform modules used by 100 engineers."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/286bc727d67c874ccb3939975befd7661d76e5e2f5cd5f5eb66ced1d10ec579e/role": {
+        "text": "Platform Engineer, Kubernetes\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/ad5c2db5e6b08b4b6ef5e68d2f3d03eecb0dd973a370949aa333deb589f2fed7/full": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/ad5c2db5e6b08b4b6ef5e68d2f3d03eecb0dd973a370949aa333deb589f2fed7/role": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/23a861f0d186531fd3e5d5271e8bbe5994abfd1d49baf9622d1274d88b73a72e/full": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/23a861f0d186531fd3e5d5271e8bbe5994abfd1d49baf9622d1274d88b73a72e/role": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/6aa29258f5fc1b82e703f9012992353253039b45f23975ae9379a6d448e2c3b8/full": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform"
+          ],
+          "responsibilities": [
+            "run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/6aa29258f5fc1b82e703f9012992353253039b45f23975ae9379a6d448e2c3b8/role": {
+        "text": "Site Reliability Engineer, Storage\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/89d61af432419aa7a5addd53a6e1362ee6cf9c3cd6fd17507a5e154cba75908b/full": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich, Switzerland"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/89d61af432419aa7a5addd53a6e1362ee6cf9c3cd6fd17507a5e154cba75908b/role": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/c6379dfd295f1a902dafa25fd66ae5dd27f50795ffb1e94ac2127a807ba605ac/full": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich, Switzerland"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/c6379dfd295f1a902dafa25fd66ae5dd27f50795ffb1e94ac2127a807ba605ac/role": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/f3cfe7740b34d0796120b5b642d9558668c00061f149155b161a4fd5c7b1b3c5/full": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich, Switzerland"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "platform",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/f3cfe7740b34d0796120b5b642d9558668c00061f149155b161a4fd5c7b1b3c5/role": {
+        "text": "Senior Platform Engineer, Developer Experience\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "platform"
+        }
+      },
+      "default/app.enrich/2b93abd3093183c742f5a30b8c8673f3fd835189e160df039d87c21397da491e/full": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/2b93abd3093183c742f5a30b8c8673f3fd835189e160df039d87c21397da491e/role": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/280cf4c40a4b8a0e0c77730c867400cfe340b7023a58b05ea2ec33657db3f111/full": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/280cf4c40a4b8a0e0c77730c867400cfe340b7023a58b05ea2ec33657db3f111/role": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/bd71871648717e4cda481494a71439d9ce897dbb2dbd71ed05aed5c38badc3b3/full": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "devops",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/bd71871648717e4cda481494a71439d9ce897dbb2dbd71ed05aed5c38badc3b3/role": {
+        "text": "DevOps Engineer, CI/CD\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "devops"
+        }
+      },
+      "default/app.enrich/8ed6c9c91a385d7d09074fade5c95d3d95b991b69b9fe7e45e03aa935807a3f4/full": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/8ed6c9c91a385d7d09074fade5c95d3d95b991b69b9fe7e45e03aa935807a3f4/role": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/ab9dbfab286aee305524949ca3b17b2c762328437870d145b5b797f4e162c44d/full": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/ab9dbfab286aee305524949ca3b17b2c762328437870d145b5b797f4e162c44d/role": {
+        "text": "Staff Site Reliability Engineer\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/2aafac1e0b847f3b9722dcbf126733efa3eefce4fcef37f46a4262abf735bb2f/full": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Maintain SLOs and handle incident response.",
+            "Use Terraform and observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/2aafac1e0b847f3b9722dcbf126733efa3eefce4fcef37f46a4262abf735bb2f/role": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/2623db80393c9f288e3d28be3df751b45f37cdb621467a832ebd4c8ee6b5211c/full": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Maintain SLOs and handle incident response.",
+            "Use Terraform and observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/2623db80393c9f288e3d28be3df751b45f37cdb621467a832ebd4c8ee6b5211c/role": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/35555e4fa2dca8a73166ac9e6cb1c344b735a6724940cf72daef952f9823829c/full": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Maintain SLOs and handle incident response.",
+            "Use Terraform and observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/35555e4fa2dca8a73166ac9e6cb1c344b735a6724940cf72daef952f9823829c/role": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/97e18486c5bc7bef5446e4701747415a3917eedcf730b2d1764a35888392d198/full": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior role"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "SLOs",
+            "Terraform",
+            "Datadog",
+            "OpenTelemetry"
+          ],
+          "responsibilities": [
+            "Own the reliability of a Kubernetes platform on AWS.",
+            "Maintain SLOs and handle incident response.",
+            "Use Terraform and observability with Datadog and OpenTelemetry."
+          ],
+          "on_call": "unknown",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/97e18486c5bc7bef5446e4701747415a3917eedcf730b2d1764a35888392d198/role": {
+        "text": "Site Reliability Engineer (m/w/d) \u2013 Plattform & Zuverl\u00e4ssigkeit \ud83d\ude80\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/75ef331b5b9356fa3f011b3a4f8a5996b0027735c3e63b12d3a32aae89468a75/full": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/75ef331b5b9356fa3f011b3a4f8a5996b0027735c3e63b12d3a32aae89468a75/role": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZurich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/6c2ced1199bc3cac1afd80932ed8b109469b78315fdf1b275c71899d514cc13f/full": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/6c2ced1199bc3cac1afd80932ed8b109469b78315fdf1b275c71899d514cc13f/role": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZ\u00fcrich, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/812b4e361da8cafa6afd5dd7312f5f542841418cb19702aa1f461cc57fadf8f5/full": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/812b4e361da8cafa6afd5dd7312f5f542841418cb19702aa1f461cc57fadf8f5/role": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZurich, ZH, Switzerland",
+        "answer": {
+          "role_family": "sre"
+        }
+      },
+      "default/app.enrich/f6f8126e30781f4c7a91c6715406ecee48962f4476ee9a385287eb95f3b36f7b/full": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZurich",
+        "answer": {
+          "languages": [
+            {
+              "language": "English",
+              "level": "required",
+              "evidence": "English working language."
+            }
+          ],
+          "english_is_enough": {
+            "value": "yes",
+            "evidence": "English working language."
+          },
+          "seniority": {
+            "value": "senior",
+            "evidence": "Senior level"
+          },
+          "work_mode": {
+            "value": "hybrid",
+            "remote_scope": "",
+            "evidence": "hybrid in Zurich"
+          },
+          "workload": "unknown",
+          "salary": {
+            "stated": false,
+            "text": ""
+          },
+          "employer_type": {
+            "value": "direct_employer",
+            "evidence": ""
+          },
+          "role_family": "sre",
+          "technologies": [
+            "Kubernetes",
+            "AWS",
+            "Terraform",
+            "SLOs"
+          ],
+          "responsibilities": [
+            "Run production on Kubernetes and AWS with Terraform, SLOs and on-call."
+          ],
+          "on_call": "yes",
+          "visa_sponsorship": {
+            "value": "unknown",
+            "evidence": ""
+          },
+          "contract": "unknown",
+          "deadline": "",
+          "posted": "",
+          "confidence": "high"
+        }
+      },
+      "default/app.enrich/f6f8126e30781f4c7a91c6715406ecee48962f4476ee9a385287eb95f3b36f7b/role": {
+        "text": "Senior Site Reliability Engineer, Global Payments Infrastructure, Kubernetes and Multi-Region Disaster Recovery (Hybrid, Zurich Office, Team Lead Track)\nE2E Acme\nZurich",
+        "answer": {
+          "role_family": "sre"
+        }
       }
     },
     "app.visit": {
@@ -3475,6 +7187,32 @@
       "default/app.visit/2e062ba5b572/db06ac4d5d7da6914864da4d4844cfba3b706f8c8fb4fdf1431b2fc99b38c01f": {
         "text": "{\"found\":\"\",\"kind\":\"portal\",\"name\":\"levels.fyi\",\"url\":\"https://www.levels.fyi/jobs?searchText=site%20reliability%20engineer&location=z%C3%BCrich\"}",
         "answer": true
+      }
+    },
+    "app.placeVague": {
+      "default/app.placeVague/d2d415470b02/0777b545c12b1a54ed07b977da9e8d7e2f6e9223e5abb7dcec678b169bb5aa4e": {
+        "text": "zurich, switzerland",
+        "answer": false
+      },
+      "default/app.placeVague/d2d415470b02/b529d20ed15ee3ae97a330eeb8d8411b7c15c724e0d442f6ccf8a237bbb46ad6": {
+        "text": "z\u00fcrich, switzerland",
+        "answer": false
+      },
+      "default/app.placeVague/d2d415470b02/05406c552c70ee3eac5b06e3a9b5792afdc8ab7c78c6196b13de11f70ba9d2b0": {
+        "text": "zurich, zh, switzerland",
+        "answer": false
+      },
+      "default/app.placeVague/d2d415470b02/811dae26155c1f96fa4be679ba416b5b956c4eb73dc831d69f61692507e30595": {
+        "text": "zurich",
+        "answer": false
+      },
+      "default/app.placeVague/d2d415470b02/f037a09517904cd7e48604a0e978aeae9e09f1218a46b3efe90725beb3f0ff4b": {
+        "text": "remote - europe",
+        "answer": false
+      },
+      "default/app.placeVague/d2d415470b02/cd8b13f31dc63e0f33526f40c33beeb8f425b19bb478b0c6abb7fdd5fa5f4ceb": {
+        "text": "berlin, germany",
+        "answer": false
       }
     }
   },

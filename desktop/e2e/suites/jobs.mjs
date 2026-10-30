@@ -11,7 +11,12 @@ import {finish, visit} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 import {varyFeeds} from '../lib/feeds.mjs';
 
-export const realAi = true;   // stubs some AI calls but passes the others to the real model (metered); a suite with all calls stubbed declares false (test/suite-ai-mode.test.mjs)
+// Why (30 Oct 2026, ap): rule A serves jobs' declared engine and background answers without a live key.
+export const offlineAi = true;
+// Why (30 Oct 2026, ap): the harness must fail jobs if any question reaches a real model.
+export const realAi = false;
+// Why (30 Oct 2026, ap; a8's rule for calendar on #2565): stored answers need one store path (test/store.test.mjs); jobs takes the default store, SQLite, whose steps it already has.
+export const store = 'sqlite';
 export const minutes = 30;
 export const name = 'jobs';
 export {hangCaps} from '../lib/jobs-caps.mjs';
@@ -124,7 +129,7 @@ export async function run(ctx) {
     }
     if (!listed) throw new Error('"E2E Gamma" was not listed in the store (Employers & Sources) within 4 minutes');
   }, {needs: ctx.needs});
-  // Real answers, only slower: in CI through the AI proxy (8 s per call), on a Mac through Claude Code, which is slow by itself. Never a key on a Mac.
+  // Stored answers through the AI proxy, delayed by 8 s per call; its counter advances before table lookup.
   await ctx.run('a slow Jobs check keeps showing that it is working, and ends cleanly', async () => {
     // Four new matching postings appear, and every AI call now takes 8 seconds: the shape of a friend's 35-minute check (2 Oct 2026).
     const acme = JSON.parse(fs.readFileSync(path.join(feeds, 'acme.json'), 'utf8'));

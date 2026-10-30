@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import vm from 'node:vm';
-import {assertReadUntyped, TYPED_SNAPSHOT} from '../lib/typed-recorder.mjs';
+import {assertReadUntyped, sampleBeforeClose, TYPED_SNAPSHOT} from '../lib/typed-recorder.mjs';
 
 function fakePage() {
   class Input {
@@ -82,4 +82,27 @@ test('a transient write makes the read assertion fail even when the field is emp
 
 test('an observer that stopped at its hang cap cannot prove an empty read', () => {
   assert.throws(() => assertReadUntyped({samples: 1, installed: 1, filled: [], expired: true}), /observer reached its hang cap/);
+});
+
+test('a failed checkpoint answers normally and the step assertion reports the failure', async () => {
+  for (const sample of [async () => false, async () => { throw new Error('socket failed'); }]) {
+    const watch = {sample, seen: {samples: 1, installed: 1, filled: []}};
+    await assert.doesNotReject(() => sampleBeforeClose(watch));
+    assert.throws(() => assertReadUntyped(watch.seen), /pre-close form read never acknowledged/);
+  }
+});
+
+test('snapshots drain consumed writes so a persistent fill produces linear evidence', () => {
+  const {boxes, snapshot} = fakePage();
+  snapshot();
+  boxes[0].value = 'sticky';
+  let count = 0;
+  for (let i = 0; i < 100; i += 1) {
+    const report = snapshot();
+    assert.ok(report.filled.length <= 2);
+    count += report.filled.length;
+  }
+  assert.equal(count, 101);
+  boxes[0].value = '';
+  assert.deepEqual(snapshot().filled, []);
 });

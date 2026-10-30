@@ -6,8 +6,8 @@ import {INSTRUCTIONS as FORM_JUDGE} from '../../lib/form-judge.js';
 import {FORMS} from './forms.mjs';
 import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 import {HIDDEN_NEED, closeHiddenBrowser, describeHidden, evaluateOn, hiddenTargets, linkRuntime, withFormJudge} from './background-proof.mjs';
-import {pollUntil} from './wait-on-state.mjs';
-import {assertReadUntyped, TYPED_SNAPSHOT} from './typed-recorder.mjs';
+import {pollUntil, stepTimeLeft} from './wait-on-state.mjs';
+import {assertReadUntyped, sampleBeforeClose, TYPED_SNAPSHOT} from './typed-recorder.mjs';
 import {CHIP_VALUE, sessionsNow} from './apply-triage-steps.mjs';
 
 /** The http pages the hidden browser of `profile` holds, [] when it is not running. */
@@ -33,7 +33,7 @@ function watchHiddenForm(profile, host) {
   };
   // Wait on the explicit stop state while observing the open page; the cap catches a stuck read, never proves it read-only.
   const done = pollUntil(async () => { if (!stopped) await sample(); return stopped; }, value => value,
-    {tickMs: 25, log: () => {}}).then(result => { seen.expired = !result.value; });
+    {capMs: stepTimeLeft(), tickMs: 25, log: () => {}}).then(result => { seen.expired = !result.value; });
   return {seen, sample, stop: () => { stopped = true; return done; }};
 }
 
@@ -62,7 +62,7 @@ export async function runReadSteps(ctx, {until}) {
       if (system.startsWith(FORM_JUDGE)) {
         asked += 1;
         // Why (30 Oct 2026, owner): the extension reports the judge answer then closes the tab; read again before releasing that answer.
-        if (!await watch.sample()) throw new Error('the pre-close form read never acknowledged its typed-value recorder');
+        await sampleBeforeClose(watch);
       }
       return judge(body);
     });

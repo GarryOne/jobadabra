@@ -20,7 +20,8 @@ function snapshotTyped() {
   for (const item of document.querySelectorAll('input,textarea')) {
     if (text(item) && item.value) globalThis.__readTyped.filled.push((item.name || item.id) + '=' + item.value);
   }
-  return globalThis.__readTyped;
+  // Why (30 Oct 2026, ap, review #2625): the harness keeps consumed evidence; resending cumulative history makes samples grow quadratically.
+  return {installed: globalThis.__readTyped.installed, filled: globalThis.__readTyped.filled.splice(0)};
 }
 
 /** Install once and read retained text writes since attachment, including an installation acknowledgement; not a page-creation proof. */
@@ -28,8 +29,17 @@ export const TYPED_SNAPSHOT = `(${snapshotTyped.toString()})()`;
 
 /** Require both positive controls before accepting the absence of retained text writes. */
 export function assertReadUntyped(seen) {
+  if (seen.preCloseUnread) throw new Error('the pre-close form read never acknowledged its typed-value recorder');
   if (seen.expired) throw new Error('the form observer reached its hang cap before the read stopped: the check proved nothing');
   if (seen.samples < 1) throw new Error('the hidden form page was never seen open: the "nothing was filled" check proved nothing');
   if (seen.installed < 1) throw new Error('the typed-value recorder was never installed: the check proved nothing');
   if (seen.filled.length) throw new Error(`the read typed into the form: ${seen.filled.join(', ')}`);
+}
+
+/** Record a failed checkpoint for the step assertion; never reject the proxy's HTTP handler. */
+export async function sampleBeforeClose(watch) {
+  // Why (30 Oct 2026, ap, review #2625): the proxy does not catch handler rejections; the step must report a failed checkpoint after answering.
+  let installed = false;
+  try { installed = await watch.sample(); } catch { /* The step reports the unread checkpoint after the proxy answers. */ }
+  if (!installed) watch.seen.preCloseUnread = true;
 }

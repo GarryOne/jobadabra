@@ -1,0 +1,8 @@
+[
+{"family": "app.decide", "key": "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/2d328252f03dd090a2f6261e075cb5a5af598c95584354f84f134d191fa5b200", "what": "Staff Platform Engineer"},
+{"family": "app.decide", "key": "default/16bba675e32d995829c465144b8951e38d8d5bd22749fa9186471f0242426b0f/b89c65d0c3c894abded4ef283199780c454e3a12639dfb815b104781e71ce319", "what": "Senior DevOps Engineer"},
+{"family": "app.enrich", "key": "default/app.enrich/54cf26792a8c404e34f77ba04a061e9858f6dddbcd85aa675877de959dc2a999/role", "what": "Senior Site Reliability Engineer, notion offline (Site Reliability / Data Analyst) | E2E Acme | Zurich, Switzerland or Amsterdam, Netherlands"},
+{"family": "app.enrich", "key": "default/app.enrich/b407a453685fccf9d89570d2abc562b34927d74bc7fc6ac93cf70e1efff74d53/role", "what": "Senior Site Reliability Engineer, notion html (Site Reliability / Data Analyst) | E2E Acme | Zurich, Switzerland or Amsterdam, Netherlands"},
+{"family": "app.enrich", "key": "default/app.enrich/c4b95a26fb8d7bc464c52be1aa9a6de80ee3c4b0b11e3dad40061d21c1c9db4f/role", "what": "Senior Site Reliability Engineer, notion rate-limit (Site Reliability / Data Analyst) | E2E Acme | Zurich, Switzerland or Amsterdam, Netherlands"},
+{"family": "app.enrich", "key": "default/app.enrich/db7a4b3a8010847c3775ec76cef792268695e8ab346a9a045724814125217a85/role", "what": "Senior Site Reliability Engineer, save seed (Site Reliability / Data Analyst) | E2E Acme | Zurich, Switzerland"}
+]

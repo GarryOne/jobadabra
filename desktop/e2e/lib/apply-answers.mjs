@@ -44,7 +44,7 @@ const nonActingReplies = new Map([
   [REPAIR_RULES, JSON.stringify({repairs: []})],
   [DIGEST_INSTRUCTIONS, JSON.stringify({outcome: 'other', verb: 'none', numbers: [], press_kind: '', form_frame: -1, confidence: 1})],
   // Fixture premise: the judge does not veto the structural ready count or press a next/submit control.
-  [FORM_RULES + STEP_RULE + SUBMIT_RULE + BLOCKED_RULE + BOT_RULE, JSON.stringify({answer: 'unsure', blocked_kind: '', needs: '', needs_kind: '', step: 'unsure', next_control: '', submit_control: '', bot_check: false, confidence: 1})],
+  [FORM_RULES + STEP_RULE + SUBMIT_RULE + BLOCKED_RULE + BOT_RULE, JSON.stringify({answer: 'unsure', blocked_kind: '', needs: '', needs_kind: '', step: 'unsure', next_control: '', submit_control: '', bot_check: false, login_wall: false, account_to_create: false, confidence: 1})],
 ]);
 
 // What kind of page (lib/page-kind.js): each fixture's authored kind, including the wrong-kind and late-loading plants.

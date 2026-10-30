@@ -1,0 +1,73 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-neither-en",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "en",
+ "why": "A plain application form, no account step",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-neither-en.html"
+ },
+ "url": "https://careers.example.com/apply/9001",
+ "expect": {
+  "outcome": "neither"
+ },
+ "sketch": {
+  "url": "https://careers.example.com/apply/9001",
+  "title": "Apply for Data Analyst",
+  "headings": [
+   "Apply for Data Analyst"
+  ],
+  "controls": [
+   {
+    "type": "text",
+    "label": "First name",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "text",
+    "label": "Last name",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "email",
+    "label": "Email",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "file",
+    "label": "Résumé",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "textarea",
+    "label": "Why do you want this job?",
+    "required": false,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Submit application"
+  ],
+  "texts": [],
+  "frames": []
+ },
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "First name",
+  "needs_kind": "field",
+  "step": "final",
+  "next_control": "",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": false,
+  "account_to_create": false,
+  "confidence": 0.9
+ },
+ "answer_path": "app"
+}

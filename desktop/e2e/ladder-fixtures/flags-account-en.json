@@ -1,0 +1,81 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-account-en",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "en",
+ "why": "Register to create a candidate account before applying",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-account-en.html"
+ },
+ "url": "https://jobs.example.com/register",
+ "expect": {
+  "outcome": "account"
+ },
+ "sketch": {
+  "url": "https://jobs.example.com/register",
+  "title": "Create your candidate account",
+  "headings": [
+   "Create your account"
+  ],
+  "controls": [
+   {
+    "type": "text",
+    "label": "First name",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "text",
+    "label": "Last name",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "email",
+    "label": "Email address",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Choose a password",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Repeat password",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "checkbox",
+    "label": "I accept the terms of use",
+    "required": true,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Create account"
+  ],
+  "texts": [
+   "Create an account to apply to this job."
+  ],
+  "frames": []
+ },
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "First name",
+  "needs_kind": "field",
+  "step": "unsure",
+  "next_control": "",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": false,
+  "account_to_create": true,
+  "confidence": 0.8
+ },
+ "answer_path": "app"
+}

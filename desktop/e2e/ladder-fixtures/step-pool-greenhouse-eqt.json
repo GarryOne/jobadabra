@@ -345,6 +345,8 @@
   "next_control": "",
   "submit_control": "",
   "bot_check": false,
+  "login_wall": false,
+  "account_to_create": false,
   "confidence": 0.85
  },
  "answer_path": "app"

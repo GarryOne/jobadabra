@@ -1,0 +1,69 @@
+{
+ "schemaVersion": 1,
+ "id": "flags-account-it",
+ "question": "form_flags",
+ "source": "invented",
+ "lang": "it",
+ "why": "Registrazione obbligatoria prima di candidarsi",
+ "capture": {
+  "page": "ladder-fixtures/pages/flags-account-it.html"
+ },
+ "url": "https://lavoro.example.it/registrati",
+ "expect": {
+  "outcome": "account"
+ },
+ "sketch": {
+  "url": "https://lavoro.example.it/registrati",
+  "title": "Registrati",
+  "headings": [
+   "Crea il tuo account candidato"
+  ],
+  "controls": [
+   {
+    "type": "text",
+    "label": "Nome",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "text",
+    "label": "Cognome",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "email",
+    "label": "Email",
+    "required": true,
+    "state": "empty"
+   },
+   {
+    "type": "password",
+    "label": "Scegli una password",
+    "required": true,
+    "state": "empty"
+   }
+  ],
+  "buttons": [
+   "Registrati"
+  ],
+  "texts": [
+   "Registrati per candidarti a questa posizione."
+  ],
+  "frames": []
+ },
+ "answer": {
+  "answer": "needs_person",
+  "blocked_kind": "",
+  "needs": "Nome",
+  "needs_kind": "field",
+  "step": "middle",
+  "next_control": "Registrati",
+  "submit_control": "",
+  "bot_check": false,
+  "login_wall": false,
+  "account_to_create": true,
+  "confidence": 0.8
+ },
+ "answer_path": "app"
+}

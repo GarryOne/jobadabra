@@ -213,7 +213,7 @@ class HookCommentsTest(Base):
         self.env['PR_REST_CACHE'] = str(self.tmp / 'rest-cache')
         self.answer(view())
         # Why (30 Oct 2026): the asynchronous REST worker exceeded the old two-second test deadline on this host.
-        self.env.update({'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '100',
+        self.env.update({'PR_RED_DIR': str(self.tmp / 'cache'), 'PR_RED_TTL': '0', 'PR_RED_WAIT': '20',
                          'PR_RED_MAIN_SCRIPT': str(self.tmp / 'rm.sh')})
         (self.tmp / 'rm.sh').write_text('#!/bin/sh\necho unknown\n')
         self.env.pop('JOB_PILOTTO_SESSION', None)

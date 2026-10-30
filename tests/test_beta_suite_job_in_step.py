@@ -13,6 +13,7 @@ DIFFERENT = {
     'mac': {
         'E2E_AI_ANSWERS': 'Only standalone first attempts can record or force burn-in; the common replay mode is checked separately below.',
         'E2E_AI_FAMILY': 'Only standalone manual dispatches pin a family; the gate uses engine.mjs run-number rotation.',
+        'E2E_PERSONA': 'Only standalone manual personas dispatches select an applicant; the beta keeps pickPersona\'s daily default.',
         'E2E_STORE': 'plan-run.mjs documents GATE_STORE_LEGS=one: the gate keeps one alternating store until both stores run in one job.',
         'E2E_STEP_NAMES': 'runner.mjs selects PR steps; the beta runs the whole suite.',
         'E2E_FALLBACK_SUITES': 'red-steps.mjs caps renamed PR picks; the beta has no picked steps to fall back from.',

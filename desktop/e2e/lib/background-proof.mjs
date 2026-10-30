@@ -232,13 +232,14 @@ export async function proveBotCheck(ctx, {form, mode, seed, until}) {
     await openSessionCard(page, form);
     const readCard = () => page.evaluate(() => ({title: document.querySelector('#ss-next-title')?.innerText || '', pill: document.querySelector('#ss-stage')?.innerText || '', open: document.querySelector('#ss-title, .ss-title')?.innerText || '',
       submit: [...document.querySelectorAll('#ss-actions button')].filter(button => /^Submit application$/i.test(button.innerText.trim())).map(button => button.disabled)}));
-    const card = await until('the Applying card never said "A bot check needs you"', async () => { const read = await readCard(); return /A bot check needs you/.test(read.title) ? read : null; }, 30000)
+    const card = await until('the Applying card never said "A bot check needs you"', async () => { const read = await readCard(); if (/A bot check needs you/.test(read.title)) return read; await openSessionCard(page, form); return null; }, 30000)   // asks for the card again: the page may have moved to another session meanwhile
       .catch(async error => { throw new Error(`${error.message} | the open card says ${JSON.stringify(await readCard())}; state: ${JSON.stringify(handed)}`); });
     if (!/Needs you/i.test(card.pill)) throw new Error(`the card's pill says "${card.pill.trim()}", not "Needs you"`);
     if (card.submit.length !== 1 || card.submit[0] !== true) throw new Error(`the card's Submit application is not one disabled button: ${JSON.stringify(card.submit)}`);
     await page.click('.nav[data-view="sessions"]');
-    const row = await page.locator('#ss-list .ss-row.is-current').innerText();   // the row of the session openSessionCard opened, not another job of the same company
-    if (!/Needs you/i.test(row)) throw new Error(`the Sessions list row does not say "Needs you": "${row.replace(/\s+/g, ' ')}"`);
+    // Why (30 Oct 2026, found on CI apply-1of2): the list marks one row current, and the page falls back to another session's (a Lever job "Ready to submit") when the open one is not the pick, so the check reads the company's rows: the other jobs of this company are Applied or skipped, only this one can say "Needs you".
+    const rows = await page.locator('#ss-list .ss-row').filter({hasText: form.company}).allInnerTexts();
+    if (!rows.some(text => /Needs you/i.test(text))) throw new Error(`no Sessions list row of ${form.company} says "Needs you": "${rows.join(' / ').replace(/\s+/g, ' ')}"`);
     const dock = await page.locator('#sd-cards .sd-card').filter({hasText: form.company}).allInnerTexts().catch(() => []);   // the dock draws live sessions only; a job of the same company may sit beside this one
     if (dock.length && !dock.some(text => /Needs you/i.test(text))) throw new Error(`no dock card says "Needs you": "${dock.join(' / ').replace(/\s+/g, ' ')}"`);
     if (forms.posts.length !== posted) throw new Error(`a bot check was met and the form still got ${forms.posts.length - posted} POST(s): nothing may be sent`);

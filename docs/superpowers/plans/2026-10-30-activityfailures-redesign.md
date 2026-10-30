@@ -25,11 +25,21 @@
 
 ## Progress
 
+### 1. Narrow repair and truthful failure proof
+
 - [x] Narrow geo repair merged as c567ff9, no owner merge performed by this agent. (proof: desktop/e2e/test/activityfailures-backbone-no-live-ai.test.mjs @5fe23fa)
 - [x] Read full first/retry CI artifacts and identify vacuous retry proof. (proof: none: run 40996297795, original refusals=5 and suite-failures=[])
-- [ ] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI.
+- [x] Truthful refusal artifacts and nonempty retry proof: red/green regressions, review, full CI. (proof: desktop/e2e/test/no-real-ai.test.mjs @6cb36b4)
+### 2. Deterministic inputs and fault lifecycle
+
 - [ ] Deterministic input and lifecycle audit, evidence-based fix and CI.
+
+### 3. State waits and measured hang caps
+
 - [ ] State waits, measured hang caps and CI.
+
+### 4. Fresh main proof
+
 - [ ] Fresh main evidence after owner merges; full redesign claim only then.
 
 ## Isolation follow-up evidence
@@ -49,3 +59,5 @@ Finite semantic catalog and synthetic guard retry selection are separate PRs #25
 | F: scope | Existing runner, activity helper, proxy, stored-answer seams and state poller are reused. Changed modules declare one approved Job. No new polling framework, lane move, live model use, Submit, or agent merge. | Harness gates and final CI. |
 
 Focused regressions cover deterministic IDs and real detail-state predicates, rejection of stale resume history, every measured cap using the real runner with a fake clock, stop-on-hang versus ordinary keep-going, and restoration after silence startup failure without late relaunch after closure.
+
+Review resolved two lifecycle findings: every activityfailures AI step opts into stop-on-hang (ordinary assertions keep going), and temporary silence configuration is protected from installation onward. A deferred-launch regression also proves context teardown closes an app that finishes opening late instead of adopting it. No new module or polling framework was added.

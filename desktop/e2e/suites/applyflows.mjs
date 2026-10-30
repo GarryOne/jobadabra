@@ -3,7 +3,7 @@
 // a second browser; a wrong page kind; "I submitted it". `apply` runs the single forms and the tailored CV. One suite everywhere (13 Oct 2026: it was two copies, applycv
 // on CI and applyflows on the Mac, with the same steps): the proxy replays the app's AI answers; each step waits on state with a measured hang cap, without an aggregate budget.
 //     `npm run live` (LIVE=1): the live run on a real posting instead of the journeys, on this Mac's Claude Code (lib/engine.mjs flowsEngine; LIVE_ENGINE overrides).
-// The suite uses SQLite or the local Notion stand-in (lib/notion-fake.mjs via openContext); it needs no Notion secret.
+// Fixture journeys pin SQLite for stored answers; they need no Notion secret.
 // Job: wait on state
 import {partOf, runApply, stepNeeds as applyNeeds} from './apply.mjs';
 import {answersMode} from '../lib/ai-answers.mjs';
@@ -17,6 +17,8 @@ export const ownsStep = name => ['flows', 'live', 'both'].includes(partOf(name))
 export const offlineAi = !process.env.LIVE;
 export const realAi = process.env.LIVE ? true : false;
 
+// Why (30 Oct 2026, PR #2562): stored-answer journeys use one store path across CI alternation.
+export const store = 'sqlite';
 export const varies = true;
 export const minutes = 17;   // CI's job-limit plumbing, including setup and a retry; step hang caps decide whether a check is stuck
 // Why (29 Oct 2026, a8, 21b): measured per-step hang caps catch hangs; cumulative runner slowness must not suppress later state checks

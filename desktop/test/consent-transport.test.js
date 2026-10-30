@@ -42,7 +42,7 @@ test('consent off does not add legal-only AI work, including a kit-covered form 
 
 test('apply fixture proxy returns canned consent answers only for known fixture IDs', async () => {
   const {FORMS}=await import('../e2e/lib/forms.mjs');
-  const source=fs.readFileSync(new URL('../e2e/suites/apply.mjs',import.meta.url),'utf8');
+  const source=fs.readFileSync(new URL('../e2e/lib/apply-answers.mjs',import.meta.url),'utf8');
   const body=/function fixtureAnswers\(fields\) \{([\s\S]*?)\n\}/.exec(source)?.[1];
   assert.ok(body,'the actual canned proxy exposes its fixture classification seam');
   const canned=new Function('FORMS','OPEN_ANSWER','fields',body);

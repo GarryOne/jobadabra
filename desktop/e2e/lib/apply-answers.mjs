@@ -8,7 +8,7 @@ import {BASE_CV, OPEN_ANSWER, contactKeysAnswer, systemOf, tailoredFrom, unmatch
 
 // Known fixture identities are authored test inputs; an unseen page must reach the missing-answer guard.
 const fixtures = [...Object.values(FORMS), ...REAL_FORMS, CHAIN, COLLAPSED, LATE, MENU_AGAIN, MENU_FIRST, MISLABELLED, ONEPAGE, PROPOSE, REVEAL, SCRIPTED, SIGNIN, SIGNIN_REFUSED, SIGNUP];
-const knownPaths = new Set(fixtures.flatMap(item => [item.path, item.formPath, item.accountPath].filter(Boolean)));
+const knownPaths = new Set(fixtures.flatMap(item => [item.path, item.formPath, item.accountPath, item.stepPath, item.autoPath].filter(Boolean)));
 
 // Only the fixture's declared consent ids receive an explicit AI reading.
 function fixtureAnswers(fields) {

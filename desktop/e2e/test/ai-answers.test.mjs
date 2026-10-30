@@ -20,7 +20,7 @@ const init = body => ({method: 'POST', headers: {'content-type': 'application/js
 const keyed = {operation: 'app.score', id: '3001'};
 const feedPosting = {company: 'Acme', location: 'Zurich', title: 'Site Reliability Engineer'};
 const feedId = `feed/${createHash('sha256').update(JSON.stringify({company: 'Acme', location: 'Zurich', title: 'Site Reliability Engineer'})).digest('hex')}`;
-const scoreReason = 'app.score: posting title, company and location must match exactly one golden row';
+const scoreReason = 'app.score: request must carry exactly one posting identity matching at most one golden row';
 
 function fixture(t, answers = {'app.score': {'3001': {reply: stored}}}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-answers-'));

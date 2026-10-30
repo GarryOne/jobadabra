@@ -88,7 +88,7 @@ function scoreQuestion(body, persona) {
   const sources = JSON.parse(fs.readFileSync(new URL('sources.json', golden), 'utf8'));
   const matches = truth.filter(item => identities.some(([, title, company, location]) =>
     item.title === title.trim() && (item.company || sources[0].company) === company.trim() && item.location === location.trim()));
-  if (identities.length !== 1 || matches.length > 1) return {unkeyable: 'app.score: posting title, company and location must match exactly one golden row'};
+  if (identities.length !== 1 || matches.length > 1) return {unkeyable: 'app.score: request must carry exactly one posting identity matching at most one golden row'};
   if (matches.length === 0) {
     const [, title, company, location] = identities[0];
     const id = `feed/${hash(canonical({company: company.trim(), location: location.trim(), title: title.trim()}))}`;

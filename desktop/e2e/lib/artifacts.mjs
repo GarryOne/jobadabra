@@ -1,5 +1,6 @@
 /* global document */
 // What a suite leaves behind for the UI loop (ui-findings.yml), written even when the suite stops at a failing step: its layout findings so far, and which steps failed.
+// Job: report health
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -62,8 +63,22 @@ export function codeLine(error) {
 // Why (27 Oct 2026, 6e): main's quality red alerted "the steps merge e7ab156 touched" while its step said "AI question(s) had no recorded answer" (#2234).
 const escapeData = text => String(text).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
 const escapeProperty = text => escapeData(text).replace(/:/g, '%3A').replace(/,/g, '%2C');
+/**
+ * A step's first line cut to `max` characters at a "; " item, the rest counted ("a; b; +3 more"), never inside a word: ci-alert.mjs counts the items.
+ * Why (30 Oct 2026, owner: "more human readable, more succinct"): a cut at 300 characters ended main's quality alert inside a word ("Noti").
+ */
+export function fitItems(text, max = 300) {
+  if (text.length <= max) return text;
+  const items = text.split('; ');
+  const kept = [];
+  for (const item of items) { if ([...kept, item, `+${items.length} more`].join('; ').length > max) break; kept.push(item); }
+  if (kept.length) return [...kept, `+${items.length - kept.length} more`].join('; ');
+  const rest = items.length > 1 ? `; +${items.length - 1} more` : '';
+  return `${items[0].slice(0, max - rest.length - 1).replace(/\s+\S*$/, '')}…${rest}`;
+}
+
 export const annotationLines = records => records.slice(0, 3)
-  .map(record => `::error title=${escapeProperty(`${record.suite} · ${record.step}`)}::${escapeData(String(record.message || '').split('\n')[0].slice(0, 300) || 'failed')}`);
+  .map(record => `::error title=${escapeProperty(`${record.suite} · ${record.step}`)}::${escapeData(fitItems(String(record.message || '').split('\n')[0]) || 'failed')}`);
 
 // suite-failures.json, every run: the failed steps, or an empty list; on GitHub also one annotation per failed step.
 export function writeSuiteFailures(dir, suite, results, env = process.env) {

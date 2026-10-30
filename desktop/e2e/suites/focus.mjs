@@ -10,6 +10,8 @@ import {actionScenario, addApplication, addFocusData, expectedNumbers, compareNu
 import {finish, snap} from '../lib/layout.mjs';
 import {ensureSetUp} from '../lib/seed.mjs';
 
+// Why (30 Oct 2026, #2601): setup's contact_from_cv ask already has a reviewed kind reply; do not depend on a hash cache or live AI.
+export const aiAnswers = 'backbone';
 export const minutes = 15;
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords).
 // Why (#2338, #2350): a step that reads Focus without opening it needs the step that opens it; the app may open on Jobs (a re-run of "Edit target"

@@ -225,35 +225,49 @@ class Artifacts(unittest.TestCase):
         _, line = ai.prepare('o/r', runs, jobs, github, lambda name='main_e2e_state': __import__('tools.' + name, fromlist=[name]))
         return line('3 workflow(s) green in 2.0 min')
 
-    def test_failed_qualityai_is_red_without_a_number_but_low_scores_stay_reports(self):
-        # Owner's #2632/#2600 case: qualityai is the only red job; its tolerant lane cannot hide a crash.
-        from unittest import mock
-        from tests.test_pr_verdict import pv, run as pr_run
+    def test_failed_qualityai_requires_number_evidence_for_all_conclusions_and_job_shapes(self):
+        # A produced zero score is informational even without BASE exemptions; absent/empty counts prove no number.
         low = {**RATES, 'facts': {'exact': 0, 'total': 63}}
         empty = {**RATES, 'facts': None, 'flags': None, 'cv': None}
-        for counts, expected in ((None, 'failure'), (empty, 'failure'), (low, 'success')):
-            with self.subTest(counts=counts):
-                github = Github([], {7: [{'id': 7, 'name': ai.ARTIFACT}]} if counts else {},
-                                {7: archive(counts)} if counts else {})
-                r = pr_run('E2E', conclusion='failure', event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7)
-                jobs = {7: [{'id': 71, 'name': 'qualityai', 'status': 'completed', 'conclusion': 'failure'}]}
-                sent = []
-                def gh(*args, **kwargs):
-                    if '/statuses/' in ' '.join(args):
-                        sent.append(args); return '{}'
-                    return github(*args, **kwargs)
-                with mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
-                     mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
-                     mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
-                     mock.patch.object(pv, 'gh', side_effect=gh), mock.patch.object(pv, 'quota_line', return_value=''), \
-                     mock.patch.object(pv, 'main_red_greys', return_value={71}), \
-                     mock.patch.object(pv, 'lane_greys', return_value={71: 'tolerant'}), \
-                     mock.patch.object(pv, 'health_greys', return_value={71: 'ai-credit'}):
-                    self.assertEqual(pv.main(), 0)
-                self.assertEqual(len(sent), 1)
-                self.assertIn('state=' + expected, sent[0])
-                if counts == low:
-                    self.assertTrue(any('facts 0/63' in arg for arg in sent[0]), sent[0])
+        for conclusion in ('failure', 'timed_out', 'cancelled', 'startup_failure', 'neutral'):
+            for name in ('qualityai', 'E2E · Mac + Linux · qualityai-1of2'):
+                for counts, expected in ((None, 'failure'), (empty, 'failure'), (low, 'success')):
+                    for registry in (True, False):
+                        with self.subTest(conclusion=conclusion, name=name, counts=counts, registry=registry):
+                            post = self.qualityai_post(conclusion, name, counts, registry)
+                            self.assertIn('state=' + expected, post)
+                            if counts == low:
+                                self.assertTrue(any('facts 0/63' in arg for arg in post), post)
+
+    def test_artifact_read_errors_stay_pending_instead_of_becoming_a_lasting_red(self):
+        for stage in ('/artifacts?', '/zip'):
+            with self.subTest(stage=stage):
+                post = self.qualityai_post('timed_out', 'E2E · qualityai', RATES, False, stage)
+                self.assertIn('state=pending', post)
+
+    def qualityai_post(self, conclusion, name, counts, registry, fail_at=''):
+        """Run the real status writer/number reader; replace only GitHub and external evidence reads."""
+        from unittest import mock
+        from tests.test_pr_verdict import pv, run as pr_run
+        github = Github([], {7: [{'id': 7, 'name': ai.ARTIFACT}]} if counts else {}, {7: archive(counts)} if counts else {})
+        r = pr_run('E2E', conclusion=conclusion, event='workflow_dispatch', title='E2E for PR · qualityai · topic', id=7)
+        jobs = {7: [{'id': 71, 'name': name, 'status': 'completed', 'conclusion': conclusion}]}
+        sent = []
+        def gh(*args, **kwargs):
+            if fail_at and fail_at in ' '.join(args): raise OSError('transient artifact transport failure')
+            if not registry and '/contents/desktop/e2e/lanes.json' in ' '.join(args): return '{"suites": {}}'
+            if '/statuses/' in ' '.join(args): sent.append(args); return '{}'
+            return github(*args, **kwargs)
+        with mock.patch.object(sys, 'argv', ['pr-verdict.py', '--repo', 'o/r', '--sha', 'head']), \
+             mock.patch.object(sys, 'stdout'), mock.patch.object(pv, 'read', return_value=([r], jobs)), \
+             mock.patch.object(pv, 'pr_meta', return_value=([{'number': 1, 'state': 'open'}], [], [])), \
+             mock.patch.object(pv, 'gh', side_effect=gh), mock.patch.object(pv, 'quota_line', return_value=''), \
+             mock.patch.object(pv, 'main_red_greys', return_value={71}), \
+             mock.patch.object(pv, 'lane_greys', return_value={71: 'tolerant'}), \
+             mock.patch.object(pv, 'health_greys', return_value={71: 'ai-credit'}):
+            self.assertEqual(pv.main(), 0)
+        self.assertEqual(len(sent), 1)
+        return sent[0]
 
     def test_pr_compares_with_after_merge_main_artifact(self):
         # Hand-made API responses use the supervisor's run/title shapes and reported counts; no live service is reached.

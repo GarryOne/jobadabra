@@ -28,7 +28,7 @@ RED = {'failure', 'cancelled', 'timed_out', 'startup_failure', 'action_required'
 # 'tolerant' / 'suspended': its suite is in the lane registry desktop/e2e/lanes.json (lane_greys; spec lanes table, 28 Oct 2026).
 GREY_WORDS = {'main': ('grey', 'red on main too, not this PR'), 'tolerant': ('tolerant', 'AI, clock or outside: not a PR red'), 'suspended': ('suspended', 'flaky on main: not a PR red')}
 GREY_WORDS.update({'ai-credit': ('grey', 'AI cap or credit'), 'runner': ('grey', 'runner not acquired'),
-                   'install': ('grey', 'install download unavailable')})
+                   'install': ('grey', 'install download unavailable'), 'qualityai': ('report', 'AI number produced; score informational')})
 CI_FILES = re.compile(r'^(\.github/|tools/pr-|desktop/e2e/(lib/plan|lib/pr-suites|lib/coverage|pr-suites\.mjs|plan-run\.mjs))')
 # The workflows a pull request can start: a pull_request trigger, or started by one of them. A workflow outside it (the users' Always On daily/scout/mail.yml,
 # the nightly, a release) never runs on a PR, so editing it does not slow a PR: #2137 went red at 11.4 min, every check green, for daily/scout/mail.yml.
@@ -117,7 +117,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
     greys: red jobs shown, never red: a set of ids (main's own red) or {id: reason in GREY_WORDS} (main, lane or health evidence).
     reports: BASE's exempt pr:number suites; failed qualityai needs a produced number to qualify."""
-    live = counted(runs)
+    live, quality = counted(runs), getattr(reports, 'qualityai', {})
     if not live:
         return None, '', live, [], None
     now = now or datetime.now(timezone.utc)   # a run still ending (its jobs done or finishing) ends about now
@@ -129,10 +129,10 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
             if r.get('status') != 'completed': running.append((r, []))
             elif r.get('conclusion') in RED: red.append(r)
             continue
-        numbered = any(suite_of(job.get('name', '')) in reports for job in listed)   # Why (30 Oct 2026, owner): a failed qualityai without a number stays red even in grey lanes.
-        states = [(job, 'grey' if job.get('id') in greys and not (suite_of(job.get('name', '')) == 'qualityai' and job.get('conclusion') == 'failure') else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS and suite_of(job.get('name', '')) not in reports]
+        numbered = any(suite_of(job.get('name', '')) in reports for job in listed)   # Why (30 Oct 2026, owner/review): qualityai evidence overrides report/grey exemptions, including unknown reads.
+        states = [(job, quality.get(job.get('id'), 'grey' if job.get('id') in greys else job_state(job, me, my_status))) for job in listed if job.get('name') not in REPORT_JOBS and (suite_of(job.get('name', '')) not in reports or job.get('id') in quality)]
         states = ((burn_in or main_state_module('', '', 'pr_burn_in').failures)(r, listed, lambda job: job_state(job, me, my_status)) if any(' · burn-in ' in job.get('name', '') for job in listed) else []) + states
-        grey += [(job['name'], greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
+        grey += [(job['name'], 'qualityai' if job.get('id') in quality else greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
             red.append(r); red_jobs[r.get('databaseId')] = [job['name'] for job, state in states if state in RED]
@@ -431,7 +431,7 @@ def main():
     reports, ai_line = set(), str
     if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
         try:
-            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''))
+            reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, '', os.environ.get('RUNNER_NAME', ''), suite_of=suite_of)
         except Exception as error:
             print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
     spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs))) else None

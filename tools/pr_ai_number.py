@@ -1,6 +1,6 @@
 # Reads AI counts, rejects failed runs without a number, and formats informational scores.
 # Job: report health
-# Invariants: only BASE grants exemptions; low scores never decide status; failed qualityai needs a usable number.
+# Invariants: BASE grants ordinary reports; qualityai evidence is measured, missing or unknown; score values never gate.
 import io
 import json
 import math
@@ -14,22 +14,34 @@ PR_TITLE = 'E2E for PR · '
 METRICS = (('facts', 'exact', 'total', 'facts'), ('flags', 'flagged', 'judged', 'flags'), ('cv', 'found', 'expected', 'CV'))
 
 
-def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status='', runner=''):
-    """Read BASE's exemptions and numbers once; a failed qualityai without a number loses its report exemption."""
-    reports, rates = report_suites(repo, gh, base), None
+class ReportSuites(set):
+    """BASE's report suites plus per-job qualityai evidence that overrides report/grey exemptions."""
+
+
+class NumberReadError(RuntimeError):
+    """The PR measurement could not be read; unavailable evidence must remain pending."""
+
+
+def prepare(repo, runs, jobs, gh, main_state, base='main', my_run='', my_status='', runner='', suite_of=None):
+    """Return ordinary reports and qualityai evidence: measured -> grey, absent -> red, read error -> pending."""
+    reports, rates, unknown = ReportSuites(report_suites(repo, gh, base)), None, False
+    suite_of = suite_of or main_state().suite_of
+    reports.qualityai = {}
     try:
-        if 'qualityai' in reports:
-            main_module = lru_cache()(main_state)
-            # Why (29 Oct 2026, qu): after-merge artifacts measure main's code even though their green cannot clear a suite's state.
-            rates = numbers(repo, runs, jobs, gh, lambda run: not main_module().NOT_MAIN_CHECK.match(run.get('display_title') or ''),
-                            my_run, my_status, runner, night_module=lambda: main_state('beta_rate_gate'))
+        main_module = lru_cache()(main_state)
+        # Why (29 Oct 2026, qu): after-merge artifacts measure main's code even though their green cannot clear a suite's state.
+        rates = numbers(repo, runs, jobs, gh, lambda run: not main_module().NOT_MAIN_CHECK.match(run.get('display_title') or ''),
+                        my_run, my_status, runner, night_module=lambda: main_state('beta_rate_gate'), suite_of=suite_of)
     except Exception as error:
-        print(f'AI number unavailable ({type(error).__name__}): failed qualityai needs number evidence')
+        unknown = True
+        print(f'AI number unavailable ({type(error).__name__}): evidence pending')
     current = rates[0] if rates else None
     produced = any((current or {}).get(part) and current[part][den] for part, _, den, _ in METRICS)
-    # Why (30 Oct 2026, owner): qualityai is red only when it failed to run/produce a number, never for a low score (#2632, #2600).
-    if not produced and any(j.get('name') == 'qualityai' and j.get('conclusion') == 'failure' for r in runs for j in jobs.get(r['databaseId'], [])):
-        reports.discard('qualityai')
+    # Why (30 Oct 2026, owner/review): every non-success/skipped qualityai end needs a number, independent of BASE reports; a read error proves nothing.
+    for r in runs:
+        for job in jobs.get(r['databaseId'], []):
+            if suite_of(job.get('name', '')) == 'qualityai' and job.get('status') == 'completed' and job.get('conclusion') not in ('success', 'skipped'):
+                reports.qualityai[job.get('id')] = 'running' if unknown else 'grey' if produced else 'failure'
     return reports, (lambda why: description(why, *rates)) if rates is not None else str
 
 
@@ -117,10 +129,10 @@ def artifact_rates(repo, rid, gh, artifact=ARTIFACT):
     if not artifacts:
         return False, None
     latest = max(artifacts, key=lambda a: a['id'])
+    if latest.get('expired'):
+        return True, None
+    data = gh('api', f"repos/{repo}/actions/artifacts/{latest['id']}/zip", binary=True)
     try:
-        if latest.get('expired'):
-            return True, None
-        data = gh('api', f"repos/{repo}/actions/artifacts/{latest['id']}/zip", binary=True)
         with zipfile.ZipFile(io.BytesIO(data)) as zipped:
             member = zipped.getinfo('quality-rates.json')
             if member.file_size > 65536:
@@ -161,8 +173,10 @@ def main_rates(repo, gh, comparable, night_module=None):
     return None
 
 
-def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner='', night_module=None):
+def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner='', night_module=None, suite_of=None):
     """Read the PR and latest main counts plus a text-only comparison with main's usual nightly range."""
+    if suite_of is None:
+        from tools.main_e2e_state import suite_of
     selected = [run for run in runs if str(run.get('displayTitle', '')).startswith(PR_TITLE)
                 and 'qualityai' in run['displayTitle'][len(PR_TITLE):].split(' · ')[0].split(',')]
     if not selected:
@@ -173,14 +187,14 @@ def numbers(repo, runs, jobs, gh, comparable, my_run='', my_status='', runner=''
         rid = run['databaseId']
         if rid not in jobs:
             jobs[rid] = json.loads(gh('api', f'repos/{repo}/actions/runs/{rid}/jobs?per_page=100', '--jq', '.jobs'))
-        measured = [j for j in jobs[rid] if j.get('name') == 'qualityai']
+        measured = [j for j in jobs[rid] if suite_of(j.get('name', '')) == 'qualityai']
         # A completed failure may still have produced a valid low score; unfinished jobs cannot supply a final number.
         ready = measured and all(j.get('status') == 'completed' or
                                  str(rid) == str(my_run) and j.get('runner_name') == runner and my_status == 'success' for j in measured)
         if ready:
             _, current = artifact_rates(repo, rid, gh)
     except Exception as error:
-        print(f'PR AI counts unavailable ({type(error).__name__})', file=sys.stderr)
+        raise NumberReadError('PR AI number read failed') from error
     baseline, below = main_rates(repo, gh, comparable, night_module), False
     if current is not None and baseline is not None:
         try:

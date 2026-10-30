@@ -20,6 +20,8 @@ import {probe, problems, waitForRail} from '../lib/rail-markers.mjs';
 // Why (30 Oct 2026, bb 3/9, rule A): setup and task asks must use the stored table; any miss fails before live AI.
 export const offlineAi = true;
 export const realAi = false;
+// Why (30 Oct 2026, bb 3/9): stored answers follow one store path (test/store.test.mjs), so the suite is pinned to the store it already ran its Notion/run-history steps on.
+export const store = 'sqlite';   // one store, so its stored answers follow one path (it ran on both before; Why above)
 export const macos = true;   // runs on a macOS runner: pixels, fonts and window sizes: judged on the Mac people use (lib/plan.mjs runnerOf)
 export const name = 'interactions';
 export {hangCaps} from '../lib/interactions-caps.mjs';

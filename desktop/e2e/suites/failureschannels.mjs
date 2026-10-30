@@ -6,6 +6,8 @@ import {runParts} from './activityfailures.mjs';
 // Why (30 Oct 2026, bb 3/9, rule A): setup and task asks must use the stored table; any miss fails before live AI.
 export const offlineAi = true;
 export const realAi = false;
+// Why (30 Oct 2026, bb 3/9): stored answers follow one store path (test/store.test.mjs), so the suite is pinned to the store it already ran its Notion/run-history steps on.
+export const store = 'standin';   // the same stand-in as activityfailures, whose parts it runs
 export const minutes = 12;
 export const name = 'failureschannels';
 export {hangCaps} from '../lib/failureschannels-caps.mjs';

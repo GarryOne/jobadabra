@@ -88,13 +88,22 @@ async function openSessionCard(page, form) {
   await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);
 }
 
-/** The values of the inputs on the page behind `socketUrl` (one Runtime.evaluate over its debugging port), for a failure message. */
-const valuesOf = socketUrl => new Promise(done => {
-  const socket = new WebSocket(socketUrl), end = text => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(text); }, timer = setTimeout(() => end('(no answer)'), 4000);
-  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression: "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobpilotto-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobpilottoGrounding || 'none') + (item.hasAttribute('data-jobpilotto-guess') ? ', guess' : '') + ']').join(', ')"}}));
-  socket.onmessage = event => end(String(JSON.parse(event.data).result?.result?.value ?? '(none)').slice(0, 700));
-  socket.onerror = () => end('(unreadable)');
+/** One Runtime.evaluate over the debugging socket `socketUrl`: resolves its value, or null when the page never answers or cannot be read (4 s). Never throws. */
+export const evaluateOn = (socketUrl, expression) => new Promise(done => {
+  const socket = new WebSocket(socketUrl), end = value => { clearTimeout(timer); try { socket.close(); } catch { /* closed */ } done(value); }, timer = setTimeout(() => end(null), 4000);
+  socket.onopen = () => socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {returnByValue: true, expression}}));
+  socket.onmessage = event => end(JSON.parse(event.data).result?.result?.value ?? null);
+  socket.onerror = () => end(null);
 });
+
+/** The debugging port of the hidden browser of `profile` (its DevToolsActivePort file); throws when it was never started. */
+export const hiddenPort = profile => Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+
+/** Every target the hidden browser of `profile` holds (pages and extension workers); throws when it is not running. */
+export const hiddenTargets = async profile => (await fetch(`http://127.0.0.1:${hiddenPort(profile)}/json/list`, {signal: AbortSignal.timeout(3000)})).json();
+
+/** The values of the inputs on the page behind `socketUrl`, for a failure message. */
+const valuesOf = async socketUrl => String(await evaluateOn(socketUrl, "[...document.querySelectorAll('input,textarea,select')].map(item => (item.name || item.id) + '=' + (item.type === 'file' ? item.files.length + ' file(s) [file mark: ' + (item.getAttribute('data-jobpilotto-file') || 'none') + ']' : item.value) + ' [grounding: ' + (item.dataset.jobpilottoGrounding || 'none') + (item.hasAttribute('data-jobpilotto-guess') ? ', guess' : '') + ']').join(', ')") ?? '(no answer)').slice(0, 700);
 
 /** The console lines and exceptions the page behind `socketUrl` already holds (Runtime.enable replays them), for a failure message. */
 const consoleOf = socketUrl => new Promise((done, fail) => {
@@ -150,8 +159,7 @@ async function askExtension(profile, port) {
 export async function describeHidden(profile) {
   const folder = path.join(profile, 'background-browser');
   try {
-    const port = Number(fs.readFileSync(path.join(folder, 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
-    const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`, {signal: AbortSignal.timeout(3000)})).json();
+    const port = hiddenPort(profile), targets = await hiddenTargets(profile);
     const form = targets.find(item => item.type === 'page' && /^https?:/.test(item.url));
     return `hidden browser on port ${port} holds: ${targets.map(item => `${item.type} ${String(item.url).slice(0, 80)}`).join(' | ') || 'nothing'} | its form reads: ${form ? await valuesOf(form.webSocketDebuggerUrl) : 'no page'} | its console: ${form ? await consoleOf(form.webSocketDebuggerUrl) : 'no page'} | the extension says: ${await askExtension(profile, port)}`;
   } catch (error) {
@@ -164,7 +172,7 @@ export async function describeHidden(profile) {
 /** Closes the app's hidden browser of `profile` (it dies with the app, lib/browser-reaper.js; a run closes it itself so it does not wait for that): Browser.close over its own debugging port. Never throws. */
 export async function closeHiddenBrowser(profile) {
   try {
-    const port = Number(fs.readFileSync(path.join(profile, 'background-browser', 'profile', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+    const port = hiddenPort(profile);
     const {webSocketDebuggerUrl} = await (await fetch(`http://127.0.0.1:${port}/json/version`, {signal: AbortSignal.timeout(3000)})).json();
     await new Promise(done => {
       const socket = new WebSocket(webSocketDebuggerUrl), end = () => { clearTimeout(timer); done(); }, timer = setTimeout(end, 5000);

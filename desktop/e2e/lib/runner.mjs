@@ -26,9 +26,9 @@ export async function hangReport(session) {
 export function withLimit(promise, ms, name, getSession = () => null, budget = 0, hangError) {   // budget: set when the suite's budget, not the step's own limit, is what cuts it
   let timer;
   // Why (29 Oct 2026, qu 3/4): a state-wait suite can name its hang and attach its existing engine evidence; all other errors stay unchanged.
-  const limit = new Promise((_, fail) => { timer = setTimeout(async () => fail(hangError ? hangError(ms) : new Error(budget
+  const limit = new Promise((_, fail) => { timer = setTimeout(async () => { const error = hangError ? hangError(ms) : new Error(budget
     ? `the suite's ${Math.round(budget / 60000)}-minute budget ran out during this step (the suite is too long: split it): ${await hangReport(getSession())}`
-    : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung): ${await hangReport(getSession())}`)), ms); });
+    : `the step did not finish within ${ms < 10 * 60000 ? `${ms / 1000} s` : `${Math.round(ms / 60000)} min`} (it hung): ${await hangReport(getSession())}`); error.stepHang = true; fail(error); }, ms); });
   return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
 }
 
@@ -77,7 +77,10 @@ const hangLimitMs = (hangCaps, name) => {
   const prefix = Object.keys(hangCaps).filter(head => name.startsWith(head)).sort((a, b) => b.length - a.length)[0];
   return prefix === undefined ? STEP_LIMIT_MS : hangCaps[prefix] * 1000;
 };
-/** Run state checks with explicit limits first, then exact/prefix hang caps in seconds, then STEP_LIMIT_MS. */
+// An opted-in owned step must stop the suite after a hang; its raw promise cannot be cancelled.
+const ownedHang = (error, stopOnHang) => stopOnHang && error.stepHang;
+
+/** Run state checks with named hang caps; owned steps may stop progression on a hang. */
 export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BUDGET_MS, hangCaps = {}, stepNeeds = null, faultTally = null, report = null} = {}) {
   const results = [], suiteStarted = Date.now(), picked = pickedNames(), found = new Set();
   if (process.env.CI) console.log(providerLine(process.env, 'judges'));   // Why (#2416, Gitar): who decided the judges' provider is never a guess
@@ -86,7 +89,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
   let overBudget = false;
   // elsewhere: the suite leaves this step to another slice of itself (step-sharded apply/applyflows): a picked name is still found, so the slice without it is not red.
   // clean-code-ok: Why (29 Oct 2026, qu 3/4): old function; pass the optional hang error factory to the existing cap without changing other suites.
-  async function run(name, rawFn, {needs = [], faults = false, critical = false, limitMs = hangLimitMs(hangCaps, name), hangError, elsewhere = false} = {}) {
+  async function run(name, rawFn, {needs = [], faults = false, critical = false, stopOnHang = false, limitMs = hangLimitMs(hangCaps, name), hangError, elsewhere = false} = {}) {
     if (elsewhere) { if (picked.includes(name.toLowerCase())) found.add(name.toLowerCase()); return; }
     const left = budgetMs - (Date.now() - suiteStarted);
     if (left <= 0) {
@@ -114,7 +117,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       try {
         try { await fn(); } catch (error) {
           // The environment answered badly (an HTML error page, a dropped connection): one more try before it counts (#266).
-          if (faults || !isEnvironment(error.message)) throw error;
+          if (faults || ownedHang(error, stopOnHang) || !isEnvironment(error.message)) throw error;
           retried = String(error.message).slice(0, 200);
           console.log(`↻ ${name}: the environment failed (${retried.slice(0, 120)}), trying once more`);
           await new Promise(done => setTimeout(done, RETRY_WAIT_MS));
@@ -151,7 +154,7 @@ export function createRunner(getSession, {keepGoing = false, budgetMs = SUITE_BU
       const where = codeLine(error);
       results.push({name, status: 'failed', note, cause: causeOf(note), ...(where ? {where} : {}), ...(refused || (!faults && isEnvironment(error.message)) ? {environment: true} : {}), ...(base !== error.message ? {faultNeverFired: true} : {})});
       console.log(`✗ ${name}: ${note}${where ? ` (at ${where})` : ''}`);
-      if (keepGoing && !critical) return;   // recorded: the suite still fails at the end, and the next step runs
+      if (keepGoing && !critical && !ownedHang(error, stopOnHang)) return;   // recorded: the suite still fails at the end, and the next step runs
       throw error;
     } finally { await getSession()?.coverageStep?.(name); await getSession()?.traceGroupEnd?.(); }
   }

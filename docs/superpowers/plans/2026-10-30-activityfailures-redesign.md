@@ -31,3 +31,21 @@
 - [ ] Deterministic input and lifecycle audit, evidence-based fix and CI.
 - [ ] State waits, measured hang caps and CI.
 - [ ] Fresh main evidence after owner merges; full redesign claim only then.
+
+## Isolation follow-up evidence
+
+The launcher explicitly wrote shareEmployers:false but omitted shareEmployersChosen. The real openPoolShare startup migration reopens that value; background-handlers can then schedule contribution after 60 seconds. Record the harness opt-out as a choice, using the same setting as the product switch. A focused regression exercises launcher defaults and the real migration through restart; explicit suite overrides remain available. This fixes a demonstrated external-input leak, without asserting that it caused every missing question.
+
+Finite semantic catalog and synthetic guard retry selection are separate PRs #2560 and #2566; both pass final-head CI with full Gitar approval. Full redesign still requires fault lifecycle, observable state waits, measured caps, CI and fresh main proof.
+## Remaining A–F audit (state-wait follow-up)
+
+| Rule | Evidence and implementation | Remaining proof |
+|---|---|---|
+| A: semantic AI | #2560 covers the finite seeded country/metro batches, six posting extractions and six separate role calls, alongside score/place/geo/refusal rows. Direct and HTTP Claude/OpenAI seams fail on missing keys before cache/transport. Post-close guard records unknown/background questions; #2566 retries their producing journey, never the synthetic guard name. | Full final-head CI and owner-controlled fresh main evidence. |
+| B: clock | Activityfailures uses selected/shown/read-complete state, current-launch resume marker and active/new completed search. Restart first witnesses a pending delayed request. No aggregate clock verdict or silence elapsed assertion. Existing pipeline-run timer-contract unit test remains. Named caps are 3x nearest-rank p95, rounded up to 5s, 30s floor, from the two disclosed existing main first tries; no additional main run. | Full journey; cap baseline is n=2, not a claim of a stable long-term percentile. |
+| C: inputs/lifecycle | Stand-in store, fake Google/Telegram, fixed feed content/date/location, fixed fixture sources/scout seeds, per-context repeating feed IDs, no owner profile/cache dependency. #2572 preserves the explicit employer-sharing opt-out through migration. #2573 captures request fault/responder at receipt, cancels delayed work on close, and requires own consumption/drain. Silence setup and restoration share one protected scope. | Shared helpers keep legacy waits for siblings; their ordinary behavior is preserved, not redesigned here. |
+| D: truthful results | Missing/empty first-failure proof stays red. Full journey first-try versus retry is reported explicitly; no live AI or clock rate was measured or invented. | Read actual final artifacts and fresh main, not the step icon alone. |
+| E: expectations | Owner's 30 Oct request authorizes the existing approved design. Behavioral error/status/row/lock/leak assertions remain. A new opt-in stopOnHang ends activityfailures on an uncancelled step hang; ordinary assertion failures keep collecting evidence. It does not retry or accept a hang. | Final review/CI. |
+| F: scope | Existing runner, activity helper, proxy, stored-answer seams and state poller are reused. Changed modules declare one approved Job. No new polling framework, lane move, live model use, Submit, or agent merge. | Harness gates and final CI. |
+
+Focused regressions cover deterministic IDs and real detail-state predicates, rejection of stale resume history, every measured cap using the real runner with a fake clock, stop-on-hang versus ordinary keep-going, and restoration after silence startup failure without late relaunch after closure.

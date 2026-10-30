@@ -36,6 +36,9 @@
     "activityfailures": {
       "aiMissesMax": 0
     },
+    "jobs": {
+      "aiMissesMax": 0
+    },
     "strategy": {
       "aiMissesMax": 0
     },

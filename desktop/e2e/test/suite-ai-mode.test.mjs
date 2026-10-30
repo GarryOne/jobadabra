@@ -1,10 +1,11 @@
 // Every suite that stubs AI calls declares whether the rest may reach a real model (`export const realAi`); one that declares false is checked by the harness (lib/suite-main.mjs).
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {propose} from '../../lib/contact-from-cv.js';
+const {propose} = await loadAppModule('contact-from-cv.js');
 import {storedAnswer} from '../lib/ai-answers.mjs';
 
 const SUITES = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'suites');

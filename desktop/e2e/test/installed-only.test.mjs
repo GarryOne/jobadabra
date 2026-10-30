@@ -1,6 +1,5 @@
-// Harness self-tests declare every external package their import graph reaches in desktop/e2e/package.json, independently of the app's install.
-// On 9 Oct 2026 the Notion stand-in reached the app's AI client and CI lacked its SDK while every Mac had it.
-// This walks static and literal dynamic imports, rejecting packages outside this folder's declared dependencies.
+// Harness modules need only desktop/e2e's declared packages; staged app modules load through lib/app-module.mjs and use desktop's install.
+// This walks static and literal dynamic harness imports. The original missing-package control stays independent of the app boundary.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {builtinModules} from 'node:module';
@@ -53,26 +52,23 @@ test('every module the harness\'s unit tests reach needs only desktop/e2e\'s own
     'add the package to desktop/e2e/package.json, or import a leaf module (lib/root.js) instead of one that pulls the app in');
 });
 
-test('packages shared with the app use its declared range and locked version', () => {
-  const app = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'package.json'), 'utf8'));
-  const appPackages = {...app.dependencies, ...app.devDependencies};
-  const appLock = JSON.parse(fs.readFileSync(path.join(HERE, '..', '..', 'package-lock.json'), 'utf8')).packages;
-  const harnessLock = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'package-lock.json'), 'utf8')).packages;
-  for (const [name, range] of Object.entries({...pkg.dependencies, ...pkg.devDependencies})) {
-    if (!(name in appPackages)) continue;
-    assert.equal(range, appPackages[name], `${name}: keep the harness range in step with the app`);
-    assert.equal(harnessLock[`node_modules/${name}`]?.version, appLock[`node_modules/${name}`]?.version,
-      `${name}: keep the harness lock in step with the app`);
-  }
-});
-
 test('positive control: a module two imports away that needs an uninstalled package is found', () => {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'jp-installed-only-'));
   try {
     fs.writeFileSync(path.join(folder, 'entry.test.mjs'), "import {x} from './middle.mjs';\nexport const y = x;\n");
     fs.writeFileSync(path.join(folder, 'middle.mjs'), "export const x = 1;\nexport const later = () => import('./client.mjs');\n");
     fs.writeFileSync(path.join(folder, 'client.mjs'), "import Anthropic from '@anthropic-ai/sdk';\nimport fs from 'node:fs';\nexport default Anthropic;\n");
-    // This fixture models an empty install even when the real harness declares the SDK.
-    assert.deepEqual(Object.keys(missingPackages([path.join(folder, 'entry.test.mjs')], new Set())), ['@anthropic-ai/sdk']);
+    assert.deepEqual(Object.keys(missingPackages([path.join(folder, 'entry.test.mjs')])), ['@anthropic-ai/sdk']);
   } finally { fs.rmSync(folder, {recursive: true, force: true}); }
+});
+
+test('staged app modules load with the app\'s packages and retain their real exports', async () => {
+  const {loadAppModule} = await import('../lib/app-module.mjs');
+  const {AnthropicApi} = await loadAppModule('ai/anthropic-api.js');
+  const sdk = {messages: {create: async () => { throw new Error('no model call in an import test'); }}};
+  assert.equal(new AnthropicApi({sdk}).sdk, sdk);
+  const {openPoolShare} = await loadAppModule('migrate.js');
+  const settings = {shareEmployers: false, shareEmployersChosen: true};
+  assert.equal(openPoolShare({settings: () => settings, saveSettings: patch => Object.assign(settings, patch)}), false);
+  assert.equal(settings.shareEmployers, false);
 });

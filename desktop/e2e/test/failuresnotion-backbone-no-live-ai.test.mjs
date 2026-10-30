@@ -1,4 +1,5 @@
 // Replay failuresnotion's captured asks and fault/save feed identities without a live AI or key.
+import {loadAppModule} from '../lib/app-module.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +9,7 @@ import {answerFor, loadTable, questionOf, storedAnswer} from '../lib/ai-answers.
 import {backboneHarness} from '../lib/backbone-harness.mjs';
 import {modelFetch} from '../lib/model.mjs';
 import {requestKey} from '../lib/ai-meter.mjs';
-import {judge, planOf} from '../../lib/profile-move.js';
+const {judge, planOf} = await loadAppModule('profile-move.js');
 
 const answersTableFile = new URL('../fixtures/golden/ai-answers.json', import.meta.url);
 const fixture = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/failuresnotion-asks.json', import.meta.url)));

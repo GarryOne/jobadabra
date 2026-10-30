@@ -1,6 +1,6 @@
 // Replay small engine families: work rights, location vagueness, posting places and mail classification.
 // Job: serve stored answers
-import {S, hash, invalid, itemQuestion, json, object, numbered, requestParts, responseSchema, sameSchema, valid, canonical} from './ai-answers-engine-items.mjs';
+import {S, invalid, itemQuestion, json, object, numbered, requestParts, responseSchema, sameSchema, valid, canonical} from './ai-answers-engine-items.mjs';
 /** Per-country sponsorship judgments store negative answers explicitly. */
 export const visaKind = {operation: 'app.visa', mode: 'selection', root: 'visa', selector: 'text', noun: 'country', valid: answer => typeof answer === 'boolean'};
 /** Per-location vagueness judgments compose the request's selected numbers. */
@@ -47,7 +47,7 @@ const mailRow = S.object({relevant: S.boolean, application: S.integer, company: 
   interview_at: S.string, interview_zone: S.string, summary: S.string, feedback: S.string});
 /** Mail rows store the classifier's closed result shape without its request-local index. */
 export const mailKind = {operation: 'mail', root: 'results', selector: 'index', row: mailRow, valid: answer => valid(mailRow, answer)};
-/** Identify mail classification and key each sender/subject/body tuple independently of the fake clock. */
+/** Key each mail tuple with its classifier policy and ordered applications, independently of the fake clock. */
 export function mailQuestion(body, persona) {
   const parts = requestParts(body);
   if (!parts.system.startsWith('You sort the job-search emails (and calendar events) of the owner of Jobadabra.')) return undefined;
@@ -61,7 +61,8 @@ export function mailQuestion(body, persona) {
     indexes.push(index); tuples.push({from: match[2].trim(), subject: match[3].trim(), body: match[4].trim()});
   }
   // Invariants: Date and batch index never enter the key; replay uses each current request's original index.
-  const question = itemQuestion('mail', tuples.map(canonical), {}, persona);
-  question.items = question.items.map((item, index) => ({...item, n: indexes[index], label: tuples[index].subject, key: `${persona || 'default'}/mail/${hash(item.text)}`}));
+  // Why (30 Oct 2026, PR #2576): application indexes and classifier policy depend on the full system prompt.
+  const question = itemQuestion('mail', tuples.map(canonical), parts.system, persona);
+  question.items = question.items.map((item, index) => ({...item, n: indexes[index], label: tuples[index].subject}));
   return question;
 }

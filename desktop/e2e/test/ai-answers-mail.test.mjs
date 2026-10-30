@@ -4,10 +4,10 @@ import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import {test} from 'node:test';
-import {loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
+import {answerFor, loadTable, questionOf, storedAnswer} from '../lib/ai-answers.mjs';
 import {message, responseOf, startAiProxy} from '../lib/ai-proxy.mjs';
 import {modelFetch} from '../lib/model.mjs';
-import {askOf, bodyOf, engineCases, familyTests, mailCapture, recorded, tempTable} from './ai-answers-engine-fixtures.mjs';
+import {askOf, bodyOf, contextCase, engineCases, familyTests, mailCapture, recorded, tempTable} from './ai-answers-engine-fixtures.mjs';
 
 familyTests(['mail']);
 const c = engineCases.find(c => c.name === 'mail');
@@ -17,9 +17,27 @@ const tuples = [
   {body: 'Hi Alex, we would like to invite you to an interview for the DevOps Engineer role at Initech on Tuesday 6 October 2026 at 14:00 CEST on Zoom. Please confirm.', from: 'recruiter@initech-hr.test', subject: 'Interview invitation: DevOps Engineer at Initech'},
   {body: 'Hi Alex, we received your application for Senior Site Reliability Engineer at Acme Labs. Our team will review it and be in touch.', from: 'no-reply@us.greenhouse-mail.io', subject: 'Thank you for applying to Acme Labs'},
 ];
-const keys = tuples.map(tuple => `default/mail/${createHash('sha256').update(JSON.stringify(tuple)).digest('hex')}`);
+const context = createHash('sha256').update(mailCapture.system[0].text).digest('hex').slice(0, 12);
+const keys = tuples.map(tuple => `default/mail/${context}/${createHash('sha256').update(JSON.stringify(tuple)).digest('hex')}`);
 
-test('captured mail keys ignore clock Dates, trim fields and change only with their own content', () => {
+contextCase('mail', body => { body.system[0].text = body.system[0].text.replace('(none)', '0. Acme Labs — SRE'); });
+
+const applications = '0. Acme Labs — SRE\n1. Initech — DevOps Engineer';
+for (const [name, system, changedSystem] of [
+  ['application order', c.system.replace('(none)', applications), c.system.replace('(none)', '0. Initech — DevOps Engineer\n1. Acme Labs — SRE')],
+  ['classifier policy', c.system, c.system.replace('Answer for every item index.', 'Answer only for relevant item indexes.')],
+]) test(`mail: changed ${name} refuses stored rows in both provider formats`, t => {
+  const {table} = recorded(t, {...c, system});
+  for (const shape of ['anthropic', 'openai']) {
+    const ask = value => askOf(c, bodyOf({...c, system: value}, shape));
+    assert.deepEqual(JSON.parse(answerFor(questionOf(ask(system), {}), table).reply.content[0].text), c.reply);
+    const changed = questionOf(ask(changedSystem), {});
+    assert.equal(changed.operation, 'mail');
+    assert.match(answerFor(changed, table).missing, /^mail item /);
+  }
+});
+
+test('captured mail keys include system context, ignore clock Dates and trim fields', () => {
   const request = {headers: {'x-jp-action': 'mail'}, body: mailCapture};
   const q = questionOf(request, {});
   assert.equal(q.operation, 'mail');
@@ -36,7 +54,7 @@ test('captured mail keys ignore clock Dates, trim fields and change only with th
   assert.deepEqual(questionOf({...request, body: padded}, {}).items.map(item => item.key), keys);
   const empty = structuredClone(mailCapture);
   empty.messages[0].content = empty.messages[0].content.replace(tuples[2].body, '');
-  const emptyKey = `default/mail/${createHash('sha256').update(JSON.stringify({...tuples[2], body: ''})).digest('hex')}`;
+  const emptyKey = `default/mail/${context}/${createHash('sha256').update(JSON.stringify({...tuples[2], body: ''})).digest('hex')}`;
   assert.deepEqual(questionOf({...request, body: empty}, {}).items.map(item => item.key), [...keys.slice(0, 2), emptyKey]);
   assert.deepEqual(questionOf(request, {E2E_QUALITY_PERSONA: 'photographer'}).items.map(item => item.key), keys.map(key => key.replace('default/', 'photographer/')));
 });

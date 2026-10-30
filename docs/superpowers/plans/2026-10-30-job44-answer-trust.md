@@ -22,7 +22,7 @@ that those answers are correct. Replay never stamps automatically.
 
 ### 1. Fixed-system families
 - [x] Instruction capture, stamping and stale refusal (proof: desktop/e2e/test/ai-answer-prompts.test.mjs)
-- [x] PR checks green and Gitar Approved (merged as #2606, 773f483)
+- [x] Slice 1 merged as #2606 (proof: none: owner confirmed merge 773f483)
 
 ### 2. Mixed instruction/data families
-- [x] Capture boundaries, stamp and verify the four remaining families (proof: desktop/e2e/test/ai-answer-prompts.test.mjs — real sender and auxiliary instruction edits, data-only stability, both providers, retry schemas, one counted miss, zero cache/transport calls)
+- [x] Capture boundaries, stamp and verify the four remaining families (proof: desktop/e2e/test/ai-answer-prompts.test.mjs) — real sender and auxiliary instruction edits, data-only stability, both providers, retry schemas, one counted miss, zero cache/transport calls

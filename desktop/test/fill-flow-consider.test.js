@@ -18,7 +18,7 @@ async function rig(t, options = {}) {
   const counts = [...(options.counts || [shape])], tabReads = [...(options.tabs || [tab])], answers = [...(options.answers || [form])];
   const result = options.result || {filled: 2, todo: [], trace: []};
   const deps = {
-    isStopped: record('stopped', !!options.stopped), backgroundMayFill: asyncRecord('mayFill', options.mayFill !== false),
+    isStopped: (...args) => { calls.push(['stopped', ...args]); return !!options.stopped || !!options.stopDuringWatch && named(calls, 'stopped').length > 1; }, backgroundMayFill: asyncRecord('mayFill', options.mayFill !== false),
     backgroundPage: asyncRecord('backgroundPage', !!options.backgroundPage), restoreLostQuery: asyncRecord('restore', !!options.restored),
     pageKey: url => String(url).split('#')[0], openRead: record('openRead', options.moved ? 0 : 1), dropIfLate: (...args) => { calls.push(['late', ...args]); return options.late === true || named(calls, 'late').length === options.lateAt; },
     pageStill: asyncRecord('still', {}), closeConsentEverywhere: asyncRecord('close', options.banner || ''), expandSections: asyncRecord('expand'),
@@ -71,7 +71,7 @@ async function rig(t, options = {}) {
   });
   t.after(() => { hooks.deregister(); delete globalThis[key]; });
   t.mock.method(globalThis, 'fetch', () => { throw new Error('no network in consider characterization'); });
-  t.mock.method(globalThis, 'setTimeout', (callback, ms) => { if (ms < 40000) queueMicrotask(callback); return 0; });
+  t.mock.method(globalThis, 'setTimeout', (callback, ms) => { if (ms === 2000 && options.watchWait) options.watchWait.then(callback); else if (ms < 40000) queueMicrotask(callback); return 0; });
   let now = 10000;
   t.mock.method(Date, 'now', () => (now += options.clockTick || 0));
   t.mock.method(globalThis.crypto, 'randomUUID', () => 'fill-token');
@@ -215,4 +215,69 @@ for (const lateAt of [2, 3, 4, 5]) test(`late answer exits at guard ${lateAt}`, 
   assert.equal(named(r.calls, 'fill').length, 0);
   assert.equal(lines(r.calls).at(-1), 'late answer dropped: a newer read of this tab answered');
   assert.equal(named(r.calls, 'late').length, lateAt);
+});
+
+
+test('a form appearing during the empty-page watch fills before restart or dead end', async t => {
+  const empty = {...shape, fields: 0};
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', by: 'ai'}, form],
+    counts: [empty, empty, shape, shape], ruled: 'no-form', other: {why: 'other', needs: ''}, restart: true});
+  await r.run();
+  assert.equal(named(r.calls, 'fill').length, 1, 'new controls must reach the normal fill');
+  assert.equal(named(r.calls, 'restart').length, 0, 'an active watch must own the page before fallback navigation');
+  assert.equal(named(r.calls, 'deadEnd').length, 0, 'a superseded empty read must not report the filled form as a dead end');
+});
+
+
+test('an empty page whose watch expires still restarts from the posting', async t => {
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', by: 'ai'}],
+    counts: [{...shape, fields: 0}], ruled: 'no-form', other: {why: 'other', needs: ''}, restart: true});
+  await r.run();
+  assert.equal(named(r.calls, 'fill').length, 0);
+  assert.equal(named(r.calls, 'restart').length, 1, 'the watch must not suppress recovery after it ends');
+});
+
+
+test('leaving the page during its empty-form watch never restarts the user destination', async t => {
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', by: 'ai'}],
+    counts: [{...shape, fields: 0}], tabs: [tab, {...tab, url: 'https://elsewhere.example.test/'}],
+    ruled: 'no-form', other: {why: 'other', needs: ''}, restart: true});
+  await r.run();
+  assert.equal(named(r.calls, 'restart').length, 0);
+  assert.equal(named(r.calls, 'deadEnd').length, 0);
+});
+
+
+test('Stop during the empty-page watch retires fallback recovery', async t => {
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', by: 'ai'}],
+    counts: [{...shape, fields: 0}], stopDuringWatch: true, ruled: 'no-form', other: {why: 'other', needs: ''}, restart: true});
+  await r.run();
+  assert.equal(named(r.calls, 'restart').length, 0);
+  assert.equal(named(r.calls, 'deadEnd').length, 0);
+});
+
+
+test('the bot-check request reaches the person while the field watch is pending', async t => {
+  let release;
+  const watchWait = new Promise(resolve => { release = resolve; });
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', botCheck: true, by: 'ai'}],
+    counts: [{...shape, fields: 0}], ruled: 'no-form', watchWait, other: {why: 'other', needs: ''}, restart: true});
+  const running = r.run();
+  await new Promise(resolve => setImmediate(resolve));
+  const prompts = named(r.calls, 'deadEnd').filter(call => call.some(value => value?.botCheck));
+  release();
+  await running;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(prompts.length, 1, 'the person must be asked to solve the check before the watch ends');
+});
+
+
+test('query-only changes retain the late form watch', async t => {
+  const empty = {...shape, fields: 0};
+  const r = await rig(t, {answers: [{role: 'no-form', kind: 'posting', by: 'ai'}, form],
+    counts: [empty, empty, shape, shape], tabs: [tab, {...tab, url: 'https://jobs.example.test/apply?check=done'}],
+    ruled: 'no-form', other: {why: 'other', needs: ''}, restart: true});
+  await r.run();
+  assert.equal(named(r.calls, 'fill').length, 1);
+  assert.equal(named(r.calls, 'restart').length, 0);
 });

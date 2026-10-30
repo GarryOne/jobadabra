@@ -107,7 +107,11 @@ export async function runJourneys(ctx, h) {
       if (value !== '5') problems.push(`Kubernetes years "${value}", the kit says 5`);
     }
     if (!(await tab.evaluate(() => !!document.getElementById('jobpilotto-review-host')).catch(() => false))) problems.push('no panel on the form once its fields came');
-    if (problems.length) await dumpExtension();
+    if (problems.length) {
+      await dumpExtension(); // Why (30 Oct 2026, applyflows 40992748380): app-only screenshots did not show whether the form appeared or the tab navigated away.
+      const evidence = await tab.evaluate(() => ({url: location.href, ready: document.readyState, loading: !!document.getElementById('loading'), form: !!document.getElementById('application_form'), controls: [...document.querySelectorAll('input,textarea,select')].map(el => ({id: el.id, type: el.type, visible: !!el.getClientRects().length}))})).catch(error => ({error: error.message}));
+      console.log(`late-form state: ${JSON.stringify(evidence)}`);
+    }
     fail(problems);
   }, {needs: ctx.needs});
 

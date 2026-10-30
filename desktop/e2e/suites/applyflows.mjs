@@ -12,6 +12,10 @@ export {hangCaps} from '../lib/applyflows-caps.mjs';
 export const stepNeeds = applyNeeds;
 export const ownsStep = name => ['flows', 'live', 'both'].includes(partOf(name));   // its steps live in apply.mjs: a PR that changes one runs this suite (pr-suites.mjs)   // what a step needs when E2E_STEPS picks it (lib/runner.mjs wantedWords)
 
+// Why (30 Oct 2026, owner redesign): fixture journeys never need a live model; npm run live explicitly opts into the real-site measurement.
+export const offlineAi = !process.env.LIVE;
+export const realAi = process.env.LIVE ? true : false;
+
 export const varies = true;
 export const minutes = 17;   // CI's job-limit plumbing, including setup and a retry; step hang caps decide whether a check is stuck
 // Why (29 Oct 2026, a8, 21b): measured per-step hang caps catch hangs; cumulative runner slowness must not suppress later state checks

@@ -193,6 +193,7 @@ export async function leavePage(step) {
   const {botCheck} = step;
   const {said, email, told, closed, other} = nonFormReports(step);
   describeEnd(step, {botCheck, email, told, closed, other});
+  if (other && step.watch && (await step.watch) !== false) return; // handled or retired: recovery no longer owns this page
   if (other && await restartFromPosting(tab, jobUrl, {decide})) return;   // a broken page mid-application: from the posting again (restart-from-posting.js)
   if (other) apiFor(tab.id, await settings(), '/extension/page-kind', {method: 'POST', body: JSON.stringify({why: 'other', url: tab.url.split('#')[0], controls: controlsOf(tab.id)})}).catch(() => {});   // the shape is counted by the app (no text): the ladder ended at the person
   if (email || told || closed || other) deadEndHere(tab, jobUrl, host, (email || told || closed || other).why, (email || told || closed || other).needs, {role, rung: said?.rung, signal: blindOr(tab.id, said?.signal)});   // the address is the need: the card says where to send it
@@ -213,7 +214,8 @@ async function watchPage(step) {
   // No verdict while the flow still works (owner, 27 Oct 2026: "don't show a verdict" ... "IF the extension didn't stop thinking"): stopped and sure, the verdict now; a watch that
   // may judge the page again keeps "Reading this page…" and says the verdict only when it ends with no form (Greenhouse: "no application", then filled seconds later).
   await markPage(tab.id, role, pressed, kind, {working: !!watching});
-  if (watching) watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(() => markPage(tab.id, role, pressed, kind));
+  // Why (30 Oct 2026, applyflows 40992748380): only recovery waits for the watch; bot-check requests and page state must reach the person immediately.
+  if (watching) step.watch = watchForFields(tab, jobUrl, undefined, botCheck ? 60 : 10, counts?.frameHosts || [], () => markPage(tab.id, role, pressed, kind)).catch(async () => { await markPage(tab.id, role, pressed, kind); return false; });
   if (late(tab, gen, 'page state')) return false;   // a stale read never writes the page's state (worker/test/read-generation.test.js)
   await writeState(tab.id, {state: role});
   step.botCheck = botCheck;
@@ -223,6 +225,7 @@ async function watchPage(step) {
 // Return the page's existing email, instruction, closed or other reports.
 function nonFormReports(step) {
   const {tab, role, kind, counts, stall} = step;
+  if (step.botCheck) return {said: kind, email: null, told: null, closed: null, other: null}; // the person must solve the check before another outcome is knowable
   const said = stall || kind;   // the digest's answer at a stall, else what the page-kind said
   const email = role === 'no-form' ? emailReport(said) : null, told = role === 'no-form' && !email ? toldReport(said) : null, closed = email || told ? null : closedReport(kind, counts), other = role === 'no-form' && !email && !told && !closed ? otherReport(said, tab.id) : null;   // the page asks for email (ladder/outcomes.js) or tells what to do (ladder/climb.js)
   return {said, email, told, closed, other};

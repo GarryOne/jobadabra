@@ -7,9 +7,10 @@ import {capViolations, rankingViolations} from '../lib/quality.mjs';
 
 const file = new URL('../fixtures/golden/ai-answers.json', import.meta.url);
 const truth = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/truth.json', import.meta.url), 'utf8'));
-// Why (30 Oct 2026, ap): the suites' own feed postings (activityfailures, failuresnotion) are scored under qu's feed/<hash> keys, outside the golden truth; only keys a suite's fixture declares may stay out of it, and the golden ranking, cap and coverage checks read the golden rows alone.
-const feedKeys = new Set(['activityfailures-feed-asks.json', 'failuresnotion-asks.json'].flatMap(name =>
-  JSON.parse(fs.readFileSync(new URL(`../fixtures/golden/${name}`, import.meta.url), 'utf8')).feedPostings.map(post => post.key)));
+// Why (30 Oct 2026, ap): the suites' own feed postings (activityfailures, failuresnotion, jobs) are scored under qu's feed/<hash> keys, outside the golden truth; only keys a suite's fixture declares may stay out of it, and the golden ranking, cap and coverage checks read the golden rows alone.
+const fixture = name => JSON.parse(fs.readFileSync(new URL(`../fixtures/golden/${name}`, import.meta.url), 'utf8'));
+const feedKeys = new Set([...['activityfailures-feed-asks.json', 'failuresnotion-asks.json'].flatMap(name => fixture(name).feedPostings.map(post => post.key)),
+  ...fixture('jobs-asks.json').scorePostings.map(post => post.id)]);
 const allScoresOf = table => Object.fromEntries(Object.entries(table.answers['app.score']).map(([id, {reply}]) =>
   [id, JSON.parse(reply.content.filter(part => part.type === 'text').map(part => part.text).join('')).score]));
 const scoresOf = table => Object.fromEntries(Object.entries(allScoresOf(table)).filter(([id]) => !feedKeys.has(id)));

@@ -8,14 +8,14 @@ import {test} from 'node:test';
 import {entryProblems, lanesProblems} from '../../../tools/lanes-check.mjs';
 import {aiMissesVerdict, checkAiMisses} from '../lib/no-real-ai.mjs';
 
-const ZERO_SUITES = ['stores', 'interviews', 'wander', 'activityfailures', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread'];
+const ZERO_SUITES = ['stores', 'interviews', 'wander', 'activityfailures', 'jobs', 'strategy', 'employers', 'settings', 'applyflows', 'apply', 'recorded', 'wizard', 'updates', 'focus', 'cardstates', 'focusdismiss', 'visitread'];
 
-test('the real registry parses and protects all 16 suites that reached zero misses', () => {
+test('the real registry parses and protects all 17 suites that reached zero misses', () => {
   const text = fs.readFileSync(new URL('../lanes.json', import.meta.url), 'utf8');
   assert.deepEqual(lanesProblems(null, text), []);
   const {suites} = JSON.parse(text);
   for (const name of ZERO_SUITES) assert.equal(suites[name]?.aiMissesMax, 0, name);
-  for (const name of ['jobs', 'failuresnotion', 'failureschannels', 'calendar', 'storemove']) {
+  for (const name of ['failuresnotion', 'failureschannels', 'calendar', 'storemove']) {
     assert.equal(Object.hasOwn(suites[name] || {}, 'aiMissesMax'), false, name);
   }
 });

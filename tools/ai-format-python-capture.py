@@ -265,6 +265,17 @@ def capture_engine():
              'src/ai/place_triage.py', 'response = client.messages.create(model=MODEL, max_tokens=1500, system=',
              'src/ai/place_triage.py', 'needs = {str(c).strip().lower()', action='place_triage')
 
+        # Why (30 Oct 2026, ap): jobs 5/5 declares app.placeVague rows, so the manifest needs the real vague() sender; its decided-places store is a one-word fixture.
+        IMPORTS['geo'] = NS(verdicts=lambda *a, **k: {}, cannot_hold=lambda *a: False)
+        vague_names = ['MODEL', 'VERSION', 'VAGUE_BATCH', 'VAGUE_SCHEMA', 'VAGUE_SYSTEM', 'places_words', '_key', 'norm', 'vague']
+        vague_places = load('src/ai/place_triage.py', vague_names, **{k: v for k, v in bindings.items()}, known=lambda search: {'bern': 'out'}, _preferences=lambda: {},
+                            _save=lambda key, decided: None, excluded_remote=lambda *a: False)
+        client = Client({'vague': [1]})
+        vague_places.vague(['Bern'], place_search, client=client)
+        keep('app.placeVague', client, {'subrequest': 'vague', 'locations': ['bern'], 'search': place_search},
+             'src/ai/place_triage.py', 'response = client.messages.create(model=MODEL, max_tokens=1500, system=[{',
+             'src/ai/place_triage.py', "numbers = {int(n) for n in json.loads", action='place_vague')
+
         pack.patterns = lambda *a: []
         IMPORTS['levels'] = load('src/levels.py', ['SENIOR', 'ENTRY', 'LEVELS', '_BY_WORD', '_named', 'level_of', 'title_skips'])
         title = load('src/ai/title_triage.py', ['MODEL', 'BATCH', 'MAX_NEW', 'SCHEMA', 'SYSTEM', 'RECHECK_SYSTEM', '_key', '_norm',

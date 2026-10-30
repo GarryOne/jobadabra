@@ -153,6 +153,8 @@
   "interviews-backbone-no-live-ai.test.mjs",
   "isolation-check.test.mjs",
   "issue-links.test.mjs",
+  "jobs-backbone-no-live-ai.test.mjs",
+  "jobs-feed-coverage.test.mjs",
   "jobs-filter-all.test.mjs",
   "journey-run.test.mjs",
   "journey.test.mjs",

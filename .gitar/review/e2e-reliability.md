@@ -24,7 +24,6 @@ run the backbone; serve stored answers; wait on state; pick the suites; run tole
 The PR's commits need `Harness-job: <job>` or `Fixes-backbone-red: <run ID or URL>`.
 Raise a blocking finding for a missing or inaccurate job or trailer, or an unsupported backbone red: it must be red twice on the same commit.
 Untouched legacy modules are labelled during the planned inventory/shrink PRs; this check is incremental.
-A PR that raises `harnessLines` in `desktop/e2e/test/harness-size.json` (lines of harness code, JOB-48) needs `Harness-grow: <why>` in a commit message. Raise a blocking finding when the reason is missing, or is only "tooling for tooling" with no named outcome for the owner.
 
 ## Rule K: no fix circles
 

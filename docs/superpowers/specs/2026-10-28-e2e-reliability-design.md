@@ -267,7 +267,7 @@ One `###` per plan step, one box per thing that lands; a box is ticked only with
 
 ### 10. Harness shrink
 - [ ] Delete what the design replaced, one step at a time, the module count measured before and after.
-- [ ] Enforce the size of the harness by lines (not files) with `desktop/e2e/test/harness-size.test.mjs` and `harness-size.json`: lines may not exceed the baseline, growth needs a `Harness-grow: <why>` trailer (`tools/e2e-reliability-check.mjs`), and a shrink of more than 100 lines lowers the baseline in the same PR. (bb 2/9, JOB-48; tick with the merge hash)
+- [x] ~~Enforce the size of the harness by lines~~ Dropped (owner, 30 Oct 2026: "If it low gain, let's remove it"): a committed line count made every e2e PR rewrite one line and conflict with the others (#2592 added it, this PR removes it, with `Harness-grow:`). The 283-module target (row 29) stays and is measured by bb or a8 at each step, by hand. (bb, JOB-48)
 - [ ] Back under 283 lib modules (row 29), the module count measured before and after.
 
 ### 11. Acceptance

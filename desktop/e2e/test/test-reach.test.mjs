@@ -23,16 +23,15 @@ test('a module\'s relative specifiers: static, side-effect, dynamic, files read 
   assert.deepEqual(specifiers(text).sort(), ['../../renderer/', '../app/', '../c.js', './a.mjs', './b.mjs', './child.mjs']);
 });
 
-test('reach follows imports to the end, a folder read covers every file under it, a Playwright import asks for a browser, the repo root is never a reach', t => {
+test('reach follows imports to the end, a folder read covers every file under it, a package is never a path, the repo root is never a reach', t => {
   const root = tree({
     'e2e/test/x.test.mjs': `import {h} from '../lib/h.mjs';\nconst all = new URL('../../../', import.meta.url);`,
     'e2e/lib/h.mjs': `import {g} from './g.mjs';\nconst css = new URL('../../renderer/', import.meta.url);`,
     'e2e/lib/g.mjs': `import {chromium} from 'playwright';`,
   });
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
-  const {paths, browser} = reach(root, 'e2e/test/x.test.mjs');
+  const {paths} = reach(root, 'e2e/test/x.test.mjs');
   assert.deepEqual([...paths].sort(), ['e2e/lib/g.mjs', 'e2e/lib/h.mjs', 'e2e/test/x.test.mjs', 'renderer/']);
-  assert.equal(browser, true);
 });
 
 // Why (#2435/#2450, 29 Oct 2026): a parent-only URL is a directory even without a trailing slash; desktop/** must cover it.

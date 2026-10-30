@@ -1,11 +1,11 @@
 // Every path a harness test reaches: its relative imports (static, dynamic, and files it reads via new URL(..., import.meta.url)), followed to the end.
-// Job: pick the suites
+// Job: run the backbone
 // Why (owner, 30 Oct 2026, option C "run all on every PR"): every harness PR runs every test file, so nothing picks files any more; what is left is the
 // reach itself, which harness.yml's `on: paths:` must cover so a change a test reaches starts the run. Guard: test/test-reach.test.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Relative specifiers only: a package (playwright, node:fs) is never a changed file. Comments are not stripped: a commented-out import only adds a test, never drops one.
+// Relative specifiers only: a package (playwright, node:fs) is never a repo path. Comments are not stripped: a commented-out import only adds a path to cover, never drops one.
 const SPECIFIERS = [
   /\bfrom\s*['"](\.{1,2}\/[^'"]+)['"]/g,
   /\bimport\s*['"](\.{1,2}\/[^'"]+)['"]/g,
@@ -17,7 +17,6 @@ const STAGED = [[/^desktop\/shared\/worker\//, 'worker/src/'], [/^desktop\/share
   [/^desktop\/shared\/ladder\//, 'extension/ladder/'], [/^desktop\/shared\/(recipe|alias)-schema\.js$/, 'extension/$1-schema.js']];
 /** A staged desktop/shared/ path -> the repo file or folder it is copied from; any other path as it is. @param {string} file @returns {string} */
 export const unstage = file => { for (const [from, to] of STAGED) if (from.test(file)) return file.replace(from, to); return file; };
-const BROWSER = /\bfrom\s*['"](?:playwright|playwright-core|@playwright\/test)['"]|\bimport\(\s*['"](?:playwright|playwright-core)['"]\s*\)/;
 const CODE = /\.(?:mjs|js|cjs)$/;
 
 /** Relative specifiers in a module's text, in order of appearance per pattern. @param {string} text @returns {string[]} */
@@ -30,11 +29,10 @@ export function specifiers(text) {
 /**
  * Every repo-relative path a test file reaches (itself included); a directory read via new URL ends with '/' and covers every file under it.
  * @param {string} root the repo root  @param {string} file a repo-relative path  @param {Map} [cache] shared between calls
- * @returns {{paths: Set<string>, browser: boolean}} browser: some reached module imports Playwright (the job then installs a browser)
+ * @returns {{paths: Set<string>}}
  */
 export function reach(root, file, cache = new Map()) {
   const paths = new Set(), queue = [file];
-  let browser = false;
   while (queue.length) {
     const current = queue.pop();
     if (paths.has(current)) continue;
@@ -42,7 +40,6 @@ export function reach(root, file, cache = new Map()) {
     if (current.endsWith('/') || !CODE.test(current)) continue;
     let text = cache.get(current);
     if (text === undefined) { try { text = fs.readFileSync(path.join(root, current), 'utf8'); } catch { text = ''; } cache.set(current, text); }
-    if (BROWSER.test(text)) browser = true;
     for (const spec of specifiers(text)) {
       const joined = path.posix.normalize(path.posix.join(path.posix.dirname(current), spec));
       if (joined.startsWith('..') || joined === '.' || joined === './') continue;   // the repo root (a test that reads any file): every change would reach it
@@ -51,5 +48,5 @@ export function reach(root, file, cache = new Map()) {
       queue.push(unstage(directory ? `${joined.replace(/\/?$/, '/')}` : joined));
     }
   }
-  return {paths, browser};
+  return {paths};
 }

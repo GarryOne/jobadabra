@@ -33,6 +33,21 @@ class QualityReplayGateTests(unittest.TestCase):
                             for other in ('qualityai', 'jobs', 'apply'):
                                 self.assertEqual(expression(mode.group(1), event=event, attempt=attempt, suite=other), 'off')
 
+    def test_desktop_uses_default_history_judgment(self):
+        self.assertNotIn('E2E_QUALITY_JUDGE_HISTORY', (WORKFLOWS / 'desktop.yml').read_text())
+
+    def test_dispatched_pr_suites_report_history_but_nightly_beta_and_after_merge_judge_it(self):
+        value = env_line((WORKFLOWS / 'e2e.yml').read_text(), 'E2E_QUALITY_JUDGE_HISTORY')
+        self.assertIsNotNone(value)
+        for label, suites, after, event, want in [
+                ('PR dispatch', 'qualityai', '', 'workflow_dispatch', '0'),
+                ('after merge', 'qualityai', 'merged-sha', 'workflow_dispatch', '1'),
+                ('nightly', '', '', 'schedule', '1'),
+                ('beta dispatch', '', '', 'workflow_dispatch', '1')]:
+            with self.subTest(run=label):
+                expression_value = value.replace('inputs.pr_suites', repr(suites)).replace('inputs.after_merge', repr(after))
+                self.assertEqual(expression(expression_value, event=event), want)
+
     def test_quality_no_longer_sets_hash_strictness_or_expiry(self):
         for name in SUITE_WORKFLOWS:
             text = (WORKFLOWS / name).read_text()
@@ -87,6 +102,7 @@ class QualityReplayGateTests(unittest.TestCase):
         backbone = (root / 'desktop/e2e/suites/quality.mjs').read_text()
         self.assertIn('factsVerdict(record(', live)
         self.assertIn('flagsVerdict(record(', live)
+        self.assertIn('rateVerdict(record(scored), scored)', live)
         self.assertNotIn('replaying()', live)
         self.assertNotIn('judgeVerdict', live)
         self.assertIn('if (problems.length) throw new Error(`${problems.length} wrong or missing fact(s)', backbone)

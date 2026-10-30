@@ -3,13 +3,17 @@
 // "≤ 10% of last 90 texts". The live run adds its night to a history the workflow keeps between nights (e2e.yml, cache quality-rate-*), and a step is red only
 // when its rate breaks a bar; the gate (replayed answers) still checks every fact and the per-run judge allowance exactly. /admin/operations/e2e draws the same
 // rates (jobadabra-web admin/e2e-quality.js). Guard: test/quality-rate.test.mjs.
+// Job: run tolerant suites as rates
 import fs from 'node:fs';
 import path from 'node:path';
+import {judgeVerdict} from './quality.mjs';
 
 // Why (#2211, #2214, owner 27 Oct 2026): his bars, set from 34 live runs' measured noise (scores 85.4% within 8; facts 2,079/2,079; flags 5.9%, worst 8.9%).
 export const BARS = {pairs: 90, agree: 0.8, jumps: 0.02, within: 8, jump: 20, factNights: 10, facts: 0.995, texts: 90, flagged: 0.1};
 // Below these the rate is reported, not judged (half of each window): one bad night must not turn main red by itself.
 export const MIN_PAIRS = 45, MIN_FACT_NIGHTS = 5, MIN_TEXTS = 45;
+// Why (30 Oct 2026, owner PR #2544 review): half a typical 9–10-pair run, like MIN_PAIRS is half the history window; fewer pairs only report noise.
+const MIN_RUN_PAIRS = 5;
 const KEEP_NIGHTS = 60;
 const GROUPS = [['pairs', 'within8', 'over20'], ['factsExact', 'factsTotal'], ['judged', 'flagged']];
 
@@ -59,33 +63,42 @@ export function rateOf(nights = []) {
 }
 
 const pct = (part, all) => `${Math.round((part / all) * 1000) / 10}%`;
-const verdict = (judged, line, problems, from) => ({ok: !problems.length, judged, line: judged ? line : `${line}; judged from ${from}`, problems});
+// Why (30 Oct 2026, owner via a8, design D/E; PR #2544 review): a PR judges its own facts/flags/pairs; old nights are information, with the same bars still judged on main.
+const verdict = (judged, line, problems, from, currentProblems = []) => process.env.E2E_QUALITY_JUDGE_HISTORY === '0'
+  ? {ok: !currentProblems.length, judged: false, line: `${line}; history is information only`, problems: currentProblems}
+  : {ok: !problems.length, judged, line: judged ? line : `${line}; judged from ${from}`, problems};
 
-// Score steadiness -> {ok, judged, line, problems}.
-export function rateVerdict(rate) {
+// Score steadiness over the historical window, or this run's pairs on a PR -> {ok, judged, line, problems}.
+export function rateVerdict(rate, current) {
   const judged = rate.pairs >= MIN_PAIRS;
   const line = rate.pairs ? `${pct(rate.within8, rate.pairs)} of the last ${rate.pairs} score pairs within ${BARS.within} points (bar ${BARS.agree * 100}%), `
     + `${pct(rate.over20, rate.pairs)} more than ${BARS.jump} apart (bar ${BARS.jumps * 100}%), ${rate.nights} night(s)` : 'no score pair yet';
   const problems = !judged ? [] : [
     ...(rate.within8 / rate.pairs < BARS.agree ? [`only ${rate.within8} of ${rate.pairs} pairs (${pct(rate.within8, rate.pairs)}) scored within ${BARS.within} points, under the ${BARS.agree * 100}% bar`] : []),
     ...(rate.over20 / rate.pairs > BARS.jumps ? [`${rate.over20} of ${rate.pairs} pairs (${pct(rate.over20, rate.pairs)}) moved more than ${BARS.jump} points, over the ${BARS.jumps * 100}% bar`] : [])];
-  return verdict(judged, line, problems, `${MIN_PAIRS} pairs`);
+  const own = !current || current.pairs < MIN_RUN_PAIRS ? [] : [
+    ...(current.within8 / current.pairs < BARS.agree ? [`only ${current.within8} of ${current.pairs} pairs scored within ${BARS.within} points in this run, under the ${BARS.agree * 100}% bar`] : []),
+    ...(current.over20 / current.pairs > BARS.jumps ? [`${current.over20} of ${current.pairs} pairs moved more than ${BARS.jump} points in this run, over the ${BARS.jumps * 100}% bar`] : [])];
+  return verdict(judged, line, problems, `${MIN_PAIRS} pairs`, own);
 }
 
-// Facts written exactly over the last 10 nights -> {ok, judged, line, problems}.
-export function factsVerdict({facts}) {
+// Facts written exactly over the last 10 nights, or this run's exact counts on a PR -> {ok, judged, line, problems}.
+export function factsVerdict({facts}, current) {
   const judged = facts.nights >= MIN_FACT_NIGHTS;
   const line = facts.total ? `${pct(facts.exact, facts.total)} of the last ${facts.total} facts exact (bar ${BARS.facts * 100}%), ${facts.nights} night(s)` : 'no fact checked yet';
   const problems = judged && facts.exact / facts.total < BARS.facts ? [`only ${facts.exact} of ${facts.total} facts (${pct(facts.exact, facts.total)}) were exact over the last ${facts.nights} nights, under the ${BARS.facts * 100}% bar`] : [];
-  return verdict(judged, line, problems, `${MIN_FACT_NIGHTS} nights`);
+  return verdict(judged, line, problems, `${MIN_FACT_NIGHTS} nights`, current && current.exact !== current.total
+    ? [`only ${current.exact} of ${current.total} facts were exact in this run`] : []);
 }
 
-// Score texts the judge flagged (invented or contradicting) over the last 90 -> {ok, judged, line, problems}.
-export function flagsVerdict({flags}) {
+// Judge flags over the last 90 texts, or this run's existing judge allowance on a PR -> {ok, judged, line, problems}.
+export function flagsVerdict({flags}, current) {
   const judged = flags.texts >= MIN_TEXTS;
   const line = flags.texts ? `${pct(flags.flagged, flags.texts)} of the last ${flags.texts} score texts flagged (bar ${BARS.flagged * 100}%), ${flags.nights} night(s)` : 'no score text judged yet';
   const problems = judged && flags.flagged / flags.texts > BARS.flagged ? [`${flags.flagged} of ${flags.texts} score texts (${pct(flags.flagged, flags.texts)}) were flagged over the last ${flags.nights} nights, over the ${BARS.flagged * 100}% bar`] : [];
-  return verdict(judged, line, problems, `${MIN_TEXTS} texts`);
+  const allowance = current && judgeVerdict(Array(current.flagged), current.judged);
+  return verdict(judged, line, problems, `${MIN_TEXTS} texts`, allowance && !allowance.ok
+    ? [`${current.flagged} of ${current.judged} score texts were flagged in this run, over the ${allowance.allowed} text allowance`] : []);
 }
 
 export function readHistory(file) {

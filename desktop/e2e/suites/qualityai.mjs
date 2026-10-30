@@ -53,9 +53,9 @@ export async function run(ctx) {
       console.log(`  ${summary.facts.exact}/${summary.facts.total} facts exact${notKeptNote(rows) ? `; ${notKeptNote(rows)}` : ''}`);
       if (problems.length) console.log(`  ${problems.length} wrong or missing fact(s) tonight:\n    ${problems.join('\n    ')}`);
       measured.facts = {exact: summary.facts.exact, total: summary.facts.total + missed};
-      const rate = factsVerdict(record({factsExact: summary.facts.exact, factsTotal: summary.facts.total + missed}));
+      const rate = factsVerdict(record({factsExact: summary.facts.exact, factsTotal: summary.facts.total + missed}), measured.facts);
       console.log(`  facts: ${rate.line}`);
-      if (!rate.ok) throw new Error(`the facts are not exact over the last nights: ${rate.problems.join('; ')}`);
+      if (!rate.ok) throw new Error(`the facts are not exact: ${rate.problems.join('; ')}`);
     }, {needs: ctx.needs});
 
     await ctx.run('relevant jobs rank above irrelevant ones, and scores are whole numbers from 0 to 100', async () => {
@@ -84,12 +84,12 @@ export async function run(ctx) {
       if (!spread.length) throw new Error('the second check scored nothing to compare');
       const apart = unstable(first, second, 8);
       if (apart.length) console.log(`  ${apart.length} of ${spread.length} jobs moved more than 8 points: ${apart.map(item => `${item.id}: ${item.first} → ${item.second}`).join(', ')}`);
-      // A rate over the last 90 pairs of the night's live runs (lib/quality-rate.mjs), not this run alone: one wobbly night never turns main red by itself.
+      // Main judges the last 90 pairs; a PR judges this run's pairs (lib/quality-rate.mjs).
       const scored = nightOf(first, second, night);
       measured.steady = scored;
-      const rate = rateVerdict(record(scored));
+      const rate = rateVerdict(record(scored), scored);
       console.log(`  score steadiness: ${rate.line}`);
-      if (!rate.ok) throw new Error(`the AI's scores are not steady over the last nights: ${rate.problems.join('; ')}`);
+      if (!rate.ok) throw new Error(`the AI's scores are not steady:${rate.problems.join('; ')}`);
     }, {needs: ctx.needs, limitMs: 6 * STEP}));
 
     await soft(() => ctx.run('the score reasons say nothing invented or untrue (Haiku judge)', async () => {
@@ -119,9 +119,9 @@ export async function run(ctx) {
       console.log(`  judged ${verdicts.length} score texts: ${verdicts.filter(v => v.verdict.grounded).length} grounded, ${verdicts.filter(v => v.verdict.useful).length} useful, ${summary.invented} with invented facts`);
       measured.flags = {judged: verdicts.length, flagged: problems.length};
       if (problems.length) console.log(`  ${problems.length} of ${verdicts.length} texts flagged tonight:\n    ${problems.join('\n    ')}`);
-      const rate = flagsVerdict(record({judged: verdicts.length, flagged: problems.length}));
+      const rate = flagsVerdict(record({judged: verdicts.length, flagged: problems.length}), measured.flags);
       console.log(`  judge flags: ${rate.line}`);
-      if (!rate.ok) throw new Error(`the score texts invent or contradict too often over the last nights: ${rate.problems.join('; ')}`);
+      if (!rate.ok) throw new Error(`the score texts invent or contradict too often: ${rate.problems.join('; ')}`);
     }, {needs: ctx.needs, limitMs: 3 * STEP}));
 
     // The CV match (desktop/lib/match-check.js) on three golden postings with a fixed CV, judged by plain text rules, no second model: the terms the posting and the CV

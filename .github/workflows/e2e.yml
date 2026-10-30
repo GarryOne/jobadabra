@@ -268,6 +268,8 @@ jobs:
       E2E_JUDGE_MODEL: claude-haiku-5-5   # every suite's judge, quality too (owner, 27 Oct 2026: "let's do")
       # Why (29 Oct 2026, owner-approved design rule A): quality uses reviewed question answers, never strict hash replay.
       E2E_QUALITY_HISTORY: ${{ matrix.suite == 'qualityai' && format('{0}/desktop/e2e/.quality-rate/history.json', github.workspace) || '' }}   # lib/quality-rate.mjs
+      # Why (30 Oct 2026, owner via a8, design D/E): pr-suites dispatches report old nights; after-merge, nightly and beta runs still judge them.
+      E2E_QUALITY_JUDGE_HISTORY: ${{ inputs.pr_suites && inputs.after_merge == '' && '0' || '1' }}
       E2E_BLOB_DIR: ${{ github.workspace }}/blob-report   # the suite's part of the run's HTML report (the report job merges them)
       E2E_RUN_KIND: ${{ inputs.gate_tag && 'gate' || '' }}   # how an issue names the run (lib/replay.mjs): a gate in a scheduled release run is not a three-a-day run
       CI_FREE_AI_CF_ACCOUNT_ID: ${{ secrets.CI_FREE_AI_CF_ACCOUNT_ID }}   # Why (28 Oct 2026, beta 3): the cap's account and token (lib/ai-cap.mjs) were set only on the AI preflight, so every suite step read an "unreadable" count, took the AI as capped and failed its AI steps (failureschannels, focusdismiss, ...). They belong to the job that runs the suites. Guard: tests/test_ci_free_ai.py

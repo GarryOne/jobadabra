@@ -7,13 +7,16 @@ import inspect
 import json
 import os
 import re
+import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location('pr_verdict', ROOT / 'tools' / 'pr-verdict.py')
 pv = importlib.util.module_from_spec(spec); spec.loader.exec_module(pv)
 from tools import main_e2e_state  # noqa: E402
+from tools import pr_lanes
 
 REGISTRY = {'v': 1, 'suites': {'quality': {'lane': 'tolerant', 'input': 'ai', 'why': 'golden postings: the AI answers'},
                                'stores': {'lane': 'suspended', 'why': 'flips red, then green on one commit'}}}
@@ -120,6 +123,23 @@ class LaneGreys(unittest.TestCase):
         self.assertTrue(asked[1][-1].endswith('lanes.json?ref=release'), "a pull_request run names its base in GITHUB_BASE_REF")
         self.assertNotIn('ref', inspect.signature(pv.lane_greys).parameters, "the caller has no way to hand it the PR's own commit")
 
+    def test_a_standalone_ci_verdict_fetches_the_shared_reader_and_still_reads_base(self):
+        asked = []
+        def github(*args):
+            asked.append(args[-1])
+            if '/contents/tools/pr_lanes.py?ref=' in args[-1]:
+                return (ROOT / 'tools/pr_lanes.py').read_text()
+            if args[-1].endswith('/lanes.json?ref=release'):
+                return json.dumps(REGISTRY)
+            raise AssertionError(args)
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(pv, '__file__', str(Path(folder) / 'pr-verdict.py')), \
+                mock.patch.object(pv, 'gh', side_effect=github), \
+                mock.patch.dict(os.environ, {'GITHUB_BASE_REF': 'release', 'GITHUB_SHA': 'pr-head'}):
+            jobs = {7: [job(71, 'quality', 'failure'), job(72, 'settings', 'failure')]}
+            self.assertEqual(pv.lane_greys('o/r', [PR, run(7)], jobs), {71: 'tolerant'})
+        self.assertEqual(asked, ['repos/o/r/contents/tools/pr_lanes.py?ref=pr-head',
+                                 'repos/o/r/contents/desktop/e2e/lanes.json?ref=release'])
+
     def test_this_file_and_main_e2e_state_strip_every_real_job_shape_the_same_way(self):
         for name in ('quality', 'quality-1of2', 'quality-standin', 'quality-sqlite', 'quality-1of2-standin',
                      'quality-1of2-sqlite', 'quality · burn-in 2/5', 'quality-1of2-standin · burn-in 2/5',
@@ -127,6 +147,8 @@ class LaneGreys(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertEqual(pv.suite_of(name), 'quality')
                 self.assertEqual(pv.suite_of(name), main_e2e_state.suite_of(name))
+                checks = [{'name': name, 'bucket': 'fail'}]
+                self.assertEqual(pr_lanes.ship_checks(checks, REGISTRY['suites']), [{'name': name, 'bucket': 'skipping'}])
 
 
 class RegistryFile(unittest.TestCase):

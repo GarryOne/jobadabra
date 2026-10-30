@@ -19,6 +19,7 @@ import {livePosting, realKind, runLive} from '../lib/apply-live.mjs';
 import {runCvSteps} from '../lib/apply-cv-steps.mjs';
 import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
+import {runTriageChipSteps} from '../lib/apply-triage-chip-steps.mjs';
 import {runReadSteps} from '../lib/apply-read-steps.mjs';
 import {runConfirmSteps} from '../lib/apply-confirm-steps.mjs';
 import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
@@ -46,6 +47,7 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'a Greenhouse-like form': 16, 'Apply on a saved job without a kit': 15, 'a Workday-shaped form': 11, 'The hidden browser fills a form': 30, 'Full automation presses Submit once on its own': 60,
   'a silent Chrome in Standard automation': 45, 'a silent Chrome in Background automation': 20, 'a silent Chrome in Full automation': 20,
   'the app quits while Background automation holds a filled form': 40, 'the app quits in Full automation\'s wait': 140,
+  'each read verdict gives its own chip': 90,
   'the Jobs popup has one field': 15, 'checking jobs before the form read exists': 10,
   'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
   'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50,
@@ -62,6 +64,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   // no main samples yet, regenerate after 5 main runs: the 30 s floor x 3 (tools/e2e-step-timings.mjs)
   'a silent Chrome in Standard automation': 90, 'a silent Chrome in Background automation': 90, 'a silent Chrome in Full automation': 90,
   'the app quits while Background automation holds a filled form': 300, 'the app quits in Full automation\'s wait': 420,   // kept from when these steps had inner caps (180 s hold, 60 s hand-over), their waits carry none now: regenerate after 5 main runs (tools/e2e-step-timings.mjs)
+  'each read verdict gives its own chip': 360,   // four sequential real reads; fallback until main has calm samples
   'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
@@ -79,7 +82,7 @@ export const macos = 'release';   // a release, a gate and the night run it on a
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
-  'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+  'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
 // One failed step never hides the rest: the runner records it and goes on (lib/runner.mjs); only the setup step marked `critical` stops the suite. A step that needs another one is named in stepNeeds.
@@ -407,6 +410,7 @@ export async function runApply(ctx, parts) {
   await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode
   await runTriageSteps(ctx);   // lib/apply-triage-steps.mjs: the Jobs button's popup and the chips (spec 2026-10-30-apply-triage)
   await runReadSteps(ctx, {until});   // lib/apply-read-steps.mjs: the Jobs button reads a fixture form in the hidden browser (spec 2026-10-30-apply-triage, C2a)
+  await runTriageChipSteps(ctx, {urls});   // lib/apply-triage-chip-steps.mjs: every reachable verdict and the renderer's chip words
 
   await ctx.run('through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', async () => {
     fail(submitProblems(forms.fired, ''));

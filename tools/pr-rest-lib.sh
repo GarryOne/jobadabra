@@ -35,7 +35,7 @@ pr_get() {
 }
 
 # pr_view <repo> <n> [full]: the PR like `gh pr view --json number,url,title,state,mergeable,headRefOid,headRefName,mergeCommit` (state OPEN|MERGED|CLOSED,
-# mergeable MERGEABLE|CONFLICTING|UNKNOWN). "full" adds comments, reviews and commits in the same shape (3 more reads, free while unchanged).
+# mergeable MERGEABLE|CONFLICTING|UNKNOWN, labels: the label names). "full" adds comments, reviews and commits in the same shape (3 more reads, free while unchanged).
 pr_view() {
   local p c r k
   p="$(pr_get "repos/$1/pulls/$2")" || return 1
@@ -45,7 +45,7 @@ pr_view() {
   printf '%s\n%s\n%s\n%s\n' "$p" "$c" "$r" "$k" | jq -sc '.[0] as $p | {number: $p.number, url: $p.html_url, title: $p.title, headRefOid: $p.head.sha, headRefName: $p.head.ref,
       state: (if $p.merged_at then "MERGED" elif $p.state == "closed" then "CLOSED" else "OPEN" end),
       mergeable: (if $p.mergeable == true then "MERGEABLE" elif $p.mergeable == false then "CONFLICTING" else "UNKNOWN" end),
-      mergeCommit: (if $p.merged_at then {oid: $p.merge_commit_sha} else null end),
+      mergeCommit: (if $p.merged_at then {oid: $p.merge_commit_sha} else null end), labels: [$p.labels[]?.name],
       comments: [.[1][]? | {id: .node_id, author: {login: (.user.login // "")}, body, url: .html_url, createdAt: .created_at}],
       reviews: [.[2][]? | {id: .node_id, author: {login: (.user.login // "")}, body, state, submittedAt: .submitted_at}],
       commits: [.[3][]? | {committedDate: .commit.committer.date}]}'

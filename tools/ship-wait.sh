@@ -9,7 +9,7 @@
 set -eu
 log=${1:?usage: tools/ship-wait.sh <ship log>}
 cursor="$log.seen"; poll=${SHIP_WAIT_POLL:-5}; cap=${SHIP_WAIT_CAP:-172800}; waited=0
-events='^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|CONFLICT|COMMENT)'
+events='^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|CONFLICT|COMMENT)'
 seen=$(cat "$cursor" 2>/dev/null || echo 0)
 case "$seen" in ''|*[!0-9]*) seen=0 ;; esac
 while :; do

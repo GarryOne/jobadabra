@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ENDS = ('DONE', 'FAILED', 'REVIEW', 'MERGED', 'CLOSED', 'RED', 'GREEN')
+ENDS = ('DONE', 'FAILED', 'REVIEW', 'MERGED', 'CLOSED', 'RED', 'GREEN', 'READY')
 NAMES_ENDINGS = re.compile(r'ship: \(?DONE|DONE\|FAILED')   # a line that tells how a ship run ends
 
 
@@ -34,7 +34,7 @@ class ShipEndingsTest(unittest.TestCase):
     def test_the_background_announcement_names_the_monitor_pattern(self):
         announce = next(line for line in (ROOT / 'tools' / 'ship.sh').read_text().splitlines() if 'its last line says how it ended' in line)
         for end in ENDS: self.assertIn(f'ship: {end}', announce)
-        self.assertIn('^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|COMMENT)', announce)
+        self.assertIn('^ship: (DONE|FAILED|REVIEW|MERGED|CLOSED|RED|GREEN|READY|COMMENT)', announce)
 
     def test_every_wait_on_a_ship_log_is_the_background_wait_not_a_monitor(self):
         # Owner, 30 Oct 2026: "we don't have anymore the watches/monitors for when a PR merges": a Monitor ends after 30 min, before most merges.

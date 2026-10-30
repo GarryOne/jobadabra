@@ -18,6 +18,7 @@ export const minutes = 6;
 // Why (29 Oct 2026, ap): stores' answers are its one stand-in plus declared kinds, so CI needs neither a live key nor the relay.
 export const offlineAi = true;
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 // One store method on the e2e app's own SQLite store (its profile's data folder, as lib/pipeline-env.js gives the engine), never anyone's data:

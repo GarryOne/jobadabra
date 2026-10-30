@@ -21,6 +21,7 @@ import {withRoles} from '../lib/search-roles.mjs';
 export const minutes = 15;
 export const offlineAi = true;
 export const realAi = false;
+export const aiAnswers = 'backbone';   // answers its AI from the stored table in every workflow (plan-run.mjs puts it in the matrix)
 // Why (30 Oct 2026, bb 4/9; test/store.test.mjs): stored answers need one store path; personas reads both stores' settings (ctx.store === 'sqlite' below), so it takes the default SQLite one.
 export const store = 'sqlite';
 // MANUAL (2 Oct 2026, kept, not deleted): It proves nothing is hard-coded to the owner (Swiss/EU wording, visa flag, currencies): one-time hygiene that costs 15 minutes and two

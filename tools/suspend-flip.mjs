@@ -83,7 +83,8 @@ export function suspensions({attempts = [], artifacts, run, registry = {}, suite
 }
 
 function proposal({suite, sha, since, why, owner, detail}) {
-  const entry = {lane: 'suspended', input: 'same-commit flip', since, why, owner};
+  const entry = {lane: 'suspended', input: 'same-commit flip', since, why, owner,
+    returns: 'Back to the backbone when its fix PR lands and the next 3 main runs pass it.'};
   const problems = entryProblems(entry);
   if (problems.length) throw new Error(problems.join('; '));
   const issue = {

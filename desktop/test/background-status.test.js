@@ -68,6 +68,7 @@ test('with the connection off a queued job says so in its pill and card; no othe
   const card = liveCard({state: 'queued'}, null, {linkOff: LINK_OFF});
   assert.deepEqual([card.kind, card.live, card.title, card.pill, card.tone], ['waiting', false, 'Jobadabra can\'t hear its browser', ['Connection off', 'warn'], 'warn']);
   assert.match(card.note, /port 47111/);
+  assert.doesNotMatch(card.note, /Chrome/, 'a hidden browser is not the person\'s Chrome');
   assert.doesNotMatch(card.note, /one application at a time/, 'the queue is not the reason');
   const states = ['preflight', 'filling', 'ready_for_review', 'needs_user_handoff', 'manual_submit_required', 'waiting_to_submit', 'submitting', 'receipt_confirmed', ''];
   for (const state of states) {

@@ -45,6 +45,19 @@ function seedProfile(profile, mode, form, id) {
   fs.writeFileSync(settings, JSON.stringify({...saved, apply: {...(saved.apply || {}), mode, chosenAt: now, ...(mode === 'auto' ? {autoConfirmedAt: now} : {})}}));
 }
 
+/** The apply settings and the session list as they were, to put back after a step seeded its own. */
+function savedApply(profile) {
+  const read = name => { try { return JSON.parse(fs.readFileSync(path.join(profile, name), 'utf8')); } catch { return null; } };
+  return {apply: (read('settings.json') || {}).apply, sessions: read('sessions.json')};
+}
+function restoreApply(profile, kept, id) {
+  const settings = path.join(profile, 'settings.json'), saved = (() => { try { return JSON.parse(fs.readFileSync(settings, 'utf8')); } catch { return {}; } })();
+  if (kept.apply === undefined) delete saved.apply; else saved.apply = kept.apply;
+  fs.writeFileSync(settings, JSON.stringify(saved));
+  const file = path.join(profile, 'sessions.json'), now = (() => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return []; } })();
+  fs.writeFileSync(file, JSON.stringify((Array.isArray(now) ? now : []).filter(record => record.id !== id)));
+}
+
 /** Open the session's card on the Sessions page and read what it says: {title, question, buttons, pill}. */
 async function openCard(page, form, id) {
   await page.click('.nav[data-view="sessions"]');
@@ -109,21 +122,27 @@ export async function runSilentChromeSteps(ctx) {
       }, {needs: ctx.needs});
     } else {
       await ctx.run(`a silent Chrome in ${mode.title}: a queued hidden-browser job says why it waits when the app's link is off, and never talks of the person's Chrome${mode.id === 'auto' ? '; nothing is submitted' : ''}`, async () => {
-        const held = await holdPort();
+        const held = await holdPort(), kept = savedApply(ctx.profile);
         try {
           assertOwnPort(ctx, held.port);
           const submitted = ctx.forms?.fired?.length || 0;
           await ctx.relaunch({JOB_PILOTTO_PORT: String(held.port)}, profile => seedProfile(profile, mode.id, form, id));
           await until(`the app did not say it cannot open port ${held.port}`, () => appLogText(ctx.profile).includes(`connection off: port ${held.port} is used by another program`), 30000);
           await openCard(ctx.page, form, id);
-          await clockOn(ctx.page, 70000);
-          await wait(1500);   // one redraw of the card at the moved clock
-          const card = await readCard(ctx.page), pill = await rowPill(ctx.page, form);
+          // The card follows the app's 2 s report of its own connection: wait on what it says, then read both places.
+          const card = await until('the queued card did not say why it waits', async () => { const now = await readCard(ctx.page); return /can't hear/i.test(now.title) ? now : null; }, 30000).catch(async () => readCard(ctx.page));
+          const pill = await rowPill(ctx.page, form);
           console.log(`  ${mode.title} with the link off: card "${card.title}" · "${card.question}" · pill "${pill}"`);
           if (/Chrome isn't reporting|Tab not found|Checking Chrome|Waiting for Chrome/i.test(`${card.title} ${pill}`)) throw new Error(`a hidden-browser job talks of the person's Chrome: "${card.title}" / "${pill}"`);
+          if (!/Connection off/i.test(pill)) throw new Error(`the list pill of a queued ${mode.title} job does not say "Connection off": "${pill}"`);
+          if (/Chrome/.test(card.question)) throw new Error(`a hidden-browser card names the person's Chrome: "${card.question}"`);
           if (!/can't hear|connection|link/i.test(`${card.title} ${card.question} ${pill}`)) throw new Error(`a queued ${mode.title} job says nothing of why it waits while the app's link is off: card "${card.title}", "${card.question}", pill "${pill}"`);
           if ((ctx.forms?.fired?.length || 0) !== submitted) throw new Error('a form was submitted while the app\'s link was off');
-        } finally { await held.release().catch(() => {}); }
+        } finally {
+          await held.release().catch(() => {});
+          // The steps after this one run on the harness's own port and the person's saved mode, never the one this step seeded.
+          await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)}, profile => restoreApply(profile, kept, id));
+        }
       }, {needs: [...ctx.needs, {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'}]});
     }
   }

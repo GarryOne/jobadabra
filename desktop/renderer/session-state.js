@@ -190,10 +190,10 @@ export const chromeSilent = (item, formsOpen, sinceStart) => silentCase(item, fo
 export const chromeWaiting = (item, formsOpen, sinceStart) => silentCase(item, formsOpen) && !formsOpen?.linkOff && sinceStart > CHECK_MS && sinceStart <= WAIT_MS;
 /** The pill of a card whose tab can't be seen: the connection, or Chrome. */
 export const silentPill = formsOpen => (formsOpen?.linkOff ? 'Connection off' : 'Chrome not reporting');
-/** The one sentence for a closed connection (`formsOpen.linkOff`: {port, code}), on every card it stops: Chrome's, and a queued hidden-browser job's.
+/** The one sentence for a closed connection (`formsOpen.linkOff`: {port, code}), on every card it stops: Chrome's, and a queued hidden-browser job's (`who`: whose extension reports).
  * Why (#2508, Gitar): another program is only the cause for EADDRINUSE, which the app retries; any other code (EACCES) is not retried, so no "updates by itself". */
-export const linkOffLine = off => (off.code === 'EADDRINUSE' ? `Another program is using the connection Chrome's Jobadabra extension reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
-  : `Jobadabra could not open the connection Chrome's Jobadabra extension reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`);
+export const linkOffLine = (off, who = 'Chrome\'s Jobadabra extension') => (off.code === 'EADDRINUSE' ? `Another program is using the connection ${who} reports to (port ${off.port}). Close any other copy of Jobadabra, or restart your computer. This card updates by itself.`
+  : `Jobadabra could not open the connection ${who} reports to (port ${off.port}, ${off.code}). Restart Jobadabra; if it stays, your security software may be blocking it.`);
 
 // Full-automation jobs in Jobadabra's browser that are queued, filling or submitting: the same states as lib/lifecycle.js WORKING (test/stop-everywhere.test.js keeps them equal; a queued job still needs Stop, or a later poll fills what the person stopped, bot review #2324).
 const BACKGROUND_ACTING = new Set(['queued', 'preflight', 'filling', 'waiting_to_submit', 'submitting']);

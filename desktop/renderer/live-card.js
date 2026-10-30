@@ -25,7 +25,7 @@ export function liveCard(background = {}, facts = null, {note = '', at = clock, 
   // Why (30 Oct 2026, owner's demo: cards stuck with no reason): with the app's connection closed (`formsOpen.linkOff`) the hidden browser's extension is never told to start, so a queued job waits on the connection, not on the job before it.
   if (background.state === 'queued' && linkOff) {
     return {kind: 'waiting', live: false, title: 'Jobadabra can\'t hear its browser', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}, {linkOff}), tone: 'warn', frame: '',
-      note: linkOffLine(linkOff), input: false, filling: '', submit: null, marks: false};
+      note: linkOffLine(linkOff, 'Jobadabra\'s hidden browser'), input: false, filling: '', submit: null, marks: false};
   }
   if (background.state === 'queued') {
     return {kind: 'waiting', live: false, title: 'Waiting for its turn', meta: '· in Jobadabra\'s browser, hidden', pill: backgroundStatus({background}), tone: 'neutral', frame: '',

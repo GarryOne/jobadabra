@@ -10,6 +10,10 @@ import {fastSeed, ensureSetUp} from '../lib/seed.mjs';
 import {captureExternal, ids, independent} from '../lib/steps.mjs';
 import {goView} from '../lib/go-view.mjs';
 
+// Why (30 Oct 2026, ap, main run 40985357367): Calendar's setup asks use declared stored answers before any live transport.
+export const offlineAi = true;
+// Why (30 Oct 2026, ap, main run 40985357367): retain the harness guard against any undeclared live AI call.
+export const realAi = false;
 export const name = 'calendar';
 export const env = {TZ: 'Asia/Tokyo'};
 const ZONE = 'Asia/Tokyo';

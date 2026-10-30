@@ -1,0 +1,88 @@
+{
+  "about": "Captured calendar background question-reuse request from main run 40985357367; action restored from desktop/lib/question-reuse.js, since ai-misses stores no headers.",
+  "action": "reuse_verdict",
+  "url": "/v1/messages",
+  "request": {
+    "model": "claude-haiku-5-5",
+    "max_tokens": 2000,
+    "system": "A job-application form asked these questions. For each decide its verdict:\n- \"reusable\": a fact about the applicant or a stable stance they will want to give again on OTHER employers' forms (notice period, visa, salary, willingness to relocate, a degree).\n- \"one_job\": it belongs to this one job or employer, even when it does not name it (it names the company or its product, asks why this company, how they heard about this job or employer, whether they worked for or applied to this employer before, which of its offices or teams, a motivation or essay written for this role, a trivia or skill test).\n- \"consent\": a legal or privacy consent / agreement checkbox or statement.\nThen covered_by: when one of the applicant's saved answers already settles it, the EXACT saved question (a differently worded notice-period question is covered by the notice period answer; \"Do you need visa sponsorship?\" by a saved work permit); otherwise \"\".\nAnd value: the answer to THIS question that saved answer gives: \"\" when the saved answer answers it as it is; otherwise the short answer it implies (a permanent permit -> \"No\" to needing sponsorship). Only when it follows for sure: otherwise covered_by \"\" and value \"\".\nAnd topic: 2-4 lowercase English words naming what it asks, the SAME words for the same question however it is worded or in whatever language (\"notice period\", \"visa sponsorship\", \"salary expectation\").\nAnd fact: when the question asks for one of the applicant's facts listed in <facts> (street, postal code, name, salutation, notice period, a work permit... in any language and however it is worded), the EXACT fact label from <facts>; otherwise \"\". A question about something else, or about a fact that is not listed, is \"\".\nAnd asks: \"work_right\" when it asks whether the applicant may work somewhere (authorised, eligible, has the right to work), \"sponsorship\" when it asks whether they need visa sponsorship (now or in the future), else \"\". And country: for those, the ISO 3166 alpha-2 code of the country it names (a city or region counts for its country), \"\" when it names none (the job's own location).\nAnd sensitive: true when it asks for a protected or private trait the applicant shares only in that form's own field: equal-opportunity or demographic data (gender, ethnicity, race, sexual orientation, age, veteran status), a disability or health condition, a criminal record; else false. A consent to a background check, a driving licence or a work permit is not sensitive. Sensitive never changes the verdict: a sensitive question the applicant answers the same way on every form stays \"reusable\".\nAnswer every label exactly as given; when unsure answer \"one_job\", \"\" and \"\", and sensitive true.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "<employer></employer>\n<site></site>\n<saved_answers>\n[]\n</saved_answers>\n<facts>\n[\"First name\",\"Last name\",\"Full name\",\"Email\",\"Location\",\"Work permit / visa\",\"Languages I can work in\",\"Nationality\",\"EU / EEA + Switzerland\",\"United Kingdom\",\"United States\",\"Salary expectation\"]\n</facts>\n<questions>\n[\"Notice period\",\"On-call\",\"Company size\",\"Start date / notice period\"]\n</questions>"
+      }
+    ],
+    "output_config": {
+      "format": {
+        "type": "json_schema",
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "verdicts"
+          ],
+          "properties": {
+            "verdicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "label",
+                  "verdict",
+                  "covered_by",
+                  "value",
+                  "topic",
+                  "fact",
+                  "asks",
+                  "country",
+                  "sensitive"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "verdict": {
+                    "type": "string",
+                    "enum": [
+                      "reusable",
+                      "one_job",
+                      "consent"
+                    ]
+                  },
+                  "covered_by": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "fact": {
+                    "type": "string"
+                  },
+                  "asks": {
+                    "type": "string",
+                    "enum": [
+                      "",
+                      "work_right",
+                      "sponsorship"
+                    ]
+                  },
+                  "country": {
+                    "type": "string"
+                  },
+                  "sensitive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "effort": "low"
+    }
+  }
+}

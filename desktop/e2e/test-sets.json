@@ -89,6 +89,7 @@
   "background-proof.test.mjs",
   "bare-capture.test.mjs",
   "bug-tracker.test.mjs",
+  "calendar-backbone-no-live-ai.test.mjs",
   "candidates-covered.test.mjs",
   "capture-journey.test.mjs",
   "capture-library.test.mjs",

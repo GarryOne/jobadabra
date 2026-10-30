@@ -78,8 +78,8 @@ test('with the connection off a queued job says so in its pill and card; no othe
 });
 
 test('every place that words a hidden-browser job tells backgroundStatus whether the connection is off', async () => {
-  const fs = await import('node:fs'), path = await import('node:path');
-  const renderer = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'renderer');
+  const fs = await import('node:fs'), path = await import('node:path'), {fileURLToPath} = await import('node:url');
+  const renderer = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'renderer');
   const files = ['pages/sessions.js', 'pages/session-log.js'];   // the list's and the page header's pill; session-state.js dockCounts only counts, by the state's label
   for (const file of files) assert.match(fs.readFileSync(path.join(renderer, file), 'utf8'), /backgroundStatus\(item, \{linkOff:/, `${file} words the job with the connection`);
   assert.match(fs.readFileSync(path.join(renderer, 'pages/session-live.js'), 'utf8'), /liveCard\([^)]*linkOff:/, 'the live card is told too');

@@ -90,35 +90,41 @@ export async function runSilentChromeSteps(ctx) {
     const id = `silent-${mode.id}`;
     if (mode.runner === 'chrome') {
       await ctx.run(`a silent Chrome in ${mode.title}: the card says the app can't hear Chrome at once, then asks for Chrome, and Open it again opens the job (not the extension's settings)`, async () => {
-        const held = await holdPort();
+        const kept = savedApply(ctx.profile);
         try {
-          assertOwnPort(ctx, held.port);
-          await ctx.relaunch({JOB_PILOTTO_PORT: String(held.port)}, profile => seedProfile(profile, mode.id, form, id));
-          await until(`the app did not say it cannot open port ${held.port}`, () => appLogText(ctx.profile).includes(`connection off: port ${held.port} is used by another program`), 30000);
+          const held = await holdPort();
+          try {
+            assertOwnPort(ctx, held.port);
+            await ctx.relaunch({JOB_PILOTTO_PORT: String(held.port)}, profile => seedProfile(profile, mode.id, form, id));
+            await until(`the app did not say it cannot open port ${held.port}`, () => appLogText(ctx.profile).includes(`connection off: port ${held.port} is used by another program`), 30000);
+            await openCard(ctx.page, form, id);
+            // Link off: said at once, never the 45 s "Checking" guess.
+            const off = await until('the card did not say the app can\'t hear Chrome', async () => { const card = await readCard(ctx.page); return /can't hear Chrome/i.test(card.title) ? card : null; }, 30000);
+            if (!/Connection off/i.test(await rowPill(ctx.page, form))) throw new Error(`the session's list pill does not say "Connection off": "${await rowPill(ctx.page, form)}"`);
+            if (off.buttons.length) throw new Error(`a card whose cause is the app's own socket offers ${off.buttons.join(', ')}: none of them can help`);
+            // Port free again: the app's retry opens it; Chrome still reports elsewhere, so the app is listening but hears nothing.
+            await held.release();
+            await until('the app did not take its port again', () => /connection back: port/.test(appLogText(ctx.profile)), 30000);
+            await clockOn(ctx.page, 70000);
+            const silent = await until('the card did not say Chrome isn\'t reporting', async () => { const card = await readCard(ctx.page); return /Chrome isn't reporting/i.test(card.title) ? card : null; }, 30000);
+            if (silent.buttons[0] !== 'Open it again') throw new Error(`the first button of the silent card is "${silent.buttons[0]}", not "Open it again" (buttons: ${silent.buttons.join(', ')})`);
+            const spool = fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).length;
+            await ctx.page.locator('#ss-actions button', {hasText: 'Open it again'}).click();
+            const opened = await until('Open it again opened no page', () => fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).length > spool, 30000);
+            const urls = fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).map(name => fs.readFileSync(path.join(ctx.shim.spool, name), 'utf8'));
+            if (!opened || !urls.some(url => url.startsWith(form.url.split('#')[0]))) throw new Error(`Open it again opened ${urls.slice(-2).join(', ')}, not the job ${form.url}`);
+            if (urls.some(url => url.startsWith('chrome-extension://'))) throw new Error('a page of the extension was opened where the job was wanted');
+          } finally { await held.release().catch(() => {}); }
+          // Chrome's extension reports to the app again (the app on its own port): the card gives a verdict and an action, never the silent state or the first-look wait for ever.
+          await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)});
           await openCard(ctx.page, form, id);
-          // Link off: said at once, never the 45 s "Checking" guess.
-          const off = await until('the card did not say the app can\'t hear Chrome', async () => { const card = await readCard(ctx.page); return /can't hear Chrome/i.test(card.title) ? card : null; }, 30000);
-          if (!/Connection off/i.test(await rowPill(ctx.page, form))) throw new Error(`the session's list pill does not say "Connection off": "${await rowPill(ctx.page, form)}"`);
-          if (off.buttons.length) throw new Error(`a card whose cause is the app's own socket offers ${off.buttons.join(', ')}: none of them can help`);
-          // Port free again: the app's retry opens it; Chrome still reports elsewhere, so the app is listening but hears nothing.
-          await held.release();
-          await until('the app did not take its port again', () => /connection back: port/.test(appLogText(ctx.profile)), 30000);
           await clockOn(ctx.page, 70000);
-          const silent = await until('the card did not say Chrome isn\'t reporting', async () => { const card = await readCard(ctx.page); return /Chrome isn't reporting/i.test(card.title) ? card : null; }, 30000);
-          if (silent.buttons[0] !== 'Open it again') throw new Error(`the first button of the silent card is "${silent.buttons[0]}", not "Open it again" (buttons: ${silent.buttons.join(', ')})`);
-          const spool = fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).length;
-          await ctx.page.locator('#ss-actions button', {hasText: 'Open it again'}).click();
-          const opened = await until('Open it again opened no page', () => fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).length > spool, 30000);
-          const urls = fs.readdirSync(ctx.shim.spool).filter(name => name.endsWith('.url')).map(name => fs.readFileSync(path.join(ctx.shim.spool, name), 'utf8'));
-          if (!opened || !urls.some(url => url.startsWith(form.url.split('#')[0]))) throw new Error(`Open it again opened ${urls.slice(-2).join(', ')}, not the job ${form.url}`);
-          if (urls.some(url => url.startsWith('chrome-extension://'))) throw new Error('a page of the extension was opened where the job was wanted');
-        } finally { await held.release().catch(() => {}); }
-        // Chrome's extension reports to the app again (the app on its own port): the card gives a verdict and an action, never the silent state or the first-look wait for ever.
-        await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)});
-        await openCard(ctx.page, form, id);
-        await clockOn(ctx.page, 70000);
-        const settled = await until('the card is still silent or checking after Chrome reported', async () => { const card = await readCard(ctx.page); return card.title && !STUCK.test(card.title) || (/Tab not found/i.test(card.title) && card.buttons.includes('Open it again')) ? card : null; }, 90000);
-        console.log(`  after Chrome reported: "${settled.title}" · ${settled.buttons.join(' | ')}`);
+          const settled = await until('the card is still silent or checking after Chrome reported', async () => { const card = await readCard(ctx.page); return card.title && !STUCK.test(card.title) || (/Tab not found/i.test(card.title) && card.buttons.includes('Open it again')) ? card : null; }, 90000);
+          console.log(`  after Chrome reported: "${settled.title}" · ${settled.buttons.join(' | ')}`);
+        } finally {
+          // The steps after this one run on the harness's own port and the person's saved mode, never the one this step seeded; also when it failed.
+          await ctx.relaunch({JOB_PILOTTO_PORT: String(ctx.appPort)}, profile => restoreApply(profile, kept, id)).catch(error => console.log(`  could not put the app back: ${error.message}`));
+        }
       }, {needs: ctx.needs});
     } else {
       await ctx.run(`a silent Chrome in ${mode.title}: a queued hidden-browser job says why it waits when the app's link is off, and never talks of the person's Chrome${mode.id === 'auto' ? '; nothing is submitted' : ''}`, async () => {

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
+import {pollUntil} from '../lib/wait-on-state.mjs';
 import {AiLimit, AiUnavailable} from '../../lib/ai/contract.js';
 import {OpenAiApi, contractError, fromResponse} from '../../lib/ai/openai-api.js';
 import {FAILURES, OPENAI_FAILURES, asAnthropic, failureFor, openaiFailureFor, responseOf, startAiProxy} from '../lib/ai-proxy.mjs';
@@ -160,4 +161,37 @@ test('a stand-in can refuse a call the way the API does, and the refusal is coun
     assert.equal(proxy.stats.failed, 1);
     assert.ok(STUBBED.has('no-credit'));
   } finally { await proxy.close(); }
+});
+
+for (const shape of ['anthropic', 'openai']) {
+  test(`${shape}: a delayed request consumes the fault armed when it arrived`, async () => {
+    const suite = await startAiProxy({delayMs: 100, target: 'http://127.0.0.1:1'});
+    const proxy = shape === 'openai' ? await startAiProxy({shape, follow: suite, target: 'http://127.0.0.1:1'}) : suite;
+    try {
+      const first = suite.setMode('server-error');
+      const answer = post(proxy.url);
+      const {value} = await pollUntil(() => suite.stats.calls, n => n === 1, {tickMs: 1, capMs: 1000, log: () => {}});
+      assert.equal(value, 1, 'the first request reached the proxy before changing the fault');
+      const next = suite.setMode('invalid-key');
+      assert.equal((await answer).status, 500, 'the delayed call keeps its original server error');
+      assert.equal(first.failed, 1);
+      assert.equal(next.failed, 0, 'an earlier request cannot consume the next fault');
+      assert.equal((await post(proxy.url)).status, 401);
+      assert.equal(next.failed, 1);
+    } finally { if (proxy !== suite) await proxy.close(); await suite.close(); }
+  });
+}
+
+test('closing a proxy cancels delayed work and clears its pending fault requests', async () => {
+  const proxy = await startAiProxy({delayMs: 200, target: 'http://127.0.0.1:1'});
+  const fault = proxy.setMode('server-error');
+  const answer = post(proxy.url).catch(() => null);
+  try {
+    const {value} = await pollUntil(() => proxy.stats.calls, n => n === 1, {tickMs: 1, capMs: 1000, log: () => {}});
+    assert.equal(value, 1);
+    assert.equal(fault?.pending, 1, 'the delayed request is observable before teardown');
+  } finally { await proxy.close(); await answer; }
+  assert.equal(fault.pending, 0);
+  assert.equal(fault.delayed, 0);
+  assert.equal(fault.failed, 0, 'a closed request never serves a late fault');
 });

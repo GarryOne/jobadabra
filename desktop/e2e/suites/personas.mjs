@@ -21,6 +21,8 @@ import {withRoles} from '../lib/search-roles.mjs';
 export const minutes = 15;
 export const offlineAi = true;
 export const realAi = false;
+// Why (30 Oct 2026, bb 4/9; test/store.test.mjs): stored answers need one store path; personas reads both stores' settings (ctx.store === 'sqlite' below), so it takes the default SQLite one.
+export const store = 'sqlite';
 // MANUAL (2 Oct 2026, kept, not deleted): It proves nothing is hard-coded to the owner (Swiss/EU wording, visa flag, currencies): one-time hygiene that costs 15 minutes and two
 // full AI runs each time. No schedule, push or release gate runs it (cadence 'manual', lib/plan.mjs); run it by hand when a change could bring owner-specific text back:
 //   gh workflow run e2e.yml -f suite=personas        or        node suite.mjs personas

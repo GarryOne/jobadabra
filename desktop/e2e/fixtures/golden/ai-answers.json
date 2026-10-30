@@ -1,6 +1,11 @@
 {
   "about": "Reviewed AI answers for backbone replay; put new notes in the PR description.",
   "kinds": {
+    "learn_from_form": {
+      "answer": {
+        "refuse": "invalid-key"
+      }
+    },
     "organize_lines": {
       "answer": {
         "reply": {

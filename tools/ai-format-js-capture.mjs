@@ -10,6 +10,8 @@ const ALLOWED = new Set([
   'desktop/lib/missing-facts.js', 'desktop/lib/fact-catalog.js', 'desktop/lib/question-reuse.js',
   'desktop/lib/question-formats.js', 'desktop/lib/contact-from-cv.js', 'desktop/lib/cv-queue.js',
   'desktop/lib/cv-check.js', 'desktop/lib/list-meanings.js', 'desktop/lib/in-flight.js', 'desktop/lib/ai/models.js', 'desktop/lib/ai/names.js',
+  'desktop/lib/learnings.js', 'extension/alias-schema.js', 'desktop/renderer/preferences-model.js',
+  'desktop/renderer/profile-model.js', 'desktop/renderer/answers-model.js',
   'desktop/renderer/question-kind.js', 'desktop/renderer/question-filter.js',
   'desktop/renderer/question-values.js', 'desktop/renderer/work-eligibility.js', 'desktop/renderer/countries.js',
 ]);
@@ -24,6 +26,8 @@ function loader(root, cv) {
     return cv;
   }};
   function load(file) {
+    // Why (30 Oct 2026, ap): stage.mjs copies this schema verbatim; capture its canonical source without a staged build.
+    if (file === 'desktop/shared/alias-schema.js') file = 'extension/alias-schema.js';
     if (!ALLOWED.has(file)) return blocked(file);
     if (modules.has(file)) return modules.get(file);
     const exports = {}, names = new Set();
@@ -79,7 +83,7 @@ export async function captureDesktop(root) {
   const cv = Buffer.from(rawCv.toString('latin1').replace('alex.example@example.test', 'alex.examplea@example.com'), 'latin1');
   if (cv.length !== rawCv.length || !cv.includes(Buffer.from('alex.examplea@example.com'))) throw new Error('Fictional CV contact changed');
   const load = loader(root, cv), entries = [];
-  async function capture(kind, context, sender, senderMarker, validator, validatorMarker, run) {
+  async function capture(kind, context, sender, senderMarker, validator, validatorMarker, run, expectedHeader = kind) {
     let request = null, action = '', calls = 0;
     const client = {messages: {create: async (body, options) => {
       if (++calls !== 1) throw new Error(`${kind}: more than one request`);
@@ -88,8 +92,9 @@ export async function captureDesktop(root) {
       return {stop_reason: 'end_turn', content: [{type: 'text', text: '{}'}], usage: {input_tokens: 0, output_tokens: 0}};
     }}};
     await run(client);
-    if (calls !== 1 || !request || action !== kind) throw new Error(`${kind}: sender did not capture exactly one labelled request`);
-    entries.push({kind, action, request, context, source: location(root, sender, senderMarker),
+    if (calls !== 1 || !request || action !== expectedHeader) throw new Error(`${kind}: sender did not capture exactly one request with the expected action header`);
+    // Why (30 Oct 2026, ap): learn_from_form has no action header; the manifest names its semantic action, while capture asserts that absence.
+    entries.push({kind, action: kind, request, context, source: location(root, sender, senderMarker),
       validator: location(root, validator, validatorMarker), tier: /haiku/.test(request.model) ? 'small' : /opus/.test(request.model) ? 'large' : 'mid'});
   }
   const profile = load('desktop/lib/profile-move.js');
@@ -115,6 +120,11 @@ export async function captureDesktop(root) {
   const lists = {places: ['Zurich', 'Zürich'], country: ['Switzerland', 'Schweiz'], titleSkip: ['Intern', 'Accountanting']};
   await capture('list_meanings', {lists}, 'desktop/lib/list-meanings.js', 'const response = await ai.messages.create',
     'desktop/lib/list-meanings.js', 'let answer;', client => load('desktop/lib/list-meanings.js').judgeLists(lists, {client}));
+  const learning = {answers: [{label: 'Notice period', value: 'Three months, negotiable'}],
+    learnings: [{question: 'Notice period', answer: 'Three months'}], owned: ['Email'],
+    job: {company: 'Gamma Freight', place: 'Zurich, Switzerland'}};
+  await capture('learn_from_form', learning, 'desktop/lib/learnings.js', 'const response = await client.messages.create',
+    'desktop/lib/learnings.js', 'let verdicts =', client => load('desktop/lib/learnings.js').judge(client, learning), '');
   const cvContext = {fixture: 'desktop/e2e/fixtures/cv.pdf', sha256: crypto.createHash('sha256').update(cv).digest('hex')};
   await capture('contact_from_cv', {...cvContext, wanted: ['first_name', 'last_name'], profile: ''}, 'desktop/lib/contact-from-cv.js', 'const response = await client.messages.create',
     'desktop/lib/contact-from-cv.js', 'export function cleanProposals', client => load('desktop/lib/contact-from-cv.js').propose(client, cv, ['first_name', 'last_name']));

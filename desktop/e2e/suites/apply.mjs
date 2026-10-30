@@ -21,8 +21,8 @@ import {runSilentChromeSteps} from '../lib/apply-silent-steps.mjs';
 import {proveBackground} from '../lib/background-proof.mjs';
 import {proveAutomatic} from '../lib/background-auto-proof.mjs';
 import {runJourneys} from '../lib/apply-journeys.mjs';
-import {INSTRUCTIONS as KIND_RULES} from '../../lib/ladder/rung2-sketch.js';
-import {BASE_CV, CONTACT, OPEN_ANSWER, POSTING, contactKeysAnswer, expectedOf, systemOf, tailoredFrom, unmatched} from '../lib/apply-fixtures.mjs';
+import {installApplyAnswers} from '../lib/apply-answers.mjs';
+import {CONTACT, OPEN_ANSWER, POSTING, expectedOf} from '../lib/apply-fixtures.mjs';
 
 // Walks other data and timing on each seeded run (lib/forms.mjs varyForms): an exploring run on an unchanged commit includes it.
 // Why (29 Oct 2026, ap): apply's fixture answers cover every AI ask, so CI needs neither live AI nor an AI secret.
@@ -62,14 +62,6 @@ export const browser = true;
 export const engine = 'api';   // the form's open question is answered by the AI proxy, which needs the API engine
 export const macos = 'release';   // a release, a gate and the night run it on a macOS runner (the real Chrome extension, opened through `open` as on a Mac); a PR's run on Linux (lib/plan.mjs runnerOf)
 // What a step needs from an earlier one when E2E_STEPS picks it (lib/runner.mjs wantedWords): every form step needs the applicant, the kits and the proxy's answers.
-// Only the fixture's declared consent ids receive an explicit AI reading; unknown boxes and factual declarations stay unread.
-function fixtureAnswers(fields) {
-  const consent = new Set(Object.values(FORMS).flatMap(form => form.consent || []));
-  return fields.flatMap(item => consent.has(item.field) && item.type === 'checkbox'
-    ? [{field: item.field, category: 'consent', use: 'fill', value: 'checked', confidence: 'high'}]
-    : item.field === 'why' ? [{field: item.field, value: OPEN_ANSWER, confidence: 'medium', note: 'inferred from the profile'}] : []);
-}
-
 const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
@@ -124,54 +116,7 @@ export async function runApply(ctx, parts) {
     console.log(`  removed ${await removeJobsByUrl(ctx, urls)} job row(s) left by an earlier run`);
     for (const form of fixtures) await (form === live ? seedLivePosting(ctx, live)   // the live posting as a real user's fresh one: no kit (lib/seed-data.mjs)
       : addKitJob(ctx, {title: form.title, company: form.company, url: form.url, kit: {answers: form.kit, cover_letter: '', check_before_sending: []}, description: POSTING}));
-    // The app's own AI calls go to the test proxy: fixture questions get fixed answers, and unmatched asks keep the context's fallback.
-    const fallback = proxy.canned();
-    proxy.setCanned(body => {
-      const content = body.messages?.[0]?.content;
-      if (Array.isArray(content) && content.some(part => part.type === 'document')) return JSON.stringify(BASE_CV);   // the CV import (lib/cv.js)
-      // The tailoring; HELD while a step holds it (ctx.tailorHold): the stand-in answers in milliseconds, faster than a step can look at the task running.
-      if (typeof content === 'string' && content.startsWith('<cv>')) return Promise.resolve(ctx.tailorHold).then(() => JSON.stringify(tailoredFrom(JSON.parse(/<cv>\n([\s\S]*?)\n<\/cv>/.exec(content)[1]))));
-      // The page after a Submit (lib/confirmation.js): the stand-in answers like a model that reads the words, so the suite proves the chain around it.
-      const text = typeof content === 'string' ? content : (content || []).map(part => part.text || '').join('');
-      const system = systemOf(body);
-      const contact = contactKeysAnswer(system, text);
-      if (contact) return contact;
-      if (/^URL path:/m.test(text) && /^Page:/m.test(text)) return JSON.stringify({confirmation: /successfully submitted|received your application/i.test(text) && !/must be completed|required/i.test(text)});
-      // The menu choice that means the same (lib/option-pick.js: {question, answer, choices} -> {choice}): the stand-in knows what a model would, for the menu
-      // fixture only ("+41" is Suisse); each ask is counted, so the remembered choice can be proven to need none (ctx.optionPicks).
-      if (typeof content === 'string' && content.startsWith('{"question"')) {
-        const ask = JSON.parse(content);
-        ctx.optionPicks = [...(ctx.optionPicks || []), {question: ask.question, answer: ask.answer}];
-        return JSON.stringify({choice: ask.answer === '+41' && ask.choices.includes('Suisse') ? 'Suisse' : ''});
-      }
-      // The account AI (lib/account-judge.js; its sketch also has "Address path:" and "Controls", so it is matched first). On the sign-in fixtures the stand-in reads the
-      // page like a model: "ready" once no required box is empty, "refused" when the page says the password is wrong, else "created". Elsewhere it is unsure (nothing pressed).
-      if (/^Phase: (ready|result)$/m.test(text)) {
-        const phase = /^Phase: (\w+)$/m.exec(text)[1], where = (/^Address path: (.*)$/m.exec(text)?.[1] || '').replace(/\/$/, '');
-        const ours = [SIGNIN, SIGNIN_REFUSED].some(fixture => [fixture.accountPath, fixture.formPath, `${fixture.accountPath}/new`].includes(where));   // /new: the sign-up page after a refusal
-        const answer = !ours ? 'unsure' : phase === 'ready' ? (/· required · empty/.test(text) ? 'needs_person' : 'ready') : /password is wrong/i.test(text) ? 'refused' : 'created';
-        return JSON.stringify({answer, needs: answer === 'refused' ? 'Sign in' : '', needs_kind: answer === 'refused' ? 'other' : '', bot_check: false, confidence: 0.9});
-      }
-      // What kind of page (lib/page-kind.js): the stand-in answers with each fixture's true kind, so every flow row runs on the AI's word, as in use.
-      if (/^Address path:/m.test(text) && /^Controls/m.test(text)) {
-        if (system === KIND_RULES) ctx.kindAsks = (ctx.kindAsks || 0) + 1;   // counted: the night's page kind is never asked (the Open in Chrome step); the "ready to submit?" judge shares this sketch and still runs
-        const where = /^Address path: (.*)$/m.exec(text)?.[1] || '';
-        const kinds = {[CHAIN.path]: 'posting', [CHAIN.stepPath]: 'posting', [CHAIN.formPath]: 'form', [SCRIPTED.path]: 'posting', [SCRIPTED.formPath]: 'form', [LATE.path]: 'posting',
-          [SIGNUP.path]: 'posting', [SIGNUP.accountPath]: 'account', [SIGNUP.formPath]: 'form', [ONEPAGE.path]: 'account-form',
-          [MISLABELLED.path]: 'posting', [SIGNIN.path]: 'posting', [SIGNIN.formPath]: 'form', [SIGNIN_REFUSED.path]: 'posting'};   // MISLABELLED: deliberately wrong, the self-correction row
-        if (live) return realKind(body);   // a real site: a real model answers (this Mac's Claude Code, lib/model.mjs), the way the app's own AI would
-        // LATE: as the live AI did on SuccessFactors, an empty page still loading reads as a posting whose Apply is its "Postuler" (the form's own submit).
-        if (where.replace(/\/$/, '') === LATE.formPath) return JSON.stringify(/Years of experience/.test(text) ? {kind: 'form', confidence: 0.95} : {kind: 'posting', confidence: 0.85, apply_button: 'Postuler'});
-        if ([SIGNIN.accountPath, SIGNIN_REFUSED.accountPath].includes(where.replace(/\/$/, ''))) return JSON.stringify({kind: 'account', confidence: 0.95, apply_button: '', account_step: 'sign_in', register_control: 'Create an account', signin_control: '', account_button: 'Sign in'});
-        if (where.replace(/\/$/, '') === `${SIGNIN_REFUSED.accountPath}/new`) return JSON.stringify({kind: 'account', confidence: 0.95, apply_button: '', account_step: 'sign_up', register_control: '', signin_control: '', account_button: 'Create account'});   // the sign-up page after the refusal
-        return JSON.stringify({kind: kinds[where.replace(/\/$/, '')] || 'form', confidence: 0.95});
-      }
-      const asked = /<form_fields>\n([\s\S]*?)\n<\/form_fields>/.exec(typeof content === 'string' ? content : (content || []).map(part => part.text || '').join(''));
-      if (!asked) return unmatched(fallback, body);
-      ctx.answerAsks = [...(ctx.answerAsks || []), ...JSON.parse(asked[1]).map(item => item.field)];   // counted: a question the night answered is never asked
-      const answers = fixtureAnswers(JSON.parse(asked[1]));
-      return JSON.stringify({eligible: true, eligibility_note: '', answers});
-    });
+    installApplyAnswers(ctx, {live, realKind});
     await page.reload();
     await page.waitForSelector('.view:not([hidden])', {timeout: 60000});
     await page.click('.nav[data-view="jobs"]');

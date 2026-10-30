@@ -8,6 +8,8 @@ import {placeQuestion} from './ai-answers-place.mjs';
 import {engineQuestion, itemOperation, validateItemEntry} from './ai-answers-engine.mjs';
 import {canonical, hash, object} from './ai-answers-engine-items.mjs';
 
+/** Opening of desktop/lib/learnings.js INSTRUCTIONS: the only way to tell its header-less call (kind learn_from_form) apart. */
+export const LEARN_FORM_PREFIX = "A job-application form was just filled. You keep the applicant's learnings:";
 const GOLDEN = new URL('../fixtures/golden/', import.meta.url);
 const TABLE = fileURLToPath(new URL('ai-answers.json', GOLDEN));
 const refusals = new Map();
@@ -124,12 +126,14 @@ export function questionOf({url, headers, body, hint}, env = process.env, table)
     const place = placeQuestion(data, persona);
     if (!place.unkeyable || placeSystem) return place;
   }
+  // Why (30 Oct 2026, PR #2562, Gitar): background form-learning calls omit action headers, so the header-less call is recognised by its system prompt's opening, LEARN_FORM_PREFIX; applyflows-backbone.test.mjs fails if the product's INSTRUCTIONS stop starting with it.
+  const kind = action || (system.startsWith(LEARN_FORM_PREFIX) ? 'learn_from_form' : '');
   const kinds = (table ?? loadTable(env.E2E_AI_ANSWERS_FILE || TABLE)).kinds;
-  // Why (30 Oct 2026, Gitar on #2505): kinds are declared per backbone suite; live suites in off and record mode keep their replay and live path, for caption-keyed kinds too (30 Oct 2026, ap: interviews).
-  if (object(kinds) && Object.hasOwn(kinds, action) && answersMode(env) === 'backbone') {
-    if (kinds[action].identity === 'caption') return captionQuestion(data, action);
-    // Why (29 Oct 2026, ap): kind-only answers have no stable request identity; caption-keyed reviews must never fall through here.
-    return {operation: 'app.kind', id: action};
+  // Why (30 Oct 2026, Gitar on #2505): kinds (the action header, or learn_from_form for that header-less call, #2562) are declared per backbone suite; live suites in off and record mode keep their replay and live path, for caption-keyed kinds too (30 Oct 2026, ap: interviews).
+  if (object(kinds) && Object.hasOwn(kinds, kind) && answersMode(env) === 'backbone') {
+    if (kinds[kind].identity === 'caption') return captionQuestion(data, kind);
+    // Why (29 Oct 2026, ap): kind-only answers (the id is the kind: the action, or learn_from_form) have no stable request identity; caption-keyed reviews must never fall through here.
+    return {operation: 'app.kind', id: kind};
   }
   return {unkeyable: `${action || hint?.operation || 'unknown'}: question identity is not in the request${!action && !hint ? ` (${url || 'unknown path'})` : ''}`};
 }

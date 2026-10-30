@@ -5,7 +5,7 @@
       "live": false,
       "about": "Role families follow duties before titles: quality golden 3006's helpdesk role with an SRE title, while #1992's plain SRE case stays sre; offline prompt, schema and stub-client checks.",
       "cases": ["tests/test_role_kinds_split.py"],
-      "prompts": {"src/ai/enrich.py": ["ROLE_FAMILIES", "ROLE_SYSTEM", "DUTIES_RULE", "SYSTEM"]}
+      "prompts": {"src/ai/enrich.py": ["ROLE_SYSTEM", "DUTIES_RULE", "SYSTEM"]}
     },
     "consent-choice": {
       "live": false,

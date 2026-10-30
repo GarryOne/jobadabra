@@ -11,7 +11,7 @@ import {rewriteTextLines} from './seed-texts.mjs';
 import {MATCHES, matchRowsOf} from './quality-rows.mjs';
 import {capViolations, checkFacts, fingerprints, leaks, matchRows, normalizeUrl, rankingViolations, workLeft} from './quality.mjs';
 import {withRoles} from './search-roles.mjs';
-import {QUALITY_CLOCK, qualityEvidence, waitForQualityState} from './quality-waits.mjs';
+import {qualityClocks, qualityEvidence, waitForQualityState} from './quality-waits.mjs';
 
 // E2E_QUALITY_PERSONA=photographer runs the same checks for a fictional commercial photographer in Zurich (fixtures/golden-photographer: her CV, her Profile, 12 postings with a
 // known truth, and her CV for the CV-match step), so scoring, ranking, facts and the judge are proven for a profession that is not IT. Default: the SRE.
@@ -74,8 +74,8 @@ export function rankingCheck(journey, {onRanking, onCap}) {
 export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
   const {page} = ctx;
   const backbone = ctx.suite === 'quality';
-  // Why (29 Oct 2026, qu 3/4): only the stored-answer journey uses calm-run hang caps; live AI keeps its larger allowances.
-  const clocks = backbone ? QUALITY_CLOCK : {stateMs: 90000, jobsMs: 360000};
+  // Why (30 Oct 2026, qu): quality RECORD and qualityai call live AI; only stored-answer quality uses measured calm-run caps.
+  const clocks = qualityClocks(backbone);
   const state = async (readState, ready, label, capMs = clocks.stateMs, evidence = () => qualityEvidence(ctx)) => {
     let last;
     const previous = ctx.qualityWaitEvidence;
@@ -126,11 +126,11 @@ export function qualityJourney(ctx, {strict = false, wait = {}} = {}) {
       const {byId} = matchRows(truth, candidateRows);
       return required.filter(item => !byId[item.id]);
     };
-    // Why (29 Oct 2026, qu 3/4, #2501 review): only exact quality requires every required posting; live qualityai keeps partial rows at its allowance.
+    // Why (30 Oct 2026, qu; #2501 review): exact quality requires all postings; qualityai still keeps partial rows at the shared live state allowance.
     let partial = [];
     const complete = await state(async () => (partial = await matchRowsOf(ctx)), candidateRows => strict
       ? missing(candidateRows).length === 0 : Object.keys(matchRows(truth, candidateRows).byId).length >= required.length,
-      'the required postings reaching the store', strict ? jobsStateMs : 90000, candidateRows => {
+      'the required postings reaching the store', strict ? jobsStateMs : clocks.stateMs, candidateRows => {
         const absent = missing(candidateRows);
         return `${required.length - absent.length} of ${required.length} required postings reached the store; missing: ${absent.map(item => `${item.id} "${item.title}" (${item.url})`).join(', ')}\n${strict ? storeDiagnostics() + '\n' : ''}${qualityEvidence(ctx)}`;
       }).catch(error => {

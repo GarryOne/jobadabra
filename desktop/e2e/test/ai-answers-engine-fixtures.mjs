@@ -53,17 +53,21 @@ export const engineCases = [
   spec('vague', 'app.placeVague', p.VAGUE_SYSTEM, p.VAGUE_SCHEMA, `Their places (JSON): ${JSON.stringify({best_places: places.best_places, anywhere_in: places.anywhere_in, cities_abroad: []})}\nThe job locations:\n1. switzerland\n2. zurich`, {vague: [1]}, {action: 'place_vague', first: 'switzerland'}),
   spec('reading', 'app.placeReading', p.READ_SYSTEM, p.READ_SCHEMA, `Their places (JSON): ${JSON.stringify(places)}\nThe postings:\n1. Title: ${posting.title}\nLocation field: Switzerland\nText: Work at the Zurich site.\n\n2. Title: Another job\nLocation field: Switzerland\nText: Location not stated.`, {jobs: [{n: 1, where: 'Zurich', nearest: 'zurich', km: 0, answer: 'best'}, {n: 2, where: '', nearest: 'none', km: -1, answer: 'unclear'}]}, {action: 'place_reading', first: posting.title}),
 ];
+/** Build a fixture request in the requested provider's wire format. */
 export function bodyOf(c, shape = 'anthropic') {
   return shape === 'anthropic' ? {model: 'test', system: [{type: 'text', text: c.system}], messages: [{role: 'user', content: c.user}], output_config: {format: {type: 'json_schema', schema: structuredClone(c.schema)}}} :
     {model: 'test', instructions: c.system, input: [{role: 'user', content: [{type: 'input_text', text: c.user}]}], text: {format: {type: 'json_schema', schema: structuredClone(c.schema)}}};
 }
+/** Attach the engine action header to a fixture request body. */
 export const askOf = (c, body = bodyOf(c)) => ({headers: {'x-jp-action': c.action}, body});
+/** Write an isolated answer table and remove its temporary folder after the test. */
 export function tempTable(t, items = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-answers-')), file = path.join(dir, 'table.json');
   fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, items}));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   return {dir, file, env: {E2E_AI_ANSWERS: 'backbone', E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir, E2E_AI_CACHE: dir, E2E_AI_CANDIDATES: dir, E2E_QUALITY_PERSONA: '', E2E_AI_PROVIDER: 'claude', E2E_JUDGE_FAMILY: 'claude', E2E_AI_REPLAY: '0'}};
 }
+/** Record a fixture reply and load its candidate items for replay assertions. */
 export function recorded(t, c, env = {}) {
   const {dir} = tempTable(t), q = questionOf(askOf(c), env);
   assert.equal(q.operation, c.operation);
@@ -149,6 +153,7 @@ export function familyTests(names) {
   }
 }
 
+/** Check that changed semantic context cannot reuse a fixture's recorded answers. */
 export function contextCase(name, change) {
   const c = engineCases.find(c => c.name === name);
   test(`${name}: semantic context changes cannot reuse earlier rows`, t => {

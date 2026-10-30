@@ -128,7 +128,7 @@ def running_minutes(spans, now=None):
     return (total + (hi - lo).total_seconds()) / 60
 
 
-def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=(), reports=()):
+def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=None, spans=None, greys=(), reports=(), burn_in=None):
     """-> (state or None, description, the runs counted, the ids of other jobs finishing now, the run to link). None: no run of a pull request on this commit.
     jobs: {run id: [job]} for the runs read job by job (not ended, or red); me: the id of the job this runs in, my_status its status so far.
     spans: [(started_at, completed_at)] of every job of the counted runs (a CI change only, job_spans): the budget counts their running time, else the wall time.
@@ -148,6 +148,7 @@ def verdict(runs, files=(), messages=(), jobs=None, me=None, my_status='', now=N
             continue
         numbered = any(suite_of(job.get('name', '')) in reports for job in listed)
         states = [(job, 'grey' if job.get('id') in greys else job_state(job, me, my_status)) for job in listed if job.get('name') not in REPORT_JOBS and suite_of(job.get('name', '')) not in reports]
+        states = ((burn_in or main_state_module('', '', 'pr_burn_in').failures)(r, listed, lambda job: job_state(job, me, my_status)) if any(' · burn-in ' in job.get('name', '') for job in listed) else []) + states
         grey += [(job['name'], greys.get(job['id'], 'main') if isinstance(greys, dict) else 'main') for job, state in states if state == 'grey']
         ending = [job['id'] for job, state in states if state == 'finishing' or job.get('id') == me]
         if any(state in RED for _, state in states):
@@ -242,7 +243,7 @@ def read(repo, sha, my_run):
                          'databaseId,workflowName,status,conclusion,event,createdAt,updatedAt,displayTitle'))
     jobs = {}
     for r in counted(runs):
-        if r.get('status') != 'completed' or r.get('conclusion') in RED or str(r.get('databaseId')) == my_run:
+        if r.get('status') != 'completed' or r.get('conclusion') in RED or str(r.get('databaseId')) == my_run or str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE):
             jobs[r['databaseId']] = json.loads(gh('api', f"repos/{repo}/actions/runs/{r['databaseId']}/jobs?per_page=100", '--jq', '.jobs'))
     return runs, jobs
 
@@ -417,9 +418,9 @@ def main():
         files = gh('api', '--paginate', f'repos/{a.repo}/pulls/{number}/files', '--jq', '.[].filename').split()
     me, greys, reports, ai_line = None, None, set(), str
     runs, jobs = read(a.repo, a.sha, my_run)
+    ref = os.environ.get('GITHUB_SHA') or a.sha
     if any(str(r.get('displayTitle', '')).startswith(E2E_PR_TITLE) for r in counted(runs)):
         try:
-            ref = os.environ.get('GITHUB_SHA') or a.sha
             reports, ai_line = main_state_module(a.repo, ref, 'pr_ai_number').prepare(a.repo, counted(runs), jobs, gh, lambda name='main_e2e_state': main_state_module(a.repo, ref, name), base_branch(), my_run, a.job_status, os.environ.get('RUNNER_NAME', ''))
         except Exception as error:
             print(f'AI number unavailable ({type(error).__name__}): required verdict unchanged')
@@ -429,13 +430,12 @@ def main():
             mine = [j for j in jobs.get(int(my_run or 0), []) if j.get('status') != 'completed' and j.get('runner_name') == os.environ.get('RUNNER_NAME')]
             me = mine[0]['id'] if mine else None
         spans = job_spans(a.repo, runs, reports) if ci_change(files) and (reports or not any(r.get('status') != 'completed' for r in counted(runs) if str(r.get('databaseId')) != my_run)) else None
-        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or (), reports=reports)
+        state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys or (), reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
         if state == 'failure' and greys is None:   # read main's reds once, and only for a red: a green PR costs no extra call
-            ref = os.environ.get('GITHUB_SHA') or a.sha
             greys = {**{job_id: 'main' for job_id in main_red_greys(a.repo, runs, jobs, ref=ref)}, **lane_greys(a.repo, runs, jobs),
                      **health_greys(a.repo, runs, jobs)}   # a health cause names this run; lanes still come from the base branch
             if greys:
-                state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys, reports=reports)
+                state, why, live, finishing, target = verdict(runs, files, messages, jobs, me, a.job_status, spans=spans, greys=greys, reports=reports, burn_in=lambda *args: main_state_module(a.repo, ref, 'pr_burn_in').failures(*args))
         if state in (None, 'failure', 'pending') or (state != 'settling' and not finishing):
             break
         if state != 'settling' and leave_it(finishing, me):

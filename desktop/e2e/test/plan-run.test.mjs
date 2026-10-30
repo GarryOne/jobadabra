@@ -29,6 +29,20 @@ function gh({files = [], runs = [], issues = [], releases = [], build = 'success
 }
 const plan = (env, stub, varies = ['jobs']) => planRun({env: {REPO: 'o/r', ...env}, gh: gh(stub), all: ALL, minutes: () => 15, varies});
 
+test('a PR admission occupies one suite place and expands to five independent whole-suite legs', async () => {
+  const out = await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: ALL.join(','), PR_SUITES: ALL.join(','),
+    PR_STEPS: JSON.stringify({'(burn-in)': ['settings']})}, gh: gh(), all: ALL, minutes: () => 15, shards: {settings: 2}});
+  const legs = JSON.parse(out.matrix).include;
+  assert.deepEqual(legs.filter(leg => leg.suite === 'settings').map(({burnIn, key, shard}) => ({burnIn, key, shard})),
+    [1, 2, 3, 4, 5].map(burnIn => ({burnIn, key: `settings-${burnIn}of5`, shard: ''})));
+  assert.equal(new Set(legs.map(leg => leg.key)).size, 8);
+  assert.equal(out.suites, ALL.join(','));
+  assert.equal(out.count, '8');
+  const main = await planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: 'settings', PR_STEPS: '{"(burn-in)":["settings"]}'},
+    gh: gh(), all: ALL, minutes: () => 15});
+  assert.equal(main.count, '1', 'admission applies only to the PR run');
+});
+
 test('only offline suites need no plan-level AI preflight or screenshot AI review; mixed runs still do', async () => {
   const run = only => planRun({env: {EVENT: 'workflow_dispatch', SHA: HEAD, ONLY: only}, gh: gh(), all: ALL,
     minutes: () => 15, offlineAi: ['settings']});

@@ -9,9 +9,9 @@ WORKFLOW = ROOT / '.github/workflows/e2e.yml'
 RECORD_GUARD = "github.event_name == 'workflow_dispatch' && github.run_attempt == 1 && inputs.ai_answers == 'record'"
 
 
-def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs'):
+def expression(value, event='workflow_dispatch', mode='off', attempt=1, suite='jobs', burn_in=0):
     """Evaluate ==, &&, || and contains(fromJSON(...), matrix.suite) over workflow inputs."""
-    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite}
+    context = {'github.event_name': event, 'inputs.ai_answers': mode, 'github.run_attempt': attempt, 'matrix.suite': suite, 'matrix.burnIn': burn_in}
 
     def atom(token):
         token = token.strip()
@@ -63,7 +63,8 @@ class WorkflowAiAnswers(unittest.TestCase):
         mode_line = re.search(r'(?m)^          E2E_AI_ANSWERS: (.+)$', first)
         self.assertIsNotNone(mode_line, 'the suite process must receive its answer mode')
         value = mode_line.group(1)
-        self.assertEqual(value, "${{ " + RECORD_GUARD + " && 'record' || contains(fromJSON('[\"quality\",\"stores\",\"interviews\"]'), matrix.suite) && 'backbone' || 'off' }}")
+        # Why (30 Oct 2026, a8, burn-in): an admission leg always replays stored answers, never records.
+        self.assertEqual(value, "${{ matrix.burnIn && 'backbone' || " + RECORD_GUARD + " && 'record' || contains(fromJSON('[\"quality\",\"stores\",\"interviews\"]'), matrix.suite) && 'backbone' || 'off' }}")
         cases = [('workflow_dispatch', 'record', 1, 'record'),
                  ('workflow_dispatch', 'off', 1, 'off'),
                  ('workflow_dispatch', '', 1, 'off'),
@@ -76,6 +77,7 @@ class WorkflowAiAnswers(unittest.TestCase):
                 for suite in ('jobs', 'quality', 'stores', 'interviews', 'qualityai', 'apply'):
                     expected = 'backbone' if suite in ('quality', 'stores', 'interviews') and want == 'off' else want
                     self.assertEqual(expression(value, event, mode, attempt, suite), expected, suite)
+                    self.assertEqual(expression(value, event, mode, attempt, suite, burn_in=3), 'backbone', f'{suite}: a burn-in leg never records')
 
     def test_the_suites_second_try_uses_backbone_for_declared_suites(self):
         retry = self.step('if again ')

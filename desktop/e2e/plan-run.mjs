@@ -23,6 +23,12 @@ function offlineMatrixFlag(suite, offlineAi) {
   return offlineAi.includes(suite) ? {offlineAi: true} : {};
 }
 
+function prLegs(suite, shards, env, picks) {
+  const admitted = String(env.PR_SUITES || '').trim() && picks['(burn-in)']?.includes(suite);
+  // Why (2026-10-29, owner): admission proves five complete journeys, never five slices of one journey. Keys retain the artifact parser's suite-NofM shape.
+  return admitted ? Array.from({length: 5}, (_, at) => ({key: `${suite}-${at + 1}of5`, shard: '', burnIn: at + 1})) : shardLegs(suite, shards[suite]);
+}
+
 function aiPlanOutputs(suites, offlineAi, review) {
   // Why (29 Oct 2026, owner): an offline-only run must survive revoked AI keys and must not ask a screenshot reviewer either.
   const aiRequired = suites.some(suite => !offlineAi.includes(suite));
@@ -122,7 +128,7 @@ export async function planRun({env, gh = realGh, all, minutes, os = async () => 
   const legs = key => (env.GATE_TAG && env.GATE_STORE_LEGS !== 'one' && !storeless.includes(suiteOfKey(key)) ? [{store: 'sqlite', key}, {store: 'standin', key: `${key}-standin`}] : [{store: prStores[suiteOfKey(key)] || '', key}]);
   // A suite with `shards` is one job per slice (lib/suite-shards.mjs), on both lanes: the recorded replay outgrew one job's budget (13 Oct 2026).
   const include = [];
-  for (const suite of suites) for (const slice of shardLegs(suite, shards[suite])) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...leg, shard: slice.shard, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
+  for (const suite of suites) for (const slice of prLegs(suite, shards, env, picks)) for (const leg of legs(slice.key)) include.push({suite, ...(cadence[suite] === 'outside' ? {outside: true} : {}), fallbackSuites, ...offlineMatrixFlag(suite, offlineAi), ...slice, ...leg, minutes: await minutes(suite), os: await os(suite, {pr: !!String(env.PR_SUITES || '').trim()})});
   // Windows runs apply and the settings smoke of these (lib/plan.mjs WINDOWS, the e2e audit 26 Oct 2026), never one that judges what is the same on every OS
   // (quality: the AI's answers; owner, 7 Oct 2026: Windows paid $1.36 a day for it).
   const windows = onWindows(suites.filter(suite => !sameOnEveryOs.includes(suite)));

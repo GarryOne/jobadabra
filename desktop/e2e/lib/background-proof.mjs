@@ -56,6 +56,19 @@ export const withBotCheckJudge = (previous, submitText) => {
   return body => { const {judged, text} = askOf(body); return judged && /not a robot/i.test(text) ? verdict('needs_person', '', true) : plain(body); };
 };
 
+/** The triage judge's account shapes: a login heading or a password confirmation means the person is needed; other forms use the bot-check/plain stand-ins. `before` observes the real hidden page before the answer releases it. */
+export const withAccountReadJudge = (previous, submitText, before = async () => {}) => {
+  const plain = withBotCheckJudge(previous, submitText);
+  return async body => {
+    const {judged, text} = askOf(body);
+    if (!judged) return plain(body);
+    await before();
+    const login = /^Headings: .*\bSign in to apply\b/m.test(text), account = /password · Confirm password/.test(text);
+    if (!login && !account) return plain(body);
+    return JSON.stringify({...JSON.parse(verdict('needs_person', '')), login_wall: login, account_to_create: account});
+  };
+};
+
 /** The need every hidden-browser step names: the runtime link (linkRuntime) does not exist on Windows. */
 export const HIDDEN_NEED = {name: 'a runtime link for the hidden browser (none on Windows)', value: process.platform !== 'win32'};
 /** The submitter's details-only page, the one Full automation can take (a kit answer is never a saved fact); `query` gives a step its own address (one background session per address). */

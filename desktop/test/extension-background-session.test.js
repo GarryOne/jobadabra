@@ -87,6 +87,15 @@ test('cancel never closes a recycled tab id belonging to another application', a
   assert.equal(await run.mayContinue('close'), false);
 });
 
+test('cancel closes a read whose page has not committed: the mark is only in pendingUrl', async () => {
+  const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
+  fake.chrome.tabs.remove = async id => { fake.tabs.delete(id); };
+  const created = await run.start({session: 'held', url: 'https://jobs.example.test/read#jobpilotto-fill=held', mode: 'read'});
+  Object.assign(fake.tabs.get(created.tab), {url: '', pendingUrl: 'https://jobs.example.test/read#jobpilotto-fill=held'});
+  assert.equal(await run.closeSession('held'), true);
+  assert.equal(fake.tabs.size, 0, 'the held read tab is gone');
+});
+
 test('a triage read opens its own unfocused session in mode read and closes the tab when asked', async () => {
   const fake = browser(), run = createBackgroundSession({chrome: fake.chrome, parseMark});
   fake.chrome.tabs.remove = async id => { fake.tabs.delete(id); };

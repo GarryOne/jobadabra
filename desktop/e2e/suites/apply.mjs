@@ -22,6 +22,7 @@ import {runTriageSteps} from '../lib/apply-triage-steps.mjs';
 import {runTriageChipSteps} from '../lib/apply-triage-chip-steps.mjs';
 import {runReadSteps} from '../lib/apply-read-steps.mjs';
 import {runConfirmSteps} from '../lib/apply-confirm-steps.mjs';
+import {runTriageCancelSteps} from '../lib/apply-triage-cancel-steps.mjs';
 import {runRestartSteps} from '../lib/apply-restart-steps.mjs';
 import {runStopSteps} from '../lib/apply-stop-steps.mjs';
 import {HIDDEN_NEED, autoFormOf, kitSeeder, proveBackground, proveBotCheck, proveQueue} from '../lib/background-proof.mjs';
@@ -51,6 +52,7 @@ export const stepSeconds = {'real forms the extension once failed on': 76, 'Tail
   'each read verdict gives its own chip': 90,
   'Stop on the card in Background automation': 40, 'Stop on the card in Full automation': 140,
   'the Jobs popup has one field': 15, 'checking jobs before the form read exists': 10,
+  'the triage bar moves per real read': 45,
   'Background automation hands a bot check': 25, 'Full automation hands a bot check': 25,
   'Background automation fills several queued jobs': 90, 'Full automation presses each queued job': 50,
   'Full automation asks once in Settings': 10, 'Full automation saved without its confirmation': 10};
@@ -69,6 +71,7 @@ export const hangCaps = {'the app has an applicant': 300, 'the app is seeded': 9
   'each read verdict gives its own chip': 360,   // four sequential real reads; fallback until main has calm samples
   'Stop on the card in Background automation': 300, 'Stop on the card in Full automation': 420,   // hold + card redraw + hand-off, Full watches through due time and two report alarms
   'the Jobs popup has one field': 90, 'checking jobs before the form read exists': 90,
+  'the triage bar moves per real read': 180,   // no samples yet: three sequential fixture reads plus cleanup; the cap catches a hang, never a speed
   'Background automation hands a bot check': 240, 'Full automation hands a bot check': 240,
   'Background automation fills several queued jobs': 450, 'Full automation presses each queued job': 450,   // 60 s + 3 x 120 s of inner waits, + 30 s
   'Full automation asks once in Settings': 90, 'Full automation saved without its confirmation': 90,   // no main samples yet: the 30 s floor x 3
@@ -86,6 +89,7 @@ const SETUP = 'the app has an applicant';
 export const stepNeeds = {'form': [SETUP], 'session page says it too': [SETUP, 'multi-step form'], 'Tailor CV': [SETUP], 'tailored CV': [SETUP], 'without a kit': [SETUP],
   'hidden browser fills a form': [SETUP], 'submits a form': [SETUP], 'I submitted it': [SETUP, 'Apply opens a new tab'], 'Apply opens a new tab': [SETUP], 'side by side': [SETUP], 'sign-up page': [SETUP], 'sign-in page': [SETUP], 'menu whose choices': [SETUP], 'Needs your attention" from': [SETUP], 'appears only when + is pressed': [SETUP], 'one page': [SETUP], 'tab is closed': [SETUP], 'second browser': [SETUP], 'wrong kind': [SETUP], 'cannot operate': [SETUP],
   'each read verdict': [SETUP], 'the Jobs popup': [SETUP], 'queued job': [SETUP], 'checking jobs before': [SETUP, 'the Jobs popup'],
+  'the triage bar moves': [SETUP],
   'the app quits while': [SETUP], 'the app quits in': [SETUP],
   'Stop on the card': [SETUP],
   'Ready to submit': [SETUP, 'cannot operate']};   // it reads the tab the "cannot operate" step left open
@@ -414,6 +418,7 @@ export async function runApply(ctx, parts) {
   await runSilentChromeSteps(ctx);   // lib/apply-silent-steps.mjs: the app cannot hear Chrome, one step per apply mode
   await runTriageSteps(ctx);   // lib/apply-triage-steps.mjs: the Jobs button's popup and the chips (spec 2026-10-30-apply-triage)
   await runReadSteps(ctx, {until});   // lib/apply-read-steps.mjs: the Jobs button reads a fixture form in the hidden browser (spec 2026-10-30-apply-triage, C2a)
+  await runTriageCancelSteps(ctx, {urls});
   await runTriageChipSteps(ctx, {urls});   // lib/apply-triage-chip-steps.mjs: every reachable verdict and the renderer's chip words
 
   await ctx.run('through all of it: Submit was never clicked or submitted, and no host but the fixture job sites was contacted', async () => {

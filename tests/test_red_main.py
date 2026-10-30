@@ -22,7 +22,7 @@ CLASSIFIED = {
     "CI · Start the What's new publish": 'ignored: after a beta approval or a promotion to stable only, never on a push to main; it starts the site repo\'s publish and never fails a release',
     'Proof · LibreOffice add-on on Mac and Windows': 'ignored: pull requests that edit the add-on, and by hand; downloads LibreOffice for real on Mac and Windows runners, never on a push to main',
     'Proof · Screenshot review scored on the judged issues': 'ignored: by hand only (it spends a few cents on Claude); scores a review model, never runs on a push to main',
-    'Proof · Which org the e2e AI keys belong to': 'ignored: pull requests that edit it, and by hand; a $0 check of the e2e keys, never on a push to main',
+    'Proof · Codex subscription broker': 'ignored: pull requests that edit it, and by hand; proves the OIDC Codex broker without an AI key, never on a push to main',
     'CI · Gitar label': 'ignored: Gitar comment, review and pull_request_target events only; sets PR labels, never runs on a push to main',
     'CI · Conflict label': 'ignored: runs on a push to main, but only labels the open PRs that conflict; it tests nothing, so its result says nothing about main',
     'CI · Cancel the runs of a closed PR': 'ignored: pull_request_target on close; cancels the closed PR\'s own runs, never runs on main',

@@ -6,9 +6,19 @@ import {cvProblems, fillProblems, highlightProblems, leftProblems, notLeftProble
 import {FORMS, startForms} from '../lib/forms.mjs';
 import {expectedOf} from '../lib/apply-fixtures.mjs';
 import {message, startAiProxy} from '../lib/ai-proxy.mjs';
+import {pollUntil} from '../lib/wait-on-state.mjs';
+import {runTriageCancelSteps} from '../lib/apply-triage-cancel-steps.mjs';
 
 const text = value => ({type: 'text', value, checked: false, files: [], ai: false});
 const box = checked => ({type: 'checkbox', value: 'on', checked, files: [], ai: false});
+
+test('the triage Cancel step gives the runner a synchronous hang error with its last state', async () => {
+  let options;
+  await runTriageCancelSteps({needs: [], run: (_name, _fn, given) => { options = given; }}, {urls: []});
+  const error = options.hangError(180000);
+  assert.ok(error instanceof Error, 'runner.withLimit reads .message immediately; it cannot consume a Promise');
+  assert.match(error.message, /within 180 s.*last read: null/);
+});
 
 test('fillProblems: a wrong, missing or empty answer is reported; the right one is not', () => {
   const expected = {a: '8', b: 'Yes', c: true};
@@ -58,6 +68,29 @@ const get = (port, host, path, method = 'GET') => new Promise((resolve, reject) 
     let body = ''; response.on('data', chunk => { body += chunk; }); response.on('end', () => resolve({status: response.statusCode, body}));
   });
   request.on('error', reject); request.end();
+});
+
+test('held read pages count each address, release independently, and record field observations without values', async () => {
+  const forms = await startForms();
+  const jobs = [1, 2].map(n => ({...FORMS.submitter, url: `https://${FORMS.submitter.host}${FORMS.submitter.autoPath}?held=${n}`}));
+  let held;
+  try {
+    held = forms.holdReads(jobs);
+    const pending = jobs.map(job => get(forms.port, job.host, new URL(job.url).pathname + new URL(job.url).search));
+    await pollUntil(() => held.reads, reads => reads.length === 2, {capMs: Infinity, log: () => {}});
+    assert.deepEqual(held.reads, jobs.map(job => job.url));
+    held.release(jobs[1].url);
+    const second = await pending[1];
+    assert.equal(second.status, 200);
+    assert.match(second.body, /id="first_name"/);
+    assert.match(second.body, /__triage-fields/);
+    assert.deepEqual(held.reports, []);
+    await get(forms.port, jobs[0].host, `/__triage-fields?job=${encodeURIComponent(jobs[0].url)}&filled=1`, 'POST');
+    assert.deepEqual(held.reports, [{url: jobs[0].url, filled: 1}]);
+    held.release(jobs[0].url);
+    assert.equal((await pending[0]).status, 200);
+    assert.deepEqual(forms.posts, []);
+  } finally { held?.close(); await forms.close(); }
 });
 
 test('the fixture forms: each is served on its job-site host with its kit fields, a Submit click is recorded, an unknown page is a 404', async () => {

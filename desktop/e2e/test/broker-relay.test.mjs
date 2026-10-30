@@ -33,7 +33,7 @@ test('a PDF document block is sent as the text pdf.js reads from it; other parts
   assert.equal(out.messages[0].content[1].text, 'Transcribe this CV.');
 });
 
-test('tools are refused with a 400 and the broker saying no is a 503 with its reason, never another provider', async () => {
+test('unsupported tools are refused with a 400 and the broker saying no is a 503 with its reason, never another provider', async () => {
   const tools = await answerViaBroker(request({tools: [{name: 'x'}]}), {ask: answered()});
   assert.equal(tools.status, 400);
   const no = await answerViaBroker(request(), {env: {}, ask: async () => ({ok: false, status: 'capped', detail: 'broker: budget:week 85%'})});
@@ -77,4 +77,101 @@ test('with the app on codex in CI no other family bills it and its key is the pl
   assert.equal(pickFamily(env), 'claude');
   assert.equal(testKey(env), DUMMY_KEY);
   assert.equal(pickFamily({...env, CI_AI_PROVIDER: 'free'}), 'free');
+});
+
+// The persona wrapper must route both SDKs locally, keep OIDC in the relay, and return the child's failure without API fallback.
+test('a persona child uses only the Codex relay; credentials never reach the child', async () => {
+  const {runOnCodex} = await import('../../../tools/persona-search/codex.mjs');
+  const code = await runOnCodex(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    const env = process.env;
+    assert.equal(env.ANTHROPIC_API_KEY, undefined);
+    assert.equal(env.OPENAI_API_KEY, undefined);
+    assert.equal(env.ACTIONS_ID_TOKEN_REQUEST_TOKEN, undefined);
+    assert.equal(env.JOB_PILOTTO_E2E_AI_BASE_URL, env.ANTHROPIC_BASE_URL);
+    const reply = await fetch(env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]})});
+    assert.equal(reply.status, 200);
+    assert.equal((await reply.json()).content[0].text, 'from Codex');
+  `], {env: {...process.env, CI: 'true', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: 'codex', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc', ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid', ANTHROPIC_API_KEY: 'paid', OPENAI_API_KEY: 'paid'}, ask: answered('from Codex')});
+  assert.equal(code, 0);
+});
+
+test('a persona broker refusal stays an error and the wrapper returns the child exit code', async () => {
+  const {runOnCodex} = await import('../../../tools/persona-search/codex.mjs');
+  const code = await runOnCodex(process.execPath, ['--input-type=module', '-e', `
+    const reply = await fetch(process.env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', body: JSON.stringify({model: 'claude-haiku-5-5', messages: [{role: 'user', content: 'hi'}]})});
+    process.exit(reply.status === 503 ? 7 : 9);
+  `], {env: {...process.env, CI: 'true', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: 'codex', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc', ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid'}, ask: async () => ({ok: false, status: 'no-token', detail: 'refused'})});
+  assert.equal(code, 7);
+  await assert.rejects(runOnCodex('unused', [], {env: {CI: 'true', CI_AI_PROVIDER: 'claude'}}), /Codex/);
+});
+
+test('a persona stamped prompt always reaches Codex, even when the e2e golden stamp is stale', async t => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const {storedAnswer} = await import('../lib/ai-answers.mjs');
+  const {runOnCodex} = await import('../../../tools/persona-search/codex.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'persona-relay-'));
+  const file = path.join(dir, 'answers.json');
+  const {request: original, action} = JSON.parse(fs.readFileSync(new URL('../fixtures/golden/ai-format-python.json', import.meta.url))).entries.find(entry => entry.kind === 'app.title');
+  const body = {...original, system: 'Changed title instructions for this PR.'};
+  fs.writeFileSync(file, JSON.stringify({v: 1, answers: {}, promptHashes: {'app.title': '0'.repeat(64)}}));
+  const previous = Object.fromEntries(['E2E_AI_ANSWERS_FILE', 'E2E_ARTIFACTS'].map(key => [key, process.env[key]]));
+  Object.assign(process.env, {E2E_AI_ANSWERS_FILE: file, E2E_ARTIFACTS: dir});
+  t.after(() => { for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } fs.rmSync(dir, {recursive: true, force: true}); });
+  assert.throws(() => storedAnswer({body, headers: {'x-jp-action': action}}), /stale: prompt changed app.title/);
+  let asks = 0;
+  const code = await runOnCodex(process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    const reply = await fetch(process.env.ANTHROPIC_BASE_URL + '/v1/messages', {method: 'POST', headers: {'x-jp-action': ${JSON.stringify(action)}}, body: ${JSON.stringify(JSON.stringify(body))}});
+    assert.equal(reply.status, 200);
+    assert.equal((await reply.json()).content[0].text, 'fresh from Codex');
+  `], {env: {...process.env, CI: 'true', CI_AI_PROVIDER: 'codex', E2E_AI_PROVIDER: 'codex', ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'oidc', ACTIONS_ID_TOKEN_REQUEST_URL: 'https://oidc.invalid'},
+    ask: async asked => { asks++; assert.equal(asked.system, 'Changed title instructions for this PR.'); return answered('fresh from Codex')(); }});
+  assert.equal(code, 0);
+  assert.equal(asks, 1);
+});
+
+
+test('persona timing logs total, broker execution, residual and concurrent calls without prompt contents', async () => {
+  const {timedRelay} = await import('../../../tools/persona-search/codex.mjs');
+  let clock = 1000;
+  const lines = [], finish = [];
+  const relay = timedRelay({now: () => clock, log: line => lines.push(line),
+    ask: () => new Promise(resolve => finish.push(() => resolve({ok: true, ms: 70, model: 'gpt-6-luna', message: {content: [{type: 'text', text: 'ok'}], stop_reason: 'end_turn', usage: {input_tokens: 1, output_tokens: 1}}})))});
+  const first = relay(request({messages: [{role: 'user', content: 'private-prompt'}]}), 'places');
+  const second = relay(request(), 'decide');
+  await new Promise(resolve => setImmediate(resolve));
+  clock = 1120;
+  finish[0]();
+  assert.equal((await first).status, 200);
+  clock = 1150;
+  finish[1]();
+  await second;
+  assert.match(lines[0], /^relay: small total 120 broker 70 waited 50 in-flight 2 prompt-chars 20 kind places start 1000 status 200 sent yes tools 0$/);
+  assert.match(lines[1], /total 150 broker 70 waited 80 in-flight 1/);
+  assert.ok(lines.every(line => !line.includes('private-prompt')));
+});
+
+test('persona timing records rejected unsupported tools and missing broker measurements honestly', async () => {
+  const {timedRelay} = await import('../../../tools/persona-search/codex.mjs');
+  const lines = [];
+  const relay = timedRelay({now: () => 10, log: line => lines.push(line), ask: async () => { throw new Error('must not send a tool request'); }});
+  assert.equal((await relay(request({tools: [{type: 'function', name: 'unsupported'}]}), 'scout')).status, 400);
+  assert.match(lines[0], /broker na waited na .*status 400 sent no tools 1$/);
+});
+
+
+test('web-search-only calls reach the broker, while mixed tools and broker refusals never fall back', async () => {
+  const body = request({tools: [{type: 'web_search_20250305', name: 'web_search', max_uses: 3}]});
+  let asks = 0;
+  const ask = async wire => { asks++; assert.deepEqual(wire.tools, body.tools); return answered('{"boards":[]}')(); };
+  const answer = await answerViaBroker(body, {ask});
+  assert.equal(answer.status, 200);
+  assert.equal(JSON.parse(answer.body).content[0].text, '{"boards":[]}');
+  assert.equal(asks, 1);
+  assert.equal((await answerViaBroker({...body, tools: [...body.tools, {type: 'function', name: 'shell'}]}, {ask})).status, 400);
+  assert.equal(asks, 1);
+  const refused = await answerViaBroker(body, {ask: async () => ({ok: false, status: 'unreachable', detail: 'broker unavailable'})});
+  assert.equal(refused.status, 503);
+  assert.match(JSON.parse(refused.body).error.message, /broker unavailable/);
 });

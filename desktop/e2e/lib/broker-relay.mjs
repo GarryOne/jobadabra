@@ -1,7 +1,9 @@
 // Answers the app under test's Messages calls through the Codex broker (lib/broker-client.mjs) when CI's provider for the app is codex (lib/ai-provider.mjs).
 // Why (28 Oct 2026, owner: "Emulate both"): the broker takes text, a JSON schema and pictures, so a PDF CV goes in as the text pdf.js reads from it and a streamed call is answered
-// as one chunk of the same events. Tool calls are refused out loud (the app sends none to Claude), and a broker "no" is an error answer the runner skips on, never another provider.
-import {askBroker} from './broker-client.mjs';
+// as one chunk of the same events. A broker "no" is an error answer, never another provider.
+// Why (30 Oct 2026, owner): native web search goes through the broker search flag; other tools remain unsupported.
+// Job: report health
+import {askBroker, isWebSearch} from './broker-client.mjs';
 import {capMessage, noteBrokerCapped} from './ai-cap.mjs';
 
 /** Takes base64 PDF bytes; returns the text of its pages (pdf.js legacy build, the same one lib/pdf-edit reads with). */
@@ -38,10 +40,10 @@ const failure = (status, type, message) => ({status, contentType: 'application/j
 
 /**
  * Takes a parsed Messages request; returns {status, contentType, body, counted}: the Messages answer (or its stream when the request streams), `counted` being the plain
- * message JSON the meter reads. A broker refusal is a 503 naming its reason and tells the runner's cap path (lib/ai-cap.mjs); tool calls are a 400.
+ * message JSON the meter reads. A broker refusal is a 503 naming its reason and tells the runner's cap path (lib/ai-cap.mjs); unsupported tools are a 400. Web search returns the broker text unchanged in a Messages text block.
  */
 export async function answerViaBroker(body, {env = process.env, ask = askBroker, extract = pdfText} = {}) {
-  if (body.tools?.length) return failure(400, 'invalid_request_error', 'the Codex relay does not carry tool calls (the app sends none to Claude)');
+  if (body.tools?.some(tool => !isWebSearch(tool))) return failure(400, 'invalid_request_error', 'the Codex relay supports native web search only, not other tool calls');
   const asked = await ask(await withPdfAsText(body, extract), {env});
   if (!asked.ok) {
     if (asked.status === 'capped') noteBrokerCapped(asked.detail, env);

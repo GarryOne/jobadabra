@@ -56,9 +56,10 @@ const claudeCode = await lib('claude-code.js');
 const {realClaude} = await import(path.join(ROOT, 'desktop', 'e2e', 'lib', 'real-claude.mjs'));
 const storage = createStorage(dir, {encrypt: value => value, decrypt: value => value});   // its own folder: nothing reaches the Keychain
 ensureConfig(storage);
-// --engine api (the daily CI draw, tools/persona-search/draw.py): the Anthropic API on the key in LAB_HEAL_ANTHROPIC_KEY (a tape re-record, own workspace and cap) or else RANDOM_DRAWS_ANTHROPIC_KEY, or PR_PROOF_ANTHROPIC_KEY (the PR search check, own workspace and cap), there being no plan-path Claude on a runner.
+// --engine api keeps the Messages SDK contract: the PR search check uses the Codex wrapper's relay and placeholder; standalone draws retain their own explicit API key.
 const api = engineName === 'api', replayOnly = api && process.argv.includes('--replay') && process.argv.includes('--no-live');   // an offline replay builds the API client but never calls it
-const apiKey = process.env.LAB_HEAL_ANTHROPIC_KEY || process.env.RANDOM_DRAWS_ANTHROPIC_KEY || process.env.PR_PROOF_ANTHROPIC_KEY || (replayOnly ? 'replay-only' : '');
+// Why (30 Oct 2026, owner): the CI wrapper supplies a broker-only loopback relay, never an API credential.
+const apiKey = process.env.JOB_PILOTTO_PERSONA_CODEX === '1' ? 'codex-relay-placeholder' : process.env.LAB_HEAL_ANTHROPIC_KEY || process.env.RANDOM_DRAWS_ANTHROPIC_KEY || process.env.PR_PROOF_ANTHROPIC_KEY || (replayOnly ? 'replay-only' : '');
 if (api && !apiKey) { console.error('--engine api needs LAB_HEAL_ANTHROPIC_KEY, RANDOM_DRAWS_ANTHROPIC_KEY or PR_PROOF_ANTHROPIC_KEY'); process.exit(2); }
 if (api) storage.setSecret('ANTHROPIC_API_KEY', apiKey);
 storage.saveSettings({aiEngine: api ? 'api' : 'cli', ...(api ? {} : {claudeCode: {path: realClaude() || (process.env.JOB_PILOTTO_TAPE_LIVE === '0' ? process.execPath : '')}}), store: 'sqlite', telemetry: false, shareEmployers: false});
@@ -107,7 +108,7 @@ for (let press = done + 1; press <= presses; press++) {
   const {code} = await searchSteps(storage, line => log.write(`[${Math.round((Date.now() - started) / 1000)}s] ${line}\n`), 'run', press === 1 ? 'first' : 'you', exec);
   log.end();
   const crashes = metrics('crashes.py', path.join(out, `run-${press}.log`));   // a Traceback in the log: a step died, its numbers are thin
-  const row = {press, code, crashes, seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
+  const row = {press, code, crashes, ...(process.env.JOB_PILOTTO_PERSONA_CODEX === '1' ? {billing: 'subscription'} : {}), seconds: Math.round((Date.now() - started) / 1000), ...metrics(), funnel: metrics('funnel.py', path.join(out, `run-${press}.log`), '--since', new Date(started).toISOString().slice(0, 19)),
     ...(changed ? {field_changed: changed} : {}),
     ...(press === 1 ? {ttfr: metrics('ttfr.py', path.join(out, 'run-1.log'))} : {})};
   fs.appendFileSync(path.join(out, 'presses.jsonl'), `${JSON.stringify(row)}\n`);

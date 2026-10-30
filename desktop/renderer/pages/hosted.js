@@ -1,4 +1,4 @@
-// Always on "on our servers" in the window (private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §4b, §4d): the wizard's step 4 (switch ON, e-mail, a pre-checked product-news box, Skip / Turn on Always on)
+// Always on "on our servers" in the window (private spec jobadabra-lab:docs/specs/2026-10-16-hosted-always-on.md §4b, §4d): the wizard's Always on step (switch ON, e-mail, a pre-checked product-news box, Skip / Turn on Always on)
 // and the Settings card (ON by default until Skip; asks for the e-mail first when there is none; Turn off and delete; Download my data; Delete our copy of your data while off, when we hold one; when the profile was last copied there). One name everywhere: "Always on" (owner, 17 Oct 2026).
 // The words and states are renderer/hosted-words.js; the data calls are lib/hosted-search.js. Never "GitHub", "container" or dollars here. Guard: test/hosted-search.test.js, test/hosted-words.test.js.
 import {el, pill, tile} from '../components.js';
@@ -30,13 +30,14 @@ function emailField(id, label = 'Where should we send them?') {
 }
 const button = (id, label, cls) => { const node = el('button', cls, label); node.id = id; return node; };
 
-// Wizard step 4. Skip only leaves Always on off; the rest of the app works as before.
+// Wizard Always on step. Skip only leaves Always on off; the rest of the app works as before.
 export function mountStep() {
   if ($('hosted-step-root')) return;
   const step = el('div', 'step magic-stage');   // a small form: one centered column, like the CV card (magic.css)
   step.id = 'hosted-step-root'; step.dataset.step = 'hosted'; step.hidden = true;
   const head = el('header', 'view-head step-head'), text = el('div');
-  text.append(el('span', 'eyebrow', 'Step 4 of 5'), el('h1', '', HEADLINE), el('p', 'muted subtitle', 'A short list of what is new, by e-mail, and in the app when you open it.'));
+  const count = el('span', 'eyebrow'); count.dataset.stepCount = '';
+  text.append(count, el('h1', '', HEADLINE), el('p', 'muted subtitle', 'A short list of what is new, by e-mail, and in the app when you open it.'));
   head.append(text);
   const actions = el('div', 'actions');
   actions.append(button('hosted-skip', 'Skip', 'ghost'), button('hosted-go', 'Turn on Always on', 'primary'));

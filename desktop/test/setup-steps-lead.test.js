@@ -31,7 +31,8 @@ test('a single/small input is a centered card: the CV step is a magic card with 
 test('the done banner is one quiet line, not the old green alert box, and names the right step', () => {
   assert.doesNotMatch(html, /class="alert tone-good review-mode"/);
   assert.match(html, /<div class="review-mode" id="review-mode" hidden>/);
-  assert.match(html, /replace your strategy at step 3/);
+  // The strategy reference is numbered from the sidebar at runtime, including Welcome and Cover letter.
+  assert.match(html, /replace your strategy at <span data-step-reference="draft">/);
 });
 
 test('the CV card names the accepted kinds from the one shared constant, which the main-side picker reads too', () => {

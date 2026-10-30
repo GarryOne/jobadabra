@@ -63,6 +63,26 @@ class Tracker(FakeTracker):
 
 
 class OpportunityTests(unittest.TestCase):
+    def test_authored_backbone_opportunity_reply_follows_the_product_schema(self):
+        file = Path(__file__).resolve().parents[1] / 'desktop/e2e/fixtures/golden/ai-answers.json'
+        reply = json.loads(file.read_text())['kinds']['opportunity']['answer']['reply']
+        lead = json.loads(reply['content'][0]['text'])
+        self.assertEqual(set(lead), set(opportunity.SCHEMA['required']))
+        for key, schema in opportunity.SCHEMA['properties'].items():
+            self.assertIsInstance(lead[key], {'string': str, 'boolean': bool}[schema['type']])
+            if 'enum' in schema:
+                self.assertIn(lead[key], schema['enum'])
+        self.assertEqual((lead['title'], lead['company']), ('DevOps Engineer', 'Initech'))
+        self.assertEqual(lead['recruiter_email'], 'recruiter@initech-hr.test')
+
+    def test_extract_names_opportunity_even_on_a_shared_mail_client(self):
+        from src.ai.providers.anthropic_api import AnthropicApi
+        sdk = Client(EMAIL_LEAD)
+        client = AnthropicApi(client=sdk)
+        lead = opportunity.extract(client, 'claude-haiku-5-5', EMAIL_PITCH)
+        self.assertEqual(lead, EMAIL_LEAD)
+        self.assertEqual(sdk.calls[0].get('extra_headers'), {'x-jp-action': 'opportunity'})
+
     def test_a_recruiter_email_becomes_a_recruiter_lead_with_the_message_on_its_page(self):
         tracker, client = Tracker(), Client(EMAIL_LEAD)
         line = opportunity.add_from_text(stores_for(tracker), EMAIL_PITCH, client=client)

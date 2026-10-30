@@ -11,6 +11,7 @@ import {SUITES} from '../lib/context.mjs';
 import {suiteFacts} from '../plan-run.mjs';
 import * as interviews from '../suites/interviews.mjs';
 import * as activityfailures from '../suites/activityfailures.mjs';
+import * as failureschannels from '../suites/failureschannels.mjs';
 import * as quality from '../suites/quality.mjs';
 import * as wander from '../suites/wander.mjs';
 
@@ -51,7 +52,7 @@ test('interviews pins SQLite across CI store alternation and environment overrid
   }
 });
 
-for (const [name, suite] of [['wander', wander], ['activityfailures', activityfailures]]) {
+for (const [name, suite] of [['wander', wander], ['activityfailures', activityfailures], ['failureschannels', failureschannels]]) {
   test(`${name} keeps its Notion faults reachable on the stand-in across CI store alternation and environment pins`, () => {
     assert.equal(suite.store, 'standin');
     for (const run of [0, 1, 2, 3]) {

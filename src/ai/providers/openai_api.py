@@ -95,6 +95,11 @@ def params_of(request, model, effort, action=''):
     if request.web_search:
         params['tools'] = [{'type': 'web_search'}]
         params['max_tool_calls'] = request.web_search
+    # Why (30 Oct 2026, owner; #2632): per-call action headers override a shared client's cost and replay identity in both families.
+    headers = request.params.get('extra_headers')
+    if headers:
+        params['extra_headers'] = headers
+        action = headers.get('x-jp-action') or action
     if action:
         params['prompt_cache_key'] = f'job-pilotto-{action}'   # the AI step only: calls of one step share a cache
     return params

@@ -46,7 +46,7 @@ for (const suite of ['interactions', 'failureschannels']) {
     }
   });
 
-  test('interactions seeded metro and role decisions retain the existing stored item answers', async t => {
+  test(`${suite} seeded metro and role decisions retain the existing stored item answers`, async t => {
     const h = await backboneHarness(t, suite);
     t.after(() => h.assertNoLive());
     for (const body of [captured.request, ...captured.requests]) {
@@ -79,7 +79,7 @@ for (const suite of ['interactions', 'failureschannels']) {
     assert.equal(error.code, missing.code); assert.match(error.message, missing.message);
   });
 
-  test('interactions opts into stored answers and the real-AI guard on both workflow attempts', () => {
+  test(`${suite} opts into stored answers and the real-AI guard on both workflow attempts`, () => {
     const source = fs.readFileSync(new URL(`../suites/${suite}.mjs`, import.meta.url), 'utf8');
     assert.match(source, /^export const offlineAi = true;/m);
     assert.match(source, /^export const realAi = false;/m);

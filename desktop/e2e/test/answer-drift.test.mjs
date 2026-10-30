@@ -32,7 +32,8 @@ test('sample rotates oldest first within each kind and spreads slots across kind
   assert.deepEqual(pickSample([...entries].reverse(), {}, 5), pickSample(entries, {}, 5));
 });
 
-test('seeding is byte deterministic, body-reference-only and links the measured 268 plus 3 keys', t => {
+// Why (30 Oct 2026, #2601): two approved Focus captures add linked keys; the existing gaps and three sender-capture keys are unchanged.
+test('seeding is byte deterministic, body-reference-only and links the measured 270 plus 3 keys', t => {
   forbidNetwork(t);
   const entries = seedRequests();
   assert.equal(serializeRequests(entries), fs.readFileSync(fixture, 'utf8'));
@@ -40,9 +41,9 @@ test('seeding is byte deterministic, body-reference-only and links the measured 
   assert.equal(new Set(entries.map(e => e.id)).size, entries.length);
   assert.equal(new Set(entries.map(e => e.source.sha256)).size, entries.length);
   const linked = new Set(entries.flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(linked.size, 271);
+  assert.equal(linked.size, 273);
   const historic = new Set(entries.filter(e => e.provenance !== 'sender capture').flatMap(e => e.keys.map(key => `${e.kind}/${key}`)));
-  assert.equal(historic.size, 268);
+  assert.equal(historic.size, 270);
   assert.deepEqual(new Set(entries.map(e => e.provenance)), new Set(['captured', 'reconstructed', 'sender capture']));
   for (const entry of entries) {
     assert.ok(!('body' in entry));
@@ -152,7 +153,7 @@ test('dry reports count an unlinked key as a gap and make no calls', async t => 
   forbidNetwork(t);
   const entries = loadRequests();
   const report = await buildReport({entries, table});
-  assert.deepEqual(report.coverage, {total: 562, eligible: 271, unlinked: 291, checked: 0, unjudged: 0});
+  assert.deepEqual(report.coverage, {total: 564, eligible: 273, unlinked: 291, checked: 0, unjudged: 0});
   assert.equal(report.sample.length, 20);
   assert.equal(report.callsUsed.total, 0);
   const expanded = structuredClone(table);

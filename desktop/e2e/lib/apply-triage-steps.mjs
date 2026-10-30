@@ -11,8 +11,12 @@ import {addKitJob, removeJobsByUrl} from './seed-data.mjs';
 const FITS = [96, 93, 90, 88, 86, 84, 82, 80, 78, 76, 74, 72];
 const JOBS = FITS.map((fit, index) => ({fit, title: `Triage Engineer ${index + 1}`, company: 'Triage Fixture Co', url: `https://jobs.triage-fixture.example/roles/${index + 1}`}));
 
+/** The chip on each Jobs row: the selector both triage steps read (renderer/pages/jobs-render.js `.role > .chip-tag`). */
+export const CHIP_VALUE = '.role > .chip-tag .chip-value';
+
 const sessionsFile = ctx => path.join(ctx.profile, 'sessions.json');
-const sessionsNow = ctx => { try { return fs.readFileSync(sessionsFile(ctx), 'utf8'); } catch { return ''; } };
+/** The saved sessions file as text ('' when none): a step compares it before and after to prove nothing started. */
+export const sessionsNow = ctx => { try { return fs.readFileSync(sessionsFile(ctx), 'utf8'); } catch { return ''; } };
 
 /** Opens Jobs with the fictional jobs listed (the list is read again from the store, never the page's older copy). */
 async function openJobs(ctx) {
@@ -64,7 +68,7 @@ export async function runTriageSteps(ctx) {
       if (!/Nothing was checked/i.test(told)) throw new Error(`with no form read yet the toast should say nothing was checked, it says "${told}"`);
       if (await page.locator('#triage-progress:visible').count()) throw new Error('the progress bar is still showing after the run');
       await page.click('#triage-close').catch(() => {});
-      const chips = await page.evaluate(() => [...document.querySelectorAll('.role > .chip-tag .chip-value')].map(chip => chip.textContent.trim()));
+      const chips = await page.evaluate(selector => [...document.querySelectorAll(selector)].map(chip => chip.textContent.trim()), CHIP_VALUE);
       if (!chips.length) throw new Error('no job row shows a triage chip (.role > .chip-tag, renderer/pages/jobs-render.js)');
       const odd = chips.filter(text => text !== 'Not checked');
       if (odd.length) throw new Error(`${odd.length} chip(s) guessed a mode without a read: ${[...new Set(odd)].join(', ')}`);

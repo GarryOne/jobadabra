@@ -9,7 +9,7 @@ const ALLOWED = new Set([
   'desktop/lib/contact-review.js', 'desktop/lib/contact.js', 'desktop/lib/queue-wording.js',
   'desktop/lib/missing-facts.js', 'desktop/lib/fact-catalog.js', 'desktop/lib/question-reuse.js',
   'desktop/lib/question-formats.js', 'desktop/lib/contact-from-cv.js', 'desktop/lib/cv-queue.js',
-  'desktop/lib/cv-check.js', 'desktop/lib/in-flight.js', 'desktop/lib/ai/models.js', 'desktop/lib/ai/names.js',
+  'desktop/lib/cv-check.js', 'desktop/lib/list-meanings.js', 'desktop/lib/in-flight.js', 'desktop/lib/ai/models.js', 'desktop/lib/ai/names.js',
   'desktop/renderer/question-kind.js', 'desktop/renderer/question-filter.js',
   'desktop/renderer/question-values.js', 'desktop/renderer/work-eligibility.js', 'desktop/renderer/countries.js',
 ]);
@@ -112,6 +112,9 @@ export async function captureDesktop(root) {
   const questions = ['Title', 'Country/Region of Residence', 'Why us?'];
   await capture('question_formats', {asked: questions, allow: []}, 'desktop/lib/question-formats.js', 'const response = await client.messages.create',
     'desktop/lib/question-formats.js', 'export function judged', client => load('desktop/lib/question-formats.js').ensure(storage(), questions, {ai: {client}}));
+  const lists = {places: ['Zurich', 'Zürich'], country: ['Switzerland', 'Schweiz'], titleSkip: ['Intern', 'Accountanting']};
+  await capture('list_meanings', {lists}, 'desktop/lib/list-meanings.js', 'const response = await ai.messages.create',
+    'desktop/lib/list-meanings.js', 'let answer;', client => load('desktop/lib/list-meanings.js').judgeLists(lists, {client}));
   const cvContext = {fixture: 'desktop/e2e/fixtures/cv.pdf', sha256: crypto.createHash('sha256').update(cv).digest('hex')};
   await capture('contact_from_cv', {...cvContext, wanted: ['first_name', 'last_name'], profile: ''}, 'desktop/lib/contact-from-cv.js', 'const response = await client.messages.create',
     'desktop/lib/contact-from-cv.js', 'export function cleanProposals', client => load('desktop/lib/contact-from-cv.js').propose(client, cv, ['first_name', 'last_name']));

@@ -50,7 +50,7 @@ export async function judgeLists(lists, {client = null, apiKey = ''} = {}) {
   if (!ai || !asked.length) return {};
   const content = asked.map(name => `${name}: ${JSON.stringify(lists[name])}`).join('\n');
   const response = await ai.messages.create({model: MODEL, max_tokens: 3000, system: INSTRUCTIONS, messages: [{role: 'user', content}],
-    output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'}});
+    output_config: {format: {type: 'json_schema', schema: SCHEMA}, effort: 'low'}}, {headers: {'x-jp-action': 'list_meanings'}});   // Why (30 Oct 2026, ap; Gitar on #2546): every desktop sender names its step like this; the e2e answer table and Free AI's cost report key on it
   let answer;
   try { answer = JSON.parse(response.content?.find(block => block.type === 'text')?.text || ''); } catch { return {}; }
   const out = {};

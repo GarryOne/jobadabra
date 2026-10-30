@@ -155,6 +155,7 @@
   "ladder-capture-frames.test.mjs",
   "ladder-moves.test.mjs",
   "leave-prompt.test.mjs",
+  "list-meanings-kind.test.mjs",
   "live-parity.test.mjs",
   "live-readings.test.mjs",
   "live-row.test.mjs",

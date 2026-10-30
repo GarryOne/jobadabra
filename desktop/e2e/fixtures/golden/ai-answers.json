@@ -1,5 +1,5 @@
 {
-  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls. These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals.",
+  "about": "Reviewed AI answers for the quality backbone suite (29 Oct 2026 record run 40861637712; scores and decide items reviewed by qu, rule in the PR). Keyed by question, not request bytes. Shared background kinds are declared by name with invalid-key refusals (owner, 29 Oct 2026); stores uses its notice-period stand-in plus these kinds. Interviews declares caption-keyed authored reviews and a kind-only authored patterns reply (29 Oct 2026). Wander adds authored empty items for answer_home/organize_lines and empty contact_from_cv proposals (30 Oct 2026) to avoid visible raw errors; role_ideas is a controlled refusal. Its six current seeded target-role titles, including the captured Site Reliability Engineer, have authored software verdicts for Strategy's role-kind calls; list_meanings, Strategy's chip-meaning read that sends no action header, is an authored empty reply (30 Oct 2026, wander red on main). These are fixtures, not recorded model replies. Why (30 Oct 2026, qu): authored portal relevance rows cover setup, the literal quality reset and the captured post-reset search. True means relevant to offer for SRE jobs in Swiss places, not permission to fetch a login-wall site; the journey never reads these portals.",
   "kinds": {
     "organize_lines": {
       "answer": {
@@ -33,6 +33,25 @@
             {
               "type": "text",
               "text": "{\"items\":[]}"
+            }
+          ],
+          "usage": {"input_tokens": 1, "output_tokens": 1}
+        }
+      }
+    },
+    "list_meanings": {
+      "answer": {
+        "reply": {
+          "id": "msg_e2e",
+          "type": "message",
+          "role": "assistant",
+          "model": "e2e-canned",
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"lists\":[]}"
             }
           ],
           "usage": {"input_tokens": 1, "output_tokens": 1}

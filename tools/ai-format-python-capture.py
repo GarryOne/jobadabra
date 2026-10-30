@@ -216,6 +216,19 @@ def capture_engine():
     keep('app.geo', client, {'subrequest': 'map', 'strings': strings}, 'src/geo.py', 'response = client.messages.create(',
          'src/geo.py', 'def valid(', action='place_triage')
 
+    # Why (30 Oct 2026, ap): qu's #2533 declared app.visit rows, so the manifest's completeness test needs the real site-relevance sender; its stored-list cache is a one-line fixture and the engine gate says ready.
+    visits = load('src/sources/visits.py', ['RELEVANT_MODEL', 'RELEVANT_SCHEMA', 'RELEVANT_SYSTEM', 'RELEVANT_UNSURE', 'RELEVANT_VERSION', 'KEEP_LISTS', 'relevant'],
+                  SMALL_MODEL=models.SMALL_MODEL, _load=lambda: {}, _save=lambda data: None, LOCK=threading.Lock(), load_search_config=lambda **k: {},
+                  reason=str, detail=lambda *a: None)
+    IMPORTS['engine'] = NS(**vars(engine), ready=lambda: True, client=lambda **k: None)
+    sites = [{'name': 'Acme Freight', 'url': 'https://acme-freight.example/careers', 'kind': 'employer', 'found': 'logistics'},
+             {'name': 'Example Jobs', 'url': 'https://jobs.example/search', 'kind': 'portal', 'found': ''}]
+    visit_search = {'role_keywords': ['warehouse manager'], 'locations': {'top_tier': ['Zurich'], 'country_wide': []}}
+    client = Client({'keep': [1, 2]})
+    visits.relevant(sites, visit_search, client=client, label='Visit list', unsure='keep')
+    keep('app.visit', client, {'sites': sites, 'search': visit_search, 'unsure': 'keep'}, 'src/sources/visits.py', 'response = client.messages.create(',
+         'src/sources/visits.py', 'numbers = {int(n)', action='visit_relevant')
+
     with tempfile.TemporaryDirectory(prefix='.ai-format-', dir=ROOT) as temporary:
         temporary = Path(temporary)
         scope = NS(view=lambda *a: {}, active=lambda: False)

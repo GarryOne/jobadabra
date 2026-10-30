@@ -95,7 +95,7 @@ export async function skipJob(page, form) {
 
 /** Opens this application's session on the Sessions page: the card a click on its dock card or list row opens (pages/session-log.js openSession), picked by the session's id.
  * Why (30 Oct 2026, found by the bot-check steps in CI order): every submitter variant has one company and one title, so a card found by those words opened an earlier job's card ("Review the filled application"). */
-async function openSessionCard(page, form) {
+export async function openSessionCard(page, form) {
   const id = await sessionOf(page, form.url);
   if (!id) throw new Error(`the app holds no session for ${form.url}`);
   await page.evaluate(session => import('./pages/session-log.js').then(module => module.openSession(session)), id);

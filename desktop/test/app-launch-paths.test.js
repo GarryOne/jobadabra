@@ -23,7 +23,8 @@ const FILES = [...new Set(ROOTS.flatMap(sources))].map(file => ({file: rel(file)
 const SELF = rel(fileURLToPath(import.meta.url));
 
 // A spawn of the Electron binary whose first argument is the app folder ('.', DESKTOP or desktop) starts the app; any other first argument runs a script of its own.
-const START = /\b(?:spawn|spawnSync|execFile|execFileSync)\(\s*([^,]*?(?:\belectron\b|\.bin[/'", ]+electron)[^,]*),\s*\[\s*('\.'|DESKTOP\b|desktop\b)/g;
+// The binary may be a path built with commas (twin.mjs: path.join(DESKTOP, 'node_modules', '.bin', 'electron')) or a variable (`electron`, `electronPath()`): the text up to the argument array.
+const START = /\b(?:spawn|spawnSync|execFile|execFileSync)\(\s*([^[]*?(?:\belectron\w*|\.bin[/'", ]+electron)[^[]*)\[\s*('\.'|DESKTOP\b|desktop\b)/g;
 const appStarts = () => FILES.filter(({file}) => file !== SELF).flatMap(({file, text}) => [...text.matchAll(START)].map(() => ({file, text})));
 
 test('Playwright starts the app in one place only: e2e/lib/app.mjs launch(), which gives it its own port and its runner', () => {
@@ -37,7 +38,8 @@ test('Playwright starts the app in one place only: e2e/lib/app.mjs launch(), whi
 
 test('every other start of the app has no socket or its own port, and ends with the script that started it', () => {
   const starts = appStarts();
-  assert.ok(starts.length >= 3, `the scan finds the shot tools' starts (found ${starts.length}): the pattern above still matches them`);
+  assert.deepEqual([...new Set(starts.map(({file}) => file))].sort(), ['e2e/twin.mjs', 'scripts/screenshots.mjs', 'scripts/shot.mjs', 'scripts/ui-shots.mjs'],
+    'the scan finds the three shot tools and the twin: the pattern above still matches them (a new start is added here with its rules)');
   for (const {file, text} of starts) {
     assert.match(text, /JOB_PILOTTO_DEMO|JOB_PILOTTO_PORT/, `${file}: a demo app (no socket) or its own port, never the owner's 47111`);
     // The twin is the one start meant to outlive its script: the owner looks at it after `twin.mjs start` returns, and `twin.mjs stop` ends it (docs/live-test.md).

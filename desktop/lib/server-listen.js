@@ -25,6 +25,8 @@ export const portFrom = (env = process.env) => (/^\d+$/.test(env.JOB_PILOTTO_POR
  * -> whether a test process is about to take the production port (the owner's app, 47111): an e2e app (JOB_PILOTTO_E2E) or a file run by `node --test` (Node sets
  * NODE_TEST_CONTEXT in it), when the port it opens, or the one its env gives, is 47111. Such a process never listens; a person's app has neither variable.
  * Why (30 Oct 2026, owner's demo): "no JOB_PILOTTO_PORT" alone let a test told 47111, or a bad port that falls back to it, take the owner's port.
+ * A test that opens a free port must also put it in `env.JOB_PILOTTO_PORT` before lib/server.js is first imported (it reads PORT once): the env's port counts too, so a free port
+ * beside an env without one stays off, silently (`onError` is not called).
  */
 export const testWithoutOwnPort = (env = process.env, port = portFrom(env)) => (!!env.JOB_PILOTTO_E2E || !!env.NODE_TEST_CONTEXT) && (port === DEFAULT_PORT || portFrom(env) === DEFAULT_PORT);
 

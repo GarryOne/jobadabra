@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites} from './lib/pr-suites.mjs';
+import {removedStrings, suitesExpecting, report, planPrSuites, stepLists, stepsQuoting, windowsSmoke, windowsCiText, WINDOWS_SMOKE, newSideRanges, stepCalls, stepsTouched, rehomeQuotes, stepHomes, pointedWithMap, ON_PR_ELSEWHERE, deferredLines, ownedStepNames, admittedSuites, admissionLanes} from './lib/pr-suites.mjs';
 import {suitesFor} from './lib/plan.mjs';
 import {suitesUsing, watchesWithImports} from './lib/import-graph.mjs';
 import {hunksFromDiff, mapShas, stepNamesFor, steplessSuites, stepsCovering, stillWholeBy, storeFor, watchedFiles} from './lib/coverage-pick.mjs';
@@ -100,7 +100,7 @@ try {
     const admitted = pullRequest ? admittedSuites({
       addedFiles: git(['diff', '--name-only', '--diff-filter=A', `${base}...HEAD`]).trim().split('\n'),
       deletedFiles: git(['diff', '--name-only', '--diff-filter=D', `${base}...HEAD`]).trim().split('\n'),
-      baseLanes: lanes, headLanes: JSON.parse(git(['show', 'HEAD:desktop/e2e/lanes.json'])),
+      ...admissionLanes(git, base),
     }).filter(suite => facts.all.includes(suite)) : [];
     const plan = planPrSuites({pointed, hits, covering, direct: [...direct], catches, lanes, admitted, linux: suite => linux[suite], cadence: facts.cadence, pullRequest});
     // Steps per suite after a merge; a pull request runs each suite whole (lib/pr-suites.mjs stepLists).

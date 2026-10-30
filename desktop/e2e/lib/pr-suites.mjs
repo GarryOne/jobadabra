@@ -101,6 +101,21 @@ export function report({strings, hits, changedFiles, sources}) {
 // After a merge (main-steps.yml), main, the night and the gates still run it. Guard: test/pr-store.test.mjs
 export const ON_PR_ELSEWHERE = {recorded: 'page-cases.yml replays the recorded cases on this PR (the slow ones on main)'};
 const OUTSIDE_BACKBONE = ['tolerant', 'suspended', 'retired'];
+/** Read admission registries through the injected git runner; unreadable registries become empty.
+ * Invariant: admissions compare the merge-base with HEAD, never main's tip, matching the added/deleted file diff.
+ */
+export function admissionLanes(git, base) {
+  const read = ref => {
+    try {
+      const lanes = JSON.parse(git(['show', `${ref}:desktop/e2e/lanes.json`]));
+      return lanes?.suites && typeof lanes.suites === 'object' && !Array.isArray(lanes.suites) ? lanes : {};
+    } catch { return {}; }
+  };
+  let baseLanes = {};
+  try { baseLanes = read(git(['merge-base', base, 'HEAD']).trim()); } catch { /* unavailable merge-base: no registry */ }
+  return {baseLanes, headLanes: read('HEAD')};
+}
+
 /** Suite names seeking backbone admission, from git's added/deleted files and BASE/HEAD lane registries.
  * Invariants: deleted suites and HEAD's non-backbone lanes never burn in; existing backbone edits keep their normal reach.
  */

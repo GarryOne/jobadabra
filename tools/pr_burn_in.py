@@ -1,5 +1,5 @@
 """Require five independent green PR jobs before admitting a suite to the backbone."""
-# Job: pick the suites
+# Job: report health
 import re
 
 

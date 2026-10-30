@@ -16,6 +16,35 @@ const eight = {
   covering: {'c-map': 'runs app.js:3', 'b-map': 'runs app.js:2', 'a-map': 'runs app.js:1'},
 };
 
+test('a stale branch never admits a suite main demoted after its merge-base', () => {
+  const tip = {suites: {quality: {lane: 'tolerant'}}};
+  const git = args => ({
+    'merge-base origin/main HEAD': 'fork\n',
+    'show origin/main:desktop/e2e/lanes.json': JSON.stringify(tip),
+    'show fork:desktop/e2e/lanes.json': '{"suites":{}}',
+    'show HEAD:desktop/e2e/lanes.json': '{"suites":{}}',
+  })[args.join(' ')];
+  assert.deepEqual(pick.admittedSuites({baseLanes: tip, headLanes: {suites: {}}}), ['quality'], 'main tip would falsely admit it');
+  assert.deepEqual(pick.admittedSuites(pick.admissionLanes(git, 'origin/main')), []);
+});
+
+test('dropping a tolerant entry since the merge-base admits a real promotion', () => {
+  const git = args => ({
+    'merge-base origin/main HEAD': 'fork\n',
+    'show fork:desktop/e2e/lanes.json': '{"suites":{"quality":{"lane":"tolerant"}}}',
+    'show HEAD:desktop/e2e/lanes.json': '{"suites":{}}',
+  })[args.join(' ')];
+  assert.deepEqual(pick.admittedSuites(pick.admissionLanes(git, 'origin/main')), ['quality']);
+});
+
+test('unreadable admission registries become empty independently', () => {
+  for (const unreadable of [undefined, 'not json', 'null', '{"suites":[]}']) {
+    const git = args => args[0] === 'merge-base' ? 'fork\n' : args[1].startsWith('HEAD:') ? '{"suites":{}}' : unreadable;
+    assert.deepEqual(pick.admissionLanes(git, 'origin/main'), {baseLanes: {}, headLanes: {suites: {}}});
+  }
+  assert.deepEqual(pick.admissionLanes(() => { throw new Error('git read failed'); }, 'origin/main'), {baseLanes: {}, headLanes: {}});
+});
+
 test('admission follows added files and BASE to HEAD backbone promotions only', () => {
   const baseLanes = {suites: {quality: {lane: 'tolerant'}, paused: {lane: 'suspended'}, old: {lane: 'retired'}}};
   const admitted = input => pick.admittedSuites({baseLanes, headLanes: baseLanes, ...input});
@@ -155,7 +184,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const cli = new URL('../pr-suites.mjs', import.meta.url);
-function cliPlan({catches, pullRequest = true, listed = {}, headListed = listed, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
+function cliPlan({catches, pullRequest = true, listed = {}, mergeBaseListed = listed, headListed = listed, addedFiles = [], deletedFiles = [], suites = ['wizard', 'wander', 'strategy', 'settings', 'jobs', 'interviews', 'focus', 'calendar'], extraFiles = [], coverage = {}} = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-cap-cli-'));
   try {
     const files = [...suites.map(s => `desktop/e2e/suites/${s}.mjs`), ...extraFiles];
@@ -165,7 +194,7 @@ function cliPlan({catches, pullRequest = true, listed = {}, headListed = listed,
       return `--- a/${file}\n+++ b/${file}\n@@ -${line} +${line} @@\n-old\n+new`;
     }).join('\n');
     const bin = path.join(dir, 'bin'); fs.mkdirSync(bin);
-    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
+    fs.writeFileSync(path.join(bin, 'git'), `#!${process.execPath}\nconst args = process.argv.slice(2);\nif (args.includes('--diff-filter=A')) console.log(${JSON.stringify(addedFiles.join('\n'))});\nelse if (args.includes('--diff-filter=D')) console.log(${JSON.stringify(deletedFiles.join('\n'))});\nelse if (args.includes('--name-only')) console.log(${JSON.stringify(files.join('\n'))});\nelse if (args[0] === 'merge-base') console.log('fork');\nelse if (args[0] === 'show') console.log(args[1].startsWith('HEAD:') ? ${JSON.stringify(JSON.stringify({suites: headListed}))} : args[1].startsWith('fork:') ? ${JSON.stringify(JSON.stringify({suites: mergeBaseListed}))} : ${JSON.stringify(JSON.stringify({suites: listed}))});\nelse console.log(${JSON.stringify(diff)});\n`, {mode: 0o755});
     fs.writeFileSync(path.join(bin, 'gh'), `#!${process.execPath}\nthrow new Error('Network forbidden in CLI test');\n`, {mode: 0o755});
     const output = path.join(dir, 'output'), map = path.join(dir, 'map.json');
     fs.writeFileSync(map, JSON.stringify(coverage));
@@ -236,4 +265,12 @@ test('CLI admits a new file or a lane promotion even when no watched app line re
   assert.ok(promoted.values.suites.split(',').includes('quality'));
   assert.deepEqual(JSON.parse(promoted.values.steps)['(burn-in)'], ['quality']);
   assert.match(promoted.text, /quality.*burn-in.*5/);
+});
+
+
+test('CLI keeps main tip exemptions without burning in a stale branch after a main demotion', () => {
+  const {values} = cliPlan({suites: ['quality'], listed: {quality: {lane: 'tolerant'}}, mergeBaseListed: {}, headListed: {}});
+  assert.equal(values.suites, '');
+  assert.equal(values.left, '');
+  assert.equal(JSON.parse(values.steps)['(burn-in)'], undefined);
 });
